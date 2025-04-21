@@ -1,8 +1,8 @@
 use dal::DalContext;
 use dal_test::{
     expected::{
-        apply_change_set_to_base, commit_and_update_snapshot_to_visibility,
-        fork_from_head_change_set, update_visibility_and_snapshot_to_visibility, ExpectComponent,
+        ExpectComponent, apply_change_set_to_base, commit_and_update_snapshot_to_visibility,
+        fork_from_head_change_set, update_visibility_and_snapshot_to_visibility,
     },
     helpers::connect_components_with_socket_names,
     test,

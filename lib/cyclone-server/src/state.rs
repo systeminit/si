@@ -10,7 +10,7 @@ use axum::extract::FromRef;
 use telemetry::tracing::debug;
 use tokio::{
     process::{Child, Command},
-    sync::{mpsc, Mutex},
+    sync::{Mutex, mpsc},
 };
 
 use crate::execution::ExecutionError;

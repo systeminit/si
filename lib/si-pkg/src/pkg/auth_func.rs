@@ -3,7 +3,7 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgError, Source};
 
-use crate::{node::PkgNode, AuthenticationFuncSpec};
+use crate::{AuthenticationFuncSpec, node::PkgNode};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgAuthFunc<'a> {
@@ -28,7 +28,7 @@ impl<'a> SiPkgAuthFunc<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::AUTH_FUNC_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 

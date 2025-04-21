@@ -3,7 +3,7 @@ use dal::{ChangeSetId, WorkspacePk};
 
 use crate::extract::EddaClient;
 
-use super::{request_rebuild, IndexResult};
+use super::{IndexResult, request_rebuild};
 
 pub async fn rebuild_change_set_index(
     EddaClient(edda_client): EddaClient,

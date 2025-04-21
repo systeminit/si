@@ -3,7 +3,7 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgError, Source};
 
-use crate::{node::PkgNode, ManagementFuncSpec};
+use crate::{ManagementFuncSpec, node::PkgNode};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgManagementFunc<'a> {
@@ -27,7 +27,7 @@ impl<'a> SiPkgManagementFunc<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::MANAGEMENT_FUNC_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 

@@ -27,8 +27,8 @@
     while_true
 )]
 
-use base64::engine::general_purpose;
 use base64::Engine;
+use base64::engine::general_purpose;
 use si_events::FuncRunId;
 use si_layer_cache::LayerDbError;
 use std::sync::Arc;
@@ -36,13 +36,13 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::action::prototype::{ActionKind, ActionPrototypeError};
+use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
-use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
-use crate::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
 use crate::func::FuncKind;
+use crate::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
 use crate::prop::PropError;
 use crate::schema::variant::authoring::{VariantAuthoringClient, VariantAuthoringError};
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
@@ -68,7 +68,9 @@ mod ts_types;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncAuthoringError {
-    #[error("action with kind ({0}) already exists for schema variant ({1}), cannot have two non-manual actions for the same kind in the same schema variant")]
+    #[error(
+        "action with kind ({0}) already exists for schema variant ({1}), cannot have two non-manual actions for the same kind in the same schema variant"
+    )]
     ActionKindAlreadyExists(ActionKind, SchemaVariantId),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
@@ -120,7 +122,9 @@ pub enum FuncAuthoringError {
     Transactions(#[from] TransactionsError),
     #[error("unexpected func kind ({0}) creating attribute func")]
     UnexpectedFuncKindCreatingAttributeFunc(FuncKind),
-    #[error("unexpected func kind ({0}) for func ({1}) when creating func argument (expected an attribute func kind)")]
+    #[error(
+        "unexpected func kind ({0}) for func ({1}) when creating func argument (expected an attribute func kind)"
+    )]
     UnexpectedFuncKindCreatingFuncArgument(FuncId, FuncKind),
     #[error("variant authoring error: {0}")]
     VariantAuthoringClient(#[from] Box<VariantAuthoringError>),

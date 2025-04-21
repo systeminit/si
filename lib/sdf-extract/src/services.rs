@@ -1,15 +1,14 @@
 use axum::{
-    async_trait,
+    RequestPartsExt as _, async_trait,
     extract::{FromRequestParts, Host, OriginalUri},
-    http::{request::Parts, Uri},
-    RequestPartsExt as _,
+    http::{Uri, request::Parts},
 };
 use dal::DalContext;
 use derive_more::{Deref, Into};
 
 use sdf_core::app_state::AppState;
 
-use super::{internal_error, request::RawAccessToken, ErrorResponse};
+use super::{ErrorResponse, internal_error, request::RawAccessToken};
 
 #[derive(Clone, Debug, Deref, Into)]
 pub struct HandlerContext(pub dal::DalContextBuilder);

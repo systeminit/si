@@ -1,5 +1,5 @@
 use dal::func::argument::FuncArgumentKind;
-use dal::pkg::{import_pkg_from_pkg, ImportOptions};
+use dal::pkg::{ImportOptions, import_pkg_from_pkg};
 use dal::{BuiltinsResult, DalContext, SchemaId};
 use dal::{ComponentType, PropKind};
 use si_pkg::{
@@ -10,7 +10,7 @@ use si_pkg::{
 use si_pkg::{SchemaSpecData, SocketSpec, SocketSpecData, SocketSpecKind};
 
 use crate::test_exclusive_schemas::{
-    build_asset_func, create_identity_func, PKG_CREATED_BY, PKG_VERSION,
+    PKG_CREATED_BY, PKG_VERSION, build_asset_func, create_identity_func,
 };
 
 pub(crate) async fn migrate_test_exclusive_schema_fake_butane(

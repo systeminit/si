@@ -1,11 +1,11 @@
 use axum::{
+    Router,
     response::Json,
     response::{IntoResponse, Response},
     routing::get,
-    Router,
 };
 use hyper::StatusCode;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use si_data_ssm::ParameterStoreClientError;
 use thiserror::Error;
 use tower_http::compression::CompressionLayer;

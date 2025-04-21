@@ -4,11 +4,11 @@ use std::{
 };
 
 use object_tree::{
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
-    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes, read_key_value_line,
+    read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
 };
 
-use super::{attribute_value_child::AttributeValueChild, PkgNode};
+use super::{PkgNode, attribute_value_child::AttributeValueChild};
 use crate::spec::{
     AttributeValuePath, AttributeValueSpec, FuncSpecBackendKind, FuncSpecBackendResponseType,
 };

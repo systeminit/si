@@ -2,7 +2,7 @@ use audit_log::DependentValueUpdateAuditLogError;
 use si_frontend_types::DiagramSocket;
 use si_id::SchemaVariantId;
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{HashMap, HashSet, hash_map::Entry},
     convert::TryFrom,
     sync::Arc,
 };
@@ -20,7 +20,10 @@ use tokio::{
 use ulid::Ulid;
 
 use crate::{
-    attribute::value::{dependent_value_graph::DependentValueGraph, AttributeValueError},
+    AccessBuilder, AttributeValue, AttributeValueId, ChangeSet, ChangeSetError, ChangeSetStatus,
+    Component, ComponentError, ComponentId, DalContext, Func, TransactionsError, Visibility,
+    WorkspacePk, WorkspaceSnapshotError, WsEvent, WsEventError,
+    attribute::value::{AttributeValueError, dependent_value_graph::DependentValueGraph},
     job::{
         consumer::{
             JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
@@ -31,9 +34,6 @@ use crate::{
     prop::PropError,
     status::{StatusMessageState, StatusUpdate, StatusUpdateError},
     workspace_snapshot::DependentValueRoot,
-    AccessBuilder, AttributeValue, AttributeValueId, ChangeSet, ChangeSetError, ChangeSetStatus,
-    Component, ComponentError, ComponentId, DalContext, Func, TransactionsError, Visibility,
-    WorkspacePk, WorkspaceSnapshotError, WsEvent, WsEventError,
 };
 
 #[remain::sorted]
@@ -489,11 +489,12 @@ async fn execution_error(
     let fallback = format!(
         "error executing prototype function for AttributeValue {attribute_value_id}: {err_string}"
     );
-    let error_message = match execution_error_detail(ctx, attribute_value_id).await { Ok(detail) => {
-        format!("{detail}: {err_string}")
-    } _ => {
-        fallback
-    }};
+    let error_message = match execution_error_detail(ctx, attribute_value_id).await {
+        Ok(detail) => {
+            format!("{detail}: {err_string}")
+        }
+        _ => fallback,
+    };
 
     warn!(name = "function_execution_error", si.error.message = error_message, %attribute_value_id);
 }
@@ -611,11 +612,11 @@ pub mod audit_log {
     use thiserror::Error;
 
     use crate::{
+        AttributeValue, AttributeValueId, Component, ComponentError, DalContext, Func, InputSocket,
+        OutputSocket, Prop, TransactionsError,
         attribute::value::{AttributeValueError, ValueIsFor},
         prop::PropError,
         socket::{input::InputSocketError, output::OutputSocketError},
-        AttributeValue, AttributeValueId, Component, ComponentError, DalContext, Func, InputSocket,
-        OutputSocket, Prop, TransactionsError,
     };
 
     #[remain::sorted]

@@ -29,6 +29,7 @@ use std::time::Duration;
 
 use serde_json::Error;
 use si_data_nats::{
+    Subject,
     async_nats::{
         self,
         jetstream::{
@@ -36,7 +37,7 @@ use si_data_nats::{
             stream::{Config, RetentionPolicy},
         },
     },
-    jetstream, Subject,
+    jetstream,
 };
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;

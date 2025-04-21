@@ -1,6 +1,6 @@
 use crate::extract::{HandlerContext, PosthogClient};
-use axum::extract::{Host, OriginalUri, Path};
 use axum::Json;
+use axum::extract::{Host, OriginalUri, Path};
 use dal::component::frame::Frame;
 use dal::diagram::geometry::Geometry;
 use serde::{Deserialize, Serialize};
@@ -14,8 +14,8 @@ use dal::{
 };
 
 use crate::service::force_change_set_response::ForceChangeSetResponse;
-use crate::service::v2::view::{ViewError, ViewNodeGeometry, ViewResult};
 use crate::service::v2::AccessBuilder;
+use crate::service::v2::view::{ViewError, ViewNodeGeometry, ViewResult};
 use si_frontend_types::{RawGeometry, StringGeometry};
 
 #[derive(Deserialize, Serialize, Debug)]

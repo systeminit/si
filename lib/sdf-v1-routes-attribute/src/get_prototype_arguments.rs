@@ -1,6 +1,6 @@
 use axum::{
-    extract::{Host, OriginalUri, Query},
     Json,
+    extract::{Host, OriginalUri, Query},
 };
 use dal::{AttributeValue, OutputSocket, OutputSocketId, Prop, PropId, Visibility};
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,7 @@ use serde_json::Value;
 
 use super::{AttributeError, AttributeResult};
 use sdf_core::tracking::track;
-use sdf_extract::{v1::AccessBuilder, HandlerContext, PosthogClient};
+use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -72,7 +72,7 @@ pub async fn get_prototype_arguments(
             return Err(AttributeError::MultipleOutputLocationsProvided(
                 prop_id,
                 ouput_socket_id,
-            ))
+            ));
         }
     };
 

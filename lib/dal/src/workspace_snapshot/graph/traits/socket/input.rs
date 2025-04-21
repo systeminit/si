@@ -1,11 +1,11 @@
 use si_events::ContentHash;
 
 use crate::{
+    AttributeValueId, ComponentId, InputSocketId, SchemaVariantId, SocketArity,
     workspace_snapshot::{
         graph::{LineageId, WorkspaceSnapshotGraphResult},
         node_weight::InputSocketNodeWeight,
     },
-    AttributeValueId, ComponentId, InputSocketId, SchemaVariantId, SocketArity,
 };
 
 pub trait InputSocketExt {

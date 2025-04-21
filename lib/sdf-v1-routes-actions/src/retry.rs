@@ -1,13 +1,13 @@
 use axum::Json;
+use dal::Func;
 use dal::action::prototype::ActionPrototype;
 use dal::action::{Action, ActionState};
-use dal::Func;
-use dal::{action::ActionId, Visibility, WsEvent};
+use dal::{Visibility, WsEvent, action::ActionId};
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
 use super::{ActionError, ActionResult};
-use sdf_extract::{v1::AccessBuilder, HandlerContext};
+use sdf_extract::{HandlerContext, v1::AccessBuilder};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -45,7 +45,7 @@ pub async fn retry(
 
         match action.state() {
             ActionState::Running | ActionState::Dispatched => {
-                return Err(ActionError::InvalidOnHoldTransition(action_id))
+                return Err(ActionError::InvalidOnHoldTransition(action_id));
             }
             ActionState::Queued | ActionState::Failed | ActionState::OnHold => {}
         }

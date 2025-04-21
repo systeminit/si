@@ -4,13 +4,13 @@ use std::{
 };
 
 use object_tree::{
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, GraphError, NameStr,
-    NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, read_key_value_line_opt, write_key_value_line,
 };
 
 use crate::{SocketSpec, SocketSpecArity, SocketSpecKind};
 
-use super::{read_unique_id, write_unique_id, PkgNode};
+use super::{PkgNode, read_unique_id, write_unique_id};
 
 const KEY_KIND_STR: &str = "kind";
 const KEY_NAME_STR: &str = "name";

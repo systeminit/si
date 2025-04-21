@@ -10,10 +10,10 @@ use jwt_simple::algorithms::RSAKeyPairLike;
 use jwt_simple::claims::Claims;
 use jwt_simple::prelude::Duration;
 use si_jwt_public_key::SiJwtClaims;
-use tracing_subscriber::{fmt, util::SubscriberInitExt, EnvFilter, Registry};
+use tracing_subscriber::{EnvFilter, Registry, fmt, util::SubscriberInitExt};
 
 use crate::{
-    helpers::create_user, helpers::generate_fake_name, jwt_private_signing_key, WorkspaceSignup,
+    WorkspaceSignup, helpers::create_user, helpers::generate_fake_name, jwt_private_signing_key,
 };
 
 /// Creates a user for each test to run as

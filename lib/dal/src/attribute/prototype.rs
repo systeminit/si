@@ -20,23 +20,23 @@ use strum::{AsRefStr, Display, EnumDiscriminants};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::AttributePrototypeArgument;
+use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::value::AttributeValueError;
 use crate::change_set::ChangeSetError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::layer_db_types::{AttributePrototypeContent, AttributePrototypeContentV1};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{
-    content_node_weight, traits::SiNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
+    NodeWeight, NodeWeightDiscriminants, NodeWeightError, content_node_weight, traits::SiNodeWeight,
 };
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    attribute::prototype::argument::AttributePrototypeArgumentId, implement_add_edge_to,
     AttributeValue, AttributeValueId, ComponentId, DalContext, FuncId, HelperError, InputSocketId,
     OutputSocketId, PropId, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp,
-    TransactionsError,
+    TransactionsError, attribute::prototype::argument::AttributePrototypeArgumentId,
+    implement_add_edge_to,
 };
 use crate::{Func, FuncError};
 
@@ -579,7 +579,7 @@ impl AttributePrototype {
                             node_weight_id,
                             id,
                         ),
-                    )
+                    );
                 }
             },
             _ => {
@@ -588,7 +588,7 @@ impl AttributePrototype {
                         node_weight_id,
                         id,
                     ),
-                )
+                );
             }
         };
 

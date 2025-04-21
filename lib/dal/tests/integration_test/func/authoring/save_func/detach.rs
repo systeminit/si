@@ -1,7 +1,7 @@
 use dal::func::binding::attribute::AttributeBinding;
 use dal::func::binding::{EventualParent, FuncBinding};
 use dal::{DalContext, Func, SchemaVariant};
-use dal_test::helpers::{create_unlocked_variant_copy_for_schema_name, ChangeSetTestHelpers};
+use dal_test::helpers::{ChangeSetTestHelpers, create_unlocked_variant_copy_for_schema_name};
 use dal_test::test;
 
 #[test]

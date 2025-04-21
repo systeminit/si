@@ -13,8 +13,8 @@ use crate::{
 };
 
 use super::{
-    future::ResponseFuture, make_span::MakeSpan, on_request::OnRequest, on_response::OnResponse,
     DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, ResponseBody, TraceLayer,
+    future::ResponseFuture, make_span::MakeSpan, on_request::OnRequest, on_response::OnResponse,
 };
 
 #[derive(Clone, Copy, Debug)]

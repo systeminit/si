@@ -1,6 +1,6 @@
 use axum::{
-    extract::{OriginalUri, Path, Query},
     Json,
+    extract::{OriginalUri, Path, Query},
 };
 use dal::{ChangeSetId, FuncId, WorkspacePk};
 
@@ -12,7 +12,7 @@ use crate::{
     service::v2::AccessBuilder,
 };
 
-use super::{get_code_response, FuncAPIResult};
+use super::{FuncAPIResult, get_code_response};
 
 // TODO: find the right way to pass a Vec<FuncId>
 // the API call uses the `id[]=<...>&id[]=<...?` format

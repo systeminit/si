@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use dal::{diagram::view::View, Component, ComponentId, ComponentType, DalContext};
+use dal::{Component, ComponentId, ComponentType, DalContext, diagram::view::View};
 use dal_test::{helpers::create_component_for_default_schema_name_in_default_view, test};
 
 #[test]

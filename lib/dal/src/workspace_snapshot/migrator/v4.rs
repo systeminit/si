@@ -4,14 +4,14 @@ use telemetry::prelude::*;
 
 use super::SnapshotGraphMigratorResult;
 use crate::layer_db_types::{ViewContent, ViewContentV1};
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::ComponentNodeWeight;
+use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::{
+    DalContext, EdgeWeight, EdgeWeightKind, Timestamp,
     workspace_snapshot::{
         graph::{WorkspaceSnapshotGraphV3, WorkspaceSnapshotGraphV4},
         node_weight::NodeWeight,
     },
-    DalContext, EdgeWeight, EdgeWeightKind, Timestamp,
 };
 
 #[instrument(skip_all)]

@@ -12,7 +12,7 @@ pub struct RebuildRequestV1 {
 mod tests {
     use super::{
         super::{
-            test::*, RebuildRequestVersionsDiscriminants, RebuildRequestVersionsDiscriminants::*,
+            RebuildRequestVersionsDiscriminants, RebuildRequestVersionsDiscriminants::*, test::*,
         },
         *,
     };

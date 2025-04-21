@@ -1,6 +1,6 @@
 use dal::func::argument::FuncArgumentKind;
 use dal::func::intrinsics::IntrinsicFunc;
-use dal::pkg::{import_pkg_from_pkg, ImportOptions};
+use dal::pkg::{ImportOptions, import_pkg_from_pkg};
 use dal::prop::{PropPath, SECRET_KIND_WIDGET_OPTION_LABEL};
 use dal::schema::variant::leaves::LeafKind;
 use dal::{BuiltinsResult, DalContext, SchemaId};
@@ -175,7 +175,7 @@ fn assemble_secret_definition_dummy(
             SocketSpecData::builder()
                 .name(secret_definition_name)
                 .connection_annotations(serde_json::to_string(&vec![
-                    secret_definition_name.to_lowercase()
+                    secret_definition_name.to_lowercase(),
                 ])?)
                 .kind(SocketSpecKind::Output)
                 .arity(SocketSpecArity::One)
@@ -198,8 +198,8 @@ fn assemble_secret_definition_dummy(
     ))
 }
 
-fn assemble_qualification_dummy_secret_value_is_todd(
-) -> BuiltinsResult<(FuncSpec, LeafFunctionSpec)> {
+fn assemble_qualification_dummy_secret_value_is_todd()
+-> BuiltinsResult<(FuncSpec, LeafFunctionSpec)> {
     let fn_code = "async function qualification(_component: Input): Promise<Output> {\
         const authCheck = requestStorage.getItem('dummySecretString');
         if (authCheck) {

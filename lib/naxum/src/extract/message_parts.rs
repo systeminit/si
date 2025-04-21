@@ -10,8 +10,8 @@ use crate::{
 };
 
 use super::{
-    rejection::{NoReplyRejection, StringRejection},
     FromMessage, FromMessageHead,
+    rejection::{NoReplyRejection, StringRejection},
 };
 
 #[async_trait]

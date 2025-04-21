@@ -1,6 +1,6 @@
 use audit_database::AuditDatabaseContext;
 use audit_logs_stream::AuditLogsStream;
-use dal::{prop::PropPath, AttributeValue, DalContext, Prop, Schema, SchemaVariant};
+use dal::{AttributeValue, DalContext, Prop, Schema, SchemaVariant, prop::PropPath};
 use dal_test::helpers::{
     confirm_jetstream_stream_has_no_messages,
     create_named_component_for_schema_variant_on_default_view,
@@ -196,11 +196,13 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
     )
     .await
     .expect("could not write audit log");
-    assert!(component
-        .delete(ctx)
-        .await
-        .expect("unable to delete component")
-        .is_none());
+    assert!(
+        component
+            .delete(ctx)
+            .await
+            .expect("unable to delete component")
+            .is_none()
+    );
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");

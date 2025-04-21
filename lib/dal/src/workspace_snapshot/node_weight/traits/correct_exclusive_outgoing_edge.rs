@@ -3,10 +3,10 @@ use std::collections::{HashMap, HashSet};
 use petgraph::prelude::*;
 
 use crate::{
-    workspace_snapshot::{
-        edge_weight::EdgeWeightKindDiscriminants, graph::detector::Update, NodeInformation,
-    },
     WorkspaceSnapshotGraphVCurrent,
+    workspace_snapshot::{
+        NodeInformation, edge_weight::EdgeWeightKindDiscriminants, graph::detector::Update,
+    },
 };
 
 pub trait CorrectExclusiveOutgoingEdge

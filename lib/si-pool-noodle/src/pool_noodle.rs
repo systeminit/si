@@ -51,7 +51,7 @@ use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 use tracing::{debug, info, warn};
 
 use crate::errors::PoolNoodleError;
@@ -185,32 +185,35 @@ where
                 metric!(counter.pool_noodle.get_requests = -1);
                 return Err(PoolNoodleError::ExecutionPoolStarved);
             }
-            match inner.ready_queue.pop() { Some(mut instance) => {
-                metric!(counter.pool_noodle.ready = -1);
-                // Try to ensure the item is healthy
-                match &mut instance.ensure_healthy().await {
-                    Ok(_) => {
-                        metric!(counter.pool_noodle.get_requests = -1);
-                        metric!(counter.pool_noodle.active = 1);
-                        return Ok(LifeGuard::new(
-                            Some(instance),
-                            inner.queue_tx.clone(),
-                            inner.spec.clone(),
-                        ));
-                    }
-                    Err(_) => {
-                        debug!("PoolNoodle: not healthy, cleaning up and getting a new one.");
-                        drop(instance);
+            match inner.ready_queue.pop() {
+                Some(mut instance) => {
+                    metric!(counter.pool_noodle.ready = -1);
+                    // Try to ensure the item is healthy
+                    match &mut instance.ensure_healthy().await {
+                        Ok(_) => {
+                            metric!(counter.pool_noodle.get_requests = -1);
+                            metric!(counter.pool_noodle.active = 1);
+                            return Ok(LifeGuard::new(
+                                Some(instance),
+                                inner.queue_tx.clone(),
+                                inner.spec.clone(),
+                            ));
+                        }
+                        Err(_) => {
+                            debug!("PoolNoodle: not healthy, cleaning up and getting a new one.");
+                            drop(instance);
+                        }
                     }
                 }
-            } _ => {
-                retries += 1;
-                debug!(
-                    "Failed to get from pool, retry ({} of {})",
-                    retries, max_retries
-                );
-                sleep(Duration::from_millis(100)).await;
-            }}
+                _ => {
+                    retries += 1;
+                    debug!(
+                        "Failed to get from pool, retry ({} of {})",
+                        retries, max_retries
+                    );
+                    sleep(Duration::from_millis(100)).await;
+                }
+            }
         }
     }
 
@@ -305,7 +308,10 @@ where
                 }
                 Err(e) => {
                     if attempts >= max_retries {
-                        warn!("Failed to clean instance {} after {} attempts. Abandoning this instance", id, max_retries);
+                        warn!(
+                            "Failed to clean instance {} after {} attempts. Abandoning this instance",
+                            id, max_retries
+                        );
                         break;
                     }
                     warn!("PoolNoodle: failed to clean instance: {}", id);
@@ -387,7 +393,7 @@ mod tests {
     use crate::instance::SpecBuilder;
     use async_trait::async_trait;
     use derive_builder::Builder;
-    use tokio::time::{sleep, Duration};
+    use tokio::time::{Duration, sleep};
 
     use super::*;
 

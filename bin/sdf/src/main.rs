@@ -2,7 +2,7 @@
 
 use std::{path::PathBuf, time::Duration};
 
-use sdf_server::{key_generation, Config, Migrator, Server, SnapshotGarbageCollector};
+use sdf_server::{Config, Migrator, Server, SnapshotGarbageCollector, key_generation};
 use si_service::{
     color_eyre,
     prelude::*,

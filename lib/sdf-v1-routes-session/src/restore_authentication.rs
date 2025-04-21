@@ -3,7 +3,7 @@ use dal::{User, Workspace};
 use serde::{Deserialize, Serialize};
 
 use crate::SessionResult;
-use sdf_extract::{v1::AccessBuilder, workspace::WorkspaceAuthorization, HandlerContext};
+use sdf_extract::{HandlerContext, v1::AccessBuilder, workspace::WorkspaceAuthorization};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

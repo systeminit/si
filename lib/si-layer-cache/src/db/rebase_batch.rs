@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Instant};
 
-use serde::{de::DeserializeOwned, Serialize};
-use si_events::{rebase_batch_address::RebaseBatchAddress, Actor, Tenancy, WebEvent};
+use serde::{Serialize, de::DeserializeOwned};
+use si_events::{Actor, Tenancy, WebEvent, rebase_batch_address::RebaseBatchAddress};
 use telemetry::prelude::*;
 
 use crate::{

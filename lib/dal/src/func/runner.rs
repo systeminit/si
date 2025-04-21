@@ -15,9 +15,9 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{mpsc, oneshot};
 use veritech_client::{
-    encrypt_value_tree, BeforeFunction, FunctionResult, FunctionResultFailure,
-    FunctionResultFailureErrorKind, KillExecutionRequest, OutputStream, ResolverFunctionComponent,
-    VeritechValueEncryptError,
+    BeforeFunction, FunctionResult, FunctionResultFailure, FunctionResultFailureErrorKind,
+    KillExecutionRequest, OutputStream, ResolverFunctionComponent, VeritechValueEncryptError,
+    encrypt_value_tree,
 };
 
 use crate::attribute::prototype::argument::value_source::ValueSource;
@@ -30,16 +30,16 @@ use crate::prop::PropError;
 use crate::schema::variant::root_prop::RootPropChild;
 use crate::workspace::WorkspaceId;
 use crate::{
-    action::{
-        prototype::{ActionPrototype, ActionPrototypeError},
-        Action, ActionError,
-    },
-    attribute::value::AttributeValueError,
-    func::backend::FuncBackendError,
     ActionPrototypeId, AttributeValue, AttributeValueId, ChangeSet, ChangeSetError, Component,
     ComponentError, ComponentId, DalContext, EncryptedSecret, Func, FuncBackendKind, FuncError,
     FuncId, KeyPairError, Prop, PropId, SchemaVariant, SchemaVariantError, Secret, SecretError,
     WsEvent, WsEventError, WsEventResult, WsPayload,
+    action::{
+        Action, ActionError,
+        prototype::{ActionPrototype, ActionPrototypeError},
+    },
+    attribute::value::AttributeValueError,
+    func::backend::FuncBackendError,
 };
 use crate::{HistoryEventError, TransactionsError};
 
@@ -48,6 +48,7 @@ use super::backend::management::FuncBackendManagement;
 use super::backend::normalize_to_array::FuncBackendNormalizeToArray;
 use super::backend::resource_payload_to_value::FuncBackendResourcePayloadToValue;
 use super::backend::{
+    FuncBackend, FuncDispatch, FuncDispatchContext, InvalidResolverFunctionTypeError,
     array::FuncBackendArray,
     boolean::FuncBackendBoolean,
     diff::FuncBackendDiff,
@@ -61,7 +62,6 @@ use super::backend::{
     object::FuncBackendObject,
     string::FuncBackendString,
     validation::FuncBackendValidation,
-    FuncBackend, FuncDispatch, FuncDispatchContext, InvalidResolverFunctionTypeError,
 };
 use super::intrinsics::IntrinsicFunc;
 
@@ -84,7 +84,9 @@ pub enum FuncRunnerError {
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
-    #[error("direct authentication func execution is unsupported (must go through \"before funcs\"), found: {0}")]
+    #[error(
+        "direct authentication func execution is unsupported (must go through \"before funcs\"), found: {0}"
+    )]
     DirectAuthenticationFuncExecutionUnsupported(FuncId),
     #[error("direct validation funcs are no longer supported, found: {0}")]
     DirectValidationFuncsNoLongerSupported(FuncId),
@@ -128,13 +130,17 @@ pub enum FuncRunnerError {
     Secret(#[from] SecretError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("too many attribute prototype arguments for protoype corresponding to component ({0}) and prop ({1}): {2:?}")]
+    #[error(
+        "too many attribute prototype arguments for protoype corresponding to component ({0}) and prop ({1}): {2:?}"
+    )]
     TooManyAttributePrototypeArguments(ComponentId, PropId, Vec<AttributePrototypeArgumentId>),
     #[error("too many attribute values for component ({0}) and prop ({1})")]
     TooManyAttributeValues(ComponentId, PropId),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("unexpected value source ({0:?}) for secret prop ({1}), attribute prototype argument ({2}) and component ({3})")]
+    #[error(
+        "unexpected value source ({0:?}) for secret prop ({1}), attribute prototype argument ({2}) and component ({3})"
+    )]
     UnexpectedValueSourceForSecretProp(
         ValueSource,
         PropId,
@@ -1453,7 +1459,7 @@ impl FuncRunner {
                             secret_child_prop_id,
                             attribute_prototype_argument_id,
                             component_id,
-                        ))
+                        ));
                     }
                 }
             }
@@ -1750,17 +1756,17 @@ impl FuncRunnerExecutionTask {
             FuncBackendKind::JsReconciliation => {
                 return Err(FuncRunnerError::ReconciliationFuncsNoLongerSupported(
                     self.func.id,
-                ))
+                ));
             }
             FuncBackendKind::JsValidation => {
                 return Err(FuncRunnerError::DirectValidationFuncsNoLongerSupported(
                     self.func.id,
-                ))
+                ));
             }
             FuncBackendKind::JsAuthentication => {
                 return Err(
                     FuncRunnerError::DirectAuthenticationFuncExecutionUnsupported(self.func.id),
-                )
+                );
             }
             FuncBackendKind::Management => {
                 FuncBackendManagement::create_and_execute(

@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use petgraph::{prelude::*, Direction};
+use petgraph::{Direction, prelude::*};
 use si_events::{
     merkle_tree_hash::MerkleTreeHash,
     workspace_snapshot::{Change, EntityKind},
@@ -8,18 +8,18 @@ use si_events::{
 use si_id::{ApprovalRequirementDefinitionId, EntityId, WorkspacePk};
 
 use crate::{
+    EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
     workspace_snapshot::{
         graph::{
+            WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
             traits::approval_requirement::{
                 ApprovalRequirementApprover, ApprovalRequirementExt,
                 ApprovalRequirementPermissionLookup, ApprovalRequirementRule,
                 ApprovalRequirementsBag,
             },
-            WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
         },
         node_weight::traits::SiNodeWeight,
     },
-    EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
 };
 
 use super::WorkspaceSnapshotGraphV4;

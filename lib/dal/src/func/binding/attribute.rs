@@ -4,17 +4,17 @@ use std::collections::HashMap;
 use telemetry::prelude::*;
 
 use crate::{
-    attribute::prototype::{
-        argument::AttributePrototypeArgument, AttributePrototypeEventualParent,
-    },
-    func::{
-        argument::{FuncArgument, FuncArgumentError},
-        intrinsics::IntrinsicFunc,
-        FuncKind,
-    },
-    workspace_snapshot::graph::WorkspaceSnapshotGraphError,
     AttributePrototype, AttributePrototypeId, AttributeValue, Component, DalContext,
     EdgeWeightKind, Func, FuncBackendKind, FuncId, OutputSocket, Prop, WorkspaceSnapshotError,
+    attribute::prototype::{
+        AttributePrototypeEventualParent, argument::AttributePrototypeArgument,
+    },
+    func::{
+        FuncKind,
+        argument::{FuncArgument, FuncArgumentError},
+        intrinsics::IntrinsicFunc,
+    },
+    workspace_snapshot::graph::WorkspaceSnapshotGraphError,
 };
 
 use super::{
@@ -223,8 +223,7 @@ impl AttributeBinding {
             if let EventualParent::Component(component_id) = eventual_parent {
                 trace!(
                     "skipping component {} for intrinsic {}",
-                    component_id,
-                    intrinsic_func_kind
+                    component_id, intrinsic_func_kind
                 );
                 continue;
             }
@@ -233,8 +232,7 @@ impl AttributeBinding {
             if let AttributeFuncDestination::InputSocket(input_socket_id) = output_location {
                 trace!(
                     "skipping input socket {} for intrinsic {}",
-                    input_socket_id,
-                    intrinsic_func_kind
+                    input_socket_id, intrinsic_func_kind
                 );
                 continue;
             }
@@ -523,12 +521,12 @@ impl AttributeBinding {
                 super::AttributeFuncArgumentSource::Secret(secret_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
                         AttributeFuncArgumentSource::Secret(*secret_id),
-                    ))
+                    ));
                 }
                 super::AttributeFuncArgumentSource::OutputSocket(output_socket_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
                         AttributeFuncArgumentSource::OutputSocket(*output_socket_id),
-                    ))
+                    ));
                 }
             };
         }
@@ -623,12 +621,12 @@ impl AttributeBinding {
                 super::AttributeFuncArgumentSource::Secret(secret_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
                         AttributeFuncArgumentSource::Secret(*secret_id),
-                    ))
+                    ));
                 }
                 super::AttributeFuncArgumentSource::OutputSocket(output_socket_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
                         AttributeFuncArgumentSource::OutputSocket(*output_socket_id),
-                    ))
+                    ));
                 }
             };
         }
@@ -881,7 +879,7 @@ async fn validate_intrinsic_inputs(
                 AttributeFuncDestination::InputSocket(_) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeDestination(
                         output_location,
-                    ))
+                    ));
                 }
             }
         }
@@ -893,7 +891,7 @@ async fn validate_intrinsic_inputs(
             match output_location {
                 AttributeFuncDestination::Prop(_) | AttributeFuncDestination::OutputSocket(_) => {}
                 AttributeFuncDestination::InputSocket(_) => {
-                    return Err(FuncBindingError::InvalidIntrinsicBinding)
+                    return Err(FuncBindingError::InvalidIntrinsicBinding);
                 }
             }
         }

@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque, hash_map::Entry},
     fs::File,
     io::Write,
     sync::{Arc, Mutex},
@@ -12,25 +12,25 @@ use petgraph::{
     visit::DfsEvent,
 };
 use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, workspace_snapshot::Change, ContentHash};
+use si_events::{ContentHash, ulid::Ulid, workspace_snapshot::Change};
 use si_layer_cache::db::serialize;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use ulid::Generator;
 
 use crate::{
-    layer_db_types::{ViewContent, ViewContentV1},
-    workspace_snapshot::{
-        content_address::ContentAddress,
-        graph::{
-            detector::{Detector, Update},
-            MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
-        },
-        node_weight::{CategoryNodeWeight, NodeWeight},
-        CategoryNodeKind, ContentAddressDiscriminants, LineageId, OrderingNodeWeight,
-    },
     DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
     Timestamp,
+    layer_db_types::{ViewContent, ViewContentV1},
+    workspace_snapshot::{
+        CategoryNodeKind, ContentAddressDiscriminants, LineageId, OrderingNodeWeight,
+        content_address::ContentAddress,
+        graph::{
+            MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
+            detector::{Detector, Update},
+        },
+        node_weight::{CategoryNodeWeight, NodeWeight},
+    },
 };
 
 pub mod approval_requirement;
@@ -1061,7 +1061,9 @@ impl WorkspaceSnapshotGraphV4 {
                 let color = color.to_string();
                 let id = node_weight.id();
                 format!(
-                    "label = \"\n\n{label}\n{node_index:?}\n{id}\n\n{:?}\n{:?}\"\nfontcolor = {color}\ncolor = {color}", node_weight.merkle_tree_hash(), node_weight.node_hash(),
+                    "label = \"\n\n{label}\n{node_index:?}\n{id}\n\n{:?}\n{:?}\"\nfontcolor = {color}\ncolor = {color}",
+                    node_weight.merkle_tree_hash(),
+                    node_weight.node_hash(),
                 )
             },
         );

@@ -1,13 +1,15 @@
 use dal::{
+    AttributePrototype, Component, DalContext, Func, InputSocket, OutputSocket, Prop, Schema,
+    SchemaVariant, SchemaVariantError, Secret, WorkspaceSnapshotError,
     action::prototype::ActionKind,
     attribute::prototype::argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
     func::{
         argument::{FuncArgument, FuncArgumentKind},
         authoring::FuncAuthoringClient,
         binding::{
-            action::ActionBinding, attribute::AttributeBinding, authentication::AuthBinding,
-            leaf::LeafBinding, AttributeArgumentBinding, AttributeFuncArgumentSource,
-            AttributeFuncDestination, EventualParent, FuncBinding, FuncBindingError,
+            AttributeArgumentBinding, AttributeFuncArgumentSource, AttributeFuncDestination,
+            EventualParent, FuncBinding, FuncBindingError, action::ActionBinding,
+            attribute::AttributeBinding, authentication::AuthBinding, leaf::LeafBinding,
         },
         intrinsics::IntrinsicFunc,
     },
@@ -18,15 +20,14 @@ use dal::{
         leaves::{LeafInputLocation, LeafKind},
     },
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
-    AttributePrototype, Component, DalContext, Func, InputSocket, OutputSocket, Prop, Schema,
-    SchemaVariant, SchemaVariantError, Secret, WorkspaceSnapshotError,
 };
 use dal_test::{
+    WorkspaceSignup,
     helpers::{
-        create_component_for_default_schema_name_in_default_view,
-        create_unlocked_variant_copy_for_schema_name, encrypt_message, ChangeSetTestHelpers,
+        ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view,
+        create_unlocked_variant_copy_for_schema_name, encrypt_message,
     },
-    test, WorkspaceSignup,
+    test,
 };
 use itertools::Itertools;
 use pretty_assertions_sorted::assert_eq;

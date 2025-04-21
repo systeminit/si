@@ -10,22 +10,22 @@ use thiserror::Error;
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
 use crate::{
-    cached_module::{CachedModule, CachedModuleError},
-    component::socket::ComponentInputSocket,
-    diagram::{
-        geometry::Geometry,
-        view::{View, ViewId},
-        DiagramError,
-    },
-    func::runner::{FuncRunner, FuncRunnerError},
-    implement_add_edge_to,
-    layer_db_types::{ManagementPrototypeContent, ManagementPrototypeContentV1},
-    workspace_snapshot::node_weight::{traits::SiVersionedNodeWeight, NodeWeight},
     AttributeValue, Component, ComponentError, ComponentId, DalContext, EdgeWeightKind,
     EdgeWeightKindDiscriminants, FuncId, HelperError, InputSocket, NodeWeightDiscriminants,
     OutputSocket, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantError,
     SchemaVariantId, SocketArity, TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError,
     WsEventResult, WsPayload,
+    cached_module::{CachedModule, CachedModuleError},
+    component::socket::ComponentInputSocket,
+    diagram::{
+        DiagramError,
+        geometry::Geometry,
+        view::{View, ViewId},
+    },
+    func::runner::{FuncRunner, FuncRunnerError},
+    implement_add_edge_to,
+    layer_db_types::{ManagementPrototypeContent, ManagementPrototypeContentV1},
+    workspace_snapshot::node_weight::{NodeWeight, traits::SiVersionedNodeWeight},
 };
 
 use super::{ManagementGeometry, SocketRef};
@@ -179,7 +179,7 @@ async fn build_incoming_connections(
         let name = input_socket.name().to_owned();
         let socket_connections = match input_socket.arity() {
             SocketArity::One if socket_connections.len() > 1 => {
-                return Err(ManagementPrototypeError::MoreThanOneInputConnection(name))
+                return Err(ManagementPrototypeError::MoreThanOneInputConnection(name));
             }
             SocketArity::One => SocketRefsAndValues::One(socket_connections.pop()),
             SocketArity::Many => SocketRefsAndValues::Many(socket_connections),

@@ -1,14 +1,15 @@
 use axum::{
-    extract::{Host, OriginalUri, Path},
     Json,
+    extract::{Host, OriginalUri, Path},
 };
 use dal::{
+    ChangeSet, ChangeSetId, Component, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
     func::binding::{
-        action::ActionBinding, attribute::AttributeBinding, authentication::AuthBinding,
-        leaf::LeafBinding, management::ManagementBinding, AttributeArgumentBinding, EventualParent,
+        AttributeArgumentBinding, EventualParent, action::ActionBinding,
+        attribute::AttributeBinding, authentication::AuthBinding, leaf::LeafBinding,
+        management::ManagementBinding,
     },
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    ChangeSet, ChangeSetId, Component, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
 };
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;

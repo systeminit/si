@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
-use axum::{extract::Path, Json};
+use axum::{Json, extract::Path};
 use dal::{
+    ChangeSet, ChangeSetId, UserPk, WorkspacePk, WsEvent,
     approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
     entity_kind::EntityKind,
-    ChangeSet, ChangeSetId, UserPk, WorkspacePk, WsEvent,
 };
 use serde::Deserialize;
 use si_events::audit_log::AuditLogKind;

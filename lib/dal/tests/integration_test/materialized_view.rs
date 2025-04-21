@@ -1,14 +1,14 @@
 use std::collections::HashSet;
 
-use dal::action::prototype::ActionPrototype;
-use dal::action::Action;
 use dal::Component;
 use dal::DalContext;
 use dal::Func;
+use dal::action::Action;
+use dal::action::prototype::ActionPrototype;
+use dal_test::Result;
 use dal_test::helpers::create_component_for_default_schema_name_in_default_view;
 use dal_test::prelude::OptionExt;
 use dal_test::test;
-use dal_test::Result;
 use pretty_assertions_sorted::assert_eq;
 use si_events::ActionKind;
 use si_events::ActionState;

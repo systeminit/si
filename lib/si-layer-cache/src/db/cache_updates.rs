@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use si_data_nats::NatsClient;
-use si_events::{change_batch::ChangeBatch, FuncRun, FuncRunLog};
+use si_events::{FuncRun, FuncRunLog, change_batch::ChangeBatch};
 use telemetry::prelude::*;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};

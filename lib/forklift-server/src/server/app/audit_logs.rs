@@ -10,6 +10,7 @@ use audit_database::AuditDatabaseContext;
 use audit_logs_stream::{AuditLogsStream, AuditLogsStreamError};
 use nats_dead_letter_queue::NatsDeadLetterQueueError;
 use naxum::{
+    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
@@ -18,16 +19,15 @@ use naxum::{
         trace::TraceLayer,
     },
     response::{IntoResponse, Response},
-    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
 };
 use si_data_nats::{
+    ConnectionMetadata,
     async_nats::{
         self,
         error::Error as AsyncNatsError,
         jetstream::{consumer::StreamErrorKind, stream::ConsumerErrorKind},
     },
     jetstream::Context,
-    ConnectionMetadata,
 };
 use telemetry::prelude::*;
 use thiserror::Error;

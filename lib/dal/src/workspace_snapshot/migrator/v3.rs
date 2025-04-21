@@ -1,12 +1,12 @@
 use telemetry::prelude::*;
 
 use crate::{
+    DalContext,
     workspace_snapshot::{
+        ContentAddressDiscriminants,
         graph::{WorkspaceSnapshotGraphV2, WorkspaceSnapshotGraphV3},
         node_weight::{InputSocketNodeWeight, NodeWeight, SchemaVariantNodeWeight},
-        ContentAddressDiscriminants,
     },
-    DalContext,
 };
 
 use super::SnapshotGraphMigratorResult;

@@ -12,21 +12,21 @@ use thiserror::Error;
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
 use crate::{
+    AttributePrototype, AttributePrototypeId, AttributeValue, ComponentId, DalContext, HelperError,
+    OutputSocketId, PropId, SecretId, Timestamp, TransactionsError,
     change_set::ChangeSetError,
     func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId},
     implement_add_edge_to,
     socket::input::InputSocketId,
     workspace_snapshot::{
+        WorkspaceSnapshotError,
         content_address::ContentAddressDiscriminants,
         edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
         node_weight::{
             AttributePrototypeArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants,
             NodeWeightError,
         },
-        WorkspaceSnapshotError,
     },
-    AttributePrototype, AttributePrototypeId, AttributeValue, ComponentId, DalContext, HelperError,
-    OutputSocketId, PropId, SecretId, Timestamp, TransactionsError,
 };
 
 use self::{
@@ -78,7 +78,7 @@ pub enum AttributePrototypeArgumentError {
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
     #[error(
-    "PrototypeArgument {0} ArgumentValue edge pointing to unexpected content node weight kind: {1:?}"
+        "PrototypeArgument {0} ArgumentValue edge pointing to unexpected content node weight kind: {1:?}"
     )]
     UnexpectedValueSourceContent(AttributePrototypeArgumentId, ContentAddressDiscriminants),
     #[error(

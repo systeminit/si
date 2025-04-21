@@ -35,10 +35,10 @@ use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
 use tokio_postgres::{
-    row::RowIndex,
-    types::{BorrowToSql, FromSql, ToSql, Type},
     CancelToken, Client, Column, CopyInSink, CopyOutStream, IsolationLevel, Portal, Row,
     SimpleQueryMessage, Statement, ToStatement,
+    row::RowIndex,
+    types::{BorrowToSql, FromSql, ToSql, Type},
 };
 
 pub use tokio_postgres::error::SqlState;
@@ -80,9 +80,7 @@ pub enum PgError {
     Pg(#[from] tokio_postgres::Error),
     #[error("transaction not exclusively referenced when commit attempted; arc_strong_count={0}")]
     TxnCommitNotExclusive(usize),
-    #[error(
-        "transaction not exclusively referenced when rollback attempted; arc_strong_count={0}"
-    )]
+    #[error("transaction not exclusively referenced when rollback attempted; arc_strong_count={0}")]
     TxnRollbackNotExclusive(usize),
     #[error("unexpected row returned: {0:?}")]
     UnexpectedRow(PgRow),

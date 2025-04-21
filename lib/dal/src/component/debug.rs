@@ -6,15 +6,15 @@ use thiserror::Error;
 use crate::attribute::value::AttributeValueError;
 
 use crate::attribute::value::debug::{AttributeDebugView, AttributeDebugViewError};
+use crate::diagram::DiagramError;
 use crate::diagram::geometry::Geometry;
 use crate::diagram::view::{View, ViewId};
-use crate::diagram::DiagramError;
 use crate::prop::PropError;
 use crate::socket::debug::{SocketDebugView, SocketDebugViewError};
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::{
     AttributeValue, AttributeValueId, Component, ComponentId, DalContext, PropId, SchemaVariantId,
     SecretError, SecretId,

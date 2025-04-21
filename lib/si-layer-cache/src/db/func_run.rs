@@ -7,9 +7,9 @@ use si_events::{
 };
 use telemetry::prelude::*;
 
+use crate::LayerDbError;
 use crate::event::LayeredEventPayload;
 use crate::pg::PgLayer;
-use crate::LayerDbError;
 use crate::{
     error::LayerDbResult,
     event::{LayeredEvent, LayeredEventKind},

@@ -3,7 +3,7 @@ use std::env;
 use indoc::indoc;
 use permissions::{ObjectType, Permission, PermissionBuilder, Relation, RelationBuilder};
 use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+use rand::{Rng, thread_rng};
 use si_data_spicedb::{Client, SpiceDbClient, SpiceDbConfig};
 
 const ENV_VAR_SPICEDB_URL: &str = "SI_TEST_SPICEDB_URL";
@@ -70,10 +70,12 @@ async fn add_remove_approver_from_workspace() {
         .subject(ObjectType::User, user_id.clone())
         .zed_token(zed_token);
 
-    assert!(can_approve
-        .has_permission(&mut client)
-        .await
-        .expect("could not check permission"));
+    assert!(
+        can_approve
+            .has_permission(&mut client)
+            .await
+            .expect("could not check permission")
+    );
 
     let zed_token = relation
         .delete(&mut client)
@@ -81,9 +83,11 @@ async fn add_remove_approver_from_workspace() {
         .expect("could not delete permission")
         .expect("could not unwrap zed token");
 
-    assert!(!can_approve
-        .zed_token(zed_token)
-        .has_permission(&mut client)
-        .await
-        .expect("could not check permission"));
+    assert!(
+        !can_approve
+            .zed_token(zed_token)
+            .has_permission(&mut client)
+            .await
+            .expect("could not check permission")
+    );
 }

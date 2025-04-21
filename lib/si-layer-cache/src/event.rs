@@ -1,6 +1,6 @@
 use std::time::Duration;
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{HashMap, hash_map::Entry},
     sync::Arc,
 };
 
@@ -9,13 +9,12 @@ use chrono::prelude::*;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use si_data_nats::{
+    HeaderMap, NatsClient,
     async_nats::jetstream::{
-        self,
-        consumer::{pull::Stream, DeliverPolicy},
-        Message,
+        self, Message,
+        consumer::{DeliverPolicy, pull::Stream},
     },
     jetstream::context::Context,
-    HeaderMap, NatsClient,
 };
 use si_events::{Actor, Tenancy, WebEvent};
 use strum::AsRefStr;
@@ -28,10 +27,10 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
 use crate::{
+    LayerDbError,
     db::serialize,
     error::LayerDbResult,
-    nats::{self, subject, NATS_HEADER_DB_NAME, NATS_HEADER_INSTANCE_ID, NATS_HEADER_KEY},
-    LayerDbError,
+    nats::{self, NATS_HEADER_DB_NAME, NATS_HEADER_INSTANCE_ID, NATS_HEADER_KEY, subject},
 };
 
 const DEFAULT_CHUNK_SIZE: usize = 128 * 1024;

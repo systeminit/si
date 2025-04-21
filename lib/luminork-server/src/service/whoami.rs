@@ -1,17 +1,17 @@
-use axum::{response::IntoResponse, routing::get, Json, Router};
+use axum::{Json, Router, response::IntoResponse, routing::get};
 use dal::{UserPk, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use si_jwt_public_key::SiJwt;
 use utoipa::ToSchema;
 
 use crate::{
+    AppState,
     extract::{
         request::ValidatedToken,
         workspace::{
             AuthorizedForAutomationRole, TargetWorkspaceIdFromToken, WorkspaceAuthorization,
         },
     },
-    AppState,
 };
 
 pub fn routes() -> Router<AppState> {

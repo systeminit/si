@@ -11,7 +11,7 @@ mod server;
 
 pub use self::{
     config::{
-        detect_and_configure_development, Config, ConfigError, ConfigFile, StandardConfigFile,
+        Config, ConfigError, ConfigFile, StandardConfigFile, detect_and_configure_development,
     },
     server::{Server, ServerMetadata},
 };

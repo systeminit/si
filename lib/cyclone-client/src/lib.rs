@@ -10,11 +10,11 @@ pub use cyclone_core::{
     ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
     SchemaVariantDefinitionResultSuccess, SensitiveStrings,
 };
-pub use execution::{new_unstarted_execution, Execution, ExecutionError};
+pub use execution::{Execution, ExecutionError, new_unstarted_execution};
 pub use hyper::client::connect::Connection;
 pub use hyperlocal::UnixStream;
 pub use ping::{PingExecution, PingExecutionError};
 pub use tokio_tungstenite::tungstenite::{
-    protocol::frame::CloseFrame as WebSocketCloseFrame, Message as WebSocketMessage,
+    Message as WebSocketMessage, protocol::frame::CloseFrame as WebSocketCloseFrame,
 };
 pub use watch::{Watch, WatchError, WatchStarted};

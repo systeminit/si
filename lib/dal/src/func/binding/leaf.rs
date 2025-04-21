@@ -2,12 +2,12 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use crate::{
+    AttributePrototype, AttributePrototypeId, AttributeValue, Component, DalContext, Func, FuncId,
+    Prop, SchemaVariant, SchemaVariantId,
     attribute::prototype::argument::AttributePrototypeArgument,
     func::argument::FuncArgument,
     prop::PropPath,
     schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-    AttributePrototype, AttributePrototypeId, AttributeValue, Component, DalContext, Func, FuncId,
-    Prop, SchemaVariant, SchemaVariantId,
 };
 
 use super::{AttributeBinding, EventualParent, FuncBinding, FuncBindingResult};

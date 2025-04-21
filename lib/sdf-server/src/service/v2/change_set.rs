@@ -1,14 +1,14 @@
 use std::result;
 
 use axum::{
+    Router,
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
-    Router,
 };
 use dal::{
-    workspace_integrations::WorkspaceIntegration, ChangeSetId, DalContext, HistoryEventError,
-    WorkspacePk, WsEventError,
+    ChangeSetId, DalContext, HistoryEventError, WorkspacePk, WsEventError,
+    workspace_integrations::WorkspaceIntegration,
 };
 use sdf_core::{api_error::ApiError, app_state::AppState, dal_wrapper::DalWrapperError};
 
@@ -53,7 +53,9 @@ pub enum Error {
     SpiceDBClientNotFound,
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
-    #[error("found an unexpected number of open change sets matching default change set (should be one, found {0:?})")]
+    #[error(
+        "found an unexpected number of open change sets matching default change set (should be one, found {0:?})"
+    )]
     UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(Vec<ChangeSetId>),
     #[error("workspace integration error: {0}")]
     WorkspaceIntegrations(#[from] dal::workspace_integrations::WorkspaceIntegrationsError),

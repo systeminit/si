@@ -10,23 +10,23 @@ use std::{
 
 use async_trait::async_trait;
 use bollard::{
+    Docker,
     container::{Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions},
     errors::Error,
     models::{HostConfig, Mount, MountTypeEnum},
-    Docker,
 };
 use cyclone_client::{
-    new_unstarted_execution, Client, ClientConfig, ClientError, Connection, CycloneClient,
-    Execution, LivenessStatus, PingExecution, ReadinessStatus, UdsClient, UnixStream, Watch,
-    WatchError, WatchStarted,
+    Client, ClientConfig, ClientError, Connection, CycloneClient, Execution, LivenessStatus,
+    PingExecution, ReadinessStatus, UdsClient, UnixStream, Watch, WatchError, WatchStarted,
+    new_unstarted_execution,
 };
 use cyclone_core::{
-    process::{self, ShutdownError},
     CanonicalCommand, CycloneRequest, CycloneRequestable,
+    process::{self, ShutdownError},
 };
 use derive_builder::Builder;
 use futures::StreamExt;
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use rand::{Rng, distributions::Alphanumeric, thread_rng};
 use serde::{Deserialize, Serialize};
 use tempfile::{NamedTempFile, TempPath};
 use thiserror::Error;

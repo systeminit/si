@@ -1,6 +1,6 @@
 use naxum::{
-    extract::{message_parts::Reply, State},
     Json,
+    extract::{State, message_parts::Reply},
 };
 use si_data_nats::Subject;
 use si_pool_noodle::{
@@ -9,9 +9,9 @@ use si_pool_noodle::{
 };
 use telemetry::prelude::*;
 
-use crate::{app_state::KillAppState, Publisher};
+use crate::{Publisher, app_state::KillAppState};
 
-use super::{kill_sender_remove_blocking, timestamp, HandlerError, HandlerResult};
+use super::{HandlerError, HandlerResult, kill_sender_remove_blocking, timestamp};
 
 pub async fn process_kill_request(
     State(state): State<KillAppState>,

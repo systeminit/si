@@ -13,11 +13,11 @@ use std::{io, net::ToSocketAddrs, result, sync::Arc};
 use serde::{Deserialize, Serialize};
 use si_std::SensitiveString;
 use spicedb_client::{
-    builder::WriteRelationshipsRequestBuilder, types::ConsistencyRequirement, SpicedbClient,
+    SpicedbClient, builder::WriteRelationshipsRequestBuilder, types::ConsistencyRequirement,
 };
 use spicedb_grpc::authzed::api::v1::{
-    relationship_update::Operation, Consistency, LookupSubjectsRequest, ObjectReference,
-    WriteRelationshipsRequest,
+    Consistency, LookupSubjectsRequest, ObjectReference, WriteRelationshipsRequest,
+    relationship_update::Operation,
 };
 use telemetry::prelude::*;
 use thiserror::Error;

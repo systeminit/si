@@ -3,7 +3,7 @@ use std::str::FromStr;
 use axum::extract::{Multipart, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::{extract::Path, Json};
+use axum::{Json, extract::Path};
 use chrono::{DateTime, FixedOffset, Offset, Utc};
 use module_index_types::ModuleDetailsResponse;
 use sea_orm::ActiveValue::Set;
@@ -13,9 +13,9 @@ use telemetry::prelude::info;
 use thiserror::Error;
 
 use crate::app_state::AppState;
-use crate::models::si_module::{make_module_details_response, SchemaIdReferenceLink};
+use crate::models::si_module::{SchemaIdReferenceLink, make_module_details_response};
 use crate::routes::upsert_module_route::UpsertModuleError;
-use crate::whoami::{is_systeminit_auth_token, WhoamiError};
+use crate::whoami::{WhoamiError, is_systeminit_auth_token};
 use crate::{
     extract::{Authorization, DbConnection},
     models::si_module::{self, ModuleId},

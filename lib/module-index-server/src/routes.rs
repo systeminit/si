@@ -1,12 +1,12 @@
 use axum::{
+    Router,
     extract::DefaultBodyLimit,
     response::Json,
     response::{IntoResponse, Response},
     routing::{get, post},
-    Router,
 };
 use hyper::StatusCode;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use si_data_pg::PgError;
 use thiserror::Error;
 use tower_http::compression::CompressionLayer;

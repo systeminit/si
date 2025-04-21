@@ -1,6 +1,6 @@
 use crate::{
-    workspace_snapshot::graph::WorkspaceSnapshotGraphResult, InputSocketId, SchemaId,
-    SchemaVariantId,
+    InputSocketId, SchemaId, SchemaVariantId,
+    workspace_snapshot::graph::WorkspaceSnapshotGraphResult,
 };
 
 pub trait SchemaVariantExt {

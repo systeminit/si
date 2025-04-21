@@ -4,20 +4,20 @@ use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::ComponentError;
 use crate::attribute::prototype::debug::{
     AttributePrototypeDebugView, AttributePrototypeDebugViewError, FuncArgDebugView,
 };
 use crate::attribute::prototype::{
-    argument::{value_source::ValueSourceError, AttributePrototypeArgumentError},
     AttributePrototypeError,
+    argument::{AttributePrototypeArgumentError, value_source::ValueSourceError},
 };
 use crate::attribute::value::AttributeValueError;
 use crate::prop::PropError;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::ComponentError;
+use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::{
     AttributePrototypeId, AttributeValue, AttributeValueId, DalContext, FuncError, FuncId, Prop,
     PropKind,

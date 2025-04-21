@@ -9,12 +9,12 @@ use si_events::{ulid::Ulid, workspace_snapshot::Change};
 use strum::EnumDiscriminants;
 
 use crate::{
-    workspace_snapshot::{node_weight::NodeWeight, NodeInformation},
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    workspace_snapshot::{NodeInformation, node_weight::NodeWeight},
 };
 
 use super::{
-    traits::entity_kind::EntityKindExt, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphVCurrent,
+    WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphVCurrent, traits::entity_kind::EntityKindExt,
 };
 
 type Result<T> = std::result::Result<T, WorkspaceSnapshotGraphError>;

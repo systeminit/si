@@ -32,9 +32,9 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    resource_metadata::{self, ResourceMetadataError},
     ChangeSet, ChangeSetError, Component, ComponentError, ComponentId, DalContext, SchemaVariant,
     SchemaVariantError, TransactionsError,
+    resource_metadata::{self, ResourceMetadataError},
 };
 
 #[allow(missing_docs)]

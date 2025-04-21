@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 
 use crate::workspace_snapshot::graph::LineageId;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;

@@ -1,8 +1,8 @@
 use std::{sync::Arc, time::Instant};
 
 use si_events::{
-    change_batch::{ChangeBatch, ChangeBatchAddress},
     Actor, Tenancy, WebEvent,
+    change_batch::{ChangeBatch, ChangeBatchAddress},
 };
 use telemetry::prelude::*;
 

@@ -6,18 +6,18 @@ use ulid::Ulid;
 
 use super::{input::InputSocketError, output::OutputSocketError};
 use crate::{
+    AttributePrototype, AttributePrototypeId, AttributeValue, AttributeValueId, ComponentError,
+    DalContext, FuncId, InputSocket, OutputSocket,
     attribute::{
         prototype::{
+            AttributePrototypeError,
             debug::{
                 AttributePrototypeDebugView, AttributePrototypeDebugViewError, FuncArgDebugView,
             },
-            AttributePrototypeError,
         },
         value::AttributeValueError,
     },
     component::socket::{ComponentInputSocket, ComponentOutputSocket},
-    AttributePrototype, AttributePrototypeId, AttributeValue, AttributeValueId, ComponentError,
-    DalContext, FuncId, InputSocket, OutputSocket,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

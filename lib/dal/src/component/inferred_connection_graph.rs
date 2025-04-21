@@ -23,12 +23,12 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
+    Component, ComponentError, ComponentId, ComponentType, DalContext, InputSocket, InputSocketId,
+    OutputSocket, OutputSocketId, SocketArity, WorkspaceSnapshotError,
     socket::{
         connection_annotation::ConnectionAnnotation, input::InputSocketError,
         output::OutputSocketError,
     },
-    Component, ComponentError, ComponentId, ComponentType, DalContext, InputSocket, InputSocketId,
-    OutputSocket, OutputSocketId, SocketArity, WorkspaceSnapshotError,
 };
 
 #[remain::sorted]
@@ -518,7 +518,7 @@ impl InferredConnectionGraph {
                 return Err(InferredConnectionGraphError::UnsupportedComponentType(
                     t,
                     component_id,
-                ))
+                ));
             }
         };
         petgraph::visit::depth_first_search(
@@ -643,7 +643,7 @@ impl InferredConnectionGraph {
                 return Err(InferredConnectionGraphError::UnsupportedComponentType(
                     t,
                     component_id,
-                ))
+                ));
             }
         }
     }

@@ -1,6 +1,6 @@
-use dal::pkg::{import_pkg_from_pkg, ImportOptions};
-use dal::{prop::PropPath, ComponentType};
+use dal::pkg::{ImportOptions, import_pkg_from_pkg};
 use dal::{BuiltinsResult, DalContext, PropKind, SchemaId};
+use dal::{ComponentType, prop::PropPath};
 use si_pkg::{
     AttrFuncInputSpec, AttrFuncInputSpecKind, PkgSpec, PropSpec, SchemaSpec, SchemaVariantSpec,
     SchemaVariantSpecData, SiPkg,
@@ -8,7 +8,7 @@ use si_pkg::{
 use si_pkg::{SchemaSpecData, SocketSpec, SocketSpecData, SocketSpecKind};
 
 use crate::test_exclusive_schemas::{
-    build_asset_func, create_identity_func, PKG_CREATED_BY, PKG_VERSION,
+    PKG_CREATED_BY, PKG_VERSION, build_asset_func, create_identity_func,
 };
 
 const CATEGORY: &str = "pirate";

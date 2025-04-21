@@ -1,18 +1,18 @@
 use naxum::{
+    Message,
     extract::State,
     response::{IntoResponse, Response},
-    Message,
 };
 use shuttle_core::DESTINATION_SUBJECT_SUFFIX_HEADER_KEY;
 use si_data_nats::{
-    async_nats::{self, jetstream},
     Subject,
+    async_nats::{self, jetstream},
 };
 use telemetry::tracing::error;
 use telemetry_nats::propagation;
 use thiserror::Error;
 
-use crate::{app_state::AppState, FINAL_MESSAGE_HEADER_KEY};
+use crate::{FINAL_MESSAGE_HEADER_KEY, app_state::AppState};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

@@ -4,7 +4,7 @@ use petgraph::prelude::*;
 use super::{PkgResult, SiPkgAttrFuncInput, SiPkgError, Source};
 
 use crate::spec::SocketSpecData;
-use crate::{node::PkgNode, SocketSpec, SocketSpecArity, SocketSpecKind};
+use crate::{SocketSpec, SocketSpecArity, SocketSpecKind, node::PkgNode};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgSocketData {
@@ -62,7 +62,7 @@ impl<'a> SiPkgSocket<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::SOCKET_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 

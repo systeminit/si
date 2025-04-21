@@ -1,6 +1,6 @@
 use std::{collections::HashMap, env};
 
-use base64::{engine::general_purpose, Engine};
+use base64::{Engine, engine::general_purpose};
 use cyclone_core::{
     ActionRunRequest, ComponentKind, ComponentView, ComponentViewWithGeometry, FunctionResult,
     FunctionResultFailureErrorKind, ManagementRequest, ResolverFunctionComponent,
@@ -160,7 +160,9 @@ async fn executes_simple_action_run() {
         execution_id: "1234".to_string(),
         handler: "numberOfInputs".to_string(),
         args: serde_json::json!({ "foo": "bar", "baz": "foo" }),
-        code_base64: base64_encode("function numberOfInputs(input) { return { status: 'ok', payload: Object.keys(input)?.length ?? 0 } }"),
+        code_base64: base64_encode(
+            "function numberOfInputs(input) { return { status: 'ok', payload: Object.keys(input)?.length ?? 0 } }",
+        ),
         before: vec![],
     };
 

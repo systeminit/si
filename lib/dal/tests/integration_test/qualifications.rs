@@ -6,7 +6,7 @@ use dal::qualification::{
 };
 use dal::{Component, DalContext};
 use dal_test::helpers::{
-    create_component_for_default_schema_name_in_default_view, ChangeSetTestHelpers,
+    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view,
 };
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;

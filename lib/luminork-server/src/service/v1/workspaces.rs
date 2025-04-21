@@ -1,9 +1,9 @@
 use axum::{
+    Router,
     http::StatusCode,
     middleware,
     response::{IntoResponse, Response},
     routing::{delete, get, post},
-    Router,
 };
 use thiserror::Error;
 
@@ -11,7 +11,7 @@ use crate::extract::{
     change_set::TargetChangeSetIdFromPath,
     workspace::{AuthorizedForAutomationRole, TargetWorkspaceIdFromPath},
 };
-use crate::{middleware::WorkspacePermissionLayer, AppState};
+use crate::{AppState, middleware::WorkspacePermissionLayer};
 
 use super::common::ErrorIntoResponse;
 

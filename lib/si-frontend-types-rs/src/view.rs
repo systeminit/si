@@ -1,16 +1,16 @@
 use serde::Deserialize;
 use serde::Serialize;
 use si_events::{
-    workspace_snapshot::{Checksum, ChecksumHasher, EntityKind},
     Timestamp,
+    workspace_snapshot::{Checksum, ChecksumHasher, EntityKind},
 };
 use si_id::{ChangeSetId, ViewId};
 
 use crate::{
+    MaterializedView,
     checksum::FrontendChecksum,
     object::FrontendObject,
     reference::{Refer, Reference, ReferenceId, ReferenceKind},
-    MaterializedView,
 };
 
 #[derive(

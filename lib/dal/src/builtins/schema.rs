@@ -2,7 +2,7 @@ use si_pkg::SiPkg;
 use telemetry::prelude::*;
 
 use crate::module::Module;
-use crate::pkg::{import_pkg_from_pkg, ImportOptions};
+use crate::pkg::{ImportOptions, import_pkg_from_pkg};
 use crate::{BuiltinsError, BuiltinsResult, DalContext};
 
 pub async fn migrate_pkg(

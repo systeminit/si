@@ -4,14 +4,14 @@ use si_events::ulid::Ulid;
 use thiserror::Error;
 
 use crate::{
+    AttributeValue, AttributeValueId, ComponentError, ComponentId, DalContext, InputSocket,
+    OutputSocket, OutputSocketId, Prop, PropId, SecretId,
     attribute::value::AttributeValueError,
     prop::PropError,
     socket::{
         input::{InputSocketError, InputSocketId},
         output::OutputSocketError,
     },
-    AttributeValue, AttributeValueId, ComponentError, ComponentId, DalContext, InputSocket,
-    OutputSocket, OutputSocketId, Prop, PropId, SecretId,
 };
 
 use super::static_value::StaticArgumentValueId;

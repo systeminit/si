@@ -6,12 +6,12 @@ use std::{
 
 use async_trait::async_trait;
 use cyclone_client::{
-    new_unstarted_execution, Client, ClientError, Connection, CycloneClient, Execution, HttpClient,
-    LivenessStatus, PingExecution, ReadinessStatus, Watch, WatchError, WatchStarted,
+    Client, ClientError, Connection, CycloneClient, Execution, HttpClient, LivenessStatus,
+    PingExecution, ReadinessStatus, Watch, WatchError, WatchStarted, new_unstarted_execution,
 };
 use cyclone_core::{
-    process::{self, ShutdownError},
     CanonicalCommand, CycloneRequest, CycloneRequestable,
+    process::{self, ShutdownError},
 };
 use derive_builder::Builder;
 use futures::StreamExt;

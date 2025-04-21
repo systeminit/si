@@ -1,17 +1,18 @@
 use std::sync::Arc;
 
-use axum::{routing::get, Extension, Router};
+use axum::{Extension, Router, routing::get};
 use telemetry::prelude::*;
 use telemetry_http::{HttpMakeSpan, HttpOnResponse};
 use tokio::sync::mpsc;
 use tower_http::{compression::CompressionLayer, trace::TraceLayer};
 
 use crate::{
+    Config, ShutdownSource,
     extract::RequestLimiter,
     handlers,
     state::{AppState, WatchKeepalive},
     tower::WebSocketTraceLayer,
-    watch, Config, ShutdownSource,
+    watch,
 };
 
 pub fn routes(

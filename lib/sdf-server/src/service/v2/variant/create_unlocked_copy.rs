@@ -4,8 +4,8 @@ use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use dal::{
-    schema::variant::authoring::VariantAuthoringClient, ChangeSet, ChangeSetId, Schema,
-    SchemaVariant, SchemaVariantId, WorkspacePk, WsEvent,
+    ChangeSet, ChangeSetId, Schema, SchemaVariant, SchemaVariantId, WorkspacePk, WsEvent,
+    schema::variant::authoring::VariantAuthoringClient,
 };
 
 use crate::{

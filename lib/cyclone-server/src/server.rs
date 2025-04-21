@@ -7,7 +7,7 @@ use std::{
 use async_trait::async_trait;
 use axum::routing::{IntoMakeService, Router};
 use hyper::server::accept::Accept;
-use telemetry::{prelude::*, TelemetryLevel};
+use telemetry::{TelemetryLevel, prelude::*};
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
@@ -16,8 +16,8 @@ use tokio::{
 };
 
 use crate::{
-    execution::ExecutionError, routes::routes, state::AppState, Config, IncomingStream,
-    UdsIncomingStream, UdsIncomingStreamError,
+    Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError, execution::ExecutionError,
+    routes::routes, state::AppState,
 };
 
 #[cfg(target_os = "linux")]

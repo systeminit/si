@@ -1,10 +1,10 @@
 use super::{GeometryNodeWeight, NodeWeightDiscriminants};
 use crate::workspace_snapshot::graph::detector::Update;
+use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::node_weight::diagram_object_node_weight::DiagramObjectKind;
 use crate::workspace_snapshot::node_weight::traits::{
     CorrectTransformsError, CorrectTransformsResult,
 };
-use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::{
     content_address::ContentAddress,
     graph::LineageId,
@@ -14,9 +14,9 @@ use crate::{EdgeWeightKindDiscriminants, Timestamp, WorkspaceSnapshotGraphVCurre
 use dal_macros::SiNodeWeight;
 use jwt_simple::prelude::{Deserialize, Serialize};
 use petgraph::Direction;
+use si_events::ContentHash;
 use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::ulid::Ulid;
-use si_events::ContentHash;
 use std::collections::HashMap;
 use std::mem;
 

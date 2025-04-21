@@ -2,7 +2,7 @@ use std::{error, num::TryFromIntError};
 
 use si_data_nats::async_nats::jetstream;
 use si_data_pg::{PgError, PgPoolError};
-use si_events::{content_hash::ContentHashParseError, ActionId, FuncRunId};
+use si_events::{ActionId, FuncRunId, content_hash::ContentHashParseError};
 use si_std::CanonicalFileError;
 use thiserror::Error;
 use tokio_stream::Elapsed;
@@ -26,7 +26,9 @@ pub enum LayerDbError {
     ),
     #[error("Activity Event Server send error: {0}")]
     ActivitySend(#[from] Box<tokio::sync::mpsc::error::SendError<Activity>>),
-    #[error("While waiting for an activity id {0}, all senders have closed. The activity will never arrive.")]
+    #[error(
+        "While waiting for an activity id {0}, all senders have closed. The activity will never arrive."
+    )]
     ActivityWaitClosed(ActivityId),
     #[error("While waiting for an activity id {0}, the receiving stream has lagged. Cancelling.")]
     ActivityWaitLagged(ActivityId),

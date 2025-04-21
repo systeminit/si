@@ -1,7 +1,7 @@
 use std::{fmt, time::Duration};
 
-use telemetry::{prelude::*, OtelStatusCode};
-use tower_http::{trace::OnResponse, LatencyUnit};
+use telemetry::{OtelStatusCode, prelude::*};
+use tower_http::{LatencyUnit, trace::OnResponse};
 
 /// An implementation of [`OnResponse`] to update span fields for HTTP responses.
 #[derive(Clone, Debug)]

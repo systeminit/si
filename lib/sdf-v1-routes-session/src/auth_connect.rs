@@ -1,10 +1,10 @@
 use axum::{
-    extract::{Host, OriginalUri, State},
     Json,
+    extract::{Host, OriginalUri, State},
 };
 use dal::{
-    workspace_integrations::WorkspaceIntegration, DalContext, HistoryActor, KeyPair, Tenancy, User,
-    UserPk, Workspace, WorkspacePk, WorkspaceSnapshotGraph,
+    DalContext, HistoryActor, KeyPair, Tenancy, User, UserPk, Workspace, WorkspacePk,
+    WorkspaceSnapshotGraph, workspace_integrations::WorkspaceIntegration,
 };
 use hyper::Uri;
 use permissions::{Relation, RelationBuilder};
@@ -21,8 +21,8 @@ use sdf_core::{
     workspace_permissions::{WorkspacePermissions, WorkspacePermissionsMode},
 };
 use sdf_extract::{
-    request::{RawAccessToken, RequestUlidFromHeader},
     HandlerContext, PosthogClient,
+    request::{RawAccessToken, RequestUlidFromHeader},
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

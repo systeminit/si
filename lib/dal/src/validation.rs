@@ -15,15 +15,15 @@ use crate::func::backend::validation::ValidationRunResult;
 use crate::func::runner::{FuncRunner, FuncRunnerError};
 use crate::layer_db_types::{ValidationContent, ValidationContentV1};
 use crate::prop::PropError;
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    schema::variant::SchemaVariantError, AttributeValue, AttributeValueId, ChangeSetError,
-    Component, ComponentId, FuncError, HistoryEventError, Timestamp,
+    AttributeValue, AttributeValueId, ChangeSetError, Component, ComponentId, FuncError,
+    HistoryEventError, Timestamp, schema::variant::SchemaVariantError,
 };
 use crate::{ComponentError, DalContext, TransactionsError};
 

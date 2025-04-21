@@ -5,9 +5,8 @@
 //! using headers.
 
 use naxum::{
-    async_trait, composite_rejection, define_rejection,
+    Head, Message, MessageHead, async_trait, composite_rejection, define_rejection,
     extract::{FromMessage, FromMessageHead},
-    Head, Message, MessageHead,
 };
 use rebaser_core::{
     api_types::{ApiVersionsWrapper, ApiWrapper},

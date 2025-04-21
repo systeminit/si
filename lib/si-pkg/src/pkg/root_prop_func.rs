@@ -4,7 +4,7 @@ use petgraph::prelude::*;
 use super::{PkgResult, SiPkgError, Source};
 
 use crate::SchemaVariantSpecPropRoot;
-use crate::{node::PkgNode, AttrFuncInputSpec, RootPropFuncSpec, SiPkgAttrFuncInput};
+use crate::{AttrFuncInputSpec, RootPropFuncSpec, SiPkgAttrFuncInput, node::PkgNode};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgRootPropFunc<'a> {
@@ -29,7 +29,7 @@ impl<'a> SiPkgRootPropFunc<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::ROOT_PROP_FUNC_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 

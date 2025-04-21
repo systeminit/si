@@ -153,10 +153,12 @@ async fn edit_auth_func(ctx: &mut DalContext) {
         .await
         .expect("could not list funcs for schema variant");
 
-    assert!(funcs
-        .clone()
-        .into_iter()
-        .any(|func| func.id == unlocked_func_id.id));
+    assert!(
+        funcs
+            .clone()
+            .into_iter()
+            .any(|func| func.id == unlocked_func_id.id)
+    );
     assert!(funcs.into_iter().any(|func| func.id != func_id));
 
     // edit the func

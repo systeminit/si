@@ -3,10 +3,10 @@ use crate::{
     extract::HandlerContext, service::force_change_set_response::ForceChangeSetResponse,
     service::v2::AccessBuilder,
 };
-use axum::{extract::Path, Json};
+use axum::{Json, extract::Path};
 use dal::{
-    diagram::view::{View, ViewId},
     ChangeSet, ChangeSetId, Component, ComponentId, WorkspacePk, WsEvent,
+    diagram::view::{View, ViewId},
 };
 use serde::{Deserialize, Serialize};
 use si_frontend_types::{RawGeometry, StringGeometry};

@@ -40,7 +40,7 @@ mod server;
 
 pub use self::{
     config::{
-        detect_and_configure_development, Config, ConfigBuilder, ConfigError, ConfigFile, Features,
+        Config, ConfigBuilder, ConfigError, ConfigFile, Features, detect_and_configure_development,
     },
     server::{Server, ServerMetadata},
 };

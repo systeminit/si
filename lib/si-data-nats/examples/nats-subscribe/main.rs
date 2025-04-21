@@ -4,9 +4,9 @@ use futures::StreamExt;
 use si_data_nats::{Message, NatsClient, NatsConfig, Subscriber};
 use telemetry::prelude::*;
 use tracing_subscriber::{
+    EnvFilter, Registry,
     fmt::{self, format::FmtSpan},
     prelude::*,
-    EnvFilter, Registry,
 };
 
 const TRACING_LOG_ENV_VAR: &str = "SI_LOG";

@@ -2,17 +2,17 @@ use std::collections::HashSet;
 
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 
 use crate::{
-    action::ActionState,
-    workspace_snapshot::{
-        graph::{deprecated::v1::DeprecatedActionNodeWeightV1, detector::Update, LineageId},
-        node_weight::{traits::CorrectTransforms, NodeWeight},
-        NodeId, NodeInformation,
-    },
     ChangeSetId, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
     WorkspaceSnapshotGraphVCurrent,
+    action::ActionState,
+    workspace_snapshot::{
+        NodeId, NodeInformation,
+        graph::{LineageId, deprecated::v1::DeprecatedActionNodeWeightV1, detector::Update},
+        node_weight::{NodeWeight, traits::CorrectTransforms},
+    },
 };
 
 use super::traits::CorrectTransformsResult;

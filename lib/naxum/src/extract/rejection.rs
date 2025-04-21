@@ -1,9 +1,8 @@
 use std::{error, fmt};
 
 use crate::{
-    composite_rejection, define_rejection,
+    BoxError, Error, composite_rejection, define_rejection,
     response::{IntoResponse, Response},
-    BoxError, Error,
 };
 
 #[derive(Debug)]

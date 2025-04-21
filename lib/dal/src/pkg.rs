@@ -5,30 +5,30 @@ use std::collections::HashMap;
 use thiserror::Error;
 use url::ParseError;
 
+use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
-use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
 use crate::func::argument::FuncArgumentId;
 use crate::management::prototype::ManagementPrototypeError;
 use crate::schema::variant::SchemaVariantError;
+use crate::{AttributePrototypeId, FuncId, HistoryEventError, PropId, PropKind};
 use crate::{
+    DalContext, FuncBackendKind, FuncBackendResponseType, OutputSocketId, SchemaError,
+    TransactionsError, UserPk, WorkspaceError, WorkspacePk, WsEvent, WsEventResult, WsPayload,
     action::prototype::ActionPrototypeError,
     change_set::ChangeSetError,
-    func::{argument::FuncArgumentError, FuncError},
+    func::{FuncError, argument::FuncArgumentError},
     prop::PropError,
     socket::input::InputSocketError,
     socket::output::OutputSocketError,
     workspace_snapshot::WorkspaceSnapshotError,
-    DalContext, FuncBackendKind, FuncBackendResponseType, OutputSocketId, SchemaError,
-    TransactionsError, UserPk, WorkspaceError, WorkspacePk, WsEvent, WsEventResult, WsPayload,
 };
-use crate::{AttributePrototypeId, FuncId, HistoryEventError, PropId, PropKind};
 
 use crate::module::{ModuleError, ModulesUpdatedPayload};
 use crate::socket::connection_annotation::ConnectionAnnotationError;
-pub use import::{import_pkg, import_pkg_from_pkg, ImportOptions};
+pub use import::{ImportOptions, import_pkg, import_pkg_from_pkg};
 
 pub mod export;
 pub mod import;
@@ -112,7 +112,9 @@ pub enum PkgError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("taking output socket as input for a prop is unsupported for name ({0}) and socket name ({1})")]
+    #[error(
+        "taking output socket as input for a prop is unsupported for name ({0}) and socket name ({1})"
+    )]
     TakingOutputSocketAsInputForPropUnsupported(String, String),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),

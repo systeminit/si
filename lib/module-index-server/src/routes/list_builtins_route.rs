@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     extract::{Query, State},
     response::{IntoResponse, Response},
-    Json,
 };
 use hyper::StatusCode;
 use module_index_types::ModuleDetailsResponse;
@@ -9,7 +9,7 @@ use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::models::si_module::{make_module_details_response, ModuleKind, SchemaIdReferenceLink};
+use crate::models::si_module::{ModuleKind, SchemaIdReferenceLink, make_module_details_response};
 use crate::{app_state::AppState, extract::DbConnection, models::si_module, whoami::WhoamiError};
 
 #[remain::sorted]

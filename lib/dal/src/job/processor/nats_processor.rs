@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use futures::StreamExt;
-use pinga_core::{pinga_work_queue, subject::pinga_job, REPLY_INBOX_HEADER_NAME};
-use si_data_nats::{jetstream, NatsClient, Subject};
+use pinga_core::{REPLY_INBOX_HEADER_NAME, pinga_work_queue, subject::pinga_job};
+use si_data_nats::{NatsClient, Subject, jetstream};
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use tokio::task::JoinSet;

@@ -1,21 +1,21 @@
 use std::collections::HashSet;
 
 use dal::{
+    AttributeValue, Component, ComponentId, DalContext, SchemaId,
     component::resource::ResourceData,
     diagram::{geometry::Geometry, view::View},
     management::{
-        prototype::{ManagementPrototype, ManagementPrototypeError, ManagementPrototypeExecution},
         ManagementFuncReturn, ManagementGeometry, ManagementOperator,
+        prototype::{ManagementPrototype, ManagementPrototypeError, ManagementPrototypeExecution},
     },
-    AttributeValue, Component, ComponentId, DalContext, SchemaId,
+};
+use dal_test::{
+    Result, SCHEMA_ID_SMALL_EVEN_LEGO,
+    helpers::create_component_for_default_schema_name_in_default_view, test,
 };
 use dal_test::{
     expected::{ExpectComponent, ExpectComponentInputSocket, ExpectSchemaVariant, ExpectView},
     helpers::ChangeSetTestHelpers,
-};
-use dal_test::{
-    helpers::create_component_for_default_schema_name_in_default_view, test, Result,
-    SCHEMA_ID_SMALL_EVEN_LEGO,
 };
 use serde_json::json;
 use si_frontend_types::RawGeometry;
@@ -1477,9 +1477,9 @@ async fn component_incoming_connections_inferred_from_parent(ctx: DalContext) ->
 pub mod connection_test {
     use dal::{ComponentType, DalContext};
     use dal_test::{
+        Result,
         expected::{ExpectComponent, ExpectFunc, ExpectSchemaVariant},
         helpers::ChangeSetTestHelpers,
-        Result,
     };
     use serde_json::Value;
 

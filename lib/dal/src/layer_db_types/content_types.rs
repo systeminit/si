@@ -11,11 +11,11 @@ use crate::action::prototype::ActionKind;
 use crate::approval_requirement::ApprovalRequirementApprover;
 use crate::validation::ValidationStatus;
 use crate::{
-    action::ActionCompletionStatus, func::argument::FuncArgumentKind, prop::WidgetOptions,
-    property_editor::schema::WidgetKind, socket::connection_annotation::ConnectionAnnotation,
     ActionPrototypeId, ComponentId, ComponentType, DalContext, FuncBackendKind,
     FuncBackendResponseType, FuncId, PropId, PropKind, SchemaVariant, SchemaVariantId, SocketArity,
-    SocketKind, Timestamp, UserPk,
+    SocketKind, Timestamp, UserPk, action::ActionCompletionStatus,
+    func::argument::FuncArgumentKind, prop::WidgetOptions, property_editor::schema::WidgetKind,
+    socket::connection_annotation::ConnectionAnnotation,
 };
 
 #[remain::sorted]

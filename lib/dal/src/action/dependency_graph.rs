@@ -7,14 +7,14 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use telemetry::prelude::*;
 
 use crate::{
+    Component, ComponentId, DalContext,
     action::{Action, ActionId},
     dependency_graph::DependencyGraph,
-    Component, ComponentId, DalContext,
 };
 
 use super::{
-    prototype::{ActionKind, ActionPrototype},
     ActionError, ActionResult,
+    prototype::{ActionKind, ActionPrototype},
 };
 
 #[derive(Debug, Clone)]

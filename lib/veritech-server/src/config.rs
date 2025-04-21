@@ -13,11 +13,11 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsConfig;
 use si_pool_noodle::{
+    Instance,
     instance::cyclone::{
         LocalHttpInstance, LocalHttpInstanceSpec, LocalHttpSocketStrategy, LocalUdsInstance,
         LocalUdsInstanceSpec, LocalUdsRuntimeStrategy, LocalUdsSocketStrategy,
     },
-    Instance,
 };
 use telemetry::prelude::*;
 use thiserror::Error;

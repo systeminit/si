@@ -1,10 +1,10 @@
 use axum::{
-    extract::{Host, OriginalUri, Path},
     Json,
+    extract::{Host, OriginalUri, Path},
 };
 use dal::{
-    func::binding::{attribute::AttributeBinding, EventualParent},
     ChangeSet, ChangeSetId, Component, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
+    func::binding::{EventualParent, attribute::AttributeBinding},
 };
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;

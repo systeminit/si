@@ -13,11 +13,12 @@
 use std::rc::Rc;
 
 use proc_macro2::{Ident, TokenStream};
-use syn::{parse_quote, punctuated::Punctuated, token::Comma, Expr, FnArg, ItemFn, Type};
+use syn::{Expr, FnArg, ItemFn, Type, parse_quote, punctuated::Punctuated, token::Comma};
 
 use crate::{
-    expand::{expand_test, FnSetup, FnSetupExpander},
-    path_as_string, Args,
+    Args,
+    expand::{FnSetup, FnSetupExpander, expand_test},
+    path_as_string,
 };
 
 pub(crate) fn expand(item: ItemFn, args: Args) -> TokenStream {

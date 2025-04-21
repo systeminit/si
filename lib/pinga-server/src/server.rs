@@ -6,10 +6,11 @@ use std::{
 };
 
 use dal::{
-    feature_flags::FeatureFlagService, DalContext, DedicatedExecutor, JetstreamStreams,
-    JobQueueProcessor, NatsProcessor, ServicesContext,
+    DalContext, DedicatedExecutor, JetstreamStreams, JobQueueProcessor, NatsProcessor,
+    ServicesContext, feature_flags::FeatureFlagService,
 };
 use naxum::{
+    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
@@ -18,7 +19,6 @@ use naxum::{
         trace::TraceLayer,
     },
     response::{IntoResponse, Response},
-    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
 };
 use pinga_core::{pinga_work_queue, subject};
 use rebaser_client::RebaserClient;
@@ -26,7 +26,7 @@ use si_crypto::{
     SymmetricCryptoService, SymmetricCryptoServiceConfig, VeritechCryptoConfig,
     VeritechEncryptionKey,
 };
-use si_data_nats::{async_nats, jetstream, NatsClient, NatsConfig};
+use si_data_nats::{NatsClient, NatsConfig, async_nats, jetstream};
 use si_data_pg::{PgPool, PgPoolConfig};
 use si_layer_cache::LayerDb;
 use telemetry::prelude::*;
@@ -34,7 +34,7 @@ use telemetry_utils::metric;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use veritech_client::Client as VeritechClient;
 
-use crate::{app_state::AppState, handlers, Config, ServerError, ServerResult};
+use crate::{Config, ServerError, ServerResult, app_state::AppState, handlers};
 
 const CONSUMER_NAME: &str = "pinga-server";
 

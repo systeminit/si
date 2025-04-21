@@ -3,12 +3,12 @@ use serde_json::Value;
 use strum::Display;
 
 use crate::{
+    DalContext, InputSocketId, OutputSocketId, PropId, SecretId,
     attribute::prototype::argument::{
-        static_value::StaticArgumentValue, value_source::ValueSource, AttributePrototypeArgument,
-        AttributePrototypeArgumentId,
+        AttributePrototypeArgument, AttributePrototypeArgumentId,
+        static_value::StaticArgumentValue, value_source::ValueSource,
     },
     func::argument::FuncArgumentId,
-    DalContext, InputSocketId, OutputSocketId, PropId, SecretId,
 };
 
 use super::{FuncBindingError, FuncBindingResult};
@@ -104,13 +104,13 @@ impl AttributeArgumentBinding {
                         return Err(FuncBindingError::UnexpectedValueSource(
                             value_source,
                             attribute_prototype_argument_id,
-                        ))
+                        ));
                     }
                 },
                 None => {
                     return Err(FuncBindingError::MissingValueSource(
                         attribute_prototype_argument_id,
-                    ))
+                    ));
                 }
             };
 

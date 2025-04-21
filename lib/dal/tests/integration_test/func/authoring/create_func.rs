@@ -1,15 +1,15 @@
 use dal::action::prototype::ActionKind;
 use dal::diagram::Diagram;
+use dal::func::FuncKind;
 use dal::func::authoring::{FuncAuthoringClient, FuncAuthoringError};
 use dal::func::binding::{AttributeFuncDestination, EventualParent};
-use dal::func::FuncKind;
 use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use dal::{AttributeValue, DalContext, Func, OutputSocket, Prop, Schema, SchemaVariant};
 use dal_test::helpers::{
-    create_component_for_default_schema_name_in_default_view,
-    create_unlocked_variant_copy_for_schema_name, ChangeSetTestHelpers,
+    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view,
+    create_unlocked_variant_copy_for_schema_name,
 };
 use dal_test::test;
 
@@ -24,15 +24,17 @@ async fn create_qualification_with_schema_variant(ctx: &mut DalContext) {
         .expect("unable to get schema variant");
 
     let func_name = "Paul's Test Func 2".to_string();
-    assert!(FuncAuthoringClient::create_new_leaf_func(
-        ctx,
-        Some(func_name.clone()),
-        LeafKind::Qualification,
-        EventualParent::SchemaVariant(sv_id),
-        &[],
-    )
-    .await
-    .is_err());
+    assert!(
+        FuncAuthoringClient::create_new_leaf_func(
+            ctx,
+            Some(func_name.clone()),
+            LeafKind::Qualification,
+            EventualParent::SchemaVariant(sv_id),
+            &[],
+        )
+        .await
+        .is_err()
+    );
 
     Func::find_id_by_name(ctx, func_name.clone())
         .await

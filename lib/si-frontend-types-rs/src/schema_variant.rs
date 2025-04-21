@@ -8,9 +8,9 @@ use si_id::ChangeSetId;
 use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 use crate::{
+    MaterializedView,
     object::FrontendObject,
     reference::{Refer, Reference, ReferenceId, ReferenceKind},
-    MaterializedView,
 };
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

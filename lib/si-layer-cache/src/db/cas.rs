@@ -3,15 +3,15 @@ use std::{collections::HashMap, fmt::Display};
 
 use telemetry::prelude::*;
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use si_events::{Actor, ContentHash, Tenancy, WebEvent};
 
 use crate::{
+    LayerDbError,
     error::LayerDbResult,
     event::{LayeredEvent, LayeredEventKind},
     layer_cache::LayerCache,
     persister::{PersisterClient, PersisterStatusReader},
-    LayerDbError,
 };
 
 use super::serialize;

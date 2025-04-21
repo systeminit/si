@@ -1,8 +1,8 @@
 use std::{path::PathBuf, sync::Arc};
 
 use dal::{
-    feature_flags::FeatureFlagService, DalLayerDb, DedicatedExecutor, JetstreamStreams,
-    JobQueueProcessor, NatsProcessor, ServicesContext,
+    DalLayerDb, DedicatedExecutor, JetstreamStreams, JobQueueProcessor, NatsProcessor,
+    ServicesContext, feature_flags::FeatureFlagService,
 };
 use rebaser_client::RebaserClient;
 use si_crypto::{
@@ -13,8 +13,8 @@ use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
 use si_jwt_public_key::{JwtConfig, JwtPublicSigningKeyChain, JwtPublicSigningKeyError};
 use si_layer_cache::{
-    db::{LayerDbConfig, LayerDbGracefulShutdown},
     LayerDb,
+    db::{LayerDbConfig, LayerDbGracefulShutdown},
 };
 use si_posthog::{PosthogClient, PosthogConfig, PosthogSender};
 use telemetry::prelude::*;

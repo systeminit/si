@@ -1,7 +1,7 @@
 use std::{fmt, future::Future, io, sync::Arc};
 
 use audit_database::{AuditDatabaseContext, AuditDatabaseContextError};
-use si_data_nats::{jetstream, ConnectionMetadata, NatsClient};
+use si_data_nats::{ConnectionMetadata, NatsClient, jetstream};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;

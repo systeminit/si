@@ -4,8 +4,8 @@ use std::time::Duration;
 use dal::component::frame::Frame;
 use dal::{Component, ComponentId, DalContext};
 use dal_test::expected::{
-    self, apply_change_set_to_base, commit_and_update_snapshot_to_visibility,
-    fork_from_head_change_set, update_visibility_and_snapshot_to_visibility, ExpectComponent,
+    self, ExpectComponent, apply_change_set_to_base, commit_and_update_snapshot_to_visibility,
+    fork_from_head_change_set, update_visibility_and_snapshot_to_visibility,
 };
 use dal_test::helpers::{connect_components_with_socket_names, get_component_input_socket_value};
 use dal_test::test;

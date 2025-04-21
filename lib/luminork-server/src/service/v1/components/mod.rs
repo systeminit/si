@@ -1,8 +1,8 @@
 use axum::{
+    Router,
     http::StatusCode,
     response::IntoResponse,
     routing::{delete, get, post, put},
-    Router,
 };
 use dal::ComponentId;
 use serde::Deserialize;

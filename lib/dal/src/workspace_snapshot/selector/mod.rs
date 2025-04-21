@@ -6,17 +6,18 @@ use std::{
 
 use petgraph::prelude::*;
 use si_events::{
+    ContentHash, WorkspaceSnapshotAddress,
     merkle_tree_hash::MerkleTreeHash,
     workspace_snapshot::{Change, Checksum, EntityKind},
-    ContentHash, WorkspaceSnapshotAddress,
 };
 use si_id::{
-    ulid::Ulid, ApprovalRequirementDefinitionId, AttributeValueId, ComponentId, EntityId, FuncId,
-    InputSocketId, PropId, SchemaId, SchemaVariantId, UserPk, ViewId,
+    ApprovalRequirementDefinitionId, AttributeValueId, ComponentId, EntityId, FuncId,
+    InputSocketId, PropId, SchemaId, SchemaVariantId, UserPk, ViewId, ulid::Ulid,
 };
 use strum::EnumDiscriminants;
 
 use crate::{
+    DalContext, EdgeWeight, EdgeWeightKindDiscriminants, InputSocket, SocketArity, SocketKind,
     approval_requirement::{
         ApprovalRequirement, ApprovalRequirementApprover, ApprovalRequirementDefinition,
     },
@@ -24,15 +25,14 @@ use crate::{
     prop::PropResult,
     socket::connection_annotation::ConnectionAnnotation,
     workspace_snapshot::traits::approval_requirement::ApprovalRequirementExt,
-    DalContext, EdgeWeight, EdgeWeightKindDiscriminants, InputSocket, SocketArity, SocketKind,
 };
 
 use super::{
-    graph::LineageId,
-    node_weight::{category_node_weight::CategoryNodeKind, NodeWeight, OrderingNodeWeight},
-    traits::{diagram::view::ViewExt, prop::PropExt},
     CycleCheckGuard, DependentValueRoot, EntityKindExt, InferredConnectionsWriteGuard,
     InputSocketExt, SchemaVariantExt, WorkspaceSnapshot, WorkspaceSnapshotResult,
+    graph::LineageId,
+    node_weight::{NodeWeight, OrderingNodeWeight, category_node_weight::CategoryNodeKind},
+    traits::{diagram::view::ViewExt, prop::PropExt},
 };
 
 #[derive(Clone, Debug, EnumDiscriminants)]

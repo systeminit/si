@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque, hash_map::Entry},
     fs::File,
     io::Write,
     sync::{Arc, Mutex},
@@ -7,22 +7,22 @@ use std::{
 
 use petgraph::{algo, prelude::*, stable_graph::Edges, visit::DfsEvent};
 use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::{ContentHash, ulid::Ulid};
 use si_layer_cache::db::serialize;
 use telemetry::prelude::*;
 use ulid::Generator;
 
 use crate::{
+    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
     workspace_snapshot::{
+        CategoryNodeKind, LineageId, OrderingNodeWeight,
         content_address::ContentAddress,
         graph::{
-            detector::Update, MerkleTreeHash, WorkspaceSnapshotGraphError,
-            WorkspaceSnapshotGraphResult,
+            MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
+            detector::Update,
         },
         node_weight::{CategoryNodeWeight, NodeWeight},
-        CategoryNodeKind, LineageId, OrderingNodeWeight,
     },
-    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
 };
 
 #[derive(Default, Deserialize, Serialize, Clone)]

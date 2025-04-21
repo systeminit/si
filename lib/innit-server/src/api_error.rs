@@ -1,9 +1,9 @@
 use std::fmt::Display;
 
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use serde::{Serialize, Serializer};
 use telemetry::prelude::*;

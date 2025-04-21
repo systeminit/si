@@ -10,9 +10,9 @@ use super::{
 use crate::workspace_snapshot::migrator::v4::migrate_v3_to_v4;
 use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::{
-    workspace_snapshot::migrator::{v2::migrate_v1_to_v2, v3::migrate_v2_to_v3},
     ChangeSet, ChangeSetError, ChangeSetStatus, DalContext, TransactionsError, Visibility,
     Workspace, WorkspaceError, WorkspaceSnapshot, WorkspaceSnapshotError,
+    workspace_snapshot::migrator::{v2::migrate_v1_to_v2, v3::migrate_v2_to_v3},
 };
 use si_events::WorkspaceSnapshotAddress;
 use si_layer_cache::LayerDbError;

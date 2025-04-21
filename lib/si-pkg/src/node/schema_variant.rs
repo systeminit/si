@@ -4,14 +4,14 @@ use std::{
 };
 
 use object_tree::{
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
     GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
 };
 use url::Url;
 
-use crate::{node::SchemaVariantChild, SchemaVariantSpec, SchemaVariantSpecComponentType};
+use crate::{SchemaVariantSpec, SchemaVariantSpecComponentType, node::SchemaVariantChild};
 
-use super::{read_common_fields, write_common_fields, PkgNode};
+use super::{PkgNode, read_common_fields, write_common_fields};
 
 const KEY_COLOR_STR: &str = "color";
 const KEY_LINK_STR: &str = "link";

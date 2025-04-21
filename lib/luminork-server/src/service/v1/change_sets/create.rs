@@ -1,12 +1,12 @@
 use axum::response::Json;
-use dal::change_set::ChangeSet;
 use dal::WsEvent;
+use dal::change_set::ChangeSet;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use si_events::audit_log::AuditLogKind;
 use utoipa::ToSchema;
 
-use crate::extract::{workspace::WorkspaceDalContext, PosthogEventTracker};
+use crate::extract::{PosthogEventTracker, workspace::WorkspaceDalContext};
 
 use crate::service::v1::ChangeSetError;
 

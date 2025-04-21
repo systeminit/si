@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 
-use darling::{util::IdentString, FromAttributes, FromMeta};
+use darling::{FromAttributes, FromMeta, util::IdentString};
 use manyhow::{bail, emit};
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 use syn::{Data, DeriveInput, Expr, Path};
 
 pub(crate) mod versioned;

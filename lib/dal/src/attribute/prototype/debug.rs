@@ -12,19 +12,19 @@ use crate::func::argument::FuncArgumentError;
 use crate::prop::PropError;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{
-    attribute::prototype::argument::{
-        static_value::StaticArgumentValue,
-        value_source::{ValueSource, ValueSourceError},
-        AttributePrototypeArgument, AttributePrototypeArgumentError,
-    },
-    component::socket::ComponentInputSocket,
-};
+use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::{
     AttributePrototype, AttributePrototypeId, AttributeValue, AttributeValueId, Component,
     ComponentError, DalContext, Func, FuncError, FuncId, SecretError,
+};
+use crate::{
+    attribute::prototype::argument::{
+        AttributePrototypeArgument, AttributePrototypeArgumentError,
+        static_value::StaticArgumentValue,
+        value_source::{ValueSource, ValueSourceError},
+    },
+    component::socket::ComponentInputSocket,
 };
 
 type AttributePrototypeDebugViewResult<T> = Result<T, AttributePrototypeDebugViewError>;

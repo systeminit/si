@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data_pg::{PgError, PgRow};
 use si_events::audit_log::AuditLogKind;
-use si_events::{ulid::Ulid, WorkspaceSnapshotAddress};
+use si_events::{WorkspaceSnapshotAddress, ulid::Ulid};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -17,14 +17,14 @@ use crate::billing_publish::BillingPublishError;
 use crate::slow_rt::SlowRuntimeError;
 use crate::workspace_snapshot::graph::RebaseBatch;
 use crate::{
-    action::{ActionError, ActionId},
     ChangeSetStatus, ComponentError, DalContext, HistoryActor, HistoryEvent, HistoryEventError,
     TransactionsError, User, UserError, UserPk, Workspace, WorkspacePk, WorkspaceSnapshot,
     WorkspaceSnapshotError, WsEvent, WsEventError,
+    action::{ActionError, ActionId},
 };
 use crate::{
-    billing_publish, Func, FuncError, Schema, SchemaError, SchemaVariant, SchemaVariantError,
-    WorkspaceError,
+    Func, FuncError, Schema, SchemaError, SchemaVariant, SchemaVariantError, WorkspaceError,
+    billing_publish,
 };
 
 pub mod approval;
@@ -89,7 +89,9 @@ pub enum ChangeSetError {
     Transactions(#[from] TransactionsError),
     #[error("ulid decode error: {0}")]
     UlidDecode(#[from] ulid::DecodeError),
-    #[error("found an unexpected number of open change sets matching default change set (should be one, found {0:?})")]
+    #[error(
+        "found an unexpected number of open change sets matching default change set (should be one, found {0:?})"
+    )]
     UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(Vec<ChangeSetId>),
     #[error("user error: {0}")]
     User(#[from] UserError),
@@ -969,11 +971,7 @@ impl ChangeSet {
             .await?;
 
         let count: i64 = row.get("count");
-        if count > 0 {
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+        if count > 0 { Ok(true) } else { Ok(false) }
     }
 
     /// Walk the graph of change sets up to the change set that has no "base

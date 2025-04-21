@@ -1,9 +1,9 @@
-use base64::{engine::general_purpose::STANDARD, Engine as _};
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use rustls::pki_types::TrustAnchor;
 use std::path::Path;
 
-use rustls::pki_types::CertificateDer;
 use rustls::RootCertStore;
+use rustls::pki_types::CertificateDer;
 use serde::{Deserialize, Serialize};
 use si_std::CanonicalFile;
 use thiserror::Error;

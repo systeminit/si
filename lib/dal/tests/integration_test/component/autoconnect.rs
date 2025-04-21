@@ -8,11 +8,10 @@ use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{AttributeValue, Func, InputSocket};
 use dal::{Component, DalContext, Schema};
 use dal_test::helpers::{
-    create_component_for_default_schema_name_in_default_view,
+    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view,
     create_component_for_schema_variant_on_default_view, update_attribute_value_for_component,
-    ChangeSetTestHelpers,
 };
-use dal_test::{test, Result};
+use dal_test::{Result, test};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]

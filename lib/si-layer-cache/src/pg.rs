@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use si_data_pg::{postgres_types::ToSql, PgPool, PgPoolConfig, PgRow};
+use si_data_pg::{PgPool, PgPoolConfig, PgRow, postgres_types::ToSql};
 use telemetry::tracing::info;
 use telemetry_utils::metric;
 
@@ -45,10 +45,18 @@ impl PgLayer {
             pool: Arc::new(pg_pool),
             delete_query: format!("DELETE FROM {table_name} WHERE key = $1"),
             get_value_query: format!("SELECT value FROM {table_name} WHERE key = $1 LIMIT 1"),
-            get_value_by_prefix_query: format!("SELECT key, value FROM {table_name} WHERE key like $1"),
-            get_value_many_query: format!("SELECT key, value FROM {table_name} WHERE key = any($1)"),
-            get_most_recent_query: format!("SELECT key, value FROM {table_name} ORDER BY created_at LIMIT $1"),
-            insert_value_query: format!("INSERT INTO {table_name} (key, sort_key, value) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING"),
+            get_value_by_prefix_query: format!(
+                "SELECT key, value FROM {table_name} WHERE key like $1"
+            ),
+            get_value_many_query: format!(
+                "SELECT key, value FROM {table_name} WHERE key = any($1)"
+            ),
+            get_most_recent_query: format!(
+                "SELECT key, value FROM {table_name} ORDER BY created_at LIMIT $1"
+            ),
+            insert_value_query: format!(
+                "INSERT INTO {table_name} (key, sort_key, value) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING"
+            ),
             contains_key_query: format!("SELECT key FROM {table_name} WHERE key = $1 LIMIT 1"),
             search_query: format!("SELECT value FROM {table_name} WHERE sort_key LIKE $1"),
             table_name,

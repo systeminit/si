@@ -9,8 +9,8 @@ use crate::component::inferred_connection_graph::InferredConnection;
 use crate::diagram::SummaryDiagramInferredEdge;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::{
     Component, ComponentError, ComponentId, ComponentType, DalContext, InputSocket, OutputSocket,
     TransactionsError, WsEvent, WsEventError,

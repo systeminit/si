@@ -1,7 +1,7 @@
 use std::{
     io::Cursor,
     path::{Path, PathBuf},
-    sync::{atomic::AtomicU64, Arc},
+    sync::{Arc, atomic::AtomicU64},
     time::UNIX_EPOCH,
 };
 
@@ -385,9 +385,23 @@ impl InodeTable {
 
     pub fn make_attrs(&self, ino: Inode, kind: FileType, write: bool, size: Size) -> FileAttr {
         let perm: u16 = match kind {
-            FileType::Directory => if write { 0o755 } else { 0o555 }
-            FileType::RegularFile => if write { 0o644 } else  { 0o444 }
-            _ => unimplemented!("I don't know why this kind of file was upserted, Only directories and regular files supported"),
+            FileType::Directory => {
+                if write {
+                    0o755
+                } else {
+                    0o555
+                }
+            }
+            FileType::RegularFile => {
+                if write {
+                    0o644
+                } else {
+                    0o444
+                }
+            }
+            _ => unimplemented!(
+                "I don't know why this kind of file was upserted, Only directories and regular files supported"
+            ),
         };
 
         let size = match size {

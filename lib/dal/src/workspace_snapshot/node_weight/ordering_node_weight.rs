@@ -2,15 +2,15 @@ use std::collections::HashSet;
 
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 
 use super::traits::CorrectTransformsError;
 use super::{NodeWeight, NodeWeightDiscriminants, NodeWeightError};
+use crate::workspace_snapshot::NodeInformation;
 use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedOrderingNodeWeightV1;
 use crate::workspace_snapshot::graph::detector::Update;
-use crate::workspace_snapshot::node_weight::traits::{CorrectTransforms, CorrectTransformsResult};
 use crate::workspace_snapshot::node_weight::NodeWeightResult;
-use crate::workspace_snapshot::NodeInformation;
+use crate::workspace_snapshot::node_weight::traits::{CorrectTransforms, CorrectTransformsResult};
 use crate::{EdgeWeightKind, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent};
 
 #[derive(Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
@@ -256,7 +256,7 @@ impl CorrectTransforms for OrderingNodeWeight {
                 _ => {
                     return Err(CorrectTransformsError::UnexpectedNodeWeight(
                         NodeWeightDiscriminants::Ordering,
-                    ))
+                    ));
                 }
             };
         }

@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 
 use crate::{
-    workspace_snapshot::{
-        graph::SchemaVariantExt as SchemaVariantExtGraph, SchemaId, SchemaVariantId,
-        WorkspaceSnapshot, WorkspaceSnapshotResult,
-    },
     InputSocketId,
+    workspace_snapshot::{
+        SchemaId, SchemaVariantId, WorkspaceSnapshot, WorkspaceSnapshotResult,
+        graph::SchemaVariantExt as SchemaVariantExtGraph,
+    },
 };
 
 #[async_trait]

@@ -2,7 +2,7 @@ use futures::StreamExt;
 use hyper::client::connect::Connection;
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio_tungstenite::{tungstenite::Message as WebSocketMessage, WebSocketStream};
+use tokio_tungstenite::{WebSocketStream, tungstenite::Message as WebSocketMessage};
 
 pub fn execute<T>(stream: WebSocketStream<T>) -> PingExecution<T> {
     PingExecution { stream }
@@ -43,7 +43,7 @@ where
                 }
             }
             Some(Ok(unexpected)) => {
-                return Err(PingExecutionError::UnexpectedMessageType(unexpected))
+                return Err(PingExecutionError::UnexpectedMessageType(unexpected));
             }
             Some(Err(err)) => return Err(PingExecutionError::WSReadIO(err)),
             None => return Err(PingExecutionError::WSClosedBeforePong),

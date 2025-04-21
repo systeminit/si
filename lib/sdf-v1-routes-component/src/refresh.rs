@@ -1,15 +1,15 @@
 use axum::{
-    extract::{Host, OriginalUri},
     Json,
+    extract::{Host, OriginalUri},
 };
 use dal::{
-    action::prototype::ActionKind, action::prototype::ActionPrototype, action::Action, Component,
-    ComponentId, Visibility,
+    Component, ComponentId, Visibility, action::Action, action::prototype::ActionKind,
+    action::prototype::ActionPrototype,
 };
 use serde::{Deserialize, Serialize};
 
 use sdf_core::tracking::track;
-use sdf_extract::{v1::AccessBuilder, HandlerContext, PosthogClient};
+use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
 
 use super::ComponentResult;
 

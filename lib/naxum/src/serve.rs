@@ -1,7 +1,7 @@
 use std::{
     convert::Infallible,
     error, fmt,
-    future::{poll_fn, Future, IntoFuture},
+    future::{Future, IntoFuture, poll_fn},
     io,
     marker::PhantomData,
     ops,

@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use crate::property_editor::schema::WidgetKind;
 use crate::schema::variant::value_from::SiPropValueFrom;
-use crate::schema::variant::{SchemaVariantResult, ValueFrom, DEFAULT_SCHEMA_VARIANT_COLOR};
+use crate::schema::variant::{DEFAULT_SCHEMA_VARIANT_COLOR, SchemaVariantResult, ValueFrom};
 use crate::{ComponentType, PropKind, SchemaVariantError, SocketArity};
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]

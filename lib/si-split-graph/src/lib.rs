@@ -5,9 +5,9 @@ use opt_zip::OptZip;
 use petgraph::{prelude::*, stable_graph};
 use serde::{Deserialize, Serialize};
 use si_events::{
+    ContentHash,
     merkle_tree_hash::MerkleTreeHash,
     workspace_snapshot::{Change, EntityKind},
-    ContentHash,
 };
 use si_id::ulid::Ulid;
 use thiserror::Error;

@@ -1,17 +1,17 @@
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 
+use crate::EdgeWeightKindDiscriminants;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedPropNodeWeightV1;
-use crate::EdgeWeightKindDiscriminants;
 use crate::{
+    PropKind,
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,
         node_weight::traits::CorrectTransforms,
         node_weight::{NodeWeightError, NodeWeightResult},
     },
-    PropKind,
 };
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]

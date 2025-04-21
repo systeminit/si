@@ -1,8 +1,8 @@
 use std::{fmt, ops::Deref};
 
-use axum::{async_trait, extract::FromRequestParts, http::request::Parts, Json};
+use axum::{Json, async_trait, extract::FromRequestParts, http::request::Parts};
 use hyper::StatusCode;
-use s3::{error::S3Error, Bucket as S3Bucket, Region as AwsRegion};
+use s3::{Bucket as S3Bucket, Region as AwsRegion, error::S3Error};
 use sea_orm::{DatabaseTransaction, TransactionTrait};
 use si_jwt_public_key::{SiJwtClaimRole, SiJwtClaims};
 
@@ -55,7 +55,7 @@ impl FromRequestParts<AppState> for ExtractedS3Bucket {
                             "statusCode": 500
                         }
                     })),
-                ))
+                ));
             }
         };
 

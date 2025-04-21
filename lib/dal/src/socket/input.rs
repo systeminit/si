@@ -5,25 +5,25 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
+    AttributePrototypeId, AttributeValueId, ComponentError, ComponentId, DalContext, FuncId,
+    HelperError, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
     attribute::{
-        prototype::{argument::AttributePrototypeArgumentError, AttributePrototypeError},
+        prototype::{AttributePrototypeError, argument::AttributePrototypeArgumentError},
         value::AttributeValueError,
     },
     change_set::ChangeSetError,
     func::FuncError,
     implement_add_edge_to,
     layer_db_types::InputSocketContentV2,
+    socket::{SocketArity, SocketKind},
     socket::{
         connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError},
         output::OutputSocketError,
     },
-    socket::{SocketArity, SocketKind},
     workspace_snapshot::{
-        edge_weight::EdgeWeightKindDiscriminants, node_weight::NodeWeightError, InputSocketExt,
-        WorkspaceSnapshotError,
+        InputSocketExt, WorkspaceSnapshotError, edge_weight::EdgeWeightKindDiscriminants,
+        node_weight::NodeWeightError,
     },
-    AttributePrototypeId, AttributeValueId, ComponentError, ComponentId, DalContext, FuncId,
-    HelperError, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
 };
 
 #[remain::sorted]

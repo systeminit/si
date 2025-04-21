@@ -7,8 +7,8 @@ use bytes::{Bytes, BytesMut};
 use crate::body::{self, Body};
 
 use super::{
-    inner::{self, Parts},
     IntoResponseParts, Response, ResponseParts,
+    inner::{self, Parts},
 };
 
 pub trait IntoResponse {

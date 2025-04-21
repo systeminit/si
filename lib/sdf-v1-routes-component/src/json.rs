@@ -1,6 +1,6 @@
-use axum::{extract::Query, Json};
-use dal::{component::properties::ComponentProperties, Component, ComponentId, Visibility};
-use sdf_extract::{v1::AccessBuilder, HandlerContext};
+use axum::{Json, extract::Query};
+use dal::{Component, ComponentId, Visibility, component::properties::ComponentProperties};
+use sdf_extract::{HandlerContext, v1::AccessBuilder};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;

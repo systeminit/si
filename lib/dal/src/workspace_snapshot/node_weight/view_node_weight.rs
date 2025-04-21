@@ -4,7 +4,7 @@ use crate::workspace_snapshot::node_weight::{
     traits::SiVersionedNodeWeight, view_node_weight::v1::ViewNodeWeightV1,
 };
 use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::{ContentHash, ulid::Ulid};
 
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiVersionedNodeWeight,

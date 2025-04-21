@@ -2,8 +2,8 @@ use std::{collections::hash_map::Entry, sync::Arc};
 
 use axum::{
     extract::{
-        ws::{self, Message},
         Query, State, WebSocketUpgrade,
+        ws::{self, Message},
     },
     response::IntoResponse,
 };
@@ -13,14 +13,14 @@ use serde::{Deserialize, Serialize};
 use si_data_nats::{NatsClient, NatsError, Subject};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::{sync::broadcast, sync::Mutex};
-use tokio_stream::wrappers::{errors::BroadcastStreamRecvError, BroadcastStream};
+use tokio::{sync::Mutex, sync::broadcast};
+use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use y::{YSink, YStream};
 use y_sync::net::BroadcastGroup;
 
 use crate::WsError;
-use sdf_core::{nats_multiplexer::NatsMultiplexerClients, BroadcastGroups};
+use sdf_core::{BroadcastGroups, nats_multiplexer::NatsMultiplexerClients};
 use sdf_extract::{
     request::TokenFromQueryParam,
     services::Nats,

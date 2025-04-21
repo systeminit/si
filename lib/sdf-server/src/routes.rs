@@ -1,14 +1,14 @@
 use axum::{
+    Router,
     extract::State,
     http::{HeaderValue, Request, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Json, Response},
     routing::get,
-    Router,
 };
-use hyper::header;
 use hyper::Method;
-use serde_json::{json, Value};
+use hyper::header;
+use serde_json::{Value, json};
 use tower_http::{
     compression::CompressionLayer,
     cors::{AllowOrigin, CorsLayer},

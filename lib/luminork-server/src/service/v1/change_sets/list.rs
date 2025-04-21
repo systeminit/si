@@ -3,7 +3,7 @@ use dal::change_set::ChangeSet;
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::extract::{workspace::WorkspaceDalContext, PosthogEventTracker};
+use crate::extract::{PosthogEventTracker, workspace::WorkspaceDalContext};
 
 use crate::service::v1::ChangeSetError;
 

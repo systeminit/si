@@ -38,20 +38,12 @@ where
             (true, false) => {
                 let b = self.b.next();
                 self.b_none = b.is_none();
-                if self.b_none {
-                    None
-                } else {
-                    Some((None, b))
-                }
+                if self.b_none { None } else { Some((None, b)) }
             }
             (false, true) => {
                 let a = self.a.next();
                 self.a_none = a.is_none();
-                if self.a_none {
-                    None
-                } else {
-                    Some((a, None))
-                }
+                if self.a_none { None } else { Some((a, None)) }
             }
             (false, false) => {
                 let a = self.a.next();

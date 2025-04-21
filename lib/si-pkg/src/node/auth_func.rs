@@ -2,11 +2,11 @@ use std::io::{BufRead, Write};
 
 use crate::AuthenticationFuncSpec;
 use object_tree::{
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
-    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes, read_key_value_line,
+    read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
 };
 
-use super::{read_common_fields, write_common_fields, PkgNode};
+use super::{PkgNode, read_common_fields, write_common_fields};
 
 const KEY_FUNC_UNIQUE_ID_STR: &str = "func_unique_id";
 const KEY_NAME_STR: &str = "name";

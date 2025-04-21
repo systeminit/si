@@ -3,7 +3,7 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgError, Source};
 
-use crate::{node::PkgNode, ActionFuncSpec, ActionFuncSpecKind};
+use crate::{ActionFuncSpec, ActionFuncSpecKind, node::PkgNode};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgActionFunc<'a> {
@@ -29,7 +29,7 @@ impl<'a> SiPkgActionFunc<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::ACTION_FUNC_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 

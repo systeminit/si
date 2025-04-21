@@ -1,26 +1,26 @@
 use std::result;
 
-use futures::{future::BoxFuture, StreamExt as _};
+use futures::{StreamExt as _, future::BoxFuture};
 use pending_events::{PendingEventsError, PendingEventsStream};
 use rebaser_core::{
     api_types::HeaderMapParseMessageInfoError,
     api_types::{
-        enqueue_updates_request::{EnqueueUpdatesRequest, EnqueueUpdatesRequestVCurrent},
-        enqueue_updates_response::EnqueueUpdatesResponse,
+        ApiVersionsWrapper, ApiWrapper, ContentInfo, DeserializeError, SerializeError, UpgradeError,
     },
     api_types::{
-        ApiVersionsWrapper, ApiWrapper, ContentInfo, DeserializeError, SerializeError, UpgradeError,
+        enqueue_updates_request::{EnqueueUpdatesRequest, EnqueueUpdatesRequestVCurrent},
+        enqueue_updates_response::EnqueueUpdatesResponse,
     },
     nats::{self, NATS_HEADER_REPLY_INBOX_NAME},
 };
 use si_data_nats::{
+    HeaderMap, Message, NatsClient, Subject,
     async_nats::{self, jetstream::context::PublishError},
     header,
     jetstream::{self, Context},
-    HeaderMap, Message, NatsClient, Subject,
 };
 use si_events::{
-    rebase_batch_address::RebaseBatchAddress, ChangeSetId, EventSessionId, WorkspacePk,
+    ChangeSetId, EventSessionId, WorkspacePk, rebase_batch_address::RebaseBatchAddress,
 };
 use telemetry::prelude::*;
 use telemetry_nats::propagation;

@@ -2,17 +2,18 @@ use std::collections::HashMap;
 
 use axum::extract::Path;
 use axum::{
-    extract::{Host, OriginalUri},
     Json,
+    extract::{Host, OriginalUri},
 };
-use dal::diagram::geometry::Geometry;
 use dal::Func;
+use dal::diagram::geometry::Geometry;
 use serde::{Deserialize, Serialize};
 
 use dal::diagram::view::ViewId;
 use dal::{
-    change_status::ChangeStatus, component::frame::Frame, generate_name, ChangeSet, ChangeSetId,
-    Component, ComponentId, Schema, SchemaId, SchemaVariant, SchemaVariantId, WorkspacePk, WsEvent,
+    ChangeSet, ChangeSetId, Component, ComponentId, Schema, SchemaId, SchemaVariant,
+    SchemaVariantId, WorkspacePk, WsEvent, change_status::ChangeStatus, component::frame::Frame,
+    generate_name,
 };
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;

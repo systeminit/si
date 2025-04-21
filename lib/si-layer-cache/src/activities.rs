@@ -4,24 +4,24 @@ use std::{collections::HashMap, sync::Arc};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use si_data_nats::{
-    async_nats::jetstream::{self, consumer::pull::Stream, Message},
+    async_nats::jetstream::{self, Message, consumer::pull::Stream},
     jetstream::Context,
 };
 use strum::EnumDiscriminants;
 use tokio::sync::{
+    Mutex,
     broadcast::{self, error::SendError},
     mpsc::{UnboundedReceiver, UnboundedSender},
-    Mutex,
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
 use crate::{
+    LayerDbError,
     db::serialize,
     error::LayerDbResult,
     event::LayeredEventMetadata,
     nats::{self, subject},
-    LayerDbError,
 };
 
 use self::{
@@ -244,7 +244,9 @@ impl ActivityMultiplexerTask {
                 //SENT_BROADCAST_ERROR_COUNTER.fetch_add(1, Ordering::Relaxed);
                 let queued_values = self.tx.len();
                 let receiver_count = self.tx.receiver_count();
-                trace!(?queued_values, ?receiver_count,
+                trace!(
+                    ?queued_values,
+                    ?receiver_count,
                     "activity multiplexer skipping message; no receivers listening. this can be totally normal."
                 );
             }
@@ -439,7 +441,10 @@ impl RebaserRequestWorkQueue {
                     }
                 }
                 Err(error) => {
-                    warn!(?error, "rebaser request work queue has failed to get a message from the nats stream");
+                    warn!(
+                        ?error,
+                        "rebaser request work queue has failed to get a message from the nats stream"
+                    );
                 }
             }
         }

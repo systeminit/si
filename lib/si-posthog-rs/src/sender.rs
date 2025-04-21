@@ -3,7 +3,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use tokio_util::sync::CancellationToken;
 
 use crate::api::PosthogApiClient;
-use crate::{api::PosthogMessage, error::PosthogResult, PosthogConfig};
+use crate::{PosthogConfig, api::PosthogMessage, error::PosthogResult};
 
 #[derive(Debug)]
 pub struct PosthogSender {

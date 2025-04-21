@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 
 use crate::{
+    ComponentId, EdgeWeightKindDiscriminants, Timestamp,
     workspace_snapshot::{
-        graph::{deprecated::v1::DeprecatedAttributePrototypeArgumentNodeWeightV1, LineageId},
+        graph::{LineageId, deprecated::v1::DeprecatedAttributePrototypeArgumentNodeWeightV1},
         node_weight::traits::CorrectTransforms,
     },
-    ComponentId, EdgeWeightKindDiscriminants, Timestamp,
 };
 
 /// When this `AttributePrototypeArgument` represents a connection between two

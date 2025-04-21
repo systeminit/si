@@ -1,4 +1,4 @@
-use axum::{routing::get, Router};
+use axum::{Router, routing::get};
 use dal::attribute::value::AttributeValueError;
 use dal::prop::PropError;
 use dal::socket::output::OutputSocketError;

@@ -1,11 +1,11 @@
-use nix::unistd::{getpgrp, Pid};
+use nix::unistd::{Pid, getpgrp};
 #[cfg(target_os = "linux")]
 use procfs::process::all_processes;
 use std::collections::HashSet;
 use std::result;
 use telemetry::prelude::info;
 use telemetry::tracing::debug;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{Mutex, mpsc};
 use tokio::time::Duration;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;

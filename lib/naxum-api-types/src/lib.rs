@@ -25,7 +25,7 @@
     while_true
 )]
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use strum::VariantNames;
 use thiserror::Error;
 
@@ -262,7 +262,7 @@ mod tests {
     mod v2 {
         use serde::{Deserialize, Serialize};
 
-        use super::{v1::CoolRequestV1, RequestId, UpgradeError};
+        use super::{RequestId, UpgradeError, v1::CoolRequestV1};
 
         #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
         #[serde(rename_all = "camelCase")]
@@ -282,7 +282,7 @@ mod tests {
     mod v3 {
         use serde::{Deserialize, Serialize};
 
-        use super::{v2::CoolRequestV2, RequestId, UpgradeError};
+        use super::{RequestId, UpgradeError, v2::CoolRequestV2};
 
         #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
         #[serde(rename_all = "camelCase")]
@@ -306,7 +306,7 @@ mod tests {
     mod v4 {
         use serde::{Deserialize, Serialize};
 
-        use super::{v3::CoolRequestV3, RequestId, UpgradeError};
+        use super::{RequestId, UpgradeError, v3::CoolRequestV3};
 
         #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
         #[serde(rename_all = "camelCase")]

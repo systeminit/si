@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::code_view::{CodeLanguage, CodeView};
-use crate::component::properties::ComponentProperties;
 use crate::component::ComponentResult;
+use crate::component::properties::ComponentProperties;
 use crate::{Component, ComponentId, DalContext};
 
 //

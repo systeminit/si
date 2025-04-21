@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{builder::EnumValueParser, builder::PossibleValuesParser, ArgAction, Parser};
+use clap::{ArgAction, Parser, builder::EnumValueParser, builder::PossibleValuesParser};
 
 use sdf_server::{
     Config, ConfigError, ConfigFile, FeatureFlag, MigrationMode, StandardConfigFile,

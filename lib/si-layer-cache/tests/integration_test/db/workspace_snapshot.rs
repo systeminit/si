@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use si_events::{Actor, ChangeSetId, Tenancy, UserPk, WorkspacePk};
 use si_layer_cache::db::serialize;
 use si_layer_cache::hybrid_cache::CacheConfig;
-use si_layer_cache::{persister::PersistStatus, LayerDb};
+use si_layer_cache::{LayerDb, persister::PersistStatus};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 

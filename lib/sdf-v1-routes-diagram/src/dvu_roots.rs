@@ -3,7 +3,7 @@ use dal::Visibility;
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;
-use sdf_extract::{v1::AccessBuilder, HandlerContext};
+use sdf_extract::{HandlerContext, v1::AccessBuilder};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

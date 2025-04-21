@@ -3,21 +3,21 @@ use std::result;
 use bytes::Bytes;
 use edda_core::{
     api_types::{
-        rebuild_request::{RebuildRequest, RebuildRequestVCurrent},
-        update_request::{UpdateRequest, UpdateRequestVCurrent},
         ApiWrapper, ContentInfo, DeserializeError, HeaderMapParseMessageInfoError, RequestId,
         SerializeError, UpgradeError,
+        rebuild_request::{RebuildRequest, RebuildRequestVCurrent},
+        update_request::{UpdateRequest, UpdateRequestVCurrent},
     },
     nats,
 };
 use si_data_nats::{
+    HeaderMap, NatsClient,
     async_nats::{self, jetstream::context::PublishError},
     header,
     jetstream::{self, Context},
-    HeaderMap, NatsClient,
 };
 use si_events::{
-    change_batch::ChangeBatchAddress, ChangeSetId, WorkspacePk, WorkspaceSnapshotAddress,
+    ChangeSetId, WorkspacePk, WorkspaceSnapshotAddress, change_batch::ChangeBatchAddress,
 };
 use telemetry::prelude::*;
 use telemetry_nats::propagation;

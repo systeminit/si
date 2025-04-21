@@ -37,10 +37,10 @@ use std::{
 use audit_database::AuditDatabaseContext;
 use buck2_resources::Buck2Resources;
 use dal::{
+    DalContext, DalLayerDb, JetstreamStreams, ModelResult, ServicesContext, Workspace,
     builtins::func,
     feature_flags::FeatureFlagService,
     job::processor::{JobQueueProcessor, NatsProcessor},
-    DalContext, DalLayerDb, JetstreamStreams, ModelResult, ServicesContext, Workspace,
 };
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
@@ -49,7 +49,7 @@ use si_crypto::{
     SymmetricCryptoService, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile,
     VeritechEncryptionKey,
 };
-use si_data_nats::{jetstream, NatsClient, NatsConfig};
+use si_data_nats::{NatsClient, NatsConfig, jetstream};
 use si_data_pg::{PgPool, PgPoolConfig};
 use si_jwt_public_key::{JwtAlgo, JwtConfig, JwtPublicSigningKeyChain};
 use si_layer_cache::hybrid_cache::CacheConfig;
@@ -66,17 +66,17 @@ pub mod expected;
 pub mod helpers;
 pub mod prelude {
     //! This module provides a standard set of tools for authoring DAL integration tests.
-    pub use crate::helpers::ChangeSetTestHelpers;
     pub use crate::WorkspaceSignup;
-    pub use color_eyre::eyre::OptionExt;
+    pub use crate::helpers::ChangeSetTestHelpers;
     pub use color_eyre::Result;
+    pub use color_eyre::eyre::OptionExt;
 }
 mod signup;
 mod test_exclusive_schemas;
 
 pub use color_eyre::{
     self,
-    eyre::{eyre, Result, WrapErr},
+    eyre::{Result, WrapErr, eyre},
 };
 pub use si_test_macros::{dal_test as test, sdf_test};
 pub use signup::WorkspaceSignup;
@@ -188,7 +188,7 @@ pub struct Config {
 
 impl Config {
     #[allow(clippy::disallowed_methods)] // Environment variables are used exclusively in test and
-                                         // all are prefixed with `SI_TEST_`
+    // all are prefixed with `SI_TEST_`
     fn create_default(
         pg_dbname: &'static str,
         layer_cache_pg_dbname: &'static str,

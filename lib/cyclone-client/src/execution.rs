@@ -7,7 +7,7 @@ use std::{
 use cyclone_core::{CycloneRequest, CycloneRequestable, FunctionResult, Message, ProgressMessage};
 use futures::{Future, SinkExt, Stream, StreamExt};
 use hyper::client::connect::Connection;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;

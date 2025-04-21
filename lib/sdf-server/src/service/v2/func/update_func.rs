@@ -6,12 +6,12 @@ use crate::{
     track,
 };
 use axum::{
-    extract::{Host, OriginalUri, Path},
     Json,
+    extract::{Host, OriginalUri, Path},
 };
 use dal::{
-    func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk,
-    WsEvent,
+    ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent,
+    func::authoring::FuncAuthoringClient,
 };
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;

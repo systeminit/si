@@ -32,21 +32,22 @@ use std::{future::IntoFuture, io};
 use futures::Future;
 use middleware::DeleteMessageOnSuccess;
 use naxum::{
+    ServiceBuilder, ServiceExt, TowerServiceExt,
     handler::Handler,
     middleware::{post_process::PostProcessLayer, trace::TraceLayer},
     response::{IntoResponse, Response},
-    ServiceBuilder, ServiceExt, TowerServiceExt,
 };
+use si_data_nats::{NatsClient, jetstream::Context};
 use si_data_nats::{
+    Subject,
     async_nats::{
         self,
         jetstream::{
             consumer::StreamErrorKind, context::RequestErrorKind, stream::ConsumerErrorKind,
         },
     },
-    jetstream, Subject,
+    jetstream,
 };
-use si_data_nats::{jetstream::Context, NatsClient};
 use si_events::ulid::Ulid;
 use telemetry::prelude::*;
 use telemetry::tracing::error;

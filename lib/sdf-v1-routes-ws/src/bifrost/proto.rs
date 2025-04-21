@@ -7,7 +7,7 @@ use si_data_nats::{NatsClient, Subject};
 use si_frontend_types::object::patch::DATA_CACHE_SUBJECT_PREFIX;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::{Mutex, broadcast};
 use tokio_tungstenite::tungstenite;
 use tokio_util::sync::CancellationToken;
 

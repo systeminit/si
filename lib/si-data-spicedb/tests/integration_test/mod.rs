@@ -2,7 +2,7 @@ use std::env;
 
 use indoc::indoc;
 use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+use rand::{Rng, thread_rng};
 use si_data_spicedb::{Client, Permission, Relationship, SpiceDBObject, SpiceDbConfig};
 
 const ENV_VAR_SPICEDB_URL: &str = "SI_TEST_SPICEDB_URL";
@@ -47,14 +47,18 @@ async fn write_and_read_schema() {
 
     let response = client.read_schema().await.expect("failed to read schema");
 
-    assert!(response
-        .schema_text()
-        .lines()
-        .any(|line| line == "// Plan comment"));
-    assert!(response
-        .schema_text()
-        .lines()
-        .any(|line| line == "definition plan {}"));
+    assert!(
+        response
+            .schema_text()
+            .lines()
+            .any(|line| line == "// Plan comment")
+    );
+    assert!(
+        response
+            .schema_text()
+            .lines()
+            .any(|line| line == "definition plan {}")
+    );
 }
 
 #[tokio::test]
@@ -164,15 +168,19 @@ async fn check_permissions() {
     );
     let bad_perms = Permission::new(workspace_object, "approve", user_object2, zed_token);
 
-    assert!(client
-        .check_permissions(perms)
-        .await
-        .expect("failed to check permissions"));
+    assert!(
+        client
+            .check_permissions(perms)
+            .await
+            .expect("failed to check permissions")
+    );
 
-    assert!(!client
-        .check_permissions(bad_perms)
-        .await
-        .expect("failed to check permissions"));
+    assert!(
+        !client
+            .check_permissions(bad_perms)
+            .await
+            .expect("failed to check permissions")
+    );
     let users = client
         .lookup_subjects(
             "workspace".to_string(),

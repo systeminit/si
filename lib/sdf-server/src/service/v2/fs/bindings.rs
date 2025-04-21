@@ -1,49 +1,49 @@
 use std::collections::{BTreeMap, HashSet};
 
 use axum::{
-    extract::{Path, Query},
     Json,
+    extract::{Path, Query},
 };
 use dal::{
+    ChangeSetId, DalContext, Func, FuncId, InputSocket, OutputSocket, Prop, SchemaId,
+    SchemaVariant, SchemaVariantId, WsEvent,
     attribute::prototype::argument::AttributePrototypeArgument,
     func::{
+        FuncKind,
         argument::FuncArgument,
         binding::{
-            action::ActionBinding, attribute::AttributeBinding, authentication::AuthBinding,
-            leaf::LeafBinding, management::ManagementBinding, AttributeArgumentBinding,
-            AttributeFuncArgumentSource, AttributeFuncDestination, EventualParent,
+            AttributeArgumentBinding, AttributeFuncArgumentSource, AttributeFuncDestination,
+            EventualParent, action::ActionBinding, attribute::AttributeBinding,
+            authentication::AuthBinding, leaf::LeafBinding, management::ManagementBinding,
         },
         intrinsics::IntrinsicFunc,
-        FuncKind,
     },
     prop::PropPath,
     schema::variant::leaves::LeafKind,
-    ChangeSetId, DalContext, Func, FuncId, InputSocket, OutputSocket, Prop, SchemaId,
-    SchemaVariant, SchemaVariantId, WsEvent,
 };
-use si_events::{audit_log::AuditLogKind, ActionKind};
+use si_events::{ActionKind, audit_log::AuditLogKind};
 use si_frontend_types::{
+    FuncBinding,
     fs::{
         self, AttributeFuncInput, AttributeInputFrom, AttributeOutputTo, Binding, IdentityBindings,
         PropIdentityBinding, SetFuncBindingsRequest, SocketIdentityBinding, VariantQuery,
     },
-    FuncBinding,
 };
 use si_id::WorkspaceId;
 
 use crate::{
     extract::{HandlerContext, PosthogEventTracker},
     service::v2::{
+        AccessBuilder,
         func::binding::update_binding::{
             update_action_func_bindings, update_attribute_func_bindings, update_leaf_func_bindings,
         },
-        AccessBuilder,
     },
 };
 
 use super::{
-    check_change_set, check_change_set_and_not_head, dal_func_to_fs_func, func_types_size,
-    get_or_unlock_schema, lookup_variant_for_schema, FsError, FsResult,
+    FsError, FsResult, check_change_set, check_change_set_and_not_head, dal_func_to_fs_func,
+    func_types_size, get_or_unlock_schema, lookup_variant_for_schema,
 };
 
 pub async fn get_bindings_for_func_and_schema_variant(

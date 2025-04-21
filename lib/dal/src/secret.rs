@@ -31,7 +31,7 @@ use serde_json::Value;
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
 use si_data_pg::PgError;
 use si_events::encrypted_secret::EncryptedSecretKeyParseError;
-use si_events::{ulid::Ulid, ContentHash, EncryptedSecretKey};
+use si_events::{ContentHash, EncryptedSecretKey, ulid::Ulid};
 use si_hash::Hash;
 use si_id::PropId;
 use si_layer_cache::LayerDbError;
@@ -45,10 +45,10 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::SensitiveContainer;
 
+use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
-use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
@@ -58,16 +58,16 @@ use crate::prop::PropError;
 use crate::schema::variant::root_prop::RootPropChild;
 use crate::serde_impls::base64_bytes_serde;
 use crate::serde_impls::nonce_serde;
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::secret_node_weight::SecretNodeWeight;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetError,
-    ComponentError, ComponentId, DalContext, Func, FuncError, FuncId, HelperError, HistoryActor,
-    HistoryEventError, KeyPair, KeyPairError, Prop, SchemaVariant, SchemaVariantError,
-    StandardModelError, Timestamp, TransactionsError, UserPk,
+    AttributePrototype, AttributeValue, AttributeValueId, ChangeSetError, ComponentError,
+    ComponentId, DalContext, Func, FuncError, FuncId, HelperError, HistoryActor, HistoryEventError,
+    KeyPair, KeyPairError, Prop, SchemaVariant, SchemaVariantError, StandardModelError, Timestamp,
+    TransactionsError, UserPk, implement_add_edge_to,
 };
 
 mod algorithm;

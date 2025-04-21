@@ -6,13 +6,13 @@ use std::{
 use url::Url;
 
 use object_tree::{
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
     GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
 };
 
-use crate::{spec::PropSpecData, PropSpec, PropSpecWidgetKind};
+use crate::{PropSpec, PropSpecWidgetKind, spec::PropSpecData};
 
-use super::{prop_child::PropChild, PkgNode};
+use super::{PkgNode, prop_child::PropChild};
 
 const KEY_KIND_STR: &str = "kind";
 const KEY_NAME_STR: &str = "name";

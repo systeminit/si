@@ -1,25 +1,25 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+use dal::DalContext;
+use dal::HistoryActor;
 use dal::approval_requirement::ApprovalRequirementApprover;
 use dal::change_set::approval::ChangeSetApproval;
 use dal::diagram::view::View;
-use dal::DalContext;
-use dal::HistoryActor;
 use dal::{action::Action, approval_requirement::ApprovalRequirement};
+use dal_test::Result;
 use dal_test::eyre;
 use dal_test::helpers::create_component_for_default_schema_name;
 use dal_test::prelude::ChangeSetTestHelpers;
 use dal_test::sdf_test;
-use dal_test::Result;
 use indoc::indoc;
 use pretty_assertions_sorted::assert_eq;
 use sdf_core::dal_wrapper;
 use sdf_core::dal_wrapper::DalWrapperError;
 use sdf_test::helpers::SdfTestHelpers;
 use si_data_spicedb::SpiceDbClient;
-use si_events::workspace_snapshot::EntityKind;
 use si_events::ChangeSetApprovalStatus;
+use si_events::workspace_snapshot::EntityKind;
 use si_id::ViewId;
 
 // FIXME(nick,jacob): this must happen in the "sdf_test"'s equivalent to global setup, but not in

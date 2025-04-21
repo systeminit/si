@@ -1,24 +1,24 @@
 use std::collections::{HashSet, VecDeque};
 
-use axum::{extract::Query, routing::get, Json, Router};
+use axum::{Json, Router, extract::Query, routing::get};
 use dal::{
+    AttributeValue, Component, ComponentError, SchemaVariant, SchemaVariantId, TransactionsError,
+    Ulid, Visibility,
     attribute::value::AttributeValueError,
     schema::variant::SchemaVariantError,
     workspace_snapshot::{
+        WorkspaceSnapshotError,
         content_address::ContentAddressDiscriminants,
         edge_weight::EdgeWeightKindDiscriminants,
         node_weight::{NodeWeight, NodeWeightDiscriminants},
-        WorkspaceSnapshotError,
     },
-    AttributeValue, Component, ComponentError, SchemaVariant, SchemaVariantId, TransactionsError,
-    Ulid, Visibility,
 };
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use sdf_core::{app_state::AppState, impl_default_error_into_response};
-use sdf_extract::{v1::AccessBuilder, HandlerContext};
+use sdf_extract::{HandlerContext, v1::AccessBuilder};
 
 #[remain::sorted]
 #[derive(Error, Debug)]

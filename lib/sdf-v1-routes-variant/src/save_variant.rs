@@ -1,16 +1,16 @@
 use axum::{
-    extract::{Host, OriginalUri},
     Json,
+    extract::{Host, OriginalUri},
 };
 use dal::{
-    schema::variant::authoring::VariantAuthoringClient, ChangeSet, SchemaVariantId, Visibility,
-    WsEvent,
+    ChangeSet, SchemaVariantId, Visibility, WsEvent,
+    schema::variant::authoring::VariantAuthoringClient,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::SchemaVariantResult;
 use sdf_core::{force_change_set_response::ForceChangeSetResponse, tracking::track};
-use sdf_extract::{v1::AccessBuilder, HandlerContext, PosthogClient};
+use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]

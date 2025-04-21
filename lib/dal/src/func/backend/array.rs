@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    func::backend::{FuncBackend, FuncBackendError, FuncBackendResult},
     PropKind,
+    func::backend::{FuncBackend, FuncBackendError, FuncBackendResult},
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

@@ -3,7 +3,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use si_data_pg::{PgError, PgRow};
 use strum::IntoEnumIterator;
 use thiserror::Error;

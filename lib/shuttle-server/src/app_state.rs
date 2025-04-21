@@ -1,4 +1,4 @@
-use si_data_nats::{jetstream::Context, Subject};
+use si_data_nats::{Subject, jetstream::Context};
 use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, Clone)]

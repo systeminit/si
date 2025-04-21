@@ -2,16 +2,16 @@ use std::collections::HashMap;
 
 use audit_database::AuditLogRow;
 use axum::{
-    extract::{Path, Query, State},
     Json,
+    extract::{Path, Query, State},
 };
-use dal::{audit_logging, ChangeSet, DalContext, User};
+use dal::{ChangeSet, DalContext, User, audit_logging};
 use serde::{Deserialize, Serialize};
 use si_events::{ChangeSetId, UserPk};
 use si_frontend_types as frontend_types;
 
 use super::AuditLogResult;
-use crate::{extract::HandlerContext, service::v2::AccessBuilder, AppState};
+use crate::{AppState, extract::HandlerContext, service::v2::AccessBuilder};
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]

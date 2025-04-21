@@ -13,11 +13,11 @@ use crate::attribute::prototype::argument::{
 };
 use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{FuncArgumentContent, FuncArgumentContentV1};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use crate::workspace_snapshot::node_weight::{
     FuncArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
     DalContext, EdgeWeightKind, Func, FuncError, FuncId, HistoryEventError, PropKind,
     StandardModelError, Timestamp, TransactionsError,

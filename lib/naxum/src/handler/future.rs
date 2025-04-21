@@ -12,7 +12,7 @@ use std::{
 
 use futures::future::Map;
 use pin_project_lite::pin_project;
-use tower::{util::Oneshot, Service};
+use tower::{Service, util::Oneshot};
 
 use crate::{
     message::{Message, MessageHead},

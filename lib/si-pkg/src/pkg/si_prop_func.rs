@@ -4,7 +4,7 @@ use petgraph::prelude::*;
 use super::{PkgResult, SiPkgError, Source};
 
 use crate::{
-    node::PkgNode, AttrFuncInputSpec, SiPkgAttrFuncInput, SiPropFuncSpec, SiPropFuncSpecKind,
+    AttrFuncInputSpec, SiPkgAttrFuncInput, SiPropFuncSpec, SiPropFuncSpecKind, node::PkgNode,
 };
 
 #[derive(Clone, Debug)]
@@ -30,7 +30,7 @@ impl<'a> SiPkgSiPropFunc<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::SI_PROP_FUNC_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 

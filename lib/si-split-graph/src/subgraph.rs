@@ -5,8 +5,9 @@ use std::collections::{HashMap, HashSet};
 use std::io::Write;
 
 use crate::{
-    CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraphEdgeWeight, SplitGraphEdgeWeightKind,
-    SplitGraphError, SplitGraphNodeId, SplitGraphNodeWeight, SplitGraphResult, MAX_NODES,
+    CustomEdgeWeight, CustomNodeWeight, EdgeKind, MAX_NODES, SplitGraphEdgeWeight,
+    SplitGraphEdgeWeightKind, SplitGraphError, SplitGraphNodeId, SplitGraphNodeWeight,
+    SplitGraphResult,
 };
 
 pub type SubGraphNodeIndex = NodeIndex<u16>;

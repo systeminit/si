@@ -1,7 +1,7 @@
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use telemetry::prelude::*;
 
-use crate::{error::LayerDbResult, LayerDbError};
+use crate::{LayerDbError, error::LayerDbResult};
 
 #[inline]
 #[instrument(

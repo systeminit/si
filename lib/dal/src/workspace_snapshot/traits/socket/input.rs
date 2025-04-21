@@ -4,16 +4,16 @@ use async_trait::async_trait;
 use telemetry::prelude::*;
 
 use crate::{
-    layer_db_types::{InputSocketContent, InputSocketContentV2},
-    socket::{connection_annotation::ConnectionAnnotation, input::InputSocketResult},
-    workspace_snapshot::{
-        graph::{InputSocketExt as InputSocketExtGraph, LineageId},
-        node_weight::{traits::SiVersionedNodeWeight, InputSocketNodeWeight},
-        WorkspaceSnapshotResult,
-    },
     AttributePrototype, AttributeValueId, ComponentId, DalContext, EdgeWeight, EdgeWeightKind,
     FuncId, InputSocket, InputSocketId, SchemaVariantId, SocketArity, SocketKind, Timestamp,
     WorkspaceSnapshot, WorkspaceSnapshotError,
+    layer_db_types::{InputSocketContent, InputSocketContentV2},
+    socket::{connection_annotation::ConnectionAnnotation, input::InputSocketResult},
+    workspace_snapshot::{
+        WorkspaceSnapshotResult,
+        graph::{InputSocketExt as InputSocketExtGraph, LineageId},
+        node_weight::{InputSocketNodeWeight, traits::SiVersionedNodeWeight},
+    },
 };
 
 #[async_trait]

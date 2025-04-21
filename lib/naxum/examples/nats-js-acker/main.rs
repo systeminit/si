@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{HashMap, hash_map::Entry},
     env, error,
     str::{self, Utf8Error},
     sync::Arc,
@@ -8,11 +8,11 @@ use std::{
 
 use async_nats::jetstream;
 use naxum::{
+    BoxError, Message, ServiceExt,
     extract::State,
     handler::Handler,
     middleware::{ack::AckLayer, trace::TraceLayer},
     response::{IntoResponse, Response},
-    BoxError, Message, ServiceExt,
 };
 use thiserror::Error;
 use tokio::{
@@ -24,10 +24,10 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tower::ServiceBuilder;
 use tracing::{error, info};
 use tracing_subscriber::{
+    EnvFilter, Registry,
     fmt::{self, format::FmtSpan},
     layer::SubscriberExt as _,
     util::SubscriberInitExt as _,
-    EnvFilter, Registry,
 };
 
 const TRACING_LOG_ENV_VAR: &str = "SI_LOG";

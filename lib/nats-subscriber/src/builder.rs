@@ -3,7 +3,7 @@
 
 use std::marker::PhantomData;
 
-use si_data_nats::{subject::ToSubject, NatsClient, Subject};
+use si_data_nats::{NatsClient, Subject, subject::ToSubject};
 use telemetry::prelude::*;
 use telemetry_nats::NatsMakeSpan;
 

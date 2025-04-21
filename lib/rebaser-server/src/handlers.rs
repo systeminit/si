@@ -6,11 +6,11 @@ use naxum::{
 };
 use rebaser_core::nats;
 use si_data_nats::{
+    NatsClient, Subject,
     async_nats::jetstream::{
-        consumer::{push, StreamError},
+        consumer::{StreamError, push},
         stream::ConsumerError,
     },
-    NatsClient, Subject,
 };
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
@@ -20,10 +20,10 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;
 
 use crate::{
+    Shutdown,
     app_state::AppState,
     change_set_processor_task::{ChangeSetProcessorTask, ChangeSetProcessorTaskError},
     serial_dvu_task::{SerialDvuTask, SerialDvuTaskError},
-    Shutdown,
 };
 
 const CONSUMER_NAME_PREFIX: &str = "rebaser-requests";
@@ -269,14 +269,14 @@ fn parse_subject<'a>(
                     format!(
                         "found unexpected subject prefix; expected={prefix}, parsed={unexpected}"
                     ),
-                ))
+                ));
             }
             // Prefix part not found but expected
             None => {
                 return Err(HandlerError::SubjectParse(
                     subject_str.to_string(),
                     format!("expected subject prefix not found; expected={prefix}"),
-                ))
+                ));
             }
         };
     }

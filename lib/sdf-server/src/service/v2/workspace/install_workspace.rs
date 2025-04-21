@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     extract::{Host, OriginalUri, Path},
     http::Uri,
-    Json,
 };
 use dal::{DalContext, Workspace, WorkspacePk, WsEvent};
 use module_index_client::ModuleIndexClient;
@@ -13,7 +13,7 @@ use telemetry::prelude::info;
 use ulid::Ulid;
 
 use crate::{
-    extract::{request::RawAccessToken, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient, request::RawAccessToken},
     service::v2::AccessBuilder,
     track,
 };
@@ -58,10 +58,11 @@ pub async fn install_workspace(
             raw_access_token,
         )
         .await
-        { Err(err) => {
-            handle_error(&ctx, original_uri, id, err).await;
-        } _ => {
-            match WsEvent::async_finish_workspace(&ctx, id).await {
+        {
+            Err(err) => {
+                handle_error(&ctx, original_uri, id, err).await;
+            }
+            _ => match WsEvent::async_finish_workspace(&ctx, id).await {
                 Ok(event) => {
                     if let Err(err) = event.publish_immediately(&ctx).await {
                         handle_error(&ctx, original_uri, id, err).await;
@@ -70,8 +71,8 @@ pub async fn install_workspace(
                 Err(err) => {
                     handle_error(&ctx, original_uri, id, err).await;
                 }
-            }
-        }}
+            },
+        }
     });
 
     Ok(Json(InstallWorkspaceResponse { id }))

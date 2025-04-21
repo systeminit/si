@@ -12,23 +12,23 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::action::prototype::{ActionKind, ActionPrototypeError};
+use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::prototype::argument::value_source::ValueSource;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgumentError, AttributePrototypeArgumentId,
 };
-use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::AttributeValueError;
+use crate::func::FuncKind;
 use crate::func::argument::FuncArgumentError;
 use crate::func::argument::FuncArgumentId;
 use crate::func::binding::attribute::AttributeBindingMalformedInput;
-use crate::func::FuncKind;
 use crate::management::prototype::ManagementPrototypeError;
 use crate::prop::PropError;
 use crate::schema::variant::leaves::LeafKind;
 use crate::socket::output::OutputSocketError;
 use crate::{
-    socket::input::InputSocketError, AttributePrototypeId, ComponentError, DalContext, Func,
-    FuncError, FuncId, PropId, SchemaVariantError, SchemaVariantId,
+    AttributePrototypeId, ComponentError, DalContext, Func, FuncError, FuncId, PropId,
+    SchemaVariantError, SchemaVariantId, socket::input::InputSocketError,
 };
 use crate::{
     ComponentId, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, SchemaError,
@@ -48,7 +48,9 @@ pub mod management;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum FuncBindingError {
-    #[error("action with kind ({0}) already exists for schema variant ({1}), cannot have two non-manual actions for the same kind in the same schema variant")]
+    #[error(
+        "action with kind ({0}) already exists for schema variant ({1}), cannot have two non-manual actions for the same kind in the same schema variant"
+    )]
     ActionKindAlreadyExists(ActionKind, SchemaVariantId),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
@@ -628,7 +630,7 @@ impl FuncBinding {
                     return Err(FuncBindingError::UnexpectedFuncBindingVariant(
                         other_binding.into(),
                         FuncBindingDiscriminants::Authentication,
-                    ))
+                    ));
                 }
             }
         }
@@ -651,7 +653,7 @@ impl FuncBinding {
                     return Err(FuncBindingError::UnexpectedFuncBindingVariant(
                         other_binding.into(),
                         FuncBindingDiscriminants::Authentication,
-                    ))
+                    ));
                 }
             }
         }
@@ -674,7 +676,7 @@ impl FuncBinding {
                     return Err(FuncBindingError::UnexpectedFuncBindingVariant(
                         other_binding.into(),
                         FuncBindingDiscriminants::Authentication,
-                    ))
+                    ));
                 }
             }
         }
@@ -697,7 +699,7 @@ impl FuncBinding {
                     return Err(FuncBindingError::UnexpectedFuncBindingVariant(
                         other_binding.into(),
                         FuncBindingDiscriminants::Authentication,
-                    ))
+                    ));
                 }
             }
         }
@@ -719,7 +721,7 @@ impl FuncBinding {
                     return Err(FuncBindingError::UnexpectedFuncBindingVariant(
                         other_binding.into(),
                         FuncBindingDiscriminants::Authentication,
-                    ))
+                    ));
                 }
             }
         }

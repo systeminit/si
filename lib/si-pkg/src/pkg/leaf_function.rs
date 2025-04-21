@@ -4,9 +4,9 @@ use petgraph::prelude::*;
 use super::{PkgResult, SiPkgError, Source};
 
 use crate::{
+    LeafFunctionSpec,
     node::PkgNode,
     spec::{LeafInputLocation, LeafKind},
-    LeafFunctionSpec,
 };
 
 #[derive(Clone, Debug)]

@@ -1,30 +1,30 @@
-use super::{
-    category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult, NodeWeight,
-    NodeWeightDiscriminants::Component, NodeWeightError, NodeWeightResult,
-};
 use super::{ArgumentTargets, NodeWeightDiscriminants};
+use super::{
+    NodeWeight, NodeWeightDiscriminants::Component, NodeWeightError, NodeWeightResult,
+    category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult,
+};
 use crate::layer_db_types::{
     ComponentContent, ComponentContentDiscriminants, ComponentContentV2, GeometryContent,
     GeometryContentV1,
 };
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV4;
 use crate::{
-    workspace_snapshot::{
-        content_address::{ContentAddress, ContentAddressDiscriminants},
-        graph::{
-            correct_transforms::add_dependent_value_root_updates,
-            deprecated::v1::DeprecatedComponentNodeWeightV1, detector::Update, LineageId,
-        },
-        node_weight::traits::CorrectTransforms,
-        NodeInformation,
-    },
     DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, Timestamp,
     WorkspaceSnapshotGraphVCurrent,
+    workspace_snapshot::{
+        NodeInformation,
+        content_address::{ContentAddress, ContentAddressDiscriminants},
+        graph::{
+            LineageId, correct_transforms::add_dependent_value_root_updates,
+            deprecated::v1::DeprecatedComponentNodeWeightV1, detector::Update,
+        },
+        node_weight::traits::CorrectTransforms,
+    },
 };
 use itertools::Itertools;
-use petgraph::{prelude::*, stable_graph::EdgeReference, Direction::Incoming};
+use petgraph::{Direction::Incoming, prelude::*, stable_graph::EdgeReference};
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 use si_id::{AttributeValueId, ComponentId};
 use std::collections::HashSet;
 use std::sync::Arc;

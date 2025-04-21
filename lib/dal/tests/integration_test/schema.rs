@@ -22,13 +22,11 @@ async fn list_views(ctx: &DalContext) {
         .expect("could not list schema views");
 
     // First, check that the schemas look as expected.
-    let expected: HashSet<SchemaId> = HashSet::from_iter(schemas.iter().filter_map(|e| {
-        if e.ui_hidden {
-            None
-        } else {
-            Some(e.id())
-        }
-    }));
+    let expected: HashSet<SchemaId> = HashSet::from_iter(
+        schemas
+            .iter()
+            .filter_map(|e| if e.ui_hidden { None } else { Some(e.id()) }),
+    );
     let actual: HashSet<SchemaId> = HashSet::from_iter(views.iter().map(|a| a.id()));
 
     assert_eq!(
@@ -42,14 +40,11 @@ async fn list_views(ctx: &DalContext) {
             .await
             .expect("could not list schema variants for schema");
 
-        let expected: HashSet<SchemaVariantId> =
-            HashSet::from_iter(schema_variants.iter().filter_map(|e| {
-                if e.ui_hidden() {
-                    None
-                } else {
-                    Some(e.id())
-                }
-            }));
+        let expected: HashSet<SchemaVariantId> = HashSet::from_iter(
+            schema_variants
+                .iter()
+                .filter_map(|e| if e.ui_hidden() { None } else { Some(e.id()) }),
+        );
         let actual: HashSet<SchemaVariantId> =
             HashSet::from_iter(view.variants().iter().map(|a| a.id()));
 

@@ -3,9 +3,9 @@ use std::env;
 use si_data_nats::{NatsClient, NatsConfig};
 use telemetry::prelude::*;
 use tracing_subscriber::{
+    EnvFilter, Registry,
     fmt::{self, format::FmtSpan},
     prelude::*,
-    EnvFilter, Registry,
 };
 
 const TRACING_LOG_ENV_VAR: &str = "SI_LOG";

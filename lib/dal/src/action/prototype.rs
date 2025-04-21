@@ -10,12 +10,16 @@ use thiserror::Error;
 use veritech_client::{ActionRunResultSuccess, ResourceStatus};
 
 use crate::{
+    ActionPrototypeId, ChangeSetError, Component, ComponentError, ComponentId, DalContext,
+    EdgeWeightKind, EdgeWeightKindDiscriminants, Func, FuncError, HelperError, SchemaVariant,
+    SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEvent,
+    WsEventError, WsEventResult, WsPayload,
     action::ActionId,
     component::ComponentUpdatedPayload,
     diagram::DiagramError,
     func::{
-        runner::{FuncRunner, FuncRunnerError},
         FuncId,
+        runner::{FuncRunner, FuncRunnerError},
     },
     implement_add_edge_to,
     workspace_snapshot::{
@@ -24,14 +28,10 @@ use crate::{
             ActionPrototypeNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
         },
     },
-    ActionPrototypeId, ChangeSetError, Component, ComponentError, ComponentId, DalContext,
-    EdgeWeightKind, EdgeWeightKindDiscriminants, Func, FuncError, HelperError, SchemaVariant,
-    SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEvent,
-    WsEventError, WsEventResult, WsPayload,
 };
 use si_frontend_types::{
-    action::{prototype::ActionPrototypeViewList, ActionPrototypeView},
     DiagramComponentView,
+    action::{ActionPrototypeView, prototype::ActionPrototypeViewList},
 };
 
 use super::ActionError;

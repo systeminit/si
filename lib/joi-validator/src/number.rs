@@ -2,7 +2,7 @@ use std::f64;
 
 use serde::Deserialize;
 
-use crate::{generic, require, rule_err, Args};
+use crate::{Args, generic, require, rule_err};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]

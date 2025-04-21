@@ -1,6 +1,6 @@
 use axum::{
-    extract::{Host, OriginalUri, Path},
     Json,
+    extract::{Host, OriginalUri, Path},
 };
 use serde::{Deserialize, Serialize};
 
@@ -11,11 +11,11 @@ use crate::{
     track,
 };
 use dal::{
+    ChangeSet, ChangeSetId, WorkspacePk, WsEvent,
     diagram::{
         geometry::Geometry,
         view::{View, ViewId},
     },
-    ChangeSet, ChangeSetId, WorkspacePk, WsEvent,
 };
 use si_frontend_types::RawGeometry;
 

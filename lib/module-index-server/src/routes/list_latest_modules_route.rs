@@ -1,6 +1,6 @@
 use axum::{
-    response::{IntoResponse, Response},
     Json,
+    response::{IntoResponse, Response},
 };
 use hyper::StatusCode;
 use module_index_types::ListLatestModulesResponse;

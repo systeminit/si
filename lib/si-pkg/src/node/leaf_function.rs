@@ -4,13 +4,13 @@ use std::{
 };
 
 use object_tree::{
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, GraphError, NodeChild,
-    NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes, read_key_value_line,
+    read_key_value_line_opt, write_key_value_line,
 };
 
 use crate::{LeafFunctionSpec, LeafInputLocation, LeafKind};
 
-use super::{read_common_fields, write_common_fields, PkgNode};
+use super::{PkgNode, read_common_fields, write_common_fields};
 
 const FUNC_UNIQUE_ID_STR: &str = "func_unique_id";
 const LEAF_KIND_STR: &str = "leaf_kind";

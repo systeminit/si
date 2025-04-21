@@ -3,7 +3,7 @@ use dal::diagram::view::View;
 use dal::{Component, DalContext};
 use dal_test::expected::ExpectComponent;
 use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::{test, Result};
+use dal_test::{Result, test};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 

@@ -1,5 +1,5 @@
 use module_index_types::{LatestModuleResponse, ModuleDetailsResponse};
-use sea_orm::{entity::prelude::*, sea_query, TryGetError};
+use sea_orm::{TryGetError, entity::prelude::*, sea_query};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 

@@ -1,6 +1,7 @@
 use std::{borrow::Borrow, sync::Arc, time::Duration};
 
 use async_nats::{
+    HeaderMap, HeaderValue,
     header::{self, IntoHeaderName, IntoHeaderValue},
     jetstream::{
         account::Account,
@@ -14,10 +15,9 @@ use async_nats::{
         stream::{Config, ConsumerError, DeleteStatus, Info, Stream},
     },
     subject::ToSubject,
-    HeaderMap, HeaderValue,
 };
 use bytes::Bytes;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use telemetry::prelude::*;
 
 use crate::{Client, ConnectionMetadata};

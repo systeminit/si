@@ -3,21 +3,20 @@
 #![allow(clippy::expect_used)]
 
 use crate::helpers::ChangeSetTestHelpers;
+use dal::FuncId;
 use dal::component::socket::ComponentInputSocket;
 use dal::diagram::geometry::{Geometry, RawGeometry};
 use dal::diagram::view::{View, ViewId};
 use dal::func::authoring::FuncAuthoringClient;
 use dal::management::prototype::{ManagementPrototype, ManagementPrototypeError};
 use dal::management::{ManagementFuncReturn, ManagementOperator};
-use dal::FuncId;
 use dal::{
-    self,
+    self, AttributeValue, AttributeValueId, ChangeSetId, Component, ComponentId, ComponentType,
+    DalContext, InputSocket, InputSocketId, OutputSocket, OutputSocketId, PropId, Schema, SchemaId,
+    SchemaVariant, SchemaVariantId,
     prop::{Prop, PropPath},
     property_editor::values::PropertyEditorValues,
     schema::variant::authoring::VariantAuthoringClient,
-    AttributeValue, AttributeValueId, ChangeSetId, Component, ComponentId, ComponentType,
-    DalContext, InputSocket, InputSocketId, OutputSocket, OutputSocketId, PropId, Schema, SchemaId,
-    SchemaVariant, SchemaVariantId,
 };
 use derive_more::{AsMut, AsRef, Deref, From, Into};
 use serde_json::Value;

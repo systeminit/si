@@ -4,14 +4,14 @@ use std::collections::{HashMap, HashSet};
 use telemetry::prelude::*;
 
 use crate::{
+    EdgeWeight,
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::{
-            deprecated::DeprecatedWorkspaceSnapshotGraphV1, LineageId, WorkspaceSnapshotGraphV2,
+            LineageId, WorkspaceSnapshotGraphV2, deprecated::DeprecatedWorkspaceSnapshotGraphV1,
         },
         node_weight::NodeWeight,
     },
-    EdgeWeight,
 };
 
 use super::SnapshotGraphMigratorResult;

@@ -22,24 +22,24 @@ use std::{
 use console_subscriber::ConsoleLayer;
 use derive_builder::Builder;
 use opentelemetry_sdk::{
+    Resource,
     metrics::SdkMeterProvider,
     propagation::TraceContextPropagator,
     resource::EnvResourceDetector,
     runtime,
     trace::{self, Config, Tracer},
-    Resource,
 };
 use opentelemetry_semantic_conventions::resource;
 use telemetry::{
+    TelemetryCommand, TracingLevel, Verbosity,
     opentelemetry::{
+        KeyValue,
         global::{self},
         metrics::MetricsError,
         trace::{TraceError, TracerProvider},
-        KeyValue,
     },
     prelude::*,
     tracing::Subscriber,
-    TelemetryCommand, TracingLevel, Verbosity,
 };
 use thiserror::Error;
 use tokio::{
@@ -51,12 +51,12 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::Metadata;
 use tracing_opentelemetry::MetricsLayer;
 use tracing_subscriber::{
+    EnvFilter, Layer, Registry,
     filter::{FilterExt, ParseError},
     fmt::format::FmtSpan,
     layer::{Filter, SubscriberExt},
     reload,
     util::{SubscriberInitExt, TryInitError},
-    EnvFilter, Layer, Registry,
 };
 
 pub use telemetry::tracing;

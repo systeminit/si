@@ -1,5 +1,5 @@
 use dal::action::prototype::ActionKind;
-use dal::pkg::{import_pkg_from_pkg, ImportOptions};
+use dal::pkg::{ImportOptions, import_pkg_from_pkg};
 use dal::prop::{PropPath, SECRET_KIND_WIDGET_OPTION_LABEL};
 use dal::{BuiltinsResult, DalContext, PropKind, SchemaId};
 use si_pkg::{
@@ -10,8 +10,8 @@ use si_pkg::{
 };
 use si_pkg::{SchemaSpecData, SocketSpecArity};
 
-use crate::test_exclusive_schemas::{build_action_func, create_identity_func};
 use crate::test_exclusive_schemas::{PKG_CREATED_BY, PKG_VERSION};
+use crate::test_exclusive_schemas::{build_action_func, create_identity_func};
 
 pub(crate) async fn migrate_test_exclusive_schema_fallout(
     ctx: &DalContext,
@@ -199,7 +199,7 @@ fn assemble_dummy_secret_socket_and_prop(
             SocketSpecData::builder()
                 .name(secret_definition_name)
                 .connection_annotations(serde_json::to_string(&vec![
-                    secret_definition_name.to_lowercase()
+                    secret_definition_name.to_lowercase(),
                 ])?)
                 .kind(SocketSpecKind::Input)
                 .arity(SocketSpecArity::One)

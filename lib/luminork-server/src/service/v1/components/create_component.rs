@@ -8,7 +8,7 @@ use si_id::ViewId;
 use std::collections::HashMap;
 use utoipa::{self, ToSchema};
 
-use crate::extract::{change_set::ChangeSetDalContext, PosthogEventTracker};
+use crate::extract::{PosthogEventTracker, change_set::ChangeSetDalContext};
 
 use crate::service::v1::ComponentsError;
 

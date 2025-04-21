@@ -27,7 +27,7 @@
 
 use std::env;
 
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use rand::{Rng, distributions::Alphanumeric, thread_rng};
 use si_data_spicedb::SpiceDbConfig;
 
 const ENV_VAR_SPICEDB_URL: &str = "SI_TEST_SPICEDB_URL";

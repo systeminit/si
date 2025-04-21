@@ -5,7 +5,7 @@ use si_events::audit_log::AuditLogKind;
 
 use crate::{SecretError, SecretResult};
 use sdf_core::force_change_set_response::ForceChangeSetResponse;
-use sdf_extract::{v1::AccessBuilder, HandlerContext};
+use sdf_extract::{HandlerContext, v1::AccessBuilder};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

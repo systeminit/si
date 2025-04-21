@@ -1,13 +1,13 @@
-use axum::{extract::Path, Json};
+use axum::{Json, extract::Path};
 use dal::{
-    management::prototype::{ManagementPrototype, ManagementPrototypeId},
     ChangeSetId, ComponentId, WorkspacePk,
+    management::prototype::{ManagementPrototype, ManagementPrototypeId},
 };
 
 use crate::{
     extract::HandlerContext,
-    service::v2::func::get_func_run::{get_func_run_view, FuncRunView},
     service::v2::AccessBuilder,
+    service::v2::func::get_func_run::{FuncRunView, get_func_run_view},
 };
 
 use super::ManagementApiResult;

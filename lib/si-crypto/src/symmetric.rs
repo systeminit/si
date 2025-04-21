@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, fs::File, io::Cursor, path::PathBuf, sync::Arc};
 
-use base64::{engine::general_purpose, Engine};
+use base64::{Engine, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use si_hash::Hash;
 use si_std::{CanonicalFile, CanonicalFileError};

@@ -2,18 +2,18 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use dashmap::DashMap;
 use reqwest::StatusCode;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use thiserror::Error;
 use tokio::time::Instant;
 
 use si_frontend_types::{
+    FuncKind,
     fs::{
         AssetFuncs, Binding, Bindings, CategoryFilter, ChangeSet, CreateChangeSetRequest,
         CreateChangeSetResponse, CreateFuncRequest, CreateSchemaRequest, CreateSchemaResponse,
         FsApiError, Func, HydratedChangeSet, IdentityBindings, ListChangeSetsResponse, Schema,
         SchemaAttributes, SetFuncBindingsRequest, SetFuncCodeRequest, VariantQuery,
     },
-    FuncKind,
 };
 use si_id::{ChangeSetId, FuncId, SchemaId, WorkspaceId};
 
@@ -205,11 +205,10 @@ impl SiFsClient {
         }
 
         let mut request_builder = self.client.get(url.clone()).bearer_auth(&self.token);
-        request_builder = match query.clone() { Some(query) => {
-            request_builder.query(&query)
-        } _ => {
-            request_builder
-        }};
+        request_builder = match query.clone() {
+            Some(query) => request_builder.query(&query),
+            _ => request_builder,
+        };
 
         let response = request_builder.send().await?;
         if response.status() == StatusCode::OK {
@@ -248,11 +247,10 @@ impl SiFsClient {
 
         let start = Instant::now();
         let mut request_builder = self.client.get(url.clone()).bearer_auth(&self.token);
-        request_builder = match query.clone() { Some(query) => {
-            request_builder.query(&query)
-        } _ => {
-            request_builder
-        }};
+        request_builder = match query.clone() {
+            Some(query) => request_builder.query(&query),
+            _ => request_builder,
+        };
 
         let response = request_builder.send().await?;
         if response.status() == StatusCode::OK {

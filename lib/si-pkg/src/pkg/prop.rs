@@ -5,8 +5,8 @@ use url::Url;
 use super::{PkgResult, SiPkgAttrFuncInput, SiPkgError, SiPkgMapKeyFunc, Source};
 
 use crate::{
-    node::{PkgNode, PropChildNode, PropNode, PropNodeData},
     PropSpecWidgetKind,
+    node::{PkgNode, PropChildNode, PropNode, PropNodeData},
 };
 
 #[derive(Clone, Debug)]

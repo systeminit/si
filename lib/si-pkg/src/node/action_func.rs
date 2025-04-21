@@ -4,13 +4,13 @@ use std::{
 };
 
 use object_tree::{
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
-    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes, read_key_value_line,
+    read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
 };
 
 use crate::{ActionFuncSpec, ActionFuncSpecKind};
 
-use super::{read_common_fields, write_common_fields, PkgNode};
+use super::{PkgNode, read_common_fields, write_common_fields};
 
 const KEY_KIND_STR: &str = "kind";
 const KEY_FUNC_UNIQUE_ID_STR: &str = "func_unique_id";

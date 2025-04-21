@@ -4,13 +4,15 @@ use std::{
 };
 
 use axum::{
+    Json, Router,
     extract::{Path, Query},
     middleware,
     response::{IntoResponse, Response},
     routing::{get, post},
-    Json, Router,
 };
 use dal::{
+    ChangeSet, ChangeSetId, DalContext, FuncId, Schema, SchemaId, SchemaVariant, Visibility,
+    WsEvent, WsEventError,
     attribute::prototype::argument::AttributePrototypeArgumentError,
     cached_module::CachedModule,
     func::{
@@ -27,8 +29,6 @@ use dal::{
     slow_rt::{self, SlowRuntimeError},
     socket::{input::InputSocketError, output::OutputSocketError},
     workspace::WorkspaceId,
-    ChangeSet, ChangeSetId, DalContext, FuncId, Schema, SchemaId, SchemaVariant, Visibility,
-    WsEvent, WsEventError,
 };
 use hyper::StatusCode;
 use si_events::audit_log::AuditLogKind;
@@ -41,14 +41,14 @@ use si_id::FuncArgumentId;
 use thiserror::Error;
 
 use crate::extract::{
+    HandlerContext, PosthogEventTracker,
     change_set::TargetChangeSetIdFromPath,
     workspace::{AuthorizedForAutomationRole, TargetWorkspaceIdFromPath, WorkspaceDalContext},
-    HandlerContext, PosthogEventTracker,
 };
 
 use super::{
-    func::{get_code_response, FuncAPIError},
     AccessBuilder, AppState,
+    func::{FuncAPIError, get_code_response},
 };
 
 pub mod bindings;

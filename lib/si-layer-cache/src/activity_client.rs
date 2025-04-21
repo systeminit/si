@@ -1,17 +1,17 @@
 use std::{sync::Arc, time::Duration};
 
-use si_data_nats::{jetstream::Context, NatsClient};
+use si_data_nats::{NatsClient, jetstream::Context};
 use telemetry::prelude::*;
 use tokio::{pin, sync::mpsc::UnboundedReceiver};
-use tokio_stream::{wrappers::BroadcastStream, StreamExt};
+use tokio_stream::{StreamExt, wrappers::BroadcastStream};
 use tokio_util::sync::CancellationToken;
 use ulid::Ulid;
 
 use crate::{
     activities::{
-        rebase::ActivityRebase, test::ActivityIntegrationTest, Activity, ActivityId,
-        ActivityMultiplexer, ActivityPayloadDiscriminants, ActivityPublisher,
-        ActivityRebaseRequest, RebaserRequestWorkQueue,
+        Activity, ActivityId, ActivityMultiplexer, ActivityPayloadDiscriminants, ActivityPublisher,
+        ActivityRebaseRequest, RebaserRequestWorkQueue, rebase::ActivityRebase,
+        test::ActivityIntegrationTest,
     },
     error::{LayerDbError, LayerDbResult},
 };
@@ -129,7 +129,7 @@ impl ActivityClient {
                     Err(_) => {
                         return Err(LayerDbError::ActivityWaitLagged(
                             wait_for_parent_activity_id,
-                        ))
+                        ));
                     }
                 },
                 Err(elapsed) => {

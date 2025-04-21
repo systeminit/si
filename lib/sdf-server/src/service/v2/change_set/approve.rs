@@ -1,17 +1,18 @@
 use axum::{
-    extract::{Host, OriginalUri, Path, State},
     Json,
+    extract::{Host, OriginalUri, Path, State},
 };
-use dal::{change_set::approval::ChangeSetApproval, ChangeSet, ChangeSetId, WorkspacePk, WsEvent};
+use dal::{ChangeSet, ChangeSetId, WorkspacePk, WsEvent, change_set::approval::ChangeSetApproval};
 use sdf_core::dal_wrapper;
 use serde::Deserialize;
-use si_events::{audit_log::AuditLogKind, ChangeSetApprovalStatus};
+use si_events::{ChangeSetApprovalStatus, audit_log::AuditLogKind};
 
-use super::{post_to_webhook, ChangeSetAPIError, Error, Result};
+use super::{ChangeSetAPIError, Error, Result, post_to_webhook};
 use crate::{
+    AppState,
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
-    track, AppState,
+    track,
 };
 
 #[derive(Debug, Deserialize)]

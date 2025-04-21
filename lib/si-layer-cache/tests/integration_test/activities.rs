@@ -5,8 +5,8 @@ use std::sync::Arc;
 use futures::StreamExt;
 use si_events::{Actor, ChangeSetId, Tenancy, WorkspacePk};
 use si_layer_cache::{
-    activities::ActivityPayloadDiscriminants, event::LayeredEventMetadata,
-    hybrid_cache::CacheConfig, LayerDb,
+    LayerDb, activities::ActivityPayloadDiscriminants, event::LayeredEventMetadata,
+    hybrid_cache::CacheConfig,
 };
 use tokio_util::sync::CancellationToken;
 

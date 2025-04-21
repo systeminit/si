@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use si_events::ChangeSetId;
 use si_events::FuncRunId;
 use strum::{AsRefStr, Display, EnumIter, EnumString};

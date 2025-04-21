@@ -1,7 +1,7 @@
 use core::fmt;
 use std::{
     convert::Infallible,
-    future::{ready, Future, Ready},
+    future::{Future, Ready, ready},
     marker::PhantomData,
     pin::Pin,
 };

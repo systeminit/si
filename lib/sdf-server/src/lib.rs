@@ -53,8 +53,8 @@ pub(crate) use self::{
     tracking::{track, track_no_ctx},
 };
 pub use dal::{
-    feature_flags::{FeatureFlag, FeatureFlagService},
     JobQueueProcessor, NatsProcessor, ServicesContext,
+    feature_flags::{FeatureFlag, FeatureFlagService},
 };
 
 #[remain::sorted]

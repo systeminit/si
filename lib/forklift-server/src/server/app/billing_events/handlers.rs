@@ -1,9 +1,9 @@
 use billing_events::BillingEvent;
 use data_warehouse_stream_client::DataWarehouseStreamClientError;
 use naxum::{
+    Json,
     extract::State,
     response::{IntoResponse, Response},
-    Json,
 };
 use si_data_nats::Subject;
 use telemetry::prelude::*;

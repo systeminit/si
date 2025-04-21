@@ -2,7 +2,7 @@ use std::{env, error, str, time::Duration};
 
 use async_nats::jetstream;
 use naxum::{
-    extract::State, handler::Handler, middleware::trace::TraceLayer, BoxError, Message, ServiceExt,
+    BoxError, Message, ServiceExt, extract::State, handler::Handler, middleware::trace::TraceLayer,
 };
 use tokio::{
     signal::unix::{self, SignalKind},
@@ -12,10 +12,10 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tower::ServiceBuilder;
 use tracing::{error, info};
 use tracing_subscriber::{
+    EnvFilter, Registry,
     fmt::{self, format::FmtSpan},
     layer::SubscriberExt as _,
     util::SubscriberInitExt as _,
-    EnvFilter, Registry,
 };
 
 const TRACING_LOG_ENV_VAR: &str = "SI_LOG";

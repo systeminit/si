@@ -5,8 +5,8 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    func::{FuncSpecBackendKind, FuncSpecBackendResponseType},
     AttrFuncInputSpec, SpecError,
+    func::{FuncSpecBackendKind, FuncSpecBackendResponseType},
 };
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

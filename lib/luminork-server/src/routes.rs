@@ -1,14 +1,14 @@
 use axum::{
+    Router,
     extract::State,
     http::{Request, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Json, Response},
     routing::get,
-    Router,
 };
-use hyper::header;
 use hyper::Method;
-use serde_json::{json, Value};
+use hyper::header;
+use serde_json::{Value, json};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use std::time::Duration;
@@ -22,8 +22,8 @@ use utoipa::{OpenApi, ToSchema};
 
 use crate::service::v1;
 use crate::{
-    app_state::{AppState, ApplicationRuntimeMode},
     ServerError,
+    app_state::{AppState, ApplicationRuntimeMode},
 };
 
 const MAINTENANCE_MODE_MESSAGE: &str = concat!(

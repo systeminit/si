@@ -19,7 +19,7 @@ use std::{
 
 use async_trait::async_trait;
 use thiserror::Error;
-use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio::sync::{Mutex, mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 
 pub use opentelemetry::{self, trace::SpanKind};
@@ -28,12 +28,12 @@ use tracing::warn;
 
 pub mod prelude {
     pub use super::{
-        current_span_for_instrument_at, MessagingOperation, SpanExt, SpanKind, SpanKindExt,
+        MessagingOperation, SpanExt, SpanKind, SpanKindExt, current_span_for_instrument_at,
     };
     pub use tracing::{
-        self, debug, debug_span, enabled, error, error_span, event, event_enabled, field::Empty,
-        info, info_span, instrument, span, span_enabled, trace, trace_span, warn, warn_span,
-        Id as SpanId, Instrument, Level, Span,
+        self, Id as SpanId, Instrument, Level, Span, debug, debug_span, enabled, error, error_span,
+        event, event_enabled, field::Empty, info, info_span, instrument, span, span_enabled, trace,
+        trace_span, warn, warn_span,
     };
 }
 
@@ -261,9 +261,7 @@ impl ApplicationTelemetryClient {
         let tracing_level = guard.deref_mut();
 
         match tracing_level {
-            TracingLevel::Verbosity {
-                verbosity, ..
-            } => {
+            TracingLevel::Verbosity { verbosity, .. } => {
                 *verbosity = updated;
             }
             TracingLevel::Custom(_) => {

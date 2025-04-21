@@ -1,13 +1,13 @@
 use crate::{
+    NodeWeightDiscriminants, Timestamp,
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,
         node_weight::traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
     },
-    NodeWeightDiscriminants, Timestamp,
 };
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ManagementPrototypeNodeWeightV1 {

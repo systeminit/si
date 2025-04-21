@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use axum::{extract::Path, Json};
+use axum::{Json, extract::Path};
 
 use dal::{ChangeSet, ChangeSetId, WorkspacePk};
 use si_frontend_types::{index::MvIndex, reference::ReferenceKind};

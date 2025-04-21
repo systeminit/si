@@ -4,7 +4,7 @@ use axum::Json;
 use dal::{AttributeValueId, ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
-use sdf_extract::{v1::AccessBuilder, HandlerContext};
+use sdf_extract::{HandlerContext, v1::AccessBuilder};
 
 use super::ComponentResult;
 

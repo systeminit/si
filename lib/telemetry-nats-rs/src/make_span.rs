@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use naxum::{
-    extract::MatchedSubject, middleware::trace::MakeSpan, Extensions, HeadRef, Message, MessageHead,
+    Extensions, HeadRef, Message, MessageHead, extract::MatchedSubject, middleware::trace::MakeSpan,
 };
-use si_data_nats::{header, ConnectionMetadata};
+use si_data_nats::{ConnectionMetadata, header};
 use telemetry::prelude::*;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 

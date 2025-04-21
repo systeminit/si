@@ -1,9 +1,9 @@
 use axum::{
+    Json, Router,
     extract::Path,
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::post,
-    Json, Router,
 };
 use sdf_core::api_error::ApiError;
 use serde::{Deserialize, Serialize};
@@ -11,17 +11,17 @@ use si_events::audit_log::AuditLogKind;
 use thiserror::Error;
 use veritech_client::ManagementFuncStatus;
 
-use crate::extract::{change_set::ChangeSetDalContext, PosthogEventTracker};
 use crate::AppState;
+use crate::extract::{PosthogEventTracker, change_set::ChangeSetDalContext};
 
 use dal::{
+    ComponentId, Func, FuncError, WsEvent,
     diagram::view::ViewId,
     management::{
-        prototype::{ManagementPrototype, ManagementPrototypeId},
         ManagementFuncReturn, ManagementOperator,
+        prototype::{ManagementPrototype, ManagementPrototypeId},
     },
     schema::variant::authoring::VariantAuthoringError,
-    ComponentId, Func, FuncError, WsEvent,
 };
 
 // /api/public/workspaces/:workspace_id/change-sets/:change_set_id/components

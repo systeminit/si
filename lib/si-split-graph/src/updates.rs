@@ -9,9 +9,9 @@ use si_events::workspace_snapshot::Change;
 use strum::EnumDiscriminants;
 
 use crate::{
-    subgraph::{SubGraph, SubGraphNodeIndex},
     CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraphEdgeWeight, SplitGraphEdgeWeightKind,
     SplitGraphNodeId, SplitGraphNodeWeight,
+    subgraph::{SubGraph, SubGraphNodeIndex},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, EnumDiscriminants)]

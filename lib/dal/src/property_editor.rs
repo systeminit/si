@@ -6,14 +6,14 @@ use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::value_source::ValueSourceError;
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::attribute::prototype::AttributePrototypeError;
+use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
+use crate::attribute::prototype::argument::value_source::ValueSourceError;
 use crate::attribute::value::AttributeValueError;
 use crate::prop::PropError;
 use crate::validation::ValidationError;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::{
     AttributeValueId, ComponentError, PropId, SchemaVariantError, SchemaVariantId, SecretError,
     StandardModelError, TransactionsError,

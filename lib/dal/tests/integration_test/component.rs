@@ -1,6 +1,6 @@
 use dal::attribute::value::DependentValueGraph;
-use dal::diagram::view::View;
 use dal::diagram::Diagram;
+use dal::diagram::view::View;
 use dal::prop::{Prop, PropPath};
 use dal::property_editor::values::PropertyEditorValues;
 use dal::workspace_snapshot::DependentValueRoot;
@@ -8,10 +8,10 @@ use dal::{AttributeValue, AttributeValueId};
 use dal::{Component, DalContext, Schema, SchemaVariant};
 use dal_test::expected::{self, ExpectComponent};
 use dal_test::helpers::{
-    create_component_for_default_schema_name_in_default_view,
-    create_component_for_schema_variant_on_default_view, ChangeSetTestHelpers,
+    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view,
+    create_component_for_schema_variant_on_default_view,
 };
-use dal_test::{test, Result};
+use dal_test::{Result, test};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
@@ -277,11 +277,12 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
         "update graph has the value we aren't setting but which depends on the value we are setting"
     );
 
-    assert!(update_graph
-                .direct_dependencies_of(naming_and_necessity_value_id)
-                .iter()
-                .any(|&id| id == rigid_designator_value_id),
-            "update graph declares that `naming_and_necessity` value depends on `rigid_designator` value"
+    assert!(
+        update_graph
+            .direct_dependencies_of(naming_and_necessity_value_id)
+            .iter()
+            .any(|&id| id == rigid_designator_value_id),
+        "update graph declares that `naming_and_necessity` value depends on `rigid_designator` value"
     );
 
     let rigid_designation = serde_json::json!("hesperus");

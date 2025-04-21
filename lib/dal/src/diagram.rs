@@ -14,17 +14,21 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::approval_requirement::ApprovalRequirementError;
-use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::WorkspaceSnapshotSelector;
+use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
+    AttributePrototypeId, ChangeSetError, Component, ComponentId, DalContext,
+    EdgeWeightKindDiscriminants, HelperError, HistoryEventError, InputSocketId,
+    NodeWeightDiscriminants, OutputSocketId, SchemaId, SchemaVariantId, StandardModelError,
+    TransactionsError, Workspace, WorkspaceError, WorkspaceSnapshot,
     attribute::{
         prototype::argument::{AttributePrototypeArgumentError, AttributePrototypeArgumentId},
         value::AttributeValueError,
     },
     change_status::ChangeStatus,
     component::{
-        inferred_connection_graph::InferredConnectionGraphError, ComponentError, ComponentResult,
-        Connection, InferredConnection,
+        ComponentError, ComponentResult, Connection, InferredConnection,
+        inferred_connection_graph::InferredConnectionGraphError,
     },
     diagram::{
         geometry::{Geometry, GeometryId, GeometryRepresents},
@@ -33,13 +37,9 @@ use crate::{
     schema::variant::SchemaVariantError,
     socket::{input::InputSocketError, output::OutputSocketError},
     workspace_snapshot::{
-        node_weight::{category_node_weight::CategoryNodeKind, NodeWeightError},
         WorkspaceSnapshotError,
+        node_weight::{NodeWeightError, category_node_weight::CategoryNodeKind},
     },
-    AttributePrototypeId, ChangeSetError, Component, ComponentId, DalContext,
-    EdgeWeightKindDiscriminants, HelperError, HistoryEventError, InputSocketId,
-    NodeWeightDiscriminants, OutputSocketId, SchemaId, SchemaVariantId, StandardModelError,
-    TransactionsError, Workspace, WorkspaceError, WorkspaceSnapshot,
 };
 use crate::{FuncError, SchemaVariant};
 use si_frontend_types::{DiagramComponentView, DiagramSocket};
@@ -72,9 +72,13 @@ pub enum DiagramError {
     DeletingLastGeometryForComponent(ViewId, ComponentId),
     #[error("deletion timestamp not found")]
     DeletionTimeStamp,
-    #[error("destination attribute prototype not found for inter component attribute prototype argument: {0}")]
+    #[error(
+        "destination attribute prototype not found for inter component attribute prototype argument: {0}"
+    )]
     DestinationAttributePrototypeNotFound(AttributePrototypeArgumentId),
-    #[error("destination input socket not found for attribute prototype ({0}) and inter component attribute prototype argument ({1})")]
+    #[error(
+        "destination input socket not found for attribute prototype ({0}) and inter component attribute prototype argument ({1})"
+    )]
     DestinationInputSocketNotFound(AttributePrototypeId, AttributePrototypeArgumentId),
     #[error("more then one diagram object found for view {0}")]
     DiagramObjectMoreThanOneForView(ViewId),

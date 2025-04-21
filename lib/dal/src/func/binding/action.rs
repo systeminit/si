@@ -2,11 +2,11 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use crate::{
+    ActionPrototypeId, DalContext, Func, FuncId, Prop, SchemaVariant, SchemaVariantError,
+    SchemaVariantId,
     action::prototype::{ActionKind, ActionPrototype},
     func::binding::FuncBindingError,
     prop::PropPath,
-    ActionPrototypeId, DalContext, Func, FuncId, Prop, SchemaVariant, SchemaVariantError,
-    SchemaVariantId,
 };
 
 use super::{EventualParent, FuncBinding, FuncBindingResult};

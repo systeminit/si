@@ -12,7 +12,7 @@ mod simple_load;
 pub use config::ValueKind;
 pub use find::find;
 #[cfg(feature = "layered")]
-pub use layered_load::{layered_load, ConfigMap};
+pub use layered_load::{ConfigMap, layered_load};
 #[cfg(feature = "load-str")]
 pub use simple_load::load_from_str;
 #[cfg(feature = "load-sync")]

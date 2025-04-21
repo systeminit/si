@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use crate::{
+    DalContext, Func, FuncId, Prop, Schema, SchemaVariant, SchemaVariantId, SocketArity,
     cached_module::CachedModule,
     management::prototype::{ManagementPrototype, ManagementPrototypeId},
-    DalContext, Func, FuncId, Prop, Schema, SchemaVariant, SchemaVariantId, SocketArity,
 };
 
 use super::{EventualParent, FuncBinding, FuncBindingResult};

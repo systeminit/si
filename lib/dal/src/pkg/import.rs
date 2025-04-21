@@ -13,26 +13,26 @@ use std::{collections::HashMap, path::Path};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
+use crate::SocketKind;
 use crate::attribute::prototype::argument::{
-    value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentId,
+    AttributePrototypeArgument, AttributePrototypeArgumentId, value_source::ValueSource,
 };
 use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
-use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::FuncKind;
+use crate::func::intrinsics::IntrinsicFunc;
 use crate::management::prototype::ManagementPrototype;
 use crate::module::{Module, ModuleId};
 use crate::schema::variant::SchemaVariantJson;
 use crate::socket::connection_annotation::ConnectionAnnotation;
-use crate::SocketKind;
+use crate::{AttributePrototype, AttributePrototypeId};
 use crate::{
+    DalContext, EdgeWeightKind, Func, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop,
+    PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
     action::prototype::ActionPrototype,
     func::argument::FuncArgument,
     prop::PropPath,
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    DalContext, EdgeWeightKind, Func, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop,
-    PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
 };
-use crate::{AttributePrototype, AttributePrototypeId};
 
 use super::{PkgError, PkgResult};
 
@@ -895,7 +895,7 @@ async fn import_action_func(
             if let Some(unique_id) = action_func_spec.unique_id() {
                 match thing_map.get(&unique_id.to_owned()) {
                     Some(Thing::ActionPrototype(_prototype)) => {
-                        return Err(PkgError::WorkspaceExportNotSupported())
+                        return Err(PkgError::WorkspaceExportNotSupported());
                     }
                     _ => {
                         if action_func_spec.deleted() {
@@ -943,7 +943,7 @@ async fn import_auth_func(
             if let Some(unique_id) = func_spec.unique_id() {
                 match thing_map.get(&unique_id.to_owned()) {
                     Some(Thing::AuthPrototype(_prototype)) => {
-                        return Err(PkgError::WorkspaceExportNotSupported())
+                        return Err(PkgError::WorkspaceExportNotSupported());
                     }
                     _ => {
                         if func_spec.deleted() {
@@ -1483,7 +1483,7 @@ async fn import_attr_func_for_prop(
             return Err(PkgError::MissingFuncUniqueId(
                 func_unique_id.to_string(),
                 "error found while importing attribute func for prop",
-            ))
+            ));
         }
     }
 
@@ -1515,7 +1515,7 @@ async fn import_attr_func_for_output_socket(
             return Err(PkgError::MissingFuncUniqueId(
                 func_unique_id.to_string(),
                 "import attribute func for output socket",
-            ))
+            ));
         }
     }
 
@@ -1828,7 +1828,9 @@ pub async fn attach_resource_payload_to_value(
     {
         func_id
     } else {
-        trace!("installing the intrinsic version of 'si:resourcePayloadToValue' (neither found nor was specified in the package spec)");
+        trace!(
+            "installing the intrinsic version of 'si:resourcePayloadToValue' (neither found nor was specified in the package spec)"
+        );
 
         // If we did not find it by this point, the package did not specify it.
         let unsafe_to_install_intrinsic_funcs_pkg =

@@ -3,16 +3,17 @@ use std::{result, str::Utf8Error};
 use bytes::Bytes;
 use kv_history::{History, Keys};
 use si_data_nats::{
+    NatsClient, Subject,
     async_nats::{
         self,
         jetstream::{
-            consumer::{push::OrderedConfig, StreamError},
+            consumer::{StreamError, push::OrderedConfig},
             context::RequestError,
             kv::{self, Watch},
             stream::ConsumerError,
         },
     },
-    jetstream, NatsClient, Subject,
+    jetstream,
 };
 use si_frontend_types::{index::MvIndex, object::FrontendObject, reference::ReferenceKind};
 use si_id::{ChangeSetId, WorkspacePk};
@@ -43,7 +44,9 @@ pub enum Error {
     NatsRequest(#[from] RequestError),
     #[error("object kind was expected to be 'MvIndex' but was '{0}'")]
     NotIndexKind(String),
-    #[error("object listed in index not found: workspace: {workspace_id}, change set: {change_set_id}, kind: {kind}, id: {id}")]
+    #[error(
+        "object listed in index not found: workspace: {workspace_id}, change set: {change_set_id}, kind: {kind}, id: {id}"
+    )]
     ObjectNotFoundFromIndex {
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,

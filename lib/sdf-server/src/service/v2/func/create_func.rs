@@ -1,24 +1,24 @@
 use axum::{
-    extract::{Host, OriginalUri, Path},
     Json,
+    extract::{Host, OriginalUri, Path},
 };
 use dal::{
+    ChangeSet, ChangeSetId, Component, SchemaVariant, WorkspacePk, WsEvent,
     func::{
+        FuncKind,
         authoring::FuncAuthoringClient,
         binding::{
             AttributeArgumentBinding, AttributeFuncArgumentSource, AttributeFuncDestination,
             EventualParent,
         },
-        FuncKind,
     },
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    ChangeSet, ChangeSetId, Component, SchemaVariant, WorkspacePk, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::{self as frontend_types, FuncBinding, FuncCode, FuncSummary};
 
-use super::{get_code_response, FuncAPIError, FuncAPIResult};
+use super::{FuncAPIError, FuncAPIResult, get_code_response};
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,
@@ -101,9 +101,8 @@ pub async fn create_func(
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
             }
         }
-        FuncKind::Attribute => {
-            match request.binding.clone()
-            { FuncBinding::Attribute {
+        FuncKind::Attribute => match request.binding.clone() {
+            FuncBinding::Attribute {
                 prop_id,
                 output_socket_id,
                 argument_bindings,
@@ -198,13 +197,13 @@ pub async fn create_func(
                 )
                 .await?;
                 func
-            } _ => {
+            }
+            _ => {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
-            }}
-        }
-        FuncKind::Authentication => {
-            match request.binding.clone()
-            { FuncBinding::Authentication {
+            }
+        },
+        FuncKind::Authentication => match request.binding.clone() {
+            FuncBinding::Authentication {
                 schema_variant_id,
                 func_id: _,
             } => {
@@ -232,13 +231,13 @@ pub async fn create_func(
                 )
                 .await?;
                 func
-            } _ => {
+            }
+            _ => {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
-            }}
-        }
-        FuncKind::CodeGeneration => {
-            match request.binding.clone()
-            { FuncBinding::CodeGeneration {
+            }
+        },
+        FuncKind::CodeGeneration => match request.binding.clone() {
+            FuncBinding::CodeGeneration {
                 schema_variant_id: Some(schema_variant_id),
                 inputs,
                 ..
@@ -280,13 +279,13 @@ pub async fn create_func(
                 )
                 .await?;
                 func
-            } _ => {
+            }
+            _ => {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
-            }}
-        }
-        FuncKind::Qualification => {
-            match request.binding.clone()
-            { FuncBinding::Qualification {
+            }
+        },
+        FuncKind::Qualification => match request.binding.clone() {
+            FuncBinding::Qualification {
                 schema_variant_id: Some(schema_variant_id),
                 inputs,
                 ..
@@ -329,13 +328,13 @@ pub async fn create_func(
                 )
                 .await?;
                 func
-            } _ => {
+            }
+            _ => {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
-            }}
-        }
-        FuncKind::Management => {
-            match request.binding.clone()
-            { FuncBinding::Management {
+            }
+        },
+        FuncKind::Management => match request.binding.clone() {
+            FuncBinding::Management {
                 schema_variant_id: Some(schema_variant_id),
                 ..
             } => {
@@ -369,12 +368,13 @@ pub async fn create_func(
                 )
                 .await?;
                 func
-            } _ => {
+            }
+            _ => {
                 return Err(FuncAPIError::WrongFunctionKindForBinding);
-            }}
-        }
+            }
+        },
         FuncKind::Unknown | FuncKind::SchemaVariantDefinition | FuncKind::Intrinsic => {
-            return Err(FuncAPIError::WrongFunctionKindForBinding)
+            return Err(FuncAPIError::WrongFunctionKindForBinding);
         }
     };
 

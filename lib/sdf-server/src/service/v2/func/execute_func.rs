@@ -1,6 +1,6 @@
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{
-    func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk,
+    ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, func::authoring::FuncAuthoringClient,
 };
 use si_events::audit_log::AuditLogKind;
 

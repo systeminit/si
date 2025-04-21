@@ -6,7 +6,7 @@ use petgraph::Direction::Outgoing;
 use serde::{Deserialize, Serialize};
 use si_pkg::KeyOrIndex;
 use socket::{ComponentInputSocket, ComponentOutputSocket};
-use std::collections::{hash_map, HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque, hash_map};
 use std::num::{ParseFloatError, ParseIntError};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -14,7 +14,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::{ContentHash, ulid::Ulid};
 
 use crate::action::prototype::{ActionKind, ActionPrototype, ActionPrototypeError};
 use crate::action::{Action, ActionError, ActionState};
@@ -40,9 +40,9 @@ use crate::layer_db_types::{ComponentContent, ComponentContentV2};
 use crate::module::{Module, ModuleError};
 use crate::prop::{PropError, PropPath};
 use crate::qualification::QualificationError;
+use crate::schema::variant::SchemaVariantError;
 use crate::schema::variant::leaves::LeafKind;
 use crate::schema::variant::root_prop::component_type::ComponentType;
-use crate::schema::variant::SchemaVariantError;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::validation::{ValidationError, ValidationOutput};
@@ -64,11 +64,11 @@ use self::inferred_connection_graph::InferredConnectionGraphError;
 use crate::diagram::geometry::Geometry;
 use crate::diagram::view::{View, ViewId};
 use crate::{
-    implement_add_edge_to, AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId,
-    DalContext, Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket,
-    OutputSocketId, Prop, PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
-    StandardModelError, Timestamp, TransactionsError, WorkspaceError, WorkspacePk, WsEvent,
-    WsEventError, WsEventResult, WsPayload,
+    AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId, DalContext, Func, FuncError,
+    FuncId, HelperError, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropId,
+    PropKind, Schema, SchemaVariant, SchemaVariantId, StandardModelError, Timestamp,
+    TransactionsError, WorkspaceError, WorkspacePk, WsEvent, WsEventError, WsEventResult,
+    WsPayload, implement_add_edge_to,
 };
 
 pub mod code;
@@ -203,7 +203,9 @@ pub enum ComponentError {
     Serde(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
-    #[error("too many explicit connection sources ({0:?}) for component ({1}) and input socket ({2}) with an arity of one")]
+    #[error(
+        "too many explicit connection sources ({0:?}) for component ({1}) and input socket ({2}) with an arity of one"
+    )]
     TooManyExplicitConnectionSources(Vec<ComponentId>, ComponentId, InputSocketId),
     #[error(
         "too many inferred connections ({0:?}) for input socket match ({1:?}) with an arity of one"
@@ -215,7 +217,9 @@ pub enum ComponentError {
     TryLock(#[from] TryLockError),
     #[error("ulid decode error: {0}")]
     Ulid(#[from] ulid::DecodeError),
-    #[error("unexpected explicit source ({0}) and inferred source ({1}) for input socket match ({2:?}) with an arity of one")]
+    #[error(
+        "unexpected explicit source ({0}) and inferred source ({1}) for input socket match ({2:?}) with an arity of one"
+    )]
     UnexpectedExplicitAndInferredSources(ComponentId, ComponentId, ComponentInputSocket),
     #[error("validation error: {0}")]
     Validation(#[from] ValidationError),
@@ -1991,8 +1995,7 @@ impl Component {
             (source, destination) => {
                 warn!(
                     "Not creating edge; either source or destination component does not exist in current change set: {:?}, {:?}",
-                    source,
-                    destination,
+                    source, destination,
                 );
                 return Ok(None);
             }
@@ -2243,7 +2246,7 @@ impl Component {
                     return Err(AttributePrototypeArgumentError::MissingFuncArgument(
                         base_change_set_connection.attribute_prototype_argument_id,
                     )
-                    .into())
+                    .into());
                 }
             };
 

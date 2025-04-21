@@ -2,7 +2,7 @@ use axum::Json;
 use dal::PublicKey;
 
 use crate::SecretResult;
-use sdf_extract::{v1::AccessBuilder, HandlerContext};
+use sdf_extract::{HandlerContext, v1::AccessBuilder};
 
 pub type GetPublicKeyResponse = PublicKey;
 
