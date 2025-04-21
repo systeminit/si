@@ -187,7 +187,7 @@ impl DedicatedExecutor {
     pub fn spawn<T>(
         &self,
         task: T,
-    ) -> impl Future<Output = Result<T::Output, DedicatedExecutorError>>
+    ) -> impl Future<Output = Result<T::Output, DedicatedExecutorError>> + use<T>
     where
         T: Future + Send + 'static,
         T::Output: Send + 'static,

@@ -247,7 +247,7 @@ impl CorrectTransforms for OrderingNodeWeight {
         if let Some(replace_node_index) = replace_node_index {
             match updates.get_mut(replace_node_index) {
                 Some(Update::ReplaceNode {
-                    node_weight: NodeWeight::Ordering(ref mut update_ordering),
+                    node_weight: NodeWeight::Ordering(update_ordering),
                 }) => {
                     let new_order =
                         resolve_ordering(final_children, &self.order, &update_ordering.order);

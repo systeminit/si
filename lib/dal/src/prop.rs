@@ -967,13 +967,12 @@ impl Prop {
                     .await?
                     .first()
             {
-                if let Some(value) =
-                    AttributePrototypeArgument::static_value_by_id(ctx, *apa_id).await?
-                {
+                match AttributePrototypeArgument::static_value_by_id(ctx, *apa_id).await?
+                { Some(value) => {
                     Some(value.value)
-                } else {
+                } _ => {
                     None
-                }
+                }}
             } else {
                 None
             },

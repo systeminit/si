@@ -57,7 +57,7 @@ system_python_bootstrap_toolchain(
 
 system_rust_toolchain(
     name = "rust_release",
-    default_edition = "2021",
+    default_edition = "2024",
     clippy_toml = "root//:clippy.toml",
     visibility = ["PUBLIC"],
     rustc_flags = [
@@ -75,7 +75,7 @@ system_rust_toolchain(
 
 system_rust_toolchain(
     name = "rust_debug",
-    default_edition = "2021",
+    default_edition = "2024",
     clippy_toml = "root//:clippy.toml",
     visibility = ["PUBLIC"],
     rustc_flags = [

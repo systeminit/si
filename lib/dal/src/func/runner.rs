@@ -1470,7 +1470,7 @@ impl FuncRunner {
         value: &mut serde_json::Value,
     ) -> FuncRunnerResult<()> {
         if let Some(token) = ctx.get_workspace_token().await? {
-            if let serde_json::Value::Object(ref mut obj) = value {
+            if let serde_json::Value::Object(obj) = value {
                 obj.insert("WorkspaceToken".to_string(), token.into());
             }
         }

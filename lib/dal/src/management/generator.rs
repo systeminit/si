@@ -350,7 +350,7 @@ pub async fn calculate_top_and_center(
 }
 
 fn remove_value_at_path(from: &mut serde_json::Value, remove_path: &[&str]) {
-    if let Some(serde_json::Value::Object(ref mut obj)) = remove_path
+    if let Some(serde_json::Value::Object(obj)) = remove_path
         .iter()
         .take(remove_path.len() - 1)
         .try_fold(from, |val, path_part| match *val {

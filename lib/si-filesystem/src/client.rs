@@ -205,11 +205,11 @@ impl SiFsClient {
         }
 
         let mut request_builder = self.client.get(url.clone()).bearer_auth(&self.token);
-        request_builder = if let Some(query) = query.clone() {
+        request_builder = match query.clone() { Some(query) => {
             request_builder.query(&query)
-        } else {
+        } _ => {
             request_builder
-        };
+        }};
 
         let response = request_builder.send().await?;
         if response.status() == StatusCode::OK {
@@ -248,11 +248,11 @@ impl SiFsClient {
 
         let start = Instant::now();
         let mut request_builder = self.client.get(url.clone()).bearer_auth(&self.token);
-        request_builder = if let Some(query) = query.clone() {
+        request_builder = match query.clone() { Some(query) => {
             request_builder.query(&query)
-        } else {
+        } _ => {
             request_builder
-        };
+        }};
 
         let response = request_builder.send().await?;
         if response.status() == StatusCode::OK {

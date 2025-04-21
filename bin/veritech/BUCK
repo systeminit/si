@@ -28,7 +28,6 @@ test_suite(
 
 rust_binary(
     name = "veritech",
-    edition = "2021",
     deps = [
         "//lib/si-service:si-service",
         "//lib/veritech-server:veritech-server",

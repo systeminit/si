@@ -351,7 +351,7 @@ fn tracing_subscriber(
     config: &TelemetryConfig,
     tracing_level: &TracingLevel,
     span_events_fmt: FmtSpan,
-) -> Result<(impl Subscriber + Send + Sync, TelemetryHandles)> {
+) -> Result<(impl Subscriber + Send + Sync + use<>, TelemetryHandles)> {
     let directives = TracingDirectives::from(tracing_level);
 
     let (console_log_layer, console_log_filter_reload) = {

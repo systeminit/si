@@ -843,9 +843,9 @@ macro_rules! impl_standard_model {
     (model: $model:ident,
      pk: $pk:ident,
      id: $id:ident,
-     table_name: $table_name:expr,
-     history_event_label_base: $history_event_label_base:expr,
-     history_event_message_name: $history_event_message_name:expr $(,)?) => {
+     table_name: $table_name:expr_2021,
+     history_event_label_base: $history_event_label_base:expr_2021,
+     history_event_message_name: $history_event_message_name:expr_2021 $(,)?) => {
         impl $crate::StandardModel for $model {
             type Pk = $pk;
             type Id = $id;

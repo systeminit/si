@@ -56,7 +56,7 @@ impl<B> OnResponse<B> for HttpOnResponse {
         }
 
         macro_rules! inner_event {
-            ($level:expr, $($tt:tt)*) => {
+            ($level:expr_2021, $($tt:tt)*) => {
                 match $level {
                     ::telemetry::tracing::Level::ERROR => {
                         ::telemetry::tracing::error!($($tt)*);

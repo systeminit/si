@@ -4,8 +4,8 @@
 macro_rules! __log_rejection {
     (
         rejection_type = $ty:ident,
-        body_text = $body_text:expr,
-        status = $status:expr,
+        body_text = $body_text:expr_2021,
+        status = $status:expr_2021,
     ) => {
         tracing::event!(
             target: "naxum::rejection",
@@ -21,8 +21,8 @@ macro_rules! __log_rejection {
 #[macro_export]
 macro_rules! define_rejection {
     (
-        #[status_code = $status_code:expr]
-        #[body = $body:expr]
+        #[status_code = $status_code:expr_2021]
+        #[body = $body:expr_2021]
         $(#[$m:meta])*
         pub struct $name:ident;
     ) => {
@@ -71,8 +71,8 @@ macro_rules! define_rejection {
     };
 
     (
-        #[status_code = $status_code:expr]
-        #[body = $body:expr]
+        #[status_code = $status_code:expr_2021]
+        #[body = $body:expr_2021]
         $(#[$m:meta])*
         pub struct $name:ident(Error);
     ) => {

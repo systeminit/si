@@ -48,7 +48,7 @@ pub async fn install_workspace(
     let id = Ulid::new();
 
     tokio::task::spawn(async move {
-        if let Err(err) = install_workspace_inner(
+        match install_workspace_inner(
             &ctx,
             req_workspace_pk,
             current_workspace,
@@ -58,9 +58,9 @@ pub async fn install_workspace(
             raw_access_token,
         )
         .await
-        {
+        { Err(err) => {
             handle_error(&ctx, original_uri, id, err).await;
-        } else {
+        } _ => {
             match WsEvent::async_finish_workspace(&ctx, id).await {
                 Ok(event) => {
                     if let Err(err) = event.publish_immediately(&ctx).await {
@@ -71,7 +71,7 @@ pub async fn install_workspace(
                     handle_error(&ctx, original_uri, id, err).await;
                 }
             }
-        }
+        }}
     });
 
     Ok(Json(InstallWorkspaceResponse { id }))

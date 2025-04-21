@@ -46,7 +46,7 @@ impl Sink<Vec<u8>> for YSink {
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        if let Some(mut future) = self.future.take() {
+        match self.future.take() { Some(mut future) => {
             match future.poll(cx) {
                 Poll::Ready(Ok(())) => Poll::Ready(Ok(())),
                 Poll::Ready(Err(err)) => Poll::Ready(Err(Error::Other(err.into()))),
@@ -55,9 +55,9 @@ impl Sink<Vec<u8>> for YSink {
                     Poll::Pending
                 }
             }
-        } else {
+        } _ => {
             Poll::Ready(Ok(()))
-        }
+        }}
     }
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {

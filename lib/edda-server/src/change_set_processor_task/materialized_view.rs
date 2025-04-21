@@ -389,7 +389,7 @@ async fn build_mv_inner(
 }
 
 macro_rules! add_reference_dependencies_to_dependency_graph {
-    ($dependency_graph:expr, $mv:ident $(,)?) => {
+    ($dependency_graph:expr_2021, $mv:ident $(,)?) => {
         for reference_kind in <$mv as MaterializedView>::reference_dependencies() {
             $dependency_graph.id_depends_on(<$mv as MaterializedView>::kind(), *reference_kind);
         }

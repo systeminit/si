@@ -305,7 +305,7 @@ impl Stream for TestWsStream {
             }
         }
 
-        if let Some(mut future) = self.future.take() {
+        match self.future.take() { Some(mut future) => {
             match future.poll(cx) {
                 Poll::Ready(msg) => Poll::Ready(Some(msg)),
                 Poll::Pending => {
@@ -313,9 +313,9 @@ impl Stream for TestWsStream {
                     Poll::Pending
                 }
             }
-        } else {
+        } _ => {
             Poll::Pending
-        }
+        }}
     }
 }
 

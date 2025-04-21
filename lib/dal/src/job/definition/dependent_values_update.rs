@@ -489,11 +489,11 @@ async fn execution_error(
     let fallback = format!(
         "error executing prototype function for AttributeValue {attribute_value_id}: {err_string}"
     );
-    let error_message = if let Ok(detail) = execution_error_detail(ctx, attribute_value_id).await {
+    let error_message = match execution_error_detail(ctx, attribute_value_id).await { Ok(detail) => {
         format!("{detail}: {err_string}")
-    } else {
+    } _ => {
         fallback
-    };
+    }};
 
     warn!(name = "function_execution_error", si.error.message = error_message, %attribute_value_id);
 }

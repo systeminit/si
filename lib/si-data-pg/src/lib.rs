@@ -828,7 +828,7 @@ impl InstrumentedClient {
         &self,
         statement: &str,
         params: I,
-    ) -> Result<impl Stream<Item = Result<PgRow, PgError>>, PgError>
+    ) -> Result<impl Stream<Item = Result<PgRow, PgError>> + use<P, I>, PgError>
     where
         P: BorrowToSql,
         I: IntoIterator<Item = P>,
@@ -1512,7 +1512,7 @@ impl<'a> InstrumentedTransaction<'a> {
         &self,
         statement: &str,
         params: I,
-    ) -> Result<impl Stream<Item = Result<PgRow, PgError>>, PgError>
+    ) -> Result<impl Stream<Item = Result<PgRow, PgError>> + use<P, I>, PgError>
     where
         P: BorrowToSql,
         I: IntoIterator<Item = P>,
@@ -1762,7 +1762,7 @@ impl<'a> InstrumentedTransaction<'a> {
         &self,
         portal: &Portal,
         max_rows: i32,
-    ) -> Result<impl Stream<Item = Result<PgRow, PgError>>, PgError> {
+    ) -> Result<impl Stream<Item = Result<PgRow, PgError>> + use<>, PgError> {
         let span = current_span_for_instrument_at!("debug");
 
         span.follows_from(&self.tx_span);
@@ -2531,7 +2531,7 @@ impl PgSharedTransaction {
         &self,
         statement: &str,
         params: I,
-    ) -> Result<impl Stream<Item = Result<PgRow, PgError>>, PgError>
+    ) -> Result<impl Stream<Item = Result<PgRow, PgError>> + use<P, I>, PgError>
     where
         P: BorrowToSql,
         I: IntoIterator<Item = P>,
@@ -2689,7 +2689,7 @@ impl PgSharedTransaction {
         &self,
         portal: &Portal,
         max_rows: i32,
-    ) -> Result<impl Stream<Item = Result<PgRow, PgError>>, PgError> {
+    ) -> Result<impl Stream<Item = Result<PgRow, PgError>> + use<>, PgError> {
         match self.inner.lock().await.borrow_txn().as_ref() {
             Some(txn) => txn.query_portal_raw(portal, max_rows).await,
             None => {

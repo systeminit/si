@@ -21,7 +21,7 @@ def rust_binary(
         srcs,
         deps,
         crate_root = "src/main.rs",
-        edition = "2021",
+        edition = "2024",
         env = {},
         resources = [],
         test_unit_deps = [],
@@ -164,7 +164,7 @@ def rust_library(
         srcs,
         deps,
         crate_root = "src/lib.rs",
-        edition = "2021",
+        edition = "2024",
         env = {},
         resources = [],
         test_unit_deps = [],
@@ -306,7 +306,7 @@ def rust_library(
 
 def rust_test(
         name,
-        edition = "2021",
+        edition = "2024",
         visibility = ["PUBLIC"],
         **kwargs):
     native.rust_test(

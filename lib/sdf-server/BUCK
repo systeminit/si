@@ -1,4 +1,4 @@
-load("@prelude-si//:macros.bzl", "rust_library")
+load("@prelude-si//:macros.bzl", "rust_library", "rust_test")
 
 rust_library(
     name = "sdf-server",
@@ -95,7 +95,6 @@ rust_library(
 
 rust_test(
     name = "test-integration",
-    edition = "2021",
     deps = [
         "//lib/dal-test:dal-test",
         "//lib/dal:dal",

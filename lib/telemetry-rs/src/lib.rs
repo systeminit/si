@@ -262,7 +262,7 @@ impl ApplicationTelemetryClient {
 
         match tracing_level {
             TracingLevel::Verbosity {
-                ref mut verbosity, ..
+                verbosity, ..
             } => {
                 *verbosity = updated;
             }

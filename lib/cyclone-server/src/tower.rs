@@ -169,7 +169,7 @@ mod web_socket_trace {
 
     // Vendored and modified from futures_core::task::poll::ready
     macro_rules! ready {
-        ($e:expr $(,)?) => {
+        ($e:expr_2021 $(,)?) => {
             match $e {
                 ::std::task::Poll::Ready(t) => t,
                 ::std::task::Poll::Pending => return ::std::task::Poll::Pending,

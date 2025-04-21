@@ -185,7 +185,7 @@ where
                 metric!(counter.pool_noodle.get_requests = -1);
                 return Err(PoolNoodleError::ExecutionPoolStarved);
             }
-            if let Some(mut instance) = inner.ready_queue.pop() {
+            match inner.ready_queue.pop() { Some(mut instance) => {
                 metric!(counter.pool_noodle.ready = -1);
                 // Try to ensure the item is healthy
                 match &mut instance.ensure_healthy().await {
@@ -203,14 +203,14 @@ where
                         drop(instance);
                     }
                 }
-            } else {
+            } _ => {
                 retries += 1;
                 debug!(
                     "Failed to get from pool, retry ({} of {})",
                     retries, max_retries
                 );
                 sleep(Duration::from_millis(100)).await;
-            }
+            }}
         }
     }
 

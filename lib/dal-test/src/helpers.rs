@@ -37,7 +37,7 @@ pub fn generate_fake_name() -> Result<String> {
 #[allow(clippy::expect_used)]
 #[macro_export]
 macro_rules! connection_annotation_string {
-    ($str:expr) => {
+    ($str:expr_2021) => {
         serde_json::to_string(&vec![$str]).expect("unable to parse annotation string")
     };
 }

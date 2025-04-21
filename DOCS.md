@@ -750,7 +750,7 @@ To add a new Rust library, there are a few steps:
 ```toml
 [package]
 name = "MY-LIBRARY"
-edition = "2021"
+edition = "2024"
 version.workspace = true
 authors.workspace = true
 license.workspace = true

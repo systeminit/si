@@ -297,7 +297,7 @@ where
         // Construct the Error result to propagate to subscribers
         Err(ref err) => {
             let func_result_error = match err {
-                HandlerError::CycloneTimeout(ref timeout) => {
+                HandlerError::CycloneTimeout(timeout) => {
                     warn!(si.error.message = ?err, "timed out trying to run function to completion: {:?}", timeout);
                     let func_res_failure = FunctionResultFailure::new_for_veritech_server_error(
                         execution_id.to_owned(),
@@ -306,7 +306,7 @@ where
                     );
                     si_pool_noodle::FunctionResult::Failure::<Request>(func_res_failure)
                 }
-                HandlerError::Killed(ref execution_id) => {
+                HandlerError::Killed(execution_id) => {
                     warn!(si.error.message = ?err, si.func_run.id = ?execution_id, "function killed during execution: {:?} via signal", execution_id);
                     let func_res_failure = FunctionResultFailure::new(
                         execution_id.to_owned(),
