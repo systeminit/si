@@ -45,6 +45,14 @@ jobs:
       environment: ${{ inputs.environment }}
       service: pinga
     secrets: inherit
+    
+  restart-edda:
+    needs: restart-rebaser
+    uses: ./.github/workflows/service-restart.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service: edda
+    secrets: inherit
 
   restart-sdf:
     needs: restart-pinga
