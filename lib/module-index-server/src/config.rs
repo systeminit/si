@@ -7,6 +7,7 @@ use si_data_pg::PgPoolConfig;
 use si_jwt_public_key::JwtAlgo;
 use si_posthog::PosthogConfig;
 use si_std::{CanonicalFile, CanonicalFileError};
+use si_tls::CertificateSource;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -292,7 +293,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     );
 
     config.jwt_signing_public_key_path = jwt_signing_public_key_path;
-    config.pg.certificate_path = Some(postgres_cert.try_into()?);
+    config.pg.certificate = Some(CertificateSource::Path(postgres_cert.try_into()?));
 
     Ok(())
 }
@@ -324,7 +325,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
     );
 
     config.jwt_signing_public_key_path = jwt_signing_public_key_path;
-    config.pg.certificate_path = Some(postgres_cert.try_into()?);
+    config.pg.certificate = Some(CertificateSource::Path(postgres_cert.try_into()?));
 
     // todo!();
     // config.veritech_encryption_key_path = veritech_encryption_key_path;

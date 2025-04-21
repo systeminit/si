@@ -10,6 +10,7 @@ use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_layer_cache::db::LayerDbConfig;
 use si_std::CanonicalFileError;
+use si_tls::CertificateSource;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -261,9 +262,9 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         active_key_base64: None,
         extra_keys: vec![],
     };
-    config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.layer_db_config.pg_pool_config.certificate_path =
-        Some(postgres_cert.clone().try_into()?);
+    config.pg.certificate = Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
+    config.layer_db_config.pg_pool_config.certificate =
+        Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
     config.layer_db_config.pg_pool_config.dbname = "si_layer_db".to_string();
     Ok(())
 }
@@ -295,9 +296,9 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         active_key_base64: None,
         extra_keys: vec![],
     };
-    config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.layer_db_config.pg_pool_config.certificate_path =
-        Some(postgres_cert.clone().try_into()?);
+    config.pg.certificate = Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
+    config.layer_db_config.pg_pool_config.certificate =
+        Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
     config.layer_db_config.pg_pool_config.dbname = "si_layer_db".to_string();
 
     Ok(())

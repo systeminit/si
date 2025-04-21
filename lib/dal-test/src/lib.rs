@@ -55,6 +55,7 @@ use si_jwt_public_key::{JwtAlgo, JwtConfig, JwtPublicSigningKeyChain};
 use si_layer_cache::hybrid_cache::CacheConfig;
 use si_runtime::DedicatedExecutor;
 use si_std::{CanonicalFile, ResultExt};
+use si_tls::CertificateSource;
 use telemetry::prelude::*;
 use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
@@ -215,7 +216,9 @@ impl Config {
                 .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
                 .parse()?;
             config.pg.pool_max_size = 16;
-            config.pg.certificate_path = Some(config.postgres_key_path.clone().try_into()?);
+            config.pg.certificate = Some(CertificateSource::Path(
+                config.postgres_key_path.clone().try_into()?,
+            ));
         }
 
         {
@@ -230,8 +233,9 @@ impl Config {
                 .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
                 .parse()?;
             config.layer_cache_pg_pool.pool_max_size = 16;
-            config.layer_cache_pg_pool.certificate_path =
-                Some(config.postgres_key_path.clone().try_into()?);
+            config.layer_cache_pg_pool.certificate = Some(CertificateSource::Path(
+                config.postgres_key_path.clone().try_into()?,
+            ));
         }
 
         {
@@ -246,8 +250,9 @@ impl Config {
                 .unwrap_or_else(|_| DEFAULT_TEST_PG_PORT_STR.to_string())
                 .parse()?;
             config.audit_pg_pool.pool_max_size = 16;
-            config.audit_pg_pool.certificate_path =
-                Some(config.postgres_key_path.clone().try_into()?);
+            config.audit_pg_pool.certificate = Some(CertificateSource::Path(
+                config.postgres_key_path.clone().try_into()?,
+            ));
         }
 
         if let Ok(value) = env::var(ENV_VAR_MODULE_INDEX_URL) {

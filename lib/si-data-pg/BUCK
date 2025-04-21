@@ -4,6 +4,7 @@ rust_library(
     name = "si-data-pg",
     deps = [
         "//lib/si-std:si-std",
+        "//lib/si-tls:si-tls",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:bytes",
         "//third-party/rust:base64",
@@ -15,7 +16,6 @@ rust_library(
         "//third-party/rust:refinery",
         "//third-party/rust:reqwest",
         "//third-party/rust:rustls",
-        "//third-party/rust:rustls-pemfile",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:tempfile",
@@ -23,7 +23,6 @@ rust_library(
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-postgres",
         "//third-party/rust:tokio-postgres-rustls",
-        "//third-party/rust:webpki-roots",
     ],
     srcs = glob(["src/**/*.rs"]),
 )

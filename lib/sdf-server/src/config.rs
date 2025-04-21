@@ -3,6 +3,7 @@ use si_crypto::VeritechCryptoConfig;
 use si_data_spicedb::SpiceDbConfig;
 use si_jwt_public_key::{JwtAlgo, JwtConfig};
 use si_layer_cache::{db::LayerDbConfig, error::LayerDbError};
+use si_tls::CertificateSource;
 use std::collections::HashSet;
 use std::{
     env,
@@ -472,13 +473,13 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         active_key_base64: None,
         extra_keys: vec![],
     };
-    config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.layer_db_config.pg_pool_config.certificate_path =
-        Some(postgres_cert.clone().try_into()?);
+    config.pg.certificate = Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
+    config.layer_db_config.pg_pool_config.certificate =
+        Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
     config.pkgs_path = pkgs_path;
     config.layer_db_config.pg_pool_config.dbname = si_layer_cache::pg::DBNAME.to_string();
     config.spicedb.enabled = true;
-    config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.audit.pg.certificate = Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
     config.audit.pg.dbname = audit_database::DBNAME.to_string();
     config.dev_mode = true;
 
@@ -536,13 +537,13 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         active_key_base64: None,
         extra_keys: vec![],
     };
-    config.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
-    config.layer_db_config.pg_pool_config.certificate_path =
-        Some(postgres_cert.clone().try_into()?);
+    config.pg.certificate = Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
+    config.layer_db_config.pg_pool_config.certificate =
+        Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
     config.layer_db_config.pg_pool_config.dbname = si_layer_cache::pg::DBNAME.to_string();
     config.pkgs_path = pkgs_path;
     config.spicedb.enabled = true;
-    config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.audit.pg.certificate = Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
     config.audit.pg.dbname = audit_database::DBNAME.to_string();
     config.dev_mode = true;
 

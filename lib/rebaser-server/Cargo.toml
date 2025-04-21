@@ -27,6 +27,7 @@ si-frontend-types-macros = { path = "../../lib/si-frontend-types-macros" }
 si-layer-cache           = { path = "../../lib/si-layer-cache" }
 si-settings              = { path = "../../lib/si-settings" }
 si-std                   = { path = "../../lib/si-std" }
+si-tls                   = { path = "../../lib/si-tls" }
 telemetry                = { path = "../../lib/telemetry-rs" }
 telemetry-nats           = { path = "../../lib/telemetry-nats-rs" }
 telemetry-utils          = { path = "../../lib/telemetry-utils-rs" }
