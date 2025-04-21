@@ -73,7 +73,7 @@ pub async fn contribute(
     ctx.write_audit_log(
         AuditLogKind::ContributeModule {
             version: version.clone(),
-            schema_id: schema_id.map(Into::into),
+            schema_id,
             schema_variant_id: request.schema_variant_id.into(),
             schema_variant_version: Some(schema_variant_version.clone()),
         },

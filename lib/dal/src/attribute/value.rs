@@ -658,9 +658,10 @@ impl AttributeValue {
                 .map(|targets| targets.source_component_id)
                 .unwrap_or(destination_component_id);
 
-            if apa.targets().map_or(true, |targets| {
-                targets.destination_component_id == destination_component_id
-            }) {
+            if apa
+                .targets()
+                .is_none_or(|targets| targets.destination_component_id == destination_component_id)
+            {
                 // If the "source" Component is marked for deletion, and we (the destination) are
                 // *NOT*, then we should ignore the argument as data should not flow from things
                 // that are marked for deletion to ones that are not.

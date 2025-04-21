@@ -74,7 +74,7 @@ impl AttributeArgumentBinding {
     pub fn into_frontend_type(&self) -> si_frontend_types::AttributeArgumentBinding {
         si_frontend_types::AttributeArgumentBinding {
             func_argument_id: self.func_argument_id,
-            attribute_prototype_argument_id: self.attribute_prototype_argument_id.map(Into::into),
+            attribute_prototype_argument_id: self.attribute_prototype_argument_id,
             prop_id: self.attribute_func_input_location.clone().into(),
             input_socket_id: self.attribute_func_input_location.clone().into(),
             static_value: self.attribute_func_input_location.clone().into(),

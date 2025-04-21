@@ -588,8 +588,8 @@ async fn create_binding_simple(
     let eventual_parent =
         AttributeBinding::assemble_eventual_parent(ctx, None, Some(schema_variant_id)).await?;
     let attribute_output_location = AttributeBinding::assemble_attribute_output_location(
-        maybe_destination_prop_id.map(Into::into),
-        maybe_destination_output_socket_id.map(Into::into),
+        maybe_destination_prop_id,
+        maybe_destination_output_socket_id,
     )?;
 
     AttributeBinding::upsert_attribute_binding(

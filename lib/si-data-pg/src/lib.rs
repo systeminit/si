@@ -2914,7 +2914,6 @@ impl PgOwnedTransaction {
         }
         .try_build()
         .await
-        .map_err(Into::into)
     }
 }
 

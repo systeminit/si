@@ -157,7 +157,7 @@ impl WorkspaceSnapshotGraph {
 
     pub fn current_discriminant() -> WorkspaceSnapshotGraphDiscriminants {
         WorkspaceSnapshotGraphDiscriminants::iter()
-            .last()
+            .next_back()
             .expect("Unable to get last element of an iterator guaranteed to have elements")
     }
 }

@@ -117,9 +117,7 @@ impl AttributePrototypeDebugView {
                 .unwrap_or(destination_component_id);
             if attribute_prototype_argument
                 .targets()
-                .map_or(true, |targets| {
-                    targets.destination_component_id == destination_component_id
-                })
+                .is_none_or(|targets| targets.destination_component_id == destination_component_id)
             {
                 let arg_used = Component::should_data_flow_between_components(
                     ctx,

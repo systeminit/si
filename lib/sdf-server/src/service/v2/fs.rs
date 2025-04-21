@@ -901,7 +901,7 @@ async fn create_func(
                 func,
             )
         }
-        Binding::Management { .. } => {
+        Binding::Management => {
             let func = FuncAuthoringClient::create_new_management_func(
                 &ctx,
                 Some(request.name),
