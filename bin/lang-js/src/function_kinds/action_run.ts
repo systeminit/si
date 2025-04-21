@@ -36,7 +36,7 @@ async function execute(
   try {
     const actionRunResult = await runCode(
       code,
-      "main",
+      "siMain",
       FunctionKind.ActionRun,
       executionId,
       timeout,
@@ -118,12 +118,14 @@ async function execute(
   }
 }
 
+// TODO(nick,scott,paul): does this even need a wrapper at all? Only actions have a wrapper like
+// this at the time of writing.
 const wrapCode = (code: string, handler: string) => `
-async function main(arg) {
+${code}
+async function siMain(arg) {
   let payload = null;
   let resourceId = null;
   try {
-    ${code}
     resourceId = arg?.properties?.si?.resourceId;
     payload = arg?.properties?.resource?.payload ?? null;
 
@@ -138,7 +140,7 @@ async function main(arg) {
            }
   }
 }
-export { main };
+export { siMain };
 `;
 
 export default {
