@@ -821,6 +821,15 @@ const overrides = new Map<string, OverrideFn>([
     ], "Node Role");
     variant.sockets.push(nodeRoleSocket);
   }],
+  ["AWS::RDS::DBSubnetGroup", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const subnetIdSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Subnet Ids" && s.data.kind === "input",
+    );
+    if (!subnetIdSocket) return;
+    setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnet id"] });
+  }],
 ]);
 
 function attachExtraActionFunction(
