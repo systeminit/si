@@ -23,12 +23,16 @@ pub use change_sets::{
     },
 };
 pub use components::{
+    create_component::{
+        ComponentReference, Connection, ConnectionPoint, CreateComponentV1Request,
+        CreateComponentV1Response,
+    },
+    delete_component::DeleteComponentV1Response,
     get_component::{
         GeometryAndViewAndName, GetComponentV1Response, GetComponentV1ResponseManagementFunction,
     },
-    update_properties::{
-        ComponentPropKey, DomainPropPath, UpdateComponentPropertiesV1Request,
-        UpdateComponentPropertiesV1Response,
+    update_component::{
+        ComponentPropKey, DomainPropPath, UpdateComponentV1Request, UpdateComponentV1Response,
     },
     ComponentV1RequestPath,
 };
@@ -56,7 +60,9 @@ pub use management::run_prototype::{
         change_sets::merge_status::merge_status,
         change_sets::request_approval::request_approval,
         components::get_component::get_component,
-        components::update_properties::update_component_properties,
+        components::create_component::create_component,
+        components::update_component::update_component,
+        components::delete_component::delete_component,
         management::run_prototype::run_prototype
     ),
     components(
@@ -74,14 +80,20 @@ pub use management::run_prototype::{
             ComponentV1RequestPath,
             GetComponentV1Response,
             GetComponentV1ResponseManagementFunction,
+            CreateComponentV1Request,
+            CreateComponentV1Response,
+            Connection,
             GeometryAndViewAndName,
-            UpdateComponentPropertiesV1Request,
-            UpdateComponentPropertiesV1Response,
+            UpdateComponentV1Request,
+            UpdateComponentV1Response,
+            DeleteComponentV1Response,
             RunPrototypeV1Request,
             RunPrototypeV1Response,
             RunPrototypePath,
             ComponentPropKey,
-            DomainPropPath
+            DomainPropPath,
+            ConnectionPoint,
+            ComponentReference
         )
     ),
     tags(
