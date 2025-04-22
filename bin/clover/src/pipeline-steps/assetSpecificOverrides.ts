@@ -301,8 +301,31 @@ const overrides = new Map<string, OverrideFn>([
     }
   }],
   [
-    "AWS::SecretsManager::Secret",
-    addSecretProp("Secret String", "secretString", ["SecretString"]),
+    "AWS::SecretsManager::Secret", (spec: ExpandedPkgSpec) => {
+      addSecretProp("Secret String", "secretString", ["SecretString"])(spec);
+      const variant = spec.schemas[0].variants[0];
+
+      const nameProp = propForOverride(variant.domain, "Name");
+      if (!nameProp) {
+        console.log("Name property not found in variant.domain");
+        return;
+      };
+
+      const nameSocket = createOutputSocketFromProp(nameProp);
+      variant.sockets.push(nameSocket);
+
+      const nameOutputSocket = variant.sockets.find(
+        (s: ExpandedSocketSpec) =>
+          s.name === "Name" && s.data.kind === "output",
+      );
+      if (!nameOutputSocket) {
+        console.log("Name output socket not found");
+        return;
+      };
+
+      setAnnotationOnSocket(nameOutputSocket, { tokens: ["Name"] });
+      setAnnotationOnSocket(nameOutputSocket, { tokens: ["Name<string<scalar>>"] });
+    }
   ],
   [
     "AWS::RDS::DBCluster",
