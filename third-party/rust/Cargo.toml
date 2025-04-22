@@ -23,8 +23,8 @@ version = "0.1.0"
 authors = ["System Initiative Inc. <info@systeminit.com>"]
 license = "Apache-2.0"
 repository = "https://github.com/systeminit/si"
-edition = "2021"
-rust-version = "1.82"
+edition = "2024"
+rust-version = "1.86"
 publish = false
 
 [dependencies]
@@ -144,6 +144,7 @@ procfs = "0.17.0"
 quote = "1.0.37"
 rand = "0.8.5"
 refinery = { version = "0.8.14", features = ["tokio-postgres"] }
+rcgen = { version = "0.13.2", default-features = false, features = ["pem", "ring"] }
 regex = "1.11.1"
 remain = "0.2.14"
 reqwest = { version = "0.12.9", default-features = false, features = [

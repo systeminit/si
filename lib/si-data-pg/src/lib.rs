@@ -325,7 +325,7 @@ impl PgPool {
     async fn tls_config(cert: Option<&CertificateSource>) -> PgPoolResult<MakeRustlsConnect> {
         let mut root_cert_store = CertificateResolver::create_root_store().await?;
         if let Some(cert) = cert {
-            CertificateResolver::add_to_cert_store(cert, &mut root_cert_store).await?;
+            cert.add_to_cert_store(&mut root_cert_store).await?;
         }
         let config = rustls::ClientConfig::builder()
             .with_root_certificates(root_cert_store)

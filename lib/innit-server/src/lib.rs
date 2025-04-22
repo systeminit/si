@@ -1,8 +1,7 @@
-use thiserror::Error;
-
 mod api_error;
 mod app_state;
 mod config;
+mod middleware;
 mod routes;
 mod server;
 
@@ -12,7 +11,3 @@ pub use self::{
     },
     server::Server,
 };
-
-#[remain::sorted]
-#[derive(Debug, Error)]
-pub enum ServerError {}

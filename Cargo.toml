@@ -35,6 +35,7 @@ members = [
     "lib/edda-server",
     "lib/forklift-server",
     "lib/frigg",
+    "lib/innit-client",
     "lib/innit-core",
     "lib/innit-server",
     "lib/joi-validator",
@@ -232,6 +233,7 @@ procfs = "0.17.0"
 quote = "1.0.37"
 rand = "0.8.5"
 refinery = { version = "0.8.14", features = ["tokio-postgres"] }
+rcgen = { version = "0.13.2", default-features = false, features = ["pem", "ring"] }
 regex = "1.11.1"
 remain = "0.2.14"
 reqwest = { version = "0.12.9", default-features = false, features = [

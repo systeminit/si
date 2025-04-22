@@ -1,7 +1,7 @@
 use aws_sdk_ssm::types::Parameter as AwsParameter;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Parameter {
     pub name: String,
     pub value: Option<String>,
@@ -18,12 +18,17 @@ impl From<AwsParameter> for Parameter {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CheckHealthResponse {
+    pub ok: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetParameterResponse {
     pub parameter: Parameter,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListParametersResponse {
     pub parameters: Vec<Parameter>,
 }
