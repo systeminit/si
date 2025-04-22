@@ -524,33 +524,6 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "async-channel-2.3.1.crate",
-    sha256 = "89b47800b0be77592da0afd425cc03468052844aff33b84e33cc696f64e77b6a",
-    strip_prefix = "async-channel-2.3.1",
-    urls = ["https://static.crates.io/crates/async-channel/2.3.1/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "async-channel-2.3.1",
-    srcs = [":async-channel-2.3.1.crate"],
-    crate = "async_channel",
-    crate_root = "async-channel-2.3.1.crate/src/lib.rs",
-    edition = "2021",
-    features = [
-        "default",
-        "std",
-    ],
-    visibility = [],
-    deps = [
-        ":concurrent-queue-2.5.0",
-        ":event-listener-strategy-0.5.4",
-        ":futures-core-0.3.31",
-        ":pin-project-lite-0.2.16",
-    ],
-)
-
-http_archive(
     name = "async-compression-0.4.23.crate",
     sha256 = "b37fc50485c4f3f736a4fb14199f6d5f5ba008d7f28fe710306c92780f004c07",
     strip_prefix = "async-compression-0.4.23",
@@ -1024,9 +997,9 @@ cargo.rust_library(
         ":aws-smithy-async-1.2.5",
         ":aws-smithy-http-0.61.1",
         ":aws-smithy-json-0.61.3",
-        ":aws-smithy-runtime-1.8.1",
-        ":aws-smithy-runtime-api-1.7.4",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-runtime-1.8.3",
+        ":aws-smithy-runtime-api-1.8.0",
+        ":aws-smithy-types-1.3.1",
         ":aws-types-1.3.6",
         ":bytes-1.10.1",
         ":fastrand-2.3.0",
@@ -1059,8 +1032,8 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":aws-smithy-async-1.2.5",
-        ":aws-smithy-runtime-api-1.7.4",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-runtime-api-1.8.0",
+        ":aws-smithy-types-1.3.1",
         ":zeroize-1.8.1",
     ],
 )
@@ -1123,10 +1096,10 @@ cargo.rust_library(
         ":aws-credential-types-1.2.2",
         ":aws-sigv4-1.3.0",
         ":aws-smithy-async-1.2.5",
-        ":aws-smithy-http-0.62.0",
-        ":aws-smithy-runtime-1.8.1",
-        ":aws-smithy-runtime-api-1.7.4",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-http-0.62.1",
+        ":aws-smithy-runtime-1.8.3",
+        ":aws-smithy-runtime-api-1.8.0",
+        ":aws-smithy-types-1.3.1",
         ":aws-types-1.3.6",
         ":bytes-1.10.1",
         ":fastrand-2.3.0",
@@ -1181,9 +1154,9 @@ cargo.rust_library(
         ":aws-smithy-async-1.2.5",
         ":aws-smithy-http-0.61.1",
         ":aws-smithy-json-0.61.3",
-        ":aws-smithy-runtime-1.8.1",
-        ":aws-smithy-runtime-api-1.7.4",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-runtime-1.8.3",
+        ":aws-smithy-runtime-api-1.8.0",
+        ":aws-smithy-types-1.3.1",
         ":aws-types-1.3.6",
         ":bytes-1.10.1",
         ":http-0.2.12",
@@ -1230,11 +1203,11 @@ cargo.rust_library(
         ":aws-credential-types-1.2.2",
         ":aws-runtime-1.5.6",
         ":aws-smithy-async-1.2.5",
-        ":aws-smithy-http-0.62.0",
+        ":aws-smithy-http-0.62.1",
         ":aws-smithy-json-0.61.3",
-        ":aws-smithy-runtime-1.8.1",
-        ":aws-smithy-runtime-api-1.7.4",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-runtime-1.8.3",
+        ":aws-smithy-runtime-api-1.8.0",
+        ":aws-smithy-types-1.3.1",
         ":aws-types-1.3.6",
         ":bytes-1.10.1",
         ":fastrand-2.3.0",
@@ -1275,11 +1248,11 @@ cargo.rust_library(
         ":aws-credential-types-1.2.2",
         ":aws-runtime-1.5.6",
         ":aws-smithy-async-1.2.5",
-        ":aws-smithy-http-0.62.0",
+        ":aws-smithy-http-0.62.1",
         ":aws-smithy-json-0.61.3",
-        ":aws-smithy-runtime-1.8.1",
-        ":aws-smithy-runtime-api-1.7.4",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-runtime-1.8.3",
+        ":aws-smithy-runtime-api-1.8.0",
+        ":aws-smithy-types-1.3.1",
         ":aws-types-1.3.6",
         ":bytes-1.10.1",
         ":fastrand-2.3.0",
@@ -1320,11 +1293,11 @@ cargo.rust_library(
         ":aws-credential-types-1.2.2",
         ":aws-runtime-1.5.6",
         ":aws-smithy-async-1.2.5",
-        ":aws-smithy-http-0.62.0",
+        ":aws-smithy-http-0.62.1",
         ":aws-smithy-json-0.61.3",
-        ":aws-smithy-runtime-1.8.1",
-        ":aws-smithy-runtime-api-1.7.4",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-runtime-1.8.3",
+        ":aws-smithy-runtime-api-1.8.0",
+        ":aws-smithy-types-1.3.1",
         ":aws-types-1.3.6",
         ":bytes-1.10.1",
         ":fastrand-2.3.0",
@@ -1365,12 +1338,12 @@ cargo.rust_library(
         ":aws-credential-types-1.2.2",
         ":aws-runtime-1.5.6",
         ":aws-smithy-async-1.2.5",
-        ":aws-smithy-http-0.62.0",
+        ":aws-smithy-http-0.62.1",
         ":aws-smithy-json-0.61.3",
         ":aws-smithy-query-0.60.7",
-        ":aws-smithy-runtime-1.8.1",
-        ":aws-smithy-runtime-api-1.7.4",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-runtime-1.8.3",
+        ":aws-smithy-runtime-api-1.8.0",
+        ":aws-smithy-types-1.3.1",
         ":aws-smithy-xml-0.60.9",
         ":aws-types-1.3.6",
         ":fastrand-2.3.0",
@@ -1407,9 +1380,9 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":aws-credential-types-1.2.2",
-        ":aws-smithy-http-0.62.0",
-        ":aws-smithy-runtime-api-1.7.4",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-http-0.62.1",
+        ":aws-smithy-runtime-api-1.8.0",
+        ":aws-smithy-types-1.3.1",
         ":bytes-1.10.1",
         ":form_urlencoded-1.2.1",
         ":hex-0.4.3",
@@ -1466,8 +1439,8 @@ cargo.rust_library(
     },
     visibility = [],
     deps = [
-        ":aws-smithy-runtime-api-1.7.4",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-runtime-api-1.8.0",
+        ":aws-smithy-types-1.3.1",
         ":bytes-1.10.1",
         ":bytes-utils-0.1.4",
         ":futures-core-0.3.31",
@@ -1480,18 +1453,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "aws-smithy-http-0.62.0.crate",
-    sha256 = "c5949124d11e538ca21142d1fba61ab0a2a2c1bc3ed323cdb3e4b878bfb83166",
-    strip_prefix = "aws-smithy-http-0.62.0",
-    urls = ["https://static.crates.io/crates/aws-smithy-http/0.62.0/download"],
+    name = "aws-smithy-http-0.62.1.crate",
+    sha256 = "99335bec6cdc50a346fda1437f9fefe33abf8c99060739a546a16457f2862ca9",
+    strip_prefix = "aws-smithy-http-0.62.1",
+    urls = ["https://static.crates.io/crates/aws-smithy-http/0.62.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "aws-smithy-http-0.62.0",
-    srcs = [":aws-smithy-http-0.62.0.crate"],
+    name = "aws-smithy-http-0.62.1",
+    srcs = [":aws-smithy-http-0.62.1.crate"],
     crate = "aws_smithy_http",
-    crate_root = "aws-smithy-http-0.62.0.crate/src/lib.rs",
+    crate_root = "aws-smithy-http-0.62.1.crate/src/lib.rs",
     edition = "2021",
     named_deps = {
         "http_02x": ":http-0.2.12",
@@ -1500,12 +1473,11 @@ cargo.rust_library(
     },
     visibility = [],
     deps = [
-        ":aws-smithy-runtime-api-1.7.4",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-runtime-api-1.8.0",
+        ":aws-smithy-types-1.3.1",
         ":bytes-1.10.1",
         ":bytes-utils-0.1.4",
         ":futures-core-0.3.31",
-        ":once_cell-1.21.3",
         ":percent-encoding-2.3.1",
         ":pin-project-lite-0.2.16",
         ":pin-utils-0.1.0",
@@ -1550,8 +1522,8 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":aws-smithy-async-1.2.5",
-        ":aws-smithy-runtime-api-1.7.4",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-runtime-api-1.8.0",
+        ":aws-smithy-types-1.3.1",
         ":h2-0.4.9",
         ":hyper-1.6.0",
         ":hyper-rustls-0.27.5",
@@ -1581,28 +1553,25 @@ cargo.rust_library(
     crate_root = "aws-smithy-json-0.61.3.crate/src/lib.rs",
     edition = "2021",
     visibility = [],
-    deps = [":aws-smithy-types-1.3.0"],
+    deps = [":aws-smithy-types-1.3.1"],
 )
 
 http_archive(
-    name = "aws-smithy-observability-0.1.2.crate",
-    sha256 = "445d065e76bc1ef54963db400319f1dd3ebb3e0a74af20f7f7630625b0cc7cc0",
-    strip_prefix = "aws-smithy-observability-0.1.2",
-    urls = ["https://static.crates.io/crates/aws-smithy-observability/0.1.2/download"],
+    name = "aws-smithy-observability-0.1.3.crate",
+    sha256 = "9364d5989ac4dd918e5cc4c4bdcc61c9be17dcd2586ea7f69e348fc7c6cab393",
+    strip_prefix = "aws-smithy-observability-0.1.3",
+    urls = ["https://static.crates.io/crates/aws-smithy-observability/0.1.3/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "aws-smithy-observability-0.1.2",
-    srcs = [":aws-smithy-observability-0.1.2.crate"],
+    name = "aws-smithy-observability-0.1.3",
+    srcs = [":aws-smithy-observability-0.1.3.crate"],
     crate = "aws_smithy_observability",
-    crate_root = "aws-smithy-observability-0.1.2.crate/src/lib.rs",
+    crate_root = "aws-smithy-observability-0.1.3.crate/src/lib.rs",
     edition = "2021",
     visibility = [],
-    deps = [
-        ":aws-smithy-runtime-api-1.7.4",
-        ":once_cell-1.21.3",
-    ],
+    deps = [":aws-smithy-runtime-api-1.8.0"],
 )
 
 http_archive(
@@ -1621,30 +1590,30 @@ cargo.rust_library(
     edition = "2021",
     visibility = [],
     deps = [
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-types-1.3.1",
         ":urlencoding-2.1.3",
     ],
 )
 
 alias(
     name = "aws-smithy-runtime",
-    actual = ":aws-smithy-runtime-1.8.1",
+    actual = ":aws-smithy-runtime-1.8.3",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "aws-smithy-runtime-1.8.1.crate",
-    sha256 = "0152749e17ce4d1b47c7747bdfec09dac1ccafdcbc741ebf9daa2a373356730f",
-    strip_prefix = "aws-smithy-runtime-1.8.1",
-    urls = ["https://static.crates.io/crates/aws-smithy-runtime/1.8.1/download"],
+    name = "aws-smithy-runtime-1.8.3.crate",
+    sha256 = "14302f06d1d5b7d333fd819943075b13d27c7700b414f574c3c35859bfb55d5e",
+    strip_prefix = "aws-smithy-runtime-1.8.3",
+    urls = ["https://static.crates.io/crates/aws-smithy-runtime/1.8.3/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "aws-smithy-runtime-1.8.1",
-    srcs = [":aws-smithy-runtime-1.8.1.crate"],
+    name = "aws-smithy-runtime-1.8.3",
+    srcs = [":aws-smithy-runtime-1.8.3.crate"],
     crate = "aws_smithy_runtime",
-    crate_root = "aws-smithy-runtime-1.8.1.crate/src/lib.rs",
+    crate_root = "aws-smithy-runtime-1.8.3.crate/src/lib.rs",
     edition = "2021",
     features = [
         "client",
@@ -1661,14 +1630,13 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":aws-smithy-async-1.2.5",
-        ":aws-smithy-http-0.62.0",
+        ":aws-smithy-http-0.62.1",
         ":aws-smithy-http-client-1.0.1",
-        ":aws-smithy-observability-0.1.2",
-        ":aws-smithy-runtime-api-1.7.4",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-observability-0.1.3",
+        ":aws-smithy-runtime-api-1.8.0",
+        ":aws-smithy-types-1.3.1",
         ":bytes-1.10.1",
         ":fastrand-2.3.0",
-        ":once_cell-1.21.3",
         ":pin-project-lite-0.2.16",
         ":pin-utils-0.1.0",
         ":tokio-1.44.2",
@@ -1677,18 +1645,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "aws-smithy-runtime-api-1.7.4.crate",
-    sha256 = "3da37cf5d57011cb1753456518ec76e31691f1f474b73934a284eb2a1c76510f",
-    strip_prefix = "aws-smithy-runtime-api-1.7.4",
-    urls = ["https://static.crates.io/crates/aws-smithy-runtime-api/1.7.4/download"],
+    name = "aws-smithy-runtime-api-1.8.0.crate",
+    sha256 = "a1e5d9e3a80a18afa109391fb5ad09c3daf887b516c6fd805a157c6ea7994a57",
+    strip_prefix = "aws-smithy-runtime-api-1.8.0",
+    urls = ["https://static.crates.io/crates/aws-smithy-runtime-api/1.8.0/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "aws-smithy-runtime-api-1.7.4",
-    srcs = [":aws-smithy-runtime-api-1.7.4.crate"],
+    name = "aws-smithy-runtime-api-1.8.0",
+    srcs = [":aws-smithy-runtime-api-1.8.0.crate"],
     crate = "aws_smithy_runtime_api",
-    crate_root = "aws-smithy-runtime-api-1.7.4.crate/src/lib.rs",
+    crate_root = "aws-smithy-runtime-api-1.8.0.crate/src/lib.rs",
     edition = "2021",
     features = [
         "client",
@@ -1705,7 +1673,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":aws-smithy-async-1.2.5",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-types-1.3.1",
         ":bytes-1.10.1",
         ":pin-project-lite-0.2.16",
         ":tokio-1.44.2",
@@ -1715,18 +1683,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "aws-smithy-types-1.3.0.crate",
-    sha256 = "836155caafba616c0ff9b07944324785de2ab016141c3550bd1c07882f8cee8f",
-    strip_prefix = "aws-smithy-types-1.3.0",
-    urls = ["https://static.crates.io/crates/aws-smithy-types/1.3.0/download"],
+    name = "aws-smithy-types-1.3.1.crate",
+    sha256 = "40076bd09fadbc12d5e026ae080d0930defa606856186e31d83ccc6a255eeaf3",
+    strip_prefix = "aws-smithy-types-1.3.1",
+    urls = ["https://static.crates.io/crates/aws-smithy-types/1.3.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "aws-smithy-types-1.3.0",
-    srcs = [":aws-smithy-types-1.3.0.crate"],
+    name = "aws-smithy-types-1.3.1",
+    srcs = [":aws-smithy-types-1.3.1.crate"],
     crate = "aws_smithy_types",
-    crate_root = "aws-smithy-types-1.3.0.crate/src/lib.rs",
+    crate_root = "aws-smithy-types-1.3.1.crate/src/lib.rs",
     edition = "2021",
     features = [
         "byte-stream-poll-next",
@@ -1807,8 +1775,8 @@ cargo.rust_library(
     deps = [
         ":aws-credential-types-1.2.2",
         ":aws-smithy-async-1.2.5",
-        ":aws-smithy-runtime-api-1.7.4",
-        ":aws-smithy-types-1.3.0",
+        ":aws-smithy-runtime-api-1.8.0",
+        ":aws-smithy-types-1.3.1",
         ":tracing-0.1.41",
     ],
 )
@@ -2423,18 +2391,18 @@ buildscript_run(
 )
 
 http_archive(
-    name = "binstring-0.1.2.crate",
-    sha256 = "ed79c2a8151273c70956b5e3cdfdc1ff6c1a8b9779ba59c6807d281b32ee2f86",
-    strip_prefix = "binstring-0.1.2",
-    urls = ["https://static.crates.io/crates/binstring/0.1.2/download"],
+    name = "binstring-0.1.5.crate",
+    sha256 = "fb50e172ef47c3f0dd30845dd46447654723eb40a97259574a2d772096654578",
+    strip_prefix = "binstring-0.1.5",
+    urls = ["https://static.crates.io/crates/binstring/0.1.5/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "binstring-0.1.2",
-    srcs = [":binstring-0.1.2.crate"],
+    name = "binstring-0.1.5",
+    srcs = [":binstring-0.1.5.crate"],
     crate = "binstring",
-    crate_root = "binstring-0.1.2.crate/src/lib.rs",
+    crate_root = "binstring-0.1.5.crate/src/lib.rs",
     edition = "2021",
     visibility = [],
 )
@@ -4817,23 +4785,23 @@ cargo.rust_library(
 
 alias(
     name = "derive_more",
-    actual = ":derive_more-0.99.19",
+    actual = ":derive_more-0.99.20",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "derive_more-0.99.19.crate",
-    sha256 = "3da29a38df43d6f156149c9b43ded5e018ddff2a855cf2cfd62e8cd7d079c69f",
-    strip_prefix = "derive_more-0.99.19",
-    urls = ["https://static.crates.io/crates/derive_more/0.99.19/download"],
+    name = "derive_more-0.99.20.crate",
+    sha256 = "6edb4b64a43d977b8e99788fe3a04d483834fba1215a7e02caa415b626497f7f",
+    strip_prefix = "derive_more-0.99.20",
+    urls = ["https://static.crates.io/crates/derive_more/0.99.20/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "derive_more-0.99.19",
-    srcs = [":derive_more-0.99.19.crate"],
+    name = "derive_more-0.99.20",
+    srcs = [":derive_more-0.99.20.crate"],
     crate = "derive_more",
-    crate_root = "derive_more-0.99.19.crate/src/lib.rs",
+    crate_root = "derive_more-0.99.20.crate/src/lib.rs",
     edition = "2018",
     features = [
         "add",
@@ -5839,28 +5807,6 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "event-listener-strategy-0.5.4.crate",
-    sha256 = "8be9f3dfaaffdae2972880079a491a1a8bb7cbed0b8dd7a347f668b4150a3b93",
-    strip_prefix = "event-listener-strategy-0.5.4",
-    urls = ["https://static.crates.io/crates/event-listener-strategy/0.5.4/download"],
-    visibility = [],
-)
-
-cargo.rust_library(
-    name = "event-listener-strategy-0.5.4",
-    srcs = [":event-listener-strategy-0.5.4.crate"],
-    crate = "event_listener_strategy",
-    crate_root = "event-listener-strategy-0.5.4.crate/src/lib.rs",
-    edition = "2021",
-    features = ["std"],
-    visibility = [],
-    deps = [
-        ":event-listener-5.4.0",
-        ":pin-project-lite-0.2.16",
-    ],
-)
-
-http_archive(
     name = "eventsource-stream-0.2.3.crate",
     sha256 = "74fef4569247a5f429d9156b9d0a2599914385dd189c539334c625d8099d90ab",
     strip_prefix = "eventsource-stream-0.2.3",
@@ -6257,26 +6203,27 @@ cargo.rust_library(
 
 alias(
     name = "foyer",
-    actual = ":foyer-0.14.1",
+    actual = ":foyer-0.16.1",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "foyer-0.14.1.crate",
-    sha256 = "ddac72b94b174f342300f54f6dfda93c87a4a220e2def9ee2590e3ac474b5f6d",
-    strip_prefix = "foyer-0.14.1",
-    urls = ["https://static.crates.io/crates/foyer/0.14.1/download"],
+    name = "foyer-0.16.1.crate",
+    sha256 = "59819ed1a4be90fe66aa13df94adff2365bbb94929ad1052fd977e06b478974e",
+    strip_prefix = "foyer-0.16.1",
+    urls = ["https://static.crates.io/crates/foyer/0.16.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "foyer-0.14.1",
-    srcs = [":foyer-0.14.1.crate"],
+    name = "foyer-0.16.1",
+    srcs = [":foyer-0.16.1.crate"],
     crate = "foyer",
-    crate_root = "foyer-0.14.1.crate/src/lib.rs",
+    crate_root = "foyer-0.16.1.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
+        "serde",
         "tracing",
     ],
     platform = {
@@ -6305,29 +6252,34 @@ cargo.rust_library(
         ":anyhow-1.0.98",
         ":equivalent-1.0.2",
         ":fastrace-0.7.9",
-        ":foyer-common-0.14.1",
-        ":foyer-memory-0.14.1",
-        ":foyer-storage-0.14.1",
-        ":mixtrics-0.0.3",
+        ":foyer-common-0.16.1",
+        ":foyer-memory-0.16.1",
+        ":foyer-storage-0.16.1",
+        ":mixtrics-0.0.6",
+        ":pin-project-1.1.10",
+        ":serde-1.0.219",
         ":tracing-0.1.41",
     ],
 )
 
 http_archive(
-    name = "foyer-common-0.14.1.crate",
-    sha256 = "3a2fec9e9293931608eb6bb4b032d05b8b45c8749ec6a0ace82bfe40ab5d68c4",
-    strip_prefix = "foyer-common-0.14.1",
-    urls = ["https://static.crates.io/crates/foyer-common/0.14.1/download"],
+    name = "foyer-common-0.16.1.crate",
+    sha256 = "06d425cd90d221e1c2cad27717260414cc1d55fa325fd8d02bbd928e4930d7d8",
+    strip_prefix = "foyer-common-0.16.1",
+    urls = ["https://static.crates.io/crates/foyer-common/0.16.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "foyer-common-0.14.1",
-    srcs = [":foyer-common-0.14.1.crate"],
+    name = "foyer-common-0.16.1",
+    srcs = [":foyer-common-0.16.1.crate"],
     crate = "foyer_common",
-    crate_root = "foyer-common-0.14.1.crate/src/lib.rs",
+    crate_root = "foyer-common-0.16.1.crate/src/lib.rs",
     edition = "2021",
-    features = ["tracing"],
+    features = [
+        "serde",
+        "tracing",
+    ],
     platform = {
         "linux-arm64": dict(
             deps = [":tokio-1.44.2"],
@@ -6351,14 +6303,16 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":ahash-0.8.11",
+        ":bincode-1.3.3",
         ":bytes-1.10.1",
         ":cfg-if-1.0.0",
         ":fastrace-0.7.9",
         ":itertools-0.14.0",
-        ":mixtrics-0.0.3",
+        ":mixtrics-0.0.6",
         ":parking_lot-0.12.3",
         ":pin-project-1.1.10",
         ":serde-1.0.219",
+        ":thiserror-2.0.12",
     ],
 )
 
@@ -6385,18 +6339,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "foyer-memory-0.14.1.crate",
-    sha256 = "5c5016e4ca89ead9045c56f10e7e4cca8068e0b114a57f9df32ad768f90f4c33",
-    strip_prefix = "foyer-memory-0.14.1",
-    urls = ["https://static.crates.io/crates/foyer-memory/0.14.1/download"],
+    name = "foyer-memory-0.16.1.crate",
+    sha256 = "fd2582199b44afa6f617464335cc50debdff3caaf9a93972369bbf7e42cc630d",
+    strip_prefix = "foyer-memory-0.16.1",
+    urls = ["https://static.crates.io/crates/foyer-memory/0.16.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "foyer-memory-0.14.1",
-    srcs = [":foyer-memory-0.14.1.crate"],
+    name = "foyer-memory-0.16.1",
+    srcs = [":foyer-memory-0.16.1.crate"],
     crate = "foyer_memory",
-    crate_root = "foyer-memory-0.14.1.crate/src/lib.rs",
+    crate_root = "foyer-memory-0.16.1.crate/src/lib.rs",
     edition = "2021",
     features = ["tracing"],
     named_deps = {
@@ -6430,10 +6384,10 @@ cargo.rust_library(
         ":cmsketch-0.2.2",
         ":equivalent-1.0.2",
         ":fastrace-0.7.9",
-        ":foyer-common-0.14.1",
+        ":foyer-common-0.16.1",
         ":hashbrown-0.15.2",
         ":itertools-0.14.0",
-        ":mixtrics-0.0.3",
+        ":mixtrics-0.0.6",
         ":parking_lot-0.12.3",
         ":pin-project-1.1.10",
         ":serde-1.0.219",
@@ -6443,21 +6397,22 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "foyer-storage-0.14.1.crate",
-    sha256 = "f6ab33a86920fddf66dae2485e37dbcaf0e56f424875d752b639df62d3f4c056",
-    strip_prefix = "foyer-storage-0.14.1",
-    urls = ["https://static.crates.io/crates/foyer-storage/0.14.1/download"],
+    name = "foyer-storage-0.16.1.crate",
+    sha256 = "ba8dbd31e2caa79d3816b6924c30cc7eb292eac731d8a2af9c59bec911c27924",
+    strip_prefix = "foyer-storage-0.16.1",
+    urls = ["https://static.crates.io/crates/foyer-storage/0.16.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "foyer-storage-0.14.1",
-    srcs = [":foyer-storage-0.14.1.crate"],
+    name = "foyer-storage-0.16.1",
+    srcs = [":foyer-storage-0.16.1.crate"],
     crate = "foyer_storage",
-    crate_root = "foyer-storage-0.14.1.crate/src/lib.rs",
+    crate_root = "foyer-storage-0.16.1.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
+        "serde",
         "tracing",
     ],
     platform = {
@@ -6486,17 +6441,15 @@ cargo.rust_library(
         ":allocator-api2-0.2.21",
         ":anyhow-1.0.98",
         ":array-util-1.0.2",
-        ":async-channel-2.3.1",
         ":auto_enums-0.8.7",
-        ":bincode-1.3.3",
         ":bytes-1.10.1",
         ":clap-4.5.37",
         ":equivalent-1.0.2",
         ":fastrace-0.7.9",
         ":flume-0.11.1",
-        ":foyer-common-0.14.1",
-        ":foyer-memory-0.14.1",
-        ":fs4-0.12.0",
+        ":foyer-common-0.16.1",
+        ":foyer-memory-0.16.1",
+        ":fs4-0.13.1",
         ":futures-core-0.3.31",
         ":futures-util-0.3.31",
         ":itertools-0.14.0",
@@ -6557,6 +6510,43 @@ cargo.rust_library(
         ),
         "windows-msvc": dict(
             deps = [":windows-sys-0.52.0"],
+        ),
+    },
+    visibility = [],
+)
+
+http_archive(
+    name = "fs4-0.13.1.crate",
+    sha256 = "8640e34b88f7652208ce9e88b1a37a2ae95227d84abec377ccd3c5cfeb141ed4",
+    strip_prefix = "fs4-0.13.1",
+    urls = ["https://static.crates.io/crates/fs4/0.13.1/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "fs4-0.13.1",
+    srcs = [":fs4-0.13.1.crate"],
+    crate = "fs4",
+    crate_root = "fs4-0.13.1.crate/src/lib.rs",
+    edition = "2021",
+    platform = {
+        "linux-arm64": dict(
+            deps = [":rustix-1.0.5"],
+        ),
+        "linux-x86_64": dict(
+            deps = [":rustix-1.0.5"],
+        ),
+        "macos-arm64": dict(
+            deps = [":rustix-1.0.5"],
+        ),
+        "macos-x86_64": dict(
+            deps = [":rustix-1.0.5"],
+        ),
+        "windows-gnu": dict(
+            deps = [":windows-sys-0.59.0"],
+        ),
+        "windows-msvc": dict(
+            deps = [":windows-sys-0.59.0"],
         ),
     },
     visibility = [],
@@ -9237,7 +9227,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":anyhow-1.0.98",
-        ":binstring-0.1.2",
+        ":binstring-0.1.5",
         ":blake2b_simd-1.0.3",
         ":coarsetime-0.1.36",
         ":ct-codecs-1.1.3",
@@ -10607,23 +10597,23 @@ cargo.rust_library(
 
 alias(
     name = "mixtrics",
-    actual = ":mixtrics-0.0.3",
+    actual = ":mixtrics-0.0.6",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "mixtrics-0.0.3.crate",
-    sha256 = "ff4d2b55cea00ffba84e3df1e875d9190331e2f3bba2ee3bdd3abcc739639a71",
-    strip_prefix = "mixtrics-0.0.3",
-    urls = ["https://static.crates.io/crates/mixtrics/0.0.3/download"],
+    name = "mixtrics-0.0.6.crate",
+    sha256 = "41434672bd2f5df1b8ed58e0cee0a7a1000bf8dd711cea5a5540afcf41f7d7fb",
+    strip_prefix = "mixtrics-0.0.6",
+    urls = ["https://static.crates.io/crates/mixtrics/0.0.6/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "mixtrics-0.0.3",
-    srcs = [":mixtrics-0.0.3.crate"],
+    name = "mixtrics-0.0.6",
+    srcs = [":mixtrics-0.0.6.crate"],
     crate = "mixtrics",
-    crate_root = "mixtrics-0.0.3.crate/src/lib.rs",
+    crate_root = "mixtrics-0.0.6.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
@@ -18230,7 +18220,7 @@ cargo.rust_binary(
         ":aws-sdk-firehose-1.68.0",
         ":aws-sdk-ssm-1.71.0",
         ":aws-smithy-http-client-1.0.1",
-        ":aws-smithy-runtime-1.8.1",
+        ":aws-smithy-runtime-1.8.3",
         ":axum-0.6.20",
         ":backtrace-0.3.71",
         ":base64-0.22.1",
@@ -18251,7 +18241,7 @@ cargo.rust_binary(
         ":deadpool-0.12.2",
         ":deadpool-postgres-0.14.1",
         ":derive_builder-0.20.2",
-        ":derive_more-0.99.19",
+        ":derive_more-0.99.20",
         ":devicemapper-0.34.1",
         ":diff-0.1.13",
         ":directories-5.0.1",
@@ -18259,7 +18249,7 @@ cargo.rust_binary(
         ":env_logger-0.11.8",
         ":fastrace-0.7.9",
         ":flate2-1.1.1",
-        ":foyer-0.14.1",
+        ":foyer-0.16.1",
         ":fs4-0.12.0",
         ":fuser-0.15.1",
         ":futures-0.3.31",
@@ -18283,7 +18273,7 @@ cargo.rust_binary(
         ":manyhow-0.11.4",
         ":mime_guess-2.0.4",
         ":miniz_oxide-0.8.8",
-        ":mixtrics-0.0.3",
+        ":mixtrics-0.0.6",
         ":monostate-0.1.14",
         ":names-0.14.0",
         ":nix-0.29.0",
