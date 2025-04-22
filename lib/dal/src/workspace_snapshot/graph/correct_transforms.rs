@@ -3,13 +3,13 @@ use std::collections::{HashMap, HashSet};
 use petgraph::prelude::*;
 use si_events::ulid::Ulid;
 
+use crate::workspace_snapshot::NodeInformation;
+use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::traits::{CorrectTransforms, CorrectTransformsResult};
-use crate::workspace_snapshot::node_weight::NodeWeight;
-use crate::workspace_snapshot::NodeInformation;
 use crate::{EdgeWeight, EdgeWeightKind, NodeWeightDiscriminants};
 
-use super::{detector::Update, WorkspaceSnapshotGraphVCurrent};
+use super::{WorkspaceSnapshotGraphVCurrent, detector::Update};
 
 pub fn correct_transforms(
     graph: &WorkspaceSnapshotGraphVCurrent,

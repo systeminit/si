@@ -1,11 +1,11 @@
 use crate::{
-    workspace_snapshot::{
-        graph::{detector::Update, WorkspaceSnapshotGraphError},
-        NodeInformation,
-    },
     EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent,
+    workspace_snapshot::{
+        NodeInformation,
+        graph::{WorkspaceSnapshotGraphError, detector::Update},
+    },
 };
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 use thiserror::Error;
 
 use super::{NodeWeightDiscriminants, NodeWeightError};

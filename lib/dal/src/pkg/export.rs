@@ -1,4 +1,4 @@
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{HashMap, hash_map::Entry};
 use std::ops::Deref;
 
 use strum::IntoEnumIterator;
@@ -22,14 +22,14 @@ use crate::func::FuncKind;
 use crate::management::prototype::ManagementPrototype;
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::{
-    func::{argument::FuncArgument, intrinsics::IntrinsicFunc},
-    prop::PropPath,
     AttributePrototype, DalContext, Func, FuncId, Prop, PropId, PropKind, Schema, SchemaId,
     SchemaVariant, SchemaVariantId, Workspace,
+    func::{argument::FuncArgument, intrinsics::IntrinsicFunc},
+    prop::PropPath,
 };
 use crate::{AttributePrototypeId, FuncBackendKind, InputSocket, OutputSocket};
 
-use super::{import_pkg_from_pkg, PkgError, PkgResult};
+use super::{PkgError, PkgResult, import_pkg_from_pkg};
 
 pub type FuncSpecMap = super::ChangeSetThingMap<FuncId, FuncSpec>;
 type VariantSpecMap = super::ChangeSetThingMap<SchemaVariantId, SchemaVariantSpec>;

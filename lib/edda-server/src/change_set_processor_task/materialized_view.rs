@@ -1,27 +1,27 @@
 use std::collections::HashSet;
 
 use dal::{
-    action::{prototype::ActionPrototypeError, ActionError},
+    DalContext, SchemaVariantError, TransactionsError, WorkspaceSnapshotError,
+    action::{ActionError, prototype::ActionPrototypeError},
     data_cache::{DataCache, DataCacheError},
     dependency_graph::DependencyGraph,
     diagram::DiagramError,
-    DalContext, SchemaVariantError, TransactionsError, WorkspaceSnapshotError,
 };
 use frigg::{FriggError, FriggStore};
 use si_events::workspace_snapshot::Checksum;
-use si_events::{workspace_snapshot::Change, WorkspaceSnapshotAddress};
+use si_events::{WorkspaceSnapshotAddress, workspace_snapshot::Change};
 use si_frontend_types::{
+    MaterializedView,
     action::ActionPrototypeViewList as ActionPrototypeViewListMv,
     action::ActionViewList as ActionViewListMv,
     index::MvIndex,
     object::{
-        patch::{ObjectPatch as FrontendObjectPatch, PatchBatch, PatchBatchMeta, PATCH_BATCH_KIND},
         FrontendObject,
+        patch::{ObjectPatch as FrontendObjectPatch, PATCH_BATCH_KIND, PatchBatch, PatchBatchMeta},
     },
     reference::{IndexReference, ReferenceKind},
     schema_variant::SchemaVariantCategories as SchemaVariantCategoriesMv,
     view::{View as ViewMv, ViewList as ViewListMv},
-    MaterializedView,
 };
 use si_id::{ChangeSetId, WorkspacePk};
 use strum::IntoEnumIterator;
@@ -40,7 +40,9 @@ pub enum MaterializedViewError {
     Diagram(#[from] DiagramError),
     #[error("Frigg error: {0}")]
     Frigg(#[from] FriggError),
-    #[error("No index for incremental build for workspace {workspace_pk} and change set {change_set_id}")]
+    #[error(
+        "No index for incremental build for workspace {workspace_pk} and change set {change_set_id}"
+    )]
     NoIndexForIncrementalBuild {
         workspace_pk: WorkspacePk,
         change_set_id: ChangeSetId,
@@ -389,7 +391,7 @@ async fn build_mv_inner(
 }
 
 macro_rules! add_reference_dependencies_to_dependency_graph {
-    ($dependency_graph:expr, $mv:ident $(,)?) => {
+    ($dependency_graph:expr_2021, $mv:ident $(,)?) => {
         for reference_kind in <$mv as MaterializedView>::reference_dependencies() {
             $dependency_graph.id_depends_on(<$mv as MaterializedView>::kind(), *reference_kind);
         }

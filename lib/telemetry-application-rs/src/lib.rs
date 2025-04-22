@@ -22,24 +22,24 @@ use std::{
 use console_subscriber::ConsoleLayer;
 use derive_builder::Builder;
 use opentelemetry_sdk::{
+    Resource,
     metrics::SdkMeterProvider,
     propagation::TraceContextPropagator,
     resource::EnvResourceDetector,
     runtime,
     trace::{self, Config, Tracer},
-    Resource,
 };
 use opentelemetry_semantic_conventions::resource;
 use telemetry::{
+    TelemetryCommand, TracingLevel, Verbosity,
     opentelemetry::{
+        KeyValue,
         global::{self},
         metrics::MetricsError,
         trace::{TraceError, TracerProvider},
-        KeyValue,
     },
     prelude::*,
     tracing::Subscriber,
-    TelemetryCommand, TracingLevel, Verbosity,
 };
 use thiserror::Error;
 use tokio::{
@@ -51,12 +51,12 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::Metadata;
 use tracing_opentelemetry::MetricsLayer;
 use tracing_subscriber::{
+    EnvFilter, Layer, Registry,
     filter::{FilterExt, ParseError},
     fmt::format::FmtSpan,
     layer::{Filter, SubscriberExt},
     reload,
     util::{SubscriberInitExt, TryInitError},
-    EnvFilter, Layer, Registry,
 };
 
 pub use telemetry::tracing;
@@ -351,7 +351,7 @@ fn tracing_subscriber(
     config: &TelemetryConfig,
     tracing_level: &TracingLevel,
     span_events_fmt: FmtSpan,
-) -> Result<(impl Subscriber + Send + Sync, TelemetryHandles)> {
+) -> Result<(impl Subscriber + Send + Sync + use<>, TelemetryHandles)> {
     let directives = TracingDirectives::from(tracing_level);
 
     let (console_log_layer, console_log_filter_reload) = {

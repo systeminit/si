@@ -5,9 +5,9 @@ use petgraph::prelude::*;
 use thiserror::Error;
 
 use crate::{
+    GraphError, NameStr, ObjectTree, WriteBytes,
     graph::{HashedNodeWithEntries, NodeEntry},
     tar::{object_path, ref_path},
-    GraphError, NameStr, ObjectTree, WriteBytes,
 };
 
 /// Errors that can occur when creating a tar bundle of the object tree

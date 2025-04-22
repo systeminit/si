@@ -1,15 +1,15 @@
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::time::Duration;
-use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::Mutex;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
 
 use crate::api::PosthogApiClient;
 use crate::{
+    PosthogConfig,
     api::{PosthogApiEvent, PosthogMessage},
     error::PosthogResult,
-    PosthogConfig,
 };
 
 #[derive(Debug)]

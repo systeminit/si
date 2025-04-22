@@ -4,7 +4,7 @@ use dal::{
 };
 use dal_test::expected::{self, ExpectComponent};
 use dal_test::helpers::{
-    create_named_component_for_schema_variant_on_default_view, ChangeSetTestHelpers,
+    ChangeSetTestHelpers, create_named_component_for_schema_variant_on_default_view,
 };
 use dal_test::test;
 use serde_json::json;

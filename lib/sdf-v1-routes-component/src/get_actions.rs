@@ -1,13 +1,13 @@
 use axum::{
-    extract::{Host, OriginalUri, Query},
     Json,
+    extract::{Host, OriginalUri, Query},
 };
 use dal::{
-    action::prototype::ActionKind, action::prototype::ActionPrototype, ActionPrototypeId,
-    Component, ComponentId, DalContext, Func, Visibility,
+    ActionPrototypeId, Component, ComponentId, DalContext, Func, Visibility,
+    action::prototype::ActionKind, action::prototype::ActionPrototype,
 };
 use sdf_core::tracking::track;
-use sdf_extract::{v1::AccessBuilder, HandlerContext, PosthogClient};
+use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;

@@ -1,6 +1,6 @@
 use axum::{
-    extract::{Host, OriginalUri},
     Json,
+    extract::{Host, OriginalUri},
 };
 use dal::{HistoryActor, User, WsEvent};
 use module_index_client::ModuleIndexClient;
@@ -9,7 +9,7 @@ use ulid::Ulid;
 
 use crate::{ModuleError, ModuleResult};
 use sdf_core::tracking::track;
-use sdf_extract::{request::RawAccessToken, v1::AccessBuilder, HandlerContext, PosthogClient};
+use sdf_extract::{HandlerContext, PosthogClient, request::RawAccessToken, v1::AccessBuilder};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

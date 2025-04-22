@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, EncryptedSecretKey};
+use si_events::{EncryptedSecretKey, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 
 use crate::workspace_snapshot::vector_clock::deprecated::DeprecatedVectorClock;
 use crate::workspace_snapshot::{content_address::ContentAddress, graph::LineageId};

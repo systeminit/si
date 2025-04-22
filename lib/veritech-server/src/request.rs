@@ -3,7 +3,7 @@ use si_pool_noodle::{
     ActionRunRequest, BeforeFunction, ManagementRequest, ResolverFunctionRequest,
     SchemaVariantDefinitionRequest, SensitiveStrings, ValidationRequest,
 };
-use veritech_core::{decrypt_value_tree, VeritechValueDecryptError};
+use veritech_core::{VeritechValueDecryptError, decrypt_value_tree};
 
 pub trait DecryptRequest {
     fn decrypt(

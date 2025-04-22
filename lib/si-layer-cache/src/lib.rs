@@ -37,7 +37,7 @@ pub mod pg;
 
 pub use db::LayerDb;
 pub use error::LayerDbError;
-pub use pg::{default_pg_pool_config, APPLICATION_NAME, DBNAME};
+pub use pg::{APPLICATION_NAME, DBNAME, default_pg_pool_config};
 
 // FIXME(nick): this needs to move outside the layer cache.
 pub mod external {

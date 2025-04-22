@@ -3,8 +3,8 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgError, SiPkgSchema, Source};
 use crate::{
-    node::{ChangeSetChildNode, PkgNode},
     ChangeSetSpec, ChangeSetSpecStatus, FuncSpec, SiPkgComponent, SiPkgEdge, SiPkgFunc,
+    node::{ChangeSetChildNode, PkgNode},
 };
 
 #[derive(Clone, Debug)]

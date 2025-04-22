@@ -1,30 +1,30 @@
 use chrono::Utc;
 use futures::StreamExt;
 use naxum::{
-    extract::{message_parts::Headers, State},
-    response::{IntoResponse, Response},
     Message,
+    extract::{State, message_parts::Headers},
+    response::{IntoResponse, Response},
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use si_data_nats::{HeaderMap, InnerMessage, Subject};
 // seems strange to get these cyclone_core types from si_pool_noodle?
 use si_pool_noodle::{
-    errors::PoolNoodleError, ActionRunResultSuccess, CycloneClient, CycloneRequest,
-    CycloneRequestable, ExecutionError, FunctionResultFailure, FunctionResultFailureError,
-    ManagementResultSuccess, ProgressMessage, ResolverFunctionResultSuccess,
-    SchemaVariantDefinitionResultSuccess, SensitiveStrings, ValidationResultSuccess,
+    ActionRunResultSuccess, CycloneClient, CycloneRequest, CycloneRequestable, ExecutionError,
+    FunctionResultFailure, FunctionResultFailureError, ManagementResultSuccess, ProgressMessage,
+    ResolverFunctionResultSuccess, SchemaVariantDefinitionResultSuccess, SensitiveStrings,
+    ValidationResultSuccess, errors::PoolNoodleError,
 };
 use std::{collections::HashMap, result, str::Utf8Error, sync::Arc, time::Duration};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use thiserror::Error;
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::{Mutex, oneshot};
 use veritech_core::{
-    ExecutionId, VeritechRequest, VeritechRequestError, VeritechValueDecryptError,
-    REPLY_INBOX_HEADER_NAME,
+    ExecutionId, REPLY_INBOX_HEADER_NAME, VeritechRequest, VeritechRequestError,
+    VeritechValueDecryptError,
 };
 
-use crate::{app_state::AppState, request::DecryptRequest, Publisher, PublisherError};
+use crate::{Publisher, PublisherError, app_state::AppState, request::DecryptRequest};
 
 pub use kill::process_kill_request;
 
@@ -297,7 +297,7 @@ where
         // Construct the Error result to propagate to subscribers
         Err(ref err) => {
             let func_result_error = match err {
-                HandlerError::CycloneTimeout(ref timeout) => {
+                HandlerError::CycloneTimeout(timeout) => {
                     warn!(si.error.message = ?err, "timed out trying to run function to completion: {:?}", timeout);
                     let func_res_failure = FunctionResultFailure::new_for_veritech_server_error(
                         execution_id.to_owned(),
@@ -306,7 +306,7 @@ where
                     );
                     si_pool_noodle::FunctionResult::Failure::<Request>(func_res_failure)
                 }
-                HandlerError::Killed(ref execution_id) => {
+                HandlerError::Killed(execution_id) => {
                     warn!(si.error.message = ?err, si.func_run.id = ?execution_id, "function killed during execution: {:?} via signal", execution_id);
                     let func_res_failure = FunctionResultFailure::new(
                         execution_id.to_owned(),

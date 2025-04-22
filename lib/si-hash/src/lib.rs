@@ -26,8 +26,8 @@
 use std::{default::Default, fmt, str::FromStr};
 
 use serde::{
-    de::{self, Visitor},
     Deserialize, Serialize,
+    de::{self, Visitor},
 };
 use thiserror::Error;
 

@@ -1,18 +1,18 @@
 use std::collections::HashMap;
 
 use axum::{
+    Json, Router,
     extract::Path,
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, put},
-    Json, Router,
 };
 use dal::{
-    diagram::{geometry::Geometry, view::View},
-    management::prototype::ManagementPrototype,
-    prop::{PropPath, PropResult, PROP_PATH_SEPARATOR},
     AttributeValue, Component, ComponentError, ComponentId, DalContext, Prop, PropId,
     SchemaVariantId, WsEvent,
+    diagram::{geometry::Geometry, view::View},
+    management::prototype::ManagementPrototype,
+    prop::{PROP_PATH_SEPARATOR, PropPath, PropResult},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -21,8 +21,8 @@ use si_frontend_types::{DiagramComponentView, GeometryAndView};
 use si_id::ManagementPrototypeId;
 use thiserror::Error;
 
-use crate::extract::{change_set::ChangeSetDalContext, PosthogEventTracker};
 use crate::AppState;
+use crate::extract::{PosthogEventTracker, change_set::ChangeSetDalContext};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

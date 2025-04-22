@@ -12,8 +12,8 @@ use crate::{
 };
 
 use super::{
-    future::ResponseFuture, DefaultOnFailure, DefaultOnSuccess, Info, OnFailure, OnSuccess,
-    PostProcessLayer,
+    DefaultOnFailure, DefaultOnSuccess, Info, OnFailure, OnSuccess, PostProcessLayer,
+    future::ResponseFuture,
 };
 
 #[derive(Clone, Copy, Debug)]

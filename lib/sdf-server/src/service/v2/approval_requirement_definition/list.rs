@@ -1,21 +1,21 @@
 use std::{collections::HashMap, str::FromStr};
 
 use axum::{
-    extract::{Path, State},
     Json,
+    extract::{Path, State},
 };
 use dal::{
+    ChangeSetId, UserPk, WorkspacePk,
     approval_requirement::{
         ApprovalRequirementApprover,
         ApprovalRequirementDefinition as DalApprovalRequirementDefinition,
     },
     workspace_snapshot::EntityKindExt,
-    ChangeSetId, UserPk, WorkspacePk,
 };
 use si_frontend_types::ApprovalRequirementDefinition;
 use si_id::EntityId;
 
-use crate::{extract::HandlerContext, service::v2::AccessBuilder, AppState};
+use crate::{AppState, extract::HandlerContext, service::v2::AccessBuilder};
 
 use super::ApprovalRequirementDefinitionError;
 

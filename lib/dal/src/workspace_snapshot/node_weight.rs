@@ -2,7 +2,7 @@ use std::num::TryFromIntError;
 
 use finished_dependent_value_root_node_weight::FinishedDependentValueRootNodeWeight;
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
+use si_events::{ContentHash, EncryptedSecretKey, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 use si_layer_cache::LayerDbError;
 use strum::{EnumDiscriminants, EnumIter};
 use thiserror::Error;
@@ -16,6 +16,8 @@ use crate::workspace_snapshot::node_weight::geometry_node_weight::GeometryNodeWe
 use crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
 use crate::workspace_snapshot::node_weight::view_node_weight::ViewNodeWeight;
 use crate::{
+    ChangeSetId, EdgeWeightKindDiscriminants, PropKind, SocketArity, WorkspaceSnapshotError,
+    WorkspaceSnapshotGraphVCurrent,
     action::prototype::ActionKind,
     func::FuncKind,
     workspace_snapshot::{
@@ -24,8 +26,6 @@ use crate::{
         node_weight::secret_node_weight::SecretNodeWeight,
         vector_clock::VectorClockError,
     },
-    ChangeSetId, EdgeWeightKindDiscriminants, PropKind, SocketArity, WorkspaceSnapshotError,
-    WorkspaceSnapshotGraphVCurrent,
 };
 
 use self::{
@@ -35,7 +35,7 @@ use self::{
 };
 
 use super::graph::{
-    deprecated::v1::DeprecatedNodeWeightV1, detector::Update, WorkspaceSnapshotGraphError,
+    WorkspaceSnapshotGraphError, deprecated::v1::DeprecatedNodeWeightV1, detector::Update,
 };
 
 pub use action_node_weight::ActionNodeWeight;

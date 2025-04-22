@@ -1,4 +1,4 @@
-use axum::{extract::Query, Json};
+use axum::{Json, extract::Query};
 use dal::Workspace;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;

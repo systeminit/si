@@ -100,7 +100,7 @@ impl ChangeSetApproval {
         let user_id = match ctx.history_actor() {
             HistoryActor::User(user_id) => user_id,
             HistoryActor::SystemInit => {
-                return Err(ChangeSetApprovalError::InvalidUserForNewApproval)
+                return Err(ChangeSetApprovalError::InvalidUserForNewApproval);
             }
         };
 

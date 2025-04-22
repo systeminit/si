@@ -1,12 +1,12 @@
 use axum::{
-    extract::{Host, OriginalUri, Path},
     Json,
+    extract::{Host, OriginalUri, Path},
 };
-use dal::{module::Module, ChangeSetId, WorkspacePk};
+use dal::{ChangeSetId, WorkspacePk, module::Module};
 use si_frontend_types::ModuleSummary;
 
 use super::ModuleAPIResult;
-use crate::extract::{request::RawAccessToken, HandlerContext, PosthogClient};
+use crate::extract::{HandlerContext, PosthogClient, request::RawAccessToken};
 use crate::service::v2::AccessBuilder;
 
 pub async fn list(

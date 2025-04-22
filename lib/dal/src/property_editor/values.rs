@@ -8,11 +8,11 @@ use serde_json::Value;
 use telemetry::prelude::*;
 
 use crate::{
+    AttributeValue, AttributeValueId, Component, ComponentId, DalContext, InputSocketId, Prop,
+    PropId, Secret,
     attribute::value::AttributeValueError,
     property_editor::{PropertyEditorPropId, PropertyEditorResult, PropertyEditorValueId},
     validation::{ValidationOutput, ValidationOutputNode},
-    AttributeValue, AttributeValueId, Component, ComponentId, DalContext, InputSocketId, Prop,
-    PropId, Secret,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

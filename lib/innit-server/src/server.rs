@@ -8,16 +8,16 @@ use super::routes;
 use axum::Router;
 use axum::{error_handling::HandleErrorLayer, routing::IntoMakeService};
 use hyper::{
-    server::{accept::Accept, conn::AddrIncoming},
     StatusCode,
+    server::{accept::Accept, conn::AddrIncoming},
 };
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
-use tower::{buffer::BufferLayer, BoxError, ServiceBuilder};
+use tower::{BoxError, ServiceBuilder, buffer::BufferLayer};
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
-use crate::{app_state::AppState, Config};
+use crate::{Config, app_state::AppState};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

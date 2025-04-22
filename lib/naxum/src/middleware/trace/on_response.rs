@@ -3,7 +3,7 @@ use std::time::Duration;
 use tracing::{Level, Span};
 
 use crate::{
-    middleware::{trace::Latency, LatencyUnit},
+    middleware::{LatencyUnit, trace::Latency},
     response::Response,
 };
 

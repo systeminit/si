@@ -1,13 +1,13 @@
 use axum::Json;
 use dal::{
-    action::{prototype::ActionPrototype, Action, ActionId, ActionState},
     Func, Visibility, WsEvent,
+    action::{Action, ActionId, ActionState, prototype::ActionPrototype},
 };
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 
 use super::{ActionError, ActionResult};
-use sdf_extract::{v1::AccessBuilder, HandlerContext};
+use sdf_extract::{HandlerContext, v1::AccessBuilder};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -28,7 +28,7 @@ pub async fn put_on_hold(
 
         match action.state() {
             ActionState::Running | ActionState::Dispatched | ActionState::OnHold => {
-                return Err(ActionError::InvalidOnHoldTransition(action_id))
+                return Err(ActionError::InvalidOnHoldTransition(action_id));
             }
             ActionState::Queued | ActionState::Failed => {}
         }

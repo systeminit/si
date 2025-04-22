@@ -10,12 +10,12 @@ use std::{
 use axum::extract::ws::WebSocket;
 use bytes_lines_codec::BytesLinesCodec;
 use cyclone_core::{
-    process::{self, ShutdownError},
     CycloneRequest, CycloneRequestable, FunctionResult, FunctionResultFailure,
     FunctionResultFailureError, FunctionResultFailureErrorKind, Message, OutputStream,
+    process::{self, ShutdownError},
 };
 use futures::{SinkExt, StreamExt, TryStreamExt};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use si_crypto::SensitiveStrings;
 use telemetry::prelude::*;
@@ -25,10 +25,10 @@ use tokio::{
     process::{ChildStderr, ChildStdin, ChildStdout},
     time,
 };
-use tokio_serde::{formats::SymmetricalJson, Deserializer, Framed, SymmetricallyFramed};
+use tokio_serde::{Deserializer, Framed, SymmetricallyFramed, formats::SymmetricalJson};
 use tokio_util::codec::{Decoder, FramedRead, FramedWrite};
 
-use crate::{state::LangServerChild, WebSocketMessage};
+use crate::{WebSocketMessage, state::LangServerChild};
 
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(5);
 const DEFAULT_LANG_SERVER_PROCESS_TIMEOUT: Duration = Duration::from_secs(32 * 60);

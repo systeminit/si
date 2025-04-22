@@ -6,19 +6,19 @@ use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 use si_id::{ApprovalRequirementDefinitionId, EntityId};
-use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDbError;
+use si_layer_cache::db::serialize;
 use strum::{EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 /// Ensure [`NodeIndex`], and [`Direction`] are usable externally.
-pub use petgraph::{graph::NodeIndex, Direction};
+pub use petgraph::{Direction, graph::NodeIndex};
 
 use crate::{
-    socket::input::InputSocketError,
-    workspace_snapshot::node_weight::{category_node_weight::CategoryNodeKind, NodeWeightError},
     ComponentError, EdgeWeightKindDiscriminants, SchemaVariantError,
+    socket::input::InputSocketError,
+    workspace_snapshot::node_weight::{NodeWeightError, category_node_weight::CategoryNodeKind},
 };
 
 pub mod correct_transforms;
@@ -45,7 +45,9 @@ pub type WorkspaceSnapshotGraphVCurrent = WorkspaceSnapshotGraphV4;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum WorkspaceSnapshotGraphError {
-    #[error("Cannot compare ordering of container elements between ordered, and un-ordered container: {0:?}, {1:?}")]
+    #[error(
+        "Cannot compare ordering of container elements between ordered, and un-ordered container: {0:?}, {1:?}"
+    )]
     CannotCompareOrderedAndUnorderedContainers(NodeIndex, NodeIndex),
     #[error("could not find category node of kind: {0:?}")]
     CategoryNodeNotFound(CategoryNodeKind),
@@ -75,7 +77,9 @@ pub enum WorkspaceSnapshotGraphError {
     LayerDb(#[from] LayerDbError),
     #[error("monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
-    #[error("multiple merkle tree hashes found for entity {0} (at least two found, including {1} and {2})")]
+    #[error(
+        "multiple merkle tree hashes found for entity {0} (at least two found, including {1} and {2})"
+    )]
     MultipleMerkleTreeHashesForEntity(EntityId, MerkleTreeHash, MerkleTreeHash),
     #[error("mutex poisoning: {0}")]
     MutexPoison(String),

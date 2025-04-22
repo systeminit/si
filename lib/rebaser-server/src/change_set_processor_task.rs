@@ -7,8 +7,9 @@ use std::{
 
 use dal::DalContextBuilder;
 use edda_client::EddaClient;
-use futures::{future::BoxFuture, TryStreamExt};
+use futures::{TryStreamExt, future::BoxFuture};
 use naxum::{
+    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
@@ -17,11 +18,10 @@ use naxum::{
         trace::TraceLayer,
     },
     response::{IntoResponse, Response},
-    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
 };
 use si_data_nats::{
-    async_nats::jetstream::{self, consumer::push},
     NatsClient,
+    async_nats::jetstream::{self, consumer::push},
 };
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;
@@ -275,17 +275,17 @@ async fn graceful_shutdown_signal(
 mod handlers {
     use std::result;
 
-    use dal::{billing_publish, ChangeSet, Workspace, WorkspaceSnapshot, WsEvent};
+    use dal::{ChangeSet, Workspace, WorkspaceSnapshot, WsEvent, billing_publish};
     use naxum::{
         extract::State,
         response::{IntoResponse, Response},
     };
     use rebaser_core::api_types::{
+        ApiWrapper, ContentInfo, SerializeError,
         enqueue_updates_request::EnqueueUpdatesRequest,
         enqueue_updates_response::{
-            v1::RebaseStatus, EnqueueUpdatesResponse, EnqueueUpdatesResponseVCurrent,
+            EnqueueUpdatesResponse, EnqueueUpdatesResponseVCurrent, v1::RebaseStatus,
         },
-        ApiWrapper, ContentInfo, SerializeError,
     };
     use si_data_nats::HeaderMap;
     use telemetry::prelude::*;
@@ -295,7 +295,7 @@ mod handlers {
 
     use crate::{
         extract::{ApiTypesNegotiate, HeaderReply},
-        rebase::{perform_rebase, RebaseError},
+        rebase::{RebaseError, perform_rebase},
     };
 
     use super::app_state::AppState;

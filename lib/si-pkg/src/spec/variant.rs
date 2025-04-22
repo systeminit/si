@@ -6,8 +6,8 @@ use strum::{AsRefStr, Display, EnumIter, EnumString, IntoEnumIterator};
 use url::Url;
 
 use crate::{
-    spec::authentication_func::AuthenticationFuncSpec, InputMismatchTruth, MergeSkip, PropSpecKind,
-    SocketSpecKind,
+    InputMismatchTruth, MergeSkip, PropSpecKind, SocketSpecKind,
+    spec::authentication_func::AuthenticationFuncSpec,
 };
 
 use super::{

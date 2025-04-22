@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use axum::{extract::Path, response::Json};
 use dal::{
+    AttributeValue, Component,
     diagram::{geometry::Geometry, view::View},
     management::prototype::ManagementPrototype,
-    AttributeValue, Component,
 };
 use serde::{Deserialize, Serialize};
 use si_frontend_types::{DiagramComponentView, GeometryAndView};

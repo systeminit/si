@@ -1,7 +1,7 @@
 use crate::{Tenancy, TransactionsError, UserError};
 use chrono::{DateTime, Utc};
 use postgres_types::ToSql;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgRow};
 use std::fmt::Debug;
@@ -16,7 +16,9 @@ use crate::{DalContext, HistoryEvent, HistoryEventError, Timestamp, Visibility};
 pub enum StandardModelError {
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("{0} id {1} is missing when one was expected; it does not exist, is not visible, or is not valid for this tenancy")]
+    #[error(
+        "{0} id {1} is missing when one was expected; it does not exist, is not visible, or is not valid for this tenancy"
+    )]
     ModelMissing(String, String),
     #[error("nats error")]
     Nats(#[from] NatsError),
@@ -843,9 +845,9 @@ macro_rules! impl_standard_model {
     (model: $model:ident,
      pk: $pk:ident,
      id: $id:ident,
-     table_name: $table_name:expr,
-     history_event_label_base: $history_event_label_base:expr,
-     history_event_message_name: $history_event_message_name:expr $(,)?) => {
+     table_name: $table_name:expr_2021,
+     history_event_label_base: $history_event_label_base:expr_2021,
+     history_event_message_name: $history_event_message_name:expr_2021 $(,)?) => {
         impl $crate::StandardModel for $model {
             type Pk = $pk;
             type Id = $id;

@@ -4,8 +4,8 @@ use si_frontend_types::RawGeometry;
 use si_id::{ComponentId, ViewId};
 
 use crate::management::{
-    ManagementConnection, ManagementCreateGeometry, ManagementCreateOperation, ManagementGeometry,
-    SocketRef, IGNORE_PATHS,
+    IGNORE_PATHS, ManagementConnection, ManagementCreateGeometry, ManagementCreateOperation,
+    ManagementGeometry, SocketRef,
 };
 use crate::prop::PropPath;
 use crate::{AttributeValue, Component, DalContext, InputSocket, OutputSocket, Prop, PropKind};
@@ -350,7 +350,7 @@ pub async fn calculate_top_and_center(
 }
 
 fn remove_value_at_path(from: &mut serde_json::Value, remove_path: &[&str]) {
-    if let Some(serde_json::Value::Object(ref mut obj)) = remove_path
+    if let Some(serde_json::Value::Object(obj)) = remove_path
         .iter()
         .take(remove_path.len() - 1)
         .try_fold(from, |val, path_part| match *val {

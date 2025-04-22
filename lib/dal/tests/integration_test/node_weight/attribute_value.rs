@@ -1,8 +1,8 @@
-use dal::workspace_snapshot::DependentValueRoot;
 use dal::DalContext;
+use dal::workspace_snapshot::DependentValueRoot;
 use dal_test::expected::{
-    apply_change_set_to_base, commit_and_update_snapshot_to_visibility, fork_from_head_change_set,
-    update_visibility_and_snapshot_to_visibility, ExpectComponent,
+    ExpectComponent, apply_change_set_to_base, commit_and_update_snapshot_to_visibility,
+    fork_from_head_change_set, update_visibility_and_snapshot_to_visibility,
 };
 use dal_test::test;
 
@@ -33,13 +33,14 @@ async fn change_in_output_component_produces_dvu_root_in_other_change_set(ctx: &
     // DVU debouncer does not run in tests so these roots will never get
     // processed unless we explicitly enqueue a dvu. It's enough to see that it
     // made it into the roots
-    assert!(ctx
-        .workspace_snapshot()
-        .expect("get snap")
-        .get_dependent_value_roots()
-        .await
-        .expect("able to get dvu values")
-        .contains(&DependentValueRoot::Unfinished(
-            image.attribute_value(ctx).await.id().into()
-        )));
+    assert!(
+        ctx.workspace_snapshot()
+            .expect("get snap")
+            .get_dependent_value_roots()
+            .await
+            .expect("able to get dvu values")
+            .contains(&DependentValueRoot::Unfinished(
+                image.attribute_value(ctx).await.id().into()
+            ))
+    );
 }

@@ -4,7 +4,6 @@ load("@prelude-si//:macros.bzl", "rust_library")
 # amongst a potential large number of component crates
 rust_library(
     name = "si-std",
-    edition = "2021",
     deps = [
         "//third-party/rust:rand",
         "//third-party/rust:remain",

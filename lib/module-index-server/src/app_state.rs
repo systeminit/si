@@ -7,7 +7,7 @@ use sea_orm::DatabaseConnection;
 use si_jwt_public_key::JwtPublicSigningKeyChain;
 pub use si_posthog::PosthogClient;
 
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{Mutex, mpsc};
 
 use crate::s3::S3Config;
 

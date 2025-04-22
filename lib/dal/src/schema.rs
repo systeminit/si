@@ -12,17 +12,17 @@ use tokio::sync::TryLockError;
 use crate::cached_module::{CachedModule, CachedModuleError};
 use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{SchemaContent, SchemaContentDiscriminants, SchemaContentV1};
-use crate::pkg::{import_pkg_from_pkg, ImportOptions, PkgError};
+use crate::pkg::{ImportOptions, PkgError, import_pkg_from_pkg};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    implement_add_edge_to, DalContext, Func, FuncError, FuncId, HelperError, SchemaVariantError,
-    Timestamp, TransactionsError,
+    DalContext, Func, FuncError, FuncId, HelperError, SchemaVariantError, Timestamp,
+    TransactionsError, implement_add_edge_to,
 };
 
 pub use variant::{SchemaVariant, SchemaVariantId};

@@ -1,17 +1,17 @@
-use std::collections::{hash_map, HashMap};
+use std::collections::{HashMap, hash_map};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 
 use crate::{
+    AttributePrototype, AttributeValue, AttributeValueId, Component, ComponentId, DalContext,
+    InputSocketId, OutputSocket, OutputSocketId,
     attribute::{
-        prototype::argument::{value_source::ValueSource, AttributePrototypeArgument},
+        prototype::argument::{AttributePrototypeArgument, value_source::ValueSource},
         value::ValueIsFor,
     },
     workspace_snapshot::node_weight::ArgumentTargets,
-    AttributePrototype, AttributeValue, AttributeValueId, Component, ComponentId, DalContext,
-    InputSocketId, OutputSocket, OutputSocketId,
 };
 
 use super::{ComponentError, ComponentResult};
@@ -57,7 +57,7 @@ impl ComponentOutputSocket {
                 return Err(ComponentError::WrongAttributeValueType(
                     attribute_value_id,
                     value_is_for,
-                ))
+                ));
             }
             ValueIsFor::OutputSocket(sock) => sock,
         };
@@ -394,7 +394,10 @@ impl ComponentInputSocket {
             let inferred_connections = match self.find_inferred_connections(ctx).await {
                 Ok(inferred_connections) => inferred_connections,
                 Err(ComponentError::ComponentMissingTypeValueMaterializedView(_)) => {
-                    debug!(?self, "component type not yet set when finding available inferred connections to input socket");
+                    debug!(
+                        ?self,
+                        "component type not yet set when finding available inferred connections to input socket"
+                    );
                     Vec::new()
                 }
                 Err(other_err) => Err(other_err)?,

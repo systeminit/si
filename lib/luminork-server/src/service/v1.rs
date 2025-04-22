@@ -23,6 +23,7 @@ pub use change_sets::{
     },
 };
 pub use components::{
+    ComponentV1RequestPath,
     create_component::{
         ComponentReference, Connection, ConnectionPoint, CreateComponentV1Request,
         CreateComponentV1Response,
@@ -34,7 +35,6 @@ pub use components::{
     update_component::{
         ComponentPropKey, DomainPropPath, UpdateComponentV1Request, UpdateComponentV1Response,
     },
-    ComponentV1RequestPath,
 };
 pub use management::run_prototype::{
     RunPrototypePath, RunPrototypeV1Request, RunPrototypeV1Response,

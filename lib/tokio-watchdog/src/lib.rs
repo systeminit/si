@@ -33,7 +33,7 @@ use telemetry::prelude::*;
 use telemetry_utils::metric;
 use tokio::{
     runtime::Handle,
-    sync::mpsc::{self, error::TrySendError, Receiver, Sender},
+    sync::mpsc::{self, Receiver, Sender, error::TrySendError},
 };
 use tokio_util::sync::CancellationToken;
 
@@ -202,7 +202,9 @@ impl TokioWatchdog {
                     return Err(WatchdogError::InternalError);
                 }
                 Err(TrySendError::Closed(_)) => {
-                    error!("tokio watchdog shutting down because responder closed early; shutting down");
+                    error!(
+                        "tokio watchdog shutting down because responder closed early; shutting down"
+                    );
                     return Err(WatchdogError::InternalError);
                 }
             }

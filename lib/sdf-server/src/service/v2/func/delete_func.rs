@@ -1,5 +1,5 @@
 use axum::extract::{Host, OriginalUri, Path};
-use dal::{func::binding::FuncBinding, ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent};
+use dal::{ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent, func::binding::FuncBinding};
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 

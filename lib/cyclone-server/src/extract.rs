@@ -1,13 +1,13 @@
 use std::sync::{
-    atomic::{AtomicU32, Ordering},
     Arc,
+    atomic::{AtomicU32, Ordering},
 };
 
 use async_trait::async_trait;
 use axum::{
+    Json,
     extract::{Extension, FromRequestParts},
     http::request::Parts,
-    Json,
 };
 use hyper::StatusCode;
 use telemetry::prelude::*;

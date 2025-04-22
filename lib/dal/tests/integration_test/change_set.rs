@@ -1,11 +1,11 @@
 use dal::change_set::view::OpenChangeSetsView;
-use dal::{
-    context::TransactionsErrorDiscriminants, DalContext, DalContextBuilder, HistoryActor,
-    RequestContext, Workspace, WorkspacePk,
-};
 use dal::{AccessBuilder, ChangeSet, ChangeSetStatus, Component};
+use dal::{
+    DalContext, DalContextBuilder, HistoryActor, RequestContext, Workspace, WorkspacePk,
+    context::TransactionsErrorDiscriminants,
+};
 use dal_test::helpers::{
-    create_component_for_default_schema_name_in_default_view, create_user, ChangeSetTestHelpers,
+    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view, create_user,
 };
 use dal_test::test;
 use itertools::Itertools;
@@ -194,8 +194,10 @@ async fn build_from_request_context_limits_to_workspaces_user_has_access_to(
     };
 
     let builder_result = ctx_builder.build(request_context).await;
-    assert!(builder_result
-        .is_err_and(|e| TransactionsErrorDiscriminants::BadWorkspaceAndChangeSet == e.into()));
+    assert!(
+        builder_result
+            .is_err_and(|e| TransactionsErrorDiscriminants::BadWorkspaceAndChangeSet == e.into())
+    );
 
     let request_context = RequestContext {
         tenancy: dal::Tenancy::new(*user_1_workspace.pk()),
@@ -208,8 +210,10 @@ async fn build_from_request_context_limits_to_workspaces_user_has_access_to(
     };
 
     let builder_result = ctx_builder.build(request_context).await;
-    assert!(builder_result
-        .is_err_and(|e| TransactionsErrorDiscriminants::BadWorkspaceAndChangeSet == e.into()));
+    assert!(
+        builder_result
+            .is_err_and(|e| TransactionsErrorDiscriminants::BadWorkspaceAndChangeSet == e.into())
+    );
 }
 
 #[test]
@@ -250,8 +254,10 @@ async fn build_from_request_context_limits_to_change_sets_of_current_workspace(
     };
 
     let builder_result = ctx_builder.build(request_context).await;
-    assert!(builder_result
-        .is_err_and(|e| TransactionsErrorDiscriminants::BadWorkspaceAndChangeSet == e.into()));
+    assert!(
+        builder_result
+            .is_err_and(|e| TransactionsErrorDiscriminants::BadWorkspaceAndChangeSet == e.into())
+    );
 
     let request_context = RequestContext {
         tenancy: dal::Tenancy::new(*user_2_workspace.pk()),
@@ -264,8 +270,10 @@ async fn build_from_request_context_limits_to_change_sets_of_current_workspace(
     };
 
     let builder_result = ctx_builder.build(request_context).await;
-    assert!(builder_result
-        .is_err_and(|e| TransactionsErrorDiscriminants::BadWorkspaceAndChangeSet == e.into()));
+    assert!(
+        builder_result
+            .is_err_and(|e| TransactionsErrorDiscriminants::BadWorkspaceAndChangeSet == e.into())
+    );
 }
 
 #[test]

@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use si_events::{Actor, CasValue, ChangeSetId, ContentHash, Tenancy, UserPk, WorkspacePk};
-use si_layer_cache::{db::serialize, hybrid_cache::CacheConfig, persister::PersistStatus, LayerDb};
+use si_layer_cache::{LayerDb, db::serialize, hybrid_cache::CacheConfig, persister::PersistStatus};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 

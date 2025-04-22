@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{
+    ComponentId, DalContext, WsEvent, WsEventResult, WsPayload,
     attribute::{prototype::AttributePrototypeError, value::AttributeValueError},
     prop::PropError,
-    ComponentId, DalContext, WsEvent, WsEventResult, WsPayload,
 };
 
 #[remain::sorted]

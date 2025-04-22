@@ -3,7 +3,7 @@ use serde_json::json;
 use si_events::audit_log::AuditLogKind;
 use utoipa;
 
-use crate::extract::{change_set::ChangeSetDalContext, PosthogEventTracker};
+use crate::extract::{PosthogEventTracker, change_set::ChangeSetDalContext};
 
 use crate::service::v1::ChangeSetError;
 

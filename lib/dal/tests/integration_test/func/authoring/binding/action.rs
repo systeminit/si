@@ -2,12 +2,12 @@ use dal::action::dependency_graph::ActionDependencyGraph;
 use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::{Action, ActionId};
 use dal::func::authoring::FuncAuthoringClient;
-use dal::func::binding::action::ActionBinding;
 use dal::func::binding::FuncBinding;
+use dal::func::binding::action::ActionBinding;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{DalContext, Func, SchemaVariant};
 use dal_test::helpers::{
-    create_component_for_unlocked_schema_name_on_default_view, ChangeSetTestHelpers,
+    ChangeSetTestHelpers, create_component_for_unlocked_schema_name_on_default_view,
 };
 use dal_test::test;
 
@@ -80,14 +80,16 @@ async fn error_when_attaching_an_exisiting_type(ctx: &mut DalContext) {
 
     let new_action_func_name = "anotherCreate";
 
-    assert!(FuncAuthoringClient::create_new_action_func(
-        ctx,
-        Some(new_action_func_name.to_owned()),
-        ActionKind::Create,
-        schema_variant_id,
-    )
-    .await
-    .is_err());
+    assert!(
+        FuncAuthoringClient::create_new_action_func(
+            ctx,
+            Some(new_action_func_name.to_owned()),
+            ActionKind::Create,
+            schema_variant_id,
+        )
+        .await
+        .is_err()
+    );
 }
 
 #[test]

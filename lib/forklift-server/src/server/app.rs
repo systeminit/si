@@ -1,7 +1,7 @@
 use std::{future::Future, io, sync::Arc};
 
 use audit_database::AuditDatabaseContext;
-use si_data_nats::{jetstream::Context, ConnectionMetadata};
+use si_data_nats::{ConnectionMetadata, jetstream::Context};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;

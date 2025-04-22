@@ -6,27 +6,27 @@ use std::{
 use chrono::Utc;
 use petgraph::Outgoing;
 use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, ComponentId, ContentHash};
+use si_events::{ComponentId, ContentHash, ulid::Ulid};
 use si_frontend_types::{RawGeometry, View as FrontendView, ViewList as FrontendViewList};
 pub use si_id::ViewId;
 
 use crate::{
+    ChangeSetId, DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants, Timestamp,
+    WorkspaceSnapshotError, WsEvent, WsEventResult, WsPayload,
     diagram::{
+        DiagramError, DiagramResult,
         diagram_object::DiagramObject,
         geometry::{Geometry, GeometryId},
-        DiagramError, DiagramResult,
     },
     implement_add_edge_to,
     layer_db_types::{ViewContent, ViewContentV1},
     workspace_snapshot::{
         node_weight::{
-            category_node_weight::CategoryNodeKind, traits::SiVersionedNodeWeight,
-            view_node_weight::ViewNodeWeight, NodeWeight,
+            NodeWeight, category_node_weight::CategoryNodeKind, traits::SiVersionedNodeWeight,
+            view_node_weight::ViewNodeWeight,
         },
         traits::diagram::view::ViewExt,
     },
-    ChangeSetId, DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants, Timestamp,
-    WorkspaceSnapshotError, WsEvent, WsEventResult, WsPayload,
 };
 
 /// Represents spatial data for something to be shown on a view

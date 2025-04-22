@@ -13,7 +13,7 @@ use si_frontend_types::schema_variant::{
 use thiserror::Error;
 use url::ParseError;
 
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::{ContentHash, ulid::Ulid};
 use si_frontend_types::{
     DiagramSocket, DiagramSocketDirection, DiagramSocketNodeSide, SchemaVariant as FrontendVariant,
     UninstalledVariant,
@@ -23,10 +23,10 @@ use si_pkg::SpecError;
 use telemetry::prelude::*;
 
 use crate::action::prototype::{ActionKind, ActionPrototype};
+use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
-use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::value::{AttributeValueError, ValueIsFor};
 use crate::cached_module::{CachedModule, CachedModuleError};
 use crate::change_set::ChangeSetError;
@@ -47,21 +47,21 @@ use crate::schema::variant::root_prop::RootProp;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::workspace_snapshot::{
+    SchemaVariantExt, WorkspaceSnapshotError,
     content_address::{ContentAddress, ContentAddressDiscriminants},
     edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
     node_weight::{
-        input_socket_node_weight::InputSocketNodeWeightError, traits::SiNodeWeight, NodeWeight,
-        NodeWeightDiscriminants, NodeWeightError, PropNodeWeight, SchemaVariantNodeWeight,
+        NodeWeight, NodeWeightDiscriminants, NodeWeightError, PropNodeWeight,
+        SchemaVariantNodeWeight, input_socket_node_weight::InputSocketNodeWeightError,
+        traits::SiNodeWeight,
     },
-    SchemaVariantExt, WorkspaceSnapshotError,
 };
 use crate::{
-    implement_add_edge_to,
-    schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
     ActionPrototypeId, AttributePrototype, AttributePrototypeId, ChangeSetId, ComponentId,
     ComponentType, DalContext, Func, FuncId, HelperError, InputSocket, OutputSocket,
     OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, Timestamp,
-    TransactionsError, WsEvent, WsEventResult, WsPayload,
+    TransactionsError, WsEvent, WsEventResult, WsPayload, implement_add_edge_to,
+    schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
 };
 use crate::{
     AttributeValue, Component, ComponentError, FuncBackendKind, FuncBackendResponseType,
@@ -175,7 +175,9 @@ pub enum SchemaVariantError {
     SchemaNotFound(SchemaVariantId),
     #[error("schema variant locked: {0}")]
     SchemaVariantLocked(SchemaVariantId),
-    #[error("secret defining schema variant ({0}) has no output sockets and needs one for the secret corresponding to its secret definition")]
+    #[error(
+        "secret defining schema variant ({0}) has no output sockets and needs one for the secret corresponding to its secret definition"
+    )]
     SecretDefiningSchemaVariantMissingOutputSocket(SchemaVariantId),
     #[error("found too many output sockets ({0:?}) for secret defining schema variant ({1})")]
     SecretDefiningSchemaVariantTooManyOutputSockets(Vec<OutputSocketId>, SchemaVariantId),

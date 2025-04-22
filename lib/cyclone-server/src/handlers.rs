@@ -6,8 +6,8 @@ use std::{
 
 use axum::{
     extract::{
-        ws::{self, WebSocket},
         Extension, State, WebSocketUpgrade,
+        ws::{self, WebSocket},
     },
     response::IntoResponse,
 };
@@ -18,7 +18,7 @@ use cyclone_core::{
     SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
 };
 use hyper::StatusCode;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use telemetry::prelude::*;
 use telemetry_http::ParentSpan;
 

@@ -1,9 +1,9 @@
 use axum::{
-    extract::{Host, OriginalUri, Path, Query},
     Json,
+    extract::{Host, OriginalUri, Path, Query},
 };
 use chrono::{DateTime, Utc};
-use dal::{module::Module, ChangeSetId, WorkspacePk};
+use dal::{ChangeSetId, WorkspacePk, module::Module};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -72,7 +72,7 @@ pub async fn module_by_hash(
         None => {
             return Err(ModulesAPIError::ModuleHashNotFound(
                 request.hash.to_string(),
-            ))
+            ));
         }
     };
 

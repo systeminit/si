@@ -15,14 +15,15 @@ use dal::{
 };
 use dal::{ComponentType, InputSocket, OutputSocket};
 use dal_test::helpers::{
-    connect_components_with_socket_names, create_component_for_default_schema_name_in_default_view,
+    ChangeSetTestHelpers, connect_components_with_socket_names,
+    create_component_for_default_schema_name_in_default_view,
     create_component_for_schema_name_with_type_on_default_view,
     create_component_for_schema_variant_on_default_view,
     create_named_component_for_schema_variant_on_default_view, encrypt_message,
     get_component_input_socket_value, get_component_output_socket_value,
-    update_attribute_value_for_component, ChangeSetTestHelpers,
+    update_attribute_value_for_component,
 };
-use dal_test::{test, WorkspaceSignup};
+use dal_test::{WorkspaceSignup, test};
 use pretty_assertions_sorted::assert_eq;
 use si_frontend_types::DiagramComponentView;
 use std::collections::HashMap;
@@ -2538,14 +2539,18 @@ async fn up_frames_multiple_input_sockets_match(ctx: &mut DalContext) {
         .expect("has value");
     assert_eq!(output_value, serde_json::json!("Number"));
     // make sure component output socket matches on the up frames input socket
-    assert!(get_component_input_socket_value(ctx, up_frame.id(), "one")
-        .await
-        .expect("could not get input socket value")
-        .is_none());
-    assert!(get_component_input_socket_value(ctx, up_frame.id(), "two")
-        .await
-        .expect("could not get input socket value")
-        .is_none());
+    assert!(
+        get_component_input_socket_value(ctx, up_frame.id(), "one")
+            .await
+            .expect("could not get input socket value")
+            .is_none()
+    );
+    assert!(
+        get_component_input_socket_value(ctx, up_frame.id(), "two")
+            .await
+            .expect("could not get input socket value")
+            .is_none()
+    );
     let diagram = DiagramByKey::assemble(ctx)
         .await
         .expect("could not assemble diagram");
@@ -2616,10 +2621,12 @@ async fn up_frames_multiple_input_sockets_match(ctx: &mut DalContext) {
         .expect("could not get input socket value")
         .expect("has value now");
     assert_eq!(value, output_value);
-    assert!(get_component_input_socket_value(ctx, up_frame.id(), "two")
-        .await
-        .expect("could not get input socket value")
-        .is_none());
+    assert!(
+        get_component_input_socket_value(ctx, up_frame.id(), "two")
+            .await
+            .expect("could not get input socket value")
+            .is_none()
+    );
     let diagram = DiagramByKey::assemble(ctx)
         .await
         .expect("could not assemble diagram");
@@ -2801,14 +2808,18 @@ async fn up_frames_multiple_input_sockets_match_but_one_explicit(ctx: &mut DalCo
         .expect("has value");
     assert_eq!(output_value, serde_json::json!("Number"));
     // make sure component output socket matches on the up frames input socket
-    assert!(get_component_input_socket_value(ctx, up_frame.id(), "one")
-        .await
-        .expect("could not get input socket value")
-        .is_none());
-    assert!(get_component_input_socket_value(ctx, up_frame.id(), "two")
-        .await
-        .expect("could not get input socket value")
-        .is_none());
+    assert!(
+        get_component_input_socket_value(ctx, up_frame.id(), "one")
+            .await
+            .expect("could not get input socket value")
+            .is_none()
+    );
+    assert!(
+        get_component_input_socket_value(ctx, up_frame.id(), "two")
+            .await
+            .expect("could not get input socket value")
+            .is_none()
+    );
     let diagram = DiagramByKey::assemble(ctx)
         .await
         .expect("could not assemble diagram");
@@ -2839,10 +2850,12 @@ async fn up_frames_multiple_input_sockets_match_but_one_explicit(ctx: &mut DalCo
         .expect("has value");
     assert_eq!(input_value, serde_json::json!("Number"));
     // other input socket is still empty
-    assert!(get_component_input_socket_value(ctx, up_frame.id(), "two")
-        .await
-        .expect("could not get input socket value")
-        .is_none());
+    assert!(
+        get_component_input_socket_value(ctx, up_frame.id(), "two")
+            .await
+            .expect("could not get input socket value")
+            .is_none()
+    );
     let diagram = DiagramByKey::assemble(ctx)
         .await
         .expect("could not assemble diagram");
@@ -3028,14 +3041,18 @@ async fn up_frames_multiple_input_sockets_match_one_output_connection_annotation
     assert_eq!(output_value, serde_json::json!("Number"));
 
     // make sure component output socket doesn't infer connections to either of the up frame's input sockets
-    assert!(get_component_input_socket_value(ctx, up_frame.id(), "one")
-        .await
-        .expect("could not get input socket value")
-        .is_none());
-    assert!(get_component_input_socket_value(ctx, up_frame.id(), "two")
-        .await
-        .expect("could not get input socket value")
-        .is_none());
+    assert!(
+        get_component_input_socket_value(ctx, up_frame.id(), "one")
+            .await
+            .expect("could not get input socket value")
+            .is_none()
+    );
+    assert!(
+        get_component_input_socket_value(ctx, up_frame.id(), "two")
+            .await
+            .expect("could not get input socket value")
+            .is_none()
+    );
     let diagram = DiagramByKey::assemble(ctx)
         .await
         .expect("could not assemble diagram");
@@ -3066,10 +3083,12 @@ async fn up_frames_multiple_input_sockets_match_one_output_connection_annotation
     assert_eq!(input_value, serde_json::json!("Number"));
 
     // other input socket is still empty
-    assert!(get_component_input_socket_value(ctx, up_frame.id(), "two")
-        .await
-        .expect("could not get input socket value")
-        .is_none());
+    assert!(
+        get_component_input_socket_value(ctx, up_frame.id(), "two")
+            .await
+            .expect("could not get input socket value")
+            .is_none()
+    );
     let diagram = DiagramByKey::assemble(ctx)
         .await
         .expect("could not assemble diagram");

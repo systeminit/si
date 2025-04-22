@@ -1,5 +1,5 @@
 use dal::action::prototype::ActionKind;
-use dal::pkg::{import_pkg_from_pkg, ImportOptions};
+use dal::pkg::{ImportOptions, import_pkg_from_pkg};
 use dal::{BuiltinsResult, DalContext};
 use dal::{ComponentType, SchemaId};
 use si_pkg::{
@@ -9,7 +9,7 @@ use si_pkg::{
 
 use crate::test_exclusive_schemas::legos::bricks::LegoBricks;
 use crate::test_exclusive_schemas::{
-    build_action_func, build_asset_func, create_identity_func, PKG_CREATED_BY, PKG_VERSION,
+    PKG_CREATED_BY, PKG_VERSION, build_action_func, build_asset_func, create_identity_func,
 };
 
 pub(crate) async fn migrate_test_exclusive_schema_large_odd_lego(

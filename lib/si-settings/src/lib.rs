@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use config_file::ConfigMap;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use thiserror::Error;
 
 pub use config_file::ValueKind;

@@ -3,11 +3,11 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    DalContext, Timestamp,
     layer_db_types::{StaticArgumentValueContent, StaticArgumentValueContentV1},
     workspace_snapshot::{
-        content_address::ContentAddress, node_weight::NodeWeight, WorkspaceSnapshotError,
+        WorkspaceSnapshotError, content_address::ContentAddress, node_weight::NodeWeight,
     },
-    DalContext, Timestamp,
 };
 
 use super::AttributePrototypeArgumentResult;

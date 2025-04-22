@@ -4,8 +4,8 @@
 //! of how the internals of that specific version of the graph work.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use graph::correct_transforms::correct_transforms;
 use graph::detector::Update;
@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use si_data_pg::PgError;
 use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_events::workspace_snapshot::{Change, Checksum};
-use si_events::{ulid::Ulid, ContentHash, WorkspaceSnapshotAddress};
+use si_events::{ContentHash, WorkspaceSnapshotAddress, ulid::Ulid};
 use si_id::{ApprovalRequirementDefinitionId, EntityId};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
@@ -26,8 +26,8 @@ use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::JoinError;
 
 use crate::action::{Action, ActionError};
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::attribute::prototype::AttributePrototypeError;
+use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::change_set::{ChangeSetError, ChangeSetId};
 use crate::component::inferred_connection_graph::{
     InferredConnectionGraph, InferredConnectionGraphError,
@@ -40,15 +40,15 @@ use crate::workspace_snapshot::{
     content_address::ContentAddressDiscriminants,
     edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
     graph::{LineageId, WorkspaceSnapshotGraphDiscriminants},
-    node_weight::{category_node_weight::CategoryNodeKind, NodeWeight},
-};
-use crate::{
-    workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
-    DalContext, TransactionsError, WorkspaceSnapshotGraphVCurrent,
+    node_weight::{NodeWeight, category_node_weight::CategoryNodeKind},
 };
 use crate::{
     Component, ComponentError, ComponentId, InputSocketId, OutputSocketId, SchemaId,
     SchemaVariantId, TenancyError, Workspace, WorkspaceError,
+};
+use crate::{
+    DalContext, TransactionsError, WorkspaceSnapshotGraphVCurrent,
+    workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
 };
 
 use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};

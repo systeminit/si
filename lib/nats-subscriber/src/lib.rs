@@ -15,7 +15,7 @@ use futures::{Stream, StreamExt};
 use futures_lite::future::FutureExt;
 use pin_project_lite::pin_project;
 use serde::de::DeserializeOwned;
-use si_data_nats::{status::StatusCode, subject::ToSubject, HeaderMap, NatsError, Subject};
+use si_data_nats::{HeaderMap, NatsError, Subject, status::StatusCode, subject::ToSubject};
 use telemetry::prelude::*;
 use telemetry_nats::NatsMakeSpan;
 use thiserror::Error;

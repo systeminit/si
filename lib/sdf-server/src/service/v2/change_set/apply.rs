@@ -3,11 +3,12 @@ use dal::{ChangeSet, ChangeSetId, WorkspacePk};
 use sdf_core::dal_wrapper;
 use si_events::audit_log::AuditLogKind;
 
-use super::{post_to_webhook, ChangeSetAPIError, Result};
+use super::{ChangeSetAPIError, Result, post_to_webhook};
 use crate::{
+    AppState,
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,
-    track, AppState,
+    track,
 };
 
 pub async fn apply(

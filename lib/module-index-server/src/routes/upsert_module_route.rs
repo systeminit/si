@@ -1,16 +1,17 @@
 use std::str::FromStr;
 
 use axum::{
-    body::Bytes,
-    extract::{multipart::MultipartError, Multipart},
-    response::{IntoResponse, Response},
     Json,
+    body::Bytes,
+    extract::{Multipart, multipart::MultipartError},
+    response::{IntoResponse, Response},
 };
 use chrono::{DateTime, FixedOffset, Offset, Utc};
 use hyper::StatusCode;
 use module_index_types::{
-    ExtraMetadata, FuncMetadata, ModuleDetailsResponse, MODULE_IS_PRIVATE_SCOPED_FIELD_NAME,
+    ExtraMetadata, FuncMetadata, MODULE_IS_PRIVATE_SCOPED_FIELD_NAME,
     MODULE_SCHEMA_VARIANT_ID_FIELD_NAME, MODULE_SCHEMA_VARIANT_VERSION_FIELD_NAME,
+    ModuleDetailsResponse,
 };
 use module_index_types::{
     MODULE_BASED_ON_HASH_FIELD_NAME, MODULE_BUNDLE_FIELD_NAME, MODULE_SCHEMA_ID_FIELD_NAME,
@@ -25,7 +26,7 @@ use thiserror::Error;
 use crate::{
     extract::{Authorization, DbConnection, ExtractedS3Bucket},
     models::si_module::{
-        self, make_module_details_response, ModuleId, ModuleKind, SchemaId, SchemaVariantId,
+        self, ModuleId, ModuleKind, SchemaId, SchemaVariantId, make_module_details_response,
     },
 };
 

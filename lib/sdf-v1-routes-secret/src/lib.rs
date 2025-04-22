@@ -1,6 +1,6 @@
 use axum::{
-    routing::{delete, get, patch, post},
     Router,
+    routing::{delete, get, patch, post},
 };
 use dal::{
     ChangeSetError, KeyPairError, SecretId, StandardModelError, TransactionsError, UserError,

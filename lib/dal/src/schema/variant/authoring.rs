@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use base64::engine::general_purpose;
 use base64::Engine;
+use base64::engine::general_purpose;
 use chrono::Utc;
 use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
@@ -20,22 +20,22 @@ use si_pkg::{
 use telemetry::prelude::*;
 
 use crate::action::prototype::ActionPrototypeError;
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::attribute::prototype::AttributePrototypeError;
+use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
 use crate::func::authoring::FuncAuthoringError;
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::runner::{FuncRunner, FuncRunnerError};
 use crate::pkg::export::PkgExporter;
 use crate::pkg::import::import_only_new_funcs;
-use crate::pkg::{import_pkg_from_pkg, ImportOptions, PkgError};
+use crate::pkg::{ImportOptions, PkgError, import_pkg_from_pkg};
 use crate::prop::PropError;
 use crate::schema::variant::{SchemaVariantJson, SchemaVariantMetadataJson};
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
 use crate::{
-    pkg, Component, ComponentError, ComponentType, DalContext, Func, FuncBackendKind,
+    Component, ComponentError, ComponentType, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncError, FuncId, HistoryEventError, Schema, SchemaError, SchemaId,
-    SchemaVariant, SchemaVariantError, SchemaVariantId,
+    SchemaVariant, SchemaVariantError, SchemaVariantId, pkg,
 };
 
 #[allow(missing_docs)]
@@ -44,7 +44,9 @@ use crate::{
 pub enum VariantAuthoringError {
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
-    #[error("found unexpected return type: expected type 'Asset' to be returned for asset func (FuncId {0}): raw error: {1})")]
+    #[error(
+        "found unexpected return type: expected type 'Asset' to be returned for asset func (FuncId {0}): raw error: {1})"
+    )]
     AssetTypeNotReturnedForAssetFunc(FuncId, String),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),

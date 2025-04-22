@@ -5,13 +5,13 @@ use std::{
 
 use chrono::{DateTime, Utc};
 use object_tree::{
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, GraphError, NameStr,
-    NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, read_key_value_line_opt, write_key_value_line,
 };
 
 use crate::{PkgSpec, SiPkgKind};
 
-use super::{category::PackageCategory, PkgNode};
+use super::{PkgNode, category::PackageCategory};
 
 const KEY_CREATED_AT_STR: &str = "created_at";
 const KEY_CREATED_BY_STR: &str = "created_by";

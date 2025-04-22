@@ -2,11 +2,11 @@ use dal::property_editor::schema::PropertyEditorSchema;
 use dal::property_editor::values::PropertyEditorValues;
 use dal::{AttributeValue, DalContext, Schema, SchemaVariant};
 use dal_test::helpers::{
-    connect_components_with_socket_names, create_component_for_default_schema_name_in_default_view,
-    PropEditorTestView,
+    ChangeSetTestHelpers, create_component_for_schema_variant_on_default_view,
 };
 use dal_test::helpers::{
-    create_component_for_schema_variant_on_default_view, ChangeSetTestHelpers,
+    PropEditorTestView, connect_components_with_socket_names,
+    create_component_for_default_schema_name_in_default_view,
 };
 use dal_test::test;
 use serde_json::json;

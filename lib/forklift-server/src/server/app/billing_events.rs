@@ -8,6 +8,7 @@ use app_state::{AppState, NoopAppState};
 use billing_events::{BillingEventsError, BillingEventsWorkQueue};
 use data_warehouse_stream_client::DataWarehouseStreamClient;
 use naxum::{
+    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
@@ -16,19 +17,18 @@ use naxum::{
         trace::TraceLayer,
     },
     response::{IntoResponse, Response},
-    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
 };
 use si_data_nats::{
+    ConnectionMetadata,
     async_nats::{
         self,
         error::Error as AsyncNatsError,
         jetstream::{
-            consumer::{pull::Stream, StreamErrorKind},
+            consumer::{StreamErrorKind, pull::Stream},
             stream::ConsumerErrorKind,
         },
     },
     jetstream::Context,
-    ConnectionMetadata,
 };
 use telemetry::prelude::*;
 use thiserror::Error;

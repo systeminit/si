@@ -2,20 +2,20 @@
 #[allow(clippy::panic_in_result_fn)]
 #[cfg(test)]
 mod test {
-    use si_events::{ulid::Ulid, ContentHash};
+    use si_events::{ContentHash, ulid::Ulid};
 
     use crate::{
+        EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
+        WorkspaceSnapshotGraphVCurrent,
         action::prototype::ActionKind,
         workspace_snapshot::{
             content_address::ContentAddress,
-            graph::{detector::Update, WorkspaceSnapshotGraphResult},
+            graph::{WorkspaceSnapshotGraphResult, detector::Update},
             node_weight::{
-                traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms},
                 NodeWeight,
+                traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms},
             },
         },
-        EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
-        WorkspaceSnapshotGraphVCurrent,
     };
 
     #[test]

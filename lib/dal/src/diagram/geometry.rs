@@ -2,18 +2,18 @@ use crate::diagram::diagram_object::DiagramObject;
 use crate::diagram::view::{View, ViewId};
 use crate::diagram::{DiagramError, DiagramResult};
 use crate::layer_db_types::{GeometryContent, GeometryContentV1};
+use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::workspace_snapshot::node_weight::diagram_object_node_weight::DiagramObjectKind;
 use crate::workspace_snapshot::node_weight::geometry_node_weight::GeometryNodeWeight;
 use crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
-use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
-    implement_add_edge_to, ComponentId, EdgeWeightKindDiscriminants, Timestamp,
-    WorkspaceSnapshotError,
+    ComponentId, EdgeWeightKindDiscriminants, Timestamp, WorkspaceSnapshotError,
+    implement_add_edge_to,
 };
 use crate::{DalContext, EdgeWeightKind};
 use jwt_simple::prelude::{Deserialize, Serialize};
-use si_events::ulid::Ulid;
 use si_events::ContentHash;
+use si_events::ulid::Ulid;
 pub use si_frontend_types::RawGeometry;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -224,7 +224,7 @@ impl Geometry {
             | NodeWeight::ApprovalRequirementDefinition(_) => {
                 return Err(DiagramError::GeometryCannotRepresentNodeWeight(
                     node_weight.into(),
-                ))
+                ));
             }
             NodeWeight::Component(w) => GeometryRepresents::Component(w.id.into()),
             NodeWeight::DiagramObject(w) => {

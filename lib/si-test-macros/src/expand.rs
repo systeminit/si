@@ -4,7 +4,7 @@ use crate::{
 use proc_macro2::{Ident, Span, TokenStream, TokenTree};
 use quote::quote;
 use std::rc::Rc;
-use syn::{punctuated::Punctuated, token::Comma, Expr, ItemFn, ReturnType};
+use syn::{Expr, ItemFn, ReturnType, punctuated::Punctuated, token::Comma};
 
 pub(crate) trait FnSetup {
     fn into_parts(self) -> (TokenStream, Punctuated<Expr, Comma>);

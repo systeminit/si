@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     extract::{Host, OriginalUri, State},
     http::uri::Uri,
-    Json,
 };
 use dal::{DalContext, User};
 use permissions::{ObjectType, Relation, RelationBuilder};
@@ -11,7 +11,7 @@ use strum::{Display, EnumString};
 
 use crate::{AuthApiErrBody, SessionError, SessionResult};
 use sdf_core::{app_state::AppState, tracking::track};
-use sdf_extract::{request::RawAccessToken, v1::AccessBuilder, HandlerContext, PosthogClient};
+use sdf_extract::{HandlerContext, PosthogClient, request::RawAccessToken, v1::AccessBuilder};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

@@ -3,21 +3,21 @@ use std::collections::HashMap;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use si_events::merkle_tree_hash::MerkleTreeHash;
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::{ContentHash, ulid::Ulid};
 
 use crate::{
-    workspace_snapshot::{
-        content_address::{ContentAddress, ContentAddressDiscriminants},
-        graph::{deprecated::v1::DeprecatedContentNodeWeightV1, detector::Update, LineageId},
-        node_weight::{traits::CorrectTransforms, NodeWeightError, NodeWeightResult},
-        NodeInformation,
-    },
     ComponentId, EdgeWeightKindDiscriminants, SocketArity, WorkspaceSnapshotGraphVCurrent,
+    workspace_snapshot::{
+        NodeInformation,
+        content_address::{ContentAddress, ContentAddressDiscriminants},
+        graph::{LineageId, deprecated::v1::DeprecatedContentNodeWeightV1, detector::Update},
+        node_weight::{NodeWeightError, NodeWeightResult, traits::CorrectTransforms},
+    },
 };
 
 use super::{
-    traits::{CorrectTransformsResult, SiVersionedNodeWeight},
     NodeWeight,
+    traits::{CorrectTransformsResult, SiVersionedNodeWeight},
 };
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]

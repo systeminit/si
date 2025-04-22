@@ -1,5 +1,5 @@
-use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::Action;
+use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::component::frame::Frame;
 use dal::diagram::Diagram;
 use dal::func::authoring::FuncAuthoringClient;
@@ -11,10 +11,10 @@ use dal::{
 };
 use dal_test::expected::{ExpectComponent, ExpectSchema, ExpectSchemaVariant};
 use dal_test::helpers::{
-    create_component_for_default_schema_name_in_default_view, ChangeSetTestHelpers,
-    PropEditorTestView,
+    ChangeSetTestHelpers, PropEditorTestView,
+    create_component_for_default_schema_name_in_default_view,
 };
-use dal_test::{test, Result};
+use dal_test::{Result, test};
 use itertools::Itertools;
 use pretty_assertions_sorted::{assert_eq, assert_ne};
 use serde_json::json;

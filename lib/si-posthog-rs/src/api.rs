@@ -4,8 +4,8 @@ use std::time::Duration;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use crate::error::{PosthogError, PosthogResult};
 use crate::PosthogConfig;
+use crate::error::{PosthogError, PosthogResult};
 
 #[remain::sorted]
 #[derive(Debug, Serialize)]

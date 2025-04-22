@@ -31,6 +31,7 @@ use serde::Serialize;
 use serde_json::Error;
 use shuttle_core::{DESTINATION_SUBJECT_SUFFIX_HEADER_KEY, FINAL_MESSAGE_HEADER_KEY};
 use si_data_nats::{
+    HeaderMap, Subject,
     async_nats::{
         self,
         jetstream::{
@@ -38,9 +39,9 @@ use si_data_nats::{
             stream::{Config, RetentionPolicy},
         },
     },
-    jetstream, HeaderMap, Subject,
+    jetstream,
 };
-use si_events::{audit_log::AuditLog, ChangeSetId, EventSessionId, WorkspacePk};
+use si_events::{ChangeSetId, EventSessionId, WorkspacePk, audit_log::AuditLog};
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;

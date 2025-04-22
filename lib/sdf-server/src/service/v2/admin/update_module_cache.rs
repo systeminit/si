@@ -3,7 +3,7 @@ use telemetry::prelude::*;
 
 use super::{AdminAPIResult, AdminUserContext};
 use crate::{
-    extract::{workspace::TargetWorkspaceIdFromToken, PosthogClient},
+    extract::{PosthogClient, workspace::TargetWorkspaceIdFromToken},
     track,
 };
 use axum::{
@@ -11,7 +11,7 @@ use axum::{
     http::Uri,
     response::Json,
 };
-use dal::{cached_module::CachedModule, DalContext, Tenancy, WsEvent};
+use dal::{DalContext, Tenancy, WsEvent, cached_module::CachedModule};
 use sdf_core::async_route::handle_error;
 use ulid::Ulid;
 

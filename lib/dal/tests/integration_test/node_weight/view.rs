@@ -1,12 +1,13 @@
 use dal::{
-    diagram::{geometry::Geometry, view::View},
     Component, DalContext,
+    diagram::{geometry::Geometry, view::View},
 };
 use dal_test::{
-    expected::{self, generate_fake_name, ExpectView},
+    Result,
+    expected::{self, ExpectView, generate_fake_name},
     helpers::create_component_for_default_schema_name,
     prelude::OptionExt,
-    test, Result,
+    test,
 };
 use pretty_assertions_sorted::assert_eq;
 use si_frontend_types::RawGeometry;

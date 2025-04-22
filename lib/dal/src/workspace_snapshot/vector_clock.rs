@@ -8,8 +8,8 @@ use thiserror::Error;
 
 pub mod deprecated;
 
-use crate::workspace_snapshot::lamport_clock::{LamportClock, LamportClockError};
 use crate::ChangeSetId;
+use crate::workspace_snapshot::lamport_clock::{LamportClock, LamportClockError};
 
 pub use si_events::{VectorClockActorId, VectorClockChangeSetId, VectorClockId};
 

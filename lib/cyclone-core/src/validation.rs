@@ -1,4 +1,4 @@
-use crate::{request::CycloneRequestable, BeforeFunction};
+use crate::{BeforeFunction, request::CycloneRequestable};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use telemetry_utils::metric;

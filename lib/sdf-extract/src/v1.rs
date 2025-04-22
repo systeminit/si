@@ -1,11 +1,11 @@
-use axum::{async_trait, extract::FromRequestParts, http::request::Parts, RequestPartsExt as _};
+use axum::{RequestPartsExt as _, async_trait, extract::FromRequestParts, http::request::Parts};
 use derive_more::{Deref, Into};
 
 use sdf_core::app_state::AppState;
 
 use super::{
-    workspace::{TargetWorkspaceIdFromToken, WorkspaceAuthorization},
     ErrorResponse,
+    workspace::{TargetWorkspaceIdFromToken, WorkspaceAuthorization},
 };
 
 #[derive(Clone, Debug, Deref, Into)]

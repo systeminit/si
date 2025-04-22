@@ -1,8 +1,8 @@
 use bytes::BytesMut;
 use postgres_types::ToSql;
 use serde::{
-    de::{self, Visitor},
     Deserialize, Serialize,
+    de::{self, Visitor},
 };
 use std::{fmt, str::FromStr};
 use thiserror::Error;

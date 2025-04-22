@@ -2,15 +2,15 @@ use std::str::FromStr;
 
 use audit_database::{AuditDatabaseError, AuditLogRow};
 use naxum::{
+    Json,
     extract::State,
     response::{IntoResponse, Response},
-    Json,
 };
 use si_data_nats::Subject;
 use si_events::{
+    WorkspacePk,
     audit_log::AuditLog,
     authentication_method::{AuthenticationMethodRoleV1, AuthenticationMethodV1},
-    WorkspacePk,
 };
 use telemetry::prelude::*;
 use thiserror::Error;

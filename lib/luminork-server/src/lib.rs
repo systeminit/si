@@ -45,8 +45,8 @@ pub use self::{
     server::{Server, ServerMetadata, ServerSocket},
 };
 pub use dal::{
-    feature_flags::{FeatureFlag, FeatureFlagService},
     JobQueueProcessor, NatsProcessor, ServicesContext,
+    feature_flags::{FeatureFlag, FeatureFlagService},
 };
 
 #[remain::sorted]

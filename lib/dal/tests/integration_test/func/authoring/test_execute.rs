@@ -1,7 +1,7 @@
 use dal::func::authoring::FuncAuthoringClient;
 use dal::{DalContext, Func};
 use dal_test::helpers::{
-    create_component_for_default_schema_name_in_default_view, ChangeSetTestHelpers,
+    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view,
 };
 use dal_test::test;
 use si_events::{FuncRun, FuncRunId, FuncRunState};
@@ -196,8 +196,7 @@ async fn test_execute_with_modified_code(ctx: &mut DalContext) {
         .expect("could not get func by id");
 
     // Perform the test execution with modified code.
-    let modified_code =
-        "async function falloutEntriesToGalaxies(input: Input): Promise<Output> { return [\"I was modified dammit!\"]; }";
+    let modified_code = "async function falloutEntriesToGalaxies(input: Input): Promise<Output> { return [\"I was modified dammit!\"]; }";
 
     let func_run_id = FuncAuthoringClient::test_execute_func(
         ctx,

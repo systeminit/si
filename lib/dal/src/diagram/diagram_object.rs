@@ -1,13 +1,13 @@
 use crate::{
-    diagram::{view::ViewId, DiagramError, DiagramResult},
+    DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    diagram::{DiagramError, DiagramResult, view::ViewId},
     implement_add_edge_to,
     workspace_snapshot::node_weight::{
+        NodeWeight,
         category_node_weight::CategoryNodeKind,
         diagram_object_node_weight::{DiagramObjectKind, DiagramObjectNodeWeight},
         traits::SiVersionedNodeWeight,
-        NodeWeight,
     },
-    DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants,
 };
 use serde::{Deserialize, Serialize};
 use si_events::ulid::Ulid;

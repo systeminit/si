@@ -4,10 +4,11 @@ use std::{
 };
 
 use async_trait::async_trait;
-use si_events::{merkle_tree_hash::MerkleTreeHash, workspace_snapshot::Change, ContentHash};
-use si_id::{ulid::Ulid, ApprovalRequirementDefinitionId, EntityId, UserPk};
+use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, workspace_snapshot::Change};
+use si_id::{ApprovalRequirementDefinitionId, EntityId, UserPk, ulid::Ulid};
 
 use crate::{
+    DalContext, EdgeWeight, EdgeWeightKind, WorkspaceSnapshot, WorkspaceSnapshotError,
     approval_requirement::{
         ApprovalRequirement, ApprovalRequirementDefinition, ApprovalRequirementExplicit,
     },
@@ -15,11 +16,10 @@ use crate::{
         ApprovalRequirementDefinitionContent, ApprovalRequirementDefinitionContentV1,
     },
     workspace_snapshot::{
-        graph::traits::approval_requirement::ApprovalRequirementExt as ApprovalRequirementExtGraph,
-        node_weight::{traits::SiNodeWeight, NodeWeight},
         WorkspaceSnapshotResult,
+        graph::traits::approval_requirement::ApprovalRequirementExt as ApprovalRequirementExtGraph,
+        node_weight::{NodeWeight, traits::SiNodeWeight},
     },
-    DalContext, EdgeWeight, EdgeWeightKind, WorkspaceSnapshot, WorkspaceSnapshotError,
 };
 
 pub use crate::workspace_snapshot::graph::traits::approval_requirement::{

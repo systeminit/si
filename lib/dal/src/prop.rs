@@ -10,28 +10,28 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::attribute::prototype::AttributePrototypeError;
 use crate::attribute::prototype::argument::{
     AttributePrototypeArgument, AttributePrototypeArgumentError,
 };
-use crate::attribute::prototype::AttributePrototypeError;
 use crate::change_set::ChangeSetError;
+use crate::func::FuncError;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
-use crate::func::FuncError;
 use crate::layer_db_types::{PropContent, PropContentDiscriminants, PropContentV1};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
 use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
 use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
 use crate::workspace_snapshot::traits::prop::PropExt as _;
-use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::{
-    implement_add_edge_to, label_list::ToLabelList, property_editor::schema::WidgetKind,
     AttributePrototype, AttributePrototypeId, DalContext, Func, FuncBackendResponseType, FuncId,
     HelperError, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
+    implement_add_edge_to, label_list::ToLabelList, property_editor::schema::WidgetKind,
 };
-use crate::{slow_rt, AttributeValueId, InputSocketId};
+use crate::{AttributeValueId, InputSocketId, slow_rt};
 
 pub const PROP_VERSION: PropContentDiscriminants = PropContentDiscriminants::V1;
 
@@ -967,12 +967,9 @@ impl Prop {
                     .await?
                     .first()
             {
-                if let Some(value) =
-                    AttributePrototypeArgument::static_value_by_id(ctx, *apa_id).await?
-                {
-                    Some(value.value)
-                } else {
-                    None
+                match AttributePrototypeArgument::static_value_by_id(ctx, *apa_id).await? {
+                    Some(value) => Some(value.value),
+                    _ => None,
                 }
             } else {
                 None

@@ -1,7 +1,7 @@
 use dal::action::prototype::ActionKind;
 use dal::func::argument::FuncArgumentKind;
 use dal::func::intrinsics::IntrinsicFunc;
-use dal::pkg::{import_pkg_from_pkg, ImportOptions};
+use dal::pkg::{ImportOptions, import_pkg_from_pkg};
 use dal::prop::PropPath;
 use dal::{BuiltinsResult, DalContext, PropKind, SchemaId};
 use si_pkg::{

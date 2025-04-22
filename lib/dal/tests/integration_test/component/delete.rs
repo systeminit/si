@@ -1,20 +1,20 @@
 use std::time::Duration;
 
-use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::action::Action;
-use dal::component::delete::{delete_components, ComponentDeletionStatus};
+use dal::action::prototype::{ActionKind, ActionPrototype};
+use dal::component::delete::{ComponentDeletionStatus, delete_components};
 use dal::component::frame::Frame;
 use dal::component::resource::ResourceData;
 use dal::func::intrinsics::IntrinsicFunc;
 use dal::{AttributeValue, ComponentType, Func, InputSocket, OutputSocket};
 use dal::{Component, DalContext, Schema, SchemaVariant};
+use dal_test::helpers::{ChangeSetTestHelpers, get_component_input_socket_value};
 use dal_test::helpers::{
     create_component_for_default_schema_name_in_default_view,
     create_component_for_schema_name_with_type_on_default_view,
     create_named_component_for_schema_variant_on_default_view,
     update_attribute_value_for_component,
 };
-use dal_test::helpers::{get_component_input_socket_value, ChangeSetTestHelpers};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 use veritech_client::ResourceStatus;
@@ -30,11 +30,13 @@ async fn delete(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    assert!(component
-        .delete(ctx)
-        .await
-        .expect("unable to delete component")
-        .is_none());
+    assert!(
+        component
+            .delete(ctx)
+            .await
+            .expect("unable to delete component")
+            .is_none()
+    );
 }
 
 #[test]
@@ -71,10 +73,12 @@ async fn delete_enqueues_destroy_action(ctx: &mut DalContext) {
     .await
     .expect("Unable to create destroy action");
 
-    assert!(Action::all_ids(ctx)
-        .await
-        .expect("Unable to list enqueued actions")
-        .is_empty());
+    assert!(
+        Action::all_ids(ctx)
+            .await
+            .expect("Unable to list enqueued actions")
+            .is_empty()
+    );
 
     component
         .delete(ctx)
@@ -121,10 +125,12 @@ async fn delete_on_already_to_delete_does_not_enqueue_destroy_action(ctx: &mut D
     .await
     .expect("Unable to create destroy action");
 
-    assert!(Action::all_ids(ctx)
-        .await
-        .expect("Unable to list enqueued actions")
-        .is_empty());
+    assert!(
+        Action::all_ids(ctx)
+            .await
+            .expect("Unable to list enqueued actions")
+            .is_empty()
+    );
 
     let component = component
         .set_to_delete(ctx, true)
@@ -141,20 +147,24 @@ async fn delete_on_already_to_delete_does_not_enqueue_destroy_action(ctx: &mut D
             .expect("Unable to remove action");
     }
 
-    assert!(Action::all_ids(ctx)
-        .await
-        .expect("Unable to list enqueued actions")
-        .is_empty());
+    assert!(
+        Action::all_ids(ctx)
+            .await
+            .expect("Unable to list enqueued actions")
+            .is_empty()
+    );
 
     component
         .delete(ctx)
         .await
         .expect("Unable to mark for deletion");
 
-    assert!(Action::all_ids(ctx)
-        .await
-        .expect("Unable to list enqueued actions")
-        .is_empty());
+    assert!(
+        Action::all_ids(ctx)
+            .await
+            .expect("Unable to list enqueued actions")
+            .is_empty()
+    );
 }
 
 #[test]
@@ -781,10 +791,11 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
     assert_eq!(component_av_six, "6");
 
     // Apply to the base change set to simulate running actions
-    assert!(ctx
-        .parent_is_head()
-        .await
-        .expect("could not perform parent is head"));
+    assert!(
+        ctx.parent_is_head()
+            .await
+            .expect("could not perform parent is head")
+    );
 
     ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
@@ -825,11 +836,13 @@ async fn delete_with_frames_and_resources(ctx: &mut DalContext) {
     let inner_frame = Component::get_by_id(ctx, inner_frame_id)
         .await
         .expect("coudl not get component");
-    assert!(inner_frame
-        .resource(ctx)
-        .await
-        .expect("could not get resource")
-        .is_none());
+    assert!(
+        inner_frame
+            .resource(ctx)
+            .await
+            .expect("could not get resource")
+            .is_none()
+    );
 
     // Fork Head
     ChangeSetTestHelpers::fork_from_head_change_set(ctx)
@@ -1099,10 +1112,11 @@ async fn delete_with_multiple_frames(ctx: &mut DalContext) {
     assert_eq!(component_2_av_six, "6");
 
     // Apply to the base change set to simulate running actions
-    assert!(ctx
-        .parent_is_head()
-        .await
-        .expect("could not perform parent is head"));
+    assert!(
+        ctx.parent_is_head()
+            .await
+            .expect("could not perform parent is head")
+    );
 
     ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await
@@ -1112,11 +1126,13 @@ async fn delete_with_multiple_frames(ctx: &mut DalContext) {
     let outer_frame = Component::get_by_id(ctx, outer_frame_id)
         .await
         .expect("could not get component");
-    assert!(outer_frame
-        .resource(ctx)
-        .await
-        .expect("could not get resource")
-        .is_none());
+    assert!(
+        outer_frame
+            .resource(ctx)
+            .await
+            .expect("could not get resource")
+            .is_none()
+    );
 
     // both inner components have resources
     let component_1 = Component::get_by_id(ctx, component_2_id)
@@ -1153,19 +1169,23 @@ async fn delete_with_multiple_frames(ctx: &mut DalContext) {
     let inner_frame_1 = Component::get_by_id(ctx, inner_frame_1_id)
         .await
         .expect("coudl not get component");
-    assert!(inner_frame_1
-        .resource(ctx)
-        .await
-        .expect("could not get resource")
-        .is_none());
+    assert!(
+        inner_frame_1
+            .resource(ctx)
+            .await
+            .expect("could not get resource")
+            .is_none()
+    );
     let inner_frame_2 = Component::get_by_id(ctx, inner_frame_id_2)
         .await
         .expect("coudl not get component");
-    assert!(inner_frame_2
-        .resource(ctx)
-        .await
-        .expect("could not get resource")
-        .is_none());
+    assert!(
+        inner_frame_2
+            .resource(ctx)
+            .await
+            .expect("could not get resource")
+            .is_none()
+    );
 
     // Fork Head
     ChangeSetTestHelpers::fork_from_head_change_set(ctx)

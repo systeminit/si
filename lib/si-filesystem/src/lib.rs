@@ -7,7 +7,7 @@ use std::{
     ops::{BitOr, BitOrAssign},
     path::{Path, PathBuf},
     str::Utf8Error,
-    sync::{atomic::AtomicU64, Arc},
+    sync::{Arc, atomic::AtomicU64},
     time::Duration,
 };
 
@@ -26,11 +26,11 @@ use nix::{
     unistd::{self, Gid, Uid},
 };
 use si_frontend_types::{
-    fs::{
-        kind_pluralized_to_string, ActionKind, AttributeOutputTo, Binding, Bindings, FsApiError,
-        Func, HydratedChangeSet, HydratedSchema, IdentityBindings, SchemaAttributes,
-    },
     FuncKind,
+    fs::{
+        ActionKind, AttributeOutputTo, Binding, Bindings, FsApiError, Func, HydratedChangeSet,
+        HydratedSchema, IdentityBindings, SchemaAttributes, kind_pluralized_to_string,
+    },
 };
 use si_id::{ChangeSetId, FuncId, SchemaId};
 use thiserror::Error;

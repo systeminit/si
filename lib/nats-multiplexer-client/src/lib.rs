@@ -31,8 +31,8 @@
 )]
 
 use nats_multiplexer_core::MultiplexerRequest;
-use si_data_nats::subject::ToSubject;
 use si_data_nats::Message;
+use si_data_nats::subject::ToSubject;
 use std::fmt::Debug;
 use telemetry::prelude::*;
 use thiserror::Error;

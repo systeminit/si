@@ -1,8 +1,8 @@
-use super::{read_common_fields, write_common_fields, PkgNode};
+use super::{PkgNode, read_common_fields, write_common_fields};
 use crate::spec::{FuncArgumentKind, FuncArgumentSpec};
 use object_tree::{
-    read_key_value_line, write_key_value_line, GraphError, NameStr, NodeChild, NodeKind,
-    NodeWithChildren, ReadBytes, WriteBytes,
+    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, write_key_value_line,
 };
 use std::io::{BufRead, Write};
 use std::str::FromStr;

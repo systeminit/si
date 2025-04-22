@@ -6,8 +6,8 @@ use async_trait::async_trait;
 use crate::Head;
 
 use super::{
-    rejection::{MatchedSubjectMissing, MatchedSubjectRejection},
     FromMessageHead,
+    rejection::{MatchedSubjectMissing, MatchedSubjectRejection},
 };
 
 #[derive(Clone, Debug)]

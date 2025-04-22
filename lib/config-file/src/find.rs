@@ -40,7 +40,7 @@ fn find_first_file_candidate(
         .collect();
 
     // Return candidate if environment variable is asked for with a value
-    if let Some(ref env_var) = env_var {
+    if let Some(env_var) = env_var {
         trace!(
             "checking environment variable; var={}",
             env_var.as_ref().to_string_lossy().as_ref()

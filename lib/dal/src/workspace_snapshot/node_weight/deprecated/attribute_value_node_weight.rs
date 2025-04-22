@@ -6,7 +6,7 @@ use crate::{
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,
-        vector_clock::{deprecated::DeprecatedVectorClock, VectorClock},
+        vector_clock::{VectorClock, deprecated::DeprecatedVectorClock},
     },
 };
 

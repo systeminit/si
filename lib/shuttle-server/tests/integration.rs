@@ -2,14 +2,14 @@ use std::env;
 use std::error;
 use std::time::Duration;
 
-use shuttle_server::Shuttle;
 use shuttle_server::FINAL_MESSAGE_HEADER_KEY;
-use si_data_nats::async_nats::jetstream::stream::Config;
-use si_data_nats::jetstream;
-use si_data_nats::jetstream::Context;
+use shuttle_server::Shuttle;
 use si_data_nats::NatsClient;
 use si_data_nats::NatsConfig;
 use si_data_nats::Subject;
+use si_data_nats::async_nats::jetstream::stream::Config;
+use si_data_nats::jetstream;
+use si_data_nats::jetstream::Context;
 use si_events::ulid::Ulid;
 use telemetry::prelude::*;
 use telemetry_nats::propagation;

@@ -1,13 +1,13 @@
 use tokio::{
-    io::{copy_bidirectional, AsyncRead, AsyncWrite},
+    io::{AsyncRead, AsyncWrite, copy_bidirectional},
     task::JoinHandle,
 };
 use tracing::debug;
 
-use nix::unistd::{chown, Gid, Uid};
+use nix::unistd::{Gid, Uid, chown};
 use std::path::{Path, PathBuf};
 use tokio::net::{TcpListener, TcpStream};
-use tokio_vsock::{VsockAddr, VsockStream, VMADDR_CID_HOST};
+use tokio_vsock::{VMADDR_CID_HOST, VsockAddr, VsockStream};
 
 use tokio::fs;
 

@@ -1,24 +1,24 @@
 use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
+use si_events::{ContentHash, EncryptedSecretKey, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 
+use crate::workspace_snapshot::NodeId;
 use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedSecretNodeWeightV1;
 use crate::workspace_snapshot::graph::detector::Update;
-use crate::workspace_snapshot::NodeId;
 use crate::workspace_snapshot::{
     content_address::ContentAddress,
-    graph::correct_transforms::add_dependent_value_root_updates,
     graph::LineageId,
+    graph::correct_transforms::add_dependent_value_root_updates,
     node_weight::traits::CorrectTransforms,
     node_weight::{NodeWeightError, NodeWeightResult},
 };
 use crate::{EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent};
 
+use super::NodeWeight;
 use super::category_node_weight::CategoryNodeKind;
 use super::traits::CorrectTransformsResult;
-use super::NodeWeight;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SecretNodeWeight {

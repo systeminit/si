@@ -35,10 +35,10 @@ use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
 use tokio_postgres::{
-    row::RowIndex,
-    types::{BorrowToSql, FromSql, ToSql, Type},
     CancelToken, Client, Column, CopyInSink, CopyOutStream, IsolationLevel, Portal, Row,
     SimpleQueryMessage, Statement, ToStatement,
+    row::RowIndex,
+    types::{BorrowToSql, FromSql, ToSql, Type},
 };
 
 pub use tokio_postgres::error::SqlState;
@@ -80,9 +80,7 @@ pub enum PgError {
     Pg(#[from] tokio_postgres::Error),
     #[error("transaction not exclusively referenced when commit attempted; arc_strong_count={0}")]
     TxnCommitNotExclusive(usize),
-    #[error(
-        "transaction not exclusively referenced when rollback attempted; arc_strong_count={0}"
-    )]
+    #[error("transaction not exclusively referenced when rollback attempted; arc_strong_count={0}")]
     TxnRollbackNotExclusive(usize),
     #[error("unexpected row returned: {0:?}")]
     UnexpectedRow(PgRow),
@@ -828,7 +826,7 @@ impl InstrumentedClient {
         &self,
         statement: &str,
         params: I,
-    ) -> Result<impl Stream<Item = Result<PgRow, PgError>>, PgError>
+    ) -> Result<impl Stream<Item = Result<PgRow, PgError>> + use<P, I>, PgError>
     where
         P: BorrowToSql,
         I: IntoIterator<Item = P>,
@@ -1512,7 +1510,7 @@ impl<'a> InstrumentedTransaction<'a> {
         &self,
         statement: &str,
         params: I,
-    ) -> Result<impl Stream<Item = Result<PgRow, PgError>>, PgError>
+    ) -> Result<impl Stream<Item = Result<PgRow, PgError>> + use<P, I>, PgError>
     where
         P: BorrowToSql,
         I: IntoIterator<Item = P>,
@@ -1762,7 +1760,7 @@ impl<'a> InstrumentedTransaction<'a> {
         &self,
         portal: &Portal,
         max_rows: i32,
-    ) -> Result<impl Stream<Item = Result<PgRow, PgError>>, PgError> {
+    ) -> Result<impl Stream<Item = Result<PgRow, PgError>> + use<>, PgError> {
         let span = current_span_for_instrument_at!("debug");
 
         span.follows_from(&self.tx_span);
@@ -2531,7 +2529,7 @@ impl PgSharedTransaction {
         &self,
         statement: &str,
         params: I,
-    ) -> Result<impl Stream<Item = Result<PgRow, PgError>>, PgError>
+    ) -> Result<impl Stream<Item = Result<PgRow, PgError>> + use<P, I>, PgError>
     where
         P: BorrowToSql,
         I: IntoIterator<Item = P>,
@@ -2689,7 +2687,7 @@ impl PgSharedTransaction {
         &self,
         portal: &Portal,
         max_rows: i32,
-    ) -> Result<impl Stream<Item = Result<PgRow, PgError>>, PgError> {
+    ) -> Result<impl Stream<Item = Result<PgRow, PgError>> + use<>, PgError> {
         match self.inner.lock().await.borrow_txn().as_ref() {
             Some(txn) => txn.query_portal_raw(portal, max_rows).await,
             None => {

@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::{ContentHash, ulid::Ulid};
 use si_layer_cache::LayerDbError;
 use thiserror::Error;
 
-use super::{traits::SiVersionedNodeWeight, ContentNodeWeight, NodeWeightError};
+use super::{ContentNodeWeight, NodeWeightError, traits::SiVersionedNodeWeight};
 use crate::{
-    workspace_snapshot::graph::WorkspaceSnapshotGraphError, DalContext, WorkspaceSnapshotError,
+    DalContext, WorkspaceSnapshotError, workspace_snapshot::graph::WorkspaceSnapshotGraphError,
 };
 
 pub mod v1;

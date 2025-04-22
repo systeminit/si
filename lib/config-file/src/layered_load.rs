@@ -1,6 +1,6 @@
 use std::{collections::HashMap, env, ffi::OsStr, fmt::Debug};
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use tracing::trace;
 
 use crate::{ConfigFileError, FileFormat, Result, ToFileFormats};

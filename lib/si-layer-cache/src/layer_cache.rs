@@ -3,18 +3,18 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display};
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use si_data_pg::PgPool;
 use si_runtime::DedicatedExecutor;
 use telemetry::prelude::*;
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 
+use crate::LayerDbError;
 use crate::db::serialize;
 use crate::error::LayerDbResult;
 use crate::hybrid_cache::{Cache, CacheConfig};
 use crate::pg::PgLayer;
-use crate::LayerDbError;
 
 #[derive(Debug, Clone)]
 pub struct LayerCache<V>

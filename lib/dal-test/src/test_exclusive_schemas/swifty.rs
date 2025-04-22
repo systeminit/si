@@ -1,7 +1,7 @@
 use dal::action::prototype::ActionKind;
-use dal::pkg::{import_pkg_from_pkg, ImportOptions};
-use dal::{prop::PropPath, ComponentType};
+use dal::pkg::{ImportOptions, import_pkg_from_pkg};
 use dal::{BuiltinsResult, DalContext, PropKind, SchemaId};
+use dal::{ComponentType, prop::PropPath};
 use si_pkg::{
     ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncSpec, FuncSpecBackendKind,
     FuncSpecBackendResponseType, FuncSpecData, LeafInputLocation, LeafKind, PkgSpec, PropSpec,
@@ -11,8 +11,8 @@ use si_pkg::{
 use si_pkg::{LeafFunctionSpec, SchemaSpecData};
 
 use crate::test_exclusive_schemas::{
-    build_action_func, build_asset_func, build_codegen_func, create_identity_func, PKG_CREATED_BY,
-    PKG_VERSION,
+    PKG_CREATED_BY, PKG_VERSION, build_action_func, build_asset_func, build_codegen_func,
+    create_identity_func,
 };
 
 pub(crate) async fn migrate_test_exclusive_schema_swifty(

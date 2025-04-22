@@ -4,8 +4,8 @@ use super::NodeWeightDiscriminants;
 use crate::workspace_snapshot::node_weight::geometry_node_weight::v1::GeometryNodeWeightV1;
 use crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
 use serde::{Deserialize, Serialize};
-use si_events::ulid::Ulid;
 use si_events::ContentHash;
+use si_events::ulid::Ulid;
 
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiVersionedNodeWeight,

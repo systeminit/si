@@ -2,8 +2,8 @@ use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{ChangeSet, DalContext, Schema, SchemaVariant};
 use dal_test::{
     expected::{
-        apply_change_set_to_base, fork_from_head_change_set,
-        update_visibility_and_snapshot_to_visibility, ExpectSchema,
+        ExpectSchema, apply_change_set_to_base, fork_from_head_change_set,
+        update_visibility_and_snapshot_to_visibility,
     },
     helpers::ChangeSetTestHelpers,
     test,
@@ -171,9 +171,11 @@ async fn only_one_default_schema_variant(ctx: &mut DalContext) {
         .await
         .expect("unable to commit");
 
-    assert!(SchemaVariant::is_default_by_id(ctx, updated_sv_id_cs_1)
-        .await
-        .expect("get defaultness for sv from cs_1"));
+    assert!(
+        SchemaVariant::is_default_by_id(ctx, updated_sv_id_cs_1)
+            .await
+            .expect("get defaultness for sv from cs_1")
+    );
 
     // Fork and create a new variant as the default in another change set, then
     // apply that to head
@@ -196,15 +198,19 @@ async fn only_one_default_schema_variant(ctx: &mut DalContext) {
         .set_default_variant_id(ctx, updated_sv_id_cs_2)
         .await
         .expect("unable to update the default schema variant id");
-    assert!(SchemaVariant::is_default_by_id(ctx, updated_sv_id_cs_2)
-        .await
-        .expect("get defaultness for sv from cs_1"));
+    assert!(
+        SchemaVariant::is_default_by_id(ctx, updated_sv_id_cs_2)
+            .await
+            .expect("get defaultness for sv from cs_1")
+    );
 
     apply_change_set_to_base(ctx).await;
 
-    assert!(SchemaVariant::is_default_by_id(ctx, updated_sv_id_cs_2)
-        .await
-        .expect("get defaultness for sv from cs_2"));
+    assert!(
+        SchemaVariant::is_default_by_id(ctx, updated_sv_id_cs_2)
+            .await
+            .expect("get defaultness for sv from cs_2")
+    );
 
     assert_eq!(
         2,
@@ -216,13 +222,17 @@ async fn only_one_default_schema_variant(ctx: &mut DalContext) {
 
     update_visibility_and_snapshot_to_visibility(ctx, cs_1.id).await;
 
-    assert!(SchemaVariant::is_default_by_id(ctx, updated_sv_id_cs_2)
-        .await
-        .expect("get defaultness for sv from cs_2"));
+    assert!(
+        SchemaVariant::is_default_by_id(ctx, updated_sv_id_cs_2)
+            .await
+            .expect("get defaultness for sv from cs_2")
+    );
 
-    assert!(!SchemaVariant::is_default_by_id(ctx, updated_sv_id_cs_1)
-        .await
-        .expect("get defaultness for sv from cs_1"));
+    assert!(
+        !SchemaVariant::is_default_by_id(ctx, updated_sv_id_cs_1)
+            .await
+            .expect("get defaultness for sv from cs_1")
+    );
 
     // should be 3 now, the original, the one made in cs_2 and the one made in
     // cs_1. This ensures we added the use edges back for the previous defaults

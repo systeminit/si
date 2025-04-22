@@ -1,6 +1,6 @@
 use crate::integration_test::func::authoring::save_func::save_func_setup;
-use dal::attribute::prototype::argument::value_source::ValueSource;
 use dal::attribute::prototype::argument::AttributePrototypeArgument;
+use dal::attribute::prototype::argument::value_source::ValueSource;
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::func::binding::attribute::AttributeBinding;
 use dal::func::binding::{
@@ -15,9 +15,10 @@ use dal::{
     OutputSocket, Prop, Schema, SchemaVariant,
 };
 use dal_test::helpers::{
-    connect_components_with_socket_names, create_component_for_default_schema_name_in_default_view,
-    get_attribute_value_for_component, get_attribute_value_for_component_opt,
-    get_component_output_socket_value, update_attribute_value_for_component, ChangeSetTestHelpers,
+    ChangeSetTestHelpers, connect_components_with_socket_names,
+    create_component_for_default_schema_name_in_default_view, get_attribute_value_for_component,
+    get_attribute_value_for_component_opt, get_component_output_socket_value,
+    update_attribute_value_for_component,
 };
 use dal_test::test;
 use itertools::Itertools;
@@ -528,9 +529,11 @@ async fn create_intrinsic_binding_then_unset(ctx: &mut DalContext) {
         .into_iter()
         .filter(|p| p.eventual_parent == EventualParent::SchemaVariant(updated_sv_id))
         .collect_vec();
-    assert!(prototypes
-        .into_iter()
-        .any(|binding| binding.output_location == AttributeFuncDestination::Prop(another_prop)));
+    assert!(
+        prototypes
+            .into_iter()
+            .any(|binding| binding.output_location == AttributeFuncDestination::Prop(another_prop))
+    );
 
     // let's make sure another_prop was cleared!
     let value = get_attribute_value_for_component_opt(ctx, component.id(), another_test_prop_path)

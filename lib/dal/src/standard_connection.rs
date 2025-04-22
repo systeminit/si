@@ -21,7 +21,7 @@ macro_rules! implement_add_edge_to {
         source_id: $source_id:ty,
         destination_id: $destination_id:ty,
         add_fn: $add_fn:ident,
-        discriminant: $discriminant:expr,
+        discriminant: $discriminant:expr_2021,
         result: $result:ty,
     ) => {
         paste::paste! {

@@ -3,12 +3,12 @@ use std::collections::HashMap;
 use axum::Json;
 use dal::diagram::view::View;
 use dal::{
-    component::{frame::Frame, InferredConnection},
-    diagram::SummaryDiagramInferredEdge,
     ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent,
+    component::{InferredConnection, frame::Frame},
+    diagram::SummaryDiagramInferredEdge,
 };
 use sdf_core::force_change_set_response::ForceChangeSetResponse;
-use sdf_extract::{v1::AccessBuilder, HandlerContext};
+use sdf_extract::{HandlerContext, v1::AccessBuilder};
 use serde::{Deserialize, Serialize};
 use si_frontend_types::{RawGeometry, StringGeometry};
 use ulid::Ulid;

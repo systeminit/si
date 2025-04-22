@@ -5,13 +5,13 @@ use std::{
 use url::Url;
 
 use object_tree::{
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
     GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
 };
 
 use crate::spec::{FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType};
 
-use super::{read_common_fields, write_common_fields, PkgNode};
+use super::{PkgNode, read_common_fields, write_common_fields};
 
 const KEY_NAME_STR: &str = "name";
 const KEY_DISPLAY_NAME_STR: &str = "display_name";

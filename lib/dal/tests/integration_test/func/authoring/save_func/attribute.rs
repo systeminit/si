@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use crate::integration_test::func::authoring::save_func::save_func_setup;
-use dal::attribute::prototype::argument::value_source::ValueSource;
 use dal::attribute::prototype::argument::AttributePrototypeArgument;
+use dal::attribute::prototype::argument::value_source::ValueSource;
 use dal::func::argument::{FuncArgument, FuncArgumentKind};
 use dal::func::binding::attribute::AttributeBinding;
 use dal::func::binding::{

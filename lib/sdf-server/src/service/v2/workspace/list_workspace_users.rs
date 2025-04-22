@@ -1,4 +1,4 @@
-use axum::{extract::Path, Json};
+use axum::{Json, extract::Path};
 use dal::{UserPk, WorkspacePk};
 use serde::{Deserialize, Serialize};
 

@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
 use crate::extract::HandlerContext;
-use crate::service::v2::view::{ViewError, ViewResult};
 use crate::service::v2::AccessBuilder;
+use crate::service::v2::view::{ViewError, ViewResult};
 use axum::extract::{Json, Path};
 use dal::diagram::geometry::{Geometry, GeometryRepresents};
 use dal::diagram::view::{View, ViewId, ViewView};
 use dal::diagram::{Diagram, DiagramError};
-use dal::{slow_rt, ChangeSetId, ComponentId, DalContext, WorkspacePk};
+use dal::{ChangeSetId, ComponentId, DalContext, WorkspacePk, slow_rt};
 use serde::{Deserialize, Serialize};
 use si_frontend_types::RawGeometry;
 use telemetry::prelude::debug;

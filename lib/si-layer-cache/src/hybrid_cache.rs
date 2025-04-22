@@ -10,11 +10,11 @@ use telemetry::opentelemetry::global;
 use telemetry::tracing::{error, info};
 use tokio::fs;
 
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
+use crate::LayerDbError;
 use crate::db::serialize;
 use crate::error::LayerDbResult;
-use crate::LayerDbError;
 
 const FOYER_DISK_CACHE_MINUMUM: u64 = 1024 * 1024 * 1024; // 1gb
 const DEFAULT_MEMORY_RESERVED_PERCENT: u8 = 40;
@@ -171,7 +171,10 @@ where
                         Some(deserialized)
                     }
                     Err(e) => {
-                        error!("Failed to deserialize stored bytes from memory cache for key ({:?}): {}", key, e);
+                        error!(
+                            "Failed to deserialize stored bytes from memory cache for key ({:?}): {}",
+                            key, e
+                        );
                         self.remove(&key);
                         None
                     }

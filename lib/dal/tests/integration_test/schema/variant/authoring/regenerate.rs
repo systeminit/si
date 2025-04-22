@@ -11,8 +11,8 @@ use dal::{
     Prop, PropId, SchemaVariant, SchemaVariantId, SocketArity,
 };
 use dal_test::helpers::{
-    connect_components_with_socket_names, create_component_for_default_schema_name_in_default_view,
-    ChangeSetTestHelpers,
+    ChangeSetTestHelpers, connect_components_with_socket_names,
+    create_component_for_default_schema_name_in_default_view,
 };
 use dal_test::{color_eyre::Result, test};
 
@@ -43,9 +43,11 @@ async fn regenerate_variant(ctx: &mut DalContext) -> Result<()> {
     let funcs_for_unlocked = SchemaVariant::all_funcs(ctx, unlocked_schema_variant.id).await?;
 
     // ensure the func is attached
-    assert!(funcs_for_unlocked
-        .into_iter()
-        .any(|func| func.id == func_id));
+    assert!(
+        funcs_for_unlocked
+            .into_iter()
+            .any(|func| func.id == func_id)
+    );
 
     // get the existing default variant and ensure the auth func is still attached to it
     let funcs_for_default = SchemaVariant::all_funcs(ctx, schema_variant_id).await?;
@@ -59,9 +61,11 @@ async fn regenerate_variant(ctx: &mut DalContext) -> Result<()> {
     // ensure func is attached to new variant
     let funcs_for_unlocked = SchemaVariant::all_funcs(ctx, unlocked_schema_variant.id).await?;
     // ensure the func is attached
-    assert!(funcs_for_unlocked
-        .into_iter()
-        .any(|func| func.id == func_id));
+    assert!(
+        funcs_for_unlocked
+            .into_iter()
+            .any(|func| func.id == func_id)
+    );
 
     // get the existing default variant and ensure the auth func is still attached to it
     let funcs_for_default = SchemaVariant::all_funcs(ctx, schema_variant_id).await?;
@@ -198,7 +202,10 @@ async fn update_socket_data_on_regenerate(ctx: &mut DalContext) -> Result<()> {
         .expect("has one for the av");
     let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
     assert_eq!(input_socket.arity(), SocketArity::One);
-    assert_eq!(format!("{:?}", input_socket.connection_annotations()), "[ConnectionAnnotation { tokens: [\"two\"] }, ConnectionAnnotation { tokens: [\"input_socket\"] }]");
+    assert_eq!(
+        format!("{:?}", input_socket.connection_annotations()),
+        "[ConnectionAnnotation { tokens: [\"two\"] }, ConnectionAnnotation { tokens: [\"input_socket\"] }]"
+    );
 
     // check output socket data
     let mut output_socket_avs = component.output_socket_attribute_values(ctx).await?;
@@ -209,7 +216,10 @@ async fn update_socket_data_on_regenerate(ctx: &mut DalContext) -> Result<()> {
         .expect("has one for the av");
     let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
     assert_eq!(output_socket.arity(), SocketArity::One);
-    assert_eq!(format!("{:?}", output_socket.connection_annotations()), "[ConnectionAnnotation { tokens: [\"two\"] }, ConnectionAnnotation { tokens: [\"output_socket\"] }]");
+    assert_eq!(
+        format!("{:?}", output_socket.connection_annotations()),
+        "[ConnectionAnnotation { tokens: [\"two\"] }, ConnectionAnnotation { tokens: [\"output_socket\"] }]"
+    );
 
     // check connections on the component
     let mut incoming_connections = component.incoming_connections(ctx).await?;
@@ -271,7 +281,10 @@ async fn update_socket_data_on_regenerate(ctx: &mut DalContext) -> Result<()> {
         .expect("couldn't find input socket");
     let input_socket = InputSocket::get_by_id(ctx, input_socket_id).await?;
     assert_eq!(input_socket.arity(), SocketArity::Many);
-    assert_eq!(format!("{:?}", input_socket.connection_annotations()), "[ConnectionAnnotation { tokens: [\"two\"] }, ConnectionAnnotation { tokens: [\"dog\"] }, ConnectionAnnotation { tokens: [\"input_socket\"] }]");
+    assert_eq!(
+        format!("{:?}", input_socket.connection_annotations()),
+        "[ConnectionAnnotation { tokens: [\"two\"] }, ConnectionAnnotation { tokens: [\"dog\"] }, ConnectionAnnotation { tokens: [\"input_socket\"] }]"
+    );
 
     // check output socket data
     let mut output_socket_avs = component.output_socket_attribute_values(ctx).await?;
@@ -282,7 +295,10 @@ async fn update_socket_data_on_regenerate(ctx: &mut DalContext) -> Result<()> {
         .expect("couldn't find input socket");
     let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
     assert_eq!(output_socket.arity(), SocketArity::Many);
-    assert_eq!(format!("{:?}", output_socket.connection_annotations()), "[ConnectionAnnotation { tokens: [\"one\"] }, ConnectionAnnotation { tokens: [\"dog\"] }, ConnectionAnnotation { tokens: [\"output_socket\"] }]");
+    assert_eq!(
+        format!("{:?}", output_socket.connection_annotations()),
+        "[ConnectionAnnotation { tokens: [\"one\"] }, ConnectionAnnotation { tokens: [\"dog\"] }, ConnectionAnnotation { tokens: [\"output_socket\"] }]"
+    );
 
     // check connections on the component
     let mut incoming_connections = component.incoming_connections(ctx).await?;

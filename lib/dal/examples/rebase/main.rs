@@ -1,10 +1,10 @@
 use std::{env, fs::File, io::prelude::*};
 
-use petgraph::{visit::EdgeRef, Direction::Incoming};
+use petgraph::{Direction::Incoming, visit::EdgeRef};
 use serde::de::DeserializeOwned;
 use si_layer_cache::db::serialize;
 
-use dal::{workspace_snapshot::node_weight::NodeWeight, WorkspaceSnapshotGraph};
+use dal::{WorkspaceSnapshotGraph, workspace_snapshot::node_weight::NodeWeight};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + 'static>>;
 

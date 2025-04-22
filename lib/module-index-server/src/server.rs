@@ -6,10 +6,10 @@ use super::routes;
 use axum::Router;
 use axum::{error_handling::HandleErrorLayer, routing::IntoMakeService};
 use hyper::{
-    server::{accept::Accept, conn::AddrIncoming},
     StatusCode,
+    server::{accept::Accept, conn::AddrIncoming},
 };
-use s3::creds::{error::CredentialsError, Credentials as AwsCredentials};
+use s3::creds::{Credentials as AwsCredentials, error::CredentialsError};
 use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr};
 use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
 use si_jwt_public_key::{JwtConfig, JwtPublicSigningKeyChain, JwtPublicSigningKeyError};
@@ -22,14 +22,14 @@ use tokio::{
     sync::{broadcast, mpsc, oneshot},
 };
 use tokio_util::sync::CancellationToken;
-use tower::{buffer::BufferLayer, limit::RateLimitLayer, BoxError, ServiceBuilder};
+use tower::{BoxError, ServiceBuilder, buffer::BufferLayer, limit::RateLimitLayer};
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 use crate::{
+    Config,
     app_state::{AppState, ShutdownSource},
     config::RateLimitConfig,
     s3::S3Config,
-    Config,
 };
 
 mod embedded_migrations {

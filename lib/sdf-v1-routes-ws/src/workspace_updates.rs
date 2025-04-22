@@ -1,5 +1,5 @@
 use axum::{
-    extract::{ws::WebSocket, State, WebSocketUpgrade},
+    extract::{State, WebSocketUpgrade, ws::WebSocket},
     response::IntoResponse,
 };
 use dal::WorkspacePk;
@@ -76,8 +76,8 @@ async fn run_workspace_updates_proto(
 mod workspace_updates {
     use axum::extract::ws::{self, WebSocket};
     use dal::{
-        component::ComponentSetPositionPayload, user::CursorPayload, user::OnlinePayload,
         ChangeSetId, UserPk, WorkspacePk, WsEvent, WsEventError,
+        component::ComponentSetPositionPayload, user::CursorPayload, user::OnlinePayload,
     };
     use nats_multiplexer_client::{MultiplexerClient, MultiplexerClientError};
     use serde::{Deserialize, Serialize};
@@ -88,7 +88,7 @@ mod workspace_updates {
     use telemetry::prelude::*;
     use thiserror::Error;
     use tokio::sync::broadcast::error::RecvError;
-    use tokio::sync::{broadcast, Mutex};
+    use tokio::sync::{Mutex, broadcast};
     use tokio_tungstenite::tungstenite;
     use tokio_util::sync::CancellationToken;
 

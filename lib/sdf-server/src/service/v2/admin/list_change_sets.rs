@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use axum::{extract::Path, Json};
+use axum::{Json, extract::Path};
 use dal::{ChangeSet, ChangeSetId, Tenancy, WorkspacePk};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;

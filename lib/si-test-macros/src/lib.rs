@@ -8,10 +8,10 @@ use std::collections::HashSet;
 
 use proc_macro::TokenStream;
 use syn::{
+    Ident, ItemFn, Path, Token,
     parse::{Parse, ParseStream},
     parse_macro_input,
     punctuated::Punctuated,
-    Ident, ItemFn, Path, Token,
 };
 
 const LOG_ENV_VAR: &str = "SI_TEST_LOG";
@@ -21,7 +21,7 @@ const RT_DEFAULT_WORKER_THREADS: usize = 2;
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
 
 #[allow(dead_code)] // We aren't current using args on the macro, but when we do we can drop this
-                    // line
+// line
 struct Args {
     pub(crate) vars: HashSet<Ident>,
 }

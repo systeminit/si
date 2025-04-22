@@ -2,11 +2,11 @@ use serde::{Deserialize, Serialize};
 use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 
 use crate::{
+    PropKind,
     workspace_snapshot::{
         content_address::ContentAddress, graph::LineageId,
         vector_clock::deprecated::DeprecatedVectorClock,
     },
-    PropKind,
 };
 
 #[derive(Clone, Serialize, Deserialize, Debug)]

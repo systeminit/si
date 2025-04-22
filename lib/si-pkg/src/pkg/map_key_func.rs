@@ -3,7 +3,7 @@ use petgraph::prelude::*;
 
 use super::{PkgResult, SiPkgError, Source};
 
-use crate::{node::PkgNode, AttrFuncInputSpec, MapKeyFuncSpec, SiPkgAttrFuncInput};
+use crate::{AttrFuncInputSpec, MapKeyFuncSpec, SiPkgAttrFuncInput, node::PkgNode};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgMapKeyFunc<'a> {
@@ -25,7 +25,7 @@ impl<'a> SiPkgMapKeyFunc<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::MAP_KEY_FUNC_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 

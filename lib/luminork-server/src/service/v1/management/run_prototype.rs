@@ -1,18 +1,18 @@
 use axum::{extract::Path, response::Json};
 use dal::{
+    ComponentId, Func, WsEvent,
     diagram::view::ViewId,
     management::{
-        prototype::{ManagementPrototype, ManagementPrototypeId},
         ManagementFuncReturn, ManagementOperator,
+        prototype::{ManagementPrototype, ManagementPrototypeId},
     },
-    ComponentId, Func, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 use utoipa::{self, ToSchema};
 use veritech_client::ManagementFuncStatus;
 
-use crate::extract::{change_set::ChangeSetDalContext, PosthogEventTracker};
+use crate::extract::{PosthogEventTracker, change_set::ChangeSetDalContext};
 use crate::service::v1::ManagementApiError;
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]

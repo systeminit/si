@@ -8,13 +8,13 @@ use thiserror::Error;
 
 use si_pkg::{SiPkgError, SpecError};
 
-use crate::func::argument::FuncArgumentError;
 use crate::func::FuncError;
+use crate::func::argument::FuncArgumentError;
 use crate::module::ModuleError;
 use crate::pkg::PkgError;
 use crate::{
-    action::prototype::ActionPrototypeError, AttributeValueId, PropId, SchemaVariantError,
-    SchemaVariantId, StandardModelError, TransactionsError,
+    AttributeValueId, PropId, SchemaVariantError, SchemaVariantId, StandardModelError,
+    TransactionsError, action::prototype::ActionPrototypeError,
 };
 
 pub mod func;

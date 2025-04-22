@@ -1,7 +1,7 @@
-use axum::{extract::Query, routing::get, Json, Router};
+use axum::{Json, Router, extract::Query, routing::get};
 use dal::{
-    workspace_snapshot::{node_weight::NodeWeight, Direction},
     EdgeWeight, TransactionsError, Visibility, WorkspaceSnapshotError,
+    workspace_snapshot::{Direction, node_weight::NodeWeight},
 };
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;

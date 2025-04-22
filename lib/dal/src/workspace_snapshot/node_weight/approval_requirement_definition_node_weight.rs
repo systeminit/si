@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::{ContentHash, ulid::Ulid};
 
 use super::traits::SiVersionedNodeWeight;
 

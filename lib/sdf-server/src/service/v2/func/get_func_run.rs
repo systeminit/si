@@ -1,5 +1,5 @@
-use axum::extract::Path;
 use axum::Json;
+use axum::extract::Path;
 use chrono::{DateTime, Utc};
 use dal::{ContentHash, DalContext, WorkspacePk};
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ use si_events::{
 use std::sync::Arc;
 
 use crate::{
-    extract::HandlerContext, service::v2::func::FuncAPIResult, service::v2::AccessBuilder,
+    extract::HandlerContext, service::v2::AccessBuilder, service::v2::func::FuncAPIResult,
 };
 
 /// A one-to-one mapping of cyclone's "OutputStream" type.

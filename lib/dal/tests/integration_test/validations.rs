@@ -2,12 +2,12 @@ use dal::workspace_snapshot::content_address::ContentAddressDiscriminants;
 use dal::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
 use dal::{AttributeValue, Component, DalContext};
 use dal_test::expected::ExpectSchemaVariant;
+use dal_test::helpers::{ChangeSetTestHelpers, extract_value_and_validation};
 use dal_test::helpers::{
-    connect_components_with_socket_names, create_component_for_default_schema_name_in_default_view,
-    PropEditorTestView,
+    PropEditorTestView, connect_components_with_socket_names,
+    create_component_for_default_schema_name_in_default_view,
 };
-use dal_test::helpers::{extract_value_and_validation, ChangeSetTestHelpers};
-use dal_test::{test, Result};
+use dal_test::{Result, test};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 

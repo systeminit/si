@@ -2,7 +2,7 @@
 
 use std::future::Future;
 
-use color_eyre::{eyre::eyre, Result};
+use color_eyre::{Result, eyre::eyre};
 use si_runtime::{CoreId, DEFAULT_TOKIO_RT_THREAD_STACK_SIZE};
 
 /// Create a Tokio runtime and block on a primary async function, i.e. an "async_main()".

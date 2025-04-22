@@ -1,15 +1,15 @@
 use std::sync::Arc;
 use std::{collections::HashMap, fmt::Display};
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use si_events::{Actor, EncryptedSecretKey, Tenancy, WebEvent};
 
 use crate::{
+    LayerDbError,
     error::LayerDbResult,
     event::{LayeredEvent, LayeredEventKind},
     layer_cache::LayerCache,
     persister::{PersisterClient, PersisterStatusReader},
-    LayerDbError,
 };
 
 use super::serialize;

@@ -5,8 +5,8 @@ use si_data_nats::{Message, NatsClient, Subject};
 use std::{pin::Pin, task::Context, task::Poll};
 use telemetry::prelude::error;
 use tokio::sync::broadcast;
-use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use y_sync::sync::Error;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -46,17 +46,16 @@ impl Sink<Vec<u8>> for YSink {
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        if let Some(mut future) = self.future.take() {
-            match future.poll(cx) {
+        match self.future.take() {
+            Some(mut future) => match future.poll(cx) {
                 Poll::Ready(Ok(())) => Poll::Ready(Ok(())),
                 Poll::Ready(Err(err)) => Poll::Ready(Err(Error::Other(err.into()))),
                 Poll::Pending => {
                     self.future = Some(future);
                     Poll::Pending
                 }
-            }
-        } else {
-            Poll::Ready(Ok(()))
+            },
+            _ => Poll::Ready(Ok(())),
         }
     }
 
@@ -84,7 +83,9 @@ impl Stream for YStream {
                 Ok(message) => Poll::Ready(Some(Ok(message.into_parts().0.payload.into()))),
                 Err(error) => match error {
                     error @ BroadcastStreamRecvError::Lagged(number_of_missed_messages) => {
-                        error!("found broadcast stream recv error: lagged and missed {number_of_missed_messages} messages");
+                        error!(
+                            "found broadcast stream recv error: lagged and missed {number_of_missed_messages} messages"
+                        );
                         Poll::Ready(Some(Err(Error::Other(error.into()))))
                     }
                 },

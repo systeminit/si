@@ -1,7 +1,7 @@
 use crate::VeritechCryptoConfig;
 use std::{io, path::Path};
 
-use base64::{engine::general_purpose, Engine};
+use base64::{Engine, engine::general_purpose};
 use si_hash::Hash;
 use sodiumoxide::crypto::box_::{PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
 use telemetry::prelude::*;
@@ -19,7 +19,9 @@ pub enum VeritechDecryptionKeyError {
     #[error("failed to decrypt encryption key from bytes")]
     DecryptionFailed,
     /// When a key cannot be made from the supplied config
-    #[error("key cannot be made from the supplied config, must supply either a base64 string or a filepath")]
+    #[error(
+        "key cannot be made from the supplied config, must supply either a base64 string or a filepath"
+    )]
     FromConfig,
     /// When a key fails to be parsed from bytes
     #[error("failed to load key from bytes")]

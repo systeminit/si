@@ -66,7 +66,7 @@ where
         // required the level argument to be static. Meaning we can't just pass
         // `self.level`.
         macro_rules! make_span {
-            ($level:expr) => {
+            ($level:expr_2021) => {
                 if self.include_headers {
                     tracing::span!(
                         $level,

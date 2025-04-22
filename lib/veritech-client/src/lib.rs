@@ -1,16 +1,16 @@
 use cyclone_core::CycloneRequestable;
 use futures::{StreamExt, TryStreamExt};
 use nats_subscriber::{Subscriber, SubscriberError};
-use serde::{de::DeserializeOwned, Serialize};
-use si_data_nats::{jetstream, NatsClient, Subject};
+use serde::{Serialize, de::DeserializeOwned};
+use si_data_nats::{NatsClient, Subject, jetstream};
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use veritech_core::{
-    reply_mailbox_for_output, reply_mailbox_for_result, GetNatsSubjectFor,
-    FINAL_MESSAGE_HEADER_KEY, REPLY_INBOX_HEADER_NAME,
+    FINAL_MESSAGE_HEADER_KEY, GetNatsSubjectFor, REPLY_INBOX_HEADER_NAME, reply_mailbox_for_output,
+    reply_mailbox_for_result,
 };
 
 pub use cyclone_core::{
@@ -22,7 +22,7 @@ pub use cyclone_core::{
     SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveContainer,
     ValidationRequest, ValidationResultSuccess,
 };
-pub use veritech_core::{encrypt_value_tree, VeritechValueEncryptError};
+pub use veritech_core::{VeritechValueEncryptError, encrypt_value_tree};
 
 #[remain::sorted]
 #[derive(Error, Debug)]

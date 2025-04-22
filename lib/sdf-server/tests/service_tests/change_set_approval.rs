@@ -1,29 +1,29 @@
 use std::collections::{HashMap, HashSet};
 
 use dal::{
+    Component, ComponentType, DalContext, HistoryActor, SchemaVariant, Ulid,
     action::Action,
     approval_requirement::{
         ApprovalRequirement, ApprovalRequirementApprover, ApprovalRequirementDefinition,
     },
     change_set::approval::ChangeSetApproval,
     diagram::view::View,
-    Component, ComponentType, DalContext, HistoryActor, SchemaVariant, Ulid,
 };
 use dal_test::{
-    eyre,
+    Result, eyre,
     helpers::{
         create_component_for_default_schema_name,
         create_component_for_default_schema_name_in_default_view, create_schema,
     },
     prelude::ChangeSetTestHelpers,
-    sdf_test, Result,
+    sdf_test,
 };
 use indoc::indoc;
 use permissions::{ObjectType, Relation, RelationBuilder};
 use pretty_assertions_sorted::assert_eq;
 use sdf_core::dal_wrapper;
 use si_data_spicedb::SpiceDbClient;
-use si_events::{workspace_snapshot::EntityKind, ChangeSetApprovalStatus};
+use si_events::{ChangeSetApprovalStatus, workspace_snapshot::EntityKind};
 use si_frontend_types::RawGeometry;
 use si_id::EntityId;
 

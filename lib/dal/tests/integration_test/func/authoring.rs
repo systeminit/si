@@ -1,4 +1,5 @@
 use dal::{
+    DalContext, Func, InputSocket, Prop, SchemaVariant,
     func::{
         argument::FuncArgument,
         authoring::FuncAuthoringClient,
@@ -7,7 +8,6 @@ use dal::{
         },
     },
     schema::variant::leaves::{LeafInputLocation, LeafKind},
-    DalContext, Func, InputSocket, Prop, SchemaVariant,
 };
 use dal_test::{helpers::ChangeSetTestHelpers, test};
 use pretty_assertions_sorted::assert_eq;

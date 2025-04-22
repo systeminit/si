@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use object_tree::{Hash, HashedNode};
 use petgraph::prelude::*;
-use std::collections::{hash_map::Entry, HashMap, VecDeque};
+use std::collections::{HashMap, VecDeque, hash_map::Entry};
 use std::future::Future;
 use tokio::sync::Mutex;
 
@@ -12,10 +12,10 @@ use super::{
 use url::Url;
 
 use crate::{
-    node::{PkgNode, PropChildNode, SchemaVariantChildNode},
     AttrFuncInputSpec, MapKeyFuncSpec, PropSpec, PropSpecBuilder, PropSpecKind, SchemaVariantSpec,
     SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecData,
     SchemaVariantSpecPropRoot, SiPkgAuthFunc, SiPkgRootPropFunc,
+    node::{PkgNode, PropChildNode, SchemaVariantChildNode},
 };
 
 #[derive(Clone, Debug)]

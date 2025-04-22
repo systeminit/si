@@ -4,13 +4,13 @@ use std::{
 };
 
 use object_tree::{
-    read_key_value_line, write_key_value_line, GraphError, NameStr, NodeChild, NodeKind,
-    NodeWithChildren, ReadBytes, WriteBytes,
+    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, write_key_value_line,
 };
 
 use crate::{AttrFuncInputSpec, AttrFuncInputSpecKind};
 
-use super::{read_common_fields, write_common_fields, PkgNode};
+use super::{PkgNode, read_common_fields, write_common_fields};
 
 const KEY_KIND_STR: &str = "kind";
 const KEY_NAME_STR: &str = "name";

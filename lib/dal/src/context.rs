@@ -2,26 +2,26 @@ use std::collections::HashSet;
 use std::time::Duration;
 use std::{fmt, mem, path::PathBuf, sync::Arc};
 
-use futures::future::BoxFuture;
 use futures::Future;
-use rebaser_client::api_types::enqueue_updates_response::v1::RebaseStatus;
+use futures::future::BoxFuture;
 use rebaser_client::api_types::enqueue_updates_response::EnqueueUpdatesResponse;
+use rebaser_client::api_types::enqueue_updates_response::v1::RebaseStatus;
 use rebaser_client::{RebaserClient, RequestId};
 use serde::{Deserialize, Serialize};
 use si_crypto::SymmetricCryptoService;
 use si_crypto::VeritechEncryptionKey;
-use si_data_nats::{jetstream, NatsClient, NatsError, NatsTxn};
+use si_data_nats::{NatsClient, NatsError, NatsTxn, jetstream};
 use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
+use si_events::AuthenticationMethod;
+use si_events::EventSessionId;
+use si_events::WorkspaceSnapshotAddress;
 use si_events::audit_log::AuditLogKind;
 use si_events::change_batch::{ChangeBatch, ChangeBatchAddress};
 use si_events::rebase_batch_address::RebaseBatchAddress;
 use si_events::workspace_snapshot::Change;
-use si_events::AuthenticationMethod;
-use si_events::EventSessionId;
-use si_events::WorkspaceSnapshotAddress;
+use si_layer_cache::LayerDbError;
 use si_layer_cache::activities::ActivityPayloadDiscriminants;
 use si_layer_cache::db::LayerDb;
-use si_layer_cache::LayerDbError;
 use si_runtime::DedicatedExecutor;
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
@@ -41,8 +41,9 @@ use crate::workspace_snapshot::graph::{RebaseBatch, WorkspaceSnapshotGraph};
 use crate::workspace_snapshot::{
     DependentValueRoot, WorkspaceSnapshotResult, WorkspaceSnapshotSelector,
 };
-use crate::{audit_logging, slow_rt, ChangeSetError, EncryptedSecret, Workspace, WorkspaceError};
 use crate::{
+    AttributeValueId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk,
+    WorkspaceSnapshot,
     change_set::{ChangeSet, ChangeSetId},
     job::{
         definition::ActionJob,
@@ -51,9 +52,8 @@ use crate::{
         queue::JobQueue,
     },
     workspace_snapshot::WorkspaceSnapshotError,
-    AttributeValueId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk,
-    WorkspaceSnapshot,
 };
+use crate::{ChangeSetError, EncryptedSecret, Workspace, WorkspaceError, audit_logging, slow_rt};
 
 pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, WorkspaceSnapshotGraph, RebaseBatch>;
 
@@ -287,7 +287,9 @@ impl ConnectionState {
     ) -> TransactionsResult<Self> {
         match self {
             Self::Connections(conns) => {
-                trace!("no active transactions present when commit was called, but we will still attempt rebase");
+                trace!(
+                    "no active transactions present when commit was called, but we will still attempt rebase"
+                );
 
                 // Even if there are no open dal transactions, we may have written to the layer db
                 // and we need to perform a rebase if one is requested

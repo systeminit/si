@@ -7,8 +7,8 @@ use si_events::{
     Actor, ChangeSetId, ContentHash, FuncBackendKind, FuncBackendResponseType, FuncKind, FuncRun,
     FuncRunBuilder, FuncRunId, FuncRunState, Tenancy, UserPk, WorkspacePk,
 };
-use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDb;
+use si_layer_cache::db::serialize;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 

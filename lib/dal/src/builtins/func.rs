@@ -2,7 +2,7 @@ use si_pkg::SiPkg;
 
 use crate::module::Module;
 use crate::{
-    func::intrinsics::IntrinsicFunc, pkg::import_pkg_from_pkg, BuiltinsResult, DalContext,
+    BuiltinsResult, DalContext, func::intrinsics::IntrinsicFunc, pkg::import_pkg_from_pkg,
 };
 use telemetry::prelude::*;
 

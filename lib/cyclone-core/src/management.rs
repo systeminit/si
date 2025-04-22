@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 
-use crate::{component_view::ComponentViewWithGeometry, BeforeFunction, CycloneRequestable};
+use crate::{BeforeFunction, CycloneRequestable, component_view::ComponentViewWithGeometry};
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

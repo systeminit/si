@@ -1,7 +1,7 @@
 use naxum_api_types::RequestId;
 use serde::{Deserialize, Serialize};
 use si_events::{
-    rebase_batch_address::RebaseBatchAddress, ChangeSetId, EventSessionId, WorkspacePk,
+    ChangeSetId, EventSessionId, WorkspacePk, rebase_batch_address::RebaseBatchAddress,
 };
 
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]

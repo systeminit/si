@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Instant};
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use si_events::{Actor, Tenancy, WebEvent, WorkspaceSnapshotAddress};
 use telemetry::prelude::*;
 

@@ -34,14 +34,14 @@ use serde::Serialize;
 use si_data_pg::PgError;
 use si_data_pg::PgPoolError;
 use si_data_pg::PgRow;
-use si_events::audit_log::AuditLogKind;
-use si_events::audit_log::AuditLogMetadata;
-use si_events::ulid;
 use si_events::Actor;
 use si_events::AuthenticationMethod;
 use si_events::ChangeSetId;
 use si_events::UserPk;
 use si_events::WorkspacePk;
+use si_events::audit_log::AuditLogKind;
+use si_events::audit_log::AuditLogMetadata;
+use si_events::ulid;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -49,12 +49,12 @@ mod config;
 mod context;
 mod migrate;
 
-pub use config::default_pg_pool_config;
 pub use config::AuditDatabaseConfig;
 pub use config::DBNAME;
+pub use config::default_pg_pool_config;
 pub use context::AuditDatabaseContext;
 pub use context::AuditDatabaseContextError;
-pub use migrate::{migrate, AuditDatabaseMigrationError};
+pub use migrate::{AuditDatabaseMigrationError, migrate};
 
 #[allow(missing_docs)]
 #[remain::sorted]

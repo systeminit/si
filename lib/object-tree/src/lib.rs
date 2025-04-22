@@ -84,9 +84,9 @@ pub use crate::tar::{
     write::{TarWriter, TarWriterError},
 };
 pub use graph::{
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
     GraphError, HashedNode, NameStr, NodeChild, NodeKind, NodeWithChildren, ObjectTree, ReadBytes,
-    WriteBytes,
+    WriteBytes, read_key_value_line, read_key_value_line_opt, write_key_value_line,
+    write_key_value_line_opt,
 };
 // The `Hash` type is faily coupled to the implementation and data structures in this crate,
 // despite being defined in an external crate. Due to this coupling, we'll re-export

@@ -1,6 +1,6 @@
 use async_recursion::async_recursion;
-use color_eyre::eyre::eyre;
 use color_eyre::Result;
+use color_eyre::eyre::eyre;
 use dal::property_editor::schema::{
     PropertyEditorProp, PropertyEditorPropKind, PropertyEditorSchema,
 };

@@ -1,7 +1,7 @@
 use nix::{errno::Errno, mount::umount};
 
 use crate::errors::FirecrackerJailError;
-use devicemapper::{DevId, DmName, DmOptions, DM};
+use devicemapper::{DM, DevId, DmName, DmOptions};
 
 use krataloopdev::LoopDevice;
 use std::ffi::OsString;

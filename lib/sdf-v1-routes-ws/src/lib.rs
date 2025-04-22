@@ -1,6 +1,6 @@
 #![allow(clippy::module_inception)]
 
-use axum::{http::StatusCode, response::IntoResponse, response::Response, routing::get, Router};
+use axum::{Router, http::StatusCode, response::IntoResponse, response::Response, routing::get};
 use crdt::CrdtError;
 use dal::{TransactionsError, WsEventError};
 use nats_multiplexer_client::MultiplexerClientError;

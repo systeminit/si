@@ -3,14 +3,14 @@
 use std::time::Duration;
 
 use audit_database::{AuditDatabaseContext, AuditLogRow};
-use color_eyre::eyre::eyre;
 use color_eyre::Result;
+use color_eyre::eyre::eyre;
 use dal::component::socket::{ComponentInputSocket, ComponentOutputSocket};
 use dal::key_pair::KeyPairPk;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{
-    audit_logging, AttributeValue, Component, ComponentId, ComponentType, DalContext, InputSocket,
-    KeyPair, OutputSocket, Schema, SchemaVariant, SchemaVariantId, User, UserPk,
+    AttributeValue, Component, ComponentId, ComponentType, DalContext, InputSocket, KeyPair,
+    OutputSocket, Schema, SchemaVariant, SchemaVariantId, User, UserPk, audit_logging,
 };
 use itertools::Itertools;
 use names::{Generator, Name};
@@ -37,7 +37,7 @@ pub fn generate_fake_name() -> Result<String> {
 #[allow(clippy::expect_used)]
 #[macro_export]
 macro_rules! connection_annotation_string {
-    ($str:expr) => {
+    ($str:expr_2021) => {
         serde_json::to_string(&vec![$str]).expect("unable to parse annotation string")
     };
 }

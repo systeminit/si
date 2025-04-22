@@ -1,10 +1,10 @@
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{
+    ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent,
     func::{
         argument::{FuncArgument, FuncArgumentId},
         authoring::FuncAuthoringClient,
     },
-    ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent,
 };
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::FuncSummary;

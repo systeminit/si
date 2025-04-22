@@ -1,11 +1,11 @@
 use axum::{
-    extract::{Host, OriginalUri, Query},
     Json,
+    extract::{Host, OriginalUri, Query},
 };
 use dal::diagram::Diagram;
-use dal::{slow_rt, Visibility};
+use dal::{Visibility, slow_rt};
 use sdf_core::tracking::track;
-use sdf_extract::{v1::AccessBuilder, HandlerContext, PosthogClient};
+use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;

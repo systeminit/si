@@ -13,16 +13,16 @@ use futures::{Future, Sink, SinkExt, Stream};
 use futures_lite::future::FutureExt;
 use nats_multiplexer::Multiplexer;
 use nats_multiplexer_client::MultiplexerClient;
-use sdf_core::nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT;
 use sdf_core::BroadcastGroups;
-use sdf_v1_routes_ws::crdt::{crdt_handle, CrdtError};
+use sdf_core::nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT;
+use sdf_v1_routes_ws::crdt::{CrdtError, crdt_handle};
 use si_data_nats::{NatsClient, NatsConfig, Subject};
 use tokio::{
-    sync::broadcast, sync::Mutex, sync::Notify, sync::RwLock, task, task::JoinHandle, time::timeout,
+    sync::Mutex, sync::Notify, sync::RwLock, sync::broadcast, task, task::JoinHandle, time::timeout,
 };
 use tokio_util::sync::CancellationToken;
 use y_sync::{awareness::Awareness, net::BroadcastGroup, net::Connection};
-use yrs::{updates::encoder::Encode, Doc, GetString, Text, Transact, UpdateSubscription};
+use yrs::{Doc, GetString, Text, Transact, UpdateSubscription, updates::encoder::Encode};
 
 struct Server {
     nats: NatsClient,
@@ -289,7 +289,7 @@ impl Stream for TestWsStream {
                 Ok(msg) => Some(msg),
                 Err(broadcast::error::TryRecvError::Empty) => None,
                 Err(err @ broadcast::error::TryRecvError::Closed) => {
-                    return Poll::Ready(Some(Err(axum::Error::new(err))))
+                    return Poll::Ready(Some(Err(axum::Error::new(err))));
                 }
                 Err(broadcast::error::TryRecvError::Lagged(num)) => {
                     panic!("Broadcast reader lagged behind {} messages", num)
@@ -305,16 +305,15 @@ impl Stream for TestWsStream {
             }
         }
 
-        if let Some(mut future) = self.future.take() {
-            match future.poll(cx) {
+        match self.future.take() {
+            Some(mut future) => match future.poll(cx) {
                 Poll::Ready(msg) => Poll::Ready(Some(msg)),
                 Poll::Pending => {
                     self.future = Some(future);
                     Poll::Pending
                 }
-            }
-        } else {
-            Poll::Pending
+            },
+            _ => Poll::Pending,
         }
     }
 }
@@ -332,8 +331,8 @@ fn create_notifier(doc: &Doc) -> (Arc<Notify>, UpdateSubscription) {
 const TIMEOUT: Duration = Duration::from_secs(5);
 
 #[tokio::test]
-async fn change_introduced_by_server_reaches_subscribed_clients(
-) -> Result<(), Box<dyn std::error::Error>> {
+async fn change_introduced_by_server_reaches_subscribed_clients()
+-> Result<(), Box<dyn std::error::Error>> {
     let doc = Doc::with_client_id(1);
     let text = doc.get_or_insert_text("test");
     let awareness = Arc::new(RwLock::new(Awareness::new(doc)));

@@ -9,7 +9,7 @@
 
 use std::{cmp, fmt::Debug, hash, io, ops, sync::Arc, time::Duration};
 
-use async_nats::{subject::ToSubject, ToServerAddrs};
+use async_nats::{ToServerAddrs, subject::ToSubject};
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -25,8 +25,8 @@ pub mod jetstream;
 pub mod service;
 
 pub use async_nats::{
-    self, connection::State, header, header::HeaderMap, rustls, status, subject, Auth, AuthError,
-    Error as InnerError, Event, HeaderName, HeaderValue, ServerAddr, ServerInfo, Subject,
+    self, Auth, AuthError, Error as InnerError, Event, HeaderName, HeaderValue, ServerAddr,
+    ServerInfo, Subject, connection::State, header, header::HeaderMap, rustls, status, subject,
 };
 pub use connect_options::ConnectOptions;
 pub use message::{InnerMessage, Message};

@@ -1,6 +1,6 @@
 use axum::extract::{Json, Query};
-use dal::{schema::view::SchemaView, Visibility};
-use sdf_extract::{v1::AccessBuilder, HandlerContext};
+use dal::{Visibility, schema::view::SchemaView};
+use sdf_extract::{HandlerContext, v1::AccessBuilder};
 use serde::{Deserialize, Serialize};
 
 use super::DiagramResult;

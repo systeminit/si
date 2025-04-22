@@ -1,4 +1,4 @@
-use base64::{engine::general_purpose, Engine};
+use base64::{Engine, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
 use si_data_nats::NatsError;
@@ -9,9 +9,10 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
+    DalContext, HistoryEvent, HistoryEventError, TenancyError, Timestamp, TransactionsError,
+    Workspace, WorkspaceError, WorkspacePk,
     serde_impls::{base64_bytes_serde, nonce_serde},
-    standard_model_accessor_ro, DalContext, HistoryEvent, HistoryEventError, TenancyError,
-    Timestamp, TransactionsError, Workspace, WorkspaceError, WorkspacePk,
+    standard_model_accessor_ro,
 };
 
 mod key_pair_box_public_key_serde;

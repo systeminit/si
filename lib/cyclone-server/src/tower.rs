@@ -5,8 +5,8 @@ mod limit_requests {
         future::Future,
         pin::Pin,
         sync::{
-            atomic::{AtomicU32, Ordering},
             Arc,
+            atomic::{AtomicU32, Ordering},
         },
         task::{Context, Poll},
     };
@@ -164,12 +164,12 @@ mod web_socket_trace {
     use axum::{body::Body, extract::MatchedPath, http::Request, response::Response};
     use pin_project_lite::pin_project;
     use telemetry::prelude::*;
-    use telemetry_http::{propagation, ParentSpan};
+    use telemetry_http::{ParentSpan, propagation};
     use tower::{Layer, Service};
 
     // Vendored and modified from futures_core::task::poll::ready
     macro_rules! ready {
-        ($e:expr $(,)?) => {
+        ($e:expr_2021 $(,)?) => {
             match $e {
                 ::std::task::Poll::Ready(t) => t,
                 ::std::task::Poll::Pending => return ::std::task::Poll::Pending,

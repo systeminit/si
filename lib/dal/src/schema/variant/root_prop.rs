@@ -5,8 +5,8 @@ use strum::{AsRefStr, Display as EnumDisplay, EnumIter, EnumString};
 
 use crate::prop::PropPath;
 use crate::property_editor::schema::WidgetKind;
-use crate::schema::variant::leaves::LeafKind;
 use crate::schema::variant::SchemaVariantResult;
+use crate::schema::variant::leaves::LeafKind;
 use crate::{DalContext, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId};
 
 pub mod component_type;

@@ -6,9 +6,9 @@ use dal::secret::DecryptedSecret;
 use dal::{Component, DalContext, EncryptedSecret, Prop, Secret, SecretAlgorithm, SecretVersion};
 use dal_test::expected::{self, ExpectComponent, ExpectView};
 use dal_test::helpers::{
-    create_component_for_default_schema_name_in_default_view, encrypt_message, ChangeSetTestHelpers,
+    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view, encrypt_message,
 };
-use dal_test::{helpers::generate_fake_name, test, WorkspaceSignup};
+use dal_test::{WorkspaceSignup, helpers::generate_fake_name, test};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::Value;
 

@@ -1,5 +1,5 @@
 use petgraph::prelude::*;
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{HashMap, hash_map::Entry};
 
 #[derive(Debug, Clone)]
 pub struct DependencyGraph<T: Copy + std::cmp::Eq + std::cmp::PartialEq + std::hash::Hash> {

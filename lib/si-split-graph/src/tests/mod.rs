@@ -874,10 +874,12 @@ fn detect_and_perform_updates_ordered_containers() -> SplitGraphResult<()> {
             .map(|edge_ref| edge_ref.target())
             .collect();
 
-        assert!(evil_earth_outgoing_base
-            .difference(&evil_earth_outgoing_updated)
-            .next()
-            .is_none());
+        assert!(
+            evil_earth_outgoing_base
+                .difference(&evil_earth_outgoing_updated)
+                .next()
+                .is_none()
+        );
 
         updated_graph.reorder_node(damaya.id(), |order| order.iter().copied().rev().collect())?;
 

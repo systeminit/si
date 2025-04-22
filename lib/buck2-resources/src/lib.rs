@@ -60,7 +60,7 @@ impl Buck2Resources {
                 return Err(Buck2ResourcesError::ReadFailed {
                     manifest_path,
                     source,
-                })
+                });
             }
         };
         let inner: HashMap<String, PathBuf> =

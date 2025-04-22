@@ -15,8 +15,8 @@ use tokio::task::JoinSet;
 use ulid::Ulid;
 
 use crate::{
-    slow_rt::{self, SlowRuntimeError},
     ComponentType, DalContext, HistoryActor, SchemaId, TransactionsError,
+    slow_rt::{self, SlowRuntimeError},
 };
 use module_index_client::{ModuleDetailsResponse, ModuleIndexClient, ModuleIndexClientError};
 use si_data_pg::{PgError, PgRow};

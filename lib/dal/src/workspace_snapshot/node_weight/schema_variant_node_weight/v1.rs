@@ -4,24 +4,23 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 
 use super::{SchemaVariantNodeWeight, SchemaVariantNodeWeightError, SchemaVariantNodeWeightResult};
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV3;
 use crate::{
-    layer_db_types::{SchemaVariantContent, SchemaVariantContentV3},
-    workspace_snapshot::{
-        content_address::ContentAddress,
-        graph::{detector::Update, LineageId, WorkspaceSnapshotGraphError},
-        node_weight::{
-            self,
-            traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
-            ContentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
-        },
-        ContentAddressDiscriminants,
-    },
     DalContext, EdgeWeightKindDiscriminants, SchemaId, SchemaVariantError, SchemaVariantId,
     Timestamp, WorkspaceSnapshotGraphVCurrent,
+    layer_db_types::{SchemaVariantContent, SchemaVariantContentV3},
+    workspace_snapshot::{
+        ContentAddressDiscriminants,
+        content_address::ContentAddress,
+        graph::{LineageId, WorkspaceSnapshotGraphError, detector::Update},
+        node_weight::{
+            self, ContentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
+            traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
+        },
+    },
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiNodeWeight)]
@@ -314,7 +313,7 @@ impl CorrectTransforms for SchemaVariantNodeWeightV1 {
                                         return Err(WorkspaceSnapshotGraphError::SchemaVariant(
                                             sv_error,
                                         )
-                                        .into())
+                                        .into());
                                     }
                                 }
                             }

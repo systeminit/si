@@ -2,7 +2,7 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use tokio_util::sync::CancellationToken;
 
-use crate::{from_config, PosthogClient, PosthogError, PosthogResult, PosthogSender};
+use crate::{PosthogClient, PosthogError, PosthogResult, PosthogSender, from_config};
 
 const DEFAULT_API_ENDPOINT: &str = "https://e.systeminit.com";
 const DEFAULT_API_KEY: &str = "phc_KpehlXOqtU44B2MeW6WjqR09NxRJCYEiUReA58QcAYK";

@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
+use axum::Json;
 use axum::extract::multipart::MultipartError;
 use axum::extract::{Multipart, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 
 use sea_orm::DbErr;
 use si_id::SchemaId;
@@ -12,12 +12,12 @@ use thiserror::Error;
 
 use crate::app_state::AppState;
 use crate::extract::{Authorization, DbConnection, ExtractedS3Bucket};
-use crate::routes::upsert_module_route::{extract_multiparts, UpsertModuleError};
-use crate::whoami::{is_systeminit_auth_token, WhoamiError};
+use crate::routes::upsert_module_route::{UpsertModuleError, extract_multiparts};
+use crate::whoami::{WhoamiError, is_systeminit_auth_token};
 
 use super::get_module_details_route::GetModuleDetailsError;
-use super::promote_builtin_route::{promote_module, PromoteModuleError};
-use super::reject_module_route::{reject_other_modules_of_a_schema_id, RejectModuleError};
+use super::promote_builtin_route::{PromoteModuleError, promote_module};
+use super::reject_module_route::{RejectModuleError, reject_other_modules_of_a_schema_id};
 use super::upsert_module_route::upsert_module;
 
 #[remain::sorted]

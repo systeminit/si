@@ -2,8 +2,8 @@ use dal::change_set::view::OpenChangeSetsView;
 use dal::diagram::Diagram;
 use dal::{DalContext, Workspace};
 use dal_test::helpers::{
-    create_component_for_default_schema_name_in_default_view, ChangeSetTestHelpers,
-    PropEditorTestView,
+    ChangeSetTestHelpers, PropEditorTestView,
+    create_component_for_default_schema_name_in_default_view,
 };
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;

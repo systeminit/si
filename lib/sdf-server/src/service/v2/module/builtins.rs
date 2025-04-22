@@ -1,13 +1,13 @@
 use axum::{
-    extract::{Host, OriginalUri, Path},
     Json,
+    extract::{Host, OriginalUri, Path},
 };
-use dal::{module::ModuleId, ChangeSetId, HistoryActor, User, WorkspacePk};
+use dal::{ChangeSetId, HistoryActor, User, WorkspacePk, module::ModuleId};
 use module_index_client::ModuleIndexClient;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    extract::{request::RawAccessToken, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient, request::RawAccessToken},
     service::v2::AccessBuilder,
     track,
 };

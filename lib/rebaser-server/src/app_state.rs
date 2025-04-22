@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use dal::DalContextBuilder;
 use edda_client::EddaClient;
-use si_data_nats::{async_nats::jetstream, NatsClient};
+use si_data_nats::{NatsClient, async_nats::jetstream};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
 use crate::{Features, ServerMetadata};

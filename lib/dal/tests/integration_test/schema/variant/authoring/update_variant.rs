@@ -14,8 +14,8 @@ use dal::{
 };
 use dal_test::expected::commit_and_update_snapshot_to_visibility;
 use dal_test::helpers::{
-    create_component_for_default_schema_name_in_default_view,
-    create_component_for_unlocked_schema_name_on_default_view, ChangeSetTestHelpers,
+    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view,
+    create_component_for_unlocked_schema_name_on_default_view,
 };
 use dal_test::test;
 

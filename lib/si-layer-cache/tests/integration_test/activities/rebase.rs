@@ -1,13 +1,13 @@
 use std::sync::{
-    atomic::{AtomicI32, Ordering},
     Arc,
+    atomic::{AtomicI32, Ordering},
 };
 
 use si_events::{
-    rebase_batch_address::RebaseBatchAddress, Actor, ChangeSetId, Tenancy, WorkspacePk,
+    Actor, ChangeSetId, Tenancy, WorkspacePk, rebase_batch_address::RebaseBatchAddress,
 };
 use si_layer_cache::{
-    activities::ActivityId, event::LayeredEventMetadata, hybrid_cache::CacheConfig, LayerDb,
+    LayerDb, activities::ActivityId, event::LayeredEventMetadata, hybrid_cache::CacheConfig,
 };
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use ulid::Ulid;

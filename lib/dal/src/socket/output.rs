@@ -7,23 +7,23 @@ use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::AttributePrototypeArgumentId;
 use crate::attribute::prototype::AttributePrototypeError;
+use crate::attribute::prototype::argument::AttributePrototypeArgumentId;
 use crate::attribute::value::AttributeValueError;
 use crate::change_set::ChangeSetError;
 use crate::layer_db_types::{OutputSocketContent, OutputSocketContentV1};
 use crate::socket::{SocketArity, SocketKind};
+use crate::workspace_snapshot::WorkspaceSnapshotError;
 use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
 use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
 use crate::workspace_snapshot::node_weight::{ContentNodeWeight, NodeWeight, NodeWeightError};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::{
-    implement_add_edge_to, AttributePrototypeId, AttributeValue, AttributeValueId, ComponentId,
-    InputSocketId, SchemaVariantId,
-};
 use crate::{
     AttributePrototype, DalContext, FuncId, HelperError, InputSocket, SchemaVariant,
     SchemaVariantError, Timestamp, TransactionsError,
+};
+use crate::{
+    AttributePrototypeId, AttributeValue, AttributeValueId, ComponentId, InputSocketId,
+    SchemaVariantId, implement_add_edge_to,
 };
 
 use super::connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError};

@@ -1,10 +1,10 @@
 use axum::{
-    extract::{Host, OriginalUri, Path},
     Json,
+    extract::{Host, OriginalUri, Path},
 };
 use dal::{
-    func::argument::{FuncArgument, FuncArgumentId},
     ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent,
+    func::argument::{FuncArgument, FuncArgumentId},
 };
 use frontend_types::FuncSummary;
 use si_frontend_types as frontend_types;

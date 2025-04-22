@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::{ContentHash, ulid::Ulid};
 
 use crate::{
-    workspace_snapshot::{graph::WorkspaceSnapshotGraphVCurrent, node_weight::NodeWeight},
     EdgeWeight, EdgeWeightKind, PropKind,
+    workspace_snapshot::{graph::WorkspaceSnapshotGraphVCurrent, node_weight::NodeWeight},
 };
 
 mod detect_changes;
@@ -84,15 +84,15 @@ fn add_edges(
 #[cfg(test)]
 mod test {
     use petgraph::visit::EdgeRef;
-    use petgraph::{graph::NodeIndex, Outgoing};
+    use petgraph::{Outgoing, graph::NodeIndex};
     use pretty_assertions_sorted::assert_eq;
-    use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash};
+    use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
     use std::{collections::HashSet, str::FromStr};
 
     use crate::workspace_snapshot::{
         content_address::ContentAddress,
         edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
-        graph::{detector::Update, WorkspaceSnapshotGraphVCurrent},
+        graph::{WorkspaceSnapshotGraphVCurrent, detector::Update},
         node_weight::NodeWeight,
     };
     use crate::{ComponentId, FuncId, PropId, SchemaId, SchemaVariantId};

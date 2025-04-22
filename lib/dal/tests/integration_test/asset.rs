@@ -1,5 +1,5 @@
-use dal::schema::variant::authoring::{VariantAuthoringClient, VariantAuthoringError};
 use dal::schema::variant::DEFAULT_SCHEMA_VARIANT_COLOR;
+use dal::schema::variant::authoring::{VariantAuthoringClient, VariantAuthoringError};
 use dal::{DalContext, SchemaVariant, SchemaVariantId};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::test;

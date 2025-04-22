@@ -37,7 +37,7 @@ impl<'a> SiPkgFuncArgument<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::FUNC_ARGUMENT_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 
@@ -171,7 +171,7 @@ impl<'a> SiPkgFunc<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::FUNC_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 

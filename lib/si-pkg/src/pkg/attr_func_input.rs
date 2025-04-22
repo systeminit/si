@@ -4,8 +4,8 @@ use petgraph::prelude::*;
 use super::{PkgResult, SiPkgError, Source};
 
 use crate::{
-    node::{AttrFuncInputNode, PkgNode},
     AttrFuncInputSpec, AttrFuncInputSpecKind,
+    node::{AttrFuncInputNode, PkgNode},
 };
 
 #[remain::sorted]
@@ -119,7 +119,7 @@ impl<'a> SiPkgAttrFuncInput<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::ATTR_FUNC_INPUT_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
         let hash = hashed_node.hash();

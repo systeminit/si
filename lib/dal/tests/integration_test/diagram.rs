@@ -1,6 +1,6 @@
-use dal::{diagram::Diagram, Component, DalContext};
+use dal::{Component, DalContext, diagram::Diagram};
 use dal_test::{
-    helpers::{create_component_for_default_schema_name_in_default_view, ChangeSetTestHelpers},
+    helpers::{ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view},
     test,
 };
 
@@ -39,9 +39,11 @@ async fn components_removed_from_snapshot_have_virtual_diagram_entries(ctx: &mut
         .await
         .expect("Unable to commit");
 
-    assert!(Component::get_by_id(ctx, component_to_remove.id())
-        .await
-        .is_err());
+    assert!(
+        Component::get_by_id(ctx, component_to_remove.id())
+            .await
+            .is_err()
+    );
 
     let summary_diagram = Diagram::assemble_for_default_view(ctx)
         .await

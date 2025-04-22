@@ -18,10 +18,9 @@ use http::{
     uri::{Authority, InvalidUri, InvalidUriParts, PathAndQuery, Scheme},
 };
 use hyper::{
-    body,
-    client::{connect::Connection, HttpConnector, ResponseFuture},
+    Body, Method, Request, Response, StatusCode, Uri, body,
+    client::{HttpConnector, ResponseFuture, connect::Connection},
     service::Service,
-    Body, Method, Request, Response, StatusCode, Uri,
 };
 use hyperlocal::{UnixClientExt, UnixConnector, UnixStream};
 use telemetry::prelude::*;
@@ -32,11 +31,11 @@ use tokio::{
     net::TcpStream,
 };
 use tokio_tungstenite::{
-    tungstenite::{client::IntoClientRequest, handshake::client::Request as WsRequest},
     WebSocketStream,
+    tungstenite::{client::IntoClientRequest, handshake::client::Request as WsRequest},
 };
 
-use crate::{new_unstarted_execution, ping, watch, Execution, PingExecution, Watch};
+use crate::{Execution, PingExecution, Watch, new_unstarted_execution, ping, watch};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -445,7 +444,7 @@ impl Default for ClientConfig {
 mod tests {
     use std::{collections::HashMap, env, path::Path};
 
-    use base64::{engine::general_purpose, Engine};
+    use base64::{Engine, engine::general_purpose};
     use buck2_resources::Buck2Resources;
     use cyclone_core::{
         ActionRunRequest, ComponentKind, ComponentView, ComponentViewWithGeometry, FunctionResult,
@@ -522,7 +521,8 @@ mod tests {
         builder: &mut ConfigBuilder,
         tmp_socket: &TempPath,
     ) -> UdsClient {
-        env::set_var("SI_LANG_JS_LOG", "debug");
+        // TODO: Audit that the environment access only happens in single-threaded code.
+        unsafe { env::set_var("SI_LANG_JS_LOG", "debug") };
         let server = uds_server(builder, tmp_socket).await;
         let path = server
             .local_socket()
@@ -550,7 +550,8 @@ mod tests {
     }
 
     async fn http_client_for_running_server(builder: &mut ConfigBuilder) -> HttpClient {
-        env::set_var("SI_LANG_JS_LOG", "debug");
+        // TODO: Audit that the environment access only happens in single-threaded code.
+        unsafe { env::set_var("SI_LANG_JS_LOG", "debug") };
         let server = http_server(builder).await;
         let socket = *server
             .local_socket()

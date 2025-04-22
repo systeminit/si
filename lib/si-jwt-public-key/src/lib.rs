@@ -4,7 +4,7 @@ use si_id::{AuthTokenId, UserPk, WorkspacePk};
 use si_std::CanonicalFile;
 use std::sync::Arc;
 
-use base64::{engine::general_purpose, Engine};
+use base64::{Engine, engine::general_purpose};
 use jwt_simple::{common::VerificationOptions, prelude::*};
 use monostate::MustBe;
 use serde::{Deserialize, Serialize};

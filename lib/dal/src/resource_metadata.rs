@@ -30,7 +30,7 @@ use thiserror::Error;
 use veritech_client::ResourceStatus;
 
 use crate::{
-    component::resource::ResourceData, Component, ComponentError, ComponentId, DalContext,
+    Component, ComponentError, ComponentId, DalContext, component::resource::ResourceData,
 };
 
 #[allow(missing_docs)]

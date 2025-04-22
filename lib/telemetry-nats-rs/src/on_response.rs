@@ -1,10 +1,10 @@
 use std::{fmt, time::Duration};
 
 use naxum::{
-    middleware::{trace::OnResponse, LatencyUnit},
+    middleware::{LatencyUnit, trace::OnResponse},
     response::Response,
 };
-use telemetry::{prelude::*, OtelStatusCode};
+use telemetry::{OtelStatusCode, prelude::*};
 
 /// An implementation of [`OnResponse`] to update span fields for NATS responses.
 #[derive(Clone, Debug)]
@@ -59,7 +59,7 @@ impl<B> OnResponse<B> for NatsOnResponse {
         }
 
         macro_rules! inner_event {
-            ($level:expr, $($tt:tt)*) => {
+            ($level:expr_2021, $($tt:tt)*) => {
                 match $level {
                     ::telemetry::tracing::Level::ERROR => {
                         ::telemetry::tracing::error!($($tt)*);

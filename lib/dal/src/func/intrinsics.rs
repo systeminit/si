@@ -5,8 +5,8 @@ use si_pkg::{
 };
 use strum::{AsRefStr, Display, EnumIter, EnumString, IntoEnumIterator};
 
-use crate::func::{FuncError, FuncResult};
 use crate::PropKind;
+use crate::func::{FuncError, FuncResult};
 
 #[remain::sorted]
 #[derive(AsRefStr, Display, EnumIter, EnumString, Debug, Clone, Copy, PartialEq, Eq)]

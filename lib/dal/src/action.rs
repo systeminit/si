@@ -11,6 +11,9 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
+    AttributeValue, ChangeSetError, ChangeSetId, Component, ComponentError, ComponentId,
+    DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants, Func, FuncError, HelperError,
+    TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
     action::{
         dependency_graph::ActionDependencyGraph,
         prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
@@ -21,11 +24,8 @@ use crate::{
     implement_add_edge_to,
     job::definition::ActionJob,
     workspace_snapshot::node_weight::{
-        category_node_weight::CategoryNodeKind, ActionNodeWeight, NodeWeight, NodeWeightError,
+        ActionNodeWeight, NodeWeight, NodeWeightError, category_node_weight::CategoryNodeKind,
     },
-    AttributeValue, ChangeSetError, ChangeSetId, Component, ComponentError, ComponentId,
-    DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants, Func, FuncError, HelperError,
-    TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
 };
 
 pub mod dependency_graph;

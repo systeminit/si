@@ -2,11 +2,11 @@ use async_trait::async_trait;
 use si_id::ComponentId;
 
 use crate::{
+    WorkspaceSnapshot,
     diagram::view::ViewId,
     workspace_snapshot::{
-        graph::traits::diagram::view::ViewExt as GraphViewExt, WorkspaceSnapshotResult,
+        WorkspaceSnapshotResult, graph::traits::diagram::view::ViewExt as GraphViewExt,
     },
-    WorkspaceSnapshot,
 };
 
 #[async_trait]

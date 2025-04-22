@@ -1,15 +1,15 @@
-use dal::action::prototype::{ActionKind, ActionPrototype};
+use dal::Workspace;
 use dal::action::Action;
+use dal::action::prototype::{ActionKind, ActionPrototype};
 use dal::prop::PropPath;
 use dal::property_editor::values::PropertyEditorValues;
 use dal::qualification::QualificationSubCheckStatus;
-use dal::Workspace;
 use dal::{AttributeValue, Component, DalContext, InputSocket, OutputSocket, Prop, Secret};
 use dal_test::helpers::ChangeSetTestHelpers;
 use dal_test::helpers::{
     create_component_for_default_schema_name_in_default_view, encrypt_message,
 };
-use dal_test::{test, WorkspaceSignup};
+use dal_test::{WorkspaceSignup, test};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
@@ -149,10 +149,11 @@ async fn create_action_using_secret(ctx: &mut DalContext, nw: &WorkspaceSignup) 
     // Ensure that the parent is head so that the "create" action will execute by default.
     // Technically, this primarily validates the test setup rather than the system itself, but it
     // serves a secondary function of ensuring no prior functions cause this assertion to fail.
-    assert!(ctx
-        .parent_is_head()
-        .await
-        .expect("could not perform parent is head"));
+    assert!(
+        ctx.parent_is_head()
+            .await
+            .expect("could not perform parent is head")
+    );
     // Apply to the base change set and commit.
     ChangeSetTestHelpers::apply_change_set_to_base(ctx)
         .await

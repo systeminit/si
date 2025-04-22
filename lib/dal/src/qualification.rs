@@ -5,15 +5,15 @@ use strum::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::AttributeValue;
 use crate::attribute::value::AttributeValueError;
 use crate::component::qualification::QualificationEntry;
 use crate::func::FuncError;
 use crate::prop::PropError;
 use crate::validation::{ValidationError, ValidationOutput, ValidationStatus};
-use crate::AttributeValue;
 use crate::{
-    ws_event::{WsEvent, WsPayload},
     Component, ComponentError, ComponentId, DalContext, Prop, StandardModelError, WsEventResult,
+    ws_event::{WsEvent, WsPayload},
 };
 
 #[derive(Deserialize, Serialize, Debug)]

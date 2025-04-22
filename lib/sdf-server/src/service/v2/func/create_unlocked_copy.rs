@@ -1,16 +1,16 @@
 use axum::{
-    extract::{Host, OriginalUri, Path},
     Json,
+    extract::{Host, OriginalUri, Path},
 };
 use dal::{
-    func::authoring::FuncAuthoringClient, ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant,
-    SchemaVariantId, WorkspacePk, WsEvent,
+    ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant, SchemaVariantId, WorkspacePk, WsEvent,
+    func::authoring::FuncAuthoringClient,
 };
 use serde::{Deserialize, Serialize};
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::{FuncCode, FuncSummary};
 
-use super::{get_code_response, FuncAPIError, FuncAPIResult};
+use super::{FuncAPIError, FuncAPIResult, get_code_response};
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::force_change_set_response::ForceChangeSetResponse,

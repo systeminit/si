@@ -1,10 +1,10 @@
-use axum::extract::{Host, OriginalUri};
 use axum::Json;
+use axum::extract::{Host, OriginalUri};
 use dal::diagram::geometry::Geometry;
 use dal::diagram::view::{View, ViewComponentsUpdateList, ViewId};
 use dal::{ChangeSet, Component, ComponentError, ComponentId, Visibility, WsEvent};
 use sdf_core::{force_change_set_response::ForceChangeSetResponse, tracking::track};
-use sdf_extract::{v1::AccessBuilder, HandlerContext, PosthogClient};
+use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
 use serde::{Deserialize, Serialize};
 use si_frontend_types::{RawGeometry, StringGeometry};
 use std::collections::HashMap;

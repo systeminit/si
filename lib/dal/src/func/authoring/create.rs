@@ -1,5 +1,5 @@
-use base64::engine::general_purpose;
 use base64::Engine;
+use base64::engine::general_purpose;
 use telemetry::prelude::*;
 
 use crate::action::prototype::{ActionKind, ActionPrototype};
@@ -11,7 +11,7 @@ use crate::func::binding::management::ManagementBinding;
 use crate::func::binding::{AttributeArgumentBinding, AttributeFuncDestination, EventualParent};
 use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::{
-    generate_name, DalContext, Func, FuncBackendKind, FuncBackendResponseType, SchemaVariantId,
+    DalContext, Func, FuncBackendKind, FuncBackendResponseType, SchemaVariantId, generate_name,
 };
 
 use super::{FuncAuthoringError, FuncAuthoringResult};

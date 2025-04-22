@@ -3,12 +3,12 @@
 use std::{collections::HashMap, str::FromStr};
 
 use dal::{
+    ChangeSet, DalContext, HistoryActor, User, UserPk, WorkspacePk,
     approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
     change_set::approval::ChangeSetApproval,
-    ChangeSet, DalContext, HistoryActor, User, UserPk, WorkspacePk,
 };
 use permissions::{Permission, PermissionBuilder};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ChangeSetApprovalStatus};
+use si_events::{ChangeSetApprovalStatus, merkle_tree_hash::MerkleTreeHash};
 use si_id::{ChangeSetApprovalId, EntityId};
 
 use super::DalWrapperError;
@@ -377,7 +377,7 @@ async fn inner_determine_approving_ids_with_hashes(
                                     object_type.into(),
                                     object_id.into(),
                                     permission.into(),
-                                ))
+                                ));
                             }
                         }
                     }

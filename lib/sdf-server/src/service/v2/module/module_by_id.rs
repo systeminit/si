@@ -1,6 +1,6 @@
 use axum::{
-    extract::{Host, OriginalUri, Path, Query},
     Json,
+    extract::{Host, OriginalUri, Path, Query},
 };
 use dal::{ChangeSetId, WorkspacePk};
 use module_index_client::ModuleIndexClient;
@@ -9,7 +9,7 @@ use si_pkg::SiPkg;
 use ulid::Ulid;
 
 use crate::{
-    extract::{request::RawAccessToken, HandlerContext, PosthogClient},
+    extract::{HandlerContext, PosthogClient, request::RawAccessToken},
     service::v2::AccessBuilder,
     track,
 };

@@ -210,7 +210,7 @@ impl HttpMakeSpan {
         // This ugly macro is needed, unfortunately, because `tracing::span!` required the level
         // argument to be static. Meaning we can't just pass `self.level` and a dynamic name.
         macro_rules! inner {
-            ($level:expr, $name:expr) => {
+            ($level:expr_2021, $name:expr_2021) => {
                 match parent_span {
                     Some(parent_span) => {
                         ::telemetry::tracing::span!(

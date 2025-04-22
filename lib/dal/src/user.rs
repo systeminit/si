@@ -8,8 +8,8 @@ use tokio::task::JoinError;
 
 use crate::ws_event::{WsEvent, WsEventResult, WsPayload};
 use crate::{
-    standard_model_accessor_ro, ChangeSetId, DalContext, HistoryEvent, HistoryEventError, Tenancy,
-    Timestamp, TransactionsError, WorkspacePk,
+    ChangeSetId, DalContext, HistoryEvent, HistoryEventError, Tenancy, Timestamp,
+    TransactionsError, WorkspacePk, standard_model_accessor_ro,
 };
 
 const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");

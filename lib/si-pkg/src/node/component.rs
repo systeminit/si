@@ -4,11 +4,11 @@ use std::{
 };
 
 use object_tree::{
-    read_key_value_line, write_key_value_line, GraphError, NameStr, NodeChild, NodeKind,
-    NodeWithChildren, ReadBytes, WriteBytes,
+    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
+    read_key_value_line, write_key_value_line,
 };
 
-use super::{component_child::ComponentChild, PkgNode, KEY_DELETED_STR, KEY_UNIQUE_ID_STR};
+use super::{KEY_DELETED_STR, KEY_UNIQUE_ID_STR, PkgNode, component_child::ComponentChild};
 use crate::{ComponentSpec, ComponentSpecVariant};
 
 const KEY_NAME_STR: &str = "name";

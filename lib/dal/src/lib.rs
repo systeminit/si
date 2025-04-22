@@ -80,8 +80,8 @@ pub use attribute::{
     value::{AttributeValue, AttributeValueId},
 };
 pub use builtins::{BuiltinsError, BuiltinsResult};
-pub use change_set::status::ChangeSetStatus;
 pub use change_set::ChangeSetApplyError;
+pub use change_set::status::ChangeSetStatus;
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 pub use component::Component;
 pub use component::ComponentError;
@@ -91,8 +91,8 @@ pub use context::{
     ServicesContext, Transactions, TransactionsError,
 };
 pub use func::{
-    backend::{FuncBackendKind, FuncBackendResponseType},
     Func, FuncError, FuncId,
+    backend::{FuncBackendKind, FuncBackendResponseType},
 };
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use jetstream_streams::{JetstreamStreams, JetstreamStreamsError};
@@ -102,7 +102,7 @@ pub use label_list::{LabelEntry, LabelList, LabelListError};
 pub use prop::{Prop, PropId, PropKind};
 pub use schema::variant::root_prop::component_type::ComponentType;
 pub use schema::{
-    variant::SchemaVariantError, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId,
+    Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId, variant::SchemaVariantError,
 };
 pub use secret::EncryptedSecret;
 pub use secret::Secret;
@@ -119,10 +119,10 @@ pub use secret::SecretView;
 pub use secret::SecretViewError;
 pub use si_events::WorkspaceSnapshotAddress;
 pub use si_events::{content_hash::ContentHash, ulid::Ulid};
-pub use socket::input::{InputSocket, InputSocketId};
-pub use socket::output::{OutputSocket, OutputSocketId};
 pub use socket::SocketArity;
 pub use socket::SocketKind;
+pub use socket::input::{InputSocket, InputSocketId};
+pub use socket::output::{OutputSocket, OutputSocketId};
 pub use standard_connection::{HelperError, HelperResult};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use tenancy::{Tenancy, TenancyError};
@@ -131,16 +131,16 @@ pub use user::{User, UserError, UserPk, UserResult};
 pub use visibility::Visibility;
 pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult};
 pub use workspace_snapshot::graph::{WorkspaceSnapshotGraph, WorkspaceSnapshotGraphVCurrent};
+pub use workspace_snapshot::{WorkspaceSnapshot, WorkspaceSnapshotError};
 pub use workspace_snapshot::{
     edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
     node_weight::NodeWeightDiscriminants,
 };
-pub use workspace_snapshot::{WorkspaceSnapshot, WorkspaceSnapshotError};
 pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
 
 pub use si_runtime::{
-    compute_executor, DedicatedExecutor, DedicatedExecutorError, DedicatedExecutorInitializeError,
-    DedicatedExecutorJoinError,
+    DedicatedExecutor, DedicatedExecutorError, DedicatedExecutorInitializeError,
+    DedicatedExecutorJoinError, compute_executor,
 };
 
 #[remain::sorted]

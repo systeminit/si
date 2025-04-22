@@ -4,9 +4,9 @@ use petgraph::prelude::*;
 use super::{PkgResult, SiPkgAttrFuncInput, SiPkgError, Source};
 
 use crate::{
-    node::{AttributeValueChildNode, PkgNode},
     AttrFuncInputSpec, AttributeValuePath, AttributeValueSpec, FuncSpecBackendKind,
     FuncSpecBackendResponseType,
+    node::{AttributeValueChildNode, PkgNode},
 };
 
 #[derive(Debug)]
@@ -74,7 +74,7 @@ impl<'a> SiPkgAttributeValue<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::ATTRIBUTE_VALUE_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 

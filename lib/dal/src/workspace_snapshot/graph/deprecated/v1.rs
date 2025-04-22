@@ -2,19 +2,19 @@ use std::collections::{HashMap, HashSet};
 
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid, ContentHash, EncryptedSecretKey};
+use si_events::{ContentHash, EncryptedSecretKey, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 use strum::EnumDiscriminants;
 
 use crate::{
-    action::{prototype::ActionKind, ActionState},
+    ChangeSetId, EdgeWeightKind, PropKind, Timestamp,
+    action::{ActionState, prototype::ActionKind},
     func::FuncKind,
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,
-        node_weight::{category_node_weight::CategoryNodeKind, ArgumentTargets},
+        node_weight::{ArgumentTargets, category_node_weight::CategoryNodeKind},
         vector_clock::VectorClock,
     },
-    ChangeSetId, EdgeWeightKind, PropKind, Timestamp,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

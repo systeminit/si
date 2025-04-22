@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use axum::extract::Path;
 use axum::{
-    extract::{Host, OriginalUri},
     Json,
+    extract::{Host, OriginalUri},
 };
 use dal::diagram::geometry::Geometry;
 use serde::{Deserialize, Serialize};
@@ -14,8 +14,8 @@ use crate::{
     service::v2::AccessBuilder,
     track,
 };
-use dal::diagram::view::{View, ViewComponentsUpdateSingle, ViewId};
 use dal::diagram::DiagramError;
+use dal::diagram::view::{View, ViewComponentsUpdateSingle, ViewId};
 use dal::{ChangeSet, ChangeSetId, ComponentId, WorkspacePk, WsEvent};
 
 use super::ViewResult;

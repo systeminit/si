@@ -47,8 +47,8 @@ use crate::secret::SecretDeletedPayload;
 use crate::status::StatusUpdate;
 use crate::user::OnlinePayload;
 use crate::{
-    user::CursorPayload, ChangeSetId, DalContext, FuncError, PropId, StandardModelError,
-    TransactionsError, WorkspacePk,
+    ChangeSetId, DalContext, FuncError, PropId, StandardModelError, TransactionsError, WorkspacePk,
+    user::CursorPayload,
 };
 use crate::{SchemaVariantError, SecretCreatedPayload, SecretUpdatedPayload};
 

@@ -4,11 +4,11 @@ use std::{
 };
 
 use object_tree::{
-    read_key_value_line, write_key_value_line, GraphError, NodeChild, NodeKind, NodeWithChildren,
-    ReadBytes, WriteBytes,
+    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes, read_key_value_line,
+    write_key_value_line,
 };
 
-use super::{PkgNode, KEY_DELETED_STR, KEY_UNIQUE_ID_STR};
+use super::{KEY_DELETED_STR, KEY_UNIQUE_ID_STR, PkgNode};
 use crate::{EdgeSpec, EdgeSpecKind};
 
 const KEY_EDGE_KIND_STR: &str = "edge_kind";

@@ -3,10 +3,10 @@ use si_id::{ApprovalRequirementDefinitionId, EntityId, ManagementPrototypeId, Us
 use strum::{Display, EnumDiscriminants};
 
 use crate::{
-    func_run::FuncArgumentKind, ActionKind, ActionPrototypeId, Actor, AttributeValueId,
-    AuthenticationMethod, ChangeSetId, ChangeSetStatus, ComponentId, FuncArgumentId, FuncId,
-    FuncKind, FuncRunId, InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId,
-    SecretId, ViewId, WorkspacePk,
+    ActionKind, ActionPrototypeId, Actor, AttributeValueId, AuthenticationMethod, ChangeSetId,
+    ChangeSetStatus, ComponentId, FuncArgumentId, FuncId, FuncKind, FuncRunId, InputSocketId,
+    OutputSocketId, PropId, SchemaId, SchemaVariantId, SecretId, ViewId, WorkspacePk,
+    func_run::FuncArgumentKind,
 };
 
 type MetadataDiscrim = AuditLogMetadataV1Discriminants;

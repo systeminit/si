@@ -12,9 +12,9 @@ use tokio::sync::{Mutex, RwLock};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
+    BroadcastGroups,
     nats_multiplexer::NatsMultiplexerClients,
     workspace_permissions::{WorkspacePermissions, WorkspacePermissionsMode},
-    BroadcastGroups,
 };
 
 #[remain::sorted]

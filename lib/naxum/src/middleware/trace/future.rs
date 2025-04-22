@@ -11,7 +11,7 @@ use tracing::Span;
 
 use crate::{body, response};
 
-use super::{on_response::OnResponse, ResponseBody};
+use super::{ResponseBody, on_response::OnResponse};
 
 pin_project! {
     pub struct ResponseFuture<F, OnResponse> {

@@ -1,4 +1,4 @@
-use std::collections::{hash_map, HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque, hash_map};
 
 use prototype::ManagementPrototypeExecution;
 use serde::{Deserialize, Serialize};
@@ -9,17 +9,20 @@ use thiserror::Error;
 
 use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
 
-use crate::component::delete::{delete_components, ComponentDeletionStatus};
-use crate::component::frame::{Frame, FrameError, InferredEdgeChanges};
 use crate::component::ControllingFuncData;
+use crate::component::delete::{ComponentDeletionStatus, delete_components};
+use crate::component::frame::{Frame, FrameError, InferredEdgeChanges};
 use crate::dependency_graph::DependencyGraph;
 use crate::diagram::geometry::Geometry;
 use crate::diagram::view::{View, ViewComponentsUpdateSingle, ViewId, ViewView};
 use crate::diagram::{DiagramError, SummaryDiagramInferredEdge, SummaryDiagramManagementEdge};
 use crate::{
+    ActorView, AttributeValue, Component, ComponentError, ComponentId, ComponentType, DalContext,
+    Func, FuncError, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropKind,
+    Schema, SchemaError, SchemaId, SchemaVariantId, StandardModelError, WsEvent, WsEventError,
     action::{
-        prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
         Action, ActionError,
+        prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
     },
     attribute::{
         prototype::argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
@@ -27,13 +30,10 @@ use crate::{
     },
     change_status::ChangeStatus::Added,
     component::Connection,
-    diagram::{geometry::RawGeometry, SummaryDiagramEdge},
+    diagram::{SummaryDiagramEdge, geometry::RawGeometry},
     history_event::HistoryEventMetadata,
     prop::{PropError, PropPath},
     socket::{input::InputSocketError, output::OutputSocketError},
-    ActorView, AttributeValue, Component, ComponentError, ComponentId, ComponentType, DalContext,
-    Func, FuncError, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropKind,
-    Schema, SchemaError, SchemaId, SchemaVariantId, StandardModelError, WsEvent, WsEventError,
 };
 use crate::{EdgeWeightKind, TransactionsError, WorkspaceSnapshotError};
 
@@ -54,7 +54,9 @@ pub enum ManagementError {
     CannotCreateComponentWithSelfPlaceholder,
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
-    #[error("cannot add an action of kind {0} because component {1} does not have an action of that kind")]
+    #[error(
+        "cannot add an action of kind {0} because component {1} does not have an action of that kind"
+    )]
     ComponentDoesNotHaveAction(ActionKind, ComponentId),
     #[error(
         "cannot add a manual action named {0} because component {1} does not have a manual action with that name"

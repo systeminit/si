@@ -1,4 +1,4 @@
-use crate::{generic, require, rule_err, Args};
+use crate::{Args, generic, require, rule_err};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]

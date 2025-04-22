@@ -1,17 +1,16 @@
 use axum::{
-    async_trait,
+    RequestPartsExt as _, async_trait,
     extract::{FromRequestParts, Query},
     http::request::Parts,
-    RequestPartsExt as _,
 };
 use derive_more::{Deref, Into};
 use sdf_core::app_state::AppState;
 use serde::Deserialize;
-use si_events::{authentication_method::AuthenticationMethodV1, AuthenticationMethod};
-use si_jwt_public_key::{validate_raw_token, JwtKeyResult, SiJwt, SiJwtClaimRole, SiJwtClaims};
+use si_events::{AuthenticationMethod, authentication_method::AuthenticationMethodV1};
+use si_jwt_public_key::{JwtKeyResult, SiJwt, SiJwtClaimRole, SiJwtClaims, validate_raw_token};
 use ulid::Ulid;
 
-use super::{internal_error, unauthorized_error, AuthApiClient, ErrorResponse};
+use super::{AuthApiClient, ErrorResponse, internal_error, unauthorized_error};
 
 #[derive(Clone, Debug, Deref, Into)]
 pub struct RequestUlidFromHeader(pub Option<Ulid>);

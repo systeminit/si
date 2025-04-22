@@ -2,7 +2,7 @@ use axum::extract::{Host, OriginalUri, Path};
 use dal::{ChangeSet, ChangeSetId, WorkspacePk, WsEvent};
 use si_events::audit_log::AuditLogKind;
 
-use super::{post_to_webhook, Result};
+use super::{Result, post_to_webhook};
 use crate::{
     extract::{HandlerContext, PosthogClient},
     service::v2::AccessBuilder,

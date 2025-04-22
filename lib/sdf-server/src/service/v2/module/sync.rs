@@ -1,8 +1,8 @@
 use axum::{
-    extract::{Host, OriginalUri, Path},
     Json,
+    extract::{Host, OriginalUri, Path},
 };
-use dal::{module::Module, ChangeSetId, WorkspacePk};
+use dal::{ChangeSetId, WorkspacePk, module::Module};
 use si_frontend_types as frontend_types;
 
 use super::ModulesAPIError;

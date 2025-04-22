@@ -1,8 +1,8 @@
-use axum::{middleware, Router};
+use axum::{Router, middleware};
 
 use crate::{
-    extract::workspace::{AuthorizedForAutomationRole, TargetWorkspaceIdFromPath},
     AppState,
+    extract::workspace::{AuthorizedForAutomationRole, TargetWorkspaceIdFromPath},
 };
 
 pub fn routes(state: AppState) -> Router<AppState> {

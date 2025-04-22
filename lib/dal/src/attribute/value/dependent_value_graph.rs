@@ -1,22 +1,22 @@
 use petgraph::prelude::*;
 use si_events::ulid::Ulid;
 use std::collections::HashSet;
-use std::collections::{hash_map::Entry, HashMap, VecDeque};
+use std::collections::{HashMap, VecDeque, hash_map::Entry};
 use std::{fs::File, io::Write};
 use telemetry::prelude::*;
 
-use crate::component::socket::ComponentOutputSocket;
 use crate::component::ControllingFuncData;
-use crate::workspace_snapshot::node_weight::NodeWeightDiscriminants;
+use crate::component::socket::ComponentOutputSocket;
 use crate::workspace_snapshot::DependentValueRoot;
+use crate::workspace_snapshot::node_weight::NodeWeightDiscriminants;
 use crate::{
+    Component, DalContext, Secret,
     attribute::{
-        prototype::{argument::AttributePrototypeArgument, AttributePrototype},
+        prototype::{AttributePrototype, argument::AttributePrototypeArgument},
         value::ValueIsFor,
     },
     dependency_graph::DependencyGraph,
     workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants,
-    Component, DalContext, Secret,
 };
 use crate::{ComponentError, ComponentId, Prop, PropKind};
 

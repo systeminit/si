@@ -35,12 +35,12 @@
 use std::{fmt, future::Future, sync::Arc, thread, time::Duration};
 
 use futures::{
-    future::{BoxFuture, Shared},
     FutureExt, TryFutureExt,
+    future::{BoxFuture, Shared},
 };
 use parking_lot::RwLock;
 use thiserror::Error;
-use thread_priority::{set_current_thread_priority, ThreadPriority};
+use thread_priority::{ThreadPriority, set_current_thread_priority};
 use tokio::{runtime, sync::oneshot, task::JoinSet};
 use tokio_util::sync::CancellationToken;
 use tracing::warn;
@@ -187,7 +187,7 @@ impl DedicatedExecutor {
     pub fn spawn<T>(
         &self,
         task: T,
-    ) -> impl Future<Output = Result<T::Output, DedicatedExecutorError>>
+    ) -> impl Future<Output = Result<T::Output, DedicatedExecutorError>> + use<T>
     where
         T: Future + Send + 'static,
         T::Output: Send + 'static,

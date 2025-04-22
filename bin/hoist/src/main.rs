@@ -7,8 +7,8 @@ use rand::random;
 use std::collections::HashMap;
 use std::fs::{self, DirEntry};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
 use ulid::Ulid;
 
@@ -447,8 +447,8 @@ async fn upload_pkg_specs(
     if !skip_confirmation {
         loop {
             println!(
-            "What would you like to do? [p]ush, list [n]ew assets, list [u]pdated assets, [c]ancel"
-        );
+                "What would you like to do? [p]ush, list [n]ew assets, list [u]pdated assets, [c]ancel"
+            );
 
             let mut input = String::new();
             std::io::stdin().read_line(&mut input)?;

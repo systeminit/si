@@ -3,9 +3,9 @@ use si_id::EntityId;
 use si_events::workspace_snapshot::EntityKind as EntityKindEvents;
 
 use crate::{
-    diagram::{view::View, DiagramError},
-    workspace_snapshot::EntityKindExt,
     DalContext, SchemaVariant, SchemaVariantError, WorkspaceSnapshotError,
+    diagram::{DiagramError, view::View},
+    workspace_snapshot::EntityKindExt,
 };
 use thiserror::Error;
 

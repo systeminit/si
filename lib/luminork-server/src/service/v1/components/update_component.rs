@@ -1,10 +1,10 @@
 use super::ComponentV1RequestPath;
-use crate::extract::{change_set::ChangeSetDalContext, PosthogEventTracker};
-use crate::service::v1::{components::get_component::bare_component_response, ComponentsError};
+use crate::extract::{PosthogEventTracker, change_set::ChangeSetDalContext};
+use crate::service::v1::{ComponentsError, components::get_component::bare_component_response};
 use axum::{extract::Path, response::Json};
 use dal::{
-    prop::{PropPath, PropResult, PROP_PATH_SEPARATOR},
     AttributeValue, Component, PropId, SchemaVariantId, WsEvent,
+    prop::{PROP_PATH_SEPARATOR, PropPath, PropResult},
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

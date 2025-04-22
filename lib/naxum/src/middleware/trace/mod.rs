@@ -1,5 +1,5 @@
 macro_rules! event_dynamic_lvl {
-    ( $(target: $target:expr,)? $(parent: $parent:expr,)? $lvl:expr, $($tt:tt)* ) => {
+    ( $(target: $target:expr_2021,)? $(parent: $parent:expr_2021,)? $lvl:expr_2021, $($tt:tt)* ) => {
         match $lvl {
             tracing::Level::ERROR => {
                 tracing::event!(

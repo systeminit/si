@@ -3,10 +3,10 @@ use si_events::workspace_snapshot::EntityKind;
 use si_id::EntityId;
 
 use crate::{
-    workspace_snapshot::{
-        graph::traits::entity_kind::EntityKindExt as EntityKindExtGraph, WorkspaceSnapshotResult,
-    },
     WorkspaceSnapshot,
+    workspace_snapshot::{
+        WorkspaceSnapshotResult, graph::traits::entity_kind::EntityKindExt as EntityKindExtGraph,
+    },
 };
 
 #[async_trait]

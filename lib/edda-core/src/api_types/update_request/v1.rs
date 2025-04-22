@@ -1,6 +1,6 @@
 use naxum_api_types::RequestId;
 use serde::{Deserialize, Serialize};
-use si_events::{change_batch::ChangeBatchAddress, WorkspaceSnapshotAddress};
+use si_events::{WorkspaceSnapshotAddress, change_batch::ChangeBatchAddress};
 
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -16,7 +16,7 @@ pub struct UpdateRequestV1 {
 mod tests {
     use super::{
         super::{
-            test::*, UpdateRequestVersionsDiscriminants, UpdateRequestVersionsDiscriminants::*,
+            UpdateRequestVersionsDiscriminants, UpdateRequestVersionsDiscriminants::*, test::*,
         },
         *,
     };

@@ -8,18 +8,18 @@ use crate::{
     track,
 };
 use axum::{
-    extract::{Host, OriginalUri, Path},
     Json,
+    extract::{Host, OriginalUri, Path},
 };
 use dal::{
-    func::binding::{
-        action::ActionBinding, authentication::AuthBinding, leaf::LeafBinding, EventualParent,
-    },
     ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
+    func::binding::{
+        EventualParent, action::ActionBinding, authentication::AuthBinding, leaf::LeafBinding,
+    },
 };
 use dal::{
-    func::{binding::management::ManagementBinding, FuncKind},
     Component,
+    func::{FuncKind, binding::management::ManagementBinding},
 };
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;

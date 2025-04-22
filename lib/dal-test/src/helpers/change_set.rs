@@ -2,8 +2,8 @@
 
 use std::time::Duration;
 
-use color_eyre::eyre::eyre;
 use color_eyre::Result;
+use color_eyre::eyre::eyre;
 use dal::action::dependency_graph::ActionDependencyGraph;
 use dal::action::{Action, ActionState};
 use dal::{ChangeSet, DalContext, Func, Schema, SchemaVariant};

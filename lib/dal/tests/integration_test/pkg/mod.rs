@@ -1,5 +1,5 @@
 use dal::pkg::export::PkgExporter;
-use dal::pkg::{import_pkg_from_pkg, ImportOptions};
+use dal::pkg::{ImportOptions, import_pkg_from_pkg};
 use dal::prop::PropPath;
 use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{
@@ -8,7 +8,7 @@ use dal::{
 };
 use dal_test::expected::ExpectSchemaVariant;
 use dal_test::helpers::create_component_for_schema_variant_on_default_view;
-use dal_test::{test, Result};
+use dal_test::{Result, test};
 use si_pkg::{FuncSpec, FuncSpecData, PkgSpec, PropSpec, SchemaSpec, SchemaSpecData, SiPkg};
 
 #[test]

@@ -20,7 +20,7 @@ pub mod rt;
 pub mod shutdown;
 pub mod startup;
 
-pub use color_eyre::{self, eyre::Error, Result};
+pub use color_eyre::{self, Result, eyre::Error};
 pub use telemetry_application;
 pub use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
@@ -29,7 +29,7 @@ pub mod prelude {
     pub use std::future::IntoFuture as _;
 
     pub use color_eyre::{self, Result};
-    pub use si_runtime::{get_cpu_cores, get_cpu_cores_from_range_expr, CoreId, CoreIds};
+    pub use si_runtime::{CoreId, CoreIds, get_cpu_cores, get_cpu_cores_from_range_expr};
     pub use si_std::SensitiveString;
     pub use telemetry_application::{self, prelude::*};
     pub use tokio_util::{sync::CancellationToken, task::TaskTracker};

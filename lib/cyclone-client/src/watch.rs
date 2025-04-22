@@ -13,7 +13,7 @@ use tokio::{
     io::{AsyncRead, AsyncWrite},
     time,
 };
-use tokio_tungstenite::{tungstenite::Message as WebSocketMessage, WebSocketStream};
+use tokio_tungstenite::{WebSocketStream, tungstenite::Message as WebSocketMessage};
 
 pub fn watch<T>(stream: WebSocketStream<T>, ping_wait_timeout: Duration) -> Watch<T> {
     Watch {

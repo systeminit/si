@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::{future::IntoFuture, io};
 use tokio::try_join;
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::PgPool;
 use telemetry::prelude::*;

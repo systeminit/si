@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use si_data_nats::NatsError;
 use si_data_pg::{PgError, PgRow};
 use si_events::{ContentHash, WorkspaceSnapshotAddress};
-use si_layer_cache::db::serialize;
 use si_layer_cache::LayerDbError;
+use si_layer_cache::db::serialize;
 use si_pkg::{
     WorkspaceExport, WorkspaceExportChangeSetV0, WorkspaceExportContentV0,
     WorkspaceExportMetadataV0,
@@ -22,12 +22,12 @@ use crate::change_set::{ChangeSet, ChangeSetError, ChangeSetId};
 use crate::feature_flags::FeatureFlag;
 use crate::layer_db_types::ContentTypes;
 use crate::workspace_integrations::{WorkspaceIntegration, WorkspaceIntegrationsError};
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
 use crate::workspace_snapshot::WorkspaceSnapshotError;
+use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants;
 use crate::{
-    standard_model, standard_model_accessor_ro, BuiltinsError, DalContext, HistoryActor,
-    HistoryEvent, HistoryEventError, KeyPairError, StandardModelError, Tenancy, Timestamp,
-    TransactionsError, User, UserError, WorkspaceSnapshot, WorkspaceSnapshotGraph,
+    BuiltinsError, DalContext, HistoryActor, HistoryEvent, HistoryEventError, KeyPairError,
+    StandardModelError, Tenancy, Timestamp, TransactionsError, User, UserError, WorkspaceSnapshot,
+    WorkspaceSnapshotGraph, standard_model, standard_model_accessor_ro,
 };
 
 pub use si_id::WorkspaceId;
@@ -285,8 +285,9 @@ impl Workspace {
         let query = query.unwrap_or("").trim();
 
         let rows = if query.len() < 3 {
-            let select_stmt =
-                format!("SELECT row_to_json(w.*) AS object FROM workspaces AS w ORDER BY created_at DESC LIMIT {limit}");
+            let select_stmt = format!(
+                "SELECT row_to_json(w.*) AS object FROM workspaces AS w ORDER BY created_at DESC LIMIT {limit}"
+            );
 
             ctx.txns().await?.pg().query(&select_stmt, &[]).await?
         } else {

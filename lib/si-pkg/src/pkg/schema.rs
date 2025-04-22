@@ -4,7 +4,7 @@ use petgraph::prelude::*;
 use super::{PkgResult, SiPkgError, SiPkgSchemaVariant, Source};
 
 use crate::SchemaSpecData;
-use crate::{node::PkgNode, SchemaSpec};
+use crate::{SchemaSpec, node::PkgNode};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgSchemaData {
@@ -62,7 +62,7 @@ impl<'a> SiPkgSchema<'a> {
                 return Err(SiPkgError::UnexpectedPkgNodeType(
                     PkgNode::SCHEMA_KIND_STR,
                     unexpected.node_kind_str(),
-                ))
+                ));
             }
         };
 

@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use si_events::{
-    workspace_snapshot::{Checksum, ChecksumHasher},
     ActionKind, ActionState, ChangeSetStatus, Timestamp,
+    workspace_snapshot::{Checksum, ChecksumHasher},
 };
 use si_id::{
     ActionId, ActionPrototypeId, ChangeSetId, ComponentId, FuncId, FuncRunId, InputSocketId,

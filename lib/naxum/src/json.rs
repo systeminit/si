@@ -4,8 +4,8 @@ use serde::de::DeserializeOwned;
 
 use crate::{
     extract::{
-        rejection::{JsonDataError, JsonRejection, JsonSyntaxError},
         FromMessage,
+        rejection::{JsonDataError, JsonRejection, JsonSyntaxError},
     },
     message::{Message, MessageHead},
 };

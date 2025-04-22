@@ -1,7 +1,7 @@
 use std::{fmt, time::Duration};
 
-use telemetry::{prelude::*, OtelStatusCode};
-use tower_http::{trace::OnResponse, LatencyUnit};
+use telemetry::{OtelStatusCode, prelude::*};
+use tower_http::{LatencyUnit, trace::OnResponse};
 
 /// An implementation of [`OnResponse`] to update span fields for HTTP responses.
 #[derive(Clone, Debug)]
@@ -56,7 +56,7 @@ impl<B> OnResponse<B> for HttpOnResponse {
         }
 
         macro_rules! inner_event {
-            ($level:expr, $($tt:tt)*) => {
+            ($level:expr_2021, $($tt:tt)*) => {
                 match $level {
                     ::telemetry::tracing::Level::ERROR => {
                         ::telemetry::tracing::error!($($tt)*);

@@ -1,7 +1,7 @@
 use axum::extract::{Host, OriginalUri, Path};
 use dal::{
-    diagram::view::{View, ViewId},
     ChangeSet, ChangeSetId, WorkspacePk, WsEvent,
+    diagram::view::{View, ViewId},
 };
 use si_events::audit_log::AuditLogKind;
 

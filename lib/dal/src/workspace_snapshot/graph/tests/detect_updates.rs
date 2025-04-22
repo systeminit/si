@@ -1,20 +1,20 @@
 #[allow(clippy::panic)]
 #[cfg(test)]
 mod test {
-    use petgraph::{prelude::*, Outgoing};
+    use petgraph::{Outgoing, prelude::*};
     use pretty_assertions_sorted::assert_eq;
-    use si_events::{ulid::Ulid, ContentHash};
+    use si_events::{ContentHash, ulid::Ulid};
     use std::collections::HashMap;
 
     use crate::{
+        NodeWeightDiscriminants, PropKind, WorkspaceSnapshotGraphVCurrent,
         workspace_snapshot::{
+            NodeInformation,
             content_address::ContentAddress,
             edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
             graph::detector::Update,
             node_weight::NodeWeight,
-            NodeInformation,
         },
-        NodeWeightDiscriminants, PropKind, WorkspaceSnapshotGraphVCurrent,
     };
 
     #[test]
@@ -101,8 +101,11 @@ mod test {
             .get_node_index_by_id(new_onto_component_id)
             .expect("Unable to get NodeIndex");
         match updates.as_slice() {
-            [Update::NewNode { .. }, Update::NewEdge { edge_weight, .. }, Update::NewEdge { .. }] =>
-            {
+            [
+                Update::NewNode { .. },
+                Update::NewEdge { edge_weight, .. },
+                Update::NewEdge { .. },
+            ] => {
                 assert_eq!(&EdgeWeightKind::new_use(), edge_weight.kind());
             }
             other => panic!("Unexpected updates: {:?}", other),
@@ -454,11 +457,13 @@ mod test {
         let updates = base_graph.detect_updates(new_graph);
 
         match updates.as_slice() {
-            [Update::NewEdge {
-                source,
-                destination,
-                edge_weight,
-            }] => {
+            [
+                Update::NewEdge {
+                    source,
+                    destination,
+                    edge_weight,
+                },
+            ] => {
                 assert_eq!(base_prop_id, source.id.into(),);
                 assert_eq!(attribute_prototype_id, destination.id.into(),);
                 assert_eq!(&EdgeWeightKind::Prototype(None), edge_weight.kind());

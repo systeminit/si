@@ -1,15 +1,15 @@
 use serde::{Deserialize, Serialize};
 use si_events::{
-    workspace_snapshot::{Checksum, ChecksumHasher, EntityKind},
     ActionKind, ActionState,
+    workspace_snapshot::{Checksum, ChecksumHasher, EntityKind},
 };
 use si_id::{ActionId, ActionPrototypeId, ChangeSetId, ComponentId, FuncRunId};
 
 use crate::checksum::FrontendChecksum;
 use crate::{
+    MaterializedView,
     object::FrontendObject,
     reference::{Refer, Reference, ReferenceId, ReferenceKind},
-    MaterializedView,
 };
 
 pub mod prototype;

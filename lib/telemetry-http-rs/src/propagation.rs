@@ -2,7 +2,7 @@
 
 use http::HeaderMap;
 use telemetry::{
-    opentelemetry::{global, trace::TraceContextExt, Context},
+    opentelemetry::{Context, global, trace::TraceContextExt},
     tracing::Span,
 };
 

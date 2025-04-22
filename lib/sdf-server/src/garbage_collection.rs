@@ -8,7 +8,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
-use crate::{init, Config};
+use crate::{Config, init};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

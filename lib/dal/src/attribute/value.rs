@@ -46,8 +46,8 @@ use indexmap::IndexMap;
 use petgraph::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_events::ulid::Ulid;
 use si_events::FuncRunValue;
+use si_events::ulid::Ulid;
 use si_pkg::{AttributeValuePath, KeyOrIndex};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -58,10 +58,10 @@ pub use dependent_value_graph::DependentValueGraph;
 use crate::attribute::prototype::{AttributePrototypeError, AttributePrototypeSource};
 use crate::change_set::ChangeSetError;
 use crate::component::inferred_connection_graph::InferredConnectionGraphError;
+use crate::func::FuncExecutionPk;
 use crate::func::argument::{FuncArgument, FuncArgumentError};
 use crate::func::intrinsics::IntrinsicFunc;
 use crate::func::runner::{FuncRunner, FuncRunnerError};
-use crate::func::FuncExecutionPk;
 use crate::prop::PropError;
 use crate::socket::input::InputSocketError;
 use crate::socket::output::OutputSocketError;
@@ -71,18 +71,18 @@ use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscr
 use crate::workspace_snapshot::node_weight::{
     AttributeValueNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
 };
-use crate::workspace_snapshot::{serde_value_to_string_type, WorkspaceSnapshotError};
+use crate::workspace_snapshot::{WorkspaceSnapshotError, serde_value_to_string_type};
 use crate::{
-    implement_add_edge_to, AttributePrototype, AttributePrototypeId, Component, ComponentError,
-    ComponentId, DalContext, Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId,
-    OutputSocket, OutputSocketId, Prop, PropId, PropKind, Secret, SecretError, TransactionsError,
+    AttributePrototype, AttributePrototypeId, Component, ComponentError, ComponentId, DalContext,
+    Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket, OutputSocketId,
+    Prop, PropId, PropKind, Secret, SecretError, TransactionsError, implement_add_edge_to,
 };
 
 use super::prototype::argument::static_value::StaticArgumentValue;
 use super::prototype::argument::value_source::ValueSourceError;
 use super::prototype::argument::{
-    value_source::ValueSource, AttributePrototypeArgument, AttributePrototypeArgumentError,
-    AttributePrototypeArgumentId,
+    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+    value_source::ValueSource,
 };
 
 pub use is_for::ValueIsFor;
@@ -100,7 +100,9 @@ pub enum AttributeValueError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
-    #[error("attribute prototype argument {0} has a value source {1:?} but no value for that prop found in component {2}")]
+    #[error(
+        "attribute prototype argument {0} has a value source {1:?} but no value for that prop found in component {2}"
+    )]
     AttributePrototypeArgumentMissingValueInSourceComponent(
         AttributePrototypeArgumentId,
         ValueSource,
@@ -2426,14 +2428,14 @@ impl AttributeValue {
                                 Component::get_by_id(ctx, Self::component_id(ctx, child_id).await?)
                                     .await?;
                             warn!(
-                                    "Child AV with prop {} (parent ID {:?}) not found in corresponding parent prop {} (ID {}) in component {}, schema {}",
-                                    Prop::path_by_id(ctx, child_prop_id).await?,
-                                    Prop::parent_prop_id_by_id(ctx, child_prop_id).await?,
-                                    Prop::path_by_id(ctx, prop.id).await?,
-                                    prop.id,
-                                    component.name(ctx).await?,
-                                    component.schema(ctx).await?.name
-                                );
+                                "Child AV with prop {} (parent ID {:?}) not found in corresponding parent prop {} (ID {}) in component {}, schema {}",
+                                Prop::path_by_id(ctx, child_prop_id).await?,
+                                Prop::parent_prop_id_by_id(ctx, child_prop_id).await?,
+                                Prop::path_by_id(ctx, prop.id).await?,
+                                prop.id,
+                                component.name(ctx).await?,
+                                component.schema(ctx).await?.name
+                            );
                             child_ids_in_prop_order.push(child_id);
                         }
                     }

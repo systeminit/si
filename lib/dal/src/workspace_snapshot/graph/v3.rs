@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque, hash_map::Entry},
     fs::File,
     io::Write,
     sync::{Arc, Mutex},
@@ -12,22 +12,22 @@ use petgraph::{
     visit::DfsEvent,
 };
 use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, ContentHash};
+use si_events::{ContentHash, ulid::Ulid};
 use si_layer_cache::db::serialize;
 use telemetry::prelude::*;
 use ulid::Generator;
 
 use crate::{
+    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
     workspace_snapshot::{
+        CategoryNodeKind, ContentAddressDiscriminants, LineageId, OrderingNodeWeight,
         content_address::ContentAddress,
         graph::{
-            detector::Update, MerkleTreeHash, WorkspaceSnapshotGraphError,
-            WorkspaceSnapshotGraphResult,
+            MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
+            detector::Update,
         },
         node_weight::{CategoryNodeWeight, NodeWeight},
-        CategoryNodeKind, ContentAddressDiscriminants, LineageId, OrderingNodeWeight,
     },
-    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
 };
 
 #[derive(Default, Deserialize, Serialize, Clone)]
@@ -885,7 +885,9 @@ impl WorkspaceSnapshotGraphV3 {
                 let color = color.to_string();
                 let id = node_weight.id();
                 format!(
-                    "label = \"\n\n{label}\n{node_index:?}\n{id}\n\n{:?}\n{:?}\"\nfontcolor = {color}\ncolor = {color}", node_weight.merkle_tree_hash(), node_weight.node_hash(),
+                    "label = \"\n\n{label}\n{node_index:?}\n{id}\n\n{:?}\n{:?}\"\nfontcolor = {color}\ncolor = {color}",
+                    node_weight.merkle_tree_hash(),
+                    node_weight.node_hash(),
                 )
             },
         );

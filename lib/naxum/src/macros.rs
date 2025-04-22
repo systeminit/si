@@ -4,8 +4,8 @@
 macro_rules! __log_rejection {
     (
         rejection_type = $ty:ident,
-        body_text = $body_text:expr,
-        status = $status:expr,
+        body_text = $body_text:expr_2021,
+        status = $status:expr_2021,
     ) => {
         tracing::event!(
             target: "naxum::rejection",
@@ -21,8 +21,8 @@ macro_rules! __log_rejection {
 #[macro_export]
 macro_rules! define_rejection {
     (
-        #[status_code = $status_code:expr]
-        #[body = $body:expr]
+        #[status_code = $status_code:expr_2021]
+        #[body = $body:expr_2021]
         $(#[$m:meta])*
         pub struct $name:ident;
     ) => {
@@ -71,8 +71,8 @@ macro_rules! define_rejection {
     };
 
     (
-        #[status_code = $status_code:expr]
-        #[body = $body:expr]
+        #[status_code = $status_code:expr_2021]
+        #[body = $body:expr_2021]
         $(#[$m:meta])*
         pub struct $name:ident(Error);
     ) => {
@@ -244,7 +244,11 @@ macro_rules! all_the_tuples_no_last_special_case {
         $name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
         $name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
         $name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
-        $name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
-        $name!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
+        $name!(
+            T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15
+        );
+        $name!(
+            T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16
+        );
     };
 }

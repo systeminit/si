@@ -7,8 +7,9 @@ use std::{
 
 use dal::DalContextBuilder;
 use frigg::FriggStore;
-use futures::{future::BoxFuture, TryStreamExt};
+use futures::{TryStreamExt, future::BoxFuture};
 use naxum::{
+    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
@@ -17,11 +18,10 @@ use naxum::{
         trace::TraceLayer,
     },
     response::{IntoResponse, Response},
-    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
 };
 use si_data_nats::{
-    async_nats::jetstream::{self, consumer::push},
     NatsClient,
+    async_nats::jetstream::{self, consumer::push},
 };
 use si_events::{ChangeSetId, WorkspacePk};
 use telemetry::prelude::*;

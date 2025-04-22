@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     extract::{Query, State},
     response::{IntoResponse, Response},
-    Json,
 };
 use hyper::StatusCode;
 use module_index_types::ListModulesResponse;
@@ -12,8 +12,8 @@ use thiserror::Error;
 use crate::{
     app_state::AppState,
     extract::{Authorization, DbConnection},
-    models::si_module::{self, make_module_details_response, SchemaIdReferenceLink},
-    whoami::{is_systeminit_auth_token, WhoamiError},
+    models::si_module::{self, SchemaIdReferenceLink, make_module_details_response},
+    whoami::{WhoamiError, is_systeminit_auth_token},
 };
 
 #[remain::sorted]
