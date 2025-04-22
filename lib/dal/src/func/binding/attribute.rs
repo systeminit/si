@@ -1,25 +1,53 @@
-use serde::{Deserialize, Serialize};
-use si_events::{ComponentId, InputSocketId, OutputSocketId, PropId, SchemaVariantId};
 use std::collections::HashMap;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ComponentId,
+    InputSocketId,
+    OutputSocketId,
+    PropId,
+    SchemaVariantId,
+};
 use telemetry::prelude::*;
 
+use super::{
+    AttributeArgumentBinding,
+    AttributeFuncArgumentSource,
+    AttributeFuncDestination,
+    EventualParent,
+    FuncBinding,
+    FuncBindingError,
+    FuncBindingResult,
+};
 use crate::{
-    AttributePrototype, AttributePrototypeId, AttributeValue, Component, DalContext,
-    EdgeWeightKind, Func, FuncBackendKind, FuncId, OutputSocket, Prop, WorkspaceSnapshotError,
+    AttributePrototype,
+    AttributePrototypeId,
+    AttributeValue,
+    Component,
+    DalContext,
+    EdgeWeightKind,
+    Func,
+    FuncBackendKind,
+    FuncId,
+    OutputSocket,
+    Prop,
+    WorkspaceSnapshotError,
     attribute::prototype::{
-        AttributePrototypeEventualParent, argument::AttributePrototypeArgument,
+        AttributePrototypeEventualParent,
+        argument::AttributePrototypeArgument,
     },
     func::{
         FuncKind,
-        argument::{FuncArgument, FuncArgumentError},
+        argument::{
+            FuncArgument,
+            FuncArgumentError,
+        },
         intrinsics::IntrinsicFunc,
     },
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
-};
-
-use super::{
-    AttributeArgumentBinding, AttributeFuncArgumentSource, AttributeFuncDestination,
-    EventualParent, FuncBinding, FuncBindingError, FuncBindingResult,
 };
 
 /// Contains the error scenarios for malformed input when creating or mutating attribute func bindings.

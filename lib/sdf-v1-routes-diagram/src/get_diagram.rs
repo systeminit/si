@@ -1,13 +1,31 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Query},
+    extract::{
+        Host,
+        OriginalUri,
+        Query,
+    },
 };
-use dal::{Visibility, diagram::Diagram, slow_rt};
+use dal::{
+    Visibility,
+    diagram::Diagram,
+    slow_rt,
+};
 use sdf_core::tracking::track;
-use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
-use serde::{Deserialize, Serialize};
+use sdf_extract::{
+    HandlerContext,
+    PosthogClient,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use super::{DiagramError, DiagramResult};
+use super::{
+    DiagramError,
+    DiagramResult,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

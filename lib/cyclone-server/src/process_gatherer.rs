@@ -1,18 +1,34 @@
-use nix::unistd::{Pid, getpgrp};
+use std::{
+    collections::HashSet,
+    result,
+};
+
+use nix::unistd::{
+    Pid,
+    getpgrp,
+};
 #[cfg(target_os = "linux")]
 use procfs::process::all_processes;
-use std::collections::HashSet;
-use std::result;
-use telemetry::prelude::info;
-use telemetry::tracing::debug;
-use tokio::sync::{Mutex, mpsc};
-use tokio::time::Duration;
-use tokio_util::sync::CancellationToken;
-use tokio_util::task::TaskTracker;
-
+use telemetry::{
+    prelude::info,
+    tracing::debug,
+};
 use telemetry_utils::metric;
 use thiserror::Error;
-use tokio::time::sleep;
+use tokio::{
+    sync::{
+        Mutex,
+        mpsc,
+    },
+    time::{
+        Duration,
+        sleep,
+    },
+};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 
 type Result<T> = result::Result<T, ProcessGathererError>;
 

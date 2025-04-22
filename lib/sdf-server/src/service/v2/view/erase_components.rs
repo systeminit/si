@@ -1,24 +1,46 @@
 use std::collections::HashMap;
 
-use axum::extract::Path;
 use axum::{
     Json,
-    extract::{Host, OriginalUri},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
 };
-use dal::diagram::geometry::Geometry;
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::force_change_set_response::ForceChangeSetResponse,
-    service::v2::AccessBuilder,
-    track,
+use dal::{
+    ChangeSet,
+    ChangeSetId,
+    ComponentId,
+    WorkspacePk,
+    WsEvent,
+    diagram::{
+        DiagramError,
+        geometry::Geometry,
+        view::{
+            View,
+            ViewComponentsUpdateSingle,
+            ViewId,
+        },
+    },
 };
-use dal::diagram::DiagramError;
-use dal::diagram::view::{View, ViewComponentsUpdateSingle, ViewId};
-use dal::{ChangeSet, ChangeSetId, ComponentId, WorkspacePk, WsEvent};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use super::ViewResult;
+use crate::{
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::AccessBuilder,
+    },
+    track,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

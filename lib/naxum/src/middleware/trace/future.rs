@@ -2,16 +2,24 @@ use std::{
     fmt,
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
     time::Instant,
 };
 
 use pin_project_lite::pin_project;
 use tracing::Span;
 
-use crate::{body, response};
-
-use super::{ResponseBody, on_response::OnResponse};
+use super::{
+    ResponseBody,
+    on_response::OnResponse,
+};
+use crate::{
+    body,
+    response,
+};
 
 pin_project! {
     pub struct ResponseFuture<F, OnResponse> {

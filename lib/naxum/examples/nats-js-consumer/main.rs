@@ -1,19 +1,42 @@
-use std::{env, error, str, time::Duration};
+use std::{
+    env,
+    error,
+    str,
+    time::Duration,
+};
 
 use async_nats::jetstream;
 use naxum::{
-    BoxError, Message, ServiceExt, extract::State, handler::Handler, middleware::trace::TraceLayer,
+    BoxError,
+    Message,
+    ServiceExt,
+    extract::State,
+    handler::Handler,
+    middleware::trace::TraceLayer,
 };
 use tokio::{
-    signal::unix::{self, SignalKind},
+    signal::unix::{
+        self,
+        SignalKind,
+    },
     time,
 };
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 use tower::ServiceBuilder;
-use tracing::{error, info};
+use tracing::{
+    error,
+    info,
+};
 use tracing_subscriber::{
-    EnvFilter, Registry,
-    fmt::{self, format::FmtSpan},
+    EnvFilter,
+    Registry,
+    fmt::{
+        self,
+        format::FmtSpan,
+    },
     layer::SubscriberExt as _,
     util::SubscriberInitExt as _,
 };

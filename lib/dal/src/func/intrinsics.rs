@@ -1,12 +1,28 @@
 use chrono::DateTime;
 use si_pkg::{
-    FuncArgumentKind, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType,
-    FuncSpecData, PkgSpec,
+    FuncArgumentKind,
+    FuncArgumentSpec,
+    FuncSpec,
+    FuncSpecBackendKind,
+    FuncSpecBackendResponseType,
+    FuncSpecData,
+    PkgSpec,
 };
-use strum::{AsRefStr, Display, EnumIter, EnumString, IntoEnumIterator};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+    IntoEnumIterator,
+};
 
-use crate::PropKind;
-use crate::func::{FuncError, FuncResult};
+use crate::{
+    PropKind,
+    func::{
+        FuncError,
+        FuncResult,
+    },
+};
 
 #[remain::sorted]
 #[derive(AsRefStr, Display, EnumIter, EnumString, Debug, Clone, Copy, PartialEq, Eq)]

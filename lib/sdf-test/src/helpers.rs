@@ -1,6 +1,9 @@
 //! This module provides [`SdfChangeSetTestHelpers`].
 
-use dal::{ChangeSet, DalContext};
+use dal::{
+    ChangeSet,
+    DalContext,
+};
 use dal_test::prelude::*;
 use sdf_core::dal_wrapper;
 

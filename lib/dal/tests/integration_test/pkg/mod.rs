@@ -1,15 +1,39 @@
-use dal::pkg::export::PkgExporter;
-use dal::pkg::{ImportOptions, import_pkg_from_pkg};
-use dal::prop::PropPath;
-use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{
-    AttributeValue, AttributeValueId, Component, ComponentId, DalContext, FuncBackendKind,
-    FuncBackendResponseType, Prop, PropId, Schema, SchemaVariant, SchemaVariantId,
+    AttributeValue,
+    AttributeValueId,
+    Component,
+    ComponentId,
+    DalContext,
+    FuncBackendKind,
+    FuncBackendResponseType,
+    Prop,
+    PropId,
+    Schema,
+    SchemaVariant,
+    SchemaVariantId,
+    pkg::{
+        ImportOptions,
+        export::PkgExporter,
+        import_pkg_from_pkg,
+    },
+    prop::PropPath,
+    schema::variant::authoring::VariantAuthoringClient,
 };
-use dal_test::expected::ExpectSchemaVariant;
-use dal_test::helpers::create_component_for_schema_variant_on_default_view;
-use dal_test::{Result, test};
-use si_pkg::{FuncSpec, FuncSpecData, PkgSpec, PropSpec, SchemaSpec, SchemaSpecData, SiPkg};
+use dal_test::{
+    Result,
+    expected::ExpectSchemaVariant,
+    helpers::create_component_for_schema_variant_on_default_view,
+    test,
+};
+use si_pkg::{
+    FuncSpec,
+    FuncSpecData,
+    PkgSpec,
+    PropSpec,
+    SchemaSpec,
+    SchemaSpecData,
+    SiPkg,
+};
 
 #[test]
 async fn import_pkg_from_pkg_set_latest_default(ctx: &mut DalContext) -> Result<()> {

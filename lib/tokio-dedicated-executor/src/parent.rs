@@ -3,7 +3,10 @@ use std::{
     cell::RefCell,
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
 };
 
 use futures::FutureExt;

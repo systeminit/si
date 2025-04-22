@@ -1,13 +1,25 @@
 //! This module contains the ability to work with "resources" for [`Components`](crate::Component).
 
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use chrono::{
+    DateTime,
+    Utc,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::Value;
+use veritech_client::{
+    ActionRunResultSuccess,
+    ResourceStatus,
+};
 
-use veritech_client::{ActionRunResultSuccess, ResourceStatus};
-
-use crate::component::ComponentResult;
-use crate::{Component, ComponentId, DalContext};
+use crate::{
+    Component,
+    ComponentId,
+    DalContext,
+    component::ComponentResult,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct ResourceData {

@@ -1,6 +1,9 @@
 use tower::Layer;
 
-use super::{DefaultForSubject, MatchedSubject};
+use super::{
+    DefaultForSubject,
+    MatchedSubject,
+};
 
 pub struct MatchedSubjectLayer<ForSubject = DefaultForSubject> {
     pub(crate) for_subject: ForSubject,

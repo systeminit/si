@@ -1,10 +1,22 @@
-use object_tree::{Hash, HashedNode};
+use object_tree::{
+    Hash,
+    HashedNode,
+};
 use petgraph::prelude::*;
 
-use super::{PkgResult, SiPkgAttrFuncInput, SiPkgError, Source};
-
-use crate::spec::SocketSpecData;
-use crate::{SocketSpec, SocketSpecArity, SocketSpecKind, node::PkgNode};
+use super::{
+    PkgResult,
+    SiPkgAttrFuncInput,
+    SiPkgError,
+    Source,
+};
+use crate::{
+    SocketSpec,
+    SocketSpecArity,
+    SocketSpecKind,
+    node::PkgNode,
+    spec::SocketSpecData,
+};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgSocketData {

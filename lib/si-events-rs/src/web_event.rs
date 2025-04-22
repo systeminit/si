@@ -1,6 +1,12 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::{tenancy::ChangeSetId, tenancy::WorkspacePk};
+use crate::tenancy::{
+    ChangeSetId,
+    WorkspacePk,
+};
 
 const DEFAULT_WEB_EVENT_VERSION: u64 = 1;
 

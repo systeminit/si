@@ -1,14 +1,35 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Query},
+    extract::{
+        Host,
+        OriginalUri,
+        Query,
+    },
 };
-use dal::{AttributeValue, OutputSocket, OutputSocketId, Prop, PropId, Visibility};
-use serde::{Deserialize, Serialize};
+use dal::{
+    AttributeValue,
+    OutputSocket,
+    OutputSocketId,
+    Prop,
+    PropId,
+    Visibility,
+};
+use sdf_core::tracking::track;
+use sdf_extract::{
+    HandlerContext,
+    PosthogClient,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::Value;
 
-use super::{AttributeError, AttributeResult};
-use sdf_core::tracking::track;
-use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
+use super::{
+    AttributeError,
+    AttributeResult,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

@@ -1,20 +1,39 @@
-use base64::Engine;
-use base64::engine::general_purpose;
+use base64::{
+    Engine,
+    engine::general_purpose,
+};
 use telemetry::prelude::*;
 
-use crate::action::prototype::{ActionKind, ActionPrototype};
-use crate::func::binding::action::ActionBinding;
-use crate::func::binding::attribute::AttributeBinding;
-use crate::func::binding::authentication::AuthBinding;
-use crate::func::binding::leaf::LeafBinding;
-use crate::func::binding::management::ManagementBinding;
-use crate::func::binding::{AttributeArgumentBinding, AttributeFuncDestination, EventualParent};
-use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
-use crate::{
-    DalContext, Func, FuncBackendKind, FuncBackendResponseType, SchemaVariantId, generate_name,
+use super::{
+    FuncAuthoringError,
+    FuncAuthoringResult,
 };
-
-use super::{FuncAuthoringError, FuncAuthoringResult};
+use crate::{
+    DalContext,
+    Func,
+    FuncBackendKind,
+    FuncBackendResponseType,
+    SchemaVariantId,
+    action::prototype::{
+        ActionKind,
+        ActionPrototype,
+    },
+    func::binding::{
+        AttributeArgumentBinding,
+        AttributeFuncDestination,
+        EventualParent,
+        action::ActionBinding,
+        attribute::AttributeBinding,
+        authentication::AuthBinding,
+        leaf::LeafBinding,
+        management::ManagementBinding,
+    },
+    generate_name,
+    schema::variant::leaves::{
+        LeafInputLocation,
+        LeafKind,
+    },
+};
 
 static DEFAULT_CODE_HANDLER: &str = "main";
 static DEFAULT_ATTRIBUTE_CODE: &str = include_str!("data/defaults/attribute.ts");

@@ -3,12 +3,14 @@ use std::sync::Arc;
 use async_nats::Subject;
 use async_trait::async_trait;
 
-use crate::Head;
-
 use super::{
     FromMessageHead,
-    rejection::{MatchedSubjectMissing, MatchedSubjectRejection},
+    rejection::{
+        MatchedSubjectMissing,
+        MatchedSubjectRejection,
+    },
 };
+use crate::Head;
 
 #[derive(Clone, Debug)]
 pub struct MatchedSubject(pub(crate) Arc<str>);

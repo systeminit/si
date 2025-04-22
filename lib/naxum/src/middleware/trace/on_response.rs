@@ -1,13 +1,18 @@
 use std::time::Duration;
 
-use tracing::{Level, Span};
-
-use crate::{
-    middleware::{LatencyUnit, trace::Latency},
-    response::Response,
+use tracing::{
+    Level,
+    Span,
 };
 
 use super::DEFAULT_MESSAGE_LEVEL;
+use crate::{
+    middleware::{
+        LatencyUnit,
+        trace::Latency,
+    },
+    response::Response,
+};
 
 pub trait OnResponse<B> {
     fn on_response(self, response: &Response<B>, latency: Duration, span: &Span);

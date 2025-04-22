@@ -1,11 +1,16 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
 use petgraph::prelude::*;
 
 use crate::{
     WorkspaceSnapshotGraphVCurrent,
     workspace_snapshot::{
-        NodeInformation, edge_weight::EdgeWeightKindDiscriminants, graph::detector::Update,
+        NodeInformation,
+        edge_weight::EdgeWeightKindDiscriminants,
+        graph::detector::Update,
     },
 };
 

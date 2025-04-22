@@ -1,7 +1,10 @@
 use std::env::args;
-use tokio::fs;
 
-use si_pkg::{PkgSpec, SiPkg};
+use si_pkg::{
+    PkgSpec,
+    SiPkg,
+};
+use tokio::fs;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

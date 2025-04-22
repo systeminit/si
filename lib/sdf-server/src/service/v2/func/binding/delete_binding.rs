@@ -1,29 +1,53 @@
-use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::v2::AccessBuilder,
-    service::{
-        force_change_set_response::ForceChangeSetResponse,
-        v2::func::{FuncAPIError, FuncAPIResult},
-    },
-    track,
-};
+use std::collections::HashSet;
+
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Path},
-};
-use dal::{
-    ChangeSet, ChangeSetId, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
-    func::binding::{
-        EventualParent, action::ActionBinding, authentication::AuthBinding, leaf::LeafBinding,
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
     },
 };
 use dal::{
+    ChangeSet,
+    ChangeSetId,
     Component,
-    func::{FuncKind, binding::management::ManagementBinding},
+    Func,
+    FuncId,
+    SchemaVariant,
+    WorkspacePk,
+    WsEvent,
+    func::{
+        FuncKind,
+        binding::{
+            EventualParent,
+            action::ActionBinding,
+            authentication::AuthBinding,
+            leaf::LeafBinding,
+            management::ManagementBinding,
+        },
+    },
 };
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;
-use std::collections::HashSet;
+
+use crate::{
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::{
+            AccessBuilder,
+            func::{
+                FuncAPIError,
+                FuncAPIResult,
+            },
+        },
+    },
+    track,
+};
 
 pub async fn delete_binding(
     HandlerContext(builder): HandlerContext,

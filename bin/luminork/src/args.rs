@@ -1,9 +1,20 @@
 use std::path::PathBuf;
 
-use clap::{ArgAction, Parser, builder::EnumValueParser, builder::PossibleValuesParser};
-
+use clap::{
+    ArgAction,
+    Parser,
+    builder::{
+        EnumValueParser,
+        PossibleValuesParser,
+    },
+};
 use luminork_server::{
-    Config, ConfigError, ConfigFile, FeatureFlag, StandardConfigFile, WorkspacePermissions,
+    Config,
+    ConfigError,
+    ConfigFile,
+    FeatureFlag,
+    StandardConfigFile,
+    WorkspacePermissions,
     WorkspacePermissionsMode,
 };
 use si_service::prelude::*;

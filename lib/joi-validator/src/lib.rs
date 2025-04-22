@@ -25,7 +25,11 @@
     while_true
 )]
 
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{
+    Deserialize,
+    Serialize,
+    de::DeserializeOwned,
+};
 use serde_with::serde_as;
 
 // These are commented out until we decide to support them in any way.

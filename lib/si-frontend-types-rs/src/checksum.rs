@@ -1,15 +1,40 @@
-use chrono::{DateTime, Utc};
+use chrono::{
+    DateTime,
+    Utc,
+};
 use si_events::{
-    ActionKind, ActionState, ChangeSetStatus, Timestamp,
-    workspace_snapshot::{Checksum, ChecksumHasher},
+    ActionKind,
+    ActionState,
+    ChangeSetStatus,
+    Timestamp,
+    workspace_snapshot::{
+        Checksum,
+        ChecksumHasher,
+    },
 };
 use si_id::{
-    ActionId, ActionPrototypeId, ChangeSetId, ComponentId, FuncId, FuncRunId, InputSocketId,
-    OutputSocketId, PropId, SchemaId, SchemaVariantId, ViewId, WorkspaceId,
+    ActionId,
+    ActionPrototypeId,
+    ChangeSetId,
+    ComponentId,
+    FuncId,
+    FuncRunId,
+    InputSocketId,
+    OutputSocketId,
+    PropId,
+    SchemaId,
+    SchemaVariantId,
+    ViewId,
+    WorkspaceId,
 };
 
-use crate::schema_variant::SchemaVariantsByCategory;
-use crate::{InputSocket, OutputSocket, Prop, PropKind};
+use crate::{
+    InputSocket,
+    OutputSocket,
+    Prop,
+    PropKind,
+    schema_variant::SchemaVariantsByCategory,
+};
 
 pub trait FrontendChecksum {
     fn checksum(&self) -> Checksum;

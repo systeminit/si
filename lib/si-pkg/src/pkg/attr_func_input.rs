@@ -1,11 +1,21 @@
-use object_tree::{Hash, HashedNode};
+use object_tree::{
+    Hash,
+    HashedNode,
+};
 use petgraph::prelude::*;
 
-use super::{PkgResult, SiPkgError, Source};
-
+use super::{
+    PkgResult,
+    SiPkgError,
+    Source,
+};
 use crate::{
-    AttrFuncInputSpec, AttrFuncInputSpecKind,
-    node::{AttrFuncInputNode, PkgNode},
+    AttrFuncInputSpec,
+    AttrFuncInputSpecKind,
+    node::{
+        AttrFuncInputNode,
+        PkgNode,
+    },
 };
 
 #[remain::sorted]

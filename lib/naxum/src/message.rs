@@ -1,13 +1,24 @@
-use std::{error, fmt, ops};
+use std::{
+    error,
+    fmt,
+    ops,
+};
 
-use async_nats::{HeaderMap, StatusCode, Subject};
+use async_nats::{
+    HeaderMap,
+    StatusCode,
+    Subject,
+};
 use bytes::Bytes;
 
 mod extensions;
 
 pub use extensions::Extensions;
 
-use crate::response::{IntoResponse, Response};
+use crate::response::{
+    IntoResponse,
+    Response,
+};
 
 #[derive(Clone)]
 pub struct Message<T> {

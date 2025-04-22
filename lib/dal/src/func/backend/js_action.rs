@@ -1,14 +1,25 @@
 use async_trait::async_trait;
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::tracing::trace;
 use veritech_client::{
-    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, FunctionResult, OutputStream,
+    ActionRunRequest,
+    ActionRunResultSuccess,
+    BeforeFunction,
+    FunctionResult,
+    OutputStream,
     ResourceStatus,
 };
 
 use crate::func::backend::{
-    ExtractPayload, FuncBackendError, FuncBackendResult, FuncDispatch, FuncDispatchContext,
+    ExtractPayload,
+    FuncBackendError,
+    FuncBackendResult,
+    FuncDispatch,
+    FuncDispatchContext,
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]

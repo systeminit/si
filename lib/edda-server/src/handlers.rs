@@ -1,27 +1,47 @@
-use std::{result, str::FromStr, sync::Arc};
+use std::{
+    result,
+    str::FromStr,
+    sync::Arc,
+};
 
 use edda_core::nats;
 use naxum::{
     extract::State,
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use si_data_nats::{
-    NatsClient, Subject,
+    NatsClient,
+    Subject,
     async_nats::jetstream::{
-        consumer::{StreamError, push},
+        consumer::{
+            StreamError,
+            push,
+        },
         stream::ConsumerError,
     },
 };
-use si_events::{ChangeSetId, WorkspacePk};
+use si_events::{
+    ChangeSetId,
+    WorkspacePk,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::Notify;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 use ulid::Ulid;
 
 use crate::{
     app_state::AppState,
-    change_set_processor_task::{ChangeSetProcessorTask, ChangeSetProcessorTaskError},
+    change_set_processor_task::{
+        ChangeSetProcessorTask,
+        ChangeSetProcessorTaskError,
+    },
 };
 
 const CONSUMER_NAME_PREFIX: &str = "edda-requests";

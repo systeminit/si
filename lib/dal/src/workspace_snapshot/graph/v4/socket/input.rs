@@ -1,16 +1,32 @@
 use petgraph::prelude::*;
-use si_events::{ContentHash, ulid::Ulid};
+use si_events::{
+    ContentHash,
+    ulid::Ulid,
+};
 
 use crate::{
-    AttributeValueId, ComponentId, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
-    InputSocketId, NodeWeightDiscriminants, SchemaVariantId, SocketArity,
+    AttributeValueId,
+    ComponentId,
+    EdgeWeight,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    InputSocketId,
+    NodeWeightDiscriminants,
+    SchemaVariantId,
+    SocketArity,
     socket::input::InputSocketError,
     workspace_snapshot::{
         graph::{
-            LineageId, WorkspaceSnapshotGraphResult, WorkspaceSnapshotGraphV4,
+            LineageId,
+            WorkspaceSnapshotGraphResult,
+            WorkspaceSnapshotGraphV4,
             traits::socket::input::InputSocketExt,
         },
-        node_weight::{InputSocketNodeWeight, NodeWeight, NodeWeightError},
+        node_weight::{
+            InputSocketNodeWeight,
+            NodeWeight,
+            NodeWeightError,
+        },
     },
 };
 

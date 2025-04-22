@@ -1,26 +1,58 @@
-use postgres_types::{FromSql, ToSql};
-use serde::{Deserialize, Serialize};
+use std::{
+    collections::HashMap,
+    sync::Arc,
+};
+
+use postgres_types::{
+    FromSql,
+    ToSql,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::ContentHash;
 use si_pkg::FuncArgumentKind as PkgFuncArgumentKind;
-use std::collections::HashMap;
-use std::sync::Arc;
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
-};
-use crate::change_set::ChangeSetError;
-use crate::layer_db_types::{FuncArgumentContent, FuncArgumentContentV1};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
-use crate::workspace_snapshot::node_weight::{
-    FuncArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
-};
 use crate::{
-    DalContext, EdgeWeightKind, Func, FuncError, FuncId, HistoryEventError, PropKind,
-    StandardModelError, Timestamp, TransactionsError,
+    DalContext,
+    EdgeWeightKind,
+    Func,
+    FuncError,
+    FuncId,
+    HistoryEventError,
+    PropKind,
+    StandardModelError,
+    Timestamp,
+    TransactionsError,
+    attribute::prototype::argument::{
+        AttributePrototypeArgument,
+        AttributePrototypeArgumentError,
+        AttributePrototypeArgumentId,
+    },
+    change_set::ChangeSetError,
+    layer_db_types::{
+        FuncArgumentContent,
+        FuncArgumentContentV1,
+    },
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        edge_weight::EdgeWeightKindDiscriminants,
+        node_weight::{
+            FuncArgumentNodeWeight,
+            NodeWeight,
+            NodeWeightDiscriminants,
+            NodeWeightError,
+        },
+    },
 };
 
 #[remain::sorted]

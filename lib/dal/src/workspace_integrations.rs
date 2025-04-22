@@ -1,7 +1,18 @@
-use crate::{DalContext, TransactionsError, workspace::WorkspaceId};
-use serde::{Deserialize, Serialize};
-use si_data_pg::{PgError, PgRow};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_data_pg::{
+    PgError,
+    PgRow,
+};
 use thiserror::Error;
+
+use crate::{
+    DalContext,
+    TransactionsError,
+    workspace::WorkspaceId,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]

@@ -1,6 +1,9 @@
-use std::collections::{HashMap, HashSet};
-use strum::EnumDiscriminants;
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
+use strum::EnumDiscriminants;
 use updates::subgraph_as_updates;
 
 use super::*;

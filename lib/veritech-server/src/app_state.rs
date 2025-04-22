@@ -1,13 +1,22 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::Arc,
+    time::Duration,
+};
 
 use si_crypto::VeritechDecryptionKey;
 use si_data_nats::NatsClient;
 use si_pool_noodle::{
     PoolNoodle,
-    instance::cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
+    instance::cyclone::{
+        LocalUdsInstance,
+        LocalUdsInstanceSpec,
+    },
 };
-use tokio::sync::Mutex;
-use tokio::sync::oneshot;
+use tokio::sync::{
+    Mutex,
+    oneshot,
+};
 use veritech_core::ExecutionId;
 
 use crate::server::ServerMetadata;

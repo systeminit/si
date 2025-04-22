@@ -1,8 +1,14 @@
-use axum::{extract::Path, response::IntoResponse};
+use axum::{
+    extract::Path,
+    response::IntoResponse,
+};
 use dal::func::runner::FuncRunner;
 use si_events::FuncRunId;
 
-use crate::service::v2::admin::{AdminAPIResult, AdminUserContext};
+use crate::service::v2::admin::{
+    AdminAPIResult,
+    AdminUserContext,
+};
 
 pub async fn kill_execution(
     AdminUserContext(ctx): AdminUserContext,

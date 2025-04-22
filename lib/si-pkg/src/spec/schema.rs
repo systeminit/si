@@ -1,7 +1,13 @@
 use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use super::{SchemaVariantSpec, SpecError};
+use super::{
+    SchemaVariantSpec,
+    SpecError,
+};
 
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

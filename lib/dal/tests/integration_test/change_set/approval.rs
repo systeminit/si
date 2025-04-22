@@ -1,8 +1,15 @@
-use dal::DalContext;
-use dal::change_set::approval::{ChangeSetApproval, ChangeSetApprovalStatus};
-use dal_test::helpers::create_component_for_default_schema_name_in_default_view;
-use dal_test::prelude::*;
-use dal_test::test;
+use dal::{
+    DalContext,
+    change_set::approval::{
+        ChangeSetApproval,
+        ChangeSetApprovalStatus,
+    },
+};
+use dal_test::{
+    helpers::create_component_for_default_schema_name_in_default_view,
+    prelude::*,
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]

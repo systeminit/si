@@ -1,4 +1,7 @@
-use std::{fmt, sync::Arc};
+use std::{
+    fmt,
+    sync::Arc,
+};
 
 use axum::extract::MatchedPath;
 use hyper::header::USER_AGENT;

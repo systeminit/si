@@ -1,17 +1,37 @@
-use std::{result, str::Utf8Error, sync::Arc};
+use std::{
+    result,
+    str::Utf8Error,
+    sync::Arc,
+};
 
 use dal::{
-    DalContextBuilder, TenancyError, WorkspacePk,
+    DalContextBuilder,
+    TenancyError,
+    WorkspacePk,
     job::{
-        consumer::{JobConsumer, JobConsumerError, JobInfo},
-        definition::{ActionJob, DependentValuesUpdate, compute_validation::ComputeValidation},
+        consumer::{
+            JobConsumer,
+            JobConsumerError,
+            JobInfo,
+        },
+        definition::{
+            ActionJob,
+            DependentValuesUpdate,
+            compute_validation::ComputeValidation,
+        },
         producer::BlockingJobError,
     },
 };
 use naxum::{
     Json,
-    extract::{State, message_parts::Headers},
-    response::{IntoResponse, Response},
+    extract::{
+        State,
+        message_parts::Headers,
+    },
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use pinga_core::REPLY_INBOX_HEADER_NAME;
 use si_data_nats::Subject;
@@ -20,7 +40,10 @@ use telemetry_nats::propagation;
 use telemetry_utils::metric;
 use thiserror::Error;
 
-use crate::{app_state::AppState, server::ServerMetadata};
+use crate::{
+    app_state::AppState,
+    server::ServerMetadata,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

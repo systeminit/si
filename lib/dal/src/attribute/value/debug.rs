@@ -1,26 +1,47 @@
-use super::ValueIsFor;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::ComponentError;
-use crate::attribute::prototype::debug::{
-    AttributePrototypeDebugView, AttributePrototypeDebugViewError, FuncArgDebugView,
-};
-use crate::attribute::prototype::{
-    AttributePrototypeError,
-    argument::{AttributePrototypeArgumentError, value_source::ValueSourceError},
-};
-use crate::attribute::value::AttributeValueError;
-use crate::prop::PropError;
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
+use super::ValueIsFor;
 use crate::{
-    AttributePrototypeId, AttributeValue, AttributeValueId, DalContext, FuncError, FuncId, Prop,
+    AttributePrototypeId,
+    AttributeValue,
+    AttributeValueId,
+    ComponentError,
+    DalContext,
+    FuncError,
+    FuncId,
+    Prop,
     PropKind,
+    attribute::{
+        prototype::{
+            AttributePrototypeError,
+            argument::{
+                AttributePrototypeArgumentError,
+                value_source::ValueSourceError,
+            },
+            debug::{
+                AttributePrototypeDebugView,
+                AttributePrototypeDebugViewError,
+                FuncArgDebugView,
+            },
+        },
+        value::AttributeValueError,
+    },
+    prop::PropError,
+    socket::{
+        input::InputSocketError,
+        output::OutputSocketError,
+    },
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        node_weight::NodeWeightError,
+    },
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

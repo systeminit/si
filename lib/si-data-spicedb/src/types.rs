@@ -1,10 +1,18 @@
 use std::ops;
 
 use spicedb_client::{
-    builder::{ReadRelationshipsRequestBuilder, RelationshipBuilder, RelationshipFilterBuilder},
+    builder::{
+        ReadRelationshipsRequestBuilder,
+        RelationshipBuilder,
+        RelationshipFilterBuilder,
+    },
     types::ConsistencyRequirement,
 };
-use spicedb_grpc::authzed::api::v1::{self, ObjectReference, SubjectReference};
+use spicedb_grpc::authzed::api::v1::{
+    self,
+    ObjectReference,
+    SubjectReference,
+};
 
 /// ZedToken is used to provide causality metadata between Write and Check requests.
 ///

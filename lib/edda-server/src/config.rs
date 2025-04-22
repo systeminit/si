@@ -1,23 +1,30 @@
-use std::{env, path::Path, time::Duration};
+use std::{
+    env,
+    path::Path,
+    time::Duration,
+};
 
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_crypto::{
-    SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile, VeritechCryptoConfig,
+    SymmetricCryptoServiceConfig,
+    SymmetricCryptoServiceConfigFile,
+    VeritechCryptoConfig,
 };
 use si_data_nats::NatsConfig;
 use si_data_pg::PgPoolConfig;
 use si_layer_cache::db::LayerDbConfig;
+pub(crate) use si_settings::StandardConfig;
+pub use si_settings::StandardConfigFile;
 use si_std::CanonicalFileError;
 use si_tls::CertificateSource;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
-
-pub(crate) use si_settings::StandardConfig;
-
-pub use si_settings::StandardConfigFile;
 
 const DEFAULT_CONCURRENCY_LIMIT: Option<usize> = None;
 

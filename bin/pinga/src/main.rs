@@ -1,7 +1,17 @@
 use std::time::Duration;
 
-use pinga_server::{Config, Server};
-use si_service::{color_eyre, prelude::*, rt, shutdown, startup, telemetry_application};
+use pinga_server::{
+    Config,
+    Server,
+};
+use si_service::{
+    color_eyre,
+    prelude::*,
+    rt,
+    shutdown,
+    startup,
+    telemetry_application,
+};
 
 mod args;
 

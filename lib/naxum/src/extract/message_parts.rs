@@ -1,17 +1,31 @@
-use std::{convert::Infallible, str};
+use std::{
+    convert::Infallible,
+    str,
+};
 
-use async_nats::{HeaderMap, Subject};
+use async_nats::{
+    HeaderMap,
+    Subject,
+};
 use async_trait::async_trait;
 use bytes::Bytes;
 
+use super::{
+    FromMessage,
+    FromMessageHead,
+    rejection::{
+        NoReplyRejection,
+        StringRejection,
+    },
+};
 use crate::{
     extract::rejection::InvalidUtf8,
-    message::{Extensions, Head, Message, MessageHead},
-};
-
-use super::{
-    FromMessage, FromMessageHead,
-    rejection::{NoReplyRejection, StringRejection},
+    message::{
+        Extensions,
+        Head,
+        Message,
+        MessageHead,
+    },
 };
 
 #[async_trait]

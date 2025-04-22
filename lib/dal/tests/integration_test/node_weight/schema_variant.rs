@@ -1,8 +1,15 @@
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{ChangeSet, DalContext, Schema, SchemaVariant};
+use dal::{
+    ChangeSet,
+    DalContext,
+    Schema,
+    SchemaVariant,
+    schema::variant::authoring::VariantAuthoringClient,
+};
 use dal_test::{
     expected::{
-        ExpectSchema, apply_change_set_to_base, fork_from_head_change_set,
+        ExpectSchema,
+        apply_change_set_to_base,
+        fork_from_head_change_set,
         update_visibility_and_snapshot_to_visibility,
     },
     helpers::ChangeSetTestHelpers,

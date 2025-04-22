@@ -1,19 +1,31 @@
 use std::{
     pin::Pin,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
     time::Duration,
 };
 
-use futures::{Stream, StreamExt};
+use futures::{
+    Stream,
+    StreamExt,
+};
 use futures_lite::FutureExt;
 use hyper::client::connect::Connection;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
-    io::{AsyncRead, AsyncWrite},
+    io::{
+        AsyncRead,
+        AsyncWrite,
+    },
     time,
 };
-use tokio_tungstenite::{WebSocketStream, tungstenite::Message as WebSocketMessage};
+use tokio_tungstenite::{
+    WebSocketStream,
+    tungstenite::Message as WebSocketMessage,
+};
 
 pub fn watch<T>(stream: WebSocketStream<T>, ping_wait_timeout: Duration) -> Watch<T> {
     Watch {

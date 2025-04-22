@@ -1,24 +1,51 @@
 use axum::{
     Json,
-    extract::{Multipart, multipart::MultipartError},
-    response::{IntoResponse, Response},
+    extract::{
+        Multipart,
+        multipart::MultipartError,
+    },
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
-use chrono::{DateTime, FixedOffset, Offset, Utc};
+use chrono::{
+    DateTime,
+    FixedOffset,
+    Offset,
+    Utc,
+};
 use hyper::StatusCode;
+use module_index_types::ExtraMetadata;
 use s3::error::S3Error;
-use sea_orm::{ActiveModelTrait, DbErr, Set};
-use serde::{Deserialize, Serialize};
+use sea_orm::{
+    ActiveModelTrait,
+    DbErr,
+    Set,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_hash::Hash;
-use si_pkg::{SiPkgError, WorkspaceExport};
+use si_pkg::{
+    SiPkgError,
+    WorkspaceExport,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::models::si_module::ModuleKind;
 use crate::{
-    extract::{Authorization, DbConnection, ExtractedS3Bucket},
-    models::si_module,
+    extract::{
+        Authorization,
+        DbConnection,
+        ExtractedS3Bucket,
+    },
+    models::{
+        si_module,
+        si_module::ModuleKind,
+    },
 };
-use module_index_types::ExtraMetadata;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

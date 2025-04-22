@@ -1,35 +1,80 @@
-use argument::{FuncArgument, FuncArgumentError};
-use authoring::{FuncAuthoringClient, FuncAuthoringError};
-use base64::{Engine, engine::general_purpose};
-use binding::{FuncBinding, FuncBindingError};
+use std::{
+    collections::HashMap,
+    string::FromUtf8Error,
+    sync::Arc,
+};
+
+use argument::{
+    FuncArgument,
+    FuncArgumentError,
+};
+use authoring::{
+    FuncAuthoringClient,
+    FuncAuthoringError,
+};
+use base64::{
+    Engine,
+    engine::general_purpose,
+};
+use binding::{
+    FuncBinding,
+    FuncBindingError,
+};
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
-use si_events::CasValue;
-use si_events::{ContentHash, ulid::Ulid};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    CasValue,
+    ContentHash,
+    ulid::Ulid,
+};
 use si_frontend_types::FuncSummary;
 use si_pkg::SpecError;
-use std::collections::HashMap;
-use std::string::FromUtf8Error;
-use std::sync::Arc;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid as CoreUlid;
 
-use crate::change_set::ChangeSetError;
-use crate::func::argument::FuncArgumentId;
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::layer_db_types::{FuncContent, FuncContentV2};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::{FuncNodeWeight, NodeWeight, NodeWeightError};
-use crate::{
-    ChangeSetId, DalContext, HelperError, Timestamp, TransactionsError, WsEvent, WsEventResult,
-    WsPayload, implement_add_edge_to, pkg,
+use self::backend::{
+    FuncBackendKind,
+    FuncBackendResponseType,
 };
-
-use self::backend::{FuncBackendKind, FuncBackendResponseType};
+use crate::{
+    ChangeSetId,
+    DalContext,
+    HelperError,
+    Timestamp,
+    TransactionsError,
+    WsEvent,
+    WsEventResult,
+    WsPayload,
+    change_set::ChangeSetError,
+    func::{
+        argument::FuncArgumentId,
+        intrinsics::IntrinsicFunc,
+    },
+    implement_add_edge_to,
+    layer_db_types::{
+        FuncContent,
+        FuncContentV2,
+    },
+    pkg,
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        edge_weight::{
+            EdgeWeightKind,
+            EdgeWeightKindDiscriminants,
+        },
+        node_weight::{
+            FuncNodeWeight,
+            NodeWeight,
+            NodeWeightError,
+            category_node_weight::CategoryNodeKind,
+        },
+    },
+};
 
 pub mod argument;
 pub mod authoring;
@@ -124,10 +169,11 @@ pub fn is_intrinsic(name: &str) -> bool {
     IntrinsicFunc::iter().any(|intrinsic| intrinsic.name() == name)
 }
 
-pub use si_id::FuncId;
-
 // NOTE: This is here only for backward compatibility
-pub use si_id::FuncExecutionPk;
+pub use si_id::{
+    FuncExecutionPk,
+    FuncId,
+};
 
 /// A `Func` is the declaration of the existence of a function. It has a name,
 /// and corresponds to a given function backend (and its associated return types).

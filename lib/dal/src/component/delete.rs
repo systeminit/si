@@ -1,11 +1,21 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
 use si_events::audit_log::AuditLogKind;
 use si_id::ComponentId;
 
-use crate::{DalContext, WsEvent, change_status::ChangeStatus, diagram::SummaryDiagramEdge};
-
-use super::{Component, ComponentResult};
+use super::{
+    Component,
+    ComponentResult,
+};
+use crate::{
+    DalContext,
+    WsEvent,
+    change_status::ChangeStatus,
+    diagram::SummaryDiagramEdge,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ComponentDeletionStatus {

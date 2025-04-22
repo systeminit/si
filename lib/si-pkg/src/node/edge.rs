@@ -1,15 +1,31 @@
 use std::{
-    io::{BufRead, Write},
+    io::{
+        BufRead,
+        Write,
+    },
     str::FromStr,
 };
 
 use object_tree::{
-    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes, read_key_value_line,
+    GraphError,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
     write_key_value_line,
 };
 
-use super::{KEY_DELETED_STR, KEY_UNIQUE_ID_STR, PkgNode};
-use crate::{EdgeSpec, EdgeSpecKind};
+use super::{
+    KEY_DELETED_STR,
+    KEY_UNIQUE_ID_STR,
+    PkgNode,
+};
+use crate::{
+    EdgeSpec,
+    EdgeSpecKind,
+};
 
 const KEY_EDGE_KIND_STR: &str = "edge_kind";
 const KEY_FROM_COMPONENT_UNIQUE_ID_STR: &str = "from_component_unique_id";

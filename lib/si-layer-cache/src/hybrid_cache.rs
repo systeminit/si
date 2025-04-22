@@ -1,20 +1,46 @@
+use std::{
+    cmp::max,
+    path::{
+        Path,
+        PathBuf,
+    },
+    sync::{
+        Arc,
+        LazyLock,
+    },
+};
+
 use foyer::{
-    DirectFsDeviceOptions, Engine, FifoPicker, HybridCache, HybridCacheBuilder, LargeEngineOptions,
-    RateLimitPicker, RecoverMode, TokioRuntimeOptions,
+    DirectFsDeviceOptions,
+    Engine,
+    FifoPicker,
+    HybridCache,
+    HybridCacheBuilder,
+    LargeEngineOptions,
+    RateLimitPicker,
+    RecoverMode,
+    TokioRuntimeOptions,
 };
 use mixtrics::registry::opentelemetry_0_26::OpenTelemetryMetricsRegistry;
-use std::cmp::max;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock};
-use telemetry::opentelemetry::global;
-use telemetry::tracing::{error, info};
+use serde::{
+    Deserialize,
+    Serialize,
+    de::DeserializeOwned,
+};
+use telemetry::{
+    opentelemetry::global,
+    tracing::{
+        error,
+        info,
+    },
+};
 use tokio::fs;
 
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
-
-use crate::LayerDbError;
-use crate::db::serialize;
-use crate::error::LayerDbResult;
+use crate::{
+    LayerDbError,
+    db::serialize,
+    error::LayerDbResult,
+};
 
 const FOYER_DISK_CACHE_MINUMUM: u64 = 1024 * 1024 * 1024; // 1gb
 const DEFAULT_MEMORY_RESERVED_PERCENT: u8 = 40;

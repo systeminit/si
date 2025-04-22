@@ -37,12 +37,18 @@ pub mod pg;
 
 pub use db::LayerDb;
 pub use error::LayerDbError;
-pub use pg::{APPLICATION_NAME, DBNAME, default_pg_pool_config};
+pub use pg::{
+    APPLICATION_NAME,
+    DBNAME,
+    default_pg_pool_config,
+};
 
 // FIXME(nick): this needs to move outside the layer cache.
 pub mod external {
     pub mod rebaser_server {
-        pub use crate::nats::rebaser_requests_work_queue_stream;
-        pub use crate::nats::subject::for_rebaser_requests;
+        pub use crate::nats::{
+            rebaser_requests_work_queue_stream,
+            subject::for_rebaser_requests,
+        };
     }
 }

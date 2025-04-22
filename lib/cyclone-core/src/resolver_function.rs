@@ -1,10 +1,16 @@
-use crate::{before::BeforeFunction, request::CycloneRequestable};
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::Value;
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 
-use crate::ComponentView;
+use crate::{
+    ComponentView,
+    before::BeforeFunction,
+    request::CycloneRequestable,
+};
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

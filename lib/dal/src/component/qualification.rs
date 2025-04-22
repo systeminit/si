@@ -1,12 +1,21 @@
 use serde::Deserialize;
 use telemetry::prelude::*;
 
-use crate::component::ComponentResult;
-use crate::qualification::{QualificationSubCheckStatus, QualificationView};
-use crate::schema::variant::root_prop::RootPropChild;
-use crate::ws_event::WsEvent;
-use crate::{AttributeValue, AttributeValueId, DalContext};
-use crate::{Component, ComponentError, ComponentId};
+use crate::{
+    AttributeValue,
+    AttributeValueId,
+    Component,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    component::ComponentResult,
+    qualification::{
+        QualificationSubCheckStatus,
+        QualificationView,
+    },
+    schema::variant::root_prop::RootPropChild,
+    ws_event::WsEvent,
+};
 
 // FIXME(nick): use the formal types from the new version of function authoring instead of this
 // struct. This struct is a temporary stopgap until that's implemented.

@@ -1,14 +1,27 @@
 use std::{
-    collections::{HashMap, HashSet, VecDeque, hash_map::Entry},
+    collections::{
+        HashMap,
+        HashSet,
+        VecDeque,
+        hash_map::Entry,
+    },
     sync::Arc,
 };
+
 use tokio::sync::Mutex;
 use ulid::Ulid;
 
 use super::producer::JobProducer;
-use crate::job::definition::compute_validation::ComputeValidation;
-use crate::job::definition::{AttributeValueBasedJobIdentifier, DependentValuesUpdate};
-use crate::{AccessBuilder, ChangeSetId, Visibility};
+use crate::{
+    AccessBuilder,
+    ChangeSetId,
+    Visibility,
+    job::definition::{
+        AttributeValueBasedJobIdentifier,
+        DependentValuesUpdate,
+        compute_validation::ComputeValidation,
+    },
+};
 
 type AttributeValueBasedJobs = Arc<
     Mutex<

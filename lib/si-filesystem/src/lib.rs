@@ -1,49 +1,115 @@
 use core::str;
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{
+        BTreeMap,
+        HashMap,
+        HashSet,
+    },
     ffi::OsString,
-    fmt, fs,
-    io::{Cursor, Seek, Write},
-    ops::{BitOr, BitOrAssign},
-    path::{Path, PathBuf},
+    fmt,
+    fs,
+    io::{
+        Cursor,
+        Seek,
+        Write,
+    },
+    ops::{
+        BitOr,
+        BitOrAssign,
+    },
+    path::{
+        Path,
+        PathBuf,
+    },
     str::Utf8Error,
-    sync::{Arc, atomic::AtomicU64},
+    sync::{
+        Arc,
+        atomic::AtomicU64,
+    },
     time::Duration,
 };
 
-use client::{SiFsClient, SiFsClientError};
+use client::{
+    SiFsClient,
+    SiFsClientError,
+};
 use dashmap::DashMap;
 use fuser::{
-    FileAttr, FileType, MountOption, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty,
-    ReplyEntry, ReplyOpen, ReplyWrite,
+    FileAttr,
+    FileType,
+    MountOption,
+    ReplyAttr,
+    ReplyCreate,
+    ReplyData,
+    ReplyDirectory,
+    ReplyEmpty,
+    ReplyEntry,
+    ReplyOpen,
+    ReplyWrite,
 };
-use inode_table::{InodeEntry, InodeEntryData, InodeTable, InodeTableError, Size};
+use inode_table::{
+    InodeEntry,
+    InodeEntryData,
+    InodeTable,
+    InodeTableError,
+    Size,
+};
 use nix::{
     libc::{
-        EACCES, EBADFD, EINVAL, ENODATA, ENOENT, ENOSYS, ENOTDIR, O_ACCMODE, O_APPEND, O_RDWR,
+        EACCES,
+        EBADFD,
+        EINVAL,
+        ENODATA,
+        ENOENT,
+        ENOSYS,
+        ENOTDIR,
+        O_ACCMODE,
+        O_APPEND,
+        O_RDWR,
         O_WRONLY,
     },
-    unistd::{self, Gid, Uid},
+    unistd::{
+        self,
+        Gid,
+        Uid,
+    },
 };
 use si_frontend_types::{
     FuncKind,
     fs::{
-        ActionKind, AttributeOutputTo, Binding, Bindings, FsApiError, Func, HydratedChangeSet,
-        HydratedSchema, IdentityBindings, SchemaAttributes, kind_pluralized_to_string,
+        ActionKind,
+        AttributeOutputTo,
+        Binding,
+        Bindings,
+        FsApiError,
+        Func,
+        HydratedChangeSet,
+        HydratedSchema,
+        IdentityBindings,
+        SchemaAttributes,
+        kind_pluralized_to_string,
     },
 };
-use si_id::{ChangeSetId, FuncId, SchemaId};
+pub use si_id::WorkspaceId;
+use si_id::{
+    ChangeSetId,
+    FuncId,
+    SchemaId,
+};
 use thiserror::Error;
 use tokio::{
-    runtime::{self},
+    runtime::{
+        self,
+    },
     sync::mpsc::UnboundedReceiver,
     task::JoinSet,
     time::Instant,
 };
 
-use crate::{async_wrapper::AsyncFuseWrapper, command::FilesystemCommand};
-
-pub use si_id::WorkspaceId;
+use crate::{
+    async_wrapper::AsyncFuseWrapper,
+    command::FilesystemCommand,
+};
 
 mod async_wrapper;
 mod client;

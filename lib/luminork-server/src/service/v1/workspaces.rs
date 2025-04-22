@@ -2,18 +2,30 @@ use axum::{
     Router,
     http::StatusCode,
     middleware,
-    response::{IntoResponse, Response},
-    routing::{delete, get, post},
+    response::{
+        IntoResponse,
+        Response,
+    },
+    routing::{
+        delete,
+        get,
+        post,
+    },
 };
 use thiserror::Error;
 
-use crate::extract::{
-    change_set::TargetChangeSetIdFromPath,
-    workspace::{AuthorizedForAutomationRole, TargetWorkspaceIdFromPath},
-};
-use crate::{AppState, middleware::WorkspacePermissionLayer};
-
 use super::common::ErrorIntoResponse;
+use crate::{
+    AppState,
+    extract::{
+        change_set::TargetChangeSetIdFromPath,
+        workspace::{
+            AuthorizedForAutomationRole,
+            TargetWorkspaceIdFromPath,
+        },
+    },
+    middleware::WorkspacePermissionLayer,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

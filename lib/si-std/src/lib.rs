@@ -12,7 +12,10 @@ pub mod result;
 pub mod string;
 pub mod time;
 
-pub use canonical_file::{CanonicalFile, CanonicalFileError};
+pub use canonical_file::{
+    CanonicalFile,
+    CanonicalFileError,
+};
 pub use option::OptionExt;
 pub use result::ResultExt;
 pub use string::SensitiveString;

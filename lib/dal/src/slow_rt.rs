@@ -1,8 +1,14 @@
-use std::{future::Future, sync::OnceLock};
-use thiserror::Error;
-use tokio::{runtime::Runtime, task::JoinHandle};
+use std::{
+    future::Future,
+    sync::OnceLock,
+};
 
 use si_runtime::main_tokio_runtime;
+use thiserror::Error;
+use tokio::{
+    runtime::Runtime,
+    task::JoinHandle,
+};
 
 /// A singleton for a second, alternative tokio runtime used for CPU intensive operations.
 pub static SLOW_RUNTIME: OnceLock<Runtime> = OnceLock::new();

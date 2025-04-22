@@ -1,4 +1,7 @@
-use si_data_nats::{async_nats, jetstream};
+use si_data_nats::{
+    async_nats,
+    jetstream,
+};
 
 const NATS_WORK_QUEUE_STREAM_NAME: &str = "PINGA_JOBS";
 const NATS_WORK_QUEUE_STREAM_SUBJECTS: &[&str] = &["pinga.jobs.>"];

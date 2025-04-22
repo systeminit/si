@@ -1,8 +1,12 @@
 //! Edges
 
-use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedEdgeWeightV1;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use strum::EnumDiscriminants;
+
+use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedEdgeWeightV1;
 
 pub mod deprecated;
 

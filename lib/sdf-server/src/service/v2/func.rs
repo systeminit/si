@@ -1,15 +1,35 @@
 use axum::{
     Router,
     http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::{delete, get, post, put},
+    response::{
+        IntoResponse,
+        Response,
+    },
+    routing::{
+        delete,
+        get,
+        post,
+        put,
+    },
 };
 use dal::{
-    ChangeSetError, ComponentError, DalContext, Func, FuncError, FuncId, SchemaVariantError,
-    WorkspaceSnapshotError, WsEventError,
-    attribute::{prototype::argument::AttributePrototypeArgumentError, value::AttributeValueError},
+    ChangeSetError,
+    ComponentError,
+    DalContext,
+    Func,
+    FuncError,
+    FuncId,
+    SchemaVariantError,
+    WorkspaceSnapshotError,
+    WsEventError,
+    attribute::{
+        prototype::argument::AttributePrototypeArgumentError,
+        value::AttributeValueError,
+    },
     func::{
-        argument::FuncArgumentError, authoring::FuncAuthoringError, binding::FuncBindingError,
+        argument::FuncArgumentError,
+        authoring::FuncAuthoringError,
+        binding::FuncBindingError,
         runner::FuncRunnerError,
     },
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,

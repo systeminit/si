@@ -2,26 +2,64 @@
 #![allow(missing_docs)]
 #![allow(clippy::expect_used)]
 
-use crate::helpers::ChangeSetTestHelpers;
-use dal::FuncId;
-use dal::component::socket::ComponentInputSocket;
-use dal::diagram::geometry::{Geometry, RawGeometry};
-use dal::diagram::view::{View, ViewId};
-use dal::func::authoring::FuncAuthoringClient;
-use dal::management::prototype::{ManagementPrototype, ManagementPrototypeError};
-use dal::management::{ManagementFuncReturn, ManagementOperator};
 use dal::{
-    self, AttributeValue, AttributeValueId, ChangeSetId, Component, ComponentId, ComponentType,
-    DalContext, InputSocket, InputSocketId, OutputSocket, OutputSocketId, PropId, Schema, SchemaId,
-    SchemaVariant, SchemaVariantId,
-    prop::{Prop, PropPath},
+    self,
+    AttributeValue,
+    AttributeValueId,
+    ChangeSetId,
+    Component,
+    ComponentId,
+    ComponentType,
+    DalContext,
+    FuncId,
+    InputSocket,
+    InputSocketId,
+    OutputSocket,
+    OutputSocketId,
+    PropId,
+    Schema,
+    SchemaId,
+    SchemaVariant,
+    SchemaVariantId,
+    component::socket::ComponentInputSocket,
+    diagram::{
+        geometry::{
+            Geometry,
+            RawGeometry,
+        },
+        view::{
+            View,
+            ViewId,
+        },
+    },
+    func::authoring::FuncAuthoringClient,
+    management::{
+        ManagementFuncReturn,
+        ManagementOperator,
+        prototype::{
+            ManagementPrototype,
+            ManagementPrototypeError,
+        },
+    },
+    prop::{
+        Prop,
+        PropPath,
+    },
     property_editor::values::PropertyEditorValues,
     schema::variant::authoring::VariantAuthoringClient,
 };
-use derive_more::{AsMut, AsRef, Deref, From, Into};
+use derive_more::{
+    AsMut,
+    AsRef,
+    Deref,
+    From,
+    Into,
+};
 use serde_json::Value;
 use si_id::ManagementPrototypeId;
 use veritech_client::ManagementFuncStatus;
+
+use crate::helpers::ChangeSetTestHelpers;
 
 ///
 /// Things that you can pass as prop paths / ids

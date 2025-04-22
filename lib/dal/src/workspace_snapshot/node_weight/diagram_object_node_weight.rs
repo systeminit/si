@@ -1,11 +1,15 @@
-use crate::{
-    diagram::view::ViewId, workspace_snapshot::node_weight::traits::SiVersionedNodeWeight,
-};
-
 use dal_macros::SiVersionedNodeWeight;
-use jwt_simple::prelude::{Deserialize, Serialize};
+use jwt_simple::prelude::{
+    Deserialize,
+    Serialize,
+};
 use si_events::ulid::Ulid;
 use strum::Display;
+
+use crate::{
+    diagram::view::ViewId,
+    workspace_snapshot::node_weight::traits::SiVersionedNodeWeight,
+};
 
 pub mod v1;
 use v1::DiagramObjectNodeWeightV1;

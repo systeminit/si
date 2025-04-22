@@ -1,18 +1,34 @@
 use axum::{
     Router,
-    response::{IntoResponse, Response},
-    routing::{get, post},
+    response::{
+        IntoResponse,
+        Response,
+    },
+    routing::{
+        get,
+        post,
+    },
 };
 use dal::{
-    KeyPairError, StandardModelError, TransactionsError, UserError, WorkspaceError, WorkspacePk,
+    KeyPairError,
+    StandardModelError,
+    TransactionsError,
+    UserError,
+    WorkspaceError,
+    WorkspacePk,
     workspace_integrations::WorkspaceIntegrationsError,
 };
 use hyper::StatusCode;
-use serde::{Deserialize, Serialize};
+use sdf_core::{
+    api_error::ApiError,
+    app_state::AppState,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_spicedb::SpiceDbError;
 use thiserror::Error;
-
-use sdf_core::{api_error::ApiError, app_state::AppState};
 
 pub mod auth_connect;
 pub mod load_workspaces;

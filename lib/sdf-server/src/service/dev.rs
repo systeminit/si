@@ -1,7 +1,15 @@
 mod get_current_git_sha;
 
-use axum::{Router, routing::get};
-use dal::{StandardModelError, TransactionsError, UserError, WsEventError};
+use axum::{
+    Router,
+    routing::get,
+};
+use dal::{
+    StandardModelError,
+    TransactionsError,
+    UserError,
+    WsEventError,
+};
 use thiserror::Error;
 
 use super::impl_default_error_into_response;

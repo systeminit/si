@@ -1,5 +1,9 @@
 use serde::Serialize;
-use si_events::{AuthenticationMethod, ChangeSetId, UserPk};
+use si_events::{
+    AuthenticationMethod,
+    ChangeSetId,
+    UserPk,
+};
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

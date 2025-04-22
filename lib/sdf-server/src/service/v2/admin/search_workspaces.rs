@@ -1,9 +1,19 @@
-use axum::{Json, extract::Query};
+use axum::{
+    Json,
+    extract::Query,
+};
 use dal::Workspace;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 
-use crate::service::v2::admin::{AdminAPIResult, AdminUserContext, AdminWorkspace};
+use crate::service::v2::admin::{
+    AdminAPIResult,
+    AdminUserContext,
+    AdminWorkspace,
+};
 
 const SEARCH_LIMIT: usize = 50;
 

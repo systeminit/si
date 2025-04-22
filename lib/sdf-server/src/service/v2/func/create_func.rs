@@ -1,28 +1,59 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Path},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
 };
 use dal::{
-    ChangeSet, ChangeSetId, Component, SchemaVariant, WorkspacePk, WsEvent,
+    ChangeSet,
+    ChangeSetId,
+    Component,
+    SchemaVariant,
+    WorkspacePk,
+    WsEvent,
     func::{
         FuncKind,
         authoring::FuncAuthoringClient,
         binding::{
-            AttributeArgumentBinding, AttributeFuncArgumentSource, AttributeFuncDestination,
+            AttributeArgumentBinding,
+            AttributeFuncArgumentSource,
+            AttributeFuncDestination,
             EventualParent,
         },
     },
-    schema::variant::leaves::{LeafInputLocation, LeafKind},
+    schema::variant::leaves::{
+        LeafInputLocation,
+        LeafKind,
+    },
 };
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::audit_log::AuditLogKind;
-use si_frontend_types::{self as frontend_types, FuncBinding, FuncCode, FuncSummary};
+use si_frontend_types::{
+    self as frontend_types,
+    FuncBinding,
+    FuncCode,
+    FuncSummary,
+};
 
-use super::{FuncAPIError, FuncAPIResult, get_code_response};
+use super::{
+    FuncAPIError,
+    FuncAPIResult,
+    get_code_response,
+};
 use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::force_change_set_response::ForceChangeSetResponse,
-    service::v2::AccessBuilder,
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::AccessBuilder,
+    },
     track,
 };
 

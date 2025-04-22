@@ -1,14 +1,23 @@
 use std::{
-    io::{BufRead, Write},
+    io::{
+        BufRead,
+        Write,
+    },
     str::FromStr,
 };
 
-use crate::node::auth_func::AuthFuncNode;
 use management_func::ManagementFuncNode;
 use object_tree::{
-    GraphError, NameStr, ReadBytes, WriteBytes, read_key_value_line, read_key_value_line_opt,
+    GraphError,
+    NameStr,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    read_key_value_line_opt,
     write_key_value_line,
 };
+
+use crate::node::auth_func::AuthFuncNode;
 
 mod action_func;
 mod attr_func_input;
@@ -44,7 +53,10 @@ pub(crate) use self::{
     attribute_value_child::AttributeValueChildNode,
     category::CategoryNode,
     change_set::ChangeSetNode,
-    change_set_child::{ChangeSetChild, ChangeSetChildNode},
+    change_set_child::{
+        ChangeSetChild,
+        ChangeSetChildNode,
+    },
     component::ComponentNode,
     component_child::ComponentChildNode,
     edge::EdgeNode,
@@ -54,12 +66,18 @@ pub(crate) use self::{
     map_key_func::MapKeyFuncNode,
     package::PackageNode,
     position::PositionNode,
-    prop::{PropNode, PropNodeData},
+    prop::{
+        PropNode,
+        PropNodeData,
+    },
     prop_child::PropChildNode,
     root_prop_func::RootPropFuncNode,
     schema::SchemaNode,
     schema_variant::SchemaVariantNode,
-    schema_variant_child::{SchemaVariantChild, SchemaVariantChildNode},
+    schema_variant_child::{
+        SchemaVariantChild,
+        SchemaVariantChildNode,
+    },
     si_prop_func::SiPropFuncNode,
     socket::SocketNode,
 };

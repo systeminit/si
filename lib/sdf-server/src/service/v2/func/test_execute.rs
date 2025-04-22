@@ -1,16 +1,34 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Path},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
 };
 use dal::{
-    ChangeSetId, ComponentId, Func, FuncId, WorkspacePk, func::authoring::FuncAuthoringClient,
+    ChangeSetId,
+    ComponentId,
+    Func,
+    FuncId,
+    WorkspacePk,
+    func::authoring::FuncAuthoringClient,
 };
-use serde::{Deserialize, Serialize};
-use si_events::{FuncRunId, audit_log::AuditLogKind};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    FuncRunId,
+    audit_log::AuditLogKind,
+};
 
 use super::FuncAPIResult;
 use crate::{
-    extract::{HandlerContext, PosthogClient},
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
     service::v2::AccessBuilder,
     track,
 };

@@ -1,22 +1,40 @@
 use std::{
-    future::{Future, IntoFuture as _},
+    future::{
+        Future,
+        IntoFuture as _,
+    },
     io,
     sync::Arc,
 };
 
-use app_state::{AppState, NoopAppState};
-use billing_events::{BillingEventsError, BillingEventsWorkQueue};
+use app_state::{
+    AppState,
+    NoopAppState,
+};
+use billing_events::{
+    BillingEventsError,
+    BillingEventsWorkQueue,
+};
 use data_warehouse_stream_client::DataWarehouseStreamClient;
 use naxum::{
-    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
+    MessageHead,
+    ServiceBuilder,
+    ServiceExt as _,
+    TowerServiceExt as _,
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
         ack::AckLayer,
-        matched_subject::{ForSubject, MatchedSubjectLayer},
+        matched_subject::{
+            ForSubject,
+            MatchedSubjectLayer,
+        },
         trace::TraceLayer,
     },
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use si_data_nats::{
     ConnectionMetadata,
@@ -24,7 +42,10 @@ use si_data_nats::{
         self,
         error::Error as AsyncNatsError,
         jetstream::{
-            consumer::{StreamErrorKind, pull::Stream},
+            consumer::{
+                StreamErrorKind,
+                pull::Stream,
+            },
             stream::ConsumerErrorKind,
         },
     },

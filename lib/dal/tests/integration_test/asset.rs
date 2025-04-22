@@ -1,8 +1,19 @@
-use dal::schema::variant::DEFAULT_SCHEMA_VARIANT_COLOR;
-use dal::schema::variant::authoring::{VariantAuthoringClient, VariantAuthoringError};
-use dal::{DalContext, SchemaVariant, SchemaVariantId};
-use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::test;
+use dal::{
+    DalContext,
+    SchemaVariant,
+    SchemaVariantId,
+    schema::variant::{
+        DEFAULT_SCHEMA_VARIANT_COLOR,
+        authoring::{
+            VariantAuthoringClient,
+            VariantAuthoringError,
+        },
+    },
+};
+use dal_test::{
+    helpers::ChangeSetTestHelpers,
+    test,
+};
 
 #[test]
 async fn asset_func_execution_papercuts(ctx: &mut DalContext) {

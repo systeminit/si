@@ -1,18 +1,35 @@
 use std::sync::{
     Arc,
-    atomic::{AtomicI32, Ordering},
+    atomic::{
+        AtomicI32,
+        Ordering,
+    },
 };
 
 use si_events::{
-    Actor, ChangeSetId, Tenancy, WorkspacePk, rebase_batch_address::RebaseBatchAddress,
+    Actor,
+    ChangeSetId,
+    Tenancy,
+    WorkspacePk,
+    rebase_batch_address::RebaseBatchAddress,
 };
 use si_layer_cache::{
-    LayerDb, activities::ActivityId, event::LayeredEventMetadata, hybrid_cache::CacheConfig,
+    LayerDb,
+    activities::ActivityId,
+    event::LayeredEventMetadata,
+    hybrid_cache::CacheConfig,
 };
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 use ulid::Ulid;
 
-use crate::integration_test::{setup_compute_executor, setup_nats_client, setup_pg_db};
+use crate::integration_test::{
+    setup_compute_executor,
+    setup_nats_client,
+    setup_pg_db,
+};
 
 type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
 

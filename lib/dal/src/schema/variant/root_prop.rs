@@ -1,13 +1,27 @@
 //! This module contains (and is oriented around) the [`RootProp`]. This object is not persisted
 //! to the database.
 
-use strum::{AsRefStr, Display as EnumDisplay, EnumIter, EnumString};
+use strum::{
+    AsRefStr,
+    Display as EnumDisplay,
+    EnumIter,
+    EnumString,
+};
 
-use crate::prop::PropPath;
-use crate::property_editor::schema::WidgetKind;
-use crate::schema::variant::SchemaVariantResult;
-use crate::schema::variant::leaves::LeafKind;
-use crate::{DalContext, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId};
+use crate::{
+    DalContext,
+    Prop,
+    PropId,
+    PropKind,
+    SchemaVariant,
+    SchemaVariantId,
+    prop::PropPath,
+    property_editor::schema::WidgetKind,
+    schema::variant::{
+        SchemaVariantResult,
+        leaves::LeafKind,
+    },
+};
 
 pub mod component_type;
 

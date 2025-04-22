@@ -1,17 +1,37 @@
-use axum::response::Json;
-use dal::diagram::view::View;
-use dal::{AttributeValue, Component, ComponentId, Schema};
-use serde::{Deserialize, Serialize};
-use si_id::ViewId;
 use std::collections::HashMap;
-use utoipa::{self, ToSchema};
 
-use crate::extract::{PosthogEventTracker, change_set::ChangeSetDalContext};
+use axum::response::Json;
+use dal::{
+    AttributeValue,
+    Component,
+    ComponentId,
+    Schema,
+    diagram::view::View,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_id::ViewId;
+use utoipa::{
+    self,
+    ToSchema,
+};
 
-use crate::service::v1::ComponentsError;
-
-use super::connections::{Connection, handle_connection};
-use super::update_component::ComponentPropKey;
+use super::{
+    connections::{
+        Connection,
+        handle_connection,
+    },
+    update_component::ComponentPropKey,
+};
+use crate::{
+    extract::{
+        PosthogEventTracker,
+        change_set::ChangeSetDalContext,
+    },
+    service::v1::ComponentsError,
+};
 
 #[utoipa::path(
     post,

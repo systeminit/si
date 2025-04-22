@@ -33,20 +33,38 @@ mod server;
 pub mod service;
 mod uds;
 
+pub use dal::{
+    JobQueueProcessor,
+    NatsProcessor,
+    ServicesContext,
+    feature_flags::{
+        FeatureFlag,
+        FeatureFlagService,
+    },
+};
+
 pub(crate) use self::app_state::AppState;
 pub use self::{
     app::AxumApp,
     app_state::ApplicationRuntimeMode,
     config::{
-        Config, ConfigBuilder, ConfigError, ConfigFile, IncomingStream, MigrationMode,
-        StandardConfig, StandardConfigFile, WorkspacePermissions, WorkspacePermissionsMode,
+        Config,
+        ConfigBuilder,
+        ConfigError,
+        ConfigFile,
+        IncomingStream,
+        MigrationMode,
+        StandardConfig,
+        StandardConfigFile,
+        WorkspacePermissions,
+        WorkspacePermissionsMode,
     },
     nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT,
-    server::{Server, ServerMetadata, ServerSocket},
-};
-pub use dal::{
-    JobQueueProcessor, NatsProcessor, ServicesContext,
-    feature_flags::{FeatureFlag, FeatureFlagService},
+    server::{
+        Server,
+        ServerMetadata,
+        ServerSocket,
+    },
 };
 
 #[remain::sorted]

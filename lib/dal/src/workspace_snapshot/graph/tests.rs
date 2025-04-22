@@ -1,10 +1,18 @@
 use std::collections::HashMap;
 
-use si_events::{ContentHash, ulid::Ulid};
+use si_events::{
+    ContentHash,
+    ulid::Ulid,
+};
 
 use crate::{
-    EdgeWeight, EdgeWeightKind, PropKind,
-    workspace_snapshot::{graph::WorkspaceSnapshotGraphVCurrent, node_weight::NodeWeight},
+    EdgeWeight,
+    EdgeWeightKind,
+    PropKind,
+    workspace_snapshot::{
+        graph::WorkspaceSnapshotGraphVCurrent,
+        node_weight::NodeWeight,
+    },
 };
 
 mod detect_changes;
@@ -83,21 +91,47 @@ fn add_edges(
 #[allow(clippy::panic)]
 #[cfg(test)]
 mod test {
-    use petgraph::visit::EdgeRef;
-    use petgraph::{Outgoing, graph::NodeIndex};
-    use pretty_assertions_sorted::assert_eq;
-    use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
-    use std::{collections::HashSet, str::FromStr};
-
-    use crate::workspace_snapshot::{
-        content_address::ContentAddress,
-        edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
-        graph::{WorkspaceSnapshotGraphVCurrent, detector::Update},
-        node_weight::NodeWeight,
+    use std::{
+        collections::HashSet,
+        str::FromStr,
     };
-    use crate::{ComponentId, FuncId, PropId, SchemaId, SchemaVariantId};
 
-    use super::{add_edges, add_prop_nodes_to_graph};
+    use petgraph::{
+        Outgoing,
+        graph::NodeIndex,
+        visit::EdgeRef,
+    };
+    use pretty_assertions_sorted::assert_eq;
+    use si_events::{
+        ContentHash,
+        merkle_tree_hash::MerkleTreeHash,
+        ulid::Ulid,
+    };
+
+    use super::{
+        add_edges,
+        add_prop_nodes_to_graph,
+    };
+    use crate::{
+        ComponentId,
+        FuncId,
+        PropId,
+        SchemaId,
+        SchemaVariantId,
+        workspace_snapshot::{
+            content_address::ContentAddress,
+            edge_weight::{
+                EdgeWeight,
+                EdgeWeightKind,
+                EdgeWeightKindDiscriminants,
+            },
+            graph::{
+                WorkspaceSnapshotGraphVCurrent,
+                detector::Update,
+            },
+            node_weight::NodeWeight,
+        },
+    };
 
     #[test]
     fn new() {

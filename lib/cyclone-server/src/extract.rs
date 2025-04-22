@@ -1,12 +1,18 @@
 use std::sync::{
     Arc,
-    atomic::{AtomicU32, Ordering},
+    atomic::{
+        AtomicU32,
+        Ordering,
+    },
 };
 
 use async_trait::async_trait;
 use axum::{
     Json,
-    extract::{Extension, FromRequestParts},
+    extract::{
+        Extension,
+        FromRequestParts,
+    },
     http::request::Parts,
 };
 use hyper::StatusCode;

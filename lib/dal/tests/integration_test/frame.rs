@@ -1,32 +1,64 @@
-use dal::component::frame::{Frame, FrameError};
-use dal::component::socket::{ComponentInputSocket, ComponentOutputSocket};
-use dal::diagram::SummaryDiagramInferredEdge;
-use dal::diagram::{Diagram, DiagramResult, SummaryDiagramEdge};
-use dal::func::authoring::FuncAuthoringClient;
-use dal::func::binding::EventualParent;
-use dal::prop::PropPath;
-use dal::property_editor::values::PropertyEditorValues;
-use dal::qualification::QualificationSubCheckStatus;
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::schema::variant::leaves::LeafInputLocation;
+use std::collections::HashMap;
+
 use dal::{
-    AttributeValue, Component, ComponentError, DalContext, EdgeWeightKind, Prop, Schema,
-    SchemaVariant, Secret,
+    AttributeValue,
+    Component,
+    ComponentError,
+    ComponentType,
+    DalContext,
+    EdgeWeightKind,
+    InputSocket,
+    OutputSocket,
+    Prop,
+    Schema,
+    SchemaVariant,
+    Secret,
+    component::{
+        frame::{
+            Frame,
+            FrameError,
+        },
+        socket::{
+            ComponentInputSocket,
+            ComponentOutputSocket,
+        },
+    },
+    diagram::{
+        Diagram,
+        DiagramResult,
+        SummaryDiagramEdge,
+        SummaryDiagramInferredEdge,
+    },
+    func::{
+        authoring::FuncAuthoringClient,
+        binding::EventualParent,
+    },
+    prop::PropPath,
+    property_editor::values::PropertyEditorValues,
+    qualification::QualificationSubCheckStatus,
+    schema::variant::{
+        authoring::VariantAuthoringClient,
+        leaves::LeafInputLocation,
+    },
 };
-use dal::{ComponentType, InputSocket, OutputSocket};
-use dal_test::helpers::{
-    ChangeSetTestHelpers, connect_components_with_socket_names,
-    create_component_for_default_schema_name_in_default_view,
-    create_component_for_schema_name_with_type_on_default_view,
-    create_component_for_schema_variant_on_default_view,
-    create_named_component_for_schema_variant_on_default_view, encrypt_message,
-    get_component_input_socket_value, get_component_output_socket_value,
-    update_attribute_value_for_component,
+use dal_test::{
+    WorkspaceSignup,
+    helpers::{
+        ChangeSetTestHelpers,
+        connect_components_with_socket_names,
+        create_component_for_default_schema_name_in_default_view,
+        create_component_for_schema_name_with_type_on_default_view,
+        create_component_for_schema_variant_on_default_view,
+        create_named_component_for_schema_variant_on_default_view,
+        encrypt_message,
+        get_component_input_socket_value,
+        get_component_output_socket_value,
+        update_attribute_value_for_component,
+    },
+    test,
 };
-use dal_test::{WorkspaceSignup, test};
 use pretty_assertions_sorted::assert_eq;
 use si_frontend_types::DiagramComponentView;
-use std::collections::HashMap;
 
 mod omega_nesting;
 

@@ -30,13 +30,20 @@
     while_true
 )]
 
-use nats_multiplexer_core::MultiplexerRequest;
-use si_data_nats::Message;
-use si_data_nats::subject::ToSubject;
 use std::fmt::Debug;
+
+use nats_multiplexer_core::MultiplexerRequest;
+use si_data_nats::{
+    Message,
+    subject::ToSubject,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{broadcast, mpsc, oneshot};
+use tokio::sync::{
+    broadcast,
+    mpsc,
+    oneshot,
+};
 
 #[allow(missing_docs)]
 #[remain::sorted]

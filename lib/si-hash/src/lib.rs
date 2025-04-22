@@ -23,11 +23,19 @@
     clippy::module_inception,
     clippy::module_name_repetitions
 )]
-use std::{default::Default, fmt, str::FromStr};
+use std::{
+    default::Default,
+    fmt,
+    str::FromStr,
+};
 
 use serde::{
-    Deserialize, Serialize,
-    de::{self, Visitor},
+    Deserialize,
+    Serialize,
+    de::{
+        self,
+        Visitor,
+    },
 };
 use thiserror::Error;
 
@@ -125,8 +133,13 @@ impl FromStr for Hash {
 
 #[cfg(test)]
 mod tests {
+    use serde::de::{
+        self,
+        Deserializer,
+        IntoDeserializer,
+    };
+
     use super::*;
-    use serde::de::{self, Deserializer, IntoDeserializer};
 
     #[test]
     fn test_deserialize() {

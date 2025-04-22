@@ -1,37 +1,88 @@
+use std::{
+    collections::{
+        HashMap,
+        VecDeque,
+    },
+    sync::Arc,
+};
+
 use petgraph::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::Value;
 use si_events::ContentHash;
 use si_id::ulid::Ulid;
 use si_pkg::PropSpecKind;
-use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError,
-};
-use crate::change_set::ChangeSetError;
-use crate::func::FuncError;
-use crate::func::argument::{FuncArgument, FuncArgumentError};
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::layer_db_types::{PropContent, PropContentDiscriminants, PropContentV1};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
-use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
-use crate::workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants;
-use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError, PropNodeWeight};
-use crate::workspace_snapshot::traits::prop::PropExt as _;
 use crate::{
-    AttributePrototype, AttributePrototypeId, DalContext, Func, FuncBackendResponseType, FuncId,
-    HelperError, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
-    implement_add_edge_to, label_list::ToLabelList, property_editor::schema::WidgetKind,
+    AttributePrototype,
+    AttributePrototypeId,
+    AttributeValueId,
+    DalContext,
+    Func,
+    FuncBackendResponseType,
+    FuncId,
+    HelperError,
+    InputSocketId,
+    SchemaVariant,
+    SchemaVariantError,
+    SchemaVariantId,
+    Timestamp,
+    TransactionsError,
+    attribute::prototype::{
+        AttributePrototypeError,
+        argument::{
+            AttributePrototypeArgument,
+            AttributePrototypeArgumentError,
+        },
+    },
+    change_set::ChangeSetError,
+    func::{
+        FuncError,
+        argument::{
+            FuncArgument,
+            FuncArgumentError,
+        },
+        intrinsics::IntrinsicFunc,
+    },
+    implement_add_edge_to,
+    label_list::ToLabelList,
+    layer_db_types::{
+        PropContent,
+        PropContentDiscriminants,
+        PropContentV1,
+    },
+    property_editor::schema::WidgetKind,
+    slow_rt,
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
+        edge_weight::{
+            EdgeWeightKind,
+            EdgeWeightKindDiscriminants,
+        },
+        node_weight::{
+            NodeWeight,
+            NodeWeightError,
+            PropNodeWeight,
+            traits::SiNodeWeight,
+        },
+        traits::prop::PropExt as _,
+    },
 };
-use crate::{AttributeValueId, InputSocketId, slow_rt};
 
 pub const PROP_VERSION: PropContentDiscriminants = PropContentDiscriminants::V1;
 

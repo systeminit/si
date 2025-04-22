@@ -2,11 +2,18 @@ use core::fmt;
 use std::hash::Hash;
 
 use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use super::{
-    AttrFuncInputSpec, SpecError,
-    func::{FuncSpecBackendKind, FuncSpecBackendResponseType},
+    AttrFuncInputSpec,
+    SpecError,
+    func::{
+        FuncSpecBackendKind,
+        FuncSpecBackendResponseType,
+    },
 };
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

@@ -1,10 +1,28 @@
-use std::{fmt, ops::Deref};
+use std::{
+    fmt,
+    ops::Deref,
+};
 
-use axum::{Json, async_trait, extract::FromRequestParts, http::request::Parts};
+use axum::{
+    Json,
+    async_trait,
+    extract::FromRequestParts,
+    http::request::Parts,
+};
 use hyper::StatusCode;
-use s3::{Bucket as S3Bucket, Region as AwsRegion, error::S3Error};
-use sea_orm::{DatabaseTransaction, TransactionTrait};
-use si_jwt_public_key::{SiJwtClaimRole, SiJwtClaims};
+use s3::{
+    Bucket as S3Bucket,
+    Region as AwsRegion,
+    error::S3Error,
+};
+use sea_orm::{
+    DatabaseTransaction,
+    TransactionTrait,
+};
+use si_jwt_public_key::{
+    SiJwtClaimRole,
+    SiJwtClaims,
+};
 
 use super::app_state::AppState;
 

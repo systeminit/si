@@ -1,19 +1,39 @@
-use axum::{extract::Path, response::Json};
+use axum::{
+    extract::Path,
+    response::Json,
+};
 use dal::{
-    ComponentId, Func, WsEvent,
+    ComponentId,
+    Func,
+    WsEvent,
     diagram::view::ViewId,
     management::{
-        ManagementFuncReturn, ManagementOperator,
-        prototype::{ManagementPrototype, ManagementPrototypeId},
+        ManagementFuncReturn,
+        ManagementOperator,
+        prototype::{
+            ManagementPrototype,
+            ManagementPrototypeId,
+        },
     },
 };
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::audit_log::AuditLogKind;
-use utoipa::{self, ToSchema};
+use utoipa::{
+    self,
+    ToSchema,
+};
 use veritech_client::ManagementFuncStatus;
 
-use crate::extract::{PosthogEventTracker, change_set::ChangeSetDalContext};
-use crate::service::v1::ManagementApiError;
+use crate::{
+    extract::{
+        PosthogEventTracker,
+        change_set::ChangeSetDalContext,
+    },
+    service::v1::ManagementApiError,
+};
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]

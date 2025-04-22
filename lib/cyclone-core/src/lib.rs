@@ -27,27 +27,61 @@ mod schema_variant_definition;
 mod sensitive_container;
 mod validation;
 
-pub use si_crypto::SensitiveStrings;
-
-pub use action_run::{ActionRunRequest, ActionRunResultSuccess, ResourceStatus};
-pub use before::BeforeFunction;
-pub use canonical_command::{CanonicalCommand, CanonicalCommandError};
-pub use component_view::{ComponentKind, ComponentView, ComponentViewWithGeometry};
-pub use kill_execution::KillExecutionRequest;
-pub use liveness::{LivenessStatus, LivenessStatusParseError};
-pub use management::{ManagementFuncStatus, ManagementRequest, ManagementResultSuccess};
-pub use progress::{
-    FunctionResult, FunctionResultFailure, FunctionResultFailureError,
-    FunctionResultFailureErrorKind, Message, OutputStream, ProgressMessage,
+pub use action_run::{
+    ActionRunRequest,
+    ActionRunResultSuccess,
+    ResourceStatus,
 };
-pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
-pub use request::{CycloneRequest, CycloneRequestable};
+pub use before::BeforeFunction;
+pub use canonical_command::{
+    CanonicalCommand,
+    CanonicalCommandError,
+};
+pub use component_view::{
+    ComponentKind,
+    ComponentView,
+    ComponentViewWithGeometry,
+};
+pub use kill_execution::KillExecutionRequest;
+pub use liveness::{
+    LivenessStatus,
+    LivenessStatusParseError,
+};
+pub use management::{
+    ManagementFuncStatus,
+    ManagementRequest,
+    ManagementResultSuccess,
+};
+pub use progress::{
+    FunctionResult,
+    FunctionResultFailure,
+    FunctionResultFailureError,
+    FunctionResultFailureErrorKind,
+    Message,
+    OutputStream,
+    ProgressMessage,
+};
+pub use readiness::{
+    ReadinessStatus,
+    ReadinessStatusParseError,
+};
+pub use request::{
+    CycloneRequest,
+    CycloneRequestable,
+};
 pub use resolver_function::{
-    ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResponseType,
+    ResolverFunctionComponent,
+    ResolverFunctionRequest,
+    ResolverFunctionResponseType,
     ResolverFunctionResultSuccess,
 };
 pub use schema_variant_definition::{
-    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess,
+    SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess,
 };
 pub use sensitive_container::SensitiveContainer;
-pub use validation::{ValidationRequest, ValidationResultSuccess};
+pub use si_crypto::SensitiveStrings;
+pub use validation::{
+    ValidationRequest,
+    ValidationResultSuccess,
+};

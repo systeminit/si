@@ -1,6 +1,9 @@
 use axum::{
     Router,
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
     routing::get,
 };
 use sdf_core::api_error::ApiError;

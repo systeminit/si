@@ -1,19 +1,32 @@
-use std::{sync::Arc, time::Instant};
+use std::{
+    sync::Arc,
+    time::Instant,
+};
 
 use si_events::{
-    Actor, Tenancy, WebEvent,
-    change_batch::{ChangeBatch, ChangeBatchAddress},
+    Actor,
+    Tenancy,
+    WebEvent,
+    change_batch::{
+        ChangeBatch,
+        ChangeBatchAddress,
+    },
 };
 use telemetry::prelude::*;
 
+use super::serialize;
 use crate::{
     error::LayerDbResult,
-    event::{LayeredEvent, LayeredEventKind},
+    event::{
+        LayeredEvent,
+        LayeredEventKind,
+    },
     layer_cache::LayerCache,
-    persister::{PersisterClient, PersisterStatusReader},
+    persister::{
+        PersisterClient,
+        PersisterStatusReader,
+    },
 };
-
-use super::serialize;
 
 pub const DBNAME: &str = "change_batches";
 pub const CACHE_NAME: &str = DBNAME;

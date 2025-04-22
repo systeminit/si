@@ -1,79 +1,170 @@
 //! This module contains [`SchemaVariant`](SchemaVariant), which is the "class" of a [`Component`](crate::Component).
 
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::Arc;
+use std::{
+    collections::{
+        HashMap,
+        HashSet,
+        VecDeque,
+    },
+    sync::Arc,
+};
 
 use authoring::VariantAuthoringError;
 use chrono::Utc;
-use petgraph::{Direction, Outgoing};
-use serde::{Deserialize, Serialize};
-use si_frontend_types::schema_variant::{
-    DisambiguateVariant, SchemaVariantCategories, SchemaVariantsByCategory, Variant, VariantType,
+pub use json::{
+    SchemaVariantJson,
+    SchemaVariantMetadataJson,
 };
-use thiserror::Error;
-use url::ParseError;
-
-use si_events::{ContentHash, ulid::Ulid};
+pub use metadata_view::SchemaVariantMetadataView;
+use petgraph::{
+    Direction,
+    Outgoing,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    ulid::Ulid,
+};
 use si_frontend_types::{
-    DiagramSocket, DiagramSocketDirection, DiagramSocketNodeSide, SchemaVariant as FrontendVariant,
+    DiagramSocket,
+    DiagramSocketDirection,
+    DiagramSocketNodeSide,
+    SchemaVariant as FrontendVariant,
     UninstalledVariant,
+    schema_variant::{
+        DisambiguateVariant,
+        SchemaVariantCategories,
+        SchemaVariantsByCategory,
+        Variant,
+        VariantType,
+    },
 };
 use si_layer_cache::LayerDbError;
 use si_pkg::SpecError;
 use telemetry::prelude::*;
-
-use crate::action::prototype::{ActionKind, ActionPrototype};
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError,
-};
-use crate::attribute::value::{AttributeValueError, ValueIsFor};
-use crate::cached_module::{CachedModule, CachedModuleError};
-use crate::change_set::ChangeSetError;
-use crate::diagram::SummaryDiagramManagementEdge;
-use crate::func::argument::{FuncArgument, FuncArgumentError};
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::func::{FuncError, FuncKind};
-use crate::layer_db_types::{
-    ContentTypeError, InputSocketContent, OutputSocketContent, SchemaVariantContent,
-    SchemaVariantContentV3,
-};
-use crate::management::prototype::{
-    ManagementPrototype, ManagementPrototypeError, ManagementPrototypeId,
-};
-use crate::module::Module;
-use crate::prop::{PropError, PropPath};
-use crate::schema::variant::root_prop::RootProp;
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::{
-    SchemaVariantExt, WorkspaceSnapshotError,
-    content_address::{ContentAddress, ContentAddressDiscriminants},
-    edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
-    node_weight::{
-        NodeWeight, NodeWeightDiscriminants, NodeWeightError, PropNodeWeight,
-        SchemaVariantNodeWeight, input_socket_node_weight::InputSocketNodeWeightError,
-        traits::SiNodeWeight,
-    },
-};
-use crate::{
-    ActionPrototypeId, AttributePrototype, AttributePrototypeId, ChangeSetId, ComponentId,
-    ComponentType, DalContext, Func, FuncId, HelperError, InputSocket, OutputSocket,
-    OutputSocketId, Prop, PropId, PropKind, Schema, SchemaError, SchemaId, Timestamp,
-    TransactionsError, WsEvent, WsEventResult, WsPayload, implement_add_edge_to,
-    schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
-};
-use crate::{
-    AttributeValue, Component, ComponentError, FuncBackendKind, FuncBackendResponseType,
-    InputSocketId,
-};
+use thiserror::Error;
+use url::ParseError;
+pub use value_from::ValueFrom;
 
 use self::root_prop::RootPropChild;
-
-pub use json::SchemaVariantJson;
-pub use json::SchemaVariantMetadataJson;
-pub use metadata_view::SchemaVariantMetadataView;
-pub use value_from::ValueFrom;
+use crate::{
+    ActionPrototypeId,
+    AttributePrototype,
+    AttributePrototypeId,
+    AttributeValue,
+    ChangeSetId,
+    Component,
+    ComponentError,
+    ComponentId,
+    ComponentType,
+    DalContext,
+    Func,
+    FuncBackendKind,
+    FuncBackendResponseType,
+    FuncId,
+    HelperError,
+    InputSocket,
+    InputSocketId,
+    OutputSocket,
+    OutputSocketId,
+    Prop,
+    PropId,
+    PropKind,
+    Schema,
+    SchemaError,
+    SchemaId,
+    Timestamp,
+    TransactionsError,
+    WsEvent,
+    WsEventResult,
+    WsPayload,
+    action::prototype::{
+        ActionKind,
+        ActionPrototype,
+    },
+    attribute::{
+        prototype::{
+            AttributePrototypeError,
+            argument::{
+                AttributePrototypeArgument,
+                AttributePrototypeArgumentError,
+            },
+        },
+        value::{
+            AttributeValueError,
+            ValueIsFor,
+        },
+    },
+    cached_module::{
+        CachedModule,
+        CachedModuleError,
+    },
+    change_set::ChangeSetError,
+    diagram::SummaryDiagramManagementEdge,
+    func::{
+        FuncError,
+        FuncKind,
+        argument::{
+            FuncArgument,
+            FuncArgumentError,
+        },
+        intrinsics::IntrinsicFunc,
+    },
+    implement_add_edge_to,
+    layer_db_types::{
+        ContentTypeError,
+        InputSocketContent,
+        OutputSocketContent,
+        SchemaVariantContent,
+        SchemaVariantContentV3,
+    },
+    management::prototype::{
+        ManagementPrototype,
+        ManagementPrototypeError,
+        ManagementPrototypeId,
+    },
+    module::Module,
+    prop::{
+        PropError,
+        PropPath,
+    },
+    schema::variant::{
+        leaves::{
+            LeafInput,
+            LeafInputLocation,
+            LeafKind,
+        },
+        root_prop::RootProp,
+    },
+    socket::{
+        input::InputSocketError,
+        output::OutputSocketError,
+    },
+    workspace_snapshot::{
+        SchemaVariantExt,
+        WorkspaceSnapshotError,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
+        edge_weight::{
+            EdgeWeightKind,
+            EdgeWeightKindDiscriminants,
+        },
+        node_weight::{
+            NodeWeight,
+            NodeWeightDiscriminants,
+            NodeWeightError,
+            PropNodeWeight,
+            SchemaVariantNodeWeight,
+            input_socket_node_weight::InputSocketNodeWeightError,
+            traits::SiNodeWeight,
+        },
+    },
+};
 
 pub mod authoring;
 mod json;

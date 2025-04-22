@@ -1,21 +1,42 @@
-use serde::{Deserialize, Serialize};
-use si_events::{
-    ActionKind, ActionState,
-    workspace_snapshot::{Checksum, ChecksumHasher, EntityKind},
+use serde::{
+    Deserialize,
+    Serialize,
 };
-use si_id::{ActionId, ActionPrototypeId, ChangeSetId, ComponentId, FuncRunId};
+use si_events::{
+    ActionKind,
+    ActionState,
+    workspace_snapshot::{
+        Checksum,
+        ChecksumHasher,
+        EntityKind,
+    },
+};
+use si_id::{
+    ActionId,
+    ActionPrototypeId,
+    ChangeSetId,
+    ComponentId,
+    FuncRunId,
+};
 
-use crate::checksum::FrontendChecksum;
 use crate::{
     MaterializedView,
+    checksum::FrontendChecksum,
     object::FrontendObject,
-    reference::{Refer, Reference, ReferenceId, ReferenceKind},
+    reference::{
+        Refer,
+        Reference,
+        ReferenceId,
+        ReferenceKind,
+    },
 };
 
 pub mod prototype;
 
-pub use prototype::ActionPrototypeView;
-pub use prototype::ActionPrototypeViewList;
+pub use prototype::{
+    ActionPrototypeView,
+    ActionPrototypeViewList,
+};
 
 #[derive(
     Debug, Serialize, Deserialize, PartialEq, Eq, Clone, si_frontend_types_macros::FrontendChecksum,

@@ -1,7 +1,13 @@
 use axum::{
     Router,
-    response::{IntoResponse, Response},
-    routing::{get, post},
+    response::{
+        IntoResponse,
+        Response,
+    },
+    routing::{
+        get,
+        post,
+    },
 };
 use dal::UserPk;
 use hyper::StatusCode;

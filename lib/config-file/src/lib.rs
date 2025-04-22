@@ -1,5 +1,12 @@
 use std::{
-    convert::Infallible, io, iter, option::IntoIter, path::PathBuf, slice, str::FromStr, vec,
+    convert::Infallible,
+    io,
+    iter,
+    option::IntoIter,
+    path::PathBuf,
+    slice,
+    str::FromStr,
+    vec,
 };
 
 use thiserror::Error;
@@ -12,13 +19,22 @@ mod simple_load;
 pub use config::ValueKind;
 pub use find::find;
 #[cfg(feature = "layered")]
-pub use layered_load::{ConfigMap, layered_load};
+pub use layered_load::{
+    ConfigMap,
+    layered_load,
+};
 #[cfg(feature = "load-str")]
 pub use simple_load::load_from_str;
 #[cfg(feature = "load-sync")]
-pub use simple_load::{load, load_or_default};
+pub use simple_load::{
+    load,
+    load_or_default,
+};
 #[cfg(feature = "load-async")]
-pub use simple_load::{load_async, load_or_default_async};
+pub use simple_load::{
+    load_async,
+    load_or_default_async,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

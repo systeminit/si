@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_aux::field_attributes::deserialize_number_from_string;
 use ulid::Ulid;
 

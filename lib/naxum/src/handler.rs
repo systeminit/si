@@ -1,18 +1,35 @@
 use core::fmt;
 use std::{
     convert::Infallible,
-    future::{Future, Ready, ready},
+    future::{
+        Future,
+        Ready,
+        ready,
+    },
     marker::PhantomData,
     pin::Pin,
 };
 
-use tower::{Layer, Service, ServiceExt};
+use tower::{
+    Layer,
+    Service,
+    ServiceExt,
+};
 
 use crate::{
-    extract::{FromMessage, FromMessageHead},
+    extract::{
+        FromMessage,
+        FromMessageHead,
+    },
     make_service::IntoMakeService,
-    message::{Message, MessageHead},
-    response::{IntoResponse, Response},
+    message::{
+        Message,
+        MessageHead,
+    },
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 
 pub mod future;
@@ -176,7 +193,10 @@ where
     type Future = future::LayeredFuture<L::Service, R>;
 
     fn call(self, req: Message<R>, state: S) -> Self::Future {
-        use futures::future::{FutureExt, Map};
+        use futures::future::{
+            FutureExt,
+            Map,
+        };
 
         let svc = self.handler.with_state(state);
         let svc = self.layer.layer(svc);

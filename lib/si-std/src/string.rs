@@ -1,6 +1,14 @@
-use std::{borrow::Cow, fmt, ops::Deref, str::FromStr};
+use std::{
+    borrow::Cow,
+    fmt,
+    ops::Deref,
+    str::FromStr,
+};
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// A display/debug redacting [`String`].
 ///

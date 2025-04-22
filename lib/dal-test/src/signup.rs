@@ -2,8 +2,19 @@
 //! [`macro expansion`](crate::expand_helpers) and used for tests that need the [`Workspace`],
 //! [`User`] and/or [`KeyPair`].
 
-use dal::{DalContext, HistoryActor, KeyPair, User, UserPk, Workspace, WorkspacePk};
-use serde::{Deserialize, Serialize};
+use dal::{
+    DalContext,
+    HistoryActor,
+    KeyPair,
+    User,
+    UserPk,
+    Workspace,
+    WorkspacePk,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// A wrapper for creating [`Workspaces`](Workspace) for integration tests.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]

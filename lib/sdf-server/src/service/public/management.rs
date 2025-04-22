@@ -1,27 +1,45 @@
 use axum::{
-    Json, Router,
+    Json,
+    Router,
     extract::Path,
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
     routing::post,
 };
+use dal::{
+    ComponentId,
+    Func,
+    FuncError,
+    WsEvent,
+    diagram::view::ViewId,
+    management::{
+        ManagementFuncReturn,
+        ManagementOperator,
+        prototype::{
+            ManagementPrototype,
+            ManagementPrototypeId,
+        },
+    },
+    schema::variant::authoring::VariantAuthoringError,
+};
 use sdf_core::api_error::ApiError;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::audit_log::AuditLogKind;
 use thiserror::Error;
 use veritech_client::ManagementFuncStatus;
 
-use crate::AppState;
-use crate::extract::{PosthogEventTracker, change_set::ChangeSetDalContext};
-
-use dal::{
-    ComponentId, Func, FuncError, WsEvent,
-    diagram::view::ViewId,
-    management::{
-        ManagementFuncReturn, ManagementOperator,
-        prototype::{ManagementPrototype, ManagementPrototypeId},
+use crate::{
+    AppState,
+    extract::{
+        PosthogEventTracker,
+        change_set::ChangeSetDalContext,
     },
-    schema::variant::authoring::VariantAuthoringError,
 };
 
 // /api/public/workspaces/:workspace_id/change-sets/:change_set_id/components

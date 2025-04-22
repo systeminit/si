@@ -1,15 +1,28 @@
 use axum::{
     Router,
-    routing::{delete, get, patch, post},
+    routing::{
+        delete,
+        get,
+        patch,
+        post,
+    },
 };
 use dal::{
-    ChangeSetError, KeyPairError, SecretId, StandardModelError, TransactionsError, UserError,
-    WorkspacePk, WsEventError,
+    ChangeSetError,
+    KeyPairError,
+    SecretId,
+    StandardModelError,
+    TransactionsError,
+    UserError,
+    WorkspacePk,
+    WsEventError,
+};
+use sdf_core::{
+    app_state::AppState,
+    impl_default_error_into_response,
 };
 use telemetry::prelude::*;
 use thiserror::Error;
-
-use sdf_core::{app_state::AppState, impl_default_error_into_response};
 
 pub mod create_secret;
 pub mod delete_secret;

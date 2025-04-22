@@ -1,7 +1,10 @@
-use dal::{DalContext, Schema, SchemaVariant};
+use dal::{
+    DalContext,
+    Schema,
+    SchemaVariant,
+    schema::variant::SchemaVariantMetadataView,
+};
 use dal_test::test;
-
-use dal::schema::variant::SchemaVariantMetadataView;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]

@@ -1,6 +1,13 @@
 use postgres_types::ToSql;
-use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display, EnumString};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumString,
+};
 
 #[remain::sorted]
 #[derive(

@@ -1,8 +1,16 @@
 //! Sockets are the mechanisms to pass and transform data between attributes.
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_pkg::SocketSpecArity;
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+};
 
 pub mod connection_annotation;
 pub mod debug;

@@ -27,7 +27,10 @@
 )]
 
 use si_data_nats::Message;
-use tokio::sync::{broadcast, oneshot};
+use tokio::sync::{
+    broadcast,
+    oneshot,
+};
 
 /// The key for storing and accessing a [`broadcast::Receiver`] within a multiplexer. The key corresponds to the subject
 /// (including _terminating_ wildcards) that the client would have otherwise subscribed to.

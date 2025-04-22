@@ -3,14 +3,25 @@ mod rebase;
 use std::sync::Arc;
 
 use futures::StreamExt;
-use si_events::{Actor, ChangeSetId, Tenancy, WorkspacePk};
+use si_events::{
+    Actor,
+    ChangeSetId,
+    Tenancy,
+    WorkspacePk,
+};
 use si_layer_cache::{
-    LayerDb, activities::ActivityPayloadDiscriminants, event::LayeredEventMetadata,
+    LayerDb,
+    activities::ActivityPayloadDiscriminants,
+    event::LayeredEventMetadata,
     hybrid_cache::CacheConfig,
 };
 use tokio_util::sync::CancellationToken;
 
-use crate::integration_test::{setup_compute_executor, setup_nats_client, setup_pg_db};
+use crate::integration_test::{
+    setup_compute_executor,
+    setup_nats_client,
+    setup_pg_db,
+};
 
 type TestLayerDb = LayerDb<Arc<String>, Arc<String>, String, String>;
 

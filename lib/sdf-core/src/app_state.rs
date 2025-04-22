@@ -1,4 +1,8 @@
-use std::{ops::Deref, sync::Arc};
+use std::{
+    fmt,
+    ops::Deref,
+    sync::Arc,
+};
 
 use audit_database::AuditDatabaseContext;
 use axum::extract::FromRef;
@@ -7,14 +11,19 @@ use frigg::FriggStore;
 use nats_multiplexer_client::MultiplexerClient;
 use si_data_spicedb::SpiceDbClient;
 use si_jwt_public_key::JwtPublicSigningKeyChain;
-use std::fmt;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::{
+    Mutex,
+    RwLock,
+};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
     BroadcastGroups,
     nats_multiplexer::NatsMultiplexerClients,
-    workspace_permissions::{WorkspacePermissions, WorkspacePermissionsMode},
+    workspace_permissions::{
+        WorkspacePermissions,
+        WorkspacePermissionsMode,
+    },
 };
 
 #[remain::sorted]

@@ -1,15 +1,33 @@
 use std::{
-    io::{BufRead, Write},
+    io::{
+        BufRead,
+        Write,
+    },
     str::FromStr,
 };
 
 use object_tree::{
-    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
-    read_key_value_line, write_key_value_line,
+    GraphError,
+    NameStr,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    write_key_value_line,
 };
 
-use super::{KEY_DELETED_STR, KEY_UNIQUE_ID_STR, PkgNode, component_child::ComponentChild};
-use crate::{ComponentSpec, ComponentSpecVariant};
+use super::{
+    KEY_DELETED_STR,
+    KEY_UNIQUE_ID_STR,
+    PkgNode,
+    component_child::ComponentChild,
+};
+use crate::{
+    ComponentSpec,
+    ComponentSpecVariant,
+};
 
 const KEY_NAME_STR: &str = "name";
 const KEY_VARIANT_STR: &str = "variant";

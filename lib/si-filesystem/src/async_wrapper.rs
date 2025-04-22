@@ -1,12 +1,25 @@
 use std::path::Path;
 
 use fuser::{
-    Filesystem, ReplyAttr, ReplyBmap, ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty,
-    ReplyEntry, ReplyLock, ReplyWrite, ReplyXattr,
+    Filesystem,
+    ReplyAttr,
+    ReplyBmap,
+    ReplyCreate,
+    ReplyData,
+    ReplyDirectory,
+    ReplyEmpty,
+    ReplyEntry,
+    ReplyLock,
+    ReplyWrite,
+    ReplyXattr,
 };
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{FileHandle, FilesystemCommand, Inode};
+use crate::{
+    FileHandle,
+    FilesystemCommand,
+    Inode,
+};
 
 pub struct AsyncFuseWrapper {
     tx: UnboundedSender<FilesystemCommand>,

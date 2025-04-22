@@ -25,17 +25,35 @@
     while_true
 )]
 
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use si_data_pg::{PgError, PgRow};
+use chrono::{
+    DateTime,
+    Utc,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_data_pg::{
+    PgError,
+    PgRow,
+};
+pub use si_events::ChangeSetApprovalStatus;
 use si_events::merkle_tree_hash::MerkleTreeHash;
-use si_id::{ChangeSetApprovalId, ChangeSetId, EntityId, UserPk};
+use si_id::{
+    ChangeSetApprovalId,
+    ChangeSetId,
+    EntityId,
+    UserPk,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{DalContext, HistoryActor, TransactionsError, WorkspaceSnapshotError};
-
-pub use si_events::ChangeSetApprovalStatus;
+use crate::{
+    DalContext,
+    HistoryActor,
+    TransactionsError,
+    WorkspaceSnapshotError,
+};
 
 #[allow(missing_docs)]
 #[derive(Debug, Error)]

@@ -1,11 +1,25 @@
-use super::ComponentV1RequestPath;
-use crate::extract::{PosthogEventTracker, change_set::ChangeSetDalContext};
-use crate::service::v1::ComponentsError;
-use axum::{extract::Path, response::Json};
-use dal::Component;
-use dal::component::delete::ComponentDeletionStatus;
+use axum::{
+    extract::Path,
+    response::Json,
+};
+use dal::{
+    Component,
+    component::delete::ComponentDeletionStatus,
+};
 use serde::Serialize;
-use utoipa::{self, ToSchema};
+use utoipa::{
+    self,
+    ToSchema,
+};
+
+use super::ComponentV1RequestPath;
+use crate::{
+    extract::{
+        PosthogEventTracker,
+        change_set::ChangeSetDalContext,
+    },
+    service::v1::ComponentsError,
+};
 
 #[utoipa::path(
     delete,

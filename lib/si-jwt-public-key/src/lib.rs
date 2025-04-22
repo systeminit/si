@@ -1,16 +1,33 @@
 use core::str;
-use si_events::AuthenticationMethodRole;
-use si_id::{AuthTokenId, UserPk, WorkspacePk};
-use si_std::CanonicalFile;
 use std::sync::Arc;
 
-use base64::{Engine, engine::general_purpose};
-use jwt_simple::{common::VerificationOptions, prelude::*};
+use base64::{
+    Engine,
+    engine::general_purpose,
+};
+use jwt_simple::{
+    common::VerificationOptions,
+    prelude::*,
+};
 use monostate::MustBe;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::AuthenticationMethodRole;
+use si_id::{
+    AuthTokenId,
+    UserPk,
+    WorkspacePk,
+};
+use si_std::CanonicalFile;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::{fs, io::AsyncReadExt, task::JoinError};
+use tokio::{
+    fs,
+    io::AsyncReadExt,
+    task::JoinError,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]

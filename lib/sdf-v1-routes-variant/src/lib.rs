@@ -1,15 +1,29 @@
 use axum::{
     Router,
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
     routing::post,
 };
 use dal::{
-    ChangeSetError, FuncError, FuncId, SchemaError, SchemaId, SchemaVariantId, TransactionsError,
-    WsEventError, pkg::PkgError, schema::variant::authoring::VariantAuthoringError,
+    ChangeSetError,
+    FuncError,
+    FuncId,
+    SchemaError,
+    SchemaId,
+    SchemaVariantId,
+    TransactionsError,
+    WsEventError,
+    pkg::PkgError,
+    schema::variant::authoring::VariantAuthoringError,
 };
 use sdf_core::api_error::ApiError;
-use si_pkg::{SiPkgError, SpecError};
+use si_pkg::{
+    SiPkgError,
+    SpecError,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 

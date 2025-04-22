@@ -1,9 +1,20 @@
-use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 
-use crate::func::FuncKind;
-use crate::workspace_snapshot::vector_clock::deprecated::DeprecatedVectorClock;
-use crate::workspace_snapshot::{content_address::ContentAddress, graph::LineageId};
+use crate::{
+    func::FuncKind,
+    workspace_snapshot::{
+        content_address::ContentAddress,
+        graph::LineageId,
+        vector_clock::deprecated::DeprecatedVectorClock,
+    },
+};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct DeprecatedFuncNodeWeightLegacy {

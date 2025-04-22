@@ -1,14 +1,31 @@
-use std::io::{BufRead, Write};
-use std::str::FromStr;
+use std::{
+    io::{
+        BufRead,
+        Write,
+    },
+    str::FromStr,
+};
 
 use object_tree::{
-    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes, read_key_value_line,
+    GraphError,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
     write_key_value_line,
 };
 
-use crate::{RootPropFuncSpec, SchemaVariantSpecPropRoot};
-
-use super::{PkgNode, read_common_fields, write_common_fields};
+use super::{
+    PkgNode,
+    read_common_fields,
+    write_common_fields,
+};
+use crate::{
+    RootPropFuncSpec,
+    SchemaVariantSpecPropRoot,
+};
 
 const KEY_PROP_STR: &str = "PROP";
 const KEY_FUNC_UNIQUE_ID_STR: &str = "func_unique_id";

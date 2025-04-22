@@ -1,13 +1,27 @@
 #![recursion_limit = "256"]
 
-use std::{path::PathBuf, time::Duration};
+use std::{
+    path::PathBuf,
+    time::Duration,
+};
 
-use sdf_server::{Config, Migrator, Server, SnapshotGarbageCollector, key_generation};
+use sdf_server::{
+    Config,
+    Migrator,
+    Server,
+    SnapshotGarbageCollector,
+    key_generation,
+};
 use si_service::{
     color_eyre,
     prelude::*,
-    rt, shutdown, startup,
-    telemetry_application::{self, TelemetryShutdownGuard},
+    rt,
+    shutdown,
+    startup,
+    telemetry_application::{
+        self,
+        TelemetryShutdownGuard,
+    },
 };
 
 mod args;

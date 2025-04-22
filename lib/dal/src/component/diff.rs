@@ -1,12 +1,24 @@
 //! This module contains functionalk
 
 use json_patch::Patch;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::code_view::{CodeLanguage, CodeView};
-use crate::component::ComponentResult;
-use crate::component::properties::ComponentProperties;
-use crate::{Component, ComponentId, DalContext};
+use crate::{
+    Component,
+    ComponentId,
+    DalContext,
+    code_view::{
+        CodeLanguage,
+        CodeView,
+    },
+    component::{
+        ComponentResult,
+        properties::ComponentProperties,
+    },
+};
 
 // NOTE(nick): this will not work on Windows.
 const NEWLINE: &str = "\n";

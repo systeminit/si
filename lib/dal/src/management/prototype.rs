@@ -1,34 +1,80 @@
 //! A [`ManagementPrototype`] points to a Management [`Func`] for a schema variant
 
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::Arc,
+};
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::FuncRunId;
 use si_id::OutputSocketId;
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
+use veritech_client::{
+    ManagementFuncStatus,
+    ManagementResultSuccess,
+};
 
+use super::{
+    ManagementGeometry,
+    SocketRef,
+};
 use crate::{
-    AttributeValue, Component, ComponentError, ComponentId, DalContext, EdgeWeightKind,
-    EdgeWeightKindDiscriminants, FuncId, HelperError, InputSocket, NodeWeightDiscriminants,
-    OutputSocket, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantError,
-    SchemaVariantId, SocketArity, TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError,
-    WsEventResult, WsPayload,
-    cached_module::{CachedModule, CachedModuleError},
+    AttributeValue,
+    Component,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    FuncId,
+    HelperError,
+    InputSocket,
+    NodeWeightDiscriminants,
+    OutputSocket,
+    Schema,
+    SchemaError,
+    SchemaId,
+    SchemaVariant,
+    SchemaVariantError,
+    SchemaVariantId,
+    SocketArity,
+    TransactionsError,
+    WorkspaceSnapshotError,
+    WsEvent,
+    WsEventError,
+    WsEventResult,
+    WsPayload,
+    cached_module::{
+        CachedModule,
+        CachedModuleError,
+    },
     component::socket::ComponentInputSocket,
     diagram::{
         DiagramError,
         geometry::Geometry,
-        view::{View, ViewId},
+        view::{
+            View,
+            ViewId,
+        },
     },
-    func::runner::{FuncRunner, FuncRunnerError},
+    func::runner::{
+        FuncRunner,
+        FuncRunnerError,
+    },
     implement_add_edge_to,
-    layer_db_types::{ManagementPrototypeContent, ManagementPrototypeContentV1},
-    workspace_snapshot::node_weight::{NodeWeight, traits::SiVersionedNodeWeight},
+    layer_db_types::{
+        ManagementPrototypeContent,
+        ManagementPrototypeContentV1,
+    },
+    workspace_snapshot::node_weight::{
+        NodeWeight,
+        traits::SiVersionedNodeWeight,
+    },
 };
-
-use super::{ManagementGeometry, SocketRef};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

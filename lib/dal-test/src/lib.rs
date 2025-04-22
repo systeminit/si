@@ -27,38 +27,76 @@
 
 use std::{
     borrow::Cow,
-    env, fmt,
+    env,
+    fmt,
     future::IntoFuture,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
     str::FromStr,
-    sync::{Arc, Once},
+    sync::{
+        Arc,
+        Once,
+    },
 };
 
 use audit_database::AuditDatabaseContext;
 use buck2_resources::Buck2Resources;
 use dal::{
-    DalContext, DalLayerDb, JetstreamStreams, ModelResult, ServicesContext, Workspace,
+    DalContext,
+    DalLayerDb,
+    JetstreamStreams,
+    ModelResult,
+    ServicesContext,
+    Workspace,
     builtins::func,
     feature_flags::FeatureFlagService,
-    job::processor::{JobQueueProcessor, NatsProcessor},
+    job::processor::{
+        JobQueueProcessor,
+        NatsProcessor,
+    },
 };
 use derive_builder::Builder;
 use jwt_simple::prelude::RS256KeyPair;
 use lazy_static::lazy_static;
 use si_crypto::{
-    SymmetricCryptoService, SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile,
+    SymmetricCryptoService,
+    SymmetricCryptoServiceConfig,
+    SymmetricCryptoServiceConfigFile,
     VeritechEncryptionKey,
 };
-use si_data_nats::{NatsClient, NatsConfig, jetstream};
-use si_data_pg::{PgPool, PgPoolConfig};
-use si_jwt_public_key::{JwtAlgo, JwtConfig, JwtPublicSigningKeyChain};
+use si_data_nats::{
+    NatsClient,
+    NatsConfig,
+    jetstream,
+};
+use si_data_pg::{
+    PgPool,
+    PgPoolConfig,
+};
+use si_jwt_public_key::{
+    JwtAlgo,
+    JwtConfig,
+    JwtPublicSigningKeyChain,
+};
 use si_layer_cache::hybrid_cache::CacheConfig;
 use si_runtime::DedicatedExecutor;
-use si_std::{CanonicalFile, ResultExt};
+use si_std::{
+    CanonicalFile,
+    ResultExt,
+};
 use si_tls::CertificateSource;
 use telemetry::prelude::*;
-use tokio::{fs::File, io::AsyncReadExt, sync::Mutex};
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio::{
+    fs::File,
+    io::AsyncReadExt,
+    sync::Mutex,
+};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 use uuid::Uuid;
 
 pub mod expand_helpers;
@@ -66,31 +104,57 @@ pub mod expected;
 pub mod helpers;
 pub mod prelude {
     //! This module provides a standard set of tools for authoring DAL integration tests.
-    pub use crate::WorkspaceSignup;
-    pub use crate::helpers::ChangeSetTestHelpers;
-    pub use color_eyre::Result;
-    pub use color_eyre::eyre::OptionExt;
+    pub use color_eyre::{
+        Result,
+        eyre::OptionExt,
+    };
+
+    pub use crate::{
+        WorkspaceSignup,
+        helpers::ChangeSetTestHelpers,
+    };
 }
 mod signup;
 mod test_exclusive_schemas;
 
 pub use color_eyre::{
     self,
-    eyre::{Result, WrapErr, eyre},
+    eyre::{
+        Result,
+        WrapErr,
+        eyre,
+    },
 };
-pub use si_test_macros::{dal_test as test, sdf_test};
+pub use si_test_macros::{
+    dal_test as test,
+    sdf_test,
+};
 pub use signup::WorkspaceSignup;
 pub use telemetry;
-pub use tracing_subscriber;
-
 pub use test_exclusive_schemas::{
-    SCHEMA_ID_BAD_VALIDATIONS, SCHEMA_ID_DUMMY_SECRET, SCHEMA_ID_ETOILES, SCHEMA_ID_FAKE_BUTANE,
-    SCHEMA_ID_FAKE_DOCKER_IMAGE, SCHEMA_ID_FALLOUT, SCHEMA_ID_KATY_PERRY,
-    SCHEMA_ID_LARGE_EVEN_LEGO, SCHEMA_ID_LARGE_ODD_LEGO, SCHEMA_ID_MEDIUM_EVEN_LEGO,
-    SCHEMA_ID_MEDIUM_ODD_LEGO, SCHEMA_ID_MORNINGSTAR, SCHEMA_ID_PET_SHOP, SCHEMA_ID_PIRATE,
-    SCHEMA_ID_PRIVATE_LANGUAGE, SCHEMA_ID_SMALL_EVEN_LEGO, SCHEMA_ID_SMALL_ODD_LEGO,
-    SCHEMA_ID_STARFIELD, SCHEMA_ID_SWIFTY, SCHEMA_ID_VALIDATED_INPUT, SCHEMA_ID_VALIDATED_OUTPUT,
+    SCHEMA_ID_BAD_VALIDATIONS,
+    SCHEMA_ID_DUMMY_SECRET,
+    SCHEMA_ID_ETOILES,
+    SCHEMA_ID_FAKE_BUTANE,
+    SCHEMA_ID_FAKE_DOCKER_IMAGE,
+    SCHEMA_ID_FALLOUT,
+    SCHEMA_ID_KATY_PERRY,
+    SCHEMA_ID_LARGE_EVEN_LEGO,
+    SCHEMA_ID_LARGE_ODD_LEGO,
+    SCHEMA_ID_MEDIUM_EVEN_LEGO,
+    SCHEMA_ID_MEDIUM_ODD_LEGO,
+    SCHEMA_ID_MORNINGSTAR,
+    SCHEMA_ID_PET_SHOP,
+    SCHEMA_ID_PIRATE,
+    SCHEMA_ID_PRIVATE_LANGUAGE,
+    SCHEMA_ID_SMALL_EVEN_LEGO,
+    SCHEMA_ID_SMALL_ODD_LEGO,
+    SCHEMA_ID_STARFIELD,
+    SCHEMA_ID_SWIFTY,
+    SCHEMA_ID_VALIDATED_INPUT,
+    SCHEMA_ID_VALIDATED_OUTPUT,
 };
+pub use tracing_subscriber;
 
 const DEFAULT_TEST_PG_USER: &str = "si_test";
 const DEFAULT_TEST_PG_PORT_STR: &str = "6432";

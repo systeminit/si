@@ -1,5 +1,12 @@
-use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display, EnumString};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumString,
+};
 
 /// The version of encryption used to encrypt a secret.
 #[remain::sorted]

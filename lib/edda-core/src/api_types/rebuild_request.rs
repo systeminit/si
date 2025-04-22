@@ -2,12 +2,29 @@ mod v1;
 
 use std::{
     fmt,
-    ops::{Deref, DerefMut},
+    ops::{
+        Deref,
+        DerefMut,
+    },
 };
 
-use naxum_api_types::{ApiVersionsWrapper, ApiWrapper, RequestId, UpgradeError};
-use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, EnumDiscriminants, EnumIs, EnumString, VariantNames};
+use naxum_api_types::{
+    ApiVersionsWrapper,
+    ApiWrapper,
+    RequestId,
+    UpgradeError,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use strum::{
+    AsRefStr,
+    EnumDiscriminants,
+    EnumIs,
+    EnumString,
+    VariantNames,
+};
 
 pub use self::v1::RebuildRequestV1;
 
@@ -94,11 +111,19 @@ mod test {
         error::Error,
         fmt,
         fs::File,
-        io::{self, BufRead as _, BufReader, Read as _},
+        io::{
+            self,
+            BufRead as _,
+            BufReader,
+            Read as _,
+        },
         path::Path,
     };
 
-    use serde::{Serialize, de::DeserializeOwned};
+    use serde::{
+        Serialize,
+        de::DeserializeOwned,
+    };
 
     use super::RebuildRequestVersionsDiscriminants;
 

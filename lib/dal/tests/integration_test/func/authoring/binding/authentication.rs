@@ -1,9 +1,18 @@
-use dal::func::authoring::FuncAuthoringClient;
-use dal::func::binding::authentication::AuthBinding;
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{DalContext, Func, Schema, SchemaVariant};
-use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::test;
+use dal::{
+    DalContext,
+    Func,
+    Schema,
+    SchemaVariant,
+    func::{
+        authoring::FuncAuthoringClient,
+        binding::authentication::AuthBinding,
+    },
+    schema::variant::authoring::VariantAuthoringClient,
+};
+use dal_test::{
+    helpers::ChangeSetTestHelpers,
+    test,
+};
 
 #[test]
 async fn attach_multiple_auth_funcs_with_creation(ctx: &mut DalContext) {

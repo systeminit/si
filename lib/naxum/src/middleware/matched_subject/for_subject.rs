@@ -1,4 +1,7 @@
-use crate::{Message, MessageHead};
+use crate::{
+    Message,
+    MessageHead,
+};
 
 pub trait ForSubject<R>
 where

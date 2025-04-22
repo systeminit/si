@@ -1,15 +1,32 @@
 use std::collections::HashSet;
 
-use axum::{Json, extract::Path};
-
-use dal::{ChangeSet, ChangeSetId, WorkspacePk};
-use si_frontend_types::{index::MvIndex, reference::ReferenceKind};
+use axum::{
+    Json,
+    extract::Path,
+};
+use dal::{
+    ChangeSet,
+    ChangeSetId,
+    WorkspacePk,
+};
+use si_frontend_types::{
+    index::MvIndex,
+    reference::ReferenceKind,
+};
 use telemetry::prelude::*;
 
-use crate::extract::{EddaClient, FriggStore, HandlerContext};
-
-use super::request_rebuild_and_watch;
-use super::{AccessBuilder, FrontEndObjectMeta, IndexError, IndexResult};
+use super::{
+    AccessBuilder,
+    FrontEndObjectMeta,
+    IndexError,
+    IndexResult,
+    request_rebuild_and_watch,
+};
+use crate::extract::{
+    EddaClient,
+    FriggStore,
+    HandlerContext,
+};
 
 pub async fn get_change_set_index(
     HandlerContext(builder): HandlerContext,

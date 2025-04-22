@@ -1,8 +1,18 @@
+use std::{
+    fmt,
+    fmt::{
+        Display,
+        Formatter,
+    },
+};
+
 use regex::Regex;
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{
+    Deserialize,
+    Serialize,
+    Serializer,
+};
 use si_frontend_types::ConnectionAnnotation as FeConnectionAnnotation;
-use std::fmt;
-use std::fmt::{Display, Formatter};
 use thiserror::Error;
 
 #[remain::sorted]

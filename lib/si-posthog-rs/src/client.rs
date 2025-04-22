@@ -1,14 +1,24 @@
-use once_cell::sync::Lazy;
-use std::collections::HashMap;
-use std::time::Duration;
-use tokio::sync::Mutex;
-use tokio::sync::mpsc::UnboundedSender;
-use tokio::time::Instant;
+use std::{
+    collections::HashMap,
+    time::Duration,
+};
 
-use crate::api::PosthogApiClient;
+use once_cell::sync::Lazy;
+use tokio::{
+    sync::{
+        Mutex,
+        mpsc::UnboundedSender,
+    },
+    time::Instant,
+};
+
 use crate::{
     PosthogConfig,
-    api::{PosthogApiEvent, PosthogMessage},
+    api::{
+        PosthogApiClient,
+        PosthogApiEvent,
+        PosthogMessage,
+    },
     error::PosthogResult,
 };
 

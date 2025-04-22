@@ -1,15 +1,32 @@
-use dal::action::dependency_graph::ActionDependencyGraph;
-use dal::action::prototype::{ActionKind, ActionPrototype};
-use dal::action::{Action, ActionId};
-use dal::func::authoring::FuncAuthoringClient;
-use dal::func::binding::FuncBinding;
-use dal::func::binding::action::ActionBinding;
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{DalContext, Func, SchemaVariant};
-use dal_test::helpers::{
-    ChangeSetTestHelpers, create_component_for_unlocked_schema_name_on_default_view,
+use dal::{
+    DalContext,
+    Func,
+    SchemaVariant,
+    action::{
+        Action,
+        ActionId,
+        dependency_graph::ActionDependencyGraph,
+        prototype::{
+            ActionKind,
+            ActionPrototype,
+        },
+    },
+    func::{
+        authoring::FuncAuthoringClient,
+        binding::{
+            FuncBinding,
+            action::ActionBinding,
+        },
+    },
+    schema::variant::authoring::VariantAuthoringClient,
 };
-use dal_test::test;
+use dal_test::{
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_unlocked_schema_name_on_default_view,
+    },
+    test,
+};
 
 #[test]
 async fn attach_multiple_action_funcs(ctx: &mut DalContext) {

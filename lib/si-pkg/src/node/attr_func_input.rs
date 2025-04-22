@@ -1,16 +1,32 @@
 use std::{
-    io::{BufRead, Write},
+    io::{
+        BufRead,
+        Write,
+    },
     str::FromStr,
 };
 
 use object_tree::{
-    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
-    read_key_value_line, write_key_value_line,
+    GraphError,
+    NameStr,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    write_key_value_line,
 };
 
-use crate::{AttrFuncInputSpec, AttrFuncInputSpecKind};
-
-use super::{PkgNode, read_common_fields, write_common_fields};
+use super::{
+    PkgNode,
+    read_common_fields,
+    write_common_fields,
+};
+use crate::{
+    AttrFuncInputSpec,
+    AttrFuncInputSpecKind,
+};
 
 const KEY_KIND_STR: &str = "kind";
 const KEY_NAME_STR: &str = "name";

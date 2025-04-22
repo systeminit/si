@@ -1,14 +1,22 @@
 use std::{
     pin::Pin,
     sync::Arc,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
 };
 
 use async_nats::Subject;
 use futures::Stream;
 use telemetry::prelude::*;
 
-use super::{ConnectionMetadata, Error, Message, Result};
+use super::{
+    ConnectionMetadata,
+    Error,
+    Message,
+    Result,
+};
 
 /// Retrieves messages from given `subscription` created by `Client::subscribe`.
 ///

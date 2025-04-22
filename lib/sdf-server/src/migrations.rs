@@ -1,18 +1,29 @@
 use std::future::IntoFuture as _;
 
 use audit_database::{
-    AuditDatabaseContext, AuditDatabaseContextError, AuditDatabaseMigrationError,
+    AuditDatabaseContext,
+    AuditDatabaseContextError,
+    AuditDatabaseMigrationError,
 };
 use dal::{
-    DalContext, ServicesContext, cached_module::CachedModule, slow_rt::SlowRuntimeError,
+    DalContext,
+    ServicesContext,
+    cached_module::CachedModule,
+    slow_rt::SlowRuntimeError,
     workspace_snapshot::migrator::SnapshotGraphMigrator,
 };
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 
-use crate::{Config, init};
+use crate::{
+    Config,
+    init,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

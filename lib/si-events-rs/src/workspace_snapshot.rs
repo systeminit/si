@@ -1,10 +1,14 @@
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_id::EntityId;
 use strum::Display;
 
-use crate::create_xxhash_type;
-use crate::merkle_tree_hash::MerkleTreeHash;
+use crate::{
+    create_xxhash_type,
+    merkle_tree_hash::MerkleTreeHash,
+};
 
 create_xxhash_type!(Checksum);
 

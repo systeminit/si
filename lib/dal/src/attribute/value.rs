@@ -38,54 +38,118 @@
 // to find the [`AttributeValue`] whose [`context`](crate::AttributeContext) corresponds to a
 // direct child [`Prop`](crate::Prop) of the [`RootProp`](crate::RootProp).
 
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::Arc;
+use std::{
+    collections::{
+        HashMap,
+        HashSet,
+        VecDeque,
+    },
+    sync::Arc,
+};
 
 use async_recursion::async_recursion;
+pub use dependent_value_graph::DependentValueGraph;
 use indexmap::IndexMap;
+pub use is_for::ValueIsFor;
 use petgraph::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::Value;
-use si_events::FuncRunValue;
-use si_events::ulid::Ulid;
-use si_pkg::{AttributeValuePath, KeyOrIndex};
+use si_events::{
+    FuncRunValue,
+    ulid::Ulid,
+};
+use si_pkg::{
+    AttributeValuePath,
+    KeyOrIndex,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{RwLock, TryLockError};
-
-pub use dependent_value_graph::DependentValueGraph;
-
-use crate::attribute::prototype::{AttributePrototypeError, AttributePrototypeSource};
-use crate::change_set::ChangeSetError;
-use crate::component::inferred_connection_graph::InferredConnectionGraphError;
-use crate::func::FuncExecutionPk;
-use crate::func::argument::{FuncArgument, FuncArgumentError};
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::func::runner::{FuncRunner, FuncRunnerError};
-use crate::prop::PropError;
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
-use crate::validation::{ValidationError, ValidationOutput};
-use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
-use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::{
-    AttributeValueNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
-};
-use crate::workspace_snapshot::{WorkspaceSnapshotError, serde_value_to_string_type};
-use crate::{
-    AttributePrototype, AttributePrototypeId, Component, ComponentError, ComponentId, DalContext,
-    Func, FuncError, FuncId, HelperError, InputSocket, InputSocketId, OutputSocket, OutputSocketId,
-    Prop, PropId, PropKind, Secret, SecretError, TransactionsError, implement_add_edge_to,
+use tokio::sync::{
+    RwLock,
+    TryLockError,
 };
 
-use super::prototype::argument::static_value::StaticArgumentValue;
-use super::prototype::argument::value_source::ValueSourceError;
 use super::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
-    value_source::ValueSource,
+    AttributePrototypeArgument,
+    AttributePrototypeArgumentError,
+    AttributePrototypeArgumentId,
+    static_value::StaticArgumentValue,
+    value_source::{
+        ValueSource,
+        ValueSourceError,
+    },
 };
-
-pub use is_for::ValueIsFor;
+use crate::{
+    AttributePrototype,
+    AttributePrototypeId,
+    Component,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    Func,
+    FuncError,
+    FuncId,
+    HelperError,
+    InputSocket,
+    InputSocketId,
+    OutputSocket,
+    OutputSocketId,
+    Prop,
+    PropId,
+    PropKind,
+    Secret,
+    SecretError,
+    TransactionsError,
+    attribute::prototype::{
+        AttributePrototypeError,
+        AttributePrototypeSource,
+    },
+    change_set::ChangeSetError,
+    component::inferred_connection_graph::InferredConnectionGraphError,
+    func::{
+        FuncExecutionPk,
+        argument::{
+            FuncArgument,
+            FuncArgumentError,
+        },
+        intrinsics::IntrinsicFunc,
+        runner::{
+            FuncRunner,
+            FuncRunnerError,
+        },
+    },
+    implement_add_edge_to,
+    prop::PropError,
+    socket::{
+        input::InputSocketError,
+        output::OutputSocketError,
+    },
+    validation::{
+        ValidationError,
+        ValidationOutput,
+    },
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
+        edge_weight::{
+            EdgeWeightKind,
+            EdgeWeightKindDiscriminants,
+        },
+        node_weight::{
+            AttributeValueNodeWeight,
+            NodeWeight,
+            NodeWeightDiscriminants,
+            NodeWeightError,
+        },
+        serde_value_to_string_type,
+    },
+};
 
 pub mod debug;
 pub mod dependent_value_graph;

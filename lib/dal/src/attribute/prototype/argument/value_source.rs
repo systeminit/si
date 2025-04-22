@@ -3,18 +3,29 @@ use core::fmt;
 use si_events::ulid::Ulid;
 use thiserror::Error;
 
+use super::static_value::StaticArgumentValueId;
 use crate::{
-    AttributeValue, AttributeValueId, ComponentError, ComponentId, DalContext, InputSocket,
-    OutputSocket, OutputSocketId, Prop, PropId, SecretId,
+    AttributeValue,
+    AttributeValueId,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    InputSocket,
+    OutputSocket,
+    OutputSocketId,
+    Prop,
+    PropId,
+    SecretId,
     attribute::value::AttributeValueError,
     prop::PropError,
     socket::{
-        input::{InputSocketError, InputSocketId},
+        input::{
+            InputSocketError,
+            InputSocketId,
+        },
         output::OutputSocketError,
     },
 };
-
-use super::static_value::StaticArgumentValueId;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

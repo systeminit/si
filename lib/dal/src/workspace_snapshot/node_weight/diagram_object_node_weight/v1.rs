@@ -1,17 +1,30 @@
 use dal_macros::SiNodeWeight;
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 
 use crate::{
     EdgeWeightKindDiscriminants,
     workspace_snapshot::{
-        graph::{LineageId, detector::Update},
+        graph::{
+            LineageId,
+            detector::Update,
+        },
         node_weight::{
             NodeWeightDiscriminants,
             diagram_object_node_weight::DiagramObjectKind,
             traits::{
-                CorrectExclusiveOutgoingEdge, CorrectTransforms, CorrectTransformsError,
-                CorrectTransformsResult, SiNodeWeight,
+                CorrectExclusiveOutgoingEdge,
+                CorrectTransforms,
+                CorrectTransformsError,
+                CorrectTransformsResult,
+                SiNodeWeight,
             },
         },
     },

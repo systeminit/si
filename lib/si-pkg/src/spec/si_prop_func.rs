@@ -1,8 +1,19 @@
 use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+};
 
-use super::{AttrFuncInputSpec, SpecError};
+use super::{
+    AttrFuncInputSpec,
+    SpecError,
+};
 
 /// SiPropFuncs track custom functions for for props created for all schema variants and not part
 /// of the domain tree (which varies for each variant). Currently these are the props under the

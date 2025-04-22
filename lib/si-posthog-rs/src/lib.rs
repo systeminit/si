@@ -7,8 +7,14 @@ mod error;
 mod sender;
 
 pub use client::PosthogClient;
-pub use config::{PosthogConfig, PosthogConfigBuilder};
-pub use error::{PosthogError, PosthogResult};
+pub use config::{
+    PosthogConfig,
+    PosthogConfigBuilder,
+};
+pub use error::{
+    PosthogError,
+    PosthogResult,
+};
 pub use sender::PosthogSender;
 use tokio_util::sync::CancellationToken;
 

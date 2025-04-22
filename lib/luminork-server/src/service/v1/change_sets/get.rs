@@ -4,9 +4,10 @@ use sdf_extract::change_set::ChangeSetDalContext;
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::extract::PosthogEventTracker;
-
-use crate::service::v1::ChangeSetError;
+use crate::{
+    extract::PosthogEventTracker,
+    service::v1::ChangeSetError,
+};
 
 #[utoipa::path(
     get,

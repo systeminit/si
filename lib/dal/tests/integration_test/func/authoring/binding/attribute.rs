@@ -1,29 +1,54 @@
-use crate::integration_test::func::authoring::save_func::save_func_setup;
-use dal::attribute::prototype::argument::AttributePrototypeArgument;
-use dal::attribute::prototype::argument::value_source::ValueSource;
-use dal::func::argument::{FuncArgument, FuncArgumentKind};
-use dal::func::binding::attribute::AttributeBinding;
-use dal::func::binding::{
-    AttributeArgumentBinding, AttributeFuncArgumentSource, AttributeFuncDestination,
-    EventualParent, FuncBinding,
-};
-use dal::func::intrinsics::IntrinsicFunc;
-use dal::prop::PropPath;
-use dal::schema::variant::authoring::VariantAuthoringClient;
+use std::collections::HashSet;
+
 use dal::{
-    AttributePrototype, AttributePrototypeId, DalContext, Func, FuncBackendKind, InputSocket,
-    OutputSocket, Prop, Schema, SchemaVariant,
+    AttributePrototype,
+    AttributePrototypeId,
+    DalContext,
+    Func,
+    FuncBackendKind,
+    InputSocket,
+    OutputSocket,
+    Prop,
+    Schema,
+    SchemaVariant,
+    attribute::prototype::argument::{
+        AttributePrototypeArgument,
+        value_source::ValueSource,
+    },
+    func::{
+        argument::{
+            FuncArgument,
+            FuncArgumentKind,
+        },
+        binding::{
+            AttributeArgumentBinding,
+            AttributeFuncArgumentSource,
+            AttributeFuncDestination,
+            EventualParent,
+            FuncBinding,
+            attribute::AttributeBinding,
+        },
+        intrinsics::IntrinsicFunc,
+    },
+    prop::PropPath,
+    schema::variant::authoring::VariantAuthoringClient,
 };
-use dal_test::helpers::{
-    ChangeSetTestHelpers, connect_components_with_socket_names,
-    create_component_for_default_schema_name_in_default_view, get_attribute_value_for_component,
-    get_attribute_value_for_component_opt, get_component_output_socket_value,
-    update_attribute_value_for_component,
+use dal_test::{
+    helpers::{
+        ChangeSetTestHelpers,
+        connect_components_with_socket_names,
+        create_component_for_default_schema_name_in_default_view,
+        get_attribute_value_for_component,
+        get_attribute_value_for_component_opt,
+        get_component_output_socket_value,
+        update_attribute_value_for_component,
+    },
+    test,
 };
-use dal_test::test;
 use itertools::Itertools;
 pub use si_frontend_types;
-use std::collections::HashSet;
+
+use crate::integration_test::func::authoring::save_func::save_func_setup;
 
 #[test]
 async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut DalContext) {

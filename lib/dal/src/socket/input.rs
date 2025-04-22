@@ -1,27 +1,48 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_frontend_types as frontend_types;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    AttributePrototypeId, AttributeValueId, ComponentError, ComponentId, DalContext, FuncId,
-    HelperError, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError,
+    AttributePrototypeId,
+    AttributeValueId,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    FuncId,
+    HelperError,
+    SchemaVariantError,
+    SchemaVariantId,
+    Timestamp,
+    TransactionsError,
     attribute::{
-        prototype::{AttributePrototypeError, argument::AttributePrototypeArgumentError},
+        prototype::{
+            AttributePrototypeError,
+            argument::AttributePrototypeArgumentError,
+        },
         value::AttributeValueError,
     },
     change_set::ChangeSetError,
     func::FuncError,
     implement_add_edge_to,
     layer_db_types::InputSocketContentV2,
-    socket::{SocketArity, SocketKind},
     socket::{
-        connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError},
+        SocketArity,
+        SocketKind,
+        connection_annotation::{
+            ConnectionAnnotation,
+            ConnectionAnnotationError,
+        },
         output::OutputSocketError,
     },
     workspace_snapshot::{
-        InputSocketExt, WorkspaceSnapshotError, edge_weight::EdgeWeightKindDiscriminants,
+        InputSocketExt,
+        WorkspaceSnapshotError,
+        edge_weight::EdgeWeightKindDiscriminants,
         node_weight::NodeWeightError,
     },
 };

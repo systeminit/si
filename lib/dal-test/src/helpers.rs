@@ -2,29 +2,53 @@
 
 use std::time::Duration;
 
-use audit_database::{AuditDatabaseContext, AuditLogRow};
-use color_eyre::Result;
-use color_eyre::eyre::eyre;
-use dal::component::socket::{ComponentInputSocket, ComponentOutputSocket};
-use dal::key_pair::KeyPairPk;
-use dal::schema::variant::authoring::VariantAuthoringClient;
+use audit_database::{
+    AuditDatabaseContext,
+    AuditLogRow,
+};
+use color_eyre::{
+    Result,
+    eyre::eyre,
+};
 use dal::{
-    AttributeValue, Component, ComponentId, ComponentType, DalContext, InputSocket, KeyPair,
-    OutputSocket, Schema, SchemaVariant, SchemaVariantId, User, UserPk, audit_logging,
+    AttributeValue,
+    Component,
+    ComponentId,
+    ComponentType,
+    DalContext,
+    InputSocket,
+    KeyPair,
+    OutputSocket,
+    Schema,
+    SchemaVariant,
+    SchemaVariantId,
+    User,
+    UserPk,
+    audit_logging,
+    component::socket::{
+        ComponentInputSocket,
+        ComponentOutputSocket,
+    },
+    key_pair::KeyPairPk,
+    schema::variant::authoring::VariantAuthoringClient,
 };
 use itertools::Itertools;
-use names::{Generator, Name};
+use names::{
+    Generator,
+    Name,
+};
 use si_data_nats::async_nats::jetstream::stream::Stream;
 use tokio::time::Instant;
 
 mod change_set;
 mod property_editor_test_view;
 
-use crate::expected::ExpectView;
 pub use change_set::ChangeSetTestHelpers;
 use dal::diagram::view::ViewId;
 pub use property_editor_test_view::PropEditorTestView;
 use serde_json::Value;
+
+use crate::expected::ExpectView;
 
 /// Generates a fake name.
 pub fn generate_fake_name() -> Result<String> {

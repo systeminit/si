@@ -1,27 +1,60 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::value::AttributeValueError;
-
-use crate::attribute::value::debug::{AttributeDebugView, AttributeDebugViewError};
-use crate::diagram::DiagramError;
-use crate::diagram::geometry::Geometry;
-use crate::diagram::view::{View, ViewId};
-use crate::prop::PropError;
-use crate::socket::debug::{SocketDebugView, SocketDebugViewError};
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
-use crate::{
-    AttributeValue, AttributeValueId, Component, ComponentId, DalContext, PropId, SchemaVariantId,
-    SecretError, SecretId,
+use super::socket::{
+    ComponentInputSocket,
+    ComponentOutputSocket,
 };
-use crate::{ComponentError, FuncError, InputSocket, OutputSocket, SchemaVariantError};
-
-use super::socket::{ComponentInputSocket, ComponentOutputSocket};
+use crate::{
+    AttributeValue,
+    AttributeValueId,
+    Component,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    FuncError,
+    InputSocket,
+    OutputSocket,
+    PropId,
+    SchemaVariantError,
+    SchemaVariantId,
+    SecretError,
+    SecretId,
+    attribute::value::{
+        AttributeValueError,
+        debug::{
+            AttributeDebugView,
+            AttributeDebugViewError,
+        },
+    },
+    diagram::{
+        DiagramError,
+        geometry::Geometry,
+        view::{
+            View,
+            ViewId,
+        },
+    },
+    prop::PropError,
+    socket::{
+        debug::{
+            SocketDebugView,
+            SocketDebugViewError,
+        },
+        input::InputSocketError,
+        output::OutputSocketError,
+    },
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        node_weight::NodeWeightError,
+    },
+};
 
 type ComponentDebugViewResult<T> = Result<T, ComponentDebugViewError>;
 

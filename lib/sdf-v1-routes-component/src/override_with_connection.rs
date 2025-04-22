@@ -1,17 +1,38 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri},
+    extract::{
+        Host,
+        OriginalUri,
+    },
 };
 use dal::{
-    AttributeValue, AttributeValueId, ChangeSet, ComponentId, InputSocketId, OutputSocketId,
+    AttributeValue,
+    AttributeValueId,
+    ChangeSet,
+    ComponentId,
+    InputSocketId,
+    OutputSocketId,
     Visibility,
 };
-use sdf_core::{force_change_set_response::ForceChangeSetResponse, tracking::track};
-use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
+use sdf_core::{
+    force_change_set_response::ForceChangeSetResponse,
+    tracking::track,
+};
+use sdf_extract::{
+    HandlerContext,
+    PosthogClient,
+    v1::AccessBuilder,
+};
 use sdf_v1_routes_diagram::create_connection::create_connection_inner;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use super::{ComponentError, ComponentResult};
+use super::{
+    ComponentError,
+    ComponentResult,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

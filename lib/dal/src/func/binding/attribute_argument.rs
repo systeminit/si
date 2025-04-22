@@ -1,17 +1,28 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::Value;
 use strum::Display;
 
+use super::{
+    FuncBindingError,
+    FuncBindingResult,
+};
 use crate::{
-    DalContext, InputSocketId, OutputSocketId, PropId, SecretId,
+    DalContext,
+    InputSocketId,
+    OutputSocketId,
+    PropId,
+    SecretId,
     attribute::prototype::argument::{
-        AttributePrototypeArgument, AttributePrototypeArgumentId,
-        static_value::StaticArgumentValue, value_source::ValueSource,
+        AttributePrototypeArgument,
+        AttributePrototypeArgumentId,
+        static_value::StaticArgumentValue,
+        value_source::ValueSource,
     },
     func::argument::FuncArgumentId,
 };
-
-use super::{FuncBindingError, FuncBindingResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, Display)]
 pub enum AttributeFuncArgumentSource {

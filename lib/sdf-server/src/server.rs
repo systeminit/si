@@ -1,10 +1,23 @@
-use std::{fmt, future::IntoFuture as _, net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{
+    fmt,
+    future::IntoFuture as _,
+    net::SocketAddr,
+    path::PathBuf,
+    sync::Arc,
+};
 
 use audit_database::AuditDatabaseContext;
-use axum::{Router, async_trait, routing::IntoMakeService};
+use axum::{
+    Router,
+    async_trait,
+    routing::IntoMakeService,
+};
 use dal::ServicesContext;
 use edda_client::EddaClient;
-use frigg::{FriggStore, frigg_kv};
+use frigg::{
+    FriggStore,
+    frigg_kv,
+};
 use hyper::server::accept::Accept;
 use nats_multiplexer::Multiplexer;
 use nats_multiplexer_client::MultiplexerClient;
@@ -14,17 +27,33 @@ use si_jwt_public_key::JwtPublicSigningKeyChain;
 use si_posthog::PosthogClient;
 use telemetry::prelude::*;
 use tokio::{
-    io::{AsyncRead, AsyncWrite},
+    io::{
+        AsyncRead,
+        AsyncWrite,
+    },
     signal,
     sync::RwLock,
 };
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 
 use crate::{
-    ApplicationRuntimeMode, AxumApp, Config, IncomingStream, Migrator, ServerError, ServerResult,
-    WorkspacePermissions, WorkspacePermissionsMode, init,
+    ApplicationRuntimeMode,
+    AxumApp,
+    Config,
+    IncomingStream,
+    Migrator,
+    ServerError,
+    ServerResult,
+    WorkspacePermissions,
+    WorkspacePermissionsMode,
+    init,
     nats_multiplexer::{
-        CRDT_MULTIPLEXER_SUBJECT, DATA_CACHE_MULTIPLEXER_SUBJECT, WS_MULTIPLEXER_SUBJECT,
+        CRDT_MULTIPLEXER_SUBJECT,
+        DATA_CACHE_MULTIPLEXER_SUBJECT,
+        WS_MULTIPLEXER_SUBJECT,
     },
     runnable::Runnable,
     uds::UdsIncomingStream,

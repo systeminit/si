@@ -1,15 +1,28 @@
 use dal::{
-    DalContext, Func, InputSocket, Prop, SchemaVariant,
+    DalContext,
+    Func,
+    InputSocket,
+    Prop,
+    SchemaVariant,
     func::{
         argument::FuncArgument,
         authoring::FuncAuthoringClient,
         binding::{
-            AttributeFuncArgumentSource, AttributeFuncDestination, EventualParent, FuncBinding,
+            AttributeFuncArgumentSource,
+            AttributeFuncDestination,
+            EventualParent,
+            FuncBinding,
         },
     },
-    schema::variant::leaves::{LeafInputLocation, LeafKind},
+    schema::variant::leaves::{
+        LeafInputLocation,
+        LeafKind,
+    },
 };
-use dal_test::{helpers::ChangeSetTestHelpers, test};
+use dal_test::{
+    helpers::ChangeSetTestHelpers,
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 
 mod binding;

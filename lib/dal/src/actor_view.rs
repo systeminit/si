@@ -5,9 +5,18 @@
 
 #![warn(missing_docs, clippy::missing_errors_doc, clippy::missing_panics_doc)]
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::{DalContext, HistoryActor, StandardModelError, User, UserPk};
+use crate::{
+    DalContext,
+    HistoryActor,
+    StandardModelError,
+    User,
+    UserPk,
+};
 
 /// The actor entitiy that initiates an activitiy--this could represent be a person, service, etc.
 #[remain::sorted]

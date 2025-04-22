@@ -1,61 +1,125 @@
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::{
+        BTreeMap,
+        HashSet,
+    },
     sync::Arc,
 };
 
 use axum::{
-    Json, Router,
-    extract::{Path, Query},
+    Json,
+    Router,
+    extract::{
+        Path,
+        Query,
+    },
     middleware,
-    response::{IntoResponse, Response},
-    routing::{get, post},
+    response::{
+        IntoResponse,
+        Response,
+    },
+    routing::{
+        get,
+        post,
+    },
 };
 use dal::{
-    ChangeSet, ChangeSetId, DalContext, FuncId, Schema, SchemaId, SchemaVariant, Visibility,
-    WsEvent, WsEventError,
+    ChangeSet,
+    ChangeSetId,
+    DalContext,
+    FuncId,
+    Schema,
+    SchemaId,
+    SchemaVariant,
+    Visibility,
+    WsEvent,
+    WsEventError,
     attribute::prototype::argument::AttributePrototypeArgumentError,
     cached_module::CachedModule,
     func::{
         argument::FuncArgumentError,
-        authoring::{FuncAuthoringClient, FuncAuthoringError},
-        binding::{AttributeFuncDestination, EventualParent, FuncBindingError},
+        authoring::{
+            FuncAuthoringClient,
+            FuncAuthoringError,
+        },
+        binding::{
+            AttributeFuncDestination,
+            EventualParent,
+            FuncBindingError,
+        },
     },
     pkg::PkgError,
     prop::PropError,
     schema::variant::{
-        authoring::{VariantAuthoringClient, VariantAuthoringError},
-        leaves::{LeafInputLocation, LeafKind},
+        authoring::{
+            VariantAuthoringClient,
+            VariantAuthoringError,
+        },
+        leaves::{
+            LeafInputLocation,
+            LeafKind,
+        },
     },
-    slow_rt::{self, SlowRuntimeError},
-    socket::{input::InputSocketError, output::OutputSocketError},
+    slow_rt::{
+        self,
+        SlowRuntimeError,
+    },
+    socket::{
+        input::InputSocketError,
+        output::OutputSocketError,
+    },
     workspace::WorkspaceId,
 };
 use hyper::StatusCode;
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::fs::{
-    self, AssetFuncs, Binding, CategoryFilter, ChangeSet as FsChangeSet, CreateSchemaResponse,
-    FsApiError, Func as FsFunc, HydratedChangeSet, HydratedSchema, Schema as FsSchema,
-    SchemaAttributes, SetFuncCodeRequest, VariantQuery,
+    self,
+    AssetFuncs,
+    Binding,
+    CategoryFilter,
+    ChangeSet as FsChangeSet,
+    CreateSchemaResponse,
+    FsApiError,
+    Func as FsFunc,
+    HydratedChangeSet,
+    HydratedSchema,
+    Schema as FsSchema,
+    SchemaAttributes,
+    SetFuncCodeRequest,
+    VariantQuery,
 };
 use si_id::FuncArgumentId;
 use thiserror::Error;
 
-use crate::extract::{
-    HandlerContext, PosthogEventTracker,
-    change_set::TargetChangeSetIdFromPath,
-    workspace::{AuthorizedForAutomationRole, TargetWorkspaceIdFromPath, WorkspaceDalContext},
-};
-
 use super::{
-    AccessBuilder, AppState,
-    func::{FuncAPIError, get_code_response},
+    AccessBuilder,
+    AppState,
+    func::{
+        FuncAPIError,
+        get_code_response,
+    },
+};
+use crate::extract::{
+    HandlerContext,
+    PosthogEventTracker,
+    change_set::TargetChangeSetIdFromPath,
+    workspace::{
+        AuthorizedForAutomationRole,
+        TargetWorkspaceIdFromPath,
+        WorkspaceDalContext,
+    },
 };
 
 pub mod bindings;
 
 use bindings::{
-    get_bindings, get_func_bindings, get_identity_bindings, get_identity_bindings_for_variant,
-    output_to_into_func_destination, set_func_bindings, set_identity_bindings,
+    get_bindings,
+    get_func_bindings,
+    get_identity_bindings,
+    get_identity_bindings_for_variant,
+    output_to_into_func_destination,
+    set_func_bindings,
+    set_identity_bindings,
 };
 
 #[remain::sorted]

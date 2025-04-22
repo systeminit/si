@@ -1,11 +1,23 @@
-use dal::func::binding::leaf::LeafBinding;
-use dal::func::binding::{EventualParent, FuncBinding};
-
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::schema::variant::leaves::{LeafInputLocation, LeafKind};
-use dal::{DalContext, Func};
-use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::test;
+use dal::{
+    DalContext,
+    Func,
+    func::binding::{
+        EventualParent,
+        FuncBinding,
+        leaf::LeafBinding,
+    },
+    schema::variant::{
+        authoring::VariantAuthoringClient,
+        leaves::{
+            LeafInputLocation,
+            LeafKind,
+        },
+    },
+};
+use dal_test::{
+    helpers::ChangeSetTestHelpers,
+    test,
+};
 
 #[test]
 async fn existing_code_gen_func_using_secrets_for_new_schema_variant(ctx: &mut DalContext) {

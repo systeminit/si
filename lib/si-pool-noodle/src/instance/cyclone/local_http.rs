@@ -1,32 +1,75 @@
 use std::{
-    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+    net::{
+        Ipv4Addr,
+        SocketAddr,
+        SocketAddrV4,
+    },
     result,
     time::Duration,
 };
 
 use async_trait::async_trait;
 use cyclone_client::{
-    Client, ClientError, Connection, CycloneClient, Execution, HttpClient, LivenessStatus,
-    PingExecution, ReadinessStatus, Watch, WatchError, WatchStarted, new_unstarted_execution,
+    Client,
+    ClientError,
+    Connection,
+    CycloneClient,
+    Execution,
+    HttpClient,
+    LivenessStatus,
+    PingExecution,
+    ReadinessStatus,
+    Watch,
+    WatchError,
+    WatchStarted,
+    new_unstarted_execution,
 };
 use cyclone_core::{
-    CanonicalCommand, CycloneRequest, CycloneRequestable,
-    process::{self, ShutdownError},
+    CanonicalCommand,
+    CycloneRequest,
+    CycloneRequestable,
+    process::{
+        self,
+        ShutdownError,
+    },
 };
 use derive_builder::Builder;
 use futures::StreamExt;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use thiserror::Error;
 use tokio::{
-    io::{self, AsyncRead, AsyncWrite},
-    net::{TcpListener, TcpStream},
-    process::{Child, Command},
+    io::{
+        self,
+        AsyncRead,
+        AsyncWrite,
+    },
+    net::{
+        TcpListener,
+        TcpStream,
+    },
+    process::{
+        Child,
+        Command,
+    },
     sync::oneshot,
-    time::{self},
+    time::{
+        self,
+    },
 };
-use tracing::{debug, trace, warn};
+use tracing::{
+    debug,
+    trace,
+    warn,
+};
 
-use crate::instance::{Instance, Spec, SpecBuilder};
+use crate::instance::{
+    Instance,
+    Spec,
+    SpecBuilder,
+};
 
 /// Error type for [`LocalHttpInstance`].
 #[remain::sorted]

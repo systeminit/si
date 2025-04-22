@@ -1,10 +1,17 @@
-use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 
 use crate::{
     Timestamp,
     workspace_snapshot::{
-        graph::LineageId, node_weight::ArgumentTargets,
+        graph::LineageId,
+        node_weight::ArgumentTargets,
         vector_clock::deprecated::DeprecatedVectorClock,
     },
 };

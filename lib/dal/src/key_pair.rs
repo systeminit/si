@@ -1,17 +1,41 @@
-use base64::{Engine, engine::general_purpose};
-use serde::{Deserialize, Serialize};
-use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
+use base64::{
+    Engine,
+    engine::general_purpose,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_crypto::{
+    SymmetricCryptoError,
+    SymmetricCryptoService,
+    SymmetricNonce,
+};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use si_hash::Hash;
-use sodiumoxide::crypto::box_::{self, PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
+use sodiumoxide::crypto::box_::{
+    self,
+    PublicKey as BoxPublicKey,
+    SecretKey as BoxSecretKey,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    DalContext, HistoryEvent, HistoryEventError, TenancyError, Timestamp, TransactionsError,
-    Workspace, WorkspaceError, WorkspacePk,
-    serde_impls::{base64_bytes_serde, nonce_serde},
+    DalContext,
+    HistoryEvent,
+    HistoryEventError,
+    TenancyError,
+    Timestamp,
+    TransactionsError,
+    Workspace,
+    WorkspaceError,
+    WorkspacePk,
+    serde_impls::{
+        base64_bytes_serde,
+        nonce_serde,
+    },
     standard_model_accessor_ro,
 };
 

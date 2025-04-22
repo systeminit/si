@@ -1,18 +1,35 @@
-use axum::extract::{Host, OriginalUri, Path};
+use axum::extract::{
+    Host,
+    OriginalUri,
+    Path,
+};
 use dal::{
-    ChangeSet, ChangeSetId, WorkspacePk, WsEvent,
-    diagram::view::{View, ViewId},
+    ChangeSet,
+    ChangeSetId,
+    WorkspacePk,
+    WsEvent,
+    diagram::view::{
+        View,
+        ViewId,
+    },
 };
 use si_events::audit_log::AuditLogKind;
 
+use super::{
+    ViewError,
+    ViewResult,
+};
 use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::force_change_set_response::ForceChangeSetResponse,
-    service::v2::AccessBuilder,
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::AccessBuilder,
+    },
     track,
 };
-
-use super::{ViewError, ViewResult};
 
 pub async fn remove_view(
     HandlerContext(builder): HandlerContext,

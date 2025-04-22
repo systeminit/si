@@ -1,11 +1,28 @@
-use dal::func::argument::{FuncArgument, FuncArgumentKind};
-use dal::func::authoring::FuncAuthoringClient;
-use dal::func::binding::attribute::AttributeBinding;
-use dal::func::binding::{EventualParent, FuncBinding};
-use dal::prop::PropPath;
-use dal::{DalContext, Func, Prop};
-use dal_test::helpers::{ChangeSetTestHelpers, create_unlocked_variant_copy_for_schema_name};
-use dal_test::test;
+use dal::{
+    DalContext,
+    Func,
+    Prop,
+    func::{
+        argument::{
+            FuncArgument,
+            FuncArgumentKind,
+        },
+        authoring::FuncAuthoringClient,
+        binding::{
+            EventualParent,
+            FuncBinding,
+            attribute::AttributeBinding,
+        },
+    },
+    prop::PropPath,
+};
+use dal_test::{
+    helpers::{
+        ChangeSetTestHelpers,
+        create_unlocked_variant_copy_for_schema_name,
+    },
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]

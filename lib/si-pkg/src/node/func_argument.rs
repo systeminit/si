@@ -1,11 +1,32 @@
-use super::{PkgNode, read_common_fields, write_common_fields};
-use crate::spec::{FuncArgumentKind, FuncArgumentSpec};
-use object_tree::{
-    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
-    read_key_value_line, write_key_value_line,
+use std::{
+    io::{
+        BufRead,
+        Write,
+    },
+    str::FromStr,
 };
-use std::io::{BufRead, Write};
-use std::str::FromStr;
+
+use object_tree::{
+    GraphError,
+    NameStr,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    write_key_value_line,
+};
+
+use super::{
+    PkgNode,
+    read_common_fields,
+    write_common_fields,
+};
+use crate::spec::{
+    FuncArgumentKind,
+    FuncArgumentSpec,
+};
 
 const KEY_NAME_STR: &str = "name";
 const KEY_KIND_STR: &str = "kind";

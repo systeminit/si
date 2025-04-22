@@ -1,16 +1,33 @@
 use std::{
-    io::{BufRead, Write},
+    io::{
+        BufRead,
+        Write,
+    },
     str::FromStr,
 };
 
 use object_tree::{
-    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes, read_key_value_line,
-    read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
+    GraphError,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    read_key_value_line_opt,
+    write_key_value_line,
+    write_key_value_line_opt,
 };
 
-use super::{PkgNode, attribute_value_child::AttributeValueChild};
+use super::{
+    PkgNode,
+    attribute_value_child::AttributeValueChild,
+};
 use crate::spec::{
-    AttributeValuePath, AttributeValueSpec, FuncSpecBackendKind, FuncSpecBackendResponseType,
+    AttributeValuePath,
+    AttributeValueSpec,
+    FuncSpecBackendKind,
+    FuncSpecBackendResponseType,
 };
 
 const KEY_BACKEND_KIND_STR: &str = "backend_kind";

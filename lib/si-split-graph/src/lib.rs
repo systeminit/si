@@ -1,13 +1,25 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::{
+    HashSet,
+    VecDeque,
+};
 
 use async_trait::async_trait;
 use opt_zip::OptZip;
-use petgraph::{prelude::*, stable_graph};
-use serde::{Deserialize, Serialize};
+use petgraph::{
+    prelude::*,
+    stable_graph,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::{
     ContentHash,
     merkle_tree_hash::MerkleTreeHash,
-    workspace_snapshot::{Change, EntityKind},
+    workspace_snapshot::{
+        Change,
+        EntityKind,
+    },
 };
 use si_id::ulid::Ulid;
 use thiserror::Error;
@@ -17,7 +29,11 @@ pub mod subgraph;
 pub mod subgraph_address;
 pub mod updates;
 
-use subgraph::{SubGraph, SubGraphEdgeIndex, SubGraphNodeIndex};
+use subgraph::{
+    SubGraph,
+    SubGraphEdgeIndex,
+    SubGraphNodeIndex,
+};
 pub use subgraph_address::SubGraphAddress;
 use updates::Update;
 

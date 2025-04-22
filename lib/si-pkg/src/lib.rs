@@ -6,7 +6,9 @@ mod workspace;
 pub use pkg::*;
 pub use spec::*;
 pub use workspace::{
-    WorkspaceExport, WorkspaceExportChangeSetV0, WorkspaceExportContentV0,
+    WorkspaceExport,
+    WorkspaceExportChangeSetV0,
+    WorkspaceExportContentV0,
     WorkspaceExportMetadataV0,
 };
 
@@ -15,9 +17,8 @@ mod tests {
     use petgraph::dot::Dot;
     use tokio::sync::Mutex;
 
-    use crate::spec::PkgSpec;
-
     use super::*;
+    use crate::spec::PkgSpec;
 
     const PACKAGE_JSON: &str = include_str!("../pkg-complex.json");
     const WORKSPACE_JSON: &str = include_str!("../pkg-workspace.json");

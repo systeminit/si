@@ -1,12 +1,22 @@
 use audit_database::AuditDatabaseContext;
 use audit_logs_stream::AuditLogsStream;
-use dal::{AttributeValue, DalContext, Prop, Schema, SchemaVariant, prop::PropPath};
-use dal_test::helpers::{
-    confirm_jetstream_stream_has_no_messages,
-    create_named_component_for_schema_variant_on_default_view,
-    list_audit_logs_until_expected_number_of_rows,
+use dal::{
+    AttributeValue,
+    DalContext,
+    Prop,
+    Schema,
+    SchemaVariant,
+    prop::PropPath,
 };
-use dal_test::{helpers::ChangeSetTestHelpers, test};
+use dal_test::{
+    helpers::{
+        ChangeSetTestHelpers,
+        confirm_jetstream_stream_has_no_messages,
+        create_named_component_for_schema_variant_on_default_view,
+        list_audit_logs_until_expected_number_of_rows,
+    },
+    test,
+};
 use pending_events::PendingEventsStream;
 use pretty_assertions_sorted::assert_eq;
 use si_events::audit_log::AuditLogKind;

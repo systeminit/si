@@ -1,12 +1,28 @@
+use std::{
+    collections::{
+        HashMap,
+        HashSet,
+    },
+    io::Write,
+};
+
 use petgraph::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::merkle_tree_hash::MerkleTreeHash;
-use std::collections::{HashMap, HashSet};
-use std::io::Write;
 
 use crate::{
-    CustomEdgeWeight, CustomNodeWeight, EdgeKind, MAX_NODES, SplitGraphEdgeWeight,
-    SplitGraphEdgeWeightKind, SplitGraphError, SplitGraphNodeId, SplitGraphNodeWeight,
+    CustomEdgeWeight,
+    CustomNodeWeight,
+    EdgeKind,
+    MAX_NODES,
+    SplitGraphEdgeWeight,
+    SplitGraphEdgeWeightKind,
+    SplitGraphError,
+    SplitGraphNodeId,
+    SplitGraphNodeWeight,
     SplitGraphResult,
 };
 

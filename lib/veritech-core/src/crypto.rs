@@ -1,6 +1,12 @@
-use serde_json::{Value, json};
+use serde_json::{
+    Value,
+    json,
+};
 use si_crypto::{
-    SensitiveStrings, VeritechDecryptionKey, VeritechDecryptionKeyError, VeritechEncryptionKey,
+    SensitiveStrings,
+    VeritechDecryptionKey,
+    VeritechDecryptionKeyError,
+    VeritechEncryptionKey,
 };
 use thiserror::Error;
 

@@ -1,10 +1,18 @@
+use std::{
+    fmt,
+    str::FromStr,
+};
+
 use bytes::BytesMut;
 use postgres_types::ToSql;
 use serde::{
-    Deserialize, Serialize,
-    de::{self, Visitor},
+    Deserialize,
+    Serialize,
+    de::{
+        self,
+        Visitor,
+    },
 };
-use std::{fmt, str::FromStr};
 use thiserror::Error;
 
 #[derive(Debug, Error)]

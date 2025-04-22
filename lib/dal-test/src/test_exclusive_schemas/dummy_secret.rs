@@ -1,20 +1,51 @@
-use dal::func::argument::FuncArgumentKind;
-use dal::func::intrinsics::IntrinsicFunc;
-use dal::pkg::{ImportOptions, import_pkg_from_pkg};
-use dal::prop::{PropPath, SECRET_KIND_WIDGET_OPTION_LABEL};
-use dal::schema::variant::leaves::LeafKind;
-use dal::{BuiltinsResult, DalContext, SchemaId};
-use si_pkg::{
-    AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind,
-    FuncSpecBackendResponseType, FuncSpecData, PkgSpec, PropSpec, SchemaSpec, SchemaVariantSpec,
-    SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData, SocketSpecKind,
+use dal::{
+    BuiltinsResult,
+    DalContext,
+    SchemaId,
+    func::{
+        argument::FuncArgumentKind,
+        intrinsics::IntrinsicFunc,
+    },
+    pkg::{
+        ImportOptions,
+        import_pkg_from_pkg,
+    },
+    prop::{
+        PropPath,
+        SECRET_KIND_WIDGET_OPTION_LABEL,
+    },
+    schema::variant::leaves::LeafKind,
 };
 use si_pkg::{
-    AuthenticationFuncSpec, LeafFunctionSpec, LeafInputLocation, PropSpecKind, PropSpecWidgetKind,
-    SchemaSpecData, SocketSpecArity,
+    AttrFuncInputSpec,
+    AttrFuncInputSpecKind,
+    AuthenticationFuncSpec,
+    FuncArgumentSpec,
+    FuncSpec,
+    FuncSpecBackendKind,
+    FuncSpecBackendResponseType,
+    FuncSpecData,
+    LeafFunctionSpec,
+    LeafInputLocation,
+    PkgSpec,
+    PropSpec,
+    PropSpecKind,
+    PropSpecWidgetKind,
+    SchemaSpec,
+    SchemaSpecData,
+    SchemaVariantSpec,
+    SchemaVariantSpecData,
+    SiPkg,
+    SocketSpec,
+    SocketSpecArity,
+    SocketSpecData,
+    SocketSpecKind,
 };
 
-use crate::test_exclusive_schemas::{PKG_CREATED_BY, PKG_VERSION};
+use crate::test_exclusive_schemas::{
+    PKG_CREATED_BY,
+    PKG_VERSION,
+};
 
 pub(crate) async fn migrate_test_exclusive_schema_dummy_secret(
     ctx: &DalContext,

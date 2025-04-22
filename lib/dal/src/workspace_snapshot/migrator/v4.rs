@@ -1,16 +1,28 @@
-use si_events::ulid::Ulid;
 use std::sync::Arc;
+
+use si_events::ulid::Ulid;
 use telemetry::prelude::*;
 
 use super::SnapshotGraphMigratorResult;
-use crate::layer_db_types::{ViewContent, ViewContentV1};
-use crate::workspace_snapshot::node_weight::ComponentNodeWeight;
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
 use crate::{
-    DalContext, EdgeWeight, EdgeWeightKind, Timestamp,
+    DalContext,
+    EdgeWeight,
+    EdgeWeightKind,
+    Timestamp,
+    layer_db_types::{
+        ViewContent,
+        ViewContentV1,
+    },
     workspace_snapshot::{
-        graph::{WorkspaceSnapshotGraphV3, WorkspaceSnapshotGraphV4},
-        node_weight::NodeWeight,
+        graph::{
+            WorkspaceSnapshotGraphV3,
+            WorkspaceSnapshotGraphV4,
+        },
+        node_weight::{
+            ComponentNodeWeight,
+            NodeWeight,
+            category_node_weight::CategoryNodeKind,
+        },
     },
 };
 

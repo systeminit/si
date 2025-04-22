@@ -1,20 +1,38 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
 use petgraph::{
     prelude::*,
-    visit::{Control, DfsEvent},
+    visit::{
+        Control,
+        DfsEvent,
+    },
 };
-use serde::{Deserialize, Serialize};
-use si_events::{ulid::Ulid, workspace_snapshot::Change};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ulid::Ulid,
+    workspace_snapshot::Change,
+};
 use strum::EnumDiscriminants;
 
-use crate::{
-    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
-    workspace_snapshot::{NodeInformation, node_weight::NodeWeight},
-};
-
 use super::{
-    WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphVCurrent, traits::entity_kind::EntityKindExt,
+    WorkspaceSnapshotGraphError,
+    WorkspaceSnapshotGraphVCurrent,
+    traits::entity_kind::EntityKindExt,
+};
+use crate::{
+    EdgeWeight,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    workspace_snapshot::{
+        NodeInformation,
+        node_weight::NodeWeight,
+    },
 };
 
 type Result<T> = std::result::Result<T, WorkspaceSnapshotGraphError>;

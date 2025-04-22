@@ -1,24 +1,58 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{
+        HashMap,
+        HashSet,
+    },
     sync::Arc,
 };
 
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 
-use super::{SchemaVariantNodeWeight, SchemaVariantNodeWeightError, SchemaVariantNodeWeightResult};
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV3;
+use super::{
+    SchemaVariantNodeWeight,
+    SchemaVariantNodeWeightError,
+    SchemaVariantNodeWeightResult,
+};
 use crate::{
-    DalContext, EdgeWeightKindDiscriminants, SchemaId, SchemaVariantError, SchemaVariantId,
-    Timestamp, WorkspaceSnapshotGraphVCurrent,
-    layer_db_types::{SchemaVariantContent, SchemaVariantContentV3},
+    DalContext,
+    EdgeWeightKindDiscriminants,
+    SchemaId,
+    SchemaVariantError,
+    SchemaVariantId,
+    Timestamp,
+    WorkspaceSnapshotGraphVCurrent,
+    layer_db_types::{
+        SchemaVariantContent,
+        SchemaVariantContentV3,
+    },
     workspace_snapshot::{
         ContentAddressDiscriminants,
         content_address::ContentAddress,
-        graph::{LineageId, WorkspaceSnapshotGraphError, detector::Update},
+        graph::{
+            LineageId,
+            WorkspaceSnapshotGraphError,
+            WorkspaceSnapshotGraphV3,
+            detector::Update,
+        },
         node_weight::{
-            self, ContentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
-            traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
+            self,
+            ContentNodeWeight,
+            NodeWeight,
+            NodeWeightDiscriminants,
+            NodeWeightError,
+            traits::{
+                CorrectExclusiveOutgoingEdge,
+                CorrectTransforms,
+                SiNodeWeight,
+            },
         },
     },
 };

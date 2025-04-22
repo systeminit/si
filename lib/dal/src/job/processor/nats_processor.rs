@@ -1,18 +1,34 @@
 use async_trait::async_trait;
 use futures::StreamExt;
-use pinga_core::{REPLY_INBOX_HEADER_NAME, pinga_work_queue, subject::pinga_job};
-use si_data_nats::{NatsClient, Subject, jetstream};
+use pinga_core::{
+    REPLY_INBOX_HEADER_NAME,
+    pinga_work_queue,
+    subject::pinga_job,
+};
+use si_data_nats::{
+    NatsClient,
+    Subject,
+    jetstream,
+};
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use tokio::task::JoinSet;
 
+use super::{
+    JobQueueProcessor,
+    JobQueueProcessorError,
+    JobQueueProcessorResult,
+};
 use crate::job::{
     consumer::JobInfo,
-    producer::{BlockingJobError, BlockingJobResult, JobProducer, JobProducerError},
+    producer::{
+        BlockingJobError,
+        BlockingJobResult,
+        JobProducer,
+        JobProducerError,
+    },
     queue::JobQueue,
 };
-
-use super::{JobQueueProcessor, JobQueueProcessorError, JobQueueProcessorResult};
 
 #[derive(Clone, Debug)]
 pub struct NatsProcessor {

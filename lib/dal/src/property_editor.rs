@@ -2,21 +2,38 @@
 //! [`Component`](crate::Component)'s properties to friendly objects for displaying, accessing
 //! and mutating said properties.
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_pg::PgError;
 use thiserror::Error;
 
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
-use crate::attribute::prototype::argument::value_source::ValueSourceError;
-use crate::attribute::value::AttributeValueError;
-use crate::prop::PropError;
-use crate::validation::ValidationError;
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::{
-    AttributeValueId, ComponentError, PropId, SchemaVariantError, SchemaVariantId, SecretError,
-    StandardModelError, TransactionsError,
+    AttributeValueId,
+    ComponentError,
+    PropId,
+    SchemaVariantError,
+    SchemaVariantId,
+    SecretError,
+    StandardModelError,
+    TransactionsError,
+    attribute::{
+        prototype::{
+            AttributePrototypeError,
+            argument::{
+                AttributePrototypeArgumentError,
+                value_source::ValueSourceError,
+            },
+        },
+        value::AttributeValueError,
+    },
+    prop::PropError,
+    validation::ValidationError,
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        node_weight::NodeWeightError,
+    },
 };
 
 pub mod schema;
@@ -74,8 +91,10 @@ pub enum PropertyEditorError {
 pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
 
 // Property editor ids used across submodules.
-pub use si_id::PropertyEditorPropId;
-pub use si_id::PropertyEditorValueId;
+pub use si_id::{
+    PropertyEditorPropId,
+    PropertyEditorValueId,
+};
 
 // TODO(nick): once shape is finalized and we stop serializing this within builtins, please
 // convert to a more formal type.

@@ -1,7 +1,15 @@
 use std::path::PathBuf;
 
-use clap::{ArgAction, Parser};
-use rebaser_server::{Config, ConfigError, ConfigFile, StandardConfigFile};
+use clap::{
+    ArgAction,
+    Parser,
+};
+use rebaser_server::{
+    Config,
+    ConfigError,
+    ConfigFile,
+    StandardConfigFile,
+};
 use si_service::prelude::*;
 
 const NAME: &str = "rebaser";

@@ -1,22 +1,42 @@
-use std::{result, str::Utf8Error};
+use std::{
+    result,
+    str::Utf8Error,
+};
 
 use bytes::Bytes;
-use kv_history::{History, Keys};
+use kv_history::{
+    History,
+    Keys,
+};
 use si_data_nats::{
-    NatsClient, Subject,
+    NatsClient,
+    Subject,
     async_nats::{
         self,
         jetstream::{
-            consumer::{StreamError, push::OrderedConfig},
+            consumer::{
+                StreamError,
+                push::OrderedConfig,
+            },
             context::RequestError,
-            kv::{self, Watch},
+            kv::{
+                self,
+                Watch,
+            },
             stream::ConsumerError,
         },
     },
     jetstream,
 };
-use si_frontend_types::{index::MvIndex, object::FrontendObject, reference::ReferenceKind};
-use si_id::{ChangeSetId, WorkspacePk};
+use si_frontend_types::{
+    index::MvIndex,
+    object::FrontendObject,
+    reference::ReferenceKind,
+};
+use si_id::{
+    ChangeSetId,
+    WorkspacePk,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -461,14 +481,26 @@ fn nats_stream_name(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
 //
 // See: https://github.com/nats-io/nats.rs/blob/7d63f1dd725c86a4f01723ea3194f17e30a0561b/async-nats/src/jetstream/kv/mod.rs#L1263-L1323
 mod kv_history {
-    use std::{result, str::FromStr as _, task::Poll};
+    use std::{
+        result,
+        str::FromStr as _,
+        task::Poll,
+    };
 
     use futures::StreamExt as _;
     use si_data_nats::async_nats::{
         self,
         jetstream::{
-            consumer::push::{Ordered, OrderedError},
-            kv::{Entry, Operation, ParseOperationError, WatcherErrorKind},
+            consumer::push::{
+                Ordered,
+                OrderedError,
+            },
+            kv::{
+                Entry,
+                Operation,
+                ParseOperationError,
+                WatcherErrorKind,
+            },
         },
     };
     use thiserror::Error;

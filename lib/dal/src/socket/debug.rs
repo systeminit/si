@@ -1,23 +1,42 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use super::{input::InputSocketError, output::OutputSocketError};
+use super::{
+    input::InputSocketError,
+    output::OutputSocketError,
+};
 use crate::{
-    AttributePrototype, AttributePrototypeId, AttributeValue, AttributeValueId, ComponentError,
-    DalContext, FuncId, InputSocket, OutputSocket,
+    AttributePrototype,
+    AttributePrototypeId,
+    AttributeValue,
+    AttributeValueId,
+    ComponentError,
+    DalContext,
+    FuncId,
+    InputSocket,
+    OutputSocket,
     attribute::{
         prototype::{
             AttributePrototypeError,
             debug::{
-                AttributePrototypeDebugView, AttributePrototypeDebugViewError, FuncArgDebugView,
+                AttributePrototypeDebugView,
+                AttributePrototypeDebugViewError,
+                FuncArgDebugView,
             },
         },
         value::AttributeValueError,
     },
-    component::socket::{ComponentInputSocket, ComponentOutputSocket},
+    component::socket::{
+        ComponentInputSocket,
+        ComponentOutputSocket,
+    },
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

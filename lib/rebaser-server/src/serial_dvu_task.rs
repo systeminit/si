@@ -1,14 +1,28 @@
-use std::{result, sync::Arc};
+use std::{
+    result,
+    sync::Arc,
+};
 
-use dal::{ChangeSet, ChangeSetError, ChangeSetStatus, DalContextBuilder};
-use si_events::{ChangeSetId, WorkspacePk};
+use dal::{
+    ChangeSet,
+    ChangeSetError,
+    ChangeSetStatus,
+    DalContextBuilder,
+};
+use si_events::{
+    ChangeSetId,
+    WorkspacePk,
+};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use thiserror::Error;
 use tokio::sync::Notify;
 use tokio_util::sync::CancellationToken;
 
-use crate::{ServerMetadata, Shutdown};
+use crate::{
+    ServerMetadata,
+    Shutdown,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

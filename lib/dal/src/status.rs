@@ -1,13 +1,26 @@
 //! Status system that can send real time updates for activity to external
 //! consumers, such as the web frontend.
 
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use chrono::{
+    DateTime,
+    Utc,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use thiserror::Error;
 
 use crate::{
-    ComponentId, DalContext, WsEvent, WsEventResult, WsPayload,
-    attribute::{prototype::AttributePrototypeError, value::AttributeValueError},
+    ComponentId,
+    DalContext,
+    WsEvent,
+    WsEventResult,
+    WsPayload,
+    attribute::{
+        prototype::AttributePrototypeError,
+        value::AttributeValueError,
+    },
     prop::PropError,
 };
 

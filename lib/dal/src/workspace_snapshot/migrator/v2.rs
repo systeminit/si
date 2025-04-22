@@ -1,20 +1,28 @@
-use petgraph::{prelude::*, visit::IntoEdgeReferences};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
+
+use petgraph::{
+    prelude::*,
+    visit::IntoEdgeReferences,
+};
 use si_events::ulid::Ulid;
-use std::collections::{HashMap, HashSet};
 use telemetry::prelude::*;
 
+use super::SnapshotGraphMigratorResult;
 use crate::{
     EdgeWeight,
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::{
-            LineageId, WorkspaceSnapshotGraphV2, deprecated::DeprecatedWorkspaceSnapshotGraphV1,
+            LineageId,
+            WorkspaceSnapshotGraphV2,
+            deprecated::DeprecatedWorkspaceSnapshotGraphV1,
         },
         node_weight::NodeWeight,
     },
 };
-
-use super::SnapshotGraphMigratorResult;
 
 #[instrument(skip_all)]
 pub fn migrate_v1_to_v2(

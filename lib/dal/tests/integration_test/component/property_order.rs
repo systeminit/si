@@ -1,11 +1,20 @@
-use dal::prop::Prop;
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{AttributeValue, DalContext};
-use dal_test::expected::{
-    ExpectComponent, ExpectComponentProp, ExpectSchemaVariant, ExpectView, IntoPropPath,
+use dal::{
+    AttributeValue,
+    DalContext,
+    prop::Prop,
+    schema::variant::authoring::VariantAuthoringClient,
 };
-use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::test;
+use dal_test::{
+    expected::{
+        ExpectComponent,
+        ExpectComponentProp,
+        ExpectSchemaVariant,
+        ExpectView,
+        IntoPropPath,
+    },
+    helpers::ChangeSetTestHelpers,
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 

@@ -1,6 +1,7 @@
-use crate::AppState;
 use axum::Router;
 use utoipa::OpenApi;
+
+use crate::AppState;
 
 mod change_sets;
 pub mod common;
@@ -8,35 +9,55 @@ mod components;
 mod management;
 mod workspaces;
 
-pub use change_sets::ChangeSetError;
-pub use components::ComponentsError;
-pub use management::ManagementApiError;
-pub use workspaces::WorkspaceError;
-
 pub use change_sets::{
-    create::{CreateChangeSetV1Request, CreateChangeSetV1Response},
+    ChangeSetError,
+    create::{
+        CreateChangeSetV1Request,
+        CreateChangeSetV1Response,
+    },
     delete::DeleteChangeSetV1Response,
     get::GetChangeSetV1Response,
     list::ListChangeSetV1Response,
     merge_status::{
-        MergeStatusV1Response, MergeStatusV1ResponseAction, MergeStatusV1ResponseActionComponent,
+        MergeStatusV1Response,
+        MergeStatusV1ResponseAction,
+        MergeStatusV1ResponseActionComponent,
     },
 };
 pub use components::{
     ComponentV1RequestPath,
-    connections::{ComponentReference, Connection, ConnectionPoint},
-    create_component::{CreateComponentV1Request, CreateComponentV1Response},
+    ComponentsError,
+    connections::{
+        ComponentReference,
+        Connection,
+        ConnectionPoint,
+    },
+    create_component::{
+        CreateComponentV1Request,
+        CreateComponentV1Response,
+    },
     delete_component::DeleteComponentV1Response,
     get_component::{
-        GeometryAndViewAndName, GetComponentV1Response, GetComponentV1ResponseManagementFunction,
+        GeometryAndViewAndName,
+        GetComponentV1Response,
+        GetComponentV1ResponseManagementFunction,
     },
     update_component::{
-        ComponentPropKey, DomainPropPath, UpdateComponentV1Request, UpdateComponentV1Response,
+        ComponentPropKey,
+        DomainPropPath,
+        UpdateComponentV1Request,
+        UpdateComponentV1Response,
     },
 };
-pub use management::run_prototype::{
-    RunPrototypePath, RunPrototypeV1Request, RunPrototypeV1Response,
+pub use management::{
+    ManagementApiError,
+    run_prototype::{
+        RunPrototypePath,
+        RunPrototypeV1Request,
+        RunPrototypeV1Response,
+    },
 };
+pub use workspaces::WorkspaceError;
 
 /// OpenAPI documentation for v1 API
 #[derive(OpenApi)]

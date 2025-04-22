@@ -1,7 +1,13 @@
 use color_eyre::Result;
-use module_index_server::{Config, Server};
+use module_index_server::{
+    Config,
+    Server,
+};
 use telemetry_application::prelude::*;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 
 mod args;
 

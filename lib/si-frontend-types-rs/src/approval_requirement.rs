@@ -1,8 +1,15 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::workspace_snapshot::EntityKind;
-use si_id::{ApprovalRequirementDefinitionId, EntityId, UserPk};
+use si_id::{
+    ApprovalRequirementDefinitionId,
+    EntityId,
+    UserPk,
+};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

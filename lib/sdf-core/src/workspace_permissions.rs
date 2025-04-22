@@ -1,5 +1,12 @@
-use serde_with::{DeserializeFromStr, SerializeDisplay};
-use strum::{Display, EnumString, VariantNames};
+use serde_with::{
+    DeserializeFromStr,
+    SerializeDisplay,
+};
+use strum::{
+    Display,
+    EnumString,
+    VariantNames,
+};
 
 #[derive(
     Debug,

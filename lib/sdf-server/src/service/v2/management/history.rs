@@ -1,14 +1,34 @@
-use axum::{Json, extract::Query};
-use chrono::{DateTime, Utc};
+use axum::{
+    Json,
+    extract::Query,
+};
+use chrono::{
+    DateTime,
+    Utc,
+};
 use dal::Visibility;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::{
-    ActionResultState, ComponentId, FuncId, FuncRun, FuncRunId, FuncRunState, ManagementPrototypeId,
+    ActionResultState,
+    ComponentId,
+    FuncId,
+    FuncRun,
+    FuncRunId,
+    FuncRunState,
+    ManagementPrototypeId,
 };
 
-use crate::{extract::HandlerContext, service::v2::AccessBuilder};
-
-use super::{ManagementApiError, ManagementApiResult};
+use super::{
+    ManagementApiError,
+    ManagementApiResult,
+};
+use crate::{
+    extract::HandlerContext,
+    service::v2::AccessBuilder,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

@@ -1,18 +1,38 @@
-use chrono::Utc;
-use si_layer_cache::hybrid_cache::CacheConfig;
-use std::collections::HashSet;
-use std::{sync::Arc, time::Duration};
-
-use si_events::{
-    Actor, ChangeSetId, ContentHash, FuncBackendKind, FuncBackendResponseType, FuncKind, FuncRun,
-    FuncRunBuilder, FuncRunId, FuncRunState, Tenancy, UserPk, WorkspacePk,
+use std::{
+    collections::HashSet,
+    sync::Arc,
+    time::Duration,
 };
-use si_layer_cache::LayerDb;
-use si_layer_cache::db::serialize;
+
+use chrono::Utc;
+use si_events::{
+    Actor,
+    ChangeSetId,
+    ContentHash,
+    FuncBackendKind,
+    FuncBackendResponseType,
+    FuncKind,
+    FuncRun,
+    FuncRunBuilder,
+    FuncRunId,
+    FuncRunState,
+    Tenancy,
+    UserPk,
+    WorkspacePk,
+};
+use si_layer_cache::{
+    LayerDb,
+    db::serialize,
+    hybrid_cache::CacheConfig,
+};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
-use crate::integration_test::{setup_compute_executor, setup_nats_client, setup_pg_db};
+use crate::integration_test::{
+    setup_compute_executor,
+    setup_nats_client,
+    setup_pg_db,
+};
 
 type TestLayerDb = LayerDb<String, String, String, String>;
 

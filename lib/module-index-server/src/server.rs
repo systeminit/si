@@ -1,33 +1,82 @@
-use axum::response::{IntoResponse, Response};
-use std::{io, net::SocketAddr, time::Duration};
+use std::{
+    io,
+    net::SocketAddr,
+    time::Duration,
+};
 
-use super::routes;
-
-use axum::Router;
-use axum::{error_handling::HandleErrorLayer, routing::IntoMakeService};
+use axum::{
+    Router,
+    error_handling::HandleErrorLayer,
+    response::{
+        IntoResponse,
+        Response,
+    },
+    routing::IntoMakeService,
+};
 use hyper::{
     StatusCode,
-    server::{accept::Accept, conn::AddrIncoming},
+    server::{
+        accept::Accept,
+        conn::AddrIncoming,
+    },
 };
-use s3::creds::{Credentials as AwsCredentials, error::CredentialsError};
-use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr};
-use si_data_pg::{PgPool, PgPoolConfig, PgPoolError};
-use si_jwt_public_key::{JwtConfig, JwtPublicSigningKeyChain, JwtPublicSigningKeyError};
-use si_posthog::{PosthogClient, PosthogConfig};
+use s3::creds::{
+    Credentials as AwsCredentials,
+    error::CredentialsError,
+};
+use sea_orm::{
+    ConnectOptions,
+    Database,
+    DatabaseConnection,
+    DbErr,
+};
+use si_data_pg::{
+    PgPool,
+    PgPoolConfig,
+    PgPoolError,
+};
+use si_jwt_public_key::{
+    JwtConfig,
+    JwtPublicSigningKeyChain,
+    JwtPublicSigningKeyError,
+};
+use si_posthog::{
+    PosthogClient,
+    PosthogConfig,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
-    io::{AsyncRead, AsyncWrite},
+    io::{
+        AsyncRead,
+        AsyncWrite,
+    },
     signal,
-    sync::{broadcast, mpsc, oneshot},
+    sync::{
+        broadcast,
+        mpsc,
+        oneshot,
+    },
 };
 use tokio_util::sync::CancellationToken;
-use tower::{BoxError, ServiceBuilder, buffer::BufferLayer, limit::RateLimitLayer};
-use tower_http::trace::{DefaultMakeSpan, TraceLayer};
+use tower::{
+    BoxError,
+    ServiceBuilder,
+    buffer::BufferLayer,
+    limit::RateLimitLayer,
+};
+use tower_http::trace::{
+    DefaultMakeSpan,
+    TraceLayer,
+};
 
+use super::routes;
 use crate::{
     Config,
-    app_state::{AppState, ShutdownSource},
+    app_state::{
+        AppState,
+        ShutdownSource,
+    },
     config::RateLimitConfig,
     s3::S3Config,
 };

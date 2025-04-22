@@ -3,9 +3,8 @@ use std::sync::Arc;
 use futures::future::BoxFuture;
 use tracing::trace;
 
-use crate::Head;
-
 use super::Info;
+use crate::Head;
 
 pub trait OnSuccess {
     fn call(&mut self, head: Arc<Head>, info: Arc<Info>) -> BoxFuture<'static, ()>;

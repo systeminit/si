@@ -1,20 +1,38 @@
-use std::collections::{HashMap, hash_map};
+use std::collections::{
+    HashMap,
+    hash_map,
+};
 
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 
+use super::{
+    ComponentError,
+    ComponentResult,
+};
 use crate::{
-    AttributePrototype, AttributeValue, AttributeValueId, Component, ComponentId, DalContext,
-    InputSocketId, OutputSocket, OutputSocketId,
+    AttributePrototype,
+    AttributeValue,
+    AttributeValueId,
+    Component,
+    ComponentId,
+    DalContext,
+    InputSocketId,
+    OutputSocket,
+    OutputSocketId,
     attribute::{
-        prototype::argument::{AttributePrototypeArgument, value_source::ValueSource},
+        prototype::argument::{
+            AttributePrototypeArgument,
+            value_source::ValueSource,
+        },
         value::ValueIsFor,
     },
     workspace_snapshot::node_weight::ArgumentTargets,
 };
-
-use super::{ComponentError, ComponentResult};
 
 /// Represents a given [`Component`]'s [`crate::InputSocket`], identified by its
 /// (non-unique) [`InputSocketId`] and unique [`AttributeValueId`]

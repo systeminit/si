@@ -1,13 +1,24 @@
 use std::sync::Arc;
 
 use naxum::{
-    Extensions, HeadRef, Message, MessageHead, extract::MatchedSubject, middleware::trace::MakeSpan,
+    Extensions,
+    HeadRef,
+    Message,
+    MessageHead,
+    extract::MatchedSubject,
+    middleware::trace::MakeSpan,
 };
-use si_data_nats::{ConnectionMetadata, header};
+use si_data_nats::{
+    ConnectionMetadata,
+    header,
+};
 use telemetry::prelude::*;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
-use crate::{headers::CORRELATION_ID, propagation::extract_opentelemetry_context};
+use crate::{
+    headers::CORRELATION_ID,
+    propagation::extract_opentelemetry_context,
+};
 
 /// Marker type which informs [`NatsMakeSpan`] to skip OpenTelemetry propagation header extraction.
 #[derive(Clone, Debug)]

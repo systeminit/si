@@ -2,19 +2,24 @@ use std::{
     convert::Infallible,
     fmt,
     marker::PhantomData,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
 };
 
 use futures::FutureExt;
 use tower::Service;
 
+use super::Handler;
 use crate::{
     make_service::IntoMakeService,
-    message::{Message, MessageHead},
+    message::{
+        Message,
+        MessageHead,
+    },
     response::Response,
 };
-
-use super::Handler;
 
 pub struct HandlerService<H, T, S, R> {
     handler: H,

@@ -1,31 +1,55 @@
 use std::collections::HashMap;
 
-use axum::extract::Path;
 use axum::{
     Json,
-    extract::{Host, OriginalUri},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
 };
-use dal::Func;
-use dal::diagram::geometry::Geometry;
-use serde::{Deserialize, Serialize};
-
-use dal::diagram::view::ViewId;
 use dal::{
-    ChangeSet, ChangeSetId, Component, ComponentId, Schema, SchemaId, SchemaVariant,
-    SchemaVariantId, WorkspacePk, WsEvent, change_status::ChangeStatus, component::frame::Frame,
+    ChangeSet,
+    ChangeSetId,
+    Component,
+    ComponentId,
+    Func,
+    Schema,
+    SchemaId,
+    SchemaVariant,
+    SchemaVariantId,
+    WorkspacePk,
+    WsEvent,
+    change_status::ChangeStatus,
+    component::frame::Frame,
+    diagram::{
+        geometry::Geometry,
+        view::ViewId,
+    },
     generate_name,
+};
+use serde::{
+    Deserialize,
+    Serialize,
 };
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 
+use super::{
+    ViewError,
+    ViewResult,
+};
 use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::force_change_set_response::ForceChangeSetResponse,
-    service::v2::AccessBuilder,
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::AccessBuilder,
+    },
     track,
 };
-
-use super::{ViewError, ViewResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 #[serde(rename_all = "camelCase")]

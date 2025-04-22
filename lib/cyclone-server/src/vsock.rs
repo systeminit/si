@@ -1,10 +1,16 @@
-use std::task::{Context, Poll};
+use std::task::{
+    Context,
+    Poll,
+};
 
 use futures::ready;
 use hyper::server::accept::Accept;
 use thiserror::Error;
-
-use tokio_vsock::{VsockAddr, VsockListener, VsockStream};
+use tokio_vsock::{
+    VsockAddr,
+    VsockListener,
+    VsockStream,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

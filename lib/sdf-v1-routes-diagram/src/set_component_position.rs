@@ -1,16 +1,35 @@
 use std::collections::HashMap;
 
 use axum::Json;
-use dal::diagram::view::View;
 use dal::{
-    ChangeSet, Component, ComponentId, ComponentType, Visibility, WsEvent,
-    component::{InferredConnection, frame::Frame},
-    diagram::SummaryDiagramInferredEdge,
+    ChangeSet,
+    Component,
+    ComponentId,
+    ComponentType,
+    Visibility,
+    WsEvent,
+    component::{
+        InferredConnection,
+        frame::Frame,
+    },
+    diagram::{
+        SummaryDiagramInferredEdge,
+        view::View,
+    },
 };
 use sdf_core::force_change_set_response::ForceChangeSetResponse;
-use sdf_extract::{HandlerContext, v1::AccessBuilder};
-use serde::{Deserialize, Serialize};
-use si_frontend_types::{RawGeometry, StringGeometry};
+use sdf_extract::{
+    HandlerContext,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_frontend_types::{
+    RawGeometry,
+    StringGeometry,
+};
 use ulid::Ulid;
 
 use super::DiagramResult;

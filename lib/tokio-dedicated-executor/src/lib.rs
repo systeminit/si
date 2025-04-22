@@ -32,22 +32,43 @@
     missing_docs
 )]
 
-use std::{fmt, future::Future, sync::Arc, thread, time::Duration};
+use std::{
+    fmt,
+    future::Future,
+    sync::Arc,
+    thread,
+    time::Duration,
+};
 
 use futures::{
-    FutureExt, TryFutureExt,
-    future::{BoxFuture, Shared},
+    FutureExt,
+    TryFutureExt,
+    future::{
+        BoxFuture,
+        Shared,
+    },
 };
 use parking_lot::RwLock;
 use thiserror::Error;
-use thread_priority::{ThreadPriority, set_current_thread_priority};
-use tokio::{runtime, sync::oneshot, task::JoinSet};
+use thread_priority::{
+    ThreadPriority,
+    set_current_thread_priority,
+};
+use tokio::{
+    runtime,
+    sync::oneshot,
+    task::JoinSet,
+};
 use tokio_util::sync::CancellationToken;
 use tracing::warn;
 
 mod parent;
 
-pub use parent::{register_current_runtime_as_parent, register_parent_runtime, spawn_on_parent};
+pub use parent::{
+    register_current_runtime_as_parent,
+    register_parent_runtime,
+    spawn_on_parent,
+};
 
 /// Runs futures (and any [`tokio::spawn`]ed tasks) on a seperate & dedicated Tokio runtime.
 ///
@@ -356,7 +377,10 @@ impl Drop for State {
 #[allow(clippy::panic, clippy::unwrap_used)]
 mod tests {
     use core::panic;
-    use std::{panic::panic_any, sync::Barrier};
+    use std::{
+        panic::panic_any,
+        sync::Barrier,
+    };
 
     use tokio::sync::Barrier as AsyncBarrier;
 

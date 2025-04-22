@@ -6,5 +6,8 @@ mod on_success;
 mod service;
 
 pub use self::{
-    layer::AckLayer, on_failure::DefaultOnFailure, on_success::DefaultOnSuccess, service::Ack,
+    layer::AckLayer,
+    on_failure::DefaultOnFailure,
+    on_success::DefaultOnSuccess,
+    service::Ack,
 };

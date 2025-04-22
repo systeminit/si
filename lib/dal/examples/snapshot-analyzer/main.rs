@@ -1,8 +1,11 @@
-use std::{env, fs::File, io::Read as _};
-
-use si_layer_cache::db::serialize;
+use std::{
+    env,
+    fs::File,
+    io::Read as _,
+};
 
 use dal::WorkspaceSnapshotGraph;
+use si_layer_cache::db::serialize;
 use tokio::time::Instant;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + 'static>>;

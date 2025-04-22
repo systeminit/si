@@ -1,22 +1,30 @@
+use std::sync::Arc;
+
 use axum::{
-    extract::{State, WebSocketUpgrade, ws::WebSocket},
+    extract::{
+        State,
+        WebSocketUpgrade,
+        ws::WebSocket,
+    },
     response::IntoResponse,
 };
 use dal::WorkspacePk;
 use nats_multiplexer_client::MultiplexerClient;
+use sdf_core::nats_multiplexer::NatsMultiplexerClients;
+use sdf_extract::{
+    request::TokenFromQueryParam,
+    services::Nats,
+    workspace::{
+        TargetWorkspaceIdFromToken,
+        WorkspaceAuthorization,
+    },
+};
 use si_data_nats::NatsClient;
-use std::sync::Arc;
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
 use crate::WsError;
-use sdf_core::nats_multiplexer::NatsMultiplexerClients;
-use sdf_extract::{
-    request::TokenFromQueryParam,
-    services::Nats,
-    workspace::{TargetWorkspaceIdFromToken, WorkspaceAuthorization},
-};
 
 #[allow(clippy::unused_async)]
 pub async fn workspace_updates(
@@ -74,21 +82,47 @@ async fn run_workspace_updates_proto(
 }
 
 mod workspace_updates {
-    use axum::extract::ws::{self, WebSocket};
-    use dal::{
-        ChangeSetId, UserPk, WorkspacePk, WsEvent, WsEventError,
-        component::ComponentSetPositionPayload, user::CursorPayload, user::OnlinePayload,
+    use std::{
+        error::Error,
+        sync::Arc,
     };
-    use nats_multiplexer_client::{MultiplexerClient, MultiplexerClientError};
-    use serde::{Deserialize, Serialize};
-    use si_data_nats::{NatsClient, Subject};
+
+    use axum::extract::ws::{
+        self,
+        WebSocket,
+    };
+    use dal::{
+        ChangeSetId,
+        UserPk,
+        WorkspacePk,
+        WsEvent,
+        WsEventError,
+        component::ComponentSetPositionPayload,
+        user::{
+            CursorPayload,
+            OnlinePayload,
+        },
+    };
+    use nats_multiplexer_client::{
+        MultiplexerClient,
+        MultiplexerClientError,
+    };
+    use serde::{
+        Deserialize,
+        Serialize,
+    };
+    use si_data_nats::{
+        NatsClient,
+        Subject,
+    };
     use si_events::ViewId;
-    use std::error::Error;
-    use std::sync::Arc;
     use telemetry::prelude::*;
     use thiserror::Error;
-    use tokio::sync::broadcast::error::RecvError;
-    use tokio::sync::{Mutex, broadcast};
+    use tokio::sync::{
+        Mutex,
+        broadcast,
+        broadcast::error::RecvError,
+    };
     use tokio_tungstenite::tungstenite;
     use tokio_util::sync::CancellationToken;
 

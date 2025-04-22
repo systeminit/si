@@ -1,9 +1,16 @@
 use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+};
 
 use super::SpecError;
-
-use strum::{AsRefStr, Display, EnumIter, EnumString};
 
 #[remain::sorted]
 #[derive(

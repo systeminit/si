@@ -1,31 +1,59 @@
 use std::{
-    collections::{HashMap, hash_map::Entry},
-    env, error,
-    str::{self, Utf8Error},
+    collections::{
+        HashMap,
+        hash_map::Entry,
+    },
+    env,
+    error,
+    str::{
+        self,
+        Utf8Error,
+    },
     sync::Arc,
     time::Duration,
 };
 
 use async_nats::jetstream;
 use naxum::{
-    BoxError, Message, ServiceExt,
+    BoxError,
+    Message,
+    ServiceExt,
     extract::State,
     handler::Handler,
-    middleware::{ack::AckLayer, trace::TraceLayer},
-    response::{IntoResponse, Response},
+    middleware::{
+        ack::AckLayer,
+        trace::TraceLayer,
+    },
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use thiserror::Error;
 use tokio::{
-    signal::unix::{self, SignalKind},
+    signal::unix::{
+        self,
+        SignalKind,
+    },
     sync::Mutex,
     time,
 };
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 use tower::ServiceBuilder;
-use tracing::{error, info};
+use tracing::{
+    error,
+    info,
+};
 use tracing_subscriber::{
-    EnvFilter, Registry,
-    fmt::{self, format::FmtSpan},
+    EnvFilter,
+    Registry,
+    fmt::{
+        self,
+        format::FmtSpan,
+    },
     layer::SubscriberExt as _,
     util::SubscriberInitExt as _,
 };

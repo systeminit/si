@@ -1,28 +1,57 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, State},
+    extract::{
+        Host,
+        OriginalUri,
+        State,
+    },
 };
 use dal::{
-    DalContext, HistoryActor, KeyPair, Tenancy, User, UserPk, Workspace, WorkspacePk,
-    WorkspaceSnapshotGraph, workspace_integrations::WorkspaceIntegration,
+    DalContext,
+    HistoryActor,
+    KeyPair,
+    Tenancy,
+    User,
+    UserPk,
+    Workspace,
+    WorkspacePk,
+    WorkspaceSnapshotGraph,
+    workspace_integrations::WorkspaceIntegration,
 };
 use hyper::Uri;
-use permissions::{Relation, RelationBuilder};
-use serde::{Deserialize, Serialize};
+use permissions::{
+    Relation,
+    RelationBuilder,
+};
+use sdf_core::{
+    app_state::AppState,
+    tracking::track,
+    workspace_permissions::{
+        WorkspacePermissions,
+        WorkspacePermissionsMode,
+    },
+};
+use sdf_extract::{
+    HandlerContext,
+    PosthogClient,
+    request::{
+        RawAccessToken,
+        RequestUlidFromHeader,
+    },
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::json;
 use si_data_spicedb::SpiceDbClient;
 use si_events::audit_log::AuditLogKind;
 use telemetry::tracing::warn;
 
-use crate::{AuthApiErrBody, SessionError, SessionResult};
-use sdf_core::{
-    app_state::AppState,
-    tracking::track,
-    workspace_permissions::{WorkspacePermissions, WorkspacePermissionsMode},
-};
-use sdf_extract::{
-    HandlerContext, PosthogClient,
-    request::{RawAccessToken, RequestUlidFromHeader},
+use crate::{
+    AuthApiErrBody,
+    SessionError,
+    SessionResult,
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -1,6 +1,9 @@
 use std::{
     convert::Infallible,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
     time::Duration,
 };
 

@@ -1,18 +1,33 @@
 use axum::{
     Json,
-    extract::{OriginalUri, Path, Query},
+    extract::{
+        OriginalUri,
+        Path,
+        Query,
+    },
 };
-use dal::{ChangeSetId, FuncId, WorkspacePk};
-
-use serde::{Deserialize, Serialize};
+use dal::{
+    ChangeSetId,
+    FuncId,
+    WorkspacePk,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_frontend_types::FuncCode;
 
+use super::{
+    FuncAPIResult,
+    get_code_response,
+};
 use crate::{
-    extract::{HandlerContext, PosthogClient},
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
     service::v2::AccessBuilder,
 };
-
-use super::{FuncAPIResult, get_code_response};
 
 // TODO: find the right way to pass a Vec<FuncId>
 // the API call uses the `id[]=<...>&id[]=<...?` format

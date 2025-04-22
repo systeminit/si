@@ -1,20 +1,42 @@
 use axum::{
     Router,
     extract::State,
-    http::{HeaderValue, Request, StatusCode},
-    middleware::{self, Next},
-    response::{IntoResponse, Json, Response},
+    http::{
+        HeaderValue,
+        Request,
+        StatusCode,
+    },
+    middleware::{
+        self,
+        Next,
+    },
+    response::{
+        IntoResponse,
+        Json,
+        Response,
+    },
     routing::get,
 };
-use hyper::Method;
-use hyper::header;
-use serde_json::{Value, json};
+use hyper::{
+    Method,
+    header,
+};
+use serde_json::{
+    Value,
+    json,
+};
 use tower_http::{
     compression::CompressionLayer,
-    cors::{AllowOrigin, CorsLayer},
+    cors::{
+        AllowOrigin,
+        CorsLayer,
+    },
 };
 
-use crate::app_state::{AppState, ApplicationRuntimeMode};
+use crate::app_state::{
+    AppState,
+    ApplicationRuntimeMode,
+};
 
 const MAINTENANCE_MODE_MESSAGE: &str = concat!(
     " SI is currently in maintenance mode. ",

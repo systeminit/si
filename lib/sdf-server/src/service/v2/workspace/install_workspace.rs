@@ -1,24 +1,42 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Path},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
     http::Uri,
 };
-use dal::{DalContext, Workspace, WorkspacePk, WsEvent};
+use dal::{
+    DalContext,
+    Workspace,
+    WorkspacePk,
+    WsEvent,
+};
 use module_index_client::ModuleIndexClient;
 use sdf_core::async_route::handle_error;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::audit_log::AuditLogKind;
 use si_pkg::WorkspaceExportContentV0;
 use telemetry::prelude::info;
 use ulid::Ulid;
 
+use super::{
+    WorkspaceAPIError,
+    WorkspaceAPIResult,
+};
 use crate::{
-    extract::{HandlerContext, PosthogClient, request::RawAccessToken},
+    extract::{
+        HandlerContext,
+        PosthogClient,
+        request::RawAccessToken,
+    },
     service::v2::AccessBuilder,
     track,
 };
-
-use super::{WorkspaceAPIError, WorkspaceAPIResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

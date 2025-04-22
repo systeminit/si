@@ -1,10 +1,17 @@
 use std::env;
 
-use si_data_nats::{NatsClient, NatsConfig};
+use si_data_nats::{
+    NatsClient,
+    NatsConfig,
+};
 use telemetry::prelude::*;
 use tracing_subscriber::{
-    EnvFilter, Registry,
-    fmt::{self, format::FmtSpan},
+    EnvFilter,
+    Registry,
+    fmt::{
+        self,
+        format::FmtSpan,
+    },
     prelude::*,
 };
 

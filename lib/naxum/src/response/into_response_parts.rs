@@ -1,6 +1,9 @@
 use std::convert::Infallible;
 
-use super::{IntoResponse, Response};
+use super::{
+    IntoResponse,
+    Response,
+};
 
 pub trait IntoResponseParts {
     type Error: IntoResponse;

@@ -1,40 +1,79 @@
 use std::{
     fmt,
-    future::{Future, IntoFuture as _},
+    future::{
+        Future,
+        IntoFuture as _,
+    },
     io,
     sync::Arc,
 };
 
 use dal::{
-    DalContext, DedicatedExecutor, JetstreamStreams, JobQueueProcessor, NatsProcessor,
-    ServicesContext, feature_flags::FeatureFlagService,
+    DalContext,
+    DedicatedExecutor,
+    JetstreamStreams,
+    JobQueueProcessor,
+    NatsProcessor,
+    ServicesContext,
+    feature_flags::FeatureFlagService,
 };
 use naxum::{
-    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
+    MessageHead,
+    ServiceBuilder,
+    ServiceExt as _,
+    TowerServiceExt as _,
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
         ack::AckLayer,
-        matched_subject::{ForSubject, MatchedSubjectLayer},
+        matched_subject::{
+            ForSubject,
+            MatchedSubjectLayer,
+        },
         trace::TraceLayer,
     },
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
-use pinga_core::{pinga_work_queue, subject};
+use pinga_core::{
+    pinga_work_queue,
+    subject,
+};
 use rebaser_client::RebaserClient;
 use si_crypto::{
-    SymmetricCryptoService, SymmetricCryptoServiceConfig, VeritechCryptoConfig,
+    SymmetricCryptoService,
+    SymmetricCryptoServiceConfig,
+    VeritechCryptoConfig,
     VeritechEncryptionKey,
 };
-use si_data_nats::{NatsClient, NatsConfig, async_nats, jetstream};
-use si_data_pg::{PgPool, PgPoolConfig};
+use si_data_nats::{
+    NatsClient,
+    NatsConfig,
+    async_nats,
+    jetstream,
+};
+use si_data_pg::{
+    PgPool,
+    PgPoolConfig,
+};
 use si_layer_cache::LayerDb;
 use telemetry::prelude::*;
 use telemetry_utils::metric;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 use veritech_client::Client as VeritechClient;
 
-use crate::{Config, ServerError, ServerResult, app_state::AppState, handlers};
+use crate::{
+    Config,
+    ServerError,
+    ServerResult,
+    app_state::AppState,
+    handlers,
+};
 
 const CONSUMER_NAME: &str = "pinga-server";
 

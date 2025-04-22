@@ -1,10 +1,14 @@
-use crate::routes::Json;
-use axum::extract::{Path, State};
+use axum::extract::{
+    Path,
+    State,
+};
 use innit_core::GetParameterResponse;
 
-use crate::app_state::AppState;
-
 use super::AppError;
+use crate::{
+    app_state::AppState,
+    routes::Json,
+};
 
 pub async fn get_parameter_route(
     Path(name): Path<String>,

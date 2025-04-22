@@ -27,32 +27,51 @@
     while_true
 )]
 
-use std::{future::IntoFuture, io};
+use std::{
+    future::IntoFuture,
+    io,
+};
 
 use futures::Future;
 use middleware::DeleteMessageOnSuccess;
 use naxum::{
-    ServiceBuilder, ServiceExt, TowerServiceExt,
+    ServiceBuilder,
+    ServiceExt,
+    TowerServiceExt,
     handler::Handler,
-    middleware::{post_process::PostProcessLayer, trace::TraceLayer},
-    response::{IntoResponse, Response},
+    middleware::{
+        post_process::PostProcessLayer,
+        trace::TraceLayer,
+    },
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
-use si_data_nats::{NatsClient, jetstream::Context};
 use si_data_nats::{
+    NatsClient,
     Subject,
     async_nats::{
         self,
         jetstream::{
-            consumer::StreamErrorKind, context::RequestErrorKind, stream::ConsumerErrorKind,
+            consumer::StreamErrorKind,
+            context::RequestErrorKind,
+            stream::ConsumerErrorKind,
         },
     },
     jetstream,
+    jetstream::Context,
 };
 use si_events::ulid::Ulid;
-use telemetry::prelude::*;
-use telemetry::tracing::error;
+use telemetry::{
+    prelude::*,
+    tracing::error,
+};
 use thiserror::Error;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 
 mod app_state;
 mod handlers;

@@ -1,9 +1,14 @@
-use auth_api_client::{client::AuthApiClient, types::AuthApiClientError};
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::{
+    collections::HashMap,
+    sync::Arc,
+};
 
+use auth_api_client::{
+    client::AuthApiClient,
+    types::AuthApiClientError,
+};
 use thiserror::Error;
+use tokio::sync::Mutex;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

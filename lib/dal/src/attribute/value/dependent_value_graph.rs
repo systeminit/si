@@ -1,26 +1,50 @@
+use std::{
+    collections::{
+        HashMap,
+        HashSet,
+        VecDeque,
+        hash_map::Entry,
+    },
+    fs::File,
+    io::Write,
+};
+
 use petgraph::prelude::*;
 use si_events::ulid::Ulid;
-use std::collections::HashSet;
-use std::collections::{HashMap, VecDeque, hash_map::Entry};
-use std::{fs::File, io::Write};
 use telemetry::prelude::*;
 
-use crate::component::ControllingFuncData;
-use crate::component::socket::ComponentOutputSocket;
-use crate::workspace_snapshot::DependentValueRoot;
-use crate::workspace_snapshot::node_weight::NodeWeightDiscriminants;
+use super::{
+    AttributeValue,
+    AttributeValueError,
+    AttributeValueId,
+    AttributeValueResult,
+};
 use crate::{
-    Component, DalContext, Secret,
+    Component,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    Prop,
+    PropKind,
+    Secret,
     attribute::{
-        prototype::{AttributePrototype, argument::AttributePrototypeArgument},
+        prototype::{
+            AttributePrototype,
+            argument::AttributePrototypeArgument,
+        },
         value::ValueIsFor,
     },
+    component::{
+        ControllingFuncData,
+        socket::ComponentOutputSocket,
+    },
     dependency_graph::DependencyGraph,
-    workspace_snapshot::edge_weight::EdgeWeightKindDiscriminants,
+    workspace_snapshot::{
+        DependentValueRoot,
+        edge_weight::EdgeWeightKindDiscriminants,
+        node_weight::NodeWeightDiscriminants,
+    },
 };
-use crate::{ComponentError, ComponentId, Prop, PropKind};
-
-use super::{AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult};
 
 #[derive(Debug, Clone)]
 pub struct DependentValueGraph {

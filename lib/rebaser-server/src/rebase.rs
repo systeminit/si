@@ -1,18 +1,34 @@
 use audit_logs_stream::AuditLogsStreamError;
 use dal::{
-    ChangeSetStatus, DalContext, TransactionsError, Workspace, WorkspaceError, WorkspacePk,
-    WorkspaceSnapshot, WsEvent, WsEventError, billing_publish,
-    change_set::{ChangeSet, ChangeSetError, ChangeSetId},
+    ChangeSetStatus,
+    DalContext,
+    TransactionsError,
+    Workspace,
+    WorkspaceError,
+    WorkspacePk,
+    WorkspaceSnapshot,
+    WsEvent,
+    WsEventError,
+    billing_publish,
+    change_set::{
+        ChangeSet,
+        ChangeSetError,
+        ChangeSetId,
+    },
     data_cache::DataCacheError,
     workspace_snapshot::WorkspaceSnapshotError,
 };
 use edda_client::EddaClient;
 use pending_events::PendingEventsError;
 use rebaser_core::api_types::{
-    enqueue_updates_request::EnqueueUpdatesRequest, enqueue_updates_response::v1::RebaseStatus,
+    enqueue_updates_request::EnqueueUpdatesRequest,
+    enqueue_updates_response::v1::RebaseStatus,
 };
 use shuttle_server::ShuttleError;
-use si_events::{WorkspaceSnapshotAddress, rebase_batch_address::RebaseBatchAddress};
+use si_events::{
+    WorkspaceSnapshotAddress,
+    rebase_batch_address::RebaseBatchAddress,
+};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;

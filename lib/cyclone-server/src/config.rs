@@ -1,11 +1,20 @@
 use std::{
-    net::{SocketAddr, ToSocketAddrs},
-    path::{Path, PathBuf},
+    net::{
+        SocketAddr,
+        ToSocketAddrs,
+    },
+    path::{
+        Path,
+        PathBuf,
+    },
     time::Duration,
 };
 
 use derive_builder::Builder;
-use si_std::{CanonicalFile, CanonicalFileError};
+use si_std::{
+    CanonicalFile,
+    CanonicalFileError,
+};
 use thiserror::Error;
 
 #[remain::sorted]

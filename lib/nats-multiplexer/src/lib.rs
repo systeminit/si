@@ -27,16 +27,30 @@
     while_true
 )]
 
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+};
+
 use futures::StreamExt;
 use nats_multiplexer_client::MultiplexerClient;
-use nats_multiplexer_core::{MultiplexerKey, MultiplexerRequest};
-use si_data_nats::subject::ToSubject;
-use si_data_nats::{Message, NatsClient, Subject, Subscriber};
-use std::collections::HashMap;
-use std::fmt::Debug;
+use nats_multiplexer_core::{
+    MultiplexerKey,
+    MultiplexerRequest,
+};
+use si_data_nats::{
+    Message,
+    NatsClient,
+    Subject,
+    Subscriber,
+    subject::ToSubject,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::{
+    broadcast,
+    mpsc,
+};
 use tokio_util::sync::CancellationToken;
 
 /// The buffer used for senders within the [`Multiplexer's`] channels map.

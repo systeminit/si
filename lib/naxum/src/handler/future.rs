@@ -7,15 +7,24 @@ use std::{
     fmt,
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
 };
 
 use futures::future::Map;
 use pin_project_lite::pin_project;
-use tower::{Service, util::Oneshot};
+use tower::{
+    Service,
+    util::Oneshot,
+};
 
 use crate::{
-    message::{Message, MessageHead},
+    message::{
+        Message,
+        MessageHead,
+    },
     response::Response,
 };
 

@@ -3,8 +3,13 @@ use petgraph::prelude::*;
 use si_id::PropId;
 
 use crate::{
-    EdgeWeightKindDiscriminants, PropKind, WorkspaceSnapshot, WorkspaceSnapshotGraphVCurrent,
-    prop::PropResult, slow_rt, workspace_snapshot::node_weight::PropNodeWeight,
+    EdgeWeightKindDiscriminants,
+    PropKind,
+    WorkspaceSnapshot,
+    WorkspaceSnapshotGraphVCurrent,
+    prop::PropResult,
+    slow_rt,
+    workspace_snapshot::node_weight::PropNodeWeight,
 };
 
 #[async_trait]

@@ -1,6 +1,14 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_pg::postgres_types::ToSql;
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+};
 
 // NOTE(nick): if we can remove the "ToSql" trait, then we can fully move this to "si-events-rs"
 // and delete the duplicate types.

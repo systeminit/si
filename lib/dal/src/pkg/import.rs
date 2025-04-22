@@ -1,40 +1,94 @@
+use std::{
+    collections::{
+        HashMap,
+        HashSet,
+    },
+    fmt::Debug,
+    path::Path,
+    str::FromStr,
+};
+
 use chrono::NaiveDateTime;
 use si_events::ulid::Ulid;
 use si_pkg::{
-    SchemaVariantSpecPropRoot, SiPkg, SiPkgActionFunc, SiPkgAttrFuncInputView, SiPkgAuthFunc,
-    SiPkgComponent, SiPkgEdge, SiPkgError, SiPkgFunc, SiPkgFuncArgument, SiPkgFuncData, SiPkgKind,
-    SiPkgLeafFunction, SiPkgManagementFunc, SiPkgMetadata, SiPkgProp, SiPkgPropData, SiPkgSchema,
-    SiPkgSchemaData, SiPkgSchemaVariant, SiPkgSocket, SiPkgSocketData, SocketSpecKind,
+    SchemaVariantSpecPropRoot,
+    SiPkg,
+    SiPkgActionFunc,
+    SiPkgAttrFuncInputView,
+    SiPkgAuthFunc,
+    SiPkgComponent,
+    SiPkgEdge,
+    SiPkgError,
+    SiPkgFunc,
+    SiPkgFuncArgument,
+    SiPkgFuncData,
+    SiPkgKind,
+    SiPkgLeafFunction,
+    SiPkgManagementFunc,
+    SiPkgMetadata,
+    SiPkgProp,
+    SiPkgPropData,
+    SiPkgSchema,
+    SiPkgSchemaData,
+    SiPkgSchemaVariant,
+    SiPkgSocket,
+    SiPkgSocketData,
+    SocketSpecKind,
 };
-use std::collections::HashSet;
-use std::fmt::Debug;
-use std::str::FromStr;
-use std::{collections::HashMap, path::Path};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
-use crate::SocketKind;
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentId, value_source::ValueSource,
+use super::{
+    PkgError,
+    PkgResult,
 };
-use crate::authentication_prototype::{AuthenticationPrototype, AuthenticationPrototypeId};
-use crate::func::FuncKind;
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::management::prototype::ManagementPrototype;
-use crate::module::{Module, ModuleId};
-use crate::schema::variant::SchemaVariantJson;
-use crate::socket::connection_annotation::ConnectionAnnotation;
-use crate::{AttributePrototype, AttributePrototypeId};
 use crate::{
-    DalContext, EdgeWeightKind, Func, FuncId, InputSocket, OutputSocket, OutputSocketId, Prop,
-    PropId, PropKind, Schema, SchemaVariant, SchemaVariantId,
+    AttributePrototype,
+    AttributePrototypeId,
+    DalContext,
+    EdgeWeightKind,
+    Func,
+    FuncId,
+    InputSocket,
+    OutputSocket,
+    OutputSocketId,
+    Prop,
+    PropId,
+    PropKind,
+    Schema,
+    SchemaVariant,
+    SchemaVariantId,
+    SocketKind,
     action::prototype::ActionPrototype,
-    func::argument::FuncArgument,
+    attribute::prototype::argument::{
+        AttributePrototypeArgument,
+        AttributePrototypeArgumentId,
+        value_source::ValueSource,
+    },
+    authentication_prototype::{
+        AuthenticationPrototype,
+        AuthenticationPrototypeId,
+    },
+    func::{
+        FuncKind,
+        argument::FuncArgument,
+        intrinsics::IntrinsicFunc,
+    },
+    management::prototype::ManagementPrototype,
+    module::{
+        Module,
+        ModuleId,
+    },
     prop::PropPath,
-    schema::variant::leaves::{LeafInputLocation, LeafKind},
+    schema::variant::{
+        SchemaVariantJson,
+        leaves::{
+            LeafInputLocation,
+            LeafKind,
+        },
+    },
+    socket::connection_annotation::ConnectionAnnotation,
 };
-
-use super::{PkgError, PkgResult};
 
 #[derive(Clone, Debug)]
 pub enum Thing {

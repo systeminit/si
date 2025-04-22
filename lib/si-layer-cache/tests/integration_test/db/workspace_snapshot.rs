@@ -1,13 +1,29 @@
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::Arc,
+    time::Duration,
+};
 
-use si_events::{Actor, ChangeSetId, Tenancy, UserPk, WorkspacePk};
-use si_layer_cache::db::serialize;
-use si_layer_cache::hybrid_cache::CacheConfig;
-use si_layer_cache::{LayerDb, persister::PersistStatus};
+use si_events::{
+    Actor,
+    ChangeSetId,
+    Tenancy,
+    UserPk,
+    WorkspacePk,
+};
+use si_layer_cache::{
+    LayerDb,
+    db::serialize,
+    hybrid_cache::CacheConfig,
+    persister::PersistStatus,
+};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
-use crate::integration_test::{setup_compute_executor, setup_nats_client, setup_pg_db};
+use crate::integration_test::{
+    setup_compute_executor,
+    setup_nats_client,
+    setup_pg_db,
+};
 
 type TestLayerDb = LayerDb<String, String, String, String>;
 

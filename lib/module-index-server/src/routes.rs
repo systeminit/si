@@ -1,16 +1,27 @@
 use axum::{
     Router,
     extract::DefaultBodyLimit,
-    response::Json,
-    response::{IntoResponse, Response},
-    routing::{get, post},
+    response::{
+        IntoResponse,
+        Json,
+        Response,
+    },
+    routing::{
+        get,
+        post,
+    },
 };
 use hyper::StatusCode;
-use serde_json::{Value, json};
+use serde_json::{
+    Value,
+    json,
+};
 use si_data_pg::PgError;
 use thiserror::Error;
-use tower_http::compression::CompressionLayer;
-use tower_http::cors::CorsLayer;
+use tower_http::{
+    compression::CompressionLayer,
+    cors::CorsLayer,
+};
 
 mod download_builtin_route;
 mod download_module_route;
@@ -25,7 +36,10 @@ pub(crate) mod upsert_builtin_route;
 pub(crate) mod upsert_module_route;
 mod upsert_workspace_route;
 
-use super::{app_state::AppState, server::ServerError};
+use super::{
+    app_state::AppState,
+    server::ServerError,
+};
 
 // 512Mb upload limit
 const MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 512;

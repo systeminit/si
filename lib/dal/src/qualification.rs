@@ -1,19 +1,40 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_pg::PgError;
 use si_layer_cache::LayerDbError;
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::AttributeValue;
-use crate::attribute::value::AttributeValueError;
-use crate::component::qualification::QualificationEntry;
-use crate::func::FuncError;
-use crate::prop::PropError;
-use crate::validation::{ValidationError, ValidationOutput, ValidationStatus};
 use crate::{
-    Component, ComponentError, ComponentId, DalContext, Prop, StandardModelError, WsEventResult,
-    ws_event::{WsEvent, WsPayload},
+    AttributeValue,
+    Component,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    Prop,
+    StandardModelError,
+    WsEventResult,
+    attribute::value::AttributeValueError,
+    component::qualification::QualificationEntry,
+    func::FuncError,
+    prop::PropError,
+    validation::{
+        ValidationError,
+        ValidationOutput,
+        ValidationStatus,
+    },
+    ws_event::{
+        WsEvent,
+        WsPayload,
+    },
 };
 
 #[derive(Deserialize, Serialize, Debug)]

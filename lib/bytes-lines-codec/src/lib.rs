@@ -71,10 +71,22 @@
     clippy::module_name_repetitions
 )]
 
-use std::{cmp, fmt, io};
+use std::{
+    cmp,
+    fmt,
+    io,
+};
 
-use bytes::{Buf, BufMut, Bytes, BytesMut};
-use tokio_util::codec::{Decoder, Encoder};
+use bytes::{
+    Buf,
+    BufMut,
+    Bytes,
+    BytesMut,
+};
+use tokio_util::codec::{
+    Decoder,
+    Encoder,
+};
 use tracing::trace;
 
 /// A codec for frames delimited by a newline character.
@@ -267,9 +279,18 @@ fn without_carriage_return(mut src: BytesMut) -> BytesMut {
 mod tests {
     use std::net::SocketAddr;
 
-    use futures::{SinkExt, TryStreamExt};
-    use serde::{Deserialize, Serialize};
-    use tokio::net::{TcpListener, TcpStream};
+    use futures::{
+        SinkExt,
+        TryStreamExt,
+    };
+    use serde::{
+        Deserialize,
+        Serialize,
+    };
+    use tokio::net::{
+        TcpListener,
+        TcpStream,
+    };
     use tokio_serde::formats::Json;
     use tokio_util::codec::Framed;
 

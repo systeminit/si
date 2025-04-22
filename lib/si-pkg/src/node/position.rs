@@ -1,7 +1,16 @@
-use std::io::{BufRead, Write};
+use std::io::{
+    BufRead,
+    Write,
+};
 
 use object_tree::{
-    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes, read_key_value_line,
+    GraphError,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
     write_key_value_line,
 };
 

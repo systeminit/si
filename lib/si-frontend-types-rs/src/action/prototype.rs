@@ -1,15 +1,31 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::{
     ActionKind,
-    workspace_snapshot::{Checksum, ChecksumHasher, EntityKind},
+    workspace_snapshot::{
+        Checksum,
+        ChecksumHasher,
+        EntityKind,
+    },
 };
-use si_id::{ActionPrototypeId, FuncId, SchemaVariantId};
+use si_id::{
+    ActionPrototypeId,
+    FuncId,
+    SchemaVariantId,
+};
 
-use crate::checksum::FrontendChecksum;
 use crate::{
     MaterializedView,
+    checksum::FrontendChecksum,
     object::FrontendObject,
-    reference::{Refer, Reference, ReferenceId, ReferenceKind},
+    reference::{
+        Refer,
+        Reference,
+        ReferenceId,
+        ReferenceKind,
+    },
 };
 
 #[derive(

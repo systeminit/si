@@ -2,7 +2,11 @@
 
 use http::HeaderMap;
 use telemetry::{
-    opentelemetry::{Context, global, trace::TraceContextExt},
+    opentelemetry::{
+        Context,
+        global,
+        trace::TraceContextExt,
+    },
     tracing::Span,
 };
 
@@ -59,7 +63,10 @@ pub fn inject_opentelemetry_context(ctx: &Context, headers: &mut HeaderMap) {
 //
 // https://github.com/open-telemetry/opentelemetry-rust/blob/47881b20a2b8e94d8e1cdbd4877852dd74cc07de/opentelemetry-http/src/lib.rs#L13-L41
 mod headers {
-    use telemetry::opentelemetry::propagation::{Extractor, Injector};
+    use telemetry::opentelemetry::propagation::{
+        Extractor,
+        Injector,
+    };
 
     pub struct HeaderInjector<'a>(pub &'a mut http::HeaderMap);
 

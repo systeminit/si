@@ -1,11 +1,27 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Query},
+    extract::{
+        Host,
+        OriginalUri,
+        Query,
+    },
 };
-use dal::{Component, ComponentId, Visibility, code_view::CodeView};
+use dal::{
+    Component,
+    ComponentId,
+    Visibility,
+    code_view::CodeView,
+};
 use sdf_core::tracking::track;
-use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
-use serde::{Deserialize, Serialize};
+use sdf_extract::{
+    HandlerContext,
+    PosthogClient,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use super::ComponentResult;
 

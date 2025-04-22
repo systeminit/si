@@ -1,10 +1,13 @@
 use si_pkg::SiPkg;
-
-use crate::module::Module;
-use crate::{
-    BuiltinsResult, DalContext, func::intrinsics::IntrinsicFunc, pkg::import_pkg_from_pkg,
-};
 use telemetry::prelude::*;
+
+use crate::{
+    BuiltinsResult,
+    DalContext,
+    func::intrinsics::IntrinsicFunc,
+    module::Module,
+    pkg::import_pkg_from_pkg,
+};
 
 /// We want the src/builtins/func/** files to be available at run time inside of the Docker container
 /// that we build, but it would be nice to not have to include arbitrary bits of the source tree when

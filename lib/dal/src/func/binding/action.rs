@@ -1,15 +1,30 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 
+use super::{
+    EventualParent,
+    FuncBinding,
+    FuncBindingResult,
+};
 use crate::{
-    ActionPrototypeId, DalContext, Func, FuncId, Prop, SchemaVariant, SchemaVariantError,
+    ActionPrototypeId,
+    DalContext,
+    Func,
+    FuncId,
+    Prop,
+    SchemaVariant,
+    SchemaVariantError,
     SchemaVariantId,
-    action::prototype::{ActionKind, ActionPrototype},
+    action::prototype::{
+        ActionKind,
+        ActionPrototype,
+    },
     func::binding::FuncBindingError,
     prop::PropPath,
 };
-
-use super::{EventualParent, FuncBinding, FuncBindingResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ActionBinding {

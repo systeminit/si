@@ -1,31 +1,72 @@
-use std::{collections::hash_map::Entry, sync::Arc};
+use std::{
+    collections::hash_map::Entry,
+    sync::Arc,
+};
 
 use axum::{
     extract::{
-        Query, State, WebSocketUpgrade,
-        ws::{self, Message},
+        Query,
+        State,
+        WebSocketUpgrade,
+        ws::{
+            self,
+            Message,
+        },
     },
     response::IntoResponse,
 };
-use dal::{WorkspacePk, WsEventError};
-use futures::{Sink, SinkExt, Stream, StreamExt};
-use serde::{Deserialize, Serialize};
-use si_data_nats::{NatsClient, NatsError, Subject};
-use telemetry::prelude::*;
-use thiserror::Error;
-use tokio::{sync::Mutex, sync::broadcast};
-use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
-use y::{YSink, YStream};
-use y_sync::net::BroadcastGroup;
-
-use crate::WsError;
-use sdf_core::{BroadcastGroups, nats_multiplexer::NatsMultiplexerClients};
+use dal::{
+    WorkspacePk,
+    WsEventError,
+};
+use futures::{
+    Sink,
+    SinkExt,
+    Stream,
+    StreamExt,
+};
+use sdf_core::{
+    BroadcastGroups,
+    nats_multiplexer::NatsMultiplexerClients,
+};
 use sdf_extract::{
     request::TokenFromQueryParam,
     services::Nats,
-    workspace::{TargetWorkspaceIdFromToken, WorkspaceAuthorization},
+    workspace::{
+        TargetWorkspaceIdFromToken,
+        WorkspaceAuthorization,
+    },
 };
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_data_nats::{
+    NatsClient,
+    NatsError,
+    Subject,
+};
+use telemetry::prelude::*;
+use thiserror::Error;
+use tokio::sync::{
+    Mutex,
+    broadcast,
+};
+use tokio_stream::wrappers::{
+    BroadcastStream,
+    errors::BroadcastStreamRecvError,
+};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
+use y::{
+    YSink,
+    YStream,
+};
+use y_sync::net::BroadcastGroup;
+
+use crate::WsError;
 
 pub mod y;
 

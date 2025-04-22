@@ -2,11 +2,17 @@ use petgraph::prelude::*;
 use si_id::ViewId;
 
 use crate::{
-    ComponentError, ComponentId, SchemaVariantId, WorkspaceSnapshotError,
+    ComponentError,
+    ComponentId,
+    SchemaVariantId,
+    WorkspaceSnapshotError,
     component::ComponentResult,
     workspace_snapshot::{
         edge_weight::EdgeWeightKindDiscriminants,
-        graph::{WorkspaceSnapshotGraphResult, WorkspaceSnapshotGraphV4},
+        graph::{
+            WorkspaceSnapshotGraphResult,
+            WorkspaceSnapshotGraphV4,
+        },
         node_weight::NodeWeightDiscriminants,
     },
 };

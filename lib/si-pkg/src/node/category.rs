@@ -1,14 +1,30 @@
-use std::io::{BufRead, Write};
+use std::io::{
+    BufRead,
+    Write,
+};
 
 use object_tree::{
-    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
-    read_key_value_line, write_key_value_line,
+    GraphError,
+    NameStr,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    write_key_value_line,
 };
-use serde::{Deserialize, Serialize};
-
-use crate::{ChangeSetSpec, FuncSpec, SchemaSpec};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use super::PkgNode;
+use crate::{
+    ChangeSetSpec,
+    FuncSpec,
+    SchemaSpec,
+};
 
 const CATEGORY_TYPE_CHANGE_SETS: &str = "change_sets";
 const CATEGORY_TYPE_SCHEMAS: &str = "schemas";

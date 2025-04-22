@@ -1,13 +1,25 @@
 #![recursion_limit = "256"]
 
-use std::{path::PathBuf, time::Duration};
+use std::{
+    path::PathBuf,
+    time::Duration,
+};
 
-use luminork_server::{Config, Server, key_generation};
+use luminork_server::{
+    Config,
+    Server,
+    key_generation,
+};
 use si_service::{
     color_eyre,
     prelude::*,
-    rt, shutdown, startup,
-    telemetry_application::{self, TelemetryShutdownGuard},
+    rt,
+    shutdown,
+    startup,
+    telemetry_application::{
+        self,
+        TelemetryShutdownGuard,
+    },
 };
 
 mod args;

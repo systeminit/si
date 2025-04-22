@@ -1,19 +1,29 @@
 use std::{
     sync::Arc,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
 };
 
 use async_nats::jetstream;
 use tower::Service;
 
-use crate::{
-    message::{Message, MessageHead},
-    response::Response,
-};
-
 use super::{
-    DefaultOnFailure, DefaultOnSuccess, Info, OnFailure, OnSuccess, PostProcessLayer,
+    DefaultOnFailure,
+    DefaultOnSuccess,
+    Info,
+    OnFailure,
+    OnSuccess,
+    PostProcessLayer,
     future::ResponseFuture,
+};
+use crate::{
+    message::{
+        Message,
+        MessageHead,
+    },
+    response::Response,
 };
 
 #[derive(Clone, Copy, Debug)]

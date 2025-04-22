@@ -1,27 +1,56 @@
 use std::{
-    collections::{HashMap, HashSet, VecDeque, hash_map::Entry},
+    collections::{
+        HashMap,
+        HashSet,
+        VecDeque,
+        hash_map::Entry,
+    },
     fs::File,
     io::Write,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc,
+        Mutex,
+    },
 };
 
-use petgraph::{algo, prelude::*, stable_graph::Edges, visit::DfsEvent};
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, ulid::Ulid};
+use petgraph::{
+    algo,
+    prelude::*,
+    stable_graph::Edges,
+    visit::DfsEvent,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    ulid::Ulid,
+};
 use si_layer_cache::db::serialize;
 use telemetry::prelude::*;
 use ulid::Generator;
 
 use crate::{
-    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
+    EdgeWeight,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    NodeWeightDiscriminants,
     workspace_snapshot::{
-        CategoryNodeKind, LineageId, OrderingNodeWeight,
+        CategoryNodeKind,
+        LineageId,
+        OrderingNodeWeight,
         content_address::ContentAddress,
         graph::{
-            MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
+            MerkleTreeHash,
+            WorkspaceSnapshotGraphError,
+            WorkspaceSnapshotGraphResult,
             detector::Update,
         },
-        node_weight::{CategoryNodeWeight, NodeWeight},
+        node_weight::{
+            CategoryNodeWeight,
+            NodeWeight,
+        },
     },
 };
 

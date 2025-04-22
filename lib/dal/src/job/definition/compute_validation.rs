@@ -1,19 +1,38 @@
 use std::convert::TryFrom;
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 
-use crate::job::consumer::JobCompletionState;
-use crate::validation::{ValidationOutput, ValidationOutputNode};
 use crate::{
-    AccessBuilder, AttributeValueId, DalContext, Visibility,
-    job::consumer::{
-        JobConsumer, JobConsumerError, JobConsumerMetadata, JobConsumerResult, JobInfo,
+    AccessBuilder,
+    AttributeValueId,
+    ChangeSet,
+    ChangeSetStatus,
+    DalContext,
+    Visibility,
+    job::{
+        consumer::{
+            JobCompletionState,
+            JobConsumer,
+            JobConsumerError,
+            JobConsumerMetadata,
+            JobConsumerResult,
+            JobInfo,
+        },
+        producer::{
+            JobProducer,
+            JobProducerResult,
+        },
     },
-    job::producer::{JobProducer, JobProducerResult},
+    validation::{
+        ValidationOutput,
+        ValidationOutputNode,
+    },
 };
-use crate::{ChangeSet, ChangeSetStatus};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct ComputeValidationArgs {

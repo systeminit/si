@@ -1,30 +1,58 @@
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::HashMap;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use serde_json::Value;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::value::{AttributeValueError, ValueIsFor};
-use crate::func::argument::FuncArgument;
-use crate::func::argument::FuncArgumentError;
-use crate::prop::PropError;
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::{
-    AttributePrototype, AttributePrototypeId, AttributeValue, AttributeValueId, Component,
-    ComponentError, DalContext, Func, FuncError, FuncId, SecretError,
-};
-use crate::{
-    attribute::prototype::argument::{
-        AttributePrototypeArgument, AttributePrototypeArgumentError,
-        static_value::StaticArgumentValue,
-        value_source::{ValueSource, ValueSourceError},
+    AttributePrototype,
+    AttributePrototypeId,
+    AttributeValue,
+    AttributeValueId,
+    Component,
+    ComponentError,
+    DalContext,
+    Func,
+    FuncError,
+    FuncId,
+    SecretError,
+    attribute::{
+        prototype::{
+            AttributePrototypeError,
+            argument::{
+                AttributePrototypeArgument,
+                AttributePrototypeArgumentError,
+                static_value::StaticArgumentValue,
+                value_source::{
+                    ValueSource,
+                    ValueSourceError,
+                },
+            },
+        },
+        value::{
+            AttributeValueError,
+            ValueIsFor,
+        },
     },
     component::socket::ComponentInputSocket,
+    func::argument::{
+        FuncArgument,
+        FuncArgumentError,
+    },
+    prop::PropError,
+    socket::{
+        input::InputSocketError,
+        output::OutputSocketError,
+    },
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        node_weight::NodeWeightError,
+    },
 };
 
 type AttributePrototypeDebugViewResult<T> = Result<T, AttributePrototypeDebugViewError>;

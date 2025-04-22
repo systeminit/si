@@ -1,35 +1,63 @@
 use std::{
-    future::{Future, IntoFuture},
-    io, result,
+    future::{
+        Future,
+        IntoFuture,
+    },
+    io,
+    result,
     sync::Arc,
     time::Duration,
 };
 
 use dal::DalContextBuilder;
 use frigg::FriggStore;
-use futures::{TryStreamExt, future::BoxFuture};
+use futures::{
+    TryStreamExt,
+    future::BoxFuture,
+};
 use naxum::{
-    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
+    MessageHead,
+    ServiceBuilder,
+    ServiceExt as _,
+    TowerServiceExt as _,
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
-        matched_subject::{ForSubject, MatchedSubjectLayer},
-        post_process::{self, PostProcessLayer},
+        matched_subject::{
+            ForSubject,
+            MatchedSubjectLayer,
+        },
+        post_process::{
+            self,
+            PostProcessLayer,
+        },
         trace::TraceLayer,
     },
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use si_data_nats::{
     NatsClient,
-    async_nats::jetstream::{self, consumer::push},
+    async_nats::jetstream::{
+        self,
+        consumer::push,
+    },
 };
-use si_events::{ChangeSetId, WorkspacePk};
+use si_events::{
+    ChangeSetId,
+    WorkspacePk,
+};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use thiserror::Error;
 use tokio::sync::Notify;
 use tokio_stream::StreamExt as _;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 
 use self::app_state::AppState;
 use crate::ServerMetadata;
@@ -313,19 +341,32 @@ async fn graceful_shutdown_signal(
 mod handlers {
     use std::result;
 
-    use dal::{ChangeSetId, DalContext, WorkspacePk};
+    use dal::{
+        ChangeSetId,
+        DalContext,
+        WorkspacePk,
+    };
     use frigg::FriggStore;
     use naxum::{
         extract::State,
-        response::{IntoResponse, Response},
+        response::{
+            IntoResponse,
+            Response,
+        },
     };
     use si_events::change_batch::ChangeBatchAddress;
     use telemetry::prelude::*;
     use telemetry_utils::metric;
     use thiserror::Error;
 
-    use super::{app_state::AppState, materialized_view};
-    use crate::extract::{ApiTypesNegotiate, EddaRequestKind};
+    use super::{
+        app_state::AppState,
+        materialized_view,
+    };
+    use crate::extract::{
+        ApiTypesNegotiate,
+        EddaRequestKind,
+    };
 
     #[remain::sorted]
     #[derive(Debug, Error)]
@@ -493,7 +534,10 @@ mod app_state {
     use dal::DalContextBuilder;
     use frigg::FriggStore;
     use si_data_nats::NatsClient;
-    use si_events::{ChangeSetId, WorkspacePk};
+    use si_events::{
+        ChangeSetId,
+        WorkspacePk,
+    };
     use tokio_util::task::TaskTracker;
 
     /// Application state.

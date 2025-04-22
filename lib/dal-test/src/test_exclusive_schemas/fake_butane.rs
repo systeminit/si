@@ -1,16 +1,42 @@
-use dal::func::argument::FuncArgumentKind;
-use dal::pkg::{ImportOptions, import_pkg_from_pkg};
-use dal::{BuiltinsResult, DalContext, SchemaId};
-use dal::{ComponentType, PropKind};
-use si_pkg::{
-    AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind,
-    FuncSpecBackendResponseType, FuncSpecData, PkgSpec, PropSpec, PropSpecWidgetKind, SchemaSpec,
-    SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpecArity,
+use dal::{
+    BuiltinsResult,
+    ComponentType,
+    DalContext,
+    PropKind,
+    SchemaId,
+    func::argument::FuncArgumentKind,
+    pkg::{
+        ImportOptions,
+        import_pkg_from_pkg,
+    },
 };
-use si_pkg::{SchemaSpecData, SocketSpec, SocketSpecData, SocketSpecKind};
+use si_pkg::{
+    AttrFuncInputSpec,
+    AttrFuncInputSpecKind,
+    FuncArgumentSpec,
+    FuncSpec,
+    FuncSpecBackendKind,
+    FuncSpecBackendResponseType,
+    FuncSpecData,
+    PkgSpec,
+    PropSpec,
+    PropSpecWidgetKind,
+    SchemaSpec,
+    SchemaSpecData,
+    SchemaVariantSpec,
+    SchemaVariantSpecData,
+    SiPkg,
+    SocketSpec,
+    SocketSpecArity,
+    SocketSpecData,
+    SocketSpecKind,
+};
 
 use crate::test_exclusive_schemas::{
-    PKG_CREATED_BY, PKG_VERSION, build_asset_func, create_identity_func,
+    PKG_CREATED_BY,
+    PKG_VERSION,
+    build_asset_func,
+    create_identity_func,
 };
 
 pub(crate) async fn migrate_test_exclusive_schema_fake_butane(

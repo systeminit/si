@@ -7,12 +7,12 @@
 )]
 #![allow(clippy::missing_errors_doc)]
 
-use si_tls::{CertificateResolver, CertificateSource, TlsError};
-use tokio_postgres_rustls::MakeRustlsConnect;
-
 use std::{
     cmp,
-    fmt::{self, Debug},
+    fmt::{
+        self,
+        Debug,
+    },
     net::ToSocketAddrs,
     sync::Arc,
     time::Duration,
@@ -20,29 +20,65 @@ use std::{
 
 use bytes::Buf;
 use deadpool::managed::Object;
-use deadpool_postgres::SslMode;
 use deadpool_postgres::{
-    Config, ConfigError, CreatePoolError, Manager, ManagerConfig, Pool, PoolConfig, PoolError,
-    RecyclingMethod, Transaction, TransactionBuilder,
+    Config,
+    ConfigError,
+    CreatePoolError,
+    Manager,
+    ManagerConfig,
+    Pool,
+    PoolConfig,
+    PoolError,
+    RecyclingMethod,
+    SslMode,
+    Transaction,
+    TransactionBuilder,
 };
-use futures::{Stream, StreamExt};
-
+use futures::{
+    Stream,
+    StreamExt,
+};
 use ouroboros::self_referencing;
-
-use serde::{Deserialize, Serialize};
-use si_std::{ResultExt, SensitiveString};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_std::{
+    ResultExt,
+    SensitiveString,
+};
+use si_tls::{
+    CertificateResolver,
+    CertificateSource,
+    TlsError,
+};
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
-
 use tokio_postgres::{
-    CancelToken, Client, Column, CopyInSink, CopyOutStream, IsolationLevel, Portal, Row,
-    SimpleQueryMessage, Statement, ToStatement,
+    CancelToken,
+    Client,
+    Column,
+    CopyInSink,
+    CopyOutStream,
+    IsolationLevel,
+    Portal,
+    Row,
+    SimpleQueryMessage,
+    Statement,
+    ToStatement,
     row::RowIndex,
-    types::{BorrowToSql, FromSql, ToSql, Type},
+    types::{
+        BorrowToSql,
+        FromSql,
+        ToSql,
+        Type,
+    },
 };
-
-pub use tokio_postgres::error::SqlState;
-pub use tokio_postgres::types as postgres_types;
+pub use tokio_postgres::{
+    error::SqlState,
+    types as postgres_types,
+};
+use tokio_postgres_rustls::MakeRustlsConnect;
 
 const MIGRATION_LOCK_NUMBER: i64 = 42;
 const MAX_POOL_SIZE_MINIMUM: usize = 32;

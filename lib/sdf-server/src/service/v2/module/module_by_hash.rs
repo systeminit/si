@@ -1,18 +1,38 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Path, Query},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+        Query,
+    },
 };
-use chrono::{DateTime, Utc};
-use dal::{ChangeSetId, WorkspacePk, module::Module};
-use serde::{Deserialize, Serialize};
+use chrono::{
+    DateTime,
+    Utc,
+};
+use dal::{
+    ChangeSetId,
+    WorkspacePk,
+    module::Module,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
+use super::{
+    ModuleAPIResult,
+    ModulesAPIError,
+};
 use crate::{
-    extract::{HandlerContext, PosthogClient},
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
     service::v2::AccessBuilder,
     track,
 };
-
-use super::{ModuleAPIResult, ModulesAPIError};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

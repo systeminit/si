@@ -1,11 +1,17 @@
-use dal::change_set::view::OpenChangeSetsView;
-use dal::diagram::Diagram;
-use dal::{DalContext, Workspace};
-use dal_test::helpers::{
-    ChangeSetTestHelpers, PropEditorTestView,
-    create_component_for_default_schema_name_in_default_view,
+use dal::{
+    DalContext,
+    Workspace,
+    change_set::view::OpenChangeSetsView,
+    diagram::Diagram,
 };
-use dal_test::test;
+use dal_test::{
+    helpers::{
+        ChangeSetTestHelpers,
+        PropEditorTestView,
+        create_component_for_default_schema_name_in_default_view,
+    },
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]

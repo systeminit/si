@@ -1,17 +1,47 @@
-use dal::action::prototype::ActionKind;
-use dal::pkg::{ImportOptions, import_pkg_from_pkg};
-use dal::prop::{PropPath, SECRET_KIND_WIDGET_OPTION_LABEL};
-use dal::{BuiltinsResult, DalContext, PropKind, SchemaId};
+use dal::{
+    BuiltinsResult,
+    DalContext,
+    PropKind,
+    SchemaId,
+    action::prototype::ActionKind,
+    pkg::{
+        ImportOptions,
+        import_pkg_from_pkg,
+    },
+    prop::{
+        PropPath,
+        SECRET_KIND_WIDGET_OPTION_LABEL,
+    },
+};
 use si_pkg::{
-    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncSpec, FuncSpecBackendKind,
-    FuncSpecBackendResponseType, FuncSpecData, PkgSpec, PropSpec, PropSpecKind, PropSpecWidgetKind,
-    SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData,
+    ActionFuncSpec,
+    AttrFuncInputSpec,
+    AttrFuncInputSpecKind,
+    FuncSpec,
+    FuncSpecBackendKind,
+    FuncSpecBackendResponseType,
+    FuncSpecData,
+    PkgSpec,
+    PropSpec,
+    PropSpecKind,
+    PropSpecWidgetKind,
+    SchemaSpec,
+    SchemaSpecData,
+    SchemaVariantSpec,
+    SchemaVariantSpecData,
+    SiPkg,
+    SocketSpec,
+    SocketSpecArity,
+    SocketSpecData,
     SocketSpecKind,
 };
-use si_pkg::{SchemaSpecData, SocketSpecArity};
 
-use crate::test_exclusive_schemas::{PKG_CREATED_BY, PKG_VERSION};
-use crate::test_exclusive_schemas::{build_action_func, create_identity_func};
+use crate::test_exclusive_schemas::{
+    PKG_CREATED_BY,
+    PKG_VERSION,
+    build_action_func,
+    create_identity_func,
+};
 
 pub(crate) async fn migrate_test_exclusive_schema_fallout(
     ctx: &DalContext,

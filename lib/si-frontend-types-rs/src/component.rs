@@ -1,8 +1,22 @@
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use si_events::{ComponentId, SchemaId, SchemaVariantId, ViewId};
 use std::num::ParseIntError;
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use serde_json::Value;
+use si_events::{
+    ComponentId,
+    SchemaId,
+    SchemaVariantId,
+    ViewId,
+};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+};
 
 #[remain::sorted]
 #[derive(

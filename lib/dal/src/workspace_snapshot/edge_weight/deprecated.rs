@@ -1,6 +1,12 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::{EdgeWeightKind, workspace_snapshot::vector_clock::deprecated::DeprecatedVectorClock};
+use crate::{
+    EdgeWeightKind,
+    workspace_snapshot::vector_clock::deprecated::DeprecatedVectorClock,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DeprecatedEdgeWeightLegacy {

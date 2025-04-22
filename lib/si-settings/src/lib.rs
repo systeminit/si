@@ -1,10 +1,12 @@
 use std::fmt::Debug;
 
 use config_file::ConfigMap;
-use serde::{Serialize, de::DeserializeOwned};
-use thiserror::Error;
-
 pub use config_file::ValueKind;
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
+use thiserror::Error;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

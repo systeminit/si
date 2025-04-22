@@ -1,7 +1,10 @@
 use si_data_nats::{
     async_nats::jetstream::{
         context::CreateStreamError,
-        stream::{Config, RetentionPolicy},
+        stream::{
+            Config,
+            RetentionPolicy,
+        },
     },
     jetstream::Context,
 };

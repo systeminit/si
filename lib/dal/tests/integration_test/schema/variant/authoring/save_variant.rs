@@ -1,10 +1,18 @@
-use dal::func::FuncKind;
-use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{
-    ChangeSet, ComponentType, DalContext, Func, FuncBackendResponseType, Schema, SchemaVariant,
+    ChangeSet,
+    ComponentType,
+    DalContext,
+    Func,
+    FuncBackendResponseType,
+    Schema,
+    SchemaVariant,
+    func::FuncKind,
+    schema::variant::authoring::VariantAuthoringClient,
 };
-use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::test;
+use dal_test::{
+    helpers::ChangeSetTestHelpers,
+    test,
+};
 
 #[test]
 async fn save_variant(ctx: &mut DalContext) {

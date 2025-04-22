@@ -1,15 +1,33 @@
-use crate::{Tenancy, TransactionsError, UserError};
-use chrono::{DateTime, Utc};
-use postgres_types::ToSql;
-use serde::{Serialize, de::DeserializeOwned};
-use si_data_nats::NatsError;
-use si_data_pg::{PgError, PgRow};
 use std::fmt::Debug;
+
+use chrono::{
+    DateTime,
+    Utc,
+};
+use postgres_types::ToSql;
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
+use si_data_nats::NatsError;
+use si_data_pg::{
+    PgError,
+    PgRow,
+};
 use strum::AsRefStr;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{DalContext, HistoryEvent, HistoryEventError, Timestamp, Visibility};
+use crate::{
+    DalContext,
+    HistoryEvent,
+    HistoryEventError,
+    Tenancy,
+    Timestamp,
+    TransactionsError,
+    UserError,
+    Visibility,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]

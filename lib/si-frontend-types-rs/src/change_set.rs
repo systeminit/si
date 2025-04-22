@@ -1,17 +1,39 @@
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use si_events::{
-    ChangeSetApprovalStatus, ChangeSetId, ChangeSetStatus, UserPk,
-    workspace_snapshot::{Checksum, ChecksumHasher, EntityKind},
+use chrono::{
+    DateTime,
+    Utc,
 };
-use si_id::{ChangeSetApprovalId, EntityId, WorkspaceId};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ChangeSetApprovalStatus,
+    ChangeSetId,
+    ChangeSetStatus,
+    UserPk,
+    workspace_snapshot::{
+        Checksum,
+        ChecksumHasher,
+        EntityKind,
+    },
+};
+use si_id::{
+    ChangeSetApprovalId,
+    EntityId,
+    WorkspaceId,
+};
 
 use crate::{
     checksum::FrontendChecksum,
     object::FrontendObject,
-    reference::{Refer, Reference, ReferenceId, ReferenceKind},
+    reference::{
+        Refer,
+        Reference,
+        ReferenceId,
+        ReferenceKind,
+    },
 };
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]

@@ -15,20 +15,42 @@
     clippy::module_name_repetitions
 )]
 
-pub use self::instance::{Instance, Spec};
-pub use crate::pool_noodle::PoolNoodle;
-
-pub use cyclone_client::{ClientError, CycloneClient, ExecutionError};
-
+pub use cyclone_client::{
+    ClientError,
+    CycloneClient,
+    ExecutionError,
+};
 pub use cyclone_core::{
-    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentView, CycloneRequest,
-    CycloneRequestable, FunctionResult, FunctionResultFailure, FunctionResultFailureError,
-    FunctionResultFailureErrorKind, KillExecutionRequest, ManagementRequest,
-    ManagementResultSuccess, OutputStream, ProgressMessage, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, ResourceStatus, SchemaVariantDefinitionRequest,
-    SchemaVariantDefinitionResultSuccess, SensitiveStrings, ValidationRequest,
+    ActionRunRequest,
+    ActionRunResultSuccess,
+    BeforeFunction,
+    ComponentView,
+    CycloneRequest,
+    CycloneRequestable,
+    FunctionResult,
+    FunctionResultFailure,
+    FunctionResultFailureError,
+    FunctionResultFailureErrorKind,
+    KillExecutionRequest,
+    ManagementRequest,
+    ManagementResultSuccess,
+    OutputStream,
+    ProgressMessage,
+    ResolverFunctionRequest,
+    ResolverFunctionResultSuccess,
+    ResourceStatus,
+    SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess,
+    SensitiveStrings,
+    ValidationRequest,
     ValidationResultSuccess,
 };
+
+pub use self::instance::{
+    Instance,
+    Spec,
+};
+pub use crate::pool_noodle::PoolNoodle;
 
 /// [`PoolNoodleError`] implementations.
 pub mod errors;
@@ -42,12 +64,19 @@ mod task;
 #[cfg(test)]
 mod tests {
 
-    use cyclone_client::{LivenessStatus, ReadinessStatus};
+    use cyclone_client::{
+        LivenessStatus,
+        ReadinessStatus,
+    };
     use tokio_util::sync::CancellationToken;
 
     use super::*;
     use crate::{
-        instance::cyclone::{LocalUdsInstance, LocalUdsRuntimeStrategy, LocalUdsSocketStrategy},
+        instance::cyclone::{
+            LocalUdsInstance,
+            LocalUdsRuntimeStrategy,
+            LocalUdsSocketStrategy,
+        },
         pool_noodle::PoolNoodleConfig,
     };
 

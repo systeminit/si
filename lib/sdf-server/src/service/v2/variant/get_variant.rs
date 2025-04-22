@@ -1,14 +1,28 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Path},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
 };
-use dal::{ChangeSetId, SchemaVariant, SchemaVariantId, WorkspacePk};
+use dal::{
+    ChangeSetId,
+    SchemaVariant,
+    SchemaVariantId,
+    WorkspacePk,
+};
 use si_frontend_types as frontend_types;
 
 use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::v2::AccessBuilder,
-    service::v2::variant::SchemaVariantsAPIError,
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::v2::{
+        AccessBuilder,
+        variant::SchemaVariantsAPIError,
+    },
     track,
 };
 

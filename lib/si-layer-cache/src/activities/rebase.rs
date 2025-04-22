@@ -1,17 +1,31 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::rebase_batch_address::RebaseBatchAddress;
 use strum::EnumDiscriminants;
-
-use telemetry::prelude::*;
-use telemetry::tracing::instrument;
-use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::time::Instant;
+use telemetry::{
+    prelude::*,
+    tracing::instrument,
+};
+use tokio::{
+    sync::mpsc::UnboundedReceiver,
+    time::Instant,
+};
 use tokio_stream::wrappers::BroadcastStream;
 use ulid::Ulid;
 
-use super::{Activity, ActivityId, ActivityPayloadDiscriminants, ActivityRebaseRequest};
-use crate::activity_client::ActivityClient;
-use crate::{error::LayerDbResult, event::LayeredEventMetadata};
+use super::{
+    Activity,
+    ActivityId,
+    ActivityPayloadDiscriminants,
+    ActivityRebaseRequest,
+};
+use crate::{
+    activity_client::ActivityClient,
+    error::LayerDbResult,
+    event::LayeredEventMetadata,
+};
 
 /// The message that the server receives to perform a rebase.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]

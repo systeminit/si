@@ -1,18 +1,39 @@
 //! This module contains the ability to construct values reflecting the latest state of a
 //! [`Component`](crate::Component)'s properties.
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{
+    HashMap,
+    HashSet,
+    VecDeque,
+};
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::Value;
 use telemetry::prelude::*;
 
 use crate::{
-    AttributeValue, AttributeValueId, Component, ComponentId, DalContext, InputSocketId, Prop,
-    PropId, Secret,
+    AttributeValue,
+    AttributeValueId,
+    Component,
+    ComponentId,
+    DalContext,
+    InputSocketId,
+    Prop,
+    PropId,
+    Secret,
     attribute::value::AttributeValueError,
-    property_editor::{PropertyEditorPropId, PropertyEditorResult, PropertyEditorValueId},
-    validation::{ValidationOutput, ValidationOutputNode},
+    property_editor::{
+        PropertyEditorPropId,
+        PropertyEditorResult,
+        PropertyEditorValueId,
+    },
+    validation::{
+        ValidationOutput,
+        ValidationOutputNode,
+    },
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

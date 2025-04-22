@@ -1,12 +1,27 @@
-use std::{ffi::OsString, path::PathBuf};
+use std::{
+    ffi::OsString,
+    path::PathBuf,
+};
 
 use fuser::{
-    ReplyAttr, ReplyBmap, ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty, ReplyEntry,
-    ReplyLock, ReplyOpen, ReplyWrite, ReplyXattr,
+    ReplyAttr,
+    ReplyBmap,
+    ReplyCreate,
+    ReplyData,
+    ReplyDirectory,
+    ReplyEmpty,
+    ReplyEntry,
+    ReplyLock,
+    ReplyOpen,
+    ReplyWrite,
+    ReplyXattr,
 };
 use nix::libc::c_int;
 
-use crate::{FileHandle, Inode};
+use crate::{
+    FileHandle,
+    Inode,
+};
 
 #[allow(dead_code)]
 #[derive(Debug)]

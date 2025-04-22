@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_std::CanonicalFile;
 
 /// Configuration for how to load the key for [`CryptoConfig`].

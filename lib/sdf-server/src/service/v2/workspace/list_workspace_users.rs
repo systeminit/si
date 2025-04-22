@@ -1,10 +1,21 @@
-use axum::{Json, extract::Path};
-use dal::{UserPk, WorkspacePk};
-use serde::{Deserialize, Serialize};
-
-use crate::{extract::HandlerContext, service::v2::AccessBuilder};
+use axum::{
+    Json,
+    extract::Path,
+};
+use dal::{
+    UserPk,
+    WorkspacePk,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use super::WorkspaceAPIError;
+use crate::{
+    extract::HandlerContext,
+    service::v2::AccessBuilder,
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

@@ -25,19 +25,40 @@
     while_true
 )]
 
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use chrono::{
+    DateTime,
+    Utc,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::Error;
 use si_data_nats::{
     async_nats::jetstream::{
-        context::{CreateStreamError, PublishError},
-        stream::{Config, DiscardPolicy, RetentionPolicy, Stream},
+        context::{
+            CreateStreamError,
+            PublishError,
+        },
+        stream::{
+            Config,
+            DiscardPolicy,
+            RetentionPolicy,
+            Stream,
+        },
     },
     jetstream,
 };
 use si_events::{
-    ChangeSetId, ChangeSetStatus, ComponentId, FuncRunId, SchemaId, SchemaVariantId, UserPk,
-    WorkspacePk, WorkspaceSnapshotAddress,
+    ChangeSetId,
+    ChangeSetStatus,
+    ComponentId,
+    FuncRunId,
+    SchemaId,
+    SchemaVariantId,
+    UserPk,
+    WorkspacePk,
+    WorkspaceSnapshotAddress,
 };
 use telemetry::prelude::*;
 use telemetry_nats::propagation;

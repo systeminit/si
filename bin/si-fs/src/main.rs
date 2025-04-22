@@ -2,8 +2,15 @@ use std::str::FromStr;
 
 use clap::Parser;
 use color_eyre::Result;
-use nix::{fcntl::OFlag, sys::stat::Mode, unistd::ForkResult};
-use si_filesystem::{WorkspaceId, mount};
+use nix::{
+    fcntl::OFlag,
+    sys::stat::Mode,
+    unistd::ForkResult,
+};
+use si_filesystem::{
+    WorkspaceId,
+    mount,
+};
 use tokio::runtime::Runtime;
 
 #[derive(Parser, Debug)]

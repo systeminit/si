@@ -7,7 +7,11 @@ mod server;
 
 pub use self::{
     config::{
-        Config, ConfigError, ConfigFile, StandardConfigFile, detect_and_configure_development,
+        Config,
+        ConfigError,
+        ConfigFile,
+        StandardConfigFile,
+        detect_and_configure_development,
     },
     server::Server,
 };

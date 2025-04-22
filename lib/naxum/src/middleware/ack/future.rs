@@ -1,7 +1,10 @@
 use std::{
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
 };
 
 use futures::future::BoxFuture;
@@ -9,7 +12,10 @@ use pin_project_lite::pin_project;
 use tokio_util::sync::DropGuard;
 use tower::Service;
 
-use crate::{message::Message, response::Response};
+use crate::{
+    message::Message,
+    response::Response,
+};
 
 pin_project! {
     pub struct ResponseFuture<S>

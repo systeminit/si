@@ -2,12 +2,18 @@
 //! a standard [`Component`](crate::Component) and a "frame". This functionality resides in this
 //! location because it corresponds to the "/root/si/type" location in the
 //! [`RootProp`](crate::RootProp) tree.
-use serde::Deserialize;
-use serde::Serialize;
-
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_frontend_types as frontend_types;
 use si_pkg::SchemaVariantSpecComponentType;
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+};
 
 /// The possible values of "/root/si/type".
 #[derive(

@@ -1,16 +1,33 @@
-use std::{error, num::TryFromIntError};
+use std::{
+    error,
+    num::TryFromIntError,
+};
 
 use si_data_nats::async_nats::jetstream;
-use si_data_pg::{PgError, PgPoolError};
-use si_events::{ActionId, FuncRunId, content_hash::ContentHashParseError};
+use si_data_pg::{
+    PgError,
+    PgPoolError,
+};
+use si_events::{
+    ActionId,
+    FuncRunId,
+    content_hash::ContentHashParseError,
+};
 use si_std::CanonicalFileError;
 use thiserror::Error;
 use tokio_stream::Elapsed;
 
 use crate::{
-    activities::{Activity, ActivityId, ActivityRebaseRequest},
+    activities::{
+        Activity,
+        ActivityId,
+        ActivityRebaseRequest,
+    },
     event::LayeredEvent,
-    persister::{PersistMessage, PersisterTaskError},
+    persister::{
+        PersistMessage,
+        PersisterTaskError,
+    },
 };
 
 #[remain::sorted]

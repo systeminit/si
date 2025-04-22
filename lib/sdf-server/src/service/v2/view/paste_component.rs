@@ -1,20 +1,39 @@
-use itertools::Itertools;
 use std::collections::HashMap;
 
-use super::{ViewParam, ViewResult};
+use axum::{
+    Json,
+    extract::Path,
+};
+use dal::{
+    ChangeSet,
+    Component,
+    ComponentId,
+    WsEvent,
+    change_status::ChangeStatus,
+    diagram::{
+        SummaryDiagramEdge,
+        SummaryDiagramInferredEdge,
+        SummaryDiagramManagementEdge,
+    },
+};
+use itertools::Itertools;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_frontend_types::StringGeometry;
+
+use super::{
+    ViewParam,
+    ViewResult,
+};
 use crate::{
-    extract::{PosthogEventTracker, change_set::ChangeSetDalContext},
+    extract::{
+        PosthogEventTracker,
+        change_set::ChangeSetDalContext,
+    },
     service::force_change_set_response::ForceChangeSetResponse,
 };
-use axum::Json;
-use axum::extract::Path;
-use dal::{
-    ChangeSet, Component, ComponentId, WsEvent,
-    change_status::ChangeStatus,
-    diagram::{SummaryDiagramEdge, SummaryDiagramInferredEdge, SummaryDiagramManagementEdge},
-};
-use serde::{Deserialize, Serialize};
-use si_frontend_types::StringGeometry;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

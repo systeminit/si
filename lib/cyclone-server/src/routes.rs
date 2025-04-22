@@ -1,16 +1,30 @@
 use std::sync::Arc;
 
-use axum::{Extension, Router, routing::get};
+use axum::{
+    Extension,
+    Router,
+    routing::get,
+};
 use telemetry::prelude::*;
-use telemetry_http::{HttpMakeSpan, HttpOnResponse};
+use telemetry_http::{
+    HttpMakeSpan,
+    HttpOnResponse,
+};
 use tokio::sync::mpsc;
-use tower_http::{compression::CompressionLayer, trace::TraceLayer};
+use tower_http::{
+    compression::CompressionLayer,
+    trace::TraceLayer,
+};
 
 use crate::{
-    Config, ShutdownSource,
+    Config,
+    ShutdownSource,
     extract::RequestLimiter,
     handlers,
-    state::{AppState, WatchKeepalive},
+    state::{
+        AppState,
+        WatchKeepalive,
+    },
     tower::WebSocketTraceLayer,
     watch,
 };

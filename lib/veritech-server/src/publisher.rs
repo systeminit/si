@@ -1,10 +1,20 @@
 use serde::Serialize;
-use si_data_nats::{NatsClient, Subject};
-use si_pool_noodle::{FunctionResult, OutputStream};
+use si_data_nats::{
+    NatsClient,
+    Subject,
+};
+use si_pool_noodle::{
+    FunctionResult,
+    OutputStream,
+};
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;
-use veritech_core::{FINAL_MESSAGE_HEADER_KEY, reply_mailbox_for_output, reply_mailbox_for_result};
+use veritech_core::{
+    FINAL_MESSAGE_HEADER_KEY,
+    reply_mailbox_for_output,
+    reply_mailbox_for_result,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]

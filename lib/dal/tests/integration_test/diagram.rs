@@ -1,6 +1,13 @@
-use dal::{Component, DalContext, diagram::Diagram};
+use dal::{
+    Component,
+    DalContext,
+    diagram::Diagram,
+};
 use dal_test::{
-    helpers::{ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view},
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_default_schema_name_in_default_view,
+    },
     test,
 };
 

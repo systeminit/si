@@ -3,9 +3,13 @@ use serde_json::json;
 use si_events::audit_log::AuditLogKind;
 use utoipa;
 
-use crate::extract::{PosthogEventTracker, change_set::ChangeSetDalContext};
-
-use crate::service::v1::ChangeSetError;
+use crate::{
+    extract::{
+        PosthogEventTracker,
+        change_set::ChangeSetDalContext,
+    },
+    service::v1::ChangeSetError,
+};
 
 /// Force apply a change set
 #[utoipa::path(

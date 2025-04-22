@@ -1,29 +1,52 @@
-use std::{result, str::FromStr, sync::Arc};
+use std::{
+    result,
+    str::FromStr,
+    sync::Arc,
+};
 
 use naxum::{
     extract::State,
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use rebaser_core::nats;
 use si_data_nats::{
-    NatsClient, Subject,
+    NatsClient,
+    Subject,
     async_nats::jetstream::{
-        consumer::{StreamError, push},
+        consumer::{
+            StreamError,
+            push,
+        },
         stream::ConsumerError,
     },
 };
-use si_events::{ChangeSetId, WorkspacePk};
+use si_events::{
+    ChangeSetId,
+    WorkspacePk,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::Notify;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 use ulid::Ulid;
 
 use crate::{
     Shutdown,
     app_state::AppState,
-    change_set_processor_task::{ChangeSetProcessorTask, ChangeSetProcessorTaskError},
-    serial_dvu_task::{SerialDvuTask, SerialDvuTaskError},
+    change_set_processor_task::{
+        ChangeSetProcessorTask,
+        ChangeSetProcessorTaskError,
+    },
+    serial_dvu_task::{
+        SerialDvuTask,
+        SerialDvuTaskError,
+    },
 };
 
 const CONSUMER_NAME_PREFIX: &str = "rebaser-requests";

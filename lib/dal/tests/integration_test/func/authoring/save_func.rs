@@ -1,7 +1,13 @@
-use dal::func::authoring::FuncAuthoringClient;
-use dal::{DalContext, Func, FuncId};
-use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::test;
+use dal::{
+    DalContext,
+    Func,
+    FuncId,
+    func::authoring::FuncAuthoringClient,
+};
+use dal_test::{
+    helpers::ChangeSetTestHelpers,
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 use si_frontend_types::FuncSummary;
 

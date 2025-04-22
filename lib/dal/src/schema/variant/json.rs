@@ -1,15 +1,36 @@
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use si_pkg::{
-    MapKeyFuncSpec, PropSpec, SchemaSpec, SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecData,
-    SocketSpec, SocketSpecArity, SocketSpecData, SocketSpecKind,
-};
 use std::collections::HashMap;
 
-use crate::property_editor::schema::WidgetKind;
-use crate::schema::variant::value_from::SiPropValueFrom;
-use crate::schema::variant::{DEFAULT_SCHEMA_VARIANT_COLOR, SchemaVariantResult, ValueFrom};
-use crate::{ComponentType, PropKind, SchemaVariantError, SocketArity};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use serde_json::Value;
+use si_pkg::{
+    MapKeyFuncSpec,
+    PropSpec,
+    SchemaSpec,
+    SchemaSpecData,
+    SchemaVariantSpec,
+    SchemaVariantSpecData,
+    SocketSpec,
+    SocketSpecArity,
+    SocketSpecData,
+    SocketSpecKind,
+};
+
+use crate::{
+    ComponentType,
+    PropKind,
+    SchemaVariantError,
+    SocketArity,
+    property_editor::schema::WidgetKind,
+    schema::variant::{
+        DEFAULT_SCHEMA_VARIANT_COLOR,
+        SchemaVariantResult,
+        ValueFrom,
+        value_from::SiPropValueFrom,
+    },
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -1,20 +1,35 @@
-use std::sync::Arc;
-use std::{collections::HashMap, fmt::Display};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    sync::Arc,
+};
 
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
+use si_events::{
+    Actor,
+    ContentHash,
+    Tenancy,
+    WebEvent,
+};
 use telemetry::prelude::*;
 
-use serde::{Serialize, de::DeserializeOwned};
-use si_events::{Actor, ContentHash, Tenancy, WebEvent};
-
+use super::serialize;
 use crate::{
     LayerDbError,
     error::LayerDbResult,
-    event::{LayeredEvent, LayeredEventKind},
+    event::{
+        LayeredEvent,
+        LayeredEventKind,
+    },
     layer_cache::LayerCache,
-    persister::{PersisterClient, PersisterStatusReader},
+    persister::{
+        PersisterClient,
+        PersisterStatusReader,
+    },
 };
-
-use super::serialize;
 
 pub const DBNAME: &str = "cas";
 pub const CACHE_NAME: &str = "cas";

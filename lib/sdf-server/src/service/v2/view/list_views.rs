@@ -1,10 +1,28 @@
-use crate::extract::HandlerContext;
-use crate::service::v2::AccessBuilder;
-use crate::service::v2::view::ViewResult;
-use axum::extract::{Json, Path};
-use dal::diagram::view::{View, ViewView};
-use dal::{ChangeSetId, Visibility, WorkspacePk};
-use serde::{Deserialize, Serialize};
+use axum::extract::{
+    Json,
+    Path,
+};
+use dal::{
+    ChangeSetId,
+    Visibility,
+    WorkspacePk,
+    diagram::view::{
+        View,
+        ViewView,
+    },
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
+use crate::{
+    extract::HandlerContext,
+    service::v2::{
+        AccessBuilder,
+        view::ViewResult,
+    },
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

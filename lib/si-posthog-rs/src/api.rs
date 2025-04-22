@@ -1,11 +1,21 @@
-use std::collections::HashMap;
-use std::time::Duration;
+use std::{
+    collections::HashMap,
+    time::Duration,
+};
 
 use reqwest::StatusCode;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::PosthogConfig;
-use crate::error::{PosthogError, PosthogResult};
+use crate::{
+    PosthogConfig,
+    error::{
+        PosthogError,
+        PosthogResult,
+    },
+};
 
 #[remain::sorted]
 #[derive(Debug, Serialize)]

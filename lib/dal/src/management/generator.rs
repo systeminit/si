@@ -1,16 +1,37 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{
+    HashMap,
+    HashSet,
+    VecDeque,
+};
 
 use si_frontend_types::RawGeometry;
-use si_id::{ComponentId, ViewId};
-
-use crate::management::{
-    IGNORE_PATHS, ManagementConnection, ManagementCreateGeometry, ManagementCreateOperation,
-    ManagementGeometry, SocketRef,
+use si_id::{
+    ComponentId,
+    ViewId,
 };
-use crate::prop::PropPath;
-use crate::{AttributeValue, Component, DalContext, InputSocket, OutputSocket, Prop, PropKind};
 
-use super::{ManagementCreateOperations, ManagementResult};
+use super::{
+    ManagementCreateOperations,
+    ManagementResult,
+};
+use crate::{
+    AttributeValue,
+    Component,
+    DalContext,
+    InputSocket,
+    OutputSocket,
+    Prop,
+    PropKind,
+    management::{
+        IGNORE_PATHS,
+        ManagementConnection,
+        ManagementCreateGeometry,
+        ManagementCreateOperation,
+        ManagementGeometry,
+        SocketRef,
+    },
+    prop::PropPath,
+};
 
 pub async fn generate_template(
     ctx: &DalContext,

@@ -2,18 +2,43 @@ use std::collections::HashMap;
 
 use axum::{
     Json,
-    extract::{Host, OriginalUri},
+    extract::{
+        Host,
+        OriginalUri,
+    },
 };
 use dal::{
-    AttributeValue, AttributeValueId, ChangeSet, Component, ComponentId, Prop, PropId, Secret,
-    SecretId, Visibility, WsEvent,
+    AttributeValue,
+    AttributeValueId,
+    ChangeSet,
+    Component,
+    ComponentId,
+    Prop,
+    PropId,
+    Secret,
+    SecretId,
+    Visibility,
+    WsEvent,
 };
-use sdf_core::{force_change_set_response::ForceChangeSetResponse, tracking::track};
-use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
-use serde::{Deserialize, Serialize};
+use sdf_core::{
+    force_change_set_response::ForceChangeSetResponse,
+    tracking::track,
+};
+use sdf_extract::{
+    HandlerContext,
+    PosthogClient,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::audit_log::AuditLogKind;
 
-use super::{ComponentError, ComponentResult};
+use super::{
+    ComponentError,
+    ComponentResult,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

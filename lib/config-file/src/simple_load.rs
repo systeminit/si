@@ -74,7 +74,10 @@ pub fn load_from_str<C>(
 where
     C: serde::de::DeserializeOwned,
 {
-    use crate::{ConfigFileError, FileFormat};
+    use crate::{
+        ConfigFileError,
+        FileFormat,
+    };
 
     match file_format {
         #[cfg(feature = "load-toml")]
@@ -91,7 +94,10 @@ where
 fn read_from_file(path: impl AsRef<std::path::Path>) -> Result<String, crate::ConfigFileError> {
     use std::{
         fs::File,
-        io::{BufReader, Read},
+        io::{
+            BufReader,
+            Read,
+        },
     };
 
     use crate::ConfigFileError;
@@ -117,7 +123,10 @@ async fn read_from_file_async(
 ) -> Result<String, crate::ConfigFileError> {
     use tokio::{
         fs::File,
-        io::{AsyncReadExt, BufReader},
+        io::{
+            AsyncReadExt,
+            BufReader,
+        },
     };
 
     use crate::ConfigFileError;

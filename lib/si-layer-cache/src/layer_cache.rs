@@ -1,20 +1,33 @@
-use std::hash::Hash;
-use std::str::FromStr;
-use std::sync::Arc;
-use std::{collections::HashMap, fmt::Display};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    hash::Hash,
+    str::FromStr,
+    sync::Arc,
+};
 
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
 use si_data_pg::PgPool;
 use si_runtime::DedicatedExecutor;
 use telemetry::prelude::*;
-use tokio_util::sync::CancellationToken;
-use tokio_util::task::TaskTracker;
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 
-use crate::LayerDbError;
-use crate::db::serialize;
-use crate::error::LayerDbResult;
-use crate::hybrid_cache::{Cache, CacheConfig};
-use crate::pg::PgLayer;
+use crate::{
+    LayerDbError,
+    db::serialize,
+    error::LayerDbResult,
+    hybrid_cache::{
+        Cache,
+        CacheConfig,
+    },
+    pg::PgLayer,
+};
 
 #[derive(Debug, Clone)]
 pub struct LayerCache<V>

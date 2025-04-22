@@ -6,18 +6,29 @@ use telemetry::prelude::*;
 use tokio::{
     join,
     sync::{
-        mpsc::{self},
+        mpsc::{
+            self,
+        },
         oneshot,
     },
 };
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 use ulid::Ulid;
 
-use crate::db::func_run::FuncRunDb;
-use crate::event::LayeredEventKind;
 use crate::{
-    error::{LayerDbError, LayerDbResult},
-    event::{LayeredEvent, LayeredEventClient},
+    db::func_run::FuncRunDb,
+    error::{
+        LayerDbError,
+        LayerDbResult,
+    },
+    event::{
+        LayeredEvent,
+        LayeredEventClient,
+        LayeredEventKind,
+    },
     nats::layerdb_events_stream,
     pg::PgLayer,
 };

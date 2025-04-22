@@ -1,22 +1,59 @@
-use crate::extract::{HandlerContext, PosthogClient};
-use axum::Json;
-use axum::extract::{Host, OriginalUri, Path};
-use dal::component::frame::Frame;
-use dal::diagram::geometry::Geometry;
-use serde::{Deserialize, Serialize};
-use si_id::ViewId;
 use std::collections::HashMap;
 
-use dal::diagram::view::{View, ViewComponentsUpdateList, ViewView};
-use dal::{
-    ChangeSet, ChangeSetId, Component, ComponentError, ComponentId, ComponentType, WorkspacePk,
-    WsEvent,
+use axum::{
+    Json,
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
 };
+use dal::{
+    ChangeSet,
+    ChangeSetId,
+    Component,
+    ComponentError,
+    ComponentId,
+    ComponentType,
+    WorkspacePk,
+    WsEvent,
+    component::frame::Frame,
+    diagram::{
+        geometry::Geometry,
+        view::{
+            View,
+            ViewComponentsUpdateList,
+            ViewView,
+        },
+    },
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_frontend_types::{
+    RawGeometry,
+    StringGeometry,
+};
+use si_id::ViewId;
 
-use crate::service::force_change_set_response::ForceChangeSetResponse;
-use crate::service::v2::AccessBuilder;
-use crate::service::v2::view::{ViewError, ViewNodeGeometry, ViewResult};
-use si_frontend_types::{RawGeometry, StringGeometry};
+use crate::{
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::{
+            AccessBuilder,
+            view::{
+                ViewError,
+                ViewNodeGeometry,
+                ViewResult,
+            },
+        },
+    },
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

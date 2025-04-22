@@ -1,16 +1,29 @@
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::ulid::Ulid;
+
 use crate::{
-    DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants,
-    diagram::{DiagramError, DiagramResult, view::ViewId},
+    DalContext,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    diagram::{
+        DiagramError,
+        DiagramResult,
+        view::ViewId,
+    },
     implement_add_edge_to,
     workspace_snapshot::node_weight::{
         NodeWeight,
         category_node_weight::CategoryNodeKind,
-        diagram_object_node_weight::{DiagramObjectKind, DiagramObjectNodeWeight},
+        diagram_object_node_weight::{
+            DiagramObjectKind,
+            DiagramObjectNodeWeight,
+        },
         traits::SiVersionedNodeWeight,
     },
 };
-use serde::{Deserialize, Serialize};
-use si_events::ulid::Ulid;
 
 /// Represents spatial data for something to be shown on a view
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]

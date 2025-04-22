@@ -1,13 +1,19 @@
 use std::{
     collections::HashMap,
-    fmt::{Debug, Display},
+    fmt::{
+        Debug,
+        Display,
+    },
     num::TryFromIntError,
 };
 
 use config::Value;
 use serde::{
     Serialize,
-    ser::{self, Impossible},
+    ser::{
+        self,
+        Impossible,
+    },
 };
 use thiserror::Error;
 

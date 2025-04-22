@@ -1,14 +1,23 @@
-use std::{env, net::SocketAddr, time::Duration};
+use std::{
+    env,
+    net::SocketAddr,
+    time::Duration,
+};
 
 use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+pub use si_settings::{
+    StandardConfig,
+    StandardConfigFile,
+};
 use si_std::CanonicalFileError;
 use si_tls::CertificateSource;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
-
-pub use si_settings::{StandardConfig, StandardConfigFile};
 
 const DEFAULT_CONCURRENCY_LIMIT: Option<usize> = None;
 

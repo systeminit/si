@@ -1,7 +1,15 @@
-use dal::func::authoring::FuncAuthoringClient;
-use dal::{DalContext, Func, Prop, Schema, SchemaVariant};
-use dal_test::helpers::create_unlocked_variant_copy_for_schema_name;
-use dal_test::test;
+use dal::{
+    DalContext,
+    Func,
+    Prop,
+    Schema,
+    SchemaVariant,
+    func::authoring::FuncAuthoringClient,
+};
+use dal_test::{
+    helpers::create_unlocked_variant_copy_for_schema_name,
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 
 mod argument;

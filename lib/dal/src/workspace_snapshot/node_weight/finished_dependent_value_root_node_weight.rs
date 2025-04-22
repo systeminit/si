@@ -1,8 +1,16 @@
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 
 use crate::{
-    EdgeWeightKindDiscriminants, workspace_snapshot::node_weight::traits::CorrectTransforms,
+    EdgeWeightKindDiscriminants,
+    workspace_snapshot::node_weight::traits::CorrectTransforms,
 };
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]

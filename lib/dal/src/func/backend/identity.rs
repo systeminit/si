@@ -1,6 +1,13 @@
-use crate::func::backend::{FuncBackend, FuncBackendResult};
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
+use crate::func::backend::{
+    FuncBackend,
+    FuncBackendResult,
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct FuncBackendIdentityArgs {

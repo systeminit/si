@@ -1,18 +1,38 @@
 use std::collections::HashSet;
 
-use crate::integration_test::func::authoring::save_func::save_func_setup;
-use dal::attribute::prototype::argument::AttributePrototypeArgument;
-use dal::attribute::prototype::argument::value_source::ValueSource;
-use dal::func::argument::{FuncArgument, FuncArgumentKind};
-use dal::func::binding::attribute::AttributeBinding;
-use dal::func::binding::{
-    AttributeArgumentBinding, AttributeFuncArgumentSource, AttributeFuncDestination,
-    EventualParent, FuncBinding,
+use dal::{
+    AttributePrototype,
+    AttributePrototypeId,
+    DalContext,
+    Prop,
+    Schema,
+    SchemaVariant,
+    attribute::prototype::argument::{
+        AttributePrototypeArgument,
+        value_source::ValueSource,
+    },
+    func::{
+        argument::{
+            FuncArgument,
+            FuncArgumentKind,
+        },
+        binding::{
+            AttributeArgumentBinding,
+            AttributeFuncArgumentSource,
+            AttributeFuncDestination,
+            EventualParent,
+            FuncBinding,
+            attribute::AttributeBinding,
+        },
+    },
+    prop::PropPath,
 };
-use dal::prop::PropPath;
-use dal::{AttributePrototype, AttributePrototypeId, DalContext, Prop, Schema, SchemaVariant};
-use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::test;
+use dal_test::{
+    helpers::ChangeSetTestHelpers,
+    test,
+};
+
+use crate::integration_test::func::authoring::save_func::save_func_setup;
 
 #[test]
 async fn create_attribute_prototype_with_attribute_prototype_argument(ctx: &mut DalContext) {

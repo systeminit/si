@@ -1,17 +1,33 @@
 use std::{
     io::Cursor,
-    path::{Path, PathBuf},
-    sync::{Arc, atomic::AtomicU64},
+    path::{
+        Path,
+        PathBuf,
+    },
+    sync::{
+        Arc,
+        atomic::AtomicU64,
+    },
     time::UNIX_EPOCH,
 };
 
 use dashmap::DashMap;
-use fuser::{FileAttr, FileType};
-use nix::unistd::{Gid, Uid};
-use thiserror::Error;
-
+use fuser::{
+    FileAttr,
+    FileType,
+};
+use nix::unistd::{
+    Gid,
+    Uid,
+};
 use si_frontend_types::FuncKind;
-use si_id::{ChangeSetId, FuncId, SchemaId, WorkspaceId};
+use si_id::{
+    ChangeSetId,
+    FuncId,
+    SchemaId,
+    WorkspaceId,
+};
+use thiserror::Error;
 
 use crate::Inode;
 

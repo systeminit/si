@@ -1,7 +1,16 @@
-use std::{env::args, path::Path};
-use tokio::fs;
+use std::{
+    env::args,
+    path::Path,
+};
 
-use si_pkg::{PkgSpec, SchemaVariantSpecPropRoot, SiPkg, SiPkgError, SiPkgProp};
+use si_pkg::{
+    PkgSpec,
+    SchemaVariantSpecPropRoot,
+    SiPkg,
+    SiPkgError,
+    SiPkgProp,
+};
+use tokio::fs;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

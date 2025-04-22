@@ -1,7 +1,10 @@
 use std::time::Duration;
 
 use si_service::prelude::*;
-use veritech_server::{Config, Server};
+use veritech_server::{
+    Config,
+    Server,
+};
 
 mod args;
 

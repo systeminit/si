@@ -1,10 +1,25 @@
 use std::collections::HashSet;
 
-use darling::{FromAttributes, FromMeta, util::IdentString};
-use manyhow::{bail, emit};
+use darling::{
+    FromAttributes,
+    FromMeta,
+    util::IdentString,
+};
+use manyhow::{
+    bail,
+    emit,
+};
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote};
-use syn::{Data, DeriveInput, Expr, Path};
+use quote::{
+    ToTokens,
+    quote,
+};
+use syn::{
+    Data,
+    DeriveInput,
+    Expr,
+    Path,
+};
 
 pub(crate) mod versioned;
 

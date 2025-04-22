@@ -1,18 +1,35 @@
 use std::{
-    io::{BufRead, Write},
+    io::{
+        BufRead,
+        Write,
+    },
     str::FromStr,
 };
 
+use object_tree::{
+    GraphError,
+    NameStr,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    read_key_value_line_opt,
+    write_key_value_line,
+    write_key_value_line_opt,
+};
 use url::Url;
 
-use object_tree::{
-    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
+use super::{
+    PkgNode,
+    prop_child::PropChild,
 };
-
-use crate::{PropSpec, PropSpecWidgetKind, spec::PropSpecData};
-
-use super::{PkgNode, prop_child::PropChild};
+use crate::{
+    PropSpec,
+    PropSpecWidgetKind,
+    spec::PropSpecData,
+};
 
 const KEY_KIND_STR: &str = "kind";
 const KEY_NAME_STR: &str = "name";

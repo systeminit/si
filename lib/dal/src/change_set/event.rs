@@ -1,6 +1,17 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::{ChangeSetId, ChangeSetStatus, DalContext, UserPk, WsEvent, WsEventResult, WsPayload};
+use crate::{
+    ChangeSetId,
+    ChangeSetStatus,
+    DalContext,
+    UserPk,
+    WsEvent,
+    WsEventResult,
+    WsPayload,
+};
 
 impl WsEvent {
     pub async fn change_set_written(

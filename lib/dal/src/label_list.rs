@@ -1,10 +1,20 @@
 use std::{
     fmt::Debug,
-    ops::{Deref, DerefMut},
+    ops::{
+        Deref,
+        DerefMut,
+    },
 };
 
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use si_data_pg::{PgError, PgRow};
+use serde::{
+    Deserialize,
+    Serialize,
+    de::DeserializeOwned,
+};
+use si_data_pg::{
+    PgError,
+    PgRow,
+};
 use strum::IntoEnumIterator;
 use thiserror::Error;
 

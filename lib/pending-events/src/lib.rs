@@ -29,19 +29,34 @@ use std::time::Duration;
 
 use serde::Serialize;
 use serde_json::Error;
-use shuttle_core::{DESTINATION_SUBJECT_SUFFIX_HEADER_KEY, FINAL_MESSAGE_HEADER_KEY};
+use shuttle_core::{
+    DESTINATION_SUBJECT_SUFFIX_HEADER_KEY,
+    FINAL_MESSAGE_HEADER_KEY,
+};
 use si_data_nats::{
-    HeaderMap, Subject,
+    HeaderMap,
+    Subject,
     async_nats::{
         self,
         jetstream::{
-            context::{CreateStreamError, PublishError},
-            stream::{Config, RetentionPolicy},
+            context::{
+                CreateStreamError,
+                PublishError,
+            },
+            stream::{
+                Config,
+                RetentionPolicy,
+            },
         },
     },
     jetstream,
 };
-use si_events::{ChangeSetId, EventSessionId, WorkspacePk, audit_log::AuditLog};
+use si_events::{
+    ChangeSetId,
+    EventSessionId,
+    WorkspacePk,
+    audit_log::AuditLog,
+};
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;

@@ -1,9 +1,16 @@
 use si_events::ContentHash;
 
 use crate::{
-    AttributeValueId, ComponentId, InputSocketId, SchemaVariantId, SocketArity,
+    AttributeValueId,
+    ComponentId,
+    InputSocketId,
+    SchemaVariantId,
+    SocketArity,
     workspace_snapshot::{
-        graph::{LineageId, WorkspaceSnapshotGraphResult},
+        graph::{
+            LineageId,
+            WorkspaceSnapshotGraphResult,
+        },
         node_weight::InputSocketNodeWeight,
     },
 };

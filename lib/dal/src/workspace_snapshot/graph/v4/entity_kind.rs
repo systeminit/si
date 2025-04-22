@@ -1,19 +1,22 @@
 use si_events::workspace_snapshot::EntityKind;
 use si_id::EntityId;
 
+use super::WorkspaceSnapshotGraphV4;
 use crate::{
     NodeWeightDiscriminants,
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
         graph::{
-            WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
+            WorkspaceSnapshotGraphError,
+            WorkspaceSnapshotGraphResult,
             traits::entity_kind::EntityKindExt,
         },
-        node_weight::{NodeWeightError, category_node_weight::CategoryNodeKind},
+        node_weight::{
+            NodeWeightError,
+            category_node_weight::CategoryNodeKind,
+        },
     },
 };
-
-use super::WorkspaceSnapshotGraphV4;
 
 impl EntityKindExt for WorkspaceSnapshotGraphV4 {
     fn get_entity_kind_for_id(&self, id: EntityId) -> WorkspaceSnapshotGraphResult<EntityKind> {

@@ -1,8 +1,16 @@
 //! Common types and utilities for the v1 API
 
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
-use serde::{Deserialize, Serialize};
+use axum::{
+    http::StatusCode,
+    response::{
+        IntoResponse,
+        Response,
+    },
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use thiserror::Error;
 use utoipa::ToSchema;
 

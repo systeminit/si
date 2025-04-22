@@ -1,9 +1,21 @@
-use std::{env, error, io, str::FromStr};
+use std::{
+    env,
+    error,
+    io,
+    str::FromStr,
+};
 
-use si_data_spicedb::{Client, SpiceDbConfig};
+use si_data_spicedb::{
+    Client,
+    SpiceDbConfig,
+};
 use tracing_subscriber::{
-    EnvFilter, Registry,
-    fmt::{self, format::FmtSpan},
+    EnvFilter,
+    Registry,
+    fmt::{
+        self,
+        format::FmtSpan,
+    },
     layer::SubscriberExt as _,
     util::SubscriberInitExt as _,
 };

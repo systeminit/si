@@ -1,14 +1,32 @@
-use dal::diagram::geometry::RawGeometry;
-use dal::prop::PropPath;
-use dal::property_editor::values::PropertyEditorValues;
-use dal::qualification::QualificationSubCheckStatus;
-use dal::secret::DecryptedSecret;
-use dal::{Component, DalContext, EncryptedSecret, Prop, Secret, SecretAlgorithm, SecretVersion};
-use dal_test::expected::{self, ExpectComponent, ExpectView};
-use dal_test::helpers::{
-    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view, encrypt_message,
+use dal::{
+    Component,
+    DalContext,
+    EncryptedSecret,
+    Prop,
+    Secret,
+    SecretAlgorithm,
+    SecretVersion,
+    diagram::geometry::RawGeometry,
+    prop::PropPath,
+    property_editor::values::PropertyEditorValues,
+    qualification::QualificationSubCheckStatus,
+    secret::DecryptedSecret,
 };
-use dal_test::{WorkspaceSignup, helpers::generate_fake_name, test};
+use dal_test::{
+    WorkspaceSignup,
+    expected::{
+        self,
+        ExpectComponent,
+        ExpectView,
+    },
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_default_schema_name_in_default_view,
+        encrypt_message,
+        generate_fake_name,
+    },
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::Value;
 

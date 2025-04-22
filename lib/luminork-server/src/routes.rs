@@ -1,29 +1,54 @@
+use std::time::Duration;
+
 use axum::{
     Router,
     extract::State,
-    http::{Request, StatusCode},
-    middleware::{self, Next},
-    response::{IntoResponse, Json, Response},
+    http::{
+        Request,
+        StatusCode,
+    },
+    middleware::{
+        self,
+        Next,
+    },
+    response::{
+        IntoResponse,
+        Json,
+        Response,
+    },
     routing::get,
 };
-use hyper::Method;
-use hyper::header;
-use serde_json::{Value, json};
+use hyper::{
+    Method,
+    header,
+};
+use serde_json::{
+    Value,
+    json,
+};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use std::time::Duration;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tower_http::{
     compression::CompressionLayer,
-    cors::{AllowOrigin, CorsLayer},
+    cors::{
+        AllowOrigin,
+        CorsLayer,
+    },
 };
-use utoipa::{OpenApi, ToSchema};
+use utoipa::{
+    OpenApi,
+    ToSchema,
+};
 
-use crate::service::v1;
 use crate::{
     ServerError,
-    app_state::{AppState, ApplicationRuntimeMode},
+    app_state::{
+        AppState,
+        ApplicationRuntimeMode,
+    },
+    service::v1,
 };
 
 const MAINTENANCE_MODE_MESSAGE: &str = concat!(

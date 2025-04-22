@@ -1,10 +1,20 @@
-use object_tree::{Hash, HashedNode};
+use object_tree::{
+    Hash,
+    HashedNode,
+};
 use petgraph::prelude::*;
 
-use super::{PkgResult, SiPkgError, SiPkgSchemaVariant, Source};
-
-use crate::SchemaSpecData;
-use crate::{SchemaSpec, node::PkgNode};
+use super::{
+    PkgResult,
+    SiPkgError,
+    SiPkgSchemaVariant,
+    Source,
+};
+use crate::{
+    SchemaSpec,
+    SchemaSpecData,
+    node::PkgNode,
+};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgSchemaData {

@@ -1,6 +1,12 @@
-use base64::{Engine as _, engine::general_purpose::STANDARD};
+use base64::{
+    Engine as _,
+    engine::general_purpose::STANDARD,
+};
 use config::Config;
-use reqwest::{Identity, Url};
+use reqwest::{
+    Identity,
+    Url,
+};
 use si_tls::CertificateResolver;
 use thiserror::Error;
 

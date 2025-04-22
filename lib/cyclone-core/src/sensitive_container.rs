@@ -1,6 +1,15 @@
-use std::{fmt, ops::Deref, ops::DerefMut};
+use std::{
+    fmt,
+    ops::{
+        Deref,
+        DerefMut,
+    },
+};
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// A display/debug redacting `T`.
 ///

@@ -3,7 +3,11 @@ use std::convert::Infallible;
 use async_trait::async_trait;
 
 use crate::{
-    message::{Head, Message, MessageHead},
+    message::{
+        Head,
+        Message,
+        MessageHead,
+    },
     response::IntoResponse,
 };
 
@@ -13,7 +17,10 @@ pub mod rejection;
 mod state;
 mod tuple;
 
-pub use self::{matched_subject::MatchedSubject, state::State};
+pub use self::{
+    matched_subject::MatchedSubject,
+    state::State,
+};
 
 mod private {
     #[derive(Debug, Clone, Copy)]

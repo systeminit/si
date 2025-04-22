@@ -1,18 +1,28 @@
 use axum::response::Json;
 use dal::{
-    ChangeSetId, ComponentId, DalContext,
+    ChangeSetId,
+    ComponentId,
+    DalContext,
     action::{
-        Action, ActionState,
-        prototype::{ActionKind, ActionPrototype},
+        Action,
+        ActionState,
+        prototype::{
+            ActionKind,
+            ActionPrototype,
+        },
     },
 };
 use serde::Serialize;
-use si_events::{ActionId, ChangeSetStatus};
+use si_events::{
+    ActionId,
+    ChangeSetStatus,
+};
 use utoipa::ToSchema;
 
-use crate::extract::change_set::ChangeSetDalContext;
-
-use crate::service::v1::ChangeSetError;
+use crate::{
+    extract::change_set::ChangeSetDalContext,
+    service::v1::ChangeSetError,
+};
 
 /// Get status of a change set and its actions
 #[utoipa::path(

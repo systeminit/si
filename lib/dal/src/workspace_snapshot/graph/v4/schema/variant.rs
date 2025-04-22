@@ -1,11 +1,20 @@
 use petgraph::prelude::*;
 
 use crate::{
-    EdgeWeight, EdgeWeightKind, InputSocketId, SchemaId, SchemaVariantError, SchemaVariantId,
+    EdgeWeight,
+    EdgeWeightKind,
+    InputSocketId,
+    SchemaId,
+    SchemaVariantError,
+    SchemaVariantId,
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
         edge_weight::EdgeWeightKindDiscriminants,
-        graph::{SchemaVariantExt, WorkspaceSnapshotGraphResult, WorkspaceSnapshotGraphV4},
+        graph::{
+            SchemaVariantExt,
+            WorkspaceSnapshotGraphResult,
+            WorkspaceSnapshotGraphV4,
+        },
         node_weight::NodeWeight,
     },
 };

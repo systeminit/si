@@ -1,9 +1,10 @@
 //! Provides a wrapper for [`::ulid::Ulid`] for common visitor and conversion patterns.
 
-pub use ulid::DecodeError;
-pub use ulid::ULID_LEN;
-
 use ulid::Ulid as CoreUlid;
+pub use ulid::{
+    DecodeError,
+    ULID_LEN,
+};
 
 /// Size is the size in bytes, len is the string length
 const ULID_SIZE: usize = 16;

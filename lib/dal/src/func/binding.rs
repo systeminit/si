@@ -2,41 +2,77 @@ use std::collections::HashMap;
 
 use action::ActionBinding;
 use attribute::AttributeBinding;
+pub use attribute_argument::{
+    AttributeArgumentBinding,
+    AttributeFuncArgumentSource,
+};
 use authentication::AuthBinding;
 use itertools::Itertools;
 use leaf::LeafBinding;
 use management::ManagementBinding;
-use serde::{Deserialize, Serialize};
-use strum::{Display, EnumDiscriminants};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use strum::{
+    Display,
+    EnumDiscriminants,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::action::prototype::{ActionKind, ActionPrototypeError};
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::prototype::argument::value_source::ValueSource;
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgumentError, AttributePrototypeArgumentId,
-};
-use crate::attribute::value::AttributeValueError;
-use crate::func::FuncKind;
-use crate::func::argument::FuncArgumentError;
-use crate::func::argument::FuncArgumentId;
-use crate::func::binding::attribute::AttributeBindingMalformedInput;
-use crate::management::prototype::ManagementPrototypeError;
-use crate::prop::PropError;
-use crate::schema::variant::leaves::LeafKind;
-use crate::socket::output::OutputSocketError;
 use crate::{
-    AttributePrototypeId, ComponentError, DalContext, Func, FuncError, FuncId, PropId,
-    SchemaVariantError, SchemaVariantId, socket::input::InputSocketError,
+    AttributePrototypeId,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    Func,
+    FuncError,
+    FuncId,
+    InputSocket,
+    InputSocketId,
+    OutputSocket,
+    OutputSocketId,
+    Prop,
+    PropId,
+    SchemaError,
+    SchemaId,
+    SchemaVariant,
+    SchemaVariantError,
+    SchemaVariantId,
+    WorkspaceSnapshotError,
+    WsEventError,
+    action::prototype::{
+        ActionKind,
+        ActionPrototypeError,
+    },
+    attribute::{
+        prototype::{
+            AttributePrototypeError,
+            argument::{
+                AttributePrototypeArgumentError,
+                AttributePrototypeArgumentId,
+                value_source::ValueSource,
+            },
+        },
+        value::AttributeValueError,
+    },
+    func::{
+        FuncKind,
+        argument::{
+            FuncArgumentError,
+            FuncArgumentId,
+        },
+        binding::attribute::AttributeBindingMalformedInput,
+    },
+    management::prototype::ManagementPrototypeError,
+    prop::PropError,
+    schema::variant::leaves::LeafKind,
+    socket::{
+        input::InputSocketError,
+        output::OutputSocketError,
+    },
 };
-use crate::{
-    ComponentId, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, SchemaError,
-    SchemaId, SchemaVariant, WorkspaceSnapshotError, WsEventError,
-};
-
-pub use attribute_argument::AttributeArgumentBinding;
-pub use attribute_argument::AttributeFuncArgumentSource;
 
 pub mod action;
 pub mod attribute;

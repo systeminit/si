@@ -1,23 +1,42 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
+
+use dal_macros::SiNodeWeight;
+use jwt_simple::prelude::{
+    Deserialize,
+    Serialize,
+};
+use petgraph::prelude::*;
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
+use si_id::ViewId;
 
 use crate::{
     Timestamp,
     workspace_snapshot::{
         EdgeWeightKindDiscriminants,
         content_address::ContentAddress,
-        graph::{LineageId, WorkspaceSnapshotGraphError, detector::Update},
+        graph::{
+            LineageId,
+            WorkspaceSnapshotGraphError,
+            detector::Update,
+        },
         node_weight::{
-            NodeWeight, NodeWeightDiscriminants,
-            traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
+            NodeWeight,
+            NodeWeightDiscriminants,
+            traits::{
+                CorrectExclusiveOutgoingEdge,
+                CorrectTransforms,
+                SiNodeWeight,
+            },
         },
     },
 };
-
-use dal_macros::SiNodeWeight;
-use jwt_simple::prelude::{Deserialize, Serialize};
-use petgraph::prelude::*;
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
-use si_id::ViewId;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, SiNodeWeight)]
 #[si_node_weight(discriminant = NodeWeightDiscriminants::View)]

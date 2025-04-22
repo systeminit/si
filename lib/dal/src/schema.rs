@@ -1,31 +1,70 @@
+use std::{
+    collections::{
+        HashMap,
+        HashSet,
+    },
+    fmt::Debug,
+    sync::Arc,
+};
+
 use petgraph::Outgoing;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::ContentHash;
 use si_layer_cache::LayerDbError;
-use std::collections::{HashMap, HashSet};
-use std::fmt::Debug;
-use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
-
-use crate::cached_module::{CachedModule, CachedModuleError};
-use crate::change_set::ChangeSetError;
-use crate::layer_db_types::{SchemaContent, SchemaContentDiscriminants, SchemaContentV1};
-use crate::pkg::{ImportOptions, PkgError, import_pkg_from_pkg};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
-use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
+pub use variant::{
+    SchemaVariant,
+    SchemaVariantId,
 };
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+
 use crate::{
-    DalContext, Func, FuncError, FuncId, HelperError, SchemaVariantError, Timestamp,
-    TransactionsError, implement_add_edge_to,
+    DalContext,
+    Func,
+    FuncError,
+    FuncId,
+    HelperError,
+    SchemaVariantError,
+    Timestamp,
+    TransactionsError,
+    cached_module::{
+        CachedModule,
+        CachedModuleError,
+    },
+    change_set::ChangeSetError,
+    implement_add_edge_to,
+    layer_db_types::{
+        SchemaContent,
+        SchemaContentDiscriminants,
+        SchemaContentV1,
+    },
+    pkg::{
+        ImportOptions,
+        PkgError,
+        import_pkg_from_pkg,
+    },
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
+        edge_weight::{
+            EdgeWeight,
+            EdgeWeightKind,
+            EdgeWeightKindDiscriminants,
+        },
+        node_weight::{
+            NodeWeight,
+            NodeWeightError,
+            category_node_weight::CategoryNodeKind,
+        },
+    },
 };
-
-pub use variant::{SchemaVariant, SchemaVariantId};
 
 pub mod variant;
 pub mod view;

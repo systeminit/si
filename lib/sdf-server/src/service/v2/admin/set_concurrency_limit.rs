@@ -1,14 +1,28 @@
 use axum::{
-    extract::{Host, OriginalUri, Path},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
     response::Json,
 };
-use dal::{Tenancy, Workspace, WorkspacePk};
-use serde::{Deserialize, Serialize};
+use dal::{
+    Tenancy,
+    Workspace,
+    WorkspacePk,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 
 use crate::{
     extract::PosthogClient,
-    service::v2::admin::{AdminAPIResult, AdminUserContext},
+    service::v2::admin::{
+        AdminAPIResult,
+        AdminUserContext,
+    },
     track_no_ctx,
 };
 

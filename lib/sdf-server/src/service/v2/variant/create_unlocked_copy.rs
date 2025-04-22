@@ -1,20 +1,34 @@
-use axum::extract::{Host, OriginalUri, Path};
-
+use axum::extract::{
+    Host,
+    OriginalUri,
+    Path,
+};
+use dal::{
+    ChangeSet,
+    ChangeSetId,
+    Schema,
+    SchemaVariant,
+    SchemaVariantId,
+    WorkspacePk,
+    WsEvent,
+    schema::variant::authoring::VariantAuthoringClient,
+};
+use sdf_core::force_change_set_response::ForceChangeSetResponse;
+use sdf_v1_routes_variant::{
+    SchemaVariantError,
+    SchemaVariantResult,
+};
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 
-use dal::{
-    ChangeSet, ChangeSetId, Schema, SchemaVariant, SchemaVariantId, WorkspacePk, WsEvent,
-    schema::variant::authoring::VariantAuthoringClient,
-};
-
 use crate::{
-    extract::{HandlerContext, PosthogClient},
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
     service::v2::AccessBuilder,
     track,
 };
-use sdf_core::force_change_set_response::ForceChangeSetResponse;
-use sdf_v1_routes_variant::{SchemaVariantError, SchemaVariantResult};
 
 pub async fn create_unlocked_copy(
     HandlerContext(builder): HandlerContext,

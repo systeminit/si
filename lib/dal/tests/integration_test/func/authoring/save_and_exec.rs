@@ -1,7 +1,12 @@
-use dal::func::authoring::FuncAuthoringClient;
-use dal::{DalContext, Func};
-use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::test;
+use dal::{
+    DalContext,
+    Func,
+    func::authoring::FuncAuthoringClient,
+};
+use dal_test::{
+    helpers::ChangeSetTestHelpers,
+    test,
+};
 
 #[test]
 async fn save_and_exec_action_func(ctx: &mut DalContext) {

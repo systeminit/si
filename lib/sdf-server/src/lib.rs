@@ -36,25 +36,46 @@ pub mod service;
 mod tracking;
 mod uds;
 
+pub use dal::{
+    JobQueueProcessor,
+    NatsProcessor,
+    ServicesContext,
+    feature_flags::{
+        FeatureFlag,
+        FeatureFlagService,
+    },
+};
+
 pub use self::{
     app::AxumApp,
     app_state::ApplicationRuntimeMode,
     config::{
-        Config, ConfigBuilder, ConfigError, ConfigFile, IncomingStream, MigrationMode,
-        StandardConfig, StandardConfigFile, WorkspacePermissions, WorkspacePermissionsMode,
+        Config,
+        ConfigBuilder,
+        ConfigError,
+        ConfigFile,
+        IncomingStream,
+        MigrationMode,
+        StandardConfig,
+        StandardConfigFile,
+        WorkspacePermissions,
+        WorkspacePermissionsMode,
     },
     garbage_collection::SnapshotGarbageCollector,
     migrations::Migrator,
     nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT,
-    server::{Server, ServerMetadata, ServerSocket},
+    server::{
+        Server,
+        ServerMetadata,
+        ServerSocket,
+    },
 };
 pub(crate) use self::{
     app_state::AppState,
-    tracking::{track, track_no_ctx},
-};
-pub use dal::{
-    JobQueueProcessor, NatsProcessor, ServicesContext,
-    feature_flags::{FeatureFlag, FeatureFlagService},
+    tracking::{
+        track,
+        track_no_ctx,
+    },
 };
 
 #[remain::sorted]

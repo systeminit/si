@@ -1,17 +1,26 @@
-use object_tree::{Hash, HashedNode};
+use object_tree::{
+    Hash,
+    HashedNode,
+};
 use petgraph::prelude::*;
-
 use url::Url;
 
+use super::{
+    PkgResult,
+    SiPkgError,
+    Source,
+};
 use crate::{
     node::PkgNode,
     spec::{
-        FuncArgumentKind, FuncArgumentSpec, FuncSpec, FuncSpecBackendKind,
-        FuncSpecBackendResponseType, FuncSpecData,
+        FuncArgumentKind,
+        FuncArgumentSpec,
+        FuncSpec,
+        FuncSpecBackendKind,
+        FuncSpecBackendResponseType,
+        FuncSpecData,
     },
 };
-
-use super::{PkgResult, SiPkgError, Source};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgFuncArgument<'a> {

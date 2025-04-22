@@ -12,21 +12,41 @@
 //! build this mapping only from the perspective of the [`InputSocket`] and use that mapping to hydrate both
 //! the Incoming and Outgoing Inferred Connections for a given [`ComponentId`]
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{
+    BTreeSet,
+    HashMap,
+    HashSet,
+};
 
 use petgraph::{
     prelude::*,
-    visit::{Control, DfsEvent},
+    visit::{
+        Control,
+        DfsEvent,
+    },
 };
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    Component, ComponentError, ComponentId, ComponentType, DalContext, InputSocket, InputSocketId,
-    OutputSocket, OutputSocketId, SocketArity, WorkspaceSnapshotError,
+    Component,
+    ComponentError,
+    ComponentId,
+    ComponentType,
+    DalContext,
+    InputSocket,
+    InputSocketId,
+    OutputSocket,
+    OutputSocketId,
+    SocketArity,
+    WorkspaceSnapshotError,
     socket::{
-        connection_annotation::ConnectionAnnotation, input::InputSocketError,
+        connection_annotation::ConnectionAnnotation,
+        input::InputSocketError,
         output::OutputSocketError,
     },
 };

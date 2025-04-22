@@ -1,15 +1,26 @@
 use axum::{
     Json,
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use hyper::StatusCode;
 use module_index_types::ListLatestModulesResponse;
-use sea_orm::{DbBackend, DbErr, EntityTrait, Statement};
+use sea_orm::{
+    DbBackend,
+    DbErr,
+    EntityTrait,
+    Statement,
+};
 use thiserror::Error;
 
 use crate::{
     extract::DbConnection,
-    models::si_module::{self, make_latest_modules_response},
+    models::si_module::{
+        self,
+        make_latest_modules_response,
+    },
     whoami::WhoamiError,
 };
 

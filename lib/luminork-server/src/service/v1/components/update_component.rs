@@ -1,15 +1,47 @@
-use super::ComponentV1RequestPath;
-use super::connections::{Connection, handle_connection};
-use crate::extract::{PosthogEventTracker, change_set::ChangeSetDalContext};
-use crate::service::v1::{ComponentsError, components::get_component::bare_component_response};
-use axum::{extract::Path, response::Json};
-use dal::{
-    AttributeValue, Component, PropId, SchemaVariantId, WsEvent,
-    prop::{PROP_PATH_SEPARATOR, PropPath, PropResult},
-};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use utoipa::{self, ToSchema};
+
+use axum::{
+    extract::Path,
+    response::Json,
+};
+use dal::{
+    AttributeValue,
+    Component,
+    PropId,
+    SchemaVariantId,
+    WsEvent,
+    prop::{
+        PROP_PATH_SEPARATOR,
+        PropPath,
+        PropResult,
+    },
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use utoipa::{
+    self,
+    ToSchema,
+};
+
+use super::{
+    ComponentV1RequestPath,
+    connections::{
+        Connection,
+        handle_connection,
+    },
+};
+use crate::{
+    extract::{
+        PosthogEventTracker,
+        change_set::ChangeSetDalContext,
+    },
+    service::v1::{
+        ComponentsError,
+        components::get_component::bare_component_response,
+    },
+};
 
 /// Component property key
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, ToSchema)]

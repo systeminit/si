@@ -1,13 +1,24 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Path},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
 };
-use dal::{ChangeSetId, WorkspacePk, module::Module};
+use dal::{
+    ChangeSetId,
+    WorkspacePk,
+    module::Module,
+};
 use si_frontend_types as frontend_types;
 
 use super::ModulesAPIError;
 use crate::{
-    extract::{HandlerContext, PosthogClient},
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
     service::v2::AccessBuilder,
     track,
 };

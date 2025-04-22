@@ -1,6 +1,9 @@
 use std::{
     ops::Deref,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
     process::Stdio,
     sync::Arc,
     time::Duration,
@@ -9,8 +12,14 @@ use std::{
 use axum::extract::FromRef;
 use telemetry::tracing::debug;
 use tokio::{
-    process::{Child, Command},
-    sync::{Mutex, mpsc},
+    process::{
+        Child,
+        Command,
+    },
+    sync::{
+        Mutex,
+        mpsc,
+    },
 };
 
 use crate::execution::ExecutionError;

@@ -1,17 +1,39 @@
+use std::collections::HashMap;
+
+use axum::{
+    Json,
+    extract::Path,
+};
+use dal::{
+    ChangeSet,
+    ChangeSetId,
+    Component,
+    ComponentId,
+    WorkspacePk,
+    WsEvent,
+    diagram::view::{
+        View,
+        ViewId,
+    },
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_frontend_types::{
+    RawGeometry,
+    StringGeometry,
+};
+use ulid::Ulid;
+
 use super::ViewResult;
 use crate::{
-    extract::HandlerContext, service::force_change_set_response::ForceChangeSetResponse,
-    service::v2::AccessBuilder,
+    extract::HandlerContext,
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::AccessBuilder,
+    },
 };
-use axum::{Json, extract::Path};
-use dal::{
-    ChangeSet, ChangeSetId, Component, ComponentId, WorkspacePk, WsEvent,
-    diagram::view::{View, ViewId},
-};
-use serde::{Deserialize, Serialize};
-use si_frontend_types::{RawGeometry, StringGeometry};
-use std::collections::HashMap;
-use ulid::Ulid;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

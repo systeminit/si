@@ -1,5 +1,11 @@
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use chrono::{
+    DateTime,
+    Utc,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use ulid::Ulid;
 
 pub const MODULE_BUNDLE_FIELD_NAME: &str = "module_bundle";

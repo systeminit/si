@@ -2,15 +2,24 @@ mod certs;
 #[cfg(test)]
 mod integration_tests {
 
-    use base64::{Engine as _, engine::general_purpose::STANDARD};
-    use innit_client::InnitClientError;
     use std::net::SocketAddr;
 
+    use base64::{
+        Engine as _,
+        engine::general_purpose::STANDARD,
+    };
     use hyper::server::conn::AddrIncoming;
-    use innit_client::config::StandardConfig;
-    use innit_client::{InnitClient, auth::AuthConfig};
+    use innit_client::{
+        InnitClient,
+        InnitClientError,
+        auth::AuthConfig,
+        config::StandardConfig,
+    };
     use innit_server::Server;
-    use si_tls::{CertificateSource, KeySource};
+    use si_tls::{
+        CertificateSource,
+        KeySource,
+    };
     use tokio_util::sync::CancellationToken;
     use url::Url;
 

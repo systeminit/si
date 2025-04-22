@@ -1,10 +1,21 @@
-use object_tree::{Hash, HashedNode};
+use object_tree::{
+    Hash,
+    HashedNode,
+};
 use petgraph::prelude::*;
 
-use super::{PkgResult, SiPkgError, Source};
-
-use crate::SchemaVariantSpecPropRoot;
-use crate::{AttrFuncInputSpec, RootPropFuncSpec, SiPkgAttrFuncInput, node::PkgNode};
+use super::{
+    PkgResult,
+    SiPkgError,
+    Source,
+};
+use crate::{
+    AttrFuncInputSpec,
+    RootPropFuncSpec,
+    SchemaVariantSpecPropRoot,
+    SiPkgAttrFuncInput,
+    node::PkgNode,
+};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgRootPropFunc<'a> {

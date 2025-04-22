@@ -1,7 +1,15 @@
 use std::path::PathBuf;
 
-use clap::{ArgAction, Parser};
-use module_index_server::{Config, ConfigError, ConfigFile, StandardConfigFile};
+use clap::{
+    ArgAction,
+    Parser,
+};
+use module_index_server::{
+    Config,
+    ConfigError,
+    ConfigFile,
+    StandardConfigFile,
+};
 use si_std::SensitiveString;
 
 const NAME: &str = "module_index";

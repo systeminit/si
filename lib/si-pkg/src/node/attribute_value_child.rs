@@ -1,14 +1,26 @@
-use std::io::{BufRead, Write};
+use std::io::{
+    BufRead,
+    Write,
+};
 
 use object_tree::{
-    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
-    read_key_value_line, write_key_value_line,
+    GraphError,
+    NameStr,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    write_key_value_line,
 };
-use serde::{Deserialize, Serialize};
-
-use crate::AttrFuncInputSpec;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use super::PkgNode;
+use crate::AttrFuncInputSpec;
 
 const ATTRIBUTE_VALUE_CHILD_TYPE_ATTR_FUNC_INPUTS: &str = "attr_func_inputs";
 

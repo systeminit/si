@@ -1,21 +1,51 @@
-use itertools::Itertools;
-use object_tree::{Hash, HashedNode};
-use petgraph::prelude::*;
-use std::collections::{HashMap, VecDeque, hash_map::Entry};
-use std::future::Future;
-use tokio::sync::Mutex;
-
-use super::{
-    PkgResult, SiPkgActionFunc, SiPkgError, SiPkgLeafFunction, SiPkgManagementFunc, SiPkgProp,
-    SiPkgPropData, SiPkgSiPropFunc, SiPkgSocket, Source,
+use std::{
+    collections::{
+        HashMap,
+        VecDeque,
+        hash_map::Entry,
+    },
+    future::Future,
 };
+
+use itertools::Itertools;
+use object_tree::{
+    Hash,
+    HashedNode,
+};
+use petgraph::prelude::*;
+use tokio::sync::Mutex;
 use url::Url;
 
+use super::{
+    PkgResult,
+    SiPkgActionFunc,
+    SiPkgError,
+    SiPkgLeafFunction,
+    SiPkgManagementFunc,
+    SiPkgProp,
+    SiPkgPropData,
+    SiPkgSiPropFunc,
+    SiPkgSocket,
+    Source,
+};
 use crate::{
-    AttrFuncInputSpec, MapKeyFuncSpec, PropSpec, PropSpecBuilder, PropSpecKind, SchemaVariantSpec,
-    SchemaVariantSpecBuilder, SchemaVariantSpecComponentType, SchemaVariantSpecData,
-    SchemaVariantSpecPropRoot, SiPkgAuthFunc, SiPkgRootPropFunc,
-    node::{PkgNode, PropChildNode, SchemaVariantChildNode},
+    AttrFuncInputSpec,
+    MapKeyFuncSpec,
+    PropSpec,
+    PropSpecBuilder,
+    PropSpecKind,
+    SchemaVariantSpec,
+    SchemaVariantSpecBuilder,
+    SchemaVariantSpecComponentType,
+    SchemaVariantSpecData,
+    SchemaVariantSpecPropRoot,
+    SiPkgAuthFunc,
+    SiPkgRootPropFunc,
+    node::{
+        PkgNode,
+        PropChildNode,
+        SchemaVariantChildNode,
+    },
 };
 
 #[derive(Clone, Debug)]

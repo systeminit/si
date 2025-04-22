@@ -1,25 +1,42 @@
+use std::sync::Arc;
+
+use si_events::WorkspaceSnapshotAddress;
+use si_layer_cache::LayerDbError;
+use telemetry::prelude::*;
+use thiserror::Error;
+use ulid::DecodeError;
+
 use super::{
     graph::{
-        WorkspaceSnapshotGraph, WorkspaceSnapshotGraphDiscriminants, WorkspaceSnapshotGraphError,
+        WorkspaceSnapshotGraph,
+        WorkspaceSnapshotGraphDiscriminants,
+        WorkspaceSnapshotGraphError,
     },
     node_weight::{
         input_socket_node_weight::InputSocketNodeWeightError,
         schema_variant_node_weight::SchemaVariantNodeWeightError,
     },
 };
-use crate::workspace_snapshot::migrator::v4::migrate_v3_to_v4;
-use crate::workspace_snapshot::node_weight::NodeWeightError;
 use crate::{
-    ChangeSet, ChangeSetError, ChangeSetStatus, DalContext, TransactionsError, Visibility,
-    Workspace, WorkspaceError, WorkspaceSnapshot, WorkspaceSnapshotError,
-    workspace_snapshot::migrator::{v2::migrate_v1_to_v2, v3::migrate_v2_to_v3},
+    ChangeSet,
+    ChangeSetError,
+    ChangeSetStatus,
+    DalContext,
+    TransactionsError,
+    Visibility,
+    Workspace,
+    WorkspaceError,
+    WorkspaceSnapshot,
+    WorkspaceSnapshotError,
+    workspace_snapshot::{
+        migrator::{
+            v2::migrate_v1_to_v2,
+            v3::migrate_v2_to_v3,
+            v4::migrate_v3_to_v4,
+        },
+        node_weight::NodeWeightError,
+    },
 };
-use si_events::WorkspaceSnapshotAddress;
-use si_layer_cache::LayerDbError;
-use std::sync::Arc;
-use telemetry::prelude::*;
-use thiserror::Error;
-use ulid::DecodeError;
 
 pub mod v2;
 pub mod v3;

@@ -1,33 +1,55 @@
-use change_batch::ChangeBatchDb;
-use serde::Deserialize;
-use si_data_pg::PgPoolConfig;
-use si_runtime::DedicatedExecutor;
-use std::sync::Arc;
-use std::{future::IntoFuture, io};
-use tokio::try_join;
-
-use serde::{Serialize, de::DeserializeOwned};
-use si_data_nats::{NatsClient, NatsConfig};
-use si_data_pg::PgPool;
-use telemetry::prelude::*;
-use tokio::sync::mpsc;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
-use ulid::Ulid;
-
-use crate::db::encrypted_secret::EncryptedSecretDb;
-use crate::db::func_run::FuncRunDb;
-use crate::db::func_run_log::FuncRunLogDb;
-use crate::hybrid_cache::CacheConfig;
-use crate::{
-    activity_client::ActivityClient,
-    error::LayerDbResult,
-    layer_cache::LayerCache,
-    persister::{PersisterClient, PersisterTask},
+use std::{
+    future::IntoFuture,
+    io,
+    sync::Arc,
 };
 
+use change_batch::ChangeBatchDb;
+use serde::{
+    Deserialize,
+    Serialize,
+    de::DeserializeOwned,
+};
+use si_data_nats::{
+    NatsClient,
+    NatsConfig,
+};
+use si_data_pg::{
+    PgPool,
+    PgPoolConfig,
+};
+use si_runtime::DedicatedExecutor;
+use telemetry::prelude::*;
+use tokio::{
+    sync::mpsc,
+    try_join,
+};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
+use ulid::Ulid;
+
 use self::{
-    cache_updates::CacheUpdatesTask, cas::CasDb, rebase_batch::RebaseBatchDb,
+    cache_updates::CacheUpdatesTask,
+    cas::CasDb,
+    rebase_batch::RebaseBatchDb,
     workspace_snapshot::WorkspaceSnapshotDb,
+};
+use crate::{
+    activity_client::ActivityClient,
+    db::{
+        encrypted_secret::EncryptedSecretDb,
+        func_run::FuncRunDb,
+        func_run_log::FuncRunLogDb,
+    },
+    error::LayerDbResult,
+    hybrid_cache::CacheConfig,
+    layer_cache::LayerCache,
+    persister::{
+        PersisterClient,
+        PersisterTask,
+    },
 };
 
 mod cache_updates;
@@ -362,7 +384,10 @@ mod private {
         future::Future,
         io,
         pin::Pin,
-        task::{Context, Poll},
+        task::{
+            Context,
+            Poll,
+        },
     };
 
     pub struct GracefulShutdownFuture(

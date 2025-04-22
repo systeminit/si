@@ -1,8 +1,19 @@
-use base64::{Engine, engine::general_purpose};
+use base64::{
+    Engine,
+    engine::general_purpose,
+};
 use derive_builder::Builder;
 use object_tree::Hash;
-use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+};
 use url::Url;
 
 use super::SpecError;

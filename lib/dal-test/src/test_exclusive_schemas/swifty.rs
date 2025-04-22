@@ -1,17 +1,45 @@
-use dal::action::prototype::ActionKind;
-use dal::pkg::{ImportOptions, import_pkg_from_pkg};
-use dal::{BuiltinsResult, DalContext, PropKind, SchemaId};
-use dal::{ComponentType, prop::PropPath};
+use dal::{
+    BuiltinsResult,
+    ComponentType,
+    DalContext,
+    PropKind,
+    SchemaId,
+    action::prototype::ActionKind,
+    pkg::{
+        ImportOptions,
+        import_pkg_from_pkg,
+    },
+    prop::PropPath,
+};
 use si_pkg::{
-    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncSpec, FuncSpecBackendKind,
-    FuncSpecBackendResponseType, FuncSpecData, LeafInputLocation, LeafKind, PkgSpec, PropSpec,
-    SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData,
+    ActionFuncSpec,
+    AttrFuncInputSpec,
+    AttrFuncInputSpecKind,
+    FuncSpec,
+    FuncSpecBackendKind,
+    FuncSpecBackendResponseType,
+    FuncSpecData,
+    LeafFunctionSpec,
+    LeafInputLocation,
+    LeafKind,
+    PkgSpec,
+    PropSpec,
+    SchemaSpec,
+    SchemaSpecData,
+    SchemaVariantSpec,
+    SchemaVariantSpecData,
+    SiPkg,
+    SocketSpec,
+    SocketSpecData,
     SocketSpecKind,
 };
-use si_pkg::{LeafFunctionSpec, SchemaSpecData};
 
 use crate::test_exclusive_schemas::{
-    PKG_CREATED_BY, PKG_VERSION, build_action_func, build_asset_func, build_codegen_func,
+    PKG_CREATED_BY,
+    PKG_VERSION,
+    build_action_func,
+    build_asset_func,
+    build_codegen_func,
     create_identity_func,
 };
 

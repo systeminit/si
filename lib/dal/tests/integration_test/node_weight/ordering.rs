@@ -1,6 +1,11 @@
 use dal::DalContext;
-use dal_test::expected::{self, ExpectComponent};
-use dal_test::test;
+use dal_test::{
+    expected::{
+        self,
+        ExpectComponent,
+    },
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 

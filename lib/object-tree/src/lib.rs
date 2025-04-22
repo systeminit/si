@@ -79,13 +79,19 @@
 mod graph;
 mod tar;
 
-pub use crate::tar::{
-    read::TarReadError,
-    write::{TarWriter, TarWriterError},
-};
 pub use graph::{
-    GraphError, HashedNode, NameStr, NodeChild, NodeKind, NodeWithChildren, ObjectTree, ReadBytes,
-    WriteBytes, read_key_value_line, read_key_value_line_opt, write_key_value_line,
+    GraphError,
+    HashedNode,
+    NameStr,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ObjectTree,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    read_key_value_line_opt,
+    write_key_value_line,
     write_key_value_line_opt,
 };
 // The `Hash` type is faily coupled to the implementation and data structures in this crate,
@@ -93,3 +99,11 @@ pub use graph::{
 // `si_hash::Hash` to simplfy crates which consume this one, reducing an extra dependency for a
 // fairly important type.
 pub use si_hash::Hash;
+
+pub use crate::tar::{
+    read::TarReadError,
+    write::{
+        TarWriter,
+        TarWriterError,
+    },
+};

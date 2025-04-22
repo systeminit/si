@@ -1,10 +1,22 @@
 use std::path::PathBuf;
 
-use clap::{ArgAction, Parser, builder::EnumValueParser, builder::PossibleValuesParser};
-
+use clap::{
+    ArgAction,
+    Parser,
+    builder::{
+        EnumValueParser,
+        PossibleValuesParser,
+    },
+};
 use sdf_server::{
-    Config, ConfigError, ConfigFile, FeatureFlag, MigrationMode, StandardConfigFile,
-    WorkspacePermissions, WorkspacePermissionsMode,
+    Config,
+    ConfigError,
+    ConfigFile,
+    FeatureFlag,
+    MigrationMode,
+    StandardConfigFile,
+    WorkspacePermissions,
+    WorkspacePermissionsMode,
 };
 use si_service::prelude::*;
 

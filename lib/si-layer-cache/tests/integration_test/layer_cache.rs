@@ -1,12 +1,18 @@
-use rand::seq::SliceRandom;
-use rand::thread_rng;
-use si_layer_cache::db::serialize;
-use si_layer_cache::hybrid_cache::CacheConfig;
 use std::sync::Arc;
-use tokio_util::sync::CancellationToken;
-use tokio_util::task::TaskTracker;
 
-use si_layer_cache::layer_cache::LayerCache;
+use rand::{
+    seq::SliceRandom,
+    thread_rng,
+};
+use si_layer_cache::{
+    db::serialize,
+    hybrid_cache::CacheConfig,
+    layer_cache::LayerCache,
+};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 
 async fn make_layer_cache(db_name: &str) -> Arc<LayerCache<String>> {
     let layer_cache = LayerCache::new(

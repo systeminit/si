@@ -1,6 +1,9 @@
 //! Core types and utilities shared by different sdf route implementations should go here
 
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::Arc,
+};
 
 use tokio::sync::Mutex;
 

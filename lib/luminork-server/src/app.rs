@@ -15,7 +15,10 @@ use tokio_util::sync::CancellationToken;
 use tower_http::trace::TraceLayer;
 
 use crate::{
-    AppState, ApplicationRuntimeMode, WorkspacePermissions, WorkspacePermissionsMode,
+    AppState,
+    ApplicationRuntimeMode,
+    WorkspacePermissions,
+    WorkspacePermissionsMode,
     routes::routes,
 };
 

@@ -4,15 +4,25 @@ use axum::{
     Router,
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
+    routing::{
+        get,
+        post,
+    },
 };
 use dal::{
-    ChangeSetId, DalContext, HistoryEventError, WorkspacePk, WsEventError,
+    ChangeSetId,
+    DalContext,
+    HistoryEventError,
+    WorkspacePk,
+    WsEventError,
     workspace_integrations::WorkspaceIntegration,
 };
-use sdf_core::{api_error::ApiError, app_state::AppState, dal_wrapper::DalWrapperError};
-
 use reqwest::Client;
+use sdf_core::{
+    api_error::ApiError,
+    app_state::AppState,
+    dal_wrapper::DalWrapperError,
+};
 use serde::Serialize;
 use si_data_spicedb::SpiceDbError;
 use telemetry::prelude::*;

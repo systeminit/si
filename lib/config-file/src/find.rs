@@ -1,14 +1,24 @@
 use std::{
     env,
     ffi::OsStr,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
     str::FromStr,
 };
 
 use directories::ProjectDirs;
-use tracing::{debug, trace};
+use tracing::{
+    debug,
+    trace,
+};
 
-use crate::{ConfigFileError, FileFormat, ToFileFormats};
+use crate::{
+    ConfigFileError,
+    FileFormat,
+    ToFileFormats,
+};
 
 pub fn find(
     app_name: impl AsRef<str>,

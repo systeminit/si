@@ -1,8 +1,20 @@
-use dal::func::binding::attribute::AttributeBinding;
-use dal::func::binding::{EventualParent, FuncBinding};
-use dal::{DalContext, Func, SchemaVariant};
-use dal_test::helpers::{ChangeSetTestHelpers, create_unlocked_variant_copy_for_schema_name};
-use dal_test::test;
+use dal::{
+    DalContext,
+    Func,
+    SchemaVariant,
+    func::binding::{
+        EventualParent,
+        FuncBinding,
+        attribute::AttributeBinding,
+    },
+};
+use dal_test::{
+    helpers::{
+        ChangeSetTestHelpers,
+        create_unlocked_variant_copy_for_schema_name,
+    },
+    test,
+};
 
 #[test]
 async fn detach_attribute_func(ctx: &mut DalContext) {

@@ -1,22 +1,46 @@
-use crate::diagram::diagram_object::DiagramObject;
-use crate::diagram::view::{View, ViewId};
-use crate::diagram::{DiagramError, DiagramResult};
-use crate::layer_db_types::{GeometryContent, GeometryContentV1};
-use crate::workspace_snapshot::node_weight::NodeWeight;
-use crate::workspace_snapshot::node_weight::diagram_object_node_weight::DiagramObjectKind;
-use crate::workspace_snapshot::node_weight::geometry_node_weight::GeometryNodeWeight;
-use crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
-use crate::{
-    ComponentId, EdgeWeightKindDiscriminants, Timestamp, WorkspaceSnapshotError,
-    implement_add_edge_to,
+use std::{
+    collections::HashMap,
+    sync::Arc,
 };
-use crate::{DalContext, EdgeWeightKind};
-use jwt_simple::prelude::{Deserialize, Serialize};
-use si_events::ContentHash;
-use si_events::ulid::Ulid;
+
+use jwt_simple::prelude::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    ulid::Ulid,
+};
 pub use si_frontend_types::RawGeometry;
-use std::collections::HashMap;
-use std::sync::Arc;
+
+use crate::{
+    ComponentId,
+    DalContext,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    Timestamp,
+    WorkspaceSnapshotError,
+    diagram::{
+        DiagramError,
+        DiagramResult,
+        diagram_object::DiagramObject,
+        view::{
+            View,
+            ViewId,
+        },
+    },
+    implement_add_edge_to,
+    layer_db_types::{
+        GeometryContent,
+        GeometryContentV1,
+    },
+    workspace_snapshot::node_weight::{
+        NodeWeight,
+        diagram_object_node_weight::DiagramObjectKind,
+        geometry_node_weight::GeometryNodeWeight,
+        traits::SiVersionedNodeWeight,
+    },
+};
 
 const DEFAULT_COMPONENT_X_POSITION: &str = "0";
 const DEFAULT_COMPONENT_Y_POSITION: &str = "0";

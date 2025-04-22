@@ -1,13 +1,23 @@
-use std::io::{BufRead, Write};
-
-use object_tree::{
-    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes, read_key_value_line,
-    read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
+use std::io::{
+    BufRead,
+    Write,
 };
 
-use crate::ManagementFuncSpec;
+use object_tree::{
+    GraphError,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    read_key_value_line_opt,
+    write_key_value_line,
+    write_key_value_line_opt,
+};
 
 use super::PkgNode;
+use crate::ManagementFuncSpec;
 
 const KEY_FUNC_UNIQUE_ID_STR: &str = "func_unique_id";
 const KEY_NAME_STR: &str = "name";

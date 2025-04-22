@@ -1,20 +1,36 @@
+use std::collections::{
+    HashMap,
+    HashSet,
+    VecDeque,
+};
+
 use itertools::Itertools;
 use petgraph::{
     prelude::*,
-    visit::{Control, DfsEvent},
+    visit::{
+        Control,
+        DfsEvent,
+    },
 };
-use std::collections::{HashMap, HashSet, VecDeque};
 use telemetry::prelude::*;
 
-use crate::{
-    Component, ComponentId, DalContext,
-    action::{Action, ActionId},
-    dependency_graph::DependencyGraph,
-};
-
 use super::{
-    ActionError, ActionResult,
-    prototype::{ActionKind, ActionPrototype},
+    ActionError,
+    ActionResult,
+    prototype::{
+        ActionKind,
+        ActionPrototype,
+    },
+};
+use crate::{
+    Component,
+    ComponentId,
+    DalContext,
+    action::{
+        Action,
+        ActionId,
+    },
+    dependency_graph::DependencyGraph,
 };
 
 #[derive(Debug, Clone)]

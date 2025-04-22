@@ -1,16 +1,28 @@
 //! Graceful service/server shutdown using cancellation tokens, task trackers, driven by Unix
 //! signal handling.
 
-use std::{convert::Infallible, error, future::Future, io, time::Duration};
+use std::{
+    convert::Infallible,
+    error,
+    future::Future,
+    io,
+    time::Duration,
+};
 
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{
-    signal::unix::{self, SignalKind},
+    signal::unix::{
+        self,
+        SignalKind,
+    },
     task::JoinHandle,
     time,
 };
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 
 /// An error that can be returned when gracefully shutting down.
 ///

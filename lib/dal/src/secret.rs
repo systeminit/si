@@ -25,49 +25,110 @@
     while_true
 )]
 
+use std::{
+    collections::HashMap,
+    fmt,
+    str::FromStr,
+    sync::Arc,
+};
+
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::Value;
-use si_crypto::{SymmetricCryptoError, SymmetricCryptoService, SymmetricNonce};
+use si_crypto::{
+    SymmetricCryptoError,
+    SymmetricCryptoService,
+    SymmetricNonce,
+};
 use si_data_pg::PgError;
-use si_events::encrypted_secret::EncryptedSecretKeyParseError;
-use si_events::{ContentHash, EncryptedSecretKey, ulid::Ulid};
+use si_events::{
+    ContentHash,
+    EncryptedSecretKey,
+    encrypted_secret::EncryptedSecretKeyParseError,
+    ulid::Ulid,
+};
 use si_hash::Hash;
 use si_id::PropId;
 use si_layer_cache::LayerDbError;
-use sodiumoxide::crypto::box_::{PublicKey, SecretKey};
-use sodiumoxide::crypto::sealedbox;
-use std::collections::HashMap;
-use std::fmt;
-use std::str::FromStr;
-use std::sync::Arc;
+use sodiumoxide::crypto::{
+    box_::{
+        PublicKey,
+        SecretKey,
+    },
+    sealedbox,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::SensitiveContainer;
 
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError,
-};
-use crate::attribute::value::AttributeValueError;
-use crate::func::argument::{FuncArgument, FuncArgumentError};
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::key_pair::KeyPairPk;
-use crate::layer_db_types::{SecretContent, SecretContentV1};
-use crate::prop::PropError;
-use crate::schema::variant::root_prop::RootPropChild;
-use crate::serde_impls::base64_bytes_serde;
-use crate::serde_impls::nonce_serde;
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::secret_node_weight::SecretNodeWeight;
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::{
-    AttributePrototype, AttributeValue, AttributeValueId, ChangeSetError, ComponentError,
-    ComponentId, DalContext, Func, FuncError, FuncId, HelperError, HistoryActor, HistoryEventError,
-    KeyPair, KeyPairError, Prop, SchemaVariant, SchemaVariantError, StandardModelError, Timestamp,
-    TransactionsError, UserPk, implement_add_edge_to,
+    AttributePrototype,
+    AttributeValue,
+    AttributeValueId,
+    ChangeSetError,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    Func,
+    FuncError,
+    FuncId,
+    HelperError,
+    HistoryActor,
+    HistoryEventError,
+    KeyPair,
+    KeyPairError,
+    Prop,
+    SchemaVariant,
+    SchemaVariantError,
+    StandardModelError,
+    Timestamp,
+    TransactionsError,
+    UserPk,
+    attribute::{
+        prototype::{
+            AttributePrototypeError,
+            argument::{
+                AttributePrototypeArgument,
+                AttributePrototypeArgumentError,
+            },
+        },
+        value::AttributeValueError,
+    },
+    func::{
+        argument::{
+            FuncArgument,
+            FuncArgumentError,
+        },
+        intrinsics::IntrinsicFunc,
+    },
+    implement_add_edge_to,
+    key_pair::KeyPairPk,
+    layer_db_types::{
+        SecretContent,
+        SecretContentV1,
+    },
+    prop::PropError,
+    schema::variant::root_prop::RootPropChild,
+    serde_impls::{
+        base64_bytes_serde,
+        nonce_serde,
+    },
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        edge_weight::{
+            EdgeWeightKind,
+            EdgeWeightKindDiscriminants,
+        },
+        node_weight::{
+            NodeWeight,
+            NodeWeightError,
+            category_node_weight::CategoryNodeKind,
+            secret_node_weight::SecretNodeWeight,
+        },
+    },
 };
 
 mod algorithm;
@@ -75,16 +136,24 @@ mod definition_view;
 mod event;
 mod view;
 
-pub use algorithm::SecretAlgorithm;
-pub use algorithm::SecretVersion;
-pub use definition_view::SecretDefinitionView;
-pub use definition_view::SecretDefinitionViewError;
-pub use event::SecretCreatedPayload;
-pub use event::SecretDeletedPayload;
-pub use event::SecretUpdatedPayload;
-pub use view::SecretView;
-pub use view::SecretViewError;
-pub use view::SecretViewResult;
+pub use algorithm::{
+    SecretAlgorithm,
+    SecretVersion,
+};
+pub use definition_view::{
+    SecretDefinitionView,
+    SecretDefinitionViewError,
+};
+pub use event::{
+    SecretCreatedPayload,
+    SecretDeletedPayload,
+    SecretUpdatedPayload,
+};
+pub use view::{
+    SecretView,
+    SecretViewError,
+    SecretViewResult,
+};
 
 #[allow(missing_docs)]
 #[remain::sorted]

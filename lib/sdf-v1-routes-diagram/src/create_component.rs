@@ -2,22 +2,47 @@ use std::collections::HashMap;
 
 use axum::{
     Json,
-    extract::{Host, OriginalUri},
+    extract::{
+        Host,
+        OriginalUri,
+    },
 };
-use serde::{Deserialize, Serialize};
-
 use dal::{
-    ChangeSet, Component, ComponentId, Schema, SchemaId, SchemaVariant, SchemaVariantId,
-    Visibility, WsEvent, change_status::ChangeStatus, component::frame::Frame, generate_name,
+    ChangeSet,
+    Component,
+    ComponentId,
+    Func,
+    Schema,
+    SchemaId,
+    SchemaVariant,
+    SchemaVariantId,
+    Visibility,
+    WsEvent,
+    change_status::ChangeStatus,
+    component::frame::Frame,
+    diagram::view::View,
+    generate_name,
 };
-use dal::{Func, diagram::view::View};
-use sdf_core::{force_change_set_response::ForceChangeSetResponse, tracking::track};
-use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
+use sdf_core::{
+    force_change_set_response::ForceChangeSetResponse,
+    tracking::track,
+};
+use sdf_extract::{
+    HandlerContext,
+    PosthogClient,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 
-use super::DiagramError;
-use super::DiagramResult;
+use super::{
+    DiagramError,
+    DiagramResult,
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 #[serde(rename_all = "camelCase")]

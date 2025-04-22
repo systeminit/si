@@ -1,6 +1,11 @@
 use tower::Layer;
 
-use super::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, Trace};
+use super::{
+    DefaultMakeSpan,
+    DefaultOnRequest,
+    DefaultOnResponse,
+    Trace,
+};
 
 pub struct TraceLayer<
     MakeSpan = DefaultMakeSpan,

@@ -1,9 +1,15 @@
 //! This module contains the [`HeartbeatApp`] used for assessing the health of veritech and its NATS client.
 
-use std::sync::atomic::Ordering;
-use std::time::Duration;
+use std::{
+    sync::atomic::Ordering,
+    time::Duration,
+};
 
-use si_data_nats::{NatsClient, State, Subject};
+use si_data_nats::{
+    NatsClient,
+    State,
+    Subject,
+};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use tokio_util::sync::CancellationToken;

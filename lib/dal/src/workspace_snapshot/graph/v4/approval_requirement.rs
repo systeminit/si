@@ -1,28 +1,44 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
-use petgraph::{Direction, prelude::*};
+use petgraph::{
+    Direction,
+    prelude::*,
+};
 use si_events::{
     merkle_tree_hash::MerkleTreeHash,
-    workspace_snapshot::{Change, EntityKind},
+    workspace_snapshot::{
+        Change,
+        EntityKind,
+    },
 };
-use si_id::{ApprovalRequirementDefinitionId, EntityId, WorkspacePk};
+use si_id::{
+    ApprovalRequirementDefinitionId,
+    EntityId,
+    WorkspacePk,
+};
 
+use super::WorkspaceSnapshotGraphV4;
 use crate::{
-    EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
+    EdgeWeightKindDiscriminants,
+    NodeWeightDiscriminants,
     workspace_snapshot::{
         graph::{
-            WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
+            WorkspaceSnapshotGraphError,
+            WorkspaceSnapshotGraphResult,
             traits::approval_requirement::{
-                ApprovalRequirementApprover, ApprovalRequirementExt,
-                ApprovalRequirementPermissionLookup, ApprovalRequirementRule,
+                ApprovalRequirementApprover,
+                ApprovalRequirementExt,
+                ApprovalRequirementPermissionLookup,
+                ApprovalRequirementRule,
                 ApprovalRequirementsBag,
             },
         },
         node_weight::traits::SiNodeWeight,
     },
 };
-
-use super::WorkspaceSnapshotGraphV4;
 
 impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
     fn approval_requirements_for_changes(

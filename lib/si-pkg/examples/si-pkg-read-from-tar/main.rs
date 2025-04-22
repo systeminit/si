@@ -1,6 +1,9 @@
 use std::env::args;
 
-use petgraph::dot::{Config, Dot};
+use petgraph::dot::{
+    Config,
+    Dot,
+};
 use si_pkg::SiPkg;
 
 #[tokio::main]

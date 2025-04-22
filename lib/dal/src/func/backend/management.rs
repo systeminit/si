@@ -1,15 +1,24 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use veritech_client::{
-    BeforeFunction, ComponentViewWithGeometry, FunctionResult, ManagementRequest,
+    BeforeFunction,
+    ComponentViewWithGeometry,
+    FunctionResult,
+    ManagementRequest,
     ManagementResultSuccess,
 };
 
-use crate::func::backend::{FuncBackendResult, FuncDispatch, FuncDispatchContext};
-
 use super::ExtractPayload;
+use crate::func::backend::{
+    FuncBackendResult,
+    FuncDispatch,
+    FuncDispatchContext,
+};
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct FuncBackendManagementArgs {

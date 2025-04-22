@@ -1,14 +1,23 @@
-use chrono::{DateTime, Utc};
 use std::str::FromStr;
 
-use crate::ulid::Ulid;
-use postgres_types::FromSql;
-use postgres_types::ToSql;
-use serde::Deserialize;
-use serde::Serialize;
+use chrono::{
+    DateTime,
+    Utc,
+};
+use postgres_types::{
+    FromSql,
+    ToSql,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::ContentHash;
-use crate::UserPk;
+use crate::{
+    ContentHash,
+    UserPk,
+    ulid::Ulid,
+};
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Hash, Clone)]
 pub struct FuncExecutionKey {

@@ -1,14 +1,26 @@
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use chrono::{
+    DateTime,
+    Utc,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use strum::Display as StrumDisplay;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::actor_view::ActorView;
-use crate::{DalContext, Timestamp, User, UserPk};
-use crate::{Tenancy, TransactionsError};
+use crate::{
+    DalContext,
+    Tenancy,
+    Timestamp,
+    TransactionsError,
+    User,
+    UserPk,
+    actor_view::ActorView,
+};
 
 const SYSTEMINIT_EMAIL_SUFFIX: &str = "@systeminit.com";
 const TEST_SYSTEMINIT_EMAIL_SUFFIX: &str = "@test.systeminit.com";

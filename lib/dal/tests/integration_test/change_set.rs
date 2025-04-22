@@ -1,18 +1,34 @@
-use dal::change_set::view::OpenChangeSetsView;
-use dal::{AccessBuilder, ChangeSet, ChangeSetStatus, Component};
+use std::collections::HashSet;
+
 use dal::{
-    DalContext, DalContextBuilder, HistoryActor, RequestContext, Workspace, WorkspacePk,
+    AccessBuilder,
+    ChangeSet,
+    ChangeSetStatus,
+    Component,
+    DalContext,
+    DalContextBuilder,
+    HistoryActor,
+    RequestContext,
+    Workspace,
+    WorkspacePk,
+    change_set::view::OpenChangeSetsView,
     context::TransactionsErrorDiscriminants,
 };
-use dal_test::helpers::{
-    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view, create_user,
+use dal_test::{
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_default_schema_name_in_default_view,
+        create_user,
+    },
+    test,
 };
-use dal_test::test;
 use itertools::Itertools;
 use pretty_assertions_sorted::assert_eq;
-use si_events::authentication_method::AuthenticationMethodV1;
-use si_events::{AuthenticationMethod, AuthenticationMethodRole};
-use std::collections::HashSet;
+use si_events::{
+    AuthenticationMethod,
+    AuthenticationMethodRole,
+    authentication_method::AuthenticationMethodV1,
+};
 
 mod approval;
 
