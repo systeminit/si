@@ -1,4 +1,5 @@
 use axum::{
+    extract::rejection::JsonRejection,
     http::StatusCode,
     response::{IntoResponse, Response},
 };
@@ -35,6 +36,8 @@ pub enum ChangeSetError {
     SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
+    #[error("validation error: {0}")]
+    Validation(String),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
@@ -43,12 +46,32 @@ pub enum ChangeSetError {
 
 impl ErrorIntoResponse for ChangeSetError {
     fn status_and_message(&self) -> (StatusCode, String) {
-        (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
+        match self {
+            ChangeSetError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+        }
     }
 }
 
 impl IntoResponse for ChangeSetError {
     fn into_response(self) -> Response {
         self.to_api_response()
+    }
+}
+
+impl From<JsonRejection> for ChangeSetError {
+    fn from(rejection: JsonRejection) -> Self {
+        match rejection {
+            JsonRejection::JsonDataError(_) => {
+                ChangeSetError::Validation(format!("Invalid JSON data format: {}", rejection))
+            }
+            JsonRejection::JsonSyntaxError(_) => {
+                ChangeSetError::Validation(format!("Invalid JSON syntax: {}", rejection))
+            }
+            JsonRejection::MissingJsonContentType(_) => ChangeSetError::Validation(
+                "Request must have Content-Type: application/json header".to_string(),
+            ),
+            _ => ChangeSetError::Validation(format!("JSON validation error: {}", rejection)),
+        }
     }
 }

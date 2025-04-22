@@ -1,4 +1,4 @@
-use axum::response::Json;
+use axum::{extract::rejection::JsonRejection, response::Json};
 use dal::WsEvent;
 use dal::change_set::ChangeSet;
 use serde::{Deserialize, Serialize};
@@ -20,14 +20,16 @@ use crate::service::v1::ChangeSetError;
     request_body = CreateChangeSetV1Request,
     responses(
         (status = 200, description = "Change set created successfully", body = CreateChangeSetV1Response),
+        (status = 422, description = "Validation error - Invalid request data", body = crate::service::v1::common::ApiError),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
 pub async fn create_change_set(
     WorkspaceDalContext(ref ctx): WorkspaceDalContext,
     tracker: PosthogEventTracker,
-    Json(payload): Json<CreateChangeSetV1Request>,
+    payload: Result<Json<CreateChangeSetV1Request>, JsonRejection>,
 ) -> Result<Json<CreateChangeSetV1Response>, ChangeSetError> {
+    let Json(payload) = payload?;
     let change_set = ChangeSet::fork_head(ctx, &payload.change_set_name).await?;
 
     tracker.track(ctx, "api_create_change_set", json!(payload));
@@ -48,7 +50,7 @@ pub async fn create_change_set(
 #[derive(Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateChangeSetV1Request {
-    #[schema(example = "My new feature")]
+    #[schema(example = "My new feature", required = true)]
     pub change_set_name: String,
 }
 

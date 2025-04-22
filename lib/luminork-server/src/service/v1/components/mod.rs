@@ -1,5 +1,6 @@
 use axum::{
     Router,
+    extract::rejection::JsonRejection,
     http::StatusCode,
     response::IntoResponse,
     routing::{delete, get, post, put},
@@ -11,6 +12,7 @@ use utoipa::ToSchema;
 
 use crate::AppState;
 
+pub mod connections;
 pub mod create_component;
 pub mod delete_component;
 pub mod get_component;
@@ -45,6 +47,8 @@ pub enum ComponentsError {
     SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
+    #[error("validation error: {0}")]
+    Validation(String),
     #[error("ws event error: {0}")]
     WsEvent(#[from] dal::WsEventError),
 }
@@ -62,6 +66,23 @@ impl IntoResponse for ComponentsError {
     }
 }
 
+impl From<JsonRejection> for ComponentsError {
+    fn from(rejection: JsonRejection) -> Self {
+        match rejection {
+            JsonRejection::JsonDataError(_) => {
+                ComponentsError::Validation(format!("Invalid JSON data format: {}", rejection))
+            }
+            JsonRejection::JsonSyntaxError(_) => {
+                ComponentsError::Validation(format!("Invalid JSON syntax: {}", rejection))
+            }
+            JsonRejection::MissingJsonContentType(_) => ComponentsError::Validation(
+                "Request must have Content-Type: application/json header".to_string(),
+            ),
+            _ => ComponentsError::Validation(format!("JSON validation error: {}", rejection)),
+        }
+    }
+}
+
 impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
     fn status_and_message(&self) -> (StatusCode, String) {
         match self {
@@ -72,6 +93,7 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
             ComponentsError::DuplicateComponentName(_) => {
                 (StatusCode::PRECONDITION_FAILED, self.to_string())
             }
+            ComponentsError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
     }
