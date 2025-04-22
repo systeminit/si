@@ -2507,14 +2507,14 @@ cargo.rust_library(
 
 alias(
     name = "blake3",
-    actual = ":blake3-1.8.1",
+    actual = ":blake3-1.8.2",
     visibility = ["PUBLIC"],
 )
 
 http_archive(
-    name = "blake3-1.8.1.crate",
-    sha256 = "389a099b34312839e16420d499a9cad9650541715937ffbdd40d36f49e77eeb3",
-    strip_prefix = "blake3-1.8.1",
+    name = "blake3-1.8.2.crate",
+    sha256 = "3888aaa89e4b2a40fca9848e400f6a658a5a3978de7be858e209cafa8be9a4a0",
+    strip_prefix = "blake3-1.8.2",
     sub_targets = [
         "c/blake3.c",
         "c/blake3.h",
@@ -2535,15 +2535,15 @@ http_archive(
         "c/blake3_sse41_x86-64_windows_gnu.S",
         "c/blake3_sse41_x86-64_windows_msvc.asm",
     ],
-    urls = ["https://static.crates.io/crates/blake3/1.8.1/download"],
+    urls = ["https://static.crates.io/crates/blake3/1.8.2/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "blake3-1.8.1",
-    srcs = [":blake3-1.8.1.crate"],
+    name = "blake3-1.8.2",
+    srcs = [":blake3-1.8.2.crate"],
     crate = "blake3",
-    crate_root = "blake3-1.8.1.crate/src/lib.rs",
+    crate_root = "blake3-1.8.2.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
@@ -2552,7 +2552,7 @@ cargo.rust_library(
     platform = {
         "linux-arm64": dict(
             rustc_flags = ["--cfg=blake3_neon"],
-            deps = [":blake3-1.8.1-simd_neon-aarch64"],
+            deps = [":blake3-1.8.2-simd_neon-aarch64"],
         ),
         "linux-x86_64": dict(
             rustc_flags = [
@@ -2561,11 +2561,11 @@ cargo.rust_library(
                 "--cfg=blake3_sse2_ffi",
                 "--cfg=blake3_sse41_ffi",
             ],
-            deps = [":blake3-1.8.1-simd_x86_unix"],
+            deps = [":blake3-1.8.2-simd_x86_unix"],
         ),
         "macos-arm64": dict(
             rustc_flags = ["--cfg=blake3_neon"],
-            deps = [":blake3-1.8.1-simd_neon-aarch64"],
+            deps = [":blake3-1.8.2-simd_neon-aarch64"],
         ),
         "macos-x86_64": dict(
             rustc_flags = [
@@ -2574,7 +2574,7 @@ cargo.rust_library(
                 "--cfg=blake3_sse2_ffi",
                 "--cfg=blake3_sse41_ffi",
             ],
-            deps = [":blake3-1.8.1-simd_x86_unix"],
+            deps = [":blake3-1.8.2-simd_x86_unix"],
         ),
         "windows-gnu": dict(
             rustc_flags = [
@@ -2583,7 +2583,7 @@ cargo.rust_library(
                 "--cfg=blake3_sse2_ffi",
                 "--cfg=blake3_sse41_ffi",
             ],
-            deps = [":blake3-1.8.1-simd_x86_windows_gnu"],
+            deps = [":blake3-1.8.2-simd_x86_windows_gnu"],
         ),
         "windows-msvc": dict(
             rustc_flags = [
@@ -2592,7 +2592,7 @@ cargo.rust_library(
                 "--cfg=blake3_sse2_ffi",
                 "--cfg=blake3_sse41_ffi",
             ],
-            deps = [":blake3-1.8.1-simd_x86_windows_msvc"],
+            deps = [":blake3-1.8.2-simd_x86_windows_msvc"],
         ),
     },
     visibility = [],
@@ -2605,21 +2605,21 @@ cargo.rust_library(
 )
 
 cxx_library(
-    name = "blake3-1.8.1-simd_neon-aarch64",
-    srcs = [":blake3-1.8.1.crate[c/blake3_neon.c]"],
+    name = "blake3-1.8.2-simd_neon-aarch64",
+    srcs = [":blake3-1.8.2.crate[c/blake3_neon.c]"],
     headers = [
-        ":blake3-1.8.1.crate[c/blake3.h]",
-        ":blake3-1.8.1.crate[c/blake3_impl.h]",
+        ":blake3-1.8.2.crate[c/blake3.h]",
+        ":blake3-1.8.2.crate[c/blake3_impl.h]",
     ],
     visibility = [],
 )
 
 cxx_library(
-    name = "blake3-1.8.1-simd_neon-armv7",
-    srcs = [":blake3-1.8.1.crate[c/blake3_neon.c]"],
+    name = "blake3-1.8.2-simd_neon-armv7",
+    srcs = [":blake3-1.8.2.crate[c/blake3_neon.c]"],
     headers = [
-        ":blake3-1.8.1.crate[c/blake3.h]",
-        ":blake3-1.8.1.crate[c/blake3_impl.h]",
+        ":blake3-1.8.2.crate[c/blake3.h]",
+        ":blake3-1.8.2.crate[c/blake3_impl.h]",
     ],
     compiler_flags = [
         "-mfpu=neon-vfpv4",
@@ -2629,19 +2629,19 @@ cxx_library(
 )
 
 cxx_library(
-    name = "blake3-1.8.1-simd_x86_unix",
+    name = "blake3-1.8.2-simd_x86_unix",
     srcs = [
-        ":blake3-1.8.1.crate[c/blake3.c]",
-        ":blake3-1.8.1.crate[c/blake3_avx2_x86-64_unix.S]",
-        ":blake3-1.8.1.crate[c/blake3_avx512_x86-64_unix.S]",
-        ":blake3-1.8.1.crate[c/blake3_dispatch.c]",
-        ":blake3-1.8.1.crate[c/blake3_portable.c]",
-        ":blake3-1.8.1.crate[c/blake3_sse2_x86-64_unix.S]",
-        ":blake3-1.8.1.crate[c/blake3_sse41_x86-64_unix.S]",
+        ":blake3-1.8.2.crate[c/blake3.c]",
+        ":blake3-1.8.2.crate[c/blake3_avx2_x86-64_unix.S]",
+        ":blake3-1.8.2.crate[c/blake3_avx512_x86-64_unix.S]",
+        ":blake3-1.8.2.crate[c/blake3_dispatch.c]",
+        ":blake3-1.8.2.crate[c/blake3_portable.c]",
+        ":blake3-1.8.2.crate[c/blake3_sse2_x86-64_unix.S]",
+        ":blake3-1.8.2.crate[c/blake3_sse41_x86-64_unix.S]",
     ],
     headers = [
-        ":blake3-1.8.1.crate[c/blake3.h]",
-        ":blake3-1.8.1.crate[c/blake3_impl.h]",
+        ":blake3-1.8.2.crate[c/blake3.h]",
+        ":blake3-1.8.2.crate[c/blake3_impl.h]",
     ],
     compatible_with = [
         "prelude//os/constraints:linux",
@@ -2655,19 +2655,19 @@ cxx_library(
 )
 
 cxx_library(
-    name = "blake3-1.8.1-simd_x86_windows_gnu",
+    name = "blake3-1.8.2-simd_x86_windows_gnu",
     srcs = [
-        ":blake3-1.8.1.crate[c/blake3.c]",
-        ":blake3-1.8.1.crate[c/blake3_avx2_x86-64_windows_gnu.S]",
-        ":blake3-1.8.1.crate[c/blake3_avx512_x86-64_windows_gnu.S]",
-        ":blake3-1.8.1.crate[c/blake3_dispatch.c]",
-        ":blake3-1.8.1.crate[c/blake3_portable.c]",
-        ":blake3-1.8.1.crate[c/blake3_sse2_x86-64_windows_gnu.S]",
-        ":blake3-1.8.1.crate[c/blake3_sse41_x86-64_windows_gnu.S]",
+        ":blake3-1.8.2.crate[c/blake3.c]",
+        ":blake3-1.8.2.crate[c/blake3_avx2_x86-64_windows_gnu.S]",
+        ":blake3-1.8.2.crate[c/blake3_avx512_x86-64_windows_gnu.S]",
+        ":blake3-1.8.2.crate[c/blake3_dispatch.c]",
+        ":blake3-1.8.2.crate[c/blake3_portable.c]",
+        ":blake3-1.8.2.crate[c/blake3_sse2_x86-64_windows_gnu.S]",
+        ":blake3-1.8.2.crate[c/blake3_sse41_x86-64_windows_gnu.S]",
     ],
     headers = [
-        ":blake3-1.8.1.crate[c/blake3.h]",
-        ":blake3-1.8.1.crate[c/blake3_impl.h]",
+        ":blake3-1.8.2.crate[c/blake3.h]",
+        ":blake3-1.8.2.crate[c/blake3_impl.h]",
     ],
     compatible_with = ["prelude//os/constraints:windows"],
     compiler_flags = [
@@ -2678,19 +2678,19 @@ cxx_library(
 )
 
 cxx_library(
-    name = "blake3-1.8.1-simd_x86_windows_msvc",
+    name = "blake3-1.8.2-simd_x86_windows_msvc",
     srcs = [
-        ":blake3-1.8.1.crate[c/blake3.c]",
-        ":blake3-1.8.1.crate[c/blake3_avx2_x86-64_windows_msvc.asm]",
-        ":blake3-1.8.1.crate[c/blake3_avx512_x86-64_windows_msvc.asm]",
-        ":blake3-1.8.1.crate[c/blake3_dispatch.c]",
-        ":blake3-1.8.1.crate[c/blake3_portable.c]",
-        ":blake3-1.8.1.crate[c/blake3_sse2_x86-64_windows_msvc.asm]",
-        ":blake3-1.8.1.crate[c/blake3_sse41_x86-64_windows_msvc.asm]",
+        ":blake3-1.8.2.crate[c/blake3.c]",
+        ":blake3-1.8.2.crate[c/blake3_avx2_x86-64_windows_msvc.asm]",
+        ":blake3-1.8.2.crate[c/blake3_avx512_x86-64_windows_msvc.asm]",
+        ":blake3-1.8.2.crate[c/blake3_dispatch.c]",
+        ":blake3-1.8.2.crate[c/blake3_portable.c]",
+        ":blake3-1.8.2.crate[c/blake3_sse2_x86-64_windows_msvc.asm]",
+        ":blake3-1.8.2.crate[c/blake3_sse41_x86-64_windows_msvc.asm]",
     ],
     headers = [
-        ":blake3-1.8.1.crate[c/blake3.h]",
-        ":blake3-1.8.1.crate[c/blake3_impl.h]",
+        ":blake3-1.8.2.crate[c/blake3.h]",
+        ":blake3-1.8.2.crate[c/blake3_impl.h]",
     ],
     compatible_with = ["prelude//os/constraints:windows"],
     visibility = [],
@@ -5703,7 +5703,7 @@ cargo.rust_library(
         ":anstream-0.6.18",
         ":anstyle-1.0.10",
         ":env_filter-0.1.3",
-        ":jiff-0.2.8",
+        ":jiff-0.2.9",
         ":log-0.4.27",
     ],
 )
@@ -9055,18 +9055,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "jiff-0.2.8.crate",
-    sha256 = "e5ad87c89110f55e4cd4dc2893a9790820206729eaf221555f742d540b0724a0",
-    strip_prefix = "jiff-0.2.8",
-    urls = ["https://static.crates.io/crates/jiff/0.2.8/download"],
+    name = "jiff-0.2.9.crate",
+    sha256 = "59ec30f7142be6fe14e1b021f50b85db8df2d4324ea6e91ec3e5dcde092021d0",
+    strip_prefix = "jiff-0.2.9",
+    urls = ["https://static.crates.io/crates/jiff/0.2.9/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "jiff-0.2.8",
-    srcs = [":jiff-0.2.8.crate"],
+    name = "jiff-0.2.9",
+    srcs = [":jiff-0.2.9.crate"],
     crate = "jiff",
-    crate_root = "jiff-0.2.8.crate/src/lib.rs",
+    crate_root = "jiff-0.2.9.crate/src/lib.rs",
     edition = "2021",
     features = [
         "alloc",
@@ -16948,18 +16948,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "signal-hook-registry-1.4.2.crate",
-    sha256 = "a9e9e0b4211b72e7b8b6e85c807d36c212bdb33ea8587f7569562a84df5465b1",
-    strip_prefix = "signal-hook-registry-1.4.2",
-    urls = ["https://static.crates.io/crates/signal-hook-registry/1.4.2/download"],
+    name = "signal-hook-registry-1.4.5.crate",
+    sha256 = "9203b8055f63a2a00e2f593bb0510367fe707d7ff1e5c872de2f537b339e5410",
+    strip_prefix = "signal-hook-registry-1.4.5",
+    urls = ["https://static.crates.io/crates/signal-hook-registry/1.4.5/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "signal-hook-registry-1.4.2",
-    srcs = [":signal-hook-registry-1.4.2.crate"],
+    name = "signal-hook-registry-1.4.5",
+    srcs = [":signal-hook-registry-1.4.5.crate"],
     crate = "signal_hook_registry",
-    crate_root = "signal-hook-registry-1.4.2.crate/src/lib.rs",
+    crate_root = "signal-hook-registry-1.4.5.crate/src/lib.rs",
     edition = "2015",
     visibility = [],
     deps = [":libc-0.2.172"],
@@ -18169,7 +18169,7 @@ cargo.rust_binary(
         ":axum-0.6.20",
         ":backtrace-0.3.71",
         ":base64-0.22.1",
-        ":blake3-1.8.1",
+        ":blake3-1.8.2",
         ":bollard-0.18.1",
         ":bytes-1.10.1",
         ":chrono-0.4.40",
@@ -18274,6 +18274,7 @@ cargo.rust_binary(
         ":tokio-1.44.2",
         ":tokio-postgres-0.7.13",
         ":tokio-postgres-rustls-0.13.0",
+        ":tokio-rustls-0.26.2",
         ":tokio-serde-0.9.0",
         ":tokio-stream-0.1.17",
         ":tokio-tungstenite-0.20.1",
@@ -18750,7 +18751,7 @@ cargo.rust_library(
             deps = [
                 ":backtrace",
                 ":libc-0.2.172",
-                ":signal-hook-registry-1.4.2",
+                ":signal-hook-registry-1.4.5",
                 ":socket2-0.5.9",
                 ":tracing",
             ],
@@ -18764,7 +18765,7 @@ cargo.rust_library(
             deps = [
                 ":backtrace",
                 ":libc-0.2.172",
-                ":signal-hook-registry-1.4.2",
+                ":signal-hook-registry-1.4.5",
                 ":socket2-0.5.9",
                 ":tracing",
             ],
@@ -18776,7 +18777,7 @@ cargo.rust_library(
             ],
             deps = [
                 ":libc-0.2.172",
-                ":signal-hook-registry-1.4.2",
+                ":signal-hook-registry-1.4.5",
                 ":socket2-0.5.9",
                 ":tracing",
             ],
@@ -18788,7 +18789,7 @@ cargo.rust_library(
             ],
             deps = [
                 ":libc-0.2.172",
-                ":signal-hook-registry-1.4.2",
+                ":signal-hook-registry-1.4.5",
                 ":socket2-0.5.9",
                 ":tracing",
             ],
@@ -18965,6 +18966,12 @@ cargo.rust_library(
         ":rustls-0.21.12",
         ":tokio-1.44.2",
     ],
+)
+
+alias(
+    name = "tokio-rustls",
+    actual = ":tokio-rustls-0.26.2",
+    visibility = ["PUBLIC"],
 )
 
 http_archive(

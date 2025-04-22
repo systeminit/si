@@ -27,6 +27,7 @@ si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-pkg = { path = "../../lib/si-pkg" }
 si-runtime = { path = "../../lib/si-runtime-rs" }
 si-std = { path = "../../lib/si-std" }
+si-tls = { path = "../../lib/si-tls" }
 si-test-macros = { path = "../../lib/si-test-macros" }
 telemetry = { path = "../../lib/telemetry-rs" }
 veritech-client = { path = "../../lib/veritech-client" }

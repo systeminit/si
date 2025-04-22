@@ -1,6 +1,7 @@
 use buck2_resources::Buck2Resources;
 use si_data_nats::{NatsClient, NatsConfig};
 use si_data_pg::{PgPool, PgPoolConfig};
+use si_tls::CertificateSource;
 use std::env;
 use std::path::Path;
 
@@ -26,11 +27,11 @@ pub async fn setup_pg_db(test_specific_db_name: &str) -> PgPool {
     let setup_pg_pool_config = {
         let mut pg = PgPoolConfig {
             application_name: "si-layer-cache-db-tests".into(),
-            certificate_path: Some(
+            certificate: Some(CertificateSource::Path(
                 detect_and_configure_development()
                     .try_into()
                     .expect("should get a certifcate cache"),
-            ),
+            )),
             ..Default::default()
         };
         if let Ok(value) = env::var(ENV_VAR_PG_HOSTNAME) {

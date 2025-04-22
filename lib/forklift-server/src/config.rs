@@ -6,6 +6,7 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_data_nats::NatsConfig;
 use si_std::CanonicalFileError;
+use si_tls::CertificateSource;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -194,7 +195,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
         "detected development run",
     );
 
-    config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.audit.pg.certificate = Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
     config.audit.pg.dbname = audit_database::DBNAME.to_string();
     config.enable_audit_logs_app = true;
 
@@ -212,7 +213,7 @@ fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
         "detected development run",
     );
 
-    config.audit.pg.certificate_path = Some(postgres_cert.clone().try_into()?);
+    config.audit.pg.certificate = Some(CertificateSource::Path(postgres_cert.clone().try_into()?));
     config.audit.pg.dbname = audit_database::DBNAME.to_string();
     config.enable_audit_logs_app = true;
 

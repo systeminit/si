@@ -21,6 +21,7 @@ rust_library(
         "//lib/si-pkg:si-pkg",
         "//lib/si-runtime-rs:si-runtime",
         "//lib/si-std:si-std",
+        "//lib/si-tls:si-tls",
         "//lib/si-test-macros:si-test-macros",
         "//lib/telemetry-rs:telemetry",
         "//lib/veritech-client:veritech-client",

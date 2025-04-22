@@ -1,5 +1,5 @@
 [package]
-name = "si-data-pg"
+name = "si-tls"
 version.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -10,22 +10,14 @@ publish.workspace = true
 
 [dependencies]
 base64 = { workspace = true }
-bytes = { workspace = true }
-deadpool = { workspace = true }
-deadpool-postgres = { workspace = true }
-futures = { workspace = true }
-num_cpus = { workspace = true }
-ouroboros = { workspace = true }
-refinery = { workspace = true }
 remain = { workspace = true }
 reqwest = { workspace = true }
 rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
 serde = { workspace = true }
 si-std = { path = "../../lib/si-std" }
-si-tls = { path = "../../lib/si-tls" }
 telemetry = { path = "../../lib/telemetry-rs" }
-tempfile = { workspace = true  }
 thiserror = { workspace = true }
 tokio = { workspace = true }
-tokio-postgres = { workspace = true }
-tokio-postgres-rustls = { workspace = true }
+tokio-rustls = { workspace = true }
+webpki-roots = { workspace = true }

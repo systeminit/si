@@ -43,5 +43,6 @@ ulid = { workspace = true }
 
 [dev-dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
+si-tls = { path = "../../lib/si-tls" }
 
 rand = { workspace = true }
