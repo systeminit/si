@@ -30,8 +30,9 @@
 
       rustVersion = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain;
       rust-toolchain = rustVersion.override {
-        extensions = ["rust-analyzer" "rust-src"];
+        extensions = ["clippy" "rust-analyzer" "rust-src"];
       };
+      rustfmt-nightly = pkgs.rust-bin.nightly."2025-04-17".rustfmt;
 
       nodePkgs = pkgs.nodePackages.override {
         nodejs = pkgs.nodejs_18;
@@ -44,17 +45,18 @@
           buck2
           cacert
           clang
+          deno
           gitMinimal
           lld
           makeWrapper
-          nodejs
-          deno
+          minica
           nodePkgs.pnpm
+          nodejs
           protobuf
           python3
           ripgrep
           rust-toolchain
-          minica
+          rustfmt-nightly
 
           # breakpointHook
         ]
@@ -339,7 +341,7 @@
           pinga = binDerivation {pkgName = "pinga";};
 
           rebaser = binDerivation {pkgName = "rebaser";};
-          
+
           luminork = binDerivation {pkgName = "luminork";};
 
           sdf = binDerivation {pkgName = "sdf";};
