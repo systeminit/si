@@ -19,6 +19,7 @@ import { PropUsageMap } from "./addDefaultPropsAndSockets.ts";
 import {
   createActionFuncSpec,
   createFunc,
+  createLeafFuncSpec,
   MANAGEMENT_FUNCS,
   ACTION_FUNC_SPECS,
   modifyFunc,
@@ -29,6 +30,7 @@ import { FuncArgumentSpec } from "../bindings/FuncArgumentSpec.ts";
 import { ActionFuncSpecKind } from "../bindings/ActionFuncSpecKind.ts";
 import { FuncSpec } from "../bindings/FuncSpec.ts";
 import { ActionFuncSpec } from "../bindings/ActionFuncSpec.ts";
+import { LeafFunctionSpec } from "../bindings/LeafFunctionSpec.ts";
 
 const logger = _logger.ns("assetOverrides").seal();
 
@@ -343,6 +345,9 @@ const overrides = new Map<string, OverrideFn>([
   }],
   ["AWS::EC2::SecurityGroupIngress", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
+    const domainId = variant.domain.uniqueId;
+
+    if (!domainId) return;
 
     // Add Source SG ID to an input socket
     const idProp = propForOverride(variant.domain, "SourceSecurityGroupId");
@@ -364,6 +369,16 @@ const overrides = new Map<string, OverrideFn>([
       tokens: ["SourceSecurityGroupName", "GroupName"],
     });
     variant.sockets.push(groupSocket);
+
+    const { func, leafFuncSpec } = attachQualificationFunction(
+      "./src/cloud-control-funcs/overrides/AWS::EC2::SecurityGroupIngress/qualifications/checkForEitherGroupIdOrGroupName.ts",
+      "GroupId OR GroupName",
+      "23f026310223509f053b55bfa386772eecc2d00e3090dbeb65766ac63f8c53a2",
+      domainId
+    );
+
+    spec.funcs.push(func);
+    variant.leafFunctions.push(leafFuncSpec);
   }],
   ["AWS::EC2::SecurityGroup", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
@@ -852,6 +867,41 @@ function attachExtraActionFunction(
   const actionFuncSpec = createActionFuncSpec(kind, func.uniqueId);
 
   return { func, actionFuncSpec };
+}
+
+function attachQualificationFunction(
+  funcPath: string,
+  name: string,
+  uniqueId: string,
+  domainId: string,
+) : { func: FuncSpec; leafFuncSpec: LeafFunctionSpec } {
+  const funcCode = Deno.readTextFileSync(funcPath);
+
+  const func = createFunc(
+    name,
+    "jsAttribute",
+    "qualification",
+    strippedBase64(funcCode),
+    uniqueId,
+    [
+      {
+        name: "domain",
+        kind: "object",
+        elementKind: null,
+        uniqueId: domainId,
+        deleted: false,
+      }
+    ],
+  );
+  func.data!.displayName = name;
+
+  const leafFuncSpec = createLeafFuncSpec(
+    "qualification", 
+    func.uniqueId,
+    ["domain"]
+  );
+  
+  return { func, leafFuncSpec };
 }
 
 function addSecretProp(
