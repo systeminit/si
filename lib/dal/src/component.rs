@@ -1318,6 +1318,14 @@ impl Component {
         Ok(None)
     }
 
+    /// Returns "true" if the [`Component`] exists on the underlying graph. Returns "false" if it
+    /// does not.
+    pub async fn exists(ctx: &DalContext, id: ComponentId) -> ComponentResult<bool> {
+        Ok(Self::try_get_node_weight_and_content_hash(ctx, id)
+            .await?
+            .is_some())
+    }
+
     /// List all IDs for all [`Components`](Component) in the workspace.
     pub async fn list_ids(ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;

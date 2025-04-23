@@ -55,6 +55,7 @@ hex             = { workspace = true }
 iftree          = { workspace = true }
 indexmap        = { workspace = true }
 itertools       = { workspace = true }
+json-patch      = { workspace = true }
 jwt-simple      = { workspace = true }
 lazy_static     = { workspace = true }
 once_cell       = { workspace = true }

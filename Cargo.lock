@@ -1954,6 +1954,7 @@ dependencies = [
  "indexmap 2.9.0",
  "itertools 0.13.0",
  "joi-validator",
+ "json-patch",
  "jwt-simple",
  "lazy_static",
  "module-index-client",

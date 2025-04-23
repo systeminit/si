@@ -11,11 +11,10 @@
 
     <template v-if="diffReqStatus.isSuccess && selectedComponentDiff">
       <div class="absolute inset-xs">
-        <template v-if="selectedComponentDiff.diffs[0]?.code">
-          <!-- what to do about multiple diffs? -->
+        <template v-if="selectedComponentDiff.diff?.code">
           <CodeViewer
-            :code="selectedComponentDiff.diffs[0]?.code"
-            :codeLanguage="selectedComponentDiff.diffs[0]?.language"
+            :code="selectedComponentDiff.diff?.code"
+            :codeLanguage="selectedComponentDiff.diff?.language"
             :allowCopy="false"
           >
             <template #title>

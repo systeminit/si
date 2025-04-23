@@ -19,7 +19,7 @@ async fn get_diff_new_component(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let mut diff = Component::get_diff(ctx, starfield_component.id())
+    let diff = Component::get_diff(ctx, starfield_component.id())
         .await
         .expect("unable to get diff");
 
@@ -29,13 +29,12 @@ async fn get_diff_new_component(ctx: &mut DalContext) {
     );
     assert_eq!(expected, diff.current.code);
     assert_eq!(CodeLanguage::Json, diff.current.language);
-    assert_eq!(1, diff.diffs.len());
-    let first_diff = diff.diffs.pop().expect("can't find a diff for the code");
-    assert_eq!(CodeLanguage::Diff, first_diff.language);
+    let inner_diff = diff.diff.expect("can't find a diff for the code");
+    assert_eq!(CodeLanguage::Diff, inner_diff.language);
     let expected = Some(
         "+{\n+  \"si\": {\n+    \"name\": \"this is a new component\",\n+    \"type\": \"component\",\n+    \"color\": \"#ffffff\"\n+  },\n+  \"domain\": {\n+    \"name\": \"this is a new component\",\n+    \"possible_world_b\": {\n+      \"wormhole_1\": {\n+        \"wormhole_2\": {\n+          \"wormhole_3\": {\n+            \"naming_and_necessity\": \"not hesperus\"\n+          }\n+        }\n+      }\n+    },\n+    \"universe\": {\n+      \"galaxies\": []\n+    }\n+  }\n+}".to_string(),
     );
-    assert_eq!(expected, first_diff.code);
+    assert_eq!(expected, inner_diff.code);
 }
 
 #[test]
@@ -60,7 +59,7 @@ async fn get_diff_component_no_changes_from_head(ctx: &mut DalContext) {
         .expect("unable to get diff");
 
     assert_eq!(starfield_component.id(), diff.component_id);
-    assert!(diff.diffs.is_empty());
+    assert!(diff.diff.is_none());
     let code = diff.current.code.expect("code not found");
 
     // We expect there to be no marked diffs as the component is the same on HEAD. Since the diff
@@ -125,14 +124,13 @@ async fn get_diff_component_change_comp_type(ctx: &mut DalContext) {
         .await
         .expect("could not commit and update snapshot to visibility");
 
-    let mut diff = Component::get_diff(ctx, starfield_component.id())
+    let diff = Component::get_diff(ctx, starfield_component.id())
         .await
         .expect("unable to get diff");
 
     assert_eq!(starfield_component.id(), diff.component_id);
-    assert_eq!(1, diff.diffs.len());
-    let first_diff = diff.diffs.pop().expect("can't find a diff for the code");
-    assert_eq!(CodeLanguage::Diff, first_diff.language);
+    let inner_diff = diff.diff.expect("can't find a diff for the code");
+    assert_eq!(CodeLanguage::Diff, inner_diff.language);
 
     let expected = Some(
         " {\n   \"si\": {\n     \"name\": \"this is a new component\",\n-    \"type\": \"component\",\n+    \"type\": \"configurationFrameDown\",\n     \"color\": \"#ffffff\"\n   },\n   \"domain\": {\n     \"name\": \"this is a new component\",\n     \"possible_world_b\": {\n       \"wormhole_1\": {\n         \"wormhole_2\": {\n           \"wormhole_3\": {\n             \"naming_and_necessity\": \"not hesperus\"\n           }\n         }\n       }\n     },\n     \"universe\": {\n       \"galaxies\": []\n     }\n   }\n }".to_string(),
@@ -141,6 +139,6 @@ async fn get_diff_component_change_comp_type(ctx: &mut DalContext) {
     // We expect there to be a diff as we have changed the componentType on this changeset but HEAD is a component
     assert_eq!(
         expected,
-        first_diff.code // actual
+        inner_diff.code // actual
     );
 }
