@@ -334,8 +334,19 @@ const overrides = new Map<string, OverrideFn>([
     addSecretProp("Secret String", "secretString", ["MasterUserPassword"]),
   ],
   [
-    "AWS::RDS::DBInstance",
-    addSecretProp("Secret String", "secretString", ["MasterUserPassword"]),
+    "AWS::RDS::DBInstance", (spec: ExpandedPkgSpec) => {
+    addSecretProp("Secret String", "secretString", ["MasterUserPassword"])(spec);
+    
+    const variant = spec.schemas[0].variants[0];
+
+    const securityGroupsSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) =>
+        s.name === "VPC Security Groups" && s.data.kind === "input",
+    );
+    if (!securityGroupsSocket) return;
+
+    setAnnotationOnSocket(securityGroupsSocket, { tokens: ["GroupId"] });
+    }
   ],
   ["AWS::EC2::NetworkInterface", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
