@@ -108,20 +108,12 @@ export const MANAGEMENT_FUNCS = {
 >;
 
 export const QUALIFICATION_FUNC_SPECS = {
-  awsCloudFormationLintQualification: {
-    id: "a8586fc5b4886497626fd3274c13de3f778f71b8169b3b7f20ee6db7d29b1069",
-    backendKind: "jsAttribute",
-    responseType: "qualification",
-    displayName: "Qualification for validating Cloudformation document",
-    path: "./src/cloud-control-funcs/qualifications/awsCloudFormationLint.ts",
-  },
   awsIamPermissionsCheck: {
     id: "62a0b8b43761ea04669d7d799a90f168cfd5a4307c27e2367e9762342984fd2c",
     backendKind: "jsAttribute",
     responseType: "qualification",
     displayName: "Qualification for checking Cloud Formation permissions",
-    path:
-      "./src/cloud-control-funcs/qualifications/awsPermissionsSimulation.ts",
+    path: "./src/cloud-control-funcs/qualifications/awsPermissionsSimulation.ts",
   },
 } as const satisfies Record<string, FuncSpecInfo>;
 
