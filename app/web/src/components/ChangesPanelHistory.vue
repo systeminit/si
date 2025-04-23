@@ -23,7 +23,7 @@
             :key="detail.changeSetId"
             :actions="actions"
             :changeSet="getChangeSet(detail)"
-            :clickAction="clickActionOrMgmtRun"
+            :clickAction="clickActionRun"
             :selectedFuncRunIds="selectedFuncRunId ? [selectedFuncRunId] : []"
             noInteraction
             kind="history"
@@ -62,7 +62,7 @@
         <ManagementHistoryList
           v-if="managementHistoryForChangeSet.length > 0"
           :managementHistory="managementHistoryForChangeSet"
-          :clickItem="clickActionOrMgmtRun"
+          :clickItem="clickMgmtRun"
           :funcRunId="selectedFuncRunId"
           @history="openHistory"
         />
@@ -152,14 +152,23 @@ const deselectActionOrMgmtRun = () => {
   selectedFuncRunId.value = undefined;
 };
 
-const clickActionOrMgmtRun = async (
-  run: ActionHistoryView | ActionProposedView | ManagementHistoryItem,
-): Promise<void> => {
+const clickMgmtRun = async (run: ManagementHistoryItem): Promise<void> => {
   if (selectedFuncRunId.value === run.id) {
     deselectActionOrMgmtRun();
   } else {
     selectedFuncRunId.value = run.id;
     await getFuncRun(run.id);
+  }
+};
+
+const clickActionRun = async (
+  run: ActionHistoryView | ActionProposedView,
+): Promise<void> => {
+  if (selectedFuncRunId.value === run.funcRunId) {
+    deselectActionOrMgmtRun();
+  } else {
+    selectedFuncRunId.value = run.funcRunId;
+    await getFuncRun(run.funcRunId);
   }
 };
 
