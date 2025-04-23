@@ -29,7 +29,7 @@ retry_command() {
 }
 
 # Get a list of parameters that match the prefix
-PARAMETERS=$(aws ssm describe-parameters --query "Parameters[?starts_with(Name, '$SI_HOSTENV')]" --output json)
+PARAMETERS=$(retry_command aws ssm describe-parameters --query "Parameters[?starts_with(Name, '$SI_HOSTENV')]" --output json)
 if [ -z "$PARAMETERS" ]; then
     echo "Warning: No parameters found with the specified prefix."
 fi
@@ -51,7 +51,7 @@ done
 
 
 # Get a list of secrets that match the prefix
-SECRETS=$(aws secretsmanager list-secrets --query "SecretList[?starts_with(Name, '$SI_HOSTENV')].Name" --output json)
+SECRETS=$(retry_command aws secretsmanager list-secrets --query "SecretList[?starts_with(Name, '$SI_HOSTENV')].Name" --output json)
 if [ -z "$SECRETS" ]; then
     echo "Warning: No secrets found with the specified prefix."
 fi
