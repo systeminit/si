@@ -287,3 +287,33 @@ export function propHasSocket(prop: ExpandedPropSpec): boolean {
     i.kind === "inputSocket"
   ) !== undefined;
 }
+
+export function removeInputSockets(
+  variant: ExpandedSchemaVariantSpec,
+  socketNamesToRemove: string[],
+): number {
+  if (!variant.sockets || !socketNamesToRemove.length) return 0;
+
+  const initialCount = variant.sockets.length;
+  const normalizedNames = socketNamesToRemove.map(name => name.toLowerCase());
+  
+  // Find and remove the sockets that match the criteria
+  const socketsToRemove: number[] = [];
+  
+  // First identify which sockets to remove (by index)
+  variant.sockets.forEach((socket, index) => {
+    if (socket.data.kind === "input") {
+      const socketNameLower = socket.name.toLowerCase();
+      if (normalizedNames.some(name => socketNameLower.includes(name))) {
+        socketsToRemove.push(index);
+      }
+    }
+  });
+  
+  // Remove the sockets in reverse order to avoid index shifting issues
+  for (let i = socketsToRemove.length - 1; i >= 0; i--) {
+    variant.sockets.splice(socketsToRemove[i], 1);
+  }
+
+  return initialCount - variant.sockets.length;
+}
