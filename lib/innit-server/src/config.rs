@@ -1,9 +1,9 @@
 use std::{env, net::SocketAddr, time::Duration};
 
-// use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_std::CanonicalFileError;
+use si_tls::CertificateSource;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;
@@ -33,6 +33,9 @@ type Result<T> = std::result::Result<T, ConfigError>;
 /// The config for the forklift server.
 #[derive(Debug, Builder)]
 pub struct Config {
+    #[builder]
+    client_ca_cert: Option<CertificateSource>,
+
     #[builder(default = "random_instance_id()")]
     instance_id: String,
 
@@ -51,6 +54,10 @@ impl StandardConfig for Config {
 }
 
 impl Config {
+    pub fn client_ca_cert(&self) -> &Option<CertificateSource> {
+        &self.client_ca_cert
+    }
+
     /// Gets the config's concurrency limit.
     pub fn concurrency_limit(&self) -> Option<usize> {
         self.concurrency_limit
@@ -74,6 +81,8 @@ impl Config {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ConfigFile {
+    #[serde(default)]
+    client_ca_cert: Option<CertificateSource>,
     #[serde(default = "random_instance_id")]
     instance_id: String,
     #[serde(default = "default_concurrency_limit")]
@@ -87,6 +96,7 @@ pub struct ConfigFile {
 impl Default for ConfigFile {
     fn default() -> Self {
         Self {
+            client_ca_cert: Default::default(),
             instance_id: random_instance_id(),
             concurrency_limit: default_concurrency_limit(),
             quiescent_period_secs: default_quiescent_period_secs(),
@@ -106,6 +116,7 @@ impl TryFrom<ConfigFile> for Config {
         detect_and_configure_development(&mut value)?;
 
         let mut config = Config::builder();
+        config.client_ca_cert(value.client_ca_cert);
         config.concurrency_limit(value.concurrency_limit);
         config.instance_id(value.instance_id);
         config.quiescent_period(Duration::from_secs(value.quiescent_period_secs));

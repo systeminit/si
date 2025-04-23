@@ -1,11 +1,14 @@
+use crate::middleware::client_cert_auth::verify_client_cert_middleware;
 use axum::response::{IntoResponse, Response};
 use si_data_ssm::ParameterStoreClient;
+use si_tls::ClientCertificateVerifier;
 use std::io;
+use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
 use super::routes;
 
-use axum::Router;
+use axum::{Router, middleware};
 use axum::{error_handling::HandleErrorLayer, routing::IntoMakeService};
 use hyper::{
     StatusCode,
@@ -28,6 +31,8 @@ pub enum ServerError {
     SerdeJson(#[from] serde_json::Error),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
+    #[error(transparent)]
+    Tls(#[from] si_tls::TlsError),
 }
 
 type ServerResult<T> = std::result::Result<T, ServerError>;
@@ -35,6 +40,12 @@ type ServerResult<T> = std::result::Result<T, ServerError>;
 pub struct Server<I> {
     inner: axum::Server<I, IntoMakeService<Router>>,
     token: CancellationToken,
+}
+
+impl Server<AddrIncoming> {
+    pub fn bound_port(&self) -> u16 {
+        self.inner.local_addr().port()
+    }
 }
 
 impl Server<()> {
@@ -45,7 +56,15 @@ impl Server<()> {
     ) -> ServerResult<Server<AddrIncoming>> {
         let parameter_store_client = ParameterStoreClient::new().await;
 
-        let service = build_service(parameter_store_client, token.clone())?;
+        let client_cert_verifier = if let Some(cert) = config.client_ca_cert() {
+            Some(Arc::new(
+                ClientCertificateVerifier::new(cert.clone()).await?,
+            ))
+        } else {
+            None
+        };
+
+        let service = build_service(client_cert_verifier, parameter_store_client, token.clone())?;
 
         info!(
             "binding to HTTP socket; socket_addr={}",
@@ -72,12 +91,24 @@ where
 }
 
 pub fn build_service(
+    client_cert_verifier: Option<Arc<ClientCertificateVerifier>>,
     parameter_store_client: ParameterStoreClient,
     token: CancellationToken,
 ) -> ServerResult<Router> {
     let state = AppState::new(parameter_store_client, token);
 
-    let routes = routes::routes(state)
+    let routes = routes::routes(state);
+
+    let routes = if let Some(verifier) = client_cert_verifier.clone() {
+        routes.layer(middleware::from_fn_with_state(
+            verifier,
+            verify_client_cert_middleware,
+        ))
+    } else {
+        routes
+    };
+
+    let routes = routes
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(|err: BoxError| async move {
