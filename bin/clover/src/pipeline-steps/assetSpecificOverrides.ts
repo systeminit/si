@@ -6,6 +6,7 @@ import {
   createSocketFromPropInner,
   ExpandedSocketSpec,
   propPathToString,
+  removeInputSockets,
   setAnnotationOnSocket,
 } from "../spec/sockets.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
@@ -859,6 +860,47 @@ const overrides = new Map<string, OverrideFn>([
     );
     if (!subnetIdSocket) return;
     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnet id"] });
+  }],
+  ["VPNConnection VpnTunnelOptionsSpecifications", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    // Remove unnecessary input sockets
+    const removedCount = removeInputSockets(variant, [
+      "IKE Versions",
+      "Phase1DHGroup Numbers",
+      "Phase1Encryption Algorithms",
+      "Phase1Integrity Algorithms",
+      "Phase2DHGroup Numbers",
+      "Phase2Encryption Algorithms",
+      "Phase2Integrity Algorithms"
+    ]);
+    logger.debug(`Removed ${removedCount} input sockets from VpnTunnelOptionsSpecifications`);
+
+    const propsToFix = [
+      "IKEVersions",
+      "Phase1DHGroupNumbers",
+      "Phase1EncryptionAlgorithms",
+      "Phase1IntegrityAlgorithms",
+      "Phase2DHGroupNumbers",
+      "Phase2EncryptionAlgorithms",
+      "Phase2IntegrityAlgorithms"  
+    ];
+
+    for (const propName of propsToFix) {
+      const arrayProp = propForOverride(variant.domain, propName);
+      if (!arrayProp || arrayProp.kind !== "array") continue;
+
+      arrayProp.data.widgetKind = "Array";
+      arrayProp.data.inputs = [];
+      arrayProp.data.funcUniqueId = null;
+
+      if (arrayProp.typeProp.kind === "object") {
+        const valueProp = arrayProp.typeProp.entries.find(p => p.name === "Value");
+        if (valueProp) {
+          valueProp.data.widgetKind = "ComboBox";
+        }
+      }  
+    }
   }],
 ]);
 
