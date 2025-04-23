@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_pg::PgPoolConfig;
 
 /// The name of the audit database.

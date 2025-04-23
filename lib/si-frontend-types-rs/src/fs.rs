@@ -2,14 +2,29 @@
 //! types are deliberately not re-exported in the root, so that they don't get
 //! mixed up with non si-fs types.
 
-use std::{collections::BTreeMap, fmt};
+use std::{
+    collections::BTreeMap,
+    fmt,
+};
 
-use serde::{Deserialize, Serialize};
-use si_events::{ChangeSetId, FuncId, FuncKind, SchemaId, SchemaVariantId};
-
+use serde::{
+    Deserialize,
+    Serialize,
+};
 pub use si_events::ActionKind;
+use si_events::{
+    ChangeSetId,
+    FuncId,
+    FuncKind,
+    SchemaId,
+    SchemaVariantId,
+};
 
-use crate::{ComponentType, FuncArgumentKind, LeafInputLocation};
+use crate::{
+    ComponentType,
+    FuncArgumentKind,
+    LeafInputLocation,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChangeSet {

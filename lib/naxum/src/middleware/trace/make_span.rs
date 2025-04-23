@@ -1,8 +1,13 @@
-use tracing::{Level, Span};
-
-use crate::message::{Message, MessageHead};
+use tracing::{
+    Level,
+    Span,
+};
 
 use super::DEFAULT_MESSAGE_LEVEL;
+use crate::message::{
+    Message,
+    MessageHead,
+};
 
 pub trait MakeSpan<R> {
     fn make_span(&mut self, req: &Message<R>) -> Span;

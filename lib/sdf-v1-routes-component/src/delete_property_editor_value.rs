@@ -2,12 +2,24 @@ use std::collections::HashMap;
 
 use axum::Json;
 use dal::{
-    AttributeValue, AttributeValueId, ChangeSet, Component, ComponentId, PropId, Visibility,
+    AttributeValue,
+    AttributeValueId,
+    ChangeSet,
+    Component,
+    ComponentId,
+    PropId,
+    Visibility,
     WsEvent,
 };
 use sdf_core::force_change_set_response::ForceChangeSetResponse;
-use sdf_extract::{HandlerContext, v1::AccessBuilder};
-use serde::{Deserialize, Serialize};
+use sdf_extract::{
+    HandlerContext,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use super::ComponentResult;
 

@@ -1,7 +1,9 @@
-use crate::ulid::Ulid;
+pub use si_id::{
+    VectorClockActorId,
+    VectorClockChangeSetId,
+};
 
-pub use si_id::VectorClockActorId;
-pub use si_id::VectorClockChangeSetId;
+use crate::ulid::Ulid;
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
 pub struct VectorClockId {

@@ -1,10 +1,27 @@
-use crate::{
-    Args, LOG_ENV_VAR, RT_DEFAULT_THREAD_STACK_SIZE, RT_DEFAULT_WORKER_THREADS, SPAN_EVENTS_ENV_VAR,
-};
-use proc_macro2::{Ident, Span, TokenStream, TokenTree};
-use quote::quote;
 use std::rc::Rc;
-use syn::{Expr, ItemFn, ReturnType, punctuated::Punctuated, token::Comma};
+
+use proc_macro2::{
+    Ident,
+    Span,
+    TokenStream,
+    TokenTree,
+};
+use quote::quote;
+use syn::{
+    Expr,
+    ItemFn,
+    ReturnType,
+    punctuated::Punctuated,
+    token::Comma,
+};
+
+use crate::{
+    Args,
+    LOG_ENV_VAR,
+    RT_DEFAULT_THREAD_STACK_SIZE,
+    RT_DEFAULT_WORKER_THREADS,
+    SPAN_EVENTS_ENV_VAR,
+};
 
 pub(crate) trait FnSetup {
     fn into_parts(self) -> (TokenStream, Punctuated<Expr, Comma>);

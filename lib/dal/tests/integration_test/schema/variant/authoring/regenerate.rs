@@ -1,20 +1,43 @@
-use dal::func::argument::{FuncArgument, FuncArgumentId};
-use dal::func::binding::attribute::AttributeBinding;
-use dal::func::binding::{
-    AttributeArgumentBinding, AttributeFuncArgumentSource, AttributeFuncDestination, FuncBinding,
-};
-use dal::func::intrinsics::IntrinsicFunc;
-use dal::prop::PropPath;
-use dal::schema::variant::authoring::VariantAuthoringClient;
 use dal::{
-    Component, ComponentType, DalContext, Func, FuncId, InputSocket, OutputSocket, OutputSocketId,
-    Prop, PropId, SchemaVariant, SchemaVariantId, SocketArity,
+    Component,
+    ComponentType,
+    DalContext,
+    Func,
+    FuncId,
+    InputSocket,
+    OutputSocket,
+    OutputSocketId,
+    Prop,
+    PropId,
+    SchemaVariant,
+    SchemaVariantId,
+    SocketArity,
+    func::{
+        argument::{
+            FuncArgument,
+            FuncArgumentId,
+        },
+        binding::{
+            AttributeArgumentBinding,
+            AttributeFuncArgumentSource,
+            AttributeFuncDestination,
+            FuncBinding,
+            attribute::AttributeBinding,
+        },
+        intrinsics::IntrinsicFunc,
+    },
+    prop::PropPath,
+    schema::variant::authoring::VariantAuthoringClient,
 };
-use dal_test::helpers::{
-    ChangeSetTestHelpers, connect_components_with_socket_names,
-    create_component_for_default_schema_name_in_default_view,
+use dal_test::{
+    color_eyre::Result,
+    helpers::{
+        ChangeSetTestHelpers,
+        connect_components_with_socket_names,
+        create_component_for_default_schema_name_in_default_view,
+    },
+    test,
 };
-use dal_test::{color_eyre::Result, test};
 
 #[test]
 async fn regenerate_variant(ctx: &mut DalContext) -> Result<()> {

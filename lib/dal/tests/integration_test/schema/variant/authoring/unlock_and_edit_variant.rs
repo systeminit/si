@@ -1,7 +1,13 @@
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{DalContext, Func, SchemaVariant};
-use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::test;
+use dal::{
+    DalContext,
+    Func,
+    SchemaVariant,
+    schema::variant::authoring::VariantAuthoringClient,
+};
+use dal_test::{
+    helpers::ChangeSetTestHelpers,
+    test,
+};
 
 #[test]
 async fn create_variant_merge_unlock_and_edit(ctx: &mut DalContext) {

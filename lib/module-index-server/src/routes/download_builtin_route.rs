@@ -1,16 +1,29 @@
 use axum::{
     Json,
     extract::Path,
-    response::{IntoResponse, Redirect, Response},
+    response::{
+        IntoResponse,
+        Redirect,
+        Response,
+    },
 };
 use hyper::StatusCode;
 use s3::error::S3Error;
-use sea_orm::{DbErr, EntityTrait};
+use sea_orm::{
+    DbErr,
+    EntityTrait,
+};
 use thiserror::Error;
 
 use crate::{
-    extract::{DbConnection, ExtractedS3Bucket},
-    models::si_module::{self, ModuleId},
+    extract::{
+        DbConnection,
+        ExtractedS3Bucket,
+    },
+    models::si_module::{
+        self,
+        ModuleId,
+    },
 };
 
 #[remain::sorted]

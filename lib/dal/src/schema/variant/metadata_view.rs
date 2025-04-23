@@ -1,8 +1,17 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::schema::variant::SchemaVariantResult;
 use crate::{
-    ComponentType, DalContext, Schema, SchemaId, SchemaVariant, SchemaVariantId, Timestamp,
+    ComponentType,
+    DalContext,
+    Schema,
+    SchemaId,
+    SchemaVariant,
+    SchemaVariantId,
+    Timestamp,
+    schema::variant::SchemaVariantResult,
 };
 
 #[derive(Deserialize, Serialize, Debug)]

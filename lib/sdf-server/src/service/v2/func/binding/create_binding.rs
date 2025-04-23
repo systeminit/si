@@ -1,25 +1,51 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Path},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
 };
 use dal::{
-    ChangeSet, ChangeSetId, Component, Func, FuncId, SchemaVariant, WorkspacePk, WsEvent,
+    ChangeSet,
+    ChangeSetId,
+    Component,
+    Func,
+    FuncId,
+    SchemaVariant,
+    WorkspacePk,
+    WsEvent,
     func::binding::{
-        AttributeArgumentBinding, EventualParent, action::ActionBinding,
-        attribute::AttributeBinding, authentication::AuthBinding, leaf::LeafBinding,
+        AttributeArgumentBinding,
+        EventualParent,
+        action::ActionBinding,
+        attribute::AttributeBinding,
+        authentication::AuthBinding,
+        leaf::LeafBinding,
         management::ManagementBinding,
     },
-    schema::variant::leaves::{LeafInputLocation, LeafKind},
+    schema::variant::leaves::{
+        LeafInputLocation,
+        LeafKind,
+    },
 };
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;
 
 use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::v2::AccessBuilder,
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
     service::{
         force_change_set_response::ForceChangeSetResponse,
-        v2::func::{FuncAPIError, FuncAPIResult},
+        v2::{
+            AccessBuilder,
+            func::{
+                FuncAPIError,
+                FuncAPIResult,
+            },
+        },
     },
     track,
 };

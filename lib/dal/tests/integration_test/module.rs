@@ -1,9 +1,15 @@
-use dal::module::Module;
-use dal::pkg::export::PkgExporter;
-use dal::{DalContext, Schema};
+use dal::{
+    DalContext,
+    Schema,
+    module::Module,
+    pkg::export::PkgExporter,
+};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
-use si_pkg::{SocketSpecArity, SocketSpecKind};
+use si_pkg::{
+    SocketSpecArity,
+    SocketSpecKind,
+};
 
 #[test]
 async fn list_modules(ctx: &DalContext) {

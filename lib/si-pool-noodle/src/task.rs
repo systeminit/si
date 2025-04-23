@@ -1,11 +1,13 @@
-use crate::errors::PoolNoodleError;
+use std::{
+    fmt::Display,
+    result,
+};
 
-use std::fmt::Display;
-use std::result;
-
-use crate::Spec;
-
-use crate::Instance;
+use crate::{
+    Instance,
+    Spec,
+    errors::PoolNoodleError,
+};
 
 type Result<T, E> = result::Result<T, PoolNoodleError<E>>;
 

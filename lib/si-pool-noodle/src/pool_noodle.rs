@@ -38,24 +38,47 @@
 //! :------------:::::::::::::::::::::::::##****#######%%%%%+:::::::-----
 //! =:----------::::::::::::::::::::::::::*#***########%%%%%*::::::------
 
-use crate::lifeguard::LifeGuard;
-use crate::task::{PoolNoodleTask, PoolNoodleTaskType};
+use std::{
+    fmt::Display,
+    result,
+    sync::Arc,
+};
+
 use crossbeam_queue::ArrayQueue;
-use std::fmt::Display;
-use std::result;
-use std::sync::Arc;
 use telemetry_utils::metric;
-use tokio::sync::Mutex;
-use tokio::sync::Semaphore;
-use tokio::time::sleep;
+use tokio::{
+    sync::{
+        Mutex,
+        Semaphore,
+        mpsc::{
+            self,
+            Receiver,
+            Sender,
+        },
+    },
+    time::{
+        Duration,
+        sleep,
+        timeout,
+    },
+};
 use tokio_util::sync::CancellationToken;
+use tracing::{
+    debug,
+    info,
+    warn,
+};
 
-use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::time::{Duration, timeout};
-use tracing::{debug, info, warn};
-
-use crate::errors::PoolNoodleError;
-use crate::{Instance, Spec};
+use crate::{
+    Instance,
+    Spec,
+    errors::PoolNoodleError,
+    lifeguard::LifeGuard,
+    task::{
+        PoolNoodleTask,
+        PoolNoodleTaskType,
+    },
+};
 
 type Result<T, E> = result::Result<T, PoolNoodleError<E>>;
 
@@ -388,14 +411,20 @@ where
 #[cfg(test)]
 mod tests {
 
-    use std::fmt::{self, Formatter};
+    use std::fmt::{
+        self,
+        Formatter,
+    };
 
-    use crate::instance::SpecBuilder;
     use async_trait::async_trait;
     use derive_builder::Builder;
-    use tokio::time::{Duration, sleep};
+    use tokio::time::{
+        Duration,
+        sleep,
+    };
 
     use super::*;
+    use crate::instance::SpecBuilder;
 
     pub struct DummyInstance {}
 

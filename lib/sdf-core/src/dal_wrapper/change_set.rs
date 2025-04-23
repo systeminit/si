@@ -1,15 +1,35 @@
 //! This module contains DAL-wrapper logic around change set approvals.
 
-use std::{collections::HashMap, str::FromStr};
+use std::{
+    collections::HashMap,
+    str::FromStr,
+};
 
 use dal::{
-    ChangeSet, DalContext, HistoryActor, User, UserPk, WorkspacePk,
-    approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
+    ChangeSet,
+    DalContext,
+    HistoryActor,
+    User,
+    UserPk,
+    WorkspacePk,
+    approval_requirement::{
+        ApprovalRequirement,
+        ApprovalRequirementApprover,
+    },
     change_set::approval::ChangeSetApproval,
 };
-use permissions::{Permission, PermissionBuilder};
-use si_events::{ChangeSetApprovalStatus, merkle_tree_hash::MerkleTreeHash};
-use si_id::{ChangeSetApprovalId, EntityId};
+use permissions::{
+    Permission,
+    PermissionBuilder,
+};
+use si_events::{
+    ChangeSetApprovalStatus,
+    merkle_tree_hash::MerkleTreeHash,
+};
+use si_id::{
+    ChangeSetApprovalId,
+    EntityId,
+};
 
 use super::DalWrapperError;
 

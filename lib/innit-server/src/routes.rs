@@ -1,22 +1,32 @@
 use axum::{
     Router,
-    response::Json,
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Json,
+        Response,
+    },
     routing::get,
 };
 use hyper::StatusCode;
-use serde_json::{Value, json};
+use serde_json::{
+    Value,
+    json,
+};
 use si_data_ssm::ParameterStoreClientError;
 use thiserror::Error;
-use tower_http::compression::CompressionLayer;
-use tower_http::cors::CorsLayer;
+use tower_http::{
+    compression::CompressionLayer,
+    cors::CorsLayer,
+};
 
 mod get_parameter;
 mod list_parameters;
 
+use super::{
+    app_state::AppState,
+    server::ServerError,
+};
 use crate::api_error::ApiError;
-
-use super::{app_state::AppState, server::ServerError};
 
 #[allow(clippy::too_many_arguments)]
 pub fn routes(state: AppState) -> Router {

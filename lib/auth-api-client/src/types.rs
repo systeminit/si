@@ -1,5 +1,12 @@
-use serde::{Deserialize, Serialize};
-use si_id::{AuthTokenId, UserPk, WorkspacePk};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_id::{
+    AuthTokenId,
+    UserPk,
+    WorkspacePk,
+};
 use thiserror::Error;
 use ulid::Ulid;
 

@@ -25,13 +25,19 @@
     while_true
 )]
 
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
 use strum::VariantNames;
 use thiserror::Error;
 
 mod content_info;
 
-pub use content_info::{ContentInfo, HeaderMapParseMessageInfoError};
+pub use content_info::{
+    ContentInfo,
+    HeaderMapParseMessageInfoError,
+};
 
 const CONTENT_TYPE_CBOR: &str = "application/cbor";
 const CONTENT_TYPE_JSON: &str = "application/json";
@@ -248,7 +254,10 @@ mod tests {
     }
 
     mod v1 {
-        use serde::{Deserialize, Serialize};
+        use serde::{
+            Deserialize,
+            Serialize,
+        };
 
         use super::RequestId;
 
@@ -260,9 +269,16 @@ mod tests {
     }
 
     mod v2 {
-        use serde::{Deserialize, Serialize};
+        use serde::{
+            Deserialize,
+            Serialize,
+        };
 
-        use super::{RequestId, UpgradeError, v1::CoolRequestV1};
+        use super::{
+            RequestId,
+            UpgradeError,
+            v1::CoolRequestV1,
+        };
 
         #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
         #[serde(rename_all = "camelCase")]
@@ -280,9 +296,16 @@ mod tests {
     }
 
     mod v3 {
-        use serde::{Deserialize, Serialize};
+        use serde::{
+            Deserialize,
+            Serialize,
+        };
 
-        use super::{RequestId, UpgradeError, v2::CoolRequestV2};
+        use super::{
+            RequestId,
+            UpgradeError,
+            v2::CoolRequestV2,
+        };
 
         #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
         #[serde(rename_all = "camelCase")]
@@ -304,9 +327,16 @@ mod tests {
     }
 
     mod v4 {
-        use serde::{Deserialize, Serialize};
+        use serde::{
+            Deserialize,
+            Serialize,
+        };
 
-        use super::{RequestId, UpgradeError, v3::CoolRequestV3};
+        use super::{
+            RequestId,
+            UpgradeError,
+            v3::CoolRequestV3,
+        };
 
         #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
         #[serde(rename_all = "camelCase")]
@@ -331,13 +361,30 @@ mod tests {
 
     use std::{
         fmt,
-        ops::{Deref, DerefMut},
+        ops::{
+            Deref,
+            DerefMut,
+        },
     };
 
-    use serde::{Deserialize, Serialize};
-    use strum::{AsRefStr, EnumDiscriminants, EnumIs, EnumString, VariantNames};
+    use serde::{
+        Deserialize,
+        Serialize,
+    };
+    use strum::{
+        AsRefStr,
+        EnumDiscriminants,
+        EnumIs,
+        EnumString,
+        VariantNames,
+    };
 
-    use self::{v1::CoolRequestV1, v2::CoolRequestV2, v3::CoolRequestV3, v4::CoolRequestV4};
+    use self::{
+        v1::CoolRequestV1,
+        v2::CoolRequestV2,
+        v3::CoolRequestV3,
+        v4::CoolRequestV4,
+    };
 
     pub(crate) type CoolRequestVCurrent = CoolRequestV4;
 

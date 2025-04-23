@@ -1,11 +1,19 @@
-use std::{collections::HashMap, str::FromStr};
+use std::{
+    collections::HashMap,
+    str::FromStr,
+};
 
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{
+        Path,
+        State,
+    },
 };
 use dal::{
-    ChangeSetId, UserPk, WorkspacePk,
+    ChangeSetId,
+    UserPk,
+    WorkspacePk,
     approval_requirement::{
         ApprovalRequirementApprover,
         ApprovalRequirementDefinition as DalApprovalRequirementDefinition,
@@ -15,9 +23,12 @@ use dal::{
 use si_frontend_types::ApprovalRequirementDefinition;
 use si_id::EntityId;
 
-use crate::{AppState, extract::HandlerContext, service::v2::AccessBuilder};
-
 use super::ApprovalRequirementDefinitionError;
+use crate::{
+    AppState,
+    extract::HandlerContext,
+    service::v2::AccessBuilder,
+};
 
 pub async fn list_for_entity(
     HandlerContext(builder): HandlerContext,

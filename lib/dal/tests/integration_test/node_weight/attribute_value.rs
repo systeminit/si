@@ -1,10 +1,17 @@
-use dal::DalContext;
-use dal::workspace_snapshot::DependentValueRoot;
-use dal_test::expected::{
-    ExpectComponent, apply_change_set_to_base, commit_and_update_snapshot_to_visibility,
-    fork_from_head_change_set, update_visibility_and_snapshot_to_visibility,
+use dal::{
+    DalContext,
+    workspace_snapshot::DependentValueRoot,
 };
-use dal_test::test;
+use dal_test::{
+    expected::{
+        ExpectComponent,
+        apply_change_set_to_base,
+        commit_and_update_snapshot_to_visibility,
+        fork_from_head_change_set,
+        update_visibility_and_snapshot_to_visibility,
+    },
+    test,
+};
 
 #[test]
 async fn change_in_output_component_produces_dvu_root_in_other_change_set(ctx: &mut DalContext) {

@@ -1,21 +1,48 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::Arc,
+    time::Duration,
+};
 
 use dashmap::DashMap;
 use reqwest::StatusCode;
-use serde::{Serialize, de::DeserializeOwned};
-use thiserror::Error;
-use tokio::time::Instant;
-
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
 use si_frontend_types::{
     FuncKind,
     fs::{
-        AssetFuncs, Binding, Bindings, CategoryFilter, ChangeSet, CreateChangeSetRequest,
-        CreateChangeSetResponse, CreateFuncRequest, CreateSchemaRequest, CreateSchemaResponse,
-        FsApiError, Func, HydratedChangeSet, IdentityBindings, ListChangeSetsResponse, Schema,
-        SchemaAttributes, SetFuncBindingsRequest, SetFuncCodeRequest, VariantQuery,
+        AssetFuncs,
+        Binding,
+        Bindings,
+        CategoryFilter,
+        ChangeSet,
+        CreateChangeSetRequest,
+        CreateChangeSetResponse,
+        CreateFuncRequest,
+        CreateSchemaRequest,
+        CreateSchemaResponse,
+        FsApiError,
+        Func,
+        HydratedChangeSet,
+        IdentityBindings,
+        ListChangeSetsResponse,
+        Schema,
+        SchemaAttributes,
+        SetFuncBindingsRequest,
+        SetFuncCodeRequest,
+        VariantQuery,
     },
 };
-use si_id::{ChangeSetId, FuncId, SchemaId, WorkspaceId};
+use si_id::{
+    ChangeSetId,
+    FuncId,
+    SchemaId,
+    WorkspaceId,
+};
+use thiserror::Error;
+use tokio::time::Instant;
 
 #[derive(Error, Debug)]
 pub enum SiFsClientError {

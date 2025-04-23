@@ -1,35 +1,72 @@
 use std::{
-    collections::{HashMap, HashSet, VecDeque, hash_map::Entry},
+    collections::{
+        HashMap,
+        HashSet,
+        VecDeque,
+        hash_map::Entry,
+    },
     fs::File,
     io::Write,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc,
+        Mutex,
+    },
 };
 
 use petgraph::{
     algo,
     prelude::*,
-    stable_graph::{EdgeReference, Edges, Neighbors},
+    stable_graph::{
+        EdgeReference,
+        Edges,
+        Neighbors,
+    },
     visit::DfsEvent,
 };
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, ulid::Ulid, workspace_snapshot::Change};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    ulid::Ulid,
+    workspace_snapshot::Change,
+};
 use si_layer_cache::db::serialize;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use ulid::Generator;
 
 use crate::{
-    DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
+    DalContext,
+    EdgeWeight,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    NodeWeightDiscriminants,
     Timestamp,
-    layer_db_types::{ViewContent, ViewContentV1},
+    layer_db_types::{
+        ViewContent,
+        ViewContentV1,
+    },
     workspace_snapshot::{
-        CategoryNodeKind, ContentAddressDiscriminants, LineageId, OrderingNodeWeight,
+        CategoryNodeKind,
+        ContentAddressDiscriminants,
+        LineageId,
+        OrderingNodeWeight,
         content_address::ContentAddress,
         graph::{
-            MerkleTreeHash, WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult,
-            detector::{Detector, Update},
+            MerkleTreeHash,
+            WorkspaceSnapshotGraphError,
+            WorkspaceSnapshotGraphResult,
+            detector::{
+                Detector,
+                Update,
+            },
         },
-        node_weight::{CategoryNodeWeight, NodeWeight},
+        node_weight::{
+            CategoryNodeWeight,
+            NodeWeight,
+        },
     },
 };
 

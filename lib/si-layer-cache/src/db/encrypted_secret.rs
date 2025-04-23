@@ -1,18 +1,34 @@
-use std::sync::Arc;
-use std::{collections::HashMap, fmt::Display};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    sync::Arc,
+};
 
-use serde::{Serialize, de::DeserializeOwned};
-use si_events::{Actor, EncryptedSecretKey, Tenancy, WebEvent};
-
-use crate::{
-    LayerDbError,
-    error::LayerDbResult,
-    event::{LayeredEvent, LayeredEventKind},
-    layer_cache::LayerCache,
-    persister::{PersisterClient, PersisterStatusReader},
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
+use si_events::{
+    Actor,
+    EncryptedSecretKey,
+    Tenancy,
+    WebEvent,
 };
 
 use super::serialize;
+use crate::{
+    LayerDbError,
+    error::LayerDbResult,
+    event::{
+        LayeredEvent,
+        LayeredEventKind,
+    },
+    layer_cache::LayerCache,
+    persister::{
+        PersisterClient,
+        PersisterStatusReader,
+    },
+};
 
 const KEYWORD_SINGULAR: &str = "encrypted_secret";
 const KEYWORD_PLURAL: &str = "encrypted_secrets";

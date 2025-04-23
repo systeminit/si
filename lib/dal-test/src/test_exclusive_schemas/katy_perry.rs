@@ -1,14 +1,36 @@
-use dal::pkg::{ImportOptions, import_pkg_from_pkg};
-use dal::{BuiltinsResult, DalContext, PropKind, SchemaId};
-use dal::{ComponentType, prop::PropPath};
-use si_pkg::{
-    AttrFuncInputSpec, AttrFuncInputSpecKind, LeafInputLocation, LeafKind, PkgSpec, PropSpec,
-    SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg,
+use dal::{
+    BuiltinsResult,
+    ComponentType,
+    DalContext,
+    PropKind,
+    SchemaId,
+    pkg::{
+        ImportOptions,
+        import_pkg_from_pkg,
+    },
+    prop::PropPath,
 };
-use si_pkg::{LeafFunctionSpec, SchemaSpecData};
+use si_pkg::{
+    AttrFuncInputSpec,
+    AttrFuncInputSpecKind,
+    LeafFunctionSpec,
+    LeafInputLocation,
+    LeafKind,
+    PkgSpec,
+    PropSpec,
+    SchemaSpec,
+    SchemaSpecData,
+    SchemaVariantSpec,
+    SchemaVariantSpecData,
+    SiPkg,
+};
 
 use crate::test_exclusive_schemas::{
-    PKG_CREATED_BY, PKG_VERSION, build_asset_func, build_codegen_func, create_identity_func,
+    PKG_CREATED_BY,
+    PKG_VERSION,
+    build_asset_func,
+    build_codegen_func,
+    create_identity_func,
 };
 
 pub(crate) async fn migrate_test_exclusive_schema_katy_perry(

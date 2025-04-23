@@ -1,41 +1,85 @@
 use std::{
     fmt,
-    future::{Future, IntoFuture},
+    future::{
+        Future,
+        IntoFuture,
+    },
     io,
     sync::Arc,
     time::Duration,
 };
 
 use dal::{
-    DalContext, DalLayerDb, DedicatedExecutor, JetstreamStreams, JobQueueProcessor, NatsProcessor,
-    ServicesContext, feature_flags::FeatureFlagService,
+    DalContext,
+    DalLayerDb,
+    DedicatedExecutor,
+    JetstreamStreams,
+    JobQueueProcessor,
+    NatsProcessor,
+    ServicesContext,
+    feature_flags::FeatureFlagService,
 };
 use edda_core::nats;
-use frigg::{FriggStore, frigg_kv};
+use frigg::{
+    FriggStore,
+    frigg_kv,
+};
 use naxum::{
-    Message, MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
+    Message,
+    MessageHead,
+    ServiceBuilder,
+    ServiceExt as _,
+    TowerServiceExt as _,
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
         ack::AckLayer,
-        matched_subject::{ForSubject, MatchedSubjectLayer},
-        trace::{OnRequest, TraceLayer},
+        matched_subject::{
+            ForSubject,
+            MatchedSubjectLayer,
+        },
+        trace::{
+            OnRequest,
+            TraceLayer,
+        },
     },
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use rebaser_client::RebaserClient;
 use si_crypto::{
-    SymmetricCryptoService, SymmetricCryptoServiceConfig, VeritechCryptoConfig,
+    SymmetricCryptoService,
+    SymmetricCryptoServiceConfig,
+    VeritechCryptoConfig,
     VeritechEncryptionKey,
 };
-use si_data_nats::{NatsClient, NatsConfig, async_nats, jetstream};
-use si_data_pg::{PgPool, PgPoolConfig};
+use si_data_nats::{
+    NatsClient,
+    NatsConfig,
+    async_nats,
+    jetstream,
+};
+use si_data_pg::{
+    PgPool,
+    PgPoolConfig,
+};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 use veritech_client::Client as VeritechClient;
 
-use crate::{Config, Error, Result, app_state::AppState, handlers};
+use crate::{
+    Config,
+    Error,
+    Result,
+    app_state::AppState,
+    handlers,
+};
 
 const TASKS_CONSUMER_NAME: &str = "edda-tasks";
 

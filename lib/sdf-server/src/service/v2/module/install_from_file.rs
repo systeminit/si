@@ -1,12 +1,28 @@
-use crate::extract::change_set::ChangeSetDalContext;
-use crate::service::force_change_set_response::ForceChangeSetResponse;
-use crate::service::v2::module::ModulesAPIError;
 use axum::extract::Multipart;
-use dal::pkg::import_pkg_from_pkg;
-use dal::{ChangeSet, Func, SchemaVariant, WsEvent, pkg::ImportOptions};
+use dal::{
+    ChangeSet,
+    Func,
+    SchemaVariant,
+    WsEvent,
+    pkg::{
+        ImportOptions,
+        import_pkg_from_pkg,
+    },
+};
 use si_frontend_types::SchemaVariant as FrontendVariant;
-use si_pkg::{PkgSpec, SiPkg};
+use si_pkg::{
+    PkgSpec,
+    SiPkg,
+};
 use telemetry::prelude::*;
+
+use crate::{
+    extract::change_set::ChangeSetDalContext,
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::module::ModulesAPIError,
+    },
+};
 
 pub async fn install_module_from_file(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,

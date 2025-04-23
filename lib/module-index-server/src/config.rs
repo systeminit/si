@@ -1,17 +1,30 @@
-use std::{env, net::SocketAddr, path::Path, time::Duration};
+use std::{
+    env,
+    net::SocketAddr,
+    path::Path,
+    time::Duration,
+};
 
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_pg::PgPoolConfig;
 use si_jwt_public_key::JwtAlgo;
 use si_posthog::PosthogConfig;
-use si_std::{CanonicalFile, CanonicalFileError};
+pub use si_settings::{
+    StandardConfig,
+    StandardConfigFile,
+};
+use si_std::{
+    CanonicalFile,
+    CanonicalFileError,
+};
 use si_tls::CertificateSource;
 use telemetry::prelude::*;
 use thiserror::Error;
-
-pub use si_settings::{StandardConfig, StandardConfigFile};
 use tower::limit::RateLimitLayer;
 use ulid::Ulid;
 

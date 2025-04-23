@@ -1,10 +1,19 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::FuncKind as EventFuncKind;
-use strum::{AsRefStr, Display};
+use strum::{
+    AsRefStr,
+    Display,
+};
 use telemetry::prelude::warn;
 
-use crate::func::FuncResult;
-use crate::{FuncBackendKind, FuncBackendResponseType};
+use crate::{
+    FuncBackendKind,
+    FuncBackendResponseType,
+    func::FuncResult,
+};
 
 /// Describes the kind of [`Func`](crate::Func).
 /// This type is postcard serialized, so cannot be "remain::sorted". New enum

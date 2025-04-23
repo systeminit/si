@@ -1,13 +1,24 @@
 use std::collections::HashMap;
 
-use axum::{Json, extract::Path};
-
-use dal::{ChangeSet, ChangeSetId, WorkspacePk};
+use axum::{
+    Json,
+    extract::Path,
+};
+use dal::{
+    ChangeSet,
+    ChangeSetId,
+    WorkspacePk,
+};
 use si_frontend_types::object::FrontendObject;
 
-use crate::extract::{FriggStore, HandlerContext};
-
-use super::{AccessBuilder, IndexResult};
+use super::{
+    AccessBuilder,
+    IndexResult,
+};
+use crate::extract::{
+    FriggStore,
+    HandlerContext,
+};
 
 pub async fn get_workspace_index(
     HandlerContext(builder): HandlerContext,

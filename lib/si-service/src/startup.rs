@@ -3,13 +3,19 @@
 //! - Version
 //! - Anything else to do async or sync during service startup
 
+use std::{
+    env,
+    io,
+    path::Component,
+};
+
 use glob::glob;
-use std::env;
-use std::io;
-use std::path::Component;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::{fs::File, io::AsyncReadExt};
+use tokio::{
+    fs::File,
+    io::AsyncReadExt,
+};
 
 /// An error that can be returned when starting the process for the binary
 #[derive(Debug, Error)]

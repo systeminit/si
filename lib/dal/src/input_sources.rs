@@ -1,13 +1,29 @@
-use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use thiserror::Error;
 
-use crate::prop::PropError;
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
 use crate::{
-    DalContext, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropId, PropKind,
-    SchemaVariant, SchemaVariantError, SchemaVariantId, WorkspaceSnapshotError,
+    DalContext,
+    InputSocket,
+    InputSocketId,
+    OutputSocket,
+    OutputSocketId,
+    Prop,
+    PropId,
+    PropKind,
+    SchemaVariant,
+    SchemaVariantError,
+    SchemaVariantId,
+    WorkspaceSnapshotError,
+    prop::PropError,
+    socket::{
+        input::InputSocketError,
+        output::OutputSocketError,
+    },
 };
 
 #[remain::sorted]

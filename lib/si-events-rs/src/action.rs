@@ -1,8 +1,16 @@
-use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display, EnumDiscriminants};
-
-pub use si_id::ActionId;
-pub use si_id::ActionPrototypeId;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+pub use si_id::{
+    ActionId,
+    ActionPrototypeId,
+};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumDiscriminants,
+};
 
 #[remain::sorted]
 #[derive(AsRefStr, Debug, Copy, Clone, Deserialize, Serialize, PartialEq, Eq, Display, Hash)]

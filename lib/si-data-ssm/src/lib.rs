@@ -25,11 +25,17 @@
     while_true
 )]
 
-use aws_config::Region;
-use aws_sdk_ssm::config::Credentials;
-use aws_sdk_ssm::error::SdkError;
-use aws_sdk_ssm::types::{Parameter, ParameterType};
 use std::fmt::Debug;
+
+use aws_config::Region;
+use aws_sdk_ssm::{
+    config::Credentials,
+    error::SdkError,
+    types::{
+        Parameter,
+        ParameterType,
+    },
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 

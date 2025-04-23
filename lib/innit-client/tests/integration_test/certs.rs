@@ -1,8 +1,18 @@
 use rcgen::{
-    BasicConstraints, Certificate, CertificateParams, DnType, DnValue::PrintableString,
-    ExtendedKeyUsagePurpose, IsCa, KeyPair, KeyUsagePurpose,
+    BasicConstraints,
+    Certificate,
+    CertificateParams,
+    DnType,
+    DnValue::PrintableString,
+    ExtendedKeyUsagePurpose,
+    IsCa,
+    KeyPair,
+    KeyUsagePurpose,
 };
-use time::{Duration, OffsetDateTime};
+use time::{
+    Duration,
+    OffsetDateTime,
+};
 
 pub fn new_ca() -> (Certificate, KeyPair) {
     let mut params =

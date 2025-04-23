@@ -1,9 +1,18 @@
-use dal::component::debug::ComponentDebugView;
-use dal::prop::PropPath;
-use dal::{AttributeValue, Component, DalContext, Prop};
-use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::helpers::create_component_for_default_schema_name_in_default_view;
-use dal_test::test;
+use dal::{
+    AttributeValue,
+    Component,
+    DalContext,
+    Prop,
+    component::debug::ComponentDebugView,
+    prop::PropPath,
+};
+use dal_test::{
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_default_schema_name_in_default_view,
+    },
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]

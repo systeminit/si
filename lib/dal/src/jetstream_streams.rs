@@ -26,8 +26,14 @@
     while_true
 )]
 
-use billing_events::{BillingEventsError, BillingEventsWorkQueue};
-use si_data_nats::{NatsClient, jetstream};
+use billing_events::{
+    BillingEventsError,
+    BillingEventsWorkQueue,
+};
+use si_data_nats::{
+    NatsClient,
+    jetstream,
+};
 use thiserror::Error;
 
 #[allow(missing_docs)]

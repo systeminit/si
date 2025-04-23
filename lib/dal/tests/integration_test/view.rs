@@ -1,10 +1,22 @@
 use dal::{
-    Component, DalContext, Ulid, WorkspaceSnapshotError,
-    diagram::{Diagram, DiagramError, geometry::Geometry, view::View},
+    Component,
+    DalContext,
+    Ulid,
+    WorkspaceSnapshotError,
+    diagram::{
+        Diagram,
+        DiagramError,
+        geometry::Geometry,
+        view::View,
+    },
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
 };
 use dal_test::{
-    expected::{self, ExpectView, generate_fake_name},
+    expected::{
+        self,
+        ExpectView,
+        generate_fake_name,
+    },
     helpers::{
         create_component_for_default_schema_name,
         create_component_for_default_schema_name_in_default_view,

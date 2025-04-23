@@ -1,14 +1,20 @@
 use axum::extract::Host;
-use dal::{WsEvent, change_set::ChangeSet};
+use dal::{
+    WsEvent,
+    change_set::ChangeSet,
+};
 use serde_json::json;
 use si_events::audit_log::AuditLogKind;
 use utoipa;
 
-use crate::extract::{
-    PosthogEventTracker, change_set::ChangeSetDalContext, workspace::WorkspaceAuthorization,
+use crate::{
+    extract::{
+        PosthogEventTracker,
+        change_set::ChangeSetDalContext,
+        workspace::WorkspaceAuthorization,
+    },
+    service::v1::ChangeSetError,
 };
-
-use crate::service::v1::ChangeSetError;
 
 /// Request approval for a change set
 #[utoipa::path(

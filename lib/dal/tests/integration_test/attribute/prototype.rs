@@ -1,5 +1,11 @@
-use dal::prop::PropPath;
-use dal::{AttributePrototype, DalContext, Func, Prop, Schema};
+use dal::{
+    AttributePrototype,
+    DalContext,
+    Func,
+    Prop,
+    Schema,
+    prop::PropPath,
+};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
 

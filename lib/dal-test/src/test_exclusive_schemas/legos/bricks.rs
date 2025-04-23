@@ -1,7 +1,15 @@
-use dal::prop::PropPath;
-use dal::{BuiltinsResult, PropKind};
+use dal::{
+    BuiltinsResult,
+    PropKind,
+    prop::PropPath,
+};
 use si_pkg::{
-    AttrFuncInputSpec, AttrFuncInputSpecKind, FuncSpec, PropSpec, SocketSpec, SocketSpecData,
+    AttrFuncInputSpec,
+    AttrFuncInputSpecKind,
+    FuncSpec,
+    PropSpec,
+    SocketSpec,
+    SocketSpecData,
     SocketSpecKind,
 };
 

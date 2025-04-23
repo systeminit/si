@@ -53,19 +53,30 @@ mod on_request;
 mod on_response;
 mod service;
 
-use std::{fmt, time::Duration};
+use std::{
+    fmt,
+    time::Duration,
+};
 
 use tracing::Level;
 
 pub use self::{
     body::ResponseBody,
     layer::TraceLayer,
-    make_span::{DefaultMakeSpan, MakeSpan},
-    on_request::{DefaultOnRequest, OnRequest},
-    on_response::{DefaultOnResponse, OnResponse},
+    make_span::{
+        DefaultMakeSpan,
+        MakeSpan,
+    },
+    on_request::{
+        DefaultOnRequest,
+        OnRequest,
+    },
+    on_response::{
+        DefaultOnResponse,
+        OnResponse,
+    },
     service::Trace,
 };
-
 use super::LatencyUnit;
 
 const DEFAULT_MESSAGE_LEVEL: Level = Level::DEBUG;

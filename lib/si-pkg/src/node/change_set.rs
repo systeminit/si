@@ -1,17 +1,30 @@
 use std::{
-    io::{BufRead, Write},
+    io::{
+        BufRead,
+        Write,
+    },
     str::FromStr,
 };
 
 use object_tree::{
-    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
-    read_key_value_line, write_key_value_line,
+    GraphError,
+    NameStr,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    write_key_value_line,
 };
 
 use super::PkgNode;
 use crate::{
     node::ChangeSetChild,
-    spec::{ChangeSetSpec, ChangeSetSpecStatus},
+    spec::{
+        ChangeSetSpec,
+        ChangeSetSpecStatus,
+    },
 };
 
 const KEY_NAME_STR: &str = "name";

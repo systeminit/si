@@ -1,9 +1,18 @@
 #[cfg(target_os = "linux")]
 use cyclone_server::process_gatherer;
-use cyclone_server::{Config, Runnable as _, Server};
+use cyclone_server::{
+    Config,
+    Runnable as _,
+    Server,
+};
 #[cfg(target_os = "linux")]
 use si_firecracker::stream::TcpStreamForwarder;
-use si_service::{color_eyre, prelude::*, startup, telemetry_application};
+use si_service::{
+    color_eyre,
+    prelude::*,
+    startup,
+    telemetry_application,
+};
 
 mod args;
 

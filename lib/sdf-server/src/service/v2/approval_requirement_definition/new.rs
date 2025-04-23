@@ -1,21 +1,36 @@
 use std::collections::HashSet;
 
-use axum::{Json, extract::Path};
+use axum::{
+    Json,
+    extract::Path,
+};
 use dal::{
-    ChangeSet, ChangeSetId, UserPk, WorkspacePk, WsEvent,
-    approval_requirement::{ApprovalRequirement, ApprovalRequirementApprover},
+    ChangeSet,
+    ChangeSetId,
+    UserPk,
+    WorkspacePk,
+    WsEvent,
+    approval_requirement::{
+        ApprovalRequirement,
+        ApprovalRequirementApprover,
+    },
     entity_kind::EntityKind,
 };
 use serde::Deserialize;
 use si_events::audit_log::AuditLogKind;
 use si_id::EntityId;
 
-use crate::{
-    extract::{HandlerContext, PosthogEventTracker},
-    service::{force_change_set_response::ForceChangeSetResponse, v2::AccessBuilder},
-};
-
 use super::ApprovalRequirementDefinitionError;
+use crate::{
+    extract::{
+        HandlerContext,
+        PosthogEventTracker,
+    },
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::AccessBuilder,
+    },
+};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -1,40 +1,90 @@
-use std::collections::HashSet;
-use std::io::Read;
-
-use chrono::{DateTime, TimeZone, Utc};
-use dal::action::ActionCompletionStatus;
-use dal::action::prototype::ActionKind;
-use dal::approval_requirement::ApprovalRequirementApprover;
-use dal::func::FuncKind;
-use dal::func::argument::FuncArgumentKind;
-use dal::layer_db_types::{
-    ApprovalRequirementDefinitionContent, AttributePrototypeContent, AttributePrototypeContentV1,
-    ComponentContent, ContentTypes, ContentTypesDiscriminants, DeprecatedActionBatchContent,
-    DeprecatedActionContent, DeprecatedActionPrototypeContent, DeprecatedActionRunnerContent,
-    DeprecatedActionRunnerContentV1, FuncArgumentContent, FuncArgumentContentV1, FuncContent,
-    FuncContentV2, GeometryContent, InputSocketContent, InputSocketContentV2,
-    ManagementPrototypeContent, ManagementPrototypeContentV1, ModuleContent, OutputSocketContent,
-    PropContent, PropContentV1, SchemaContent, SchemaVariantContent, SecretContent,
-    StaticArgumentValueContent, ValidationContent, ViewContent,
+use std::{
+    collections::HashSet,
+    io::Read,
 };
-use dal::prop::WidgetOption;
-use dal::socket::connection_annotation::ConnectionAnnotation;
-use dal::validation::ValidationStatus;
-use dal::workspace_snapshot::content_address::ContentAddress;
-use dal::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use dal::workspace_snapshot::node_weight::diagram_object_node_weight::DiagramObjectKind;
-use dal::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
-use dal::workspace_snapshot::node_weight::{
-    ArgumentTargets, CategoryNodeWeight, NodeWeight, OrderingNodeWeight,
+
+use chrono::{
+    DateTime,
+    TimeZone,
+    Utc,
 };
 use dal::{
-    ComponentType, ContentHash, DalContext, EdgeWeight, EdgeWeightKind,
-    EdgeWeightKindDiscriminants, NodeWeightDiscriminants, SocketArity, SocketKind, Timestamp,
-    WorkspaceSnapshotGraph, WorkspaceSnapshotGraphVCurrent,
+    ComponentType,
+    ContentHash,
+    DalContext,
+    EdgeWeight,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    NodeWeightDiscriminants,
+    PropKind,
+    SocketArity,
+    SocketKind,
+    Timestamp,
+    Ulid,
+    WorkspaceSnapshotGraph,
+    WorkspaceSnapshotGraphVCurrent,
+    action::{
+        ActionCompletionStatus,
+        prototype::ActionKind,
+    },
+    approval_requirement::ApprovalRequirementApprover,
+    func::{
+        FuncKind,
+        argument::FuncArgumentKind,
+    },
+    layer_db_types::{
+        ApprovalRequirementDefinitionContent,
+        AttributePrototypeContent,
+        AttributePrototypeContentV1,
+        ComponentContent,
+        ContentTypes,
+        ContentTypesDiscriminants,
+        DeprecatedActionBatchContent,
+        DeprecatedActionContent,
+        DeprecatedActionPrototypeContent,
+        DeprecatedActionRunnerContent,
+        DeprecatedActionRunnerContentV1,
+        FuncArgumentContent,
+        FuncArgumentContentV1,
+        FuncContent,
+        FuncContentV2,
+        GeometryContent,
+        InputSocketContent,
+        InputSocketContentV2,
+        ManagementPrototypeContent,
+        ManagementPrototypeContentV1,
+        ModuleContent,
+        OutputSocketContent,
+        PropContent,
+        PropContentV1,
+        SchemaContent,
+        SchemaVariantContent,
+        SecretContent,
+        StaticArgumentValueContent,
+        ValidationContent,
+        ViewContent,
+    },
+    prop::WidgetOption,
+    socket::connection_annotation::ConnectionAnnotation,
+    validation::ValidationStatus,
+    workspace_snapshot::{
+        content_address::ContentAddress,
+        node_weight::{
+            ArgumentTargets,
+            CategoryNodeWeight,
+            NodeWeight,
+            OrderingNodeWeight,
+            category_node_weight::CategoryNodeKind,
+            diagram_object_node_weight::DiagramObjectKind,
+            traits::SiVersionedNodeWeight,
+        },
+    },
 };
-use dal::{PropKind, Ulid};
 use dal_test::test;
-use si_events::{CasValue, EncryptedSecretKey};
+use si_events::{
+    CasValue,
+    EncryptedSecretKey,
+};
 use si_layer_cache::db::serialize;
 use strum::IntoEnumIterator;
 

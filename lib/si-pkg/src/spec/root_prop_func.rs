@@ -1,9 +1,14 @@
 use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
+use super::{
+    AttrFuncInputSpec,
+    SpecError,
+};
 use crate::SchemaVariantSpecPropRoot;
-
-use super::{AttrFuncInputSpec, SpecError};
 
 /// RootPropFuncs track custom functions for for props that are immediate children of the root.
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]

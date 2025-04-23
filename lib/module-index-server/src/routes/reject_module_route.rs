@@ -1,24 +1,54 @@
 use std::str::FromStr;
 
-use axum::extract::{Multipart, State};
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
-use axum::{Json, extract::Path};
-use chrono::{DateTime, FixedOffset, Offset, Utc};
+use axum::{
+    Json,
+    extract::{
+        Multipart,
+        Path,
+        State,
+    },
+    http::StatusCode,
+    response::{
+        IntoResponse,
+        Response,
+    },
+};
+use chrono::{
+    DateTime,
+    FixedOffset,
+    Offset,
+    Utc,
+};
 use module_index_types::ModuleDetailsResponse;
-use sea_orm::ActiveValue::Set;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter};
+use sea_orm::{
+    ActiveModelTrait,
+    ActiveValue::Set,
+    ColumnTrait,
+    DbErr,
+    EntityTrait,
+    QueryFilter,
+};
 use si_id::SchemaId;
 use telemetry::prelude::info;
 use thiserror::Error;
 
-use crate::app_state::AppState;
-use crate::models::si_module::{SchemaIdReferenceLink, make_module_details_response};
-use crate::routes::upsert_module_route::UpsertModuleError;
-use crate::whoami::{WhoamiError, is_systeminit_auth_token};
 use crate::{
-    extract::{Authorization, DbConnection},
-    models::si_module::{self, ModuleId},
+    app_state::AppState,
+    extract::{
+        Authorization,
+        DbConnection,
+    },
+    models::si_module::{
+        self,
+        ModuleId,
+        SchemaIdReferenceLink,
+        make_module_details_response,
+    },
+    routes::upsert_module_route::UpsertModuleError,
+    whoami::{
+        WhoamiError,
+        is_systeminit_auth_token,
+    },
 };
 
 #[remain::sorted]

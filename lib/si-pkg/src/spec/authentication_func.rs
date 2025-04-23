@@ -1,5 +1,8 @@
 use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use super::SpecError;
 

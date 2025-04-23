@@ -1,9 +1,20 @@
-use crate::func::backend::{ExtractPayload, FuncBackendResult, FuncDispatch, FuncDispatchContext};
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use veritech_client::{
-    BeforeFunction, FunctionResult, SchemaVariantDefinitionRequest,
+    BeforeFunction,
+    FunctionResult,
+    SchemaVariantDefinitionRequest,
     SchemaVariantDefinitionResultSuccess,
+};
+
+use crate::func::backend::{
+    ExtractPayload,
+    FuncBackendResult,
+    FuncDispatch,
+    FuncDispatchContext,
 };
 #[derive(Debug, Clone)]
 pub struct FuncBackendJsSchemaVariantDefinition {

@@ -2,9 +2,16 @@
 //! version type of an API type.
 
 use core::fmt;
-use std::{borrow::Cow, num::ParseIntError, str::FromStr};
+use std::{
+    borrow::Cow,
+    num::ParseIntError,
+    str::FromStr,
+};
 
-use si_data_nats::{HeaderMap, HeaderValue};
+use si_data_nats::{
+    HeaderMap,
+    HeaderValue,
+};
 use thiserror::Error;
 
 use crate::ApiWrapper;

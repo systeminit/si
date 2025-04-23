@@ -1,11 +1,27 @@
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
-use strum::{Display, EnumIter};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
+use strum::{
+    Display,
+    EnumIter,
+};
 
-use crate::EdgeWeightKindDiscriminants;
-use crate::workspace_snapshot::graph::LineageId;
-use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedCategoryNodeWeightV1;
-use crate::workspace_snapshot::node_weight::traits::CorrectTransforms;
+use crate::{
+    EdgeWeightKindDiscriminants,
+    workspace_snapshot::{
+        graph::{
+            LineageId,
+            deprecated::v1::DeprecatedCategoryNodeWeightV1,
+        },
+        node_weight::traits::CorrectTransforms,
+    },
+};
 
 /// NOTE: adding new categories can be done in a backwards compatible way, so long as we don't
 /// assume the new categories already exists on the graph. In places where you need to access the

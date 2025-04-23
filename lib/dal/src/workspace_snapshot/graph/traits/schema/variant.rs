@@ -1,5 +1,7 @@
 use crate::{
-    InputSocketId, SchemaId, SchemaVariantId,
+    InputSocketId,
+    SchemaId,
+    SchemaVariantId,
     workspace_snapshot::graph::WorkspaceSnapshotGraphResult,
 };
 

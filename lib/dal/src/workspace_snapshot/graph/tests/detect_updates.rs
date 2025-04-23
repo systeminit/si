@@ -1,17 +1,30 @@
 #[allow(clippy::panic)]
 #[cfg(test)]
 mod test {
-    use petgraph::{Outgoing, prelude::*};
-    use pretty_assertions_sorted::assert_eq;
-    use si_events::{ContentHash, ulid::Ulid};
     use std::collections::HashMap;
 
+    use petgraph::{
+        Outgoing,
+        prelude::*,
+    };
+    use pretty_assertions_sorted::assert_eq;
+    use si_events::{
+        ContentHash,
+        ulid::Ulid,
+    };
+
     use crate::{
-        NodeWeightDiscriminants, PropKind, WorkspaceSnapshotGraphVCurrent,
+        NodeWeightDiscriminants,
+        PropKind,
+        WorkspaceSnapshotGraphVCurrent,
         workspace_snapshot::{
             NodeInformation,
             content_address::ContentAddress,
-            edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
+            edge_weight::{
+                EdgeWeight,
+                EdgeWeightKind,
+                EdgeWeightKindDiscriminants,
+            },
             graph::detector::Update,
             node_weight::NodeWeight,
         },

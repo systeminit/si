@@ -1,4 +1,7 @@
-use si_data_nats::{async_nats, jetstream};
+use si_data_nats::{
+    async_nats,
+    jetstream,
+};
 
 const NATS_REQUESTS_STREAM_NAME: &str = "EDDA_REQUESTS";
 const NATS_REQUESTS_STREAM_SUBJECTS: &[&str] = &["edda.requests.>"];

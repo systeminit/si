@@ -1,16 +1,41 @@
 use axum::{
     Json,
-    extract::{Query, State},
-    response::{IntoResponse, Response},
+    extract::{
+        Query,
+        State,
+    },
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use hyper::StatusCode;
 use module_index_types::ModuleDetailsResponse;
-use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter};
-use serde::{Deserialize, Serialize};
+use sea_orm::{
+    ColumnTrait,
+    DbErr,
+    EntityTrait,
+    QueryFilter,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use thiserror::Error;
 
-use crate::models::si_module::{ModuleKind, SchemaIdReferenceLink, make_module_details_response};
-use crate::{app_state::AppState, extract::DbConnection, models::si_module, whoami::WhoamiError};
+use crate::{
+    app_state::AppState,
+    extract::DbConnection,
+    models::{
+        si_module,
+        si_module::{
+            ModuleKind,
+            SchemaIdReferenceLink,
+            make_module_details_response,
+        },
+    },
+    whoami::WhoamiError,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]

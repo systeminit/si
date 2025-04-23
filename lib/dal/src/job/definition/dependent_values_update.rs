@@ -1,38 +1,76 @@
-use audit_log::DependentValueUpdateAuditLogError;
-use si_frontend_types::DiagramSocket;
-use si_id::SchemaVariantId;
 use std::{
-    collections::{HashMap, HashSet, hash_map::Entry},
+    collections::{
+        HashMap,
+        HashSet,
+        hash_map::Entry,
+    },
     convert::TryFrom,
     sync::Arc,
 };
-use telemetry_utils::metric;
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use audit_log::DependentValueUpdateAuditLogError;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::FuncRunValue;
+use si_frontend_types::DiagramSocket;
+use si_id::SchemaVariantId;
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use thiserror::Error;
 use tokio::{
     sync::RwLock,
-    task::{JoinError, JoinSet},
+    task::{
+        JoinError,
+        JoinSet,
+    },
 };
 use ulid::Ulid;
 
 use crate::{
-    AccessBuilder, AttributeValue, AttributeValueId, ChangeSet, ChangeSetError, ChangeSetStatus,
-    Component, ComponentError, ComponentId, DalContext, Func, TransactionsError, Visibility,
-    WorkspacePk, WorkspaceSnapshotError, WsEvent, WsEventError,
-    attribute::value::{AttributeValueError, dependent_value_graph::DependentValueGraph},
+    AccessBuilder,
+    AttributeValue,
+    AttributeValueId,
+    ChangeSet,
+    ChangeSetError,
+    ChangeSetStatus,
+    Component,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    Func,
+    TransactionsError,
+    Visibility,
+    WorkspacePk,
+    WorkspaceSnapshotError,
+    WsEvent,
+    WsEventError,
+    attribute::value::{
+        AttributeValueError,
+        dependent_value_graph::DependentValueGraph,
+    },
     job::{
         consumer::{
-            JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
-            JobConsumerResult, JobInfo,
+            JobCompletionState,
+            JobConsumer,
+            JobConsumerError,
+            JobConsumerMetadata,
+            JobConsumerResult,
+            JobInfo,
         },
-        producer::{JobProducer, JobProducerResult},
+        producer::{
+            JobProducer,
+            JobProducerResult,
+        },
     },
     prop::PropError,
-    status::{StatusMessageState, StatusUpdate, StatusUpdateError},
+    status::{
+        StatusMessageState,
+        StatusUpdate,
+        StatusUpdateError,
+    },
     workspace_snapshot::DependentValueRoot,
 };
 
@@ -612,11 +650,25 @@ pub mod audit_log {
     use thiserror::Error;
 
     use crate::{
-        AttributeValue, AttributeValueId, Component, ComponentError, DalContext, Func, InputSocket,
-        OutputSocket, Prop, TransactionsError,
-        attribute::value::{AttributeValueError, ValueIsFor},
+        AttributeValue,
+        AttributeValueId,
+        Component,
+        ComponentError,
+        DalContext,
+        Func,
+        InputSocket,
+        OutputSocket,
+        Prop,
+        TransactionsError,
+        attribute::value::{
+            AttributeValueError,
+            ValueIsFor,
+        },
         prop::PropError,
-        socket::{input::InputSocketError, output::OutputSocketError},
+        socket::{
+            input::InputSocketError,
+            output::OutputSocketError,
+        },
     };
 
     #[remain::sorted]

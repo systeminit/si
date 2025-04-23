@@ -13,32 +13,71 @@ use std::sync::Arc;
 
 use content_node_weight::ContentNodeWeight;
 use petgraph::Direction;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::ulid::Ulid;
 use si_layer_cache::LayerDbError;
-use strum::{AsRefStr, Display, EnumDiscriminants};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumDiscriminants,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::AttributePrototypeArgument;
-use crate::attribute::prototype::argument::value_source::ValueSource;
-use crate::attribute::value::AttributeValueError;
-use crate::change_set::ChangeSetError;
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::layer_db_types::{AttributePrototypeContent, AttributePrototypeContentV1};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
-use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::{
-    NodeWeight, NodeWeightDiscriminants, NodeWeightError, content_node_weight, traits::SiNodeWeight,
-};
 use crate::{
-    AttributeValue, AttributeValueId, ComponentId, DalContext, FuncId, HelperError, InputSocketId,
-    OutputSocketId, PropId, SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp,
-    TransactionsError, attribute::prototype::argument::AttributePrototypeArgumentId,
+    AttributeValue,
+    AttributeValueId,
+    ComponentId,
+    DalContext,
+    Func,
+    FuncError,
+    FuncId,
+    HelperError,
+    InputSocketId,
+    OutputSocketId,
+    PropId,
+    SchemaVariant,
+    SchemaVariantError,
+    SchemaVariantId,
+    Timestamp,
+    TransactionsError,
+    attribute::{
+        prototype::argument::{
+            AttributePrototypeArgument,
+            AttributePrototypeArgumentId,
+            value_source::ValueSource,
+        },
+        value::AttributeValueError,
+    },
+    change_set::ChangeSetError,
+    func::intrinsics::IntrinsicFunc,
     implement_add_edge_to,
+    layer_db_types::{
+        AttributePrototypeContent,
+        AttributePrototypeContentV1,
+    },
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
+        edge_weight::{
+            EdgeWeightKind,
+            EdgeWeightKindDiscriminants,
+        },
+        node_weight::{
+            NodeWeight,
+            NodeWeightDiscriminants,
+            NodeWeightError,
+            content_node_weight,
+            traits::SiNodeWeight,
+        },
+    },
 };
-use crate::{Func, FuncError};
 
 pub mod argument;
 pub mod debug;

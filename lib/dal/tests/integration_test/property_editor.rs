@@ -1,14 +1,23 @@
-use dal::property_editor::schema::PropertyEditorSchema;
-use dal::property_editor::values::PropertyEditorValues;
-use dal::{AttributeValue, DalContext, Schema, SchemaVariant};
-use dal_test::helpers::{
-    ChangeSetTestHelpers, create_component_for_schema_variant_on_default_view,
+use dal::{
+    AttributeValue,
+    DalContext,
+    Schema,
+    SchemaVariant,
+    property_editor::{
+        schema::PropertyEditorSchema,
+        values::PropertyEditorValues,
+    },
 };
-use dal_test::helpers::{
-    PropEditorTestView, connect_components_with_socket_names,
-    create_component_for_default_schema_name_in_default_view,
+use dal_test::{
+    helpers::{
+        ChangeSetTestHelpers,
+        PropEditorTestView,
+        connect_components_with_socket_names,
+        create_component_for_default_schema_name_in_default_view,
+        create_component_for_schema_variant_on_default_view,
+    },
+    test,
 };
-use dal_test::test;
 use serde_json::json;
 
 #[test]

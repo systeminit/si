@@ -1,9 +1,21 @@
-use dal::schema::variant::root_prop::RootPropChild;
 use dal::{
-    ComponentType, DalContext, Func, Prop, Schema,
-    schema::{SchemaVariant, variant::leaves::LeafKind},
+    ComponentType,
+    DalContext,
+    Func,
+    Prop,
+    Schema,
+    schema::{
+        SchemaVariant,
+        variant::{
+            leaves::LeafKind,
+            root_prop::RootPropChild,
+        },
+    },
 };
-use dal_test::{helpers::create_schema, test};
+use dal_test::{
+    helpers::create_schema,
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 
 mod authoring;

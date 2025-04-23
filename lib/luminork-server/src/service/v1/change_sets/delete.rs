@@ -6,9 +6,10 @@ use serde_json::json;
 use si_events::audit_log::AuditLogKind;
 use utoipa::ToSchema;
 
-use crate::extract::PosthogEventTracker;
-
-use crate::service::v1::ChangeSetError;
+use crate::{
+    extract::PosthogEventTracker,
+    service::v1::ChangeSetError,
+};
 
 #[utoipa::path(
     delete,

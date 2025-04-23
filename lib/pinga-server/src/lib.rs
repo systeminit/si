@@ -5,14 +5,26 @@ pub mod server;
 
 use std::io;
 
-use dal::{DedicatedExecutorInitializeError, InitializationError, TransactionsError};
-use si_data_nats::{NatsError, async_nats};
+use dal::{
+    DedicatedExecutorInitializeError,
+    InitializationError,
+    TransactionsError,
+};
+use si_data_nats::{
+    NatsError,
+    async_nats,
+};
 use si_data_pg::PgPoolError;
 use thiserror::Error;
 
 pub use crate::{
     config::{
-        Config, ConfigBuilder, ConfigError, ConfigFile, StandardConfig, StandardConfigFile,
+        Config,
+        ConfigBuilder,
+        ConfigError,
+        ConfigFile,
+        StandardConfig,
+        StandardConfigFile,
         detect_and_configure_development,
     },
     server::Server,

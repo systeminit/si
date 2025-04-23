@@ -1,9 +1,15 @@
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use thiserror::Error;
 use ulid::Ulid;
 
-use super::consumer::{JobConsumerMetadata, JobInfo};
+use super::consumer::{
+    JobConsumerMetadata,
+    JobInfo,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]

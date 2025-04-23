@@ -4,10 +4,13 @@ use petgraph::prelude::*;
 use si_id::ComponentId;
 
 use crate::{
-    EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
+    EdgeWeightKindDiscriminants,
+    NodeWeightDiscriminants,
     diagram::view::ViewId,
     workspace_snapshot::graph::{
-        WorkspaceSnapshotGraphError, WorkspaceSnapshotGraphResult, WorkspaceSnapshotGraphV4,
+        WorkspaceSnapshotGraphError,
+        WorkspaceSnapshotGraphResult,
+        WorkspaceSnapshotGraphV4,
         traits::diagram::view::ViewExt,
     },
 };

@@ -1,28 +1,55 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{
+        HashMap,
+        HashSet,
+    },
     sync::Arc,
     time::Duration,
 };
 
-use chrono::{DateTime, Utc};
+use chrono::{
+    DateTime,
+    Utc,
+};
 use itertools::Itertools;
+use module_index_client::{
+    ModuleDetailsResponse,
+    ModuleIndexClient,
+    ModuleIndexClientError,
+};
 use postgres_types::ToSql;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_data_pg::{
+    PgError,
+    PgRow,
+};
+pub use si_id::CachedModuleId;
 use si_id::UserPk;
+use si_pkg::{
+    SiPkg,
+    SiPkgError,
+    SiPkgSchemaData,
+    SiPkgSchemaVariantData,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinSet;
 use ulid::Ulid;
 
 use crate::{
-    ComponentType, DalContext, HistoryActor, SchemaId, TransactionsError,
-    slow_rt::{self, SlowRuntimeError},
+    ComponentType,
+    DalContext,
+    HistoryActor,
+    SchemaId,
+    TransactionsError,
+    slow_rt::{
+        self,
+        SlowRuntimeError,
+    },
 };
-use module_index_client::{ModuleDetailsResponse, ModuleIndexClient, ModuleIndexClientError};
-use si_data_pg::{PgError, PgRow};
-use si_pkg::{SiPkg, SiPkgError, SiPkgSchemaData, SiPkgSchemaVariantData};
-
-pub use si_id::CachedModuleId;
 
 const PLACEHOLDER_OWNER_USER_ID: &str = "-";
 

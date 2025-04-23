@@ -1,32 +1,72 @@
+use std::{
+    collections::HashMap,
+    result,
+    str::Utf8Error,
+    sync::Arc,
+    time::Duration,
+};
+
 use chrono::Utc;
 use futures::StreamExt;
+pub use kill::process_kill_request;
 use naxum::{
     Message,
-    extract::{State, message_parts::Headers},
-    response::{IntoResponse, Response},
+    extract::{
+        State,
+        message_parts::Headers,
+    },
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
-use serde::{Serialize, de::DeserializeOwned};
-use si_data_nats::{HeaderMap, InnerMessage, Subject};
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
+use si_data_nats::{
+    HeaderMap,
+    InnerMessage,
+    Subject,
+};
 // seems strange to get these cyclone_core types from si_pool_noodle?
 use si_pool_noodle::{
-    ActionRunResultSuccess, CycloneClient, CycloneRequest, CycloneRequestable, ExecutionError,
-    FunctionResultFailure, FunctionResultFailureError, ManagementResultSuccess, ProgressMessage,
-    ResolverFunctionResultSuccess, SchemaVariantDefinitionResultSuccess, SensitiveStrings,
-    ValidationResultSuccess, errors::PoolNoodleError,
+    ActionRunResultSuccess,
+    CycloneClient,
+    CycloneRequest,
+    CycloneRequestable,
+    ExecutionError,
+    FunctionResultFailure,
+    FunctionResultFailureError,
+    ManagementResultSuccess,
+    ProgressMessage,
+    ResolverFunctionResultSuccess,
+    SchemaVariantDefinitionResultSuccess,
+    SensitiveStrings,
+    ValidationResultSuccess,
+    errors::PoolNoodleError,
 };
-use std::{collections::HashMap, result, str::Utf8Error, sync::Arc, time::Duration};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use thiserror::Error;
-use tokio::sync::{Mutex, oneshot};
+use tokio::sync::{
+    Mutex,
+    oneshot,
+};
 use veritech_core::{
-    ExecutionId, REPLY_INBOX_HEADER_NAME, VeritechRequest, VeritechRequestError,
+    ExecutionId,
+    REPLY_INBOX_HEADER_NAME,
+    VeritechRequest,
+    VeritechRequestError,
     VeritechValueDecryptError,
 };
 
-use crate::{Publisher, PublisherError, app_state::AppState, request::DecryptRequest};
-
-pub use kill::process_kill_request;
+use crate::{
+    Publisher,
+    PublisherError,
+    app_state::AppState,
+    request::DecryptRequest,
+};
 
 mod kill;
 

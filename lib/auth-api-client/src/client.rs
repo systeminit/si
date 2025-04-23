@@ -1,10 +1,22 @@
-use crate::types::{
-    AuthApiClientError, AuthApiResult, GetAuthTokenResponse, StatusResponse, WhoamiResponse,
-};
 use reqwest::IntoUrl;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use si_id::{AuthTokenId, WorkspacePk};
+use serde::{
+    Deserialize,
+    Serialize,
+    de::DeserializeOwned,
+};
+use si_id::{
+    AuthTokenId,
+    WorkspacePk,
+};
 use url::Url;
+
+use crate::types::{
+    AuthApiClientError,
+    AuthApiResult,
+    GetAuthTokenResponse,
+    StatusResponse,
+    WhoamiResponse,
+};
 
 #[derive(Debug, Clone)]
 pub struct AuthApiClient {

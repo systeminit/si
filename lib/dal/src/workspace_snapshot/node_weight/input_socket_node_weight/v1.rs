@@ -1,20 +1,46 @@
 use std::sync::Arc;
 
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 
-use super::{InputSocketNodeWeight, InputSocketNodeWeightError, InputSocketNodeWeightResult};
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV3;
+use super::{
+    InputSocketNodeWeight,
+    InputSocketNodeWeightError,
+    InputSocketNodeWeightResult,
+};
 use crate::{
-    DalContext, EdgeWeightKindDiscriminants, SocketArity, Timestamp,
-    layer_db_types::{InputSocketContent, InputSocketContentV2},
+    DalContext,
+    EdgeWeightKindDiscriminants,
+    SocketArity,
+    Timestamp,
+    layer_db_types::{
+        InputSocketContent,
+        InputSocketContentV2,
+    },
     workspace_snapshot::{
         ContentAddressDiscriminants,
         content_address::ContentAddress,
-        graph::LineageId,
+        graph::{
+            LineageId,
+            WorkspaceSnapshotGraphV3,
+        },
         node_weight::{
-            ContentNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
-            traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
+            ContentNodeWeight,
+            NodeWeight,
+            NodeWeightDiscriminants,
+            NodeWeightError,
+            traits::{
+                CorrectExclusiveOutgoingEdge,
+                CorrectTransforms,
+                SiNodeWeight,
+            },
         },
     },
 };

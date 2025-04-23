@@ -1,9 +1,24 @@
-use json_patch::jsonptr::{Assign, Pointer};
-use json_patch::{Patch, PatchOperation};
+use std::{
+    collections::{
+        HashMap,
+        HashSet,
+    },
+    fmt,
+    fmt::{
+        Display,
+        Formatter,
+    },
+};
+
+use json_patch::{
+    Patch,
+    PatchOperation,
+    jsonptr::{
+        Assign,
+        Pointer,
+    },
+};
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
-use std::fmt;
-use std::fmt::{Display, Formatter};
 
 enum PatchTarget {
     Socket(String),

@@ -3,9 +3,15 @@ use std::fmt::Display;
 use axum::{
     Json,
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
-use serde::{Serialize, Serializer};
+use serde::{
+    Serialize,
+    Serializer,
+};
 use telemetry::prelude::*;
 use tracing_tunnel::TracingLevel;
 

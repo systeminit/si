@@ -1,31 +1,64 @@
+use std::{
+    collections::VecDeque,
+    sync::Arc,
+};
+
 use itertools::join;
 use joi_validator::Validator;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use si_events::FuncRunState;
 use si_layer_cache::LayerDbError;
-use std::collections::VecDeque;
-use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::value::AttributeValueError;
-use crate::func::backend::validation::ValidationRunResult;
-use crate::func::runner::{FuncRunner, FuncRunnerError};
-use crate::layer_db_types::{ValidationContent, ValidationContentV1};
-use crate::prop::PropError;
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
-use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
-};
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
 use crate::{
-    AttributeValue, AttributeValueId, ChangeSetError, Component, ComponentId, FuncError,
-    HistoryEventError, Timestamp, schema::variant::SchemaVariantError,
+    AttributeValue,
+    AttributeValueId,
+    ChangeSetError,
+    Component,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    FuncError,
+    HistoryEventError,
+    Timestamp,
+    TransactionsError,
+    attribute::value::AttributeValueError,
+    func::{
+        backend::validation::ValidationRunResult,
+        runner::{
+            FuncRunner,
+            FuncRunnerError,
+        },
+    },
+    layer_db_types::{
+        ValidationContent,
+        ValidationContentV1,
+    },
+    prop::PropError,
+    schema::variant::SchemaVariantError,
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
+        edge_weight::{
+            EdgeWeight,
+            EdgeWeightKind,
+            EdgeWeightKindDiscriminants,
+        },
+        node_weight::{
+            NodeWeight,
+            NodeWeightError,
+        },
+    },
 };
-use crate::{ComponentError, DalContext, TransactionsError};
 
 #[allow(clippy::large_enum_variant)]
 #[remain::sorted]

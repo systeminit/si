@@ -1,10 +1,27 @@
-use dal::{Component, DalContext, FuncId, OutputSocketId, SchemaVariantId};
-use dal::{ComponentId, ComponentType, InputSocket, OutputSocket};
-use dal_test::Result;
-use dal_test::expected::{ExpectComponent, ExpectFunc, ExpectSchemaVariant};
-use dal_test::helpers::{
-    ChangeSetTestHelpers, create_component_for_schema_variant_on_default_view,
-    get_attribute_value_for_component, update_attribute_value_for_component,
+use dal::{
+    Component,
+    ComponentId,
+    ComponentType,
+    DalContext,
+    FuncId,
+    InputSocket,
+    OutputSocket,
+    OutputSocketId,
+    SchemaVariantId,
+};
+use dal_test::{
+    Result,
+    expected::{
+        ExpectComponent,
+        ExpectFunc,
+        ExpectSchemaVariant,
+    },
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_schema_variant_on_default_view,
+        get_attribute_value_for_component,
+        update_attribute_value_for_component,
+    },
 };
 use serde_json::Value;
 use si_frontend_types::RawGeometry;

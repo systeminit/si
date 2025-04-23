@@ -1,5 +1,14 @@
-use dal::{Component, ComponentId, InputSocket, OutputSocket, SchemaVariantId};
-use serde::{Deserialize, Serialize};
+use dal::{
+    Component,
+    ComponentId,
+    InputSocket,
+    OutputSocket,
+    SchemaVariantId,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use utoipa::ToSchema;
 
 use super::ComponentsError;

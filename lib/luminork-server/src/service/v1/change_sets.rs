@@ -1,7 +1,10 @@
 use axum::{
     extract::rejection::JsonRejection,
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use thiserror::Error;
 

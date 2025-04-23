@@ -1,37 +1,62 @@
-use std::time::Duration;
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::Arc,
+    time::Duration,
+};
 
 use futures::StreamExt;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+pub use si_data_nats::async_nats::jetstream::AckKind;
 use si_data_nats::{
-    async_nats::jetstream::{self, Message, consumer::pull::Stream},
+    async_nats::jetstream::{
+        self,
+        Message,
+        consumer::pull::Stream,
+    },
     jetstream::Context,
 };
 use strum::EnumDiscriminants;
+use telemetry::prelude::*;
 use tokio::sync::{
     Mutex,
-    broadcast::{self, error::SendError},
-    mpsc::{UnboundedReceiver, UnboundedSender},
+    broadcast::{
+        self,
+        error::SendError,
+    },
+    mpsc::{
+        UnboundedReceiver,
+        UnboundedSender,
+    },
 };
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 use ulid::Ulid;
 
+use self::{
+    rebase::{
+        RebaseFinished,
+        RebaseRequest,
+    },
+    test::{
+        IntegrationTest,
+        IntegrationTestAlt,
+    },
+};
 use crate::{
     LayerDbError,
     db::serialize,
     error::LayerDbResult,
     event::LayeredEventMetadata,
-    nats::{self, subject},
+    nats::{
+        self,
+        subject,
+    },
 };
-
-use self::{
-    rebase::{RebaseFinished, RebaseRequest},
-    test::{IntegrationTest, IntegrationTestAlt},
-};
-
-use telemetry::prelude::*;
-
-pub use si_data_nats::async_nats::jetstream::AckKind;
 
 pub mod rebase;
 pub mod test;

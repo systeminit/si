@@ -1,17 +1,45 @@
-use dal::action::prototype::ActionKind;
-use dal::func::argument::FuncArgumentKind;
-use dal::func::intrinsics::IntrinsicFunc;
-use dal::pkg::{ImportOptions, import_pkg_from_pkg};
-use dal::prop::PropPath;
-use dal::{BuiltinsResult, DalContext, PropKind, SchemaId};
-use si_pkg::{
-    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, FuncArgumentSpec, FuncSpec,
-    FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, PkgSpec, PropSpec, SchemaSpec,
-    SchemaVariantSpec, SchemaVariantSpecData, SiPkg, SocketSpec, SocketSpecData, SocketSpecKind,
+use dal::{
+    BuiltinsResult,
+    DalContext,
+    PropKind,
+    SchemaId,
+    action::prototype::ActionKind,
+    func::{
+        argument::FuncArgumentKind,
+        intrinsics::IntrinsicFunc,
+    },
+    pkg::{
+        ImportOptions,
+        import_pkg_from_pkg,
+    },
+    prop::PropPath,
 };
-use si_pkg::{SchemaSpecData, SocketSpecArity};
+use si_pkg::{
+    ActionFuncSpec,
+    AttrFuncInputSpec,
+    AttrFuncInputSpecKind,
+    FuncArgumentSpec,
+    FuncSpec,
+    FuncSpecBackendKind,
+    FuncSpecBackendResponseType,
+    FuncSpecData,
+    PkgSpec,
+    PropSpec,
+    SchemaSpec,
+    SchemaSpecData,
+    SchemaVariantSpec,
+    SchemaVariantSpecData,
+    SiPkg,
+    SocketSpec,
+    SocketSpecArity,
+    SocketSpecData,
+    SocketSpecKind,
+};
 
-use crate::test_exclusive_schemas::{PKG_CREATED_BY, PKG_VERSION};
+use crate::test_exclusive_schemas::{
+    PKG_CREATED_BY,
+    PKG_VERSION,
+};
 
 pub(crate) async fn migrate_test_exclusive_schema_starfield(
     ctx: &DalContext,

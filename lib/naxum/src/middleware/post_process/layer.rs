@@ -1,6 +1,10 @@
 use tower::Layer;
 
-use super::{DefaultOnFailure, DefaultOnSuccess, PostProcess};
+use super::{
+    DefaultOnFailure,
+    DefaultOnSuccess,
+    PostProcess,
+};
 
 pub struct PostProcessLayer<OnSuccess = DefaultOnSuccess, OnFailure = DefaultOnFailure> {
     pub(crate) on_success: OnSuccess,

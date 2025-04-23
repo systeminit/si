@@ -1,5 +1,10 @@
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{ChangeSet, DalContext, Schema, SchemaVariant};
+use dal::{
+    ChangeSet,
+    DalContext,
+    Schema,
+    SchemaVariant,
+    schema::variant::authoring::VariantAuthoringClient,
+};
 use dal_test::test;
 
 #[test]

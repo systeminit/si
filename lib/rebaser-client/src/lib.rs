@@ -1,32 +1,61 @@
 use std::result;
 
-use futures::{StreamExt as _, future::BoxFuture};
-use pending_events::{PendingEventsError, PendingEventsStream};
+use futures::{
+    StreamExt as _,
+    future::BoxFuture,
+};
+use pending_events::{
+    PendingEventsError,
+    PendingEventsStream,
+};
+pub use rebaser_core::{
+    api_types,
+    api_types::RequestId,
+};
 use rebaser_core::{
-    api_types::HeaderMapParseMessageInfoError,
     api_types::{
-        ApiVersionsWrapper, ApiWrapper, ContentInfo, DeserializeError, SerializeError, UpgradeError,
-    },
-    api_types::{
-        enqueue_updates_request::{EnqueueUpdatesRequest, EnqueueUpdatesRequestVCurrent},
+        ApiVersionsWrapper,
+        ApiWrapper,
+        ContentInfo,
+        DeserializeError,
+        HeaderMapParseMessageInfoError,
+        SerializeError,
+        UpgradeError,
+        enqueue_updates_request::{
+            EnqueueUpdatesRequest,
+            EnqueueUpdatesRequestVCurrent,
+        },
         enqueue_updates_response::EnqueueUpdatesResponse,
     },
-    nats::{self, NATS_HEADER_REPLY_INBOX_NAME},
+    nats::{
+        self,
+        NATS_HEADER_REPLY_INBOX_NAME,
+    },
 };
 use si_data_nats::{
-    HeaderMap, Message, NatsClient, Subject,
-    async_nats::{self, jetstream::context::PublishError},
+    HeaderMap,
+    Message,
+    NatsClient,
+    Subject,
+    async_nats::{
+        self,
+        jetstream::context::PublishError,
+    },
     header,
-    jetstream::{self, Context},
+    jetstream::{
+        self,
+        Context,
+    },
 };
 use si_events::{
-    ChangeSetId, EventSessionId, WorkspacePk, rebase_batch_address::RebaseBatchAddress,
+    ChangeSetId,
+    EventSessionId,
+    WorkspacePk,
+    rebase_batch_address::RebaseBatchAddress,
 };
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;
-
-pub use rebaser_core::{api_types, api_types::RequestId};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

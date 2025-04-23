@@ -1,26 +1,49 @@
 use std::collections::HashSet;
 
 use dal::{
-    AttributeValue, Component, ComponentId, DalContext, SchemaId,
+    AttributeValue,
+    Component,
+    ComponentId,
+    DalContext,
+    SchemaId,
     component::resource::ResourceData,
-    diagram::{geometry::Geometry, view::View},
+    diagram::{
+        geometry::Geometry,
+        view::View,
+    },
     management::{
-        ManagementFuncReturn, ManagementGeometry, ManagementOperator,
-        prototype::{ManagementPrototype, ManagementPrototypeError, ManagementPrototypeExecution},
+        ManagementFuncReturn,
+        ManagementGeometry,
+        ManagementOperator,
+        prototype::{
+            ManagementPrototype,
+            ManagementPrototypeError,
+            ManagementPrototypeExecution,
+        },
     },
 };
 use dal_test::{
-    Result, SCHEMA_ID_SMALL_EVEN_LEGO,
-    helpers::create_component_for_default_schema_name_in_default_view, test,
-};
-use dal_test::{
-    expected::{ExpectComponent, ExpectComponentInputSocket, ExpectSchemaVariant, ExpectView},
-    helpers::ChangeSetTestHelpers,
+    Result,
+    SCHEMA_ID_SMALL_EVEN_LEGO,
+    expected::{
+        ExpectComponent,
+        ExpectComponentInputSocket,
+        ExpectSchemaVariant,
+        ExpectView,
+    },
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_default_schema_name_in_default_view,
+    },
+    test,
 };
 use serde_json::json;
 use si_frontend_types::RawGeometry;
 use si_id::ViewId;
-use veritech_client::{ManagementFuncStatus, ResourceStatus};
+use veritech_client::{
+    ManagementFuncStatus,
+    ResourceStatus,
+};
 
 pub mod generator;
 
@@ -1475,10 +1498,17 @@ async fn component_incoming_connections_inferred_from_parent(ctx: DalContext) ->
 }
 
 pub mod connection_test {
-    use dal::{ComponentType, DalContext};
+    use dal::{
+        ComponentType,
+        DalContext,
+    };
     use dal_test::{
         Result,
-        expected::{ExpectComponent, ExpectFunc, ExpectSchemaVariant},
+        expected::{
+            ExpectComponent,
+            ExpectFunc,
+            ExpectSchemaVariant,
+        },
         helpers::ChangeSetTestHelpers,
     };
     use serde_json::Value;

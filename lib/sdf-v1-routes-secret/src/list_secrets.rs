@@ -1,11 +1,28 @@
 use std::collections::HashMap;
 
-use axum::{Json, extract::Query};
-use dal::{Secret, SecretDefinitionView, SecretView, Visibility};
-use serde::{Deserialize, Serialize};
+use axum::{
+    Json,
+    extract::Query,
+};
+use dal::{
+    Secret,
+    SecretDefinitionView,
+    SecretView,
+    Visibility,
+};
+use sdf_extract::{
+    HandlerContext,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::{SecretError, SecretResult};
-use sdf_extract::{HandlerContext, v1::AccessBuilder};
+use crate::{
+    SecretError,
+    SecretResult,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

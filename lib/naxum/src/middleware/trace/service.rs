@@ -1,20 +1,32 @@
 use std::{
     fmt,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
     time::Instant,
 };
 
 use tower::Service;
 
+use super::{
+    DefaultMakeSpan,
+    DefaultOnRequest,
+    DefaultOnResponse,
+    ResponseBody,
+    TraceLayer,
+    future::ResponseFuture,
+    make_span::MakeSpan,
+    on_request::OnRequest,
+    on_response::OnResponse,
+};
 use crate::{
     body::inner,
-    message::{Message, MessageHead},
+    message::{
+        Message,
+        MessageHead,
+    },
     response::Response,
-};
-
-use super::{
-    DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, ResponseBody, TraceLayer,
-    future::ResponseFuture, make_span::MakeSpan, on_request::OnRequest, on_response::OnResponse,
 };
 
 #[derive(Clone, Copy, Debug)]

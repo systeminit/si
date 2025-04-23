@@ -1,9 +1,16 @@
 use std::{
     convert::Infallible,
     fmt,
-    future::{Future, Ready, ready},
+    future::{
+        Future,
+        Ready,
+        ready,
+    },
     pin::Pin,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
 };
 
 use pin_project_lite::pin_project;

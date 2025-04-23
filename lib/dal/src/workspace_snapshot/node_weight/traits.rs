@@ -1,14 +1,25 @@
-use crate::{
-    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent,
-    workspace_snapshot::{
-        NodeInformation,
-        graph::{WorkspaceSnapshotGraphError, detector::Update},
-    },
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
 };
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 use thiserror::Error;
 
-use super::{NodeWeightDiscriminants, NodeWeightError};
+use super::{
+    NodeWeightDiscriminants,
+    NodeWeightError,
+};
+use crate::{
+    EdgeWeightKindDiscriminants,
+    WorkspaceSnapshotGraphVCurrent,
+    workspace_snapshot::{
+        NodeInformation,
+        graph::{
+            WorkspaceSnapshotGraphError,
+            detector::Update,
+        },
+    },
+};
 
 pub mod correct_exclusive_outgoing_edge;
 

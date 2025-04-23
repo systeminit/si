@@ -1,6 +1,17 @@
-use axum::{Json, Router, response::IntoResponse, routing::get};
-use dal::{UserPk, WorkspacePk};
-use serde::{Deserialize, Serialize};
+use axum::{
+    Json,
+    Router,
+    response::IntoResponse,
+    routing::get,
+};
+use dal::{
+    UserPk,
+    WorkspacePk,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_jwt_public_key::SiJwt;
 use utoipa::ToSchema;
 
@@ -9,7 +20,9 @@ use crate::{
     extract::{
         request::ValidatedToken,
         workspace::{
-            AuthorizedForAutomationRole, TargetWorkspaceIdFromToken, WorkspaceAuthorization,
+            AuthorizedForAutomationRole,
+            TargetWorkspaceIdFromToken,
+            WorkspaceAuthorization,
         },
     },
 };

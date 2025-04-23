@@ -1,35 +1,64 @@
 use std::{
     fmt,
-    marker::{PhantomData, Unpin},
+    marker::{
+        PhantomData,
+        Unpin,
+    },
     sync::Arc,
 };
 
 use axum::{
     extract::{
-        Extension, State, WebSocketUpgrade,
-        ws::{self, WebSocket},
+        Extension,
+        State,
+        WebSocketUpgrade,
+        ws::{
+            self,
+            WebSocket,
+        },
     },
     response::IntoResponse,
 };
 use cyclone_core::{
-    ActionRunRequest, ActionRunResultSuccess, CycloneRequestable, LivenessStatus,
-    ManagementRequest, ManagementResultSuccess, Message, ReadinessStatus, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, SchemaVariantDefinitionRequest,
-    SchemaVariantDefinitionResultSuccess, ValidationRequest, ValidationResultSuccess,
+    ActionRunRequest,
+    ActionRunResultSuccess,
+    CycloneRequestable,
+    LivenessStatus,
+    ManagementRequest,
+    ManagementResultSuccess,
+    Message,
+    ReadinessStatus,
+    ResolverFunctionRequest,
+    ResolverFunctionResultSuccess,
+    SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess,
+    ValidationRequest,
+    ValidationResultSuccess,
 };
 use hyper::StatusCode;
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
 use telemetry::prelude::*;
 use telemetry_http::ParentSpan;
 
 use super::extract::LimitRequestGuard;
 use crate::{
-    execution::{self, Execution},
+    execution::{
+        self,
+        Execution,
+    },
     result::{
-        LangServerActionRunResultSuccess, LangServerResolverFunctionResultSuccess,
+        LangServerActionRunResultSuccess,
+        LangServerResolverFunctionResultSuccess,
         LangServerValidationResultSuccess,
     },
-    state::{LangServerChild, LangServerProcessTimeout, WatchKeepalive},
+    state::{
+        LangServerChild,
+        LangServerProcessTimeout,
+        WatchKeepalive,
+    },
     watch,
 };
 

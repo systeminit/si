@@ -1,10 +1,16 @@
-use dal::ComponentType;
-use dal::component::frame::Frame;
-use dal::{AttributeValue, DalContext};
-use dal_test::helpers::{
-    ChangeSetTestHelpers, create_component_for_schema_name_with_type_on_default_view,
+use dal::{
+    AttributeValue,
+    ComponentType,
+    DalContext,
+    component::frame::Frame,
 };
-use dal_test::test;
+use dal_test::{
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_schema_name_with_type_on_default_view,
+    },
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]

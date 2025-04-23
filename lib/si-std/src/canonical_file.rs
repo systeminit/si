@@ -1,12 +1,22 @@
 use std::{
     borrow::Cow,
-    ffi::{OsStr, OsString},
-    fmt, io,
-    path::{Path, PathBuf},
+    ffi::{
+        OsStr,
+        OsString,
+    },
+    fmt,
+    io,
+    path::{
+        Path,
+        PathBuf,
+    },
     str::FromStr,
 };
 
-use serde_with::{DeserializeFromStr, SerializeDisplay};
+use serde_with::{
+    DeserializeFromStr,
+    SerializeDisplay,
+};
 use thiserror::Error;
 
 #[remain::sorted]
@@ -178,8 +188,9 @@ pub fn safe_canonically_join(
 #[allow(clippy::panic_in_result_fn)]
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::env;
+
+    use super::*;
 
     // TODO(fnichol): we need to de-CARGO_MANIFEST_DIR this test--better to make a fixture-style
     // directory setup and test that. With Buck2 it's harder to guarentee where we are and if

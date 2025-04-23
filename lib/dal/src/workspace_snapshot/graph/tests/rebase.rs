@@ -2,16 +2,28 @@
 #[cfg(test)]
 mod test {
     use pretty_assertions_sorted::assert_eq;
-    use si_events::ContentHash;
-    use si_events::ulid::Ulid;
+    use si_events::{
+        ContentHash,
+        ulid::Ulid,
+    };
 
-    use crate::WorkspaceSnapshotGraphVCurrent;
-    use crate::func::FuncKind;
-    use crate::workspace_snapshot::content_address::ContentAddress;
-    use crate::workspace_snapshot::edge_weight::{EdgeWeight, EdgeWeightKind};
-    use crate::workspace_snapshot::node_weight::NodeWeight;
-    use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-    use crate::workspace_snapshot::node_weight::{ContentNodeWeight, FuncNodeWeight};
+    use crate::{
+        WorkspaceSnapshotGraphVCurrent,
+        func::FuncKind,
+        workspace_snapshot::{
+            content_address::ContentAddress,
+            edge_weight::{
+                EdgeWeight,
+                EdgeWeightKind,
+            },
+            node_weight::{
+                ContentNodeWeight,
+                FuncNodeWeight,
+                NodeWeight,
+                category_node_weight::CategoryNodeKind,
+            },
+        },
+    };
 
     #[test]
     fn simulate_rebase() {

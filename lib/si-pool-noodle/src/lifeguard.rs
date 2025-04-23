@@ -1,18 +1,21 @@
-use crate::task::PoolNoodleTask;
-use crate::task::PoolNoodleTaskType;
-use tokio::sync::mpsc::Sender;
-use tracing::info;
-use tracing::warn;
-
 use std::fmt::Display;
 
-use crate::Spec;
-
-use crate::Instance;
-
 use telemetry_utils::metric;
+use tokio::sync::mpsc::Sender;
+use tracing::{
+    debug,
+    info,
+    warn,
+};
 
-use tracing::debug;
+use crate::{
+    Instance,
+    Spec,
+    task::{
+        PoolNoodleTask,
+        PoolNoodleTaskType,
+    },
+};
 
 /// LifeGuard is a wrapper for instances that come from the pool.
 /// It is carries a Sender and implements Drop. When an instance goes out of

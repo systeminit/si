@@ -1,23 +1,44 @@
 use std::collections::HashSet;
 
-use dal::attribute::prototype::AttributePrototypeEventualParent;
-use dal::diagram::Diagram;
-use dal::func::authoring::FuncAuthoringClient;
-use dal::func::binding::{EventualParent, FuncBinding};
-use dal::prop::PropPath;
-use dal::qualification::QualificationSubCheckStatus;
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use dal::{
-    AttributePrototype, AttributePrototypeId, Component, ComponentType, DalContext, Func, Prop,
-    Schema, SchemaVariant, SchemaVariantId,
+    AttributePrototype,
+    AttributePrototypeId,
+    Component,
+    ComponentType,
+    DalContext,
+    Func,
+    Prop,
+    Schema,
+    SchemaVariant,
+    SchemaVariantId,
+    attribute::prototype::AttributePrototypeEventualParent,
+    diagram::Diagram,
+    func::{
+        authoring::FuncAuthoringClient,
+        binding::{
+            EventualParent,
+            FuncBinding,
+        },
+    },
+    prop::PropPath,
+    qualification::QualificationSubCheckStatus,
+    schema::variant::{
+        authoring::VariantAuthoringClient,
+        leaves::{
+            LeafInputLocation,
+            LeafKind,
+        },
+    },
 };
-use dal_test::expected::commit_and_update_snapshot_to_visibility;
-use dal_test::helpers::{
-    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view,
-    create_component_for_unlocked_schema_name_on_default_view,
+use dal_test::{
+    expected::commit_and_update_snapshot_to_visibility,
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_default_schema_name_in_default_view,
+        create_component_for_unlocked_schema_name_on_default_view,
+    },
+    test,
 };
-use dal_test::test;
 
 #[test]
 async fn update_variant(ctx: &mut DalContext) {

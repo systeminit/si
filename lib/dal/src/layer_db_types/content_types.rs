@@ -1,21 +1,47 @@
 use std::collections::HashSet;
 
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use si_events::ulid::Ulid;
-use si_events::{CasValue, ContentHash};
+use chrono::{
+    DateTime,
+    Utc,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    CasValue,
+    ContentHash,
+    ulid::Ulid,
+};
 use strum::EnumDiscriminants;
 use thiserror::Error;
 
-use crate::action::prototype::ActionKind;
-use crate::approval_requirement::ApprovalRequirementApprover;
-use crate::validation::ValidationStatus;
 use crate::{
-    ActionPrototypeId, ComponentId, ComponentType, DalContext, FuncBackendKind,
-    FuncBackendResponseType, FuncId, PropId, PropKind, SchemaVariant, SchemaVariantId, SocketArity,
-    SocketKind, Timestamp, UserPk, action::ActionCompletionStatus,
-    func::argument::FuncArgumentKind, prop::WidgetOptions, property_editor::schema::WidgetKind,
+    ActionPrototypeId,
+    ComponentId,
+    ComponentType,
+    DalContext,
+    FuncBackendKind,
+    FuncBackendResponseType,
+    FuncId,
+    PropId,
+    PropKind,
+    SchemaVariant,
+    SchemaVariantId,
+    SocketArity,
+    SocketKind,
+    Timestamp,
+    UserPk,
+    action::{
+        ActionCompletionStatus,
+        prototype::ActionKind,
+    },
+    approval_requirement::ApprovalRequirementApprover,
+    func::argument::FuncArgumentKind,
+    prop::WidgetOptions,
+    property_editor::schema::WidgetKind,
     socket::connection_annotation::ConnectionAnnotation,
+    validation::ValidationStatus,
 };
 
 #[remain::sorted]

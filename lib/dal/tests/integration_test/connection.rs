@@ -1,14 +1,22 @@
-use dal::attribute::prototype::argument::AttributePrototypeArgument;
-use dal::diagram::Diagram;
 use dal::{
-    AttributeValue, Component, DalContext, InputSocket, OutputSocket, Schema, SchemaVariant,
+    AttributeValue,
+    Component,
+    DalContext,
+    InputSocket,
+    OutputSocket,
+    Schema,
+    SchemaVariant,
+    attribute::prototype::argument::AttributePrototypeArgument,
+    diagram::Diagram,
 };
-use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::helpers::{
-    create_component_for_default_schema_name_in_default_view,
-    create_named_component_for_schema_variant_on_default_view,
+use dal_test::{
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_default_schema_name_in_default_view,
+        create_named_component_for_schema_variant_on_default_view,
+    },
+    test,
 };
-use dal_test::test;
 use serde::Deserialize;
 
 #[test]

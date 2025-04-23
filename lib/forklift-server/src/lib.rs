@@ -28,8 +28,10 @@
 mod config;
 mod server;
 
-pub use config::Config;
-pub use config::ConfigError;
-pub use config::ConfigFile;
-pub use config::StandardConfigFile;
+pub use config::{
+    Config,
+    ConfigError,
+    ConfigFile,
+    StandardConfigFile,
+};
 pub use server::Server;

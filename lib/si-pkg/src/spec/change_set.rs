@@ -1,7 +1,20 @@
-use super::{ComponentSpec, EdgeSpec, FuncSpec, SchemaSpec, SpecError};
 use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
-use strum::{Display, EnumString};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use strum::{
+    Display,
+    EnumString,
+};
+
+use super::{
+    ComponentSpec,
+    EdgeSpec,
+    FuncSpec,
+    SchemaSpec,
+    SpecError,
+};
 
 #[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Display, EnumString, PartialEq, Eq, Clone, Copy)]

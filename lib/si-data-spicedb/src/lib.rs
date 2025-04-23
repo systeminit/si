@@ -7,16 +7,29 @@
 // )]
 // #![allow(clippy::missing_errors_doc)]
 
-use futures::TryStreamExt;
-use std::{io, net::ToSocketAddrs, result, sync::Arc};
+use std::{
+    io,
+    net::ToSocketAddrs,
+    result,
+    sync::Arc,
+};
 
-use serde::{Deserialize, Serialize};
+use futures::TryStreamExt;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_std::SensitiveString;
 use spicedb_client::{
-    SpicedbClient, builder::WriteRelationshipsRequestBuilder, types::ConsistencyRequirement,
+    SpicedbClient,
+    builder::WriteRelationshipsRequestBuilder,
+    types::ConsistencyRequirement,
 };
 use spicedb_grpc::authzed::api::v1::{
-    Consistency, LookupSubjectsRequest, ObjectReference, WriteRelationshipsRequest,
+    Consistency,
+    LookupSubjectsRequest,
+    ObjectReference,
+    WriteRelationshipsRequest,
     relationship_update::Operation,
 };
 use telemetry::prelude::*;
@@ -26,7 +39,12 @@ use url::Url;
 mod types;
 
 pub use types::{
-    Permission, ReadSchemaResponse, Relationship, Relationships, SpiceDBObject, ZedToken,
+    Permission,
+    ReadSchemaResponse,
+    Relationship,
+    Relationships,
+    SpiceDBObject,
+    ZedToken,
 };
 
 #[remain::sorted]

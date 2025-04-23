@@ -1,38 +1,69 @@
 use std::{
-    future::{Future, IntoFuture},
-    io, result,
+    future::{
+        Future,
+        IntoFuture,
+    },
+    io,
+    result,
     sync::Arc,
     time::Duration,
 };
 
 use dal::DalContextBuilder;
 use edda_client::EddaClient;
-use futures::{TryStreamExt, future::BoxFuture};
+use futures::{
+    TryStreamExt,
+    future::BoxFuture,
+};
 use naxum::{
-    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
+    MessageHead,
+    ServiceBuilder,
+    ServiceExt as _,
+    TowerServiceExt as _,
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
-        matched_subject::{ForSubject, MatchedSubjectLayer},
-        post_process::{self, PostProcessLayer},
+        matched_subject::{
+            ForSubject,
+            MatchedSubjectLayer,
+        },
+        post_process::{
+            self,
+            PostProcessLayer,
+        },
         trace::TraceLayer,
     },
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use si_data_nats::{
     NatsClient,
-    async_nats::jetstream::{self, consumer::push},
+    async_nats::jetstream::{
+        self,
+        consumer::push,
+    },
 };
-use si_events::{ChangeSetId, WorkspacePk};
+use si_events::{
+    ChangeSetId,
+    WorkspacePk,
+};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use thiserror::Error;
 use tokio::sync::Notify;
 use tokio_stream::StreamExt as _;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 
 use self::app_state::AppState;
-use crate::{Features, ServerMetadata};
+use crate::{
+    Features,
+    ServerMetadata,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -275,16 +306,29 @@ async fn graceful_shutdown_signal(
 mod handlers {
     use std::result;
 
-    use dal::{ChangeSet, Workspace, WorkspaceSnapshot, WsEvent, billing_publish};
+    use dal::{
+        ChangeSet,
+        Workspace,
+        WorkspaceSnapshot,
+        WsEvent,
+        billing_publish,
+    };
     use naxum::{
         extract::State,
-        response::{IntoResponse, Response},
+        response::{
+            IntoResponse,
+            Response,
+        },
     };
     use rebaser_core::api_types::{
-        ApiWrapper, ContentInfo, SerializeError,
+        ApiWrapper,
+        ContentInfo,
+        SerializeError,
         enqueue_updates_request::EnqueueUpdatesRequest,
         enqueue_updates_response::{
-            EnqueueUpdatesResponse, EnqueueUpdatesResponseVCurrent, v1::RebaseStatus,
+            EnqueueUpdatesResponse,
+            EnqueueUpdatesResponseVCurrent,
+            v1::RebaseStatus,
         },
     };
     use si_data_nats::HeaderMap;
@@ -293,12 +337,17 @@ mod handlers {
     use telemetry_utils::metric;
     use thiserror::Error;
 
-    use crate::{
-        extract::{ApiTypesNegotiate, HeaderReply},
-        rebase::{RebaseError, perform_rebase},
-    };
-
     use super::app_state::AppState;
+    use crate::{
+        extract::{
+            ApiTypesNegotiate,
+            HeaderReply,
+        },
+        rebase::{
+            RebaseError,
+            perform_rebase,
+        },
+    };
 
     #[remain::sorted]
     #[derive(Debug, Error)]
@@ -458,7 +507,10 @@ mod app_state {
     use dal::DalContextBuilder;
     use edda_client::EddaClient;
     use si_data_nats::NatsClient;
-    use si_events::{ChangeSetId, WorkspacePk};
+    use si_events::{
+        ChangeSetId,
+        WorkspacePk,
+    };
     use tokio::sync::Notify;
     use tokio_util::task::TaskTracker;
 

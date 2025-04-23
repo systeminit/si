@@ -3,9 +3,13 @@ use dal::change_set::ChangeSet;
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::extract::{PosthogEventTracker, workspace::WorkspaceDalContext};
-
-use crate::service::v1::ChangeSetError;
+use crate::{
+    extract::{
+        PosthogEventTracker,
+        workspace::WorkspaceDalContext,
+    },
+    service::v1::ChangeSetError,
+};
 
 #[utoipa::path(
     get,

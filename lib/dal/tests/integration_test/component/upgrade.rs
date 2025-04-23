@@ -1,24 +1,49 @@
-use dal::action::Action;
-use dal::action::prototype::{ActionKind, ActionPrototype};
-use dal::component::frame::Frame;
-use dal::diagram::Diagram;
-use dal::func::authoring::FuncAuthoringClient;
-use dal::prop::PropPath;
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{
-    AttributeValue, Component, ComponentId, ComponentType, DalContext, InputSocket, OutputSocket,
-    Prop, Schema, SchemaVariant,
-};
-use dal_test::expected::{ExpectComponent, ExpectSchema, ExpectSchemaVariant};
-use dal_test::helpers::{
-    ChangeSetTestHelpers, PropEditorTestView,
-    create_component_for_default_schema_name_in_default_view,
-};
-use dal_test::{Result, test};
-use itertools::Itertools;
-use pretty_assertions_sorted::{assert_eq, assert_ne};
-use serde_json::json;
 use std::collections::VecDeque;
+
+use dal::{
+    AttributeValue,
+    Component,
+    ComponentId,
+    ComponentType,
+    DalContext,
+    InputSocket,
+    OutputSocket,
+    Prop,
+    Schema,
+    SchemaVariant,
+    action::{
+        Action,
+        prototype::{
+            ActionKind,
+            ActionPrototype,
+        },
+    },
+    component::frame::Frame,
+    diagram::Diagram,
+    func::authoring::FuncAuthoringClient,
+    prop::PropPath,
+    schema::variant::authoring::VariantAuthoringClient,
+};
+use dal_test::{
+    Result,
+    expected::{
+        ExpectComponent,
+        ExpectSchema,
+        ExpectSchemaVariant,
+    },
+    helpers::{
+        ChangeSetTestHelpers,
+        PropEditorTestView,
+        create_component_for_default_schema_name_in_default_view,
+    },
+    test,
+};
+use itertools::Itertools;
+use pretty_assertions_sorted::{
+    assert_eq,
+    assert_ne,
+};
+use serde_json::json;
 
 use crate::integration_test::component::connectable_test::ConnectableTest;
 // TODO test that validates that components that exist on locked variants aren't auto upgraded, but can be upgraded manually

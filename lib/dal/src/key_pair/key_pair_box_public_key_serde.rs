@@ -1,5 +1,13 @@
-use base64::{Engine, engine::general_purpose};
-use serde::{self, Deserialize, Deserializer, Serializer};
+use base64::{
+    Engine,
+    engine::general_purpose,
+};
+use serde::{
+    self,
+    Deserialize,
+    Deserializer,
+    Serializer,
+};
 use sodiumoxide::crypto::box_::PublicKey as BoxPublicKey;
 
 use super::base64_encode_bytes;

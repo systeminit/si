@@ -2,23 +2,42 @@
 //! subtrees for a [`SchemaVariant`](crate::SchemaVariant). In this domain, a "leaf" is considered
 //! to an entry of a immediate child [`map`](crate::PropKind::Map) underneath "/root".
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_pkg::{
+    LeafInputLocation as PkgLeafInputLocation,
+    LeafKind as PkgLeafKind,
+};
 use strum::EnumIter;
 use telemetry::prelude::*;
 
-use crate::attribute::prototype::argument::AttributePrototypeArgument;
-use crate::workspace_snapshot::edge_weight::EdgeWeightKind;
-use crate::{
-    AttributePrototype, AttributePrototypeId, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncId, Prop, PropId, SchemaVariant, SchemaVariantId,
+use super::{
+    SchemaVariantError,
+    SchemaVariantResult,
 };
-use si_pkg::{LeafInputLocation as PkgLeafInputLocation, LeafKind as PkgLeafKind};
-
-use crate::func::argument::{FuncArgumentId, FuncArgumentKind};
-use crate::prop::PropPath;
-use crate::schema::variant::root_prop::RootPropChild;
-
-use super::{SchemaVariantError, SchemaVariantResult};
+use crate::{
+    AttributePrototype,
+    AttributePrototypeId,
+    DalContext,
+    Func,
+    FuncBackendKind,
+    FuncBackendResponseType,
+    FuncId,
+    Prop,
+    PropId,
+    SchemaVariant,
+    SchemaVariantId,
+    attribute::prototype::argument::AttributePrototypeArgument,
+    func::argument::{
+        FuncArgumentId,
+        FuncArgumentKind,
+    },
+    prop::PropPath,
+    schema::variant::root_prop::RootPropChild,
+    workspace_snapshot::edge_weight::EdgeWeightKind,
+};
 
 /// This enum provides options for creating leaves underneath compatible subtrees of "/root" within
 /// a [`SchemaVariant`](crate::SchemaVariant). Each compatible subtree starts with a

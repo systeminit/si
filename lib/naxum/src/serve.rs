@@ -1,7 +1,12 @@
 use std::{
     convert::Infallible,
-    error, fmt,
-    future::{Future, IntoFuture, poll_fn},
+    error,
+    fmt,
+    future::{
+        Future,
+        IntoFuture,
+        poll_fn,
+    },
     io,
     marker::PhantomData,
     ops,
@@ -10,18 +15,38 @@ use std::{
     time::Duration,
 };
 
-use futures::{Stream, TryStreamExt};
+use futures::{
+    Stream,
+    TryStreamExt,
+};
 use telemetry_utils::metric;
 use tokio::{
-    sync::{OwnedSemaphorePermit, Semaphore},
+    sync::{
+        OwnedSemaphorePermit,
+        Semaphore,
+    },
     time,
 };
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
-use tower::{Service, ServiceExt};
-use tracing::{debug, error, info, trace};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
+use tower::{
+    Service,
+    ServiceExt,
+};
+use tracing::{
+    debug,
+    error,
+    info,
+    trace,
+};
 
 use crate::{
-    message::{Message, MessageHead},
+    message::{
+        Message,
+        MessageHead,
+    },
     response::Response,
 };
 
@@ -276,7 +301,10 @@ mod private {
         future::Future,
         io,
         pin::Pin,
-        task::{Context, Poll},
+        task::{
+            Context,
+            Poll,
+        },
     };
 
     pub struct ServeFuture(pub(super) futures::future::BoxFuture<'static, io::Result<()>>);

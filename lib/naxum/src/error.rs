@@ -1,5 +1,9 @@
+use std::{
+    error,
+    fmt,
+};
+
 use crate::BoxError;
-use std::{error, fmt};
 
 /// Errors that can happen when using naxum.
 #[derive(Debug)]

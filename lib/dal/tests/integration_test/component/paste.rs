@@ -1,14 +1,23 @@
-use dal::component::frame::Frame;
-use dal::diagram::view::View;
-use dal::{Component, DalContext};
-use dal_test::expected::ExpectComponent;
-use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::{Result, test};
+use dal::{
+    Component,
+    DalContext,
+    component::frame::Frame,
+    diagram::view::View,
+};
+use dal_test::{
+    Result,
+    expected::ExpectComponent,
+    helpers::ChangeSetTestHelpers,
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
 use crate::integration_test::component::connectable_test::{
-    Connectable, ConnectableTest, GEOMETRY1, GEOMETRY2,
+    Connectable,
+    ConnectableTest,
+    GEOMETRY1,
+    GEOMETRY2,
 };
 
 #[test]

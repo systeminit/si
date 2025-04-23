@@ -1,11 +1,10 @@
+// Re-export all module index types so that client users do not have to import two crates.
+pub use module_index_types::*;
 use reqwest::StatusCode;
 use si_pkg::WorkspaceExport;
 use thiserror::Error;
 use ulid::Ulid;
 use url::Url;
-
-// Re-export all module index types so that client users do not have to import two crates.
-pub use module_index_types::*;
 
 #[remain::sorted]
 #[derive(Debug, Error)]

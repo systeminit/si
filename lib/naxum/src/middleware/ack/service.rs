@@ -1,6 +1,9 @@
 use std::{
     sync::Arc,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
     time::Duration,
 };
 
@@ -8,17 +11,25 @@ use async_nats::jetstream;
 use tokio_util::sync::CancellationToken;
 use tower::Service;
 
-use crate::{
-    message::{Message, MessageHead},
-    response::Response,
-};
-
 use super::{
     future::ResponseFuture,
     layer::AckLayer,
     maintain_progress::MaintainProgressTask,
-    on_failure::{DefaultOnFailure, OnFailure},
-    on_success::{DefaultOnSuccess, OnSuccess},
+    on_failure::{
+        DefaultOnFailure,
+        OnFailure,
+    },
+    on_success::{
+        DefaultOnSuccess,
+        OnSuccess,
+    },
+};
+use crate::{
+    message::{
+        Message,
+        MessageHead,
+    },
+    response::Response,
 };
 
 #[derive(Clone, Copy, Debug)]

@@ -1,11 +1,25 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::{
     merkle_tree_hash::MerkleTreeHash,
-    workspace_snapshot::{Change, EntityKind},
+    workspace_snapshot::{
+        Change,
+        EntityKind,
+    },
 };
-use si_id::{ApprovalRequirementDefinitionId, EntityId, UserPk, WorkspacePk};
+use si_id::{
+    ApprovalRequirementDefinitionId,
+    EntityId,
+    UserPk,
+    WorkspacePk,
+};
 
 use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphResult;
 

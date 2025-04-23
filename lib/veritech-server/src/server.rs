@@ -2,40 +2,79 @@ use std::{
     collections::HashMap,
     convert::Infallible,
     fmt,
-    future::{Future, IntoFuture as _},
+    future::{
+        Future,
+        IntoFuture as _,
+    },
     io,
     sync::Arc,
     time::Duration,
 };
 
-use futures::{StreamExt, join};
+use futures::{
+    StreamExt,
+    join,
+};
 use naxum::{
-    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
+    MessageHead,
+    ServiceBuilder,
+    ServiceExt as _,
+    TowerServiceExt as _,
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
         ack::AckLayer,
-        matched_subject::{ForSubject, MatchedSubjectLayer},
+        matched_subject::{
+            ForSubject,
+            MatchedSubjectLayer,
+        },
         trace::TraceLayer,
     },
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use si_crypto::VeritechDecryptionKey;
-use si_data_nats::{NatsClient, NatsConfig, Subscriber, async_nats, jetstream};
+use si_data_nats::{
+    NatsClient,
+    NatsConfig,
+    Subscriber,
+    async_nats,
+    jetstream,
+};
 use si_pool_noodle::{
-    KillExecutionRequest, PoolNoodle, Spec,
-    instance::cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
+    KillExecutionRequest,
+    PoolNoodle,
+    Spec,
+    instance::cyclone::{
+        LocalUdsInstance,
+        LocalUdsInstanceSpec,
+    },
     pool_noodle::PoolNoodleConfig,
 };
 use telemetry::prelude::*;
 use telemetry_utils::metric;
-use tokio::sync::{Mutex, oneshot};
+use tokio::sync::{
+    Mutex,
+    oneshot,
+};
 use tokio_util::sync::CancellationToken;
-use veritech_core::{ExecutionId, GetNatsSubjectFor, incoming_subject, veritech_work_queue};
+use veritech_core::{
+    ExecutionId,
+    GetNatsSubjectFor,
+    incoming_subject,
+    veritech_work_queue,
+};
 
 use crate::{
-    Config, ServerError, ServerResult,
-    app_state::{AppState, KillAppState},
+    Config,
+    ServerError,
+    ServerResult,
+    app_state::{
+        AppState,
+        KillAppState,
+    },
     config::CycloneSpec,
     handlers,
     heartbeat::HeartbeatApp,

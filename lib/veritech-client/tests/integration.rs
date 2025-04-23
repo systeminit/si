@@ -1,20 +1,48 @@
-use std::{collections::HashMap, env};
-
-use base64::{Engine, engine::general_purpose};
-use cyclone_core::{
-    ActionRunRequest, ComponentKind, ComponentView, ComponentViewWithGeometry, FunctionResult,
-    FunctionResultFailureErrorKind, ManagementRequest, ResolverFunctionComponent,
-    ResolverFunctionRequest, ResolverFunctionResponseType, ResourceStatus,
-    SchemaVariantDefinitionRequest, ValidationRequest,
+use std::{
+    collections::HashMap,
+    env,
 };
-use si_data_nats::{NatsClient, NatsConfig};
+
+use base64::{
+    Engine,
+    engine::general_purpose,
+};
+use cyclone_core::{
+    ActionRunRequest,
+    ComponentKind,
+    ComponentView,
+    ComponentViewWithGeometry,
+    FunctionResult,
+    FunctionResultFailureErrorKind,
+    ManagementRequest,
+    ResolverFunctionComponent,
+    ResolverFunctionRequest,
+    ResolverFunctionResponseType,
+    ResourceStatus,
+    SchemaVariantDefinitionRequest,
+    ValidationRequest,
+};
+use si_data_nats::{
+    NatsClient,
+    NatsConfig,
+};
 use test_log::test;
-use tokio::{sync::mpsc, task::JoinHandle};
+use tokio::{
+    sync::mpsc,
+    task::JoinHandle,
+};
 use tokio_util::sync::CancellationToken;
 use tracing::info;
 use uuid::Uuid;
 use veritech_client::Client;
-use veritech_server::{Config, CycloneSpec, Instance, LocalUdsInstance, Server, StandardConfig};
+use veritech_server::{
+    Config,
+    CycloneSpec,
+    Instance,
+    LocalUdsInstance,
+    Server,
+    StandardConfig,
+};
 
 const WORKSPACE_ID: &str = "workspace";
 const CHANGE_SET_ID: &str = "changeset";

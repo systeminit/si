@@ -1,30 +1,72 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::{
+    HashSet,
+    VecDeque,
+};
 
 use petgraph::prelude::*;
-use postgres_types::{FromSql, ToSql};
-use serde::{Deserialize, Serialize};
+use postgres_types::{
+    FromSql,
+    ToSql,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::ulid::Ulid;
-use si_frontend_types::action::{ActionView, ActionViewList};
+use si_frontend_types::action::{
+    ActionView,
+    ActionViewList,
+};
 use si_layer_cache::LayerDbError;
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    AttributeValue, ChangeSetError, ChangeSetId, Component, ComponentError, ComponentId,
-    DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants, Func, FuncError, HelperError,
-    TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError, WsEventResult, WsPayload,
+    AttributeValue,
+    ChangeSetError,
+    ChangeSetId,
+    Component,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    Func,
+    FuncError,
+    HelperError,
+    TransactionsError,
+    WorkspaceSnapshotError,
+    WsEvent,
+    WsEventError,
+    WsEventResult,
+    WsPayload,
     action::{
         dependency_graph::ActionDependencyGraph,
-        prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
+        prototype::{
+            ActionKind,
+            ActionPrototype,
+            ActionPrototypeError,
+        },
     },
-    attribute::value::{AttributeValueError, DependentValueGraph},
+    attribute::value::{
+        AttributeValueError,
+        DependentValueGraph,
+    },
     component::inferred_connection_graph::InferredConnectionGraphError,
     func::FuncExecutionPk,
     implement_add_edge_to,
     job::definition::ActionJob,
     workspace_snapshot::node_weight::{
-        ActionNodeWeight, NodeWeight, NodeWeightError, category_node_weight::CategoryNodeKind,
+        ActionNodeWeight,
+        NodeWeight,
+        NodeWeightError,
+        category_node_weight::CategoryNodeKind,
     },
 };
 
@@ -69,8 +111,10 @@ pub enum ActionError {
 pub type ActionResult<T> = Result<T, ActionError>;
 
 pub use si_events::ActionState;
-pub use si_id::ActionId;
-pub use si_id::ActionPrototypeId;
+pub use si_id::{
+    ActionId,
+    ActionPrototypeId,
+};
 
 /// The completion status of a [`ActionRunner`]
 ///

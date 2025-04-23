@@ -1,7 +1,14 @@
 use darling::FromAttributes;
-use manyhow::{bail, emit};
+use manyhow::{
+    bail,
+    emit,
+};
 use quote::quote;
-use syn::{Data, DeriveInput, Fields};
+use syn::{
+    Data,
+    DeriveInput,
+    Fields,
+};
 
 #[derive(FromAttributes, Default)]
 #[darling(default, attributes(si_versioned_node_weight))]

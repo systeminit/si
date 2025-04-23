@@ -1,26 +1,61 @@
-use std::{borrow::Borrow, sync::Arc, time::Duration};
+use std::{
+    borrow::Borrow,
+    sync::Arc,
+    time::Duration,
+};
 
 use async_nats::{
-    HeaderMap, HeaderValue,
-    header::{self, IntoHeaderName, IntoHeaderValue},
+    HeaderMap,
+    HeaderValue,
+    header::{
+        self,
+        IntoHeaderName,
+        IntoHeaderValue,
+    },
     jetstream::{
         account::Account,
-        consumer::{Consumer, FromConsumer, IntoConsumerConfig},
+        consumer::{
+            Consumer,
+            FromConsumer,
+            IntoConsumerConfig,
+        },
         context::{
-            AccountError, CreateKeyValueError, CreateObjectStoreError, CreateStreamError,
-            DeleteObjectStore, DeleteStreamError, GetStreamByNameError, GetStreamError,
-            KeyValueError, ObjectStoreError, PublishAckFuture, PublishError, RequestError,
+            AccountError,
+            CreateKeyValueError,
+            CreateObjectStoreError,
+            CreateStreamError,
+            DeleteObjectStore,
+            DeleteStreamError,
+            GetStreamByNameError,
+            GetStreamError,
+            KeyValueError,
+            ObjectStoreError,
+            PublishAckFuture,
+            PublishError,
+            RequestError,
             UpdateStreamError,
         },
-        stream::{Config, ConsumerError, DeleteStatus, Info, Stream},
+        stream::{
+            Config,
+            ConsumerError,
+            DeleteStatus,
+            Info,
+            Stream,
+        },
     },
     subject::ToSubject,
 };
 use bytes::Bytes;
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
 use telemetry::prelude::*;
 
-use crate::{Client, ConnectionMetadata};
+use crate::{
+    Client,
+    ConnectionMetadata,
+};
 
 /// A context which can perform jetstream scoped requests.
 #[derive(Debug, Clone)]

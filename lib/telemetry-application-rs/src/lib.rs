@@ -11,12 +11,22 @@
 use std::{
     borrow::Cow,
     env,
-    future::{Future, IntoFuture},
-    io::{self, IsTerminal},
+    future::{
+        Future,
+        IntoFuture,
+    },
+    io::{
+        self,
+        IsTerminal,
+    },
     ops::Deref,
     pin::Pin,
-    result, thread,
-    time::{Duration, Instant},
+    result,
+    thread,
+    time::{
+        Duration,
+        Instant,
+    },
 };
 
 use console_subscriber::ConsoleLayer;
@@ -27,45 +37,85 @@ use opentelemetry_sdk::{
     propagation::TraceContextPropagator,
     resource::EnvResourceDetector,
     runtime,
-    trace::{self, Config, Tracer},
+    trace::{
+        self,
+        Config,
+        Tracer,
+    },
 };
 use opentelemetry_semantic_conventions::resource;
+pub use telemetry::{
+    ApplicationTelemetryClient,
+    TelemetryClient,
+    tracing,
+};
 use telemetry::{
-    TelemetryCommand, TracingLevel, Verbosity,
+    TelemetryCommand,
+    TracingLevel,
+    Verbosity,
     opentelemetry::{
         KeyValue,
-        global::{self},
+        global::{
+            self,
+        },
         metrics::MetricsError,
-        trace::{TraceError, TracerProvider},
+        trace::{
+            TraceError,
+            TracerProvider,
+        },
     },
     prelude::*,
     tracing::Subscriber,
 };
 use thiserror::Error;
 use tokio::{
-    signal::unix::{self, SignalKind},
-    sync::{mpsc, oneshot},
+    signal::unix::{
+        self,
+        SignalKind,
+    },
+    sync::{
+        mpsc,
+        oneshot,
+    },
     time,
 };
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 use tracing::Metadata;
 use tracing_opentelemetry::MetricsLayer;
 use tracing_subscriber::{
-    EnvFilter, Layer, Registry,
-    filter::{FilterExt, ParseError},
+    EnvFilter,
+    Layer,
+    Registry,
+    filter::{
+        FilterExt,
+        ParseError,
+    },
     fmt::format::FmtSpan,
-    layer::{Filter, SubscriberExt},
+    layer::{
+        Filter,
+        SubscriberExt,
+    },
     reload,
-    util::{SubscriberInitExt, TryInitError},
+    util::{
+        SubscriberInitExt,
+        TryInitError,
+    },
 };
 
-pub use telemetry::tracing;
-pub use telemetry::{ApplicationTelemetryClient, TelemetryClient};
-
 pub mod prelude {
-    pub use super::{ConsoleLogFormat, TelemetryConfig};
-    pub use telemetry::prelude::*;
-    pub use telemetry::{ApplicationTelemetryClient, TelemetryClient};
+    pub use telemetry::{
+        ApplicationTelemetryClient,
+        TelemetryClient,
+        prelude::*,
+    };
+
+    pub use super::{
+        ConsoleLogFormat,
+        TelemetryConfig,
+    };
 }
 
 // Rust crates that will not output span or event telemetry, no matter what the default level is
@@ -936,15 +986,28 @@ impl Deref for TracingDirectives {
 mod linux {
     use std::{
         fs::File,
-        io::{self, BufWriter, Write as _},
-        path::{Path, PathBuf},
+        io::{
+            self,
+            BufWriter,
+            Write as _,
+        },
+        path::{
+            Path,
+            PathBuf,
+        },
         time::Duration,
     };
 
-    use chrono::{SecondsFormat, Utc};
+    use chrono::{
+        SecondsFormat,
+        Utc,
+    };
     use telemetry::prelude::*;
     use tokio::{
-        runtime::{Dump, Handle},
+        runtime::{
+            Dump,
+            Handle,
+        },
         time,
     };
 

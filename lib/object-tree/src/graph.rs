@@ -4,14 +4,22 @@
 use std::{
     collections::HashMap,
     fmt,
-    io::{self, BufRead, Cursor, Write},
+    io::{
+        self,
+        BufRead,
+        Cursor,
+        Write,
+    },
     str::FromStr,
 };
 
 use petgraph::prelude::*;
 use serde::Serialize;
 use si_hash::Hash;
-use strum::{AsRefStr, EnumString};
+use strum::{
+    AsRefStr,
+    EnumString,
+};
 use thiserror::Error;
 
 const KEY_VERSION_STR: &str = "version";

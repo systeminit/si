@@ -1,9 +1,17 @@
 use dal::{
-    ComponentType, DalContext, Prop, Schema, SchemaVariant, prop::PropPath,
+    ComponentType,
+    DalContext,
+    Prop,
+    Schema,
+    SchemaVariant,
+    prop::PropPath,
     property_editor::schema::PropertyEditorSchema,
     schema::variant::authoring::VariantAuthoringClient,
 };
-use dal_test::{helpers::ChangeSetTestHelpers, test};
+use dal_test::{
+    helpers::ChangeSetTestHelpers,
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]

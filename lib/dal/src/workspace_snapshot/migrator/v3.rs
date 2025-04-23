@@ -1,15 +1,21 @@
 use telemetry::prelude::*;
 
+use super::SnapshotGraphMigratorResult;
 use crate::{
     DalContext,
     workspace_snapshot::{
         ContentAddressDiscriminants,
-        graph::{WorkspaceSnapshotGraphV2, WorkspaceSnapshotGraphV3},
-        node_weight::{InputSocketNodeWeight, NodeWeight, SchemaVariantNodeWeight},
+        graph::{
+            WorkspaceSnapshotGraphV2,
+            WorkspaceSnapshotGraphV3,
+        },
+        node_weight::{
+            InputSocketNodeWeight,
+            NodeWeight,
+            SchemaVariantNodeWeight,
+        },
     },
 };
-
-use super::SnapshotGraphMigratorResult;
 
 #[instrument(skip_all)]
 pub async fn migrate_v2_to_v3(

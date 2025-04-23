@@ -1,9 +1,18 @@
 use std::env;
 
 use indoc::indoc;
-use rand::distributions::Alphanumeric;
-use rand::{Rng, thread_rng};
-use si_data_spicedb::{Client, Permission, Relationship, SpiceDBObject, SpiceDbConfig};
+use rand::{
+    Rng,
+    distributions::Alphanumeric,
+    thread_rng,
+};
+use si_data_spicedb::{
+    Client,
+    Permission,
+    Relationship,
+    SpiceDBObject,
+    SpiceDbConfig,
+};
 
 const ENV_VAR_SPICEDB_URL: &str = "SI_TEST_SPICEDB_URL";
 

@@ -1,8 +1,11 @@
 use std::env::args;
-use tokio::fs;
 
-use petgraph::dot::{Config, Dot};
+use petgraph::dot::{
+    Config,
+    Dot,
+};
 use si_pkg::SiPkg;
+use tokio::fs;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

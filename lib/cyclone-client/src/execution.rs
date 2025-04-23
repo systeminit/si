@@ -1,17 +1,36 @@
 use std::{
     marker::PhantomData,
     pin::Pin,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
 };
 
-use cyclone_core::{CycloneRequest, CycloneRequestable, FunctionResult, Message, ProgressMessage};
-use futures::{Future, SinkExt, Stream, StreamExt};
+use cyclone_core::{
+    CycloneRequest,
+    CycloneRequestable,
+    FunctionResult,
+    Message,
+    ProgressMessage,
+};
+use futures::{
+    Future,
+    SinkExt,
+    Stream,
+    StreamExt,
+};
 use hyper::client::connect::Connection;
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
 use thiserror::Error;
-use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::io::{
+    AsyncRead,
+    AsyncWrite,
+};
 use tokio_tungstenite::WebSocketStream;
-
 pub use tokio_tungstenite::tungstenite::Message as WebSocketMessage;
 
 pub fn new_unstarted_execution<T, Request>(

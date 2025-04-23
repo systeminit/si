@@ -1,17 +1,35 @@
 //! Vector Clocks
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use chrono::{
+    DateTime,
+    Utc,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use thiserror::Error;
 
 pub mod deprecated;
 
-use crate::ChangeSetId;
-use crate::workspace_snapshot::lamport_clock::{LamportClock, LamportClockError};
+pub use si_events::{
+    VectorClockActorId,
+    VectorClockChangeSetId,
+    VectorClockId,
+};
 
-pub use si_events::{VectorClockActorId, VectorClockChangeSetId, VectorClockId};
+use crate::{
+    ChangeSetId,
+    workspace_snapshot::lamport_clock::{
+        LamportClock,
+        LamportClockError,
+    },
+};
 
 #[derive(Debug, Error)]
 pub enum VectorClockError {

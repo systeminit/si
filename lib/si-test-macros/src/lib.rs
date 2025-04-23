@@ -8,8 +8,14 @@ use std::collections::HashSet;
 
 use proc_macro::TokenStream;
 use syn::{
-    Ident, ItemFn, Path, Token,
-    parse::{Parse, ParseStream},
+    Ident,
+    ItemFn,
+    Path,
+    Token,
+    parse::{
+        Parse,
+        ParseStream,
+    },
     parse_macro_input,
     punctuated::Punctuated,
 };

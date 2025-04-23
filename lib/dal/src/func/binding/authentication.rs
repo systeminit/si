@@ -1,9 +1,20 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 
-use crate::{DalContext, FuncId, SchemaVariant, SchemaVariantId};
-
-use super::{EventualParent, FuncBinding, FuncBindingResult};
+use super::{
+    EventualParent,
+    FuncBinding,
+    FuncBindingResult,
+};
+use crate::{
+    DalContext,
+    FuncId,
+    SchemaVariant,
+    SchemaVariantId,
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AuthBinding {

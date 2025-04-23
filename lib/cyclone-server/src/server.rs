@@ -1,27 +1,49 @@
 use std::{
     io,
     net::SocketAddr,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
 };
 
 use async_trait::async_trait;
-use axum::routing::{IntoMakeService, Router};
+use axum::routing::{
+    IntoMakeService,
+    Router,
+};
 use hyper::server::accept::Accept;
-use telemetry::{TelemetryLevel, prelude::*};
+use telemetry::{
+    TelemetryLevel,
+    prelude::*,
+};
 use thiserror::Error;
 use tokio::{
-    io::{AsyncRead, AsyncWrite},
+    io::{
+        AsyncRead,
+        AsyncWrite,
+    },
     signal::unix,
-    sync::{mpsc, oneshot},
+    sync::{
+        mpsc,
+        oneshot,
+    },
 };
 
 use crate::{
-    Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError, execution::ExecutionError,
-    routes::routes, state::AppState,
+    Config,
+    IncomingStream,
+    UdsIncomingStream,
+    UdsIncomingStreamError,
+    execution::ExecutionError,
+    routes::routes,
+    state::AppState,
 };
-
 #[cfg(target_os = "linux")]
-use crate::{VsockIncomingStream, VsockIncomingStreamError};
+use crate::{
+    VsockIncomingStream,
+    VsockIncomingStreamError,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -49,9 +71,9 @@ type Result<T> = std::result::Result<T, ServerError>;
 // See: https://users.rust-lang.org/t/need-explanation-on-how-to-avoid-this-move-out-of-a-box-dyn/98734/3
 // See: https://quinedot.github.io/rust-learning/dyn-trait-box-impl.html
 mod runnable {
-    use super::Result;
-
     use async_trait::async_trait;
+
+    use super::Result;
 
     #[async_trait]
     pub trait BoxedRunnable {

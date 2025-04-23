@@ -1,10 +1,19 @@
-use async_nats::{StatusCode, Subject};
-use bytes::Bytes;
-
-use super::{ConnectionMetadata, HeaderMap};
-use std::{fmt, sync::Arc};
+use std::{
+    fmt,
+    sync::Arc,
+};
 
 pub use async_nats::Message as InnerMessage;
+use async_nats::{
+    StatusCode,
+    Subject,
+};
+use bytes::Bytes;
+
+use super::{
+    ConnectionMetadata,
+    HeaderMap,
+};
 
 #[derive(Clone)]
 pub struct Message {

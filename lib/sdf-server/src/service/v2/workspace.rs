@@ -1,8 +1,14 @@
 use axum::{
     Router,
     http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::{get, post},
+    response::{
+        IntoResponse,
+        Response,
+    },
+    routing::{
+        get,
+        post,
+    },
 };
 use sdf_core::api_error::ApiError;
 use thiserror::Error;

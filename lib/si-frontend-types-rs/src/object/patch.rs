@@ -1,6 +1,9 @@
 use serde::Serialize;
 use si_events::WorkspaceSnapshotAddress;
-use si_id::{ChangeSetId, WorkspacePk};
+use si_id::{
+    ChangeSetId,
+    WorkspacePk,
+};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

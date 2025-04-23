@@ -1,11 +1,15 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+pub use module_index_types::{
+    BuiltinsDetailsResponse as BuiltinModules,
+    LatestModuleResponse as LatestModule,
+    ModuleDetailsResponse as ModuleDetails,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::SchemaVariantId;
-
-pub use module_index_types::BuiltinsDetailsResponse as BuiltinModules;
-pub use module_index_types::LatestModuleResponse as LatestModule;
-pub use module_index_types::ModuleDetailsResponse as ModuleDetails;
 
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]

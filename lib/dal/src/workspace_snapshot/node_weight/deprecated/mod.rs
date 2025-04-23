@@ -1,5 +1,3 @@
-use serde::{Deserialize, Serialize};
-
 pub use action_node_weight::DeprecatedActionNodeWeightLegacy;
 pub use action_prototype_node_weight::DeprecatedActionPrototypeNodeWeightLegacy;
 pub use attribute_prototype_argument_node_weight::DeprecatedAttributePrototypeArgumentNodeWeightLegacy;
@@ -13,6 +11,10 @@ pub use func_node_weight::DeprecatedFuncNodeWeightLegacy;
 pub use ordering_node_weight::DeprecatedOrderingNodeWeightLegacy;
 pub use prop_node_weight::DeprecatedPropNodeWeightLegacy;
 pub use secret_node_weight::DeprecatedSecretNodeWeightLegacy;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::workspace_snapshot::vector_clock::deprecated::DeprecatedVectorClock;
 

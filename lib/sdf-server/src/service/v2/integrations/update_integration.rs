@@ -1,16 +1,44 @@
-use crate::extract::{HandlerContext, PosthogClient};
-use crate::service::v2::AccessBuilder;
-use crate::track;
-
-use axum::Json;
-use axum::extract::{Host, OriginalUri, Path, State};
-use dal::workspace_integrations::{WorkspaceIntegration, WorkspaceIntegrationId};
-use dal::{HistoryActor, UserPk, WorkspacePk};
-use permissions::{Permission, PermissionBuilder};
-use serde::{Deserialize, Serialize};
+use axum::{
+    Json,
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+        State,
+    },
+};
+use dal::{
+    HistoryActor,
+    UserPk,
+    WorkspacePk,
+    workspace_integrations::{
+        WorkspaceIntegration,
+        WorkspaceIntegrationId,
+    },
+};
+use permissions::{
+    Permission,
+    PermissionBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::audit_log::AuditLogKind;
 
-use super::{AppState, IntegrationsError, IntegrationsResult};
+use super::{
+    AppState,
+    IntegrationsError,
+    IntegrationsResult,
+};
+use crate::{
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::v2::AccessBuilder,
+    track,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

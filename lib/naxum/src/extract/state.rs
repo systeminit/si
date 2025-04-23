@@ -1,10 +1,15 @@
-use std::{convert::Infallible, ops};
+use std::{
+    convert::Infallible,
+    ops,
+};
 
 use async_trait::async_trait;
 
+use super::{
+    FromMessageHead,
+    FromRef,
+};
 use crate::message::Head;
-
-use super::{FromMessageHead, FromRef};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct State<S>(pub S);

@@ -1,4 +1,7 @@
-use dal::{DalContext, WsEvent};
+use dal::{
+    DalContext,
+    WsEvent,
+};
 use hyper::Uri;
 use telemetry::prelude::*;
 

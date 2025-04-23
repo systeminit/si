@@ -1,5 +1,8 @@
 use aws_sdk_ssm::types::Parameter as AwsParameter;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Parameter {

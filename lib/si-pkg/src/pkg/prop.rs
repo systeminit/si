@@ -1,12 +1,25 @@
-use object_tree::{Hash, HashedNode};
+use object_tree::{
+    Hash,
+    HashedNode,
+};
 use petgraph::prelude::*;
 use url::Url;
 
-use super::{PkgResult, SiPkgAttrFuncInput, SiPkgError, SiPkgMapKeyFunc, Source};
-
+use super::{
+    PkgResult,
+    SiPkgAttrFuncInput,
+    SiPkgError,
+    SiPkgMapKeyFunc,
+    Source,
+};
 use crate::{
     PropSpecWidgetKind,
-    node::{PkgNode, PropChildNode, PropNode, PropNodeData},
+    node::{
+        PkgNode,
+        PropChildNode,
+        PropNode,
+        PropNodeData,
+    },
 };
 
 #[derive(Clone, Debug)]

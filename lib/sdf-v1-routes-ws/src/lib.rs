@@ -1,11 +1,25 @@
 #![allow(clippy::module_inception)]
 
-use axum::{Router, http::StatusCode, response::IntoResponse, response::Response, routing::get};
+use axum::{
+    Router,
+    http::StatusCode,
+    response::{
+        IntoResponse,
+        Response,
+    },
+    routing::get,
+};
 use crdt::CrdtError;
-use dal::{TransactionsError, WsEventError};
+use dal::{
+    TransactionsError,
+    WsEventError,
+};
 use nats_multiplexer_client::MultiplexerClientError;
 use sdf_core::api_error::ApiError;
-use si_data_pg::{PgError, PgPoolError};
+use si_data_pg::{
+    PgError,
+    PgPoolError,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;

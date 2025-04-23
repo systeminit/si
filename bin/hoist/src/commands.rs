@@ -1,5 +1,6 @@
-use clap::Subcommand;
 use std::path::PathBuf;
+
+use clap::Subcommand;
 
 #[derive(Subcommand, Debug)]
 #[remain::sorted]

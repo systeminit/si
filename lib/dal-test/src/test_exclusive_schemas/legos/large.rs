@@ -1,15 +1,31 @@
-use dal::action::prototype::ActionKind;
-use dal::pkg::{ImportOptions, import_pkg_from_pkg};
-use dal::{BuiltinsResult, DalContext};
-use dal::{ComponentType, SchemaId};
+use dal::{
+    BuiltinsResult,
+    ComponentType,
+    DalContext,
+    SchemaId,
+    action::prototype::ActionKind,
+    pkg::{
+        ImportOptions,
+        import_pkg_from_pkg,
+    },
+};
 use si_pkg::{
-    ActionFuncSpec, PkgSpec, SchemaSpec, SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecData,
+    ActionFuncSpec,
+    PkgSpec,
+    SchemaSpec,
+    SchemaSpecData,
+    SchemaVariantSpec,
+    SchemaVariantSpecData,
     SiPkg,
 };
 
-use crate::test_exclusive_schemas::legos::bricks::LegoBricks;
 use crate::test_exclusive_schemas::{
-    PKG_CREATED_BY, PKG_VERSION, build_action_func, build_asset_func, create_identity_func,
+    PKG_CREATED_BY,
+    PKG_VERSION,
+    build_action_func,
+    build_asset_func,
+    create_identity_func,
+    legos::bricks::LegoBricks,
 };
 
 pub(crate) async fn migrate_test_exclusive_schema_large_odd_lego(

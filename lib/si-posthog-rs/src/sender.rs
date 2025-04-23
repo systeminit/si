@@ -2,8 +2,14 @@ use telemetry::prelude::*;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio_util::sync::CancellationToken;
 
-use crate::api::PosthogApiClient;
-use crate::{PosthogConfig, api::PosthogMessage, error::PosthogResult};
+use crate::{
+    PosthogConfig,
+    api::{
+        PosthogApiClient,
+        PosthogMessage,
+    },
+    error::PosthogResult,
+};
 
 #[derive(Debug)]
 pub struct PosthogSender {

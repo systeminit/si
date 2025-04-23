@@ -5,15 +5,31 @@
 
 #![allow(clippy::expect_used, clippy::panic)]
 
-use dal::{ChangeSet, ChangeSetId, DalContext};
-use jwt_simple::algorithms::RSAKeyPairLike;
-use jwt_simple::claims::Claims;
-use jwt_simple::prelude::Duration;
+use dal::{
+    ChangeSet,
+    ChangeSetId,
+    DalContext,
+};
+use jwt_simple::{
+    algorithms::RSAKeyPairLike,
+    claims::Claims,
+    prelude::Duration,
+};
 use si_jwt_public_key::SiJwtClaims;
-use tracing_subscriber::{EnvFilter, Registry, fmt, util::SubscriberInitExt};
+use tracing_subscriber::{
+    EnvFilter,
+    Registry,
+    fmt,
+    util::SubscriberInitExt,
+};
 
 use crate::{
-    WorkspaceSignup, helpers::create_user, helpers::generate_fake_name, jwt_private_signing_key,
+    WorkspaceSignup,
+    helpers::{
+        create_user,
+        generate_fake_name,
+    },
+    jwt_private_signing_key,
 };
 
 /// Creates a user for each test to run as

@@ -1,8 +1,18 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::{activity_client::ActivityClient, error::LayerDbResult, event::LayeredEventMetadata};
-
-use super::{Activity, ActivityId, ActivityPayload};
+use super::{
+    Activity,
+    ActivityId,
+    ActivityPayload,
+};
+use crate::{
+    activity_client::ActivityClient,
+    error::LayerDbResult,
+    event::LayeredEventMetadata,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct IntegrationTest {

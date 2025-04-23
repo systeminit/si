@@ -7,14 +7,24 @@
 use bytes::Bytes;
 use edda_core::{
     api_types::{
-        ApiVersionsWrapper, ApiWrapper, rebuild_request::RebuildRequest,
+        ApiVersionsWrapper,
+        ApiWrapper,
+        rebuild_request::RebuildRequest,
         update_request::UpdateRequest,
     },
     nats,
 };
 use naxum::{
-    Head, Message, MessageHead, async_trait, composite_rejection, define_rejection,
-    extract::{FromMessage, FromMessageHead},
+    Head,
+    Message,
+    MessageHead,
+    async_trait,
+    composite_rejection,
+    define_rejection,
+    extract::{
+        FromMessage,
+        FromMessageHead,
+    },
 };
 use si_data_nats::Subject;
 use telemetry::prelude::*;

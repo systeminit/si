@@ -1,9 +1,16 @@
 use si_pkg::SiPkg;
 use telemetry::prelude::*;
 
-use crate::module::Module;
-use crate::pkg::{ImportOptions, import_pkg_from_pkg};
-use crate::{BuiltinsError, BuiltinsResult, DalContext};
+use crate::{
+    BuiltinsError,
+    BuiltinsResult,
+    DalContext,
+    module::Module,
+    pkg::{
+        ImportOptions,
+        import_pkg_from_pkg,
+    },
+};
 
 pub async fn migrate_pkg(
     ctx: &DalContext,

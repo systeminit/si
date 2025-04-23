@@ -1,14 +1,26 @@
-use axum::{extract::rejection::JsonRejection, response::Json};
-use dal::WsEvent;
-use dal::change_set::ChangeSet;
-use serde::{Deserialize, Serialize};
+use axum::{
+    extract::rejection::JsonRejection,
+    response::Json,
+};
+use dal::{
+    WsEvent,
+    change_set::ChangeSet,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::json;
 use si_events::audit_log::AuditLogKind;
 use utoipa::ToSchema;
 
-use crate::extract::{PosthogEventTracker, workspace::WorkspaceDalContext};
-
-use crate::service::v1::ChangeSetError;
+use crate::{
+    extract::{
+        PosthogEventTracker,
+        workspace::WorkspaceDalContext,
+    },
+    service::v1::ChangeSetError,
+};
 
 #[utoipa::path(
     post,

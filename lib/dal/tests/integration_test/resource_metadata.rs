@@ -1,14 +1,30 @@
-use dal::prop::PropPath;
-use dal::property_editor::values::PropertyEditorValues;
-use dal::{AttributeValue, Component, DalContext, InputSocket, OutputSocket, Prop, Secret};
-use dal::{Workspace, resource_metadata};
-use dal_test::helpers::ChangeSetTestHelpers;
-use dal_test::helpers::{
-    create_component_for_default_schema_name_in_default_view, encrypt_message,
+use dal::{
+    AttributeValue,
+    Component,
+    DalContext,
+    InputSocket,
+    OutputSocket,
+    Prop,
+    Secret,
+    Workspace,
+    prop::PropPath,
+    property_editor::values::PropertyEditorValues,
+    resource_metadata,
 };
-use dal_test::{WorkspaceSignup, test};
+use dal_test::{
+    WorkspaceSignup,
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_default_schema_name_in_default_view,
+        encrypt_message,
+    },
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
-use si_events::{ResourceMetadata, ResourceStatus};
+use si_events::{
+    ResourceMetadata,
+    ResourceStatus,
+};
 
 #[test]
 async fn list(ctx: &mut DalContext, nw: &WorkspaceSignup) {

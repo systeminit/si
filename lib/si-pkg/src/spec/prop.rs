@@ -1,12 +1,27 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
 use derive_builder::UninitializedFieldError;
 use indexmap::IndexMap;
-use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+};
 use url::Url;
 
-use super::{AttrFuncInputSpec, MapKeyFuncSpec, SpecError};
+use super::{
+    AttrFuncInputSpec,
+    MapKeyFuncSpec,
+    SpecError,
+};
 
 #[remain::sorted]
 #[derive(

@@ -1,21 +1,37 @@
 use std::collections::HashSet;
 
 use petgraph::prelude::*;
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
-
-use crate::{
-    ChangeSetId, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
-    WorkspaceSnapshotGraphVCurrent,
-    action::ActionState,
-    workspace_snapshot::{
-        NodeId, NodeInformation,
-        graph::{LineageId, deprecated::v1::DeprecatedActionNodeWeightV1, detector::Update},
-        node_weight::{NodeWeight, traits::CorrectTransforms},
-    },
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
 };
 
 use super::traits::CorrectTransformsResult;
+use crate::{
+    ChangeSetId,
+    EdgeWeightKindDiscriminants,
+    NodeWeightDiscriminants,
+    WorkspaceSnapshotGraphVCurrent,
+    action::ActionState,
+    workspace_snapshot::{
+        NodeId,
+        NodeInformation,
+        graph::{
+            LineageId,
+            deprecated::v1::DeprecatedActionNodeWeightV1,
+            detector::Update,
+        },
+        node_weight::{
+            NodeWeight,
+            traits::CorrectTransforms,
+        },
+    },
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ActionNodeWeight {

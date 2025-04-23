@@ -2,7 +2,11 @@
 
 use si_data_nats::HeaderMap;
 use telemetry::{
-    opentelemetry::{Context, global, trace::TraceContextExt},
+    opentelemetry::{
+        Context,
+        global,
+        trace::TraceContextExt,
+    },
     tracing::Span,
 };
 
@@ -50,8 +54,15 @@ pub fn inject_opentelemetry_context(ctx: &Context, headers: &mut HeaderMap) {
 mod headers {
     use std::str::FromStr;
 
-    use si_data_nats::{HeaderMap, HeaderName, HeaderValue};
-    use telemetry::opentelemetry::propagation::{Extractor, Injector};
+    use si_data_nats::{
+        HeaderMap,
+        HeaderName,
+        HeaderValue,
+    };
+    use telemetry::opentelemetry::propagation::{
+        Extractor,
+        Injector,
+    };
 
     pub struct HeaderInjector<'a>(pub &'a mut HeaderMap);
 

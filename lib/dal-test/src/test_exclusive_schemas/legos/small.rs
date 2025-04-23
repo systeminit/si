@@ -1,17 +1,39 @@
-use dal::action::prototype::ActionKind;
-use dal::pkg::{ImportOptions, import_pkg_from_pkg};
-use dal::{BuiltinsResult, DalContext, PropKind};
-use dal::{ComponentType, SchemaId};
-use si_pkg::{
-    ActionFuncSpec, PkgSpec, PropSpec, SchemaSpec, SchemaVariantSpec, SchemaVariantSpecData, SiPkg,
-    SocketSpec, SocketSpecArity, SocketSpecData, SocketSpecKind,
+use dal::{
+    BuiltinsResult,
+    ComponentType,
+    DalContext,
+    PropKind,
+    SchemaId,
+    action::prototype::ActionKind,
+    pkg::{
+        ImportOptions,
+        import_pkg_from_pkg,
+    },
 };
-use si_pkg::{ManagementFuncSpec, SchemaSpecData};
+use si_pkg::{
+    ActionFuncSpec,
+    ManagementFuncSpec,
+    PkgSpec,
+    PropSpec,
+    SchemaSpec,
+    SchemaSpecData,
+    SchemaVariantSpec,
+    SchemaVariantSpecData,
+    SiPkg,
+    SocketSpec,
+    SocketSpecArity,
+    SocketSpecData,
+    SocketSpecKind,
+};
 
-use crate::test_exclusive_schemas::legos::bricks::LegoBricks;
 use crate::test_exclusive_schemas::{
-    PKG_CREATED_BY, PKG_VERSION, build_action_func, build_asset_func, build_management_func,
+    PKG_CREATED_BY,
+    PKG_VERSION,
+    build_action_func,
+    build_asset_func,
+    build_management_func,
     create_identity_func,
+    legos::bricks::LegoBricks,
 };
 
 /// The "small odd lego" has a special importance for our tests. It is a

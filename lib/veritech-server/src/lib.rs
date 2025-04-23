@@ -8,16 +8,32 @@ mod server;
 
 use std::io;
 
-use si_data_nats::{NatsError, Subject, async_nats};
+use si_data_nats::{
+    NatsError,
+    Subject,
+    async_nats,
+};
+pub use si_pool_noodle::{
+    Instance,
+    instance::cyclone::LocalUdsInstance,
+};
 use thiserror::Error;
 
-pub use si_pool_noodle::{Instance, instance::cyclone::LocalUdsInstance};
-
-pub(crate) use crate::publisher::{Publisher, PublisherError};
+pub(crate) use crate::publisher::{
+    Publisher,
+    PublisherError,
+};
 pub use crate::{
     config::{
-        Config, ConfigBuilder, ConfigError, ConfigFile, CycloneSpec, CycloneStream, StandardConfig,
-        StandardConfigFile, detect_and_configure_development,
+        Config,
+        ConfigBuilder,
+        ConfigError,
+        ConfigFile,
+        CycloneSpec,
+        CycloneStream,
+        StandardConfig,
+        StandardConfigFile,
+        detect_and_configure_development,
     },
     server::Server,
 };

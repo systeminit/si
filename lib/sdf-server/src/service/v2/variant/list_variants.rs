@@ -2,15 +2,29 @@ use std::collections::HashSet;
 
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Path},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
 };
-
-use dal::{ChangeSetId, SchemaVariant, WorkspacePk, cached_module::CachedModule};
+use dal::{
+    ChangeSetId,
+    SchemaVariant,
+    WorkspacePk,
+    cached_module::CachedModule,
+};
 use si_frontend_types::ListVariantsResponse;
 
 use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::v2::{AccessBuilder, variant::SchemaVariantsAPIError},
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::v2::{
+        AccessBuilder,
+        variant::SchemaVariantsAPIError,
+    },
     track,
 };
 

@@ -1,26 +1,50 @@
-use crate::middleware::client_cert_auth::verify_client_cert_middleware;
-use axum::response::{IntoResponse, Response};
-use si_data_ssm::ParameterStoreClient;
-use si_tls::ClientCertificateVerifier;
-use std::io;
-use std::sync::Arc;
-use tokio_util::sync::CancellationToken;
+use std::{
+    io,
+    sync::Arc,
+};
 
-use super::routes;
-
-use axum::{Router, middleware};
-use axum::{error_handling::HandleErrorLayer, routing::IntoMakeService};
+use axum::{
+    Router,
+    error_handling::HandleErrorLayer,
+    middleware,
+    response::{
+        IntoResponse,
+        Response,
+    },
+    routing::IntoMakeService,
+};
 use hyper::{
     StatusCode,
-    server::{accept::Accept, conn::AddrIncoming},
+    server::{
+        accept::Accept,
+        conn::AddrIncoming,
+    },
 };
+use si_data_ssm::ParameterStoreClient;
+use si_tls::ClientCertificateVerifier;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::io::{AsyncRead, AsyncWrite};
-use tower::{BoxError, ServiceBuilder, buffer::BufferLayer};
-use tower_http::trace::{DefaultMakeSpan, TraceLayer};
+use tokio::io::{
+    AsyncRead,
+    AsyncWrite,
+};
+use tokio_util::sync::CancellationToken;
+use tower::{
+    BoxError,
+    ServiceBuilder,
+    buffer::BufferLayer,
+};
+use tower_http::trace::{
+    DefaultMakeSpan,
+    TraceLayer,
+};
 
-use crate::{Config, app_state::AppState};
+use super::routes;
+use crate::{
+    Config,
+    app_state::AppState,
+    middleware::client_cert_auth::verify_client_cert_middleware,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

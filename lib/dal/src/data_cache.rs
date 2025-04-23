@@ -2,7 +2,10 @@ use si_frontend_types::object::patch::PatchBatch;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{DalContext, TransactionsError};
+use crate::{
+    DalContext,
+    TransactionsError,
+};
 
 pub type DataCacheResult<T> = Result<T, DataCacheError>;
 

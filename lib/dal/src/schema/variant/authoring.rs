@@ -1,41 +1,91 @@
-use std::collections::HashMap;
-use std::fmt::Debug;
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+};
 
-use base64::Engine;
-use base64::engine::general_purpose;
+use base64::{
+    Engine,
+    engine::general_purpose,
+};
 use chrono::Utc;
-use convert_case::{Case, Casing};
-use serde::{Deserialize, Serialize};
-use serde_json::error::Category;
-use thiserror::Error;
-
+use convert_case::{
+    Case,
+    Casing,
+};
 use pkg::import::import_schema_variant;
-use si_events::ulid::Ulid;
-use si_events::{FuncRunId, FuncRunState};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use serde_json::error::Category;
+use si_events::{
+    FuncRunId,
+    FuncRunState,
+    ulid::Ulid,
+};
 use si_layer_cache::LayerDbError;
 use si_pkg::{
-    FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData, MergeSkip, PkgSpec,
-    SchemaVariantSpec, SiPkg, SiPkgError, SpecError,
+    FuncSpec,
+    FuncSpecBackendKind,
+    FuncSpecBackendResponseType,
+    FuncSpecData,
+    MergeSkip,
+    PkgSpec,
+    SchemaVariantSpec,
+    SiPkg,
+    SiPkgError,
+    SpecError,
 };
 use telemetry::prelude::*;
+use thiserror::Error;
 
-use crate::action::prototype::ActionPrototypeError;
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
-use crate::func::authoring::FuncAuthoringError;
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::func::runner::{FuncRunner, FuncRunnerError};
-use crate::pkg::export::PkgExporter;
-use crate::pkg::import::import_only_new_funcs;
-use crate::pkg::{ImportOptions, PkgError, import_pkg_from_pkg};
-use crate::prop::PropError;
-use crate::schema::variant::{SchemaVariantJson, SchemaVariantMetadataJson};
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
 use crate::{
-    Component, ComponentError, ComponentType, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncError, FuncId, HistoryEventError, Schema, SchemaError, SchemaId,
-    SchemaVariant, SchemaVariantError, SchemaVariantId, pkg,
+    Component,
+    ComponentError,
+    ComponentType,
+    DalContext,
+    Func,
+    FuncBackendKind,
+    FuncBackendResponseType,
+    FuncError,
+    FuncId,
+    HistoryEventError,
+    Schema,
+    SchemaError,
+    SchemaId,
+    SchemaVariant,
+    SchemaVariantError,
+    SchemaVariantId,
+    action::prototype::ActionPrototypeError,
+    attribute::prototype::{
+        AttributePrototypeError,
+        argument::AttributePrototypeArgumentError,
+    },
+    func::{
+        authoring::FuncAuthoringError,
+        intrinsics::IntrinsicFunc,
+        runner::{
+            FuncRunner,
+            FuncRunnerError,
+        },
+    },
+    pkg,
+    pkg::{
+        ImportOptions,
+        PkgError,
+        export::PkgExporter,
+        import::import_only_new_funcs,
+        import_pkg_from_pkg,
+    },
+    prop::PropError,
+    schema::variant::{
+        SchemaVariantJson,
+        SchemaVariantMetadataJson,
+    },
+    socket::{
+        input::InputSocketError,
+        output::OutputSocketError,
+    },
 };
 
 #[allow(missing_docs)]

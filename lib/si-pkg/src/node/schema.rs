@@ -1,16 +1,31 @@
 use std::{
-    io::{BufRead, Write},
+    io::{
+        BufRead,
+        Write,
+    },
     str::FromStr,
 };
 
 use object_tree::{
-    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
+    GraphError,
+    NameStr,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    read_key_value_line_opt,
+    write_key_value_line,
+    write_key_value_line_opt,
 };
 
+use super::{
+    PkgNode,
+    read_common_fields,
+    write_common_fields,
+};
 use crate::SchemaSpec;
-
-use super::{PkgNode, read_common_fields, write_common_fields};
 
 const KEY_CATEGORY_STR: &str = "category";
 const KEY_CATEGORY_NAME_STR: &str = "category_name";

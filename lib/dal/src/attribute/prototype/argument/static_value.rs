@@ -1,18 +1,25 @@
 use std::sync::Arc;
 
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    DalContext, Timestamp,
-    layer_db_types::{StaticArgumentValueContent, StaticArgumentValueContentV1},
-    workspace_snapshot::{
-        WorkspaceSnapshotError, content_address::ContentAddress, node_weight::NodeWeight,
-    },
+use serde::{
+    Deserialize,
+    Serialize,
 };
+pub use si_id::StaticArgumentValueId;
 
 use super::AttributePrototypeArgumentResult;
-
-pub use si_id::StaticArgumentValueId;
+use crate::{
+    DalContext,
+    Timestamp,
+    layer_db_types::{
+        StaticArgumentValueContent,
+        StaticArgumentValueContentV1,
+    },
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        content_address::ContentAddress,
+        node_weight::NodeWeight,
+    },
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct StaticArgumentValue {

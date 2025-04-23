@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use si_data_nats::{async_nats::jetstream, jetstream::Context};
+use si_data_nats::{
+    async_nats::jetstream,
+    jetstream::Context,
+};
 
 pub const NATS_HEADER_DB_NAME: &str = "X-DB-NAME";
 pub const NATS_HEADER_KEY: &str = "X-KEY";
@@ -119,10 +122,16 @@ fn nats_stream_name(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
 
 pub mod subject {
     use si_data_nats::Subject;
-    use si_events::{ChangeSetId, WorkspacePk};
+    use si_events::{
+        ChangeSetId,
+        WorkspacePk,
+    };
 
     use crate::{
-        activities::{Activity, ActivityPayloadDiscriminants},
+        activities::{
+            Activity,
+            ActivityPayloadDiscriminants,
+        },
         event::LayeredEvent,
     };
 

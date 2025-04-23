@@ -12,12 +12,27 @@
 
 use std::rc::Rc;
 
-use proc_macro2::{Ident, TokenStream};
-use syn::{Expr, FnArg, ItemFn, Type, parse_quote, punctuated::Punctuated, token::Comma};
+use proc_macro2::{
+    Ident,
+    TokenStream,
+};
+use syn::{
+    Expr,
+    FnArg,
+    ItemFn,
+    Type,
+    parse_quote,
+    punctuated::Punctuated,
+    token::Comma,
+};
 
 use crate::{
     Args,
-    expand::{FnSetup, FnSetupExpander, expand_test},
+    expand::{
+        FnSetup,
+        FnSetupExpander,
+        expand_test,
+    },
     path_as_string,
 };
 

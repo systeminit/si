@@ -2,12 +2,21 @@ use std::convert::Infallible;
 
 use async_trait::async_trait;
 
-use crate::{
-    message::{Head, Message, MessageHead},
-    response::{IntoResponse, Response},
+use super::{
+    FromMessage,
+    FromMessageHead,
 };
-
-use super::{FromMessage, FromMessageHead};
+use crate::{
+    message::{
+        Head,
+        Message,
+        MessageHead,
+    },
+    response::{
+        IntoResponse,
+        Response,
+    },
+};
 
 #[async_trait]
 impl<S> FromMessageHead<S> for ()

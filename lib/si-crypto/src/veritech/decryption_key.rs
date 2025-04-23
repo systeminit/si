@@ -1,12 +1,25 @@
-use crate::VeritechCryptoConfig;
-use std::{io, path::Path};
+use std::{
+    io,
+    path::Path,
+};
 
-use base64::{Engine, engine::general_purpose};
+use base64::{
+    Engine,
+    engine::general_purpose,
+};
 use si_hash::Hash;
-use sodiumoxide::crypto::box_::{PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
+use sodiumoxide::crypto::box_::{
+    PublicKey as BoxPublicKey,
+    SecretKey as BoxSecretKey,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::{fs::File, io::AsyncReadExt};
+use tokio::{
+    fs::File,
+    io::AsyncReadExt,
+};
+
+use crate::VeritechCryptoConfig;
 
 /// An error that can be returned when working with a [`VeritechDecryptionKey`].
 #[remain::sorted]

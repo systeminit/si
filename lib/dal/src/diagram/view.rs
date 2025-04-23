@@ -1,28 +1,58 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{
+        HashMap,
+        HashSet,
+    },
     sync::Arc,
 };
 
 use chrono::Utc;
 use petgraph::Outgoing;
-use serde::{Deserialize, Serialize};
-use si_events::{ComponentId, ContentHash, ulid::Ulid};
-use si_frontend_types::{RawGeometry, View as FrontendView, ViewList as FrontendViewList};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ComponentId,
+    ContentHash,
+    ulid::Ulid,
+};
+use si_frontend_types::{
+    RawGeometry,
+    View as FrontendView,
+    ViewList as FrontendViewList,
+};
 pub use si_id::ViewId;
 
 use crate::{
-    ChangeSetId, DalContext, EdgeWeightKind, EdgeWeightKindDiscriminants, Timestamp,
-    WorkspaceSnapshotError, WsEvent, WsEventResult, WsPayload,
+    ChangeSetId,
+    DalContext,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    Timestamp,
+    WorkspaceSnapshotError,
+    WsEvent,
+    WsEventResult,
+    WsPayload,
     diagram::{
-        DiagramError, DiagramResult,
+        DiagramError,
+        DiagramResult,
         diagram_object::DiagramObject,
-        geometry::{Geometry, GeometryId},
+        geometry::{
+            Geometry,
+            GeometryId,
+        },
     },
     implement_add_edge_to,
-    layer_db_types::{ViewContent, ViewContentV1},
+    layer_db_types::{
+        ViewContent,
+        ViewContentV1,
+    },
     workspace_snapshot::{
         node_weight::{
-            NodeWeight, category_node_weight::CategoryNodeKind, traits::SiVersionedNodeWeight,
+            NodeWeight,
+            category_node_weight::CategoryNodeKind,
+            traits::SiVersionedNodeWeight,
             view_node_weight::ViewNodeWeight,
         },
         traits::diagram::view::ViewExt,

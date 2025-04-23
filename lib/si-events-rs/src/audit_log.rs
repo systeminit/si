@@ -1,9 +1,19 @@
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use v1::{
+    AuditLogKindV1,
+    AuditLogMetadataV1,
+    AuditLogV1,
+};
 
-use v1::{AuditLogKindV1, AuditLogMetadataV1, AuditLogV1};
-
-use crate::{Actor, AuthenticationMethod, ChangeSetId};
+use crate::{
+    Actor,
+    AuthenticationMethod,
+    ChangeSetId,
+};
 
 mod v1;
 

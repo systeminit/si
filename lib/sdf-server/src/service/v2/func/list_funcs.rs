@@ -1,16 +1,33 @@
+use std::collections::HashMap;
+
 use axum::{
     Json,
-    extract::{OriginalUri, Path},
+    extract::{
+        OriginalUri,
+        Path,
+    },
 };
-use dal::func::binding::FuncBinding;
-use dal::{ChangeSetId, DalContext, Func, SchemaId, SchemaVariant, SchemaVariantId, WorkspacePk};
+use dal::{
+    ChangeSetId,
+    DalContext,
+    Func,
+    SchemaId,
+    SchemaVariant,
+    SchemaVariantId,
+    WorkspacePk,
+    func::binding::FuncBinding,
+};
 use si_frontend_types as frontend_types;
-use std::collections::HashMap;
 use telemetry::prelude::*;
 
 use super::FuncAPIResult;
-use crate::extract::{HandlerContext, PosthogClient};
-use crate::service::v2::AccessBuilder;
+use crate::{
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::v2::AccessBuilder,
+};
 
 pub async fn list_funcs(
     HandlerContext(builder): HandlerContext,

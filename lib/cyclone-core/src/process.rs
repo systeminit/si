@@ -1,11 +1,21 @@
-use std::{io, num::TryFromIntError, process::ExitStatus, time::Duration};
-
-use nix::{sys::signal, unistd::Pid};
-use telemetry::prelude::*;
-use thiserror::Error;
-use tokio::{process::Child, time};
+use std::{
+    io,
+    num::TryFromIntError,
+    process::ExitStatus,
+    time::Duration,
+};
 
 pub use nix::sys::signal::Signal;
+use nix::{
+    sys::signal,
+    unistd::Pid,
+};
+use telemetry::prelude::*;
+use thiserror::Error;
+use tokio::{
+    process::Child,
+    time,
+};
 
 const CHILD_WAIT_TIMEOUT_SECS: Duration = Duration::from_secs(10);
 

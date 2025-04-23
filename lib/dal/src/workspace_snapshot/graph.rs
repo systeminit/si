@@ -1,24 +1,50 @@
-use std::{fs::File, io::Write};
+use std::{
+    fs::File,
+    io::Write,
+};
 
 use deprecated::DeprecatedWorkspaceSnapshotGraphV1;
 use detector::Update;
 use petgraph::prelude::*;
-use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
-use si_id::{ApprovalRequirementDefinitionId, EntityId};
-use si_layer_cache::LayerDbError;
-use si_layer_cache::db::serialize;
-use strum::{EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
+/// Ensure [`NodeIndex`], and [`Direction`] are usable externally.
+pub use petgraph::{
+    Direction,
+    graph::NodeIndex,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
+use si_id::{
+    ApprovalRequirementDefinitionId,
+    EntityId,
+};
+use si_layer_cache::{
+    LayerDbError,
+    db::serialize,
+};
+use strum::{
+    EnumDiscriminants,
+    EnumIter,
+    EnumString,
+    IntoEnumIterator,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-/// Ensure [`NodeIndex`], and [`Direction`] are usable externally.
-pub use petgraph::{Direction, graph::NodeIndex};
-
 use crate::{
-    ComponentError, EdgeWeightKindDiscriminants, SchemaVariantError,
+    ComponentError,
+    EdgeWeightKindDiscriminants,
+    SchemaVariantError,
     socket::input::InputSocketError,
-    workspace_snapshot::node_weight::{NodeWeightError, category_node_weight::CategoryNodeKind},
+    workspace_snapshot::node_weight::{
+        NodeWeightError,
+        category_node_weight::CategoryNodeKind,
+    },
 };
 
 pub mod correct_transforms;
@@ -31,7 +57,8 @@ pub mod v3;
 pub mod v4;
 
 pub use traits::{
-    approval_requirement::ApprovalRequirementExt, schema::variant::SchemaVariantExt,
+    approval_requirement::ApprovalRequirementExt,
+    schema::variant::SchemaVariantExt,
     socket::input::InputSocketExt,
 };
 pub use v2::WorkspaceSnapshotGraphV2;

@@ -1,5 +1,8 @@
 use naxum_api_types::RequestId;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -12,7 +15,9 @@ pub struct RebuildRequestV1 {
 mod tests {
     use super::{
         super::{
-            RebuildRequestVersionsDiscriminants, RebuildRequestVersionsDiscriminants::*, test::*,
+            RebuildRequestVersionsDiscriminants,
+            RebuildRequestVersionsDiscriminants::*,
+            test::*,
         },
         *,
     };

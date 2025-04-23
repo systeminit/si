@@ -1,16 +1,35 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 
+use super::{
+    AttributeBinding,
+    EventualParent,
+    FuncBinding,
+    FuncBindingResult,
+};
 use crate::{
-    AttributePrototype, AttributePrototypeId, AttributeValue, Component, DalContext, Func, FuncId,
-    Prop, SchemaVariant, SchemaVariantId,
+    AttributePrototype,
+    AttributePrototypeId,
+    AttributeValue,
+    Component,
+    DalContext,
+    Func,
+    FuncId,
+    Prop,
+    SchemaVariant,
+    SchemaVariantId,
     attribute::prototype::argument::AttributePrototypeArgument,
     func::argument::FuncArgument,
     prop::PropPath,
-    schema::variant::leaves::{LeafInput, LeafInputLocation, LeafKind},
+    schema::variant::leaves::{
+        LeafInput,
+        LeafInputLocation,
+        LeafKind,
+    },
 };
-
-use super::{AttributeBinding, EventualParent, FuncBinding, FuncBindingResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LeafBinding {

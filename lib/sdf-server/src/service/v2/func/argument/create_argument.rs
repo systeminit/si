@@ -1,9 +1,18 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Path},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
 };
 use dal::{
-    ChangeSet, ChangeSetId, Func, FuncId, WorkspacePk, WsEvent,
+    ChangeSet,
+    ChangeSetId,
+    Func,
+    FuncId,
+    WorkspacePk,
+    WsEvent,
     func::authoring::FuncAuthoringClient,
 };
 use frontend_types::FuncSummary;
@@ -11,9 +20,17 @@ use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;
 
 use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::v2::AccessBuilder,
-    service::{force_change_set_response::ForceChangeSetResponse, v2::func::FuncAPIResult},
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::{
+            AccessBuilder,
+            func::FuncAPIResult,
+        },
+    },
     track,
 };
 

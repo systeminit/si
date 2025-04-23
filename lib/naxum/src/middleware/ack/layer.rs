@@ -2,7 +2,11 @@ use std::time::Duration;
 
 use tower::Layer;
 
-use super::{on_failure::DefaultOnFailure, on_success::DefaultOnSuccess, service::Ack};
+use super::{
+    on_failure::DefaultOnFailure,
+    on_success::DefaultOnSuccess,
+    service::Ack,
+};
 
 // Default `ack_wait` period when unset is 30 seconds (a NATS server default)
 const DEFAULT_PROGRESS_PERIOD: Duration = Duration::from_secs(20);

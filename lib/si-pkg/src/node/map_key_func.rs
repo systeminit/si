@@ -1,13 +1,21 @@
-use std::io::{BufRead, Write};
+use std::io::{
+    BufRead,
+    Write,
+};
 
 use object_tree::{
-    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes, read_key_value_line,
+    GraphError,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
     write_key_value_line,
 };
 
-use crate::MapKeyFuncSpec;
-
 use super::PkgNode;
+use crate::MapKeyFuncSpec;
 
 const KEY_KEY_STR: &str = "key";
 const KEY_FUNC_UNIQUE_ID_STR: &str = "func_unique_id";

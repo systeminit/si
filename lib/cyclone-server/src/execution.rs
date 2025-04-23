@@ -1,6 +1,10 @@
 use std::{
-    fmt, io,
-    marker::{PhantomData, Unpin},
+    fmt,
+    io,
+    marker::{
+        PhantomData,
+        Unpin,
+    },
     path::PathBuf,
     string::FromUtf8Error,
     sync::Arc,
@@ -10,25 +14,58 @@ use std::{
 use axum::extract::ws::WebSocket;
 use bytes_lines_codec::BytesLinesCodec;
 use cyclone_core::{
-    CycloneRequest, CycloneRequestable, FunctionResult, FunctionResultFailure,
-    FunctionResultFailureError, FunctionResultFailureErrorKind, Message, OutputStream,
-    process::{self, ShutdownError},
+    CycloneRequest,
+    CycloneRequestable,
+    FunctionResult,
+    FunctionResultFailure,
+    FunctionResultFailureError,
+    FunctionResultFailureErrorKind,
+    Message,
+    OutputStream,
+    process::{
+        self,
+        ShutdownError,
+    },
 };
-use futures::{SinkExt, StreamExt, TryStreamExt};
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use futures::{
+    SinkExt,
+    StreamExt,
+    TryStreamExt,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+    de::DeserializeOwned,
+};
 use serde_json::Value;
 use si_crypto::SensitiveStrings;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::time::timeout;
 use tokio::{
-    process::{ChildStderr, ChildStdin, ChildStdout},
+    process::{
+        ChildStderr,
+        ChildStdin,
+        ChildStdout,
+    },
     time,
+    time::timeout,
 };
-use tokio_serde::{Deserializer, Framed, SymmetricallyFramed, formats::SymmetricalJson};
-use tokio_util::codec::{Decoder, FramedRead, FramedWrite};
+use tokio_serde::{
+    Deserializer,
+    Framed,
+    SymmetricallyFramed,
+    formats::SymmetricalJson,
+};
+use tokio_util::codec::{
+    Decoder,
+    FramedRead,
+    FramedWrite,
+};
 
-use crate::{WebSocketMessage, state::LangServerChild};
+use crate::{
+    WebSocketMessage,
+    state::LangServerChild,
+};
 
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(5);
 const DEFAULT_LANG_SERVER_PROCESS_TIMEOUT: Duration = Duration::from_secs(32 * 60);

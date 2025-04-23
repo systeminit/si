@@ -1,12 +1,30 @@
-use std::{collections::HashMap, io::Read, path::PathBuf, str::FromStr, string::FromUtf8Error};
+use std::{
+    collections::HashMap,
+    io::Read,
+    path::PathBuf,
+    str::FromStr,
+    string::FromUtf8Error,
+};
 
 use petgraph::prelude::*;
-use si_hash::{Hash, HashParseError};
+use si_hash::{
+    Hash,
+    HashParseError,
+};
 use thiserror::Error;
 
 use crate::{
-    graph::{GraphError, HashedNodeWithEntries, NodeWithEntries, ObjectTree, ReadBytes},
-    tar::{object_path, ref_path},
+    graph::{
+        GraphError,
+        HashedNodeWithEntries,
+        NodeWithEntries,
+        ObjectTree,
+        ReadBytes,
+    },
+    tar::{
+        object_path,
+        ref_path,
+    },
 };
 
 /// Errors that can occur when reading a module bundle from a tar file

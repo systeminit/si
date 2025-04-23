@@ -1,35 +1,80 @@
-use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use std::{
+    collections::{
+        HashMap,
+        HashSet,
+        hash_map::Entry,
+    },
+    sync::Arc,
+};
 
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use si_events::ContentHash;
-use si_events::ulid::Ulid;
+use chrono::{
+    DateTime,
+    Utc,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    ulid::Ulid,
+};
 use si_frontend_types as frontend_types;
 use si_id::ChangeSetId;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::TryLockError;
-use tokio::time::Instant;
-
-use crate::cached_module::{CachedModule, CachedModuleError};
-use crate::layer_db_types::{ModuleContent, ModuleContentV2};
-use crate::pkg::PkgError;
-use crate::pkg::export::PkgExporter;
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
-use crate::workspace_snapshot::edge_weight::{
-    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
+use tokio::{
+    sync::TryLockError,
+    time::Instant,
 };
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
-use crate::workspace_snapshot::node_weight::{NodeWeight, NodeWeightError};
+
 use crate::{
-    ChangeSetError, DalContext, Func, FuncError, HistoryActor, Schema, SchemaError, SchemaId,
-    SchemaVariant, SchemaVariantError, SchemaVariantId, Timestamp, TransactionsError, User,
+    ChangeSetError,
+    DalContext,
+    Func,
+    FuncError,
+    HistoryActor,
+    Schema,
+    SchemaError,
+    SchemaId,
+    SchemaVariant,
+    SchemaVariantError,
+    SchemaVariantId,
+    Timestamp,
+    TransactionsError,
+    User,
     UserError,
+    cached_module::{
+        CachedModule,
+        CachedModuleError,
+    },
+    layer_db_types::{
+        ModuleContent,
+        ModuleContentV2,
+    },
+    pkg::{
+        PkgError,
+        export::PkgExporter,
+    },
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
+        edge_weight::{
+            EdgeWeight,
+            EdgeWeightKind,
+            EdgeWeightKindDiscriminants,
+        },
+        node_weight::{
+            NodeWeight,
+            NodeWeightError,
+            category_node_weight::CategoryNodeKind,
+            traits::SiNodeWeight,
+        },
+    },
 };
 
 #[remain::sorted]

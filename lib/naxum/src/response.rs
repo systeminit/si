@@ -6,7 +6,10 @@ mod into_response_parts;
 
 pub use self::{
     into_response::IntoResponse,
-    into_response_parts::{IntoResponseParts, ResponseParts},
+    into_response_parts::{
+        IntoResponseParts,
+        ResponseParts,
+    },
 };
 
 pub type Response<T = Body> = inner::Response<T>;

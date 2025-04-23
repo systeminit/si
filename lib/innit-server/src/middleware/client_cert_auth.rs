@@ -1,13 +1,27 @@
+use std::sync::Arc;
+
 use axum::{
-    body::{Body, BoxBody},
+    body::{
+        Body,
+        BoxBody,
+    },
     extract::State,
-    http::{Request, StatusCode, header::HeaderMap},
+    http::{
+        Request,
+        StatusCode,
+        header::HeaderMap,
+    },
     middleware::Next,
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use rustls::pki_types::CertificateDer;
-use si_tls::{CertificateSource, ClientCertificateVerifier};
-use std::sync::Arc;
+use si_tls::{
+    CertificateSource,
+    ClientCertificateVerifier,
+};
 use thiserror::Error;
 
 type Result<T> = std::result::Result<T, ClientCertError>;

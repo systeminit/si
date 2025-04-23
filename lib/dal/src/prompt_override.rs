@@ -1,8 +1,18 @@
-use crate::{DalContext, WsEvent, WsEventResult, WsPayload};
-use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
+
+use crate::{
+    DalContext,
+    WsEvent,
+    WsEventResult,
+    WsPayload,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]

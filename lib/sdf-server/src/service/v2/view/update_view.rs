@@ -1,16 +1,45 @@
-use crate::service::force_change_set_response::ForceChangeSetResponse;
-use crate::service::v2::view::{ViewError, ViewResult};
-use crate::tracking::track;
-use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::v2::AccessBuilder,
+use axum::{
+    Json,
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
 };
-use axum::Json;
-use axum::extract::{Host, OriginalUri, Path};
-use dal::diagram::view::{View, ViewId, ViewView};
-use dal::{ChangeSet, ChangeSetId, WorkspacePk, WsEvent};
-use serde::{Deserialize, Serialize};
+use dal::{
+    ChangeSet,
+    ChangeSetId,
+    WorkspacePk,
+    WsEvent,
+    diagram::view::{
+        View,
+        ViewId,
+        ViewView,
+    },
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::audit_log::AuditLogKind;
+
+use crate::{
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::{
+            AccessBuilder,
+            view::{
+                ViewError,
+                ViewResult,
+            },
+        },
+    },
+    tracking::track,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

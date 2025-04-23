@@ -3,9 +3,15 @@ use std::time::Duration;
 use axum::extract::ws::WebSocket;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::{sync::mpsc, time};
+use tokio::{
+    sync::mpsc,
+    time,
+};
 
-use crate::{ShutdownSource, WebSocketMessage};
+use crate::{
+    ShutdownSource,
+    WebSocketMessage,
+};
 
 pub fn run(keepalive_tx: mpsc::Sender<()>, timeout: Duration) -> WatchRun {
     WatchRun {

@@ -1,7 +1,13 @@
 use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use super::{AttrFuncInputSpec, SpecError};
+use super::{
+    AttrFuncInputSpec,
+    SpecError,
+};
 
 /// MapKeyFuncSpecs track custom functions set on keys to a map
 #[derive(Builder, Clone, Debug, Deserialize, Serialize)]

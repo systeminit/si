@@ -1,6 +1,13 @@
-use crate::{ValidateResponse, Validator};
-pub(crate) use color_eyre::{Result, eyre::eyre};
+pub(crate) use color_eyre::{
+    Result,
+    eyre::eyre,
+};
 pub(crate) use serde_json::json;
+
+use crate::{
+    ValidateResponse,
+    Validator,
+};
 
 pub(crate) fn valid_opt(json: &str, value: Option<serde_json::Value>) -> Result<()> {
     let validator: Validator = serde_json::from_str(json)?;
@@ -224,8 +231,15 @@ mod boolean {
 }
 
 mod number {
-    use super::{Result, invalid_opt, json, unsupported, valid_opt};
     use std::f64::consts::PI;
+
+    use super::{
+        Result,
+        invalid_opt,
+        json,
+        unsupported,
+        valid_opt,
+    };
 
     // tests both the float and string version of the value
     fn valid(joi: &str, value: impl Into<f64>) -> Result<()> {
@@ -577,8 +591,9 @@ mod number {
 }
 
 mod string {
-    use super::*;
     use std::f64::consts::PI;
+
+    use super::*;
 
     #[test]
     fn type_string() -> Result<()> {

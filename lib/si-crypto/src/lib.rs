@@ -22,12 +22,26 @@ mod veritech;
 
 pub use sensitive_strings::SensitiveStrings;
 pub use symmetric::{
-    SymmetricCryptoError, SymmetricCryptoResult, SymmetricCryptoService,
-    SymmetricCryptoServiceConfig, SymmetricCryptoServiceConfigFile, SymmetricKey, SymmetricNonce,
+    SymmetricCryptoError,
+    SymmetricCryptoResult,
+    SymmetricCryptoService,
+    SymmetricCryptoServiceConfig,
+    SymmetricCryptoServiceConfigFile,
+    SymmetricKey,
+    SymmetricNonce,
 };
 pub use veritech::{
     config::VeritechCryptoConfig,
-    decryption_key::{VeritechDecryptionKey, VeritechDecryptionKeyError},
-    encryption_key::{VeritechEncryptionKey, VeritechEncryptionKeyError},
-    key_pair::{VeritechKeyPair, VeritechKeyPairError},
+    decryption_key::{
+        VeritechDecryptionKey,
+        VeritechDecryptionKeyError,
+    },
+    encryption_key::{
+        VeritechEncryptionKey,
+        VeritechEncryptionKeyError,
+    },
+    key_pair::{
+        VeritechKeyPair,
+        VeritechKeyPairError,
+    },
 };

@@ -1,8 +1,14 @@
 use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use super::SpecError;
-use super::{attribute_value::AttributeValueSpec, position::PositionSpec};
+use super::{
+    SpecError,
+    attribute_value::AttributeValueSpec,
+    position::PositionSpec,
+};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -1,12 +1,20 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::ulid::Ulid;
 
+use super::AttributeValueResult;
 use crate::{
-    DalContext, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropId,
+    DalContext,
+    InputSocket,
+    InputSocketId,
+    OutputSocket,
+    OutputSocketId,
+    Prop,
+    PropId,
     SchemaVariantId,
 };
-
-use super::AttributeValueResult;
 
 /// What "thing" on the schema variant, (either a prop, input socket, or output socket),
 /// is a particular value the value of/for?

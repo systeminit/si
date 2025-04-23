@@ -3,13 +3,19 @@ use data_warehouse_stream_client::DataWarehouseStreamClientError;
 use naxum::{
     Json,
     extract::State,
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use si_data_nats::Subject;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use super::app_state::{AppState, NoopAppState};
+use super::app_state::{
+    AppState,
+    NoopAppState,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

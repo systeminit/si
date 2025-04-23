@@ -3,26 +3,64 @@ use std::{
     collections::HashMap,
     pin::Pin,
     sync::Arc,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
     time::Duration,
 };
 
 use axum::extract::ws::Message;
 use dal::WorkspacePk;
-use futures::{Future, Sink, SinkExt, Stream};
+use futures::{
+    Future,
+    Sink,
+    SinkExt,
+    Stream,
+};
 use futures_lite::future::FutureExt;
 use nats_multiplexer::Multiplexer;
 use nats_multiplexer_client::MultiplexerClient;
-use sdf_core::BroadcastGroups;
-use sdf_core::nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT;
-use sdf_v1_routes_ws::crdt::{CrdtError, crdt_handle};
-use si_data_nats::{NatsClient, NatsConfig, Subject};
+use sdf_core::{
+    BroadcastGroups,
+    nats_multiplexer::CRDT_MULTIPLEXER_SUBJECT,
+};
+use sdf_v1_routes_ws::crdt::{
+    CrdtError,
+    crdt_handle,
+};
+use si_data_nats::{
+    NatsClient,
+    NatsConfig,
+    Subject,
+};
 use tokio::{
-    sync::Mutex, sync::Notify, sync::RwLock, sync::broadcast, task, task::JoinHandle, time::timeout,
+    sync::{
+        Mutex,
+        Notify,
+        RwLock,
+        broadcast,
+    },
+    task,
+    task::JoinHandle,
+    time::timeout,
 };
 use tokio_util::sync::CancellationToken;
-use y_sync::{awareness::Awareness, net::BroadcastGroup, net::Connection};
-use yrs::{Doc, GetString, Text, Transact, UpdateSubscription, updates::encoder::Encode};
+use y_sync::{
+    awareness::Awareness,
+    net::{
+        BroadcastGroup,
+        Connection,
+    },
+};
+use yrs::{
+    Doc,
+    GetString,
+    Text,
+    Transact,
+    UpdateSubscription,
+    updates::encoder::Encode,
+};
 
 struct Server {
     nats: NatsClient,

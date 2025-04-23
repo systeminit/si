@@ -1,10 +1,19 @@
-use std::{fmt, time::Duration};
+use std::{
+    fmt,
+    time::Duration,
+};
 
 use naxum::{
-    middleware::{LatencyUnit, trace::OnResponse},
+    middleware::{
+        LatencyUnit,
+        trace::OnResponse,
+    },
     response::Response,
 };
-use telemetry::{OtelStatusCode, prelude::*};
+use telemetry::{
+    OtelStatusCode,
+    prelude::*,
+};
 
 /// An implementation of [`OnResponse`] to update span fields for NATS responses.
 #[derive(Clone, Debug)]

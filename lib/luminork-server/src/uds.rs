@@ -1,6 +1,12 @@
 use std::{
-    path::{Path, PathBuf},
-    task::{Context, Poll},
+    path::{
+        Path,
+        PathBuf,
+    },
+    task::{
+        Context,
+        Poll,
+    },
 };
 
 use futures::ready;
@@ -8,7 +14,10 @@ use hyper::server::accept::Accept;
 use thiserror::Error;
 use tokio::{
     fs,
-    net::{UnixListener, UnixStream},
+    net::{
+        UnixListener,
+        UnixStream,
+    },
 };
 
 #[remain::sorted]

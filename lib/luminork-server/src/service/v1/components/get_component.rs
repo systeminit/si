@@ -1,19 +1,37 @@
 use std::collections::HashMap;
 
-use axum::{extract::Path, response::Json};
+use axum::{
+    extract::Path,
+    response::Json,
+};
 use dal::{
-    AttributeValue, Component,
-    diagram::{geometry::Geometry, view::View},
+    AttributeValue,
+    Component,
+    diagram::{
+        geometry::Geometry,
+        view::View,
+    },
     management::prototype::ManagementPrototype,
 };
-use serde::{Deserialize, Serialize};
-use si_frontend_types::{DiagramComponentView, GeometryAndView};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_frontend_types::{
+    DiagramComponentView,
+    GeometryAndView,
+};
 use si_id::ManagementPrototypeId;
-use utoipa::{self, ToSchema};
+use utoipa::{
+    self,
+    ToSchema,
+};
 
+use super::{
+    ComponentV1RequestPath,
+    ComponentsError,
+};
 use crate::extract::change_set::ChangeSetDalContext;
-
-use super::{ComponentV1RequestPath, ComponentsError};
 
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]

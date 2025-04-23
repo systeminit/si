@@ -1,7 +1,10 @@
 use std::path::Path;
 
 use si_crypto::{
-    SymmetricCryptoError, SymmetricCryptoService, VeritechKeyPair, VeritechKeyPairError,
+    SymmetricCryptoError,
+    SymmetricCryptoService,
+    VeritechKeyPair,
+    VeritechKeyPairError,
 };
 use telemetry::prelude::*;
 

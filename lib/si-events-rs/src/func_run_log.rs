@@ -1,9 +1,17 @@
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-
-use crate::{FuncRunId, Tenancy};
-
+use chrono::{
+    DateTime,
+    Utc,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 pub use si_id::FuncRunLogId;
+
+use crate::{
+    FuncRunId,
+    Tenancy,
+};
 
 /// A one-to-one mapping of cyclone's "OutputStream" type.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]

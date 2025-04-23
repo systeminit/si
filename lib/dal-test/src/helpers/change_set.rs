@@ -2,11 +2,22 @@
 
 use std::time::Duration;
 
-use color_eyre::Result;
-use color_eyre::eyre::eyre;
-use dal::action::dependency_graph::ActionDependencyGraph;
-use dal::action::{Action, ActionState};
-use dal::{ChangeSet, DalContext, Func, Schema, SchemaVariant};
+use color_eyre::{
+    Result,
+    eyre::eyre,
+};
+use dal::{
+    ChangeSet,
+    DalContext,
+    Func,
+    Schema,
+    SchemaVariant,
+    action::{
+        Action,
+        ActionState,
+        dependency_graph::ActionDependencyGraph,
+    },
+};
 
 use crate::helpers::generate_fake_name;
 

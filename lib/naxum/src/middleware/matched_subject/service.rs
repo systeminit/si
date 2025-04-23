@@ -1,14 +1,23 @@
 use std::{
     future::Future,
     pin::Pin,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
 };
 
 use tower::Service;
 
-use crate::{Message, MessageHead};
-
-use super::{DefaultForSubject, ForSubject, MatchedSubjectLayer};
+use super::{
+    DefaultForSubject,
+    ForSubject,
+    MatchedSubjectLayer,
+};
+use crate::{
+    Message,
+    MessageHead,
+};
 
 #[derive(Clone, Copy, Debug)]
 pub struct MatchedSubject<S, ForSubject = DefaultForSubject> {

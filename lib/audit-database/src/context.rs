@@ -1,4 +1,7 @@
-use si_data_pg::{PgPool, PgPoolError};
+use si_data_pg::{
+    PgPool,
+    PgPoolError,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 

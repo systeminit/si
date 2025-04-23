@@ -1,9 +1,18 @@
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 
-use crate::workspace_snapshot::graph::LineageId;
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::vector_clock::deprecated::DeprecatedVectorClock;
+use crate::workspace_snapshot::{
+    graph::LineageId,
+    node_weight::category_node_weight::CategoryNodeKind,
+    vector_clock::deprecated::DeprecatedVectorClock,
+};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct DeprecatedCategoryNodeWeightLegacy {

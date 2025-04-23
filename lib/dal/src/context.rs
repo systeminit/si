@@ -1,59 +1,129 @@
-use std::collections::HashSet;
-use std::time::Duration;
-use std::{fmt, mem, path::PathBuf, sync::Arc};
+use std::{
+    collections::HashSet,
+    fmt,
+    mem,
+    path::PathBuf,
+    sync::Arc,
+    time::Duration,
+};
 
-use futures::Future;
-use futures::future::BoxFuture;
-use rebaser_client::api_types::enqueue_updates_response::EnqueueUpdatesResponse;
-use rebaser_client::api_types::enqueue_updates_response::v1::RebaseStatus;
-use rebaser_client::{RebaserClient, RequestId};
-use serde::{Deserialize, Serialize};
-use si_crypto::SymmetricCryptoService;
-use si_crypto::VeritechEncryptionKey;
-use si_data_nats::{NatsClient, NatsError, NatsTxn, jetstream};
-use si_data_pg::{InstrumentedClient, PgError, PgPool, PgPoolError, PgPoolResult, PgTxn};
-use si_events::AuthenticationMethod;
-use si_events::EventSessionId;
-use si_events::WorkspaceSnapshotAddress;
-use si_events::audit_log::AuditLogKind;
-use si_events::change_batch::{ChangeBatch, ChangeBatchAddress};
-use si_events::rebase_batch_address::RebaseBatchAddress;
-use si_events::workspace_snapshot::Change;
-use si_layer_cache::LayerDbError;
-use si_layer_cache::activities::ActivityPayloadDiscriminants;
-use si_layer_cache::db::LayerDb;
+use futures::{
+    Future,
+    future::BoxFuture,
+};
+use rebaser_client::{
+    RebaserClient,
+    RequestId,
+    api_types::enqueue_updates_response::{
+        EnqueueUpdatesResponse,
+        v1::RebaseStatus,
+    },
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_crypto::{
+    SymmetricCryptoService,
+    VeritechEncryptionKey,
+};
+use si_data_nats::{
+    NatsClient,
+    NatsError,
+    NatsTxn,
+    jetstream,
+};
+use si_data_pg::{
+    InstrumentedClient,
+    PgError,
+    PgPool,
+    PgPoolError,
+    PgPoolResult,
+    PgTxn,
+};
+use si_events::{
+    AuthenticationMethod,
+    EventSessionId,
+    WorkspaceSnapshotAddress,
+    audit_log::AuditLogKind,
+    change_batch::{
+        ChangeBatch,
+        ChangeBatchAddress,
+    },
+    rebase_batch_address::RebaseBatchAddress,
+    workspace_snapshot::Change,
+};
+use si_layer_cache::{
+    LayerDbError,
+    activities::ActivityPayloadDiscriminants,
+    db::LayerDb,
+};
 use si_runtime::DedicatedExecutor;
 use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{MappedMutexGuard, Mutex, MutexGuard};
-use tokio::time;
+use tokio::{
+    sync::{
+        MappedMutexGuard,
+        Mutex,
+        MutexGuard,
+    },
+    time,
+};
 use tokio_util::task::TaskTracker;
 use veritech_client::Client as VeritechClient;
 
-use crate::audit_logging::AuditLoggingError;
-use crate::feature_flags::FeatureFlagService;
-use crate::jetstream_streams::JetstreamStreams;
-use crate::job::definition::AttributeValueBasedJobIdentifier;
-use crate::layer_db_types::ContentTypes;
-use crate::slow_rt::SlowRuntimeError;
-use crate::workspace_snapshot::graph::{RebaseBatch, WorkspaceSnapshotGraph};
-use crate::workspace_snapshot::{
-    DependentValueRoot, WorkspaceSnapshotResult, WorkspaceSnapshotSelector,
-};
 use crate::{
-    AttributeValueId, HistoryActor, StandardModel, Tenancy, TenancyError, Visibility, WorkspacePk,
+    AttributeValueId,
+    ChangeSetError,
+    EncryptedSecret,
+    HistoryActor,
+    StandardModel,
+    Tenancy,
+    TenancyError,
+    Visibility,
+    Workspace,
+    WorkspaceError,
+    WorkspacePk,
     WorkspaceSnapshot,
-    change_set::{ChangeSet, ChangeSetId},
+    audit_logging,
+    audit_logging::AuditLoggingError,
+    change_set::{
+        ChangeSet,
+        ChangeSetId,
+    },
+    feature_flags::FeatureFlagService,
+    jetstream_streams::JetstreamStreams,
     job::{
-        definition::ActionJob,
-        processor::{JobQueueProcessor, JobQueueProcessorError},
-        producer::{BlockingJobError, BlockingJobResult, JobProducer},
+        definition::{
+            ActionJob,
+            AttributeValueBasedJobIdentifier,
+        },
+        processor::{
+            JobQueueProcessor,
+            JobQueueProcessorError,
+        },
+        producer::{
+            BlockingJobError,
+            BlockingJobResult,
+            JobProducer,
+        },
         queue::JobQueue,
     },
-    workspace_snapshot::WorkspaceSnapshotError,
+    layer_db_types::ContentTypes,
+    slow_rt,
+    slow_rt::SlowRuntimeError,
+    workspace_snapshot::{
+        DependentValueRoot,
+        WorkspaceSnapshotError,
+        WorkspaceSnapshotResult,
+        WorkspaceSnapshotSelector,
+        graph::{
+            RebaseBatch,
+            WorkspaceSnapshotGraph,
+        },
+    },
 };
-use crate::{ChangeSetError, EncryptedSecret, Workspace, WorkspaceError, audit_logging, slow_rt};
 
 pub type DalLayerDb = LayerDb<ContentTypes, EncryptedSecret, WorkspaceSnapshotGraph, RebaseBatch>;
 

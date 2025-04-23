@@ -3,55 +3,123 @@
 //! having code outside of the specific graph version implementation that requires having knowledge
 //! of how the internals of that specific version of the graph work.
 
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::{
+    collections::{
+        HashMap,
+        HashSet,
+    },
+    sync::{
+        Arc,
+        atomic::AtomicBool,
+    },
+};
 
-use graph::correct_transforms::correct_transforms;
-use graph::detector::Update;
-use graph::{RebaseBatch, WorkspaceSnapshotGraph};
+use graph::{
+    RebaseBatch,
+    WorkspaceSnapshotGraph,
+    correct_transforms::correct_transforms,
+    detector::Update,
+};
 use node_weight::traits::CorrectTransformsError;
 use petgraph::prelude::*;
 use selector::WorkspaceSnapshotSelectorDiscriminants;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_pg::PgError;
-use si_events::merkle_tree_hash::MerkleTreeHash;
-use si_events::workspace_snapshot::{Change, Checksum};
-use si_events::{ContentHash, WorkspaceSnapshotAddress, ulid::Ulid};
-use si_id::{ApprovalRequirementDefinitionId, EntityId};
+use si_events::{
+    ContentHash,
+    WorkspaceSnapshotAddress,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+    workspace_snapshot::{
+        Change,
+        Checksum,
+    },
+};
+use si_id::{
+    ApprovalRequirementDefinitionId,
+    EntityId,
+};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use tokio::task::JoinError;
-
-use crate::action::{Action, ActionError};
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::prototype::argument::AttributePrototypeArgumentError;
-use crate::change_set::{ChangeSetError, ChangeSetId};
-use crate::component::inferred_connection_graph::{
-    InferredConnectionGraph, InferredConnectionGraphError,
-};
-use crate::component::{ComponentResult, Connection};
-use crate::slow_rt::{self, SlowRuntimeError};
-use crate::socket::connection_annotation::ConnectionAnnotationError;
-use crate::socket::input::InputSocketError;
-use crate::workspace_snapshot::{
-    content_address::ContentAddressDiscriminants,
-    edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
-    graph::{LineageId, WorkspaceSnapshotGraphDiscriminants},
-    node_weight::{NodeWeight, category_node_weight::CategoryNodeKind},
-};
-use crate::{
-    Component, ComponentError, ComponentId, InputSocketId, OutputSocketId, SchemaId,
-    SchemaVariantId, TenancyError, Workspace, WorkspaceError,
-};
-use crate::{
-    DalContext, TransactionsError, WorkspaceSnapshotGraphVCurrent,
-    workspace_snapshot::{graph::WorkspaceSnapshotGraphError, node_weight::NodeWeightError},
+use tokio::{
+    sync::{
+        Mutex,
+        RwLock,
+        RwLockReadGuard,
+        RwLockWriteGuard,
+    },
+    task::JoinError,
 };
 
-use self::node_weight::{NodeWeightDiscriminants, OrderingNodeWeight};
+use self::node_weight::{
+    NodeWeightDiscriminants,
+    OrderingNodeWeight,
+};
+use crate::{
+    Component,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    InputSocketId,
+    OutputSocketId,
+    SchemaId,
+    SchemaVariantId,
+    TenancyError,
+    TransactionsError,
+    Workspace,
+    WorkspaceError,
+    WorkspaceSnapshotGraphVCurrent,
+    action::{
+        Action,
+        ActionError,
+    },
+    attribute::prototype::{
+        AttributePrototypeError,
+        argument::AttributePrototypeArgumentError,
+    },
+    change_set::{
+        ChangeSetError,
+        ChangeSetId,
+    },
+    component::{
+        ComponentResult,
+        Connection,
+        inferred_connection_graph::{
+            InferredConnectionGraph,
+            InferredConnectionGraphError,
+        },
+    },
+    slow_rt::{
+        self,
+        SlowRuntimeError,
+    },
+    socket::{
+        connection_annotation::ConnectionAnnotationError,
+        input::InputSocketError,
+    },
+    workspace_snapshot::{
+        content_address::ContentAddressDiscriminants,
+        edge_weight::{
+            EdgeWeight,
+            EdgeWeightKind,
+            EdgeWeightKindDiscriminants,
+        },
+        graph::{
+            LineageId,
+            WorkspaceSnapshotGraphDiscriminants,
+            WorkspaceSnapshotGraphError,
+        },
+        node_weight::{
+            NodeWeight,
+            NodeWeightError,
+            category_node_weight::CategoryNodeKind,
+        },
+    },
+};
 
 pub mod content_address;
 pub mod edge_weight;
@@ -68,7 +136,9 @@ pub use petgraph::Direction;
 pub use selector::WorkspaceSnapshotSelector;
 pub use si_id::WorkspaceSnapshotNodeId as NodeId;
 pub use traits::{
-    entity_kind::EntityKindExt, schema::variant::SchemaVariantExt, socket::input::InputSocketExt,
+    entity_kind::EntityKindExt,
+    schema::variant::SchemaVariantExt,
+    socket::input::InputSocketExt,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -1,10 +1,22 @@
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 
 use crate::{
-    ComponentId, EdgeWeightKindDiscriminants, Timestamp,
+    ComponentId,
+    EdgeWeightKindDiscriminants,
+    Timestamp,
     workspace_snapshot::{
-        graph::{LineageId, deprecated::v1::DeprecatedAttributePrototypeArgumentNodeWeightV1},
+        graph::{
+            LineageId,
+            deprecated::v1::DeprecatedAttributePrototypeArgumentNodeWeightV1,
+        },
         node_weight::traits::CorrectTransforms,
     },
 };

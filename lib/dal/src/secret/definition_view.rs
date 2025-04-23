@@ -1,10 +1,23 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::prop::{PropError, PropPath};
-use crate::property_editor::schema::PropertyEditorPropWidgetKind;
-use crate::{DalContext, Prop, PropId, SchemaVariant, SchemaVariantError, SchemaVariantId};
+use crate::{
+    DalContext,
+    Prop,
+    PropId,
+    SchemaVariant,
+    SchemaVariantError,
+    SchemaVariantId,
+    prop::{
+        PropError,
+        PropPath,
+    },
+    property_editor::schema::PropertyEditorPropWidgetKind,
+};
 
 #[allow(missing_docs)]
 #[remain::sorted]

@@ -1,18 +1,38 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
 use petgraph::prelude::*;
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, EncryptedSecretKey, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    EncryptedSecretKey,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 use strum::EnumDiscriminants;
 
 use crate::{
-    ChangeSetId, EdgeWeightKind, PropKind, Timestamp,
-    action::{ActionState, prototype::ActionKind},
+    ChangeSetId,
+    EdgeWeightKind,
+    PropKind,
+    Timestamp,
+    action::{
+        ActionState,
+        prototype::ActionKind,
+    },
     func::FuncKind,
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,
-        node_weight::{ArgumentTargets, category_node_weight::CategoryNodeKind},
+        node_weight::{
+            ArgumentTargets,
+            category_node_weight::CategoryNodeKind,
+        },
         vector_clock::VectorClock,
     },
 };

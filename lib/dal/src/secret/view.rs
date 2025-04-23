@@ -1,10 +1,21 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_id::PropId;
 use thiserror::Error;
 
-use crate::history_event::HistoryEventMetadata;
-use crate::{ActorView, DalContext, HistoryActor, Secret, SecretId};
-use crate::{ComponentId, SecretError, StandardModelError};
+use crate::{
+    ActorView,
+    ComponentId,
+    DalContext,
+    HistoryActor,
+    Secret,
+    SecretError,
+    SecretId,
+    StandardModelError,
+    history_event::HistoryEventMetadata,
+};
 
 #[allow(missing_docs)]
 #[remain::sorted]

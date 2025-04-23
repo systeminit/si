@@ -1,17 +1,36 @@
-use dal::func::argument::FuncArgument;
-use dal::func::binding::attribute::AttributeBinding;
-use dal::func::binding::{
-    AttributeArgumentBinding, AttributeFuncArgumentSource, AttributeFuncDestination, EventualParent,
+use dal::{
+    AttributeValue,
+    Component,
+    DalContext,
+    Func,
+    InputSocket,
+    Schema,
+    func::{
+        argument::FuncArgument,
+        binding::{
+            AttributeArgumentBinding,
+            AttributeFuncArgumentSource,
+            AttributeFuncDestination,
+            EventualParent,
+            attribute::AttributeBinding,
+        },
+    },
+    prop::{
+        Prop,
+        PropPath,
+    },
+    schema::variant::authoring::VariantAuthoringClient,
 };
-use dal::prop::{Prop, PropPath};
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{AttributeValue, Func, InputSocket};
-use dal::{Component, DalContext, Schema};
-use dal_test::helpers::{
-    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view,
-    create_component_for_schema_variant_on_default_view, update_attribute_value_for_component,
+use dal_test::{
+    Result,
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_default_schema_name_in_default_view,
+        create_component_for_schema_variant_on_default_view,
+        update_attribute_value_for_component,
+    },
+    test,
 };
-use dal_test::{Result, test};
 use pretty_assertions_sorted::assert_eq;
 
 #[test]

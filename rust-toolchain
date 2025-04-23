@@ -1,3 +1,5 @@
 [toolchain]
 channel = "stable"
-profile = "default"
+profile = "minimal"
+# Simulate "default" profile but without `rustfmt`
+components = ["clippy", "rust-docs"]

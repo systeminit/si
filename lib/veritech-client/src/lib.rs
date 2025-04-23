@@ -1,28 +1,63 @@
 use cyclone_core::CycloneRequestable;
-use futures::{StreamExt, TryStreamExt};
-use nats_subscriber::{Subscriber, SubscriberError};
-use serde::{Serialize, de::DeserializeOwned};
-use si_data_nats::{NatsClient, Subject, jetstream};
+pub use cyclone_core::{
+    ActionRunRequest,
+    ActionRunResultSuccess,
+    BeforeFunction,
+    ComponentKind,
+    ComponentView,
+    ComponentViewWithGeometry,
+    FunctionResult,
+    FunctionResultFailure,
+    FunctionResultFailureErrorKind,
+    KillExecutionRequest,
+    ManagementFuncStatus,
+    ManagementRequest,
+    ManagementResultSuccess,
+    OutputStream,
+    ResolverFunctionComponent,
+    ResolverFunctionRequest,
+    ResolverFunctionResponseType,
+    ResolverFunctionResultSuccess,
+    ResourceStatus,
+    SchemaVariantDefinitionRequest,
+    SchemaVariantDefinitionResultSuccess,
+    SensitiveContainer,
+    ValidationRequest,
+    ValidationResultSuccess,
+};
+use futures::{
+    StreamExt,
+    TryStreamExt,
+};
+use nats_subscriber::{
+    Subscriber,
+    SubscriberError,
+};
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
+use si_data_nats::{
+    NatsClient,
+    Subject,
+    jetstream,
+};
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use veritech_core::{
-    FINAL_MESSAGE_HEADER_KEY, GetNatsSubjectFor, REPLY_INBOX_HEADER_NAME, reply_mailbox_for_output,
+    FINAL_MESSAGE_HEADER_KEY,
+    GetNatsSubjectFor,
+    REPLY_INBOX_HEADER_NAME,
+    reply_mailbox_for_output,
     reply_mailbox_for_result,
 };
-
-pub use cyclone_core::{
-    ActionRunRequest, ActionRunResultSuccess, BeforeFunction, ComponentKind, ComponentView,
-    ComponentViewWithGeometry, FunctionResult, FunctionResultFailure,
-    FunctionResultFailureErrorKind, KillExecutionRequest, ManagementFuncStatus, ManagementRequest,
-    ManagementResultSuccess, OutputStream, ResolverFunctionComponent, ResolverFunctionRequest,
-    ResolverFunctionResponseType, ResolverFunctionResultSuccess, ResourceStatus,
-    SchemaVariantDefinitionRequest, SchemaVariantDefinitionResultSuccess, SensitiveContainer,
-    ValidationRequest, ValidationResultSuccess,
+pub use veritech_core::{
+    VeritechValueEncryptError,
+    encrypt_value_tree,
 };
-pub use veritech_core::{VeritechValueEncryptError, encrypt_value_tree};
 
 #[remain::sorted]
 #[derive(Error, Debug)]

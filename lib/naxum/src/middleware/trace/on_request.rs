@@ -1,8 +1,10 @@
-use tracing::{Level, Span};
-
-use crate::message::Message;
+use tracing::{
+    Level,
+    Span,
+};
 
 use super::DEFAULT_MESSAGE_LEVEL;
+use crate::message::Message;
 
 pub trait OnRequest<R> {
     fn on_request(&mut self, req: &Message<R>, span: &Span);

@@ -1,18 +1,30 @@
 use axum::extract::Path;
 use dal::{
-    ChangeSet, ChangeSetId, UserPk, WorkspacePk, WsEvent,
-    approval_requirement::{ApprovalRequirement, ApprovalRequirementDefinition},
+    ChangeSet,
+    ChangeSetId,
+    UserPk,
+    WorkspacePk,
+    WsEvent,
+    approval_requirement::{
+        ApprovalRequirement,
+        ApprovalRequirementDefinition,
+    },
     entity_kind::EntityKind,
 };
 use si_events::audit_log::AuditLogKind;
 use si_id::ApprovalRequirementDefinitionId;
 
-use crate::{
-    extract::{HandlerContext, PosthogEventTracker},
-    service::{force_change_set_response::ForceChangeSetResponse, v2::AccessBuilder},
-};
-
 use super::ApprovalRequirementDefinitionError;
+use crate::{
+    extract::{
+        HandlerContext,
+        PosthogEventTracker,
+    },
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::AccessBuilder,
+    },
+};
 
 pub async fn add_individual_approver(
     HandlerContext(builder): HandlerContext,

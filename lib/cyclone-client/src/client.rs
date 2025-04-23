@@ -1,41 +1,86 @@
 use std::{
     marker::PhantomData,
-    net::{SocketAddr, ToSocketAddrs},
+    net::{
+        SocketAddr,
+        ToSocketAddrs,
+    },
     path::PathBuf,
     result,
-    str::{self, FromStr},
+    str::{
+        self,
+        FromStr,
+    },
     sync::Arc,
     time::Duration,
 };
 
 use async_trait::async_trait;
 use cyclone_core::{
-    CycloneRequest, CycloneRequestable, LivenessStatus, LivenessStatusParseError, ReadinessStatus,
+    CycloneRequest,
+    CycloneRequestable,
+    LivenessStatus,
+    LivenessStatusParseError,
+    ReadinessStatus,
     ReadinessStatusParseError,
 };
 use http::{
     request::Builder,
-    uri::{Authority, InvalidUri, InvalidUriParts, PathAndQuery, Scheme},
+    uri::{
+        Authority,
+        InvalidUri,
+        InvalidUriParts,
+        PathAndQuery,
+        Scheme,
+    },
 };
 use hyper::{
-    Body, Method, Request, Response, StatusCode, Uri, body,
-    client::{HttpConnector, ResponseFuture, connect::Connection},
+    Body,
+    Method,
+    Request,
+    Response,
+    StatusCode,
+    Uri,
+    body,
+    client::{
+        HttpConnector,
+        ResponseFuture,
+        connect::Connection,
+    },
     service::Service,
 };
-use hyperlocal::{UnixClientExt, UnixConnector, UnixStream};
+use hyperlocal::{
+    UnixClientExt,
+    UnixConnector,
+    UnixStream,
+};
 use telemetry::prelude::*;
 use telemetry_http::propagation;
 use thiserror::Error;
 use tokio::{
-    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
+    io::{
+        AsyncRead,
+        AsyncReadExt,
+        AsyncWrite,
+        AsyncWriteExt,
+    },
     net::TcpStream,
 };
 use tokio_tungstenite::{
     WebSocketStream,
-    tungstenite::{client::IntoClientRequest, handshake::client::Request as WsRequest},
+    tungstenite::{
+        client::IntoClientRequest,
+        handshake::client::Request as WsRequest,
+    },
 };
 
-use crate::{Execution, PingExecution, Watch, new_unstarted_execution, ping, watch};
+use crate::{
+    Execution,
+    PingExecution,
+    Watch,
+    new_unstarted_execution,
+    ping,
+    watch,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -442,19 +487,42 @@ impl Default for ClientConfig {
 #[allow(clippy::panic, clippy::assertions_on_constants)]
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, env, path::Path};
+    use std::{
+        collections::HashMap,
+        env,
+        path::Path,
+    };
 
-    use base64::{Engine, engine::general_purpose};
+    use base64::{
+        Engine,
+        engine::general_purpose,
+    };
     use buck2_resources::Buck2Resources;
     use cyclone_core::{
-        ActionRunRequest, ComponentKind, ComponentView, ComponentViewWithGeometry, FunctionResult,
-        ManagementRequest, ProgressMessage, ResolverFunctionComponent, ResolverFunctionRequest,
-        SchemaVariantDefinitionRequest, ValidationRequest,
+        ActionRunRequest,
+        ComponentKind,
+        ComponentView,
+        ComponentViewWithGeometry,
+        FunctionResult,
+        ManagementRequest,
+        ProgressMessage,
+        ResolverFunctionComponent,
+        ResolverFunctionRequest,
+        SchemaVariantDefinitionRequest,
+        ValidationRequest,
     };
-    use cyclone_server::{Config, ConfigBuilder, Runnable as _, Server};
+    use cyclone_server::{
+        Config,
+        ConfigBuilder,
+        Runnable as _,
+        Server,
+    };
     use futures::StreamExt;
     use serde_json::json;
-    use tempfile::{NamedTempFile, TempPath};
+    use tempfile::{
+        NamedTempFile,
+        TempPath,
+    };
     use test_log::test;
     use tracing::warn;
 

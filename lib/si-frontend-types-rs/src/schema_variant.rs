@@ -1,16 +1,39 @@
-use crate::checksum::FrontendChecksum;
-use serde::{Deserialize, Serialize};
-use si_events::workspace_snapshot::{Checksum, ChecksumHasher, EntityKind};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::{
-    FuncId, InputSocketId, OutputSocketId, PropId, SchemaId, SchemaVariantId, Timestamp,
+    FuncId,
+    InputSocketId,
+    OutputSocketId,
+    PropId,
+    SchemaId,
+    SchemaVariantId,
+    Timestamp,
+    workspace_snapshot::{
+        Checksum,
+        ChecksumHasher,
+        EntityKind,
+    },
 };
 use si_id::ChangeSetId;
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+};
 
 use crate::{
     MaterializedView,
+    checksum::FrontendChecksum,
     object::FrontendObject,
-    reference::{Refer, Reference, ReferenceId, ReferenceKind},
+    reference::{
+        Refer,
+        Reference,
+        ReferenceId,
+        ReferenceKind,
+    },
 };
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

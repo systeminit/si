@@ -1,24 +1,43 @@
 use std::collections::HashSet;
 
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, EncryptedSecretKey, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
-
-use crate::workspace_snapshot::NodeId;
-use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::graph::deprecated::v1::DeprecatedSecretNodeWeightV1;
-use crate::workspace_snapshot::graph::detector::Update;
-use crate::workspace_snapshot::{
-    content_address::ContentAddress,
-    graph::LineageId,
-    graph::correct_transforms::add_dependent_value_root_updates,
-    node_weight::traits::CorrectTransforms,
-    node_weight::{NodeWeightError, NodeWeightResult},
+use serde::{
+    Deserialize,
+    Serialize,
 };
-use crate::{EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent};
+use si_events::{
+    ContentHash,
+    EncryptedSecretKey,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 
-use super::NodeWeight;
-use super::category_node_weight::CategoryNodeKind;
-use super::traits::CorrectTransformsResult;
+use super::{
+    NodeWeight,
+    category_node_weight::CategoryNodeKind,
+    traits::CorrectTransformsResult,
+};
+use crate::{
+    EdgeWeightKindDiscriminants,
+    WorkspaceSnapshotGraphVCurrent,
+    workspace_snapshot::{
+        NodeId,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
+        graph::{
+            LineageId,
+            correct_transforms::add_dependent_value_root_updates,
+            deprecated::v1::DeprecatedSecretNodeWeightV1,
+            detector::Update,
+        },
+        node_weight::{
+            NodeWeightError,
+            NodeWeightResult,
+            traits::CorrectTransforms,
+        },
+    },
+};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SecretNodeWeight {

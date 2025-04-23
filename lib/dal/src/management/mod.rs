@@ -1,41 +1,107 @@
-use std::collections::{HashMap, HashSet, VecDeque, hash_map};
+use std::collections::{
+    HashMap,
+    HashSet,
+    VecDeque,
+    hash_map,
+};
 
 use prototype::ManagementPrototypeExecution;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::audit_log::AuditLogKind;
 use si_id::AttributeValueId;
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech_client::{
+    ManagementFuncStatus,
+    ManagementResultSuccess,
+};
 
-use veritech_client::{ManagementFuncStatus, ManagementResultSuccess};
-
-use crate::component::ControllingFuncData;
-use crate::component::delete::{ComponentDeletionStatus, delete_components};
-use crate::component::frame::{Frame, FrameError, InferredEdgeChanges};
-use crate::dependency_graph::DependencyGraph;
-use crate::diagram::geometry::Geometry;
-use crate::diagram::view::{View, ViewComponentsUpdateSingle, ViewId, ViewView};
-use crate::diagram::{DiagramError, SummaryDiagramInferredEdge, SummaryDiagramManagementEdge};
 use crate::{
-    ActorView, AttributeValue, Component, ComponentError, ComponentId, ComponentType, DalContext,
-    Func, FuncError, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropKind,
-    Schema, SchemaError, SchemaId, SchemaVariantId, StandardModelError, WsEvent, WsEventError,
+    ActorView,
+    AttributeValue,
+    Component,
+    ComponentError,
+    ComponentId,
+    ComponentType,
+    DalContext,
+    EdgeWeightKind,
+    Func,
+    FuncError,
+    InputSocket,
+    InputSocketId,
+    OutputSocket,
+    OutputSocketId,
+    Prop,
+    PropKind,
+    Schema,
+    SchemaError,
+    SchemaId,
+    SchemaVariantId,
+    StandardModelError,
+    TransactionsError,
+    WorkspaceSnapshotError,
+    WsEvent,
+    WsEventError,
     action::{
-        Action, ActionError,
-        prototype::{ActionKind, ActionPrototype, ActionPrototypeError},
+        Action,
+        ActionError,
+        prototype::{
+            ActionKind,
+            ActionPrototype,
+            ActionPrototypeError,
+        },
     },
     attribute::{
-        prototype::argument::{AttributePrototypeArgument, AttributePrototypeArgumentError},
+        prototype::argument::{
+            AttributePrototypeArgument,
+            AttributePrototypeArgumentError,
+        },
         value::AttributeValueError,
     },
     change_status::ChangeStatus::Added,
-    component::Connection,
-    diagram::{SummaryDiagramEdge, geometry::RawGeometry},
+    component::{
+        Connection,
+        ControllingFuncData,
+        delete::{
+            ComponentDeletionStatus,
+            delete_components,
+        },
+        frame::{
+            Frame,
+            FrameError,
+            InferredEdgeChanges,
+        },
+    },
+    dependency_graph::DependencyGraph,
+    diagram::{
+        DiagramError,
+        SummaryDiagramEdge,
+        SummaryDiagramInferredEdge,
+        SummaryDiagramManagementEdge,
+        geometry::{
+            Geometry,
+            RawGeometry,
+        },
+        view::{
+            View,
+            ViewComponentsUpdateSingle,
+            ViewId,
+            ViewView,
+        },
+    },
     history_event::HistoryEventMetadata,
-    prop::{PropError, PropPath},
-    socket::{input::InputSocketError, output::OutputSocketError},
+    prop::{
+        PropError,
+        PropPath,
+    },
+    socket::{
+        input::InputSocketError,
+        output::OutputSocketError,
+    },
 };
-use crate::{EdgeWeightKind, TransactionsError, WorkspaceSnapshotError};
 
 pub mod generator;
 pub mod prototype;

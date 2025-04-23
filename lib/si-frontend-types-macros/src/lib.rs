@@ -1,10 +1,18 @@
 use std::collections::HashSet;
 
 use darling::FromAttributes;
-use manyhow::{bail, emit, manyhow};
+use manyhow::{
+    bail,
+    emit,
+    manyhow,
+};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Path};
+use syn::{
+    Data,
+    DeriveInput,
+    Path,
+};
 
 #[manyhow]
 #[proc_macro_derive(FrontendChecksum, attributes(frontend_checksum))]

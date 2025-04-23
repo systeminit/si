@@ -1,10 +1,19 @@
 use std::collections::HashMap;
 
 use axum::Json;
-use dal::{AttributeValueId, ComponentId, Visibility};
-use serde::{Deserialize, Serialize};
-
-use sdf_extract::{HandlerContext, v1::AccessBuilder};
+use dal::{
+    AttributeValueId,
+    ComponentId,
+    Visibility,
+};
+use sdf_extract::{
+    HandlerContext,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use super::ComponentResult;
 

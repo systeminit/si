@@ -5,37 +5,59 @@
 
 use std::collections::HashSet;
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
-use crate::workspace_snapshot::node_weight::traits::SiNodeWeight;
+use self::{
+    static_value::{
+        StaticArgumentValue,
+        StaticArgumentValueId,
+    },
+    value_source::ValueSource,
+};
+use super::AttributePrototypeError;
+pub use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 use crate::{
-    AttributePrototype, AttributePrototypeId, AttributeValue, ComponentId, DalContext, HelperError,
-    OutputSocketId, PropId, SecretId, Timestamp, TransactionsError,
+    AttributePrototype,
+    AttributePrototypeId,
+    AttributeValue,
+    ComponentId,
+    DalContext,
+    HelperError,
+    OutputSocketId,
+    PropId,
+    SecretId,
+    Timestamp,
+    TransactionsError,
     change_set::ChangeSetError,
-    func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId},
+    func::argument::{
+        FuncArgument,
+        FuncArgumentError,
+        FuncArgumentId,
+    },
     implement_add_edge_to,
     socket::input::InputSocketId,
     workspace_snapshot::{
         WorkspaceSnapshotError,
         content_address::ContentAddressDiscriminants,
-        edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants},
+        edge_weight::{
+            EdgeWeightKind,
+            EdgeWeightKindDiscriminants,
+        },
+        graph::WorkspaceSnapshotGraphError,
         node_weight::{
-            AttributePrototypeArgumentNodeWeight, NodeWeight, NodeWeightDiscriminants,
+            AttributePrototypeArgumentNodeWeight,
+            NodeWeight,
+            NodeWeightDiscriminants,
             NodeWeightError,
+            traits::SiNodeWeight,
         },
     },
 };
-
-use self::{
-    static_value::{StaticArgumentValue, StaticArgumentValueId},
-    value_source::ValueSource,
-};
-
-use super::AttributePrototypeError;
-pub use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
 
 pub mod static_value;
 pub mod value_source;

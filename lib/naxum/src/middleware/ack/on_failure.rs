@@ -1,8 +1,14 @@
 use std::sync::Arc;
 
-use async_nats::jetstream::{self, message::Acker};
+use async_nats::jetstream::{
+    self,
+    message::Acker,
+};
 use futures::future::BoxFuture;
-use tracing::{trace, warn};
+use tracing::{
+    trace,
+    warn,
+};
 
 use crate::Head;
 

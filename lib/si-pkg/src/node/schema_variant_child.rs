@@ -1,17 +1,35 @@
-use std::io::{BufRead, Write};
+use std::io::{
+    BufRead,
+    Write,
+};
 
 use object_tree::{
-    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
-    read_key_value_line, write_key_value_line,
+    GraphError,
+    NameStr,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    write_key_value_line,
 };
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    ActionFuncSpec, AuthenticationFuncSpec, LeafFunctionSpec, ManagementFuncSpec, PropSpec,
-    RootPropFuncSpec, SiPropFuncSpec, SocketSpec,
+use serde::{
+    Deserialize,
+    Serialize,
 };
 
 use super::PkgNode;
+use crate::{
+    ActionFuncSpec,
+    AuthenticationFuncSpec,
+    LeafFunctionSpec,
+    ManagementFuncSpec,
+    PropSpec,
+    RootPropFuncSpec,
+    SiPropFuncSpec,
+    SocketSpec,
+};
 
 const VARIANT_CHILD_TYPE_ACTION_FUNCS: &str = "action_funcs";
 const VARIANT_CHILD_TYPE_AUTH_FUNCS: &str = "auth_funcs";

@@ -1,18 +1,33 @@
-use std::task::{Context, Poll};
+use std::task::{
+    Context,
+    Poll,
+};
 
 use axum::{
     RequestPartsExt as _,
     body::Body,
     http::Request,
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use futures::future::BoxFuture;
-use permissions::{Permission, PermissionBuilder};
-use tower::{Layer, Service};
+use permissions::{
+    Permission,
+    PermissionBuilder,
+};
+use tower::{
+    Layer,
+    Service,
+};
 
 use crate::{
     AppState,
-    extract::{unauthorized_error, workspace::WorkspaceAuthorization},
+    extract::{
+        unauthorized_error,
+        workspace::WorkspaceAuthorization,
+    },
 };
 
 #[derive(Clone)]

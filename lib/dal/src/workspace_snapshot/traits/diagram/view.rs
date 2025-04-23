@@ -5,7 +5,8 @@ use crate::{
     WorkspaceSnapshot,
     diagram::view::ViewId,
     workspace_snapshot::{
-        WorkspaceSnapshotResult, graph::traits::diagram::view::ViewExt as GraphViewExt,
+        WorkspaceSnapshotResult,
+        graph::traits::diagram::view::ViewExt as GraphViewExt,
     },
 };
 

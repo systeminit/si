@@ -1,9 +1,18 @@
-use object_tree::{Hash, HashedNode};
+use object_tree::{
+    Hash,
+    HashedNode,
+};
 use petgraph::prelude::*;
 
-use super::{PkgResult, SiPkgError, Source};
-
-use crate::{PositionSpec, node::PkgNode};
+use super::{
+    PkgResult,
+    SiPkgError,
+    Source,
+};
+use crate::{
+    PositionSpec,
+    node::PkgNode,
+};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgPosition<'a> {

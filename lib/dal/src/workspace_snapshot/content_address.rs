@@ -1,7 +1,9 @@
-use serde::{Deserialize, Serialize};
-use strum::EnumDiscriminants;
-
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::ContentHash;
+use strum::EnumDiscriminants;
 
 #[derive(
     EnumDiscriminants, Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq, strum::Display,

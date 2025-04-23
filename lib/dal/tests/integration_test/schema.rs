@@ -1,8 +1,15 @@
-use dal::schema::view::SchemaView;
-use dal::{DalContext, Schema, SchemaId, SchemaVariant, SchemaVariantId};
+use std::collections::HashSet;
+
+use dal::{
+    DalContext,
+    Schema,
+    SchemaId,
+    SchemaVariant,
+    SchemaVariantId,
+    schema::view::SchemaView,
+};
 use dal_test::test;
 use pretty_assertions_sorted::assert_eq;
-use std::collections::HashSet;
 
 mod variant;
 

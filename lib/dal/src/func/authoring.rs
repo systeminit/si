@@ -27,38 +27,85 @@
     while_true
 )]
 
-use base64::Engine;
-use base64::engine::general_purpose;
+use std::sync::Arc;
+
+use base64::{
+    Engine,
+    engine::general_purpose,
+};
 use si_events::FuncRunId;
 use si_layer_cache::LayerDbError;
-use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::action::prototype::{ActionKind, ActionPrototypeError};
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError,
+use super::{
+    binding::{
+        AttributeArgumentBinding,
+        AttributeFuncDestination,
+        EventualParent,
+        FuncBinding,
+        FuncBindingError,
+        attribute::AttributeBinding,
+    },
+    runner::{
+        FuncRunner,
+        FuncRunnerError,
+    },
 };
-use crate::attribute::value::AttributeValueError;
-use crate::func::FuncKind;
-use crate::func::argument::{FuncArgument, FuncArgumentError, FuncArgumentId, FuncArgumentKind};
-use crate::prop::PropError;
-use crate::schema::variant::authoring::{VariantAuthoringClient, VariantAuthoringError};
-use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
-use crate::socket::output::OutputSocketError;
 use crate::{
-    AttributePrototype, AttributePrototypeId, ComponentError, ComponentId, DalContext, Func,
-    FuncBackendKind, FuncBackendResponseType, FuncError, FuncId, SchemaVariant, SchemaVariantError,
-    SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEvent, WsEventError,
+    AttributePrototype,
+    AttributePrototypeId,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    Func,
+    FuncBackendKind,
+    FuncBackendResponseType,
+    FuncError,
+    FuncId,
+    SchemaVariant,
+    SchemaVariantError,
+    SchemaVariantId,
+    TransactionsError,
+    WorkspaceSnapshotError,
+    WsEvent,
+    WsEventError,
+    action::prototype::{
+        ActionKind,
+        ActionPrototypeError,
+    },
+    attribute::{
+        prototype::{
+            AttributePrototypeError,
+            argument::{
+                AttributePrototypeArgument,
+                AttributePrototypeArgumentError,
+            },
+        },
+        value::AttributeValueError,
+    },
+    func::{
+        FuncKind,
+        argument::{
+            FuncArgument,
+            FuncArgumentError,
+            FuncArgumentId,
+            FuncArgumentKind,
+        },
+    },
+    prop::PropError,
+    schema::variant::{
+        authoring::{
+            VariantAuthoringClient,
+            VariantAuthoringError,
+        },
+        leaves::{
+            LeafInputLocation,
+            LeafKind,
+        },
+    },
+    socket::output::OutputSocketError,
 };
-
-use super::binding::attribute::AttributeBinding;
-use super::binding::{
-    AttributeArgumentBinding, AttributeFuncDestination, EventualParent, FuncBinding,
-    FuncBindingError,
-};
-use super::runner::{FuncRunner, FuncRunnerError};
 
 mod create;
 mod execute;

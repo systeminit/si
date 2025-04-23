@@ -1,18 +1,46 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri},
+    extract::{
+        Host,
+        OriginalUri,
+    },
 };
 use dal::{
-    ChangeSet, Component, ComponentId, DalContext, InputSocket, InputSocketId, OutputSocketId,
-    Visibility, WsEvent, change_status::ChangeStatus, diagram::SummaryDiagramEdge,
+    ChangeSet,
+    Component,
+    ComponentId,
+    DalContext,
+    InputSocket,
+    InputSocketId,
+    OutputSocket,
+    OutputSocketId,
+    Visibility,
+    WsEvent,
+    change_status::ChangeStatus,
+    diagram::{
+        SummaryDiagramEdge,
+        SummaryDiagramInferredEdge,
+    },
 };
-use dal::{OutputSocket, diagram::SummaryDiagramInferredEdge};
-use sdf_core::{force_change_set_response::ForceChangeSetResponse, tracking::track};
-use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
-use serde::{Deserialize, Serialize};
+use sdf_core::{
+    force_change_set_response::ForceChangeSetResponse,
+    tracking::track,
+};
+use sdf_extract::{
+    HandlerContext,
+    PosthogClient,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::audit_log::AuditLogKind;
 
-use super::{DiagramError, DiagramResult};
+use super::{
+    DiagramError,
+    DiagramResult,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

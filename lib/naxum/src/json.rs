@@ -5,9 +5,16 @@ use serde::de::DeserializeOwned;
 use crate::{
     extract::{
         FromMessage,
-        rejection::{JsonDataError, JsonRejection, JsonSyntaxError},
+        rejection::{
+            JsonDataError,
+            JsonRejection,
+            JsonSyntaxError,
+        },
     },
-    message::{Message, MessageHead},
+    message::{
+        Message,
+        MessageHead,
+    },
 };
 
 #[derive(Clone, Copy, Default, Debug)]

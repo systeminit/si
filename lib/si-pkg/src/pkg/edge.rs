@@ -1,9 +1,19 @@
-use object_tree::{Hash, HashedNode};
+use object_tree::{
+    Hash,
+    HashedNode,
+};
 use petgraph::prelude::*;
 
-use super::{PkgResult, SiPkgError, Source};
-use crate::node::PkgNode;
-use crate::{EdgeSpec, EdgeSpecKind};
+use super::{
+    PkgResult,
+    SiPkgError,
+    Source,
+};
+use crate::{
+    EdgeSpec,
+    EdgeSpecKind,
+    node::PkgNode,
+};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgEdge<'a> {

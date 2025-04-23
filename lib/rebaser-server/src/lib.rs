@@ -38,13 +38,25 @@ mod rebase;
 mod serial_dvu_task;
 mod server;
 
+pub use si_settings::{
+    StandardConfig,
+    StandardConfigFile,
+};
+
 pub use self::{
     config::{
-        Config, ConfigBuilder, ConfigError, ConfigFile, Features, detect_and_configure_development,
+        Config,
+        ConfigBuilder,
+        ConfigError,
+        ConfigFile,
+        Features,
+        detect_and_configure_development,
     },
-    server::{Server, ServerMetadata},
+    server::{
+        Server,
+        ServerMetadata,
+    },
 };
-pub use si_settings::{StandardConfig, StandardConfigFile};
 
 /// An error than can be returned when a Rebaser service is running.
 #[remain::sorted]

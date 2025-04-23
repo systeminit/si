@@ -1,5 +1,7 @@
-use dal::DalContext;
-use dal::input_sources::InputSources;
+use dal::{
+    DalContext,
+    input_sources::InputSources,
+};
 use dal_test::test;
 
 #[test]

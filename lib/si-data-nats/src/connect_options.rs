@@ -1,11 +1,22 @@
-use async_nats::{Auth, AuthError, ToServerAddrs};
-use futures::Future;
 use std::{
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
     time::Duration,
 };
 
-use super::{Client, Result};
+use async_nats::{
+    Auth,
+    AuthError,
+    ToServerAddrs,
+};
+use futures::Future;
+
+use super::{
+    Client,
+    Result,
+};
 
 /// Connect options. Used to connect with NATS when custom config is needed.
 /// # Examples

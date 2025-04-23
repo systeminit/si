@@ -4,11 +4,17 @@ use std::{
     io,
     ops::Deref,
     str::FromStr,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{
+        AtomicUsize,
+        Ordering,
+    },
     time::Duration,
 };
 
-use tokio::runtime::{Builder, Runtime};
+use tokio::runtime::{
+    Builder,
+    Runtime,
+};
 
 pub const DEFAULT_TOKIO_RT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
 #[cfg(target_os = "linux")]
@@ -25,7 +31,9 @@ const MAX_WORKER_THREADS: usize = 32;
 
 pub use core_affinity::CoreId;
 pub use tokio_dedicated_executor::{
-    DedicatedExecutor, DedicatedExecutorError, DedicatedExecutorInitializeError,
+    DedicatedExecutor,
+    DedicatedExecutorError,
+    DedicatedExecutorInitializeError,
     DedicatedExecutorJoinError,
 };
 

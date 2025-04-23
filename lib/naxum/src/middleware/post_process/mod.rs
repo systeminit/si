@@ -8,7 +8,13 @@ mod service;
 pub use self::{
     info::Info,
     layer::PostProcessLayer,
-    on_failure::{DefaultOnFailure, OnFailure},
-    on_success::{DefaultOnSuccess, OnSuccess},
+    on_failure::{
+        DefaultOnFailure,
+        OnFailure,
+    },
+    on_success::{
+        DefaultOnSuccess,
+        OnSuccess,
+    },
     service::PostProcess,
 };

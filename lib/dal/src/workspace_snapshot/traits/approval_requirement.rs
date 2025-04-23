@@ -1,29 +1,51 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{
+        HashMap,
+        HashSet,
+    },
     sync::Arc,
 };
 
 use async_trait::async_trait;
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, workspace_snapshot::Change};
-use si_id::{ApprovalRequirementDefinitionId, EntityId, UserPk, ulid::Ulid};
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    workspace_snapshot::Change,
+};
+use si_id::{
+    ApprovalRequirementDefinitionId,
+    EntityId,
+    UserPk,
+    ulid::Ulid,
+};
 
+pub use crate::workspace_snapshot::graph::traits::approval_requirement::{
+    ApprovalRequirementApprover,
+    ApprovalRequirementRule,
+};
 use crate::{
-    DalContext, EdgeWeight, EdgeWeightKind, WorkspaceSnapshot, WorkspaceSnapshotError,
+    DalContext,
+    EdgeWeight,
+    EdgeWeightKind,
+    WorkspaceSnapshot,
+    WorkspaceSnapshotError,
     approval_requirement::{
-        ApprovalRequirement, ApprovalRequirementDefinition, ApprovalRequirementExplicit,
+        ApprovalRequirement,
+        ApprovalRequirementDefinition,
+        ApprovalRequirementExplicit,
     },
     layer_db_types::{
-        ApprovalRequirementDefinitionContent, ApprovalRequirementDefinitionContentV1,
+        ApprovalRequirementDefinitionContent,
+        ApprovalRequirementDefinitionContentV1,
     },
     workspace_snapshot::{
         WorkspaceSnapshotResult,
         graph::traits::approval_requirement::ApprovalRequirementExt as ApprovalRequirementExtGraph,
-        node_weight::{NodeWeight, traits::SiNodeWeight},
+        node_weight::{
+            NodeWeight,
+            traits::SiNodeWeight,
+        },
     },
-};
-
-pub use crate::workspace_snapshot::graph::traits::approval_requirement::{
-    ApprovalRequirementApprover, ApprovalRequirementRule,
 };
 
 #[async_trait]

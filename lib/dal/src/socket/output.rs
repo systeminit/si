@@ -1,33 +1,75 @@
-use serde::{Deserialize, Serialize};
+use std::{
+    collections::HashMap,
+    sync::Arc,
+};
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::ContentHash;
 use si_frontend_types as frontend_types;
 use si_layer_cache::LayerDbError;
-use std::collections::HashMap;
-use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::AttributePrototypeError;
-use crate::attribute::prototype::argument::AttributePrototypeArgumentId;
-use crate::attribute::value::AttributeValueError;
-use crate::change_set::ChangeSetError;
-use crate::layer_db_types::{OutputSocketContent, OutputSocketContentV1};
-use crate::socket::{SocketArity, SocketKind};
-use crate::workspace_snapshot::WorkspaceSnapshotError;
-use crate::workspace_snapshot::content_address::{ContentAddress, ContentAddressDiscriminants};
-use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::{ContentNodeWeight, NodeWeight, NodeWeightError};
-use crate::{
-    AttributePrototype, DalContext, FuncId, HelperError, InputSocket, SchemaVariant,
-    SchemaVariantError, Timestamp, TransactionsError,
+use super::{
+    connection_annotation::{
+        ConnectionAnnotation,
+        ConnectionAnnotationError,
+    },
+    input::InputSocketError,
 };
 use crate::{
-    AttributePrototypeId, AttributeValue, AttributeValueId, ComponentId, InputSocketId,
-    SchemaVariantId, implement_add_edge_to,
+    AttributePrototype,
+    AttributePrototypeId,
+    AttributeValue,
+    AttributeValueId,
+    ComponentId,
+    DalContext,
+    FuncId,
+    HelperError,
+    InputSocket,
+    InputSocketId,
+    SchemaVariant,
+    SchemaVariantError,
+    SchemaVariantId,
+    Timestamp,
+    TransactionsError,
+    attribute::{
+        prototype::{
+            AttributePrototypeError,
+            argument::AttributePrototypeArgumentId,
+        },
+        value::AttributeValueError,
+    },
+    change_set::ChangeSetError,
+    implement_add_edge_to,
+    layer_db_types::{
+        OutputSocketContent,
+        OutputSocketContentV1,
+    },
+    socket::{
+        SocketArity,
+        SocketKind,
+    },
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
+        edge_weight::{
+            EdgeWeightKind,
+            EdgeWeightKindDiscriminants,
+        },
+        node_weight::{
+            ContentNodeWeight,
+            NodeWeight,
+            NodeWeightError,
+        },
+    },
 };
-
-use super::connection_annotation::{ConnectionAnnotation, ConnectionAnnotationError};
-use super::input::InputSocketError;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

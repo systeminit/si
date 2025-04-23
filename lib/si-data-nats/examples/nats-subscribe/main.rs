@@ -1,11 +1,20 @@
 use std::env;
 
 use futures::StreamExt;
-use si_data_nats::{Message, NatsClient, NatsConfig, Subscriber};
+use si_data_nats::{
+    Message,
+    NatsClient,
+    NatsConfig,
+    Subscriber,
+};
 use telemetry::prelude::*;
 use tracing_subscriber::{
-    EnvFilter, Registry,
-    fmt::{self, format::FmtSpan},
+    EnvFilter,
+    Registry,
+    fmt::{
+        self,
+        format::FmtSpan,
+    },
     prelude::*,
 };
 

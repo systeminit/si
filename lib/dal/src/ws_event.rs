@@ -1,6 +1,9 @@
 use std::num::ParseIntError;
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use si_events::Actor;
@@ -8,49 +11,82 @@ use si_frontend_types as frontend_types;
 use thiserror::Error;
 use ulid::Ulid;
 
-use crate::approval_requirement::{
-    ApprovalRequirementDefinitionCreatedPayload, ApprovalRequirementDefinitionRemovedPayload,
-    IndividualApproverPayload,
-};
-use crate::audit_logging::AuditLogsPublishedPayload;
-use crate::change_set::event::{
-    ChangeSetActorPayload, ChangeSetAppliedPayload, ChangeSetMergeVotePayload,
-    ChangeSetRenamePayload, ChangeSetStateChangePayload,
-};
-use crate::component::{
-    ComponentCreatedPayload, ComponentDeletedPayload, ComponentSetPositionPayload,
-    ComponentUpdatedPayload, ComponentUpgradedPayload, ConnectionDeletedPayload,
-    ConnectionUpsertedPayload, InferredEdgeRemovePayload, InferredEdgeUpsertPayload,
-};
-use crate::diagram::view::{
-    ViewComponentsUpdatePayload, ViewDeletedPayload, ViewObjectCreatedPayload,
-    ViewObjectRemovedPayload, ViewWsPayload,
-};
-use crate::func::runner::FuncRunLogUpdatedPayload;
-use crate::func::{
-    FuncWsEventCodeSaved, FuncWsEventFuncSummary, FuncWsEventGenerating, FuncWsEventPayload,
-};
-use crate::management::prototype::{
-    ManagementFuncExecutedPayload, ManagementOperationsCompletePayload,
-};
-use crate::module::ModulesUpdatedPayload;
-use crate::pkg::{
-    ImportWorkspaceVotePayload, WorkspaceActorPayload, WorkspaceImportApprovalActorPayload,
-};
-use crate::prompt_override::PromptUpdatedPayload;
-use crate::qualification::QualificationCheckPayload;
-use crate::schema::variant::{
-    SchemaVariantClonedPayload, SchemaVariantDeletedPayload, SchemaVariantReplacedPayload,
-    SchemaVariantSavedPayload, SchemaVariantUpdatedPayload, TemplateGeneratedPayload,
-};
-use crate::secret::SecretDeletedPayload;
-use crate::status::StatusUpdate;
-use crate::user::OnlinePayload;
 use crate::{
-    ChangeSetId, DalContext, FuncError, PropId, StandardModelError, TransactionsError, WorkspacePk,
-    user::CursorPayload,
+    ChangeSetId,
+    DalContext,
+    FuncError,
+    PropId,
+    SchemaVariantError,
+    SecretCreatedPayload,
+    SecretUpdatedPayload,
+    StandardModelError,
+    TransactionsError,
+    WorkspacePk,
+    approval_requirement::{
+        ApprovalRequirementDefinitionCreatedPayload,
+        ApprovalRequirementDefinitionRemovedPayload,
+        IndividualApproverPayload,
+    },
+    audit_logging::AuditLogsPublishedPayload,
+    change_set::event::{
+        ChangeSetActorPayload,
+        ChangeSetAppliedPayload,
+        ChangeSetMergeVotePayload,
+        ChangeSetRenamePayload,
+        ChangeSetStateChangePayload,
+    },
+    component::{
+        ComponentCreatedPayload,
+        ComponentDeletedPayload,
+        ComponentSetPositionPayload,
+        ComponentUpdatedPayload,
+        ComponentUpgradedPayload,
+        ConnectionDeletedPayload,
+        ConnectionUpsertedPayload,
+        InferredEdgeRemovePayload,
+        InferredEdgeUpsertPayload,
+    },
+    diagram::view::{
+        ViewComponentsUpdatePayload,
+        ViewDeletedPayload,
+        ViewObjectCreatedPayload,
+        ViewObjectRemovedPayload,
+        ViewWsPayload,
+    },
+    func::{
+        FuncWsEventCodeSaved,
+        FuncWsEventFuncSummary,
+        FuncWsEventGenerating,
+        FuncWsEventPayload,
+        runner::FuncRunLogUpdatedPayload,
+    },
+    management::prototype::{
+        ManagementFuncExecutedPayload,
+        ManagementOperationsCompletePayload,
+    },
+    module::ModulesUpdatedPayload,
+    pkg::{
+        ImportWorkspaceVotePayload,
+        WorkspaceActorPayload,
+        WorkspaceImportApprovalActorPayload,
+    },
+    prompt_override::PromptUpdatedPayload,
+    qualification::QualificationCheckPayload,
+    schema::variant::{
+        SchemaVariantClonedPayload,
+        SchemaVariantDeletedPayload,
+        SchemaVariantReplacedPayload,
+        SchemaVariantSavedPayload,
+        SchemaVariantUpdatedPayload,
+        TemplateGeneratedPayload,
+    },
+    secret::SecretDeletedPayload,
+    status::StatusUpdate,
+    user::{
+        CursorPayload,
+        OnlinePayload,
+    },
 };
-use crate::{SchemaVariantError, SecretCreatedPayload, SecretUpdatedPayload};
 
 #[remain::sorted]
 #[derive(Error, Debug)]

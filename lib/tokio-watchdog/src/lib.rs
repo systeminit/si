@@ -25,15 +25,24 @@
 )]
 
 use std::{
-    io, thread,
-    time::{Duration, Instant},
+    io,
+    thread,
+    time::{
+        Duration,
+        Instant,
+    },
 };
 
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use tokio::{
     runtime::Handle,
-    sync::mpsc::{self, Receiver, Sender, error::TrySendError},
+    sync::mpsc::{
+        self,
+        Receiver,
+        Sender,
+        error::TrySendError,
+    },
 };
 use tokio_util::sync::CancellationToken;
 

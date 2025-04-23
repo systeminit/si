@@ -1,9 +1,20 @@
 use axum::{
     Router,
-    response::{IntoResponse, Response},
-    routing::{delete, get, put},
+    response::{
+        IntoResponse,
+        Response,
+    },
+    routing::{
+        delete,
+        get,
+        put,
+    },
 };
-use dal::{WorkspaceSnapshotError, WsEventError, entity_kind::EntityKindError};
+use dal::{
+    WorkspaceSnapshotError,
+    WsEventError,
+    entity_kind::EntityKindError,
+};
 use sdf_core::api_error::ApiError;
 use thiserror::Error;
 

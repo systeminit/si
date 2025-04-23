@@ -1,7 +1,8 @@
 //! This module provides utilities for parsing [NATS](https://nats.io) subjects.
 
-use si_data_nats::subject::ToSubject;
 use std::collections::HashSet;
+
+use si_data_nats::subject::ToSubject;
 
 /// This function combs through a given [`subject`](si_data_nats::subject::Subject) via
 /// [dot notation](https://docs.nats.io/nats-concepts/subjects) in order to find all potential

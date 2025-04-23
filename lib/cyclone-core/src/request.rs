@@ -1,6 +1,9 @@
 use std::collections::HashSet;
 
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_crypto::SensitiveStrings;
 use si_std::SensitiveString;
 

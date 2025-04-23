@@ -1,12 +1,29 @@
+use std::{
+    pin::Pin,
+    task::{
+        Context,
+        Poll,
+    },
+};
+
 /// Adapted from: https://github.com/y-crdt/yrs-warp/blob/14a1abdf9085d71b6071e27c3e53ac5d0e07735d/src/ws.rs
-use futures::{Future, Sink, Stream};
+use futures::{
+    Future,
+    Sink,
+    Stream,
+};
 use futures_lite::future::FutureExt;
-use si_data_nats::{Message, NatsClient, Subject};
-use std::{pin::Pin, task::Context, task::Poll};
+use si_data_nats::{
+    Message,
+    NatsClient,
+    Subject,
+};
 use telemetry::prelude::error;
 use tokio::sync::broadcast;
-use tokio_stream::wrappers::BroadcastStream;
-use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
+use tokio_stream::wrappers::{
+    BroadcastStream,
+    errors::BroadcastStreamRecvError,
+};
 use y_sync::sync::Error;
 
 type Result<T, E = Error> = std::result::Result<T, E>;

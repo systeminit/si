@@ -3,7 +3,12 @@ use axum::{
     extract::rejection::JsonRejection,
     http::StatusCode,
     response::IntoResponse,
-    routing::{delete, get, post, put},
+    routing::{
+        delete,
+        get,
+        post,
+        put,
+    },
 };
 use dal::ComponentId;
 use serde::Deserialize;

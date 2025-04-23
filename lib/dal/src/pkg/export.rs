@@ -1,35 +1,86 @@
-use std::collections::{HashMap, hash_map::Entry};
-use std::ops::Deref;
-
-use strum::IntoEnumIterator;
+use std::{
+    collections::{
+        HashMap,
+        hash_map::Entry,
+    },
+    ops::Deref,
+};
 
 use si_pkg::{
-    ActionFuncSpec, AttrFuncInputSpec, AttrFuncInputSpecKind, AuthenticationFuncSpec,
-    ComponentSpec, EdgeSpec, FuncArgumentSpec, FuncSpec, FuncSpecData, LeafFunctionSpec,
-    ManagementFuncSpec, MapKeyFuncSpec, PkgSpec, PropSpec, PropSpecBuilder, PropSpecKind,
-    RootPropFuncSpec, SchemaSpec, SchemaSpecData, SchemaVariantSpec, SchemaVariantSpecBuilder,
-    SchemaVariantSpecData, SchemaVariantSpecPropRoot, SiPkg, SiPkgKind, SiPropFuncSpec,
-    SiPropFuncSpecKind, SocketSpec, SocketSpecData, SocketSpecKind, SpecError,
+    ActionFuncSpec,
+    AttrFuncInputSpec,
+    AttrFuncInputSpecKind,
+    AuthenticationFuncSpec,
+    ComponentSpec,
+    EdgeSpec,
+    FuncArgumentSpec,
+    FuncSpec,
+    FuncSpecData,
+    LeafFunctionSpec,
+    ManagementFuncSpec,
+    MapKeyFuncSpec,
+    PkgSpec,
+    PropSpec,
+    PropSpecBuilder,
+    PropSpecKind,
+    RootPropFuncSpec,
+    SchemaSpec,
+    SchemaSpecData,
+    SchemaVariantSpec,
+    SchemaVariantSpecBuilder,
+    SchemaVariantSpecData,
+    SchemaVariantSpecPropRoot,
+    SiPkg,
+    SiPkgKind,
+    SiPropFuncSpec,
+    SiPropFuncSpecKind,
+    SocketSpec,
+    SocketSpecData,
+    SocketSpecKind,
+    SpecError,
 };
+use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 
-use crate::action::prototype::ActionPrototype;
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentId,
+use super::{
+    PkgError,
+    PkgResult,
+    import_pkg_from_pkg,
 };
-
-use crate::func::FuncKind;
-use crate::management::prototype::ManagementPrototype;
-use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
 use crate::{
-    AttributePrototype, DalContext, Func, FuncId, Prop, PropId, PropKind, Schema, SchemaId,
-    SchemaVariant, SchemaVariantId, Workspace,
-    func::{argument::FuncArgument, intrinsics::IntrinsicFunc},
+    AttributePrototype,
+    AttributePrototypeId,
+    DalContext,
+    Func,
+    FuncBackendKind,
+    FuncId,
+    InputSocket,
+    OutputSocket,
+    Prop,
+    PropId,
+    PropKind,
+    Schema,
+    SchemaId,
+    SchemaVariant,
+    SchemaVariantId,
+    Workspace,
+    action::prototype::ActionPrototype,
+    attribute::prototype::argument::{
+        AttributePrototypeArgument,
+        AttributePrototypeArgumentId,
+    },
+    func::{
+        FuncKind,
+        argument::FuncArgument,
+        intrinsics::IntrinsicFunc,
+    },
+    management::prototype::ManagementPrototype,
     prop::PropPath,
+    schema::variant::leaves::{
+        LeafInputLocation,
+        LeafKind,
+    },
 };
-use crate::{AttributePrototypeId, FuncBackendKind, InputSocket, OutputSocket};
-
-use super::{PkgError, PkgResult, import_pkg_from_pkg};
 
 pub type FuncSpecMap = super::ChangeSetThingMap<FuncId, FuncSpec>;
 type VariantSpecMap = super::ChangeSetThingMap<SchemaVariantId, SchemaVariantSpec>;

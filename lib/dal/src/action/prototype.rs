@@ -1,40 +1,76 @@
 use std::sync::Arc;
 
-use petgraph::{Direction::Incoming, Outgoing};
-use serde::{Deserialize, Serialize};
-use si_events::{ActionResultState, FuncRunId};
+use petgraph::{
+    Direction::Incoming,
+    Outgoing,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ActionResultState,
+    FuncRunId,
+};
+use si_frontend_types::{
+    DiagramComponentView,
+    action::{
+        ActionPrototypeView,
+        prototype::ActionPrototypeViewList,
+    },
+};
 use si_layer_cache::LayerDbError;
 use si_pkg::ActionFuncSpecKind;
 use strum::Display;
 use thiserror::Error;
-use veritech_client::{ActionRunResultSuccess, ResourceStatus};
+use veritech_client::{
+    ActionRunResultSuccess,
+    ResourceStatus,
+};
 
+use super::ActionError;
 use crate::{
-    ActionPrototypeId, ChangeSetError, Component, ComponentError, ComponentId, DalContext,
-    EdgeWeightKind, EdgeWeightKindDiscriminants, Func, FuncError, HelperError, SchemaVariant,
-    SchemaVariantError, SchemaVariantId, TransactionsError, WorkspaceSnapshotError, WsEvent,
-    WsEventError, WsEventResult, WsPayload,
+    ActionPrototypeId,
+    ChangeSetError,
+    Component,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    Func,
+    FuncError,
+    HelperError,
+    SchemaVariant,
+    SchemaVariantError,
+    SchemaVariantId,
+    TransactionsError,
+    WorkspaceSnapshotError,
+    WsEvent,
+    WsEventError,
+    WsEventResult,
+    WsPayload,
     action::ActionId,
     component::ComponentUpdatedPayload,
     diagram::DiagramError,
     func::{
         FuncId,
-        runner::{FuncRunner, FuncRunnerError},
+        runner::{
+            FuncRunner,
+            FuncRunnerError,
+        },
     },
     implement_add_edge_to,
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
         node_weight::{
-            ActionPrototypeNodeWeight, NodeWeight, NodeWeightDiscriminants, NodeWeightError,
+            ActionPrototypeNodeWeight,
+            NodeWeight,
+            NodeWeightDiscriminants,
+            NodeWeightError,
         },
     },
 };
-use si_frontend_types::{
-    DiagramComponentView,
-    action::{ActionPrototypeView, prototype::ActionPrototypeViewList},
-};
-
-use super::ActionError;
 
 #[remain::sorted]
 #[derive(Debug, Error)]

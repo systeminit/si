@@ -1,9 +1,13 @@
 //! This module provides [`ComponentProperties`], which is a builder-pattern struct that enables
 //! users to modify an existing component safely.
 
-use crate::ComponentError;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::Value;
+
+use crate::ComponentError;
 
 #[derive(Deserialize, Serialize, Debug, Default)]
 pub struct ComponentProperties {

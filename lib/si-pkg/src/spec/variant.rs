@@ -1,18 +1,38 @@
 use std::collections::HashSet;
 
 use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display, EnumIter, EnumString, IntoEnumIterator};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+    IntoEnumIterator,
+};
 use url::Url;
 
-use crate::{
-    InputMismatchTruth, MergeSkip, PropSpecKind, SocketSpecKind,
-    spec::authentication_func::AuthenticationFuncSpec,
-};
-
 use super::{
-    ActionFuncSpec, LeafFunctionSpec, ManagementFuncSpec, PropSpec, PropSpecData,
-    PropSpecWidgetKind, RootPropFuncSpec, SiPropFuncSpec, SocketSpec, SocketSpecData, SpecError,
+    ActionFuncSpec,
+    LeafFunctionSpec,
+    ManagementFuncSpec,
+    PropSpec,
+    PropSpecData,
+    PropSpecWidgetKind,
+    RootPropFuncSpec,
+    SiPropFuncSpec,
+    SocketSpec,
+    SocketSpecData,
+    SpecError,
+};
+use crate::{
+    InputMismatchTruth,
+    MergeSkip,
+    PropSpecKind,
+    SocketSpecKind,
+    spec::authentication_func::AuthenticationFuncSpec,
 };
 
 #[remain::sorted]
@@ -756,9 +776,13 @@ impl SchemaVariantSpecBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ActionFuncSpecKind, AttrFuncInputSpec, LeafInputLocation, LeafKind};
-
     use super::*;
+    use crate::{
+        ActionFuncSpecKind,
+        AttrFuncInputSpec,
+        LeafInputLocation,
+        LeafKind,
+    };
 
     #[test]
     fn test_schema_variant_merge() {

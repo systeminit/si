@@ -11,9 +11,16 @@ mod server;
 
 pub use self::{
     config::{
-        Config, ConfigError, ConfigFile, StandardConfigFile, detect_and_configure_development,
+        Config,
+        ConfigError,
+        ConfigFile,
+        StandardConfigFile,
+        detect_and_configure_development,
     },
-    server::{Server, ServerMetadata},
+    server::{
+        Server,
+        ServerMetadata,
+    },
 };
 
 /// An error that can be returned when an Edda service is running

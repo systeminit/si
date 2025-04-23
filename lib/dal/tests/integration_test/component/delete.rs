@@ -1,21 +1,43 @@
 use std::time::Duration;
 
-use dal::action::Action;
-use dal::action::prototype::{ActionKind, ActionPrototype};
-use dal::component::delete::{ComponentDeletionStatus, delete_components};
-use dal::component::frame::Frame;
-use dal::component::resource::ResourceData;
-use dal::func::intrinsics::IntrinsicFunc;
-use dal::{AttributeValue, ComponentType, Func, InputSocket, OutputSocket};
-use dal::{Component, DalContext, Schema, SchemaVariant};
-use dal_test::helpers::{ChangeSetTestHelpers, get_component_input_socket_value};
-use dal_test::helpers::{
-    create_component_for_default_schema_name_in_default_view,
-    create_component_for_schema_name_with_type_on_default_view,
-    create_named_component_for_schema_variant_on_default_view,
-    update_attribute_value_for_component,
+use dal::{
+    AttributeValue,
+    Component,
+    ComponentType,
+    DalContext,
+    Func,
+    InputSocket,
+    OutputSocket,
+    Schema,
+    SchemaVariant,
+    action::{
+        Action,
+        prototype::{
+            ActionKind,
+            ActionPrototype,
+        },
+    },
+    component::{
+        delete::{
+            ComponentDeletionStatus,
+            delete_components,
+        },
+        frame::Frame,
+        resource::ResourceData,
+    },
+    func::intrinsics::IntrinsicFunc,
 };
-use dal_test::test;
+use dal_test::{
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_default_schema_name_in_default_view,
+        create_component_for_schema_name_with_type_on_default_view,
+        create_named_component_for_schema_variant_on_default_view,
+        get_component_input_socket_value,
+        update_attribute_value_for_component,
+    },
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 use veritech_client::ResourceStatus;
 

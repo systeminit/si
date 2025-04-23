@@ -1,5 +1,11 @@
-use serde::{Deserialize, Serialize};
-use si_tls::{CertificateSource, KeySource};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_tls::{
+    CertificateSource,
+    KeySource,
+};
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct AuthConfig {

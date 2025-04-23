@@ -1,11 +1,29 @@
-use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display, EnumIter, EnumString};
-
+use serde::{
+    Deserialize,
+    Serialize,
+};
 pub use si_events::FuncKind;
 use si_events::{
-    ActionKind, ActionPrototypeId, AttributePrototypeArgumentId, AttributePrototypeId, ComponentId,
-    FuncArgumentId, FuncBackendKind, FuncId, InputSocketId, ManagementPrototypeId, OutputSocketId,
-    PropId, SchemaVariantId, Timestamp,
+    ActionKind,
+    ActionPrototypeId,
+    AttributePrototypeArgumentId,
+    AttributePrototypeId,
+    ComponentId,
+    FuncArgumentId,
+    FuncBackendKind,
+    FuncId,
+    InputSocketId,
+    ManagementPrototypeId,
+    OutputSocketId,
+    PropId,
+    SchemaVariantId,
+    Timestamp,
+};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
 };
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]

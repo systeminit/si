@@ -1,13 +1,27 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Path},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
 };
-use dal::{ChangeSetId, WorkspacePk, module::Module};
+use dal::{
+    ChangeSetId,
+    WorkspacePk,
+    module::Module,
+};
 use si_frontend_types::ModuleSummary;
 
 use super::ModuleAPIResult;
-use crate::extract::{HandlerContext, PosthogClient, request::RawAccessToken};
-use crate::service::v2::AccessBuilder;
+use crate::{
+    extract::{
+        HandlerContext,
+        PosthogClient,
+        request::RawAccessToken,
+    },
+    service::v2::AccessBuilder,
+};
 
 pub async fn list(
     HandlerContext(builder): HandlerContext,

@@ -1,10 +1,25 @@
-use axum::{Json, extract::Query};
-use dal::qualification::{QualificationSummary, QualificationSummaryForComponent};
-use dal::{ComponentId, Visibility};
-use serde::{Deserialize, Serialize};
+use axum::{
+    Json,
+    extract::Query,
+};
+use dal::{
+    ComponentId,
+    Visibility,
+    qualification::{
+        QualificationSummary,
+        QualificationSummaryForComponent,
+    },
+};
+use sdf_extract::{
+    HandlerContext,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::QualificationResult;
-use sdf_extract::{HandlerContext, v1::AccessBuilder};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

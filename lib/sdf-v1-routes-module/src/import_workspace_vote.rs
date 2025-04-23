@@ -1,13 +1,30 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri},
+    extract::{
+        Host,
+        OriginalUri,
+    },
 };
-use dal::{HistoryActor, User, WsEvent};
-use serde::{Deserialize, Serialize};
-
-use crate::{ModuleError, ModuleResult};
+use dal::{
+    HistoryActor,
+    User,
+    WsEvent,
+};
 use sdf_core::tracking::track;
-use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
+use sdf_extract::{
+    HandlerContext,
+    PosthogClient,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
+use crate::{
+    ModuleError,
+    ModuleResult,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

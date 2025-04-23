@@ -1,30 +1,48 @@
-use category_pirate::migrate_test_exclusive_schema_pet_shop;
-use category_pirate::migrate_test_exclusive_schema_pirate;
-use category_validated::migrate_test_exclusive_schema_bad_validations;
-use category_validated::migrate_test_exclusive_schema_validated_input;
-use category_validated::migrate_test_exclusive_schema_validated_output;
-use dal::func::argument::FuncArgumentKind;
-use dal::func::intrinsics::IntrinsicFunc;
-use dal::{BuiltinsResult, DalContext};
+use std::str::FromStr;
+
+use category_pirate::{
+    migrate_test_exclusive_schema_pet_shop,
+    migrate_test_exclusive_schema_pirate,
+};
+use category_validated::{
+    migrate_test_exclusive_schema_bad_validations,
+    migrate_test_exclusive_schema_validated_input,
+    migrate_test_exclusive_schema_validated_output,
+};
+use dal::{
+    BuiltinsResult,
+    DalContext,
+    func::{
+        argument::FuncArgumentKind,
+        intrinsics::IntrinsicFunc,
+    },
+};
 use dummy_secret::migrate_test_exclusive_schema_dummy_secret;
 use fake_butane::migrate_test_exclusive_schema_fake_butane;
 use fake_docker_image::migrate_test_exclusive_schema_fake_docker_image;
 use fallout::migrate_test_exclusive_schema_fallout;
 use katy_perry::migrate_test_exclusive_schema_katy_perry;
-use legos::migrate_test_exclusive_schema_large_even_lego;
-use legos::migrate_test_exclusive_schema_large_odd_lego;
-use legos::migrate_test_exclusive_schema_medium_even_lego;
-use legos::migrate_test_exclusive_schema_medium_odd_lego;
-use legos::migrate_test_exclusive_schema_small_even_lego;
-use legos::migrate_test_exclusive_schema_small_odd_lego;
-use si_pkg::{
-    FuncArgumentSpec, FuncSpec, FuncSpecBackendKind, FuncSpecBackendResponseType, FuncSpecData,
+use legos::{
+    migrate_test_exclusive_schema_large_even_lego,
+    migrate_test_exclusive_schema_large_odd_lego,
+    migrate_test_exclusive_schema_medium_even_lego,
+    migrate_test_exclusive_schema_medium_odd_lego,
+    migrate_test_exclusive_schema_small_even_lego,
+    migrate_test_exclusive_schema_small_odd_lego,
 };
-use starfield::migrate_test_exclusive_schema_etoiles;
-use starfield::migrate_test_exclusive_schema_morningstar;
-use starfield::migrate_test_exclusive_schema_private_language;
-use starfield::migrate_test_exclusive_schema_starfield;
-use std::str::FromStr;
+use si_pkg::{
+    FuncArgumentSpec,
+    FuncSpec,
+    FuncSpecBackendKind,
+    FuncSpecBackendResponseType,
+    FuncSpecData,
+};
+use starfield::{
+    migrate_test_exclusive_schema_etoiles,
+    migrate_test_exclusive_schema_morningstar,
+    migrate_test_exclusive_schema_private_language,
+    migrate_test_exclusive_schema_starfield,
+};
 use swifty::migrate_test_exclusive_schema_swifty;
 
 mod category_pirate;

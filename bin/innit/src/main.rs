@@ -1,12 +1,19 @@
 use std::time::Duration;
 
 use color_eyre::Result;
-use innit_server::{Config, Server};
+use innit_server::{
+    Config,
+    Server,
+};
 use si_service::{
     color_eyre,
     prelude::*,
-    rt, startup,
-    telemetry_application::{self, TelemetryShutdownGuard},
+    rt,
+    startup,
+    telemetry_application::{
+        self,
+        TelemetryShutdownGuard,
+    },
 };
 
 mod args;

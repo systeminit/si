@@ -1,15 +1,23 @@
 use std::sync::Arc;
 
-use si_events::{Actor, FuncRunId, FuncRunLog, Tenancy, WebEvent};
-
-use crate::{
-    error::LayerDbResult,
-    event::{LayeredEvent, LayeredEventKind},
-    layer_cache::LayerCache,
-    persister::PersisterClient,
+use si_events::{
+    Actor,
+    FuncRunId,
+    FuncRunLog,
+    Tenancy,
+    WebEvent,
 };
 
 use super::serialize;
+use crate::{
+    error::LayerDbResult,
+    event::{
+        LayeredEvent,
+        LayeredEventKind,
+    },
+    layer_cache::LayerCache,
+    persister::PersisterClient,
+};
 
 pub const DBNAME: &str = "func_run_logs";
 pub const CACHE_NAME: &str = DBNAME;

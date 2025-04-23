@@ -1,13 +1,28 @@
-use std::{error::Error, sync::Arc};
+use std::{
+    error::Error,
+    sync::Arc,
+};
 
-use axum::extract::ws::{self, WebSocket};
+use axum::extract::ws::{
+    self,
+    WebSocket,
+};
 use dal::WorkspacePk;
-use nats_multiplexer_client::{MultiplexerClient, MultiplexerClientError};
-use si_data_nats::{NatsClient, Subject};
+use nats_multiplexer_client::{
+    MultiplexerClient,
+    MultiplexerClientError,
+};
+use si_data_nats::{
+    NatsClient,
+    Subject,
+};
 use si_frontend_types::object::patch::DATA_CACHE_SUBJECT_PREFIX;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{Mutex, broadcast};
+use tokio::sync::{
+    Mutex,
+    broadcast,
+};
 use tokio_tungstenite::tungstenite;
 use tokio_util::sync::CancellationToken;
 

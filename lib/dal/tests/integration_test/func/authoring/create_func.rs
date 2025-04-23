@@ -1,17 +1,41 @@
-use dal::action::prototype::ActionKind;
-use dal::diagram::Diagram;
-use dal::func::FuncKind;
-use dal::func::authoring::{FuncAuthoringClient, FuncAuthoringError};
-use dal::func::binding::{AttributeFuncDestination, EventualParent};
-use dal::prop::PropPath;
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::schema::variant::leaves::{LeafInputLocation, LeafKind};
-use dal::{AttributeValue, DalContext, Func, OutputSocket, Prop, Schema, SchemaVariant};
-use dal_test::helpers::{
-    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view,
-    create_unlocked_variant_copy_for_schema_name,
+use dal::{
+    AttributeValue,
+    DalContext,
+    Func,
+    OutputSocket,
+    Prop,
+    Schema,
+    SchemaVariant,
+    action::prototype::ActionKind,
+    diagram::Diagram,
+    func::{
+        FuncKind,
+        authoring::{
+            FuncAuthoringClient,
+            FuncAuthoringError,
+        },
+        binding::{
+            AttributeFuncDestination,
+            EventualParent,
+        },
+    },
+    prop::PropPath,
+    schema::variant::{
+        authoring::VariantAuthoringClient,
+        leaves::{
+            LeafInputLocation,
+            LeafKind,
+        },
+    },
 };
-use dal_test::test;
+use dal_test::{
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_default_schema_name_in_default_view,
+        create_unlocked_variant_copy_for_schema_name,
+    },
+    test,
+};
 
 #[test]
 async fn create_qualification_with_schema_variant(ctx: &mut DalContext) {

@@ -1,6 +1,13 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_id::AuthTokenId;
-use strum::{AsRefStr, Display, EnumString};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumString,
+};
 
 pub type AuthenticationMethod = AuthenticationMethodV1;
 pub type AuthenticationMethodRole = AuthenticationMethodRoleV1;

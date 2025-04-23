@@ -1,6 +1,16 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
-use crate::{ChangeSetId, DalContext, SecretId, WsEvent, WsEventResult, WsPayload};
+use crate::{
+    ChangeSetId,
+    DalContext,
+    SecretId,
+    WsEvent,
+    WsEventResult,
+    WsPayload,
+};
 
 #[allow(missing_docs)]
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]

@@ -1,36 +1,70 @@
-use std::time::Duration;
 use std::{
-    collections::{HashMap, hash_map::Entry},
+    collections::{
+        HashMap,
+        hash_map::Entry,
+    },
     sync::Arc,
+    time::Duration,
 };
 
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::{
+    BufMut,
+    Bytes,
+    BytesMut,
+};
 use chrono::prelude::*;
 use futures::StreamExt;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_nats::{
-    HeaderMap, NatsClient,
+    HeaderMap,
+    NatsClient,
     async_nats::jetstream::{
-        self, Message,
-        consumer::{DeliverPolicy, pull::Stream},
+        self,
+        Message,
+        consumer::{
+            DeliverPolicy,
+            pull::Stream,
+        },
     },
     jetstream::context::Context,
 };
-use si_events::{Actor, Tenancy, WebEvent};
+use si_events::{
+    Actor,
+    Tenancy,
+    WebEvent,
+};
 use strum::AsRefStr;
-use telemetry::tracing::{debug, warn};
+use telemetry::tracing::{
+    debug,
+    warn,
+};
 use tokio::{
-    sync::mpsc::{UnboundedReceiver, UnboundedSender},
+    sync::mpsc::{
+        UnboundedReceiver,
+        UnboundedSender,
+    },
     task::JoinHandle,
 };
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 use ulid::Ulid;
 
 use crate::{
     LayerDbError,
     db::serialize,
     error::LayerDbResult,
-    nats::{self, NATS_HEADER_DB_NAME, NATS_HEADER_INSTANCE_ID, NATS_HEADER_KEY, subject},
+    nats::{
+        self,
+        NATS_HEADER_DB_NAME,
+        NATS_HEADER_INSTANCE_ID,
+        NATS_HEADER_KEY,
+        subject,
+    },
 };
 
 const DEFAULT_CHUNK_SIZE: usize = 128 * 1024;

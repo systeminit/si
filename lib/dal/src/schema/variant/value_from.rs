@@ -1,5 +1,12 @@
-use serde::{Deserialize, Serialize};
-use si_pkg::{AttrFuncInputSpec, SiPropFuncSpec, SiPropFuncSpecKind};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_pkg::{
+    AttrFuncInputSpec,
+    SiPropFuncSpec,
+    SiPropFuncSpecKind,
+};
 
 use crate::prop::PropPath;
 

@@ -1,16 +1,33 @@
 use std::{
-    io::{BufRead, Write},
+    io::{
+        BufRead,
+        Write,
+    },
     str::FromStr,
 };
 
 use object_tree::{
-    GraphError, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes, read_key_value_line,
-    read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
+    GraphError,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    read_key_value_line_opt,
+    write_key_value_line,
+    write_key_value_line_opt,
 };
 
-use crate::{ActionFuncSpec, ActionFuncSpecKind};
-
-use super::{PkgNode, read_common_fields, write_common_fields};
+use super::{
+    PkgNode,
+    read_common_fields,
+    write_common_fields,
+};
+use crate::{
+    ActionFuncSpec,
+    ActionFuncSpecKind,
+};
 
 const KEY_KIND_STR: &str = "kind";
 const KEY_FUNC_UNIQUE_ID_STR: &str = "func_unique_id";

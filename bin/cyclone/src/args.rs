@@ -1,7 +1,18 @@
-use std::{net::SocketAddr, path::PathBuf, time::Duration};
+use std::{
+    net::SocketAddr,
+    path::PathBuf,
+    time::Duration,
+};
 
-use clap::{ArgAction, Parser};
-use cyclone_server::{Config, ConfigError, IncomingStream};
+use clap::{
+    ArgAction,
+    Parser,
+};
+use cyclone_server::{
+    Config,
+    ConfigError,
+    IncomingStream,
+};
 
 const NAME: &str = "cyclone";
 

@@ -1,7 +1,16 @@
 use std::collections::HashMap;
 
-use dal::{Component, ComponentId, ComponentType, DalContext, diagram::view::View};
-use dal_test::{helpers::create_component_for_default_schema_name_in_default_view, test};
+use dal::{
+    Component,
+    ComponentId,
+    ComponentType,
+    DalContext,
+    diagram::view::View,
+};
+use dal_test::{
+    helpers::create_component_for_default_schema_name_in_default_view,
+    test,
+};
 
 #[test]
 async fn calculates_top_and_center(ctx: &DalContext) {

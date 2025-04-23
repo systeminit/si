@@ -1,14 +1,38 @@
 //! This module contains the ability to construct a [`schema`](PropertyEditorSchema) for a
 //! [`SchemaVariant`](crate::SchemaVariant)'s properties.
 
-use serde::{Deserialize, Serialize};
-use si_pkg::PropSpecWidgetKind;
-use std::collections::{HashMap, VecDeque};
-use strum::{AsRefStr, Display, EnumString};
+use std::collections::{
+    HashMap,
+    VecDeque,
+};
 
-use crate::prop::{PropPath, WidgetOptions};
-use crate::property_editor::{PropertyEditorPropId, PropertyEditorResult};
-use crate::{DalContext, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_pkg::PropSpecWidgetKind;
+use strum::{
+    AsRefStr,
+    Display,
+    EnumString,
+};
+
+use crate::{
+    DalContext,
+    Prop,
+    PropId,
+    PropKind,
+    SchemaVariant,
+    SchemaVariantId,
+    prop::{
+        PropPath,
+        WidgetOptions,
+    },
+    property_editor::{
+        PropertyEditorPropId,
+        PropertyEditorResult,
+    },
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

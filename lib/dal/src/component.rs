@@ -1,74 +1,177 @@
 //! This module contains [`Component`], which is an instance of a
 //! [`SchemaVariant`](SchemaVariant) and a _model_ of a "real world resource".
 
+use std::{
+    collections::{
+        HashMap,
+        HashSet,
+        VecDeque,
+        hash_map,
+    },
+    num::{
+        ParseFloatError,
+        ParseIntError,
+    },
+    str::FromStr,
+    sync::Arc,
+};
+
+use frame::{
+    Frame,
+    FrameError,
+};
 use itertools::Itertools;
 use petgraph::Direction::Outgoing;
-use serde::{Deserialize, Serialize};
+use resource::ResourceData;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    ulid::Ulid,
+};
+use si_frontend_types::{
+    DiagramComponentView,
+    DiagramSocket,
+    DiagramSocketDirection,
+    DiagramSocketNodeSide,
+    GeometryAndView,
+    RawGeometry,
+};
 use si_pkg::KeyOrIndex;
-use socket::{ComponentInputSocket, ComponentOutputSocket};
-use std::collections::{HashMap, HashSet, VecDeque, hash_map};
-use std::num::{ParseFloatError, ParseIntError};
-use std::str::FromStr;
-use std::sync::Arc;
+use socket::{
+    ComponentInputSocket,
+    ComponentOutputSocket,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::TryLockError;
 
-use si_events::{ContentHash, ulid::Ulid};
-
-use crate::action::prototype::{ActionKind, ActionPrototype, ActionPrototypeError};
-use crate::action::{Action, ActionError, ActionState};
-use crate::actor_view::ActorView;
-use crate::attribute::prototype::argument::value_source::ValueSource;
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
-};
-use crate::attribute::prototype::{AttributePrototypeError, AttributePrototypeSource};
-use crate::attribute::value::{
-    AttributeValueError, ChildAttributeValuePair, DependentValueGraph, ValueIsFor,
-};
-use crate::change_set::ChangeSetError;
-use crate::change_status::ChangeStatus;
-use crate::code_view::CodeViewError;
-use crate::diagram::{
-    DiagramError, SummaryDiagramEdge, SummaryDiagramInferredEdge, SummaryDiagramManagementEdge,
-};
-use crate::func::argument::FuncArgumentError;
-use crate::func::binding::FuncBindingError;
-use crate::history_event::HistoryEventMetadata;
-use crate::layer_db_types::{ComponentContent, ComponentContentV2};
-use crate::module::{Module, ModuleError};
-use crate::prop::{PropError, PropPath};
-use crate::qualification::QualificationError;
-use crate::schema::variant::SchemaVariantError;
-use crate::schema::variant::leaves::LeafKind;
-use crate::schema::variant::root_prop::component_type::ComponentType;
-use crate::socket::input::InputSocketError;
-use crate::socket::output::OutputSocketError;
-use crate::validation::{ValidationError, ValidationOutput};
-use crate::workspace_snapshot::content_address::ContentAddressDiscriminants;
-use crate::workspace_snapshot::edge_weight::{EdgeWeightKind, EdgeWeightKindDiscriminants};
-use crate::workspace_snapshot::node_weight::attribute_prototype_argument_node_weight::ArgumentTargets;
-use crate::workspace_snapshot::node_weight::category_node_weight::CategoryNodeKind;
-use crate::workspace_snapshot::node_weight::{ComponentNodeWeight, NodeWeight, NodeWeightError};
-use crate::workspace_snapshot::{DependentValueRoot, WorkspaceSnapshotError};
-use crate::{AttributePrototypeId, EdgeWeight, SocketArity};
-use frame::{Frame, FrameError};
-use resource::ResourceData;
-use si_frontend_types::{
-    DiagramComponentView, DiagramSocket, DiagramSocketDirection, DiagramSocketNodeSide,
-    GeometryAndView, RawGeometry,
-};
-
 use self::inferred_connection_graph::InferredConnectionGraphError;
-use crate::diagram::geometry::Geometry;
-use crate::diagram::view::{View, ViewId};
 use crate::{
-    AttributePrototype, AttributeValue, AttributeValueId, ChangeSetId, DalContext, Func, FuncError,
-    FuncId, HelperError, InputSocket, InputSocketId, OutputSocket, OutputSocketId, Prop, PropId,
-    PropKind, Schema, SchemaVariant, SchemaVariantId, StandardModelError, Timestamp,
-    TransactionsError, WorkspaceError, WorkspacePk, WsEvent, WsEventError, WsEventResult,
-    WsPayload, implement_add_edge_to,
+    AttributePrototype,
+    AttributePrototypeId,
+    AttributeValue,
+    AttributeValueId,
+    ChangeSetId,
+    DalContext,
+    EdgeWeight,
+    Func,
+    FuncError,
+    FuncId,
+    HelperError,
+    InputSocket,
+    InputSocketId,
+    OutputSocket,
+    OutputSocketId,
+    Prop,
+    PropId,
+    PropKind,
+    Schema,
+    SchemaVariant,
+    SchemaVariantId,
+    SocketArity,
+    StandardModelError,
+    Timestamp,
+    TransactionsError,
+    WorkspaceError,
+    WorkspacePk,
+    WsEvent,
+    WsEventError,
+    WsEventResult,
+    WsPayload,
+    action::{
+        Action,
+        ActionError,
+        ActionState,
+        prototype::{
+            ActionKind,
+            ActionPrototype,
+            ActionPrototypeError,
+        },
+    },
+    actor_view::ActorView,
+    attribute::{
+        prototype::{
+            AttributePrototypeError,
+            AttributePrototypeSource,
+            argument::{
+                AttributePrototypeArgument,
+                AttributePrototypeArgumentError,
+                AttributePrototypeArgumentId,
+                value_source::ValueSource,
+            },
+        },
+        value::{
+            AttributeValueError,
+            ChildAttributeValuePair,
+            DependentValueGraph,
+            ValueIsFor,
+        },
+    },
+    change_set::ChangeSetError,
+    change_status::ChangeStatus,
+    code_view::CodeViewError,
+    diagram::{
+        DiagramError,
+        SummaryDiagramEdge,
+        SummaryDiagramInferredEdge,
+        SummaryDiagramManagementEdge,
+        geometry::Geometry,
+        view::{
+            View,
+            ViewId,
+        },
+    },
+    func::{
+        argument::FuncArgumentError,
+        binding::FuncBindingError,
+    },
+    history_event::HistoryEventMetadata,
+    implement_add_edge_to,
+    layer_db_types::{
+        ComponentContent,
+        ComponentContentV2,
+    },
+    module::{
+        Module,
+        ModuleError,
+    },
+    prop::{
+        PropError,
+        PropPath,
+    },
+    qualification::QualificationError,
+    schema::variant::{
+        SchemaVariantError,
+        leaves::LeafKind,
+        root_prop::component_type::ComponentType,
+    },
+    socket::{
+        input::InputSocketError,
+        output::OutputSocketError,
+    },
+    validation::{
+        ValidationError,
+        ValidationOutput,
+    },
+    workspace_snapshot::{
+        DependentValueRoot,
+        WorkspaceSnapshotError,
+        content_address::ContentAddressDiscriminants,
+        edge_weight::{
+            EdgeWeightKind,
+            EdgeWeightKindDiscriminants,
+        },
+        node_weight::{
+            ComponentNodeWeight,
+            NodeWeight,
+            NodeWeightError,
+            attribute_prototype_argument_node_weight::ArgumentTargets,
+            category_node_weight::CategoryNodeKind,
+        },
+    },
 };
 
 pub mod code;

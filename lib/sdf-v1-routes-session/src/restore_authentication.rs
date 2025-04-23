@@ -1,9 +1,19 @@
 use axum::Json;
-use dal::{User, Workspace};
-use serde::{Deserialize, Serialize};
+use dal::{
+    User,
+    Workspace,
+};
+use sdf_extract::{
+    HandlerContext,
+    v1::AccessBuilder,
+    workspace::WorkspaceAuthorization,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::SessionResult;
-use sdf_extract::{HandlerContext, v1::AccessBuilder, workspace::WorkspaceAuthorization};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

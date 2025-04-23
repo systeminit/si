@@ -1,6 +1,11 @@
-use dal::func::FuncKind;
-use dal::schema::variant::authoring::VariantAuthoringClient;
-use dal::{ChangeSet, DalContext, Func, FuncBackendResponseType};
+use dal::{
+    ChangeSet,
+    DalContext,
+    Func,
+    FuncBackendResponseType,
+    func::FuncKind,
+    schema::variant::authoring::VariantAuthoringClient,
+};
 use dal_test::test;
 
 #[test]

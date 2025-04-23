@@ -1,31 +1,45 @@
 //! This module provides audit logging functionality to the rest of the crate.
 
-use audit_database::AuditDatabaseContext;
-use audit_database::AuditDatabaseError;
-use audit_database::AuditLogRow;
-use audit_logs_stream::AuditLogsStream;
-use audit_logs_stream::AuditLogsStreamError;
-use pending_events::PendingEventsError;
-use pending_events::PendingEventsStream;
-use serde::Deserialize;
-use serde::Serialize;
-use shuttle_server::Shuttle;
-use shuttle_server::ShuttleError;
-use si_events::audit_log::AuditLog;
-use si_events::audit_log::AuditLogKind;
+use audit_database::{
+    AuditDatabaseContext,
+    AuditDatabaseError,
+    AuditLogRow,
+};
+use audit_logs_stream::{
+    AuditLogsStream,
+    AuditLogsStreamError,
+};
+use pending_events::{
+    PendingEventsError,
+    PendingEventsStream,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use shuttle_server::{
+    Shuttle,
+    ShuttleError,
+};
+use si_events::audit_log::{
+    AuditLog,
+    AuditLogKind,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio_util::task::TaskTracker;
 
-use crate::ChangeSet;
-use crate::ChangeSetError;
-use crate::ChangeSetStatus;
-use crate::DalContext;
-use crate::TenancyError;
-use crate::TransactionsError;
-use crate::WsEvent;
-use crate::WsEventResult;
-use crate::WsPayload;
+use crate::{
+    ChangeSet,
+    ChangeSetError,
+    ChangeSetStatus,
+    DalContext,
+    TenancyError,
+    TransactionsError,
+    WsEvent,
+    WsEventResult,
+    WsPayload,
+};
 
 #[remain::sorted]
 #[derive(Debug, Error)]

@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
 use si_events::ViewId;
@@ -6,10 +9,21 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
 
-use crate::ws_event::{WsEvent, WsEventResult, WsPayload};
 use crate::{
-    ChangeSetId, DalContext, HistoryEvent, HistoryEventError, Tenancy, Timestamp,
-    TransactionsError, WorkspacePk, standard_model_accessor_ro,
+    ChangeSetId,
+    DalContext,
+    HistoryEvent,
+    HistoryEventError,
+    Tenancy,
+    Timestamp,
+    TransactionsError,
+    WorkspacePk,
+    standard_model_accessor_ro,
+    ws_event::{
+        WsEvent,
+        WsEventResult,
+        WsPayload,
+    },
 };
 
 const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");

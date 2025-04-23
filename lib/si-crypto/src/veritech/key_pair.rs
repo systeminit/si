@@ -3,9 +3,15 @@ use std::path::Path;
 use sodiumoxide::crypto::box_;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::{fs::File, io::AsyncWriteExt};
+use tokio::{
+    fs::File,
+    io::AsyncWriteExt,
+};
 
-use crate::{VeritechDecryptionKey, VeritechEncryptionKey};
+use crate::{
+    VeritechDecryptionKey,
+    VeritechEncryptionKey,
+};
 
 /// An error that can be returned when working with a [`VeritechKeyPair`].
 #[remain::sorted]

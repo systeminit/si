@@ -1,13 +1,18 @@
 use std::env;
-use url::Url;
 
 use derive_builder::Builder;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+pub use si_settings::{
+    StandardConfig,
+    StandardConfigFile,
+};
 use si_std::CanonicalFileError;
 use telemetry::prelude::*;
 use thiserror::Error;
-
-pub use si_settings::{StandardConfig, StandardConfigFile};
+use url::Url;
 
 use crate::auth::AuthConfig;
 

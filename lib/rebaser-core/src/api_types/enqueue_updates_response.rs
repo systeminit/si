@@ -1,11 +1,28 @@
 use std::{
     fmt,
-    ops::{Deref, DerefMut},
+    ops::{
+        Deref,
+        DerefMut,
+    },
 };
 
-use naxum_api_types::{ApiVersionsWrapper, ApiWrapper, RequestId, UpgradeError};
-use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, EnumDiscriminants, EnumIs, EnumString, VariantNames};
+use naxum_api_types::{
+    ApiVersionsWrapper,
+    ApiWrapper,
+    RequestId,
+    UpgradeError,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use strum::{
+    AsRefStr,
+    EnumDiscriminants,
+    EnumIs,
+    EnumString,
+    VariantNames,
+};
 
 pub mod v1;
 

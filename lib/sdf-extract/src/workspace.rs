@@ -1,20 +1,40 @@
+use std::str::FromStr;
+
 use axum::{
-    RequestPartsExt as _, async_trait,
-    extract::{FromRequestParts, Path},
-    http::{header::HeaderMap, request::Parts},
+    RequestPartsExt as _,
+    async_trait,
+    extract::{
+        FromRequestParts,
+        Path,
+    },
+    http::{
+        header::HeaderMap,
+        request::Parts,
+    },
 };
-use dal::{DalContext, User, UserPk, WorkspacePk};
-use derive_more::{Deref, Into};
+use dal::{
+    DalContext,
+    User,
+    UserPk,
+    WorkspacePk,
+};
+use derive_more::{
+    Deref,
+    Into,
+};
+use sdf_core::app_state::AppState;
 use serde::Deserialize;
 use si_events::AuthenticationMethod;
 use si_jwt_public_key::SiJwtClaimRole;
-use std::str::FromStr;
-
-use sdf_core::app_state::AppState;
 
 use super::{
-    ErrorResponse, bad_request, internal_error,
-    request::{RequestUlidFromHeader, ValidatedToken},
+    ErrorResponse,
+    bad_request,
+    internal_error,
+    request::{
+        RequestUlidFromHeader,
+        ValidatedToken,
+    },
     services::HandlerContext,
     unauthorized_error,
 };

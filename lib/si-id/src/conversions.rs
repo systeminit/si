@@ -1,5 +1,9 @@
 use crate::{
-    AttributeValueId, ChangeSetId, PropId, PropertyEditorPropId, PropertyEditorValueId,
+    AttributeValueId,
+    ChangeSetId,
+    PropId,
+    PropertyEditorPropId,
+    PropertyEditorValueId,
     VectorClockChangeSetId,
 };
 

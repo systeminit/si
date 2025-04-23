@@ -1,5 +1,11 @@
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use chrono::{
+    DateTime,
+    Utc,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, PartialOrd, Ord, Serialize)]
 pub struct Timestamp {

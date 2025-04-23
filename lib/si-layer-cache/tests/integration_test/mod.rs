@@ -1,9 +1,18 @@
+use std::{
+    env,
+    path::Path,
+};
+
 use buck2_resources::Buck2Resources;
-use si_data_nats::{NatsClient, NatsConfig};
-use si_data_pg::{PgPool, PgPoolConfig};
+use si_data_nats::{
+    NatsClient,
+    NatsConfig,
+};
+use si_data_pg::{
+    PgPool,
+    PgPoolConfig,
+};
 use si_tls::CertificateSource;
-use std::env;
-use std::path::Path;
 
 use crate::TEST_PG_DBNAME;
 

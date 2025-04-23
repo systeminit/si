@@ -8,14 +8,26 @@ pub mod builder;
 use std::{
     marker::PhantomData,
     pin::Pin,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
 };
 
-use futures::{Stream, StreamExt};
+use futures::{
+    Stream,
+    StreamExt,
+};
 use futures_lite::future::FutureExt;
 use pin_project_lite::pin_project;
 use serde::de::DeserializeOwned;
-use si_data_nats::{HeaderMap, NatsError, Subject, status::StatusCode, subject::ToSubject};
+use si_data_nats::{
+    HeaderMap,
+    NatsError,
+    Subject,
+    status::StatusCode,
+    subject::ToSubject,
+};
 use telemetry::prelude::*;
 use telemetry_nats::NatsMakeSpan;
 use thiserror::Error;

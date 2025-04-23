@@ -1,15 +1,28 @@
 //! This module contains [`SchemaView`], which is used by the frontend to know and organize all non-hidden
 //! [`Schemas`](Schema) and [`SchemaVariants`](Schema) in the current [`snapshot`](crate::WorkspaceSnapshot).
 
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use thiserror::Error;
 
-use crate::schema::variant::SchemaVariantError;
-use crate::schema::variant::root_prop::component_type::ComponentType;
 use crate::{
-    DalContext, InputSocketId, OutputSocketId, Schema, SchemaError, SchemaId, SchemaVariant,
-    SchemaVariantId, Timestamp,
+    DalContext,
+    InputSocketId,
+    OutputSocketId,
+    Schema,
+    SchemaError,
+    SchemaId,
+    SchemaVariant,
+    SchemaVariantId,
+    Timestamp,
+    schema::variant::{
+        SchemaVariantError,
+        root_prop::component_type::ComponentType,
+    },
 };
 
 #[remain::sorted]

@@ -3,15 +3,28 @@ use std::{
     fmt,
     future::Future,
     marker::PhantomData,
-    task::{Context, Poll},
+    task::{
+        Context,
+        Poll,
+    },
 };
 
-use tower::{Layer, Service, ServiceExt};
+use tower::{
+    Layer,
+    Service,
+    ServiceExt,
+};
 
 use crate::{
     extract::FromMessageHead,
-    message::{Message, MessageHead},
-    response::{IntoResponse, Response},
+    message::{
+        Message,
+        MessageHead,
+    },
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 
 pub struct HandleErrorLayer<F, T> {
@@ -227,7 +240,10 @@ pub mod future {
         convert::Infallible,
         future::Future,
         pin::Pin,
-        task::{Context, Poll},
+        task::{
+            Context,
+            Poll,
+        },
     };
 
     use pin_project_lite::pin_project;

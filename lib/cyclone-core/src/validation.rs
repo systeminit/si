@@ -1,7 +1,14 @@
-use crate::{BeforeFunction, request::CycloneRequestable};
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
+
+use crate::{
+    BeforeFunction,
+    request::CycloneRequestable,
+};
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

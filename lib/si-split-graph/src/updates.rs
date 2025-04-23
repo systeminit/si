@@ -1,17 +1,35 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{
+    BTreeMap,
+    HashMap,
+    HashSet,
+};
 
 use petgraph::{
     prelude::*,
-    visit::{Control, DfsEvent},
+    visit::{
+        Control,
+        DfsEvent,
+    },
 };
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::workspace_snapshot::Change;
 use strum::EnumDiscriminants;
 
 use crate::{
-    CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraphEdgeWeight, SplitGraphEdgeWeightKind,
-    SplitGraphNodeId, SplitGraphNodeWeight,
-    subgraph::{SubGraph, SubGraphNodeIndex},
+    CustomEdgeWeight,
+    CustomNodeWeight,
+    EdgeKind,
+    SplitGraphEdgeWeight,
+    SplitGraphEdgeWeightKind,
+    SplitGraphNodeId,
+    SplitGraphNodeWeight,
+    subgraph::{
+        SubGraph,
+        SubGraphNodeIndex,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, EnumDiscriminants)]

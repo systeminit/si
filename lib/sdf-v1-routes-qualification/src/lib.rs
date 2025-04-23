@@ -3,17 +3,30 @@ use std::string::FromUtf8Error;
 use axum::{
     Router,
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
     routing::get,
 };
 use dal::{
-    ComponentError, ComponentId, FuncId, SchemaError, SchemaId, StandardModelError, TenancyError,
-    TransactionsError, WsEventError, qualification::QualificationSummaryError,
+    ComponentError,
+    ComponentId,
+    FuncId,
+    SchemaError,
+    SchemaId,
+    StandardModelError,
+    TenancyError,
+    TransactionsError,
+    WsEventError,
+    qualification::QualificationSummaryError,
+};
+use sdf_core::{
+    api_error::ApiError,
+    app_state::AppState,
 };
 use telemetry::prelude::*;
 use thiserror::Error;
-
-use sdf_core::{api_error::ApiError, app_state::AppState};
 
 pub mod get_summary;
 

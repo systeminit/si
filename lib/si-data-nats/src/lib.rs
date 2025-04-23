@@ -7,11 +7,25 @@
 )]
 #![allow(clippy::missing_errors_doc)]
 
-use std::{cmp, fmt::Debug, hash, io, ops, sync::Arc, time::Duration};
+use std::{
+    cmp,
+    fmt::Debug,
+    hash,
+    io,
+    ops,
+    sync::Arc,
+    time::Duration,
+};
 
-use async_nats::{ToServerAddrs, subject::ToSubject};
+use async_nats::{
+    ToServerAddrs,
+    subject::ToSubject,
+};
 use bytes::Bytes;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use thiserror::Error;
@@ -25,11 +39,28 @@ pub mod jetstream;
 pub mod service;
 
 pub use async_nats::{
-    self, Auth, AuthError, Error as InnerError, Event, HeaderName, HeaderValue, ServerAddr,
-    ServerInfo, Subject, connection::State, header, header::HeaderMap, rustls, status, subject,
+    self,
+    Auth,
+    AuthError,
+    Error as InnerError,
+    Event,
+    HeaderName,
+    HeaderValue,
+    ServerAddr,
+    ServerInfo,
+    Subject,
+    connection::State,
+    header,
+    header::HeaderMap,
+    rustls,
+    status,
+    subject,
 };
 pub use connect_options::ConnectOptions;
-pub use message::{InnerMessage, Message};
+pub use message::{
+    InnerMessage,
+    Message,
+};
 pub use subscriber::Subscriber;
 
 pub type NatsError = Error;

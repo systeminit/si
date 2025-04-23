@@ -1,14 +1,32 @@
 use core::fmt;
-use std::{borrow::Cow, convert::Infallible};
+use std::{
+    borrow::Cow,
+    convert::Infallible,
+};
 
-use async_nats::{HeaderMap, HeaderName, HeaderValue, StatusCode};
-use bytes::{Bytes, BytesMut};
-
-use crate::body::{self, Body};
+use async_nats::{
+    HeaderMap,
+    HeaderName,
+    HeaderValue,
+    StatusCode,
+};
+use bytes::{
+    Bytes,
+    BytesMut,
+};
 
 use super::{
-    IntoResponseParts, Response, ResponseParts,
-    inner::{self, Parts},
+    IntoResponseParts,
+    Response,
+    ResponseParts,
+    inner::{
+        self,
+        Parts,
+    },
+};
+use crate::body::{
+    self,
+    Body,
 };
 
 pub trait IntoResponse {

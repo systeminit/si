@@ -3,11 +3,19 @@
 
 use std::marker::PhantomData;
 
-use si_data_nats::{NatsClient, Subject, subject::ToSubject};
+use si_data_nats::{
+    NatsClient,
+    Subject,
+    subject::ToSubject,
+};
 use telemetry::prelude::*;
 use telemetry_nats::NatsMakeSpan;
 
-use crate::{Subscriber, SubscriberError, SubscriberResult};
+use crate::{
+    Subscriber,
+    SubscriberError,
+    SubscriberResult,
+};
 
 /// The [`builder`](Self) used for creating a [`Subscriber`].
 pub struct SubscriberBuilder<T> {

@@ -5,11 +5,22 @@
 //! using headers.
 
 use naxum::{
-    Head, Message, MessageHead, async_trait, composite_rejection, define_rejection,
-    extract::{FromMessage, FromMessageHead},
+    Head,
+    Message,
+    MessageHead,
+    async_trait,
+    composite_rejection,
+    define_rejection,
+    extract::{
+        FromMessage,
+        FromMessageHead,
+    },
 };
 use rebaser_core::{
-    api_types::{ApiVersionsWrapper, ApiWrapper},
+    api_types::{
+        ApiVersionsWrapper,
+        ApiWrapper,
+    },
     nats,
 };
 use si_data_nats::Subject;

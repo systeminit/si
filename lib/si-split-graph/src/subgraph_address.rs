@@ -1,8 +1,16 @@
-use serde::{
-    Deserialize, Serialize,
-    de::{self, Visitor},
+use std::{
+    fmt,
+    str::FromStr,
 };
-use std::{fmt, str::FromStr};
+
+use serde::{
+    Deserialize,
+    Serialize,
+    de::{
+        self,
+        Visitor,
+    },
+};
 use thiserror::Error;
 
 #[derive(Debug, Error)]

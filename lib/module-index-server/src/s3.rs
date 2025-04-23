@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]

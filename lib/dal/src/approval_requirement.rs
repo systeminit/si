@@ -27,22 +27,40 @@
     while_true
 )]
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
-use serde::{Deserialize, Serialize};
-use si_events::{merkle_tree_hash::MerkleTreeHash, workspace_snapshot::Change};
-use si_id::{ApprovalRequirementDefinitionId, EntityId, UserPk, ulid::Ulid};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    merkle_tree_hash::MerkleTreeHash,
+    workspace_snapshot::Change,
+};
+use si_id::{
+    ApprovalRequirementDefinitionId,
+    EntityId,
+    UserPk,
+    ulid::Ulid,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+pub use crate::workspace_snapshot::traits::approval_requirement::{
+    ApprovalRequirementApprover,
+    ApprovalRequirementRule,
+};
 use crate::{
-    DalContext, WorkspaceSnapshotError, WsEvent, WsEventResult, WsPayload,
+    DalContext,
+    WorkspaceSnapshotError,
+    WsEvent,
+    WsEventResult,
+    WsPayload,
     layer_db_types::ApprovalRequirementDefinitionContentV1,
     workspace_snapshot::traits::approval_requirement::ApprovalRequirementExt,
-};
-
-pub use crate::workspace_snapshot::traits::approval_requirement::{
-    ApprovalRequirementApprover, ApprovalRequirementRule,
 };
 
 #[allow(missing_docs)]

@@ -15,5 +15,9 @@ mod make_span;
 mod on_response;
 pub mod propagation;
 
-pub use make_span::{HttpMakeSpan, NetworkTransport, ParentSpan};
+pub use make_span::{
+    HttpMakeSpan,
+    NetworkTransport,
+    ParentSpan,
+};
 pub use on_response::HttpOnResponse;

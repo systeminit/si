@@ -1,7 +1,12 @@
 use telemetry::prelude::*;
 
-use crate::func::authoring::FuncAuthoringResult;
-use crate::{AttributePrototype, AttributeValue, DalContext, Func};
+use crate::{
+    AttributePrototype,
+    AttributeValue,
+    DalContext,
+    Func,
+    func::authoring::FuncAuthoringResult,
+};
 
 #[instrument(
     name = "func.authoring.execute_func.execute_attribute_func",

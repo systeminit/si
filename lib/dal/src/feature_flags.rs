@@ -1,6 +1,10 @@
-use serde::{Deserialize, Serialize};
-use si_settings::ValueKind;
 use std::collections::HashSet;
+
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_settings::ValueKind;
 use strum::Display;
 
 #[derive(Debug, Display, Deserialize, Serialize, Clone, clap::ValueEnum, Hash, Eq, PartialEq)]

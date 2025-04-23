@@ -1,21 +1,43 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri},
+    extract::{
+        Host,
+        OriginalUri,
+    },
 };
 use dal::{
-    ChangeSet, Func, Schema, SchemaVariant, Visibility, WsEvent,
-    pkg::{ImportOptions, import_pkg_from_pkg},
+    ChangeSet,
+    Func,
+    Schema,
+    SchemaVariant,
+    Visibility,
+    WsEvent,
+    pkg::{
+        ImportOptions,
+        import_pkg_from_pkg,
+    },
 };
 use module_index_client::ModuleIndexClient;
-use serde::{Deserialize, Serialize};
+use sdf_core::{
+    force_change_set_response::ForceChangeSetResponse,
+    tracking::track,
+};
+use sdf_extract::{
+    HandlerContext,
+    PosthogClient,
+    request::RawAccessToken,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_frontend_types::SchemaVariant as FrontendVariant;
 use si_pkg::SiPkg;
 use telemetry::prelude::*;
 use ulid::Ulid;
 
 use crate::ModuleError;
-use sdf_core::{force_change_set_response::ForceChangeSetResponse, tracking::track};
-use sdf_extract::{HandlerContext, PosthogClient, request::RawAccessToken, v1::AccessBuilder};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

@@ -16,5 +16,8 @@ mod make_span;
 mod on_response;
 pub mod propagation;
 
-pub use make_span::{NatsMakeSpan, ParentSpan};
+pub use make_span::{
+    NatsMakeSpan,
+    ParentSpan,
+};
 pub use on_response::NatsOnResponse;

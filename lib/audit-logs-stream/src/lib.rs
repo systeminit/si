@@ -33,13 +33,22 @@ use si_data_nats::{
     async_nats::{
         self,
         jetstream::{
-            context::{CreateStreamError, PublishError},
-            stream::{Config, RetentionPolicy},
+            context::{
+                CreateStreamError,
+                PublishError,
+            },
+            stream::{
+                Config,
+                RetentionPolicy,
+            },
         },
     },
     jetstream,
 };
-use si_events::{ChangeSetId, WorkspacePk};
+use si_events::{
+    ChangeSetId,
+    WorkspacePk,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 

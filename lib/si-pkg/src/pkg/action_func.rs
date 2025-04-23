@@ -1,9 +1,19 @@
-use object_tree::{Hash, HashedNode};
+use object_tree::{
+    Hash,
+    HashedNode,
+};
 use petgraph::prelude::*;
 
-use super::{PkgResult, SiPkgError, Source};
-
-use crate::{ActionFuncSpec, ActionFuncSpecKind, node::PkgNode};
+use super::{
+    PkgResult,
+    SiPkgError,
+    Source,
+};
+use crate::{
+    ActionFuncSpec,
+    ActionFuncSpecKind,
+    node::PkgNode,
+};
 
 #[derive(Clone, Debug)]
 pub struct SiPkgActionFunc<'a> {

@@ -1,13 +1,18 @@
-use si_id::EntityId;
-
 use si_events::workspace_snapshot::EntityKind as EntityKindEvents;
+use si_id::EntityId;
+use thiserror::Error;
 
 use crate::{
-    DalContext, SchemaVariant, SchemaVariantError, WorkspaceSnapshotError,
-    diagram::{DiagramError, view::View},
+    DalContext,
+    SchemaVariant,
+    SchemaVariantError,
+    WorkspaceSnapshotError,
+    diagram::{
+        DiagramError,
+        view::View,
+    },
     workspace_snapshot::EntityKindExt,
 };
-use thiserror::Error;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

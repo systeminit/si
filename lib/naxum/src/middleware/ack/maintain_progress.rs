@@ -1,9 +1,22 @@
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::Arc,
+    time::Duration,
+};
 
-use async_nats::jetstream::{self, message::Acker};
-use tokio::time::{self, Instant, Interval};
+use async_nats::jetstream::{
+    self,
+    message::Acker,
+};
+use tokio::time::{
+    self,
+    Instant,
+    Interval,
+};
 use tokio_util::sync::CancellationToken;
-use tracing::{error, trace};
+use tracing::{
+    error,
+    trace,
+};
 
 pub struct MaintainProgressTask {
     acker: Arc<Acker>,

@@ -1,23 +1,36 @@
-use std::sync::Arc;
-use std::time::Duration;
+use std::{
+    sync::Arc,
+    time::Duration,
+};
 
 use si_events::{
-    ActionId, Actor, AttributeValueId, ChangeSetId, ComponentId, FuncId, FuncRun, FuncRunId,
-    Tenancy, WebEvent, WorkspacePk,
+    ActionId,
+    Actor,
+    AttributeValueId,
+    ChangeSetId,
+    ComponentId,
+    FuncId,
+    FuncRun,
+    FuncRunId,
+    Tenancy,
+    WebEvent,
+    WorkspacePk,
 };
 use telemetry::prelude::*;
 
-use crate::LayerDbError;
-use crate::event::LayeredEventPayload;
-use crate::pg::PgLayer;
+use super::serialize;
 use crate::{
+    LayerDbError,
     error::LayerDbResult,
-    event::{LayeredEvent, LayeredEventKind},
+    event::{
+        LayeredEvent,
+        LayeredEventKind,
+        LayeredEventPayload,
+    },
     layer_cache::LayerCache,
     persister::PersisterClient,
+    pg::PgLayer,
 };
-
-use super::serialize;
 
 pub const DBNAME: &str = "func_runs";
 pub const CACHE_NAME: &str = DBNAME;

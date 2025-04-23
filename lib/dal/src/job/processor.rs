@@ -3,9 +3,14 @@ use dyn_clone::DynClone;
 use si_data_nats::async_nats;
 use thiserror::Error;
 
-use crate::{
-    job::producer::{BlockingJobError, BlockingJobResult, JobProducer, JobProducerError},
-    job::queue::JobQueue,
+use crate::job::{
+    producer::{
+        BlockingJobError,
+        BlockingJobResult,
+        JobProducer,
+        JobProducerError,
+    },
+    queue::JobQueue,
 };
 
 mod nats_processor;

@@ -1,17 +1,33 @@
-use std::{sync::Arc, time::Instant};
-
-use serde::{Serialize, de::DeserializeOwned};
-use si_events::{Actor, Tenancy, WebEvent, rebase_batch_address::RebaseBatchAddress};
-use telemetry::prelude::*;
-
-use crate::{
-    error::LayerDbResult,
-    event::{LayeredEvent, LayeredEventKind},
-    layer_cache::LayerCache,
-    persister::{PersisterClient, PersisterStatusReader},
+use std::{
+    sync::Arc,
+    time::Instant,
 };
 
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
+use si_events::{
+    Actor,
+    Tenancy,
+    WebEvent,
+    rebase_batch_address::RebaseBatchAddress,
+};
+use telemetry::prelude::*;
+
 use super::serialize;
+use crate::{
+    error::LayerDbResult,
+    event::{
+        LayeredEvent,
+        LayeredEventKind,
+    },
+    layer_cache::LayerCache,
+    persister::{
+        PersisterClient,
+        PersisterStatusReader,
+    },
+};
 
 pub const DBNAME: &str = "rebase_batches";
 pub const CACHE_NAME: &str = "rebase_batches";

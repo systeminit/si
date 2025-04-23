@@ -1,31 +1,63 @@
 use std::{
-    collections::HashMap,
-    {collections::VecDeque, convert::TryFrom},
+    collections::{
+        HashMap,
+        VecDeque,
+    },
+    convert::TryFrom,
 };
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use si_events::{ActionResultState, FuncRunId, audit_log::AuditLogKind};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ActionResultState,
+    FuncRunId,
+    audit_log::AuditLogKind,
+};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
-use veritech_client::{ActionRunResultSuccess, ResourceStatus};
+use veritech_client::{
+    ActionRunResultSuccess,
+    ResourceStatus,
+};
 
 use crate::{
-    AccessBuilder, ActionPrototypeId, Component, ComponentId, DalContext, Func, Visibility,
+    AccessBuilder,
+    ActionPrototypeId,
+    Component,
+    ComponentId,
+    DalContext,
+    Func,
+    Visibility,
     WsEvent,
     action::{
-        Action, ActionError, ActionId, ActionState,
-        prototype::{ActionKind, ActionPrototype},
+        Action,
+        ActionError,
+        ActionId,
+        ActionState,
+        prototype::{
+            ActionKind,
+            ActionPrototype,
+        },
     },
     billing_publish,
     change_status::ChangeStatus,
     func::runner::FuncRunner,
     job::{
         consumer::{
-            JobCompletionState, JobConsumer, JobConsumerError, JobConsumerMetadata,
-            JobConsumerResult, JobInfo,
+            JobCompletionState,
+            JobConsumer,
+            JobConsumerError,
+            JobConsumerMetadata,
+            JobConsumerResult,
+            JobInfo,
         },
-        producer::{JobProducer, JobProducerResult},
+        producer::{
+            JobProducer,
+            JobProducerResult,
+        },
     },
 };
 

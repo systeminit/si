@@ -1,17 +1,46 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, State},
+    extract::{
+        Host,
+        OriginalUri,
+        State,
+    },
     http::uri::Uri,
 };
-use dal::{DalContext, User};
-use permissions::{ObjectType, Relation, RelationBuilder};
-use serde::{Deserialize, Serialize};
+use dal::{
+    DalContext,
+    User,
+};
+use permissions::{
+    ObjectType,
+    Relation,
+    RelationBuilder,
+};
+use sdf_core::{
+    app_state::AppState,
+    tracking::track,
+};
+use sdf_extract::{
+    HandlerContext,
+    PosthogClient,
+    request::RawAccessToken,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_spicedb::SpiceDbClient;
-use strum::{Display, EnumString};
+use strum::{
+    Display,
+    EnumString,
+};
 
-use crate::{AuthApiErrBody, SessionError, SessionResult};
-use sdf_core::{app_state::AppState, tracking::track};
-use sdf_extract::{HandlerContext, PosthogClient, request::RawAccessToken, v1::AccessBuilder};
+use crate::{
+    AuthApiErrBody,
+    SessionError,
+    SessionResult,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

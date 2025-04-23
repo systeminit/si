@@ -1,8 +1,17 @@
-use si_data_spicedb::{
-    Relationship, Relationships, SpiceDBObject, SpiceDbClient, SpiceDbError, ZedToken,
-};
-use si_events::{UserPk, WorkspacePk};
 use std::result;
+
+use si_data_spicedb::{
+    Relationship,
+    Relationships,
+    SpiceDBObject,
+    SpiceDbClient,
+    SpiceDbError,
+    ZedToken,
+};
+use si_events::{
+    UserPk,
+    WorkspacePk,
+};
 use thiserror::Error;
 
 #[remain::sorted]

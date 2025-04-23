@@ -1,53 +1,17 @@
 use std::num::TryFromIntError;
 
-use finished_dependent_value_root_node_weight::FinishedDependentValueRootNodeWeight;
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, EncryptedSecretKey, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
-use si_layer_cache::LayerDbError;
-use strum::{EnumDiscriminants, EnumIter};
-use thiserror::Error;
-use traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, CorrectTransformsResult};
-
-use crate::layer_db_types::ComponentContentDiscriminants;
-use crate::workspace_snapshot::node_weight::diagram_object_node_weight::{
-    DiagramObjectKind, DiagramObjectNodeWeight,
-};
-use crate::workspace_snapshot::node_weight::geometry_node_weight::GeometryNodeWeight;
-use crate::workspace_snapshot::node_weight::traits::SiVersionedNodeWeight;
-use crate::workspace_snapshot::node_weight::view_node_weight::ViewNodeWeight;
-use crate::{
-    ChangeSetId, EdgeWeightKindDiscriminants, PropKind, SocketArity, WorkspaceSnapshotError,
-    WorkspaceSnapshotGraphVCurrent,
-    action::prototype::ActionKind,
-    func::FuncKind,
-    workspace_snapshot::{
-        content_address::{ContentAddress, ContentAddressDiscriminants},
-        graph::LineageId,
-        node_weight::secret_node_weight::SecretNodeWeight,
-        vector_clock::VectorClockError,
-    },
-};
-
-use self::{
-    approval_requirement_definition_node_weight::ApprovalRequirementDefinitionNodeWeight,
-    input_socket_node_weight::InputSocketNodeWeightError,
-    schema_variant_node_weight::SchemaVariantNodeWeightError,
-};
-
-use super::graph::{
-    WorkspaceSnapshotGraphError, deprecated::v1::DeprecatedNodeWeightV1, detector::Update,
-};
-
 pub use action_node_weight::ActionNodeWeight;
 pub use action_prototype_node_weight::ActionPrototypeNodeWeight;
 pub use attribute_prototype_argument_node_weight::{
-    ArgumentTargets, AttributePrototypeArgumentNodeWeight,
+    ArgumentTargets,
+    AttributePrototypeArgumentNodeWeight,
 };
 pub use attribute_value_node_weight::AttributeValueNodeWeight;
 pub use category_node_weight::CategoryNodeWeight;
 pub use component_node_weight::ComponentNodeWeight;
 pub use content_node_weight::ContentNodeWeight;
 pub use dependent_value_root_node_weight::DependentValueRootNodeWeight;
+use finished_dependent_value_root_node_weight::FinishedDependentValueRootNodeWeight;
 pub use func_argument_node_weight::FuncArgumentNodeWeight;
 pub use func_node_weight::FuncNodeWeight;
 pub use input_socket_node_weight::InputSocketNodeWeight;
@@ -55,6 +19,67 @@ pub use management_prototype_node_weight::ManagementPrototypeNodeWeight;
 pub use ordering_node_weight::OrderingNodeWeight;
 pub use prop_node_weight::PropNodeWeight;
 pub use schema_variant_node_weight::SchemaVariantNodeWeight;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    EncryptedSecretKey,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
+use si_layer_cache::LayerDbError;
+use strum::{
+    EnumDiscriminants,
+    EnumIter,
+};
+use thiserror::Error;
+use traits::{
+    CorrectExclusiveOutgoingEdge,
+    CorrectTransforms,
+    CorrectTransformsResult,
+};
+
+use self::{
+    approval_requirement_definition_node_weight::ApprovalRequirementDefinitionNodeWeight,
+    input_socket_node_weight::InputSocketNodeWeightError,
+    schema_variant_node_weight::SchemaVariantNodeWeightError,
+};
+use super::graph::{
+    WorkspaceSnapshotGraphError,
+    deprecated::v1::DeprecatedNodeWeightV1,
+    detector::Update,
+};
+use crate::{
+    ChangeSetId,
+    EdgeWeightKindDiscriminants,
+    PropKind,
+    SocketArity,
+    WorkspaceSnapshotError,
+    WorkspaceSnapshotGraphVCurrent,
+    action::prototype::ActionKind,
+    func::FuncKind,
+    layer_db_types::ComponentContentDiscriminants,
+    workspace_snapshot::{
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
+        graph::LineageId,
+        node_weight::{
+            diagram_object_node_weight::{
+                DiagramObjectKind,
+                DiagramObjectNodeWeight,
+            },
+            geometry_node_weight::GeometryNodeWeight,
+            secret_node_weight::SecretNodeWeight,
+            traits::SiVersionedNodeWeight,
+            view_node_weight::ViewNodeWeight,
+        },
+        vector_clock::VectorClockError,
+    },
+};
 
 pub mod action_node_weight;
 pub mod action_prototype_node_weight;

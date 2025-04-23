@@ -1,24 +1,53 @@
-use clap::CommandFactory;
+use std::{
+    collections::HashMap,
+    fs::{
+        self,
+        DirEntry,
+    },
+    path::{
+        Path,
+        PathBuf,
+    },
+    sync::{
+        Arc,
+        atomic::{
+            AtomicU64,
+            AtomicUsize,
+            Ordering,
+        },
+    },
+    time::Duration,
+};
+
+use clap::{
+    CommandFactory,
+    Parser,
+};
+use color_eyre::Result;
 use commands::Commands;
-use diff::{patch_list_to_changelog, rewrite_spec_for_diff};
+use diff::{
+    patch_list_to_changelog,
+    rewrite_spec_for_diff,
+};
 use futures::stream::StreamExt;
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::{
+    ProgressBar,
+    ProgressStyle,
+};
+use json_patch::diff;
+use module_index_client::{
+    ModuleDetailsResponse,
+    ModuleIndexClient,
+};
 use rand::random;
-use std::collections::HashMap;
-use std::fs::{self, DirEntry};
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::time::Duration;
+use si_pkg::{
+    PkgSpec,
+    SiPkg,
+};
 use ulid::Ulid;
+use url::Url;
 
 use crate::diff::patch_list_to_summary;
-use clap::Parser;
-use color_eyre::Result;
-use json_patch::diff;
-use module_index_client::{ModuleDetailsResponse, ModuleIndexClient};
-use si_pkg::{PkgSpec, SiPkg};
-use url::Url;
 
 mod commands;
 mod diff;

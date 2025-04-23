@@ -1,17 +1,31 @@
 //! Symmetric key cryptography.
 
-use std::{collections::HashMap, fs::File, io::Cursor, path::PathBuf, sync::Arc};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::Cursor,
+    path::PathBuf,
+    sync::Arc,
+};
 
-use base64::{Engine, engine::general_purpose};
-use serde::{Deserialize, Serialize};
+use base64::{
+    Engine,
+    engine::general_purpose,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_hash::Hash;
-use si_std::{CanonicalFile, CanonicalFileError};
+use si_std::{
+    CanonicalFile,
+    CanonicalFileError,
+};
 use sodiumoxide::crypto::secretbox;
+pub use sodiumoxide::crypto::secretbox::Nonce as SymmetricNonce;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
-
-pub use sodiumoxide::crypto::secretbox::Nonce as SymmetricNonce;
 
 /// An error that can be returned when working with the [`SymmetricCryptoService`].
 #[remain::sorted]

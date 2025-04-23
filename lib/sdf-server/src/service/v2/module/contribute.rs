@@ -1,16 +1,29 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Path},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
     response::IntoResponse,
 };
-use dal::{ChangeSetId, WorkspacePk, cached_module::CachedModule, module::Module};
+use dal::{
+    ChangeSetId,
+    WorkspacePk,
+    cached_module::CachedModule,
+    module::Module,
+};
 use module_index_client::ModuleIndexClient;
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types as frontend_types;
 
 use super::ModulesAPIError;
 use crate::{
-    extract::{HandlerContext, PosthogClient, request::RawAccessToken},
+    extract::{
+        HandlerContext,
+        PosthogClient,
+        request::RawAccessToken,
+    },
     service::v2::AccessBuilder,
     track,
 };

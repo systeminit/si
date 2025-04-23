@@ -1,14 +1,29 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Query},
+    extract::{
+        Host,
+        OriginalUri,
+        Query,
+    },
 };
-use dal::{ComponentId, Visibility, component::debug::ComponentDebugView};
-use serde::{Deserialize, Serialize};
+use dal::{
+    ComponentId,
+    Visibility,
+    component::debug::ComponentDebugView,
+};
+use sdf_core::tracking::track;
+use sdf_extract::{
+    HandlerContext,
+    PosthogClient,
+    v1::AccessBuilder,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 
 use super::ComponentResult;
-use sdf_core::tracking::track;
-use sdf_extract::{HandlerContext, PosthogClient, v1::AccessBuilder};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

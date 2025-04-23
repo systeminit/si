@@ -1,24 +1,47 @@
-use super::{GeometryNodeWeight, NodeWeightDiscriminants};
-use crate::workspace_snapshot::graph::detector::Update;
-use crate::workspace_snapshot::node_weight::NodeWeight;
-use crate::workspace_snapshot::node_weight::diagram_object_node_weight::DiagramObjectKind;
-use crate::workspace_snapshot::node_weight::traits::{
-    CorrectTransformsError, CorrectTransformsResult,
+use std::{
+    collections::HashMap,
+    mem,
 };
-use crate::workspace_snapshot::{
-    content_address::ContentAddress,
-    graph::LineageId,
-    node_weight::traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
-};
-use crate::{EdgeWeightKindDiscriminants, Timestamp, WorkspaceSnapshotGraphVCurrent};
+
 use dal_macros::SiNodeWeight;
-use jwt_simple::prelude::{Deserialize, Serialize};
+use jwt_simple::prelude::{
+    Deserialize,
+    Serialize,
+};
 use petgraph::Direction;
-use si_events::ContentHash;
-use si_events::merkle_tree_hash::MerkleTreeHash;
-use si_events::ulid::Ulid;
-use std::collections::HashMap;
-use std::mem;
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
+
+use super::{
+    GeometryNodeWeight,
+    NodeWeightDiscriminants,
+};
+use crate::{
+    EdgeWeightKindDiscriminants,
+    Timestamp,
+    WorkspaceSnapshotGraphVCurrent,
+    workspace_snapshot::{
+        content_address::ContentAddress,
+        graph::{
+            LineageId,
+            detector::Update,
+        },
+        node_weight::{
+            NodeWeight,
+            diagram_object_node_weight::DiagramObjectKind,
+            traits::{
+                CorrectExclusiveOutgoingEdge,
+                CorrectTransforms,
+                CorrectTransformsError,
+                CorrectTransformsResult,
+                SiNodeWeight,
+            },
+        },
+    },
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, SiNodeWeight)]
 #[si_node_weight(discriminant = NodeWeightDiscriminants::Geometry)]

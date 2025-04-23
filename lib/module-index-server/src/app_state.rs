@@ -1,13 +1,17 @@
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    sync::Arc,
+};
 
 use axum::extract::FromRef;
 use s3::creds::Credentials as AwsCredentials;
 use sea_orm::DatabaseConnection;
 use si_jwt_public_key::JwtPublicSigningKeyChain;
 pub use si_posthog::PosthogClient;
-
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::{
+    Mutex,
+    mpsc,
+};
 
 use crate::s3::S3Config;
 

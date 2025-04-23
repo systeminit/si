@@ -1,37 +1,72 @@
 use axum::{
-    Json, Router,
-    extract::{Host, OriginalUri, Path},
+    Json,
+    Router,
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
+    },
     http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::{get, post},
+    response::{
+        IntoResponse,
+        Response,
+    },
+    routing::{
+        get,
+        post,
+    },
 };
 use dal::{
-    ChangeSet, ChangeSetError, ChangeSetId, ComponentId, Func, FuncError, FuncId,
-    SchemaVariantError, TransactionsError, WorkspacePk, WsEvent, WsEventError,
+    ChangeSet,
+    ChangeSetError,
+    ChangeSetId,
+    ComponentId,
+    Func,
+    FuncError,
+    FuncId,
+    SchemaVariantError,
+    TransactionsError,
+    WorkspacePk,
+    WsEvent,
+    WsEventError,
     diagram::view::ViewId,
     func::authoring::FuncAuthoringError,
     management::{
-        ManagementError, ManagementFuncReturn, ManagementOperator,
-        prototype::{ManagementPrototype, ManagementPrototypeError, ManagementPrototypeId},
+        ManagementError,
+        ManagementFuncReturn,
+        ManagementOperator,
+        prototype::{
+            ManagementPrototype,
+            ManagementPrototypeError,
+            ManagementPrototypeId,
+        },
     },
     schema::variant::authoring::VariantAuthoringError,
 };
 use sdf_core::api_error::ApiError;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::audit_log::AuditLogKind;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::ManagementFuncStatus;
 
+use super::func::FuncAPIError;
 use crate::{
     AppState,
-    extract::{HandlerContext, PosthogClient},
-    service::{force_change_set_response::ForceChangeSetResponse, v2::AccessBuilder},
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::AccessBuilder,
+    },
     track,
 };
-
-use super::func::FuncAPIError;
 
 mod generate_template;
 mod history;

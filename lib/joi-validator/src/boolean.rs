@@ -1,6 +1,9 @@
 use serde::Deserialize;
 
-use crate::{generic, rule_err};
+use crate::{
+    generic,
+    rule_err,
+};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]

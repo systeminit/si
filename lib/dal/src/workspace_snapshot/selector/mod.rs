@@ -1,38 +1,78 @@
-use async_trait::async_trait;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{
+        HashMap,
+        HashSet,
+    },
     sync::Arc,
 };
 
+use async_trait::async_trait;
 use petgraph::prelude::*;
 use si_events::{
-    ContentHash, WorkspaceSnapshotAddress,
+    ContentHash,
+    WorkspaceSnapshotAddress,
     merkle_tree_hash::MerkleTreeHash,
-    workspace_snapshot::{Change, Checksum, EntityKind},
+    workspace_snapshot::{
+        Change,
+        Checksum,
+        EntityKind,
+    },
 };
 use si_id::{
-    ApprovalRequirementDefinitionId, AttributeValueId, ComponentId, EntityId, FuncId,
-    InputSocketId, PropId, SchemaId, SchemaVariantId, UserPk, ViewId, ulid::Ulid,
+    ApprovalRequirementDefinitionId,
+    AttributeValueId,
+    ComponentId,
+    EntityId,
+    FuncId,
+    InputSocketId,
+    PropId,
+    SchemaId,
+    SchemaVariantId,
+    UserPk,
+    ViewId,
+    ulid::Ulid,
 };
 use strum::EnumDiscriminants;
 
-use crate::{
-    DalContext, EdgeWeight, EdgeWeightKindDiscriminants, InputSocket, SocketArity, SocketKind,
-    approval_requirement::{
-        ApprovalRequirement, ApprovalRequirementApprover, ApprovalRequirementDefinition,
+use super::{
+    CycleCheckGuard,
+    DependentValueRoot,
+    EntityKindExt,
+    InferredConnectionsWriteGuard,
+    InputSocketExt,
+    SchemaVariantExt,
+    WorkspaceSnapshot,
+    WorkspaceSnapshotResult,
+    graph::LineageId,
+    node_weight::{
+        NodeWeight,
+        OrderingNodeWeight,
+        category_node_weight::CategoryNodeKind,
     },
-    component::{ComponentResult, Connection},
+    traits::{
+        diagram::view::ViewExt,
+        prop::PropExt,
+    },
+};
+use crate::{
+    DalContext,
+    EdgeWeight,
+    EdgeWeightKindDiscriminants,
+    InputSocket,
+    SocketArity,
+    SocketKind,
+    approval_requirement::{
+        ApprovalRequirement,
+        ApprovalRequirementApprover,
+        ApprovalRequirementDefinition,
+    },
+    component::{
+        ComponentResult,
+        Connection,
+    },
     prop::PropResult,
     socket::connection_annotation::ConnectionAnnotation,
     workspace_snapshot::traits::approval_requirement::ApprovalRequirementExt,
-};
-
-use super::{
-    CycleCheckGuard, DependentValueRoot, EntityKindExt, InferredConnectionsWriteGuard,
-    InputSocketExt, SchemaVariantExt, WorkspaceSnapshot, WorkspaceSnapshotResult,
-    graph::LineageId,
-    node_weight::{NodeWeight, OrderingNodeWeight, category_node_weight::CategoryNodeKind},
-    traits::{diagram::view::ViewExt, prop::PropExt},
 };
 
 #[derive(Clone, Debug, EnumDiscriminants)]

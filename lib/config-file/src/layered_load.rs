@@ -1,9 +1,22 @@
-use std::{collections::HashMap, env, ffi::OsStr, fmt::Debug};
+use std::{
+    collections::HashMap,
+    env,
+    ffi::OsStr,
+    fmt::Debug,
+};
 
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
 use tracing::trace;
 
-use crate::{ConfigFileError, FileFormat, Result, ToFileFormats};
+use crate::{
+    ConfigFileError,
+    FileFormat,
+    Result,
+    ToFileFormats,
+};
 
 mod ser;
 
@@ -169,9 +182,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use serde::{
+        Deserialize,
+        Serialize,
+    };
 
-    use serde::{Deserialize, Serialize};
+    use super::*;
 
     #[test]
     fn test_struct() {

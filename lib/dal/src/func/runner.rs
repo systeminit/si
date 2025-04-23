@@ -1,69 +1,130 @@
-use serde_json;
-use std::collections::VecDeque;
-use std::sync::Arc;
-use ulid::Ulid;
+use std::{
+    collections::VecDeque,
+    sync::Arc,
+};
 
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use serde_json;
 use si_events::{
-    ActionId, ActionResultState, CasValue, ContentHash, EncryptedSecretKey, FuncRun,
-    FuncRunBuilder, FuncRunBuilderError, FuncRunId, FuncRunLog, FuncRunLogId, FuncRunState,
+    ActionId,
+    ActionResultState,
+    CasValue,
+    ContentHash,
+    EncryptedSecretKey,
+    FuncRun,
+    FuncRunBuilder,
+    FuncRunBuilderError,
+    FuncRunId,
+    FuncRunLog,
+    FuncRunLogId,
+    FuncRunState,
     FuncRunValue,
 };
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{
+    mpsc,
+    oneshot,
+};
+use ulid::Ulid;
 use veritech_client::{
-    BeforeFunction, FunctionResult, FunctionResultFailure, FunctionResultFailureErrorKind,
-    KillExecutionRequest, OutputStream, ResolverFunctionComponent, VeritechValueEncryptError,
+    BeforeFunction,
+    FunctionResult,
+    FunctionResultFailure,
+    FunctionResultFailureErrorKind,
+    KillExecutionRequest,
+    OutputStream,
+    ResolverFunctionComponent,
+    VeritechValueEncryptError,
     encrypt_value_tree,
 };
 
-use crate::attribute::prototype::argument::value_source::ValueSource;
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
-};
-use crate::component::socket::ComponentInputSocket;
-use crate::management::prototype::ManagementPrototypeId;
-use crate::prop::PropError;
-use crate::schema::variant::root_prop::RootPropChild;
-use crate::workspace::WorkspaceId;
-use crate::{
-    ActionPrototypeId, AttributeValue, AttributeValueId, ChangeSet, ChangeSetError, Component,
-    ComponentError, ComponentId, DalContext, EncryptedSecret, Func, FuncBackendKind, FuncError,
-    FuncId, KeyPairError, Prop, PropId, SchemaVariant, SchemaVariantError, Secret, SecretError,
-    WsEvent, WsEventError, WsEventResult, WsPayload,
-    action::{
-        Action, ActionError,
-        prototype::{ActionPrototype, ActionPrototypeError},
+use super::{
+    backend::{
+        FuncBackend,
+        FuncDispatch,
+        FuncDispatchContext,
+        InvalidResolverFunctionTypeError,
+        array::FuncBackendArray,
+        boolean::FuncBackendBoolean,
+        diff::FuncBackendDiff,
+        float::FuncBackendFloat,
+        identity::FuncBackendIdentity,
+        integer::FuncBackendInteger,
+        js_action::FuncBackendJsAction,
+        js_attribute::{
+            FuncBackendJsAttribute,
+            FuncBackendJsAttributeArgs,
+        },
+        js_schema_variant_definition::FuncBackendJsSchemaVariantDefinition,
+        json::FuncBackendJson,
+        management::FuncBackendManagement,
+        map::FuncBackendMap,
+        normalize_to_array::FuncBackendNormalizeToArray,
+        object::FuncBackendObject,
+        resource_payload_to_value::FuncBackendResourcePayloadToValue,
+        string::FuncBackendString,
+        validation::FuncBackendValidation,
     },
-    attribute::value::AttributeValueError,
+    intrinsics::IntrinsicFunc,
+};
+use crate::{
+    ActionPrototypeId,
+    AttributeValue,
+    AttributeValueId,
+    ChangeSet,
+    ChangeSetError,
+    Component,
+    ComponentError,
+    ComponentId,
+    DalContext,
+    EncryptedSecret,
+    Func,
+    FuncBackendKind,
+    FuncError,
+    FuncId,
+    HistoryEventError,
+    KeyPairError,
+    Prop,
+    PropId,
+    SchemaVariant,
+    SchemaVariantError,
+    Secret,
+    SecretError,
+    TransactionsError,
+    WsEvent,
+    WsEventError,
+    WsEventResult,
+    WsPayload,
+    action::{
+        Action,
+        ActionError,
+        prototype::{
+            ActionPrototype,
+            ActionPrototypeError,
+        },
+    },
+    attribute::{
+        prototype::argument::{
+            AttributePrototypeArgument,
+            AttributePrototypeArgumentError,
+            AttributePrototypeArgumentId,
+            value_source::ValueSource,
+        },
+        value::AttributeValueError,
+    },
+    component::socket::ComponentInputSocket,
     func::backend::FuncBackendError,
+    management::prototype::ManagementPrototypeId,
+    prop::PropError,
+    schema::variant::root_prop::RootPropChild,
+    workspace::WorkspaceId,
 };
-use crate::{HistoryEventError, TransactionsError};
-
-use super::backend::float::FuncBackendFloat;
-use super::backend::management::FuncBackendManagement;
-use super::backend::normalize_to_array::FuncBackendNormalizeToArray;
-use super::backend::resource_payload_to_value::FuncBackendResourcePayloadToValue;
-use super::backend::{
-    FuncBackend, FuncDispatch, FuncDispatchContext, InvalidResolverFunctionTypeError,
-    array::FuncBackendArray,
-    boolean::FuncBackendBoolean,
-    diff::FuncBackendDiff,
-    identity::FuncBackendIdentity,
-    integer::FuncBackendInteger,
-    js_action::FuncBackendJsAction,
-    js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
-    js_schema_variant_definition::FuncBackendJsSchemaVariantDefinition,
-    json::FuncBackendJson,
-    map::FuncBackendMap,
-    object::FuncBackendObject,
-    string::FuncBackendString,
-    validation::FuncBackendValidation,
-};
-use super::intrinsics::IntrinsicFunc;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

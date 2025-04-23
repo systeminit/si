@@ -1,29 +1,62 @@
 use std::collections::HashSet;
 
 use dal::{
-    DalContext, SchemaVariantError, TransactionsError, WorkspaceSnapshotError,
-    action::{ActionError, prototype::ActionPrototypeError},
-    data_cache::{DataCache, DataCacheError},
+    DalContext,
+    SchemaVariantError,
+    TransactionsError,
+    WorkspaceSnapshotError,
+    action::{
+        ActionError,
+        prototype::ActionPrototypeError,
+    },
+    data_cache::{
+        DataCache,
+        DataCacheError,
+    },
     dependency_graph::DependencyGraph,
     diagram::DiagramError,
 };
-use frigg::{FriggError, FriggStore};
-use si_events::workspace_snapshot::Checksum;
-use si_events::{WorkspaceSnapshotAddress, workspace_snapshot::Change};
+use frigg::{
+    FriggError,
+    FriggStore,
+};
+use si_events::{
+    WorkspaceSnapshotAddress,
+    workspace_snapshot::{
+        Change,
+        Checksum,
+    },
+};
 use si_frontend_types::{
     MaterializedView,
-    action::ActionPrototypeViewList as ActionPrototypeViewListMv,
-    action::ActionViewList as ActionViewListMv,
+    action::{
+        ActionPrototypeViewList as ActionPrototypeViewListMv,
+        ActionViewList as ActionViewListMv,
+    },
     index::MvIndex,
     object::{
         FrontendObject,
-        patch::{ObjectPatch as FrontendObjectPatch, PATCH_BATCH_KIND, PatchBatch, PatchBatchMeta},
+        patch::{
+            ObjectPatch as FrontendObjectPatch,
+            PATCH_BATCH_KIND,
+            PatchBatch,
+            PatchBatchMeta,
+        },
     },
-    reference::{IndexReference, ReferenceKind},
+    reference::{
+        IndexReference,
+        ReferenceKind,
+    },
     schema_variant::SchemaVariantCategories as SchemaVariantCategoriesMv,
-    view::{View as ViewMv, ViewList as ViewListMv},
+    view::{
+        View as ViewMv,
+        ViewList as ViewListMv,
+    },
 };
-use si_id::{ChangeSetId, WorkspacePk};
+use si_id::{
+    ChangeSetId,
+    WorkspacePk,
+};
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use thiserror::Error;

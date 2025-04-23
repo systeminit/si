@@ -1,22 +1,35 @@
 use std::collections::HashSet;
 
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 
+use super::{
+    NodeWeight,
+    category_node_weight::CategoryNodeKind,
+    traits::CorrectTransformsResult,
+};
 use crate::{
-    EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent,
+    EdgeWeightKindDiscriminants,
+    WorkspaceSnapshotGraphVCurrent,
     workspace_snapshot::{
         NodeId,
         content_address::ContentAddress,
         graph::{
-            LineageId, correct_transforms::add_dependent_value_root_updates,
-            deprecated::v1::DeprecatedAttributeValueNodeWeightV1, detector::Update,
+            LineageId,
+            correct_transforms::add_dependent_value_root_updates,
+            deprecated::v1::DeprecatedAttributeValueNodeWeightV1,
+            detector::Update,
         },
         node_weight::traits::CorrectTransforms,
     },
 };
-
-use super::{NodeWeight, category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult};
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AttributeValueNodeWeight {

@@ -1,16 +1,35 @@
-use async_recursion::async_recursion;
-use color_eyre::Result;
-use color_eyre::eyre::eyre;
-use dal::property_editor::schema::{
-    PropertyEditorProp, PropertyEditorPropKind, PropertyEditorSchema,
-};
-use dal::property_editor::values::{PropertyEditorValue, PropertyEditorValues};
-use dal::property_editor::{PropertyEditorPropId, PropertyEditorValueId};
-use dal::{Component, ComponentId, DalContext, Prop};
-use itertools::enumerate;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::HashMap;
+
+use async_recursion::async_recursion;
+use color_eyre::{
+    Result,
+    eyre::eyre,
+};
+use dal::{
+    Component,
+    ComponentId,
+    DalContext,
+    Prop,
+    property_editor::{
+        PropertyEditorPropId,
+        PropertyEditorValueId,
+        schema::{
+            PropertyEditorProp,
+            PropertyEditorPropKind,
+            PropertyEditorSchema,
+        },
+        values::{
+            PropertyEditorValue,
+            PropertyEditorValues,
+        },
+    },
+};
+use itertools::enumerate;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use serde_json::Value;
 
 #[allow(missing_docs)]
 #[derive(Serialize, Deserialize, Debug)]

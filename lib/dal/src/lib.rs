@@ -10,14 +10,27 @@
 use std::time::Duration;
 
 use rand::Rng;
-use serde_with::{DeserializeFromStr, SerializeDisplay};
+use serde_with::{
+    DeserializeFromStr,
+    SerializeDisplay,
+};
 use si_data_nats::NatsError;
-use si_data_pg::{PgError, PgPool, PgPoolError};
-use strum::{Display, EnumString, VariantNames};
+use si_data_pg::{
+    PgError,
+    PgPool,
+    PgPoolError,
+};
+use strum::{
+    Display,
+    EnumString,
+    VariantNames,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::time;
-use tokio::time::Instant;
+use tokio::{
+    time,
+    time::Instant,
+};
 
 pub mod action;
 pub mod actor_view;
@@ -76,71 +89,179 @@ pub mod ws_event;
 pub use action::ActionPrototypeId;
 pub use actor_view::ActorView;
 pub use attribute::{
-    prototype::{AttributePrototype, AttributePrototypeId},
-    value::{AttributeValue, AttributeValueId},
+    prototype::{
+        AttributePrototype,
+        AttributePrototypeId,
+    },
+    value::{
+        AttributeValue,
+        AttributeValueId,
+    },
 };
-pub use builtins::{BuiltinsError, BuiltinsResult};
-pub use change_set::ChangeSetApplyError;
-pub use change_set::status::ChangeSetStatus;
-pub use change_set::{ChangeSet, ChangeSetError, ChangeSetId};
-pub use component::Component;
-pub use component::ComponentError;
-pub use component::ComponentId;
+pub use builtins::{
+    BuiltinsError,
+    BuiltinsResult,
+};
+pub use change_set::{
+    ChangeSet,
+    ChangeSetApplyError,
+    ChangeSetError,
+    ChangeSetId,
+    status::ChangeSetStatus,
+};
+pub use component::{
+    Component,
+    ComponentError,
+    ComponentId,
+};
 pub use context::{
-    AccessBuilder, Connections, DalContext, DalContextBuilder, DalLayerDb, RequestContext,
-    ServicesContext, Transactions, TransactionsError,
+    AccessBuilder,
+    Connections,
+    DalContext,
+    DalContextBuilder,
+    DalLayerDb,
+    RequestContext,
+    ServicesContext,
+    Transactions,
+    TransactionsError,
 };
 pub use func::{
-    Func, FuncError, FuncId,
-    backend::{FuncBackendKind, FuncBackendResponseType},
+    Func,
+    FuncError,
+    FuncId,
+    backend::{
+        FuncBackendKind,
+        FuncBackendResponseType,
+    },
 };
-pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
-pub use jetstream_streams::{JetstreamStreams, JetstreamStreamsError};
-pub use job::processor::{JobQueueProcessor, NatsProcessor};
-pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
-pub use label_list::{LabelEntry, LabelList, LabelListError};
-pub use prop::{Prop, PropId, PropKind};
-pub use schema::variant::root_prop::component_type::ComponentType;
+pub use history_event::{
+    HistoryActor,
+    HistoryEvent,
+    HistoryEventError,
+};
+pub use jetstream_streams::{
+    JetstreamStreams,
+    JetstreamStreamsError,
+};
+pub use job::processor::{
+    JobQueueProcessor,
+    NatsProcessor,
+};
+pub use key_pair::{
+    KeyPair,
+    KeyPairError,
+    KeyPairResult,
+    PublicKey,
+};
+pub use label_list::{
+    LabelEntry,
+    LabelList,
+    LabelListError,
+};
+pub use prop::{
+    Prop,
+    PropId,
+    PropKind,
+};
 pub use schema::{
-    Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId, variant::SchemaVariantError,
+    Schema,
+    SchemaError,
+    SchemaId,
+    SchemaVariant,
+    SchemaVariantId,
+    variant::{
+        SchemaVariantError,
+        root_prop::component_type::ComponentType,
+    },
 };
-pub use secret::EncryptedSecret;
-pub use secret::Secret;
-pub use secret::SecretAlgorithm;
-pub use secret::SecretCreatedPayload;
-pub use secret::SecretDefinitionView;
-pub use secret::SecretDefinitionViewError;
-pub use secret::SecretError;
-pub use secret::SecretId;
-pub use secret::SecretResult;
-pub use secret::SecretUpdatedPayload;
-pub use secret::SecretVersion;
-pub use secret::SecretView;
-pub use secret::SecretViewError;
-pub use si_events::WorkspaceSnapshotAddress;
-pub use si_events::{content_hash::ContentHash, ulid::Ulid};
-pub use socket::SocketArity;
-pub use socket::SocketKind;
-pub use socket::input::{InputSocket, InputSocketId};
-pub use socket::output::{OutputSocket, OutputSocketId};
-pub use standard_connection::{HelperError, HelperResult};
-pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
-pub use tenancy::{Tenancy, TenancyError};
-pub use timestamp::{Timestamp, TimestampError};
-pub use user::{User, UserError, UserPk, UserResult};
+pub use secret::{
+    EncryptedSecret,
+    Secret,
+    SecretAlgorithm,
+    SecretCreatedPayload,
+    SecretDefinitionView,
+    SecretDefinitionViewError,
+    SecretError,
+    SecretId,
+    SecretResult,
+    SecretUpdatedPayload,
+    SecretVersion,
+    SecretView,
+    SecretViewError,
+};
+pub use si_events::{
+    WorkspaceSnapshotAddress,
+    content_hash::ContentHash,
+    ulid::Ulid,
+};
+pub use si_runtime::{
+    DedicatedExecutor,
+    DedicatedExecutorError,
+    DedicatedExecutorInitializeError,
+    DedicatedExecutorJoinError,
+    compute_executor,
+};
+pub use socket::{
+    SocketArity,
+    SocketKind,
+    input::{
+        InputSocket,
+        InputSocketId,
+    },
+    output::{
+        OutputSocket,
+        OutputSocketId,
+    },
+};
+pub use standard_connection::{
+    HelperError,
+    HelperResult,
+};
+pub use standard_model::{
+    StandardModel,
+    StandardModelError,
+    StandardModelResult,
+};
+pub use tenancy::{
+    Tenancy,
+    TenancyError,
+};
+pub use timestamp::{
+    Timestamp,
+    TimestampError,
+};
+pub use user::{
+    User,
+    UserError,
+    UserPk,
+    UserResult,
+};
 pub use visibility::Visibility;
-pub use workspace::{Workspace, WorkspaceError, WorkspacePk, WorkspaceResult};
-pub use workspace_snapshot::graph::{WorkspaceSnapshotGraph, WorkspaceSnapshotGraphVCurrent};
-pub use workspace_snapshot::{WorkspaceSnapshot, WorkspaceSnapshotError};
+pub use workspace::{
+    Workspace,
+    WorkspaceError,
+    WorkspacePk,
+    WorkspaceResult,
+};
 pub use workspace_snapshot::{
-    edge_weight::{EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants},
+    WorkspaceSnapshot,
+    WorkspaceSnapshotError,
+    edge_weight::{
+        EdgeWeight,
+        EdgeWeightKind,
+        EdgeWeightKindDiscriminants,
+    },
+    graph::{
+        WorkspaceSnapshotGraph,
+        WorkspaceSnapshotGraphVCurrent,
+    },
     node_weight::NodeWeightDiscriminants,
 };
-pub use ws_event::{WsEvent, WsEventError, WsEventResult, WsPayload};
-
-pub use si_runtime::{
-    DedicatedExecutor, DedicatedExecutorError, DedicatedExecutorInitializeError,
-    DedicatedExecutorJoinError, compute_executor,
+pub use ws_event::{
+    WsEvent,
+    WsEventError,
+    WsEventResult,
+    WsPayload,
 };
 
 #[remain::sorted]
@@ -290,7 +411,10 @@ impl MigrationMode {
 
 #[cfg(test)]
 mod tests {
-    use serde::{Deserialize, Serialize};
+    use serde::{
+        Deserialize,
+        Serialize,
+    };
 
     use super::*;
 

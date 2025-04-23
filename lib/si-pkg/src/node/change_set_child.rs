@@ -1,13 +1,31 @@
-use serde::{Deserialize, Serialize};
-use std::io::{BufRead, Write};
+use std::io::{
+    BufRead,
+    Write,
+};
 
 use object_tree::{
-    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
-    read_key_value_line, write_key_value_line,
+    GraphError,
+    NameStr,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    write_key_value_line,
+};
+use serde::{
+    Deserialize,
+    Serialize,
 };
 
 use super::PkgNode;
-use crate::{ComponentSpec, EdgeSpec, FuncSpec, SchemaSpec};
+use crate::{
+    ComponentSpec,
+    EdgeSpec,
+    FuncSpec,
+    SchemaSpec,
+};
 
 const CHANGE_SET_CHILD_TYPE_COMPONENTS: &str = "components";
 const CHANGE_SET_CHILD_TYPE_EDGES: &str = "edges";

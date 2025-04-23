@@ -1,13 +1,28 @@
-use std::{num::TryFromIntError, path::PathBuf};
+use std::{
+    num::TryFromIntError,
+    path::PathBuf,
+};
 
-use ::tar::{Builder, Header};
+use ::tar::{
+    Builder,
+    Header,
+};
 use petgraph::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    GraphError, NameStr, ObjectTree, WriteBytes,
-    graph::{HashedNodeWithEntries, NodeEntry},
-    tar::{object_path, ref_path},
+    GraphError,
+    NameStr,
+    ObjectTree,
+    WriteBytes,
+    graph::{
+        HashedNodeWithEntries,
+        NodeEntry,
+    },
+    tar::{
+        object_path,
+        ref_path,
+    },
 };
 
 /// Errors that can occur when creating a tar bundle of the object tree

@@ -1,8 +1,19 @@
-use crate::attribute::value::AttributeValueError;
-use crate::{AttributeValue, AttributeValueId, DalContext};
-use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use strum::{
+    AsRefStr,
+    Display,
+};
 use thiserror::Error;
+
+use crate::{
+    AttributeValue,
+    AttributeValueId,
+    DalContext,
+    attribute::value::AttributeValueError,
+};
 
 #[remain::sorted]
 #[derive(Error, Debug)]

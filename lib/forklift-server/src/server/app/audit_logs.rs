@@ -1,5 +1,8 @@
 use std::{
-    future::{Future, IntoFuture as _},
+    future::{
+        Future,
+        IntoFuture as _,
+    },
     io,
     sync::Arc,
     time::Duration,
@@ -7,25 +10,40 @@ use std::{
 
 use app_state::AppState;
 use audit_database::AuditDatabaseContext;
-use audit_logs_stream::{AuditLogsStream, AuditLogsStreamError};
+use audit_logs_stream::{
+    AuditLogsStream,
+    AuditLogsStreamError,
+};
 use nats_dead_letter_queue::NatsDeadLetterQueueError;
 use naxum::{
-    MessageHead, ServiceBuilder, ServiceExt as _, TowerServiceExt as _,
+    MessageHead,
+    ServiceBuilder,
+    ServiceExt as _,
+    TowerServiceExt as _,
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
         ack::AckLayer,
-        matched_subject::{ForSubject, MatchedSubjectLayer},
+        matched_subject::{
+            ForSubject,
+            MatchedSubjectLayer,
+        },
         trace::TraceLayer,
     },
-    response::{IntoResponse, Response},
+    response::{
+        IntoResponse,
+        Response,
+    },
 };
 use si_data_nats::{
     ConnectionMetadata,
     async_nats::{
         self,
         error::Error as AsyncNatsError,
-        jetstream::{consumer::StreamErrorKind, stream::ConsumerErrorKind},
+        jetstream::{
+            consumer::StreamErrorKind,
+            stream::ConsumerErrorKind,
+        },
     },
     jetstream::Context,
 };

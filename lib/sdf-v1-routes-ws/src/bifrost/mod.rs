@@ -1,23 +1,30 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{State, WebSocketUpgrade, ws::WebSocket},
+    extract::{
+        State,
+        WebSocketUpgrade,
+        ws::WebSocket,
+    },
     response::IntoResponse,
 };
 use dal::WorkspacePk;
 use nats_multiplexer_client::MultiplexerClient;
+use sdf_core::nats_multiplexer::NatsMultiplexerClients;
+use sdf_extract::{
+    request::TokenFromQueryParam,
+    services::Nats,
+    workspace::{
+        TargetWorkspaceIdFromToken,
+        WorkspaceAuthorization,
+    },
+};
 use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
 use crate::WsError;
-use sdf_core::nats_multiplexer::NatsMultiplexerClients;
-use sdf_extract::{
-    request::TokenFromQueryParam,
-    services::Nats,
-    workspace::{TargetWorkspaceIdFromToken, WorkspaceAuthorization},
-};
 
 pub mod proto;
 

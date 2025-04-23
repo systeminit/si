@@ -1,16 +1,32 @@
 use std::collections::HashSet;
 
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use telemetry::prelude::*;
 
-use crate::{
-    DalContext, Func, FuncId, Prop, Schema, SchemaVariant, SchemaVariantId, SocketArity,
-    cached_module::CachedModule,
-    management::prototype::{ManagementPrototype, ManagementPrototypeId},
+use super::{
+    EventualParent,
+    FuncBinding,
+    FuncBindingResult,
 };
-
-use super::{EventualParent, FuncBinding, FuncBindingResult};
+use crate::{
+    DalContext,
+    Func,
+    FuncId,
+    Prop,
+    Schema,
+    SchemaVariant,
+    SchemaVariantId,
+    SocketArity,
+    cached_module::CachedModule,
+    management::prototype::{
+        ManagementPrototype,
+        ManagementPrototypeId,
+    },
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]

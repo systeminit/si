@@ -1,12 +1,24 @@
 use async_trait::async_trait;
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use veritech_client::{
-    BeforeFunction, FunctionResult, ResolverFunctionComponent, ResolverFunctionRequest,
-    ResolverFunctionResponseType, ResolverFunctionResultSuccess,
+    BeforeFunction,
+    FunctionResult,
+    ResolverFunctionComponent,
+    ResolverFunctionRequest,
+    ResolverFunctionResponseType,
+    ResolverFunctionResultSuccess,
 };
 
-use crate::func::backend::{ExtractPayload, FuncBackendResult, FuncDispatch, FuncDispatchContext};
+use crate::func::backend::{
+    ExtractPayload,
+    FuncBackendResult,
+    FuncDispatch,
+    FuncDispatchContext,
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct FuncBackendJsAttributeArgs {

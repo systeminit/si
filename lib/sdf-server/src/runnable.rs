@@ -4,9 +4,9 @@
 // See: https://users.rust-lang.org/t/need-explanation-on-how-to-avoid-this-move-out-of-a-box-dyn/98734/3
 // See: https://quinedot.github.io/rust-learning/dyn-trait-box-impl.html
 
-use super::ServerResult;
-
 use async_trait::async_trait;
+
+use super::ServerResult;
 
 #[async_trait]
 pub trait BoxedRunnable {

@@ -1,20 +1,39 @@
 use async_trait::async_trait;
-use tokio::sync::mpsc;
-
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use si_events::ChangeSetId;
-use si_events::FuncRunId;
-use strum::{AsRefStr, Display, EnumIter, EnumString};
+use serde::{
+    Deserialize,
+    Serialize,
+    de::DeserializeOwned,
+};
+use si_events::{
+    ChangeSetId,
+    FuncRunId,
+};
+use strum::{
+    AsRefStr,
+    Display,
+    EnumIter,
+    EnumString,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::sync::mpsc;
 use veritech_client::{
-    ActionRunResultSuccess, BeforeFunction, Client as VeritechClient, FunctionResult,
-    FunctionResultFailureErrorKind, OutputStream, ResolverFunctionResponseType,
+    ActionRunResultSuccess,
+    BeforeFunction,
+    Client as VeritechClient,
+    FunctionResult,
+    FunctionResultFailureErrorKind,
+    OutputStream,
+    ResolverFunctionResponseType,
 };
 
-use crate::label_list::ToLabelList;
-use crate::workspace::WorkspaceId;
-use crate::{Func, FuncId, PropKind};
+use crate::{
+    Func,
+    FuncId,
+    PropKind,
+    label_list::ToLabelList,
+    workspace::WorkspaceId,
+};
 
 pub mod array;
 pub mod boolean;

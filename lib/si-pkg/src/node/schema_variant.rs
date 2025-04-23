@@ -1,17 +1,36 @@
 use std::{
-    io::{BufRead, Write},
+    io::{
+        BufRead,
+        Write,
+    },
     str::FromStr,
 };
 
 use object_tree::{
-    GraphError, NameStr, NodeChild, NodeKind, NodeWithChildren, ReadBytes, WriteBytes,
-    read_key_value_line, read_key_value_line_opt, write_key_value_line, write_key_value_line_opt,
+    GraphError,
+    NameStr,
+    NodeChild,
+    NodeKind,
+    NodeWithChildren,
+    ReadBytes,
+    WriteBytes,
+    read_key_value_line,
+    read_key_value_line_opt,
+    write_key_value_line,
+    write_key_value_line_opt,
 };
 use url::Url;
 
-use crate::{SchemaVariantSpec, SchemaVariantSpecComponentType, node::SchemaVariantChild};
-
-use super::{PkgNode, read_common_fields, write_common_fields};
+use super::{
+    PkgNode,
+    read_common_fields,
+    write_common_fields,
+};
+use crate::{
+    SchemaVariantSpec,
+    SchemaVariantSpecComponentType,
+    node::SchemaVariantChild,
+};
 
 const KEY_COLOR_STR: &str = "color";
 const KEY_LINK_STR: &str = "link";

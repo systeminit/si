@@ -1,25 +1,41 @@
 use axum::{
     Json,
-    extract::{Host, OriginalUri, Path},
-};
-use serde::{Deserialize, Serialize};
-
-use dal::{
-    ChangeSet, ChangeSetId, WorkspacePk, WsEvent,
-    diagram::{
-        geometry::Geometry,
-        view::{View, ViewId},
+    extract::{
+        Host,
+        OriginalUri,
+        Path,
     },
 };
-
-use crate::{
-    extract::{HandlerContext, PosthogClient},
-    service::force_change_set_response::ForceChangeSetResponse,
-    service::v2::AccessBuilder,
-    track,
+use dal::{
+    ChangeSet,
+    ChangeSetId,
+    WorkspacePk,
+    WsEvent,
+    diagram::{
+        geometry::Geometry,
+        view::{
+            View,
+            ViewId,
+        },
+    },
+};
+use serde::{
+    Deserialize,
+    Serialize,
 };
 
 use super::ViewResult;
+use crate::{
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::{
+        force_change_set_response::ForceChangeSetResponse,
+        v2::AccessBuilder,
+    },
+    track,
+};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

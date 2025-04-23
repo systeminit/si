@@ -1,6 +1,9 @@
 //! This module contains types used for the [`Func`](crate::Func) authoring experience.
 
-use crate::{FuncBackendKind, FuncBackendResponseType};
+use crate::{
+    FuncBackendKind,
+    FuncBackendResponseType,
+};
 
 /*const SCHEMA_VARIANT_DEFINITION_TYPES: &str = concat!(
     include_str!("data/ts_types/asset_types_with_secrets.d.ts"),

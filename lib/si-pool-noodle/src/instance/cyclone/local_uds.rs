@@ -1,8 +1,9 @@
-#[cfg(target_os = "linux")]
-use si_firecracker::{errors::FirecrackerJailError, firecracker::FirecrackerJail};
 use std::{
     io,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
     result,
     sync::Arc,
     time::Duration,
@@ -11,34 +12,88 @@ use std::{
 use async_trait::async_trait;
 use bollard::{
     Docker,
-    container::{Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions},
+    container::{
+        Config,
+        CreateContainerOptions,
+        RemoveContainerOptions,
+        StartContainerOptions,
+    },
     errors::Error,
-    models::{HostConfig, Mount, MountTypeEnum},
+    models::{
+        HostConfig,
+        Mount,
+        MountTypeEnum,
+    },
 };
 use cyclone_client::{
-    Client, ClientConfig, ClientError, Connection, CycloneClient, Execution, LivenessStatus,
-    PingExecution, ReadinessStatus, UdsClient, UnixStream, Watch, WatchError, WatchStarted,
+    Client,
+    ClientConfig,
+    ClientError,
+    Connection,
+    CycloneClient,
+    Execution,
+    LivenessStatus,
+    PingExecution,
+    ReadinessStatus,
+    UdsClient,
+    UnixStream,
+    Watch,
+    WatchError,
+    WatchStarted,
     new_unstarted_execution,
 };
 use cyclone_core::{
-    CanonicalCommand, CycloneRequest, CycloneRequestable,
-    process::{self, ShutdownError},
+    CanonicalCommand,
+    CycloneRequest,
+    CycloneRequestable,
+    process::{
+        self,
+        ShutdownError,
+    },
 };
 use derive_builder::Builder;
 use futures::StreamExt;
-use rand::{Rng, distributions::Alphanumeric, thread_rng};
-use serde::{Deserialize, Serialize};
-use tempfile::{NamedTempFile, TempPath};
+use rand::{
+    Rng,
+    distributions::Alphanumeric,
+    thread_rng,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+#[cfg(target_os = "linux")]
+use si_firecracker::{
+    errors::FirecrackerJailError,
+    firecracker::FirecrackerJail,
+};
+use tempfile::{
+    NamedTempFile,
+    TempPath,
+};
 use thiserror::Error;
 use tokio::{
-    io::{AsyncRead, AsyncWrite},
-    process::{Child, Command},
+    io::{
+        AsyncRead,
+        AsyncWrite,
+    },
+    process::{
+        Child,
+        Command,
+    },
     sync::oneshot,
     time,
 };
-use tracing::{debug, trace};
+use tracing::{
+    debug,
+    trace,
+};
 
-use crate::instance::{Instance, Spec, SpecBuilder};
+use crate::instance::{
+    Instance,
+    Spec,
+    SpecBuilder,
+};
 
 /// Error type for [`LocalUdsInstance`].
 #[remain::sorted]

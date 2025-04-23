@@ -6,15 +6,24 @@ mod limit_requests {
         pin::Pin,
         sync::{
             Arc,
-            atomic::{AtomicU32, Ordering},
+            atomic::{
+                AtomicU32,
+                Ordering,
+            },
         },
-        task::{Context, Poll},
+        task::{
+            Context,
+            Poll,
+        },
     };
 
     use pin_project_lite::pin_project;
     use telemetry::prelude::*;
     use tokio::sync::mpsc;
-    use tower::{Layer, Service};
+    use tower::{
+        Layer,
+        Service,
+    };
 
     use crate::ShutdownSource;
 
@@ -158,14 +167,28 @@ mod web_socket_trace {
     use std::{
         future::Future,
         pin::Pin,
-        task::{Context, Poll},
+        task::{
+            Context,
+            Poll,
+        },
     };
 
-    use axum::{body::Body, extract::MatchedPath, http::Request, response::Response};
+    use axum::{
+        body::Body,
+        extract::MatchedPath,
+        http::Request,
+        response::Response,
+    };
     use pin_project_lite::pin_project;
     use telemetry::prelude::*;
-    use telemetry_http::{ParentSpan, propagation};
-    use tower::{Layer, Service};
+    use telemetry_http::{
+        ParentSpan,
+        propagation,
+    };
+    use tower::{
+        Layer,
+        Service,
+    };
 
     // Vendored and modified from futures_core::task::poll::ready
     macro_rules! ready {

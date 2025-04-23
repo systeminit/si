@@ -1,9 +1,18 @@
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::Arc,
+    time::Duration,
+};
 
 use dal::DalContextBuilder;
 use frigg::FriggStore;
-use si_data_nats::{NatsClient, async_nats::jetstream};
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use si_data_nats::{
+    NatsClient,
+    async_nats::jetstream,
+};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 
 use crate::ServerMetadata;
 

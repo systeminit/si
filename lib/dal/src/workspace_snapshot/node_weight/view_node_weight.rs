@@ -1,10 +1,18 @@
 mod v1;
 
-use crate::workspace_snapshot::node_weight::{
-    traits::SiVersionedNodeWeight, view_node_weight::v1::ViewNodeWeightV1,
+use serde::{
+    Deserialize,
+    Serialize,
 };
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, ulid::Ulid};
+use si_events::{
+    ContentHash,
+    ulid::Ulid,
+};
+
+use crate::workspace_snapshot::node_weight::{
+    traits::SiVersionedNodeWeight,
+    view_node_weight::v1::ViewNodeWeightV1,
+};
 
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiVersionedNodeWeight,

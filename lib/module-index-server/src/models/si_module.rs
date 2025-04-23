@@ -1,11 +1,23 @@
-use module_index_types::{LatestModuleResponse, ModuleDetailsResponse};
-use sea_orm::{TryGetError, entity::prelude::*, sea_query};
-use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-pub use si_id::ModuleIndexModuleId as ModuleId;
-pub use si_id::SchemaId;
-pub use si_id::SchemaVariantId;
+use module_index_types::{
+    LatestModuleResponse,
+    ModuleDetailsResponse,
+};
+use sea_orm::{
+    TryGetError,
+    entity::prelude::*,
+    sea_query,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+pub use si_id::{
+    ModuleIndexModuleId as ModuleId,
+    SchemaId,
+    SchemaVariantId,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

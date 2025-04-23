@@ -5,7 +5,8 @@ use si_id::EntityId;
 use crate::{
     WorkspaceSnapshot,
     workspace_snapshot::{
-        WorkspaceSnapshotResult, graph::traits::entity_kind::EntityKindExt as EntityKindExtGraph,
+        WorkspaceSnapshotResult,
+        graph::traits::entity_kind::EntityKindExt as EntityKindExtGraph,
     },
 };
 

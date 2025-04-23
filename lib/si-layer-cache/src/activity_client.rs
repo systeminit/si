@@ -1,19 +1,40 @@
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::Arc,
+    time::Duration,
+};
 
-use si_data_nats::{NatsClient, jetstream::Context};
+use si_data_nats::{
+    NatsClient,
+    jetstream::Context,
+};
 use telemetry::prelude::*;
-use tokio::{pin, sync::mpsc::UnboundedReceiver};
-use tokio_stream::{StreamExt, wrappers::BroadcastStream};
+use tokio::{
+    pin,
+    sync::mpsc::UnboundedReceiver,
+};
+use tokio_stream::{
+    StreamExt,
+    wrappers::BroadcastStream,
+};
 use tokio_util::sync::CancellationToken;
 use ulid::Ulid;
 
 use crate::{
     activities::{
-        Activity, ActivityId, ActivityMultiplexer, ActivityPayloadDiscriminants, ActivityPublisher,
-        ActivityRebaseRequest, RebaserRequestWorkQueue, rebase::ActivityRebase,
+        Activity,
+        ActivityId,
+        ActivityMultiplexer,
+        ActivityPayloadDiscriminants,
+        ActivityPublisher,
+        ActivityRebaseRequest,
+        RebaserRequestWorkQueue,
+        rebase::ActivityRebase,
         test::ActivityIntegrationTest,
     },
-    error::{LayerDbError, LayerDbResult},
+    error::{
+        LayerDbError,
+        LayerDbResult,
+    },
 };
 
 const PARENT_ACTIVITY_WAIT_TIMEOUT: u64 = 60;

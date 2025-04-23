@@ -2,48 +2,96 @@ mod diagram_object;
 pub mod geometry;
 pub mod view;
 
-use petgraph::prelude::*;
-use serde::{Deserialize, Serialize};
-use si_data_pg::PgError;
-use std::collections::{HashMap, HashSet};
 use std::{
-    num::{ParseFloatError, ParseIntError},
+    collections::{
+        HashMap,
+        HashSet,
+    },
+    num::{
+        ParseFloatError,
+        ParseIntError,
+    },
     sync::Arc,
 };
+
+use petgraph::prelude::*;
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_data_pg::PgError;
+use si_frontend_types::{
+    DiagramComponentView,
+    DiagramSocket,
+};
+use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::approval_requirement::ApprovalRequirementError;
-use crate::workspace_snapshot::WorkspaceSnapshotSelector;
-use crate::workspace_snapshot::node_weight::NodeWeight;
 use crate::{
-    AttributePrototypeId, ChangeSetError, Component, ComponentId, DalContext,
-    EdgeWeightKindDiscriminants, HelperError, HistoryEventError, InputSocketId,
-    NodeWeightDiscriminants, OutputSocketId, SchemaId, SchemaVariantId, StandardModelError,
-    TransactionsError, Workspace, WorkspaceError, WorkspaceSnapshot,
+    AttributePrototypeId,
+    ChangeSetError,
+    Component,
+    ComponentId,
+    DalContext,
+    EdgeWeightKindDiscriminants,
+    FuncError,
+    HelperError,
+    HistoryEventError,
+    InputSocketId,
+    NodeWeightDiscriminants,
+    OutputSocketId,
+    SchemaId,
+    SchemaVariant,
+    SchemaVariantId,
+    StandardModelError,
+    TransactionsError,
+    Workspace,
+    WorkspaceError,
+    WorkspaceSnapshot,
+    approval_requirement::ApprovalRequirementError,
     attribute::{
-        prototype::argument::{AttributePrototypeArgumentError, AttributePrototypeArgumentId},
+        prototype::argument::{
+            AttributePrototypeArgumentError,
+            AttributePrototypeArgumentId,
+        },
         value::AttributeValueError,
     },
     change_status::ChangeStatus,
     component::{
-        ComponentError, ComponentResult, Connection, InferredConnection,
+        ComponentError,
+        ComponentResult,
+        Connection,
+        InferredConnection,
         inferred_connection_graph::InferredConnectionGraphError,
     },
     diagram::{
-        geometry::{Geometry, GeometryId, GeometryRepresents},
-        view::{View, ViewId, ViewObjectView},
+        geometry::{
+            Geometry,
+            GeometryId,
+            GeometryRepresents,
+        },
+        view::{
+            View,
+            ViewId,
+            ViewObjectView,
+        },
     },
     schema::variant::SchemaVariantError,
-    socket::{input::InputSocketError, output::OutputSocketError},
+    socket::{
+        input::InputSocketError,
+        output::OutputSocketError,
+    },
     workspace_snapshot::{
         WorkspaceSnapshotError,
-        node_weight::{NodeWeightError, category_node_weight::CategoryNodeKind},
+        WorkspaceSnapshotSelector,
+        node_weight::{
+            NodeWeight,
+            NodeWeightError,
+            category_node_weight::CategoryNodeKind,
+        },
     },
 };
-use crate::{FuncError, SchemaVariant};
-use si_frontend_types::{DiagramComponentView, DiagramSocket};
-use si_layer_cache::LayerDbError;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

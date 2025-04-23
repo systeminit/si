@@ -9,8 +9,16 @@ mod whoami;
 
 pub use crate::{
     config::{
-        Config, ConfigBuilder, ConfigError, ConfigFile, StandardConfig, StandardConfigFile,
+        Config,
+        ConfigBuilder,
+        ConfigError,
+        ConfigFile,
+        StandardConfig,
+        StandardConfigFile,
         detect_and_configure_development,
     },
-    server::{Server, ServerError},
+    server::{
+        Server,
+        ServerError,
+    },
 };

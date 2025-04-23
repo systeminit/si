@@ -3,7 +3,11 @@ use std::sync::Arc;
 use async_nats::jetstream::message::Acker;
 use futures::future::BoxFuture;
 use telemetry_utils::metric;
-use tracing::{error, info, trace};
+use tracing::{
+    error,
+    info,
+    trace,
+};
 
 use crate::Head;
 

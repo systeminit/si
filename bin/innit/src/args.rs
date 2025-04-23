@@ -1,7 +1,13 @@
-use clap::{ArgAction, Parser};
-use innit_server::StandardConfigFile;
-use innit_server::{Config, ConfigError, ConfigFile};
-
+use clap::{
+    ArgAction,
+    Parser,
+};
+use innit_server::{
+    Config,
+    ConfigError,
+    ConfigFile,
+    StandardConfigFile,
+};
 use si_service::prelude::*;
 
 const NAME: &str = "innit";

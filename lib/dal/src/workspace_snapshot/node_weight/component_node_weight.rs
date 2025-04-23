@@ -1,33 +1,68 @@
-use super::{ArgumentTargets, NodeWeightDiscriminants};
+use std::{
+    collections::HashSet,
+    sync::Arc,
+};
+
+use itertools::Itertools;
+use petgraph::{
+    Direction::Incoming,
+    prelude::*,
+    stable_graph::EdgeReference,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
+use si_id::{
+    AttributeValueId,
+    ComponentId,
+};
+
 use super::{
-    NodeWeight, NodeWeightDiscriminants::Component, NodeWeightError, NodeWeightResult,
-    category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult,
+    ArgumentTargets,
+    NodeWeight,
+    NodeWeightDiscriminants,
+    NodeWeightDiscriminants::Component,
+    NodeWeightError,
+    NodeWeightResult,
+    category_node_weight::CategoryNodeKind,
+    traits::CorrectTransformsResult,
 };
-use crate::layer_db_types::{
-    ComponentContent, ComponentContentDiscriminants, ComponentContentV2, GeometryContent,
-    GeometryContentV1,
-};
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV4;
 use crate::{
-    DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, Timestamp,
+    DalContext,
+    EdgeWeight,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    Timestamp,
     WorkspaceSnapshotGraphVCurrent,
+    layer_db_types::{
+        ComponentContent,
+        ComponentContentDiscriminants,
+        ComponentContentV2,
+        GeometryContent,
+        GeometryContentV1,
+    },
     workspace_snapshot::{
         NodeInformation,
-        content_address::{ContentAddress, ContentAddressDiscriminants},
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
         graph::{
-            LineageId, correct_transforms::add_dependent_value_root_updates,
-            deprecated::v1::DeprecatedComponentNodeWeightV1, detector::Update,
+            LineageId,
+            WorkspaceSnapshotGraphV4,
+            correct_transforms::add_dependent_value_root_updates,
+            deprecated::v1::DeprecatedComponentNodeWeightV1,
+            detector::Update,
         },
         node_weight::traits::CorrectTransforms,
     },
 };
-use itertools::Itertools;
-use petgraph::{Direction::Incoming, prelude::*, stable_graph::EdgeReference};
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
-use si_id::{AttributeValueId, ComponentId};
-use std::collections::HashSet;
-use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ComponentNodeWeight {

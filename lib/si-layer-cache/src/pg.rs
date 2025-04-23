@@ -1,7 +1,14 @@
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    sync::Arc,
+};
 
-use si_data_pg::{PgPool, PgPoolConfig, PgRow, postgres_types::ToSql};
+use si_data_pg::{
+    PgPool,
+    PgPoolConfig,
+    PgRow,
+    postgres_types::ToSql,
+};
 use telemetry::tracing::info;
 use telemetry_utils::metric;
 

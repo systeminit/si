@@ -25,7 +25,11 @@
     while_true
 )]
 
-use aws_sdk_firehose::{operation::put_record::PutRecordError, primitives::Blob, types::Record};
+use aws_sdk_firehose::{
+    operation::put_record::PutRecordError,
+    primitives::Blob,
+    types::Record,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 

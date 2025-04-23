@@ -11,29 +11,65 @@
 use std::{
     borrow::Cow,
     env,
-    fmt::{Debug, Display},
-    ops::{Deref, DerefMut},
+    fmt::{
+        Debug,
+        Display,
+    },
+    ops::{
+        Deref,
+        DerefMut,
+    },
     result::Result,
     sync::Arc,
 };
 
 use async_trait::async_trait;
+pub use opentelemetry::{
+    self,
+    trace::SpanKind,
+};
 use thiserror::Error;
-use tokio::sync::{Mutex, mpsc, oneshot};
+use tokio::sync::{
+    Mutex,
+    mpsc,
+    oneshot,
+};
 use tokio_util::sync::CancellationToken;
-
-pub use opentelemetry::{self, trace::SpanKind};
 pub use tracing;
 use tracing::warn;
 
 pub mod prelude {
-    pub use super::{
-        MessagingOperation, SpanExt, SpanKind, SpanKindExt, current_span_for_instrument_at,
-    };
     pub use tracing::{
-        self, Id as SpanId, Instrument, Level, Span, debug, debug_span, enabled, error, error_span,
-        event, event_enabled, field::Empty, info, info_span, instrument, span, span_enabled, trace,
-        trace_span, warn, warn_span,
+        self,
+        Id as SpanId,
+        Instrument,
+        Level,
+        Span,
+        debug,
+        debug_span,
+        enabled,
+        error,
+        error_span,
+        event,
+        event_enabled,
+        field::Empty,
+        info,
+        info_span,
+        instrument,
+        span,
+        span_enabled,
+        trace,
+        trace_span,
+        warn,
+        warn_span,
+    };
+
+    pub use super::{
+        MessagingOperation,
+        SpanExt,
+        SpanKind,
+        SpanKindExt,
+        current_span_for_instrument_at,
     };
 }
 

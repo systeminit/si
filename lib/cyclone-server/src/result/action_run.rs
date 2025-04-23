@@ -1,5 +1,11 @@
-use cyclone_core::{ActionRunResultSuccess, ResourceStatus};
-use serde::{Deserialize, Serialize};
+use cyclone_core::{
+    ActionRunResultSuccess,
+    ResourceStatus,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 /// This struct contains the lang-js server execution response. All fields without the
 /// `#[serde(default)]` macro must be populated.

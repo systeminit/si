@@ -1,16 +1,29 @@
 use std::sync::Arc;
 
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{
+    Serialize,
+    de::DeserializeOwned,
+};
 use si_data_nats::NatsClient;
-use si_events::{FuncRun, FuncRunLog, change_batch::ChangeBatch};
+use si_events::{
+    FuncRun,
+    FuncRunLog,
+    change_batch::ChangeBatch,
+};
 use telemetry::prelude::*;
 use tokio::sync::mpsc::UnboundedReceiver;
-use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use tokio_util::{
+    sync::CancellationToken,
+    task::TaskTracker,
+};
 use ulid::Ulid;
 
 use crate::{
     error::LayerDbResult,
-    event::{LayeredEvent, LayeredEventServer},
+    event::{
+        LayeredEvent,
+        LayeredEventServer,
+    },
     layer_cache::LayerCache,
 };
 

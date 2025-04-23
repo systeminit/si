@@ -1,17 +1,35 @@
-use dal::attribute::value::DependentValueGraph;
-use dal::diagram::Diagram;
-use dal::diagram::view::View;
-use dal::prop::{Prop, PropPath};
-use dal::property_editor::values::PropertyEditorValues;
-use dal::workspace_snapshot::DependentValueRoot;
-use dal::{AttributeValue, AttributeValueId};
-use dal::{Component, DalContext, Schema, SchemaVariant};
-use dal_test::expected::{self, ExpectComponent};
-use dal_test::helpers::{
-    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view,
-    create_component_for_schema_variant_on_default_view,
+use dal::{
+    AttributeValue,
+    AttributeValueId,
+    Component,
+    DalContext,
+    Schema,
+    SchemaVariant,
+    attribute::value::DependentValueGraph,
+    diagram::{
+        Diagram,
+        view::View,
+    },
+    prop::{
+        Prop,
+        PropPath,
+    },
+    property_editor::values::PropertyEditorValues,
+    workspace_snapshot::DependentValueRoot,
 };
-use dal_test::{Result, test};
+use dal_test::{
+    Result,
+    expected::{
+        self,
+        ExpectComponent,
+    },
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_default_schema_name_in_default_view,
+        create_component_for_schema_variant_on_default_view,
+    },
+    test,
+};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 

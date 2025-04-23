@@ -3,18 +3,27 @@
 //! [migrate()](crate::builtins::migrate_local()) function. However, they may have some functionality
 //! exposed for "dev mode" use cases.
 
+use si_pkg::{
+    SiPkgError,
+    SpecError,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use si_pkg::{SiPkgError, SpecError};
-
-use crate::func::FuncError;
-use crate::func::argument::FuncArgumentError;
-use crate::module::ModuleError;
-use crate::pkg::PkgError;
 use crate::{
-    AttributeValueId, PropId, SchemaVariantError, SchemaVariantId, StandardModelError,
-    TransactionsError, action::prototype::ActionPrototypeError,
+    AttributeValueId,
+    PropId,
+    SchemaVariantError,
+    SchemaVariantId,
+    StandardModelError,
+    TransactionsError,
+    action::prototype::ActionPrototypeError,
+    func::{
+        FuncError,
+        argument::FuncArgumentError,
+    },
+    module::ModuleError,
+    pkg::PkgError,
 };
 
 pub mod func;

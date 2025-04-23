@@ -1,12 +1,25 @@
-use dal::func::authoring::FuncAuthoringClient;
-use dal::{DalContext, Func};
-use dal_test::helpers::{
-    ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view,
+use std::{
+    sync::Arc,
+    time::Duration,
 };
-use dal_test::test;
-use si_events::{FuncRun, FuncRunId, FuncRunState};
-use std::sync::Arc;
-use std::time::Duration;
+
+use dal::{
+    DalContext,
+    Func,
+    func::authoring::FuncAuthoringClient,
+};
+use dal_test::{
+    helpers::{
+        ChangeSetTestHelpers,
+        create_component_for_default_schema_name_in_default_view,
+    },
+    test,
+};
+use si_events::{
+    FuncRun,
+    FuncRunId,
+    FuncRunState,
+};
 
 #[test]
 async fn test_execute_action_func(ctx: &mut DalContext) {

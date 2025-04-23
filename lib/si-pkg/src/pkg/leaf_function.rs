@@ -1,12 +1,21 @@
-use object_tree::{Hash, HashedNode};
+use object_tree::{
+    Hash,
+    HashedNode,
+};
 use petgraph::prelude::*;
 
-use super::{PkgResult, SiPkgError, Source};
-
+use super::{
+    PkgResult,
+    SiPkgError,
+    Source,
+};
 use crate::{
     LeafFunctionSpec,
     node::PkgNode,
-    spec::{LeafInputLocation, LeafKind},
+    spec::{
+        LeafInputLocation,
+        LeafKind,
+    },
 };
 
 #[derive(Clone, Debug)]

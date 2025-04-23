@@ -1,10 +1,23 @@
 use std::env;
 
 use indoc::indoc;
-use permissions::{ObjectType, Permission, PermissionBuilder, Relation, RelationBuilder};
-use rand::distributions::Alphanumeric;
-use rand::{Rng, thread_rng};
-use si_data_spicedb::{Client, SpiceDbClient, SpiceDbConfig};
+use permissions::{
+    ObjectType,
+    Permission,
+    PermissionBuilder,
+    Relation,
+    RelationBuilder,
+};
+use rand::{
+    Rng,
+    distributions::Alphanumeric,
+    thread_rng,
+};
+use si_data_spicedb::{
+    Client,
+    SpiceDbClient,
+    SpiceDbConfig,
+};
 
 const ENV_VAR_SPICEDB_URL: &str = "SI_TEST_SPICEDB_URL";
 

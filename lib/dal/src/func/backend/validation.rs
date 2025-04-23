@@ -1,7 +1,21 @@
-use crate::func::backend::{ExtractPayload, FuncBackendResult, FuncDispatch, FuncDispatchContext};
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use veritech_client::{BeforeFunction, FunctionResult, ValidationRequest, ValidationResultSuccess};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use veritech_client::{
+    BeforeFunction,
+    FunctionResult,
+    ValidationRequest,
+    ValidationResultSuccess,
+};
+
+use crate::func::backend::{
+    ExtractPayload,
+    FuncBackendResult,
+    FuncDispatch,
+    FuncDispatchContext,
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct FuncBackendJsAttributeArgs {

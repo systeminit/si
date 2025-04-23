@@ -1,8 +1,16 @@
 use std::path::PathBuf;
 
-use clap::{ArgAction, Parser};
+use clap::{
+    ArgAction,
+    Parser,
+};
 use si_service::prelude::*;
-use veritech_server::{Config, ConfigError, ConfigFile, StandardConfigFile};
+use veritech_server::{
+    Config,
+    ConfigError,
+    ConfigFile,
+    StandardConfigFile,
+};
 
 const NAME: &str = "veritech";
 

@@ -1,6 +1,10 @@
 use tower::Service;
 
-use crate::{error_handling::HandleError, make_service::IntoMakeService, message::Message};
+use crate::{
+    error_handling::HandleError,
+    make_service::IntoMakeService,
+    message::Message,
+};
 
 pub trait ServiceExt<R>: Service<Message<R>> + Sized {
     fn into_make_service(self) -> IntoMakeService<Self>;
