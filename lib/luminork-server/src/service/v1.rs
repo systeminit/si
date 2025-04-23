@@ -24,10 +24,8 @@ pub use change_sets::{
 };
 pub use components::{
     ComponentV1RequestPath,
-    create_component::{
-        ComponentReference, Connection, ConnectionPoint, CreateComponentV1Request,
-        CreateComponentV1Response,
-    },
+    connections::{ComponentReference, Connection, ConnectionPoint},
+    create_component::{CreateComponentV1Request, CreateComponentV1Response},
     delete_component::DeleteComponentV1Response,
     get_component::{
         GeometryAndViewAndName, GetComponentV1Response, GetComponentV1ResponseManagementFunction,
