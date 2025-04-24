@@ -19,6 +19,7 @@ use veritech_client::{
 };
 
 use super::{
+    ManagementError,
     ManagementGeometry,
     SocketRef,
 };
@@ -101,6 +102,8 @@ pub enum ManagementPrototypeError {
     InputSocket(#[from] crate::socket::input::InputSocketError),
     #[error("layer db error: {0}")]
     LayerDbError(#[from] si_layer_cache::LayerDbError),
+    #[error("management error: {0}")]
+    Management(#[from] ManagementError),
     #[error("management prototype {0} has no use edge to a function")]
     MissingFunction(ManagementPrototypeId),
     #[error("More than one connection to input socket with arity one: {0}")]
@@ -592,6 +595,89 @@ impl ManagementPrototype {
         })
     }
 
+    // This is an experimental API for use with our External API
+    // It will return a FuncRunId that the user can use to triger
+    // a get-status request for a function
+    pub async fn dispatch_by_id(
+        ctx: &DalContext,
+        id: ManagementPrototypeId,
+        manager_component_id: ComponentId,
+        view_id: Option<ViewId>,
+    ) -> ManagementPrototypeResult<FuncRunId> {
+        let span = current_span_for_instrument_at!("debug");
+        let views: HashMap<ViewId, String> = View::list(ctx)
+            .await?
+            .into_iter()
+            .map(|view| (view.id(), view.name().to_owned()))
+            .collect();
+
+        let view_id = match view_id {
+            Some(view_id) => view_id,
+            None => View::get_id_for_default(ctx).await?,
+        };
+        let current_view = views.get(&view_id).cloned().unwrap_or(view_id.to_string());
+
+        let management_func_id = ManagementPrototype::func_id(ctx, id).await?;
+        let manager_component = Component::get_by_id(ctx, manager_component_id).await?;
+
+        let mut managed_component_placeholders = HashMap::new();
+        let mut managed_components = HashMap::new();
+        for component_id in manager_component.get_managed(ctx).await? {
+            let schema = Component::schema_for_component_id(ctx, component_id).await?;
+            let managed_component =
+                ManagedComponent::new(ctx, component_id, schema.name(), &views).await?;
+
+            managed_components.insert(component_id, managed_component);
+            let name = Component::name_by_id(ctx, component_id).await?;
+            managed_component_placeholders.insert(name, component_id);
+            managed_component_placeholders.insert(component_id.to_string(), component_id);
+        }
+
+        let this_schema = Component::schema_for_component_id(ctx, manager_component_id)
+            .await?
+            .name()
+            .to_string();
+
+        let manager_component =
+            ManagedComponent::new(ctx, manager_component_id, &this_schema, &views).await?;
+        let manager_component_geometry = manager_component.geometry.to_owned();
+
+        let variant_socket_map = Self::variant_socket_map(ctx).await?;
+
+        let args = serde_json::json!({
+            "current_view": current_view,
+            "this_component": manager_component,
+            "components": managed_components,
+            "variant_socket_map": variant_socket_map,
+        });
+
+        let func_runner =
+            FuncRunner::build_management(ctx, id, manager_component_id, management_func_id, args)
+                .await?;
+
+        let func_runner_id = func_runner.id();
+        let ctx_clone = ctx.clone();
+
+        tokio::task::spawn(async move {
+            dbg!("Kicking the func");
+            if let Err(err) = dispatch_by_id_inner(
+                &ctx_clone,
+                span,
+                func_runner,
+                manager_component_id,
+                Some(view_id),
+                manager_component_geometry,
+                managed_component_placeholders,
+            )
+            .await
+            {
+                error!(si.error.message = ?err.to_string(), "Failure in running management function");
+            }
+        });
+
+        Ok(func_runner_id)
+    }
+
     async fn variant_socket_map(
         ctx: &DalContext,
     ) -> ManagementPrototypeResult<HashMap<String, u32>> {
@@ -756,6 +842,91 @@ impl ManagementPrototype {
 
         Ok(None)
     }
+}
+
+async fn dispatch_by_id_inner(
+    ctx: &DalContext,
+    span: Span,
+    func_runner: FuncRunner,
+    component_id: ComponentId,
+    view_id: Option<ViewId>,
+    manager_component_geometry: HashMap<String, ManagementGeometry>,
+    managed_component_placeholders: HashMap<String, ComponentId>,
+) -> Result<(), ManagementPrototypeError> {
+    let result_channel = func_runner.execute(ctx.clone(), span).await;
+    let run_value = match result_channel.await {
+        Ok(Err(FuncRunnerError::ResultFailure {
+            kind: _,
+            message,
+            backend: _,
+        })) => return Err(ManagementPrototypeError::FuncExecutionFailure(message)),
+        other => other.map_err(|_| ManagementPrototypeError::FuncRunnerRecvError)??,
+    };
+    let func_run_id = run_value.func_run_id();
+    let maybe_value: Option<si_events::CasValue> =
+        run_value.value().cloned().map(|value| value.into());
+    let maybe_value_address = match maybe_value {
+        Some(value) => Some(
+            ctx.layer_db()
+                .cas()
+                .write(
+                    Arc::new(value.into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )?
+                .0,
+        ),
+        None => None,
+    };
+    let mut maybe_run_result: Option<ManagementResultSuccess> = match run_value.value() {
+        Some(value) => Some(serde_json::from_value(value.clone())?),
+        None => None,
+    };
+    let action_state = maybe_run_result
+        .as_ref()
+        .map(|result| match result.health {
+            veritech_client::ManagementFuncStatus::Ok => si_events::ActionResultState::Success,
+            veritech_client::ManagementFuncStatus::Error => si_events::ActionResultState::Failure,
+        })
+        .unwrap_or(si_events::ActionResultState::Unknown);
+
+    FuncRunner::update_run(ctx, func_run_id, |func_run| {
+        func_run.set_success(None, maybe_value_address);
+        func_run.set_action_result_state(Some(action_state));
+    })
+    .await?;
+
+    if let Some(result) = maybe_run_result.take() {
+        let crate::management::ManagementFuncReturn {
+            status, operations, ..
+        } = result.try_into()?;
+
+        let execution_result = ManagementPrototypeExecution {
+            func_run_id,
+            result: maybe_run_result,
+            manager_component_geometry,
+            managed_component_placeholders,
+        };
+
+        if status == ManagementFuncStatus::Ok {
+            if let Some(operations) = operations {
+                crate::management::ManagementOperator::new(
+                    ctx,
+                    component_id,
+                    operations,
+                    execution_result,
+                    view_id,
+                )
+                .await?
+                .operate()
+                .await?;
+            }
+        }
+    }
+
+    ctx.commit().await?;
+    Ok(())
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]

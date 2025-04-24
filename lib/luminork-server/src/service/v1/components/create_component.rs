@@ -48,6 +48,7 @@ use crate::{
         (status = 200, description = "Component created successfully", body = CreateComponentV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 404, description = "Component not found"),
+        (status = 412, description = "Precondition Failed - View not found", body = crate::service::v1::common::ApiError),
         (status = 422, description = "Validation error - Invalid request data", body = crate::service::v1::common::ApiError),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
@@ -66,8 +67,10 @@ pub async fn create_component(
         if let Some(view) = View::find_by_name(ctx, view_name.as_str()).await? {
             view_id = view.id();
         } else {
-            let default_view = View::get_id_for_default(ctx).await?;
-            view_id = default_view
+            return Err(ComponentsError::ViewNotFound(format!(
+                "View '{}' not found",
+                view_name
+            )));
         }
     } else {
         let default_view = View::get_id_for_default(ctx).await?;
