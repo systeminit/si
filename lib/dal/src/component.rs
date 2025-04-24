@@ -2006,6 +2006,13 @@ impl Component {
         self.attribute_value_for_prop(ctx, &["root", "domain"])
             .await
     }
+    pub async fn resource_value_prop_attribute_value(
+        &self,
+        ctx: &DalContext,
+    ) -> ComponentResult<AttributeValueId> {
+        self.attribute_value_for_prop(ctx, &["root", "resource_value"])
+            .await
+    }
 
     pub async fn attribute_values_for_all_sockets(
         ctx: &DalContext,

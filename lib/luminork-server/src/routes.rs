@@ -153,10 +153,73 @@ pub fn routes(state: AppState) -> Router {
         Ok(Json(openapi))
     }
 
+    // Wrapper for openapi_handler that will inject global query parameter definitions
+    async fn openapi_handler_with_globals() -> Result<Json<serde_json::Value>, (StatusCode, String)>
+    {
+        // Get the original OpenAPI spec
+        let original_response = openapi_handler().await?;
+
+        // Convert to Value for manipulation
+        let mut spec = serde_json::to_value(original_response.0).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("JSON conversion error: {}", e),
+            )
+        })?;
+
+        // Inject global parameters
+        if let Some(components) = spec.get_mut("components") {
+            if let Some(comp_obj) = components.as_object_mut() {
+                // Create parameters object if it doesn't exist
+                if !comp_obj.contains_key("parameters") {
+                    comp_obj.insert("parameters".to_string(), json!({}));
+                }
+
+                // Add global workspace_id parameter
+                if let Some(parameters) = comp_obj.get_mut("parameters") {
+                    if let Some(params_obj) = parameters.as_object_mut() {
+                        // Add workspace_id parameter definition
+                        params_obj.insert(
+                            "WorkspaceId".to_string(),
+                            json!({
+                                "name": "workspace_id",
+                                "in": "query",
+                                "description": "Workspace ID - can be set globally in the UI",
+                                "required": false,
+                                "schema": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                }
+                            }),
+                        );
+
+                        // Add change_set_id parameter definition
+                        params_obj.insert(
+                            "ChangeSetId".to_string(),
+                            json!({
+                                "name": "change_set_id",
+                                "in": "query",
+                                "description": "Change Set ID - can be set globally in the UI",
+                                "required": false,
+                                "schema": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                }
+                            }),
+                        );
+                    }
+                }
+            }
+        }
+
+        // Return the modified spec
+        Ok(Json(spec))
+    }
+
     Router::new()
         .nest("/whoami", crate::service::whoami::routes())
         .nest("/v1", crate::service::v1::routes(state.clone()))
-        .route("/openapi.json", get(openapi_handler))
+        .route("/openapi.json", get(openapi_handler_with_globals))
         // Add a route for Swagger UI HTML
         .route("/swagger-ui", get(serve_swagger_ui))
         .layer(CompressionLayer::new())
@@ -241,6 +304,49 @@ async fn serve_swagger_ui() -> impl IntoResponse {
     <script src="https://unpkg.com/swagger-ui-dist@5.1.0/swagger-ui-standalone-preset.js" charset="UTF-8"></script>
     <script>
       window.onload = function() {
+        // Create a plugin to intercept executions and add global parameters
+        const GlobalParametersPlugin = function() {
+          return {
+            statePlugins: {
+              spec: {
+                wrapActions: {
+                  // Intercept the execute request action
+                  executeRequest: (oriAction) => (req) => {
+                    try {
+                      // Get the global parameters from localStorage
+                      const workspaceId = localStorage.getItem('swagger_ui_workspace_id');
+                      const changeSetId = localStorage.getItem('swagger_ui_change_set_id');
+                      
+                      // Clone the request object
+                      let requestWithParams = {...req};
+                      
+                      // Check if the request has parameters
+                      if (!requestWithParams.parameters) {
+                        requestWithParams.parameters = {};
+                      }
+                      
+                      // Add workspace_id if it's not already set and we have a global value
+                      if (workspaceId && !requestWithParams.parameters.workspace_id) {
+                        requestWithParams.parameters.workspace_id = workspaceId;
+                      }
+                      
+                      // Add change_set_id if it's not already set and we have a global value
+                      if (changeSetId && !requestWithParams.parameters.change_set_id) {
+                        requestWithParams.parameters.change_set_id = changeSetId;
+                      }
+                      
+                      return oriAction(requestWithParams);
+                    } catch (error) {
+                      console.error("Error in executeRequest interceptor:", error);
+                      return oriAction(req);
+                    }
+                  }
+                }
+              }
+            }
+          };
+        };
+        
         const ui = SwaggerUIBundle({
           url: "/openapi.json",
           dom_id: '#swagger-ui',
@@ -250,7 +356,8 @@ async fn serve_swagger_ui() -> impl IntoResponse {
             SwaggerUIStandalonePreset
           ],
           plugins: [
-            SwaggerUIBundle.plugins.DownloadUrl
+            SwaggerUIBundle.plugins.DownloadUrl,
+            GlobalParametersPlugin
           ],
           layout: "StandaloneLayout",
           defaultModelsExpandDepth: 3,
@@ -274,59 +381,239 @@ async fn serve_swagger_ui() -> impl IntoResponse {
           },
           // Add a custom authorization UI
           onComplete: function() {
-            // Get saved token from localStorage
+            // Get saved values from localStorage
             const savedToken = localStorage.getItem('swagger_ui_token') || '';
+            const savedWorkspaceId = localStorage.getItem('swagger_ui_workspace_id') || '';
+            const savedChangeSetId = localStorage.getItem('swagger_ui_change_set_id') || '';
 
             // Create UI elements
             const authContainer = document.createElement('div');
             authContainer.id = 'swagger-ui-auth';
             authContainer.style.cssText = 'margin:20px 0; padding:20px; background:#fafafa; border:1px solid #ddd;';
 
-            const heading = document.createElement('h3');
-            heading.textContent = 'JWT Authorization';
-            heading.style.margin = '0 0 10px 0';
+            // Add a title for the global parameters section
+            const globalTitle = document.createElement('h3');
+            globalTitle.textContent = 'Global Parameters';
+            globalTitle.style.margin = '0 0 15px 0';
+            globalTitle.style.borderBottom = '1px solid #ddd';
+            globalTitle.style.paddingBottom = '10px';
+            
+            const globalDescription = document.createElement('p');
+            globalDescription.textContent = 'Set global parameters that will be automatically applied to all API requests.';
+            globalDescription.style.margin = '0 0 20px 0';
+            globalDescription.style.color = '#666';
+            
+            // Function to create form groups for consistency
+            const createFormGroup = (title, inputId, placeholder, savedValue, description) => {
+              const group = document.createElement('div');
+              group.style.marginBottom = '15px';
+              
+              const label = document.createElement('label');
+              label.textContent = title;
+              label.style.display = 'block';
+              label.style.fontWeight = 'bold';
+              label.style.marginBottom = '5px';
+              
+              const input = document.createElement('input');
+              input.type = 'text';
+              input.id = inputId;
+              input.placeholder = placeholder;
+              input.value = savedValue;
+              input.style.cssText = 'width:100%; padding:8px; border:1px solid #ddd;';
+              
+              group.appendChild(label);
+              
+              if (description) {
+                const desc = document.createElement('p');
+                desc.textContent = description;
+                desc.style.margin = '0 0 5px 0';
+                desc.style.fontSize = '12px';
+                desc.style.color = '#666';
+                group.appendChild(desc);
+              }
+              
+              group.appendChild(input);
+              
+              return { group, input };
+            };
 
-            const tokenInput = document.createElement('input');
-            tokenInput.type = 'text';
-            tokenInput.id = 'jwt-token-input';
-            tokenInput.placeholder = 'Enter JWT token';
-            tokenInput.value = savedToken;
-            tokenInput.style.cssText = 'width:100%; padding:8px; margin:10px 0; border:1px solid #ddd;';
+            // Create form elements
+            const { group: tokenGroup, input: tokenInput } = createFormGroup(
+              'JWT Authorization Token', 
+              'jwt-token-input', 
+              'Enter JWT token', 
+              savedToken,
+              'Required: Authorization token will be added as a Bearer token in the Authorization header'
+            );
+            
+            const { group: workspaceGroup, input: workspaceInput } = createFormGroup(
+              'Workspace ID', 
+              'workspace-id-input', 
+              'Enter workspace ID (optional)', 
+              savedWorkspaceId,
+              'Optional: Will be added to requests that require a workspace_id parameter'
+            );
+            
+            const { group: changeSetGroup, input: changeSetInput } = createFormGroup(
+              'Change Set ID', 
+              'change-set-id-input', 
+              'Enter change set ID (optional)', 
+              savedChangeSetId,
+              'Optional: Will be added to requests that require a change_set_id parameter'
+            );
 
             const buttonContainer = document.createElement('div');
+            buttonContainer.style.marginTop = '10px';
 
             const authButton = document.createElement('button');
-            authButton.textContent = 'Authorize';
+            authButton.textContent = 'Save Settings';
             authButton.style.cssText = 'background:#4990e2; color:white; border:none; padding:8px 16px; margin-right:10px; cursor:pointer;';
 
             const clearButton = document.createElement('button');
-            clearButton.textContent = 'Clear';
+            clearButton.textContent = 'Clear All';
             clearButton.style.cssText = 'background:#e57373; color:white; border:none; padding:8px 16px; cursor:pointer;';
 
             // Event handlers
+            // Create a notification div for status messages
+            const notificationDiv = document.createElement('div');
+            notificationDiv.id = 'swagger-notification';
+            notificationDiv.style.cssText = 'margin-top:10px; padding:8px; border-radius:4px; display:none;';
+            
+            // Function to show notifications without using alert()
+            const showNotification = (message, isSuccess = true) => {
+              notificationDiv.textContent = message;
+              notificationDiv.style.display = 'block';
+              notificationDiv.style.backgroundColor = isSuccess ? '#dff0d8' : '#f2dede';
+              notificationDiv.style.color = isSuccess ? '#3c763d' : '#a94442';
+              
+              // Hide after 3 seconds
+              setTimeout(() => {
+                notificationDiv.style.display = 'none';
+              }, 3000);
+            };
+            
             authButton.onclick = function() {
+              // Clear any existing notifications
+              notificationDiv.style.display = 'none';
+              
               const token = tokenInput.value.trim();
-              if (token) {
-                localStorage.setItem('swagger_ui_token', token);
-                alert('Token saved. The Authorization header will be added to all requests.');
-              } else {
-                alert('Please enter a valid token');
+              const workspaceId = workspaceInput.value.trim();
+              const changeSetId = changeSetInput.value.trim();
+              
+              // Validate auth token is required
+              if (!token) {
+                showNotification('⚠️ Authorization token is required.', false);
+                return;
               }
+              
+              // Save all values to localStorage
+              localStorage.setItem('swagger_ui_token', token);
+              localStorage.setItem('swagger_ui_workspace_id', workspaceId);
+              localStorage.setItem('swagger_ui_change_set_id', changeSetId);
+              
+              showNotification('Settings saved. Your values will be applied to all requests.');
+              
+              // Apply the authorization token
+              setTimeout(() => {
+                window.ui.preauthorizeApiKey('Bearer', token);
+              }, 100);
             };
 
             clearButton.onclick = function() {
+              // Clear any existing notifications
+              notificationDiv.style.display = 'none';
+              
+              // Clear input fields
               tokenInput.value = '';
+              workspaceInput.value = '';
+              changeSetInput.value = '';
+              
+              // Clear localStorage
               localStorage.removeItem('swagger_ui_token');
-              alert('Token cleared. The Authorization header will not be added to requests.');
+              localStorage.removeItem('swagger_ui_workspace_id');
+              localStorage.removeItem('swagger_ui_change_set_id');
+              
+              showNotification('All settings cleared.');
+              
+              // Remove authorization
+              setTimeout(() => {
+                window.ui.preauthorizeApiKey('Bearer', '');
+              }, 100);
             };
 
+            // Add a reload the page button to force refresh the parameters
+            const reloadButton = document.createElement('button');
+            reloadButton.textContent = 'Apply & Reload';
+            reloadButton.style.cssText = 'background:#4CAF50; color:white; border:none; padding:8px 16px; margin-right:10px; cursor:pointer;';
+            reloadButton.onclick = function() {
+              // Clear any existing notifications
+              notificationDiv.style.display = 'none';
+              
+              // Save settings
+              const token = tokenInput.value.trim();
+              const workspaceId = workspaceInput.value.trim();
+              const changeSetId = changeSetInput.value.trim();
+              
+              // Validate auth token is required
+              if (!token) {
+                showNotification('⚠️ Authorization token is required.', false);
+                return;
+              }
+              
+              localStorage.setItem('swagger_ui_token', token);
+              localStorage.setItem('swagger_ui_workspace_id', workspaceId);
+              localStorage.setItem('swagger_ui_change_set_id', changeSetId);
+              
+              // Show notification and reload
+              showNotification('Settings saved. Reloading page to apply changes...');
+              setTimeout(() => {
+                window.location.reload();
+              }, 1000);
+            };
+            
             // Assemble the DOM
             buttonContainer.appendChild(authButton);
             buttonContainer.appendChild(clearButton);
+            buttonContainer.appendChild(reloadButton);
 
-            authContainer.appendChild(heading);
-            authContainer.appendChild(tokenInput);
+            authContainer.appendChild(globalTitle);
+            authContainer.appendChild(globalDescription);
+            authContainer.appendChild(tokenGroup);
+            authContainer.appendChild(workspaceGroup);
+            authContainer.appendChild(changeSetGroup);
             authContainer.appendChild(buttonContainer);
+            authContainer.appendChild(notificationDiv);
+            
+            // Add a status indicator that shows when global params are active
+            const statusDiv = document.createElement('div');
+            statusDiv.style.cssText = 'margin-top:15px; padding:8px; border-left:4px solid #4990e2; background:#f8f8f8;';
+            statusDiv.innerHTML = '<strong>Status:</strong> <span id="global-params-status">Loading...</span>';
+            authContainer.appendChild(statusDiv);
+            
+            // Simple status update function
+            const updateStatus = () => {
+              const hasWorkspace = localStorage.getItem('swagger_ui_workspace_id');
+              const hasChangeSet = localStorage.getItem('swagger_ui_change_set_id');
+              const hasToken = localStorage.getItem('swagger_ui_token');
+              
+              const statusSpan = document.getElementById('global-params-status');
+              if (statusSpan) {
+                const items = [];
+                if (hasToken) items.push('Auth Token');
+                if (hasWorkspace) items.push('Workspace ID');
+                if (hasChangeSet) items.push('Change Set ID');
+                
+                statusSpan.textContent = items.length > 0 ? 
+                  `Using global ${items.join(', ')}` : 
+                  'No global parameters set';
+                statusSpan.style.color = items.length > 0 ? '#3c763d' : '#777';
+              }
+            };
+            
+            // Update status on load and when values change
+            updateStatus();
+            authButton.addEventListener('click', updateStatus);
+            clearButton.addEventListener('click', updateStatus);
 
             // Insert at the top of the Swagger UI
             const swaggerUIContainer = document.getElementById('swagger-ui');

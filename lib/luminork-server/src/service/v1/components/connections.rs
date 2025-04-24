@@ -54,15 +54,15 @@ pub enum Connection {
 /// Returns the component ID if found, or appropriate error if not found or if duplicate names exist
 pub async fn find_component_id_by_name(
     ctx: &dal::DalContext,
-    component_list: &[Component],
+    component_list: &[ComponentId],
     component_name: &str,
 ) -> Result<ComponentId, ComponentsError> {
     let mut matching_components = Vec::new();
 
-    for c in component_list {
-        let name = c.name(ctx).await?;
+    for component_id in component_list {
+        let name = Component::name_by_id(ctx, *component_id).await?;
         if name == component_name {
-            matching_components.push(c.id());
+            matching_components.push(*component_id);
         }
     }
 
@@ -81,7 +81,7 @@ pub async fn find_component_id_by_name(
 pub async fn resolve_component_reference(
     ctx: &dal::DalContext,
     component_ref: &ComponentReference,
-    component_list: &[Component],
+    component_list: &[ComponentId],
 ) -> Result<ComponentId, ComponentsError> {
     match component_ref {
         ComponentReference::ById { component_id } => Ok(*component_id),
@@ -144,7 +144,7 @@ pub async fn handle_connection(
     connection: &Connection,
     component_id: ComponentId,
     variant_id: SchemaVariantId,
-    component_list: &[Component],
+    component_list: &[ComponentId],
     is_add: bool,
 ) -> Result<(), ComponentsError> {
     match connection {

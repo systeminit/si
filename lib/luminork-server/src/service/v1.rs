@@ -28,6 +28,7 @@ pub use change_sets::{
 pub use components::{
     ComponentV1RequestPath,
     ComponentsError,
+    ComponentsResult,
     connections::{
         ComponentReference,
         Connection,
@@ -38,11 +39,12 @@ pub use components::{
         CreateComponentV1Response,
     },
     delete_component::DeleteComponentV1Response,
+    find_component::FindComponentV1Request,
     get_component::{
-        GeometryAndViewAndName,
         GetComponentV1Response,
         GetComponentV1ResponseManagementFunction,
     },
+    list_components::ListComponentsV1Response,
     update_component::{
         ComponentPropKey,
         DomainPropPath,
@@ -63,6 +65,12 @@ pub use schema::{
     list_schema::ListSchemaV1Response,
 };
 pub use workspaces::WorkspaceError;
+
+pub use crate::api_types::component::v1::{
+    ComponentPropViewV1,
+    ComponentViewV1,
+    ConnectionViewV1,
+};
 
 /// OpenAPI documentation for v1 API
 #[derive(OpenApi)]
@@ -85,6 +93,8 @@ pub use workspaces::WorkspaceError;
         change_sets::request_approval::request_approval,
         components::get_component::get_component,
         components::create_component::create_component,
+        components::list_components::list_components,
+        components::find_component::find_component,
         components::update_component::update_component,
         components::delete_component::delete_component,
         management::run_prototype::run_prototype,
@@ -108,7 +118,6 @@ pub use workspaces::WorkspaceError;
             CreateComponentV1Request,
             CreateComponentV1Response,
             Connection,
-            GeometryAndViewAndName,
             ListSchemaV1Response,
             UpdateComponentV1Request,
             UpdateComponentV1Response,
@@ -119,7 +128,12 @@ pub use workspaces::WorkspaceError;
             ComponentPropKey,
             DomainPropPath,
             ConnectionPoint,
-            ComponentReference
+            ComponentReference,
+            ComponentViewV1,
+            ComponentPropViewV1,
+            ConnectionViewV1,
+            ListComponentsV1Response,
+            FindComponentV1Request,
         )
     ),
     tags(
