@@ -4,7 +4,6 @@ use axum::response::Json;
 use dal::{
     AttributeValue,
     Component,
-    ComponentId,
     Schema,
     diagram::view::View,
 };
@@ -30,7 +29,10 @@ use crate::{
         PosthogEventTracker,
         change_set::ChangeSetDalContext,
     },
-    service::v1::ComponentsError,
+    service::v1::{
+        ComponentViewV1,
+        ComponentsError,
+    },
 };
 
 #[utoipa::path(
@@ -93,7 +95,7 @@ pub async fn create_component(
     }
 
     if !payload.connections.is_empty() {
-        let component_list = Component::list(ctx).await?;
+        let component_list = Component::list_ids(ctx).await?;
 
         // Process all connections
         for connection in payload.connections.iter() {
@@ -112,7 +114,7 @@ pub async fn create_component(
     ctx.commit().await?;
 
     Ok(Json(CreateComponentV1Response {
-        component_id: component.id(),
+        component: ComponentViewV1::assemble(ctx, component.id()).await?,
     }))
 }
 
@@ -145,6 +147,5 @@ pub struct CreateComponentV1Request {
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateComponentV1Response {
-    #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VY")]
-    pub component_id: ComponentId,
+    pub component: ComponentViewV1,
 }

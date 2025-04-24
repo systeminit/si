@@ -302,7 +302,7 @@ si_buck2_resource(
         ),
     ),
     links = [
-        link("http://127.0.0.1:5380"),
+        link("http://127.0.0.1:5380/swagger-ui", "swagger-ui"),
     ],
     **RUST_RESOURCE_ARGS
 )

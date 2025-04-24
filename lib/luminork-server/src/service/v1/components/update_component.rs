@@ -33,13 +33,14 @@ use super::{
     },
 };
 use crate::{
+    api_types::component::v1::ComponentViewV1,
     extract::{
         PosthogEventTracker,
         change_set::ChangeSetDalContext,
     },
     service::v1::{
         ComponentsError,
-        components::get_component::bare_component_response,
+        components::get_component::into_front_end_type,
     },
 };
 
@@ -121,7 +122,7 @@ pub async fn update_component(
 
     // Handle connection changes
     if !payload.connection_changes.add.is_empty() || !payload.connection_changes.remove.is_empty() {
-        let component_list = Component::list(ctx).await?;
+        let component_list = Component::list_ids(ctx).await?;
 
         // Process connections to add
         for connection in payload.connection_changes.add.iter() {
@@ -152,7 +153,7 @@ pub async fn update_component(
 
     // Send a websocket event about the component update
     let component = Component::get_by_id(ctx, component_id).await?;
-    WsEvent::component_updated(ctx, bare_component_response(ctx, component).await?)
+    WsEvent::component_updated(ctx, into_front_end_type(ctx, component).await?)
         .await?
         .publish_on_commit(ctx)
         .await?;
@@ -160,7 +161,9 @@ pub async fn update_component(
     // Commit the changes
     ctx.commit().await?;
 
-    Ok(Json(UpdateComponentV1Response {}))
+    Ok(Json(UpdateComponentV1Response {
+        component: ComponentViewV1::assemble(ctx, component_id).await?,
+    }))
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
@@ -217,4 +220,6 @@ pub struct ConnectionDetails {
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateComponentV1Response {}
+pub struct UpdateComponentV1Response {
+    pub component: ComponentViewV1,
+}

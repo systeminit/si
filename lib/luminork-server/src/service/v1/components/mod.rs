@@ -20,7 +20,9 @@ use crate::AppState;
 pub mod connections;
 pub mod create_component;
 pub mod delete_component;
+pub mod find_component;
 pub mod get_component;
+pub mod list_components;
 pub mod update_component;
 
 #[remain::sorted]
@@ -57,6 +59,8 @@ pub enum ComponentsError {
     #[error("ws event error: {0}")]
     WsEvent(#[from] dal::WsEventError),
 }
+
+pub type ComponentsResult<T> = Result<T, ComponentsError>;
 
 #[derive(Deserialize, ToSchema)]
 pub struct ComponentV1RequestPath {
@@ -107,6 +111,8 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", post(create_component::create_component))
+        .route("/", get(list_components::list_components))
+        .route("/find", post(find_component::find_component))
         .nest(
             "/:component_id",
             Router::new()

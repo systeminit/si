@@ -1,53 +1,48 @@
-use std::collections::HashMap;
-
-use axum::{
-    extract::Path,
-    response::Json,
-};
+use axum::response::Json;
 use dal::{
     Component,
     management::prototype::ManagementPrototype,
 };
-use serde::Serialize;
-use si_id::ManagementPrototypeId;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use utoipa::{
     self,
     ToSchema,
 };
 
 use super::{
-    ComponentV1RequestPath,
     ComponentsError,
+    connections::{
+        ComponentReference,
+        resolve_component_reference,
+    },
+    get_component::{
+        GetComponentV1Response,
+        GetComponentV1ResponseManagementFunction,
+    },
 };
 use crate::{
     api_types::component::v1::ComponentViewV1,
     extract::change_set::ChangeSetDalContext,
 };
 
-#[derive(Serialize, Debug, ToSchema)]
+#[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct GetComponentV1Response {
-    pub component: ComponentViewV1,
-    pub management_functions: Vec<GetComponentV1ResponseManagementFunction>,
-    //todo: add actions?
-}
-
-#[derive(Serialize, Debug, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct GetComponentV1ResponseManagementFunction {
-    #[schema(value_type = String)]
-    pub management_prototype_id: ManagementPrototypeId,
-    pub name: String,
+pub struct FindComponentV1Request {
+    #[serde(flatten)]
+    pub component_ref: ComponentReference,
 }
 
 #[utoipa::path(
-    get,
-    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}",
+    post,
+    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/components/find",
     params(
         ("workspace_id", description = "Workspace identifier"),
         ("change_set_id", description = "Change set identifier"),
-        ("component_id", description = "Component identifier")
     ),
+    request_body = FindComponentV1Request,
     tag = "components",
     responses(
         (status = 200, description = "Component retrieved successfully", body = GetComponentV1Response),
@@ -56,10 +51,14 @@ pub struct GetComponentV1ResponseManagementFunction {
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
-pub async fn get_component(
+pub async fn find_component(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
-    Path(ComponentV1RequestPath { component_id }): Path<ComponentV1RequestPath>,
+    payload: Result<Json<FindComponentV1Request>, axum::extract::rejection::JsonRejection>,
 ) -> Result<Json<GetComponentV1Response>, ComponentsError> {
+    let Json(payload) = payload?;
+    let component_list = Component::list_ids(ctx).await?;
+    let component_id =
+        resolve_component_reference(ctx, &payload.component_ref, &component_list).await?;
     let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
     let management_functions = ManagementPrototype::list_for_variant_id(ctx, schema_variant_id)
         .await?
@@ -74,19 +73,4 @@ pub async fn get_component(
         component: ComponentViewV1::assemble(ctx, component_id).await?,
         management_functions,
     }))
-}
-
-pub async fn into_front_end_type(
-    ctx: &dal::DalContext,
-    component: Component,
-) -> Result<si_frontend_types::DiagramComponentView, ComponentsError> {
-    let mut socket_map = HashMap::new();
-    Ok(component
-        .into_frontend_type(
-            ctx,
-            None,
-            component.change_status(ctx).await?,
-            &mut socket_map,
-        )
-        .await?)
 }

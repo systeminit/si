@@ -19,6 +19,7 @@ use frigg::FriggError;
 use si_data_spicedb::SpiceDbError;
 use thiserror::Error;
 
+mod api_types;
 mod app;
 mod app_state;
 mod config;
