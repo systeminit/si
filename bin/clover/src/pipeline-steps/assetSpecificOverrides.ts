@@ -924,6 +924,17 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnetid"] });
     setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnets"] });
   }],
+  ["AWS::EC2::TransitGateway", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const idSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Id" && s.data.kind === "output",
+    );
+    if (!idSocket) return;
+    setAnnotationOnSocket(idSocket, { tokens: ["TransitGatewayId"] });
+    setAnnotationOnSocket(idSocket, { tokens: ["TransitGatewayId"] });
+    setAnnotationOnSocket(idSocket, { tokens: ["Transit Gateway Id"] });
+  }],
 ]);
 
 function attachExtraActionFunction(
