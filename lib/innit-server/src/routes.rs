@@ -5,7 +5,11 @@ use axum::{
         Json,
         Response,
     },
-    routing::get,
+    routing::{
+        get,
+        post,
+        put,
+    },
 };
 use hyper::StatusCode;
 use serde_json::{
@@ -19,6 +23,8 @@ use tower_http::{
     cors::CorsLayer,
 };
 
+mod clear_cache;
+mod create_parameter;
 mod get_parameter;
 mod list_parameters;
 
@@ -33,7 +39,12 @@ pub fn routes(state: AppState) -> Router {
     let mut router: Router<AppState> = Router::new();
     router = router
         .route("/", get(system_status_route))
+        .route("/cache/clear", post(clear_cache::clear_cache_route))
         .route("/parameter/*path", get(get_parameter::get_parameter_route))
+        .route(
+            "/parameter/*path",
+            put(create_parameter::create_parameter_route),
+        )
         .route(
             "/parameters/*path",
             get(list_parameters::list_parameters_route),

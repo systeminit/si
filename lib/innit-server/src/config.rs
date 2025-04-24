@@ -42,6 +42,9 @@ type Result<T> = std::result::Result<T, ConfigError>;
 /// The config for the forklift server.
 #[derive(Debug, Builder)]
 pub struct Config {
+    #[builder(default = "default_cache_ttl()")]
+    cache_ttl: Duration,
+
     #[builder]
     client_ca_cert: Option<CertificateSource>,
 
@@ -56,6 +59,9 @@ pub struct Config {
 
     #[builder(default = "get_default_socket_addr()")]
     socket_addr: SocketAddr,
+
+    #[builder(default = "default_test_endpoint()")]
+    test_endpoint: Option<String>,
 }
 
 impl StandardConfig for Config {
@@ -86,10 +92,20 @@ impl Config {
     pub fn socket_addr(&self) -> &SocketAddr {
         &self.socket_addr
     }
+
+    pub fn cache_ttl(&self) -> Duration {
+        self.cache_ttl
+    }
+
+    pub fn test_endpoint(&self) -> Option<String> {
+        self.test_endpoint.clone()
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ConfigFile {
+    #[serde(default = "default_cache_ttl")]
+    cache_ttl: Duration,
     #[serde(default)]
     client_ca_cert: Option<CertificateSource>,
     #[serde(default = "random_instance_id")]
@@ -100,16 +116,20 @@ pub struct ConfigFile {
     quiescent_period_secs: u64,
     #[serde(default = "get_default_socket_addr")]
     socket_addr: SocketAddr,
+    #[serde(default = "default_test_endpoint")]
+    test_endpoint: Option<String>,
 }
 
 impl Default for ConfigFile {
     fn default() -> Self {
         Self {
+            cache_ttl: default_cache_ttl(),
             client_ca_cert: Default::default(),
             instance_id: random_instance_id(),
             concurrency_limit: default_concurrency_limit(),
             quiescent_period_secs: default_quiescent_period_secs(),
             socket_addr: get_default_socket_addr(),
+            test_endpoint: default_test_endpoint(),
         }
     }
 }
@@ -133,6 +153,10 @@ impl TryFrom<ConfigFile> for Config {
     }
 }
 
+fn default_cache_ttl() -> Duration {
+    Duration::from_secs(86400) // 24 hours
+}
+
 fn random_instance_id() -> String {
     Ulid::new().to_string()
 }
@@ -151,6 +175,10 @@ fn default_quiescent_period_secs() -> u64 {
 
 fn get_default_socket_addr() -> SocketAddr {
     SocketAddr::from(([0, 0, 0, 0], 5166))
+}
+
+fn default_test_endpoint() -> Option<String> {
+    None
 }
 
 #[allow(clippy::disallowed_methods)] // Used to determine if running in development

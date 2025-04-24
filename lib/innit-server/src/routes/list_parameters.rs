@@ -2,7 +2,10 @@ use axum::extract::{
     Path,
     State,
 };
-use innit_core::ListParametersResponse;
+use innit_core::{
+    ListParametersResponse,
+    Parameter,
+};
 use telemetry::tracing::info;
 
 use super::AppError;
@@ -14,6 +17,7 @@ use crate::{
 pub async fn list_parameters_route(
     Path(path): Path<String>,
     State(AppState {
+        parameter_cache,
         parameter_store_client,
         ..
     }): State<AppState>,
@@ -24,15 +28,30 @@ pub async fn list_parameters_route(
         path
     };
 
-    let parameters = parameter_store_client
+    if let Some(parameters) = parameter_cache.get_parameters_by_path(&path).await {
+        info!("Fetched parameter from cache at path: {path}");
+        return Ok(Json(ListParametersResponse {
+            parameters,
+            is_cached: true,
+        }));
+    }
+
+    let parameters: Vec<Parameter> = parameter_store_client
         .parameters_by_path(path.clone())
         .await?
         .iter()
         .cloned()
-        .map(innit_core::Parameter::from)
+        .map(Parameter::from)
         .collect();
 
-    info!("Serving parameters at path: {path}");
+    parameter_cache
+        .set_parameters_by_path(path.clone(), parameters.clone())
+        .await;
 
-    Ok(Json(ListParametersResponse { parameters }))
+    info!("Fetched parameter from ParameterStore at path: {path}");
+
+    Ok(Json(ListParametersResponse {
+        parameters,
+        is_cached: false,
+    }))
 }
