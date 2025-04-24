@@ -1,10 +1,10 @@
 <template>
   <Modal
     ref="modalRef"
+    :capitalizeTitle="false"
+    hideExitButton
     size="max"
     title="Create a connection"
-    hideExitButton
-    :capitalizeTitle="false"
     @click="focusOnInput"
   >
     <template #titleIcons>
@@ -32,71 +32,53 @@
       <div class="flex flex-row grow min-h-0 children:basis-1/2">
         <!-- Socket A -->
         <ConnectionMenuSocketList
-          :doneLoading="doneOpening"
           :active="activeSide === 'a'"
+          :controlScheme="controlScheme"
+          :doneLoading="doneOpening"
+          :filteringBySearchString="searchStringA"
           :highlightedIndex="highlightedIndex"
           :highlightedSocket="highlightedSocket"
           :listItems="listAItems"
           :selectedComponent="selectedComponentA"
           :selectedSocket="selectedSocketA"
-          :filteringBySearchString="searchStringA"
-          :controlScheme="controlScheme"
           @select="(index: number) => selectAndProcess('a', index)"
         />
         <!-- Socket B -->
         <ConnectionMenuSocketList
-          :doneLoading="doneOpening"
           :active="activeSide === 'b'"
+          :controlScheme="controlScheme"
+          :doneLoading="doneOpening"
+          :filteringBySearchString="searchStringB"
           :highlightedIndex="highlightedIndex"
           :highlightedSocket="highlightedSocket"
           :listItems="listBItems"
           :selectedComponent="selectedComponentB"
           :selectedSocket="selectedSocketB"
-          :filteringBySearchString="searchStringB"
-          :controlScheme="controlScheme"
           @select="(index: number) => selectAndProcess('b', index)"
         />
       </div>
     </div>
     <div
-      class="flex flex-row w-full h-8 mt-sm items-center justify-end gap-sm text-xs"
+      class="flex w-full h-8 mt-sm items-center justify-between gap-sm text-xs"
     >
-      <div class="flex flex-row gap-2xs items-center">
-        <TextPill>Up</TextPill>
-        <TextPill>Down</TextPill>
-        <div>to navigate</div>
+      <div>
+        <span
+          v-if="fetchDataForAllViewsStatus.isPending"
+          class="flex items-center gap-xs"
+        >
+          <Icon name="loader" size="sm" /> Loading data for other views. Some
+          connection candidates may not be shown yet.
+        </span>
+        <span v-else-if="runningUpdateMenu" class="flex items-center gap-xs">
+          <Icon name="loader" size="sm" /> Computing possible connections...
+        </span>
       </div>
-      <div
-        :class="
-          clsx(
-            'border-l h-full',
-            themeClasses('border-neutral-300', 'border-neutral-600'),
-          )
-        "
-      />
-      <div class="flex flex-row gap-2xs items-center">
-        <TextPill>{{ controlScheme === "arrows" ? "Right" : "Tab" }}</TextPill>
-        <template v-if="controlScheme === 'arrows'">
-          <div>or</div>
-          <TextPill>Enter</TextPill>
-        </template>
-        <div>to select</div>
-      </div>
-      <div
-        :class="
-          clsx(
-            'border-l h-full',
-            themeClasses('border-neutral-300', 'border-neutral-600'),
-          )
-        "
-      />
-      <div class="flex flex-row gap-2xs items-center">
-        <TextPill>{{
-          controlScheme === "arrows" ? "Left" : "Shift + Tab"
-        }}</TextPill>
-        <div>to switch back to the list on the left</div>
-      </div>
-      <template v-if="controlScheme !== 'arrows'">
+      <div class="flex gap-sm">
+        <div class="flex gap-2xs items-center">
+          <TextPill>Up</TextPill>
+          <TextPill>Down</TextPill>
+          <div>to navigate</div>
+        </div>
         <div
           :class="
             clsx(
@@ -106,17 +88,51 @@
           "
         />
         <div class="flex flex-row gap-2xs items-center">
-          <TextPill>Enter</TextPill>
-          <div>to create a connection</div>
+          <TextPill>{{
+            controlScheme === "arrows" ? "Right" : "Tab"
+          }}</TextPill>
+          <template v-if="controlScheme === 'arrows'">
+            <div>or</div>
+            <TextPill>Enter</TextPill>
+          </template>
+          <div>to select</div>
         </div>
-      </template>
+        <div
+          :class="
+            clsx(
+              'border-l h-full',
+              themeClasses('border-neutral-300', 'border-neutral-600'),
+            )
+          "
+        />
+        <div class="flex flex-row gap-2xs items-center">
+          <TextPill>{{
+            controlScheme === "arrows" ? "Left" : "Shift + Tab"
+          }}</TextPill>
+          <div>to switch back to the list on the left</div>
+        </div>
+        <template v-if="controlScheme !== 'arrows'">
+          <div
+            :class="
+              clsx(
+                'border-l h-full',
+                themeClasses('border-neutral-300', 'border-neutral-600'),
+              )
+            "
+          />
+          <div class="flex flex-row gap-2xs items-center">
+            <TextPill>Enter</TextPill>
+            <div>to create a connection</div>
+          </div>
+        </template>
+      </div>
     </div>
   </Modal>
 </template>
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { Modal, themeClasses } from "@si/vue-lib/design-system";
+import { Modal, themeClasses, Icon } from "@si/vue-lib/design-system";
 import {
   computed,
   nextTick,
@@ -132,6 +148,7 @@ import {
   ConnectionDirection,
   ConnectionMenuData,
   generateSocketPaths,
+  SocketWithParent,
   useComponentsStore,
 } from "@/store/components.store";
 import { DiagramSocketData } from "@/components/ModelingDiagram/diagram_types";
@@ -152,6 +169,10 @@ const startingSearchStringB = ref("");
 
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
+
+const fetchDataForAllViewsStatus = componentsStore.getRequestStatus(
+  "FETCH_ALL_COMPONENTS",
+);
 
 const doneOpening = ref(false);
 
@@ -245,12 +266,14 @@ const undoASelection = () => {
   focusOnInput();
 };
 
+const runningUpdateMenu = ref(false);
 // Generate the options on both sides
 // TODO Break this into computed variables
 const updateMenu = async () => {
   if (!modalRef.value?.isOpen) {
     return;
   }
+  runningUpdateMenu.value = true;
 
   const [activeSideData, otherSideData] =
     activeSide.value === "a"
@@ -363,13 +386,35 @@ const updateMenu = async () => {
     originatorSocketPathKey: string;
   };
 
-  const validPeers = matchedActiveSideSockets
-    .flatMap(({ component, socket, label }) =>
-      peersFunction(socket.def, component.def.id).possiblePeers.map((p) => ({
-        originatorSocketPathKey: generateUniquePathKey(label, socket),
-        ...p,
-      })),
-    )
+  // This goofy promise and timeout structure exists so we don't block the UI when running a thousand
+  const allPossiblePeers = _.flatten(
+    await Promise.all(
+      matchedActiveSideSockets.map(
+        ({ component, socket, label }) =>
+          new Promise((resolve) => {
+            setTimeout(() => {
+              resolve(
+                peersFunction(socket.def, component.def.id).possiblePeers.map(
+                  (p) => ({
+                    originatorSocketPathKey: generateUniquePathKey(
+                      label,
+                      socket,
+                    ),
+                    ...p,
+                  }),
+                ),
+              );
+            }, 0);
+          }),
+      ),
+    ),
+  ) as Array<
+    SocketWithParent & {
+      originatorSocketPathKey: string;
+    }
+  >;
+
+  const validPeers = allPossiblePeers
     .filter(
       (s) =>
         !otherSideData.componentId ||
@@ -431,9 +476,10 @@ const updateMenu = async () => {
 
   activeSideList.value = activeSideSocketsWithPeers;
   otherSideList.value = matchedOtherSideSockets;
+
+  runningUpdateMenu.value = false;
 };
 const debouncedUpdate = _.debounce(updateMenu, 20, {
-  leading: true,
   trailing: true,
 });
 watch(activeSide, debouncedUpdate, { immediate: true });
