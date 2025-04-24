@@ -53,3 +53,5 @@ component/toolbox/results/
 
 # fuse filesystem
 /mnt/
+
+**/CLAUDE.local.md

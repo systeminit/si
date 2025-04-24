@@ -249,6 +249,178 @@ async fn write_and_read_many_for_workspace_id() {
     );
 }
 
+#[tokio::test]
+async fn read_many_for_workspace_paginated() {
+    let token = CancellationToken::new();
+
+    let (ldb, _): (TestLayerDb, _) = LayerDb::from_services(
+        setup_pg_db("fun_run_write_and_read_many_for_workspace_paginated").await,
+        setup_nats_client(Some(
+            "fun_run_write_and_read_many_for_workspace_paginated".to_string(),
+        ))
+        .await,
+        setup_compute_executor(),
+        CacheConfig::default(),
+        token,
+    )
+    .await
+    .expect("cannot create layerdb");
+    ldb.pg_migrate().await.expect("migrate ldb");
+
+    let (tenancy, actor) = (
+        Tenancy::new(WorkspacePk::new(), ChangeSetId::new()),
+        Actor::User(UserPk::new()),
+    );
+
+    let values = vec![
+        Arc::new(create_func_run(actor, tenancy, "dead money")),
+        Arc::new(create_func_run(actor, tenancy, "honest hearts")),
+        Arc::new(create_func_run(actor, tenancy, "old world blues")),
+        Arc::new(create_func_run(actor, tenancy, "lonesome road")),
+    ];
+    // create func runs
+    for value in values {
+        ldb.func_run()
+            .write(value.clone(), None, tenancy, actor)
+            .await
+            .expect("failed to write to layerdb");
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+    }
+
+    let read_many_in_workspace_values = ldb
+        .func_run()
+        .read_many_for_workspace(tenancy.workspace_pk)
+        .await
+        .expect("error getting data from pg")
+        .expect("should be able to read");
+    dbg!(&read_many_in_workspace_values);
+    // let's get the very first value (no cursor, limit 1)
+    let first_value = ldb
+        .func_run()
+        .read_many_for_workspace_paginated(tenancy.workspace_pk, tenancy.change_set_id, 1, None)
+        .await
+        .expect("error getting data from pg")
+        .expect("should be able to read")
+        .pop()
+        .expect("has one entry");
+
+    // the first returned should be the last func
+    let cursor = first_value.id();
+    assert_eq!("lonesome road", first_value.function_name());
+
+    // now let's get the next 2 values (cursor is the first result's RunId and a limit of 2)
+    let next_two_values = ldb
+        .func_run()
+        .read_many_for_workspace_paginated(
+            tenancy.workspace_pk,
+            tenancy.change_set_id,
+            2,
+            Some(cursor),
+        )
+        .await
+        .expect("error getting data from pg")
+        .expect("should be able to read");
+    dbg!(&next_two_values);
+    assert_eq!(2, next_two_values.len());
+    let next_two_expected: HashSet<FuncRunId> =
+        HashSet::from_iter(next_two_values.iter().map(|v| v.id()));
+
+    // now let's start at the same cursor (the first result returned) and fetch a limit of 10 (which should be all of the remaining funcs)
+    let all_remaining = ldb
+        .func_run()
+        .read_many_for_workspace_paginated(
+            tenancy.workspace_pk,
+            tenancy.change_set_id,
+            10,
+            Some(cursor),
+        )
+        .await
+        .expect("error getting data from pg")
+        .expect("should be able to read");
+    dbg!(&all_remaining);
+    assert_eq!(3, all_remaining.len());
+
+    // Create some more runs - simulating a user who has a cursor ID but hasn't fetched all latest yet
+
+    let values = vec![
+        Arc::new(create_func_run(actor, tenancy, "dead money part 2")),
+        Arc::new(create_func_run(actor, tenancy, "honest hearts part 2")),
+        Arc::new(create_func_run(actor, tenancy, "old world blues part 2")),
+        Arc::new(create_func_run(actor, tenancy, "lonesome road part 2")),
+    ];
+    // create func runs
+    for value in values {
+        ldb.func_run()
+            .write(value.clone(), None, tenancy, actor)
+            .await
+            .expect("failed to write to layerdb");
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+    }
+
+    // repeat the same, get the next 2 from the previous cursor
+    let next_two_values = ldb
+        .func_run()
+        .read_many_for_workspace_paginated(
+            tenancy.workspace_pk,
+            tenancy.change_set_id,
+            2,
+            Some(cursor),
+        )
+        .await
+        .expect("error getting data from pg")
+        .expect("should be able to read");
+    dbg!(&next_two_values);
+    assert_eq!(2, next_two_values.len());
+    assert_eq!(
+        next_two_expected,
+        HashSet::from_iter(next_two_values.iter().map(|v| v.id()))
+    );
+
+    // ensure the results are the same when getting a page of funcs older than the last cursor
+    let all_remaining = ldb
+        .func_run()
+        .read_many_for_workspace_paginated(
+            tenancy.workspace_pk,
+            tenancy.change_set_id,
+            10,
+            Some(cursor),
+        )
+        .await
+        .expect("error getting data from pg")
+        .expect("should be able to read");
+    dbg!(&all_remaining);
+    assert_eq!(3, all_remaining.len());
+
+    // But if I fetch without a cursor, I get the new funcs now!
+    let first_value = ldb
+        .func_run()
+        .read_many_for_workspace_paginated(tenancy.workspace_pk, tenancy.change_set_id, 1, None)
+        .await
+        .expect("error getting data from pg")
+        .expect("should be able to read")
+        .pop()
+        .expect("has one entry");
+
+    // the first returned should be the last func
+    let cursor = first_value.id();
+    assert_eq!("lonesome road part 2", first_value.function_name());
+
+    // now fetch all remaining from this new cursor, which should yield all func runs
+    let all_remaining = ldb
+        .func_run()
+        .read_many_for_workspace_paginated(
+            tenancy.workspace_pk,
+            tenancy.change_set_id,
+            10,
+            Some(cursor),
+        )
+        .await
+        .expect("error getting data from pg")
+        .expect("should be able to read");
+    dbg!(&all_remaining);
+    assert_eq!(7, all_remaining.len());
+}
+
 fn create_func_run(actor: Actor, tenancy: Tenancy, function_name: impl Into<String>) -> FuncRun {
     let func_run_create_time = Utc::now();
     FuncRunBuilder::default()

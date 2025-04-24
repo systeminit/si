@@ -239,7 +239,7 @@ async fn rebase_split(
     to_rebase_workspace_snapshot_address: WorkspaceSnapshotAddress,
     edda: &EddaClient,
     request: &EnqueueUpdatesRequest,
-    features: Features,
+    _features: Features,
     _updating_head: bool,
     to_rebase_change_set: &mut ChangeSet,
 ) -> RebaseResult<()> {
@@ -289,17 +289,15 @@ async fn rebase_split(
     // Before replying to the requester or sending the Edda request, we must commit.
     ctx.commit_no_rebase().await?;
 
-    if features.generate_mvs {
-        send_updates_to_edda_split_snapshot(
-            ctx,
-            &original_workspace_snapshot,
-            &to_rebase_workspace_snapshot,
-            edda,
-            request,
-            span,
-        )
-        .await?;
-    }
+    send_updates_to_edda_split_snapshot(
+        ctx,
+        &original_workspace_snapshot,
+        &to_rebase_workspace_snapshot,
+        edda,
+        request,
+        span,
+    )
+    .await?;
 
     Ok(())
 }
@@ -309,7 +307,7 @@ async fn rebase_legacy(
     to_rebase_workspace_snapshot_address: WorkspaceSnapshotAddress,
     edda: &EddaClient,
     request: &EnqueueUpdatesRequest,
-    features: Features,
+    _features: Features,
     updating_head: bool,
     to_rebase_change_set: &mut ChangeSet,
 ) -> RebaseResult<()> {
@@ -399,17 +397,15 @@ async fn rebase_legacy(
     // Before replying to the requester or sending the Edda request, we must commit.
     ctx.commit_no_rebase().await?;
 
-    if features.generate_mvs {
-        send_updates_to_edda_legacy_snapshot(
-            ctx,
-            &original_workspace_snapshot,
-            &to_rebase_workspace_snapshot,
-            edda,
-            request,
-            span,
-        )
-        .await?;
-    }
+    send_updates_to_edda_legacy_snapshot(
+        ctx,
+        &original_workspace_snapshot,
+        &to_rebase_workspace_snapshot,
+        edda,
+        request,
+        span,
+    )
+    .await?;
 
     Ok(())
 }

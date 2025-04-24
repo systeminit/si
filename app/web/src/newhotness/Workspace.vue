@@ -54,6 +54,15 @@
       <template v-if="componentId">
         <ComponentDetail :componentId="componentId" />
       </template>
+      <template v-else-if="funcRunId">
+        <FuncRunDetails :funcRunId="funcRunId" />
+      </template>
+      <template v-else-if="actionId">
+        <LatestFuncRunDetails
+          :functionKind="FunctionKind.Action"
+          :actionId="actionId"
+        />
+      </template>
       <template v-else>
         <Explore />
       </template>
@@ -83,7 +92,9 @@ import * as heimdall from "@/store/realtime/heimdall";
 import { useAuthStore } from "@/store/auth.store";
 import Explore from "./Explore.vue";
 import ComponentDetail from "./Component.vue";
-import { WSCS } from "./types";
+import FuncRunDetails from "./FuncRunDetails.vue";
+import LatestFuncRunDetails from "./LatestFuncRunDetails.vue";
+import { WSCS, FunctionKind } from "./types";
 import { startKeyEmitter } from "./logic_composables/key_emitter";
 
 const props = defineProps<{
@@ -92,6 +103,8 @@ const props = defineProps<{
   componentId?: string;
   viewId?: string;
   secretId?: string;
+  funcRunId?: string;
+  actionId?: string;
 }>();
 
 const authStore = useAuthStore();
@@ -151,6 +164,8 @@ onBeforeMount(async () => {
     },
     { immediate: true },
   );
+
+  // Initial setup with resolved change set ID
   heimdall.niflheim(props.workspacePk, props.changeSetId, true);
 });
 

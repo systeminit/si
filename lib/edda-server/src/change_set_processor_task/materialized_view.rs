@@ -138,6 +138,7 @@ pub async fn build_all_mv_for_change_set(
     .await?;
 
     let index_entries = frontend_objects.into_iter().map(Into::into).collect();
+    info!("index_entries {:?}", index_entries);
     let mv_index = MvIndex::new(ctx.change_set_id(), index_entries);
     let mv_index_frontend_object = FrontendObject::try_from(mv_index)?;
     frigg

@@ -164,6 +164,11 @@ export const bobby = async () => {
   // eslint-disable-next-line no-console
   console.log("🗑️ BOBBY DROP TABLE 🗑️");
 };
+export const ragnarok = async (workspaceId: string, changeSetId: string) => {
+  await db.ragnarok(workspaceId, changeSetId);
+  // eslint-disable-next-line no-console
+  console.log("🗑️ RAGNAROK 🗑️");
+};
 
 export const mjolnir = async (
   workspaceId: string,

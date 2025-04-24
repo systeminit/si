@@ -1,0 +1,233 @@
+<template>
+  <FuncRunDetailsLayout
+    v-if="funcRun?.id"
+    :funcRun="funcRun"
+    :status="funcRunStatus(funcRun) || ''"
+    :logText="logText"
+    :functionCode="functionCode"
+    :argsJson="argsJson"
+    :resultJson="resultJson"
+    :isLive="isLive"
+  >
+    <template #actions>
+      <VButton
+        v-if="
+          funcRun &&
+          ['Failure', 'ActionFailure', 'Running'].includes(
+            funcRunStatus(funcRun) || '',
+          )
+        "
+        tone="destructive"
+        label="Remove"
+        size="xs"
+        @click="removeAction"
+      />
+      <VButton
+        v-if="
+          funcRun &&
+          ['Failure', 'ActionFailure'].includes(funcRunStatus(funcRun) || '')
+        "
+        tone="action"
+        label="Retry"
+        size="xs"
+        @click="retryAction"
+      />
+    </template>
+  </FuncRunDetailsLayout>
+  <h1 v-else class="text-">Func Run {{ funcRunId }} not found</h1>
+</template>
+
+<script lang="ts" setup>
+import { computed, onMounted, onBeforeUnmount, ref, inject } from "vue";
+import { useQuery, useQueryClient } from "@tanstack/vue-query";
+import { VButton } from "@si/vue-lib/design-system";
+import * as _ from "lodash-es";
+import { funcRunStatus, FuncRun } from "@/store/func_runs.store";
+import { useRealtimeStore } from "@/store/realtime/realtime.store";
+import FuncRunDetailsLayout from "./layout_components/FuncRunDetailsLayout.vue";
+import { assertIsDefined, WSCS } from "./types";
+import { useApi } from "./api_composables";
+
+export interface OutputLine {
+  stream: string;
+  execution_id: string;
+  level: string;
+  group?: string;
+  message: string;
+  timestamp: string;
+}
+
+export interface FuncRunLog {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  funcRunID: string;
+  logs: OutputLine[];
+  finalized: boolean;
+}
+
+const props = defineProps<{
+  funcRunId: string;
+}>();
+
+const wscs = inject<WSCS>("WSCS");
+assertIsDefined(wscs);
+
+// const router = useRouter();
+const queryClient = useQueryClient();
+const realtimeStore = useRealtimeStore();
+const isLive = ref(false);
+
+// Action handlers
+const removeAction = () => {
+  if (funcRun.value?.actionId) {
+    // THOU SHALT NOT USE ANY MORE STORES
+    // actionsStore.CANCEL([funcRun.value.actionId]);
+    /* router.push({
+      name: "new-hotness",
+      params: {
+        workspacePk: unref(wscs.workspacePk),
+        changeSetId: unref(wscs.changeSetId),
+      },
+    }); */
+  }
+};
+
+const retryAction = () => {
+  if (funcRun.value?.actionId) {
+    // actionsStore.RETRY([funcRun.value.actionId]);
+    // Stay on the page to monitor the retried run
+  }
+};
+
+const api = useApi();
+const pollInterval = ref<number | false>(0); // initial calls
+
+const { data: funcRunQuery } = useQuery<Omit<FuncRun, "logs"> | undefined>({
+  queryKey: ["funcRun", props.funcRunId],
+  queryFn: async () => {
+    // FUTURE: move url paths out of vue components and into a consolidated list in the api composable
+    const call = api.endpoint(`/funcs/runs/${props.funcRunId}`);
+    const req = await call.get<{ funcRun: FuncRun }>();
+    if (api.ok(req)) {
+      pollInterval.value = ["Running", "Dispatched", "Created"].includes(
+        req.data.funcRun.state,
+      )
+        ? 5000
+        : false;
+      return req.data.funcRun;
+    }
+  },
+  refetchInterval: () => pollInterval.value,
+});
+
+const funcRun = computed(() => funcRunQuery.value);
+
+const { data: funcRunLogsQuery } = useQuery<FuncRunLog | undefined>({
+  queryKey: ["funcRunLogs", props.funcRunId],
+  queryFn: async () => {
+    const call = api.endpoint(`/funcs/runs/${props.funcRunId}/logs`);
+    const req = await call.get<{ logs: FuncRunLog }>();
+    if (api.ok(req)) {
+      return req.data.logs;
+    }
+  },
+  // Automatic polling for running functions every 5 seconds
+  refetchInterval: () => pollInterval.value,
+  refetchIntervalInBackground: true,
+});
+
+const funcRunLogs = computed(() => funcRunLogsQuery.value);
+
+// Format logs as text for CodeViewer
+const logText = computed<string>(() => {
+  if (!funcRunLogs.value?.logs?.length) return "";
+
+  return funcRunLogs.value.logs
+    .map((log) => {
+      const timestamp = new Date(log.timestamp).toUTCString();
+      return `[${timestamp}] [${log.level.padEnd(5)}] ${log.message}`;
+    })
+    .join("\n");
+});
+
+// Format function code for CodeViewer
+const functionCode = computed<string>(() => {
+  if (!funcRun.value?.functionCodeBase64) return "";
+
+  try {
+    const decodedCode = atob(funcRun.value.functionCodeBase64);
+    return decodedCode;
+  } catch (e) {
+    return "// Error decoding function code";
+  }
+});
+
+// Format arguments for CodeViewer
+const argsJson = computed<string>(() => {
+  if (!funcRun.value?.functionArgs) return "";
+
+  try {
+    return JSON.stringify(funcRun.value.functionArgs, null, 2);
+  } catch (e) {
+    return "// Error formatting arguments";
+  }
+});
+
+// Format result for CodeViewer
+const resultJson = computed<string>(() => {
+  if (!funcRun.value?.resultValue) return "";
+
+  try {
+    return JSON.stringify(funcRun.value.resultValue, null, 2);
+  } catch (e) {
+    return "// Error formatting result";
+  }
+});
+
+let executionKey: string | undefined;
+
+// Function to set up subscription for FuncRunLogUpdated events
+const setupFuncRunSubscription = () => {
+  executionKey = `funcRunDetails-${props.funcRunId}`;
+
+  // Subscribe to FuncRunLogUpdated events for this function run
+  realtimeStore.subscribe(executionKey, `changeset/${wscs.changeSetId}`, [
+    {
+      eventType: "FuncRunLogUpdated",
+      callback: (payload) => {
+        if (payload.funcRunId === props.funcRunId) {
+          // Set live state to true to show the "Live updating" indicator
+          isLive.value = true;
+
+          // Only fetch the logs instead of the entire function run
+          // This is more efficient than re-fetching the entire function run
+          queryClient.invalidateQueries({
+            queryKey: ["funcRunLogs", props.funcRunId],
+          });
+
+          // Reset the live indicator after a brief delay if the function run is complete
+          if (funcRun.value?.state !== "Running") {
+            setTimeout(() => {
+              isLive.value = false;
+            }, 3000);
+          }
+        }
+      },
+    },
+  ]);
+};
+
+// Set up subscription on component mount
+onMounted(() => {
+  setupFuncRunSubscription();
+});
+
+// Ensure cleanup on component unmount
+onBeforeUnmount(() => {
+  if (executionKey) {
+    realtimeStore.unsubscribe(executionKey);
+    executionKey = undefined;
+  }
+});
+</script>

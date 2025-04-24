@@ -6,6 +6,8 @@ import { push as pushBreadcrumb } from "@/newhotness/logic_composables/navigatio
 import { useAuthStore } from "./store/auth.store";
 import { useRouterStore } from "./store/router.store";
 import { isDevMode } from "./utils/debug";
+import { sdfApiInstance as sdf } from "./store/apis.web";
+import { WorkspaceMetadata } from "./api/sdf/dal/workspace";
 
 // Cannot use inside the template directly.
 const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
@@ -20,6 +22,19 @@ const routes: RouteRecordRaw[] = [
     path: "/w",
     name: "workspace-index",
     redirect: { name: "home" },
+  },
+  {
+    name: "new-hotness",
+    path: "/n/:workspacePk/head/h",
+    beforeEnter: async (loc) => {
+      const resp = await sdf<WorkspaceMetadata>({
+        method: "GET",
+        url: `/v2/workspaces/${loc.params.workspacePk}/change-sets/`,
+      });
+      const changeSetId = resp.data.defaultChangeSetId;
+      return `/n/${loc.params.workspacePk}/${changeSetId}/h`;
+    },
+    redirect: () => "/", // ignored, here just to make the typing happy
   },
   {
     name: "new-hotness",
@@ -54,6 +69,18 @@ const routes: RouteRecordRaw[] = [
       {
         name: "new-hotness-component",
         path: ":componentId/c",
+        props: true,
+        component: () => import("@/newhotness/Workspace.vue"),
+      },
+      {
+        name: "new-hotness-func-run",
+        path: ":funcRunId/r",
+        props: true,
+        component: () => import("@/newhotness/Workspace.vue"),
+      },
+      {
+        name: "new-hotness-action",
+        path: ":actionId/a",
         props: true,
         component: () => import("@/newhotness/Workspace.vue"),
       },

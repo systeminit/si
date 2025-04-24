@@ -132,7 +132,7 @@ pub struct FuncRunView {
 }
 
 impl FuncRunView {
-    fn new(
+    pub fn new(
         func_run: &FuncRun,
         function_args: serde_json::Value,
         function_code_base64: String,

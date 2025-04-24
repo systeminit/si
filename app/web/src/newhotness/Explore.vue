@@ -69,40 +69,18 @@
         <CollapsingGridItem ref="actions">
           <template #header>Actions ({{ actionViewList.length }})</template>
           <ul class="actions list">
-            <!-- eslint-disable-next-line vue/no-unused-vars -->
-            <li v-for="action in actionViewList" :key="action.id" class="item">
-              <StatusIndicatorIcon
-                :status="action.kind.toString()"
-                type="action"
-              />
-              <h2>
-                <TruncateWithTooltip class="pb-xs">{{
-                  action.name
-                }}</TruncateWithTooltip>
-              </h2>
-              <h3>
-                <TruncateWithTooltip class="pb-xs">{{
-                  action.componentName ?? "- component name not found -"
-                }}</TruncateWithTooltip>
-              </h3>
-              <DetailsPanelMenuIcon
-                @click="
-                  (e) => {
-                    contextMenuRef?.open(e, false);
-                  }
-                "
-              />
-            </li>
+            <ActionCard
+              v-for="action in actionViewList"
+              :key="action.id"
+              :action="action"
+              :selected="false"
+              :noInteraction="false"
+            />
           </ul>
         </CollapsingGridItem>
         <CollapsingGridItem ref="history">
           <template #header>History</template>
-          <ul>
-            <!-- eslint-disable-next-line vue/no-unused-vars -->
-            <li v-for="(_, idx) in new Array(15)" :key="idx">
-              Item: {{ idx }}
-            </li>
-          </ul>
+          <FuncRunList :limit="25" />
         </CollapsingGridItem>
       </div>
       <!-- TODO(Wendy) - moved this here for now, we can figure out the right spot later -->
@@ -113,32 +91,17 @@
         <RealtimeStatusPageState />
       </div>
     </div>
-
-    <DropdownMenu ref="contextMenuRef" :forceAbove="false" forceAlignRight>
-      <h5 class="text-neutral-400 pl-2xs">ACTIONS:</h5>
-      <DropdownMenuItem>Foo</DropdownMenuItem>
-      <DropdownMenuItem>Bar</DropdownMenuItem>
-      <DropdownMenuItem>Baz</DropdownMenuItem>
-    </DropdownMenu>
   </section>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import {
-  themeClasses,
-  VormInput,
-  VButton,
-  DropdownMenu,
-  DropdownMenuItem,
-  TruncateWithTooltip,
-} from "@si/vue-lib/design-system";
+import { themeClasses, VormInput, VButton } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
-import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import {
   BifrostActionViewList,
   BifrostComponentList,
@@ -148,18 +111,13 @@ import { ComponentId } from "@/api/sdf/dal/component";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
-import DetailsPanelMenuIcon from "./layout_components/DetailsPanelMenuIcon.vue";
 import ComponentGridTile from "./ComponentGridTile.vue";
 import Breadcrumbs from "./layout_components/Breadcrumbs.vue";
+import ActionCard from "./ActionCard.vue";
+import FuncRunList from "./FuncRunList.vue";
 
 const actions = ref<typeof CollapsingGridItem>();
 const history = ref<typeof CollapsingGridItem>();
-
-const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
-
-// TODO this is where you do a tanStack query like this:
-// https://github.com/systeminit/si/blob/main/app/web/src/workers/webworker.ts#L818
-// const components = [];
 
 const actionViewListRaw = useQuery<BifrostActionViewList | null>({
   queryKey: makeKey("ActionViewList"),
