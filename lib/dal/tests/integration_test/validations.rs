@@ -54,7 +54,7 @@ async fn validation_format_errors(ctx: &mut DalContext) -> Result<()> {
             "value": null,
             "validation": {
                 "status": "Error",
-                "message": "UserCodeException: validationFormat must be of type object",
+                "message": "UserCodeException: validationFormat 5 is wrong: ValidationError: \"value\" must be of type object",
             }
         }),
         extract_value_and_validation(prop_view)?
