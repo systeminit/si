@@ -215,6 +215,7 @@ function generatePropBuilderString(
       return generatePropBuilderStringInner("object", addChildBlock);
     }
     case "number":
+    case "float":
       return generatePropBuilderStringInner("float");
     case "boolean":
     case "json":

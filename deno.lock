@@ -29,6 +29,7 @@
     "jsr:@std/path@1": "1.0.8",
     "jsr:@std/path@^1.0.6": "1.0.8",
     "jsr:@std/text@~1.0.7": "1.0.10",
+    "jsr:@systeminit/cf-db@~0.1.4": "0.1.4",
     "jsr:@systeminit/remove-empty@0.1.3": "0.1.3",
     "npm:@apidevtools/json-schema-ref-parser@*": "11.9.1",
     "npm:@apidevtools/json-schema-ref-parser@11.9.3": "11.9.3",
@@ -194,6 +195,14 @@
     },
     "@std/text@1.0.10": {
       "integrity": "9dcab377450253c0efa9a9a0c731040bfd4e1c03f8303b5934381467b7954338"
+    },
+    "@systeminit/cf-db@0.1.4": {
+      "integrity": "04abaef4707837dad4e252c69dca7e57014dd5038fd323dd1d11868ea1747816",
+      "dependencies": [
+        "npm:@apidevtools/json-schema-ref-parser@11.9.3",
+        "npm:adze@2.2.1",
+        "npm:lodash@4.17.21"
+      ]
     },
     "@systeminit/remove-empty@0.1.3": {
       "integrity": "767b57ea84f6a106379e963207ef52b0c0c6a0e024dcdbd34967acae86e36e53",
@@ -1256,12 +1265,28 @@
     "https://esm.sh/@hapi/hoek@^9.0.0/lib/ignore?target=denonext": "https://esm.sh/@hapi/hoek@9.3.0/lib/ignore?target=denonext",
     "https://esm.sh/@hapi/hoek@^9.0.0/lib/merge?target=denonext": "https://esm.sh/@hapi/hoek@9.3.0/lib/merge?target=denonext",
     "https://esm.sh/@hapi/hoek@^9.0.0/lib/reach?target=denonext": "https://esm.sh/@hapi/hoek@9.3.0/lib/reach?target=denonext",
+    "https://esm.sh/@hapi/hoek@^9.3.0/lib/applyToDefaults?target=denonext": "https://esm.sh/@hapi/hoek@9.3.0/lib/applyToDefaults?target=denonext",
+    "https://esm.sh/@hapi/hoek@^9.3.0/lib/assert?target=denonext": "https://esm.sh/@hapi/hoek@9.3.0/lib/assert?target=denonext",
+    "https://esm.sh/@hapi/hoek@^9.3.0/lib/clone?target=denonext": "https://esm.sh/@hapi/hoek@9.3.0/lib/clone?target=denonext",
+    "https://esm.sh/@hapi/hoek@^9.3.0/lib/deepEqual?target=denonext": "https://esm.sh/@hapi/hoek@9.3.0/lib/deepEqual?target=denonext",
+    "https://esm.sh/@hapi/hoek@^9.3.0/lib/error?target=denonext": "https://esm.sh/@hapi/hoek@9.3.0/lib/error?target=denonext",
+    "https://esm.sh/@hapi/hoek@^9.3.0/lib/escapeHtml?target=denonext": "https://esm.sh/@hapi/hoek@9.3.0/lib/escapeHtml?target=denonext",
+    "https://esm.sh/@hapi/hoek@^9.3.0/lib/escapeRegex?target=denonext": "https://esm.sh/@hapi/hoek@9.3.0/lib/escapeRegex?target=denonext",
+    "https://esm.sh/@hapi/hoek@^9.3.0/lib/ignore?target=denonext": "https://esm.sh/@hapi/hoek@9.3.0/lib/ignore?target=denonext",
+    "https://esm.sh/@hapi/hoek@^9.3.0/lib/merge?target=denonext": "https://esm.sh/@hapi/hoek@9.3.0/lib/merge?target=denonext",
+    "https://esm.sh/@hapi/hoek@^9.3.0/lib/reach?target=denonext": "https://esm.sh/@hapi/hoek@9.3.0/lib/reach?target=denonext",
     "https://esm.sh/@hapi/topo@^5.0.0?target=denonext": "https://esm.sh/@hapi/topo@5.1.0?target=denonext",
+    "https://esm.sh/@hapi/topo@^5.1.0?target=denonext": "https://esm.sh/@hapi/topo@5.1.0?target=denonext",
     "https://esm.sh/@sideway/address@^4.1.3/lib/domain?target=denonext": "https://esm.sh/@sideway/address@4.1.5/lib/domain?target=denonext",
     "https://esm.sh/@sideway/address@^4.1.3/lib/email?target=denonext": "https://esm.sh/@sideway/address@4.1.5/lib/email?target=denonext",
     "https://esm.sh/@sideway/address@^4.1.3/lib/ip?target=denonext": "https://esm.sh/@sideway/address@4.1.5/lib/ip?target=denonext",
     "https://esm.sh/@sideway/address@^4.1.3/lib/tlds?target=denonext": "https://esm.sh/@sideway/address@4.1.5/lib/tlds?target=denonext",
     "https://esm.sh/@sideway/address@^4.1.3/lib/uri?target=denonext": "https://esm.sh/@sideway/address@4.1.5/lib/uri?target=denonext",
+    "https://esm.sh/@sideway/address@^4.1.5/lib/domain?target=denonext": "https://esm.sh/@sideway/address@4.1.5/lib/domain?target=denonext",
+    "https://esm.sh/@sideway/address@^4.1.5/lib/email?target=denonext": "https://esm.sh/@sideway/address@4.1.5/lib/email?target=denonext",
+    "https://esm.sh/@sideway/address@^4.1.5/lib/ip?target=denonext": "https://esm.sh/@sideway/address@4.1.5/lib/ip?target=denonext",
+    "https://esm.sh/@sideway/address@^4.1.5/lib/tlds?target=denonext": "https://esm.sh/@sideway/address@4.1.5/lib/tlds?target=denonext",
+    "https://esm.sh/@sideway/address@^4.1.5/lib/uri?target=denonext": "https://esm.sh/@sideway/address@4.1.5/lib/uri?target=denonext",
     "https://esm.sh/@sideway/formula@^3.0.1?target=denonext": "https://esm.sh/@sideway/formula@3.0.1?target=denonext",
     "https://esm.sh/@sideway/pinpoint@^2.0.0?target=denonext": "https://esm.sh/@sideway/pinpoint@2.0.0?target=denonext",
     "https://esm.sh/isexe@^3.1.1?target=denonext": "https://esm.sh/isexe@3.1.1?target=denonext"
@@ -2032,6 +2057,8 @@
     "https://esm.sh/isexe@3.1.1/denonext/posix.mjs": "f99f8d2aacd0b5424625cee480f36b47639cfbad44c64b7b21cbba18ad77a1b2",
     "https://esm.sh/isexe@3.1.1/denonext/win32.mjs": "f52981ee6555549c246db8e9e6c0ee1e2947a35367c3bcec0ba31834387991c0",
     "https://esm.sh/isexe@3.1.1?target=denonext": "b3c61e7e70b9d56865de461fbcdae702ebf93743143457079a15a60e30dfcf83",
+    "https://esm.sh/joi@17.13.3": "48329caa5c606750511c6d790442e5d3249e6650b97131dd32f2a74e74bedcd3",
+    "https://esm.sh/joi@17.13.3/denonext/joi.mjs": "e4f3b0b742c83f9b70df9d1c23f9d867418a2004768b27223fbf8d19f1fb5739",
     "https://esm.sh/joi@17.9.1": "6f7e336415084e7f12bfee20f442ba7b6089db28b1107c3e5f80cae0c431888b",
     "https://esm.sh/joi@17.9.1/denonext/joi.mjs": "4508f3d20b2567e6d0edc6820c748c32cce421ca1b049764f0870e55b526676a",
     "https://esm.sh/which@4.0.0": "50b06c1a68e3ef88dc8e2c68c17b732a6d1917000d5d59637496da3b61549c8e",

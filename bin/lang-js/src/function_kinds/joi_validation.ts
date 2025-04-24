@@ -95,7 +95,7 @@ async function main({ value, validationFormat }) {
   try {
     schema = Joi.build(definition);
   } catch (e) {
-    const error = new Error('validationFormat must be of type object');
+    const error = new Error(\`validationFormat \${definition} is wrong: \${e}\`);
     error.name = 'JoiValidationFormatError';
     throw error;
   }
