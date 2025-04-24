@@ -7,6 +7,7 @@ mod change_sets;
 pub mod common;
 mod components;
 mod management;
+mod schema;
 mod workspaces;
 
 pub use change_sets::{
@@ -57,6 +58,10 @@ pub use management::{
         RunPrototypeV1Response,
     },
 };
+pub use schema::{
+    SchemaError,
+    list_schema::ListSchemaV1Response,
+};
 pub use workspaces::WorkspaceError;
 
 /// OpenAPI documentation for v1 API
@@ -82,7 +87,8 @@ pub use workspaces::WorkspaceError;
         components::create_component::create_component,
         components::update_component::update_component,
         components::delete_component::delete_component,
-        management::run_prototype::run_prototype
+        management::run_prototype::run_prototype,
+        schema::list_schema::list_schemas,
     ),
     components(
         schemas(
@@ -103,6 +109,7 @@ pub use workspaces::WorkspaceError;
             CreateComponentV1Response,
             Connection,
             GeometryAndViewAndName,
+            ListSchemaV1Response,
             UpdateComponentV1Request,
             UpdateComponentV1Response,
             DeleteComponentV1Response,
@@ -119,7 +126,8 @@ pub use workspaces::WorkspaceError;
         (name = "workspaces", description = "Workspace management endpoints"),
         (name = "change_sets", description = "Change set management endpoints"),
         (name = "components", description = "Component management endpoints"),
-        (name = "management", description = "Management function endpoints")
+        (name = "management", description = "Management function endpoints"),
+        (name = "schemas", description = "Schema endpoints")
     )
 )]
 pub struct V1ApiDoc;
