@@ -9,5 +9,5 @@ jobs:
     uses: ./.github/workflows/deploy-stack.yml
     with:
       environment: production
-      wait_duration: 900
+      wait_duration: 0
     secrets: inherit
