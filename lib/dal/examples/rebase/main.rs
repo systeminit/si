@@ -36,7 +36,7 @@ fn write_snapshot_graph(path: &str, graph: &WorkspaceSnapshotGraph) -> Result<()
 }
 
 fn main() -> Result<()> {
-    let args: Vec<String> = env::args().take(10).map(Into::into).collect();
+    let args: Vec<String> = env::args().take(10).collect();
 
     for i in 1..args.len() {
         let to_rebase_path = args.get(i).expect(USAGE);

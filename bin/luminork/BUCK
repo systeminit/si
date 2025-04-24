@@ -8,6 +8,7 @@ load(
 rust_binary(
     name = "luminork",
     deps = [
+        "//lib/innit-client:innit-client",
         "//lib/luminork-server:luminork-server",
         "//lib/si-service:si-service",
         "//third-party/rust:clap",

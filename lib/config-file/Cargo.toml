@@ -33,6 +33,7 @@ layered-toml = ["layered", "toml", "config/toml"]
 layered-yaml = ["layered", "yaml", "config/yaml"]
 
 [dependencies]
+async-trait = { workspace = true }
 config = { workspace = true, optional = true }
 directories = { workspace = true }
 pathdiff = { workspace = true }

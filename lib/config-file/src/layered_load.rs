@@ -16,6 +16,10 @@ use crate::{
     FileFormat,
     Result,
     ToFileFormats,
+    parameter_provider::{
+        ParameterProvider,
+        ParameterSource,
+    },
 };
 
 mod ser;
@@ -146,6 +150,121 @@ where
                 .set_override(key, value)
                 .expect("tried to set programmatic value that was impossible! bug!");
         }
+    }
+
+    // Deserialize it into a config file struct
+    let config = builder.build()?;
+    let config_file = config.try_deserialize()?;
+    trace!(?config_file, "merged configuration into");
+    Ok(config_file)
+}
+
+pub async fn layered_load_with_provider<C, F>(
+    app_name: impl AsRef<str>,
+    file_formats: impl ToFileFormats,
+    config_env_var: &Option<impl AsRef<OsStr>>,
+    env_config_prefix: &Option<impl AsRef<str>>,
+    parameter_provider: Option<(impl ParameterProvider + 'static, String)>,
+    set_func: F,
+) -> Result<C>
+where
+    C: Clone + DeserializeOwned + Debug + Default + Send + Serialize + Sync + 'static,
+    F: FnOnce(&mut ConfigMap),
+{
+    let app_name = app_name.as_ref();
+
+    // Add defaults
+    let mut builder = config::Config::builder();
+    let serde_source = SerdeSource::new(<C>::default());
+    trace!("merging defaults config for defaults={:?}", &serde_source);
+    builder = builder.add_source(serde_source);
+
+    // Add a config file, if relevant.
+    //
+    // # Implementation
+    //
+    // * Look for a config file, using `load::find` as it'll look in the right places, in
+    //   the right order while also checking for a location in an environment variable.
+    // * We'll ultimately use the `config` crate to merge the config file in with other inputs, but to
+    //   feed its API, we need the found file as a relative path to the current directory (why, why,
+    //   why????), so compute this, using the `pathdiff` crate which was an extraction from internal
+    //   Rust core code.
+    // * Then we need to get determine the file type for the `config` crate, so we'll convert from the
+    //   file type determined by the `crate::FileType` type.
+    // * Finally, merge in the file into the `config::Config` builder.
+    // * I mean...
+    if let Some((target, file_format)) = crate::find(app_name, file_formats, config_env_var)? {
+        // Config crate requires a relative path to a config file. /me sideeyes crate...
+        let current_dir = env::current_dir().map_err(ConfigFileError::CurrentDirectory)?;
+        let relative_target = pathdiff::diff_paths(&target, &current_dir).ok_or_else(|| {
+            ConfigFileError::RelativePath(
+                target.to_string_lossy().to_string(),
+                current_dir.to_string_lossy().to_string(),
+            )
+        })?;
+        // Determine the file type for the config crate, using the response we got from config_file
+        // crate, oi
+        let file_format = match file_format {
+            #[cfg(feature = "toml")]
+            FileFormat::Toml => config::FileFormat::Toml,
+            #[cfg(feature = "json")]
+            FileFormat::Json => config::FileFormat::Json,
+            #[cfg(feature = "yaml")]
+            FileFormat::Yaml => config::FileFormat::Yaml,
+            FileFormat::Custom(unknown) => {
+                return Err(Into::into(ConfigFileError::UnknownFileFormat(
+                    unknown.to_string(),
+                )));
+            }
+            // If another file type is compiled in via cargo features, this arm will match
+            #[allow(unreachable_patterns)]
+            unexpected => {
+                unimplemented!(
+                    "new file format brought in via cargo features: {}",
+                    unexpected.as_str()
+                )
+            }
+        };
+
+        let file = config::File::new(relative_target.to_string_lossy().as_ref(), file_format)
+            .required(true);
+        trace!("merging file config for file={:?}", &file);
+        builder = builder.add_source(file);
+    }
+
+    // Add environment config
+    if let Some(env_prefix) = env_config_prefix {
+        let env = config::Environment::with_prefix(env_prefix.as_ref())
+            .separator("__")
+            .ignore_empty(true);
+        trace!(
+            env_prefix = %format!("{}_",env_prefix.as_ref()),
+            ?env,
+            "merging environment config with"
+        );
+        builder = builder.add_source(env);
+    }
+
+    // Add programmatic config
+    let mut config_map = ConfigMap::default();
+    set_func(&mut config_map);
+
+    if config_map.empty {
+        trace!("nothing set for programmatic config, not merging");
+    } else {
+        let config_hash = config_map.into_inner();
+        trace!("merging programmatic config for config={:?}", &config_hash);
+        for (key, value) in config_hash.into_iter() {
+            builder = builder
+                .set_override(key, value)
+                .expect("tried to set programmatic value that was impossible! bug!");
+        }
+    }
+
+    // Parameter provider (if provided)
+    if let Some((provider, environment)) = parameter_provider {
+        let param_source = ParameterSource::new(provider, environment, app_name.to_string());
+        builder = param_source.load(builder).await?;
     }
 
     // Deserialize it into a config file struct

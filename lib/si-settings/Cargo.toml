@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 config-file = { path = "../../lib/config-file", features = ["layered-toml"] }
 
+async-trait = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }

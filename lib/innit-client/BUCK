@@ -3,12 +3,15 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "innit-client",
     deps = [
+        "//lib/config-file:config-file",
+        "//lib/buck2-resources:buck2-resources",
         "//lib/innit-core:innit-core",
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
         "//lib/si-tls:si-tls",
         "//lib/telemetry-rs:telemetry",
 
+        "//third-party/rust:async-trait",
         "//third-party/rust:base64",
         "//third-party/rust:derive_builder",
         "//third-party/rust:remain",

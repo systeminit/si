@@ -6,6 +6,7 @@ rust_library(
     name = "si-settings",
     deps = [
         "//lib/config-file:config-file",
+        "//third-party/rust:async-trait",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:thiserror",

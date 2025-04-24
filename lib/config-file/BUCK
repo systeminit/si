@@ -11,6 +11,7 @@ rust_library(
         "toml",
     ],
     deps = [
+        "//third-party/rust:async-trait",
         "//third-party/rust:config",
         "//third-party/rust:directories",
         "//third-party/rust:pathdiff",

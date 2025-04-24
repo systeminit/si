@@ -17,6 +17,7 @@ groups = {
     ],
     "backend": [
         "auth-api",
+        "innit",
         "edda",
         "forklift",
         "module-index",
@@ -212,6 +213,16 @@ si_buck2_resource(
     **RUST_RESOURCE_ARGS
 )
 
+# Locally build and run `innit`
+si_buck2_resource(
+    "//bin/innit:innit",
+    resource_deps = [
+        "rust-initial-build",
+        "otelcol",
+    ],
+    **RUST_RESOURCE_ARGS
+)
+
 # Locally build and run `forklift`
 si_buck2_resource(
     "//bin/forklift:forklift",
@@ -293,6 +304,7 @@ si_buck2_resource(
         "rebaser",
         "edda",
         "forklift",
+        "innit",
     ],
     readiness_probe = probe(
         period_secs = 5,
@@ -393,6 +405,7 @@ si_buck2_resource(
 
 rust_build_targets = [
     "//bin/edda:edda",
+    "//bin/innit:innit",
     "//bin/forklift:forklift",
     "//bin/pinga:pinga",
     "//bin/rebaser:rebaser",

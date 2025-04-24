@@ -42,6 +42,11 @@ pub use dal::{
         FeatureFlagService,
     },
 };
+pub use si_settings::{
+    ConfigMap,
+    ParameterProvider,
+    get_host_environment,
+};
 
 pub(crate) use self::app_state::AppState;
 pub use self::{

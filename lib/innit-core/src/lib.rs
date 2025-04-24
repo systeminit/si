@@ -1,4 +1,5 @@
 use aws_sdk_ssm::types::Parameter as AwsParameter;
+use config_file::parameter_provider::Parameter as ParameterProviderParameter;
 use serde::{
     Deserialize,
     Serialize,
@@ -8,7 +9,6 @@ use serde::{
 pub struct Parameter {
     pub name: String,
     pub value: Option<String>,
-    pub version: Option<i64>,
 }
 
 impl From<AwsParameter> for Parameter {
@@ -16,7 +16,15 @@ impl From<AwsParameter> for Parameter {
         Self {
             name: p.name().unwrap_or_default().to_string(),
             value: p.value().map(|s| s.to_string()),
-            version: Some(p.version()),
+        }
+    }
+}
+
+impl From<Parameter> for ParameterProviderParameter {
+    fn from(p: Parameter) -> Self {
+        Self {
+            name: p.name,
+            value: p.value,
         }
     }
 }

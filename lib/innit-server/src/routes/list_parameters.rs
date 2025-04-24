@@ -3,6 +3,7 @@ use axum::extract::{
     State,
 };
 use innit_core::ListParametersResponse;
+use telemetry::tracing::info;
 
 use super::AppError;
 use crate::{
@@ -17,13 +18,21 @@ pub async fn list_parameters_route(
         ..
     }): State<AppState>,
 ) -> Result<Json<ListParametersResponse>, AppError> {
+    let path = if !path.starts_with('/') {
+        format!("/{}", path)
+    } else {
+        path
+    };
+
     let parameters = parameter_store_client
-        .parameters_by_path(path)
+        .parameters_by_path(path.clone())
         .await?
         .iter()
         .cloned()
         .map(innit_core::Parameter::from)
         .collect();
+
+    info!("Serving parameters at path: {path}");
 
     Ok(Json(ListParametersResponse { parameters }))
 }
