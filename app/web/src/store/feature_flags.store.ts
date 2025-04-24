@@ -10,7 +10,6 @@ const FLAG_MAPPING = {
   MODULES_TAB: "modules_tab",
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
   ON_DEMAND_ASSETS: "on_demand_assets",
-  SLACK_WEBHOOK: "slack_webhook",
   DIAGRAM_OPTIMIZATION_2: "diagram-optimization-2",
   AUTOCONNECT: "autoconnect-component-input-sockets",
   PRIVATE_SCOPED_MODULES: "private-scoped-modules",
@@ -23,8 +22,6 @@ const FLAG_MAPPING = {
 };
 
 const WORKSPACE_FLAG_MAPPING = {
-  WORKSPACE_FINE_GRAINED_ACCESS_CONTROL:
-    "workspace-fine-grained-access-control",
   FRONTEND_ARCH_VIEWS: "workspace-frontend-arch-views",
   BIFROST_ACTIONS: "workspace-bifrost-actions",
   NEW_HOTNESS: "workspace-new-hotness",

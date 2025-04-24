@@ -27,7 +27,6 @@
     @select="copyWorkspaceToken"
   />
   <DropdownMenuItem
-    v-if="featureFlagsStore.SLACK_WEBHOOK"
     icon="settings"
     label="Workspace Integrations"
     @select="emit('openIntegrationsModal')"
@@ -40,12 +39,10 @@ import { computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 
 const AUTH_PORTAL_URL = import.meta.env.VITE_AUTH_PORTAL_URL;
 const workspacesStore = useWorkspacesStore();
 const changeSetStore = useChangeSetsStore();
-const featureFlagsStore = useFeatureFlagsStore();
 const router = useRouter();
 const route = useRoute();
 
