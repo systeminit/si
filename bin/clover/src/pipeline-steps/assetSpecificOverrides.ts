@@ -902,6 +902,28 @@ const overrides = new Map<string, OverrideFn>([
       }  
     }
   }],
+  ["AWS::ElastiCache::ServerlessCache", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const subnetIdSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Subnet Ids" && s.data.kind === "input",
+    );
+    if (!subnetIdSocket) return;
+    setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnet id"] });
+    setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnetid"] });
+    setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnets"] });
+  }],
+  ["AWS::ElastiCache::SubnetGroup", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const subnetIdSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Subnet Ids" && s.data.kind === "input",
+    );
+    if (!subnetIdSocket) return;
+    setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnet id"] });
+    setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnetid"] });
+    setAnnotationOnSocket(subnetIdSocket, { tokens: ["subnets"] });
+  }],
 ]);
 
 function attachExtraActionFunction(
