@@ -6,15 +6,10 @@ use std::{
 };
 
 use args::load_config_with_provider;
-use innit_client::{
-    InnitClient,
-    config::Config as InnitConfig,
-};
+use innit_client::InnitClient;
 use luminork_server::{
     Config,
     Server,
-    StandardConfig,
-    get_host_environment,
     key_generation,
 };
 use si_service::{
@@ -28,6 +23,8 @@ use si_service::{
         TelemetryShutdownGuard,
     },
 };
+
+use crate::args::NAME;
 
 mod args;
 
@@ -109,10 +106,7 @@ async fn async_main() -> Result<()> {
         .await
     } else {
         debug!("creating innit-client...");
-        let provider = Some((
-            InnitClient::new(InnitConfig::builder().build()?).await?,
-            get_host_environment(),
-        ));
+        let provider = Some(InnitClient::new_from_environment(NAME.to_string()).await?);
         let config = load_config_with_provider(args, provider).await?;
 
         debug!(?config, "computed configuration");

@@ -60,6 +60,10 @@ pub(crate) struct Args {
     )]
     pub(crate) log_json: bool,
 
+    /// ARN for a Private Cert Authority in AWS
+    #[arg(long, env)]
+    pub(crate) client_ca_arn: Option<String>,
+
     /// The address and port to bind the HTTP server to [example: 0.0.0.0:80]
     #[arg(long, env)]
     pub(crate) socket_addr: Option<String>,
@@ -70,6 +74,9 @@ impl TryFrom<Args> for Config {
 
     fn try_from(args: Args) -> Result<Self, Self::Error> {
         ConfigFile::layered_load(NAME, |config_map| {
+            if let Some(ca_arn) = args.client_ca_arn {
+                config_map.set("client_ca_arn", ca_arn);
+            }
             if let Some(socket_addr) = args.socket_addr {
                 config_map.set("socket_addr", socket_addr);
             }

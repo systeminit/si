@@ -17,6 +17,7 @@ rust_library(
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-rustls",
         "//third-party/rust:webpki-roots",
+        "//third-party/rust:x509-parser",
     ],
     srcs = glob([
         "src/**/*.rs",

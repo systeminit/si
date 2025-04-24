@@ -28,19 +28,18 @@ pub struct Parameter {
 #[async_trait]
 pub trait ParameterProvider: Send + Sync {
     async fn get_parameters_by_path(&self, path: String) -> Result<Vec<Parameter>, ParameterError>;
+    async fn environment(&self) -> String;
 }
 
 pub struct ParameterSource<P: ParameterProvider> {
     provider: P,
-    environment: String,
     service_name: String,
 }
 
 impl<P: ParameterProvider> ParameterSource<P> {
-    pub fn new(provider: P, environment: String, service_name: String) -> Self {
+    pub fn new(provider: P, service_name: String) -> Self {
         Self {
             provider,
-            environment,
             service_name,
         }
     }
@@ -51,7 +50,8 @@ impl<P: ParameterProvider> ParameterSource<P> {
         &self,
         builder: ConfigBuilder<St>,
     ) -> Result<ConfigBuilder<St>, config::ConfigError> {
-        let global_path = format!("si/{}/global", self.environment);
+        let environment = self.provider.environment().await;
+        let global_path = format!("si/{}/global", environment);
         let global_params = match self
             .provider
             .get_parameters_by_path(global_path.clone())
@@ -64,7 +64,7 @@ impl<P: ParameterProvider> ParameterSource<P> {
             }
         };
 
-        let service_path = format!("si/{}/{}", self.environment, self.service_name);
+        let service_path = format!("si/{}/{}", environment, self.service_name);
         let service_params = match self
             .provider
             .get_parameters_by_path(service_path.clone())

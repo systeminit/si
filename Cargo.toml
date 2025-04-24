@@ -72,6 +72,7 @@ members = [
     "lib/shuttle-core",
     "lib/shuttle-server",
     "lib/si-crypto",
+    "lib/si-data-acmpca",
     "lib/si-data-nats",
     "lib/si-data-pg",
     "lib/si-data-spicedb",
@@ -124,6 +125,7 @@ async-trait = "0.1.83"
 aws-config = { version = "=1.5.18", features = [
     "behavior-version-latest",
 ] } # pinned because very next version (1.6.0) starts pulling in `aws-lc-rs`/`aws-lc-sys` which include native C code
+aws-sdk-acmpca = { version = "1.70.0", default-features = false, features = ["rt-tokio"] }
 aws-sdk-firehose = "=1.68.0" # pinned because very next version (1.69.0) starts pulling in `aws-lc-rs`/`aws-lc-sys` which include native C code
 aws-sdk-ssm = { version = "1.71.0", default-features = false, features = ["rt-tokio"] }
 # setting smithy like so to avoid pulling in aws-lc-rs for aws-sdk-ssm
@@ -314,6 +316,7 @@ url = { version = "2.5.4", features = ["serde"] }
 uuid = { version = "1.11.0", features = ["serde", "v4"] }
 version_check = "0.9.5"
 webpki-roots = { version = "0.25.4" }
+x509-parser = { version = "0.17.0" }
 xxhash-rust = { version = "0.8.12", features = ["xxh3", "const_xxh3"] }
 y-sync = { version = "0.4.0", features = ["net"] }
 yrs = { version = "0.17.4" }

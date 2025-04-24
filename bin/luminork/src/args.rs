@@ -21,7 +21,7 @@ use luminork_server::{
 };
 use si_service::prelude::*;
 
-const NAME: &str = "luminork";
+pub const NAME: &str = "luminork";
 
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
@@ -414,7 +414,7 @@ impl TryFrom<Args> for Config {
 
 pub async fn load_config_with_provider<P>(
     args: Args,
-    provider: Option<(P, String)>,
+    provider: Option<P>,
 ) -> Result<Config, ConfigError>
 where
     P: ParameterProvider + 'static,

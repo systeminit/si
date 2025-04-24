@@ -164,7 +164,7 @@ pub async fn layered_load_with_provider<C, F>(
     file_formats: impl ToFileFormats,
     config_env_var: &Option<impl AsRef<OsStr>>,
     env_config_prefix: &Option<impl AsRef<str>>,
-    parameter_provider: Option<(impl ParameterProvider + 'static, String)>,
+    parameter_provider: Option<impl ParameterProvider + 'static>,
     set_func: F,
 ) -> Result<C>
 where
@@ -262,8 +262,8 @@ where
     }
 
     // Parameter provider (if provided)
-    if let Some((provider, environment)) = parameter_provider {
-        let param_source = ParameterSource::new(provider, environment, app_name.to_string());
+    if let Some(provider) = parameter_provider {
+        let param_source = ParameterSource::new(provider, app_name.to_string());
         builder = param_source.load(builder).await?;
     }
 

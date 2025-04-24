@@ -9,7 +9,9 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+buck2-resources = { path = "../../lib/buck2-resources" }
 innit-core = { path = "../../lib/innit-core" }
+si-data-acmpca = { path = "../../lib/si-data-acmpca" }
 si-data-ssm = { path = "../../lib/si-data-ssm" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }

@@ -25,6 +25,13 @@ use si_std::CanonicalFile;
 use thiserror::Error;
 use tokio::io;
 use tokio_rustls::rustls;
+use x509_parser::{
+    parse_x509_certificate,
+    pem::{
+        self,
+    },
+    prelude::X509Certificate,
+};
 
 type Result<T> = std::result::Result<T, TlsError>;
 
@@ -41,8 +48,23 @@ pub enum TlsError {
     Io(#[from] io::Error),
     #[error("Rustls error: {0}")]
     Rustls(#[from] rustls::Error),
-    #[error("Verifier bulder error: {0}")]
+    #[error("Verifier builder error: {0}")]
     Verifier(#[from] rustls::server::VerifierBuilderError),
+    #[error("x509 parse error: {0}")]
+    X509Parse(String),
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CertificateIssuer {
+    common_name: Option<String>,
+    organization: Option<String>,
+    organization_unit: Option<String>,
+}
+
+impl CertificateIssuer {
+    pub fn common_name(&self) -> Option<&String> {
+        self.common_name.as_ref()
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -64,7 +86,6 @@ impl CertificateSource {
     pub async fn load_certificates_as_bytes(&self) -> Result<Vec<u8>> {
         match self {
             Self::AsString(string) => Ok(string.as_bytes().to_vec()),
-
             Self::Base64(data) => Ok(STANDARD.decode(data)?),
             Self::Path(path) => Ok(tokio::fs::read(path).await?),
             Self::Remote(url) => Ok(reqwest::get(url).await?.bytes().await?.to_vec()),
@@ -96,6 +117,49 @@ impl CertificateSource {
         Err(TlsError::Rustls(rustls::Error::General(
             "Failed to parse certificate: not a valid PEM, base64-encoded DER, or raw DER".into(),
         )))
+    }
+
+    /// Get issuer details from a cert
+    pub async fn get_issuer_details(&self) -> Result<CertificateIssuer> {
+        let bytes = self.load_certificates_as_bytes().await?;
+
+        // Try to extract certificate data, handling both PEM and DER formats
+        // Try parsing as PEM first
+        if let Ok((_, pem)) = pem::parse_x509_pem(&bytes) {
+            if let Ok((_, cert)) = parse_x509_certificate(&pem.contents) {
+                return Ok(Self::extract_issuer_from_cert(&cert));
+            }
+        }
+
+        // Fall back to DER format if PEM parsing failed
+        if let Ok((_, cert)) = parse_x509_certificate(&bytes) {
+            return Ok(Self::extract_issuer_from_cert(&cert));
+        }
+
+        Err(TlsError::X509Parse(
+            "Failed to parse certificate in either PEM or DER format".to_string(),
+        ))
+    }
+
+    // Helper function to extract issuer details from a certificate
+    fn extract_issuer_from_cert(cert: &X509Certificate) -> CertificateIssuer {
+        CertificateIssuer {
+            common_name: cert
+                .issuer()
+                .iter_common_name()
+                .next()
+                .and_then(|cn| cn.as_str().ok().map(String::from)),
+            organization: cert
+                .issuer()
+                .iter_organization()
+                .next()
+                .and_then(|cn| cn.as_str().ok().map(String::from)),
+            organization_unit: cert
+                .issuer()
+                .iter_organizational_unit()
+                .next()
+                .and_then(|cn| cn.as_str().ok().map(String::from)),
+        }
     }
 
     /// Add certificates from any source to a RootCertStore

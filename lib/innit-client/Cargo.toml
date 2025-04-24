@@ -12,6 +12,7 @@ publish.workspace = true
 buck2-resources = { path = "../../lib/buck2-resources" }
 config-file = { path = "../../lib/config-file" }
 innit-core = { path = "../../lib/innit-core" }
+si-data-acmpca = { path = "../../lib/si-data-acmpca" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 si-tls = { path = "../../lib/si-tls" }

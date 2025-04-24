@@ -87,3 +87,8 @@ test_suite(
         ":check-format-python",
     ],
 )
+
+export_file(
+    name = "minica.pem",
+    visibility = ["PUBLIC"],
+)
