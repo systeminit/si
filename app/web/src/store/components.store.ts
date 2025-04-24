@@ -355,7 +355,14 @@ export function getPossibleAndExistingPeerSockets(
   targetComponentId: ComponentId,
   allComponents: (DiagramNodeData | DiagramGroupData)[],
   allEdges: DiagramEdgeData[],
+  peerCache: Record<string, PossibleAndExistingPeersLists>,
 ): PossibleAndExistingPeersLists {
+  const cacheKey = `${targetComponentId}-${targetSocket.id}`;
+  const cached = peerCache[cacheKey];
+  if (cached) {
+    return cached;
+  }
+
   const nonDeletedEdges = allEdges.filter(
     (e) => e.def.changeStatus !== "deleted",
   );
@@ -472,6 +479,8 @@ export function getPossibleAndExistingPeerSockets(
     },
     [[] as SocketWithParentAndEdge[], [] as SocketWithParent[]],
   );
+
+  peerCache[cacheKey] = { existingPeers, possiblePeers };
 
   return { existingPeers, possiblePeers };
 }
@@ -698,7 +707,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           possibleAndExistingPeerSocketsFn: (state) => {
             const allComponents = _.values(state.allComponentsById);
             const allEdges = _.values(state.diagramEdgesById);
-
+            const peerCache = {};
             return (
               targetSocket: DiagramSocketDef,
               targetComponentId: ComponentId,
@@ -708,6 +717,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 targetComponentId,
                 allComponents,
                 allEdges,
+                peerCache,
               );
           },
         },
