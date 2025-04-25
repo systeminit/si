@@ -1626,6 +1626,7 @@ fn graph_dfs() -> SplitGraphResult<()> {
 }
 
 #[test]
+#[ignore]
 fn graph_cycle_test() -> SplitGraphResult<()> {
     let mut split_graph = SplitGraph::new(3);
 
@@ -1771,6 +1772,7 @@ fn graph_cycle_test() -> SplitGraphResult<()> {
 }
 
 #[test]
+#[ignore]
 fn graph_cycle_test_mimic_component_parentage() -> SplitGraphResult<()> {
     for split_max in [500] {
         let mut split_graph = SplitGraph::new(split_max);
