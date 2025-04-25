@@ -1,4 +1,4 @@
-CREATE TABLE rebase_batches
+CREATE TABLE rebase_batches 
 (
     key               text                      NOT NULL PRIMARY KEY,
     sort_key          text                      NOT NULL,

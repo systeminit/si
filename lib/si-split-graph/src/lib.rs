@@ -637,14 +637,7 @@ where
         node: SplitGraphNodeWeight<N>,
     ) -> SplitGraphResult<SplitGraphNodeIndex> {
         let subgraph = self.get_subgraph_mut(subgraph_index)?;
-        let node_id = node.id();
         let node_index = subgraph.add_node(node);
-        if node_index == NodeIndex::new(2085) {
-            warn!(
-                "added node {} to {} at index {:?}",
-                node_id, subgraph_index, node_index
-            );
-        }
 
         Ok(SplitGraphNodeIndex::new(subgraph_index, node_index))
     }
@@ -653,9 +646,6 @@ where
         let node_id = node.id();
         if let Some(split_graph_index) = self.node_id_to_index(node_id) {
             let subgraph = self.get_subgraph_mut(split_graph_index.subgraph)?;
-            if split_graph_index.index == NodeIndex::new(2085) {
-                warn!("replace node {} at index {:?}", node_id, split_graph_index);
-            }
             subgraph.replace_node(split_graph_index.index, SplitGraphNodeWeight::Custom(node));
 
             return Ok(split_graph_index);

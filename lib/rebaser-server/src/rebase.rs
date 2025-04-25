@@ -135,7 +135,6 @@ pub async fn perform_rebase(
             .await?;
         }
         WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
-            warn!("split rebase");
             rebase_split(
                 ctx,
                 to_rebase_workspace_snapshot_address,
@@ -228,7 +227,7 @@ pub async fn perform_rebase(
         }
     }
 
-    warn!("rebase elapsed: {:?}", start.elapsed());
+    debug!("rebase elapsed: {:?}", start.elapsed());
 
     Ok(RebaseStatus::Success {
         updates_performed: request.updates_address,
@@ -266,14 +265,14 @@ async fn rebase_split(
         .await?
         .ok_or(RebaseError::MissingRebaseBatch(request.updates_address))?;
 
-    warn!("rebase batch: {:?}", rebase_batch);
+    debug!("rebase batch: {:?}", rebase_batch);
 
     to_rebase_workspace_snapshot
         .perform_updates(rebase_batch.as_slice())
         .await?;
 
     let new_snapshot_address = to_rebase_workspace_snapshot.write(ctx).await?;
-    warn!("Workspace snapshot updated to {}", new_snapshot_address);
+    debug!("Workspace snapshot updated to {}", new_snapshot_address);
 
     to_rebase_change_set
         .update_pointer(ctx, new_snapshot_address)
