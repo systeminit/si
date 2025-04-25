@@ -534,6 +534,14 @@
       "NEW_AND_OLD_IMAGES"
     ]
   },
+  "When an item in the table is modified, ``StreamViewType`` determines what information is written to the stream for this table. Valid values for ``StreamViewType`` are:\n  +  ``KEYS_ONLY`` - Only the key attributes of the modified item are written to the stream.\n  +  ``NEW_IMAGE`` - The entire item, as it appears after it was modified, is written to the stream.\n  +  ``OLD_IMAGE`` - The entire item, as it appeared before it was modified, is written to the stream.\n  +  ``NEW_AND_OLD_IMAGES`` - Both the new and the old item images of the item are written to the stream.": {
+    "enum": [
+      "KEYS_ONLY",
+      "NEW_IMAGE",
+      "OLD_IMAGE",
+      "NEW_AND_OLD_IMAGES"
+    ]
+  },
   "The verbosity of the CloudWatch Logs for an application. You can set it to `INFO`, `WARN`, `ERROR`, or `DEBUG`.": {
     "enum": [
       "INFO",
@@ -1525,6 +1533,12 @@
       "PROVISIONED"
     ]
   },
+  "Specify how you are charged for read and write throughput and how you manage capacity.\n Valid values include:\n  +  ``PAY_PER_REQUEST`` - We recommend using ``PAY_PER_REQUEST`` for most DynamoDB workloads. ``PAY_PER_REQUEST`` sets the billing mode to [On-demand capacity mode](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/on-demand-capacity-mode.html). \n  +  ``PROVISIONED`` - We recommend using ``PROVISIONED`` for steady workloads with predictable growth where capacity requirements can be reliably forecasted. ``PROVISIONED`` sets the billing mode to [Provisioned capacity mode](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/provisioned-capacity-mode.html).\n  \n If not specified, the default is ``PROVISIONED``.": {
+    "enum": [
+      "PAY_PER_REQUEST",
+      "PROVISIONED"
+    ]
+  },
   "The concurrency type of deploying StackSets operations in regions, could be in parallel or one region at a time": {
     "enum": [
       "PARALLEL",
@@ -2025,6 +2039,11 @@
     ]
   },
   "Server-side encryption type. The only supported value is:\n  +   ``KMS`` - Server-side encryption that uses KMSlong. The key is stored in your account and is managed by KMS (KMS charges apply).": {
+    "enum": [
+      "KMS"
+    ]
+  },
+  "Server-side encryption type. The only supported value is:\n  +  ``KMS`` - Server-side encryption that uses KMSlong. The key is stored in your account and is managed by KMS (KMS charges apply).": {
     "enum": [
       "KMS"
     ]
@@ -13069,6 +13088,9 @@
     "enum": null
   },
   "The name or the Id of the Resource.": {
+    "enum": null
+  },
+  "The name server domain for queries to be delegated to if a query matches the delegation record.": {
     "enum": null
   },
   "The name that identifies the Amazon S3 Storage Lens Group.": {
