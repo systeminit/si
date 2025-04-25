@@ -1011,6 +1011,157 @@ impl FuncRunner {
         Ok(result_channel)
     }
 
+    pub async fn build_management(
+        ctx: &DalContext,
+        prototype_id: ManagementPrototypeId,
+        manager_component_id: ComponentId,
+        management_func_id: FuncId,
+        args: serde_json::Value,
+    ) -> FuncRunnerResult<FuncRunner> {
+        let span = current_span_for_instrument_at!("debug");
+
+        // Prepares the function for execution.
+        //
+        // Note: this function is internal so we can record early-returning errors in span metadata
+        // and in order to time the function's preparation vs. execution timings.
+        #[instrument(
+            name = "func_runner.run_management.prepare",
+            level = "debug",
+            skip_all,
+            fields()
+        )]
+        #[inline]
+        async fn prepare(
+            ctx: &DalContext,
+            prototype_id: ManagementPrototypeId,
+            manager_component_id: ComponentId,
+            management_func_id: FuncId,
+            args: serde_json::Value,
+            span: &Span,
+        ) -> FuncRunnerResult<FuncRunner> {
+            let func = Func::get_by_id(ctx, management_func_id).await?;
+
+            let function_args: CasValue = args.clone().into();
+            let (function_args_cas_address, _) = ctx.layer_db().cas().write(
+                Arc::new(function_args.into()),
+                None,
+                ctx.events_tenancy(),
+                ctx.events_actor(),
+            )?;
+
+            let code_cas_hash = if let Some(code) = func.code_base64.as_ref() {
+                let code_json_value: serde_json::Value = code.clone().into();
+                let code_cas_value: CasValue = code_json_value.into();
+                let (hash, _) = ctx.layer_db().cas().write(
+                    Arc::new(code_cas_value.into()),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )?;
+                hash
+            } else {
+                // Why are we doing this? Because the struct gods demand it. I have feelings.
+                ContentHash::new("".as_bytes())
+            };
+
+            let before = FuncRunner::before_funcs(ctx, manager_component_id).await?;
+            let manager_component = Component::get_by_id(ctx, manager_component_id).await?;
+            let component_name = manager_component.name(ctx).await?;
+            let schema_name = manager_component.schema(ctx).await?.name;
+
+            let change_set = ctx.change_set()?;
+
+            let func_run_create_time = Utc::now();
+            let func_run_inner = FuncRunBuilder::default()
+                .actor(ctx.events_actor())
+                .tenancy(ctx.events_tenancy())
+                .backend_kind(func.backend_kind.into())
+                .backend_response_type(func.backend_response_type.into())
+                .function_name(func.name.clone())
+                .function_kind(func.kind.into())
+                .prototype_id(Some(prototype_id.into()))
+                .function_display_name(func.display_name.clone())
+                .function_description(func.description.clone())
+                .function_link(func.link.clone())
+                .function_args_cas_address(function_args_cas_address)
+                .function_code_cas_address(code_cas_hash)
+                .action_originating_change_set_id(Some(change_set.id))
+                .action_originating_change_set_name(Some(change_set.name.to_owned()))
+                .action_or_func_id(Some(func.id.into()))
+                .attribute_value_id(None)
+                .component_id(Some(manager_component_id))
+                .component_name(Some(component_name))
+                .schema_name(Some(schema_name))
+                .created_at(func_run_create_time)
+                .updated_at(func_run_create_time)
+                .build()?;
+
+            if !span.is_disabled() {
+                let mut id_buf = FuncRunId::array_to_str_buf();
+
+                let id = func_run_inner.id().array_to_str(&mut id_buf);
+                span.record("job.id", &id);
+                span.record("si.func_run.id", &id);
+
+                span.record("job.invoked_name", func.name.as_str());
+                span.record("si.func_run.func.name", func.name.as_str());
+
+                span.record("si.func_run.func.backend_kind", func.backend_kind.as_ref());
+                span.record(
+                    "si.func_run.func.backend_response_type",
+                    func.backend_response_type.as_ref(),
+                );
+                span.record("si.func_run.func.id", func.id.array_to_str(&mut id_buf));
+                span.record("si.func_run.func.kind", func.kind.as_ref());
+
+                span.record(
+                    "si.change_set.id",
+                    func_run_inner.change_set_id().array_to_str(&mut id_buf),
+                );
+                span.record(
+                    "si.component.id",
+                    manager_component_id.array_to_str(&mut id_buf),
+                );
+                span.record(
+                    "si.workspace.id",
+                    func_run_inner.workspace_pk().array_to_str(&mut id_buf),
+                );
+            }
+
+            let func_run = Arc::new(func_run_inner);
+
+            ctx.layer_db()
+                .func_run()
+                .write(
+                    func_run.clone(),
+                    None,
+                    ctx.events_tenancy(),
+                    ctx.events_actor(),
+                )
+                .await?;
+
+            Ok(FuncRunner {
+                func_run,
+                func,
+                args,
+                before,
+            })
+        }
+
+        let runner = prepare(
+            ctx,
+            prototype_id,
+            manager_component_id,
+            management_func_id,
+            args,
+            &span,
+        )
+        .await
+        .map_err(|err| span.record_err(err))?;
+
+        Ok(runner)
+    }
+
     #[instrument(
         name = "func_runner.run_action",
         level = "info",
@@ -1312,11 +1463,15 @@ impl FuncRunner {
             .await?)
     }
 
-    fn id(&self) -> FuncRunId {
+    pub fn id(&self) -> FuncRunId {
         self.func_run.id()
     }
 
-    async fn execute(self, ctx: DalContext, execution_parent_span: Span) -> FuncRunnerValueChannel {
+    pub async fn execute(
+        self,
+        ctx: DalContext,
+        execution_parent_span: Span,
+    ) -> FuncRunnerValueChannel {
         let func_run_id = self.func_run.id();
         let action_id = self.func_run.action_id();
         let (func_dispatch_context, output_stream_rx) = FuncDispatchContext::new(

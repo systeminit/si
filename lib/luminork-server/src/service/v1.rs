@@ -6,7 +6,6 @@ use crate::AppState;
 mod change_sets;
 pub mod common;
 mod components;
-mod management;
 mod schema;
 mod workspaces;
 
@@ -29,6 +28,11 @@ pub use components::{
     ComponentV1RequestPath,
     ComponentsError,
     ComponentsResult,
+    add_action::{
+        ActionReference,
+        AddActionV1Request,
+        AddActionV1Response,
+    },
     connections::{
         ComponentReference,
         Connection,
@@ -39,6 +43,11 @@ pub use components::{
         CreateComponentV1Response,
     },
     delete_component::DeleteComponentV1Response,
+    execute_management_function::{
+        ExecuteManagementFunctionV1Request,
+        ExecuteManagementFunctionV1Response,
+        ManagementFunctionReference,
+    },
     find_component::FindComponentV1Request,
     get_component::{
         GetComponentV1Response,
@@ -50,14 +59,6 @@ pub use components::{
         DomainPropPath,
         UpdateComponentV1Request,
         UpdateComponentV1Response,
-    },
-};
-pub use management::{
-    ManagementApiError,
-    run_prototype::{
-        RunPrototypePath,
-        RunPrototypeV1Request,
-        RunPrototypeV1Response,
     },
 };
 pub use schema::{
@@ -97,7 +98,8 @@ pub use crate::api_types::component::v1::{
         components::find_component::find_component,
         components::update_component::update_component,
         components::delete_component::delete_component,
-        management::run_prototype::run_prototype,
+        components::execute_management_function::execute_management_function,
+        components::add_action::add_action,
         schema::list_schema::list_schemas,
     ),
     components(
@@ -118,13 +120,15 @@ pub use crate::api_types::component::v1::{
             CreateComponentV1Request,
             CreateComponentV1Response,
             Connection,
+            AddActionV1Response,
+            AddActionV1Request,
+            ActionReference,
             ListSchemaV1Response,
             UpdateComponentV1Request,
             UpdateComponentV1Response,
             DeleteComponentV1Response,
-            RunPrototypeV1Request,
-            RunPrototypeV1Response,
-            RunPrototypePath,
+            ExecuteManagementFunctionV1Request,
+            ExecuteManagementFunctionV1Response,
             ComponentPropKey,
             DomainPropPath,
             ConnectionPoint,
@@ -140,7 +144,6 @@ pub use crate::api_types::component::v1::{
         (name = "workspaces", description = "Workspace management endpoints"),
         (name = "change_sets", description = "Change set management endpoints"),
         (name = "components", description = "Component management endpoints"),
-        (name = "management", description = "Management function endpoints"),
         (name = "schemas", description = "Schema endpoints")
     )
 )]

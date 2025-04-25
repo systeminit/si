@@ -10,16 +10,25 @@ use axum::{
         put,
     },
 };
-use dal::ComponentId;
+use dal::{
+    ActionPrototypeId,
+    ComponentId,
+    action::{
+        ActionError,
+        prototype::ActionPrototypeError,
+    },
+};
 use serde::Deserialize;
 use thiserror::Error;
 use utoipa::ToSchema;
 
 use crate::AppState;
 
+pub mod add_action;
 pub mod connections;
 pub mod create_component;
 pub mod delete_component;
+pub mod execute_management_function;
 pub mod find_component;
 pub mod get_component;
 pub mod list_components;
@@ -28,6 +37,14 @@ pub mod update_component;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ComponentsError {
+    #[error("action error: {0}")]
+    Action(#[from] ActionError),
+    #[error("action already enqueued: {0}")]
+    ActionAlreadyEnqueued(ActionPrototypeId),
+    #[error("action function not found: {0}")]
+    ActionFunctionNotFound(String),
+    #[error("component error: {0}")]
+    ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] dal::attribute::value::AttributeValueError),
     #[error("component error: {0}")]
@@ -38,10 +55,22 @@ pub enum ComponentsError {
     DalChangeSet(#[from] dal::ChangeSetError),
     #[error("diagram error: {0}")]
     Diagram(#[from] dal::diagram::DiagramError),
+    #[error(
+        "ambiguous action function name reference: {0} (found multiple action functions with this name)"
+    )]
+    DuplicateActionFunctionName(String),
     #[error("ambiguous component name reference: {0} (found multiple components with this name)")]
     DuplicateComponentName(String),
+    #[error(
+        "ambiguous management function name reference: {0} (found multiple management functions with this name)"
+    )]
+    DuplicateManagementFunctionName(String),
+    #[error("func error: {0}")]
+    Func(#[from] dal::FuncError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] dal::socket::input::InputSocketError),
+    #[error("management function not found: {0}")]
+    ManagementFunctionNotFound(String),
     #[error("prop error: {0}")]
     ManagementPrototype(#[from] dal::management::prototype::ManagementPrototypeError),
     #[error("output socket error: {0}")]
@@ -56,6 +85,8 @@ pub enum ComponentsError {
     Transactions(#[from] dal::TransactionsError),
     #[error("validation error: {0}")]
     Validation(String),
+    #[error("view not found: {0}")]
+    ViewNotFound(String),
     #[error("ws event error: {0}")]
     WsEvent(#[from] dal::WsEventError),
 }
@@ -99,9 +130,21 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
             ComponentsError::ComponentNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            ComponentsError::ActionFunctionNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            ComponentsError::ManagementFunctionNotFound(_) => {
+                (StatusCode::NOT_FOUND, self.to_string())
+            }
+            ComponentsError::ActionAlreadyEnqueued(_) => (StatusCode::CONFLICT, self.to_string()),
             ComponentsError::DuplicateComponentName(_) => {
                 (StatusCode::PRECONDITION_FAILED, self.to_string())
             }
+            ComponentsError::DuplicateManagementFunctionName(_) => {
+                (StatusCode::PRECONDITION_FAILED, self.to_string())
+            }
+            ComponentsError::DuplicateActionFunctionName(_) => {
+                (StatusCode::PRECONDITION_FAILED, self.to_string())
+            }
+            ComponentsError::ViewNotFound(_) => (StatusCode::PRECONDITION_FAILED, self.to_string()),
             ComponentsError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
@@ -118,6 +161,11 @@ pub fn routes() -> Router<AppState> {
             Router::new()
                 .route("/", get(get_component::get_component))
                 .route("/", put(update_component::update_component))
-                .route("/", delete(delete_component::delete_component)),
+                .route("/", delete(delete_component::delete_component))
+                .route(
+                    "/execute-management-function",
+                    post(execute_management_function::execute_management_function),
+                )
+                .route("/action", post(add_action::add_action)),
         )
 }

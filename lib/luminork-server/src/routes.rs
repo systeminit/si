@@ -94,7 +94,6 @@ async fn app_state_middeware<B>(
         (name = "whoami", description = "User identity endpoints"),
         (name = "change_sets", description = "Change set management endpoints"),
         (name = "components", description = "Component management endpoints"),
-        (name = "management", description = "Management function endpoints")
     ),
     info(
         title = "Luminork API",
