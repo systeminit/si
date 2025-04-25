@@ -5,8 +5,8 @@ use axum::{
     response::Json,
 };
 use dal::{
+    ActionPrototypeId,
     Component,
-    management::prototype::ManagementPrototype,
 };
 use serde::Serialize;
 use si_id::ManagementPrototypeId;
@@ -29,7 +29,7 @@ use crate::{
 pub struct GetComponentV1Response {
     pub component: ComponentViewV1,
     pub management_functions: Vec<GetComponentV1ResponseManagementFunction>,
-    //todo: add actions?
+    pub action_functions: Vec<GetComponentV1ResponseActionFunction>,
 }
 
 #[derive(Serialize, Debug, ToSchema)]
@@ -37,7 +37,15 @@ pub struct GetComponentV1Response {
 pub struct GetComponentV1ResponseManagementFunction {
     #[schema(value_type = String)]
     pub management_prototype_id: ManagementPrototypeId,
-    pub name: String,
+    pub func_name: String,
+}
+
+#[derive(Serialize, Debug, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GetComponentV1ResponseActionFunction {
+    #[schema(value_type = String)]
+    pub prototype_id: ActionPrototypeId,
+    pub func_name: String,
 }
 
 #[utoipa::path(
@@ -60,19 +68,13 @@ pub async fn get_component(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     Path(ComponentV1RequestPath { component_id }): Path<ComponentV1RequestPath>,
 ) -> Result<Json<GetComponentV1Response>, ComponentsError> {
-    let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
-    let management_functions = ManagementPrototype::list_for_variant_id(ctx, schema_variant_id)
-        .await?
-        .into_iter()
-        .map(|prototype| GetComponentV1ResponseManagementFunction {
-            management_prototype_id: prototype.id,
-            name: prototype.name,
-        })
-        .collect();
+    let (management_functions, action_functions) =
+        super::get_component_functions(ctx, component_id).await?;
 
     Ok(Json(GetComponentV1Response {
         component: ComponentViewV1::assemble(ctx, component_id).await?,
         management_functions,
+        action_functions,
     }))
 }
 

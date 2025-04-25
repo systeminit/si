@@ -48,7 +48,7 @@ pub use components::{
         ExecuteManagementFunctionV1Response,
         ManagementFunctionReference,
     },
-    find_component::FindComponentV1Request,
+    find_component::FindComponentV1Params,
     get_component::{
         GetComponentV1Response,
         GetComponentV1ResponseManagementFunction,
@@ -137,7 +137,7 @@ pub use crate::api_types::component::v1::{
             ComponentPropViewV1,
             ConnectionViewV1,
             ListComponentsV1Response,
-            FindComponentV1Request,
+            FindComponentV1Params,
         )
     ),
     tags(
