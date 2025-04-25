@@ -438,6 +438,23 @@ impl Prop {
             eligible_to_send_data: self.can_be_used_as_prototype_arg,
         })
     }
+
+    /// Mark whether a prop can be used as an input to a function. Props below
+    /// Maps and Arrays are not valid inputs. Only be used when
+    /// "finalizing" a schema variant.
+    pub async fn set_can_be_used_as_prototype_arg(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<()> {
+        let snapshot = ctx.workspace_snapshot()?;
+        let mut prop_node_weight = snapshot.get_node_weight(prop_id).await?;
+        if let NodeWeight::Prop(prop_inner) = &mut prop_node_weight {
+            prop_inner.set_can_be_used_as_prototype_arg(true);
+        }
+        snapshot.add_or_replace_node(prop_node_weight).await?;
+        Ok(())
+    }
+
     pub fn assemble(prop_node_weight: PropNodeWeight, inner: PropContentV1) -> Self {
         Self {
             id: prop_node_weight.id().into(),
@@ -762,9 +779,9 @@ impl Prop {
             .incoming_sources_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Prop)
             .await?;
 
-        for av_source_idx in av_sources {
+        for av_source_id in av_sources {
             let av_id: AttributeValueId = workspace_snapshot
-                .get_node_weight(av_source_idx)
+                .get_node_weight(av_source_id)
                 .await?
                 .get_attribute_value_node_weight()?
                 .id()

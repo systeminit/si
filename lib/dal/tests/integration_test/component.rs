@@ -5,6 +5,7 @@ use dal::{
     DalContext,
     Schema,
     SchemaVariant,
+    Ulid,
     attribute::value::DependentValueGraph,
     diagram::{
         Diagram,
@@ -245,8 +246,7 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
 
     let rigid_designator_values =
         Component::attribute_values_for_prop_id(ctx, component.id(), rigid_designator_prop_id)
-            .await
-            .expect("able to get attribute value for universe prop");
+            .await?;
 
     assert_eq!(1, rigid_designator_values.len());
 
@@ -645,6 +645,47 @@ async fn set_the_universe(ctx: &mut DalContext) -> Result<()> {
         .expect("has a view");
 
     assert_eq!(universe_json, view);
+
+    Ok(())
+}
+
+#[test]
+#[ignore = "this test does not pass on the legacy snapshot because id is not included in the node hash"]
+async fn change_component_id(ctx: &mut DalContext) -> Result<()> {
+    let component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "starfield",
+        "across the universe",
+    )
+    .await?;
+
+    let current_component_id = component.id();
+    let current_lineage_id = ctx
+        .workspace_snapshot()?
+        .get_node_weight(current_component_id)
+        .await
+        .expect("node weight exists")
+        .lineage_id();
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let new_component_id = Ulid::new();
+    ctx.workspace_snapshot()?
+        .update_node_id(current_component_id, new_component_id, current_lineage_id)
+        .await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    assert!(
+        Component::try_get_by_id(ctx, current_component_id)
+            .await?
+            .is_none()
+    );
+    assert!(
+        Component::try_get_by_id(ctx, new_component_id.into())
+            .await?
+            .is_some()
+    );
 
     Ok(())
 }

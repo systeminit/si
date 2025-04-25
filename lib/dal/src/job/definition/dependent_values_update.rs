@@ -71,7 +71,10 @@ use crate::{
         StatusUpdate,
         StatusUpdateError,
     },
-    workspace_snapshot::DependentValueRoot,
+    workspace_snapshot::{
+        DependentValueRoot,
+        dependent_value_root::DependentValueRootError,
+    },
 };
 
 #[remain::sorted]
@@ -83,6 +86,8 @@ pub enum DependentValueUpdateError {
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("dependent values update audit log error: {0}")]
     DependentValuesUpdateAuditLog(#[from] DependentValueUpdateAuditLogError),
     #[error("prop error: {0}")]
@@ -283,7 +288,7 @@ impl DependentValuesUpdate {
     ) -> DependentValueUpdateResult<JobCompletionState> {
         let start = tokio::time::Instant::now();
         let span = Span::current();
-        let roots = ctx.workspace_snapshot()?.take_dependent_values().await?;
+        let roots = DependentValueRoot::take_dependent_values(ctx).await?;
 
         let mut unfinished_values: HashSet<Ulid> = HashSet::new();
         let mut finished_values: HashSet<Ulid> = HashSet::new();
@@ -483,16 +488,21 @@ impl DependentValuesUpdate {
             independent_value_ids = dependency_graph.independent_values().into_iter().collect();
         }
 
-        let snap = ctx.workspace_snapshot()?;
         let mut added_unfinished = false;
         for value_id in &independent_value_ids {
             if spawned_ids.contains(value_id) {
-                snap.add_dependent_value_root(DependentValueRoot::Finished(value_id.into()))
-                    .await?;
+                DependentValueRoot::add_dependent_value_root(
+                    ctx,
+                    DependentValueRoot::Finished(value_id.into()),
+                )
+                .await?;
             } else {
                 added_unfinished = true;
-                snap.add_dependent_value_root(DependentValueRoot::Unfinished(value_id.into()))
-                    .await?;
+                DependentValueRoot::add_dependent_value_root(
+                    ctx,
+                    DependentValueRoot::Unfinished(value_id.into()),
+                )
+                .await?;
             }
         }
 
@@ -509,7 +519,7 @@ impl DependentValuesUpdate {
                     error!(si.error.message = ?err, "status update finished event send for leftover component failed");
                 }
             }
-            snap.take_dependent_values().await?;
+            DependentValueRoot::take_dependent_values(ctx).await?;
         }
 
         debug!("DependentValuesUpdate took: {:?}", start.elapsed());

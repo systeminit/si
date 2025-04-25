@@ -41,9 +41,7 @@ async fn change_in_output_component_produces_dvu_root_in_other_change_set(ctx: &
     // processed unless we explicitly enqueue a dvu. It's enough to see that it
     // made it into the roots
     assert!(
-        ctx.workspace_snapshot()
-            .expect("get snap")
-            .get_dependent_value_roots()
+        DependentValueRoot::get_dependent_value_roots(ctx)
             .await
             .expect("able to get dvu values")
             .contains(&DependentValueRoot::Unfinished(

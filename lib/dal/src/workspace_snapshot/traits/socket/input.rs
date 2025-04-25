@@ -1,38 +1,24 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
-use telemetry::prelude::*;
-
-use crate::{
-    AttributePrototype,
+use si_id::{
     AttributeValueId,
     ComponentId,
-    DalContext,
-    EdgeWeight,
-    EdgeWeightKind,
-    FuncId,
-    InputSocket,
     InputSocketId,
+};
+
+use crate::{
+    DalContext,
+    InputSocket,
     SchemaVariantId,
-    SocketArity,
-    SocketKind,
-    Timestamp,
     WorkspaceSnapshot,
     WorkspaceSnapshotError,
     layer_db_types::{
         InputSocketContent,
         InputSocketContentV2,
     },
-    socket::{
-        connection_annotation::ConnectionAnnotation,
-        input::InputSocketResult,
-    },
+    socket::input::InputSocketResult,
     workspace_snapshot::{
         WorkspaceSnapshotResult,
-        graph::{
-            InputSocketExt as InputSocketExtGraph,
-            LineageId,
-        },
+        graph::InputSocketExt as InputSocketExtGraph,
         node_weight::{
             InputSocketNodeWeight,
             traits::SiVersionedNodeWeight,
@@ -56,19 +42,6 @@ pub trait InputSocketExt {
         name: &str,
         schema_variant_id: SchemaVariantId,
     ) -> WorkspaceSnapshotResult<Option<InputSocket>>;
-
-    /// Create a new [`InputSocket`].
-    #[allow(clippy::too_many_arguments)]
-    async fn new_input_socket(
-        &self,
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-        name: String,
-        func_id: FuncId,
-        arity: SocketArity,
-        kind: SocketKind,
-        connection_annotations: Option<Vec<ConnectionAnnotation>>,
-    ) -> WorkspaceSnapshotResult<InputSocket>;
 
     /// List all [`InputSocketId`]s for the given [`SchemaVariantId`].
     async fn list_input_socket_ids_for_schema_variant(
@@ -108,70 +81,6 @@ pub trait InputSocketExt {
 
 #[async_trait]
 impl InputSocketExt for WorkspaceSnapshot {
-    async fn new_input_socket(
-        &self,
-        ctx: &DalContext,
-        schema_variant_id: SchemaVariantId,
-        name: String,
-        func_id: FuncId,
-        arity: SocketArity,
-        kind: SocketKind,
-        connection_annotations: Option<Vec<ConnectionAnnotation>>,
-    ) -> WorkspaceSnapshotResult<InputSocket> {
-        debug!(%schema_variant_id, %name, "creating input socket");
-
-        let connection_annotations = if let Some(ca) = connection_annotations {
-            ca
-        } else {
-            vec![ConnectionAnnotation::try_from(name.clone()).map_err(Box::new)?]
-        };
-
-        let content = InputSocketContentV2 {
-            timestamp: Timestamp::now(),
-            name: name.clone(),
-            inbound_type_definition: None,
-            outbound_type_definition: None,
-            kind,
-            required: false,
-            ui_hidden: false,
-            connection_annotations,
-        };
-        let (hash, _) = ctx.layer_db().cas().write(
-            Arc::new(InputSocketContent::V2(content.clone()).into()),
-            None,
-            ctx.events_tenancy(),
-            ctx.events_actor(),
-        )?;
-
-        let input_socket_id: InputSocketId = self.generate_ulid().await?.into();
-        let lineage_id: LineageId = self.generate_ulid().await?;
-        let input_socket_node_weight = self.working_copy_mut().await.new_input_socket(
-            schema_variant_id,
-            input_socket_id,
-            lineage_id,
-            arity,
-            hash,
-        )?;
-
-        let attribute_prototype = AttributePrototype::new(ctx, func_id)
-            .await
-            .map_err(Box::new)?;
-
-        self.working_copy_mut().await.add_edge_between_ids(
-            input_socket_id.into(),
-            EdgeWeight::new(EdgeWeightKind::Prototype(None)),
-            attribute_prototype.id().into(),
-        )?;
-
-        let input_socket = input_socket_from_node_weight_and_content(
-            &input_socket_node_weight,
-            InputSocketContent::V2(content),
-        )
-        .map_err(Box::new)?;
-
-        Ok(input_socket)
-    }
-
     async fn get_input_socket(
         &self,
         ctx: &DalContext,
@@ -265,7 +174,7 @@ impl InputSocketExt for WorkspaceSnapshot {
     }
 }
 
-async fn input_socket_from_node_weight(
+pub(crate) async fn input_socket_from_node_weight(
     ctx: &DalContext,
     input_socket_node_weight: &InputSocketNodeWeight,
 ) -> InputSocketResult<InputSocket> {
@@ -282,7 +191,7 @@ async fn input_socket_from_node_weight(
 }
 
 #[inline(always)]
-fn input_socket_from_node_weight_and_content(
+pub(crate) fn input_socket_from_node_weight_and_content(
     node_weight: &InputSocketNodeWeight,
     content: InputSocketContent,
 ) -> InputSocketResult<InputSocket> {

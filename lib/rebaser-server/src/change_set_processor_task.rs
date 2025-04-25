@@ -312,6 +312,10 @@ mod handlers {
         WorkspaceSnapshot,
         WsEvent,
         billing_publish,
+        workspace_snapshot::{
+            DependentValueRoot,
+            dependent_value_root::DependentValueRootError,
+        },
     };
     use naxum::{
         extract::State,
@@ -360,6 +364,8 @@ mod handlers {
         /// When failing to create a DAL context
         #[error("error creating a dal ctx: {0}")]
         DalTransactions(#[from] dal::TransactionsError),
+        #[error("dependent value root error: {0}")]
+        DependentValueRoot(#[from] DependentValueRootError),
         #[error("error publishing reply: {0}")]
         PublishReply(#[source] si_data_nats::Error),
         /// Failures related to rebasing/updating a snapshot or change set pointer.
@@ -432,11 +438,7 @@ mod handlers {
         if matches!(rebase_status, RebaseStatus::Success { .. }) {
             // If we find dependent value roots, then notify the serial dvu task to run at least
             // one more dvu
-            if ctx
-                .workspace_snapshot()?
-                .has_dependent_value_roots()
-                .await?
-            {
+            if DependentValueRoot::roots_exist(&ctx).await? {
                 run_notify.notify_one();
             }
 

@@ -7,6 +7,7 @@ use dal::{
     Schema,
     SchemaVariant,
     component::resource::ResourceData,
+    workspace_snapshot::DependentValueRoot,
 };
 use dal_test::{
     expected::{
@@ -461,9 +462,7 @@ async fn component_concurrency_limit(ctx: &mut DalContext) {
     }
 
     assert!(
-        ctx.workspace_snapshot()
-            .expect("workspace_snapshot")
-            .has_dependent_value_roots()
+        DependentValueRoot::roots_exist(ctx)
             .await
             .expect("has dependent value roots"),
         "should have dvu roots to be processed"
@@ -472,11 +471,9 @@ async fn component_concurrency_limit(ctx: &mut DalContext) {
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
     assert!(
-        !ctx.workspace_snapshot()
-            .expect("workspace_snapshot")
-            .has_dependent_value_roots()
+        !DependentValueRoot::roots_exist(ctx)
             .await
-            .expect("has dependent value roots"),
+            .expect("able to check for dependent value roots"),
         "all dvu roots should be processed and removed"
     );
 
@@ -506,9 +503,7 @@ async fn component_concurrency_limit(ctx: &mut DalContext) {
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
     assert!(
-        !ctx.workspace_snapshot()
-            .expect("workspace_snapshot")
-            .has_dependent_value_roots()
+        !DependentValueRoot::roots_exist(ctx)
             .await
             .expect("call has dvu roots"),
         "all roots should be processed and off the graph"

@@ -72,6 +72,7 @@ use crate::{
         input::InputSocketError,
         output::OutputSocketError,
     },
+    workspace_snapshot::dependent_value_root::DependentValueRootError,
 };
 
 pub mod action;
@@ -108,6 +109,8 @@ pub enum FuncBindingError {
     CannotSetIntrinsicForComponent(ComponentId),
     #[error("component error: {0}")]
     ComponentError(#[from] ComponentError),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func argument error: {0}")]

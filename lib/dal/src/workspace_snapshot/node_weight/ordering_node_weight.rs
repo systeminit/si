@@ -14,7 +14,6 @@ use si_events::{
 use super::{
     NodeWeight,
     NodeWeightDiscriminants,
-    NodeWeightError,
     traits::CorrectTransformsError,
 };
 use crate::{
@@ -27,12 +26,9 @@ use crate::{
             deprecated::v1::DeprecatedOrderingNodeWeightV1,
             detector::Update,
         },
-        node_weight::{
-            NodeWeightResult,
-            traits::{
-                CorrectTransforms,
-                CorrectTransformsResult,
-            },
+        node_weight::traits::{
+            CorrectTransforms,
+            CorrectTransformsResult,
         },
     },
 };
@@ -106,19 +102,6 @@ impl OrderingNodeWeight {
         let order_len = self.order.len();
         self.order.retain(|&item_id| item_id != id);
         order_len != self.order().len()
-    }
-
-    pub fn get_index_for_id(&self, id: Ulid) -> NodeWeightResult<i64> {
-        let index = &self
-            .order
-            .iter()
-            .position(|&key| key == id)
-            .ok_or(NodeWeightError::MissingKeyForChildEntry(id))?;
-
-        let ret: i64 = (*index)
-            .try_into()
-            .map_err(NodeWeightError::TryFromIntError)?;
-        Ok(ret)
     }
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {

@@ -15,25 +15,13 @@ use serde::{
 };
 use thiserror::Error;
 
-#[derive(Debug, Error)]
-#[error("failed to parse hash hex string")]
-pub struct WorkspaceSnapshotAddressParseError(#[from] blake3::HexError);
-
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct WorkspaceSnapshotAddress(blake3::Hash);
+pub struct SplitSnapshotRebaseBatchAddress(blake3::Hash);
 
-impl WorkspaceSnapshotAddress {
+impl SplitSnapshotRebaseBatchAddress {
     #[must_use]
     pub fn new(input: &[u8]) -> Self {
         Self(blake3::hash(input))
-    }
-
-    pub fn from_hash(hash: blake3::Hash) -> Self {
-        Self(hash)
-    }
-
-    pub fn inner(&self) -> blake3::Hash {
-        self.0
     }
 
     pub fn nil() -> Self {
@@ -41,21 +29,25 @@ impl WorkspaceSnapshotAddress {
     }
 }
 
-impl FromStr for WorkspaceSnapshotAddress {
-    type Err = WorkspaceSnapshotAddressParseError;
+#[derive(Debug, Error)]
+#[error("failed to parse hash hex string")]
+pub struct SplitSnapshotRebaseBatchAddressParseError(#[from] blake3::HexError);
+
+impl FromStr for SplitSnapshotRebaseBatchAddress {
+    type Err = SplitSnapshotRebaseBatchAddressParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(blake3::Hash::from_str(s)?))
     }
 }
 
-impl std::fmt::Display for WorkspaceSnapshotAddress {
+impl std::fmt::Display for SplitSnapshotRebaseBatchAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl Serialize for WorkspaceSnapshotAddress {
+impl Serialize for SplitSnapshotRebaseBatchAddress {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -64,10 +56,10 @@ impl Serialize for WorkspaceSnapshotAddress {
     }
 }
 
-struct WorkspaceSnapshotAddressVisitor;
+struct SplitSnapshotRebaseBatchAddressVisitor;
 
-impl Visitor<'_> for WorkspaceSnapshotAddressVisitor {
-    type Value = WorkspaceSnapshotAddress;
+impl Visitor<'_> for SplitSnapshotRebaseBatchAddressVisitor {
+    type Value = SplitSnapshotRebaseBatchAddress;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("a blake3 hash string")
@@ -77,20 +69,20 @@ impl Visitor<'_> for WorkspaceSnapshotAddressVisitor {
     where
         E: de::Error,
     {
-        WorkspaceSnapshotAddress::from_str(v).map_err(|e| E::custom(e.to_string()))
+        SplitSnapshotRebaseBatchAddress::from_str(v).map_err(|e| E::custom(e.to_string()))
     }
 }
 
-impl<'de> Deserialize<'de> for WorkspaceSnapshotAddress {
+impl<'de> Deserialize<'de> for SplitSnapshotRebaseBatchAddress {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(WorkspaceSnapshotAddressVisitor)
+        deserializer.deserialize_str(SplitSnapshotRebaseBatchAddressVisitor)
     }
 }
 
-impl ToSql for WorkspaceSnapshotAddress {
+impl ToSql for SplitSnapshotRebaseBatchAddress {
     fn to_sql(
         &self,
         ty: &postgres_types::Type,
@@ -121,7 +113,7 @@ impl ToSql for WorkspaceSnapshotAddress {
     }
 }
 
-impl<'a> postgres_types::FromSql<'a> for WorkspaceSnapshotAddress {
+impl<'a> postgres_types::FromSql<'a> for SplitSnapshotRebaseBatchAddress {
     fn from_sql(
         ty: &postgres_types::Type,
         raw: &'a [u8],

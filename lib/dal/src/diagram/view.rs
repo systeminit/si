@@ -401,7 +401,7 @@ impl View {
             }
         }
 
-        snap.remove_edge_for_ulids(view_category_id, view_id, EdgeWeightKindDiscriminants::Use)
+        snap.remove_edge(view_category_id, view_id, EdgeWeightKindDiscriminants::Use)
             .await?;
 
         Self::add_category_edge(

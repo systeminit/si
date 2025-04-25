@@ -25,6 +25,7 @@ mod rebaser;
 mod resource_metadata;
 mod schema;
 mod secret;
+mod split_snapshot;
 mod validations;
 mod view;
 mod workspace;

@@ -62,11 +62,15 @@ use crate::{
     func::FuncExecutionPk,
     implement_add_edge_to,
     job::definition::ActionJob,
-    workspace_snapshot::node_weight::{
-        ActionNodeWeight,
-        NodeWeight,
-        NodeWeightError,
-        category_node_weight::CategoryNodeKind,
+    workspace_snapshot::{
+        DependentValueRoot,
+        dependent_value_root::DependentValueRootError,
+        node_weight::{
+            ActionNodeWeight,
+            NodeWeight,
+            NodeWeightError,
+            category_node_weight::CategoryNodeKind,
+        },
     },
 };
 
@@ -86,6 +90,8 @@ pub enum ActionError {
     Component(#[from] ComponentError),
     #[error("component not found for action: {0}")]
     ComponentNotFoundForAction(ActionId),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("Helper error: {0}")]
@@ -601,9 +607,7 @@ impl Action {
         let mut result = Vec::new();
         let dependent_value_graph = DependentValueGraph::new(
             ctx,
-            ctx.workspace_snapshot()?
-                .get_dependent_value_roots()
-                .await?,
+            DependentValueRoot::get_dependent_value_roots(ctx).await?,
         )
         .await?;
 

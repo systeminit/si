@@ -1743,7 +1743,6 @@ async fn update_component(
     // walk the properties serde_json::Value object without recursion
     let mut work_queue = VecDeque::new();
     work_queue.push_back((vec!["root".to_string()], properties));
-    info!("props to update: {:?}", &properties);
 
     while let Some((path, current_val)) = work_queue.pop_front() {
         let path_as_refs: Vec<_> = path.iter().map(|part| part.as_str()).collect();
@@ -1770,7 +1769,6 @@ async fn update_component(
                 .unwrap_or(path_attribute_value_id)
                 != path_attribute_value_id
         {
-            info!("can't set prop: {:?} with value {:?}", path, current_val);
             continue;
         }
 

@@ -17,6 +17,10 @@ use dal::{
         ActionState,
         dependency_graph::ActionDependencyGraph,
     },
+    workspace_snapshot::{
+        DependentValueRoot,
+        selector::WorkspaceSnapshotSelectorDiscriminants,
+    },
 };
 
 use crate::helpers::generate_fake_name;
@@ -97,12 +101,18 @@ impl ChangeSetTestHelpers {
     }
 
     async fn has_updates(ctx: &mut DalContext) -> Result<bool> {
-        let expected_rebase_batch = ctx
-            .change_set()?
-            .detect_updates_that_will_be_applied(ctx)
-            .await?;
-
-        Ok(expected_rebase_batch.is_some_and(|batch| !batch.updates().is_empty()))
+        Ok(match ctx.get_workspace().await?.snapshot_kind() {
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => ctx
+                .change_set()?
+                .detect_updates_that_will_be_applied_legacy(ctx)
+                .await?
+                .is_some_and(|batch| !batch.updates().is_empty()),
+            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => ctx
+                .change_set()?
+                .detect_updates_that_will_be_applied_split(ctx)
+                .await?
+                .is_some_and(|batch| !batch.is_empty()),
+        })
     }
 
     async fn apply_change_set_to_base_inner(ctx: &mut DalContext) -> Result<bool> {
@@ -114,7 +124,6 @@ impl ChangeSetTestHelpers {
 
         let had_updates = Self::has_updates(ctx).await?;
         let applied_change_set = ChangeSet::apply_to_base_change_set(ctx).await?;
-
         ctx.update_visibility_and_snapshot_to_visibility(
             applied_change_set.base_change_set_id.ok_or(eyre!(
                 "base change set not found for change set: {}",
@@ -228,11 +237,7 @@ impl ChangeSetTestHelpers {
         loop {
             let mut ctx_clone = ctx.clone();
             ctx_clone.update_snapshot_to_visibility().await?;
-            if !ctx_clone
-                .workspace_snapshot()?
-                .has_dependent_value_roots()
-                .await?
-            {
+            if !DependentValueRoot::roots_exist(&ctx_clone).await? {
                 break;
             }
             tokio::time::sleep(Duration::from_millis(25)).await;

@@ -28,6 +28,7 @@ use dal::{
     func::intrinsics::IntrinsicFunc,
 };
 use dal_test::{
+    Result,
     helpers::{
         ChangeSetTestHelpers,
         create_component_for_default_schema_name_in_default_view,
@@ -1361,7 +1362,6 @@ async fn delete_with_multiple_frames(ctx: &mut DalContext) {
     // loop until the other components are removed
     let total_count = 50;
     let mut count = 0;
-
     while count < total_count {
         ctx.update_snapshot_to_visibility()
             .await
@@ -1384,26 +1384,19 @@ async fn delete_with_multiple_frames(ctx: &mut DalContext) {
 }
 
 #[test]
-async fn delete_multiple_components(ctx: &mut DalContext) {
-    ChangeSetTestHelpers::fork_from_head_change_set(ctx)
-        .await
-        .expect("could not fork head");
+async fn delete_multiple_components(ctx: &mut DalContext) -> Result<()> {
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
     let component_still_on_head = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "component still on head",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
-        .await
-        .expect("could not apply change set");
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
 
-    ChangeSetTestHelpers::fork_from_head_change_set(ctx)
-        .await
-        .expect("could not fork head");
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
     let component_with_resource_to_delete =
         create_component_for_default_schema_name_in_default_view(
@@ -1411,8 +1404,7 @@ async fn delete_multiple_components(ctx: &mut DalContext) {
             "small odd lego",
             "component with resource to delete",
         )
-        .await
-        .expect("could not create component");
+        .await?;
 
     let component_with_resource_to_erase =
         create_component_for_default_schema_name_in_default_view(
@@ -1420,8 +1412,7 @@ async fn delete_multiple_components(ctx: &mut DalContext) {
             "small odd lego",
             "component with resource to erase",
         )
-        .await
-        .expect("could not create component");
+        .await?;
 
     let resource_data = ResourceData::new(
         ResourceStatus::Ok,
@@ -1430,20 +1421,17 @@ async fn delete_multiple_components(ctx: &mut DalContext) {
 
     component_with_resource_to_delete
         .set_resource(ctx, resource_data.clone())
-        .await
-        .expect("failed to set resource");
+        .await?;
     component_with_resource_to_erase
         .set_resource(ctx, resource_data.clone())
-        .await
-        .expect("failed to set resource");
+        .await?;
 
     let component_to_delete = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "component to delete",
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     let expected_deletion_statuses = &[
         (component_to_delete.id(), ComponentDeletionStatus::Deleted),
@@ -1470,14 +1458,10 @@ async fn delete_multiple_components(ctx: &mut DalContext) {
         ],
         false,
     )
-    .await
-    .expect("should be able to delete");
+    .await?;
 
-    deletion_statuses.extend(
-        delete_components(ctx, &[component_with_resource_to_erase.id()], true)
-            .await
-            .expect("should be able to force erase"),
-    );
+    deletion_statuses
+        .extend(delete_components(ctx, &[component_with_resource_to_erase.id()], true).await?);
 
     for (component_id, status) in expected_deletion_statuses {
         assert_eq!(Some(status), deletion_statuses.get(component_id));
@@ -1485,42 +1469,38 @@ async fn delete_multiple_components(ctx: &mut DalContext) {
 
     assert!(
         Component::try_get_by_id(ctx, component_to_delete.id())
-            .await
-            .expect("should succeed")
+            .await?
             .is_none(),
         "deleted component should be gone"
     );
 
     assert!(
         Component::try_get_by_id(ctx, component_still_on_head.id())
-            .await
-            .expect("should succeed")
+            .await?
             .is_none(),
         "deleted component that is still on head should be gone in this change set"
     );
 
     assert!(
         Component::exists_on_head(ctx, &[component_still_on_head.id()])
-            .await
-            .expect("should be able to check for components on head")
+            .await?
             .contains(&component_still_on_head.id()),
         "component should still exist on head"
     );
 
     assert!(
         Component::try_get_by_id(ctx, component_with_resource_to_erase.id())
-            .await
-            .expect("should be able to look for component")
+            .await?
             .is_none(),
         "erased component should be gone"
     );
 
     let component_with_resource_to_delete =
-        Component::get_by_id(ctx, component_with_resource_to_delete.id())
-            .await
-            .expect("component with resource should still exist");
+        Component::get_by_id(ctx, component_with_resource_to_delete.id()).await?;
     assert!(
         component_with_resource_to_delete.to_delete(),
         "component with resource should be marked as to delete"
     );
+
+    Ok(())
 }

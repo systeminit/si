@@ -4,7 +4,7 @@ use super::SnapshotGraphMigratorResult;
 use crate::{
     DalContext,
     workspace_snapshot::{
-        ContentAddressDiscriminants,
+        content_address::ContentAddressDiscriminants,
         graph::{
             WorkspaceSnapshotGraphV2,
             WorkspaceSnapshotGraphV3,

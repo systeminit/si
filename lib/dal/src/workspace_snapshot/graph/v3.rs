@@ -41,10 +41,12 @@ use crate::{
     NodeWeightDiscriminants,
     workspace_snapshot::{
         CategoryNodeKind,
-        ContentAddressDiscriminants,
         LineageId,
         OrderingNodeWeight,
-        content_address::ContentAddress,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
         graph::{
             MerkleTreeHash,
             WorkspaceSnapshotGraphError,

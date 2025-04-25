@@ -1,9 +1,11 @@
 use std::{
     collections::{
+        BTreeMap,
         HashMap,
         HashSet,
     },
     io::Write,
+    time::Instant,
 };
 
 use petgraph::prelude::*;
@@ -12,22 +14,23 @@ use serde::{
     Serialize,
 };
 use si_events::merkle_tree_hash::MerkleTreeHash;
+use telemetry::prelude::*;
 
 use crate::{
     CustomEdgeWeight,
     CustomNodeWeight,
     EdgeKind,
-    MAX_NODES,
     SplitGraphEdgeWeight,
     SplitGraphEdgeWeightKind,
     SplitGraphError,
     SplitGraphNodeId,
     SplitGraphNodeWeight,
     SplitGraphResult,
+    updates::ExternalSourceData,
 };
 
-pub type SubGraphNodeIndex = NodeIndex<u16>;
-pub type SubGraphEdgeIndex = EdgeIndex<u16>;
+pub type SubGraphNodeIndex = NodeIndex<usize>;
+pub type SubGraphEdgeIndex = EdgeIndex<usize>;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SubGraph<N, E, K>
@@ -36,8 +39,8 @@ where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
 {
-    pub(crate) graph: StableDiGraph<SplitGraphNodeWeight<N>, SplitGraphEdgeWeight<E, K>, u16>,
-    pub(crate) node_index_by_id: HashMap<SplitGraphNodeId, SubGraphNodeIndex>,
+    pub(crate) graph: StableDiGraph<SplitGraphNodeWeight<N>, SplitGraphEdgeWeight<E, K>, usize>,
+    pub(crate) node_index_by_id: BTreeMap<SplitGraphNodeId, SubGraphNodeIndex>,
     pub(crate) node_indexes_by_lineage_id: HashMap<SplitGraphNodeId, HashSet<SubGraphNodeIndex>>,
     pub(crate) root_index: SubGraphNodeIndex,
 
@@ -64,8 +67,8 @@ where
 {
     pub(crate) fn new() -> Self {
         Self {
-            graph: StableDiGraph::with_capacity(MAX_NODES, MAX_NODES * 2),
-            node_index_by_id: HashMap::new(),
+            graph: StableDiGraph::with_capacity(32768, 32768 * 2),
+            node_index_by_id: BTreeMap::new(),
             node_indexes_by_lineage_id: HashMap::new(),
             root_index: NodeIndex::new(0),
 
@@ -73,10 +76,16 @@ where
         }
     }
 
+    pub fn graph(
+        &self,
+    ) -> &StableDiGraph<SplitGraphNodeWeight<N>, SplitGraphEdgeWeight<E, K>, usize> {
+        &self.graph
+    }
+
     pub(crate) fn new_with_root() -> Self {
         let mut subgraph = Self {
-            graph: StableDiGraph::with_capacity(MAX_NODES, MAX_NODES * 2),
-            node_index_by_id: HashMap::new(),
+            graph: StableDiGraph::with_capacity(32768, 32768 * 2),
+            node_index_by_id: BTreeMap::new(),
             node_indexes_by_lineage_id: HashMap::new(),
             root_index: NodeIndex::new(0),
 
@@ -94,7 +103,7 @@ where
         subgraph
     }
 
-    pub(crate) fn cleanup(&mut self) {
+    pub(crate) fn cleanup(&mut self) -> Vec<SplitGraphNodeId> {
         loop {
             let orphaned_node_indexes: Vec<SubGraphNodeIndex> = self
                 .graph
@@ -111,8 +120,16 @@ where
             }
         }
 
-        self.node_index_by_id
-            .retain(|_id, index| self.graph.node_weight(*index).is_some());
+        let mut removed_ids = vec![];
+
+        self.node_index_by_id.retain(|id, index| {
+            if self.graph.node_weight(*index).is_some() {
+                true
+            } else {
+                removed_ids.push(*id);
+                false
+            }
+        });
         self.node_indexes_by_lineage_id
             .iter_mut()
             .for_each(|(_, node_indexes)| {
@@ -120,28 +137,77 @@ where
             });
         self.node_indexes_by_lineage_id
             .retain(|_, indexes| !indexes.is_empty());
+
+        removed_ids
     }
 
-    pub(crate) fn add_node(&mut self, node: SplitGraphNodeWeight<N>) -> SubGraphNodeIndex {
-        let node_id = node.id();
-        let node_index = self.graph.add_node(node);
+    pub(crate) fn add_ids_to_indexes(
+        &mut self,
+        node_id: SplitGraphNodeId,
+        lineage_id: SplitGraphNodeId,
+        node_index: SubGraphNodeIndex,
+    ) {
         self.node_index_by_id.insert(node_id, node_index);
         self.node_indexes_by_lineage_id
-            .entry(node_id)
+            .entry(lineage_id)
             .and_modify(|set| {
                 set.insert(node_index);
             })
             .or_insert(HashSet::from([node_index]));
+    }
+
+    pub(crate) fn remove_ids_from_indexes(
+        &mut self,
+        node_id: SplitGraphNodeId,
+        lineage_id: SplitGraphNodeId,
+    ) {
+        // println!("removing {:?} from indexes", node_id);
+        let node_index = self.node_index_by_id.remove(&node_id);
+
+        if let Some(node_index) = node_index {
+            if let Some(lineage_indexes) = self.node_indexes_by_lineage_id.get_mut(&lineage_id) {
+                lineage_indexes.retain(|idx| *idx != node_index);
+            }
+        }
+    }
+
+    pub(crate) fn add_node(&mut self, node: SplitGraphNodeWeight<N>) -> SubGraphNodeIndex {
+        let node_id = node.id();
+        let lineage_id = node.lineage_id();
+        let node_index = self.graph.add_node(node);
+        self.add_ids_to_indexes(node_id, lineage_id, node_index);
         self.touched_nodes.insert(node_index);
 
         node_index
     }
 
-    pub(crate) fn replace_node(&mut self, index: SubGraphNodeIndex, node: SplitGraphNodeWeight<N>) {
-        if let Some(node_ref) = self.graph.node_weight_mut(index) {
-            *node_ref = node;
+    pub(crate) fn replace_node(
+        &mut self,
+        index: SubGraphNodeIndex,
+        node: SplitGraphNodeWeight<N>,
+    ) -> Option<SplitGraphNodeId> {
+        let new_node_id = node.id();
+        let new_lineage_id = node.lineage_id();
+        let previous_ids = match self.graph.node_weight_mut(index) {
+            Some(existing_node_ref) => {
+                let node_id = existing_node_ref.id();
+                let lineage_id = existing_node_ref.id();
+                *existing_node_ref = node;
+                Some((node_id, lineage_id))
+            }
+            None => None,
+        };
+
+        if let Some((previous_node_id, previous_lineage_id)) = previous_ids {
+            if previous_node_id != new_node_id {
+                self.remove_ids_from_indexes(previous_node_id, previous_lineage_id);
+                self.add_ids_to_indexes(new_node_id, new_lineage_id, index);
+            }
         }
+
         self.touched_nodes.insert(index);
+
+        previous_ids.map(|(node_id, _)| node_id)
     }
 
     fn edge_exists(
@@ -181,14 +247,6 @@ where
         &self,
         node_index: SubGraphNodeIndex,
     ) -> Option<SubGraphNodeIndex> {
-        let Some(true) = self
-            .graph
-            .node_weight(node_index)
-            .and_then(|weight| weight.custom().map(|c| c.ordered()))
-        else {
-            return None;
-        };
-
         let ordering_node_index = self
             .graph
             .edges_directed(node_index, Outgoing)
@@ -261,8 +319,7 @@ where
         )
     }
 
-    #[allow(unused)]
-    pub(crate) fn root_node_merkle_tree_hash(&self) -> MerkleTreeHash {
+    pub fn root_node_merkle_tree_hash(&self) -> MerkleTreeHash {
         self.graph
             .node_weight(self.root_index)
             .map(|node| node.merkle_tree_hash())
@@ -273,7 +330,7 @@ where
         let mut dfs = petgraph::visit::DfsPostOrder::new(&self.graph, self.root_index);
 
         while let Some(node_index) = dfs.next(&self.graph) {
-            if let Some(hash) = self.calculate_merkle_hash_for_node(node_index) {
+            if let Some((hash, _)) = self.calculate_merkle_hash_for_node(node_index) {
                 if let Some(node_weight_mut) = self.graph.node_weight_mut(node_index) {
                     node_weight_mut.set_merkle_tree_hash(hash);
                 }
@@ -281,51 +338,80 @@ where
         }
     }
 
-    pub(crate) fn recalculate_merkle_tree_hash_based_on_touched_nodes(&mut self) {
+    pub(crate) fn recalculate_merkle_tree_hash_based_on_touched_nodes(&mut self) -> (usize, usize) {
+        let mut node_count = 0;
+        let mut edge_count = 0;
+        let big_start = Instant::now();
         let mut dfs = petgraph::visit::DfsPostOrder::new(&self.graph, self.root_index);
 
         let mut discovered_nodes = HashSet::new();
 
+        if self.touched_nodes.is_empty() {
+            warn!(
+                "touched nodes empty. merkle tree hash calculated in {:?}",
+                big_start.elapsed()
+            );
+            return (0, 0);
+        }
+
         while let Some(node_index) = dfs.next(&self.graph) {
+            node_count += 1;
             if self.touched_nodes.contains(&node_index) || discovered_nodes.contains(&node_index) {
-                if let Some(hash) = self.calculate_merkle_hash_for_node(node_index) {
+                if let Some((hash, edges_hashed)) = self.calculate_merkle_hash_for_node(node_index)
+                {
+                    edge_count += edges_hashed;
                     if let Some(node_weight_mut) = self.graph.node_weight_mut(node_index) {
                         node_weight_mut.set_merkle_tree_hash(hash);
                     }
                 }
-                self.graph
-                    .neighbors_directed(node_index, Incoming)
-                    .for_each(|node_idx| {
-                        discovered_nodes.insert(node_idx);
-                    });
+                for incoming_source_idx in self.graph.neighbors_directed(node_index, Incoming) {
+                    discovered_nodes.insert(incoming_source_idx);
+                }
             }
         }
 
         self.touched_nodes.clear();
+        warn!("merkle tree hash calculated in {:?}", big_start.elapsed());
+
+        (node_count, edge_count)
     }
 
     pub(crate) fn all_outgoing_stably_ordered(
         &self,
         node_index: SubGraphNodeIndex,
-    ) -> Vec<SubGraphNodeIndex> {
+    ) -> Vec<(&SplitGraphEdgeWeight<E, K>, SubGraphNodeIndex)> {
         let ordered_children = self.ordered_children(node_index).unwrap_or_default();
-        let mut unordered_children: Vec<(_, _)> = self
-            .graph
-            .neighbors_directed(node_index, Outgoing)
-            .filter(|child_idx| !ordered_children.contains(child_idx))
-            .filter_map(|child_idx| {
+        let ordered_children_edges: Vec<(_, _)> = ordered_children
+            .iter()
+            .flat_map(|child_index| {
                 self.graph
-                    .node_weight(child_idx)
-                    .map(|weight| (weight.id(), child_idx))
+                    .edges_connecting(node_index, *child_index)
+                    .map(|edge_ref| (edge_ref.weight(), *child_index))
             })
             .collect();
 
-        // We want to keep the "unordered" children stably sorted as well, so that we get the same hash every time if there are no changes
-        unordered_children.sort_by_cached_key(|(id, _)| *id);
+        let mut unordered_children: Vec<(_, _, _)> = self
+            .graph
+            .edges_directed(node_index, Outgoing)
+            .filter(|edge_ref| !ordered_children.contains(&edge_ref.target()))
+            .filter_map(|edge_ref| {
+                self.graph
+                    .node_weight(edge_ref.target())
+                    .map(|weight| (weight.id(), edge_ref.weight(), edge_ref.target()))
+            })
+            .collect();
+
+        // We want to keep the "unordered" children stably sorted as well,
+        // so that we get the same hash every time if there are no changes
+        unordered_children.sort_by_cached_key(|(id, _, _)| *id);
         let mut all_children =
             Vec::with_capacity(ordered_children.len() + unordered_children.len());
-        all_children.extend(ordered_children);
-        all_children.extend(unordered_children.into_iter().map(|(_, index)| index));
+        all_children.extend(ordered_children_edges);
+        all_children.extend(
+            unordered_children
+                .into_iter()
+                .map(|(_, weight, index)| (weight, index)),
+        );
 
         all_children
     }
@@ -333,26 +419,33 @@ where
     fn calculate_merkle_hash_for_node(
         &self,
         node_index: SubGraphNodeIndex,
-    ) -> Option<MerkleTreeHash> {
+    ) -> Option<(MerkleTreeHash, usize)> {
+        let mut edge_count = 0;
         let mut hasher = MerkleTreeHash::hasher();
-        hasher.update(self.graph.node_weight(node_index)?.node_hash().as_bytes());
+        let node_weight = self.graph.node_weight(node_index)?;
+        hasher.update(node_weight.node_hash().as_bytes());
+        hasher.update(&node_weight.id().inner().to_bytes());
 
-        for child_idx in self.all_outgoing_stably_ordered(node_index) {
-            hasher.update(
-                self.graph
-                    .node_weight(child_idx)?
-                    .merkle_tree_hash()
-                    .as_bytes(),
-            );
+        let all_outgoing_stably_ordered = self.all_outgoing_stably_ordered(node_index);
 
-            for edge_ref in self.graph.edges_connecting(node_index, child_idx) {
-                if let Some(edge_hash) = edge_ref.weight().edge_hash() {
-                    hasher.update(edge_hash.as_bytes());
-                }
+        let mut hashed_children = HashSet::new();
+        for (edge_weight, child_idx) in all_outgoing_stably_ordered {
+            edge_count += 1;
+            if !hashed_children.contains(&child_idx) {
+                hasher.update(
+                    self.graph
+                        .node_weight(child_idx)?
+                        .merkle_tree_hash()
+                        .as_bytes(),
+                );
+                hashed_children.insert(child_idx);
+            }
+            if let Some(edge_entropy) = edge_weight.edge_entropy() {
+                hasher.update(edge_entropy.as_slice());
             }
         }
 
-        Some(hasher.finalize())
+        Some((hasher.finalize(), edge_count))
     }
 
     pub(crate) fn node_id_to_index(&self, id: SplitGraphNodeId) -> Option<SubGraphNodeIndex> {
@@ -366,92 +459,160 @@ where
         from_index: SubGraphNodeIndex,
         edge_weight: SplitGraphEdgeWeight<E, K>,
         to_index: SubGraphNodeIndex,
-    ) {
+    ) -> Option<SubGraphEdgeIndex> {
         if !self.edge_exists(from_index, &edge_weight, to_index) {
-            self.graph.add_edge(from_index, to_index, edge_weight);
             self.touch_node(from_index);
+            Some(self.graph.add_edge(from_index, to_index, edge_weight))
+        } else {
+            None
         }
     }
 
     pub(crate) fn remove_node(&mut self, node_index: SubGraphNodeIndex) {
+        let Some((node_id, lineage_id)) = self
+            .graph
+            .node_weight(node_index)
+            .map(|n| (n.id(), n.lineage_id()))
+        else {
+            return;
+        };
+
         let parents: Vec<_> = self
             .graph
             .neighbors_directed(node_index, Incoming)
             .collect();
 
         self.graph.remove_node(node_index);
+        self.remove_ids_from_indexes(node_id, lineage_id);
+
         parents
             .into_iter()
             .for_each(|parent_idx| self.touch_node(parent_idx));
     }
 
+    pub(crate) fn add_or_get_ordering_node_for_node_index(
+        &mut self,
+        node_index: SubGraphNodeIndex,
+    ) -> SubGraphNodeIndex {
+        match self.ordering_node_for_node_index(node_index) {
+            Some(existing_ordering_node_index) => existing_ordering_node_index,
+            None => {
+                let new_ordering_node_id = SplitGraphNodeId::new();
+                let ordering_node_index = self.graph.add_node(SplitGraphNodeWeight::Ordering {
+                    id: new_ordering_node_id,
+                    order: vec![],
+                    merkle_tree_hash: MerkleTreeHash::nil(),
+                });
+
+                self.node_index_by_id
+                    .insert(new_ordering_node_id, ordering_node_index);
+
+                self.add_edge_raw(
+                    node_index,
+                    SplitGraphEdgeWeight::Ordering,
+                    ordering_node_index,
+                );
+
+                self.touch_node(node_index);
+                self.touch_node(ordering_node_index);
+
+                ordering_node_index
+            }
+        }
+    }
+
+    pub(crate) fn add_ordered_edge(
+        &mut self,
+        from_index: SubGraphNodeIndex,
+        edge_weight: SplitGraphEdgeWeight<E, K>,
+        to_index: SubGraphNodeIndex,
+    ) -> SplitGraphResult<(Option<SubGraphEdgeIndex>, Option<SubGraphEdgeIndex>)> {
+        let target_id = self
+            .graph
+            .node_weight(to_index)
+            .map(|n| n.id())
+            .ok_or(SplitGraphError::NodeNotFoundAtIndex)?;
+
+        let ordering_node_index = self.add_or_get_ordering_node_for_node_index(from_index);
+
+        let mut ordinal_edge = None;
+        if let Some(SplitGraphNodeWeight::Ordering { order, .. }) =
+            self.graph.node_weight_mut(ordering_node_index)
+        {
+            if !order.contains(&target_id) {
+                order.push(target_id);
+            }
+
+            ordinal_edge =
+                self.add_edge_raw(ordering_node_index, SplitGraphEdgeWeight::Ordinal, to_index);
+        }
+
+        let edge = self.add_edge_raw(from_index, edge_weight, to_index);
+
+        Ok((edge, ordinal_edge))
+    }
+
     /// Add an edge between `from_index` and `to_index` if the edge does not exist.
-    /// Handles the creation of ordering nodes and the ordering edges if the node at
-    /// `from_index` is an ordered container.
     pub(crate) fn add_edge(
         &mut self,
         from_index: SubGraphNodeIndex,
         edge_weight: SplitGraphEdgeWeight<E, K>,
         to_index: SubGraphNodeIndex,
-    ) -> SplitGraphResult<()> {
-        let is_ordered_container = self
-            .graph
-            .node_weight(from_index)
-            .and_then(|weight| weight.custom().map(|c| c.ordered()))
-            .is_some_and(|ordered| ordered);
-
-        if is_ordered_container {
-            let target_id = self
-                .graph
-                .node_weight(to_index)
-                .map(|n| n.id())
-                .ok_or(SplitGraphError::NodeNotFoundAtIndex)?;
-
-            let ordering_node_index = match self
-                .graph
-                .edges_directed(from_index, Outgoing)
-                .find(|edge_ref| matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordering))
-                .map(|edge_ref| edge_ref.target())
-            {
-                Some(target) => target,
-                None => {
-                    let new_ordering_node_id = SplitGraphNodeId::new();
-                    let ordering_node_index = self.graph.add_node(SplitGraphNodeWeight::Ordering {
-                        id: new_ordering_node_id,
-                        order: vec![],
-                        merkle_tree_hash: MerkleTreeHash::nil(),
-                    });
-
-                    self.node_index_by_id
-                        .insert(new_ordering_node_id, ordering_node_index);
-
-                    self.add_edge_raw(
-                        from_index,
-                        SplitGraphEdgeWeight::Ordering,
-                        ordering_node_index,
-                    );
-
-                    ordering_node_index
-                }
-            };
-
-            if let Some(SplitGraphNodeWeight::Ordering { order, .. }) =
-                self.graph.node_weight_mut(ordering_node_index)
-            {
-                if !order.contains(&target_id) {
-                    order.push(target_id);
-                }
-                self.add_edge_raw(ordering_node_index, SplitGraphEdgeWeight::Ordinal, to_index);
-            }
-        }
-
-        self.add_edge_raw(from_index, edge_weight, to_index);
-
-        Ok(())
+    ) -> Option<SubGraphEdgeIndex> {
+        self.add_edge_raw(from_index, edge_weight, to_index)
     }
 
     pub(crate) fn touch_node(&mut self, node_index: SubGraphNodeIndex) {
         self.touched_nodes.insert(node_index);
+    }
+
+    pub(crate) fn update_external_target_ids(
+        &mut self,
+        from_index: SubGraphNodeIndex,
+        old_target_id: SplitGraphNodeId,
+        new_target_id: SplitGraphNodeId,
+    ) {
+        self.touch_node(from_index);
+
+        let external_target_node_indexes: Vec<_> = self
+            .graph
+            .neighbors_directed(from_index, Outgoing)
+            .filter(|neighbor_index| {
+                self.graph
+                    .node_weight(*neighbor_index)
+                    .is_some_and(|weight| weight.external_target_id() == Some(old_target_id))
+            })
+            .collect();
+
+        for neighbor_index in external_target_node_indexes {
+            if let Some(SplitGraphNodeWeight::ExternalTarget { target, .. }) =
+                self.graph.node_weight_mut(neighbor_index)
+            {
+                *target = new_target_id;
+            }
+            self.touch_node(neighbor_index);
+        }
+    }
+
+    pub(crate) fn remove_external_source_edge(
+        &mut self,
+        from_index: SubGraphNodeIndex,
+        to_index: SubGraphNodeIndex,
+        external_source_data: ExternalSourceData<K>,
+    ) {
+        self.touch_node(from_index);
+        let edge_indexes: Vec<_> = self
+            .graph
+            .edges_connecting(from_index, to_index)
+            .filter(|edge_ref| {
+                edge_ref.weight().external_source_data() == Some(external_source_data)
+            })
+            .map(|edge_ref| edge_ref.id())
+            .collect();
+
+        for edge_index in edge_indexes {
+            self.graph.remove_edge(edge_index);
+        }
     }
 
     /// Removes all edges between `from_index` and `to_index` that match the passed in kind.
@@ -462,6 +623,7 @@ where
         kind: SplitGraphEdgeWeightKind<K>,
         to_index: SubGraphNodeIndex,
     ) {
+        self.touch_node(from_index);
         let edge_indexes: Vec<_> = self
             .graph
             .edges_directed(from_index, Outgoing)
@@ -488,43 +650,64 @@ where
     /// Removes the edge specified by `edge_index`. Also handles edges to and
     /// from the ordering node, if one exists for `from_index`, and removes
     /// the target from the order.
-    pub(crate) fn remove_edge_by_index(&mut self, edge_index: EdgeIndex<u16>) {
+    pub(crate) fn remove_edge_by_index(&mut self, edge_index: EdgeIndex<usize>) {
         if let Some((from_index, to_index)) = self.graph.edge_endpoints(edge_index) {
             self.touch_node(from_index);
 
-            let is_ordered_container = self
+            let target_id = self.graph.node_weight(to_index).map(|n| n.id()).unwrap();
+            if let Some(ordering_node_index) = self
                 .graph
-                .node_weight(from_index)
-                .and_then(|weight| weight.custom().map(|c| c.ordered()))
-                .is_some_and(|ordered| ordered);
-
-            if is_ordered_container {
-                let target_id = self.graph.node_weight(to_index).map(|n| n.id()).unwrap();
-                if let Some(ordering_node_index) = self
+                .edges_directed(from_index, Outgoing)
+                .find(|edge_ref| matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordering))
+                .map(|edge_ref| edge_ref.target())
+            {
+                self.touch_node(ordering_node_index);
+                if let Some(ordinal_edge_index) = self
                     .graph
-                    .edges_directed(from_index, Outgoing)
-                    .find(|edge_ref| matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordering))
-                    .map(|edge_ref| edge_ref.target())
+                    .edges_directed(ordering_node_index, Outgoing)
+                    .find(|edge_ref| {
+                        matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordinal)
+                            && self.graph.node_weight(edge_ref.target()).map(|n| n.id())
+                                == Some(target_id)
+                    })
+                    .map(|edge_ref| edge_ref.id())
                 {
-                    self.touch_node(ordering_node_index);
-                    if let Some(ordinal_edge_index) = self
-                        .graph
-                        .edges_directed(ordering_node_index, Outgoing)
-                        .find(|edge_ref| {
-                            matches!(edge_ref.weight(), SplitGraphEdgeWeight::Ordinal)
-                                && self.graph.node_weight(edge_ref.target()).map(|n| n.id())
-                                    == Some(target_id)
-                        })
-                        .map(|edge_ref| edge_ref.id())
-                    {
-                        self.graph.remove_edge(ordinal_edge_index);
-                        self.remove_from_order(ordering_node_index, target_id);
-                    }
+                    self.graph.remove_edge(ordinal_edge_index);
+                    self.remove_from_order(ordering_node_index, target_id);
                 }
             }
 
             self.graph.remove_edge(edge_index);
         }
+    }
+
+    pub(crate) fn nodes(&self) -> impl Iterator<Item = &SplitGraphNodeWeight<N>> {
+        self.graph
+            .node_indices()
+            .filter_map(|node_index| self.graph.node_weight(node_index))
+    }
+
+    pub(crate) fn edges(
+        &self,
+    ) -> impl Iterator<
+        Item = (
+            &SplitGraphEdgeWeight<E, K>,
+            SplitGraphNodeId,
+            SplitGraphNodeId,
+        ),
+    > {
+        self.graph.edge_indices().filter_map(|edge_index| {
+            self.graph.edge_weight(edge_index).and_then(|edge_weight| {
+                self.graph
+                    .edge_endpoints(edge_index)
+                    .and_then(|(source_idx, target_idx)| {
+                        self.graph
+                            .node_weight(source_idx)
+                            .zip(self.graph.node_weight(target_idx))
+                            .map(|(source, target)| (edge_weight, source.id(), target.id()))
+                    })
+            })
+        })
     }
 
     pub(crate) fn tiny_dot_to_file(&self, name: &str) {
@@ -537,43 +720,35 @@ where
             &|_, edge_ref| {
                 let (label, color) = match edge_ref.weight() {
                     SplitGraphEdgeWeight::Custom(_) => ("".into(), "black"),
-                    SplitGraphEdgeWeight::ExternalSource {
-                        source_id,
-                        subgraph,
-                        ..
-                    } => (
-                        format!("external source: {source_id}\nsubgraph: {}", subgraph + 1),
-                        "red",
-                    ),
+                    SplitGraphEdgeWeight::ExternalSource { source_id, .. } => {
+                        (format!("external source: {source_id}\n"), "red")
+                    }
                     SplitGraphEdgeWeight::Ordering => ("ordering".into(), "green"),
                     SplitGraphEdgeWeight::Ordinal => ("ordinal".into(), "green"),
                 };
 
                 format!("label = \"{label}\"\ncolor = {color}")
             },
-            &|_, (_, node_weight)| {
+            &|_, (node_idx, node_weight)| {
                 let (label, color) = match node_weight {
                     SplitGraphNodeWeight::Custom(n) => {
-                        let node_dbg = format!("{n:?}")
-                            .replace("\"", "'")
-                            .replace("{", "{\n")
-                            .replace("}", "\n}");
-                        (format!("node: {}\n{node_dbg}", n.id()), "black")
+                        let node_dbg = n.dot_details();
+                        (
+                            format!("node: {} ({node_idx:?})\n{node_dbg}", n.id()),
+                            "black",
+                        )
                     }
-                    SplitGraphNodeWeight::ExternalTarget {
-                        target, subgraph, ..
-                    } => (
-                        format!("external target: {target}\nsubgraph: {}", subgraph + 1),
-                        "red",
-                    ),
+                    SplitGraphNodeWeight::ExternalTarget { target, .. } => {
+                        (format!("{node_idx:?}external target: {target}",), "red")
+                    }
                     SplitGraphNodeWeight::GraphRoot { id, .. } => {
-                        (format!("graph root: {id}"), "blue")
+                        (format!("graph root: {id} ({node_idx:?})"), "blue")
                     }
                     SplitGraphNodeWeight::SubGraphRoot { id, .. } => {
-                        (format!("subgraph root: {id}"), "blue")
+                        (format!("subgraph root: {id} ({node_idx:?})"), "blue")
                     }
                     SplitGraphNodeWeight::Ordering { id, .. } => {
-                        (format!("ordering: {id}"), "green")
+                        (format!("ordering: {id} ({node_idx:?})"), "green")
                     }
                 };
 

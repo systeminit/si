@@ -11,7 +11,6 @@ use std::{
         ParseFloatError,
         ParseIntError,
     },
-    sync::Arc,
 };
 
 use petgraph::prelude::*;
@@ -45,6 +44,7 @@ use crate::{
     SchemaVariant,
     SchemaVariantId,
     StandardModelError,
+    TenancyError,
     TransactionsError,
     Workspace,
     WorkspaceError,
@@ -90,6 +90,8 @@ use crate::{
             NodeWeightError,
             category_node_weight::CategoryNodeKind,
         },
+        selector::WorkspaceSnapshotSelectorDiscriminants,
+        split_snapshot::SplitSnapshot,
     },
 };
 
@@ -182,6 +184,8 @@ pub enum DiagramError {
     SocketNotFound,
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
+    #[error("tenancy error: {0}")]
+    Tenancy(#[from] TenancyError),
     #[error("Transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -513,12 +517,24 @@ impl Diagram {
             return Ok((ctx.workspace_snapshot()?.clone(), false));
         }
 
-        Ok((
-            WorkspaceSnapshotSelector::LegacySnapshot(Arc::new(
-                WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?,
-            )),
-            true,
-        ))
+        match workspace.snapshot_kind() {
+            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
+                let split_snapshot =
+                    SplitSnapshot::find_for_change_set(ctx, base_change_set_id).await?;
+                Ok((
+                    WorkspaceSnapshotSelector::SplitSnapshot(split_snapshot.into()),
+                    true,
+                ))
+            }
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => {
+                let legacy_snapshot =
+                    WorkspaceSnapshot::find_for_change_set(ctx, base_change_set_id).await?;
+                Ok((
+                    WorkspaceSnapshotSelector::LegacySnapshot(legacy_snapshot.into()),
+                    true,
+                ))
+            }
+        }
     }
 
     #[instrument(level = "info", skip_all)]
@@ -585,12 +601,85 @@ impl Diagram {
         Ok(removed_component_summaries)
     }
 
+    #[instrument(
+        name = "diagram.socket_edges_removed_relative_to_base",
+        level = "debug",
+        skip_all
+    )]
+    async fn socket_edges_removed_relative_to_base(
+        ctx: &DalContext,
+    ) -> DiagramResult<Vec<Connection>> {
+        // Even though the default change set for a workspace can have a base change set, we don't
+        // want to consider anything as new/modified/removed when looking at the default change
+        // set.
+        let workspace = Workspace::get_by_pk(ctx, ctx.tenancy().workspace_pk()?).await?;
+        if workspace.default_change_set_id() == ctx.change_set_id() {
+            return Ok(Vec::new());
+        }
+
+        let base_change_set_ctx = ctx.clone_with_base().await?;
+        let base_change_set_ctx = &base_change_set_ctx;
+
+        let base_components = Component::list(base_change_set_ctx).await?;
+
+        #[derive(Hash, Clone, PartialEq, Eq)]
+        struct UniqueEdge {
+            to_component_id: ComponentId,
+            from_component_id: ComponentId,
+            from_socket_id: OutputSocketId,
+            to_socket_id: InputSocketId,
+        }
+        let mut base_incoming_edges = HashSet::new();
+        let mut base_incoming = HashMap::new();
+        for base_component in base_components {
+            let incoming_edges = base_component
+                .incoming_connections(base_change_set_ctx)
+                .await?;
+
+            for conn in incoming_edges {
+                let hash = UniqueEdge {
+                    to_component_id: conn.to_component_id,
+                    from_socket_id: conn.from_output_socket_id,
+                    from_component_id: conn.from_component_id,
+                    to_socket_id: conn.to_input_socket_id,
+                };
+                base_incoming_edges.insert(hash.clone());
+                base_incoming.insert(hash, conn);
+            }
+        }
+
+        let current_components = Component::list(ctx).await?;
+        let mut current_incoming_edges = HashSet::new();
+        for current_component in current_components {
+            let incoming_edges: Vec<UniqueEdge> = current_component
+                .incoming_connections(ctx)
+                .await?
+                .into_iter()
+                .map(|conn| UniqueEdge {
+                    to_component_id: conn.to_component_id,
+                    from_socket_id: conn.from_output_socket_id,
+                    from_component_id: conn.from_component_id,
+                    to_socket_id: conn.to_input_socket_id,
+                })
+                .collect();
+            current_incoming_edges.extend(incoming_edges);
+        }
+
+        let difference = base_incoming_edges.difference(&current_incoming_edges);
+        let mut differences = vec![];
+        for diff in difference {
+            if let Some(edge) = base_incoming.get(diff) {
+                differences.push(edge.clone());
+            }
+        }
+
+        Ok(differences)
+    }
+
     #[instrument(level = "info", skip_all)]
     async fn assemble_removed_edges(ctx: &DalContext) -> DiagramResult<Vec<SummaryDiagramEdge>> {
-        let removed_incoming_connections: Vec<Connection> = ctx
-            .workspace_snapshot()?
-            .socket_edges_removed_relative_to_base(ctx)
-            .await?;
+        let removed_incoming_connections: Vec<Connection> =
+            Self::socket_edges_removed_relative_to_base(ctx).await?;
         let mut diagram_edges = Vec::with_capacity(removed_incoming_connections.len());
         for removed_incoming_connection in &removed_incoming_connections {
             diagram_edges.push(SummaryDiagramEdge {

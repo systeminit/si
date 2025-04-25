@@ -1,9 +1,9 @@
 use async_trait::async_trait;
+use si_id::SchemaId;
 
 use crate::{
     InputSocketId,
     workspace_snapshot::{
-        SchemaId,
         SchemaVariantId,
         WorkspaceSnapshot,
         WorkspaceSnapshotResult,

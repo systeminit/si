@@ -25,8 +25,10 @@ use crate::{
         InputSocketContentV2,
     },
     workspace_snapshot::{
-        ContentAddressDiscriminants,
-        content_address::ContentAddress,
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
         graph::{
             LineageId,
             WorkspaceSnapshotGraphV3,

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use serde::{
     Deserialize,
     Serialize,
@@ -8,11 +10,14 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
+    AttributePrototype,
     AttributePrototypeId,
     AttributeValueId,
     ComponentError,
     ComponentId,
     DalContext,
+    EdgeWeight,
+    EdgeWeightKind,
     FuncId,
     HelperError,
     SchemaVariantError,
@@ -29,7 +34,10 @@ use crate::{
     change_set::ChangeSetError,
     func::FuncError,
     implement_add_edge_to,
-    layer_db_types::InputSocketContentV2,
+    layer_db_types::{
+        InputSocketContent,
+        InputSocketContentV2,
+    },
     socket::{
         SocketArity,
         SocketKind,
@@ -43,7 +51,12 @@ use crate::{
         InputSocketExt,
         WorkspaceSnapshotError,
         edge_weight::EdgeWeightKindDiscriminants,
-        node_weight::NodeWeightError,
+        graph::LineageId,
+        node_weight::{
+            NodeWeight,
+            NodeWeightError,
+        },
+        traits::socket::input::input_socket_from_node_weight_and_content,
     },
 };
 
@@ -203,18 +216,61 @@ impl InputSocket {
         kind: SocketKind,
         connection_annotations: Option<Vec<ConnectionAnnotation>>,
     ) -> InputSocketResult<Self> {
-        ctx.workspace_snapshot()?
-            .new_input_socket(
-                ctx,
-                schema_variant_id,
-                name.into(),
-                func_id,
-                arity,
-                kind,
-                connection_annotations,
+        let name = name.into();
+
+        let connection_annotations = if let Some(ca) = connection_annotations {
+            ca
+        } else {
+            vec![ConnectionAnnotation::try_from(name.clone())?]
+        };
+
+        let content = InputSocketContentV2 {
+            timestamp: Timestamp::now(),
+            name: name.clone(),
+            inbound_type_definition: None,
+            outbound_type_definition: None,
+            kind,
+            required: false,
+            ui_hidden: false,
+            connection_annotations,
+        };
+        let (hash, _) = ctx.layer_db().cas().write(
+            Arc::new(InputSocketContent::V2(content.clone()).into()),
+            None,
+            ctx.events_tenancy(),
+            ctx.events_actor(),
+        )?;
+
+        let snapshot = ctx.workspace_snapshot()?;
+        let input_socket_id: InputSocketId = snapshot.generate_ulid().await?.into();
+        let lineage_id: LineageId = snapshot.generate_ulid().await?;
+
+        let node_weight =
+            NodeWeight::new_input_socket(input_socket_id.into(), lineage_id, arity, hash);
+        snapshot.add_or_replace_node(node_weight.clone()).await?;
+        let input_socket_node_weight = node_weight.get_input_socket_node_weight()?;
+
+        let edge_weight = EdgeWeight::new(EdgeWeightKind::Socket);
+        snapshot
+            .add_edge(schema_variant_id, edge_weight, input_socket_id)
+            .await?;
+
+        let attribute_prototype = AttributePrototype::new(ctx, func_id).await?;
+
+        snapshot
+            .add_edge(
+                input_socket_id,
+                EdgeWeight::new(EdgeWeightKind::Prototype(None)),
+                attribute_prototype.id(),
             )
-            .await
-            .map_err(Into::into)
+            .await?;
+
+        let input_socket = input_socket_from_node_weight_and_content(
+            &input_socket_node_weight,
+            InputSocketContent::V2(content),
+        )?;
+
+        Ok(input_socket)
     }
 
     pub async fn list_ids_for_schema_variant(

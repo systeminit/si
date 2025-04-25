@@ -13,6 +13,7 @@ use dal::{
     WorkspacePk,
     WsEvent,
     change_set::approval::ChangeSetApproval,
+    workspace_snapshot::DependentValueRoot,
 };
 use sdf_core::dal_wrapper;
 use serde::Deserialize;
@@ -60,12 +61,7 @@ pub async fn approve(
 
     // Ensure that DVU roots are empty before continuing?
     // todo(brit): maybe we can get away without this. Ex: Approve a PR before tests finish
-    if !ctx
-        .workspace_snapshot()?
-        .get_dependent_value_roots()
-        .await?
-        .is_empty()
-    {
+    if DependentValueRoot::roots_exist(&ctx).await? {
         // TODO(nick): we should consider requiring this check in integration tests too. Why did I
         // not do this at the time of writing? Tests have multiple ways to call "apply", whether
         // its via helpers or through the change set methods directly. In addition, they test

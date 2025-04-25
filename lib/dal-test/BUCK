@@ -12,6 +12,7 @@ rust_library(
         "//lib/rebaser-client:rebaser-client",
         "//lib/rebaser-server:rebaser-server",
         "//lib/si-crypto:si-crypto",
+        "//lib/si-split-graph:si-split-graph",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
         "//lib/si-events-rs:si-events",

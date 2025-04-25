@@ -16,7 +16,11 @@ use dal::{
         ChangeSetId,
     },
     data_cache::DataCacheError,
-    workspace_snapshot::WorkspaceSnapshotError,
+    workspace_snapshot::{
+        WorkspaceSnapshotError,
+        selector::WorkspaceSnapshotSelectorDiscriminants,
+        split_snapshot::SplitSnapshot,
+    },
 };
 use edda_client::EddaClient;
 use pending_events::PendingEventsError;
@@ -26,8 +30,8 @@ use rebaser_core::api_types::{
 };
 use shuttle_server::ShuttleError;
 use si_events::{
+    RebaseBatchAddressKind,
     WorkspaceSnapshotAddress,
-    rebase_batch_address::RebaseBatchAddress,
 };
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
@@ -51,7 +55,7 @@ pub(crate) enum RebaseError {
     #[error("layerdb error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("missing rebase batch {0}")]
-    MissingRebaseBatch(RebaseBatchAddress),
+    MissingRebaseBatch(RebaseBatchAddressKind),
     #[error("pending events error: {0}")]
     PendingEvents(#[from] PendingEventsError),
     #[error("serde_json error: {0}")]
@@ -60,6 +64,8 @@ pub(crate) enum RebaseError {
     Shuttle(#[from] ShuttleError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("unexpected rebase batch address kind")]
+    UnexpectedRebaseBatchAddressKind,
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
     #[error("workspace pk expected but was none")]
@@ -98,8 +104,6 @@ pub async fn perform_rebase(
     server_tracker: &TaskTracker,
     features: Features,
 ) -> RebaseResult<RebaseStatus> {
-    let span = current_span_for_instrument_at!("info");
-
     let start = Instant::now();
     let workspace = get_workspace(ctx).await?;
     let updating_head = request.change_set_id == workspace.default_change_set_id();
@@ -116,103 +120,32 @@ pub async fn perform_rebase(
     }
 
     let to_rebase_workspace_snapshot_address = to_rebase_change_set.workspace_snapshot_address;
-    debug!("before snapshot fetch and parse: {:?}", start.elapsed());
-    let to_rebase_workspace_snapshot =
-        WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
-    // Rather than clone the above snapshot we want an independent copy of this snapshot
-    let original_workspace_snapshot =
-        WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
 
-    let rebase_batch = ctx
-        .layer_db()
-        .rebase_batch()
-        .read_wait_for_memory(&request.updates_address)
-        .await?
-        .ok_or(RebaseError::MissingRebaseBatch(request.updates_address))?;
-
-    debug!(
-        to_rebase_workspace_snapshot_address = %to_rebase_workspace_snapshot_address,
-        updates_address = %request.updates_address,
-    );
-    debug!("after snapshot fetch and parse: {:?}", start.elapsed());
-    span.record(
-        "si.rebase.snapshot_fetch_parse_time",
-        start.elapsed().as_millis(),
-    );
-
-    let corrected_updates = to_rebase_workspace_snapshot
-        .correct_transforms(
-            rebase_batch.updates().to_vec(),
-            !updating_head
-                && request
-                    .from_change_set_id
-                    .is_some_and(|from_id| from_id != to_rebase_change_set.id),
-        )
-        .await?;
-    debug!("corrected transforms: {:?}", start.elapsed());
-    span.record(
-        "si.rebase.correct_transforms_time",
-        start.elapsed().as_millis(),
-    );
-    to_rebase_workspace_snapshot
-        .perform_updates(&corrected_updates)
-        .await?;
-
-    debug!("updates complete: {:?}", start.elapsed());
-    span.record(
-        "si.rebase.perform_updates_time",
-        start.elapsed().as_millis(),
-    );
-
-    if !corrected_updates.is_empty() {
-        // Once all updates have been performed, we can write out, and update the pointer.
-        to_rebase_workspace_snapshot.write(ctx).await?;
-        debug!("snapshot written: {:?}", start.elapsed());
-        to_rebase_change_set
-            .update_pointer(ctx, to_rebase_workspace_snapshot.id().await)
-            .await?;
-
-        if let Err(err) =
-            billing_publish::for_head_change_set_pointer_update(ctx, &to_rebase_change_set).await
-        {
-            error!(si.error.message = ?err, "Failed to publish billing for change set pointer update on HEAD");
-        }
-
-        debug!("pointer updated: {:?}", start.elapsed());
-        span.record("si.rebase.pointer_updated", start.elapsed().as_millis());
-        ctx.set_workspace_snapshot(to_rebase_workspace_snapshot.clone());
-    }
-
-    let updates_count = rebase_batch.updates().len();
-    span.record("si.updates.count", updates_count.to_string());
-    span.record(
-        "si.corrected_updates.count",
-        corrected_updates.len().to_string(),
-    );
-    debug!("rebase performed: {:?}", start.elapsed());
-    span.record("si.rebase.rebase_time", start.elapsed().as_millis());
-
-    // Before replying to the requester or sending the Edda request, we must commit.
-    ctx.commit_no_rebase().await?;
-
-    if features.generate_mvs {
-        let changes = original_workspace_snapshot
-            .detect_changes(&to_rebase_workspace_snapshot)
-            .instrument(tracing::info_span!(
-                "rebaser.perform_rebase.detect_changes_for_edda_request"
-            ))
-            .await?;
-        let change_batch_address = ctx.write_change_batch(changes).await?;
-        let edda_update_request_id = edda
-            .update_from_workspace_snapshot(
-                request.workspace_id,
-                request.change_set_id,
-                original_workspace_snapshot.id().await,
-                to_rebase_workspace_snapshot.id().await,
-                change_batch_address,
+    match workspace.snapshot_kind() {
+        WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => {
+            rebase_legacy(
+                ctx,
+                to_rebase_workspace_snapshot_address,
+                edda,
+                request,
+                features,
+                updating_head,
+                &mut to_rebase_change_set,
             )
             .await?;
-        span.record("si.edda_request.id", edda_update_request_id.to_string());
+        }
+        WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
+            rebase_split(
+                ctx,
+                to_rebase_workspace_snapshot_address,
+                edda,
+                request,
+                features,
+                updating_head,
+                &mut to_rebase_change_set,
+            )
+            .await?;
+        }
     }
 
     {
@@ -294,9 +227,247 @@ pub async fn perform_rebase(
         }
     }
 
+    debug!("rebase elapsed: {:?}", start.elapsed());
+
     Ok(RebaseStatus::Success {
         updates_performed: request.updates_address,
     })
+}
+
+async fn rebase_split(
+    ctx: &mut DalContext,
+    to_rebase_workspace_snapshot_address: WorkspaceSnapshotAddress,
+    edda: &EddaClient,
+    request: &EnqueueUpdatesRequest,
+    features: Features,
+    _updating_head: bool,
+    to_rebase_change_set: &mut ChangeSet,
+) -> RebaseResult<()> {
+    let span = current_span_for_instrument_at!("info");
+
+    let original_workspace_snapshot =
+        SplitSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
+
+    let to_rebase_workspace_snapshot =
+        SplitSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
+
+    let batch_address = match &request.updates_address {
+        RebaseBatchAddressKind::Legacy(_) => {
+            return Err(RebaseError::UnexpectedRebaseBatchAddressKind);
+        }
+        RebaseBatchAddressKind::Split(split_address) => split_address,
+    };
+
+    let rebase_batch = ctx
+        .layer_db()
+        .split_snapshot_rebase_batch()
+        .read_wait_for_memory(batch_address)
+        .await?
+        .ok_or(RebaseError::MissingRebaseBatch(request.updates_address))?;
+
+    debug!("rebase batch: {:?}", rebase_batch);
+
+    to_rebase_workspace_snapshot
+        .perform_updates(rebase_batch.as_slice())
+        .await?;
+
+    let new_snapshot_address = to_rebase_workspace_snapshot.write(ctx).await?;
+    debug!("Workspace snapshot updated to {}", new_snapshot_address);
+
+    to_rebase_change_set
+        .update_pointer(ctx, new_snapshot_address)
+        .await?;
+
+    if let Err(err) =
+        billing_publish::for_head_change_set_pointer_update(ctx, to_rebase_change_set).await
+    {
+        error!(si.error.message = ?err, "Failed to publish billing for change set pointer update on HEAD");
+    }
+
+    ctx.set_workspace_split_snapshot(to_rebase_workspace_snapshot.clone());
+
+    // Before replying to the requester or sending the Edda request, we must commit.
+    ctx.commit_no_rebase().await?;
+
+    if features.generate_mvs {
+        send_updates_to_edda_split_snapshot(
+            ctx,
+            &original_workspace_snapshot,
+            &to_rebase_workspace_snapshot,
+            edda,
+            request,
+            span,
+        )
+        .await?;
+    }
+
+    Ok(())
+}
+
+async fn rebase_legacy(
+    ctx: &mut DalContext,
+    to_rebase_workspace_snapshot_address: WorkspaceSnapshotAddress,
+    edda: &EddaClient,
+    request: &EnqueueUpdatesRequest,
+    features: Features,
+    updating_head: bool,
+    to_rebase_change_set: &mut ChangeSet,
+) -> RebaseResult<()> {
+    let span = current_span_for_instrument_at!("info");
+    let start = Instant::now();
+
+    let to_rebase_workspace_snapshot =
+        WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
+    // Rather than clone the above snapshot we want an independent copy of this snapshot
+    let original_workspace_snapshot =
+        WorkspaceSnapshot::find(ctx, to_rebase_workspace_snapshot_address).await?;
+
+    let batch_address = match &request.updates_address {
+        RebaseBatchAddressKind::Legacy(rebase_batch_address) => rebase_batch_address,
+        RebaseBatchAddressKind::Split(_) => {
+            return Err(RebaseError::UnexpectedRebaseBatchAddressKind);
+        }
+    };
+
+    let rebase_batch = ctx
+        .layer_db()
+        .rebase_batch()
+        .read_wait_for_memory(batch_address)
+        .await?
+        .ok_or(RebaseError::MissingRebaseBatch(request.updates_address))?;
+
+    debug!(
+        to_rebase_workspace_snapshot_address = %to_rebase_workspace_snapshot_address,
+        updates_address = %request.updates_address,
+    );
+    debug!("after snapshot fetch and parse: {:?}", start.elapsed());
+    span.record(
+        "si.rebase.snapshot_fetch_parse_time",
+        start.elapsed().as_millis(),
+    );
+
+    let corrected_updates = to_rebase_workspace_snapshot
+        .correct_transforms(
+            rebase_batch.updates().to_vec(),
+            !updating_head
+                && request
+                    .from_change_set_id
+                    .is_some_and(|from_id| from_id != to_rebase_change_set.id),
+        )
+        .await?;
+    debug!("corrected transforms: {:?}", start.elapsed());
+    span.record(
+        "si.rebase.correct_transforms_time",
+        start.elapsed().as_millis(),
+    );
+
+    to_rebase_workspace_snapshot
+        .perform_updates(&corrected_updates)
+        .await?;
+
+    debug!("updates complete: {:?}", start.elapsed());
+
+    if !corrected_updates.is_empty() {
+        // Once all updates have been performed, we can write out, and update the pointer.
+        to_rebase_workspace_snapshot.write(ctx).await?;
+        debug!("snapshot written: {:?}", start.elapsed());
+        to_rebase_change_set
+            .update_pointer(ctx, to_rebase_workspace_snapshot.id().await)
+            .await?;
+
+        if let Err(err) =
+            billing_publish::for_head_change_set_pointer_update(ctx, to_rebase_change_set).await
+        {
+            error!(si.error.message = ?err, "Failed to publish billing for change set pointer update on HEAD");
+        }
+
+        debug!("pointer updated: {:?}", start.elapsed());
+        span.record("si.rebase.pointer_updated", start.elapsed().as_millis());
+
+        ctx.set_workspace_snapshot(to_rebase_workspace_snapshot.clone());
+    }
+
+    let updates_count = rebase_batch.updates().len();
+    span.record("si.updates.count", updates_count.to_string());
+    span.record(
+        "si.corrected_updates.count",
+        corrected_updates.len().to_string(),
+    );
+    debug!("rebase performed: {:?}", start.elapsed());
+    span.record("si.rebase.rebase_time", start.elapsed().as_millis());
+
+    // Before replying to the requester or sending the Edda request, we must commit.
+    ctx.commit_no_rebase().await?;
+
+    if features.generate_mvs {
+        send_updates_to_edda_legacy_snapshot(
+            ctx,
+            &original_workspace_snapshot,
+            &to_rebase_workspace_snapshot,
+            edda,
+            request,
+            span,
+        )
+        .await?;
+    }
+
+    Ok(())
+}
+
+async fn send_updates_to_edda_split_snapshot(
+    ctx: &DalContext,
+    original_workspace_snapshot: &SplitSnapshot,
+    to_rebase_workspace_snapshot: &SplitSnapshot,
+    edda: &edda_client::Client,
+    request: &EnqueueUpdatesRequest,
+    span: Span,
+) -> Result<(), RebaseError> {
+    let changes = original_workspace_snapshot
+        .detect_changes(to_rebase_workspace_snapshot)
+        .instrument(tracing::info_span!(
+            "rebaser.perform_rebase.detect_changes_for_edda_request"
+        ))
+        .await?;
+    let change_batch_address = ctx.write_change_batch(changes).await?;
+    let edda_update_request_id = edda
+        .update_from_workspace_snapshot(
+            request.workspace_id,
+            request.change_set_id,
+            original_workspace_snapshot.id().await,
+            to_rebase_workspace_snapshot.id().await,
+            change_batch_address,
+        )
+        .await?;
+    span.record("si.edda_request.id", edda_update_request_id.to_string());
+    Ok(())
+}
+
+async fn send_updates_to_edda_legacy_snapshot(
+    ctx: &mut DalContext,
+    original_workspace_snapshot: &WorkspaceSnapshot,
+    to_rebase_workspace_snapshot: &WorkspaceSnapshot,
+    edda: &edda_client::Client,
+    request: &EnqueueUpdatesRequest,
+    span: Span,
+) -> Result<(), RebaseError> {
+    let changes = original_workspace_snapshot
+        .detect_changes(to_rebase_workspace_snapshot)
+        .instrument(tracing::info_span!(
+            "rebaser.perform_rebase.detect_changes_for_edda_request"
+        ))
+        .await?;
+    let change_batch_address = ctx.write_change_batch(changes).await?;
+    let edda_update_request_id = edda
+        .update_from_workspace_snapshot(
+            request.workspace_id,
+            request.change_set_id,
+            original_workspace_snapshot.id().await,
+            to_rebase_workspace_snapshot.id().await,
+            change_batch_address,
+        )
+        .await?;
+    span.record("si.edda_request.id", edda_update_request_id.to_string());
+    Ok(())
 }
 
 pub(crate) async fn evict_unused_snapshots(
@@ -317,7 +488,7 @@ async fn replay_changes(
     ctx: &DalContext,
     workspace_pk: WorkspacePk,
     change_set_id: ChangeSetId,
-    updates_address: RebaseBatchAddress,
+    updates_address: RebaseBatchAddressKind,
     from_change_set_id: ChangeSetId,
 ) -> RebaseResult<()> {
     ctx.run_async_rebase_from_change_set(

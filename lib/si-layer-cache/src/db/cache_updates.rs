@@ -32,11 +32,17 @@ pub struct CacheUpdatesTask<
     EncryptedSecretValue,
     WorkspaceSnapshotValue,
     RebaseBatchValue,
+    SplitSubgraphValue,
+    SplitSupergraphValue,
+    SplitRebaseBatchValue,
 > where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    SplitSubgraphValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    SplitSupergraphValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    SplitRebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas_cache: Arc<LayerCache<Arc<CasValue>>>,
     change_batch_cache: Arc<LayerCache<Arc<ChangeBatch>>>,
@@ -45,18 +51,40 @@ pub struct CacheUpdatesTask<
     func_run_log_cache: Arc<LayerCache<Arc<FuncRunLog>>>,
     rebase_batch_cache: Arc<LayerCache<Arc<RebaseBatchValue>>>,
     snapshot_cache: Arc<LayerCache<Arc<WorkspaceSnapshotValue>>>,
+    split_subgraph_cache: Arc<LayerCache<Arc<SplitSubgraphValue>>>,
+    split_supergraph_cache: Arc<LayerCache<Arc<SplitSupergraphValue>>>,
+    split_rebase_batch_cache: Arc<LayerCache<Arc<SplitRebaseBatchValue>>>,
     event_channel: UnboundedReceiver<LayeredEvent>,
     shutdown_token: CancellationToken,
     tracker: TaskTracker,
 }
 
-impl<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
-    CacheUpdatesTask<CasValue, EncryptedSecretValue, WorkspaceSnapshotValue, RebaseBatchValue>
+impl<
+    CasValue,
+    EncryptedSecretValue,
+    WorkspaceSnapshotValue,
+    RebaseBatchValue,
+    SplitSubgraphValue,
+    SplitSupergraphValue,
+    SplitRebaseBatchValue,
+>
+    CacheUpdatesTask<
+        CasValue,
+        EncryptedSecretValue,
+        WorkspaceSnapshotValue,
+        RebaseBatchValue,
+        SplitSubgraphValue,
+        SplitSupergraphValue,
+        SplitRebaseBatchValue,
+    >
 where
     CasValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     EncryptedSecretValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     WorkspaceSnapshotValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     RebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    SplitSubgraphValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    SplitSupergraphValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    SplitRebaseBatchValue: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     const NAME: &'static str = "LayerDB::CacheUpdatesTask";
 
@@ -71,6 +99,9 @@ where
         func_run_log_cache: Arc<LayerCache<Arc<FuncRunLog>>>,
         rebase_batch_cache: Arc<LayerCache<Arc<RebaseBatchValue>>>,
         snapshot_cache: Arc<LayerCache<Arc<WorkspaceSnapshotValue>>>,
+        split_subgraph_cache: Arc<LayerCache<Arc<SplitSubgraphValue>>>,
+        split_supergraph_cache: Arc<LayerCache<Arc<SplitSupergraphValue>>>,
+        split_snapshot_rebase_batch_cache: Arc<LayerCache<Arc<SplitRebaseBatchValue>>>,
         shutdown_token: CancellationToken,
     ) -> LayerDbResult<Self> {
         let tracker = TaskTracker::new();
@@ -88,6 +119,9 @@ where
             func_run_log_cache,
             rebase_batch_cache,
             snapshot_cache,
+            split_subgraph_cache,
+            split_supergraph_cache,
+            split_rebase_batch_cache: split_snapshot_rebase_batch_cache,
             event_channel,
             shutdown_token,
             tracker,
@@ -118,6 +152,9 @@ where
                 self.func_run_log_cache.clone(),
                 self.snapshot_cache.clone(),
                 self.rebase_batch_cache.clone(),
+                self.split_subgraph_cache.clone(),
+                self.split_supergraph_cache.clone(),
+                self.split_rebase_batch_cache.clone(),
             );
             self.tracker
                 .spawn(async move { cache_update_task.run(event).await });
@@ -125,12 +162,15 @@ where
     }
 }
 
-struct CacheUpdateTask<Q, R, S, T>
+struct CacheUpdateTask<Q, R, S, T, U, V, W>
 where
     Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     S: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    U: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    W: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
     cas_cache: Arc<LayerCache<Arc<Q>>>,
     change_batch_cache: Arc<LayerCache<Arc<ChangeBatch>>>,
@@ -139,15 +179,22 @@ where
     func_run_log_cache: Arc<LayerCache<Arc<FuncRunLog>>>,
     snapshot_cache: Arc<LayerCache<Arc<S>>>,
     rebase_batch_cache: Arc<LayerCache<Arc<T>>>,
+    split_subgraph_cache: Arc<LayerCache<Arc<U>>>,
+    split_supergraph_cache: Arc<LayerCache<Arc<V>>>,
+    split_rebase_batch_cache: Arc<LayerCache<Arc<W>>>,
 }
 
-impl<Q, R, S, T> CacheUpdateTask<Q, R, S, T>
+impl<Q, R, S, T, U, V, W> CacheUpdateTask<Q, R, S, T, U, V, W>
 where
     Q: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     R: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     S: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
     T: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    U: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    V: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
+    W: Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
 {
+    #[allow(clippy::too_many_arguments)]
     fn new(
         cas_cache: Arc<LayerCache<Arc<Q>>>,
         change_batch_cache: Arc<LayerCache<Arc<ChangeBatch>>>,
@@ -156,7 +203,10 @@ where
         func_run_log_cache: Arc<LayerCache<Arc<FuncRunLog>>>,
         snapshot_cache: Arc<LayerCache<Arc<S>>>,
         rebase_batch_cache: Arc<LayerCache<Arc<T>>>,
-    ) -> CacheUpdateTask<Q, R, S, T> {
+        split_subgraph_cache: Arc<LayerCache<Arc<U>>>,
+        split_supergraph_cache: Arc<LayerCache<Arc<V>>>,
+        split_rebase_batch_cache: Arc<LayerCache<Arc<W>>>,
+    ) -> CacheUpdateTask<Q, R, S, T, U, V, W> {
         CacheUpdateTask {
             cas_cache,
             change_batch_cache,
@@ -165,6 +215,9 @@ where
             func_run_log_cache,
             snapshot_cache,
             rebase_batch_cache,
+            split_subgraph_cache,
+            split_supergraph_cache,
+            split_rebase_batch_cache,
         }
     }
 
@@ -234,6 +287,42 @@ where
             }
             crate::event::LayeredEventKind::SnapshotEvict => {
                 self.snapshot_cache.evict_from_cache_updates(event.key);
+            }
+            crate::event::LayeredEventKind::SplitRebaseBatchEvict => {
+                self.split_rebase_batch_cache
+                    .evict_from_cache_updates(event.key);
+            }
+            crate::event::LayeredEventKind::SplitRebaseBatchWrite => {
+                if !self.split_rebase_batch_cache.contains(&event.key) {
+                    let serialized_value =
+                        Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
+                    self.split_rebase_batch_cache
+                        .insert_from_cache_updates(event.key, serialized_value);
+                }
+            }
+            crate::event::LayeredEventKind::SplitSnapshotSubGraphEvict => {
+                self.split_subgraph_cache
+                    .evict_from_cache_updates(event.key);
+            }
+            crate::event::LayeredEventKind::SplitSnapshotSubGraphWrite => {
+                if !self.split_subgraph_cache.contains(&event.key) {
+                    let serialized_value =
+                        Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
+                    self.split_subgraph_cache
+                        .insert_from_cache_updates(event.key, serialized_value);
+                }
+            }
+            crate::event::LayeredEventKind::SplitSnapshotSuperGraphEvict => {
+                self.split_supergraph_cache
+                    .evict_from_cache_updates(event.key);
+            }
+            crate::event::LayeredEventKind::SplitSnapshotSuperGraphWrite => {
+                if !self.split_supergraph_cache.contains(&event.key) {
+                    let serialized_value =
+                        Arc::try_unwrap(event.payload.value).unwrap_or_else(|arc| (*arc).clone());
+                    self.split_supergraph_cache
+                        .insert_from_cache_updates(event.key, serialized_value);
+                }
             }
         }
 

@@ -44,6 +44,7 @@ use crate::{
     workspace_snapshot::{
         WorkspaceSnapshotError,
         content_address::ContentAddressDiscriminants,
+        dependent_value_root::DependentValueRootError,
         edge_weight::{
             EdgeWeightKind,
             EdgeWeightKindDiscriminants,
@@ -73,6 +74,8 @@ pub enum AttributePrototypeArgumentError {
     AttributeValue(String),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
     #[error("helper error: {0}")]

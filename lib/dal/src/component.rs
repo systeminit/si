@@ -45,6 +45,7 @@ use si_frontend_types::{
     },
 };
 use si_pkg::KeyOrIndex;
+use si_split_graph::SplitGraphError;
 use socket::{
     ComponentInputSocket,
     ComponentOutputSocket,
@@ -169,6 +170,7 @@ use crate::{
         DependentValueRoot,
         WorkspaceSnapshotError,
         content_address::ContentAddressDiscriminants,
+        dependent_value_root::DependentValueRootError,
         edge_weight::{
             EdgeWeightKind,
             EdgeWeightKindDiscriminants,
@@ -233,6 +235,8 @@ pub enum ComponentError {
     ComponentMissingTypeValueMaterializedView(ComponentId),
     #[error("component {0} has no attribute value for the {1} prop")]
     ComponentMissingValue(ComponentId, PropId),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("connection destination component {0} has no attribute value for input socket {1}")]
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("diagram error: {0}")]
@@ -315,6 +319,8 @@ pub enum ComponentError {
     SchemaVariantNotFound(ComponentId),
     #[error("serde_json error: {0}")]
     Serde(#[from] serde_json::Error),
+    #[error("split graph error: {0}")]
+    SplitGraph(#[from] SplitGraphError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error(
@@ -659,12 +665,12 @@ impl Component {
             if should_descend {
                 match prop_kind {
                     PropKind::Object => {
-                        let ordering_node_weight = workspace_snapshot
-                            .ordering_node_for_container(prop_id)
+                        let ordered_children = workspace_snapshot
+                            .ordered_children_for_node(prop_id)
                             .await?
                             .ok_or(ComponentError::ObjectPropHasNoOrderingNode(prop_id))?;
 
-                        for &child_prop_id in ordering_node_weight.order() {
+                        for child_prop_id in ordered_children {
                             work_queue.push_back((
                                 child_prop_id.into(),
                                 Some(attribute_value.id()),
@@ -2091,7 +2097,7 @@ impl Component {
         child_id: ComponentId,
     ) -> ComponentResult<()> {
         ctx.workspace_snapshot()?
-            .remove_edge_for_ulids(
+            .remove_edge(
                 parent_id,
                 child_id,
                 EdgeWeightKindDiscriminants::FrameContains,
@@ -3612,7 +3618,7 @@ impl Component {
 
         // Move geometries to new component
         for geometry_id in geometry_ids {
-            snap.remove_edge_for_ulids(
+            snap.remove_edge(
                 geometry_id,
                 component_id,
                 EdgeWeightKindDiscriminants::Represents,
@@ -3995,7 +4001,7 @@ impl Component {
         managed_component_id: ComponentId,
     ) -> ComponentResult<()> {
         ctx.workspace_snapshot()?
-            .remove_edge_for_ulids(
+            .remove_edge(
                 manager_component_id,
                 managed_component_id,
                 EdgeWeightKindDiscriminants::Manages,

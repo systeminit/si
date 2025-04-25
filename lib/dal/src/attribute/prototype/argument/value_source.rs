@@ -1,6 +1,7 @@
 use core::fmt;
 
 use si_events::ulid::Ulid;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 use super::static_value::StaticArgumentValueId;

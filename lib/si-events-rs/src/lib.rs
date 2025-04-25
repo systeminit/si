@@ -5,11 +5,18 @@ pub mod content_hash;
 pub mod encrypted_secret;
 pub mod merkle_tree_hash;
 pub mod rebase_batch_address;
+pub mod split_snapshot_rebase_batch_address;
 pub mod workspace_snapshot;
 pub mod workspace_snapshot_address;
 pub mod xxhash_type;
 
+use rebase_batch_address::RebaseBatchAddress;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 pub use si_id::ulid;
+use split_snapshot_rebase_batch_address::SplitSnapshotRebaseBatchAddress;
 
 mod action;
 mod actor;
@@ -109,3 +116,9 @@ pub use crate::{
     web_event::WebEvent,
     workspace_snapshot_address::WorkspaceSnapshotAddress,
 };
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Hash, strum::Display)]
+pub enum RebaseBatchAddressKind {
+    Legacy(RebaseBatchAddress),
+    Split(SplitSnapshotRebaseBatchAddress),
+}

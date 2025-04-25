@@ -48,6 +48,10 @@ use si_id::{
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use super::{
+    ChangeSetError,
+    calculate_checksum,
+};
 use crate::{
     DalContext,
     HistoryActor,
@@ -58,6 +62,8 @@ use crate::{
 #[allow(missing_docs)]
 #[derive(Debug, Error)]
 pub enum ChangeSetApprovalError {
+    #[error("change set error")]
+    ChangeSet(#[from] ChangeSetError),
     #[error("invalid user for a new change set approval")]
     InvalidUserForNewApproval,
     #[error("pg error: {0}")]
@@ -109,10 +115,7 @@ impl ChangeSetApproval {
         status: ChangeSetApprovalStatus,
         ids_with_hashes: Vec<(EntityId, MerkleTreeHash)>,
     ) -> Result<Self> {
-        let checksum = ctx
-            .workspace_snapshot()?
-            .calculate_checksum(ctx, ids_with_hashes)
-            .await?;
+        let checksum = calculate_checksum(ctx, ids_with_hashes).await?;
 
         let change_set_id = ctx.change_set_id();
         let user_id = match ctx.history_actor() {

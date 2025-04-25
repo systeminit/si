@@ -118,6 +118,7 @@ use crate::{
     },
     workspace_snapshot::{
         WorkspaceSnapshotError,
+        dependent_value_root::DependentValueRootError,
         edge_weight::{
             EdgeWeightKind,
             EdgeWeightKindDiscriminants,
@@ -171,6 +172,8 @@ pub enum SecretError {
     Component(#[from] ComponentError),
     #[error("error when decrypting encrypted secret")]
     DecryptionFailed,
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("error deserializing message: {0}")]
     DeserializeMessage(#[source] serde_json::Error),
     #[error("encrypted secret key parse error: {0}")]

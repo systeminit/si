@@ -7,6 +7,7 @@ pub use attribute_prototype_argument_node_weight::{
     AttributePrototypeArgumentNodeWeight,
 };
 pub use attribute_value_node_weight::AttributeValueNodeWeight;
+use category_node_weight::CategoryNodeKind;
 pub use category_node_weight::CategoryNodeWeight;
 pub use component_node_weight::ComponentNodeWeight;
 pub use content_node_weight::ContentNodeWeight;
@@ -28,6 +29,7 @@ use si_events::{
     EncryptedSecretKey,
     merkle_tree_hash::MerkleTreeHash,
     ulid::Ulid,
+    workspace_snapshot::EntityKind,
 };
 use si_layer_cache::LayerDbError;
 use strum::{
@@ -309,93 +311,123 @@ impl NodeWeight {
         }
     }
 
-    pub fn set_id_and_lineage(&mut self, id: impl Into<Ulid>, lineage_id: LineageId) {
+    pub fn set_id(&mut self, id: impl Into<Ulid>) {
         match self {
-            NodeWeight::Action(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::Action(action_node_weight) => action_node_weight.id = id.into(),
+            NodeWeight::ActionPrototype(action_prototype_node_weight) => {
+                action_prototype_node_weight.id = id.into()
             }
-            NodeWeight::ActionPrototype(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::AttributePrototypeArgument(attribute_prototype_argument_node_weight) => {
+                attribute_prototype_argument_node_weight.id = id.into()
             }
-            NodeWeight::AttributePrototypeArgument(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::AttributeValue(attribute_value_node_weight) => {
+                attribute_value_node_weight.id = id.into()
             }
-            NodeWeight::AttributeValue(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::Category(category_node_weight) => category_node_weight.id = id.into(),
+            NodeWeight::Component(component_node_weight) => component_node_weight.id = id.into(),
+            NodeWeight::Content(content_node_weight) => content_node_weight.id = id.into(),
+            NodeWeight::DependentValueRoot(dependent_value_root_node_weight) => {
+                dependent_value_root_node_weight.id = id.into()
             }
-            NodeWeight::Category(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::Func(func_node_weight) => func_node_weight.id = id.into(),
+            NodeWeight::FuncArgument(func_argument_node_weight) => {
+                func_argument_node_weight.id = id.into()
             }
-            NodeWeight::Component(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::Ordering(ordering_node_weight) => ordering_node_weight.id = id.into(),
+            NodeWeight::Prop(prop_node_weight) => prop_node_weight.id = id.into(),
+            NodeWeight::Secret(secret_node_weight) => secret_node_weight.id = id.into(),
+            NodeWeight::FinishedDependentValueRoot(finished_dependent_value_root_node_weight) => {
+                finished_dependent_value_root_node_weight.id = id.into()
             }
-            NodeWeight::Content(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::InputSocket(input_socket_node_weight) => {
+                input_socket_node_weight.set_id(id.into());
             }
-            NodeWeight::Func(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::SchemaVariant(schema_variant_node_weight) => {
+                schema_variant_node_weight.set_id(id.into());
             }
-            NodeWeight::FuncArgument(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::ManagementPrototype(management_prototype_node_weight) => {
+                management_prototype_node_weight.set_id(id.into());
             }
-            NodeWeight::Ordering(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::Geometry(geometry_node_weight) => {
+                geometry_node_weight.set_id(id.into());
             }
-            NodeWeight::Prop(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::View(view_node_weight) => {
+                view_node_weight.set_id(id.into());
             }
-            NodeWeight::Secret(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
+            NodeWeight::DiagramObject(diagram_object_node_weight) => {
+                diagram_object_node_weight.set_id(id.into());
             }
-            NodeWeight::DependentValueRoot(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
-            }
-            NodeWeight::FinishedDependentValueRoot(weight) => {
-                weight.id = id.into();
-                weight.lineage_id = lineage_id;
-            }
-            NodeWeight::InputSocket(weight) => {
-                weight.set_id(id.into());
-                weight.set_lineage_id(lineage_id);
-            }
-            NodeWeight::SchemaVariant(weight) => {
-                weight.set_id(id.into());
-                weight.set_lineage_id(lineage_id);
-            }
-            NodeWeight::ManagementPrototype(weight) => {
-                weight.set_id(id.into());
-                weight.set_lineage_id(lineage_id);
-            }
-            NodeWeight::Geometry(weight) => {
-                weight.set_id(id.into());
-                weight.set_lineage_id(lineage_id);
-            }
-            NodeWeight::View(weight) => {
-                weight.set_id(id.into());
-                weight.set_lineage_id(lineage_id);
-            }
-            NodeWeight::DiagramObject(weight) => {
-                weight.set_id(id.into());
-                weight.set_lineage_id(lineage_id);
-            }
-            NodeWeight::ApprovalRequirementDefinition(weight) => {
-                weight.set_id(id.into());
-                weight.set_lineage_id(lineage_id);
+            NodeWeight::ApprovalRequirementDefinition(
+                approval_requirement_definition_node_weight,
+            ) => {
+                approval_requirement_definition_node_weight.set_id(id.into());
             }
         }
+    }
+
+    pub fn set_lineage_id(&mut self, lineage_id: LineageId) {
+        match self {
+            NodeWeight::Action(action_node_weight) => action_node_weight.lineage_id = lineage_id,
+            NodeWeight::ActionPrototype(action_prototype_node_weight) => {
+                action_prototype_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::AttributePrototypeArgument(attribute_prototype_argument_node_weight) => {
+                attribute_prototype_argument_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::AttributeValue(attribute_value_node_weight) => {
+                attribute_value_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::Category(category_node_weight) => {
+                category_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::Component(component_node_weight) => {
+                component_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::Content(content_node_weight) => content_node_weight.lineage_id = lineage_id,
+            NodeWeight::DependentValueRoot(dependent_value_root_node_weight) => {
+                dependent_value_root_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::Func(func_node_weight) => func_node_weight.lineage_id = lineage_id,
+            NodeWeight::FuncArgument(func_argument_node_weight) => {
+                func_argument_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::Ordering(ordering_node_weight) => {
+                ordering_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::Prop(prop_node_weight) => prop_node_weight.lineage_id = lineage_id,
+            NodeWeight::Secret(secret_node_weight) => secret_node_weight.lineage_id = lineage_id,
+            NodeWeight::FinishedDependentValueRoot(finished_dependent_value_root_node_weight) => {
+                finished_dependent_value_root_node_weight.lineage_id = lineage_id
+            }
+            NodeWeight::InputSocket(input_socket_node_weight) => {
+                input_socket_node_weight.set_lineage_id(lineage_id);
+            }
+            NodeWeight::SchemaVariant(schema_variant_node_weight) => {
+                schema_variant_node_weight.set_lineage_id(lineage_id);
+            }
+            NodeWeight::ManagementPrototype(management_prototype_node_weight) => {
+                management_prototype_node_weight.set_lineage_id(lineage_id);
+            }
+            NodeWeight::Geometry(geometry_node_weight) => {
+                geometry_node_weight.set_lineage_id(lineage_id);
+            }
+            NodeWeight::View(view_node_weight) => {
+                view_node_weight.set_lineage_id(lineage_id);
+            }
+            NodeWeight::DiagramObject(diagram_object_node_weight) => {
+                diagram_object_node_weight.set_lineage_id(lineage_id);
+            }
+            NodeWeight::ApprovalRequirementDefinition(
+                approval_requirement_definition_node_weight,
+            ) => {
+                approval_requirement_definition_node_weight.set_lineage_id(lineage_id);
+            }
+        }
+    }
+
+    pub fn set_id_and_lineage(&mut self, id: impl Into<Ulid>, lineage_id: LineageId) {
+        self.set_id(id);
+        self.set_lineage_id(lineage_id);
     }
 
     pub fn merkle_tree_hash(&self) -> MerkleTreeHash {
@@ -1049,6 +1081,11 @@ impl NodeWeight {
             content_hash,
         ))
     }
+
+    pub fn dot_details(&self) -> String {
+        let discrim: NodeWeightDiscriminants = self.into();
+        discrim.to_string()
+    }
 }
 
 impl From<DeprecatedNodeWeightV1> for NodeWeight {
@@ -1218,6 +1255,121 @@ impl CorrectExclusiveOutgoingEdge for NodeWeight {
             NodeWeight::View(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::DiagramObject(weight) => weight.exclusive_outgoing_edges(),
             NodeWeight::ApprovalRequirementDefinition(weight) => weight.exclusive_outgoing_edges(),
+        }
+    }
+}
+
+impl si_split_graph::CustomNodeWeight for NodeWeight {
+    fn id(&self) -> si_split_graph::SplitGraphNodeId {
+        self.id()
+    }
+
+    fn dot_details(&self) -> String {
+        self.dot_details()
+    }
+
+    fn set_id(&mut self, id: si_split_graph::SplitGraphNodeId) {
+        self.set_id(id);
+    }
+
+    fn lineage_id(&self) -> si_split_graph::SplitGraphNodeId {
+        self.lineage_id()
+    }
+
+    fn set_lineage_id(&mut self, lineage_id: si_split_graph::SplitGraphNodeId) {
+        self.set_lineage_id(lineage_id);
+    }
+
+    fn entity_kind(&self) -> EntityKind {
+        self.into()
+    }
+
+    fn set_merkle_tree_hash(&mut self, hash: MerkleTreeHash) {
+        self.set_merkle_tree_hash(hash);
+    }
+
+    fn merkle_tree_hash(&self) -> MerkleTreeHash {
+        self.merkle_tree_hash()
+    }
+
+    fn node_hash(&self) -> ContentHash {
+        self.node_hash()
+    }
+}
+
+impl From<&NodeWeight> for EntityKind {
+    fn from(value: &NodeWeight) -> Self {
+        match value {
+            NodeWeight::Action(_) => EntityKind::Action,
+            NodeWeight::ActionPrototype(_) => EntityKind::ActionPrototype,
+            NodeWeight::AttributePrototypeArgument(_) => EntityKind::AttributePrototypeArgument,
+            NodeWeight::AttributeValue(_) => EntityKind::AttributeValue,
+            NodeWeight::Category(category_node_weight) => match category_node_weight.kind() {
+                CategoryNodeKind::Action => EntityKind::CategoryAction,
+                CategoryNodeKind::Component => EntityKind::CategoryComponent,
+                CategoryNodeKind::DeprecatedActionBatch => {
+                    EntityKind::CategoryDeprecatedActionBatch
+                }
+                CategoryNodeKind::Func => EntityKind::CategoryFunc,
+                CategoryNodeKind::Module => EntityKind::CategoryModule,
+                CategoryNodeKind::Schema => EntityKind::CategorySchema,
+                CategoryNodeKind::Secret => EntityKind::CategorySecret,
+                CategoryNodeKind::DependentValueRoots => EntityKind::CategoryDependentValueRoots,
+                CategoryNodeKind::View => EntityKind::CategoryView,
+                CategoryNodeKind::DiagramObject => EntityKind::CategoryDiagramObject,
+            },
+            NodeWeight::Component(_) => EntityKind::Component,
+            NodeWeight::Content(content_node_weight) => match content_node_weight
+                .content_address_discriminants()
+            {
+                ContentAddressDiscriminants::ActionPrototype => EntityKind::ActionPrototype,
+                ContentAddressDiscriminants::AttributePrototype => EntityKind::AttributePrototype,
+                ContentAddressDiscriminants::Component => EntityKind::Component,
+                ContentAddressDiscriminants::Func => EntityKind::Func,
+                // NOTE(nick): we are treating "FuncArg" and "FuncArgument" as the same entity.
+                ContentAddressDiscriminants::FuncArg => EntityKind::FuncArgument,
+                ContentAddressDiscriminants::Geometry => EntityKind::Geometry,
+                ContentAddressDiscriminants::InputSocket => EntityKind::InputSocket,
+                ContentAddressDiscriminants::JsonValue => EntityKind::JsonValue,
+                ContentAddressDiscriminants::ManagementPrototype => EntityKind::ManagementPrototype,
+                ContentAddressDiscriminants::Module => EntityKind::Module,
+                ContentAddressDiscriminants::OutputSocket => EntityKind::OutputSocket,
+                ContentAddressDiscriminants::Prop => EntityKind::Prop,
+                ContentAddressDiscriminants::Root => EntityKind::Root,
+                ContentAddressDiscriminants::Schema => EntityKind::Schema,
+                ContentAddressDiscriminants::SchemaVariant => EntityKind::SchemaVariant,
+                ContentAddressDiscriminants::Secret => EntityKind::Secret,
+                ContentAddressDiscriminants::StaticArgumentValue => EntityKind::StaticArgumentValue,
+                ContentAddressDiscriminants::ValidationOutput => EntityKind::ValidationOutput,
+                ContentAddressDiscriminants::ValidationPrototype => EntityKind::ValidationPrototype,
+                ContentAddressDiscriminants::View => EntityKind::View,
+                ContentAddressDiscriminants::ApprovalRequirementDefinition => {
+                    EntityKind::ApprovalRequirementDefinition
+                }
+                ContentAddressDiscriminants::DeprecatedAction => EntityKind::DeprecatedAction,
+                ContentAddressDiscriminants::DeprecatedActionBatch => {
+                    EntityKind::DeprecatedActionBatch
+                }
+                ContentAddressDiscriminants::DeprecatedActionRunner => {
+                    EntityKind::DeprecatedActionRunner
+                }
+            },
+            NodeWeight::DependentValueRoot(_) => EntityKind::DependentValueRoot,
+            NodeWeight::Func(_) => EntityKind::Func,
+            NodeWeight::FuncArgument(_) => EntityKind::FuncArgument,
+            NodeWeight::Ordering(_) => EntityKind::Ordering,
+            NodeWeight::Prop(_) => EntityKind::Prop,
+            NodeWeight::Secret(_) => EntityKind::Secret,
+            NodeWeight::FinishedDependentValueRoot(_) => EntityKind::FinishedDependentValueRoot,
+            NodeWeight::InputSocket(_) => EntityKind::InputSocket,
+            NodeWeight::SchemaVariant(_) => EntityKind::SchemaVariant,
+            NodeWeight::ManagementPrototype(_) => EntityKind::ManagementPrototype,
+            NodeWeight::Geometry(_) => EntityKind::Geometry,
+            NodeWeight::View(_) => EntityKind::View,
+            NodeWeight::DiagramObject(_) => EntityKind::DiagramObject,
+            NodeWeight::ApprovalRequirementDefinition(_) => {
+                EntityKind::ApprovalRequirementDefinition
+            }
         }
     }
 }
