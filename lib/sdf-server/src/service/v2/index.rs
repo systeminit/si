@@ -50,8 +50,6 @@ pub enum IndexError {
     Frigg(#[from] frigg::FriggError),
     #[error("index not found; workspace_pk={0}, change_set_id={1}")]
     IndexNotFound(WorkspacePk, ChangeSetId),
-    #[error("invalid string for reference kind: {0}")]
-    InvalidStringForReferenceKind(#[source] strum::ParseError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("timed out when watching index with duration: {0:?}")]
