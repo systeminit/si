@@ -10,6 +10,10 @@ import { Operation } from "fast-json-patch";
 import { Span } from "@opentelemetry/api";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
+import { Categories } from "@/store/components.store";
+import { ActionProposedView } from "@/store/actions.store";
+import { ComponentId } from "@/api/sdf/dal/component";
+import { SchemaId, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { WorkspaceMetadata } from "../../api/sdf/dal/workspace";
 
 export interface QueryMeta {
@@ -215,4 +219,42 @@ interface Reference {
 export interface RawViewList {
   id: string;
   views: Reference[];
+}
+
+export interface SchemaVariantCategories {
+  id: string; // change set id
+  categories: Categories;
+}
+
+export interface ActionViewList {
+  id: ChangeSetId;
+  actions: ActionProposedView[];
+}
+
+export interface ComponentQualificationTotals {
+  total: number;
+  warned: number;
+  succeeded: number;
+  failed: number;
+  running: number;
+}
+
+export interface ComponentView {
+  id: ComponentId;
+  name: string;
+  schemaName: string;
+  schemaId: SchemaId;
+  schemaVariantId: SchemaVariantId;
+  schemaVariantName: string;
+  schemaCategory: string;
+  hasResource: boolean;
+  qualificationTotals: ComponentQualificationTotals;
+  inputCount: number;
+  outputCount: number;
+  diffCount: number;
+}
+
+export interface ComponentViewList {
+  id: ChangeSetId;
+  components: ComponentView[];
 }

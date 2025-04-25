@@ -58,11 +58,9 @@ import ApprovalFlowCancelled from "@/components/toasts/ApprovalFlowCancelled.vue
 import { usePresenceStore } from "@/store/presence.store";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import { ActionProposedView } from "@/store/actions.store";
+import { ActionViewList } from "@/workers/types/dbinterface";
 import ActionsList from "./ActionsList.vue";
-import {
-  ActionViewList,
-  ActionProposedViewWithHydratedChildren,
-} from "./ChangesPanelProposed.vue";
+import { ActionProposedViewWithHydratedChildren } from "./ChangesPanelProposed.vue";
 
 const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();

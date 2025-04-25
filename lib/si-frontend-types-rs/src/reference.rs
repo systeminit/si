@@ -37,6 +37,7 @@ pub enum ReferenceKind {
     ActionViewList,
     ChangeSetList,
     ChangeSetRecord,
+    ComponentViewList,
     MvIndex,
     SchemaVariantCategories,
     View,

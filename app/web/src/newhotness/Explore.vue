@@ -29,40 +29,12 @@
     </div>
     <div class="scrollable tilegrid">
       <!-- body -->
-      <!-- eslint-disable-next-line vue/no-unused-vars -->
-      <template v-for="(_, idx) in new Array(15)" :key="idx">
-        <div
-          :class="
-            clsx('component tile cursor-pointer', idx === 4 ? 'pinned' : '')
-          "
-          @dblclick="componentNavigate"
-        >
-          <header>
-            <Icon name="logo-aws" size="lg" />
-            <h2>Component name</h2>
-            <h3>Schema name: 1</h3>
-            <Icon name="loader" size="lg" />
-          </header>
-          <ol>
-            <li>Qualifications</li>
-            <li>Resource</li>
-            <li>Diff</li>
-            <hr />
-            <li>Inputs</li>
-            <li>Outputs</li>
-          </ol>
-          <footer class="grid grid-cols-2">
-            <div class="place-self-start">
-              <VButton label="📌" size="sm" tone="neutral" variant="ghost" />
-              <VButton label="Upgrade" size="sm" tone="action" />
-            </div>
-            <div class="place-self-end">
-              <VButton label="Delete" size="sm" tone="destructive" />
-              <VButton label="Edit" size="sm" tone="action" />
-            </div>
-          </footer>
-        </div>
-      </template>
+      <ComponentGridTile
+        v-for="component in componentViewList"
+        :key="component.id"
+        :component="component"
+        @dblclick="componentNavigate"
+      />
     </div>
     <div class="grid grid-rows-subgrid gap-sm" :style="collapsingStyles">
       <CollapsingGridItem ref="actions">
@@ -120,19 +92,19 @@ import {
   themeClasses,
   VormInput,
   VButton,
-  Icon,
   DropdownMenu,
   DropdownMenuItem,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
-import { ActionViewList } from "@/mead-hall/ChangesPanelProposed.vue";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
+import { ActionViewList, ComponentViewList } from "@/workers/types/dbinterface";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
 import DetailsPanelMenuIcon from "./layout_components/DetailsPanelMenuIcon.vue";
+import ComponentGridTile from "./ComponentGridTile.vue";
 
 const actions = ref<typeof CollapsingGridItem>();
 const history = ref<typeof CollapsingGridItem>();
@@ -143,14 +115,22 @@ const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 // https://github.com/systeminit/si/blob/main/app/web/src/workers/webworker.ts#L818
 // const components = [];
 
-const queryKey = makeKey("ActionViewList");
 const actionViewListRaw = useQuery<ActionViewList | null>({
-  queryKey,
+  queryKey: makeKey("ActionViewList"),
   queryFn: async () =>
     await bifrost<ActionViewList>(makeArgs("ActionViewList")),
 });
 const actionViewList = computed(
   () => actionViewListRaw.data.value?.actions ?? [],
+);
+
+const componentViewListRaw = useQuery<ComponentViewList | null>({
+  queryKey: makeKey("ComponentViewList"),
+  queryFn: async () =>
+    await bifrost<ComponentViewList>(makeArgs("ComponentViewList")),
+});
+const componentViewList = computed(
+  () => componentViewListRaw.data.value?.components ?? [],
 );
 
 const searchString = ref("searching...");
