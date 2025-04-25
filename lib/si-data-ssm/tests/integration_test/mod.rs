@@ -13,12 +13,7 @@ mod integration_tests {
             endpoint = value;
         }
         dbg!("connecting to {}", &endpoint);
-        let client = ParameterStoreClient::new_for_test(
-            endpoint,
-            "us-east-1".to_string(),
-            "test".to_string(),
-            "test".to_string(),
-        );
+        let client = ParameterStoreClient::new_for_test(endpoint);
 
         let parameter_name = "/test/integration/parameter";
         let parameter_value = "test_value";

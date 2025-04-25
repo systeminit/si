@@ -79,18 +79,11 @@ impl ParameterStoreClient {
     }
 
     /// Creates a [ParameterStoreClient] configured for testing (e.g., LocalStack).
-    pub fn new_for_test(
-        endpoint: String,
-        region: String,
-        access_key: String,
-        secret_key: String,
-    ) -> Self {
+    pub fn new_for_test(endpoint: String) -> Self {
         let shared_config = aws_sdk_ssm::config::Builder::new()
-            .region(Region::new(region))
+            .region(Region::new("us-east-1"))
             .endpoint_url(endpoint)
-            .credentials_provider(Credentials::new(
-                access_key, secret_key, None, None, "tests",
-            ))
+            .credentials_provider(Credentials::new("test", "test", None, None, "test"))
             .behavior_version_latest()
             .build();
 

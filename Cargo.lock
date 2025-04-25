@@ -4084,7 +4084,7 @@ name = "innit-server"
 version = "0.1.0"
 dependencies = [
  "axum 0.6.20",
- "base64 0.22.1",
+ "dashmap",
  "derive_builder",
  "futures",
  "hyper 0.14.32",

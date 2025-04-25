@@ -94,6 +94,24 @@ impl InnitClient {
         Ok(healthy)
     }
 
+    pub async fn create_parameter(&self, name: String, value: String) -> Result<()> {
+        let name = name.trim_start_matches('/');
+        let url = self.join_path("parameter", name)?;
+        let body = serde_json::json!({
+            "value": value,
+        });
+
+        self.client
+            .put(url)
+            .json(&body)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        info!("Created parameter: {name}");
+        Ok(())
+    }
+
     pub async fn get_parameter(&self, name: String) -> Result<GetParameterResponse> {
         let url = self.join_path("parameter", &name)?;
         let resp = self.client.get(url).send().await?.error_for_status()?;
@@ -110,6 +128,15 @@ impl InnitClient {
 
         info!("Got parameters at: {path}");
         Ok(parameters)
+    }
+
+    pub async fn clear_parameter_cache(&self) -> Result<RefreshCacheResponse> {
+        let url = self.join_path("cache", "clear")?;
+        let resp = self.client.post(url).send().await?.error_for_status()?;
+
+        let result = resp.json::<RefreshCacheResponse>().await?;
+        info!("Cleared parameter cache.");
+        Ok(result)
     }
 
     fn join_path(&self, base_segment: &str, path: &str) -> Result<Url> {

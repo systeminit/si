@@ -17,7 +17,7 @@ si-tls = { path = "../../lib/si-tls" }
 telemetry = { path = "../../lib/telemetry-rs" }
 
 axum = { workspace = true }
-base64 = { workspace = true }
+dashmap = { workspace = true }
 derive_builder = { workspace = true }
 futures = { workspace = true }
 hyper = { workspace = true }

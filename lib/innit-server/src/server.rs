@@ -44,6 +44,7 @@ use crate::{
     Config,
     app_state::AppState,
     middleware::client_cert_auth::verify_client_cert_middleware,
+    parameter_cache::ParameterCache,
 };
 
 #[remain::sorted]
@@ -78,7 +79,11 @@ impl Server<()> {
         config: Config,
         token: CancellationToken,
     ) -> ServerResult<Server<AddrIncoming>> {
-        let parameter_store_client = ParameterStoreClient::new().await;
+        let parameter_store_client = if let Some(endpoint) = config.test_endpoint() {
+            ParameterStoreClient::new_for_test(endpoint)
+        } else {
+            ParameterStoreClient::new().await
+        };
 
         let client_cert_verifier = if let Some(cert) = config.client_ca_cert() {
             Some(Arc::new(
@@ -88,7 +93,14 @@ impl Server<()> {
             None
         };
 
-        let service = build_service(client_cert_verifier, parameter_store_client, token.clone())?;
+        let parameter_cache = ParameterCache::new(config.cache_ttl());
+
+        let service = build_service(
+            client_cert_verifier,
+            parameter_cache,
+            parameter_store_client,
+            token.clone(),
+        )?;
 
         info!(
             "binding to HTTP socket; socket_addr={}",
@@ -116,10 +128,11 @@ where
 
 pub fn build_service(
     client_cert_verifier: Option<Arc<ClientCertificateVerifier>>,
+    parameter_cache: ParameterCache,
     parameter_store_client: ParameterStoreClient,
     token: CancellationToken,
 ) -> ServerResult<Router> {
-    let state = AppState::new(parameter_store_client, token);
+    let state = AppState::new(parameter_cache, parameter_store_client, token);
 
     let routes = routes::routes(state);
 

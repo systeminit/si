@@ -34,12 +34,27 @@ pub struct CheckHealthResponse {
     pub ok: bool,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct CreateParameterRequest {
+    pub value: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CreateParameterResponse {}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetParameterResponse {
     pub parameter: Parameter,
+    pub is_cached: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListParametersResponse {
     pub parameters: Vec<Parameter>,
+    pub is_cached: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RefreshCacheResponse {
+    pub success: bool,
 }
