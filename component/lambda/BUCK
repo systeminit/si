@@ -2,11 +2,15 @@ load(
     "@prelude-si//:macros.bzl",
     "docker_image",
 )
+load("//versions/dockerfiles:alpine.bzl", "ALPINE_WITH_MINOR_VERSION")
 
 docker_image(
     name = "lambda",
     srcs = {
         "docker-entrypoint.sh": ".",
         "functions/": ".",
+    },
+    build_args = {
+        "ALPINE_VERSION": ALPINE_WITH_MINOR_VERSION,
     },
 )

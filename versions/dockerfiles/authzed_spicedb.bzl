@@ -1,0 +1,1 @@
+AUTHZED_SPICEDB_VERSION = "v1.37.0-debug"

@@ -1,4 +1,5 @@
-FROM alpine:latest AS setup
+ARG ALPINE_VERSION
+FROM alpine:${ALPINE_VERSION} AS setup
 
 COPY ./schema.zed /tmp/schema.zed
 COPY ./validation.yaml /tmp/validation.yaml
@@ -7,8 +8,11 @@ COPY ./validation.yaml /tmp/validation.yaml
 RUN sed -i '/<<SCHEMA>>/r /tmp/schema.zed' /tmp/validation.yaml && \
     sed -i '/<<SCHEMA>>/d' /tmp/validation.yaml
 
-FROM authzed/zed:v0.21.5 AS cli
-FROM authzed/spicedb:v1.37.0-debug
+ARG AUTHZED_ZED_VERSION
+FROM authzed/zed:${AUTHZED_ZED_VERSION} AS cli
+
+ARG AUTHZED_SPICEDB_VERSION
+FROM authzed/spicedb:${AUTHZED_SPICEDB_VERSION}
 
 COPY --from=cli /usr/local/bin/zed /usr/local/bin/zed
 COPY --from=setup /tmp/schema.zed .

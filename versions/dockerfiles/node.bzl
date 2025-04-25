@@ -1,0 +1,1 @@
+NODE_VERSION = "18.16.0"

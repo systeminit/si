@@ -8,6 +8,8 @@ load(
     "shfmt_check",
     "test_suite",
 )
+load("//versions/dockerfiles:alpine.bzl", "ALPINE_VERSION")
+load("//versions/dockerfiles:nixos_nix.bzl", "NIXOS_NIX_VERSION")
 
 test_suite(
     name = "check-lint",
@@ -70,6 +72,10 @@ docker_image(
         "//bin/cyclone:cyclone",
         "//bin/lang-js:bin",
     ],
+    build_args = {
+        "NIXOS_NIX_VERSION": NIXOS_NIX_VERSION,
+        "ALPINE_VERSION": ALPINE_VERSION,
+    },
 )
 
 nix_omnibus_pkg(

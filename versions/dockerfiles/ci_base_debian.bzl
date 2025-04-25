@@ -1,0 +1,1 @@
+CI_BASE_DEBIAN_VERSION = "12-slim"

@@ -1,0 +1,1 @@
+PNPM_VERSION = "^8"

@@ -3,6 +3,9 @@ load(
     "docker_image",
 )
 
+load("//versions/dockerfiles:otelcol.bzl", "OTELCOL_VERSION")
+load("//versions/dockerfiles:alpine.bzl", "ALPINE_VERSION")
+
 docker_image(
     name = "otelcol",
     srcs = {
@@ -11,7 +14,8 @@ docker_image(
         "docker-entrypoint.sh": ".",
     },
     build_args = {
-        "BASE_VERSION": "0.102.1",
+        "OTELCOL_VERSION": OTELCOL_VERSION,
+        "ALPINE_VERSION": ALPINE_VERSION,
     },
     run_docker_args = [
         "--publish",

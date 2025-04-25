@@ -1,0 +1,1 @@
+NIXOS_NIX_VERSION = "2.28.2"

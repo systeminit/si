@@ -3,10 +3,12 @@ load(
     "docker_image",
 )
 
+load("//versions/dockerfiles:pgbouncer_prom_exporter.bzl", "PGBOUNCER_PROM_EXPORTER_VERSION")
+
 docker_image(
     name = "pgbouncer-prom-exporter",
     build_args = {
-        "BASE_VERSION": "v0.9.0",
+        "PGBOUNCER_PROM_EXPORTER_VERSION": PGBOUNCER_PROM_EXPORTER_VERSION,
     },
     srcs = {
         "docker-entrypoint.sh": ".",

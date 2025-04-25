@@ -1,0 +1,1 @@
+GOLANG_VERSION = "1.15.3-alpine"

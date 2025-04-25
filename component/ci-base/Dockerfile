@@ -1,5 +1,5 @@
-ARG BASE_VERSION
-FROM debian:${BASE_VERSION}
+ARG CI_BASE_DEBIAN_VERSION
+FROM debian:${CI_BASE_DEBIAN_VERSION}
 
 ARG USER_UID
 ARG USER_GID
@@ -35,7 +35,7 @@ RUN set -eux; \
     ; \
     rm -rf /var/lib/apt/lists/*
 
-ARG BUILDEVENTS_VERSION=v0.17.0
+ARG BUILDEVENTS_VERSION
 RUN set -eux; \
     ARCH="$(dpkg --print-architecture)"; \
     case "${ARCH}" in \

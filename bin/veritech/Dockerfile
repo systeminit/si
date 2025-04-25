@@ -2,7 +2,9 @@
 # Builder Stage: veritech
 ###########################################################################
 # hadolint ignore=DL3007
-FROM nixos/nix:2.28.2 AS builder-veritech
+ARG NIXOS_NIX_VERSION
+ARG ALPINE_VERSION
+FROM nixos/nix:${NIXOS_NIX_VERSION} AS builder-veritech
 ARG BIN=veritech
 
 COPY . /workdir
@@ -30,7 +32,7 @@ RUN set -eux; \
 # Builder Stage: cyclone
 ###########################################################################
 # hadolint ignore=DL3007
-FROM nixos/nix:2.28.2 AS builder-cyclone
+FROM nixos/nix:${NIXOS_NIX_VERSION} AS builder-cyclone
 ARG BIN=cyclone
 
 COPY . /workdir
@@ -53,7 +55,7 @@ RUN ln -snf $(nix-store --query result/)/bin/* /tmp/local-bin/
 # Builder Stage: lang-js
 ###########################################################################
 # hadolint ignore=DL3007
-FROM nixos/nix:2.28.2 AS builder-lang-js
+FROM nixos/nix:${NIXOS_NIX_VERSION} AS builder-lang-js
 ARG BIN=lang-js
 
 COPY . /workdir
@@ -75,7 +77,7 @@ RUN ln -snf $(nix-store --query result/)/bin/* /tmp/local-bin/
 ###########################################################################
 # Final Stage
 ###########################################################################
-FROM alpine:3 AS final
+FROM alpine:${ALPINE_VERSION} AS final
 ARG BIN=veritech
 
 # hadolint ignore=DL3018

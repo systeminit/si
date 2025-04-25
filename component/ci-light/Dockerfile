@@ -1,6 +1,7 @@
-FROM rust:1-alpine
+ARG CI_LIGHT_RUST_VERSION
+FROM rust:${CI_LIGHT_RUST_VERSION}
 
-ARG BUILDEVENTS_VERSION=v0.17.0
+ARG BUILDEVENTS_VERSION
 RUN apk add --no-cache \
     curl \
     bash \

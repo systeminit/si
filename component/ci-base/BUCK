@@ -6,6 +6,9 @@ load(
     "test_suite",
 )
 
+load("//versions/dockerfiles:ci_base_debian.bzl", "CI_BASE_DEBIAN_VERSION")
+load("//versions/dockerfiles:buildevents.bzl", "BUILDEVENTS_VERSION")
+
 docker_image(
     name = "ci-base",
     srcs = {
@@ -15,9 +18,10 @@ docker_image(
         "docker-entrypoint.sh": ".",
     },
     build_args = {
-        "BASE_VERSION": "12-slim",
+        "CI_BASE_DEBIAN_VERSION": CI_BASE_DEBIAN_VERSION,
         "USER_UID": "2000",
         "USER_GID": "2000",
+        "BUILDEVENTS_VERSION": BUILDEVENTS_VERSION,
     },
     run_docker_args = [
         "--privileged",

@@ -1,4 +1,5 @@
-FROM alpine:3.18
+ARG ALPINE_VERSION
+FROM alpine:${ALPINE_VERSION}
 
 # Set the working directory
 WORKDIR /app

@@ -1,4 +1,5 @@
-FROM alpine:3.18
+ARG ALPINE_VERSION
+FROM alpine:${ALPINE_VERSION}
 WORKDIR /app
 RUN apk --no-cache add aws-cli jq less curl
 COPY ./configs /config

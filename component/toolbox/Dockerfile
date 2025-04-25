@@ -1,24 +1,28 @@
-FROM golang:1.15.3-alpine AS ssm-builder
+ARG GOLANG_VERSION
+FROM golang:${GOLANG_VERSION} AS ssm-builder
 
-ARG VERSION=1.2.279.0
+ARG SSM_PLUGIN_VERSION
 
 RUN set -ex && apk add --no-cache make git gcc libc-dev curl bash zip && \
-    curl -sLO https://github.com/aws/session-manager-plugin/archive/${VERSION}.tar.gz && \
+    curl -sLO https://github.com/aws/session-manager-plugin/archive/${SSM_PLUGIN_VERSION}.tar.gz && \
     mkdir -p /go/src/github.com && \
-    tar xzf ${VERSION}.tar.gz && \
-    mv session-manager-plugin-${VERSION} /go/src/github.com/session-manager-plugin && \
+    tar xzf ${SSM_PLUGIN_VERSION}.tar.gz && \
+    mv session-manager-plugin-${SSM_PLUGIN_VERSION} /go/src/github.com/session-manager-plugin && \
     cd /go/src/github.com/session-manager-plugin && \
     make release
 
-FROM alpine:latest AS nats-builder
+ARG ALPINE_VERSION
+FROM alpine:${ALPINE_VERSION} AS nats-builder
 
 RUN apk add --no-cache curl unzip
-RUN curl -sL https://github.com/nats-io/natscli/releases/download/v0.2.1/nats-0.2.1-linux-amd64.zip -o nats.zip && \
+ARG NATS_CLI_VERSION
+RUN curl -sL https://github.com/nats-io/natscli/releases/download/${NATS_CLI_VERSION}/nats-${NATS_CLI_VERSION:1}-linux-amd64.zip -o nats.zip && \
     unzip nats.zip -d /tmp && \
     mkdir -p /nats-bin && \
-    mv /tmp/nats-0.2.1-linux-amd64/nats /nats-bin/
+    mv /tmp/nats-${NATS_CLI_VERSION:1}-linux-amd64/nats /nats-bin/
 
-FROM alpine
+ARG ALPINE_VERSION
+FROM alpine:${ALPINE_VERSION}
 
 RUN set -eux; \
     apk add --no-cache jq aws-cli bash \

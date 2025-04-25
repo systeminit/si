@@ -1,7 +1,6 @@
-ARG BASE_VERSION
+ARG POSTGRES_VERSION
 
-FROM postgres:${BASE_VERSION}
-ARG BASE_VERSION
+FROM postgres:${POSTGRES_VERSION}
 
 # RUN apk add --no-cache rsyslog
 

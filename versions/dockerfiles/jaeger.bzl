@@ -1,0 +1,1 @@
+JAEGER_VERSION = "1.43"
