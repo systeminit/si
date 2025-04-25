@@ -47,20 +47,42 @@ pub async fn get_change_set_index(
 
             // NOTE(nick,jacob): this may or may not be better suited for "edda". Let's trace this
             // to ensure that this stopgap solution does not bog the system down.
-            let span = info_span!("sdf.index.get_change_set_index.implemented_kinds");
-            let implemented_kinds = span.in_scope(|| {
-                let mut implemented_kinds = HashSet::new();
+            let span = info_span!("sdf.index.get_change_set_index.existing_index_is_valid");
+            let existing_index_is_valid = span.in_scope(|| {
+                let mut revision_sensitive_reference_kinds_in_existing_index = HashSet::new();
+                let mut invalid_reference_kinds = HashSet::new();
+
                 for index_ref in mv_index.mv_list {
-                    let kind = ReferenceKind::try_from(index_ref.kind.as_str())
-                        .map_err(IndexError::InvalidStringForReferenceKind)?;
-                    if kind.is_revision_sensitive() {
-                        implemented_kinds.insert(kind);
+                    match ReferenceKind::try_from(index_ref.kind.as_str()) {
+                        Ok(kind) => {
+                            if kind.is_revision_sensitive() {
+                                revision_sensitive_reference_kinds_in_existing_index.insert(kind);
+                            }
+                        }
+                        Err(err) => {
+                            trace!(reference_kind = %index_ref.kind, si.error.message = ?err, "could not convert string to ReferenceKind");
+
+                            // Collect all of the invalid reference kinds rather than just bailing out early.
+                            invalid_reference_kinds.insert(index_ref.kind);
+                        }
                     }
                 }
-                IndexResult::Ok(implemented_kinds)
+
+                // If we found at lease one invalid reference kind, the existing index is not
+                // valid. Otherwise, let's check that all revision-sensitive kinds are the same as
+                // those available today.
+                if invalid_reference_kinds.is_empty() {
+                    IndexResult::Ok(revision_sensitive_reference_kinds_in_existing_index == ReferenceKind::revision_sensitive())
+                } else {
+                    warn!(
+                        ?invalid_reference_kinds,
+                        "found invalid reference kind(s)"
+                    );
+                    IndexResult::Ok(false)
+                }
             })?;
 
-            if implemented_kinds == ReferenceKind::revision_sensitive() {
+            if existing_index_is_valid {
                 index
             } else {
                 info!(
