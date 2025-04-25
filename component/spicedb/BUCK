@@ -6,6 +6,9 @@ load(
     "shfmt_check",
     "test_suite",
 )
+load("//versions/dockerfiles:alpine.bzl", "ALPINE_VERSION")
+load("//versions/dockerfiles:authzed_spicedb.bzl", "AUTHZED_SPICEDB_VERSION")
+load("//versions/dockerfiles:authzed_zed.bzl", "AUTHZED_ZED_VERSION")
 
 docker_image(
     name = "spicedb",
@@ -13,7 +16,12 @@ docker_image(
         "entrypoint.sh": ".",
         "schema.zed": ".",
         "validation.yaml": ".",
-    }
+    },
+    build_args = {
+        "ALPINE_VERSION": ALPINE_VERSION,
+        "AUTHZED_ZED_VERSION": AUTHZED_ZED_VERSION,
+        "AUTHZED_SPICEDB_VERSION": AUTHZED_SPICEDB_VERSION,
+    },
 )
 
 filegroup(

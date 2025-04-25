@@ -10,12 +10,14 @@ load(
     "typescript_runnable_dist",
     "typescript_runnable_dist_bin",
 )
-
 load(
     "@prelude-si//:pnpm.bzl",
     "pnpm_task_library",
     "pnpm_task_binary",
 )
+load("//versions/dockerfiles:node.bzl", "NODE_VERSION")
+load("//versions/dockerfiles:pnpm.bzl", "PNPM_VERSION")
+load("//versions/dockerfiles:prisma.bzl", "PRISMA_VERSION")
 
 export_file(
     name = "package.json",
@@ -157,6 +159,11 @@ docker_image(
     build_deps = [
         "//bin/auth-api:auth-api",
     ],
+    build_args = {
+        "NODE_VERSION": NODE_VERSION,
+        "PNPM_VERSION": PNPM_VERSION,
+        "PRISMA_VERSION": PRISMA_VERSION,
+    },
     # TODO(fnichol): revisit post 2025-02-01
     promote_multi_arches = [
         "amd64",

@@ -3,10 +3,12 @@ load(
     "docker_image",
 )
 
+load("//versions/dockerfiles:jaeger.bzl", "JAEGER_VERSION")
+
 docker_image(
     name = "jaeger",
     build_args = {
-        "BASE_VERSION": "1.43",
+        "JAEGER_VERSION": JAEGER_VERSION,
     },
     run_docker_args = [
         "--publish",

@@ -3,10 +3,12 @@ load(
     "docker_image",
 )
 
+load("//versions/dockerfiles:pgbouncer.bzl", "PGBOUNCER_VERSION")
+
 docker_image(
     name = "pgbouncer",
     build_args = {
-        "BASE_VERSION": "1.22.1-p0",
+        "PGBOUNCER_VERSION": PGBOUNCER_VERSION,
     },
     run_docker_args = [
         "--publish",

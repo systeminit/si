@@ -6,11 +6,21 @@ load(
     "shfmt_check",
     "test_suite",
 )
+load("//versions/dockerfiles:alpine.bzl", "ALPINE_VERSION")
+load("//versions/dockerfiles:golang.bzl", "GOLANG_VERSION")
+load("//versions/dockerfiles:nats_cli.bzl", "NATS_CLI_VERSION")
+load("//versions/dockerfiles:ssm_plugin.bzl", "SSM_PLUGIN_VERSION")
 
 docker_image(
     name = "toolbox",
     srcs = {
         "scripts": ".",
+    },
+    build_args = {
+        "ALPINE_VERSION": ALPINE_VERSION,
+        "GOLANG_VERSION": GOLANG_VERSION,
+        "NATS_CLI_VERSION": NATS_CLI_VERSION,
+        "SSM_PLUGIN_VERSION": SSM_PLUGIN_VERSION,
     },
 )
 

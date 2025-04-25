@@ -7,6 +7,8 @@ load(
     "test_suite",
 )
 
+load("//versions/dockerfiles:postgres.bzl", "POSTGRES_VERSION")
+
 docker_image(
     name = "postgres",
     srcs = {
@@ -18,7 +20,7 @@ docker_image(
         "server.crt": ".",
     },
     build_args = {
-        "BASE_VERSION": "14.5-bullseye",
+        "POSTGRES_VERSION": POSTGRES_VERSION,
     },
     run_docker_args = [
         "--env",

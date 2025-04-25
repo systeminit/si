@@ -2,7 +2,13 @@ load(
     "@prelude-si//:macros.bzl",
     "docker_image",
 )
+load("//versions/dockerfiles:buildevents.bzl", "BUILDEVENTS_VERSION")
+load("//versions/dockerfiles:ci_light_rust.bzl", "CI_LIGHT_RUST_VERSION")
 
 docker_image(
     name = "ci-light",
+    build_args = {
+        "CI_LIGHT_RUST_VERSION": CI_LIGHT_RUST_VERSION,
+        "BUILDEVENTS_VERSION": BUILDEVENTS_VERSION,
+    },
 )

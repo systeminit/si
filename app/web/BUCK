@@ -17,6 +17,8 @@ load(
     "pnpm_task_binary",
     "pnpm_task_test",
 )
+load("//versions/dockerfiles:alpine.bzl", "ALPINE_VERSION")
+load("//versions/dockerfiles:nixos_nix.bzl", "NIXOS_NIX_VERSION")
 
 export_file(
     name = "package.json",
@@ -104,7 +106,11 @@ docker_image(
         "//app/web:web",
         "//app/web:docker-entrypoint.sh",
         "//app/web:nginx_src",
-    ]
+    ],
+    build_args = {
+        "NIXOS_NIX_VERSION": NIXOS_NIX_VERSION,
+        "ALPINE_VERSION": ALPINE_VERSION,
+    },
 )
 
 test_suite(

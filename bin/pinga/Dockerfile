@@ -1,5 +1,7 @@
+ARG NIXOS_NIX_VERSION
+ARG ALPINE_VERSION
 # hadolint ignore=DL3007
-FROM nixos/nix:2.28.2 AS builder
+FROM nixos/nix:${NIXOS_NIX_VERSION} AS builder
 ARG BIN=pinga
 
 COPY . /workdir
@@ -18,7 +20,7 @@ RUN cp -R $(nix-store --query --requisites result/) /tmp/nix-store-closure
 # hadolint ignore=SC2046
 RUN ln -snf $(nix-store --query result/)/bin/* /tmp/local-bin/
 
-FROM alpine:3 AS final
+FROM alpine:${ALPINE_VERSION} AS final
 ARG BIN=pinga
 
 # hadolint ignore=DL3018

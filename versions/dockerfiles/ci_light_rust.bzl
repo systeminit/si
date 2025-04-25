@@ -1,0 +1,1 @@
+CI_LIGHT_RUST_VERSION = "1-alpine"

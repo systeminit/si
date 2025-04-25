@@ -3,13 +3,15 @@ load(
     "docker_image",
 )
 
+load("//versions/dockerfiles:nats.bzl", "NATS_VERSION")
+
 docker_image(
     name = "nats",
     srcs = {
         "nats-server.conf": "component/nats",
     },
     build_args = {
-        "BASE_VERSION": "2.10.26",
+        "NATS_VERSION": NATS_VERSION,
     },
     run_docker_args = [
         "--publish",

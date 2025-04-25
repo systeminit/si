@@ -1,0 +1,1 @@
+NATS_CLI_VERSION = "v0.2.1"

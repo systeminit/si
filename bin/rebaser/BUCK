@@ -4,6 +4,8 @@ load(
     "nix_omnibus_pkg",
     "rust_binary",
 )
+load("//versions/dockerfiles:alpine.bzl", "ALPINE_VERSION")
+load("//versions/dockerfiles:nixos_nix.bzl", "NIXOS_NIX_VERSION")
 
 rust_binary(
     name = "rebaser",
@@ -25,6 +27,10 @@ docker_image(
     name = "image",
     image_name = "rebaser",
     build_deps = ["//bin/rebaser:rebaser"],
+    build_args = {
+        "NIXOS_NIX_VERSION": NIXOS_NIX_VERSION,
+        "ALPINE_VERSION": ALPINE_VERSION,
+    },
 )
 
 nix_omnibus_pkg(
