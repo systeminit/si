@@ -40,6 +40,13 @@ pub trait FrontendChecksum {
     fn checksum(&self) -> Checksum;
 }
 
+// TODO(Wendy) - Would be nice to have a default checksum once specialization is enabled in Rust
+// impl<T: ToString> FrontendChecksum for T {
+//     fn checksum(&self) -> Checksum {
+//         FrontendChecksum::checksum(&self.to_string())
+//     }
+// }
+
 // Would be nice to do this automatically as part of the macros. As an impl for a trait
 // seems difficult to work around "conflicting implementations for trait" errors with
 // the other trait impls for the more basic types.
@@ -241,6 +248,18 @@ impl FrontendChecksum for ActionState {
 }
 
 impl FrontendChecksum for FuncRunId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for usize {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for i64 {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_string())
     }

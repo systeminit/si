@@ -81,41 +81,17 @@ impl QualificationSummary {
         let mut component_summaries = vec![];
 
         for component in Component::list(ctx).await? {
-            let component_id = component.id();
-            let qualification_statuses =
-                Component::list_qualification_statuses(ctx, component_id).await?;
-
-            let individual_total = qualification_statuses.len() as i64;
-            let mut succeeded = 0;
-            let mut warned = 0;
-            let mut failed = 0;
-            for status in qualification_statuses.iter().flatten() {
-                match status {
-                    QualificationSubCheckStatus::Success => succeeded += 1,
-                    QualificationSubCheckStatus::Warning => warned += 1,
-                    QualificationSubCheckStatus::Failure => failed += 1,
-                    QualificationSubCheckStatus::Unknown => {}
-                }
-            }
-
-            let individual_summary = QualificationSummaryForComponent {
-                component_id,
-                component_name: component.name(ctx).await?,
-                total: individual_total,
-                succeeded,
-                warned,
-                failed,
-            };
+            let individual_summary = Self::get_summary_for_component(ctx, &component).await?;
 
             // Update counters for all components.
-            if failed > 0 {
+            if individual_summary.failed > 0 {
                 components_failed += 1;
-            } else if warned > 0 {
+            } else if individual_summary.warned > 0 {
                 components_warned += 1;
             } else {
                 components_succeeded += 1;
             }
-            total += individual_total;
+            total += individual_summary.total;
 
             component_summaries.push(individual_summary);
         }
@@ -126,6 +102,38 @@ impl QualificationSummary {
             warned: components_warned,
             failed: components_failed,
             components: component_summaries,
+        })
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub async fn get_summary_for_component(
+        ctx: &DalContext,
+        component: &Component,
+    ) -> QualificationSummaryResult<QualificationSummaryForComponent> {
+        let component_id = component.id();
+        let qualification_statuses =
+            Component::list_qualification_statuses(ctx, component_id).await?;
+
+        let individual_total = qualification_statuses.len() as i64;
+        let mut succeeded = 0;
+        let mut warned = 0;
+        let mut failed = 0;
+        for status in qualification_statuses.iter().flatten() {
+            match status {
+                QualificationSubCheckStatus::Success => succeeded += 1,
+                QualificationSubCheckStatus::Warning => warned += 1,
+                QualificationSubCheckStatus::Failure => failed += 1,
+                QualificationSubCheckStatus::Unknown => {}
+            }
+        }
+
+        Ok(QualificationSummaryForComponent {
+            component_id,
+            component_name: component.name(ctx).await?,
+            total: individual_total,
+            succeeded,
+            warned,
+            failed,
         })
     }
 }

@@ -23,10 +23,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     name: "new-hotness",
-    // NOTE(nick,wendy): for @jobelenus, we removed the "/h" at the end because we believe it was
-    // not intentional. If that was wrong to do, please let us know. If that was right to do,
-    // please delete this comment!
-    path: "/n/:workspacePk/:changeSetId",
+    path: "/n/:workspacePk/:changeSetId/h",
     props: true,
     component: () => import("@/newhotness/Workspace.vue"),
     children: [

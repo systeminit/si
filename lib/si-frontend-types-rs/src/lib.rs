@@ -10,6 +10,7 @@ mod func;
 pub mod index;
 pub mod materialized_view;
 mod module;
+pub mod newhotness;
 pub mod object;
 pub mod reference;
 pub mod schema_variant;

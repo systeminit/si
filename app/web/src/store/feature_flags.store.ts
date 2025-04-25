@@ -94,6 +94,10 @@ export function useFeatureFlagsStore() {
           );
         }
 
+        // You can override feature flags while working on a feature by setting them to true/false here
+        // for example:
+        // this.FEATURE_FLAG_NAME = false;
+
         // TODO(nick): the new hotness flag needs this flag enabled. Why? It is used to react to WS
         // events (e.g. change set abandoned). For now, let's play it safe and make sure that
         // everything in the new frontend arch comes in together. Both of these flags should
@@ -105,10 +109,6 @@ export function useFeatureFlagsStore() {
           );
           this.FRONTEND_ARCH_VIEWS = true;
         }
-
-        // You can override feature flags while working on a feature by setting them to true/false here
-        // for example:
-        // this.FEATURE_FLAG_NAME = false;
       },
     }),
   )();

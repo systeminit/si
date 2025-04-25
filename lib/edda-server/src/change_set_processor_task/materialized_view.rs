@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use dal::{
+    ComponentError,
     DalContext,
     SchemaVariantError,
     TransactionsError,
@@ -34,6 +35,7 @@ use si_frontend_types::{
         ActionViewList as ActionViewListMv,
     },
     index::MvIndex,
+    newhotness::component::ComponentViewList as ComponentViewListMv,
     object::{
         FrontendObject,
         patch::{
@@ -67,6 +69,8 @@ pub enum MaterializedViewError {
     Action(#[from] ActionError),
     #[error("ActionPrototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
+    #[error("Component error: {0}")]
+    Component(#[from] ComponentError),
     #[error("DataCache error: {0}")]
     DataCache(#[from] DataCacheError),
     #[error("Diagram error: {0}")]
@@ -330,6 +334,28 @@ async fn build_mv_inner(
                             Result::<_, MaterializedViewError>::Err(err) => return Err(err),
                         };
                     }
+                    ReferenceKind::ComponentViewList => {
+                        let mv_id = change_set_id.to_string();
+
+                        match si_frontend_types_macros::build_mv!(
+                            ctx,
+                            frigg,
+                            change,
+                            mv_id,
+                            si_frontend_types::newhotness::component::ComponentViewList,
+                            dal::component::Component::as_frontend_list_type(ctx).await,
+                        ) {
+                            Ok((maybe_patch, maybe_frontend_object)) => {
+                                if let Some(patch) = maybe_patch {
+                                    patches.push(patch);
+                                }
+                                if let Some(object) = maybe_frontend_object {
+                                    frontend_objects.push(object);
+                                }
+                            }
+                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
+                        };
+                    }
                     ReferenceKind::SchemaVariantCategories => {
                         let mv_id = change_set_id.to_string();
 
@@ -445,6 +471,7 @@ fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedV
     add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantCategoriesMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionPrototypeViewListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentViewListMv);
 
     // The MvIndex depends on everything else, but doesn't define any
     // `MaterializedView::reference_dependencies()` directly.

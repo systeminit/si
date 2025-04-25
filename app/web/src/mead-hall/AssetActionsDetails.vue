@@ -54,8 +54,8 @@ import EmptyStateIcon from "@/components/EmptyStateIcon.vue";
 import { ActionKind, ActionPrototypeId, ActionId } from "@/api/sdf/dal/action";
 import { FuncId } from "@/api/sdf/dal/func";
 import { SchemaVariantId } from "@/api/sdf/dal/schema";
+import { ActionViewList } from "@/workers/types/dbinterface";
 import ActionWidget from "./ActionWidget.vue";
-import { ActionViewList } from "./ChangesPanelProposed.vue";
 
 const props = defineProps<{
   component: DiagramNodeData | DiagramGroupData;

@@ -518,7 +518,7 @@ impl OutputSocket {
         Ok(maybe_input_socket)
     }
 
-    // `AttributePrototypeArguemnts` that use this `OutputSocket` as their source of data.
+    /// `AttributePrototypeArguemnts` that use this `OutputSocket` as their source of data.
     pub async fn prototype_arguments_using(
         &self,
         ctx: &DalContext,

@@ -116,15 +116,10 @@ import { FuncRun, useFuncRunsStore } from "@/store/func_runs.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import ConfirmHoldModal from "@/components/Actions/ConfirmHoldModal.vue";
 import EmptyStateCard from "@/components/EmptyStateCard.vue";
-import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import { ActionProposedView, useActionsStore } from "@/store/actions.store";
+import { ActionViewList } from "@/workers/types/dbinterface";
 import ActionsList from "./ActionsList.vue";
-
-export interface ActionViewList {
-  id: ChangeSetId;
-  actions: ActionProposedView[];
-}
 
 export interface ActionProposedViewWithHydratedChildren
   extends ActionProposedView {
