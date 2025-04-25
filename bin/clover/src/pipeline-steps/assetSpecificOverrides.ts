@@ -935,6 +935,32 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(idSocket, { tokens: ["TransitGatewayId"] });
     setAnnotationOnSocket(idSocket, { tokens: ["Transit Gateway Id"] });
   }],
+  ["AWS::EC2::VPNConnection", (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+    const resource_value = variant.resourceValue;
+
+    const transitGatewayAttachmentIdProp = createScalarProp(
+      "TransitGatewayAttachmentId",
+      "string",
+      ["root", "resource_value"],
+      false,
+    );
+    transitGatewayAttachmentIdProp.data.widgetKind = "Text";
+    resource_value.entries.push(transitGatewayAttachmentIdProp);
+
+    const tgwaIdOutputSocket = createOutputSocketFromProp(
+      transitGatewayAttachmentIdProp, 
+      "Transit Gateway Attachment Id"
+    );
+    variant.sockets.push(tgwaIdOutputSocket);
+
+    const tgwaIdSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "TransitGatewayAttachmentId" && s.data.kind === "output",
+    );
+    if (!tgwaIdSocket) return;
+    setAnnotationOnSocket(tgwaIdSocket, { tokens: ["TransitGatewayAttachmentId"] });
+    setAnnotationOnSocket(tgwaIdSocket, { tokens: ["Transit Gateway Attachment Id"] });
+  }],
 ]);
 
 function attachExtraActionFunction(
