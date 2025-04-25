@@ -5,9 +5,16 @@ use std::{
     time::Duration,
 };
 
+use args::load_config_with_provider;
+use innit_client::{
+    InnitClient,
+    config::Config as InnitConfig,
+};
 use luminork_server::{
     Config,
     Server,
+    StandardConfig,
+    get_host_environment,
     key_generation,
 };
 use si_service::{
@@ -101,7 +108,13 @@ async fn async_main() -> Result<()> {
         )
         .await
     } else {
-        let config = Config::try_from(args)?;
+        debug!("creating innit-client...");
+        let provider = Some((
+            InnitClient::new(InnitConfig::builder().build()?).await?,
+            get_host_environment(),
+        ));
+        let config = load_config_with_provider(args, provider).await?;
+
         debug!(?config, "computed configuration");
 
         run_server(

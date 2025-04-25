@@ -1,13 +1,21 @@
+use async_trait::async_trait;
 use base64::{
     Engine as _,
     engine::general_purpose::STANDARD,
 };
 use config::Config;
+use config_file::parameter_provider::{
+    self,
+    Parameter as ParameterProviderParameter,
+    ParameterError,
+    ParameterProvider,
+};
 use reqwest::{
     Identity,
     Url,
 };
 use si_tls::CertificateResolver;
+use telemetry::tracing::info;
 use thiserror::Error;
 
 pub mod auth;
@@ -24,6 +32,8 @@ pub enum InnitClientError {
     InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
     #[error("module not found (module id: {0})")]
     ModuleNotFound(String),
+    #[error("ParameterProvider error: {0}")]
+    ParameterProvider(#[from] parameter_provider::ParameterError),
     #[error("Request error: {0}")]
     Request(#[from] reqwest::Error),
     #[error("Serialization error: {0}")]
@@ -85,18 +95,45 @@ impl InnitClient {
     }
 
     pub async fn get_parameter(&self, name: String) -> Result<GetParameterResponse> {
-        let url = self.base_url.join("parameter")?.join(&name)?;
+        let url = self.join_path("parameter", &name)?;
         let resp = self.client.get(url).send().await?.error_for_status()?;
         let parameter = resp.json::<GetParameterResponse>().await?;
 
+        info!("Got parameter: {name}");
         Ok(parameter)
     }
 
     pub async fn get_parameters_by_path(&self, path: String) -> Result<ListParametersResponse> {
-        let url = self.base_url.join("parameters")?.join(&path)?;
+        let url = self.join_path("parameters", &path)?;
         let resp = self.client.get(url).send().await?.error_for_status()?;
         let parameters = resp.json::<ListParametersResponse>().await?;
 
+        info!("Got parameters at: {path}");
         Ok(parameters)
+    }
+
+    fn join_path(&self, base_segment: &str, path: &str) -> Result<Url> {
+        let clean_path = path.trim_start_matches('/');
+        let full_path = format!("{}/{}", base_segment, clean_path);
+        Ok(self.base_url.join(&full_path)?)
+    }
+}
+
+#[async_trait]
+impl ParameterProvider for InnitClient {
+    async fn get_parameters_by_path(
+        &self,
+        path: String,
+    ) -> std::result::Result<Vec<ParameterProviderParameter>, ParameterError> {
+        self.get_parameters_by_path(path)
+            .await
+            .map(|response| {
+                response
+                    .parameters
+                    .into_iter()
+                    .map(ParameterProviderParameter::from)
+                    .collect()
+            })
+            .map_err(|e| ParameterError::Other(Box::new(e)))
     }
 }

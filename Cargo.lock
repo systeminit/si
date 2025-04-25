@@ -1544,6 +1544,7 @@ dependencies = [
 name = "config-file"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "config",
  "directories",
  "pathdiff",
@@ -4040,7 +4041,10 @@ dependencies = [
 name = "innit-client"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "base64 0.22.1",
+ "buck2-resources",
+ "config-file",
  "derive_builder",
  "hyper 0.14.32",
  "innit-core",
@@ -4068,6 +4072,7 @@ version = "0.1.0"
 dependencies = [
  "aws-sdk-ssm",
  "chrono",
+ "config-file",
  "serde",
  "serde_json",
  "ulid",
@@ -4423,6 +4428,7 @@ name = "luminork"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "innit-client",
  "luminork-server",
  "si-service",
 ]
@@ -7896,6 +7902,7 @@ dependencies = [
 name = "si-settings"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "config-file",
  "remain",
  "serde",

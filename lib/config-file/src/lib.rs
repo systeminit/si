@@ -14,6 +14,7 @@ use thiserror::Error;
 mod find;
 #[cfg(feature = "layered")]
 mod layered_load;
+pub mod parameter_provider;
 mod simple_load;
 
 pub use config::ValueKind;
@@ -22,6 +23,7 @@ pub use find::find;
 pub use layered_load::{
     ConfigMap,
     layered_load,
+    layered_load_with_provider,
 };
 #[cfg(feature = "load-str")]
 pub use simple_load::load_from_str;

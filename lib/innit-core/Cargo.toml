@@ -9,6 +9,8 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+config-file = { path = "../../lib/config-file" }
+
 aws-sdk-ssm = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }

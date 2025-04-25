@@ -3,6 +3,7 @@ use axum::extract::{
     State,
 };
 use innit_core::GetParameterResponse;
+use telemetry::tracing::info;
 
 use super::AppError;
 use crate::{
@@ -17,7 +18,11 @@ pub async fn get_parameter_route(
         ..
     }): State<AppState>,
 ) -> Result<Json<GetParameterResponse>, AppError> {
-    let parameter = parameter_store_client.get_parameter(name).await?.into();
+    let parameter = parameter_store_client
+        .get_parameter(name.clone())
+        .await?
+        .into();
+    info!("Serving parameter: {name}");
 
     Ok(Json(GetParameterResponse { parameter }))
 }
