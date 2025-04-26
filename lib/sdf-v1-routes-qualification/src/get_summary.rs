@@ -33,10 +33,10 @@ pub struct GetSummaryRequest {
 pub struct QualificationSummaryForComponentResponse {
     component_id: ComponentId,
     component_name: String,
-    total: i64,
-    warned: i64,
-    succeeded: i64,
-    failed: i64,
+    total: u64,
+    warned: u64,
+    succeeded: u64,
+    failed: u64,
 }
 
 impl From<QualificationSummaryForComponent> for QualificationSummaryForComponentResponse {
@@ -55,10 +55,10 @@ impl From<QualificationSummaryForComponent> for QualificationSummaryForComponent
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct QualificationSummaryResponse {
-    total: i64,
-    succeeded: i64,
-    warned: i64,
-    failed: i64,
+    total: u64,
+    succeeded: u64,
+    warned: u64,
+    failed: u64,
     components: Vec<QualificationSummaryForComponentResponse>,
 }
 

@@ -5,6 +5,7 @@ rust_library(
     deps = [
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
+        "//lib/dal-newhotness:dal-newhotness",
         "//lib/edda-core:edda-core",
         "//lib/frigg:frigg",
         "//lib/naxum:naxum",

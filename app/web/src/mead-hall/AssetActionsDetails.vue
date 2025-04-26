@@ -51,10 +51,11 @@ import {
 } from "@/components/ModelingDiagram/diagram_types";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import EmptyStateIcon from "@/components/EmptyStateIcon.vue";
-import { ActionKind, ActionPrototypeId, ActionId } from "@/api/sdf/dal/action";
-import { FuncId } from "@/api/sdf/dal/func";
-import { SchemaVariantId } from "@/api/sdf/dal/schema";
-import { ActionViewList } from "@/workers/types/dbinterface";
+import { ActionPrototypeId, ActionId } from "@/api/sdf/dal/action";
+import {
+  BifrostActionPrototypeViewList,
+  BifrostActionViewList,
+} from "@/workers/types/dbinterface";
 import ActionWidget from "./ActionWidget.vue";
 
 const props = defineProps<{
@@ -68,32 +69,24 @@ function onTabSelected(newTabSlug?: string) {
   viewStore.setComponentDetailsTab(newTabSlug || null);
 }
 
-export interface ActionPrototypeView {
-  id: ActionPrototypeId;
-  funcId: FuncId;
-  kind: ActionKind;
-  displayName?: string;
-  name: string;
-}
-
-interface ActionPrototypeViewList {
-  id: SchemaVariantId;
-  actionPrototypes: ActionPrototypeView[];
-}
-
 // This is the core materialized view for this component. We need it to know what action prototypes
 // are available for the given component.
 const queryKeyForActionPrototypeViews = makeKey(
   "ActionPrototypeViewList",
   props.component.def.schemaVariantId,
 );
-const actionPrototypeViewsRaw = useQuery<ActionPrototypeViewList | null>({
-  queryKey: queryKeyForActionPrototypeViews,
-  queryFn: async () =>
-    await bifrost<ActionPrototypeViewList>(
-      makeArgs("ActionPrototypeViewList", props.component.def.schemaVariantId),
-    ),
-});
+const actionPrototypeViewsRaw = useQuery<BifrostActionPrototypeViewList | null>(
+  {
+    queryKey: queryKeyForActionPrototypeViews,
+    queryFn: async () =>
+      await bifrost<BifrostActionPrototypeViewList>(
+        makeArgs(
+          "ActionPrototypeViewList",
+          props.component.def.schemaVariantId,
+        ),
+      ),
+  },
+);
 const actionPrototypeViews = computed(
   () => actionPrototypeViewsRaw.data.value?.actionPrototypes ?? [],
 );
@@ -101,10 +94,10 @@ const actionPrototypeViews = computed(
 // Use the materialized view for actions to know what actions exist for a given prototype and the
 // selected component.
 const queryKeyForActionViewList = makeKey("ActionViewList");
-const actionViewList = useQuery<ActionViewList | null>({
+const actionViewList = useQuery<BifrostActionViewList | null>({
   queryKey: queryKeyForActionViewList,
   queryFn: async () =>
-    await bifrost<ActionViewList>(makeArgs("ActionViewList")),
+    await bifrost<BifrostActionViewList>(makeArgs("ActionViewList")),
 });
 const actionByPrototype = computed(() => {
   if (!actionViewList.data.value?.actions) return {};

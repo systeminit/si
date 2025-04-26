@@ -1,0 +1,97 @@
+//! This crate is an extension of the dal that handles "newhotness" MV generation.
+//!
+//! Why is it not in the dal? The dal is the kitchen sink for interwoven dependencies. Only
+//! "edda-server" needs the MV generation bits and not "sdf-server", so having a crate that depends
+//! on the dal allows the dal to be cached and does not affect the build times of sdf.
+//!
+//! The pattern for working in this crate is the following:
+//! ```rust
+//! # Create a module in the root (or nested)
+//! pub mod your_mv_domain;
+//!
+//! # Example: single instance function using the entity ID
+//! pub async fn as_frontend_type(_ctx: &DalContext, id: YourEntityId) -> super::Result<YourMV> {
+//!     Ok(YourMv {
+//!         id,
+//!         name: "poop".to_string()
+//!     })
+//! }
+//!
+//! # Example: list function using the change set ID
+//! pub async fn as_frontend_list_type(ctx: &DalContext) -> super::Result<YourMV> {
+//!     Ok(YourMv {
+//!         id: ctx.change_set_id(),
+//!         things: Vec::new()
+//!     })
+//! }
+//! ```
+
+#![warn(
+    bad_style,
+    clippy::missing_panics_doc,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unwrap_in_result,
+    clippy::unwrap_used,
+    dead_code,
+    improper_ctypes,
+    missing_debug_implementations,
+    missing_docs,
+    no_mangle_generic_items,
+    non_shorthand_field_patterns,
+    overflowing_literals,
+    path_statements,
+    patterns_in_fns_without_body,
+    unconditional_recursion,
+    unreachable_pub,
+    unused,
+    unused_allocation,
+    unused_comparisons,
+    unused_parens,
+    while_true
+)]
+
+use thiserror::Error;
+
+/// Provides MV generation function(s) for the attribute tree domain.
+pub mod attribute_tree;
+/// Provides MV generation function(s) for the component domain.
+pub mod component;
+
+pub use Error as NewhotnessError;
+
+#[allow(missing_docs)]
+#[remain::sorted]
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] dal::attribute::prototype::AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(
+        #[from] dal::attribute::prototype::argument::AttributePrototypeArgumentError,
+    ),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] dal::attribute::value::AttributeValueError),
+    #[error("component error: {0}")]
+    Component(#[from] dal::ComponentError),
+    #[error("func error: {0}")]
+    Func(#[from] dal::FuncError),
+    #[error("input socket error: {0}")]
+    InputSocket(#[from] dal::socket::input::InputSocketError),
+    #[error("output socket error: {0}")]
+    OutputSocket(#[from] dal::socket::output::OutputSocketError),
+    #[error("prop error: {0}")]
+    Prop(#[from] dal::prop::PropError),
+    #[error("qualification summary error: {0}")]
+    QualificationSummary(#[from] dal::qualification::QualificationSummaryError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] dal::SchemaVariantError),
+    #[error("secret error: {0}")]
+    Secret(#[from] dal::SecretError),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("validation error: {0}")]
+    Validation(#[from] dal::validation::ValidationError),
+}
+
+pub(crate) type Result<T> = std::result::Result<T, Error>;

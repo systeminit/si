@@ -14,6 +14,14 @@ import { Categories } from "@/store/components.store";
 import { ActionProposedView } from "@/store/actions.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { SchemaId, SchemaVariantId } from "@/api/sdf/dal/schema";
+import { ActionKind, ActionPrototypeId } from "@/api/sdf/dal/action";
+import { FuncId } from "@/api/sdf/dal/func";
+import { AttributeValueId } from "@/store/status.store";
+import { PropId, PropKind } from "@/api/sdf/dal/prop";
+import {
+  PropertyEditorPropWidgetKind,
+  ValidationOutput,
+} from "@/api/sdf/dal/property_editor";
 import { WorkspaceMetadata } from "../../api/sdf/dal/workspace";
 
 export interface QueryMeta {
@@ -197,6 +205,12 @@ export interface IndexObjectMeta {
 export type AtomDocument = any;
 
 // FAKING IT
+interface Reference {
+  id: string;
+  checksum: string;
+  kind: string;
+}
+
 export interface BifrostView {
   id: string;
   name: string;
@@ -210,23 +224,17 @@ export interface BifrostViewList {
   views: BifrostView[];
 }
 
-interface Reference {
-  id: string;
-  checksum: string;
-  kind: string;
-}
-
 export interface RawViewList {
   id: string;
   views: Reference[];
 }
 
-export interface SchemaVariantCategories {
+export interface BifrostSchemaVariantCategories {
   id: string; // change set id
   categories: Categories;
 }
 
-export interface ActionViewList {
+export interface BifrostActionViewList {
   id: ChangeSetId;
   actions: ActionProposedView[];
 }
@@ -239,7 +247,7 @@ export interface ComponentQualificationTotals {
   running: number;
 }
 
-export interface ComponentView {
+export interface BifrostComponent {
   id: ComponentId;
   name: string;
   schemaName: string;
@@ -252,9 +260,66 @@ export interface ComponentView {
   inputCount: number;
   outputCount: number;
   diffCount: number;
+  rootAttributeValueId: AttributeValueId;
+  domainAttributeValueId: AttributeValueId;
+  secretsAttributeValueId: AttributeValueId;
+  siAttributeValueId: AttributeValueId;
+  resourceValueAttributeValueId: AttributeValueId;
 }
 
-export interface ComponentViewList {
+export interface BifrostComponentList {
   id: ChangeSetId;
-  components: ComponentView[];
+  components: BifrostComponent[];
+}
+
+export interface RawComponentList {
+  id: ChangeSetId;
+  components: Reference[];
+}
+
+export interface ActionPrototypeView {
+  id: ActionPrototypeId;
+  funcId: FuncId;
+  kind: ActionKind;
+  displayName?: string;
+  name: string;
+}
+
+export interface BifrostActionPrototypeViewList {
+  id: SchemaVariantId;
+  actionPrototypes: ActionPrototypeView[];
+}
+
+interface Prop {
+  id: PropId;
+  path: string;
+  name: string;
+  kind: PropKind;
+  widgetKind: PropertyEditorPropWidgetKind;
+  docLink?: string;
+  documentation?: string;
+  validationFormation?: string;
+  defaultCanBeSetBySocket: boolean;
+  isOriginSecret: boolean;
+  createOnly: boolean;
+}
+
+interface AttributeValue {
+  id: AttributeValueId;
+  key?: string;
+  value: string;
+  canBeSetBySocket: boolean;
+  isFromExternalSource: boolean;
+  isControlledByAncestor: boolean;
+  isControlledByDynamicFunc: boolean;
+  overriden: boolean;
+}
+
+export interface BifrostAttributeTree {
+  id: AttributeValueId;
+  children: AttributeValueId[];
+  parent?: AttributeValueId;
+  prop?: Prop;
+  attribute_value: AttributeValue;
+  validation?: ValidationOutput;
 }

@@ -523,11 +523,18 @@ impl OutputSocket {
         &self,
         ctx: &DalContext,
     ) -> OutputSocketResult<Vec<AttributePrototypeArgumentId>> {
+        Self::prototype_arguments_using_for_id(ctx, self.id).await
+    }
+
+    pub async fn prototype_arguments_using_for_id(
+        ctx: &DalContext,
+        id: OutputSocketId,
+    ) -> OutputSocketResult<Vec<AttributePrototypeArgumentId>> {
         let mut results = Vec::new();
         for (_edge_weight, tail_idx, _head_idx) in ctx
             .workspace_snapshot()?
             .edges_directed_for_edge_weight_kind(
-                self.id(),
+                id,
                 petgraph::Direction::Incoming,
                 EdgeWeightKindDiscriminants::PrototypeArgumentValue,
             )

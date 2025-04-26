@@ -35,9 +35,11 @@ use crate::{
 pub enum ReferenceKind {
     ActionPrototypeViewList,
     ActionViewList,
+    AttributeTree,
     ChangeSetList,
     ChangeSetRecord,
-    ComponentViewList,
+    Component,
+    ComponentList,
     MvIndex,
     SchemaVariantCategories,
     View,

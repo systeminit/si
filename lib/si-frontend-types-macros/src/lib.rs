@@ -374,8 +374,8 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
             let change = #change;
             let mv_id = #mv_id;
 
-            if <#mv_name as si_frontend_types::materialized_view::MaterializedView>::trigger_entity() != change.entity_kind {
-                Ok((None, None))
+            let maybe_patch = if <#mv_name as si_frontend_types::materialized_view::MaterializedView>::trigger_entity() != change.entity_kind {
+                None
             } else {
                 if !ctx
                     .workspace_snapshot()?
@@ -383,8 +383,8 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                     .await
                 {
                     // Object was removed
-                    Ok((
-                        Some(si_frontend_types::object::patch::ObjectPatch {
+                    Some((
+                        si_frontend_types::object::patch::ObjectPatch {
                             kind: <#mv_name as si_frontend_types::materialized_view::MaterializedView>::kind().to_string(),
                             id: mv_id,
                             // TODO: we need to get the prior version of this
@@ -393,8 +393,8 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                             patch: json_patch::Patch(vec![json_patch::PatchOperation::Remove(
                                 json_patch::RemoveOperation::default(),
                             )]),
-                        }),
-                        None,
+                        },
+                        None
                     ))
                 } else {
                     let mv = #build_fn?;
@@ -410,18 +410,23 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                         ("0".to_string(), serde_json::Value::Null)
                     };
 
-                    Ok((
-                        Some(si_frontend_types::object::patch::ObjectPatch {
-                            kind,
-                            id: mv_id,
-                            from_checksum,
-                            to_checksum,
-                            patch: json_patch::diff(&previous_data, &mv_json),
-                        }),
-                        Some(frontend_object),
-                    ))
+                    if from_checksum == to_checksum {
+                        None
+                    } else {
+                        Some((
+                            si_frontend_types::object::patch::ObjectPatch {
+                                kind,
+                                id: mv_id,
+                                from_checksum,
+                                to_checksum,
+                                patch: json_patch::diff(&previous_data, &mv_json),
+                            },
+                            Some(frontend_object),
+                        ))
+                    }
                 }
-            }
+            };
+            Ok(maybe_patch)
         }
     };
 

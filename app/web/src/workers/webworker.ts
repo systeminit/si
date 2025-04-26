@@ -47,6 +47,9 @@ import {
   RawViewList,
   BifrostView,
   Ragnarok,
+  RawComponentList,
+  BifrostComponent,
+  BifrostComponentList,
 } from "./types/dbinterface";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
@@ -828,6 +831,21 @@ const get = async (
     const list: BifrostViewList = {
       id: rawList.id,
       views,
+    };
+    return list;
+  } else if (kind === "ComponentList") {
+    const rawList = atomDoc as RawComponentList;
+    const maybeComponents = await Promise.all(
+      rawList.components.map(async (c) => {
+        return await get(workspaceId, changeSetId, c.kind, c.id);
+      }),
+    );
+    const components = maybeComponents.filter(
+      (c): c is BifrostComponent => c !== -1 && Object.keys(c).length > 0,
+    );
+    const list: BifrostComponentList = {
+      id: rawList.id,
+      components,
     };
     return list;
   } else return atomDoc;

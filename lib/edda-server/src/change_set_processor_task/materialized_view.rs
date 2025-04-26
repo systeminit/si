@@ -36,7 +36,13 @@ use si_frontend_types::{
         ActionViewList as ActionViewListMv,
     },
     index::MvIndex,
-    newhotness::component::ComponentViewList as ComponentViewListMv,
+    newhotness::{
+        attribute_tree::AttributeTree as AttributeTreeMv,
+        component::{
+            Component as ComponentMv,
+            ComponentList as ComponentListMv,
+        },
+    },
     object::{
         FrontendObject,
         patch::{
@@ -78,6 +84,8 @@ pub enum MaterializedViewError {
     Diagram(#[from] DiagramError),
     #[error("Frigg error: {0}")]
     Frigg(#[from] FriggError),
+    #[error("new hotness error: {0}")]
+    Newhotness(#[from] dal_newhotness::Error),
     #[error(
         "No index for incremental build for workspace {workspace_pk} and change set {change_set_id}"
     )]
@@ -315,12 +323,12 @@ async fn build_mv_inner(
                             )
                             .await,
                         ) {
-                            Ok((maybe_patch, maybe_frontend_object)) => {
-                                if let Some(patch) = maybe_patch {
+                            Ok(maybe_patch) => {
+                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
                                     patches.push(patch);
-                                }
-                                if let Some(object) = maybe_frontend_object {
-                                    frontend_objects.push(object);
+                                    if let Some(object) = maybe_frontend_object {
+                                        frontend_objects.push(object);
+                                    }
                                 }
                             }
                             Result::<_, MaterializedViewError>::Err(err) => return Err(err),
@@ -337,18 +345,70 @@ async fn build_mv_inner(
                             si_frontend_types::action::ActionViewList,
                             dal::action::Action::as_frontend_list_type(ctx).await,
                         ) {
-                            Ok((maybe_patch, maybe_frontend_object)) => {
-                                if let Some(patch) = maybe_patch {
+                            Ok(maybe_patch) => {
+                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
                                     patches.push(patch);
-                                }
-                                if let Some(object) = maybe_frontend_object {
-                                    frontend_objects.push(object);
+                                    if let Some(object) = maybe_frontend_object {
+                                        frontend_objects.push(object);
+                                    }
                                 }
                             }
                             Result::<_, MaterializedViewError>::Err(err) => return Err(err),
                         };
                     }
-                    ReferenceKind::ComponentViewList => {
+                    ReferenceKind::AttributeTree => {
+                        let mv_id = change.entity_id.to_string();
+
+                        match si_frontend_types_macros::build_mv!(
+                            ctx,
+                            frigg,
+                            change,
+                            mv_id,
+                            si_frontend_types::newhotness::attribute_tree::AttributeTree,
+                            dal_newhotness::attribute_tree::as_frontend_type(
+                                ctx,
+                                si_events::ulid::Ulid::from(change.entity_id).into()
+                            )
+                            .await,
+                        ) {
+                            Ok(maybe_patch) => {
+                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
+                                    patches.push(patch);
+                                    if let Some(object) = maybe_frontend_object {
+                                        frontend_objects.push(object);
+                                    }
+                                }
+                            }
+                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
+                        }
+                    }
+                    ReferenceKind::Component => {
+                        let mv_id = change.entity_id.to_string();
+
+                        match si_frontend_types_macros::build_mv!(
+                            ctx,
+                            frigg,
+                            change,
+                            mv_id,
+                            si_frontend_types::newhotness::component::Component,
+                            dal_newhotness::component::as_frontend_type(
+                                ctx,
+                                si_events::ulid::Ulid::from(change.entity_id).into()
+                            )
+                            .await,
+                        ) {
+                            Ok(maybe_patch) => {
+                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
+                                    patches.push(patch);
+                                    if let Some(object) = maybe_frontend_object {
+                                        frontend_objects.push(object);
+                                    }
+                                }
+                            }
+                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
+                        }
+                    }
+                    ReferenceKind::ComponentList => {
                         let mv_id = change_set_id.to_string();
 
                         match si_frontend_types_macros::build_mv!(
@@ -356,15 +416,15 @@ async fn build_mv_inner(
                             frigg,
                             change,
                             mv_id,
-                            si_frontend_types::newhotness::component::ComponentViewList,
-                            dal::component::Component::as_frontend_list_type(ctx).await,
+                            si_frontend_types::newhotness::component::ComponentList,
+                            dal_newhotness::component::as_frontend_list_type(ctx).await,
                         ) {
-                            Ok((maybe_patch, maybe_frontend_object)) => {
-                                if let Some(patch) = maybe_patch {
+                            Ok(maybe_patch) => {
+                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
                                     patches.push(patch);
-                                }
-                                if let Some(object) = maybe_frontend_object {
-                                    frontend_objects.push(object);
+                                    if let Some(object) = maybe_frontend_object {
+                                        frontend_objects.push(object);
+                                    }
                                 }
                             }
                             Result::<_, MaterializedViewError>::Err(err) => return Err(err),
@@ -384,12 +444,12 @@ async fn build_mv_inner(
                             )
                             .await,
                         ) {
-                            Ok((maybe_patch, maybe_frontend_object)) => {
-                                if let Some(patch) = maybe_patch {
+                            Ok(maybe_patch) => {
+                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
                                     patches.push(patch);
-                                }
-                                if let Some(object) = maybe_frontend_object {
-                                    frontend_objects.push(object);
+                                    if let Some(object) = maybe_frontend_object {
+                                        frontend_objects.push(object);
+                                    }
                                 }
                             }
                             Result::<_, MaterializedViewError>::Err(err) => return Err(err),
@@ -410,12 +470,12 @@ async fn build_mv_inner(
                             )
                             .await,
                         ) {
-                            Ok((maybe_patch, maybe_frontend_object)) => {
-                                if let Some(patch) = maybe_patch {
+                            Ok(maybe_patch) => {
+                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
                                     patches.push(patch);
-                                }
-                                if let Some(object) = maybe_frontend_object {
-                                    frontend_objects.push(object);
+                                    if let Some(object) = maybe_frontend_object {
+                                        frontend_objects.push(object);
+                                    }
                                 }
                             }
                             Result::<_, MaterializedViewError>::Err(err) => return Err(err),
@@ -432,12 +492,12 @@ async fn build_mv_inner(
                             si_frontend_types::view::ViewList,
                             dal::diagram::view::View::as_frontend_list_type(ctx).await,
                         ) {
-                            Ok((maybe_patch, maybe_frontend_object)) => {
-                                if let Some(patch) = maybe_patch {
+                            Ok(maybe_patch) => {
+                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
                                     patches.push(patch);
-                                }
-                                if let Some(object) = maybe_frontend_object {
-                                    frontend_objects.push(object);
+                                    if let Some(object) = maybe_frontend_object {
+                                        frontend_objects.push(object);
+                                    }
                                 }
                             }
                             Result::<_, MaterializedViewError>::Err(err) => return Err(err),
@@ -479,13 +539,18 @@ macro_rules! add_reference_dependencies_to_dependency_graph {
 fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedViewError> {
     let mut dependency_graph = DependencyGraph::new();
 
+    // TODO(nick): we should really look into making this automatic from "ReferenceKind::revision_sensitive()"
+    // fields... too easy to shoot yourself in the foot.
+    //
     // All `MaterializedView` types must be covered here for them to be built.
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantCategoriesMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionPrototypeViewListMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentViewListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, AttributeTreeMv);
 
     // The MvIndex depends on everything else, but doesn't define any
     // `MaterializedView::reference_dependencies()` directly.

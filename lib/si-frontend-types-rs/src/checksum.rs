@@ -15,6 +15,7 @@ use si_events::{
 use si_id::{
     ActionId,
     ActionPrototypeId,
+    AttributeValueId,
     ChangeSetId,
     ComponentId,
     FuncId,
@@ -33,6 +34,10 @@ use crate::{
     OutputSocket,
     Prop,
     PropKind,
+    newhotness::attribute_tree::{
+        PropWidgetKind,
+        ValidationStatus,
+    },
     schema_variant::SchemaVariantsByCategory,
 };
 
@@ -260,6 +265,36 @@ impl FrontendChecksum for usize {
 }
 
 impl FrontendChecksum for i64 {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for ValidationStatus {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for PropWidgetKind {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for AttributeValueId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for serde_json::Value {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for u64 {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_string())
     }

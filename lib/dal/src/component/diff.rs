@@ -108,6 +108,28 @@ impl Component {
         })
     }
 
+    /// Returns the number of "diffed" properties of a [`Component`](crate::Component) on HEAD and
+    /// in the current [`ChangeSet`](crate::ChangeSet).
+    pub async fn get_diff_count(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<usize> {
+        let (curr_json, maybe_head_json_with_is_new_check) =
+            Self::get_diff_inner(ctx, component_id).await?;
+
+        Ok(match maybe_head_json_with_is_new_check {
+            Some((head_json, is_new_component)) => {
+                if is_new_component {
+                    0
+                } else {
+                    let patch = json_patch::diff(&head_json, &curr_json);
+                    patch.len()
+                }
+            }
+            None => 0,
+        })
+    }
+
     async fn get_diff_inner(
         ctx: &DalContext,
         component_id: ComponentId,

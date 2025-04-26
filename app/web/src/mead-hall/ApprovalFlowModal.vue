@@ -58,7 +58,7 @@ import ApprovalFlowCancelled from "@/components/toasts/ApprovalFlowCancelled.vue
 import { usePresenceStore } from "@/store/presence.store";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import { ActionProposedView } from "@/store/actions.store";
-import { ActionViewList } from "@/workers/types/dbinterface";
+import { BifrostActionViewList } from "@/workers/types/dbinterface";
 import ActionsList from "./ActionsList.vue";
 import { ActionProposedViewWithHydratedChildren } from "./ChangesPanelProposed.vue";
 
@@ -102,10 +102,10 @@ function applyButtonHandler() {
 }
 
 const queryKey = makeKey("ActionViewList");
-const actionViewList = useQuery<ActionViewList | null>({
+const actionViewList = useQuery<BifrostActionViewList | null>({
   queryKey,
   queryFn: async () =>
-    await bifrost<ActionViewList>(makeArgs("ActionViewList")),
+    await bifrost<BifrostActionViewList>(makeArgs("ActionViewList")),
 });
 const allActionViews = computed(() => {
   if (!actionViewList.data.value) return [];

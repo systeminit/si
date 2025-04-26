@@ -118,7 +118,7 @@ import ConfirmHoldModal from "@/components/Actions/ConfirmHoldModal.vue";
 import EmptyStateCard from "@/components/EmptyStateCard.vue";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import { ActionProposedView, useActionsStore } from "@/store/actions.store";
-import { ActionViewList } from "@/workers/types/dbinterface";
+import { BifrostActionViewList } from "@/workers/types/dbinterface";
 import ActionsList from "./ActionsList.vue";
 
 export interface ActionProposedViewWithHydratedChildren
@@ -133,10 +133,10 @@ const funcRunsStore = useFuncRunsStore();
 const changeSetStore = useChangeSetsStore();
 
 const queryKey = makeKey("ActionViewList");
-const actionViewList = useQuery<ActionViewList | null>({
+const actionViewList = useQuery<BifrostActionViewList | null>({
   queryKey,
   queryFn: async () =>
-    await bifrost<ActionViewList>(makeArgs("ActionViewList")),
+    await bifrost<BifrostActionViewList>(makeArgs("ActionViewList")),
 });
 
 // Materialized views cannot, yet, build circular references

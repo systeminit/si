@@ -57,7 +57,7 @@ import {
   DiagramNodeData,
 } from "@/components/ModelingDiagram/diagram_types";
 import { ActionId } from "@/api/sdf/dal/action";
-import { ActionPrototypeView } from "./AssetActionsDetails.vue";
+import { ActionPrototypeView } from "@/workers/types/dbinterface";
 
 const props = defineProps<{
   component: DiagramGroupData | DiagramNodeData;
