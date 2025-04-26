@@ -3,7 +3,6 @@ use dal::{
     Component,
     ComponentId,
 };
-use sdf_extract::change_set::ChangeSetDalContext;
 use serde::Serialize;
 use utoipa::{
     self,
@@ -11,6 +10,7 @@ use utoipa::{
 };
 
 use super::ComponentsError;
+use crate::extract::change_set::ChangeSetDalContext;
 
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]

@@ -94,6 +94,7 @@ async fn app_state_middeware<B>(
         (name = "whoami", description = "User identity endpoints"),
         (name = "change_sets", description = "Change set management endpoints"),
         (name = "components", description = "Component management endpoints"),
+        (name = "funcs", description = "Functions management endpoints"),
     ),
     info(
         title = "Luminork API",
@@ -315,25 +316,25 @@ async fn serve_swagger_ui() -> impl IntoResponse {
                       // Get the global parameters from localStorage
                       const workspaceId = localStorage.getItem('swagger_ui_workspace_id');
                       const changeSetId = localStorage.getItem('swagger_ui_change_set_id');
-                      
+
                       // Clone the request object
                       let requestWithParams = {...req};
-                      
+
                       // Check if the request has parameters
                       if (!requestWithParams.parameters) {
                         requestWithParams.parameters = {};
                       }
-                      
+
                       // Add workspace_id if it's not already set and we have a global value
                       if (workspaceId && !requestWithParams.parameters.workspace_id) {
                         requestWithParams.parameters.workspace_id = workspaceId;
                       }
-                      
+
                       // Add change_set_id if it's not already set and we have a global value
                       if (changeSetId && !requestWithParams.parameters.change_set_id) {
                         requestWithParams.parameters.change_set_id = changeSetId;
                       }
-                      
+
                       return oriAction(requestWithParams);
                     } catch (error) {
                       console.error("Error in executeRequest interceptor:", error);
@@ -345,7 +346,7 @@ async fn serve_swagger_ui() -> impl IntoResponse {
             }
           };
         };
-        
+
         const ui = SwaggerUIBundle({
           url: "/openapi.json",
           dom_id: '#swagger-ui',
@@ -396,32 +397,32 @@ async fn serve_swagger_ui() -> impl IntoResponse {
             globalTitle.style.margin = '0 0 15px 0';
             globalTitle.style.borderBottom = '1px solid #ddd';
             globalTitle.style.paddingBottom = '10px';
-            
+
             const globalDescription = document.createElement('p');
             globalDescription.textContent = 'Set global parameters that will be automatically applied to all API requests.';
             globalDescription.style.margin = '0 0 20px 0';
             globalDescription.style.color = '#666';
-            
+
             // Function to create form groups for consistency
             const createFormGroup = (title, inputId, placeholder, savedValue, description) => {
               const group = document.createElement('div');
               group.style.marginBottom = '15px';
-              
+
               const label = document.createElement('label');
               label.textContent = title;
               label.style.display = 'block';
               label.style.fontWeight = 'bold';
               label.style.marginBottom = '5px';
-              
+
               const input = document.createElement('input');
               input.type = 'text';
               input.id = inputId;
               input.placeholder = placeholder;
               input.value = savedValue;
               input.style.cssText = 'width:100%; padding:8px; border:1px solid #ddd;';
-              
+
               group.appendChild(label);
-              
+
               if (description) {
                 const desc = document.createElement('p');
                 desc.textContent = description;
@@ -430,33 +431,33 @@ async fn serve_swagger_ui() -> impl IntoResponse {
                 desc.style.color = '#666';
                 group.appendChild(desc);
               }
-              
+
               group.appendChild(input);
-              
+
               return { group, input };
             };
 
             // Create form elements
             const { group: tokenGroup, input: tokenInput } = createFormGroup(
-              'JWT Authorization Token', 
-              'jwt-token-input', 
-              'Enter JWT token', 
+              'JWT Authorization Token',
+              'jwt-token-input',
+              'Enter JWT token',
               savedToken,
               'Required: Authorization token will be added as a Bearer token in the Authorization header'
             );
-            
+
             const { group: workspaceGroup, input: workspaceInput } = createFormGroup(
-              'Workspace ID', 
-              'workspace-id-input', 
-              'Enter workspace ID (optional)', 
+              'Workspace ID',
+              'workspace-id-input',
+              'Enter workspace ID (optional)',
               savedWorkspaceId,
               'Optional: Will be added to requests that require a workspace_id parameter'
             );
-            
+
             const { group: changeSetGroup, input: changeSetInput } = createFormGroup(
-              'Change Set ID', 
-              'change-set-id-input', 
-              'Enter change set ID (optional)', 
+              'Change Set ID',
+              'change-set-id-input',
+              'Enter change set ID (optional)',
               savedChangeSetId,
               'Optional: Will be added to requests that require a change_set_id parameter'
             );
@@ -477,41 +478,41 @@ async fn serve_swagger_ui() -> impl IntoResponse {
             const notificationDiv = document.createElement('div');
             notificationDiv.id = 'swagger-notification';
             notificationDiv.style.cssText = 'margin-top:10px; padding:8px; border-radius:4px; display:none;';
-            
+
             // Function to show notifications without using alert()
             const showNotification = (message, isSuccess = true) => {
               notificationDiv.textContent = message;
               notificationDiv.style.display = 'block';
               notificationDiv.style.backgroundColor = isSuccess ? '#dff0d8' : '#f2dede';
               notificationDiv.style.color = isSuccess ? '#3c763d' : '#a94442';
-              
+
               // Hide after 3 seconds
               setTimeout(() => {
                 notificationDiv.style.display = 'none';
               }, 3000);
             };
-            
+
             authButton.onclick = function() {
               // Clear any existing notifications
               notificationDiv.style.display = 'none';
-              
+
               const token = tokenInput.value.trim();
               const workspaceId = workspaceInput.value.trim();
               const changeSetId = changeSetInput.value.trim();
-              
+
               // Validate auth token is required
               if (!token) {
                 showNotification('⚠️ Authorization token is required.', false);
                 return;
               }
-              
+
               // Save all values to localStorage
               localStorage.setItem('swagger_ui_token', token);
               localStorage.setItem('swagger_ui_workspace_id', workspaceId);
               localStorage.setItem('swagger_ui_change_set_id', changeSetId);
-              
+
               showNotification('Settings saved. Your values will be applied to all requests.');
-              
+
               // Apply the authorization token
               setTimeout(() => {
                 window.ui.preauthorizeApiKey('Bearer', token);
@@ -521,19 +522,19 @@ async fn serve_swagger_ui() -> impl IntoResponse {
             clearButton.onclick = function() {
               // Clear any existing notifications
               notificationDiv.style.display = 'none';
-              
+
               // Clear input fields
               tokenInput.value = '';
               workspaceInput.value = '';
               changeSetInput.value = '';
-              
+
               // Clear localStorage
               localStorage.removeItem('swagger_ui_token');
               localStorage.removeItem('swagger_ui_workspace_id');
               localStorage.removeItem('swagger_ui_change_set_id');
-              
+
               showNotification('All settings cleared.');
-              
+
               // Remove authorization
               setTimeout(() => {
                 window.ui.preauthorizeApiKey('Bearer', '');
@@ -547,29 +548,29 @@ async fn serve_swagger_ui() -> impl IntoResponse {
             reloadButton.onclick = function() {
               // Clear any existing notifications
               notificationDiv.style.display = 'none';
-              
+
               // Save settings
               const token = tokenInput.value.trim();
               const workspaceId = workspaceInput.value.trim();
               const changeSetId = changeSetInput.value.trim();
-              
+
               // Validate auth token is required
               if (!token) {
                 showNotification('⚠️ Authorization token is required.', false);
                 return;
               }
-              
+
               localStorage.setItem('swagger_ui_token', token);
               localStorage.setItem('swagger_ui_workspace_id', workspaceId);
               localStorage.setItem('swagger_ui_change_set_id', changeSetId);
-              
+
               // Show notification and reload
               showNotification('Settings saved. Reloading page to apply changes...');
               setTimeout(() => {
                 window.location.reload();
               }, 1000);
             };
-            
+
             // Assemble the DOM
             buttonContainer.appendChild(authButton);
             buttonContainer.appendChild(clearButton);
@@ -582,33 +583,33 @@ async fn serve_swagger_ui() -> impl IntoResponse {
             authContainer.appendChild(changeSetGroup);
             authContainer.appendChild(buttonContainer);
             authContainer.appendChild(notificationDiv);
-            
+
             // Add a status indicator that shows when global params are active
             const statusDiv = document.createElement('div');
             statusDiv.style.cssText = 'margin-top:15px; padding:8px; border-left:4px solid #4990e2; background:#f8f8f8;';
             statusDiv.innerHTML = '<strong>Status:</strong> <span id="global-params-status">Loading...</span>';
             authContainer.appendChild(statusDiv);
-            
+
             // Simple status update function
             const updateStatus = () => {
               const hasWorkspace = localStorage.getItem('swagger_ui_workspace_id');
               const hasChangeSet = localStorage.getItem('swagger_ui_change_set_id');
               const hasToken = localStorage.getItem('swagger_ui_token');
-              
+
               const statusSpan = document.getElementById('global-params-status');
               if (statusSpan) {
                 const items = [];
                 if (hasToken) items.push('Auth Token');
                 if (hasWorkspace) items.push('Workspace ID');
                 if (hasChangeSet) items.push('Change Set ID');
-                
-                statusSpan.textContent = items.length > 0 ? 
-                  `Using global ${items.join(', ')}` : 
+
+                statusSpan.textContent = items.length > 0 ?
+                  `Using global ${items.join(', ')}` :
                   'No global parameters set';
                 statusSpan.style.color = items.length > 0 ? '#3c763d' : '#777';
               }
             };
-            
+
             // Update status on load and when values change
             updateStatus();
             authButton.addEventListener('click', updateStatus);

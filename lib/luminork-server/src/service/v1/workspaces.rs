@@ -64,6 +64,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
                             .route("/", delete(super::change_sets::delete::abandon_change_set))
                             .nest("/components", super::components::routes())
                             .nest("/schema", super::schema::routes())
+                            .nest("/funcs", super::funcs::routes())
                             .route(
                                 "/request_approval",
                                 post(super::change_sets::request_approval::request_approval),

@@ -8,7 +8,6 @@ use dal::{
     Component,
     ComponentId,
 };
-use sdf_extract::change_set::ChangeSetDalContext;
 use serde::{
     Deserialize,
     Serialize,
@@ -27,7 +26,10 @@ use super::{
     },
     get_component::GetComponentV1Response,
 };
-use crate::service::v1::ComponentViewV1;
+use crate::{
+    extract::change_set::ChangeSetDalContext,
+    service::v1::ComponentViewV1,
+};
 
 #[derive(Deserialize, Serialize, Debug, IntoParams, ToSchema)]
 #[serde(rename_all = "camelCase")]
