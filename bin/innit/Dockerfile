@@ -35,6 +35,4 @@ COPY --from=builder /tmp/local-bin/* /usr/local/bin/
 
 EXPOSE 5166/tcp
 
-ENTRYPOINT [ \
-  "/sbin/runuser", "-u", "app", "--", "/usr/local/bin/innit", \
-]
+ENTRYPOINT [ "/sbin/runuser", "-u", "app", "--", "/usr/local/bin/innit" ]

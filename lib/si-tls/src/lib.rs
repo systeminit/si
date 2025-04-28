@@ -256,9 +256,12 @@ pub struct ClientCertificateVerifier {
 }
 
 impl ClientCertificateVerifier {
-    pub async fn new(ca_cert: CertificateSource) -> Result<Self> {
+    pub async fn new(ca_certs: &[CertificateSource]) -> Result<Self> {
         let mut cert_store = RootCertStore::empty();
-        ca_cert.add_to_cert_store(&mut cert_store).await?;
+
+        for ca_cert in ca_certs {
+            ca_cert.add_to_cert_store(&mut cert_store).await?;
+        }
 
         let verifier = WebPkiClientVerifier::builder(Arc::new(cert_store)).build()?;
 

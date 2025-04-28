@@ -75,7 +75,7 @@ mod integration_tests {
 
         let config = innit_server::Config::builder()
             .socket_addr(addr)
-            .client_ca_cert(Some(CertificateSource::Base64(ca_cert)))
+            .client_ca_certs(Some(vec![CertificateSource::Base64(ca_cert)]))
             .test_endpoint(Some(endpoint))
             .build()
             .expect("should build config");

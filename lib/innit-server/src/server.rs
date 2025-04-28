@@ -25,7 +25,10 @@ use si_data_acmpca::{
     PrivateCertManagerClientError,
 };
 use si_data_ssm::ParameterStoreClient;
-use si_tls::ClientCertificateVerifier;
+use si_tls::{
+    CertificateSource,
+    ClientCertificateVerifier,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::io::{
@@ -97,19 +100,13 @@ impl Server<()> {
         // otherwise, no certs necessary
         let client_cert_verifier = if config.dev_mode() {
             None
-        } else if let Some(cert) = config.client_ca_cert() {
+        } else if let Some(certs) = config.client_ca_certs() {
             Some(Arc::new(
-                ClientCertificateVerifier::new(cert.clone()).await?,
+                ClientCertificateVerifier::new(&certs.clone()).await?,
             ))
-        } else if let Some(ca_arn) = config.client_ca_arn() {
-            let acmpca_client = PrivateCertManagerClient::new().await;
+        } else if let Some(ca_arns) = config.client_ca_arns() {
             Some(Arc::new(
-                ClientCertificateVerifier::new(
-                    acmpca_client
-                        .get_certificate_authority(ca_arn.to_string())
-                        .await?,
-                )
-                .await?,
+                ClientCertificateVerifier::new(&get_ca_certs_from_arns(ca_arns).await?).await?,
             ))
         } else {
             None
@@ -132,6 +129,19 @@ impl Server<()> {
 
         Ok(Server { inner, token })
     }
+}
+
+async fn get_ca_certs_from_arns(ca_cert_arns: &[String]) -> ServerResult<Vec<CertificateSource>> {
+    let acmpca_client = PrivateCertManagerClient::new().await;
+    let mut ca_certs = vec![];
+    for ca_cert_arn in ca_cert_arns {
+        ca_certs.push(
+            acmpca_client
+                .get_certificate_authority(ca_cert_arn.to_string())
+                .await?,
+        );
+    }
+    Ok(ca_certs)
 }
 
 impl<I, IO, IE> Server<I>
