@@ -31,7 +31,6 @@ use crate::{
         },
         graph::{
             LineageId,
-            deprecated::v1::DeprecatedContentNodeWeightV1,
             detector::Update,
         },
         node_weight::{
@@ -213,18 +212,6 @@ impl std::fmt::Debug for ContentNodeWeight {
             .field("content_address", &self.content_address)
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .finish()
-    }
-}
-
-impl From<DeprecatedContentNodeWeightV1> for ContentNodeWeight {
-    fn from(value: DeprecatedContentNodeWeightV1) -> Self {
-        Self {
-            id: value.id,
-            lineage_id: value.lineage_id,
-            content_address: value.content_address,
-            merkle_tree_hash: value.merkle_tree_hash,
-            to_delete: value.to_delete,
-        }
     }
 }
 

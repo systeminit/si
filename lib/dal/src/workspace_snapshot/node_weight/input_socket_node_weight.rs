@@ -10,12 +10,10 @@ use si_layer_cache::LayerDbError;
 use thiserror::Error;
 
 use super::{
-    ContentNodeWeight,
     NodeWeightError,
     traits::SiVersionedNodeWeight,
 };
 use crate::{
-    DalContext,
     SocketArity,
     WorkspaceSnapshotError,
     workspace_snapshot::graph::WorkspaceSnapshotGraphError,
@@ -24,8 +22,6 @@ use crate::{
 pub mod v1;
 
 pub use v1::InputSocketNodeWeightV1;
-
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphV3;
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -60,20 +56,5 @@ impl InputSocketNodeWeight {
             arity,
             content_hash,
         ))
-    }
-
-    pub(crate) async fn try_upgrade_from_content_node_weight(
-        ctx: &DalContext,
-        v3_graph: &mut WorkspaceSnapshotGraphV3,
-        content_node_weight: &ContentNodeWeight,
-    ) -> InputSocketNodeWeightResult<()> {
-        // InputSocketNodeWeightV1 is the first one not stored as a ContentNodeWeight, so is the
-        // only one we can directly upgrade from a ContentNodeWeight.
-        InputSocketNodeWeightV1::try_upgrade_from_content_node_weight(
-            ctx,
-            v3_graph,
-            content_node_weight,
-        )
-        .await
     }
 }

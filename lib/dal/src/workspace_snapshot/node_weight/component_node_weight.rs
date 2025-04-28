@@ -57,7 +57,6 @@ use crate::{
             LineageId,
             WorkspaceSnapshotGraphV4,
             correct_transforms::add_dependent_value_root_updates,
-            deprecated::v1::DeprecatedComponentNodeWeightV1,
             detector::Update,
         },
         node_weight::traits::CorrectTransforms,
@@ -260,18 +259,6 @@ impl ComponentNodeWeight {
             .map_err(|e| NodeWeightError::WorkspaceSnapshotGraph(Box::new(e)))?;
 
         Ok(())
-    }
-}
-
-impl From<DeprecatedComponentNodeWeightV1> for ComponentNodeWeight {
-    fn from(value: DeprecatedComponentNodeWeightV1) -> Self {
-        Self {
-            id: value.id,
-            lineage_id: value.lineage_id,
-            content_address: value.content_address,
-            merkle_tree_hash: value.merkle_tree_hash,
-            to_delete: value.to_delete,
-        }
     }
 }
 

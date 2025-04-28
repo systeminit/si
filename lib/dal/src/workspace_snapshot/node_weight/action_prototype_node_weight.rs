@@ -12,10 +12,7 @@ use crate::{
     EdgeWeightKindDiscriminants,
     action::prototype::ActionKind,
     workspace_snapshot::{
-        graph::{
-            LineageId,
-            deprecated::v1::DeprecatedActionPrototypeNodeWeightV1,
-        },
+        graph::LineageId,
         node_weight::traits::CorrectTransforms,
     },
 };
@@ -107,19 +104,6 @@ impl ActionPrototypeNodeWeight {
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[EdgeWeightKindDiscriminants::Use]
-    }
-}
-
-impl From<DeprecatedActionPrototypeNodeWeightV1> for ActionPrototypeNodeWeight {
-    fn from(value: DeprecatedActionPrototypeNodeWeightV1) -> Self {
-        Self {
-            id: value.id,
-            kind: value.kind,
-            name: value.name,
-            description: value.description,
-            lineage_id: value.lineage_id,
-            merkle_tree_hash: value.merkle_tree_hash,
-        }
     }
 }
 

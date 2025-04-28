@@ -309,8 +309,11 @@ mod handlers {
     use dal::{
         ChangeSet,
         Workspace,
-        WorkspaceSnapshot,
         WsEvent,
+        action::{
+            Action,
+            ActionError,
+        },
         billing_publish,
         workspace_snapshot::{
             DependentValueRoot,
@@ -356,6 +359,9 @@ mod handlers {
     #[remain::sorted]
     #[derive(Debug, Error)]
     pub(crate) enum HandlerError {
+        /// Failures related to Actions
+        #[error("action error: {0}")]
+        Action(#[from] ActionError),
         /// Failures related to ChangeSets
         #[error("Change set error: {0}")]
         ChangeSet(#[from] dal::ChangeSetError),
@@ -446,7 +452,7 @@ mod handlers {
                 if workspace.default_change_set_id() == ctx.visibility().change_set_id {
                     let mut change_set =
                         ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;
-                    if WorkspaceSnapshot::dispatch_actions(&ctx).await? {
+                    if Action::dispatch_actions(&ctx).await? {
                         // Write out the snapshot to get the new address/id.
                         let new_snapshot_id = ctx
                             .write_snapshot()

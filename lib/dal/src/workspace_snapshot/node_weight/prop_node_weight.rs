@@ -16,10 +16,7 @@ use crate::{
             ContentAddress,
             ContentAddressDiscriminants,
         },
-        graph::{
-            LineageId,
-            deprecated::v1::DeprecatedPropNodeWeightV1,
-        },
+        graph::LineageId,
         node_weight::{
             NodeWeightError,
             NodeWeightResult,
@@ -142,20 +139,6 @@ impl std::fmt::Debug for PropNodeWeight {
             .field("content_hash", &self.content_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .finish()
-    }
-}
-
-impl From<DeprecatedPropNodeWeightV1> for PropNodeWeight {
-    fn from(value: DeprecatedPropNodeWeightV1) -> Self {
-        Self {
-            id: value.id,
-            lineage_id: value.lineage_id,
-            content_address: value.content_address,
-            merkle_tree_hash: value.merkle_tree_hash,
-            kind: value.kind,
-            name: value.name,
-            can_be_used_as_prototype_arg: value.can_be_used_as_prototype_arg,
-        }
     }
 }
 

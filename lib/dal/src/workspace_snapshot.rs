@@ -61,10 +61,6 @@ use crate::{
     TransactionsError,
     WorkspaceError,
     WorkspaceSnapshotGraphVCurrent,
-    action::{
-        Action,
-        ActionError,
-    },
     attribute::prototype::{
         AttributePrototypeError,
         argument::AttributePrototypeArgumentError,
@@ -110,14 +106,12 @@ pub mod content_address;
 pub mod dependent_value_root;
 pub mod edge_weight;
 pub mod graph;
-pub mod lamport_clock;
 pub mod migrator;
 pub mod node_weight;
 pub mod selector;
 pub mod split_snapshot;
 pub mod traits;
 pub mod update;
-pub mod vector_clock;
 
 pub use dependent_value_root::DependentValueRoot;
 pub use petgraph::Direction;
@@ -147,8 +141,6 @@ impl From<&NodeWeight> for NodeInformation {
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum WorkspaceSnapshotError {
-    #[error("Action error: {0}")]
-    Action(#[from] Box<ActionError>),
     #[error("AttributePrototype error: {0}")]
     AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("Attribute Prototype Argument: {0}")]
@@ -1364,19 +1356,6 @@ impl WorkspaceSnapshot {
                 None
             },
         )
-    }
-
-    /// Returns whether or not any Actions were dispatched.
-    pub async fn dispatch_actions(ctx: &DalContext) -> WorkspaceSnapshotResult<bool> {
-        let mut did_dispatch = false;
-        for dispatchable_ation_id in Action::eligible_to_dispatch(ctx).await.map_err(Box::new)? {
-            Action::dispatch_action(ctx, dispatchable_ation_id)
-                .await
-                .map_err(Box::new)?;
-            did_dispatch = true;
-        }
-
-        Ok(did_dispatch)
     }
 
     pub async fn dvu_root_check(&self, root: DependentValueRoot) -> bool {

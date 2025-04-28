@@ -29,17 +29,11 @@ use crate::{
     WorkspaceSnapshot,
     WorkspaceSnapshotError,
     workspace_snapshot::{
-        migrator::{
-            v2::migrate_v1_to_v2,
-            v3::migrate_v2_to_v3,
-            v4::migrate_v3_to_v4,
-        },
+        migrator::v4::migrate_v3_to_v4,
         node_weight::NodeWeightError,
     },
 };
 
-pub mod v2;
-pub mod v3;
 pub mod v4;
 
 #[derive(Error, Debug)]
@@ -53,6 +47,8 @@ pub enum SnapshotGraphMigratorError {
     InputSocketNodeWeight(#[from] InputSocketNodeWeightError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error("Migration from that graph version no longer supported")]
+    MigrationUnsupported,
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("SchemaVariantNodeWeight error: {0}")]
@@ -211,12 +207,8 @@ impl SnapshotGraphMigrator {
                         working_graph.into(),
                     ));
                 }
-                WorkspaceSnapshotGraph::V1(inner_graph) => {
-                    working_graph = WorkspaceSnapshotGraph::V2(migrate_v1_to_v2(inner_graph)?);
-                }
-                WorkspaceSnapshotGraph::V2(inner_graph) => {
-                    working_graph =
-                        WorkspaceSnapshotGraph::V3(migrate_v2_to_v3(ctx, inner_graph).await?);
+                WorkspaceSnapshotGraph::V1 | WorkspaceSnapshotGraph::V2 => {
+                    return Err(SnapshotGraphMigratorError::MigrationUnsupported);
                 }
                 WorkspaceSnapshotGraph::V3(inner_graph) => {
                     working_graph =

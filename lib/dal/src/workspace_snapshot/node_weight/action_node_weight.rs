@@ -23,7 +23,6 @@ use crate::{
         NodeInformation,
         graph::{
             LineageId,
-            deprecated::v1::DeprecatedActionNodeWeightV1,
             detector::Update,
         },
         node_weight::{
@@ -101,18 +100,6 @@ impl ActionNodeWeight {
 
     pub const fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[]
-    }
-}
-
-impl From<DeprecatedActionNodeWeightV1> for ActionNodeWeight {
-    fn from(value: DeprecatedActionNodeWeightV1) -> Self {
-        Self {
-            id: value.id,
-            state: value.state,
-            originating_change_set_id: value.originating_change_set_id,
-            lineage_id: value.lineage_id,
-            merkle_tree_hash: value.merkle_tree_hash,
-        }
     }
 }
 
