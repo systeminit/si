@@ -122,8 +122,8 @@ function pruneDomainValues(
   const readOnlySet = new Set(onlyProperties.readOnly);
   return Object.fromEntries(
     Object.entries(properties)
-      // TODO we shouldn't be ignoring things just because "type" isn't set
-      .filter(([name, prop]) => prop.type && !readOnlySet.has(name)),
+      // Include properties that either have a type OR have oneOf/anyOf
+      .filter(([name, prop]) => (prop.type || prop.oneOf || prop.anyOf) && !readOnlySet.has(name)),
   );
 }
 
@@ -138,7 +138,8 @@ function pruneResourceValues(
   const readOnlySet = new Set(onlyProperties.readOnly);
   return Object.fromEntries(
     Object.entries(properties)
-      .filter(([name, prop]) => prop.type && readOnlySet.has(name)),
+      // Include properties that either have a type OR have oneOf/anyOf
+      .filter(([name, prop]) => (prop.type || prop.oneOf || prop.anyOf) && readOnlySet.has(name)),
   );
 }
 
