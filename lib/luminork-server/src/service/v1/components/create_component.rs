@@ -5,6 +5,7 @@ use dal::{
     AttributeValue,
     Component,
     Schema,
+    cached_module::CachedModule,
     diagram::view::View,
 };
 use serde::{
@@ -59,8 +60,10 @@ pub async fn create_component(
     payload: Result<Json<CreateComponentV1Request>, axum::extract::rejection::JsonRejection>,
 ) -> Result<Json<CreateComponentV1Response>, ComponentsError> {
     let Json(payload) = payload?;
-    let schema = Schema::get_by_name(ctx, payload.schema_name).await?;
-    let variant_id = Schema::get_or_install_default_variant(ctx, schema.id()).await?;
+    let module = CachedModule::find_latest_for_schema_name(ctx, payload.schema_name.as_str())
+        .await?
+        .ok_or(ComponentsError::SchemaNameNotFound(payload.schema_name))?;
+    let variant_id = Schema::get_or_install_default_variant(ctx, module.schema_id).await?;
 
     let view_id: ViewId;
     if let Some(view_name) = payload.view_name {

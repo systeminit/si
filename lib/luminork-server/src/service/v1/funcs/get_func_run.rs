@@ -25,7 +25,7 @@ use crate::{
     ),
     tag = "funcs",
     responses(
-        (status = 200, description = "Component retrieved successfully", body = GetFuncRunV1Response),
+        (status = 200, description = "Func Run retrieved successfully", body = GetFuncRunV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 404, description = "Func run not found"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
