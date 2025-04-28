@@ -6,6 +6,7 @@ use crate::AppState;
 mod change_sets;
 pub mod common;
 mod components;
+mod funcs;
 mod schema;
 mod workspaces;
 
@@ -48,7 +49,7 @@ pub use components::{
         ExecuteManagementFunctionV1Response,
         ManagementFunctionReference,
     },
-    find_component::FindComponentV1Request,
+    find_component::FindComponentV1Params,
     get_component::{
         GetComponentV1Response,
         GetComponentV1ResponseManagementFunction,
@@ -61,16 +62,27 @@ pub use components::{
         UpdateComponentV1Response,
     },
 };
+pub use funcs::{
+    FuncRunV1RequestPath,
+    FuncsResult,
+};
 pub use schema::{
     SchemaError,
     list_schema::ListSchemaV1Response,
 };
 pub use workspaces::WorkspaceError;
 
-pub use crate::api_types::component::v1::{
-    ComponentPropViewV1,
-    ComponentViewV1,
-    ConnectionViewV1,
+pub use crate::api_types::{
+    component::v1::{
+        ComponentPropViewV1,
+        ComponentViewV1,
+        ConnectionViewV1,
+    },
+    func_run::v1::{
+        FuncRunLogViewV1,
+        FuncRunViewV1,
+        OutputLineViewV1,
+    },
 };
 
 /// OpenAPI documentation for v1 API
@@ -101,6 +113,7 @@ pub use crate::api_types::component::v1::{
         components::execute_management_function::execute_management_function,
         components::add_action::add_action,
         schema::list_schema::list_schemas,
+        funcs::get_func_run::get_func_run,
     ),
     components(
         schemas(
@@ -137,7 +150,11 @@ pub use crate::api_types::component::v1::{
             ComponentPropViewV1,
             ConnectionViewV1,
             ListComponentsV1Response,
-            FindComponentV1Request,
+            FindComponentV1Params,
+            FuncRunV1RequestPath,
+            FuncRunLogViewV1,
+            FuncRunViewV1,
+            OutputLineViewV1,
         )
     ),
     tags(

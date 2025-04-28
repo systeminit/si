@@ -659,7 +659,6 @@ impl ManagementPrototype {
         let ctx_clone = ctx.clone();
 
         tokio::task::spawn(async move {
-            dbg!("Kicking the func");
             if let Err(err) = dispatch_by_id_inner(
                 &ctx_clone,
                 span,

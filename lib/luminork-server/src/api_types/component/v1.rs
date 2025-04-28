@@ -5,6 +5,7 @@ use dal::{
     Component,
     ComponentId,
     DalContext,
+    Prop,
     SchemaId,
     SchemaVariant,
     SchemaVariantId,
@@ -203,8 +204,7 @@ impl ComponentViewV1 {
                 .await?,
             });
         }
-        // Connections
-        // TODO(brit): Management connections!!
+        // Socket Connections
         let mut connections = Vec::new();
         let incoming = component.incoming_connections(ctx).await?;
         for input in incoming {
@@ -224,27 +224,48 @@ impl ComponentViewV1 {
             }));
         }
 
+        // Management Connections
+        // Who is managing this component?
+        let managers = Component::managers_by_id(ctx, component_id).await?;
+        for manager in managers {
+            connections.push(ConnectionViewV1::ManagedBy(ManagedByConnectionViewV1 {
+                component_id: manager,
+                component_name: Component::name_by_id(ctx, manager).await?,
+            }));
+        }
+        // Who is this component managing?
+        let managing = component.get_managed(ctx).await?;
+        for managed in managing {
+            connections.push(ConnectionViewV1::Managing(ManagingConnectionViewV1 {
+                component_id: managed,
+                component_name: Component::name_by_id(ctx, managed).await?,
+            }));
+        }
+
         // Domain Props
-        // todo(brit): filter out domain/root AND hidden props
         let mut domain_props = Vec::new();
         let domain_root_av = component.domain_prop_attribute_value(ctx).await?;
         let mut work_queue = VecDeque::new();
-        work_queue.push_back(domain_root_av);
+        let domain_values = AttributeValue::get_child_av_ids_in_order(ctx, domain_root_av).await?;
+        work_queue.extend(domain_values);
         while let Some(av) = work_queue.pop_front() {
             let attribute_value = AttributeValue::get_by_id(ctx, av).await?;
+            let prop_id = AttributeValue::prop_id(ctx, av).await?;
+            let is_hidden_prop = Prop::get_by_id(ctx, prop_id).await?.hidden;
+            if !is_hidden_prop {
+                let view = ComponentPropViewV1 {
+                    id: av,
+                    prop_id,
+                    value: attribute_value.view(ctx).await?,
+                    path: AttributeValue::get_path_for_id(ctx, av)
+                        .await?
+                        .unwrap_or_else(String::new),
+                };
+                domain_props.push(view);
+                let children = AttributeValue::get_child_av_ids_in_order(ctx, av).await?;
 
-            let view = ComponentPropViewV1 {
-                id: av,
-                prop_id: AttributeValue::prop_id(ctx, av).await?,
-                value: attribute_value.view(ctx).await?,
-                path: AttributeValue::get_path_for_id(ctx, av)
-                    .await?
-                    .unwrap_or_else(String::new),
-            };
-            domain_props.push(view);
-            let children = AttributeValue::get_child_av_ids_in_order(ctx, av).await?;
-
-            work_queue.extend(children);
+                work_queue.extend(children);
+            }
         }
         // sort alphabetically by path
         domain_props.sort_by_key(|view| view.path.to_lowercase());

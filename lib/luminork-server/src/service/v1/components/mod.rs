@@ -12,11 +12,17 @@ use axum::{
 };
 use dal::{
     ActionPrototypeId,
+    Component,
     ComponentId,
+    Func,
     action::{
         ActionError,
-        prototype::ActionPrototypeError,
+        prototype::{
+            ActionPrototype,
+            ActionPrototypeError,
+        },
     },
+    management::prototype::ManagementPrototype,
 };
 use serde::Deserialize;
 use thiserror::Error;
@@ -83,6 +89,8 @@ pub enum ComponentsError {
     SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
+    #[error("Ulid Decode Error: {0}")]
+    UlidDecode(#[from] ulid::DecodeError),
     #[error("validation error: {0}")]
     Validation(String),
     #[error("view not found: {0}")]
@@ -151,11 +159,53 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
     }
 }
 
+use get_component::{
+    GetComponentV1ResponseActionFunction,
+    GetComponentV1ResponseManagementFunction,
+};
+
+pub async fn get_component_functions(
+    ctx: &dal::DalContext,
+    component_id: ComponentId,
+) -> Result<
+    (
+        Vec<GetComponentV1ResponseManagementFunction>,
+        Vec<GetComponentV1ResponseActionFunction>,
+    ),
+    ComponentsError,
+> {
+    let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
+
+    let mut action_functions = Vec::new();
+    for action_prototype in ActionPrototype::for_variant(ctx, schema_variant_id).await? {
+        let func_id = ActionPrototype::func_id(ctx, action_prototype.id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
+
+        action_functions.push(GetComponentV1ResponseActionFunction {
+            prototype_id: action_prototype.id,
+            func_name: func.display_name.unwrap_or_else(|| func.name.clone()),
+        });
+    }
+
+    let mut management_functions = Vec::new();
+    for prototype in ManagementPrototype::list_for_variant_id(ctx, schema_variant_id).await? {
+        let func_id = ManagementPrototype::func_id(ctx, prototype.id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
+
+        management_functions.push(GetComponentV1ResponseManagementFunction {
+            management_prototype_id: prototype.id,
+            func_name: func.display_name.unwrap_or_else(|| func.name.clone()),
+        });
+    }
+
+    Ok((management_functions, action_functions))
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", post(create_component::create_component))
         .route("/", get(list_components::list_components))
-        .route("/find", post(find_component::find_component))
+        .route("/find", get(find_component::find_component))
         .nest(
             "/:component_id",
             Router::new()

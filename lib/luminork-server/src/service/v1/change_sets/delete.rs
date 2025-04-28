@@ -1,13 +1,15 @@
 use axum::response::Json;
 use dal::change_set::ChangeSet;
-use sdf_extract::change_set::ChangeSetDalContext;
 use serde::Serialize;
 use serde_json::json;
 use si_events::audit_log::AuditLogKind;
 use utoipa::ToSchema;
 
 use crate::{
-    extract::PosthogEventTracker,
+    extract::{
+        PosthogEventTracker,
+        change_set::ChangeSetDalContext,
+    },
     service::v1::ChangeSetError,
 };
 
