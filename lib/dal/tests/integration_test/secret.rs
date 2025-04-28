@@ -6,7 +6,10 @@ use dal::{
     Secret,
     SecretAlgorithm,
     SecretVersion,
-    diagram::geometry::RawGeometry,
+    diagram::{
+        geometry::RawGeometry,
+        view::View,
+    },
     prop::PropPath,
     property_editor::values::PropertyEditorValues,
     qualification::QualificationSubCheckStatus,
@@ -17,7 +20,6 @@ use dal_test::{
     expected::{
         self,
         ExpectComponent,
-        ExpectView,
     },
     helpers::{
         ChangeSetTestHelpers,
@@ -316,7 +318,9 @@ async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: 
         .expect("could not attach secret");
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
-    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+    let default_view_id = View::get_id_for_default(ctx)
+        .await
+        .expect("get default view");
 
     // Copy and paste the secret component
     {

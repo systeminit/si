@@ -405,7 +405,7 @@ impl Func {
         let func_indices = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
                 func_category_id,
-                EdgeWeightKind::new_use().into(),
+                EdgeWeightKindDiscriminants::Use,
             )
             .await?;
         let name = name.as_ref();
@@ -435,7 +435,7 @@ impl Func {
         let func_indices = workspace_snapshot
             .outgoing_targets_for_edge_weight_kind(
                 func_category_id,
-                EdgeWeightKind::new_use().into(),
+                EdgeWeightKindDiscriminants::Use,
             )
             .await?;
         let name = name.as_ref();

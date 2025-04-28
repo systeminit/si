@@ -50,6 +50,7 @@ rust_library(
         "//third-party/rust:dyn-clone",
         "//third-party/rust:futures",
         "//third-party/rust:hex",
+        "//third-party/rust:jsonptr",
         "//third-party/rust:iftree",
         "//third-party/rust:indexmap",
         "//third-party/rust:itertools",

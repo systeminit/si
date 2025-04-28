@@ -1243,6 +1243,8 @@ impl WorkspaceSnapshotGraphV2 {
                     // to an AttributePrototype
                     EdgeWeightKind::Prototype(Some(key)) => hasher.update(key.as_bytes()),
 
+                    EdgeWeightKind::ValueSubscription(path) => hasher.update(path.as_bytes()),
+
                     // Nothing to do, as these EdgeWeightKind do not encode extra information
                     // in the edge itself.
                     EdgeWeightKind::AuthenticationPrototype

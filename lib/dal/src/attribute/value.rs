@@ -65,6 +65,10 @@ use si_pkg::{
     AttributeValuePath,
     KeyOrIndex,
 };
+use subscription::{
+    ValueSubscription,
+    ValueSubscriptionPath,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{
@@ -155,6 +159,7 @@ use crate::{
 pub mod debug;
 pub mod dependent_value_graph;
 pub mod is_for;
+pub mod subscription;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -173,8 +178,6 @@ pub enum AttributeValueError {
         ValueSource,
         ComponentId,
     ),
-    #[error("attribute prototype argument {0} has no value source")]
-    AttributePrototypeArgumentMissingValueSource(AttributePrototypeArgumentId),
     #[error("attribute value {0} has no prototype")]
     AttributeValueMissingPrototype(AttributeValueId),
     #[error("attribute value {0} has more than one edge to a prop")]
@@ -227,10 +230,10 @@ pub enum AttributeValueError {
     InputSocket(#[from] InputSocketError),
     #[error("cannot insert for prop kind: {0}")]
     InsertionForInvalidPropKind(PropKind),
+    #[error("jsonptr parse error: {0}")]
+    JsonptrParseError(#[from] jsonptr::ParseError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
-    #[error("missing attribute prototype argument source: {0}")]
-    MissingAttributePrototypeArgumentSource(AttributePrototypeArgumentId),
     #[error("missing attribute value with id: {0}")]
     MissingForId(AttributeValueId),
     #[error("attribute value {0} missing prop edge when one was expected")]
@@ -751,46 +754,51 @@ impl AttributeValue {
                     .get_func_argument_node_weight()?
                     .name()
                     .to_owned();
-                let values_for_arg =
-                    match AttributePrototypeArgument::value_source_by_id(ctx, apa_id)
-                        .await?
-                        .ok_or(
-                            AttributeValueError::AttributePrototypeArgumentMissingValueSource(
-                                apa_id,
-                            ),
-                        )? {
-                        ValueSource::StaticArgumentValue(static_argument_value_id) => {
-                            vec![
-                                StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
+                let values_for_arg = match AttributePrototypeArgument::value_source(ctx, apa_id)
+                    .await?
+                {
+                    ValueSource::ValueSubscription(subscription) => {
+                        let value = match subscription.resolve(ctx).await? {
+                            Some(av_id) => {
+                                AttributeValue::get_by_id(ctx, av_id)
                                     .await?
-                                    .value,
-                            ]
-                        }
-                        ValueSource::Secret(secret_id) => {
-                            vec![Secret::payload_for_prototype_execution(ctx, secret_id).await?]
-                        }
-                        other_source => {
-                            let mut values = vec![];
-
-                            for av_id in other_source
-                                .attribute_values_for_component_id(
-                                    ctx,
-                                    expected_source_component_id,
-                                )
-                                .await?
-                            {
-                                input_attribute_value_ids.push(av_id);
-                                let attribute_value = AttributeValue::get_by_id(ctx, av_id).await?;
-                                // XXX: We need to properly handle the difference between "there is
-                                // XXX: no value" vs "the value is null", but right now we collapse
-                                // XXX: the two to just be "null" when passing these to a function.
-                                values
-                                    .push(attribute_value.view(ctx).await?.unwrap_or(Value::Null));
+                                    .view(ctx)
+                                    .await?
                             }
+                            None => None,
+                        };
+                        value.into_iter().collect()
+                    }
+                    ValueSource::StaticArgumentValue(static_argument_value_id) => {
+                        vec![
+                            StaticArgumentValue::get_by_id(ctx, static_argument_value_id)
+                                .await?
+                                .value,
+                        ]
+                    }
+                    ValueSource::Secret(secret_id) => {
+                        vec![Secret::payload_for_prototype_execution(ctx, secret_id).await?]
+                    }
+                    other_source @ ValueSource::InputSocket(..)
+                    | other_source @ ValueSource::OutputSocket(..)
+                    | other_source @ ValueSource::Prop(..) => {
+                        let mut values = vec![];
 
-                            values
+                        for av_id in other_source
+                            .attribute_values_for_component_id(ctx, expected_source_component_id)
+                            .await?
+                        {
+                            input_attribute_value_ids.push(av_id);
+                            let attribute_value = AttributeValue::get_by_id(ctx, av_id).await?;
+                            // XXX: We need to properly handle the difference between "there is
+                            // XXX: no value" vs "the value is null", but right now we collapse
+                            // XXX: the two to just be "null" when passing these to a function.
+                            values.push(attribute_value.view(ctx).await?.unwrap_or(Value::Null));
                         }
-                    };
+
+                        values
+                    }
+                };
 
                 func_binding_args
                     .entry(func_arg_name)
@@ -1336,17 +1344,13 @@ impl AttributeValue {
 
     pub async fn map_children(
         ctx: &DalContext,
-        map_attribute_value_id: AttributeValueId,
+        id: AttributeValueId,
     ) -> AttributeValueResult<HashMap<String, AttributeValueId>> {
         let mut result = HashMap::new();
 
         let snapshot = ctx.workspace_snapshot()?;
 
-        for (edge_weight, _, target_idx) in snapshot
-            .edges_directed(map_attribute_value_id, Outgoing)
-            .await?
-            .into_iter()
-        {
+        for (edge_weight, _, target_idx) in snapshot.edges_directed(id, Outgoing).await? {
             let EdgeWeightKind::Contain(Some(key)) = edge_weight.kind() else {
                 continue;
             };
@@ -1378,6 +1382,24 @@ impl AttributeValue {
                 }
             })
             .collect())
+    }
+
+    pub async fn object_children(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<HashMap<String, AttributeValueId>> {
+        let mut result = HashMap::new();
+        for child_av_id in ctx
+            .workspace_snapshot()?
+            .outgoing_targets_for_edge_weight_kind(id, EdgeWeightKindDiscriminants::Contain)
+            .await?
+        {
+            result.insert(
+                Self::prop(ctx, child_av_id.into()).await?.name,
+                child_av_id.into(),
+            );
+        }
+        Ok(result)
     }
 
     #[async_recursion]
@@ -1446,6 +1468,14 @@ impl AttributeValue {
             }
             ValueIsFor::OutputSocket(_) | ValueIsFor::InputSocket(_) => Ok(self.value(ctx).await?),
         }
+    }
+
+    pub async fn view_by_id(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<Option<serde_json::Value>> {
+        let attribute_value = Self::get_by_id(ctx, attribute_value_id).await?;
+        attribute_value.view(ctx).await
     }
 
     async fn process_populate_nested_values_for_object(
@@ -1966,13 +1996,7 @@ impl AttributeValue {
 
         let func_args = match normalized_value {
             Some(value) => {
-                let func_arg_id = *FuncArgument::list_ids_for_func(ctx, func_id)
-                    .await?
-                    .first()
-                    .ok_or(FuncArgumentError::IntrinsicMissingFuncArgumentEdge(
-                        intrinsic_func.name().into(),
-                        func_id,
-                    ))?;
+                let func_arg_id = FuncArgument::single_arg_for_intrinsic(ctx, func_id).await?;
 
                 let func_arg_name = {
                     ctx.workspace_snapshot()?
@@ -2149,13 +2173,7 @@ impl AttributeValue {
                 let from_func_arg_id =
                     AttributePrototypeArgument::func_argument_id_by_id(ctx, from_apa_id).await?;
                 let from_value_source =
-                    AttributePrototypeArgument::value_source_by_id(ctx, from_apa_id)
-                        .await?
-                        .ok_or(
-                            AttributeValueError::MissingAttributePrototypeArgumentSource(
-                                from_apa_id,
-                            ),
-                        )?;
+                    AttributePrototypeArgument::value_source(ctx, from_apa_id).await?;
 
                 let dest_apa =
                     AttributePrototypeArgument::new(ctx, dest_prototype.id(), from_func_arg_id)
@@ -2211,6 +2229,37 @@ impl AttributeValue {
         if !Self::is_set_by_dependent_function(ctx, dest_av_id).await? {
             Self::clone_node_weight_values_from(ctx, dest_av_id, from_av_id).await?;
         }
+
+        Ok(())
+    }
+
+    pub async fn subscribe(
+        ctx: &DalContext,
+        subscriber_av_id: AttributeValueId,
+        subscribed_to_av_id: AttributeValueId,
+        path: ValueSubscriptionPath,
+    ) -> AttributeValueResult<()> {
+        // TODO arity
+
+        // Create an si:identity prototype with the appropriate argument
+        let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
+        let identity_arg_id = FuncArgument::single_arg_for_intrinsic(ctx, identity_func_id).await?;
+        let prototype = AttributePrototype::new(ctx, identity_func_id).await?;
+        let prototype_arg =
+            AttributePrototypeArgument::new(ctx, prototype.id(), identity_arg_id).await?;
+        AttributePrototypeArgument::set_value_source(
+            ctx,
+            prototype_arg.id(),
+            ValueSource::ValueSubscription(ValueSubscription {
+                attribute_value_id: subscribed_to_av_id,
+                path,
+            }),
+        )
+        .await?;
+        Self::set_component_prototype_id(ctx, subscriber_av_id, prototype.id(), None).await?;
+
+        ctx.add_dependent_values_and_enqueue(vec![subscriber_av_id])
+            .await?;
 
         Ok(())
     }

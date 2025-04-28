@@ -352,6 +352,8 @@ impl WorkspaceSnapshotSelector {
         }
     }
 
+    /// Get edges for a specific direction and edge weight kind
+    /// (edge_weight, source_id, target_id)
     pub async fn edges_directed_for_edge_weight_kind(
         &self,
         id: impl Into<Ulid>,
@@ -382,17 +384,36 @@ impl WorkspaceSnapshotSelector {
     pub async fn incoming_sources_for_edge_weight_kind(
         &self,
         id: impl Into<Ulid>,
-        edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
+        edge_weight_kind_discrim: impl Into<EdgeWeightKindDiscriminants>,
     ) -> WorkspaceSnapshotResult<Vec<Ulid>> {
         match self {
             Self::LegacySnapshot(snapshot) => {
                 snapshot
-                    .incoming_sources_for_edge_weight_kind(id, edge_weight_kind_discrim)
+                    .incoming_sources_for_edge_weight_kind(id, edge_weight_kind_discrim.into())
                     .await
             }
             Self::SplitSnapshot(snapshot) => {
                 snapshot
-                    .incoming_sources_for_edge_weight_kind(id, edge_weight_kind_discrim)
+                    .incoming_sources_for_edge_weight_kind(id, edge_weight_kind_discrim.into())
+                    .await
+            }
+        }
+    }
+
+    pub async fn source_opt(
+        &self,
+        id: impl Into<Ulid>,
+        edge_weight_kind_discrim: impl Into<EdgeWeightKindDiscriminants>,
+    ) -> WorkspaceSnapshotResult<Option<Ulid>> {
+        match self {
+            Self::LegacySnapshot(snapshot) => {
+                snapshot
+                    .source_opt(id, edge_weight_kind_discrim.into())
+                    .await
+            }
+            Self::SplitSnapshot(snapshot) => {
+                snapshot
+                    .source_opt(id, edge_weight_kind_discrim.into())
                     .await
             }
         }
@@ -401,17 +422,17 @@ impl WorkspaceSnapshotSelector {
     pub async fn outgoing_targets_for_edge_weight_kind(
         &self,
         id: impl Into<Ulid>,
-        edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
+        edge_weight_kind_discrim: impl Into<EdgeWeightKindDiscriminants>,
     ) -> WorkspaceSnapshotResult<Vec<Ulid>> {
         match self {
             Self::LegacySnapshot(snapshot) => {
                 snapshot
-                    .outgoing_targets_for_edge_weight_kind(id, edge_weight_kind_discrim)
+                    .outgoing_targets_for_edge_weight_kind(id, edge_weight_kind_discrim.into())
                     .await
             }
             Self::SplitSnapshot(snapshot) => {
                 snapshot
-                    .outgoing_targets_for_edge_weight_kind(id, edge_weight_kind_discrim)
+                    .outgoing_targets_for_edge_weight_kind(id, edge_weight_kind_discrim.into())
                     .await
             }
         }

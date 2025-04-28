@@ -7,6 +7,7 @@ use dal::{
     InputSocket,
     OutputSocket,
     OutputSocketId,
+    SchemaVariant,
     SchemaVariantId,
 };
 use dal_test::{
@@ -14,12 +15,12 @@ use dal_test::{
     expected::{
         ExpectComponent,
         ExpectFunc,
-        ExpectSchemaVariant,
     },
     helpers::{
         ChangeSetTestHelpers,
         create_component_for_schema_variant_on_default_view,
         get_attribute_value_for_component,
+        schema::variant,
         update_attribute_value_for_component,
     },
 };
@@ -34,8 +35,8 @@ pub struct ConnectableTest {
 }
 
 impl ConnectableTest {
-    pub async fn setup(ctx: &DalContext) -> Self {
-        let connectable = ExpectSchemaVariant::create_named(
+    pub async fn setup(ctx: &DalContext) -> Result<Self> {
+        let connectable_variant_id = variant::create(
             ctx,
             "connectable",
             r#"
@@ -69,9 +70,8 @@ impl ConnectableTest {
                 }
             "#,
         )
-        .await;
-        let manager = ExpectSchemaVariant::create_named(
-            ctx,
+        .await?;
+        let parent_variant_id = variant::create(ctx,
             "connectable manager",
             r#"
                 function main() {
@@ -89,13 +89,14 @@ impl ConnectableTest {
                 }
             "#,
         )
-        .await;
-        manager
+        .await?;
+        SchemaVariant::get_by_id(ctx, parent_variant_id)
+            .await?
             .set_type(ctx, ComponentType::ConfigurationFrameDown)
-            .await;
-        let management_func = manager
-            .create_management_func(
+            .await?;
+        let management_func_id = variant::create_management_func(
                 ctx,
+                parent_variant_id,
                 r#"
                     function main(input) {
                         let managed_values = Object.values(input.components).map(c => c.properties.domain.Value).sort();
@@ -116,12 +117,12 @@ impl ConnectableTest {
                     }
                 "#,
             )
-            .await;
-        Self {
-            connectable_variant_id: connectable.id(),
-            parent_variant_id: manager.id(),
-            management_func_id: management_func.id(),
-        }
+            .await?;
+        Ok(Self {
+            connectable_variant_id,
+            parent_variant_id,
+            management_func_id,
+        })
     }
 
     pub async fn create_connectable(

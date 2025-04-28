@@ -945,6 +945,17 @@ impl SplitSnapshot {
             .collect())
     }
 
+    pub async fn source_opt(
+        &self,
+        id: impl Into<Ulid>,
+        kind: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotResult<Option<Ulid>> {
+        Ok(self
+            .working_copy()
+            .await
+            .directed_unique_neighbor_of_edge_weight_kind(id.into(), Incoming, kind)?)
+    }
+
     pub async fn outgoing_targets_for_edge_weight_kind(
         &self,
         id: impl Into<Ulid>,

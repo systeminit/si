@@ -1,9 +1,13 @@
 use petgraph::prelude::*;
-use si_id::ViewId;
+use si_id::{
+    AttributeValueId,
+    ViewId,
+};
 
 use crate::{
     ComponentError,
     ComponentId,
+    EdgeWeightKind,
     SchemaVariantId,
     WorkspaceSnapshotError,
     component::ComponentResult,
@@ -12,6 +16,7 @@ use crate::{
         graph::{
             WorkspaceSnapshotGraphResult,
             WorkspaceSnapshotGraphV4,
+            traits::component::ComponentExt,
         },
         node_weight::NodeWeightDiscriminants,
     },
@@ -100,5 +105,22 @@ impl WorkspaceSnapshotGraphV4 {
         }
 
         Ok(results)
+    }
+}
+
+impl ComponentExt for WorkspaceSnapshotGraphV4 {
+    fn root_attribute_value(
+        &self,
+        component_id: ComponentId,
+    ) -> WorkspaceSnapshotGraphResult<AttributeValueId> {
+        let component_index = self.get_node_index_by_id(component_id)?;
+        let root_index = self.target(component_index, EdgeWeightKind::Root)?;
+        let root_id = self
+            .get_node_weight(root_index)?
+            // Make sure it's an AttributeValue before we cast to AttributeValueId
+            .get_attribute_value_node_weight()?
+            .id()
+            .into();
+        Ok(root_id)
     }
 }

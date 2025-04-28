@@ -33,7 +33,9 @@ use dal_test::{
     },
     helpers::{
         ChangeSetTestHelpers,
+        component,
         create_component_for_default_schema_name_in_default_view,
+        schema::variant,
     },
     test,
 };
@@ -158,7 +160,7 @@ async fn update_managed_components_in_view(ctx: &DalContext) -> Result<()> {
     }
 
     let new_component = new_component.expect("should have found the cloned component");
-    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+    let default_view_id = View::get_id_for_default(ctx).await?;
     let default_view_geometry = new_component.geometry(ctx, default_view_id).await?;
 
     assert_eq!(0, default_view_geometry.x());
@@ -230,7 +232,7 @@ async fn create_component_of_other_schema(ctx: &DalContext) -> Result<()> {
     )
     .await?;
 
-    let av_id = Component::attribute_value_for_prop_by_id(
+    let av_id = Component::attribute_value_for_prop(
         ctx,
         small_even_lego.id(),
         &["root", "si", "resourceId"],
@@ -269,12 +271,9 @@ async fn create_component_of_other_schema(ctx: &DalContext) -> Result<()> {
     }
 
     let new_component = new_component.expect("should have found the cloned component");
-    let av_id = Component::attribute_value_for_prop_by_id(
-        ctx,
-        new_component.id(),
-        &["root", "si", "resourceId"],
-    )
-    .await?;
+    let av_id =
+        Component::attribute_value_for_prop(ctx, new_component.id(), &["root", "si", "resourceId"])
+            .await?;
 
     let av = AttributeValue::get_by_id(ctx, av_id).await?;
 
@@ -295,7 +294,7 @@ async fn create_and_connect_to_self_as_children(ctx: &mut DalContext) -> Result<
     )
     .await?;
 
-    let av_id = Component::attribute_value_for_prop_by_id(
+    let av_id = Component::attribute_value_for_prop(
         ctx,
         small_odd_lego.id(),
         &["root", "si", "resourceId"],
@@ -325,7 +324,7 @@ async fn create_and_connect_to_self_as_children(ctx: &mut DalContext) -> Result<
         .await?;
 
     let geometry = small_odd_lego
-        .geometry(ctx, ExpectView::get_id_for_default(ctx).await)
+        .geometry(ctx, View::get_id_for_default(ctx).await?)
         .await?;
 
     assert_eq!(Some(500), geometry.width());
@@ -391,7 +390,7 @@ async fn create_and_connect_to_self(ctx: &DalContext) -> Result<()> {
         )
         .await?;
 
-    let av_id = Component::attribute_value_for_prop_by_id(
+    let av_id = Component::attribute_value_for_prop(
         ctx,
         small_odd_lego.id(),
         &["root", "si", "resourceId"],
@@ -448,7 +447,7 @@ async fn create_and_connect_from_self(ctx: &DalContext) -> Result<()> {
     )
     .await?;
 
-    let av_id = Component::attribute_value_for_prop_by_id(
+    let av_id = Component::attribute_value_for_prop(
         ctx,
         small_odd_lego.id(),
         &["root", "si", "resourceId"],
@@ -523,7 +522,7 @@ async fn create_component_of_same_schema(ctx: &DalContext) -> Result<()> {
         }
     }
 
-    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+    let default_view_id = View::get_id_for_default(ctx).await?;
 
     let new_component = new_component.expect("should have found the cloned component");
     let new_geometry: ManagementGeometry = new_component
@@ -581,7 +580,7 @@ async fn execute_management_func(ctx: &DalContext) -> Result<()> {
     )
     .await?;
 
-    let av_id = Component::attribute_value_for_prop_by_id(
+    let av_id = Component::attribute_value_for_prop(
         ctx,
         small_odd_lego.id(),
         &["root", "si", "resourceId"],
@@ -602,12 +601,9 @@ async fn execute_management_func(ctx: &DalContext) -> Result<()> {
         .operate()
         .await?;
 
-    let av_id = Component::attribute_value_for_prop_by_id(
-        ctx,
-        small_odd_lego.id(),
-        &["root", "domain", "two"],
-    )
-    .await?;
+    let av_id =
+        Component::attribute_value_for_prop(ctx, small_odd_lego.id(), &["root", "domain", "two"])
+            .await?;
 
     let two_av = AttributeValue::get_by_id(ctx, av_id).await?;
 
@@ -697,9 +693,9 @@ async fn override_values_set_by_sockets(ctx: &DalContext) -> Result<()> {
     let view = domain.view(ctx).await?;
     assert!(view.is_some());
 
-    let one_av_id = component
-        .attribute_value_for_prop(ctx, &["root", "domain", "one"])
-        .await?;
+    let one_av_id =
+        Component::attribute_value_for_prop(ctx, component.id(), &["root", "domain", "one"])
+            .await?;
 
     assert!(!AttributeValue::is_set_by_dependent_function(ctx, one_av_id).await?);
 
@@ -715,7 +711,7 @@ async fn create_in_views(ctx: &DalContext) -> Result<()> {
     )
     .await?;
 
-    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+    let default_view_id = View::get_id_for_default(ctx).await?;
 
     let manager_x = 50;
     let manager_y = 75;
@@ -724,7 +720,7 @@ async fn create_in_views(ctx: &DalContext) -> Result<()> {
         .set_geometry(ctx, default_view_id, manager_x, manager_y, None, None)
         .await?;
 
-    let av_id = Component::attribute_value_for_prop_by_id(
+    let av_id = Component::attribute_value_for_prop(
         ctx,
         small_odd_lego.id(),
         &["root", "si", "resourceId"],
@@ -782,7 +778,7 @@ async fn create_view_and_in_view(ctx: &DalContext) -> Result<()> {
     )
     .await?;
 
-    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+    let default_view_id = View::get_id_for_default(ctx).await?;
 
     let manager_x = 50;
     let manager_y = 75;
@@ -791,7 +787,7 @@ async fn create_view_and_in_view(ctx: &DalContext) -> Result<()> {
         .set_geometry(ctx, default_view_id, manager_x, manager_y, None, None)
         .await?;
 
-    let av_id = Component::attribute_value_for_prop_by_id(
+    let av_id = Component::attribute_value_for_prop(
         ctx,
         small_odd_lego.id(),
         &["root", "si", "resourceId"],
@@ -905,7 +901,7 @@ async fn delete_and_erase_components(ctx: &mut DalContext) -> Result<()> {
     Component::manage_component(ctx, manager.id(), component_to_delete.id()).await?;
 
     let av_id =
-        Component::attribute_value_for_prop_by_id(ctx, manager.id(), &["root", "si", "resourceId"])
+        Component::attribute_value_for_prop(ctx, manager.id(), &["root", "si", "resourceId"])
             .await?;
 
     let resource_id = format!(
@@ -1007,7 +1003,7 @@ async fn remove_view_and_component_from_view(ctx: &DalContext) -> Result<()> {
     }
 
     let av_id =
-        Component::attribute_value_for_prop_by_id(ctx, manager.id(), &["root", "si", "resourceId"])
+        Component::attribute_value_for_prop(ctx, manager.id(), &["root", "si", "resourceId"])
             .await?;
 
     AttributeValue::update(ctx, av_id, Some(serde_json::json!(new_view_name))).await?;
@@ -1037,12 +1033,12 @@ async fn remove_view_and_component_from_view(ctx: &DalContext) -> Result<()> {
 
     // try to delete the default view
     let av_id =
-        Component::attribute_value_for_prop_by_id(ctx, manager.id(), &["root", "si", "resourceId"])
+        Component::attribute_value_for_prop(ctx, manager.id(), &["root", "si", "resourceId"])
             .await?;
 
     AttributeValue::update(ctx, av_id, Some(serde_json::json!("DEFAULT"))).await?;
 
-    let default_view_id = ExpectView::get_id_for_default(ctx).await;
+    let default_view_id = View::get_id_for_default(ctx).await?;
 
     let (execution_result, result) =
         exec_mgmt_func(ctx, manager.id(), "Remove View and Components", None).await?;
@@ -1056,7 +1052,7 @@ async fn remove_view_and_component_from_view(ctx: &DalContext) -> Result<()> {
         .operate()
         .await?;
 
-    assert_eq!(default_view_id, ExpectView::get_id_for_default(ctx).await);
+    assert_eq!(default_view_id, View::get_id_for_default(ctx).await?);
 
     for component_id in [
         component_in_both_views_1.id(),
@@ -1286,21 +1282,23 @@ async fn get_input_socket_values(ctx: &mut DalContext) -> Result<()> {
 #[test]
 async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
     // Set up management schema
-    let original_variant = ExpectSchemaVariant::create_named(
-        ctx,
-        "createme",
-        r#"
+    let original_variant = ExpectSchemaVariant(
+        variant::create(
+            ctx,
+            "createme",
+            r#"
             function main() {
                 return new AssetBuilder().build();
             }
         "#,
-    )
-    .await;
+        )
+        .await?,
+    );
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
-    let runme = original_variant
-        .create_management_func(
-            ctx,
-            r#"
+    let runme = variant::create_management_func(
+        ctx,
+        original_variant.id(),
+        r#"
                 function main(input) {
                     return {
                         status: "ok",
@@ -1312,13 +1310,13 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
                     }
                 }
             "#,
-        )
-        .await;
+    )
+    .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Create manager component and run management function to create managed component
     let manager = original_variant.create_component_on_default_view(ctx).await;
-    manager.execute_management_func(ctx, runme).await;
+    component::execute_management_func(ctx, manager.id(), runme).await?;
     let created = ExpectComponent::find(ctx, "created").await;
     assert_eq!(created.schema_variant(ctx).await, original_variant);
 
@@ -1348,10 +1346,10 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
 #[test]
 async fn incoming_connections_inferred_from_parent(ctx: DalContext) -> Result<()> {
     // Create a manager with inferred connection to parent value
-    let mut test = connection_test::setup(ctx).await;
-    let parent = test.create_input("parent", None).await;
+    let mut test = connection_test::setup(ctx).await?;
+    let parent = test.create_input("parent", None).await?;
     test.set(parent, "Value", "parent").await;
-    let manager = test.create_output("manager", parent).await;
+    let manager = test.create_output("manager", parent).await?;
     test.commit().await?;
     assert_eq!(
         manager.domain(&test.ctx).await,
@@ -1384,12 +1382,12 @@ async fn incoming_connections_inferred_from_parent(ctx: DalContext) -> Result<()
 #[test]
 async fn incoming_connections_inferred_multiple_ancestors(ctx: DalContext) -> Result<()> {
     // Create a manager with inferred connection to parent value
-    let mut test = connection_test::setup(ctx).await;
-    let parent = test.create_input("parent", None).await;
-    let parent2 = test.create_input2("parent2", parent).await;
+    let mut test = connection_test::setup(ctx).await?;
+    let parent = test.create_input("parent", None).await?;
+    let parent2 = test.create_input2("parent2", parent).await?;
     test.set(parent, "Value", "parent").await;
     test.set(parent2, "Value2", "parent2").await;
-    let manager = test.create_output("manager", parent2).await;
+    let manager = test.create_output("manager", parent2).await?;
     test.commit().await?;
     assert_eq!(
         manager.domain(&test.ctx).await,
@@ -1421,8 +1419,8 @@ async fn incoming_connections_inferred_multiple_ancestors(ctx: DalContext) -> Re
 #[test]
 async fn incoming_connections_none(ctx: DalContext) -> Result<()> {
     // Create a manager with inferred connection
-    let mut test = connection_test::setup(ctx).await;
-    let manager = test.create_output("manager", None).await;
+    let mut test = connection_test::setup(ctx).await?;
+    let manager = test.create_output("manager", None).await?;
     test.commit().await?;
     assert_eq!(manager.domain(&test.ctx).await, json!({}));
 
@@ -1437,12 +1435,12 @@ async fn incoming_connections_none(ctx: DalContext) -> Result<()> {
 #[test]
 async fn component_incoming_connections(ctx: DalContext) -> Result<()> {
     // Create a manager with inferred connection to parent value
-    let mut test = connection_test::setup(ctx).await;
-    let input = test.create_input("input", None).await;
+    let mut test = connection_test::setup(ctx).await?;
+    let input = test.create_input("input", None).await?;
     test.set(input, "Value", "input").await;
-    let component = test.create_output("component", None).await;
+    let component = test.create_output("component", None).await?;
     input.connect(&test.ctx, "Value", component, "Value").await;
-    let manager = test.create_output("manager", None).await;
+    let manager = test.create_output("manager", None).await?;
     Component::manage_component(&test.ctx, manager.id(), component.id()).await?;
     test.commit().await?;
     // Check that value propagated from input to component
@@ -1469,11 +1467,11 @@ async fn component_incoming_connections(ctx: DalContext) -> Result<()> {
 #[test]
 async fn component_incoming_connections_inferred_from_parent(ctx: DalContext) -> Result<()> {
     // Create a manager with inferred connection to parent value
-    let mut test = connection_test::setup(ctx).await;
-    let parent = test.create_input("parent", None).await;
+    let mut test = connection_test::setup(ctx).await?;
+    let parent = test.create_input("parent", None).await?;
     test.set(parent, "Value", "parent").await;
-    let component = test.create_output("component", parent).await;
-    let manager = test.create_output("manager", None).await;
+    let component = test.create_output("component", parent).await?;
+    let manager = test.create_output("manager", None).await?;
     Component::manage_component(&test.ctx, manager.id(), component.id()).await?;
     test.commit().await?;
     // Check that value propagated from parent to component
@@ -1509,11 +1507,15 @@ pub mod connection_test {
             ExpectFunc,
             ExpectSchemaVariant,
         },
-        helpers::ChangeSetTestHelpers,
+        helpers::{
+            ChangeSetTestHelpers,
+            component,
+            schema::variant,
+        },
     };
     use serde_json::Value;
 
-    pub async fn setup(ctx: DalContext) -> ConnectionTest {
+    pub async fn setup(ctx: DalContext) -> Result<ConnectionTest> {
         // "input" with Value output socket.
         let input = ExpectSchemaVariant::create_named(
             &ctx,
@@ -1574,10 +1576,10 @@ pub mod connection_test {
         "#).await;
 
         // Management func that creates a new component connected to our input
-        let create_output_and_copy_connection = output
-            .create_management_func(
-                &ctx,
-                r#"
+        let create_output_and_copy_connection = variant::create_management_func(
+            &ctx,
+            output.id(),
+            r#"
                     async function main({ thisComponent }: Input): Promise<Output> {
                         let connect = [];
                         if (thisComponent.incomingConnections.Value) {
@@ -1605,13 +1607,12 @@ pub mod connection_test {
                         }
                     }
                 "#,
-            )
-            .await;
+        )
+        .await?
+        .into();
 
         // Management func that creates a new component connected to our input
-        let remove_all_connections = output
-            .create_management_func(
-                &ctx,
+        let remove_all_connections = variant::create_management_func(&ctx, output.id(),
                 r#"
                     async function main({ components }: Input): Promise<Output> {
                         function updateComponent(component: Input["components"][string]) {
@@ -1649,16 +1650,17 @@ pub mod connection_test {
                     }
                 "#,
             )
-            .await;
+            .await?
+            .into();
 
-        ConnectionTest {
+        Ok(ConnectionTest {
             ctx,
             input,
             input2,
             output,
             create_output_and_copy_connection,
             remove_all_connections,
-        }
+        })
     }
 
     pub struct ConnectionTest {
@@ -1676,15 +1678,13 @@ pub mod connection_test {
             &self,
             name: &str,
             parent: impl Into<Option<ExpectComponent>>,
-        ) -> ExpectComponent {
-            let component = self
-                .input
-                .create_named_component_on_default_view(&self.ctx, name)
-                .await;
+        ) -> Result<ExpectComponent> {
+            let component =
+                ExpectComponent(component::create(&self.ctx, self.input.id(), name).await?);
             if let Some(parent) = parent.into() {
                 component.upsert_parent(&self.ctx, parent).await;
             }
-            component
+            Ok(component)
         }
 
         /// Create an input2 component with given (optional) parent
@@ -1692,15 +1692,13 @@ pub mod connection_test {
             &self,
             name: &str,
             parent: impl Into<Option<ExpectComponent>>,
-        ) -> ExpectComponent {
-            let component = self
-                .input2
-                .create_named_component_on_default_view(&self.ctx, name)
-                .await;
+        ) -> Result<ExpectComponent> {
+            let component =
+                ExpectComponent(component::create(&self.ctx, self.input2.id(), name).await?);
             if let Some(parent) = parent.into() {
                 component.upsert_parent(&self.ctx, parent).await;
             }
-            component
+            Ok(component)
         }
 
         /// Create an output component with given (optional) parent
@@ -1708,15 +1706,13 @@ pub mod connection_test {
             &self,
             name: &str,
             parent: impl Into<Option<ExpectComponent>>,
-        ) -> ExpectComponent {
-            let component = self
-                .output
-                .create_named_component_on_default_view(&self.ctx, name)
-                .await;
+        ) -> Result<ExpectComponent> {
+            let component =
+                ExpectComponent(component::create(&self.ctx, self.output.id(), name).await?);
             if let Some(parent) = parent.into() {
                 component.upsert_parent(&self.ctx, parent).await;
             }
-            component
+            Ok(component)
         }
 
         pub async fn set(&self, component: ExpectComponent, prop: &str, value: &str) -> Value {

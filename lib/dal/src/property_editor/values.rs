@@ -90,9 +90,8 @@ impl PropertyEditorValues {
             secret_ids_by_key
         };
 
-        let secrets_av_id = component
-            .attribute_value_for_prop(ctx, &["root", "secrets"])
-            .await?;
+        let secrets_av_id =
+            Component::attribute_value_for_prop(ctx, component.id(), &["root", "secrets"]).await?;
         values.insert(
             root_value_id,
             PropertyEditorValue {

@@ -2013,6 +2013,7 @@ dependencies = [
  "itertools 0.13.0",
  "joi-validator",
  "json-patch",
+ "jsonptr",
  "jwt-simple",
  "lazy_static",
  "module-index-client",

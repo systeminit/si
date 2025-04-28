@@ -6772,6 +6772,7 @@ dependencies = [
  "insta",
  "itertools 0.13.0",
  "json-patch",
+ "jsonptr",
  "jwt-simple",
  "krata-loopdev",
  "lazy_static",

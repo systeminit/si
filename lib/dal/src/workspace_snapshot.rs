@@ -11,6 +11,7 @@ use std::{
     },
 };
 
+use content_address::ContentAddress;
 use graph::{
     RebaseBatch,
     WorkspaceSnapshotGraph,
@@ -180,6 +181,8 @@ pub enum WorkspaceSnapshotError {
     MissingContentFromContentMap(ContentHash, ApprovalRequirementDefinitionId),
     #[error("missing content from store for id: {0}")]
     MissingContentFromStore(Ulid),
+    #[error("missing content from store for address: {0}")]
+    MissingContentFromStoreForAddress(ContentAddress),
     #[error("could not find a max vector clock for change set id {0}")]
     MissingVectorClockForChangeSet(ChangeSetId),
     #[error("monotonic error: {0}")]
@@ -1143,6 +1146,21 @@ impl WorkspaceSnapshot {
                 }
             })
             .collect())
+    }
+
+    pub async fn source_opt(
+        &self,
+        id: impl Into<Ulid>,
+        edge_weight_kind_discrim: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotResult<Option<Ulid>> {
+        let index = self.get_node_index_by_id(id).await?;
+        let working_copy = self.working_copy().await;
+        Ok(
+            match working_copy.source_opt(index, edge_weight_kind_discrim)? {
+                Some(source_index) => Some(working_copy.get_node_weight(source_index)?.id()),
+                None => None,
+            },
+        )
     }
 
     pub async fn outgoing_targets_for_edge_weight_kind(

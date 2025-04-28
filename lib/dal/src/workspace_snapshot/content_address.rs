@@ -6,7 +6,16 @@ use si_events::ContentHash;
 use strum::EnumDiscriminants;
 
 #[derive(
-    EnumDiscriminants, Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq, strum::Display,
+    EnumDiscriminants,
+    Debug,
+    Serialize,
+    Deserialize,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    strum::Display,
 )]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
 /// The type of the object, and the content-addressable-storage address (content hash)
@@ -56,8 +65,8 @@ impl ContentAddress {
             | ContentAddress::FuncArg(id)
             | ContentAddress::Func(id)
             | ContentAddress::Geometry(id)
-            | ContentAddress::InputSocket(id)
             | ContentAddress::JsonValue(id)
+            | ContentAddress::InputSocket(id)
             | ContentAddress::Module(id)
             | ContentAddress::OutputSocket(id)
             | ContentAddress::Prop(id)

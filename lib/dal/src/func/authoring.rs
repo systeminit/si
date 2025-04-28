@@ -582,12 +582,12 @@ impl FuncAuthoringClient {
     pub async fn save_code(
         ctx: &DalContext,
         func_id: FuncId,
-        code: String,
+        code: impl Into<String> + std::fmt::Debug,
     ) -> FuncAuthoringResult<()> {
         let func = Func::get_by_id(ctx, func_id).await?;
         func.error_if_locked()?;
         Func::modify_by_id(ctx, func.id, |func| {
-            func.code_base64 = Some(general_purpose::STANDARD_NO_PAD.encode(code));
+            func.code_base64 = Some(general_purpose::STANDARD_NO_PAD.encode(code.into()));
 
             Ok(())
         })

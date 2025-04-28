@@ -365,6 +365,22 @@ impl FuncArgument {
         Ok(func_args)
     }
 
+    pub async fn single_arg_for_intrinsic(
+        ctx: &DalContext,
+        intrinsic_id: FuncId,
+    ) -> FuncArgumentResult<FuncArgumentId> {
+        match FuncArgument::list_ids_for_func(ctx, intrinsic_id)
+            .await?
+            .first()
+        {
+            Some(&arg_id) => Ok(arg_id),
+            None => Err(FuncArgumentError::IntrinsicMissingFuncArgumentEdge(
+                Func::get_by_id(ctx, intrinsic_id).await?.name.to_owned(),
+                intrinsic_id,
+            )),
+        }
+    }
+
     pub async fn get_func_id_for_func_arg_id(
         ctx: &DalContext,
         func_arg_id: FuncArgumentId,
