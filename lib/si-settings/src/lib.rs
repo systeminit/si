@@ -1,7 +1,4 @@
-use std::{
-    env,
-    fmt::Debug,
-};
+use std::fmt::Debug;
 
 use async_trait::async_trait;
 pub use config_file::{
@@ -61,7 +58,7 @@ pub trait StandardConfigFile:
 
     async fn layered_load_with_provider<F, P>(
         app_name: impl AsRef<str> + Send,
-        parameter_provider: Option<(P, String)>,
+        provider: Option<P>,
         set_func: F,
     ) -> std::result::Result<Self, Self::Error>
     where
@@ -74,16 +71,11 @@ pub trait StandardConfigFile:
             "toml",
             &Some(format!("SI_{}_CONFIG", app_name.to_uppercase())),
             &Some(format!("SI_{}", app_name.to_uppercase())),
-            parameter_provider,
+            provider,
             set_func,
         )
         .await
         .map_err(SettingsError::ConfigFile)
         .map_err(Into::into)
     }
-}
-
-#[allow(clippy::disallowed_methods)]
-pub fn get_host_environment() -> String {
-    env::var("SI_HOSTENV").unwrap_or_else(|_| "local".to_string())
 }

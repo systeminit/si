@@ -6,6 +6,7 @@ rust_library(
         "//lib/config-file:config-file",
         "//lib/buck2-resources:buck2-resources",
         "//lib/innit-core:innit-core",
+        "//lib/si-data-acmpca:si-data-acmpca",
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
         "//lib/si-tls:si-tls",
@@ -53,4 +54,14 @@ rust_test(
         "RUSTC_BOOTSTRAP": "1",
         "CI": "buildkite",
     },
+)
+
+export_file(
+    name = "innit-client.dev.crt",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "innit-client.dev.key",
+    visibility = ["PUBLIC"],
 )

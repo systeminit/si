@@ -21,3 +21,4 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-rustls = { workspace = true }
 webpki-roots = { workspace = true }
+x509-parser = { workspace = true }

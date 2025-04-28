@@ -51,8 +51,17 @@ pub struct Config {
     #[builder(default = "default_auth_config()")]
     auth_config: AuthConfig,
 
+    #[builder(default = None)]
+    client_ca_arn: Option<String>,
+
     #[builder(default = "default_url()")]
     base_url: Url,
+
+    #[builder(default = "default_env()")]
+    environment: String,
+
+    #[builder(default = "default_app_name()")]
+    for_app: String,
 }
 
 impl StandardConfig for Config {
@@ -67,21 +76,42 @@ impl Config {
     pub fn base_url(&self) -> &Url {
         &self.base_url
     }
+
+    pub fn client_ca_arn(&self) -> Option<String> {
+        self.client_ca_arn.clone()
+    }
+
+    pub fn for_app(&self) -> String {
+        self.for_app.clone()
+    }
+
+    pub fn environment(&self) -> &str {
+        &self.environment
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ConfigFile {
     #[serde(default = "default_auth_config")]
     auth_config: AuthConfig,
+    #[serde(default)]
+    client_ca_arn: Option<String>,
     #[serde(default = "default_url")]
     base_url: Url,
+    #[serde(default = "default_env")]
+    environment: String,
+    #[serde(default = "default_app_name")]
+    for_app: String,
 }
 
 impl Default for ConfigFile {
     fn default() -> Self {
         Self {
             auth_config: Default::default(),
+            client_ca_arn: None,
             base_url: default_url(),
+            environment: default_env(),
+            for_app: default_app_name(),
         }
     }
 }
@@ -98,9 +128,19 @@ impl TryFrom<ConfigFile> for Config {
 
         let mut config = Config::builder();
         config.auth_config(value.auth_config);
+        config.client_ca_arn(value.client_ca_arn);
         config.base_url(value.base_url);
+        config.for_app(value.for_app);
         config.build().map_err(Into::into)
     }
+}
+
+fn default_app_name() -> String {
+    "innit-client".to_string()
+}
+
+fn default_env() -> String {
+    "local".to_string()
 }
 
 fn default_url() -> Url {
@@ -130,7 +170,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     let resources = Buck2Resources::read().map_err(ConfigError::development)?;
 
     let client_cert = resources
-        .get_ends_with("innit-client.dev.cert")
+        .get_ends_with("innit-client.dev.crt")
         .map_err(ConfigError::development)?
         .to_string_lossy()
         .to_string();

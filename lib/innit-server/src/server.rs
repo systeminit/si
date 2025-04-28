@@ -20,6 +20,10 @@ use hyper::{
         conn::AddrIncoming,
     },
 };
+use si_data_acmpca::{
+    PrivateCertManagerClient,
+    PrivateCertManagerClientError,
+};
 use si_data_ssm::ParameterStoreClient;
 use si_tls::ClientCertificateVerifier;
 use telemetry::prelude::*;
@@ -50,6 +54,8 @@ use crate::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ServerError {
+    #[error(transparent)]
+    CertificateClient(#[from] PrivateCertManagerClientError),
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
     #[error(transparent)]
@@ -85,9 +91,25 @@ impl Server<()> {
             ParameterStoreClient::new().await
         };
 
-        let client_cert_verifier = if let Some(cert) = config.client_ca_cert() {
+        // dev mode, no certs necessary
+        // use a cert if one is supplied
+        // or get one from aws if the arn is supplied
+        // otherwise, no certs necessary
+        let client_cert_verifier = if config.dev_mode() {
+            None
+        } else if let Some(cert) = config.client_ca_cert() {
             Some(Arc::new(
                 ClientCertificateVerifier::new(cert.clone()).await?,
+            ))
+        } else if let Some(ca_arn) = config.client_ca_arn() {
+            let acmpca_client = PrivateCertManagerClient::new().await;
+            Some(Arc::new(
+                ClientCertificateVerifier::new(
+                    acmpca_client
+                        .get_certificate_authority(ca_arn.to_string())
+                        .await?,
+                )
+                .await?,
             ))
         } else {
             None

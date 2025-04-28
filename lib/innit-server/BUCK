@@ -3,11 +3,14 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "innit-server",
     deps = [
+        "//lib/buck2-resources:buck2-resources",
         "//lib/innit-core:innit-core",
+        "//lib/si-data-acmpca:si-data-acmpca",
         "//lib/si-data-ssm:si-data-ssm",
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",
         "//lib/si-tls:si-tls",
+
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:axum",
         "//third-party/rust:dashmap",

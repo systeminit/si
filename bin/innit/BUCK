@@ -14,6 +14,9 @@ rust_binary(
     ],
     srcs = glob(["src/**/*.rs"]),
     env = {"CARGO_BIN_NAME": "innit"},
+    resources = {
+        "ca.dev.pem": "//dev:minica.pem",
+    }
 )
 
 docker_image(

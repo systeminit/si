@@ -4,6 +4,7 @@ use std::{
     time::Duration,
 };
 
+use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
 use serde::{
     Deserialize,
@@ -13,7 +14,10 @@ pub use si_settings::{
     StandardConfig,
     StandardConfigFile,
 };
-use si_std::CanonicalFileError;
+use si_std::{
+    CanonicalFile,
+    CanonicalFileError,
+};
 use si_tls::CertificateSource;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -37,6 +41,12 @@ pub enum ConfigError {
     SiSettings(#[from] si_settings::SettingsError),
 }
 
+impl ConfigError {
+    fn development(err: impl std::error::Error + 'static + Sync + Send) -> Self {
+        Self::Development(Box::new(err))
+    }
+}
+
 type Result<T> = std::result::Result<T, ConfigError>;
 
 /// The config for the forklift server.
@@ -47,6 +57,9 @@ pub struct Config {
 
     #[builder]
     client_ca_cert: Option<CertificateSource>,
+
+    #[builder(default = None)]
+    client_ca_arn: Option<String>,
 
     #[builder(default = "random_instance_id()")]
     instance_id: String,
@@ -62,6 +75,9 @@ pub struct Config {
 
     #[builder(default = "default_test_endpoint()")]
     test_endpoint: Option<String>,
+
+    #[builder(default)]
+    dev_mode: bool,
 }
 
 impl StandardConfig for Config {
@@ -100,6 +116,14 @@ impl Config {
     pub fn test_endpoint(&self) -> Option<String> {
         self.test_endpoint.clone()
     }
+
+    pub fn dev_mode(&self) -> bool {
+        self.dev_mode
+    }
+
+    pub fn client_ca_arn(&self) -> Option<&String> {
+        self.client_ca_arn.as_ref()
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -108,6 +132,8 @@ pub struct ConfigFile {
     cache_ttl: Duration,
     #[serde(default)]
     client_ca_cert: Option<CertificateSource>,
+    #[serde(default)]
+    client_ca_arn: Option<String>,
     #[serde(default = "random_instance_id")]
     instance_id: String,
     #[serde(default = "default_concurrency_limit")]
@@ -118,6 +144,9 @@ pub struct ConfigFile {
     socket_addr: SocketAddr,
     #[serde(default = "default_test_endpoint")]
     test_endpoint: Option<String>,
+
+    #[serde(default)]
+    pub dev_mode: bool,
 }
 
 impl Default for ConfigFile {
@@ -125,11 +154,13 @@ impl Default for ConfigFile {
         Self {
             cache_ttl: default_cache_ttl(),
             client_ca_cert: Default::default(),
+            client_ca_arn: None,
             instance_id: random_instance_id(),
             concurrency_limit: default_concurrency_limit(),
             quiescent_period_secs: default_quiescent_period_secs(),
             socket_addr: get_default_socket_addr(),
             test_endpoint: default_test_endpoint(),
+            dev_mode: false,
         }
     }
 }
@@ -146,9 +177,11 @@ impl TryFrom<ConfigFile> for Config {
 
         let mut config = Config::builder();
         config.client_ca_cert(value.client_ca_cert);
+        config.client_ca_arn(value.client_ca_arn);
         config.concurrency_limit(value.concurrency_limit);
         config.instance_id(value.instance_id);
         config.quiescent_period(Duration::from_secs(value.quiescent_period_secs));
+        config.dev_mode(value.dev_mode);
         config.build().map_err(Into::into)
     }
 }
@@ -192,7 +225,20 @@ pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
     }
 }
 
-fn buck2_development(_config: &mut ConfigFile) -> Result<()> {
+fn buck2_development(config: &mut ConfigFile) -> Result<()> {
+    let resources = Buck2Resources::read().map_err(ConfigError::development)?;
+
+    let ca = resources
+        .get_ends_with("ca.dev.pem")
+        .map_err(ConfigError::development)?
+        .to_string_lossy()
+        .to_string();
+
+    warn!(ca = ca, "detected development run",);
+
+    config.client_ca_cert = Some(CertificateSource::Path(CanonicalFile::try_from(ca)?));
+    config.dev_mode = true;
+
     Ok(())
 }
 

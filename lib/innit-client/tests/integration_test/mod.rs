@@ -37,9 +37,9 @@ mod integration_tests {
 
     const ENV_VAR_LOCALSTACK_URL: &str = "SI_TEST_LOCALSTACK_URL";
     const DEFAULT_ENDPOINT: &str = "http://localhost:4566";
-    static INIT: Once = Once::new();
 
     // a crypto provider (only one) is required to generate certs, which happens in these tests
+    static INIT: Once = Once::new();
     fn initialize_crypto() {
         INIT.call_once(|| {
             rustls::crypto::ring::default_provider()

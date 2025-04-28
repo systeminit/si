@@ -46,7 +46,6 @@ pub use dal::{
 pub use si_settings::{
     ConfigMap,
     ParameterProvider,
-    get_host_environment,
 };
 
 pub(crate) use self::app_state::AppState;

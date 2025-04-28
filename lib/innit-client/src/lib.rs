@@ -1,9 +1,14 @@
+use std::env;
+
 use async_trait::async_trait;
 use base64::{
     Engine as _,
     engine::general_purpose::STANDARD,
 };
-use config::Config;
+use config::{
+    Config,
+    ConfigFile,
+};
 use config_file::parameter_provider::{
     self,
     Parameter as ParameterProviderParameter,
@@ -14,7 +19,16 @@ use reqwest::{
     Identity,
     Url,
 };
-use si_tls::CertificateResolver;
+use si_data_acmpca::{
+    PrivateCertManagerClient,
+    PrivateCertManagerClientError,
+};
+use si_settings::StandardConfigFile;
+use si_tls::{
+    CertificateResolver,
+    CertificateSource,
+    KeySource,
+};
 use telemetry::tracing::info;
 use thiserror::Error;
 
@@ -23,9 +37,17 @@ pub mod config;
 
 pub use innit_core::*;
 
+const DEFAULT_CLIENT_NAME: &str = "innit";
+const DEFAULT_ENVIRONMENT_ENV_VAR: &str = "SI_HOSTENV";
+const DEFAULT_ENVIRONMENT: &str = "local";
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum InnitClientError {
+    #[error(transparent)]
+    CertificateClient(#[from] PrivateCertManagerClientError),
+    #[error(transparent)]
+    Config(#[from] config::ConfigError),
     #[error("Deserialization error: {0}")]
     Deserialization(serde_json::Error),
     #[error("Request error: {0}")]
@@ -49,41 +71,77 @@ type Result<T> = std::result::Result<T, InnitClientError>;
 #[derive(Debug, Clone)]
 pub struct InnitClient {
     client: reqwest::Client,
+    environment: String,
     base_url: Url,
 }
 
 impl InnitClient {
     pub async fn new(config: Config) -> Result<Self> {
         let use_https = config.base_url().scheme() == "https";
-        let mut client_builder = reqwest::Client::builder();
+        let client_builder = reqwest::Client::builder();
 
-        if let (Some(cert), Some(key)) = (
+        let mut environment = config.environment().to_string();
+
+        let client_builder = if let (Some(cert), Some(key)) = (
             &config.auth_config().client_cert,
             &config.auth_config().client_key,
         ) {
-            let certs = cert.load_certificates().await?;
-            if let Some(first_cert) = certs.first() {
-                let cert_base64 = STANDARD.encode(first_cert);
-                let mut headers = reqwest::header::HeaderMap::new();
-                headers.insert(
-                    "X-Forwarded-Client-Cert",
-                    reqwest::header::HeaderValue::from_str(&cert_base64)?,
-                );
-                client_builder = client_builder.default_headers(headers);
-            }
+            environment = get_host_environment_from_cert_or_env_vars(cert).await?;
+            Self::configure_client_with_certs(client_builder, cert, key, use_https).await?
+        } else if let Some(ca_arn) = &config.client_ca_arn() {
+            let (cert, key) =
+                generate_cert_from_acmpca(ca_arn.to_string(), config.for_app()).await?;
 
-            if use_https {
-                let identity = CertificateResolver::create_identity(cert, key).await?;
-                client_builder = client_builder.identity(Identity::from_pem(&identity)?);
-            }
-        }
+            environment = get_host_environment_from_cert_or_env_vars(&cert).await?;
+            Self::configure_client_with_certs(client_builder, &cert, &key, use_https).await?
+        } else {
+            client_builder
+        };
 
         let client = client_builder.build()?;
 
         Ok(Self {
             client,
+            environment,
             base_url: config.base_url().clone(),
         })
+    }
+
+    pub async fn new_from_environment(for_app: String) -> Result<Self> {
+        InnitClient::new(
+            ConfigFile::layered_load(DEFAULT_CLIENT_NAME, |config_map| {
+                config_map.set("for_app", for_app);
+            })?
+            .try_into()?,
+        )
+        .await
+    }
+
+    async fn configure_client_with_certs(
+        client_builder: reqwest::ClientBuilder,
+        cert_source: &CertificateSource,
+        key_source: &KeySource,
+        use_https: bool,
+    ) -> Result<reqwest::ClientBuilder> {
+        let mut builder = client_builder;
+
+        let certs = cert_source.load_certificates().await?;
+        if let Some(first_cert) = certs.first() {
+            let cert_base64 = STANDARD.encode(first_cert);
+            let mut headers = reqwest::header::HeaderMap::new();
+            headers.insert(
+                "X-Forwarded-Client-Cert",
+                reqwest::header::HeaderValue::from_str(&cert_base64)?,
+            );
+            builder = builder.default_headers(headers);
+        }
+
+        if use_https {
+            let identity = CertificateResolver::create_identity(cert_source, key_source).await?;
+            builder = builder.identity(Identity::from_pem(&identity)?);
+        }
+
+        Ok(builder)
     }
 
     pub async fn check_health(&self) -> Result<CheckHealthResponse> {
@@ -144,6 +202,33 @@ impl InnitClient {
         let full_path = format!("{}/{}", base_segment, clean_path);
         Ok(self.base_url.join(&full_path)?)
     }
+
+    pub fn environment(&self) -> String {
+        self.environment.to_string()
+    }
+}
+
+async fn generate_cert_from_acmpca(
+    ca_arn: String,
+    for_app: String,
+) -> Result<(CertificateSource, KeySource)> {
+    let acmpca_client = PrivateCertManagerClient::new().await;
+    Ok(acmpca_client
+        .get_new_cert_from_ca(ca_arn, for_app, "innit".to_string())
+        .await?)
+}
+
+// Attempt to pull the env from our issuing cert and then the env var, failing that
+async fn get_host_environment_from_cert_or_env_vars(cert: &CertificateSource) -> Result<String> {
+    Ok(
+        if let Some(cn) = cert.get_issuer_details().await?.common_name() {
+            cn.to_string()
+        } else {
+            #[allow(clippy::disallowed_methods)]
+            env::var(DEFAULT_ENVIRONMENT_ENV_VAR)
+                .unwrap_or_else(|_| DEFAULT_ENVIRONMENT.to_string())
+        },
+    )
 }
 
 #[async_trait]
@@ -162,5 +247,9 @@ impl ParameterProvider for InnitClient {
                     .collect()
             })
             .map_err(|e| ParameterError::Other(Box::new(e)))
+    }
+
+    async fn environment(&self) -> String {
+        self.environment()
     }
 }
