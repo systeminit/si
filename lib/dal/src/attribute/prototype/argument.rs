@@ -10,7 +10,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_events::ulid::Ulid;
+use si_events::{
+    Timestamp,
+    ulid::Ulid,
+};
 use si_id::{
     AttributePrototypeId,
     AttributeValueId,
@@ -33,7 +36,6 @@ use crate::{
     AttributeValue,
     DalContext,
     HelperError,
-    Timestamp,
     TransactionsError,
     attribute::value::subscription::ValueSubscription,
     change_set::ChangeSetError,

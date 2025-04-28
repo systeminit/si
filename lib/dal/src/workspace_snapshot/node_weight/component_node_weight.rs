@@ -15,6 +15,7 @@ use serde::{
 };
 use si_events::{
     ContentHash,
+    Timestamp,
     merkle_tree_hash::MerkleTreeHash,
     ulid::Ulid,
 };
@@ -38,7 +39,6 @@ use crate::{
     EdgeWeight,
     EdgeWeightKind,
     EdgeWeightKindDiscriminants,
-    Timestamp,
     WorkspaceSnapshotGraphVCurrent,
     layer_db_types::{
         ComponentContent,

@@ -8,18 +8,20 @@ use serde::{
 };
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use strum::Display as StrumDisplay;
+use si_events::Timestamp;
+use si_id::UserPk;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    DalContext,
-    Tenancy,
-    Timestamp,
-    TransactionsError,
-    User,
-    UserPk,
     actor_view::ActorView,
+    context::{
+        BaseTransactionsError,
+        SiDbContext,
+        SiDbTransactions as _,
+    },
+    tenancy::Tenancy,
+    user::User,
 };
 
 const SYSTEMINIT_EMAIL_SUFFIX: &str = "@systeminit.com";
@@ -37,7 +39,7 @@ pub enum HistoryEventError {
     #[error("standard model error: {0}")]
     StandardModel(String),
     #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
+    Transactions(#[from] BaseTransactionsError),
     #[error("user error: {0}")]
     User(String),
 }
@@ -45,7 +47,7 @@ pub enum HistoryEventError {
 pub type HistoryEventResult<T> = Result<T, HistoryEventError>;
 
 #[remain::sorted]
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, StrumDisplay, Clone, Copy, Hash)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, strum::Display, Clone, Copy, Hash)]
 pub enum HistoryActor {
     SystemInit,
     User(UserPk),
@@ -59,7 +61,7 @@ impl HistoryActor {
         }
     }
 
-    pub async fn email(&self, ctx: &DalContext) -> HistoryEventResult<String> {
+    pub async fn email(&self, ctx: &impl SiDbContext) -> HistoryEventResult<String> {
         Ok(match self {
             HistoryActor::SystemInit => "sally@systeminit.com".to_string(),
             HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk)
@@ -70,7 +72,7 @@ impl HistoryActor {
         })
     }
 
-    pub async fn email_is_systeminit(&self, ctx: &DalContext) -> HistoryEventResult<bool> {
+    pub async fn email_is_systeminit(&self, ctx: &impl SiDbContext) -> HistoryEventResult<bool> {
         let email_as_lowercase = self.email(ctx).await?.to_lowercase();
         Ok(email_as_lowercase.ends_with(SYSTEMINIT_EMAIL_SUFFIX)
             || email_as_lowercase.ends_with(TEST_SYSTEMINIT_EMAIL_SUFFIX))
@@ -103,7 +105,7 @@ pub struct HistoryEvent {
 
 impl HistoryEvent {
     pub async fn new(
-        ctx: &DalContext,
+        ctx: &impl SiDbContext,
         label: impl AsRef<str>,
         message: impl AsRef<str>,
         data: &serde_json::Value,
@@ -130,13 +132,13 @@ impl HistoryEvent {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct HistoryEventMetadata {
-    pub(crate) actor: ActorView,
-    pub(crate) timestamp: DateTime<Utc>,
+    pub actor: ActorView,
+    pub timestamp: DateTime<Utc>,
 }
 
 impl HistoryEventMetadata {
     pub async fn from_history_actor_timestamp(
-        ctx: &DalContext,
+        ctx: &impl SiDbContext,
         value: HistoryActorTimestamp,
     ) -> HistoryEventResult<Self> {
         let actor = ActorView::from_history_actor(ctx, value.actor)

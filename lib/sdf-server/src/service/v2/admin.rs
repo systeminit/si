@@ -114,7 +114,7 @@ pub struct AdminWorkspace {
     pub name: String,
     pub default_change_set_id: ChangeSetId,
     #[serde(flatten)]
-    pub timestamp: dal::Timestamp,
+    pub timestamp: si_events::Timestamp,
     pub snapshot_version: WorkspaceSnapshotGraphDiscriminants,
     pub component_concurrency_limit: Option<i32>,
 }

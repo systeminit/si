@@ -19,7 +19,6 @@ use dal::{
     PropKind,
     SocketArity,
     SocketKind,
-    Timestamp,
     Ulid,
     WorkspaceSnapshotGraph,
     WorkspaceSnapshotGraphVCurrent,
@@ -85,6 +84,7 @@ use dal_test::test;
 use si_events::{
     CasValue,
     EncryptedSecretKey,
+    Timestamp,
 };
 use si_layer_cache::db::serialize;
 use strum::IntoEnumIterator;
@@ -303,7 +303,10 @@ fn make_static_utc() -> DateTime<Utc> {
 }
 
 fn make_static_timestamp() -> Timestamp {
-    Timestamp::assemble(make_static_utc(), make_static_utc())
+    Timestamp {
+        created_at: make_static_utc(),
+        updated_at: make_static_utc(),
+    }
 }
 
 fn make_static_ulid<T>() -> T

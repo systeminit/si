@@ -11,7 +11,10 @@ use serde::{
 };
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use si_events::FuncRunState;
+use si_events::{
+    FuncRunState,
+    Timestamp,
+};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -26,7 +29,6 @@ use crate::{
     DalContext,
     FuncError,
     HistoryEventError,
-    Timestamp,
     TransactionsError,
     attribute::value::AttributeValueError,
     func::{

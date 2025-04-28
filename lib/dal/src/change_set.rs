@@ -17,6 +17,7 @@ use si_data_pg::{
     PgError,
     PgRow,
 };
+use si_db::change_set::FIND_ANCESTORS_QUERY;
 use si_events::{
     RebaseBatchAddressKind,
     WorkspaceSnapshotAddress,
@@ -80,8 +81,6 @@ pub mod approval;
 pub mod event;
 pub mod status;
 pub mod view;
-
-const FIND_ANCESTORS_QUERY: &str = include_str!("queries/change_set/find_ancestors.sql");
 
 #[remain::sorted]
 #[derive(Debug, Error)]

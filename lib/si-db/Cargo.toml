@@ -1,5 +1,5 @@
 [package]
-name = "dal"
+name = "si-db"
 version.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -13,7 +13,6 @@ audit-database           = { path = "../../lib/audit-database" }
 audit-logs-stream        = { path = "../../lib/audit-logs-stream" }
 billing-events           = { path = "../../lib/billing-events" }
 dal-macros               = { path = "../../lib/dal-macros" }
-si-db                  = { path = "../../lib/si-db" }
 joi-validator            = { path = "../../lib/joi-validator" }
 frigg                    = { path = "../../lib/frigg" }
 module-index-client      = { path = "../../lib/module-index-client" }
@@ -58,7 +57,6 @@ iftree          = { workspace = true }
 indexmap        = { workspace = true }
 itertools       = { workspace = true }
 json-patch      = { workspace = true }
-jsonptr         = { workspace = true }
 jwt-simple      = { workspace = true }
 lazy_static     = { workspace = true }
 once_cell       = { workspace = true }
@@ -85,12 +83,11 @@ ulid            = { workspace = true }
 url             = { workspace = true }
 
 [dev-dependencies]
-buck2-resources        = { path = "../../lib/buck2-resources" }
-dal-materialized-views = { path = "../../lib/dal-materialized-views" }
-dal-test               = { path = "../../lib/dal-test" }
-telemetry              = { path = "../../lib/telemetry-rs" }
-telemetry-nats         = { path = "../../lib/telemetry-nats-rs" }
-veritech-client        = { path = "../../lib/veritech-client" }
+buck2-resources = { path = "../../lib/buck2-resources" }
+dal-test        = { path = "../../lib/dal-test" }
+telemetry       = { path = "../../lib/telemetry-rs" }
+telemetry-nats  = { path = "../../lib/telemetry-nats-rs" }
+veritech-client = { path = "../../lib/veritech-client" }
 
 derive_more              = { workspace = true }
 pretty_assertions_sorted = { workspace = true }

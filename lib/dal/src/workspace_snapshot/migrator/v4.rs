@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use si_events::ulid::Ulid;
+use si_events::{
+    Timestamp,
+    ulid::Ulid,
+};
 use telemetry::prelude::*;
 
 use super::SnapshotGraphMigratorResult;
@@ -8,7 +11,6 @@ use crate::{
     DalContext,
     EdgeWeight,
     EdgeWeightKind,
-    Timestamp,
     layer_db_types::{
         ViewContent,
         ViewContentV1,

@@ -11,29 +11,27 @@ use jwt_simple::prelude::{
 use petgraph::prelude::*;
 use si_events::{
     ContentHash,
+    Timestamp,
     merkle_tree_hash::MerkleTreeHash,
     ulid::Ulid,
 };
 use si_id::ViewId;
 
-use crate::{
-    Timestamp,
-    workspace_snapshot::{
-        EdgeWeightKindDiscriminants,
-        content_address::ContentAddress,
-        graph::{
-            LineageId,
-            WorkspaceSnapshotGraphError,
-            detector::Update,
-        },
-        node_weight::{
-            NodeWeight,
-            NodeWeightDiscriminants,
-            traits::{
-                CorrectExclusiveOutgoingEdge,
-                CorrectTransforms,
-                SiNodeWeight,
-            },
+use crate::workspace_snapshot::{
+    EdgeWeightKindDiscriminants,
+    content_address::ContentAddress,
+    graph::{
+        LineageId,
+        WorkspaceSnapshotGraphError,
+        detector::Update,
+    },
+    node_weight::{
+        NodeWeight,
+        NodeWeightDiscriminants,
+        traits::{
+            CorrectExclusiveOutgoingEdge,
+            CorrectTransforms,
+            SiNodeWeight,
         },
     },
 };

@@ -28,6 +28,7 @@ use serde::{
 use si_events::{
     CasValue,
     ContentHash,
+    Timestamp,
     ulid::Ulid,
 };
 use si_frontend_types::FuncSummary;
@@ -45,7 +46,6 @@ use crate::{
     ChangeSetId,
     DalContext,
     HelperError,
-    Timestamp,
     TransactionsError,
     WsEvent,
     WsEventResult,
@@ -821,7 +821,7 @@ impl Func {
                 name: arg.name.clone(),
                 kind: arg.kind.into(),
                 element_kind: arg.element_kind.map(Into::into),
-                timestamp: arg.timestamp.into(),
+                timestamp: arg.timestamp,
             });
         }
 

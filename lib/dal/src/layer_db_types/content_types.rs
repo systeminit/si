@@ -11,6 +11,7 @@ use serde::{
 use si_events::{
     CasValue,
     ContentHash,
+    Timestamp,
     ulid::Ulid,
 };
 use strum::EnumDiscriminants;
@@ -30,7 +31,6 @@ use crate::{
     SchemaVariantId,
     SocketArity,
     SocketKind,
-    Timestamp,
     UserPk,
     action::{
         ActionCompletionStatus,

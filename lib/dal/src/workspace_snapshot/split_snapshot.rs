@@ -21,6 +21,7 @@ use serde::{
 };
 use si_events::{
     ContentHash,
+    Timestamp,
     WorkspaceSnapshotAddress,
     merkle_tree_hash::MerkleTreeHash,
     workspace_snapshot::{
@@ -102,7 +103,6 @@ use crate::{
     InputSocket,
     NodeWeightDiscriminants,
     SchemaVariantError,
-    Timestamp,
     approval_requirement::{
         ApprovalRequirement,
         ApprovalRequirementApprover,

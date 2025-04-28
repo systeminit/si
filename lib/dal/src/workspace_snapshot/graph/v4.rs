@@ -29,6 +29,7 @@ use serde::{
 };
 use si_events::{
     ContentHash,
+    Timestamp,
     ulid::Ulid,
     workspace_snapshot::Change,
 };
@@ -43,7 +44,6 @@ use crate::{
     EdgeWeightKind,
     EdgeWeightKindDiscriminants,
     NodeWeightDiscriminants,
-    Timestamp,
     layer_db_types::{
         ViewContent,
         ViewContentV1,

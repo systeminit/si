@@ -4,12 +4,12 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_events::Timestamp;
 pub use si_id::StaticArgumentValueId;
 
 use super::AttributePrototypeArgumentResult;
 use crate::{
     DalContext,
-    Timestamp,
     layer_db_types::{
         StaticArgumentValueContent,
         StaticArgumentValueContentV1,
