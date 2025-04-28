@@ -64,10 +64,17 @@ pub use components::{
 };
 pub use funcs::{
     FuncRunV1RequestPath,
+    FuncV1RequestPath,
     FuncsResult,
+    get_func::GetFuncV1Response,
+    get_func_run::GetFuncRunV1Response,
 };
 pub use schema::{
+    GetSchemaVariantV1Response,
     SchemaError,
+    SchemaV1RequestPath,
+    SchemaVariantV1RequestPath,
+    get_schema::GetSchemaV1Response,
     list_schema::ListSchemaV1Response,
 };
 pub use workspaces::WorkspaceError;
@@ -113,7 +120,11 @@ pub use crate::api_types::{
         components::execute_management_function::execute_management_function,
         components::add_action::add_action,
         schema::list_schema::list_schemas,
+        schema::get_schema::get_schema,
+        schema::get_variant::get_variant,
+        schema::get_default_variant::get_default_variant,
         funcs::get_func_run::get_func_run,
+        funcs::get_func::get_func,
     ),
     components(
         schemas(
@@ -137,6 +148,10 @@ pub use crate::api_types::{
             AddActionV1Request,
             ActionReference,
             ListSchemaV1Response,
+            SchemaV1RequestPath,
+            SchemaVariantV1RequestPath,
+            GetSchemaV1Response,
+            GetSchemaVariantV1Response,
             UpdateComponentV1Request,
             UpdateComponentV1Response,
             DeleteComponentV1Response,
@@ -155,6 +170,8 @@ pub use crate::api_types::{
             FuncRunLogViewV1,
             FuncRunViewV1,
             OutputLineViewV1,
+            GetFuncV1Response,
+            GetFuncRunV1Response,
         )
     ),
     tags(

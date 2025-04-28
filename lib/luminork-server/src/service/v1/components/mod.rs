@@ -53,6 +53,8 @@ pub enum ComponentsError {
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] dal::attribute::value::AttributeValueError),
+    #[error("cached module error: {0}")]
+    CachedModule(#[from] dal::cached_module::CachedModuleError),
     #[error("component error: {0}")]
     Component(#[from] dal::ComponentError),
     #[error("component not found: {0}")]
@@ -85,6 +87,8 @@ pub enum ComponentsError {
     Prop(#[from] dal::prop::PropError),
     #[error("schema error: {0}")]
     Schema(#[from] dal::SchemaError),
+    #[error("schema not found by name error: {0}")]
+    SchemaNameNotFound(String),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("transactions error: {0}")]
@@ -138,6 +142,7 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
             ComponentsError::ComponentNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            ComponentsError::SchemaNameNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             ComponentsError::ActionFunctionNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             ComponentsError::ManagementFunctionNotFound(_) => {
                 (StatusCode::NOT_FOUND, self.to_string())
