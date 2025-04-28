@@ -153,11 +153,17 @@ impl Config {
 }
 
 /// Static feature flags for Rebaser.
-#[derive(Builder, Clone, Copy, Debug, Default, Deserialize, Serialize)]
+#[derive(Builder, Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct Features {
     /// Whether or not to generate materialized views in the rebase logic
-    #[builder(default)]
+    #[builder(default = "true")]
     pub generate_mvs: bool,
+}
+
+impl Default for Features {
+    fn default() -> Self {
+        Self { generate_mvs: true }
+    }
 }
 
 /// The configuration file for creating a [`Server`].
