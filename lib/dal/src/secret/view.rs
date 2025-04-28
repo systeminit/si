@@ -13,7 +13,7 @@ use crate::{
     Secret,
     SecretError,
     SecretId,
-    StandardModelError,
+    actor_view::ActorViewError,
     history_event::HistoryEventMetadata,
 };
 
@@ -21,10 +21,10 @@ use crate::{
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SecretViewError {
+    #[error("actor view error: {0}")]
+    ActorView(#[from] ActorViewError),
     #[error("secret error: {0}")]
     Secret(#[from] SecretError),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
 }
 
 #[allow(missing_docs)]

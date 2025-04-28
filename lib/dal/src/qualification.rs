@@ -20,7 +20,6 @@ use crate::{
     ComponentId,
     DalContext,
     Prop,
-    StandardModelError,
     WsEventResult,
     attribute::value::AttributeValueError,
     component::qualification::QualificationEntry,
@@ -64,8 +63,6 @@ pub enum QualificationSummaryError {
     Component(#[from] ComponentError),
     #[error(transparent)]
     Pg(#[from] PgError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
 }
 
 pub type QualificationSummaryResult<T> = Result<T, QualificationSummaryError>;
@@ -153,8 +150,6 @@ pub enum QualificationError {
     Prop(#[from] PropError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     ValidationResolver(#[from] ValidationError),
 }

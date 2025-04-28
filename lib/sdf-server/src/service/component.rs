@@ -1,32 +1,59 @@
 use std::num::ParseIntError;
 
-use crate::{service::component::conflicts_for_component::conflicts_for_component, AppState};
 use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::{get, post},
     Router,
+    http::StatusCode,
+    response::{
+        IntoResponse,
+        Response,
+    },
+    routing::{
+        get,
+        post,
+    },
 };
-use dal::slow_rt::SlowRuntimeError;
-use dal::validation::ValidationError;
 use dal::{
-    action::prototype::ActionPrototypeError, action::ActionError,
-    ComponentError as DalComponentError, FuncError, StandardModelError, WorkspaceError,
+    ChangeSetError,
+    ComponentError as DalComponentError,
+    FuncError,
+    PropId,
+    SchemaVariantError,
+    SecretError as DalSecretError,
+    TransactionsError,
+    WorkspaceError,
     WorkspaceSnapshotError,
+    WsEventError,
+    action::{
+        ActionError,
+        prototype::ActionPrototypeError,
+    },
+    attribute::value::{
+        AttributeValueError,
+        debug::AttributeDebugViewError,
+    },
+    component::{
+        ComponentId,
+        debug::ComponentDebugViewError,
+    },
+    prop::PropError,
+    property_editor::PropertyEditorError,
+    slow_rt::SlowRuntimeError,
+    socket::{
+        input::InputSocketError,
+        output::OutputSocketError,
+    },
+    validation::ValidationError,
 };
-use dal::{
-    attribute::value::debug::AttributeDebugViewError, component::ComponentId, PropId,
-    SchemaVariantError, SecretError as DalSecretError, WsEventError,
-};
-use dal::{attribute::value::AttributeValueError, component::debug::ComponentDebugViewError};
-use dal::{prop::PropError, socket::output::OutputSocketError};
-use dal::{property_editor::PropertyEditorError, socket::input::InputSocketError};
-use dal::{ChangeSetError, TransactionsError};
 use sdf_core::api_error::ApiError;
 use si_posthog::PosthogError;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
+
+use crate::{
+    AppState,
+    service::component::conflicts_for_component::conflicts_for_component,
+};
 
 mod autoconnect;
 pub mod conflicts_for_component;
@@ -115,8 +142,6 @@ pub enum ComponentError {
     SerdeJson(#[from] serde_json::Error),
     #[error("slow runtime error: {0}")]
     SlowRuntime(#[from] SlowRuntimeError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error("component upgrade skipped due to running or dispatched actions")]

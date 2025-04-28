@@ -16,7 +16,6 @@ use crate::{
     SchemaVariantError,
     SchemaVariantId,
     SecretError,
-    StandardModelError,
     TransactionsError,
     attribute::{
         prototype::{
@@ -74,8 +73,6 @@ pub enum PropertyEditorError {
     SecretPropLeadsToStaticValue(AttributeValueId, AttributeValueId),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]

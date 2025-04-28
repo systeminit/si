@@ -14,7 +14,6 @@ use dal::{
     ComponentError,
     ComponentId,
     FuncError as DalFuncError,
-    StandardModelError,
     TransactionsError,
     UserError,
     UserPk,
@@ -69,8 +68,6 @@ pub enum ActionError {
     NoSchemaForComponent(ComponentId),
     #[error("no schema variant found for component {0}")]
     NoSchemaVariantForComponent(ComponentId),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error(transparent)]

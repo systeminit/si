@@ -43,7 +43,6 @@ use crate::{
     SchemaId,
     SchemaVariant,
     SchemaVariantId,
-    StandardModelError,
     TenancyError,
     TransactionsError,
     Workspace,
@@ -182,8 +181,6 @@ pub enum DiagramError {
     Serde(#[from] serde_json::Error),
     #[error("socket not found")]
     SocketNotFound,
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
     #[error("Transactions error: {0}")]

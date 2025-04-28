@@ -11,7 +11,6 @@ use dal::{
     ChangeSetError,
     KeyPairError,
     SecretId,
-    StandardModelError,
     TransactionsError,
     UserError,
     WorkspacePk,
@@ -57,8 +56,6 @@ pub enum SecretError {
     SecretWithInvalidDefinition(SecretId),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("user error: {0}")]

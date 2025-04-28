@@ -5,7 +5,6 @@ use axum::{
     routing::get,
 };
 use dal::{
-    StandardModelError,
     TransactionsError,
     UserError,
     WsEventError,
@@ -29,8 +28,6 @@ pub enum DevError {
     Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("user error: {0}")]

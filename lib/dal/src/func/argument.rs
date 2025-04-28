@@ -30,7 +30,6 @@ use crate::{
     FuncId,
     HistoryEventError,
     PropKind,
-    StandardModelError,
     Timestamp,
     TransactionsError,
     attribute::prototype::argument::{
@@ -82,8 +81,6 @@ pub enum FuncArgumentError {
     Pg(#[from] si_data_pg::PgError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]

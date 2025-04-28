@@ -24,7 +24,6 @@ use dal::{
     SchemaId,
     SchemaVariantError,
     SchemaVariantId,
-    StandardModelError,
     TenancyError,
     TransactionsError,
     UserError,
@@ -124,8 +123,6 @@ pub enum ModuleError {
     SerdeJson(#[from] serde_json::Error),
     #[error("si pkg error: {0}")]
     SiPkg(#[from] SiPkgError),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
     #[error("transactions error: {0}")]

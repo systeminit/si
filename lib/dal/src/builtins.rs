@@ -15,7 +15,6 @@ use crate::{
     PropId,
     SchemaVariantError,
     SchemaVariantId,
-    StandardModelError,
     TransactionsError,
     action::prototype::ActionPrototypeError,
     func::{
@@ -74,8 +73,6 @@ pub enum BuiltinsError {
     SiPkg(#[from] SiPkgError),
     #[error("spec error: {0}")]
     Spec(#[from] SpecError),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
     #[error("error creating new transactions")]
     Transactions(#[from] TransactionsError),
 }

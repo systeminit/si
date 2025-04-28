@@ -3,20 +3,42 @@
 //! types, this type is able to ship a displayable label suitable for the front end to use when
 //! displaying "who did this?"-style changes/updates/mutations.
 
-#![warn(missing_docs, clippy::missing_errors_doc, clippy::missing_panics_doc)]
+#![warn(clippy::missing_panics_doc)]
 
 use serde::{
     Deserialize,
     Serialize,
 };
+use si_data_nats::NatsError;
+use si_data_pg::PgError;
+use thiserror::Error;
 
 use crate::{
     DalContext,
     HistoryActor,
-    StandardModelError,
+    HistoryEventError,
+    TransactionsError,
     User,
+    UserError,
     UserPk,
 };
+
+#[remain::sorted]
+#[derive(Error, Debug)]
+pub enum ActorViewError {
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
+    #[error("nats error")]
+    Nats(#[from] NatsError),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    User(#[from] UserError),
+}
 
 /// The actor entitiy that initiates an activitiy--this could represent be a person, service, etc.
 #[remain::sorted]
@@ -54,7 +76,7 @@ impl ActorView {
     pub async fn from_history_actor(
         ctx: &DalContext,
         history_actor: HistoryActor,
-    ) -> Result<Self, StandardModelError> {
+    ) -> Result<Self, ActorViewError> {
         match history_actor {
             HistoryActor::User(user_pk) => {
                 let user = User::get_by_pk(ctx, user_pk).await?;
