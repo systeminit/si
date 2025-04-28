@@ -56,10 +56,10 @@ pub struct Config {
     cache_ttl: Duration,
 
     #[builder]
-    client_ca_cert: Option<CertificateSource>,
+    client_ca_certs: Option<Vec<CertificateSource>>,
 
     #[builder(default = None)]
-    client_ca_arn: Option<String>,
+    client_ca_arns: Option<Vec<String>>,
 
     #[builder(default = "random_instance_id()")]
     instance_id: String,
@@ -85,10 +85,6 @@ impl StandardConfig for Config {
 }
 
 impl Config {
-    pub fn client_ca_cert(&self) -> &Option<CertificateSource> {
-        &self.client_ca_cert
-    }
-
     /// Gets the config's concurrency limit.
     pub fn concurrency_limit(&self) -> Option<usize> {
         self.concurrency_limit
@@ -121,8 +117,12 @@ impl Config {
         self.dev_mode
     }
 
-    pub fn client_ca_arn(&self) -> Option<&String> {
-        self.client_ca_arn.as_ref()
+    pub fn client_ca_certs(&self) -> Option<&Vec<CertificateSource>> {
+        self.client_ca_certs.as_ref()
+    }
+
+    pub fn client_ca_arns(&self) -> Option<&Vec<String>> {
+        self.client_ca_arns.as_ref()
     }
 }
 
@@ -131,9 +131,9 @@ pub struct ConfigFile {
     #[serde(default = "default_cache_ttl")]
     cache_ttl: Duration,
     #[serde(default)]
-    client_ca_cert: Option<CertificateSource>,
+    client_ca_certs: Option<Vec<CertificateSource>>,
     #[serde(default)]
-    client_ca_arn: Option<String>,
+    client_ca_arns: Option<Vec<String>>,
     #[serde(default = "random_instance_id")]
     instance_id: String,
     #[serde(default = "default_concurrency_limit")]
@@ -153,8 +153,8 @@ impl Default for ConfigFile {
     fn default() -> Self {
         Self {
             cache_ttl: default_cache_ttl(),
-            client_ca_cert: Default::default(),
-            client_ca_arn: None,
+            client_ca_certs: Default::default(),
+            client_ca_arns: None,
             instance_id: random_instance_id(),
             concurrency_limit: default_concurrency_limit(),
             quiescent_period_secs: default_quiescent_period_secs(),
@@ -176,8 +176,8 @@ impl TryFrom<ConfigFile> for Config {
         detect_and_configure_development(&mut value)?;
 
         let mut config = Config::builder();
-        config.client_ca_cert(value.client_ca_cert);
-        config.client_ca_arn(value.client_ca_arn);
+        config.client_ca_certs(value.client_ca_certs);
+        config.client_ca_arns(value.client_ca_arns);
         config.concurrency_limit(value.concurrency_limit);
         config.instance_id(value.instance_id);
         config.quiescent_period(Duration::from_secs(value.quiescent_period_secs));
@@ -236,7 +236,7 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
 
     warn!(ca = ca, "detected development run",);
 
-    config.client_ca_cert = Some(CertificateSource::Path(CanonicalFile::try_from(ca)?));
+    config.client_ca_certs = Some(vec![CertificateSource::Path(CanonicalFile::try_from(ca)?)]);
     config.dev_mode = true;
 
     Ok(())
