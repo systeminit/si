@@ -19,7 +19,6 @@ use dal::{
     PropId,
     SchemaVariantError,
     SecretError as DalSecretError,
-    StandardModelError,
     TransactionsError,
     WorkspaceError,
     WorkspaceSnapshotError,
@@ -143,8 +142,6 @@ pub enum ComponentError {
     SerdeJson(#[from] serde_json::Error),
     #[error("slow runtime error: {0}")]
     SlowRuntime(#[from] SlowRuntimeError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error("component upgrade skipped due to running or dispatched actions")]

@@ -74,7 +74,6 @@ pub mod slow_rt;
 pub mod socket;
 pub mod standard_accessors;
 pub mod standard_connection;
-pub mod standard_model;
 pub mod status;
 pub mod tenancy;
 pub mod timestamp;
@@ -216,11 +215,6 @@ pub use socket::{
 pub use standard_connection::{
     HelperError,
     HelperResult,
-};
-pub use standard_model::{
-    StandardModel,
-    StandardModelError,
-    StandardModelResult,
 };
 pub use tenancy::{
     Tenancy,

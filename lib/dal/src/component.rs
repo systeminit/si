@@ -78,7 +78,6 @@ use crate::{
     SchemaVariant,
     SchemaVariantId,
     SocketArity,
-    StandardModelError,
     Timestamp,
     TransactionsError,
     WorkspaceError,
@@ -97,7 +96,10 @@ use crate::{
             ActionPrototypeError,
         },
     },
-    actor_view::ActorView,
+    actor_view::{
+        ActorView,
+        ActorViewError,
+    },
     attribute::{
         prototype::{
             AttributePrototypeError,
@@ -203,6 +205,8 @@ pub enum ComponentError {
     Action(#[from] Box<ActionError>),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] Box<ActionPrototypeError>),
+    #[error("actor view error: {0}")]
+    ActorView(#[from] ActorViewError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
@@ -321,8 +325,6 @@ pub enum ComponentError {
     Serde(#[from] serde_json::Error),
     #[error("split graph error: {0}")]
     SplitGraph(#[from] SplitGraphError),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
     #[error(
         "too many explicit connection sources ({0:?}) for component ({1}) and input socket ({2}) with an arity of one"
     )]

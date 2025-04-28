@@ -32,11 +32,11 @@ use crate::{
     Workspace,
     WorkspaceError,
     WorkspacePk,
+    getter,
     serde_impls::{
         base64_bytes_serde,
         nonce_serde,
     },
-    standard_model_accessor_ro,
 };
 
 mod key_pair_box_public_key_serde;
@@ -151,11 +151,11 @@ impl KeyPair {
         Ok(key_pair)
     }
 
-    standard_model_accessor_ro!(name, String);
-    standard_model_accessor_ro!(workspace_pk, WorkspacePk);
-    standard_model_accessor_ro!(public_key, BoxPublicKey);
-    standard_model_accessor_ro!(secret_key, BoxSecretKey);
-    standard_model_accessor_ro!(created_lamport_clock, u64);
+    getter!(name, String);
+    getter!(workspace_pk, WorkspacePk);
+    getter!(public_key, BoxPublicKey);
+    getter!(secret_key, BoxSecretKey);
+    getter!(created_lamport_clock, u64);
 
     pub async fn workspace(&self, ctx: &DalContext) -> KeyPairResult<Workspace> {
         Workspace::get_by_pk_opt(ctx, self.workspace_pk)

@@ -16,7 +16,6 @@ use dal::{
     FuncError,
     SchemaError,
     SchemaVariantError,
-    StandardModelError,
     TransactionsError,
     WorkspaceError,
     WorkspaceSnapshotError,
@@ -65,8 +64,6 @@ pub enum ChangeSetError {
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("workspace error: {0}")]

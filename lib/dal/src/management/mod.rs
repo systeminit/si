@@ -40,7 +40,6 @@ use crate::{
     SchemaError,
     SchemaId,
     SchemaVariantId,
-    StandardModelError,
     TransactionsError,
     WorkspaceSnapshotError,
     WsEvent,
@@ -54,6 +53,7 @@ use crate::{
             ActionPrototypeError,
         },
     },
+    actor_view::ActorViewError,
     attribute::{
         prototype::argument::{
             AttributePrototypeArgument,
@@ -112,6 +112,8 @@ pub enum ManagementError {
     Action(#[from] ActionError),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
+    #[error("actor view error: {0}")]
+    ActorView(#[from] ActorViewError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
@@ -154,8 +156,6 @@ pub enum ManagementError {
     Prop(#[from] PropError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("ulid decode error: {0}")]

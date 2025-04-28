@@ -15,7 +15,6 @@ use dal::{
     FuncId,
     SchemaError,
     SchemaId,
-    StandardModelError,
     TenancyError,
     TransactionsError,
     WsEventError,
@@ -57,8 +56,6 @@ pub enum QualificationError {
     SchemaVariantNotFound,
     #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
     #[error("tenancy error: {0}")]
     Tenancy(#[from] TenancyError),
     #[error(transparent)]

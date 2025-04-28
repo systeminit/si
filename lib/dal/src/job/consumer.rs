@@ -25,7 +25,6 @@ use crate::{
     DalContext,
     DalContextBuilder,
     FuncError,
-    StandardModelError,
     TransactionsError,
     Visibility,
     WorkspaceSnapshotError,
@@ -99,8 +98,6 @@ pub enum JobConsumerError {
     RetriesFailed(String, u32),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
     #[error("tokio task error: {0}")]
     TokioTask(#[from] JoinError),
     #[error("transactions error: {0}")]

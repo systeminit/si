@@ -19,7 +19,6 @@ use crate::{
     SchemaVariantError,
     SecretCreatedPayload,
     SecretUpdatedPayload,
-    StandardModelError,
     TransactionsError,
     WorkspacePk,
     approval_requirement::{
@@ -107,8 +106,6 @@ pub enum WsEventError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
 }

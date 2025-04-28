@@ -11,7 +11,6 @@ use axum::{
 };
 use dal::{
     KeyPairError,
-    StandardModelError,
     TransactionsError,
     UserError,
     WorkspaceError,
@@ -58,8 +57,6 @@ pub enum SessionError {
     Request(#[from] reqwest::Error),
     #[error("SpiceDb error: {0}")]
     SpiceDb(#[from] SpiceDbError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
     #[error("user error: {0}")]
     User(#[from] UserError),
     #[error(transparent)]

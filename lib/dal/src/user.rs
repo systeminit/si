@@ -18,7 +18,7 @@ use crate::{
     Timestamp,
     TransactionsError,
     WorkspacePk,
-    standard_model_accessor_ro,
+    getter,
     ws_event::{
         WsEvent,
         WsEventResult,
@@ -70,8 +70,8 @@ impl User {
         self.pk
     }
 
-    standard_model_accessor_ro!(name, String);
-    standard_model_accessor_ro!(email, String);
+    getter!(name, String);
+    getter!(email, String);
 
     pub async fn new(
         ctx: &DalContext,

@@ -50,7 +50,6 @@ use crate::{
     HistoryEvent,
     HistoryEventError,
     KeyPairError,
-    StandardModelError,
     Tenancy,
     Timestamp,
     TransactionsError,
@@ -65,9 +64,8 @@ use crate::{
         ChangeSetId,
     },
     feature_flags::FeatureFlag,
+    getter,
     layer_db_types::ContentTypes,
-    standard_model,
-    standard_model_accessor_ro,
     workspace_integrations::{
         WorkspaceIntegration,
         WorkspaceIntegrationsError,
@@ -126,8 +124,6 @@ pub enum WorkspaceError {
     Pg(#[from] PgError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
     #[error("strum parse error: {0}")]
     StrumParse(#[from] strum::ParseError),
     #[error(transparent)]
@@ -336,7 +332,15 @@ impl Workspace {
             .query(WORKSPACE_LIST_FOR_USER, &[&user_pk])
             .await?;
 
-        Ok(standard_model::objects_from_rows(rows)?)
+        let mut result = Vec::new();
+
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let workspace = serde_json::from_value(json)?;
+            result.push(workspace);
+        }
+
+        Ok(result)
     }
 
     pub async fn search(
@@ -377,7 +381,14 @@ impl Workspace {
                 .await?
         };
 
-        Ok(standard_model::objects_from_rows(rows)?)
+        let mut result = Vec::new();
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let workspace = serde_json::from_value(json)?;
+            result.push(workspace);
+        }
+
+        Ok(result)
     }
 
     pub async fn find_first_user_workspace(ctx: &DalContext) -> WorkspaceResult<Option<Self>> {
@@ -837,7 +848,7 @@ impl Workspace {
         Ok(())
     }
 
-    standard_model_accessor_ro!(name, String);
+    getter!(name, String);
 
     pub async fn has_change_set(
         ctx: &DalContext,

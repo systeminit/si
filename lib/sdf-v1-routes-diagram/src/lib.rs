@@ -21,7 +21,6 @@ use dal::{
     SchemaError,
     SchemaId,
     SchemaVariantId,
-    StandardModelError,
     TransactionsError,
     WsEventError,
     attribute::{
@@ -146,8 +145,6 @@ pub enum DiagramError {
     SlowRuntime(#[from] SlowRuntimeError),
     #[error("socket not found")]
     SocketNotFound,
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
     #[error("No installable module found for schema id {0}")]
     UninstalledSchemaNotFound(SchemaId),
     #[error(transparent)]

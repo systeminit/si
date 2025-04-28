@@ -81,7 +81,6 @@ use crate::{
     ChangeSetError,
     EncryptedSecret,
     HistoryActor,
-    StandardModel,
     Tenancy,
     TenancyError,
     Visibility,
@@ -1170,17 +1169,6 @@ impl DalContext {
     /// Gets an optional reference to the module index service's url
     pub fn module_index_url(&self) -> Option<&str> {
         self.services_context.module_index_url.as_deref()
-    }
-
-    /// Determines if a standard model object matches the tenancy of the current context and
-    /// is in the same visibility.
-    pub async fn check_tenancy<T: StandardModel>(&self, object: &T) -> TransactionsResult<bool> {
-        let is_in_our_tenancy = self
-            .tenancy()
-            .check(self.txns().await?.pg(), object.tenancy())
-            .await?;
-
-        Ok(is_in_our_tenancy)
     }
 
     pub fn access_builder(&self) -> AccessBuilder {

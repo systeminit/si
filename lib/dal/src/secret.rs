@@ -83,7 +83,6 @@ use crate::{
     Prop,
     SchemaVariant,
     SchemaVariantError,
-    StandardModelError,
     Timestamp,
     TransactionsError,
     UserPk,
@@ -210,8 +209,6 @@ pub enum SecretError {
     SecretNotFound(SecretId),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
     #[error("symmetric crypto error: {0}")]
     SymmetricCrypto(#[from] SymmetricCryptoError),
     #[error("transactions error: {0}")]
