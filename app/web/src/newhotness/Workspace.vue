@@ -87,8 +87,9 @@ import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import {
   computed,
-  onBeforeUnmount,
   onMounted,
+  onBeforeUnmount,
+  onBeforeMount,
   ref,
   provide,
   toRef,
@@ -146,7 +147,7 @@ const router = useRouter();
 
 const queryClient = useQueryClient();
 
-onMounted(async () => {
+onBeforeMount(async () => {
   // NOTE(nick,wendy): if you do not have the flag enabled, you will be re-directed. This will be
   // true for all of the new hotness routes, provided that they are all children of the parent
   // route that uses this component. This is wrapped in a "setTimeout" to ensure that the feature

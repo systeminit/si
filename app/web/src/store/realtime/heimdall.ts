@@ -1,8 +1,9 @@
 import * as Comlink from "comlink";
-import { computed, reactive, Reactive } from "vue";
+import { computed, reactive, Reactive, inject } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
 import { DBInterface, Id, BustCacheFn } from "@/workers/types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import { WSCS } from "@/newhotness/types";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useWorkspacesStore } from "../workspaces.store";
 
@@ -117,11 +118,17 @@ export const niflheim = async (
 };
 
 export const changeSetId = computed(() => {
+  const WSCS: WSCS | undefined = inject("WSCS");
+  if (WSCS && WSCS.changeSetId.value) return WSCS.changeSetId.value;
+
   const changeSetsStore = useChangeSetsStore();
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return changeSetsStore.selectedChangeSetId!;
 });
 const workspaceId = computed(() => {
+  const WSCS: WSCS | undefined = inject("WSCS");
+  if (WSCS && WSCS.workspacePk.value) return WSCS.workspacePk.value;
+
   const workspaceStore = useWorkspacesStore();
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return workspaceStore.selectedWorkspacePk!;
