@@ -1,3 +1,7 @@
+use dal_sql::user::{
+    USER_GET_BY_PK,
+    USER_LIST_FOR_WORKSPACE,
+};
 use serde::{
     Deserialize,
     Serialize,
@@ -25,9 +29,6 @@ use crate::{
         WsPayload,
     },
 };
-
-const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");
-const USER_LIST_FOR_WORKSPACE: &str = include_str!("queries/user/list_members_for_workspace.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]

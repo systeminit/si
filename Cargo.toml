@@ -28,6 +28,7 @@ members = [
     "lib/cyclone-server",
     "lib/dal",
     "lib/dal-macros",
+    "lib/dal-sql",
     "lib/dal-test",
     "lib/data-warehouse-stream-client",
     "lib/edda-client",

@@ -5,13 +5,12 @@ load(
 )
 
 rust_library(
-    name = "dal",
+    name = "dal-sql",
     deps = [
         "//lib/audit-database:audit-database",
         "//lib/audit-logs-stream:audit-logs-stream",
         "//lib/billing-events:billing-events",
         "//lib/dal-macros:dal-macros",
-        "//lib/dal-sql:dal-sql",
         "//lib/frigg:frigg",
         "//lib/joi-validator:joi-validator",
         "//lib/module-index-client:module-index-client",

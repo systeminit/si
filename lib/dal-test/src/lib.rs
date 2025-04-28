@@ -47,7 +47,6 @@ use dal::{
     DalContext,
     DalLayerDb,
     JetstreamStreams,
-    ModelResult,
     ServicesContext,
     Workspace,
     builtins::func,
@@ -942,7 +941,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) -> Result<()> {
 
     info!("running database migrations");
     {
-        dal::migrate(services_ctx.pg_pool())
+        dal_sql::migrate::migrate(services_ctx.pg_pool())
             .await
             .wrap_err("failed to migrate database")?;
         services_ctx
@@ -1048,7 +1047,7 @@ async fn migrate_local_builtins(
     layer_db: DalLayerDb,
     feature_flag_service: FeatureFlagService,
     compute_executor: DedicatedExecutor,
-) -> ModelResult<()> {
+) -> Result<()> {
     let services_context = ServicesContext::new(
         dal_pg.clone(),
         nats.clone(),

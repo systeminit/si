@@ -39,7 +39,7 @@ pub enum MigratorError {
     #[error("error while migrating cached modules: {0}")]
     MigrateCachedModules(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
     #[error("error while migrating dal database: {0}")]
-    MigrateDalDatabase(#[source] dal::ModelError),
+    MigrateDalDatabase(#[source] dal_sql::migrate::MigrateError),
     #[error("error while migrating layer db database: {0}")]
     MigrateLayerDbDatabase(#[source] si_layer_cache::LayerDbError),
     #[error("error while migrating snapshots: {0}")]
@@ -166,7 +166,7 @@ impl Migrator {
 
     #[instrument(name = "sdf.migrator.migrate_dal_database", level = "info", skip_all)]
     async fn migrate_dal_database(&self) -> MigratorResult<()> {
-        dal::migrate_all_with_progress(&self.services_context)
+        dal_sql::migrate::migrate_all_with_progress(self.services_context.pg_pool())
             .await
             .map_err(MigratorError::MigrateDalDatabase)
     }

@@ -9,6 +9,7 @@ use chrono::{
     DateTime,
     Utc,
 };
+use dal_sql::change_set::FIND_ANCESTORS_QUERY;
 use serde::{
     Deserialize,
     Serialize,
@@ -80,8 +81,6 @@ pub mod approval;
 pub mod event;
 pub mod status;
 pub mod view;
-
-const FIND_ANCESTORS_QUERY: &str = include_str!("queries/change_set/find_ancestors.sql");
 
 #[remain::sorted]
 #[derive(Debug, Error)]

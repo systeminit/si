@@ -1,5 +1,5 @@
 [package]
-name = "dal"
+name = "dal-sql"
 version.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -13,7 +13,6 @@ audit-database           = { path = "../../lib/audit-database" }
 audit-logs-stream        = { path = "../../lib/audit-logs-stream" }
 billing-events           = { path = "../../lib/billing-events" }
 dal-macros               = { path = "../../lib/dal-macros" }
-dal-sql                  = { path = "../../lib/dal-sql" }
 joi-validator            = { path = "../../lib/joi-validator" }
 frigg                    = { path = "../../lib/frigg" }
 module-index-client      = { path = "../../lib/module-index-client" }

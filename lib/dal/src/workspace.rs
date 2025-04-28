@@ -11,6 +11,13 @@ use chrono::{
     DateTime,
     Utc,
 };
+use dal_sql::workspace::{
+    SEARCH_WORKSPACES_BY_SNAPSHOT_ADDRESS,
+    SEARCH_WORKSPACES_BY_ULID,
+    SEARCH_WORKSPACES_USER_NAME_EMAIL,
+    WORKSPACE_GET_BY_PK,
+    WORKSPACE_LIST_FOR_USER,
+};
 use petgraph::Direction;
 use serde::{
     Deserialize,
@@ -81,14 +88,6 @@ use crate::{
         },
     },
 };
-
-const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
-const WORKSPACE_LIST_FOR_USER: &str = include_str!("queries/workspace/list_for_user.sql");
-const SEARCH_WORKSPACES_BY_ULID: &str = include_str!("queries/workspace/search_ulid.sql");
-const SEARCH_WORKSPACES_BY_SNAPSHOT_ADDRESS: &str =
-    include_str!("queries/workspace/search_snapshot_address.sql");
-const SEARCH_WORKSPACES_USER_NAME_EMAIL: &str =
-    include_str!("queries/workspace/search_user_name_email.sql");
 
 const DEFAULT_BUILTIN_WORKSPACE_NAME: &str = "builtin";
 const DEFAULT_BUILTIN_WORKSPACE_TOKEN: &str = "builtin";

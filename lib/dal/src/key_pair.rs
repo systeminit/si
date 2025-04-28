@@ -2,6 +2,10 @@ use base64::{
     Engine,
     engine::general_purpose,
 };
+use dal_sql::key_pair::{
+    GET_BY_PK,
+    PUBLIC_KEY_GET_CURRENT,
+};
 use serde::{
     Deserialize,
     Serialize,
@@ -38,11 +42,7 @@ use crate::{
         nonce_serde,
     },
 };
-
 mod key_pair_box_public_key_serde;
-
-const GET_BY_PK: &str = include_str!("queries/key_pair/get_by_pk.sql");
-const PUBLIC_KEY_GET_CURRENT: &str = include_str!("./queries/key_pair/public_key_get_current.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
