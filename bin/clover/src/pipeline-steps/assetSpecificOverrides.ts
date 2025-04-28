@@ -955,11 +955,16 @@ const overrides = new Map<string, OverrideFn>([
     variant.sockets.push(tgwaIdOutputSocket);
 
     const tgwaIdSocket = variant.sockets.find(
-      (s: ExpandedSocketSpec) => s.name === "TransitGatewayAttachmentId" && s.data.kind === "output",
+      (s: ExpandedSocketSpec) => s.name === "Transit Gateway Attachment Id" && s.data.kind === "output",
     );
     if (!tgwaIdSocket) return;
     setAnnotationOnSocket(tgwaIdSocket, { tokens: ["TransitGatewayAttachmentId"] });
     setAnnotationOnSocket(tgwaIdSocket, { tokens: ["Transit Gateway Attachment Id"] });
+
+    const refreshTargetId = ACTION_FUNC_SPECS["Refresh Asset"].id;
+    const newRefreshId = "fd3706e543528a703c674f42c07d3f2443b2e3c40bfc88a81a7f4501af5e7122";
+    const refreshPath = "./src/cloud-control-funcs/overrides/AWS::EC2::VPNConnection/actions/refresh.ts";
+    modifyFunc(spec, refreshTargetId, newRefreshId, refreshPath);
   }],
 ]);
 
