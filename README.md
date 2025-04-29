@@ -134,6 +134,10 @@ Alternatively, if you wish to keep your data for later use, you can stop the con
 buck2 run dev:stop
 ```
 
+### (7) Logging into the Stack
+
+To log into System Initiative locally, you need to create a new Workspace of type `Local Dev Instance` and select it at https://auth.systeminit.com/workspaces/
+
 ## Where Do I Learn More?
 
 For more information on how to use and develop the System Initiative software, talk to us on
