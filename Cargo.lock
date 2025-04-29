@@ -6937,6 +6937,7 @@ dependencies = [
  "hyper 0.14.32",
  "indoc",
  "itertools 0.13.0",
+ "jsonptr",
  "module-index-client",
  "names",
  "nats-multiplexer",

@@ -2,7 +2,10 @@ use dal::{
     AttributeValue,
     Component,
     DalContext,
-    attribute::value::subscription::ValueSubscriptionPath,
+    attribute::value::subscription::{
+        ValueSubscription,
+        ValueSubscriptionPath,
+    },
 };
 use dal_test::{
     Result,
@@ -47,8 +50,7 @@ async fn subscribe_to_name_on_same_component(ctx: &mut DalContext) -> Result<()>
     AttributeValue::subscribe(
         ctx,
         value_av_id,
-        Component::root_attribute_value_id(ctx, component_id).await?,
-        ValueSubscriptionPath::from_json_pointer("/si/name"),
+        make_subscription(ctx, component_id, "/si/name").await?,
     )
     .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -98,8 +100,7 @@ async fn subscribe_to_string(ctx: &mut DalContext) -> Result<()> {
     AttributeValue::subscribe(
         ctx,
         value_av_id,
-        Component::root_attribute_value_id(ctx, other_component_id).await?,
-        ValueSubscriptionPath::from_json_pointer("/domain/Value"),
+        make_subscription(ctx, other_component_id, "/domain/Value").await?,
     )
     .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -147,8 +148,7 @@ async fn subscribe_to_array_element(ctx: &mut DalContext) -> Result<()> {
     AttributeValue::subscribe(
         ctx,
         value_av_id,
-        Component::root_attribute_value_id(ctx, component_id).await?,
-        ValueSubscriptionPath::from_json_pointer("/domain/Values/1"),
+        make_subscription(ctx, component_id, "/domain/Values/1").await?,
     )
     .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -199,8 +199,7 @@ async fn subscribe_to_map_element(ctx: &mut DalContext) -> Result<()> {
     AttributeValue::subscribe(
         ctx,
         value_av_id,
-        Component::root_attribute_value_id(ctx, component_id).await?,
-        ValueSubscriptionPath::from_json_pointer("/domain/ValueMap/B"),
+        make_subscription(ctx, component_id, "/domain/ValueMap/B").await?,
     )
     .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -263,15 +262,13 @@ async fn subscribe_to_two_values(ctx: &mut DalContext) -> Result<()> {
     AttributeValue::subscribe(
         ctx,
         value_av_id,
-        Component::root_attribute_value_id(ctx, other_component_id).await?,
-        ValueSubscriptionPath::from_json_pointer("/domain/Value"),
+        make_subscription(ctx, other_component_id, "/domain/Value").await?,
     )
     .await?;
     AttributeValue::subscribe(
         ctx,
         value2_av_id,
-        Component::root_attribute_value_id(ctx, other_component_id).await?,
-        ValueSubscriptionPath::from_json_pointer("/domain/Value2"),
+        make_subscription(ctx, other_component_id, "/domain/Value2").await?,
     )
     .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
@@ -332,4 +329,15 @@ async fn setup(ctx: &DalContext) -> Result<()> {
     .await?;
 
     Ok(())
+}
+
+async fn make_subscription(
+    ctx: &DalContext,
+    component_id: dal::ComponentId,
+    json_pointer: impl Into<String>,
+) -> Result<ValueSubscription> {
+    Ok(ValueSubscription {
+        attribute_value_id: Component::root_attribute_value_id(ctx, component_id).await?,
+        path: ValueSubscriptionPath::JsonPointer(json_pointer.into()),
+    })
 }
