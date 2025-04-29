@@ -196,109 +196,121 @@ function normalizePropertyType(
  * @returns The property with normalized anyOf/oneOf structures
  * @internal
  */
-function normalizeAnyOfAndOneOfTypes(
-  prop: CfProperty,
-): CfProperty {
-  if (prop.type) return prop;
-
-  if (prop.oneOf) {
-    const newProp: CfObjectProperty = {
-      description: prop.description,
-      type: "object",
-      properties: {},
-    };
-
-    for (const ofMember of prop.oneOf) {
-      if (!newProp.properties) {
-        throw new Error("unexpected oneOf");
-      }
-
-      if (ofMember.type === "object" && ofMember.properties) {
-        for (const title of _.keys(ofMember.properties)) {
-          newProp.properties[title] = ofMember.properties[title];
-        }
-      } else if (ofMember.type === "array" && ofMember.items) {
-        const title = ofMember.title ??
-          `${prop.title}${_.capitalize(ofMember.type)}`;
-        if (!title) {
-          console.log(prop);
-          throw new Error(
-            `oneOf array without title`,
-          );
-        }
-
-        newProp.properties[title] = ofMember;
-      } else if (ofMember.type === "object") {
-        // If its of type object with no properties, we treat it as a string
-        const title = ofMember.title ??
-          `${prop.title}JSON`;
-
-        newProp.properties[title] = {
-          title,
-          description: ofMember.description,
-          type: "string",
-        };
-      } else {
-        console.log(ofMember);
-        throw new Error(
-          `attempted to process oneOf as not an object or array: ${ofMember}`,
-        );
-      }
-    }
-
-    return newProp;
-  }
-
-  if (prop.anyOf) {
-    let isObject;
-    const properties = {} as Record<string, CfProperty>;
-
-    for (const ofMember of prop.anyOf) {
-      if (!isCfObjectProperty(ofMember)) {
-        isObject = false;
-        break;
-      }
-      isObject = true;
-
-      if (!ofMember.title) {
-        console.log(prop);
-        throw new Error("anyOf of objects without title");
-      }
-
-      if (ofMember.properties) {
-        isObject = true;
-
-        properties[ofMember.title] = {
-          ...ofMember.properties[ofMember.title],
-        };
-      } else if (ofMember.patternProperties) {
-        isObject = true;
-
-        if (!ofMember.title) {
-          console.log(prop);
-          throw new Error("anyOf of objects without title");
-        }
-
-        properties[ofMember.title] = ofMember;
-      }
-    }
-
-    if (isObject) {
-      return {
-        description: prop.description,
-        type: "object",
-        properties,
-      };
-    } else {
-      return {
-        description: prop.description,
-        type: "string",
-      };
-    }
-  }
-
-  return prop;
-}
+ function normalizeAnyOfAndOneOfTypes(
+   prop: CfProperty,
+ ): CfProperty {
+   if (prop.type) return prop;
+ 
+   if (prop.oneOf) {
+     const mergedProp: (CfProperty & { type: "object" }) = {
+       description: prop.description,
+       type: "object",
+       properties: {},
+     };
+     let jsonProp: (CfProperty & { type: "string" }) | undefined = undefined;
+     let arrayProp: (CfProperty & { type: "array" }) | undefined = undefined;
+ 
+     for (const ofMember of prop.oneOf) {
+       if (!mergedProp.properties) {
+         throw new Error("unexpected oneOf");
+       }
+ 
+       if (ofMember.type === "object" && ofMember.properties) {
+         for (const title of _.keys(ofMember.properties)) {
+           mergedProp.properties[title] = ofMember.properties[title];
+         }
+       } else if (ofMember.type === "array" && ofMember.items) {
+         const title = ofMember.title ?? prop.title;
+         if (!title) {
+           console.log(prop);
+           throw new Error(
+             `oneOf array without title`,
+           );
+         }
+ 
+         arrayProp = {
+           title,
+           description: prop.description,
+           type: "array",
+           items: normalizeProperty(ofMember.items),
+         };
+       } else if (ofMember.type === "object") {
+         // If its of type object with no properties, we treat it as a string
+         const title = ofMember.title ?? prop.title;
+ 
+         jsonProp = {
+           title,
+           description: prop.description,
+           type: "string",
+         }
+       } else {
+         console.log(ofMember);
+         throw new Error(
+           `attempted to process oneOf as not an object or array: ${ofMember}`,
+         );
+       }
+     }
+ 
+     // Array props take precedence over JSON props as well as explicit array props,
+     // because we are assuming that props that can be either object or array are really just a
+     // "one or many", i.e. T or T[]
+     if (arrayProp) return arrayProp;
+     // JSON prop is last resort, return the nicely typed one if there is one
+     if (mergedProp.properties) return mergedProp;
+     if (!jsonProp) throw new Error("Unexpected or empty oneOf");
+     return jsonProp;
+   }
+ 
+   if (prop.anyOf) {
+     let isObject;
+     const properties = {} as Record<string, CfProperty>;
+ 
+     for (const ofMember of prop.anyOf) {
+       if (!isCfObjectProperty(ofMember)) {
+         isObject = false;
+         break;
+       }
+       isObject = true;
+ 
+       if (!ofMember.title) {
+         console.log(prop);
+         throw new Error("anyOf of objects without title");
+       }
+ 
+       if (ofMember.properties) {
+         isObject = true;
+ 
+         properties[ofMember.title] = {
+           ...ofMember.properties[ofMember.title],
+         };
+       } else if (ofMember.patternProperties) {
+         isObject = true;
+ 
+         if (!ofMember.title) {
+           console.log(prop);
+           throw new Error("anyOf of objects without title");
+         }
+ 
+         properties[ofMember.title] = ofMember;
+       }
+     }
+ 
+     if (isObject) {
+       return {
+         description: prop.description,
+         type: "object",
+         properties,
+       };
+     } else {
+       return {
+         description: prop.description,
+         type: "string",
+       };
+     }
+   }
+ 
+   return prop;
+ }
 
 /**
  * Type guard that determines if a property can be treated as an object property.
