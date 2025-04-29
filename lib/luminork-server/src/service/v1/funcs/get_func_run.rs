@@ -3,6 +3,7 @@ use axum::{
     extract::Path,
 };
 use serde::Serialize;
+use serde_json::json;
 use utoipa::ToSchema;
 
 use super::{
@@ -12,7 +13,10 @@ use super::{
 };
 use crate::{
     api_types::func_run::v1::FuncRunViewV1,
-    extract::change_set::ChangeSetDalContext,
+    extract::{
+        PosthogEventTracker,
+        change_set::ChangeSetDalContext,
+    },
 };
 
 #[utoipa::path(
@@ -33,12 +37,22 @@ use crate::{
 )]
 pub async fn get_func_run(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
     Path(FuncRunV1RequestPath { func_run_id }): Path<FuncRunV1RequestPath>,
 ) -> FuncsResult<Json<GetFuncRunV1Response>> {
     let maybe_func_run = ctx.layer_db().func_run().read(func_run_id).await?;
     match maybe_func_run {
         Some(func_run) => {
             let func_run_view = FuncRunViewV1::assemble(ctx, &func_run).await?;
+
+            tracker.track(
+                ctx,
+                "api_get_func_run",
+                json!({
+                    "func_run_id": func_run_id
+                }),
+            );
+
             Ok(Json(GetFuncRunV1Response {
                 func_run: func_run_view,
             }))

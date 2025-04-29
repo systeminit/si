@@ -9,6 +9,7 @@ use dal::{
 };
 use itertools::Itertools;
 use serde::Serialize;
+use serde_json::json;
 use utoipa::ToSchema;
 
 use super::{
@@ -16,7 +17,10 @@ use super::{
     SchemaResult,
     SchemaV1RequestPath,
 };
-use crate::extract::change_set::ChangeSetDalContext;
+use crate::extract::{
+    PosthogEventTracker,
+    change_set::ChangeSetDalContext,
+};
 
 #[utoipa::path(
     get,
@@ -36,6 +40,7 @@ use crate::extract::change_set::ChangeSetDalContext;
 )]
 pub async fn get_schema(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
     Path(SchemaV1RequestPath { schema_id }): Path<SchemaV1RequestPath>,
 ) -> SchemaResult<Json<GetSchemaV1Response>> {
     let schema = Schema::get_by_id_opt(ctx, schema_id)
@@ -44,6 +49,16 @@ pub async fn get_schema(
 
     let default_variant_id = Schema::default_variant_id(ctx, schema_id).await?;
     let variants = SchemaVariant::list_for_schema(ctx, schema_id).await?;
+
+    tracker.track(
+        ctx,
+        "api_get_schema",
+        json!({
+            "schema_id": schema_id,
+            "schema_name": schema.name,
+            "default_variant_id": default_variant_id
+        }),
+    );
 
     Ok(Json(GetSchemaV1Response {
         name: schema.name,

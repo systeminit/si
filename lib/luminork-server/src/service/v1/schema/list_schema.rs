@@ -10,6 +10,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use serde_json::json;
 use utoipa::{
     self,
     ToSchema,
@@ -37,7 +38,7 @@ use crate::extract::{
 )]
 pub async fn list_schemas(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
-    _tracker: PosthogEventTracker,
+    tracker: PosthogEventTracker,
 ) -> Result<Json<ListSchemaV1Response>, SchemaError> {
     let mut schema_resp: Vec<SchemaResponse> = vec![];
     let schema_ids = Schema::list_ids(ctx).await?;
@@ -52,6 +53,8 @@ pub async fn list_schemas(
             installed: is_installed,
         });
     }
+
+    tracker.track(ctx, "api_list_schemas", json!({}));
 
     Ok(Json(ListSchemaV1Response {
         schemas: schema_resp,

@@ -4,13 +4,17 @@ use dal::{
     ComponentId,
 };
 use serde::Serialize;
+use serde_json::json;
 use utoipa::{
     self,
     ToSchema,
 };
 
 use super::ComponentsError;
-use crate::extract::change_set::ChangeSetDalContext;
+use crate::extract::{
+    PosthogEventTracker,
+    change_set::ChangeSetDalContext,
+};
 
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -35,8 +39,11 @@ pub struct ListComponentsV1Response {
 )]
 pub async fn list_components(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
 ) -> Result<Json<ListComponentsV1Response>, ComponentsError> {
     let component_ids = Component::list_ids(ctx).await?;
+
+    tracker.track(ctx, "api_list_components", json!({}));
 
     Ok(Json(ListComponentsV1Response {
         components: component_ids,

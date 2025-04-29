@@ -1,6 +1,7 @@
 use axum::response::Json;
 use dal::change_set::ChangeSet;
 use serde::Serialize;
+use serde_json::json;
 use utoipa::ToSchema;
 
 use crate::{
@@ -26,8 +27,10 @@ use crate::{
 )]
 pub async fn get_change_set(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
-    _tracker: PosthogEventTracker,
+    tracker: PosthogEventTracker,
 ) -> Result<Json<GetChangeSetV1Response>, ChangeSetError> {
+    tracker.track(ctx, "api_get_change_set", json!({}));
+
     let change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
 
     Ok(Json(GetChangeSetV1Response { change_set }))

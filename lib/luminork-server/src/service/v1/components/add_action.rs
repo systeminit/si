@@ -19,6 +19,8 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use serde_json::json;
+use si_events::audit_log::AuditLogKind;
 use utoipa::{
     self,
     ToSchema,
@@ -57,7 +59,7 @@ use crate::{
 )]
 pub async fn add_action(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
-    _tracker: PosthogEventTracker,
+    tracker: PosthogEventTracker,
     Path(ComponentV1RequestPath { component_id }): Path<ComponentV1RequestPath>,
     payload: Result<Json<AddActionV1Request>, axum::extract::rejection::JsonRejection>,
 ) -> Result<Json<AddActionV1Response>, ComponentsError> {
@@ -77,7 +79,31 @@ pub async fn add_action(
         ActionKind::Manual => {}
     }
 
+    let func_id = ActionPrototype::func_id(ctx, prototype.id).await?;
+    let func = Func::get_by_id(ctx, func_id).await?;
+
     Action::new(ctx, action_prototype_id, component_id.into()).await?;
+
+    tracker.track(
+        ctx,
+        "api_queue_action",
+        json!({
+            "component_id": component_id,
+            "action_func_name": func.name.clone(),
+        }),
+    );
+
+    ctx.write_audit_log(
+        AuditLogKind::AddAction {
+            prototype_id: prototype.id,
+            action_kind: prototype.kind.into(),
+            func_id,
+            func_display_name: func.display_name,
+            func_name: func.name.clone(),
+        },
+        func.name,
+    )
+    .await?;
 
     ctx.commit().await?;
 
