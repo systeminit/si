@@ -15,10 +15,7 @@ use strum::{
 use crate::{
     EdgeWeightKindDiscriminants,
     workspace_snapshot::{
-        graph::{
-            LineageId,
-            deprecated::v1::DeprecatedCategoryNodeWeightV1,
-        },
+        graph::LineageId,
         node_weight::traits::CorrectTransforms,
     },
 };
@@ -108,17 +105,6 @@ impl std::fmt::Debug for CategoryNodeWeight {
             .field("lineage_id", &self.lineage_id.to_string())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .finish()
-    }
-}
-
-impl From<DeprecatedCategoryNodeWeightV1> for CategoryNodeWeight {
-    fn from(value: DeprecatedCategoryNodeWeightV1) -> Self {
-        Self {
-            id: value.id,
-            lineage_id: value.lineage_id,
-            kind: value.kind,
-            merkle_tree_hash: value.merkle_tree_hash,
-        }
     }
 }
 

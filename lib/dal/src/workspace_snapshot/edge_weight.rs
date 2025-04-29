@@ -8,10 +8,7 @@ use serde::{
 };
 use strum::EnumDiscriminants;
 
-use super::graph::deprecated::v1::DeprecatedEdgeWeightV1;
 use crate::attribute::value::subscription::ValueSubscriptionPath;
-
-pub mod deprecated;
 
 /// This type is postcard serialized and new enum variants *MUST* be added to the end *ONLY*.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, EnumDiscriminants)]
@@ -112,12 +109,6 @@ impl EdgeWeight {
 
     pub fn new(kind: EdgeWeightKind) -> Self {
         Self { kind }
-    }
-}
-
-impl From<DeprecatedEdgeWeightV1> for EdgeWeight {
-    fn from(value: DeprecatedEdgeWeightV1) -> Self {
-        Self { kind: value.kind }
     }
 }
 

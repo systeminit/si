@@ -209,6 +209,17 @@ impl Action {
         result: ActionResult,
     );
 
+    /// Returns whether or not any Actions were dispatched.
+    pub async fn dispatch_actions(ctx: &DalContext) -> ActionResult<bool> {
+        let mut did_dispatch = false;
+        for dispatchable_ation_id in Action::eligible_to_dispatch(ctx).await? {
+            Action::dispatch_action(ctx, dispatchable_ation_id).await?;
+            did_dispatch = true;
+        }
+
+        Ok(did_dispatch)
+    }
+
     pub async fn find_for_component_id(
         ctx: &DalContext,
         component_id: ComponentId,

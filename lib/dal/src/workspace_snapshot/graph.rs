@@ -3,7 +3,6 @@ use std::{
     io::Write,
 };
 
-use deprecated::DeprecatedWorkspaceSnapshotGraphV1;
 use detector::Update;
 use petgraph::prelude::*;
 /// Ensure [`NodeIndex`], and [`Direction`] are usable externally.
@@ -48,11 +47,9 @@ use crate::{
 };
 
 pub mod correct_transforms;
-pub mod deprecated;
 pub mod detector;
 mod tests;
 pub mod traits;
-pub mod v2;
 pub mod v3;
 pub mod v4;
 
@@ -61,7 +58,6 @@ pub use traits::{
     schema::variant::SchemaVariantExt,
     socket::input::InputSocketExt,
 };
-pub use v2::WorkspaceSnapshotGraphV2;
 pub use v3::WorkspaceSnapshotGraphV3;
 pub use v4::WorkspaceSnapshotGraphV4;
 
@@ -144,8 +140,8 @@ pub type WorkspaceSnapshotGraphResult<T> = Result<T, WorkspaceSnapshotGraphError
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString, EnumIter))]
 pub enum WorkspaceSnapshotGraph {
     Legacy,
-    V1(DeprecatedWorkspaceSnapshotGraphV1),
-    V2(WorkspaceSnapshotGraphV2),
+    V1,
+    V2,
     /// Added `InputSocket` and `SchemaVariant` `NodeWeight` variants.
     V3(WorkspaceSnapshotGraphV3),
     /// Added `View`, `Geometry` and `DiagramObject` categories,
@@ -170,7 +166,7 @@ impl WorkspaceSnapshotGraph {
     /// Return a reference to the most up to date enum variant for the graph type
     pub fn inner(&self) -> &WorkspaceSnapshotGraphVCurrent {
         match self {
-            Self::Legacy | Self::V1(_) | Self::V2(_) | Self::V3(_) => {
+            Self::Legacy | Self::V1 | Self::V2 | Self::V3(_) => {
                 unimplemented!("Attempted to access an unmigrated snapshot!")
             }
             Self::V4(inner) => inner,
@@ -179,7 +175,7 @@ impl WorkspaceSnapshotGraph {
 
     pub fn inner_mut(&mut self) -> &mut WorkspaceSnapshotGraphVCurrent {
         match self {
-            Self::Legacy | Self::V1(_) | Self::V2(_) | Self::V3(_) => {
+            Self::Legacy | Self::V1 | Self::V2 | Self::V3(_) => {
                 unimplemented!("Attempted to access an unmigrated snapshot!")
             }
             Self::V4(inner) => inner,

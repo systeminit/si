@@ -10,10 +10,7 @@ use si_events::{
 
 use crate::{
     EdgeWeightKindDiscriminants,
-    workspace_snapshot::{
-        graph::deprecated::v1::DeprecatedDependentValueRootNodeWeightV1,
-        node_weight::traits::CorrectTransforms,
-    },
+    workspace_snapshot::node_weight::traits::CorrectTransforms,
 };
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -82,17 +79,6 @@ impl std::fmt::Debug for DependentValueRootNodeWeight {
             .field("value_id", &self.value_id.to_string())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .finish()
-    }
-}
-
-impl From<DeprecatedDependentValueRootNodeWeightV1> for DependentValueRootNodeWeight {
-    fn from(value: DeprecatedDependentValueRootNodeWeightV1) -> Self {
-        Self {
-            id: value.id,
-            lineage_id: value.lineage_id,
-            value_id: value.value_id,
-            merkle_tree_hash: value.merkle_tree_hash,
-        }
     }
 }
 

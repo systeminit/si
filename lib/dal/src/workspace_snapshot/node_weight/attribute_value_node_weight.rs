@@ -24,7 +24,6 @@ use crate::{
         graph::{
             LineageId,
             correct_transforms::add_dependent_value_root_updates,
-            deprecated::v1::DeprecatedAttributeValueNodeWeightV1,
             detector::Update,
         },
         node_weight::traits::CorrectTransforms,
@@ -147,18 +146,6 @@ impl std::fmt::Debug for AttributeValueNodeWeight {
             .field("node_hash", &self.node_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .finish()
-    }
-}
-
-impl From<DeprecatedAttributeValueNodeWeightV1> for AttributeValueNodeWeight {
-    fn from(value: DeprecatedAttributeValueNodeWeightV1) -> Self {
-        Self {
-            id: value.id,
-            lineage_id: value.lineage_id,
-            merkle_tree_hash: value.merkle_tree_hash,
-            unprocessed_value: value.unprocessed_value,
-            value: value.value,
-        }
     }
 }
 

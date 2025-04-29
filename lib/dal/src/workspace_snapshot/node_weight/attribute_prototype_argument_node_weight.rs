@@ -13,10 +13,7 @@ use crate::{
     EdgeWeightKindDiscriminants,
     Timestamp,
     workspace_snapshot::{
-        graph::{
-            LineageId,
-            deprecated::v1::DeprecatedAttributePrototypeArgumentNodeWeightV1,
-        },
+        graph::LineageId,
         node_weight::traits::CorrectTransforms,
     },
 };
@@ -112,20 +109,6 @@ impl std::fmt::Debug for AttributePrototypeArgumentNodeWeight {
             .field("node_hash", &self.node_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .finish()
-    }
-}
-
-impl From<DeprecatedAttributePrototypeArgumentNodeWeightV1>
-    for AttributePrototypeArgumentNodeWeight
-{
-    fn from(value: DeprecatedAttributePrototypeArgumentNodeWeightV1) -> Self {
-        Self {
-            id: value.id,
-            lineage_id: value.lineage_id,
-            merkle_tree_hash: value.merkle_tree_hash,
-            targets: value.targets,
-            timestamp: value.timestamp,
-        }
     }
 }
 

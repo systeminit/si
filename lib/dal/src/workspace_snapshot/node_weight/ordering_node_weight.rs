@@ -22,10 +22,7 @@ use crate::{
     WorkspaceSnapshotGraphVCurrent,
     workspace_snapshot::{
         NodeInformation,
-        graph::{
-            deprecated::v1::DeprecatedOrderingNodeWeightV1,
-            detector::Update,
-        },
+        graph::detector::Update,
         node_weight::traits::{
             CorrectTransforms,
             CorrectTransformsResult,
@@ -125,17 +122,6 @@ impl std::fmt::Debug for OrderingNodeWeight {
             .field("content_hash", &self.content_hash())
             .field("merkle_tree_hash", &self.merkle_tree_hash)
             .finish()
-    }
-}
-
-impl From<DeprecatedOrderingNodeWeightV1> for OrderingNodeWeight {
-    fn from(value: DeprecatedOrderingNodeWeightV1) -> Self {
-        Self {
-            id: value.id,
-            lineage_id: value.lineage_id,
-            order: value.order,
-            merkle_tree_hash: value.merkle_tree_hash,
-        }
     }
 }
 

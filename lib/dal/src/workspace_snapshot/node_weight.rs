@@ -50,7 +50,6 @@ use self::{
 };
 use super::graph::{
     WorkspaceSnapshotGraphError,
-    deprecated::v1::DeprecatedNodeWeightV1,
     detector::Update,
 };
 use crate::{
@@ -79,7 +78,6 @@ use crate::{
             traits::SiVersionedNodeWeight,
             view_node_weight::ViewNodeWeight,
         },
-        vector_clock::VectorClockError,
     },
 };
 
@@ -106,8 +104,6 @@ pub mod secret_node_weight;
 pub mod view_node_weight;
 
 pub mod traits;
-
-pub mod deprecated;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -142,8 +138,6 @@ pub enum NodeWeightError {
     UnexpectedContentAddressVariant(ContentAddressDiscriminants, ContentAddressDiscriminants),
     #[error("Unexpected node weight variant. Got {1} but expected {0}")]
     UnexpectedNodeWeightVariant(NodeWeightDiscriminants, NodeWeightDiscriminants),
-    #[error("Vector Clock error: {0}")]
-    VectorClock(#[from] VectorClockError),
     #[error("WorkspaceSnapshot error: {0}")]
     WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("WorkspaceSnapshotGraph error: {0}")]
@@ -1085,30 +1079,6 @@ impl NodeWeight {
     pub fn dot_details(&self) -> String {
         let discrim: NodeWeightDiscriminants = self.into();
         discrim.to_string()
-    }
-}
-
-impl From<DeprecatedNodeWeightV1> for NodeWeight {
-    fn from(value: DeprecatedNodeWeightV1) -> Self {
-        match value {
-            DeprecatedNodeWeightV1::Action(weight) => Self::Action(weight.into()),
-            DeprecatedNodeWeightV1::ActionPrototype(weight) => Self::ActionPrototype(weight.into()),
-            DeprecatedNodeWeightV1::AttributePrototypeArgument(weight) => {
-                Self::AttributePrototypeArgument(weight.into())
-            }
-            DeprecatedNodeWeightV1::AttributeValue(weight) => Self::AttributeValue(weight.into()),
-            DeprecatedNodeWeightV1::Category(weight) => Self::Category(weight.into()),
-            DeprecatedNodeWeightV1::Component(weight) => Self::Component(weight.into()),
-            DeprecatedNodeWeightV1::Content(weight) => Self::Content(weight.into()),
-            DeprecatedNodeWeightV1::Func(weight) => Self::Func(weight.into()),
-            DeprecatedNodeWeightV1::FuncArgument(weight) => Self::FuncArgument(weight.into()),
-            DeprecatedNodeWeightV1::Ordering(weight) => Self::Ordering(weight.into()),
-            DeprecatedNodeWeightV1::Prop(weight) => Self::Prop(weight.into()),
-            DeprecatedNodeWeightV1::Secret(weight) => Self::Secret(weight.into()),
-            DeprecatedNodeWeightV1::DependentValueRoot(weight) => {
-                Self::DependentValueRoot(weight.into())
-            }
-        }
     }
 }
 
