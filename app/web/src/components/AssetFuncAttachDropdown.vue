@@ -1,12 +1,12 @@
 <template>
   <IconButton
     iconTone="action"
-    icon="link"
+    icon="plus"
     size="sm"
     :requestStatus="requestStatus"
     :selected="menuRef?.isOpen"
-    tooltip="Attach Function"
-    loadingTooltip="Attaching new function..."
+    tooltip="Add Function"
+    loadingTooltip="Adding function..."
     @click="onClick"
   >
     <DropdownMenu ref="menuRef" forceAlignRight>
@@ -18,7 +18,7 @@
         New function
       </DropdownMenuItem>
       <DropdownMenuItem
-        icon="func"
+        icon="link"
         :disabled="assetStore.selectedSchemaVariant?.isLocked"
         @select="emit('selectedAttachType', 'existing')"
       >
