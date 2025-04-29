@@ -15,7 +15,7 @@
       <li>Outputs: {{ component.outputCount }}</li>
     </ol>
     <footer class="grid grid-cols-2">
-      <div class="place-self-start">
+      <div class="justify-self-start self-end">
         <VButton label="📌" size="sm" tone="neutral" variant="ghost" />
         <VButton label="Upgrade" size="sm" tone="action" />
       </div>

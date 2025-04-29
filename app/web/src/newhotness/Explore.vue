@@ -27,14 +27,16 @@
       <!-- right header -->
       right header
     </div>
-    <div class="scrollable tilegrid">
+    <div class="max-h-fit scrollable">
       <!-- body -->
-      <ComponentGridTile
-        v-for="component in componentViewList"
-        :key="component.id"
-        :component="component"
-        @dblclick="componentNavigate"
-      />
+      <div class="tilegrid">
+        <ComponentGridTile
+          v-for="component in componentViewList"
+          :key="component.id"
+          :component="component"
+          @dblclick="componentNavigate"
+        />
+      </div>
     </div>
     <div class="grid grid-rows-subgrid gap-sm" :style="collapsingStyles">
       <CollapsingGridItem ref="actions">
