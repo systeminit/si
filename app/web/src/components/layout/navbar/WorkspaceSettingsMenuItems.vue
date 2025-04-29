@@ -16,6 +16,11 @@
     @select="openWorkspaceDetailsHandler"
   />
   <DropdownMenuItem
+    icon="settings"
+    label="Manage Workspace Tokens"
+    @select="openWorkspaceApiTokensHandler"
+  />
+  <DropdownMenuItem
     v-if="showViz"
     icon="diagram"
     label="Visualizer"
@@ -50,6 +55,15 @@ const openWorkspaceDetailsHandler = () => {
   const currentWorkspace = workspacesStore.urlSelectedWorkspaceId;
   if (!currentWorkspace) return;
   window.open(`${AUTH_PORTAL_URL}/workspace/${currentWorkspace}`, "_blank");
+};
+
+const openWorkspaceApiTokensHandler = () => {
+  const currentWorkspace = workspacesStore.urlSelectedWorkspaceId;
+  if (!currentWorkspace) return;
+  window.open(
+    `${AUTH_PORTAL_URL}/workspace/${currentWorkspace}/tokens`,
+    "_blank",
+  );
 };
 
 const openManageWorkspacesHandler = () => {
