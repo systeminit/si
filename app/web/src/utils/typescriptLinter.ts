@@ -265,7 +265,8 @@ export function GetTooltipFromPos(pos: number): Tooltip | null {
     : "";
 
   return {
-    pos,
+    pos: quickInfo.textSpan.start,
+    end: quickInfo.textSpan.start + quickInfo.textSpan.length,
     create() {
       const dom = document.createElement("div");
       dom.innerHTML = parts + docs + tags;

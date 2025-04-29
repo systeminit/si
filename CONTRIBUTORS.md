@@ -41,3 +41,4 @@ We contributors to System Initiative:
 * Mr Lizard (@Mr-Lizard)
 * Aaron Dernley (@aaron-dernley)
 * systeminitbot (@systeminitbot)
+* Jake Ginnivan (@JakeGinnivan)
