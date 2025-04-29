@@ -204,7 +204,7 @@ This section contains common troubleshooting scenarios when working on the Syste
 
 ## Build Errors Related to Running Services Reliant on `node_modules`
 
-Since we switched to `buck2` for our build infrastructure in mid-2023, you may experience issues when running services reliant on `node_modules` within older cloned instances of the repostiory.
+Since we switched to `buck2` for our build infrastructure in mid-2023, you may experience issues when running services reliant on `node_modules` within older cloned instances of the repository.
 To solve these build errors, run the following in the root of your repository:
 
 > [!WARNING]
@@ -299,10 +299,10 @@ Now, you can use LocalStack in your development setup.
 
 # Using buck2
 
-This section ontains information on using `buck2` within this repository.
+This section contains information on using `buck2` within this repository.
 We recommend using the `buck2` binary provided by our [`nix` flake](flake.nix) to ensure compatible versioning.
 
-For information on what `buck2` is, please refer to the [upstream repostiroy](https://github.com/facebook/buck2).
+For information on what `buck2` is, please refer to the [upstream repository](https://github.com/facebook/buck2).
 
 ## Terminology
 
@@ -625,7 +625,7 @@ Since the descriptiveness of a commit is subjective, please feel free to talk to
 If you would like an optional commit template, see the following:
 
 ```text
-<present-tense-verb-with-capitalized-first-letter> <everything-else-without-puncutation-at-the-end>
+<present-tense-verb-with-capitalized-first-letter> <everything-else-without-punctuation-at-the-end>
 
 <sentences-in-paragraph-format-or-bullet-points>
 ```
@@ -708,9 +708,9 @@ aforementioned action(s) without spending too much time thinking about them.
 
 1. Ensure your local tree is clean and everything is pushed up to the corresponding remote branch.
     1. This will make it easier if we want to see the diff on GitHub later.
-2. Count the numer of commits that you'd like to squash.
+2. Count the number of commits that you'd like to squash.
     1. Navigating to your branch diff on GitHub can be helpful here: `https://github.com/systeminit/si/compare/main...<your-branch-name>`
-3. Run `git reset --soft HEAD~N` where `N` is the name of commits (example: `git reset --soft HEAD~2` where you'd like to squash two commits into one).
+3. Run `git reset --soft HEAD~N` where `N` is the number of commits (example: `git reset --soft HEAD~2` where you'd like to squash two commits into one).
 4. Run `git status` to see all staged changes from the commits that were soft reset.
 5. Now, commit your changes (e.g. `git commit -s`).
 6. Finally, run `git push`.
