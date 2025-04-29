@@ -16,6 +16,7 @@ mod input_sources;
 mod management;
 mod materialized_view;
 mod module;
+mod newhotness;
 mod node_weight;
 mod pkg;
 mod prompt_overrides;

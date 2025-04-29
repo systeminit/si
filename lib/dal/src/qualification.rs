@@ -3,6 +3,7 @@ use serde::{
     Serialize,
 };
 use si_data_pg::PgError;
+use si_frontend_types::newhotness::component::ComponentQualificationStats;
 use si_layer_cache::LayerDbError;
 use strum::{
     AsRefStr,
@@ -40,18 +41,18 @@ use crate::{
 pub struct QualificationSummaryForComponent {
     pub component_id: ComponentId,
     pub component_name: String,
-    pub total: i64,
-    pub warned: i64,
-    pub succeeded: i64,
-    pub failed: i64,
+    pub total: u64,
+    pub warned: u64,
+    pub succeeded: u64,
+    pub failed: u64,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct QualificationSummary {
-    pub total: i64,
-    pub succeeded: i64,
-    pub warned: i64,
-    pub failed: i64,
+    pub total: u64,
+    pub succeeded: u64,
+    pub warned: u64,
+    pub failed: u64,
     pub components: Vec<QualificationSummaryForComponent>,
 }
 
@@ -75,22 +76,30 @@ impl QualificationSummary {
         let mut components_failed = 0;
         let mut total = 0;
 
-        let mut component_summaries = vec![];
+        let component_ids = Component::list_ids(ctx).await?;
+        let mut component_summaries = Vec::with_capacity(component_ids.len());
 
-        for component in Component::list(ctx).await? {
-            let individual_summary = Self::get_summary_for_component(ctx, &component).await?;
+        for component_id in component_ids {
+            let stats = Self::individual_stats(ctx, component_id).await?;
 
             // Update counters for all components.
-            if individual_summary.failed > 0 {
+            if stats.failed > 0 {
                 components_failed += 1;
-            } else if individual_summary.warned > 0 {
+            } else if stats.warned > 0 {
                 components_warned += 1;
             } else {
                 components_succeeded += 1;
             }
-            total += individual_summary.total;
+            total += stats.total;
 
-            component_summaries.push(individual_summary);
+            component_summaries.push(QualificationSummaryForComponent {
+                component_id,
+                component_name: Component::name_by_id(ctx, component_id).await?,
+                total: stats.total,
+                warned: stats.warned,
+                succeeded: stats.succeeded,
+                failed: stats.failed,
+            });
         }
 
         Ok(QualificationSummary {
@@ -103,18 +112,19 @@ impl QualificationSummary {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub async fn get_summary_for_component(
+    pub async fn individual_stats(
         ctx: &DalContext,
-        component: &Component,
-    ) -> QualificationSummaryResult<QualificationSummaryForComponent> {
-        let component_id = component.id();
+        component_id: ComponentId,
+    ) -> QualificationSummaryResult<ComponentQualificationStats> {
         let qualification_statuses =
             Component::list_qualification_statuses(ctx, component_id).await?;
 
-        let individual_total = qualification_statuses.len() as i64;
+        let total = qualification_statuses.len() as u64;
+
         let mut succeeded = 0;
         let mut warned = 0;
         let mut failed = 0;
+
         for status in qualification_statuses.iter().flatten() {
             match status {
                 QualificationSubCheckStatus::Success => succeeded += 1,
@@ -124,13 +134,20 @@ impl QualificationSummary {
             }
         }
 
-        Ok(QualificationSummaryForComponent {
-            component_id,
-            component_name: component.name(ctx).await?,
-            total: individual_total,
-            succeeded,
+        // TODO(nick): this was ported from the frontend. It is an assumption... but is hasn't been
+        // wrong for us... yet... let's keep an eye on it.
+        let running = total
+            .checked_sub(warned)
+            .and_then(|v| v.checked_sub(succeeded))
+            .and_then(|v| v.checked_sub(failed))
+            .unwrap_or(0);
+
+        Ok(ComponentQualificationStats {
+            total,
             warned,
+            succeeded,
             failed,
+            running,
         })
     }
 }

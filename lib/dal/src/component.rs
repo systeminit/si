@@ -38,11 +38,6 @@ use si_frontend_types::{
     DiagramSocketNodeSide,
     GeometryAndView,
     RawGeometry,
-    newhotness::component::{
-        ComponentQualificationTotals,
-        ComponentView,
-        ComponentViewList,
-    },
 };
 use si_pkg::KeyOrIndex;
 use si_split_graph::SplitGraphError;
@@ -152,7 +147,6 @@ use crate::{
     },
     qualification::{
         QualificationError,
-        QualificationSummary,
         QualificationSummaryError,
     },
     schema::variant::{
@@ -4262,93 +4256,6 @@ impl Component {
 
         self.into_frontend_type(ctx, Some(&geometry), change_status, diagram_sockets)
             .await
-    }
-
-    pub async fn as_frontend_list_type(ctx: &DalContext) -> ComponentResult<ComponentViewList> {
-        let components = Self::list(ctx).await?;
-
-        let mut component_views = Vec::new();
-
-        for component in components {
-            let id = component.id;
-            let schema = component.schema(ctx).await?;
-            let schema_variant = component.schema_variant(ctx).await?;
-            let schema_variant_id = schema_variant.id;
-            let has_resource = component.resource(ctx).await?.is_some();
-            let qualifications_summary =
-                QualificationSummary::get_summary_for_component(ctx, &component)
-                    .await
-                    .map_err(Box::new)?;
-
-            // TODO(Wendy) - There is probably a better way to do this
-            let input_socket_ids =
-                InputSocket::list_ids_for_schema_variant(ctx, schema_variant_id).await?;
-            let mut input_count = 0;
-            for socket_id in input_socket_ids {
-                let attribute_value_id =
-                    InputSocket::component_attribute_value_for_input_socket_id(ctx, socket_id, id)
-                        .await?;
-                let attribute_prototype_id =
-                    AttributeValue::prototype_id(ctx, attribute_value_id).await?;
-                let attribute_prototype_argument_ids =
-                    AttributePrototype::list_arguments_for_id(ctx, attribute_prototype_id).await?;
-                for arg_id in attribute_prototype_argument_ids {
-                    let proto = AttributePrototypeArgument::get_by_id(ctx, arg_id).await?;
-                    if let Some(targets) = proto.targets() {
-                        if targets.destination_component_id == id {
-                            input_count += 1;
-                        }
-                    }
-                }
-            }
-
-            // TODO(Wendy) - There is DEFINITELY a better way to do this, this approach can't react to the output socket changing!
-            let output_sockets = OutputSocket::list(ctx, schema_variant_id).await?;
-            let mut output_count = 0;
-            for output_socket in output_sockets {
-                let attribute_prototype_argument_ids =
-                    output_socket.prototype_arguments_using(ctx).await?;
-                for arg_id in attribute_prototype_argument_ids {
-                    let proto = AttributePrototypeArgument::get_by_id(ctx, arg_id).await?;
-                    if let Some(targets) = proto.targets() {
-                        if targets.source_component_id == id {
-                            output_count += 1;
-                        }
-                    }
-                }
-            }
-
-            let diff_count = Component::get_diff_patch(ctx, id).await?.len();
-
-            component_views.push(ComponentView {
-                id,
-                name: component.name(ctx).await?,
-                schema_name: schema.name.to_owned(),
-                schema_id: schema.id(),
-                schema_variant_id: schema_variant.id(),
-                schema_variant_name: schema_variant.display_name().to_owned(),
-                schema_category: schema_variant.category().to_owned(),
-                has_resource,
-                qualification_totals: ComponentQualificationTotals {
-                    total: qualifications_summary.total,
-                    warned: qualifications_summary.warned,
-                    succeeded: qualifications_summary.succeeded,
-                    failed: qualifications_summary.failed,
-                    running: qualifications_summary.total
-                        - qualifications_summary.warned
-                        - qualifications_summary.succeeded
-                        - qualifications_summary.failed,
-                },
-                input_count,
-                output_count,
-                diff_count,
-            });
-        }
-
-        Ok(ComponentViewList {
-            id: ctx.change_set_id(),
-            components: component_views,
-        })
     }
 }
 

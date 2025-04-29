@@ -31,9 +31,9 @@
 import { Icon, VButton } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { PropType } from "vue";
-import { ComponentView } from "@/workers/types/dbinterface";
+import { BifrostComponent } from "@/workers/types/dbinterface";
 
 defineProps({
-  component: { type: Object as PropType<ComponentView>, required: true },
+  component: { type: Object as PropType<BifrostComponent>, required: true },
 });
 </script>

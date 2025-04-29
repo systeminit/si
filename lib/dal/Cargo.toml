@@ -85,6 +85,7 @@ url             = { workspace = true }
 
 [dev-dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
+dal-newhotness  = { path = "../../lib/dal-newhotness" }
 dal-test        = { path = "../../lib/dal-test" }
 telemetry       = { path = "../../lib/telemetry-rs" }
 telemetry-nats  = { path = "../../lib/telemetry-nats-rs" }

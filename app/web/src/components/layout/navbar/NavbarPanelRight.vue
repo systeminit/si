@@ -24,6 +24,20 @@
             "
           />
           <DropdownMenuItem
+            v-if="
+              changeSetsStore.selectedWorkspacePk &&
+              changeSetsStore.selectedChangeSetId
+            "
+            icon="refresh"
+            label="Rebuild Index"
+            @click="
+              rebuild(
+                changeSetsStore.selectedWorkspacePk,
+                changeSetsStore.selectedChangeSetId,
+              )
+            "
+          />
+          <DropdownMenuItem
             icon="mjolnir"
             label="Throw Hammer"
             @click="() => modalRef.open()"
@@ -89,9 +103,12 @@ import {
   Modal,
   Stack,
 } from "@si/vue-lib/design-system";
+import { URLPattern, describePattern } from "@si/vue-lib";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import * as heimdall from "@/store/realtime/heimdall";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { sdfApiInstance } from "@/store/apis.web";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import NavbarButton from "./NavbarButton.vue";
 import Collaborators from "./Collaborators.vue";
 import Notifications from "./Notifications.vue";
@@ -109,6 +126,20 @@ const collapse = computed(() => windowWidth.value < 1200);
 
 const windowResizeHandler = () => {
   windowWidth.value = window.innerWidth;
+};
+
+const rebuild = (workspaceId: string, changeSetId: ChangeSetId) => {
+  const pattern = [
+    "v2",
+    "workspaces",
+    { workspaceId },
+    "change-sets",
+    { changeSetId },
+    "index",
+    "rebuild",
+  ] as URLPattern;
+  const [url] = describePattern(pattern);
+  sdfApiInstance.post(url);
 };
 
 const hammer = () => {

@@ -12,7 +12,10 @@ use si_events::{
         EntityKind,
     },
 };
-use si_id::ChangeSetId;
+use si_id::{
+    AttributeValueId,
+    ChangeSetId,
+};
 
 use crate::{
     MaterializedView,
@@ -30,19 +33,32 @@ use crate::{
     Debug, Serialize, Deserialize, PartialEq, Eq, Clone, si_frontend_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
-pub struct ComponentQualificationTotals {
-    pub total: i64,
-    pub warned: i64,
-    pub succeeded: i64,
-    pub failed: i64,
-    pub running: i64,
+pub struct ComponentQualificationStats {
+    pub total: u64,
+    pub warned: u64,
+    pub succeeded: u64,
+    pub failed: u64,
+    pub running: u64,
 }
 
 #[derive(
-    Debug, Serialize, Deserialize, PartialEq, Eq, Clone, si_frontend_types_macros::FrontendChecksum,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    Clone,
+    si_frontend_types_macros::FrontendChecksum,
+    si_frontend_types_macros::FrontendObject,
+    si_frontend_types_macros::Refer,
+    si_frontend_types_macros::MV,
 )]
 #[serde(rename_all = "camelCase")]
-pub struct ComponentView {
+#[mv(
+    trigger_entity = EntityKind::Component,
+    reference_kind = ReferenceKind::Component,
+)]
+pub struct Component {
     pub id: ComponentId,
     pub name: String,
     pub schema_name: String,
@@ -51,10 +67,15 @@ pub struct ComponentView {
     pub schema_variant_name: String,
     pub schema_category: String,
     pub has_resource: bool,
-    pub qualification_totals: ComponentQualificationTotals,
+    pub qualification_totals: ComponentQualificationStats,
     pub input_count: usize,
     pub output_count: usize,
     pub diff_count: usize,
+    pub root_attribute_value_id: AttributeValueId,
+    pub domain_attribute_value_id: AttributeValueId,
+    pub secrets_attribute_value_id: AttributeValueId,
+    pub si_attribute_value_id: AttributeValueId,
+    pub resource_value_attribute_value_id: AttributeValueId,
 }
 
 #[derive(
@@ -71,9 +92,10 @@ pub struct ComponentView {
 #[serde(rename_all = "camelCase")]
 #[mv(
   trigger_entity = EntityKind::CategoryComponent,
-  reference_kind = ReferenceKind::ComponentViewList,
+  reference_kind = ReferenceKind::ComponentList,
 )]
-pub struct ComponentViewList {
+pub struct ComponentList {
     pub id: ChangeSetId,
-    pub components: Vec<ComponentView>,
+    #[mv(reference_kind = ReferenceKind::Component)]
+    pub components: Vec<Reference<ComponentId>>,
 }

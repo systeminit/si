@@ -8,6 +8,10 @@
       <div>Connections</div>
     </div>
     <div class="row-span-2 scrollable">
+      <AttributePanel
+        v-if="component.data.value?.rootAttributeValueId"
+        :attributeValueId="component.data.value?.rootAttributeValueId"
+      />
       <p>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer id
         mauris libero. Donec maximus rutrum ipsum accumsan porttitor. Nulla
@@ -54,7 +58,22 @@
   </section>
 </template>
 
-<script lang="ts" setup></script>
+<script lang="ts" setup>
+import { useQuery } from "@tanstack/vue-query";
+import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
+import { BifrostComponent } from "@/workers/types/dbinterface";
+import AttributePanel from "./AttributePanel.vue";
+
+const props = defineProps<{
+  componentId: string;
+}>();
+
+const component = useQuery<BifrostComponent | null>({
+  queryKey: makeKey("Component", props.componentId),
+  queryFn: async () =>
+    await bifrost<BifrostComponent>(makeArgs("Component", props.componentId)),
+});
+</script>
 
 <style lang="css" scoped>
 section.grid {

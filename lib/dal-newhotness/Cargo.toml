@@ -1,0 +1,26 @@
+[package]
+name = "dal-newhotness"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+dal = { path = "../../lib/dal" }
+si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
+si-id = { path = "../../lib/si-id" }
+telemetry = { path = "../../lib/telemetry-rs" }
+
+remain = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+dal-test = { path = "../../lib/dal-test" }
+
+pretty_assertions_sorted = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }

@@ -149,7 +149,7 @@ import EditingPill from "@/components/EditingPill.vue";
 import { useViewsStore } from "@/store/views.store";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
-import { SchemaVariantCategories } from "@/workers/types/dbinterface";
+import { BifrostSchemaVariantCategories } from "@/workers/types/dbinterface";
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 
@@ -190,12 +190,11 @@ function onSearchUpdated(newFilterString: string) {
 const ffStore = useFeatureFlagsStore();
 
 const queryKey = makeKey("SchemaVariantCategories");
-
 const schemaVariantCategoriesOverBifrost =
-  useQuery<SchemaVariantCategories | null>({
+  useQuery<BifrostSchemaVariantCategories | null>({
     queryKey,
     queryFn: async () =>
-      await bifrost<SchemaVariantCategories>(
+      await bifrost<BifrostSchemaVariantCategories>(
         makeArgs("SchemaVariantCategories"),
       ),
   });

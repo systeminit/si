@@ -30,10 +30,10 @@
     <div class="scrollable tilegrid">
       <!-- body -->
       <ComponentGridTile
-        v-for="component in componentViewList"
+        v-for="component in componentList.data.value?.components"
         :key="component.id"
         :component="component"
-        @dblclick="componentNavigate"
+        @dblclick="componentNavigate(component.id)"
       />
     </div>
     <div class="grid grid-rows-subgrid gap-sm" :style="collapsingStyles">
@@ -99,7 +99,11 @@ import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
-import { ActionViewList, ComponentViewList } from "@/workers/types/dbinterface";
+import {
+  BifrostActionViewList,
+  BifrostComponentList,
+} from "@/workers/types/dbinterface";
+import { ComponentId } from "@/api/sdf/dal/component";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
@@ -111,27 +115,21 @@ const history = ref<typeof CollapsingGridItem>();
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
-// TODO this is where you do a tanStack query like this:
-// https://github.com/systeminit/si/blob/main/app/web/src/workers/webworker.ts#L818
-// const components = [];
-
-const actionViewListRaw = useQuery<ActionViewList | null>({
+const actionViewListRaw = useQuery<BifrostActionViewList | null>({
   queryKey: makeKey("ActionViewList"),
   queryFn: async () =>
-    await bifrost<ActionViewList>(makeArgs("ActionViewList")),
+    await bifrost<BifrostActionViewList>(makeArgs("ActionViewList")),
 });
 const actionViewList = computed(
   () => actionViewListRaw.data.value?.actions ?? [],
 );
 
-const componentViewListRaw = useQuery<ComponentViewList | null>({
-  queryKey: makeKey("ComponentViewList"),
-  queryFn: async () =>
-    await bifrost<ComponentViewList>(makeArgs("ComponentViewList")),
+const key = makeKey("ComponentList");
+const args = makeArgs("ComponentList");
+const componentList = useQuery<BifrostComponentList | null>({
+  queryKey: key,
+  queryFn: async () => await bifrost<BifrostComponentList>(args),
 });
-const componentViewList = computed(
-  () => componentViewListRaw.data.value?.components ?? [],
-);
 
 const searchString = ref("searching...");
 
@@ -141,9 +139,9 @@ const collapsingStyles = computed(() =>
 
 const router = useRouter();
 const route = useRoute();
-const componentNavigate = () => {
+const componentNavigate = (componentId: ComponentId) => {
   const params = { ...route.params };
-  params.componentId = "123";
+  params.componentId = componentId;
   router.push({
     name: "new-hotness-component",
     params,

@@ -2001,6 +2001,7 @@ dependencies = [
  "clap",
  "convert_case 0.6.0",
  "dal-macros",
+ "dal-newhotness",
  "dal-test",
  "derive_more",
  "diff",
@@ -2078,6 +2079,23 @@ dependencies = [
  "si-events",
  "syn 2.0.100",
  "trybuild",
+]
+
+[[package]]
+name = "dal-newhotness"
+version = "0.1.0"
+dependencies = [
+ "dal",
+ "dal-test",
+ "pretty_assertions_sorted",
+ "remain",
+ "serde_json",
+ "si-frontend-types",
+ "si-id",
+ "telemetry",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -2594,6 +2612,7 @@ dependencies = [
  "buck2-resources",
  "bytes",
  "dal",
+ "dal-newhotness",
  "derive_builder",
  "edda-core",
  "frigg",
