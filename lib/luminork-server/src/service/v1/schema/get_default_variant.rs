@@ -6,6 +6,7 @@ use dal::{
     Schema,
     SchemaVariant,
 };
+use serde_json::json;
 
 use super::{
     GetSchemaVariantV1Response,
@@ -13,7 +14,10 @@ use super::{
     SchemaResult,
     SchemaV1RequestPath,
 };
-use crate::extract::change_set::ChangeSetDalContext;
+use crate::extract::{
+    PosthogEventTracker,
+    change_set::ChangeSetDalContext,
+};
 
 #[utoipa::path(
     get,
@@ -33,6 +37,7 @@ use crate::extract::change_set::ChangeSetDalContext;
 )]
 pub async fn get_default_variant(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
     Path(SchemaV1RequestPath { schema_id }): Path<SchemaV1RequestPath>,
 ) -> SchemaResult<Json<GetSchemaVariantV1Response>> {
     let default_variant_id = Schema::default_variant_id(ctx, schema_id).await?;
@@ -45,6 +50,18 @@ pub async fn get_default_variant(
         .await?
         .into_iter()
         .collect();
+
+    tracker.track(
+        ctx,
+        "api_get_default_variant",
+        json!({
+            "schema_id": schema_id,
+            "schema_variant_id": default_variant_id,
+            "schema_variant_name": variant.display_name(),
+            "schema_variant_category": variant.category(),
+            "is_locked": variant.is_locked()
+        }),
+    );
 
     Ok(Json(GetSchemaVariantV1Response {
         variant_id: default_variant_id,

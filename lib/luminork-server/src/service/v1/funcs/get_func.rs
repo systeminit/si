@@ -7,6 +7,7 @@ use dal::{
     func::FuncKind,
 };
 use serde::Serialize;
+use serde_json::json;
 use utoipa::ToSchema;
 
 use super::{
@@ -14,7 +15,10 @@ use super::{
     FuncsError,
     FuncsResult,
 };
-use crate::extract::change_set::ChangeSetDalContext;
+use crate::extract::{
+    PosthogEventTracker,
+    change_set::ChangeSetDalContext,
+};
 
 #[utoipa::path(
     get,
@@ -34,11 +38,21 @@ use crate::extract::change_set::ChangeSetDalContext;
 )]
 pub async fn get_func(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
     Path(FuncV1RequestPath { func_id }): Path<FuncV1RequestPath>,
 ) -> FuncsResult<Json<GetFuncV1Response>> {
     let func = Func::get_by_id_opt(ctx, func_id)
         .await?
         .ok_or(FuncsError::FuncNotFound(func_id))?;
+
+    tracker.track(
+        ctx,
+        "api_get_func",
+        json!({
+            "func_id": func_id,
+            "func_name": func.clone().name,
+        }),
+    );
 
     Ok(Json(GetFuncV1Response {
         name: func.clone().name,

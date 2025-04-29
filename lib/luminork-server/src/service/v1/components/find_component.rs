@@ -12,6 +12,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use serde_json::json;
 use utoipa::{
     self,
     IntoParams,
@@ -27,7 +28,10 @@ use super::{
     get_component::GetComponentV1Response,
 };
 use crate::{
-    extract::change_set::ChangeSetDalContext,
+    extract::{
+        PosthogEventTracker,
+        change_set::ChangeSetDalContext,
+    },
     service::v1::ComponentViewV1,
 };
 
@@ -62,6 +66,7 @@ pub struct FindComponentV1Params {
 )]
 pub async fn find_component(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
     Query(params): Query<FindComponentV1Params>,
 ) -> Result<Json<GetComponentV1Response>, ComponentsError> {
     let component_list = Component::list_ids(ctx).await?;
@@ -79,6 +84,14 @@ pub async fn find_component(
     };
 
     let component_id = resolve_component_reference(ctx, &component_ref, &component_list).await?;
+
+    tracker.track(
+        ctx,
+        "api_find_component",
+        json!({
+            "component_id": component_id
+        }),
+    );
 
     let (management_functions, action_functions) =
         super::get_component_functions(ctx, component_id).await?;

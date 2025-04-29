@@ -9,6 +9,7 @@ use dal::{
     Component,
 };
 use serde::Serialize;
+use serde_json::json;
 use si_id::ManagementPrototypeId;
 use utoipa::{
     self,
@@ -21,7 +22,10 @@ use super::{
 };
 use crate::{
     api_types::component::v1::ComponentViewV1,
-    extract::change_set::ChangeSetDalContext,
+    extract::{
+        PosthogEventTracker,
+        change_set::ChangeSetDalContext,
+    },
 };
 
 #[derive(Serialize, Debug, ToSchema)]
@@ -66,10 +70,19 @@ pub struct GetComponentV1ResponseActionFunction {
 )]
 pub async fn get_component(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
     Path(ComponentV1RequestPath { component_id }): Path<ComponentV1RequestPath>,
 ) -> Result<Json<GetComponentV1Response>, ComponentsError> {
     let (management_functions, action_functions) =
         super::get_component_functions(ctx, component_id).await?;
+
+    tracker.track(
+        ctx,
+        "api_get_component",
+        json!({
+            "component_id": component_id
+        }),
+    );
 
     Ok(Json(GetComponentV1Response {
         component: ComponentViewV1::assemble(ctx, component_id).await?,

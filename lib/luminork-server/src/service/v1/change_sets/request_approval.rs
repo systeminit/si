@@ -46,7 +46,7 @@ pub async fn request_approval(
         ctx,
         "api_request_change_set_approval",
         json!({
-            "change_set": change_set.id,
+            "change_set_name": change_set.name,
         }),
     );
 

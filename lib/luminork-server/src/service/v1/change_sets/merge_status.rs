@@ -13,6 +13,7 @@ use dal::{
     },
 };
 use serde::Serialize;
+use serde_json::json;
 use si_events::{
     ActionId,
     ChangeSetStatus,
@@ -20,11 +21,13 @@ use si_events::{
 use utoipa::ToSchema;
 
 use crate::{
-    extract::change_set::ChangeSetDalContext,
+    extract::{
+        PosthogEventTracker,
+        change_set::ChangeSetDalContext,
+    },
     service::v1::ChangeSetError,
 };
 
-/// Get status of a change set and its actions
 #[utoipa::path(
     get,
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/merge_status",
@@ -40,8 +43,18 @@ use crate::{
 )]
 pub async fn merge_status(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
 ) -> Result<Json<MergeStatusV1Response>, ChangeSetError> {
     let change_set = ctx.change_set()?.into_frontend_type(ctx).await?;
+
+    tracker.track(
+        ctx,
+        "api_change_set_merge_status",
+        json!({
+            "change_set_name": change_set.name,
+            "change_set_status": change_set.status
+        }),
+    );
 
     let actions = match change_set.status {
         // Grab action status from HEAD since we don't get updates anymore after being applied
