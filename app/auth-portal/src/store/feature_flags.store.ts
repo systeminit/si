@@ -10,12 +10,10 @@ export const useFeatureFlagsStore = () => {
     defineStore("feature-flags", {
       state: () => ({
         ADMIN_PAGE: false,
-        ON_DEMAND_ASSETS: false,
       }),
       onActivated() {
         posthog.onFeatureFlags((flags) => {
           this.ADMIN_PAGE = flags.includes("auth_portal_admin_page");
-          this.ON_DEMAND_ASSETS = flags.includes("on_demand_assets");
         });
       },
     }),
