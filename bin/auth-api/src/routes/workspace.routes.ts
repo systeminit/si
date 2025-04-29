@@ -37,7 +37,6 @@ import {
 } from "../services/auth.service";
 import { tracker } from "../lib/tracker";
 import { findLatestTosForUser } from "../services/tos.service";
-import { posthog } from "../lib/posthog";
 import { extractAuthUser, router } from ".";
 
 router.get("/workspaces", async (ctx) => {
@@ -530,10 +529,7 @@ router.get("/auth-reconnect", async (ctx) => {
     workspace: ctx.state.authWorkspace,
   };
 
-  const onDemandAssets = await posthog.isFeatureEnabled("on_demand_assets", authUser.id);
-  if (onDemandAssets) {
-    body.onDemandAssets = true;
-  }
+  body.onDemandAssets = true;
 
   ctx.body = { ...body };
 });
