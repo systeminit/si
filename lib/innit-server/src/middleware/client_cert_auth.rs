@@ -1,11 +1,21 @@
-use std::sync::Arc;
+use std::{
+    net::{
+        IpAddr,
+        Ipv4Addr,
+        SocketAddr,
+    },
+    sync::Arc,
+};
 
 use axum::{
     body::{
         Body,
         BoxBody,
     },
-    extract::State,
+    extract::{
+        ConnectInfo,
+        State,
+    },
     http::{
         Request,
         StatusCode,
@@ -22,6 +32,7 @@ use si_tls::{
     CertificateSource,
     ClientCertificateVerifier,
 };
+use telemetry::tracing::info;
 use thiserror::Error;
 
 type Result<T> = std::result::Result<T, ClientCertError>;
@@ -83,6 +94,23 @@ pub async fn verify_client_cert_middleware(
     next: Next<Body>,
 ) -> Result<Response<BoxBody>> {
     let client_cert = req.extensions().get::<CertificateDer<'static>>().cloned();
+
+    let peer_addr = req
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|ci| ci.0)
+        .unwrap_or_else(|| SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 0));
+
+    for (name, value) in req.headers() {
+        let value_str = value.to_str().unwrap_or("<binary value>");
+        info!("CERT-DEBUG Header: {} = {}", name, value_str);
+    }
+
+    info!(
+        "Verifying client certificate: peer={}, uri={}",
+        peer_addr,
+        req.uri()
+    );
 
     let client_cert = match client_cert {
         Some(cert) => cert,

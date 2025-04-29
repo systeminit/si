@@ -14,6 +14,7 @@ use axum::{
     routing::IntoMakeService,
 };
 use hyper::{
+    Request,
     StatusCode,
     server::{
         accept::Accept,
@@ -166,9 +167,19 @@ pub fn build_service(
 ) -> ServerResult<Router> {
     let state = AppState::new(parameter_cache, parameter_store_client, token);
 
-    let routes = routes::routes(state);
+    let routes = routes::routes(state).layer(TraceLayer::new_for_http().on_request(
+        |request: &Request<_>, _: &Span| {
+            // This will log every request before any middleware processes it
+            tracing::info!(
+                "EARLIEST-LAYER: Incoming request to {} with method {}",
+                request.uri(),
+                request.method()
+            );
+        },
+    ));
 
     let routes = if let Some(verifier) = client_cert_verifier.clone() {
+        info!("Configuring client certificate validation");
         routes.layer(middleware::from_fn_with_state(
             verifier,
             verify_client_cert_middleware,
