@@ -135,6 +135,7 @@ async fn get_ca_certs_from_arns(ca_cert_arns: &[String]) -> ServerResult<Vec<Cer
     let acmpca_client = PrivateCertManagerClient::new().await;
     let mut ca_certs = vec![];
     for ca_cert_arn in ca_cert_arns {
+        info!("Fetching CA Cert for ARN: {ca_cert_arn}");
         ca_certs.push(
             acmpca_client
                 .get_certificate_authority(ca_cert_arn.to_string())
@@ -169,6 +170,7 @@ pub fn build_service(
     let routes = routes::routes(state);
 
     let routes = if let Some(verifier) = client_cert_verifier.clone() {
+        info!("Configuring the server for client cert validation");
         routes.layer(middleware::from_fn_with_state(
             verifier,
             verify_client_cert_middleware,

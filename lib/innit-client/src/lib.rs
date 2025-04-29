@@ -87,12 +87,14 @@ impl InnitClient {
             &config.auth_config().client_key,
         ) {
             environment = get_host_environment_from_cert_or_env_vars(cert).await?;
+            info!("Determined we are running in environment: {environment}");
             Self::configure_client_with_certs(client_builder, cert, key, use_https).await?
         } else if let Some(ca_arn) = &config.client_ca_arn() {
             let (cert, key) =
                 generate_cert_from_acmpca(ca_arn.to_string(), config.for_app()).await?;
 
             environment = get_host_environment_from_cert_or_env_vars(&cert).await?;
+            info!("Determined we are running in environment: {environment}");
             Self::configure_client_with_certs(client_builder, &cert, &key, use_https).await?
         } else {
             client_builder
@@ -213,6 +215,7 @@ async fn generate_cert_from_acmpca(
     for_app: String,
 ) -> Result<(CertificateSource, KeySource)> {
     let acmpca_client = PrivateCertManagerClient::new().await;
+    info!("Generating cert for ARN: {ca_arn}");
     Ok(acmpca_client
         .get_new_cert_from_ca(ca_arn, for_app, "innit".to_string())
         .await?)
