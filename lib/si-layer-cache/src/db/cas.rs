@@ -139,4 +139,16 @@ where
 
         Ok(result)
     }
+
+    #[instrument(name = "cas.write_bytes_to_durable_storage", level = "debug", skip_all)]
+    pub async fn write_bytes_to_durable_storage(
+        &self,
+        key: &ContentHash,
+        bytes: &[u8],
+    ) -> LayerDbResult<()> {
+        let key = key.to_string();
+        self.cache.pg().insert(&key, "cas", bytes).await?;
+
+        Ok(())
+    }
 }

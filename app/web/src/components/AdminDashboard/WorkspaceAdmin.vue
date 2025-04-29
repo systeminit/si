@@ -118,6 +118,18 @@
             @click="setSnapshot(selectedWorkspaceId, selectedChangeSetId)"
             >Replace snapshot for this change set</VButton
           >
+
+          <VButton
+            :loading="isGettingCasData"
+            @click="getCasData(selectedWorkspaceId, selectedChangeSetId)"
+            >Save cas data to disk</VButton
+          >
+
+          <VButton
+            :loading="isUploadingCasData"
+            @click="uploadCasData(selectedWorkspaceId, selectedChangeSetId)"
+            >Upload cas data to service</VButton
+          >
         </Stack>
       </Stack>
     </Stack>
@@ -176,6 +188,9 @@ const selectedChangeSetId = ref<string | null>(null);
 
 const isGettingSnapshot = ref<boolean>(false);
 const isSettingSnapshot = ref<boolean>(false);
+
+const isGettingCasData = ref<boolean>(false);
+const isUploadingCasData = ref<boolean>(false);
 
 const lastUploadedSnapshotAddress = ref<string | null>(null);
 
@@ -322,6 +337,56 @@ const setSnapshot = async (workspaceId: string, changeSetId: string) => {
     }
   } finally {
     isSettingSnapshot.value = false;
+  }
+};
+
+const uploadCasData = async (workspaceId: string, changeSetId: string) => {
+  isUploadingCasData.value = true;
+  try {
+    const [fileHandle] = await window.showOpenFilePicker({
+      types: [
+        {
+          description: `Cas data map for change set ${changeSetId}`,
+          accept: {
+            "application/octet-stream": [".cas"],
+          },
+        },
+      ],
+    });
+
+    const fileData = await fileHandle.getFile();
+    await adminStore.UPLOAD_CAS_DATA(workspaceId, changeSetId, fileData);
+  } finally {
+    isUploadingCasData.value = false;
+  }
+};
+
+const getCasData = async (workspaceId: string, changeSetId: string) => {
+  isGettingCasData.value = true;
+  try {
+    const result = await adminStore.GET_CAS_DATA(workspaceId, changeSetId);
+    if (result.result.success) {
+      const bytes = Buffer.from(result.result.data, "base64");
+      const blob = new Blob([bytes], { type: "application/octet-stream" });
+
+      const fileHandle = await window.showSaveFilePicker({
+        suggestedName: `${changeSetId}.cas`,
+        types: [
+          {
+            description: `Cas Data map for change set ${changeSetId}`,
+            accept: {
+              "application/octet-stream": [".cas"],
+            },
+          },
+        ],
+      });
+
+      const writable = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+    }
+  } finally {
+    isGettingCasData.value = false;
   }
 };
 

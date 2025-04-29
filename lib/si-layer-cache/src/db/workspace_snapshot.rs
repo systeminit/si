@@ -194,6 +194,7 @@ where
             .get_bytes_from_durable_storage(key.to_string().into())
             .await
     }
+
     #[instrument(
         name = "workspace_snapshot.write_bytes_to_durable_storage",
         level = "debug",
