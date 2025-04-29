@@ -120,6 +120,13 @@ pub async fn update_component(
         AttributeValue::update(ctx, attribute_value_id, Some(value.clone())).await?;
     }
 
+    for unset in payload.unset.iter() {
+        let prop_id = unset.prop_id(ctx, variant_id).await?;
+        let attribute_value_id =
+            Component::attribute_value_for_prop_id(ctx, component_id, prop_id).await?;
+        AttributeValue::use_default_prototype(ctx, attribute_value_id).await?;
+    }
+
     // Handle connection changes
     if !payload.connection_changes.add.is_empty() || !payload.connection_changes.remove.is_empty() {
         let component_list = Component::list_ids(ctx).await?;
@@ -175,6 +182,10 @@ pub struct UpdateComponentV1Request {
     #[schema(example = json!({"propId1": "value1", "path/to/prop": "value2"}))]
     #[serde(default)]
     pub domain: HashMap<ComponentPropKey, serde_json::Value>,
+
+    #[schema(value_type = Vec<String>, example = json!(["propId1", "path/to/prop"]))]
+    #[serde(default)]
+    pub unset: Vec<ComponentPropKey>,
 
     #[schema(example = json!({
         "add": [
