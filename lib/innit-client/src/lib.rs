@@ -15,20 +15,13 @@ use config_file::parameter_provider::{
     ParameterError,
     ParameterProvider,
 };
-use reqwest::{
-    Identity,
-    Url,
-};
+use reqwest::Url;
 use si_data_acmpca::{
     PrivateCertManagerClient,
     PrivateCertManagerClientError,
 };
 use si_settings::StandardConfigFile;
-use si_tls::{
-    CertificateResolver,
-    CertificateSource,
-    KeySource,
-};
+use si_tls::CertificateSource;
 use telemetry::tracing::info;
 use thiserror::Error;
 
@@ -77,25 +70,20 @@ pub struct InnitClient {
 
 impl InnitClient {
     pub async fn new(config: Config) -> Result<Self> {
-        let use_https = config.base_url().scheme() == "https";
         let client_builder = reqwest::Client::builder();
 
         let mut environment = config.environment().to_string();
 
-        let client_builder = if let (Some(cert), Some(key)) = (
-            &config.auth_config().client_cert,
-            &config.auth_config().client_key,
-        ) {
+        let client_builder = if let Some(cert) = &config.auth_config().client_cert {
             environment = get_host_environment_from_cert_or_env_vars(cert).await?;
             info!("Determined we are running in environment: {environment}");
-            Self::configure_client_with_certs(client_builder, cert, key, use_https).await?
+            Self::configure_client_with_certs(client_builder, cert).await?
         } else if let Some(ca_arn) = &config.client_ca_arn() {
-            let (cert, key) =
-                generate_cert_from_acmpca(ca_arn.to_string(), config.for_app()).await?;
+            let cert = generate_cert_from_acmpca(ca_arn.to_string(), config.for_app()).await?;
 
             environment = get_host_environment_from_cert_or_env_vars(&cert).await?;
             info!("Determined we are running in environment: {environment}");
-            Self::configure_client_with_certs(client_builder, &cert, &key, use_https).await?
+            Self::configure_client_with_certs(client_builder, &cert).await?
         } else {
             client_builder
         };
@@ -122,8 +110,6 @@ impl InnitClient {
     async fn configure_client_with_certs(
         client_builder: reqwest::ClientBuilder,
         cert_source: &CertificateSource,
-        key_source: &KeySource,
-        use_https: bool,
     ) -> Result<reqwest::ClientBuilder> {
         let mut builder = client_builder;
 
@@ -136,11 +122,6 @@ impl InnitClient {
                 reqwest::header::HeaderValue::from_str(&cert_base64)?,
             );
             builder = builder.default_headers(headers);
-        }
-
-        if use_https {
-            let identity = CertificateResolver::create_identity(cert_source, key_source).await?;
-            builder = builder.identity(Identity::from_pem(&identity)?);
         }
 
         Ok(builder)
@@ -210,15 +191,13 @@ impl InnitClient {
     }
 }
 
-async fn generate_cert_from_acmpca(
-    ca_arn: String,
-    for_app: String,
-) -> Result<(CertificateSource, KeySource)> {
+async fn generate_cert_from_acmpca(ca_arn: String, for_app: String) -> Result<CertificateSource> {
     let acmpca_client = PrivateCertManagerClient::new().await;
     info!("Generating cert for ARN: {ca_arn}");
-    Ok(acmpca_client
+    let (cert, _) = acmpca_client
         .get_new_cert_from_ca(ca_arn, for_app, "innit".to_string())
-        .await?)
+        .await?;
+    Ok(cert)
 }
 
 // Attempt to pull the env from our issuing cert and then the env var, failing that
