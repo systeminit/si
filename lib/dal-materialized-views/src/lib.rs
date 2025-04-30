@@ -1,4 +1,4 @@
-//! This crate is an extension of the dal that handles "newhotness" MV generation.
+//! This crate is an extension of the dal that handles materialized view generation.
 //!
 //! Why is it not in the dal? The dal is the kitchen sink for interwoven dependencies. Only
 //! "edda-server" needs the MV generation bits and not "sdf-server", so having a crate that depends
@@ -51,18 +51,14 @@
     while_true
 )]
 
-use thiserror::Error;
-
 /// Provides MV generation function(s) for the attribute tree domain.
 pub mod attribute_tree;
 /// Provides MV generation function(s) for the component domain.
 pub mod component;
 
-pub use Error as NewhotnessError;
-
 #[allow(missing_docs)]
 #[remain::sorted]
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] dal::attribute::prototype::AttributePrototypeError),

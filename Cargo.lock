@@ -2001,7 +2001,7 @@ dependencies = [
  "clap",
  "convert_case 0.6.0",
  "dal-macros",
- "dal-newhotness",
+ "dal-materialized-views",
  "dal-test",
  "derive_more",
  "diff",
@@ -2082,7 +2082,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "dal-newhotness"
+name = "dal-materialized-views"
 version = "0.1.0"
 dependencies = [
  "dal",
@@ -2096,6 +2096,16 @@ dependencies = [
  "thiserror 2.0.12",
  "tokio",
  "tokio-util",
+]
+
+[[package]]
+name = "dal-materialized-views-macros"
+version = "0.1.0"
+dependencies = [
+ "manyhow",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
 ]
 
 [[package]]
@@ -2612,7 +2622,8 @@ dependencies = [
  "buck2-resources",
  "bytes",
  "dal",
- "dal-newhotness",
+ "dal-materialized-views",
+ "dal-materialized-views-macros",
  "derive_builder",
  "edda-core",
  "frigg",
@@ -2628,7 +2639,6 @@ dependencies = [
  "si-data-pg",
  "si-events",
  "si-frontend-types",
- "si-frontend-types-macros",
  "si-id",
  "si-layer-cache",
  "si-settings",

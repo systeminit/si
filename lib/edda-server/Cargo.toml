@@ -11,7 +11,8 @@ publish.workspace = true
 [dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
 dal = { path = "../../lib/dal" }
-dal-newhotness = { path = "../../lib/dal-newhotness" }
+dal-materialized-views = { path = "../../lib/dal-materialized-views" }
+dal-materialized-views-macros = { path = "../../lib/dal-materialized-views-macros" }
 edda-core = { path = "../../lib/edda-core" }
 frigg = { path = "../../lib/frigg" }
 naxum = { path = "../../lib/naxum" }
@@ -21,7 +22,6 @@ si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-events = { path = "../../lib/si-events-rs" }
 si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
-si-frontend-types-macros = { path = "../../lib/si-frontend-types-macros" }
 si-id = { path = "../../lib/si-id" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-settings = { path = "../../lib/si-settings" }

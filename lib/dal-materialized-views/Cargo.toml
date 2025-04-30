@@ -1,5 +1,5 @@
 [package]
-name = "dal-newhotness"
+name = "dal-materialized-views"
 version.workspace = true
 authors.workspace = true
 license.workspace = true

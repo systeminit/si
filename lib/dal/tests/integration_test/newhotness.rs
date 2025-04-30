@@ -5,7 +5,7 @@ use dal::{
     DalContext,
     qualification::QualificationSummary,
 };
-use dal_newhotness::{
+use dal_materialized_views::{
     attribute_tree,
     component,
 };
