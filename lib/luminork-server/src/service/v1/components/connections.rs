@@ -14,7 +14,10 @@ use serde::{
 };
 use utoipa::ToSchema;
 
-use super::ComponentsError;
+use super::{
+    ComponentsError,
+    ComponentsResult,
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -129,7 +132,6 @@ pub async fn find_component_input_socket_id(
     find_input_socket_id(ctx, socket_name, variant_id).await
 }
 
-/// Helper function to find an output socket ID by name for a specific component
 pub async fn find_component_output_socket_id(
     ctx: &dal::DalContext,
     component_id: ComponentId,
@@ -142,7 +144,57 @@ pub async fn find_component_output_socket_id(
     find_output_socket_id(ctx, socket_name, variant_id).await
 }
 
-/// Creates/Removes the given Connection and fires necessary WSEvents
+async fn connection_summary(
+    ctx: &dal::DalContext,
+    connection: &Connection,
+    component_list: &[ComponentId],
+) -> Result<serde_json::Value, ComponentsError> {
+    match connection {
+        Connection::Incoming { from, to: _ } => {
+            let source_component_id =
+                resolve_component_reference(ctx, &from.component_ref, component_list).await?;
+
+            Ok(serde_json::json!({
+                "type": "incoming",
+                "from": {
+                    "socketName": from.socket_name,
+                    "componentId": source_component_id.to_string()
+                }
+            }))
+        }
+        Connection::Outgoing { to, from: _ } => {
+            let target_component_id =
+                resolve_component_reference(ctx, &to.component_ref, component_list).await?;
+
+            Ok(serde_json::json!({
+                "type": "outgoing",
+                "to": {
+                    "socketName": to.socket_name,
+                    "componentId": target_component_id.to_string()
+                }
+            }))
+        }
+    }
+}
+
+pub async fn summarise_connections(
+    ctx: &dal::DalContext,
+    connections: &[Connection],
+    component_list: &[ComponentId],
+) -> Result<serde_json::Value, ComponentsError> {
+    if connections.is_empty() {
+        return Ok(serde_json::Value::Null);
+    }
+
+    let mut summary = Vec::new();
+    for connection in connections {
+        let connection_summary = connection_summary(ctx, connection, component_list).await?;
+        summary.push(connection_summary);
+    }
+
+    Ok(serde_json::json!(summary))
+}
+
 pub async fn handle_connection(
     ctx: &dal::DalContext,
     connection: &Connection,
@@ -150,7 +202,7 @@ pub async fn handle_connection(
     variant_id: SchemaVariantId,
     component_list: &[ComponentId],
     is_add: bool,
-) -> Result<(), ComponentsError> {
+) -> ComponentsResult<()> {
     match connection {
         Connection::Incoming {
             from,

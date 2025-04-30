@@ -12,6 +12,8 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use serde_json::json;
+use si_events::audit_log::AuditLogKind;
 use si_id::ViewId;
 use utoipa::{
     self,
@@ -56,7 +58,7 @@ use crate::{
 )]
 pub async fn create_component(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
-    _tracker: PosthogEventTracker,
+    tracker: PosthogEventTracker,
     payload: Result<Json<CreateComponentV1Request>, axum::extract::rejection::JsonRejection>,
 ) -> Result<Json<CreateComponentV1Response>, ComponentsError> {
     let Json(payload) = payload?;
@@ -81,6 +83,7 @@ pub async fn create_component(
     };
 
     let mut component = Component::new(ctx, payload.name, variant_id, view_id).await?;
+    let comp_name = component.name(ctx).await?;
     let initial_geometry = component.geometry(ctx, view_id).await?;
     component
         .set_geometry(
@@ -93,17 +96,47 @@ pub async fn create_component(
         )
         .await?;
 
-    for (key, value) in payload.domain.into_iter() {
+    tracker.track(
+        ctx,
+        "api_create_component",
+        json!({
+            "component_id": component.id(),
+            "schema_variant_id": variant_id,
+            "schema_variant_name": module.display_name.clone().unwrap_or("unknown".to_string()),
+            "category": module.category.unwrap_or("unknown".to_string()),
+        }),
+    );
+    ctx.write_audit_log(
+        AuditLogKind::CreateComponent {
+            name: comp_name.clone(),
+            component_id: component.id(),
+            schema_variant_id: variant_id,
+            schema_variant_name: module.display_name.clone().unwrap_or("unknown".to_string()),
+        },
+        comp_name.clone(),
+    )
+    .await?;
+
+    for (key, value) in payload.domain.clone().into_iter() {
         let prop_id = key.prop_id(ctx, variant_id).await?;
         let attribute_value_id =
             Component::attribute_value_for_prop_id(ctx, component.id(), prop_id).await?;
         AttributeValue::update(ctx, attribute_value_id, Some(value.clone())).await?;
     }
 
-    if !payload.connections.is_empty() {
-        let component_list = Component::list_ids(ctx).await?;
+    let av_id = component.domain_prop_attribute_value(ctx).await?;
+    let after_domain_tree = AttributeValue::get_by_id(ctx, av_id)
+        .await?
+        .view(ctx)
+        .await?;
+    let after_value = serde_json::to_value(after_domain_tree)?;
 
-        // Process all connections
+    let component_list = Component::list_ids(ctx).await?;
+    let added_connection_summary =
+        super::connections::summarise_connections(ctx, &payload.connections, &component_list)
+            .await?;
+
+    if !payload.connections.is_empty() {
         for connection in payload.connections.iter() {
             handle_connection(
                 ctx,
@@ -116,6 +149,30 @@ pub async fn create_component(
             .await?;
         }
     }
+
+    ctx.write_audit_log(
+        AuditLogKind::UpdateComponent {
+            component_id: component.id(),
+            component_name: comp_name.clone(),
+            before_domain_tree: None,
+            after_domain_tree: Some(after_value),
+            added_connections: Some(added_connection_summary),
+            deleted_connections: None,
+        },
+        comp_name.clone(),
+    )
+    .await?;
+
+    tracker.track(
+        ctx,
+        "api_update_component",
+        json!({
+            "component_id": component.id(),
+            "component_name": comp_name.clone(),
+            "added_connections": payload.connections.len(),
+            "updated_props": payload.domain.len(),
+        }),
+    );
 
     ctx.commit().await?;
 

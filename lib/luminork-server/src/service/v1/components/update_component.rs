@@ -20,6 +20,8 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use serde_json::json;
+use si_events::audit_log::AuditLogKind;
 use utoipa::{
     self,
     ToSchema,
@@ -98,22 +100,51 @@ impl DomainPropPath {
 )]
 pub async fn update_component(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
-    _tracker: PosthogEventTracker,
+    tracker: PosthogEventTracker,
     Path(ComponentV1RequestPath { component_id }): Path<ComponentV1RequestPath>,
     payload: Result<Json<UpdateComponentV1Request>, axum::extract::rejection::JsonRejection>,
 ) -> Result<Json<UpdateComponentV1Response>, ComponentsError> {
     let Json(payload) = payload?;
     let component = Component::get_by_id(ctx, component_id).await?;
 
+    let old_name = component.name(ctx).await?;
+
     if let Some(name) = payload.name {
         component.set_name(ctx, name.as_str()).await?;
+
+        tracker.track(
+            ctx,
+            "api_component_renamed",
+            json!({
+                "component_id": component_id,
+                "old_name": old_name,
+                "new_name": name.clone(),
+            }),
+        );
+
+        ctx.write_audit_log(
+            AuditLogKind::RenameComponent {
+                component_id,
+                old_name,
+                new_name: name.clone(),
+            },
+            name.clone(),
+        )
+        .await?;
     }
 
     let schema_variant = component.schema_variant(ctx).await?;
     let variant_id = schema_variant.id;
 
-    // Update component properties
-    for (key, value) in payload.domain.into_iter() {
+    let av_id = component.domain_prop_attribute_value(ctx).await?;
+
+    let before_domain_tree = AttributeValue::get_by_id(ctx, av_id)
+        .await?
+        .view(ctx)
+        .await?;
+    let before_value = serde_json::to_value(before_domain_tree)?;
+
+    for (key, value) in payload.domain.clone().into_iter() {
         let prop_id = key.prop_id(ctx, variant_id).await?;
         let attribute_value_id =
             Component::attribute_value_for_prop_id(ctx, component_id, prop_id).await?;
@@ -127,11 +158,26 @@ pub async fn update_component(
         AttributeValue::use_default_prototype(ctx, attribute_value_id).await?;
     }
 
-    // Handle connection changes
-    if !payload.connection_changes.add.is_empty() || !payload.connection_changes.remove.is_empty() {
-        let component_list = Component::list_ids(ctx).await?;
+    let after_domain_tree = AttributeValue::get_by_id(ctx, av_id)
+        .await?
+        .view(ctx)
+        .await?;
+    let after_value = serde_json::to_value(after_domain_tree)?;
 
-        // Process connections to add
+    let component_list = Component::list_ids(ctx).await?;
+    let added_connection_summary = super::connections::summarise_connections(
+        ctx,
+        &payload.connection_changes.add,
+        &component_list,
+    )
+    .await?;
+    let removed_connection_summary = super::connections::summarise_connections(
+        ctx,
+        &payload.connection_changes.remove,
+        &component_list,
+    )
+    .await?;
+    if !payload.connection_changes.add.is_empty() || !payload.connection_changes.remove.is_empty() {
         for connection in payload.connection_changes.add.iter() {
             handle_connection(
                 ctx,
@@ -144,7 +190,6 @@ pub async fn update_component(
             .await?;
         }
 
-        // Process connections to remove
         for connection in payload.connection_changes.remove.iter() {
             handle_connection(
                 ctx,
@@ -156,16 +201,44 @@ pub async fn update_component(
             )
             .await?;
         }
-    }
+    };
 
     // Send a websocket event about the component update
-    let component = Component::get_by_id(ctx, component_id).await?;
-    WsEvent::component_updated(ctx, into_front_end_type(ctx, component).await?)
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
+    let updated_component = Component::get_by_id(ctx, component_id).await?;
+    let new_name = updated_component.name(ctx).await?;
+    WsEvent::component_updated(
+        ctx,
+        into_front_end_type(ctx, updated_component.clone()).await?,
+    )
+    .await?
+    .publish_on_commit(ctx)
+    .await?;
 
-    // Commit the changes
+    ctx.write_audit_log(
+        AuditLogKind::UpdateComponent {
+            component_id: updated_component.id(),
+            component_name: new_name.clone(),
+            before_domain_tree: Some(before_value),
+            after_domain_tree: Some(after_value),
+            added_connections: Some(added_connection_summary),
+            deleted_connections: Some(removed_connection_summary),
+        },
+        new_name.clone(),
+    )
+    .await?;
+
+    tracker.track(
+        ctx,
+        "api_update_component",
+        json!({
+            "component_id": component.id(),
+            "component_name": new_name.clone(),
+            "added_connections": payload.connection_changes.add.len(),
+            "deleted_connections": payload.connection_changes.remove.len(),
+            "updated_props": payload.domain.len() + payload.unset.len(),
+        }),
+    );
+
     ctx.commit().await?;
 
     Ok(Json(UpdateComponentV1Response {

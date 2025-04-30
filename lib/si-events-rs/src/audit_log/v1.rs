@@ -290,6 +290,11 @@ pub enum AuditLogKindV1 {
         entity_id: EntityId,
         user_id: UserPk,
     },
+    RenameComponent {
+        component_id: ComponentId,
+        old_name: String,
+        new_name: String,
+    },
     ReopenChangeSet {
         from_status: ChangeSetStatus,
     },
@@ -326,6 +331,14 @@ pub enum AuditLogKindV1 {
     UnlockSchemaVariant {
         schema_variant_id: SchemaVariantId,
         schema_variant_display_name: String,
+    },
+    UpdateComponent {
+        component_id: ComponentId,
+        component_name: String,
+        before_domain_tree: Option<serde_json::Value>,
+        after_domain_tree: Option<serde_json::Value>,
+        added_connections: Option<serde_json::Value>,
+        deleted_connections: Option<serde_json::Value>,
     },
     UpdateComponentParent {
         component_id: ComponentId,
@@ -721,6 +734,12 @@ pub enum AuditLogMetadataV1 {
         user_id: UserPk,
     },
     #[serde(rename_all = "camelCase")]
+    RenameComponent {
+        component_id: ComponentId,
+        old_name: String,
+        new_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
     ReopenChangeSet { from_status: ChangeSetStatus },
     #[serde(rename_all = "camelCase")]
     RequestChangeSetApproval { from_status: ChangeSetStatus },
@@ -759,6 +778,15 @@ pub enum AuditLogMetadataV1 {
     UnlockSchemaVariant {
         schema_variant_id: SchemaVariantId,
         schema_variant_display_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    UpdateComponent {
+        component_id: ComponentId,
+        component_name: String,
+        before_domain_tree: Option<serde_json::Value>,
+        after_domain_tree: Option<serde_json::Value>,
+        added_connections: Option<serde_json::Value>,
+        deleted_connections: Option<serde_json::Value>,
     },
     #[serde(rename_all = "camelCase")]
     UpdateComponentParent {
@@ -950,6 +978,7 @@ impl AuditLogMetadataV1 {
             MetadataDiscrim::RemoveApprover => {
                 ("User removed", Some("Approval Requirement Definition"))
             }
+            MetadataDiscrim::RenameComponent => ("Renamed", Some("Component")),
             MetadataDiscrim::ReopenChangeSet => ("Reopened", Some("Change Set")),
             MetadataDiscrim::RequestChangeSetApproval => ("Requested to Apply", Some("Change Set")),
             MetadataDiscrim::RetryAction => ("Retried", Some("Action")),
@@ -957,6 +986,7 @@ impl AuditLogMetadataV1 {
             MetadataDiscrim::TestFunction => ("Tested", Some("Function")),
             MetadataDiscrim::UnlockFunc => ("Unlocked", Some("Function")),
             MetadataDiscrim::UnlockSchemaVariant => ("Unlocked", Some("Schema Variant")),
+            MetadataDiscrim::UpdateComponent => ("Updated", Some("Component")),
             MetadataDiscrim::UpdateComponentParent => ("Updated Parent", Some("Component")),
             MetadataDiscrim::UpdateDependentInputSocket => ("Set Dependent", Some("Input Socket")),
             MetadataDiscrim::UpdateDependentOutputSocket => {
@@ -1348,6 +1378,15 @@ impl From<Kind> for Metadata {
             Kind::RejectChangeSetApply { from_status } => {
                 Self::RejectChangeSetApply { from_status }
             }
+            Kind::RenameComponent {
+                component_id,
+                old_name,
+                new_name,
+            } => Self::RenameComponent {
+                component_id,
+                old_name,
+                new_name,
+            },
             Kind::RemoveApprover {
                 approval_requirement_definition_id,
                 entity_name,
@@ -1421,6 +1460,21 @@ impl From<Kind> for Metadata {
             } => Self::UnlockSchemaVariant {
                 schema_variant_id,
                 schema_variant_display_name,
+            },
+            Kind::UpdateComponent {
+                component_id,
+                component_name,
+                before_domain_tree,
+                after_domain_tree,
+                added_connections,
+                deleted_connections,
+            } => Self::UpdateComponent {
+                component_id,
+                component_name,
+                before_domain_tree,
+                after_domain_tree,
+                added_connections,
+                deleted_connections,
             },
             Kind::UpdateComponentParent {
                 component_id,
