@@ -799,6 +799,7 @@ impl ChangeSet {
     /// Applies the current [`ChangeSet`] in the provided [`DalContext`]. [`Actions`](Action)
     /// are enqueued as needed and only done so if the base [`ChangeSet`] is "HEAD" (i.e.
     /// the default [`ChangeSet`] of the [`Workspace`]).
+    /// Also sends the relevant WSEvent
     #[instrument(level = "info", skip_all)]
     pub async fn apply_to_base_change_set(ctx: &mut DalContext) -> ChangeSetApplyResult<ChangeSet> {
         // Apply to the base change with the current change set (non-editing) and commit.
@@ -876,8 +877,8 @@ impl ChangeSet {
     }
 
     /// Applies the current [`ChangeSet`] in the provided [`DalContext`] to its base
-    /// [`ChangeSet`]. This involves performing a rebase request and updating the status
-    /// of the [`ChangeSet`] accordingly.
+    /// [`ChangeSet`]. This involves performing a rebase request, updating the status
+    /// of the [`ChangeSet`] accordingly, and publishing a WSEvent
     ///
     /// This function neither changes the visibility nor the snapshot after performing the
     /// aforementioned actions.
@@ -1011,6 +1012,7 @@ impl ChangeSet {
         Ok(())
     }
 
+    /// Updates the status for a ChangeSet to be [`ChangeSetStatus::Abandoned`] and fires necessary WSEvent
     pub async fn abandon(&mut self, ctx: &DalContext) -> ChangeSetResult<()> {
         self.update_status(ctx, ChangeSetStatus::Abandoned).await?;
         let user_id = Self::extract_userid_from_context(ctx).await;

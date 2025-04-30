@@ -20,6 +20,7 @@ use veritech_client::{
 
 use super::{
     ManagementError,
+    ManagementFuncReturn,
     ManagementGeometry,
     SocketRef,
 };
@@ -31,6 +32,8 @@ use crate::{
     DalContext,
     EdgeWeightKind,
     EdgeWeightKindDiscriminants,
+    Func,
+    FuncError,
     FuncId,
     HelperError,
     InputSocket,
@@ -90,6 +93,8 @@ pub enum ManagementPrototypeError {
     Diagram(#[from] DiagramError),
     #[error("empty value within func run value (FuncId {0} and FuncRunId {1})")]
     EmptyValueWithinFuncRunValue(FuncId, FuncRunId),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("func execution failure error: {0}")]
     FuncExecutionFailure(String),
     #[error("func runner error: {0}")]
@@ -595,9 +600,10 @@ impl ManagementPrototype {
         })
     }
 
-    // This is an experimental API for use with our External API
-    // It will return a FuncRunId that the user can use to triger
-    // a get-status request for a function
+    /// This is an experimental API for use with our External API
+    /// It will return a FuncRunId that the user can use to triger
+    /// a get-status request for a function
+    /// Upon successful Mgmt Func Run, relevant WSEvents are fired
     pub async fn dispatch_by_id(
         ctx: &DalContext,
         id: ManagementPrototypeId,
@@ -664,6 +670,7 @@ impl ManagementPrototype {
                 span,
                 func_runner,
                 manager_component_id,
+                id,
                 Some(view_id),
                 manager_component_geometry,
                 managed_component_placeholders,
@@ -843,11 +850,13 @@ impl ManagementPrototype {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn dispatch_by_id_inner(
     ctx: &DalContext,
     span: Span,
     func_runner: FuncRunner,
     component_id: ComponentId,
+    management_prototype_id: ManagementPrototypeId,
     view_id: Option<ViewId>,
     manager_component_geometry: HashMap<String, ManagementGeometry>,
     managed_component_placeholders: HashMap<String, ComponentId>,
@@ -896,10 +905,16 @@ async fn dispatch_by_id_inner(
     })
     .await?;
 
+    // We publish this immediately because the management "operator" could
+    // fail because of a bad function, but we stil want to know that the
+    // function executed
+    WsEvent::management_func_executed(ctx, management_prototype_id, component_id, func_run_id)
+        .await?
+        .publish_immediately(ctx)
+        .await?;
+
     if let Some(result) = maybe_run_result.take() {
-        let crate::management::ManagementFuncReturn {
-            status, operations, ..
-        } = result.try_into()?;
+        let result: ManagementFuncReturn = result.try_into()?;
 
         let execution_result = ManagementPrototypeExecution {
             func_run_id,
@@ -907,10 +922,11 @@ async fn dispatch_by_id_inner(
             manager_component_geometry,
             managed_component_placeholders,
         };
+        let mut created_component_ids = None;
 
-        if status == ManagementFuncStatus::Ok {
-            if let Some(operations) = operations {
-                crate::management::ManagementOperator::new(
+        if result.status == ManagementFuncStatus::Ok {
+            if let Some(operations) = result.operations {
+                created_component_ids = crate::management::ManagementOperator::new(
                     ctx,
                     component_id,
                     operations,
@@ -922,6 +938,20 @@ async fn dispatch_by_id_inner(
                 .await?;
             }
         }
+        let func_id = ManagementPrototype::func_id(ctx, management_prototype_id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
+
+        WsEvent::management_operations_complete(
+            ctx,
+            None,
+            func.name.clone(),
+            result.message.clone(),
+            result.status,
+            created_component_ids,
+        )
+        .await?
+        .publish_on_commit(ctx)
+        .await?;
     }
 
     ctx.commit().await?;
