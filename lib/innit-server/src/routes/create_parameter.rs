@@ -38,6 +38,9 @@ pub async fn create_parameter_route(
         .set_parameter(Parameter {
             name: name.clone(),
             value: Some(value.clone()),
+            // TODO(scott): this whole route should handle types somehow, but since this is currently just used
+            // in tests this is fine for now
+            r#type: None,
         })
         .await;
 

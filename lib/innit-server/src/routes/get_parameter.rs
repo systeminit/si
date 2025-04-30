@@ -45,6 +45,7 @@ pub async fn get_parameter_route(
         .set_parameter(Parameter {
             name: parameter.name.clone(),
             value: parameter.value.clone(),
+            r#type: parameter.r#type.clone(),
         })
         .await;
 
