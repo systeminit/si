@@ -9,7 +9,6 @@ const FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
   MODULES_TAB: "modules_tab",
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
-  ON_DEMAND_ASSETS: "on_demand_assets",
   DIAGRAM_OPTIMIZATION_2: "diagram-optimization-2",
   AUTOCONNECT: "autoconnect-component-input-sockets",
   PRIVATE_SCOPED_MODULES: "private-scoped-modules",

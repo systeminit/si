@@ -128,7 +128,6 @@ async fn find_or_create_user_and_workspace(
     auth_api_workspace: AuthApiWorkspace,
     create_workspace_permissions: WorkspacePermissionsMode,
     create_workspace_allowlist: &[String],
-    on_demand_assets: bool,
     spicedb_client: Option<&mut SpiceDbClient>,
 ) -> SessionResult<(User, Workspace)> {
     // lookup user or create if we've never seen it before
@@ -183,23 +182,13 @@ async fn find_or_create_user_and_workspace(
                 ));
             }
 
-            let workspace = if on_demand_assets {
-                Workspace::new_for_on_demand_assets(
-                    &mut ctx,
-                    auth_api_workspace.id,
-                    auth_api_workspace.display_name.clone(),
-                    auth_api_workspace.token,
-                )
-                .await?
-            } else {
-                Workspace::new_from_builtin(
-                    &mut ctx,
-                    auth_api_workspace.id,
-                    auth_api_workspace.display_name.clone(),
-                    auth_api_workspace.token,
-                )
-                .await?
-            };
+            let workspace = Workspace::new_for_on_demand_assets(
+                &mut ctx,
+                auth_api_workspace.id,
+                auth_api_workspace.display_name.clone(),
+                auth_api_workspace.token,
+            )
+            .await?;
 
             let _key_pair = KeyPair::new(&ctx, "default").await?;
 
@@ -214,7 +203,7 @@ async fn find_or_create_user_and_workspace(
                     "workspace_id": workspace.pk(),
                     "workspace_name": auth_api_workspace.display_name,
                     "user_id": user.pk(),
-                    "on_demand_assets": on_demand_assets,
+                    "on_demand_assets": true,
                 }),
             );
 
@@ -293,7 +282,6 @@ pub async fn auth_connect(
         res_body.workspace,
         state.create_workspace_permissions(),
         state.create_workspace_allowlist(),
-        request.on_demand_assets.unwrap_or(false),
         state.spicedb_client_clone().as_mut(),
     )
     .await?;
@@ -343,7 +331,6 @@ pub async fn auth_reconnect(
         auth_response_body.workspace,
         state.create_workspace_permissions(),
         state.create_workspace_allowlist(),
-        auth_response_body.on_demand_assets.unwrap_or(false),
         state.spicedb_client_clone().as_mut(),
     )
     .await?;

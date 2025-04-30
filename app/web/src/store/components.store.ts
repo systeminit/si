@@ -558,7 +558,6 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
   const changeSetsStore = useChangeSetsStore();
-  const featureFlagsStore = useFeatureFlagsStore();
   const routerStore = useRouterStore();
   const realtimeStore = useRealtimeStore();
 
@@ -642,9 +641,10 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               assetStore.variantList,
               "category",
             );
-            const uninstalledGroups = featureFlagsStore.ON_DEMAND_ASSETS
-              ? _.groupBy(assetStore.uninstalledVariantList, "category")
-              : {};
+            const uninstalledGroups = _.groupBy(
+              assetStore.uninstalledVariantList,
+              "category",
+            );
 
             const mergedKeys = _.uniq([
               ...Object.keys(installedGroups),
