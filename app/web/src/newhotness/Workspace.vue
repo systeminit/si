@@ -47,11 +47,9 @@
       <NavbarPanelRight />
     </nav>
 
-    <!-- grow the main body to fit all the space in between the nav and footer
-     by default flexbox containers grow at minimum to the size of their content (e.g. autp)
-     min-h-0 prevents the main container from being *larger* than the max it can grow, no matter its contents
-     also, i chose 12 here and not a standard unit because 12 puts the left border of contents exactly on the SI logo in the top left -->
-    <main class="grow p-[12px] min-h-0">
+    <!-- grow the main body to fit all the space in between the nav and the bottom of the browser window
+     min-h-0 prevents the main container from being *larger* than the max it can grow, no matter its contents -->
+    <main class="grow min-h-0">
       <!-- more v-ifs for "am i looking at viewId? secretId? or the list of views or list of secrets?"-->
       <template v-if="componentId">
         <ComponentDetail :componentId="componentId" />
@@ -60,25 +58,6 @@
         <Explore />
       </template>
     </main>
-
-    <!-- footer is fixed at "10", 2.5rem, 40px-->
-    <div
-      :class="
-        clsx(
-          'flex justify-end items-center',
-          'bg-neutral-900 text-white relative border-t flex-shrink-0 border-shade-100 shadow-[0_4px_4px_0_rgba(0,0,0,0.15)] z-90 h-10',
-          'select-none',
-        )
-      "
-    >
-      <div class="text-sm pl-xs mr-lg w-full">
-        System&nbsp;Initiative
-        <RealtimeStatusPageState />
-
-        <!-- im not really gonna float it, but im tired, FIXME -->
-        <Breadcrumbs style="float: right" />
-      </div>
-    </div>
   </div>
 </template>
 
@@ -99,14 +78,12 @@ import { useQueryClient } from "@tanstack/vue-query";
 import NavbarPanelLeft from "@/components/layout/navbar/NavbarPanelLeft.vue";
 import NavbarPanelRight from "@/components/layout/navbar/NavbarPanelRight.vue";
 import NavbarButton from "@/components/layout/navbar/NavbarButton.vue";
-import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import * as heimdall from "@/store/realtime/heimdall";
 import { useAuthStore } from "@/store/auth.store";
 import Explore from "./Explore.vue";
 import ComponentDetail from "./Component.vue";
 import { WSCS } from "./types";
-import Breadcrumbs from "./layout_components/Breadcrumbs.vue";
 import { startKeyEmitter } from "./logic_composables/key_emitter";
 
 const props = defineProps<{
@@ -215,21 +192,14 @@ onBeforeUnmount(() => {
   scrollbar-width: thin;
 }
 body.dark .scrollable {
-  scrollbar-color: rgb(33, 33, 33) rgba(0, 0, 0, 0);
+  scrollbar-color: @colors-neutral-800 @colors-black;
 }
 body.light .scrollable {
-  scrollbar-color: rgb(212, 212, 212) rgb(255, 255, 255);
+  scrollbar-color: @colors-neutral-200 @colors-white;
 }
 
 .grid > .scrollable {
   transition: max-height 1s;
-
-  > .sticky {
-    // TODO, find the right color
-    // elevate this into `hasbg` in the HTML
-    // and we use variables here to pick the right one
-    background-color: rgb(66, 66, 66);
-  }
 }
 
 /* any grid that has scrollable elements needs min-height 0 (just like main, above) otherwise the contents of the scrollable can blow out the container (putting it here globally means a human doesnt need to remember to do it every time) */
@@ -242,7 +212,6 @@ body.light .scrollable {
   grid-gap: 1rem;
 
   > .tile {
-    border: 1px solid white;
     &.pinned {
       grid-column: 1 / -1;
     }
@@ -257,6 +226,7 @@ body.light .scrollable {
 @supports (width: min(250px, 100%)) {
   .tilegrid {
     grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+    grid-auto-rows: min-content;
   }
 }
 
@@ -267,7 +237,7 @@ body.light .scrollable {
   grid-row-gap: 2px;
   grid-column-gap: 0.5rem;
   // 32px is the icon size
-  grid-template-columns: 32px 1fr 32px;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
   grid-template-rows: 16px 16px;
   grid-template-areas:
     "logo h2 spinner"
@@ -301,12 +271,6 @@ body.light .scrollable {
 .tile.component {
   display: flex;
   flex-direction: column;
-
-  > * {
-    // only direct children
-    // flex-grow: 1;
-    padding: 0.5rem;
-  }
 
   > header {
     // this header follows the grid from the mixin
