@@ -1,10 +1,19 @@
+use std::collections::{
+    HashMap,
+    HashSet,
+};
+
 use axum::{
     extract::Path,
     response::Json,
 };
 use dal::{
     Component,
-    component::delete::ComponentDeletionStatus,
+    ComponentId,
+    component::delete::{
+        self,
+        ComponentDeletionStatus,
+    },
 };
 use serde::Serialize;
 use utoipa::{
@@ -41,12 +50,23 @@ pub async fn delete_component(
     _tracker: PosthogEventTracker,
     Path(ComponentV1RequestPath { component_id }): Path<ComponentV1RequestPath>,
 ) -> Result<Json<DeleteComponentV1Response>, ComponentsError> {
-    let component = Component::get_by_id(ctx, component_id).await?;
+    let head_components: HashSet<ComponentId> =
+        Component::exists_on_head(ctx, &[component_id]).await?;
 
-    let status = match component.clone().delete(ctx).await? {
-        Some(_) => ComponentDeletionStatus::MarkedForDeletion,
-        None => ComponentDeletionStatus::Deleted,
-    };
+    let mut socket_map = HashMap::new();
+    let mut socket_map_head = HashMap::new();
+    let base_change_set_ctx = ctx.clone_with_base().await?;
+
+    let status = delete::delete_and_process(
+        ctx,
+        false,
+        &head_components,
+        &mut socket_map,
+        &mut socket_map_head,
+        &base_change_set_ctx,
+        component_id,
+    )
+    .await?;
 
     ctx.commit().await?;
 

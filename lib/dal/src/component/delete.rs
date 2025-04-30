@@ -50,80 +50,135 @@ pub async fn delete_components(
 
         let status = delete_component(ctx, &component, force_erase, &head_components).await?;
 
-        for incoming_connection in incoming_connections {
-            let payload = SummaryDiagramEdge {
-                from_component_id: incoming_connection.from_component_id,
-                from_socket_id: incoming_connection.from_output_socket_id,
-                to_component_id: incoming_connection.to_component_id,
-                to_socket_id: incoming_connection.to_input_socket_id,
-                change_status: ChangeStatus::Deleted,
-                created_info: serde_json::to_value(incoming_connection.created_info)?,
-                deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
-                to_delete: true,
-                from_base_change_set: false,
-            };
-            WsEvent::connection_upserted(ctx, payload.into())
-                .await?
-                .publish_on_commit(ctx)
-                .await?;
-        }
-
-        for outgoing_connection in outgoing_connections {
-            let payload = SummaryDiagramEdge {
-                from_component_id: outgoing_connection.from_component_id,
-                from_socket_id: outgoing_connection.from_output_socket_id,
-                to_component_id: outgoing_connection.to_component_id,
-                to_socket_id: outgoing_connection.to_input_socket_id,
-                change_status: ChangeStatus::Deleted,
-                created_info: serde_json::to_value(outgoing_connection.created_info)?,
-                deleted_info: serde_json::to_value(outgoing_connection.deleted_info)?,
-                to_delete: true,
-                from_base_change_set: false,
-            };
-            WsEvent::connection_upserted(ctx, payload.into())
-                .await?
-                .publish_on_commit(ctx)
-                .await?;
-        }
-
-        match status {
-            ComponentDeletionStatus::MarkedForDeletion => {
-                let payload = component
-                    .into_frontend_type(ctx, None, ChangeStatus::Deleted, &mut socket_map)
-                    .await?;
-                WsEvent::component_updated(ctx, payload)
-                    .await?
-                    .publish_on_commit(ctx)
-                    .await?;
-            }
-            ComponentDeletionStatus::StillExistsOnHead => {
-                let component: Component =
-                    Component::get_by_id(&base_change_set_ctx, component_id).await?;
-                let payload = component
-                    .into_frontend_type(
-                        &base_change_set_ctx,
-                        None,
-                        ChangeStatus::Deleted,
-                        &mut socket_map_head,
-                    )
-                    .await?;
-                WsEvent::component_updated(ctx, payload)
-                    .await?
-                    .publish_on_commit(ctx)
-                    .await?;
-            }
-            ComponentDeletionStatus::Deleted => {
-                WsEvent::component_deleted(ctx, component_id)
-                    .await?
-                    .publish_on_commit(ctx)
-                    .await?;
-            }
-        }
+        process_delete(
+            ctx,
+            &mut socket_map,
+            &mut socket_map_head,
+            &base_change_set_ctx,
+            component_id,
+            component,
+            incoming_connections,
+            outgoing_connections,
+            status,
+        )
+        .await?;
 
         result.insert(component_id, status);
     }
 
     Ok(result)
+}
+
+/// Deletes a component (either removing or marking as to be deleted), and sends all the necessary WSEvents
+/// TEMPORARILY EMBRACE THE MADNESS
+pub async fn delete_and_process(
+    ctx: &DalContext,
+    force_erase: bool,
+    head_components: &HashSet<ComponentId>,
+    socket_map: &mut HashMap<si_id::SchemaVariantId, Vec<si_frontend_types::DiagramSocket>>,
+    socket_map_head: &mut HashMap<si_id::SchemaVariantId, Vec<si_frontend_types::DiagramSocket>>,
+    base_change_set_ctx: &DalContext,
+    component_id: ComponentId,
+) -> ComponentResult<ComponentDeletionStatus> {
+    let component = Component::get_by_id(ctx, component_id).await?;
+    let incoming_connections = component.incoming_connections(ctx).await?;
+    let outgoing_connections = component.outgoing_connections(ctx).await?;
+    let status = delete_component(ctx, &component, force_erase, head_components).await?;
+    process_delete(
+        ctx,
+        socket_map,
+        socket_map_head,
+        base_change_set_ctx,
+        component_id,
+        component,
+        incoming_connections,
+        outgoing_connections,
+        status,
+    )
+    .await?;
+    Ok(status)
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn process_delete(
+    ctx: &DalContext,
+    socket_map: &mut HashMap<si_id::SchemaVariantId, Vec<si_frontend_types::DiagramSocket>>,
+    socket_map_head: &mut HashMap<si_id::SchemaVariantId, Vec<si_frontend_types::DiagramSocket>>,
+    base_change_set_ctx: &DalContext,
+    component_id: ComponentId,
+    component: Component,
+    incoming_connections: Vec<super::Connection>,
+    outgoing_connections: Vec<super::Connection>,
+    status: ComponentDeletionStatus,
+) -> ComponentResult<ComponentDeletionStatus> {
+    for incoming_connection in incoming_connections {
+        let payload = SummaryDiagramEdge {
+            from_component_id: incoming_connection.from_component_id,
+            from_socket_id: incoming_connection.from_output_socket_id,
+            to_component_id: incoming_connection.to_component_id,
+            to_socket_id: incoming_connection.to_input_socket_id,
+            change_status: ChangeStatus::Deleted,
+            created_info: serde_json::to_value(incoming_connection.created_info)?,
+            deleted_info: serde_json::to_value(incoming_connection.deleted_info)?,
+            to_delete: true,
+            from_base_change_set: false,
+        };
+        WsEvent::connection_upserted(ctx, payload.into())
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+    }
+    for outgoing_connection in outgoing_connections {
+        let payload = SummaryDiagramEdge {
+            from_component_id: outgoing_connection.from_component_id,
+            from_socket_id: outgoing_connection.from_output_socket_id,
+            to_component_id: outgoing_connection.to_component_id,
+            to_socket_id: outgoing_connection.to_input_socket_id,
+            change_status: ChangeStatus::Deleted,
+            created_info: serde_json::to_value(outgoing_connection.created_info)?,
+            deleted_info: serde_json::to_value(outgoing_connection.deleted_info)?,
+            to_delete: true,
+            from_base_change_set: false,
+        };
+        WsEvent::connection_upserted(ctx, payload.into())
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+    }
+    match status {
+        ComponentDeletionStatus::MarkedForDeletion => {
+            let payload = component
+                .into_frontend_type(ctx, None, ChangeStatus::Deleted, socket_map)
+                .await?;
+            WsEvent::component_updated(ctx, payload)
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
+        }
+        ComponentDeletionStatus::StillExistsOnHead => {
+            let component: Component =
+                Component::get_by_id(base_change_set_ctx, component_id).await?;
+            let payload = component
+                .into_frontend_type(
+                    base_change_set_ctx,
+                    None,
+                    ChangeStatus::Deleted,
+                    socket_map_head,
+                )
+                .await?;
+            WsEvent::component_updated(ctx, payload)
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
+        }
+        ComponentDeletionStatus::Deleted => {
+            WsEvent::component_deleted(ctx, component_id)
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
+        }
+    }
+    Ok(status)
 }
 
 pub async fn delete_component(

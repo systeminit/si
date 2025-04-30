@@ -364,6 +364,7 @@ impl Action {
         unimplemented!("You should never be setting func_execution_pk; bug!");
     }
 
+    /// Enqueues a new action and publishes a WSEvent
     #[instrument(level = "info", skip(ctx))]
     pub async fn new(
         ctx: &DalContext,
