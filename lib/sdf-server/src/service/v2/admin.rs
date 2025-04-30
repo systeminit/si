@@ -35,6 +35,7 @@ use dal::{
     WorkspaceSnapshotAddress,
     cached_module::CachedModuleError,
     func::runner::FuncRunnerError,
+    slow_rt::SlowRuntimeError,
     workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants,
 };
 use sdf_core::api_error::ApiError;
@@ -60,6 +61,7 @@ use crate::{
     },
 };
 
+mod get_cas_data;
 mod get_snapshot;
 mod kill_execution;
 mod list_change_sets;
@@ -67,6 +69,7 @@ mod search_workspaces;
 mod set_concurrency_limit;
 mod set_snapshot;
 mod update_module_cache;
+mod upload_cas_data;
 
 // 1GB
 const MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 1024;
@@ -88,12 +91,16 @@ pub enum AdminAPIError {
     Multipart(#[from] axum::extract::multipart::MultipartError),
     #[error("No multipart data found in request")]
     NoMultipartData,
+    #[error("slow runtime error: {0}")]
+    SlowRuntime(#[from] SlowRuntimeError),
     #[error("tokio join error: {0}")]
     TokioJoin(#[from] tokio::task::JoinError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("workspaces error: {0}")]
     Workspace(#[from] dal::WorkspaceError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
     #[error("change set {0} does not have a workspace snapshot address")]
     WorkspaceSnapshotAddressNotFound(ChangeSetId),
     #[error("workspace snapshot {0} for change set {1} could not be found in durable storage")]
@@ -200,6 +207,14 @@ pub fn v2_routes(state: AppState) -> Router<AppState> {
         .route(
             "/workspaces/:workspace_id/change_sets/:change_set_id/set_snapshot",
             post(set_snapshot::set_snapshot),
+        )
+        .route(
+            "/workspaces/:workspace_id/change_sets/:change_set_id/get_cas_data",
+            get(get_cas_data::get_cas_data),
+        )
+        .route(
+            "/workspaces/:workspace_id/change_sets/:change_set_id/upload_cas_data",
+            post(upload_cas_data::upload_cas_data),
         )
         .layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES))
         .route_layer(axum::middleware::from_fn_with_state(

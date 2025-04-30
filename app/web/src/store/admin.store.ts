@@ -91,6 +91,26 @@ export const useAdminStore = () => {
             formData,
           });
         },
+        async GET_CAS_DATA(workspaceId: string, changeSetId: string) {
+          return new ApiRequest<string>({
+            method: "get",
+            url: `${API_PREFIX}/workspaces/${workspaceId}/change_sets/${changeSetId}/get_cas_data`,
+          });
+        },
+        async UPLOAD_CAS_DATA(
+          workspaceId: string,
+          changeSetId: string,
+          casData: Blob,
+        ) {
+          const formData = new FormData();
+          formData.append("cas_data", casData);
+
+          return new ApiRequest<{ workspaceSnapshotAddress: string }>({
+            method: "post",
+            url: `${API_PREFIX}/workspaces/${workspaceId}/change_sets/${changeSetId}/upload_cas_data`,
+            formData,
+          });
+        },
         async SET_CONCURRENCY_LIMIT(
           workspaceId: string,
           concurrencyLimit?: number,
