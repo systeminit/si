@@ -3,9 +3,10 @@
     v-if="!(hideIfZero && count === 0)"
     :class="
       clsx(
+        'pillcounter',
         paddingX !== 'none' && `px-${paddingX}`,
         paddingY !== 'none' && `py-${paddingY}`,
-        'inline-block rounded',
+        'inline-block rounded text-center',
         !noColorStyles &&
           (toneToBg
             ? getToneBgColorClass(tone)
@@ -33,7 +34,7 @@ import {
 } from "../utils/color_utils";
 import { SpacingSizes } from "../utils/size_utils";
 
-defineProps({
+const props = defineProps({
   count: Number,
   // TODO: implement color/tone options
   tone: { type: String as PropType<Tones>, default: "shade" },
