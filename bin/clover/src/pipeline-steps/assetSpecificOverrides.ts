@@ -938,6 +938,12 @@ const overrides = new Map<string, OverrideFn>([
   ["AWS::EC2::VPNConnection", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
     const resource_value = variant.resourceValue;
+    const domain = variant.domain;
+
+    const typeProp = findPropByName(domain, "Type");
+    if (typeProp) {
+      typeProp.data.defaultValue = "ipsec.1";
+    }
 
     const transitGatewayAttachmentIdProp = createScalarProp(
       "TransitGatewayAttachmentId",
@@ -966,6 +972,15 @@ const overrides = new Map<string, OverrideFn>([
     const refreshPath = "./src/cloud-control-funcs/overrides/AWS::EC2::VPNConnection/actions/refresh.ts";
     modifyFunc(spec, refreshTargetId, newRefreshId, refreshPath);
   }],
+  ['AWS::EC2::TransitGatewayAttachment', (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const subnetInputSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Subnet Ids" && s.data.kind === "input",
+    );
+    if (!subnetInputSocket) return;
+    setAnnotationOnSocket(subnetInputSocket, { tokens: ["subnets"] });
+  }]
 ]);
 
 function attachExtraActionFunction(
