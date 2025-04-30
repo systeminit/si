@@ -46,6 +46,8 @@ pub struct FuncRunDb {
     get_last_action_by_action_id: String,
     list_management_history: String,
     get_last_management_by_func_and_component_id: String,
+    paginated_workspace_query_with_cursor: String,
+    paginated_workspace_query_no_cursor: String,
 }
 
 impl FuncRunDb {
@@ -88,6 +90,28 @@ impl FuncRunDb {
                 ORDER BY updated_at DESC
                 LIMIT 1
             "#
+            ),
+            paginated_workspace_query_with_cursor: format!(
+                r#"
+                SELECT * FROM {DBNAME}
+                WHERE workspace_id = $1 
+                  AND change_set_id = $2
+                  AND (
+                    created_at < (SELECT created_at FROM {DBNAME} WHERE key = $3) OR
+                    (created_at = (SELECT created_at FROM {DBNAME} WHERE key = $3) AND key < $3)
+                )
+                ORDER BY created_at DESC, key DESC
+                LIMIT $4
+                "#
+            ),
+            paginated_workspace_query_no_cursor: format!(
+                r#"
+                SELECT * FROM {DBNAME}
+                WHERE workspace_id = $1
+                  AND change_set_id = $2
+                ORDER BY created_at DESC, key DESC
+                LIMIT $3
+                "#
             ),
         }
     }
@@ -294,6 +318,61 @@ impl FuncRunDb {
                 let mut func_runs = Vec::new();
                 for row in rows {
                     // NOTE(nick): higher order functions... yeah I want those errors, sorry.
+                    func_runs.push(serialize::from_bytes(row.get("value"))?)
+                }
+                Ok(Some(func_runs))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// Read function runs for a workspace with pagination support.
+    ///
+    /// This method uses cursor-based pagination where:
+    /// - `limit` controls how many items to return per page
+    /// - `cursor` is the ID of the last item from the previous page
+    /// - Results are filtered by workspace_id and change_set_id
+    ///
+    /// Results are ordered by creation time (newest first).
+    #[instrument(level = "debug", skip_all)]
+    pub async fn read_many_for_workspace_paginated(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        limit: i64,
+        cursor: Option<FuncRunId>,
+    ) -> LayerDbResult<Option<Vec<Arc<FuncRun>>>> {
+        // Choose the appropriate query and parameters based on whether a cursor is provided
+        let maybe_rows = if let Some(cursor_id) = cursor {
+            // When cursor is provided, fetch records older than the cursor
+            self.cache
+                .pg()
+                .query(
+                    &self.paginated_workspace_query_with_cursor,
+                    &[
+                        &workspace_id,
+                        &change_set_id.to_string(),
+                        &cursor_id.to_string(),
+                        &limit,
+                    ],
+                )
+                .await?
+        } else {
+            // Initial fetch with no cursor, just get the most recent ones
+            self.cache
+                .pg()
+                .query(
+                    &self.paginated_workspace_query_no_cursor,
+                    &[&workspace_id, &change_set_id.to_string(), &limit],
+                )
+                .await?
+        };
+
+        // Process the results
+        match maybe_rows {
+            Some(rows) => {
+                let mut func_runs = Vec::with_capacity(rows.len());
+                for row in rows {
                     func_runs.push(serialize::from_bytes(row.get("value"))?)
                 }
                 Ok(Some(func_runs))

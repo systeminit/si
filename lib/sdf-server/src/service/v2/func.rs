@@ -51,6 +51,8 @@ pub mod delete_func;
 pub mod execute_func;
 pub mod get_code;
 pub mod get_func_run;
+pub mod get_func_run_logs;
+pub mod get_func_runs_paginated;
 pub mod list_funcs;
 pub mod save_code;
 pub mod test_execute;
@@ -208,7 +210,15 @@ pub fn v2_routes() -> Router<AppState> {
         // Func Stuff
         .route("/", get(list_funcs::list_funcs))
         .route("/code", get(get_code::get_code)) // accepts a list of func_ids
-        .route("/runs/:func_run_id", get(get_func_run::get_func_run)) // accepts a list of func_ids
+        .route("/runs/:func_run_id", get(get_func_run::get_func_run))
+        .route(
+            "/runs/:func_run_id/logs",
+            get(get_func_run_logs::get_func_run_logs),
+        )
+        .route(
+            "/runs/paginated",
+            get(get_func_runs_paginated::get_func_runs_paginated),
+        )
         .route("/", post(create_func::create_func))
         .route("/:func_id", put(update_func::update_func)) // only save the func's metadata
         .route("/:func_id/code", put(save_code::save_code)) // only saves func code

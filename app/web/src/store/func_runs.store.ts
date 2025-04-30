@@ -95,8 +95,10 @@ export interface FuncRunLog {
 export function funcRunStatus(
   funcRun?: Pick<FuncRun, "state" | "actionResultState"> | null,
 ): FuncRunState | "ActionFailure" | undefined | null {
-  if (!funcRun) return funcRun;
-  // If actionResultState is Failure, it's an error even though state == Success
+  if (!funcRun) return null;
+  if (!funcRun.state) return null;
+
+  // If actionResultState is Failure, it's an error even though state may be Success
   if (funcRun.actionResultState === "Failure") return "ActionFailure";
   return funcRun.state;
 }
@@ -185,14 +187,15 @@ export const useFuncRunsStore = () => {
             eventType: "FuncRunLogUpdated",
             callback: (payload) => {
               // If the func run already exists, update it
-              if (this.funcRuns[payload.funcRunId])
+              if (this.funcRuns[payload.funcRunId]) {
                 this.GET_FUNC_RUN(payload.funcRunId);
-              if (payload.actionId)
+              }
+              if (payload.actionId) {
                 this.lastRuns[payload.actionId] = new Date();
+              }
             },
           },
         ]);
-
         return () => {
           actionUnsub();
           realtimeStore.unsubscribe(this.$id);
