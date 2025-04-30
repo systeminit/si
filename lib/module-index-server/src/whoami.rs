@@ -7,6 +7,7 @@ use auth_api_client::{
     client::AuthApiClient,
     types::AuthApiClientError,
 };
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::Mutex;
 
@@ -31,9 +32,21 @@ pub async fn get_email_for_auth_token(
     match token_map.get(token) {
         Some(email) => Ok(email.into()),
         None => {
-            let auth_api_client = AuthApiClient::from_bearer_token(auth_api_url, token)?;
+            let auth_api_client = match AuthApiClient::from_bearer_token(auth_api_url, token) {
+                Ok(client) => client,
+                Err(err) => {
+                    error!("{:?}", err);
+                    return Err(err.into());
+                }
+            };
 
-            let whoami = auth_api_client.whoami().await?;
+            let whoami = match auth_api_client.whoami().await {
+                Ok(whoami) => whoami,
+                Err(err) => {
+                    error!("{:?}", err);
+                    return Err(err.into());
+                }
+            };
 
             token_map.insert(token.into(), whoami.email.clone());
 
