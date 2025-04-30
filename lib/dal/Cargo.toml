@@ -84,12 +84,12 @@ ulid            = { workspace = true }
 url             = { workspace = true }
 
 [dev-dependencies]
-buck2-resources = { path = "../../lib/buck2-resources" }
-dal-newhotness  = { path = "../../lib/dal-newhotness" }
-dal-test        = { path = "../../lib/dal-test" }
-telemetry       = { path = "../../lib/telemetry-rs" }
-telemetry-nats  = { path = "../../lib/telemetry-nats-rs" }
-veritech-client = { path = "../../lib/veritech-client" }
+buck2-resources        = { path = "../../lib/buck2-resources" }
+dal-materialized-views = { path = "../../lib/dal-materialized-views" }
+dal-test               = { path = "../../lib/dal-test" }
+telemetry              = { path = "../../lib/telemetry-rs" }
+telemetry-nats         = { path = "../../lib/telemetry-nats-rs" }
+veritech-client        = { path = "../../lib/veritech-client" }
 
 derive_more              = { workspace = true }
 pretty_assertions_sorted = { workspace = true }

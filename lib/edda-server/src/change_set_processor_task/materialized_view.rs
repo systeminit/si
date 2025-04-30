@@ -84,8 +84,8 @@ pub enum MaterializedViewError {
     Diagram(#[from] DiagramError),
     #[error("Frigg error: {0}")]
     Frigg(#[from] FriggError),
-    #[error("new hotness error: {0}")]
-    Newhotness(#[from] dal_newhotness::Error),
+    #[error("materialized views error: {0}")]
+    MaterializedViews(#[from] dal_materialized_views::Error),
     #[error(
         "No index for incremental build for workspace {workspace_pk} and change set {change_set_id}"
     )]
@@ -311,7 +311,7 @@ async fn build_mv_inner(
                     ReferenceKind::ActionPrototypeViewList => {
                         let mv_id = change.entity_id.to_string();
 
-                        match si_frontend_types_macros::build_mv!(
+                        match dal_materialized_views_macros::build_mv!(
                             ctx,
                             frigg,
                             change,
@@ -337,7 +337,7 @@ async fn build_mv_inner(
                     ReferenceKind::ActionViewList => {
                         let mv_id = change_set_id.to_string();
 
-                        match si_frontend_types_macros::build_mv!(
+                        match dal_materialized_views_macros::build_mv!(
                             ctx,
                             frigg,
                             change,
@@ -359,13 +359,13 @@ async fn build_mv_inner(
                     ReferenceKind::AttributeTree => {
                         let mv_id = change.entity_id.to_string();
 
-                        match si_frontend_types_macros::build_mv!(
+                        match dal_materialized_views_macros::build_mv!(
                             ctx,
                             frigg,
                             change,
                             mv_id,
                             si_frontend_types::newhotness::attribute_tree::AttributeTree,
-                            dal_newhotness::attribute_tree::as_frontend_type(
+                            dal_materialized_views::attribute_tree::as_frontend_type(
                                 ctx,
                                 si_events::ulid::Ulid::from(change.entity_id).into()
                             )
@@ -385,13 +385,13 @@ async fn build_mv_inner(
                     ReferenceKind::Component => {
                         let mv_id = change.entity_id.to_string();
 
-                        match si_frontend_types_macros::build_mv!(
+                        match dal_materialized_views_macros::build_mv!(
                             ctx,
                             frigg,
                             change,
                             mv_id,
                             si_frontend_types::newhotness::component::Component,
-                            dal_newhotness::component::as_frontend_type(
+                            dal_materialized_views::component::as_frontend_type(
                                 ctx,
                                 si_events::ulid::Ulid::from(change.entity_id).into()
                             )
@@ -411,13 +411,13 @@ async fn build_mv_inner(
                     ReferenceKind::ComponentList => {
                         let mv_id = change_set_id.to_string();
 
-                        match si_frontend_types_macros::build_mv!(
+                        match dal_materialized_views_macros::build_mv!(
                             ctx,
                             frigg,
                             change,
                             mv_id,
                             si_frontend_types::newhotness::component::ComponentList,
-                            dal_newhotness::component::as_frontend_list_type(ctx).await,
+                            dal_materialized_views::component::as_frontend_list_type(ctx).await,
                         ) {
                             Ok(maybe_patch) => {
                                 if let Some((patch, maybe_frontend_object)) = maybe_patch {
@@ -433,7 +433,7 @@ async fn build_mv_inner(
                     ReferenceKind::SchemaVariantCategories => {
                         let mv_id = change_set_id.to_string();
 
-                        match si_frontend_types_macros::build_mv!(
+                        match dal_materialized_views_macros::build_mv!(
                             ctx,
                             frigg,
                             change,
@@ -458,7 +458,7 @@ async fn build_mv_inner(
                     ReferenceKind::View => {
                         let mv_id = change.entity_id.to_string();
 
-                        match si_frontend_types_macros::build_mv!(
+                        match dal_materialized_views_macros::build_mv!(
                             ctx,
                             frigg,
                             change,
@@ -484,7 +484,7 @@ async fn build_mv_inner(
                     ReferenceKind::ViewList => {
                         let mv_id = change_set_id.to_string();
 
-                        match si_frontend_types_macros::build_mv!(
+                        match dal_materialized_views_macros::build_mv!(
                             ctx,
                             frigg,
                             change,
