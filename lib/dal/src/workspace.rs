@@ -21,8 +21,16 @@ use si_data_pg::{
     PgError,
     PgRow,
 };
+use si_db::workspace::{
+    SEARCH_WORKSPACES_BY_SNAPSHOT_ADDRESS,
+    SEARCH_WORKSPACES_BY_ULID,
+    SEARCH_WORKSPACES_USER_NAME_EMAIL,
+    WORKSPACE_GET_BY_PK,
+    WORKSPACE_LIST_FOR_USER,
+};
 use si_events::{
     ContentHash,
+    Timestamp,
     WorkspaceSnapshotAddress,
 };
 pub use si_id::{
@@ -51,7 +59,6 @@ use crate::{
     HistoryEventError,
     KeyPairError,
     Tenancy,
-    Timestamp,
     TransactionsError,
     User,
     UserError,
@@ -81,14 +88,6 @@ use crate::{
         },
     },
 };
-
-const WORKSPACE_GET_BY_PK: &str = include_str!("queries/workspace/get_by_pk.sql");
-const WORKSPACE_LIST_FOR_USER: &str = include_str!("queries/workspace/list_for_user.sql");
-const SEARCH_WORKSPACES_BY_ULID: &str = include_str!("queries/workspace/search_ulid.sql");
-const SEARCH_WORKSPACES_BY_SNAPSHOT_ADDRESS: &str =
-    include_str!("queries/workspace/search_snapshot_address.sql");
-const SEARCH_WORKSPACES_USER_NAME_EMAIL: &str =
-    include_str!("queries/workspace/search_user_name_email.sql");
 
 const DEFAULT_BUILTIN_WORKSPACE_NAME: &str = "builtin";
 const DEFAULT_BUILTIN_WORKSPACE_TOKEN: &str = "builtin";
@@ -171,7 +170,10 @@ impl TryFrom<PgRow> for Workspace {
             name: row.try_get("name")?,
             default_change_set_id: row.try_get("default_change_set_id")?,
             uses_actions_v2: row.try_get("uses_actions_v2")?,
-            timestamp: Timestamp::assemble(created_at, updated_at),
+            timestamp: Timestamp {
+                created_at,
+                updated_at,
+            },
             token: row.try_get("token")?,
             snapshot_version: WorkspaceSnapshotGraphDiscriminants::from_str(&snapshot_version)?,
             component_concurrency_limit: row.try_get("component_concurrency_limit")?,

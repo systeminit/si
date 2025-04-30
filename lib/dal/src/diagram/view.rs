@@ -15,6 +15,7 @@ use serde::{
 use si_events::{
     ComponentId,
     ContentHash,
+    Timestamp,
     ulid::Ulid,
 };
 use si_frontend_types::{
@@ -29,7 +30,6 @@ use crate::{
     DalContext,
     EdgeWeightKind,
     EdgeWeightKindDiscriminants,
-    Timestamp,
     WorkspaceSnapshotError,
     WsEvent,
     WsEventResult,
@@ -124,7 +124,7 @@ impl View {
             id: view.id,
             name: view.name,
             is_default,
-            timestamp: view.timestamp.into(),
+            timestamp: view.timestamp,
         })
     }
 

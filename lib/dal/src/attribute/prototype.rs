@@ -18,7 +18,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_events::ulid::Ulid;
+use si_events::{
+    Timestamp,
+    ulid::Ulid,
+};
 use si_layer_cache::LayerDbError;
 use strum::{
     AsRefStr,
@@ -43,7 +46,6 @@ use crate::{
     SchemaVariant,
     SchemaVariantError,
     SchemaVariantId,
-    Timestamp,
     TransactionsError,
     attribute::{
         prototype::argument::{

@@ -12,6 +12,7 @@ publish.workspace = true
 audit-database = { path = "../../lib/audit-database" }
 buck2-resources = { path = "../../lib/buck2-resources" }
 dal = { path = "../../lib/dal" }
+si-db = { path = "../../lib/si-db" }
 edda-server = { path = "../../lib/edda-server" }
 forklift-server = { path = "../../lib/forklift-server" }
 pinga-server = { path = "../../lib/pinga-server" }

@@ -9,6 +9,7 @@ use jwt_simple::prelude::{
 };
 use si_events::{
     ContentHash,
+    Timestamp,
     ulid::Ulid,
 };
 pub use si_frontend_types::RawGeometry;
@@ -18,7 +19,6 @@ use crate::{
     DalContext,
     EdgeWeightKind,
     EdgeWeightKindDiscriminants,
-    Timestamp,
     WorkspaceSnapshotError,
     diagram::{
         DiagramError,

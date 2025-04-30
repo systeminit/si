@@ -11,6 +11,7 @@ use jwt_simple::prelude::{
 use petgraph::Direction;
 use si_events::{
     ContentHash,
+    Timestamp,
     merkle_tree_hash::MerkleTreeHash,
     ulid::Ulid,
 };
@@ -21,7 +22,6 @@ use super::{
 };
 use crate::{
     EdgeWeightKindDiscriminants,
-    Timestamp,
     WorkspaceSnapshotGraphVCurrent,
     workspace_snapshot::{
         content_address::ContentAddress,

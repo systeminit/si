@@ -11,16 +11,22 @@ use serde::{
 };
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
+use si_id::UserPk;
 use thiserror::Error;
 
 use crate::{
-    DalContext,
-    HistoryActor,
-    HistoryEventError,
-    TransactionsError,
-    User,
-    UserError,
-    UserPk,
+    context::{
+        BaseTransactionsError,
+        SiDbContext,
+    },
+    history_event::{
+        HistoryActor,
+        HistoryEventError,
+    },
+    user::{
+        User,
+        UserError,
+    },
 };
 
 #[remain::sorted]
@@ -35,7 +41,7 @@ pub enum ActorViewError {
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
+    Transactions(#[from] BaseTransactionsError),
     #[error(transparent)]
     User(#[from] UserError),
 }
@@ -74,7 +80,7 @@ impl ActorView {
     /// Returns [`Err`] if a user cannot be determined given a user pk or if there is a aconnection
     /// issue with the database.
     pub async fn from_history_actor(
-        ctx: &DalContext,
+        ctx: &impl SiDbContext,
         history_actor: HistoryActor,
     ) -> Result<Self, ActorViewError> {
         match history_actor {

@@ -26,6 +26,7 @@ use serde::{
 };
 use si_events::{
     ContentHash,
+    Timestamp,
     ulid::Ulid,
 };
 use si_frontend_types::{
@@ -76,7 +77,6 @@ use crate::{
     Schema,
     SchemaError,
     SchemaId,
-    Timestamp,
     TransactionsError,
     WsEvent,
     WsEventResult,
@@ -438,7 +438,7 @@ impl SchemaVariant {
                 .map(|socket| socket.into())
                 .collect(),
             is_locked: self.is_locked,
-            timestamp: self.timestamp.into(),
+            timestamp: self.timestamp,
             props: front_end_props,
             can_create_new_components: is_default || !self.is_locked,
             can_contribute,

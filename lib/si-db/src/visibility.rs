@@ -3,9 +3,8 @@ use serde::{
     Serialize,
 };
 use serde_aux::field_attributes::deserialize_number_from_string;
+use si_id::ChangeSetId;
 use ulid::Ulid;
-
-use crate::ChangeSetId;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Visibility {

@@ -17,6 +17,7 @@ use serde::{
 };
 use si_events::{
     ContentHash,
+    Timestamp,
     ulid::Ulid,
 };
 use si_frontend_types as frontend_types;
@@ -41,7 +42,6 @@ use crate::{
     SchemaVariant,
     SchemaVariantError,
     SchemaVariantId,
-    Timestamp,
     TransactionsError,
     User,
     UserError,

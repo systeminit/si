@@ -6,6 +6,7 @@ rust_library(
         "//lib/audit-database:audit-database",
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
+        "//lib/si-db:si-db",
         "//lib/edda-server:edda-server",
         "//lib/forklift-server:forklift-server",
         "//lib/pinga-server:pinga-server",

@@ -1,0 +1,37 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_library",
+    "rust_test",
+)
+
+rust_library(
+    name = "si-db",
+    deps = [
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-data-pg:si-data-pg",
+        "//lib/si-events-rs:si-events",
+        "//lib/si-id:si-id",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:async-trait",
+        "//third-party/rust:chrono",
+        "//third-party/rust:postgres-types",
+        "//third-party/rust:refinery",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde-aux",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:serde_with",
+        "//third-party/rust:strum",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:tokio",
+        "//third-party/rust:ulid",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+        "src/migrations/**/*.sql",
+        "src/queries/**/*.sql",
+    ]),
+    env = {
+        "CARGO_MANIFEST_DIR": ".",
+    },
+)

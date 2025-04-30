@@ -12,7 +12,10 @@ use serde::{
     Serialize,
 };
 use serde_json::Value;
-use si_events::ContentHash;
+use si_events::{
+    ContentHash,
+    Timestamp,
+};
 use si_id::ulid::Ulid;
 use si_pkg::PropSpecKind;
 use strum::{
@@ -37,7 +40,6 @@ use crate::{
     SchemaVariant,
     SchemaVariantError,
     SchemaVariantId,
-    Timestamp,
     TransactionsError,
     attribute::prototype::{
         AttributePrototypeError,

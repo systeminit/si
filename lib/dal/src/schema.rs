@@ -12,7 +12,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_events::ContentHash;
+use si_events::{
+    ContentHash,
+    Timestamp,
+};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -29,7 +32,6 @@ use crate::{
     FuncId,
     HelperError,
     SchemaVariantError,
-    Timestamp,
     TransactionsError,
     cached_module::{
         CachedModule,

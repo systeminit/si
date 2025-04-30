@@ -11,6 +11,7 @@ rust_library(
         "//lib/audit-logs-stream:audit-logs-stream",
         "//lib/billing-events:billing-events",
         "//lib/dal-macros:dal-macros",
+        "//lib/si-db:si-db",
         "//lib/frigg:frigg",
         "//lib/joi-validator:joi-validator",
         "//lib/module-index-client:module-index-client",
@@ -86,8 +87,6 @@ rust_library(
         "src/builtins/func/**",
         "src/func/authoring/data/defaults/*.ts",
         "src/func/authoring/data/ts_types/*.ts",
-        "src/migrations/**/*.sql",
-        "src/queries/**/*.sql",
     ]),
     env = {
         "CARGO_MANIFEST_DIR": ".",

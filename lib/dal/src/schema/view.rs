@@ -7,6 +7,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_events::Timestamp;
 use thiserror::Error;
 
 use crate::{
@@ -18,7 +19,6 @@ use crate::{
     SchemaId,
     SchemaVariant,
     SchemaVariantId,
-    Timestamp,
     schema::variant::{
         SchemaVariantError,
         root_prop::component_type::ComponentType,

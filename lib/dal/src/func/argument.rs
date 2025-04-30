@@ -11,7 +11,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_events::ContentHash;
+use si_events::{
+    ContentHash,
+    Timestamp,
+};
 use si_pkg::FuncArgumentKind as PkgFuncArgumentKind;
 use strum::{
     AsRefStr,
@@ -30,7 +33,6 @@ use crate::{
     FuncId,
     HistoryEventError,
     PropKind,
-    Timestamp,
     TransactionsError,
     attribute::prototype::argument::{
         AttributePrototypeArgument,

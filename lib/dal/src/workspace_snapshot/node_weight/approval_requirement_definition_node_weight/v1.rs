@@ -4,13 +4,13 @@ use serde::{
 };
 use si_events::{
     ContentHash,
+    Timestamp,
     merkle_tree_hash::MerkleTreeHash,
     ulid::Ulid,
 };
 
 use crate::{
     NodeWeightDiscriminants,
-    Timestamp,
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,

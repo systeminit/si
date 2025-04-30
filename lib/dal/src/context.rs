@@ -7,6 +7,7 @@ use std::{
     time::Duration,
 };
 
+use async_trait::async_trait;
 use futures::{
     Future,
     future::BoxFuture,
@@ -40,6 +41,11 @@ use si_data_pg::{
     PgPoolError,
     PgPoolResult,
     PgTxn,
+};
+use si_db::context::{
+    BaseTransactionsError,
+    SiDbContext,
+    SiDbTransactions,
 };
 use si_events::{
     AuthenticationMethod,
@@ -327,11 +333,11 @@ impl ConnectionState {
         }
     }
 
-    async fn start_txns(self) -> TransactionsResult<Self> {
+    async fn start_txns(self) -> Result<Self, BaseTransactionsError> {
         match self {
-            Self::Invalid => Err(TransactionsError::TxnStart("invalid")),
+            Self::Invalid => Err(BaseTransactionsError::TxnStart("invalid")),
             Self::Connections(conns) => Ok(Self::Transactions(conns.start_txns().await?)),
-            Self::Transactions(_) => Err(TransactionsError::TxnStart("transactions")),
+            Self::Transactions(_) => Err(BaseTransactionsError::TxnStart("transactions")),
         }
     }
 
@@ -458,6 +464,39 @@ pub struct DalContext {
     request_ulid: Option<ulid::Ulid>,
     /// The authentication method used
     authentication_method: AuthenticationMethod,
+}
+
+#[async_trait]
+impl SiDbContext for DalContext {
+    type Transactions = self::Transactions;
+
+    fn history_actor(&self) -> &HistoryActor {
+        self.history_actor()
+    }
+
+    async fn txns(
+        &self,
+    ) -> Result<MappedMutexGuard<'_, Self::Transactions>, BaseTransactionsError> {
+        self.txns_internal().await
+    }
+
+    fn tenancy(&self) -> &Tenancy {
+        self.tenancy()
+    }
+
+    fn visibility(&self) -> &Visibility {
+        self.visibility()
+    }
+}
+
+impl SiDbTransactions for Transactions {
+    fn pg(&self) -> &PgTxn {
+        self.pg()
+    }
+
+    fn nats(&self) -> &NatsTxn {
+        self.nats()
+    }
 }
 
 impl DalContext {
@@ -1080,6 +1119,15 @@ impl DalContext {
 
     /// Gets the dal context's txns.
     pub async fn txns(&self) -> Result<MappedMutexGuard<'_, Transactions>, TransactionsError> {
+        // This is just to convert error types
+        Ok(self.txns_internal().await?)
+    }
+
+    // TODO instead of doing this error juke, we should move Transactions to a common place
+    // shared by dal and si-db
+    async fn txns_internal(
+        &self,
+    ) -> Result<MappedMutexGuard<'_, Transactions>, BaseTransactionsError> {
         let mut guard = self.conns_state.lock().await;
 
         let conns_state = guard.take();
@@ -1599,6 +1647,15 @@ impl From<ChangeSetError> for TransactionsError {
     }
 }
 
+impl From<BaseTransactionsError> for TransactionsError {
+    fn from(err: BaseTransactionsError) -> Self {
+        match err {
+            BaseTransactionsError::Pg(err) => TransactionsError::Pg(err),
+            BaseTransactionsError::TxnStart(state) => TransactionsError::TxnStart(state),
+        }
+    }
+}
+
 impl TransactionsError {
     pub fn is_unmigrated_snapshot_error(&self) -> bool {
         match self {
@@ -1635,7 +1692,7 @@ impl Connections {
     }
 
     /// Starts and returns a [`Transactions`].
-    pub async fn start_txns(self) -> TransactionsResult<Transactions> {
+    pub async fn start_txns(self) -> Result<Transactions, PgError> {
         let pg_txn = PgTxn::create(self.pg_conn).await?;
         let nats_txn = self.nats_conn.transaction();
         let job_processor = self.job_processor;

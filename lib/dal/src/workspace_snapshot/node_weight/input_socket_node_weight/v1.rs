@@ -4,6 +4,7 @@ use serde::{
 };
 use si_events::{
     ContentHash,
+    Timestamp,
     merkle_tree_hash::MerkleTreeHash,
     ulid::Ulid,
 };
@@ -11,7 +12,6 @@ use si_events::{
 use crate::{
     EdgeWeightKindDiscriminants,
     SocketArity,
-    Timestamp,
     workspace_snapshot::{
         content_address::ContentAddress,
         graph::LineageId,

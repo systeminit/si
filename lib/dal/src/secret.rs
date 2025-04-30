@@ -47,6 +47,7 @@ use si_data_pg::PgError;
 use si_events::{
     ContentHash,
     EncryptedSecretKey,
+    Timestamp,
     encrypted_secret::EncryptedSecretKeyParseError,
     ulid::Ulid,
 };
@@ -83,7 +84,6 @@ use crate::{
     Prop,
     SchemaVariant,
     SchemaVariantError,
-    Timestamp,
     TransactionsError,
     UserPk,
     attribute::{

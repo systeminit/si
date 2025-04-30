@@ -6,10 +6,9 @@ use si_data_pg::{
     PgError,
     PgTxn,
 };
+use si_id::WorkspacePk;
 use telemetry::prelude::*;
 use thiserror::Error;
-
-use crate::WorkspacePk;
 
 #[remain::sorted]
 #[derive(Error, Debug)]

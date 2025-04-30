@@ -7,18 +7,14 @@
     clippy::unwrap_used
 )]
 
-use std::time::Duration;
-
 use rand::Rng;
 use serde_with::{
     DeserializeFromStr,
     SerializeDisplay,
 };
-use si_data_nats::NatsError;
-use si_data_pg::{
-    PgError,
-    PgPool,
-    PgPoolError,
+pub use si_db::{
+    history_event,
+    visibility,
 };
 use strum::{
     Display,
@@ -27,13 +23,7 @@ use strum::{
 };
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::{
-    time,
-    time::Instant,
-};
-
 pub mod action;
-pub mod actor_view;
 pub mod approval_requirement;
 pub mod attribute;
 pub mod audit_logging;
@@ -52,7 +42,6 @@ pub mod diagram;
 pub mod entity_kind;
 pub mod feature_flags;
 pub mod func;
-pub mod history_event;
 pub mod input_sources;
 pub mod jetstream_streams;
 pub mod job;
@@ -75,18 +64,14 @@ pub mod socket;
 pub mod standard_accessors;
 pub mod standard_connection;
 pub mod status;
-pub mod tenancy;
-pub mod timestamp;
 pub mod user;
 pub mod validation;
-pub mod visibility;
 pub mod workspace;
 pub mod workspace_integrations;
 pub mod workspace_snapshot;
 pub mod ws_event;
 
 pub use action::ActionPrototypeId;
-pub use actor_view::ActorView;
 pub use attribute::{
     prototype::{
         AttributePrototype,
@@ -188,6 +173,11 @@ pub use secret::{
     SecretView,
     SecretViewError,
 };
+pub use si_db::{
+    actor_view,
+    actor_view::ActorView,
+    tenancy,
+};
 pub use si_events::{
     WorkspaceSnapshotAddress,
     content_hash::ContentHash,
@@ -219,10 +209,6 @@ pub use standard_connection::{
 pub use tenancy::{
     Tenancy,
     TenancyError,
-};
-pub use timestamp::{
-    Timestamp,
-    TimestampError,
 };
 pub use user::{
     User,
@@ -273,69 +259,7 @@ pub fn init() -> InitializationResult<()> {
     Ok(())
 }
 
-mod embedded {
-    use refinery::embed_migrations;
-
-    embed_migrations!("./src/migrations");
-}
-
 const NAME_CHARSET: &[u8] = b"0123456789";
-
-#[remain::sorted]
-#[derive(Error, Debug)]
-pub enum ModelError {
-    #[error("builtins error: {0}")]
-    Builtins(#[from] BuiltinsError),
-    #[error(transparent)]
-    Migration(#[from] PgPoolError),
-    #[error(transparent)]
-    Nats(#[from] NatsError),
-    #[error("database error")]
-    PgError(#[from] PgError),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
-    #[error("workspace error: {0}")]
-    Workspace(#[from] WorkspaceError),
-}
-
-pub type ModelResult<T> = Result<T, ModelError>;
-
-#[instrument(level = "info", skip_all)]
-pub async fn migrate_all(services_context: &ServicesContext) -> ModelResult<()> {
-    migrate(services_context.pg_pool()).await?;
-    Ok(())
-}
-
-#[instrument(level = "info", skip_all)]
-pub async fn migrate_all_with_progress(services_context: &ServicesContext) -> ModelResult<()> {
-    let mut interval = time::interval(Duration::from_secs(5));
-    let instant = Instant::now();
-    let migrate_all = migrate_all(services_context);
-    tokio::pin!(migrate_all);
-
-    loop {
-        tokio::select! {
-            _ = interval.tick() => {
-                info!(elapsed = instant.elapsed().as_secs_f32(), "migrating");
-            }
-            result = &mut migrate_all  => match result {
-                Ok(_) => {
-                    info!(elapsed = instant.elapsed().as_secs_f32(), "migrating completed");
-                    break;
-                }
-                Err(err) => return Err(err),
-            }
-        }
-    }
-
-    Ok(())
-}
-
-#[instrument(level = "info", skip_all)]
-pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
-    pg.migrate(embedded::migrations::runner()).await?;
-    Ok(())
-}
 
 pub fn generate_unique_id(length: usize) -> String {
     let mut rng = rand::thread_rng();

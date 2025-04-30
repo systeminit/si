@@ -4,6 +4,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_events::Timestamp;
 use si_frontend_types as frontend_types;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
@@ -22,7 +23,6 @@ use crate::{
     HelperError,
     SchemaVariantError,
     SchemaVariantId,
-    Timestamp,
     TransactionsError,
     attribute::{
         prototype::{

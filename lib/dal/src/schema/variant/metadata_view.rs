@@ -2,6 +2,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_events::Timestamp;
 
 use crate::{
     ComponentType,
@@ -10,7 +11,6 @@ use crate::{
     SchemaId,
     SchemaVariant,
     SchemaVariantId,
-    Timestamp,
     schema::variant::SchemaVariantResult,
 };
 

@@ -13,6 +13,11 @@ use si_crypto::{
 };
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
+use si_db::key_pair::{
+    GET_BY_PK,
+    PUBLIC_KEY_GET_CURRENT,
+};
+use si_events::Timestamp;
 use si_hash::Hash;
 use sodiumoxide::crypto::box_::{
     self,
@@ -27,7 +32,6 @@ use crate::{
     HistoryEvent,
     HistoryEventError,
     TenancyError,
-    Timestamp,
     TransactionsError,
     Workspace,
     WorkspaceError,
@@ -38,11 +42,7 @@ use crate::{
         nonce_serde,
     },
 };
-
 mod key_pair_box_public_key_serde;
-
-const GET_BY_PK: &str = include_str!("queries/key_pair/get_by_pk.sql");
-const PUBLIC_KEY_GET_CURRENT: &str = include_str!("./queries/key_pair/public_key_get_current.sql");
 
 #[remain::sorted]
 #[derive(Error, Debug)]
