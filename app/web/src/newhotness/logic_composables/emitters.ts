@@ -23,9 +23,15 @@ export const startKeyEmitter = (document: Document) => {
     );
 
     if (!fromInput) {
-      // eslint-disable-next-line no-console
-      console.info("emit", event.key);
       keyEmitter.emit(event.key, event);
     }
   });
 };
+
+type AttributeDetails = {
+  selectedPath: string;
+  scrolled: void;
+};
+
+export const attributeEmitter: Emitter<AttributeDetails> =
+  mitt<AttributeDetails>();

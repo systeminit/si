@@ -1,8 +1,11 @@
 import { Ref } from "vue";
+import { User } from "@/api/sdf/dal/user";
 
-export interface WSCS {
+export interface Context {
   workspacePk: Ref<string, string>;
   changeSetId: Ref<string, string>;
+  user: User | null;
+  onHead: boolean;
 }
 
 export function assertIsDefined<T>(value: T | undefined): asserts value is T {

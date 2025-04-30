@@ -24,7 +24,7 @@ const routes: RouteRecordRaw[] = [
     redirect: { name: "home" },
   },
   {
-    name: "new-hotness",
+    name: "new-hotness-head",
     path: "/n/:workspacePk/head/h",
     beforeEnter: async (loc) => {
       const resp = await sdf<WorkspaceMetadata>({

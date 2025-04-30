@@ -18,3 +18,6 @@ export const push = (
   breadcrumbs.push({ url, name, params });
   if (breadcrumbs.length > LIMIT) breadcrumbs.shift();
 };
+
+// 0 is always the current page
+export const prevPage = () => breadcrumbs[1];

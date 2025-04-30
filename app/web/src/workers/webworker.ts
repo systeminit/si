@@ -50,6 +50,8 @@ import {
   RawComponentList,
   BifrostComponent,
   BifrostComponentList,
+  RawAttributeTree,
+  BifrostAttributeTree,
 } from "./types/dbinterface";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
@@ -133,6 +135,7 @@ const dropTables = async () => {
   DROP TABLE IF EXISTS atoms;
   DROP TABLE IF EXISTS snapshots;
   DROP TABLE IF EXISTS changesets;
+  DROP TABLE IF EXISTS weak_references;
   `;
   await db.exec({ sql });
 };
@@ -178,6 +181,15 @@ const ensureTables = async (testing: boolean) => {
     FOREIGN KEY (snapshot_address) REFERENCES snapshots(address) ON DELETE CASCADE,
     FOREIGN KEY (kind, args, checksum) REFERENCES atoms(kind, args, checksum) ON DELETE CASCADE,
     CONSTRAINT uniqueness UNIQUE (snapshot_address, kind, args) ON CONFLICT REPLACE
+  ) WITHOUT ROWID;
+
+  CREATE TABLE IF NOT EXISTS weak_references (
+    change_set_id TEXT NOT NULL,
+    target_kind TEXT NOT NULL,
+    target_args TEXT NOT NULL,
+    referrer_kind TEXT NOT NULL,
+    referrer_args TEXT NOT NULL,
+    PRIMARY KEY (change_set_id, target_kind, target_args, referrer_kind, referrer_args)
   ) WITHOUT ROWID;
   `;
   /**
@@ -344,6 +356,36 @@ const kindAndArgsFromKey = (key: QueryKey): { kind: string; id: Id } => {
   return { kind, id };
 };
 
+const bustCacheAndReferences: BustCacheFn = async (
+  workspaceId: string,
+  changeSetId: string,
+  kind: string,
+  id: string,
+) => {
+  // bust me
+  bustCacheFn(workspaceId, changeSetId, kind, id);
+
+  // bust everyone who refers to me
+  const sql = `
+    select referrer_kind, referrer_args from weak_references where target_kind = ? and target_args = ? and change_set_id = ?;
+  `;
+  const bind = [kind, id, changeSetId];
+  const refs = await db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+  refs.forEach(([ref_kind, ref_id]) => {
+    if (ref_kind && ref_id)
+      bustCacheFn(
+        workspaceId,
+        changeSetId,
+        ref_kind as string,
+        ref_id as string,
+      );
+  });
+};
+
 const handleHammer = async (msg: AtomMessage, span?: Span) => {
   // in between throwing a hammer and receiving it, i might already have written the atom
   const snapshots = await atomExistsOnSnapshots(msg.atom, msg.atom.toChecksum);
@@ -365,13 +407,12 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
   updateChangeSetWithNewSnapshot(msg.atom);
   removeOldSnapshot();
 
-  if (bustCacheFn)
-    bustCacheFn(
-      msg.atom.workspaceId,
-      msg.atom.changeSetId,
-      msg.atom.kind,
-      msg.atom.id,
-    );
+  bustCacheAndReferences(
+    msg.atom.workspaceId,
+    msg.atom.changeSetId,
+    msg.atom.kind,
+    msg.atom.id,
+  );
 };
 
 const insertAtomMTM = async (atom: Atom, toSnapshotAddress: Checksum) => {
@@ -552,8 +593,13 @@ const applyPatch = async (
     // this insert potentially replaces the MTM row that exists for the current snapshot
     // based on the table constraint
     if (needToInsertMTM) await insertAtomMTM(atom, toSnapshotAddress);
-    if (bustCache && bustCacheFn)
-      bustCacheFn(atom.workspaceId, atom.changeSetId, atom.kind, atom.id);
+    if (bustCache)
+      bustCacheAndReferences(
+        atom.workspaceId,
+        atom.changeSetId,
+        atom.kind,
+        atom.id,
+      );
     span.end();
   });
 };
@@ -781,6 +827,45 @@ const ragnarok = async (workspaceId: string, changeSetId: string) => {
   await niflheim(workspaceId, changeSetId);
 };
 
+const clear_weak_references = async (
+  changeSetId: string,
+  referrer: { kind: string; args: string },
+) => {
+  const sql = `
+    delete from weak_references
+    where change_set_id = ? and referrer_kind = ? and referrer_args = ?
+  ;`;
+  const bind = [changeSetId, referrer.kind, referrer.args];
+  await db.exec({
+    sql,
+    bind,
+  });
+};
+
+const weak_reference = async (
+  changeSetId: string,
+  target: { kind: string; args: string },
+  referrer: { kind: string; args: string },
+) => {
+  const sql = `
+    insert into weak_references
+      (change_set_id, target_kind, target_args, referrer_kind, referrer_args)
+    values
+      (?, ?, ?, ?, ?)
+  ;`;
+  const bind = [
+    changeSetId,
+    target.kind,
+    target.args,
+    referrer.kind,
+    referrer.args,
+  ];
+  await db.exec({
+    sql,
+    bind,
+  });
+};
+
 const get = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
@@ -848,6 +933,32 @@ const get = async (
       components,
     };
     return list;
+  } else if (kind === "AttributeTree") {
+    const rawTree = atomDoc as RawAttributeTree;
+    clear_weak_references(changeSetId, { kind, args: rawTree.id });
+    const children: BifrostAttributeTree[] = await Promise.all(
+      rawTree.children.map(async (c): Promise<BifrostAttributeTree> => {
+        const t = (await get(
+          workspaceId,
+          changeSetId,
+          kind,
+          c,
+        )) as BifrostAttributeTree;
+
+        weak_reference(
+          changeSetId,
+          { kind, args: c },
+          { kind, args: rawTree.id },
+        );
+
+        return t;
+      }),
+    );
+    const attrTree: BifrostAttributeTree = {
+      ...rawTree,
+      children,
+    };
+    return attrTree;
   } else return atomDoc;
 };
 

@@ -25,3 +25,9 @@ export const collapsingGridStyles = (
     gridTemplateRows: sizes.join(" "),
   };
 };
+
+// TODO
+export const filterMissingAtom = (obj: unknown) => {
+  if (obj === -1) return {};
+  return obj;
+};

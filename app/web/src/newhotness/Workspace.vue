@@ -90,12 +90,13 @@ import NavbarButton from "@/components/layout/navbar/NavbarButton.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import * as heimdall from "@/store/realtime/heimdall";
 import { useAuthStore } from "@/store/auth.store";
+import { useChangeSetsStore } from "@/store/change_sets.store";
 import Explore from "./Explore.vue";
 import ComponentDetail from "./Component.vue";
 import FuncRunDetails from "./FuncRunDetails.vue";
 import LatestFuncRunDetails from "./LatestFuncRunDetails.vue";
-import { WSCS, FunctionKind } from "./types";
-import { startKeyEmitter } from "./logic_composables/key_emitter";
+import { Context, FunctionKind } from "./types";
+import { startKeyEmitter } from "./logic_composables/emitters";
 
 const props = defineProps<{
   workspacePk: string;
@@ -109,15 +110,18 @@ const props = defineProps<{
 
 const authStore = useAuthStore();
 const featureFlagsStore = useFeatureFlagsStore();
+const changeSetsStore = useChangeSetsStore();
 
-const wscs: WSCS = {
+const context: Context = {
   workspacePk: toRef(props.workspacePk),
   changeSetId: toRef(props.changeSetId),
+  user: authStore.user,
+  onHead: changeSetsStore.headSelected,
 };
 
 startKeyEmitter(document);
 
-provide("WSCS", wscs);
+provide("CONTEXT", context);
 
 const compositionLink = computed(() => {
   // eslint-disable-next-line no-nested-ternary

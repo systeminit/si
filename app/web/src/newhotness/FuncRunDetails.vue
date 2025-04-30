@@ -45,8 +45,13 @@ import * as _ from "lodash-es";
 import { funcRunStatus, FuncRun } from "@/store/func_runs.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import FuncRunDetailsLayout from "./layout_components/FuncRunDetailsLayout.vue";
-import { assertIsDefined, WSCS } from "./types";
-import { useApi } from "./api_composables";
+import { assertIsDefined, Context } from "./types";
+import {
+  useApi,
+  routes,
+  FuncRunLogsResponse,
+  FuncRunResponse,
+} from "./api_composables";
 
 export interface OutputLine {
   stream: string;
@@ -70,8 +75,8 @@ const props = defineProps<{
   funcRunId: string;
 }>();
 
-const wscs = inject<WSCS>("WSCS");
-assertIsDefined(wscs);
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined(ctx);
 
 // const router = useRouter();
 const queryClient = useQueryClient();
@@ -86,8 +91,8 @@ const removeAction = () => {
     /* router.push({
       name: "new-hotness",
       params: {
-        workspacePk: unref(wscs.workspacePk),
-        changeSetId: unref(wscs.changeSetId),
+        workspacePk: unref(ctx.workspacePk),
+        changeSetId: unref(ctx.changeSetId),
       },
     }); */
   }
@@ -106,9 +111,10 @@ const pollInterval = ref<number | false>(0); // initial calls
 const { data: funcRunQuery } = useQuery<Omit<FuncRun, "logs"> | undefined>({
   queryKey: ["funcRun", props.funcRunId],
   queryFn: async () => {
-    // FUTURE: move url paths out of vue components and into a consolidated list in the api composable
-    const call = api.endpoint(`/funcs/runs/${props.funcRunId}`);
-    const req = await call.get<{ funcRun: FuncRun }>();
+    const call = api.endpoint<FuncRunResponse>(routes.FuncRun, {
+      id: props.funcRunId,
+    });
+    const req = await call.get();
     if (api.ok(req)) {
       pollInterval.value = ["Running", "Dispatched", "Created"].includes(
         req.data.funcRun.state,
@@ -126,8 +132,10 @@ const funcRun = computed(() => funcRunQuery.value);
 const { data: funcRunLogsQuery } = useQuery<FuncRunLog | undefined>({
   queryKey: ["funcRunLogs", props.funcRunId],
   queryFn: async () => {
-    const call = api.endpoint(`/funcs/runs/${props.funcRunId}/logs`);
-    const req = await call.get<{ logs: FuncRunLog }>();
+    const call = api.endpoint<FuncRunLogsResponse>(routes.FuncRunLogs, {
+      id: props.funcRunId,
+    });
+    const req = await call.get();
     if (api.ok(req)) {
       return req.data.logs;
     }
@@ -192,7 +200,7 @@ const setupFuncRunSubscription = () => {
   executionKey = `funcRunDetails-${props.funcRunId}`;
 
   // Subscribe to FuncRunLogUpdated events for this function run
-  realtimeStore.subscribe(executionKey, `changeset/${wscs.changeSetId}`, [
+  realtimeStore.subscribe(executionKey, `changeset/${ctx.changeSetId}`, [
     {
       eventType: "FuncRunLogUpdated",
       callback: (payload) => {
