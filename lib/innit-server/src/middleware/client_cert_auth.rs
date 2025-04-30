@@ -24,6 +24,8 @@ use si_tls::{
 };
 use thiserror::Error;
 
+use crate::api_error::ApiError;
+
 type Result<T> = std::result::Result<T, ClientCertError>;
 
 #[derive(Debug, Error)]
@@ -49,7 +51,7 @@ impl IntoResponse for ClientCertError {
             ClientCertError::InvalidHeader(_) => StatusCode::BAD_REQUEST,
             ClientCertError::InvalidFormat(_) => StatusCode::BAD_REQUEST,
         };
-        status.into_response()
+        ApiError::new(status, self.to_string()).into_response()
     }
 }
 
