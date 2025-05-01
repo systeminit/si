@@ -445,6 +445,25 @@ function onVimExit() {
   emit("close");
   return true; // codemirror needs this when used as a "command"
 }
+
+// This is only used for passing in multiplayer updates which otherwise don't come through modelValue properly
+const forceUpdateContent = (value = props.modelValue) => {
+  if (!view) return;
+
+  const selection = view.state.selection;
+  view.dispatch({
+    changes: {
+      from: 0,
+      to: view.state.doc.length,
+      insert: value,
+    },
+    selection,
+  });
+};
+
+defineExpose({
+  forceUpdateContent,
+});
 </script>
 
 <style>

@@ -4,12 +4,13 @@
     :loadingMessage="`Loading function &quot;${selectedFuncSummary?.name}&quot;`"
     :requestStatus="loadFuncDetailsReq"
   />
+  <ErrorMessage
+    v-else-if="loadFuncDetailsReq.isError"
+    :requestStatus="loadFuncDetailsReq"
+  />
   <ScrollArea
     v-else-if="
-      selectedAsset &&
-      selectedFuncCode &&
-      loadFuncDetailsReq.isSuccess &&
-      typeof editingFunc === 'string'
+      selectedAsset && selectedFuncCode && typeof editingFunc === 'string'
     "
     class="flex flex-col h-full border border-t-0 border-neutral-300 dark:border-neutral-600"
   >
@@ -22,6 +23,7 @@
 
     <CodeEditor
       :id="`func-${selectedFuncCode.funcId}`"
+      ref="codeEditorRef"
       v-model="editingFunc"
       :disabled="selectedFuncSummary?.isLocked"
       :recordId="selectedFuncSummary?.funcId || ''"
@@ -30,10 +32,6 @@
       @close="emit('close')"
     />
   </ScrollArea>
-  <ErrorMessage
-    v-else-if="loadFuncDetailsReq.isError"
-    :requestStatus="loadFuncDetailsReq"
-  />
   <LoadingMessage v-else />
 </template>
 
@@ -52,6 +50,8 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import CodeEditor from "@/components/CodeEditor.vue";
 import { useAssetStore } from "@/store/asset.store";
 import AssetEditorHeader from "../AssetEditorHeader.vue";
+
+const codeEditorRef = ref<InstanceType<typeof CodeEditor>>();
 
 const changeSetsStore = useChangeSetsStore();
 const assetStore = useAssetStore();
@@ -95,12 +95,13 @@ watch(
 
     // We have to ensure the changed func is the one we're looking at here, otherwise
     // we will copy the code from each the currently edited func into every func we've edited in
-    // the past!
+    // the past! Also, we need to force an update to the content so that multiplayer edits will work.
     if (
       selectedFuncCode.value.funcId === props.funcId &&
-      editingFunc.value !== selectedFuncCode.value.code
+      editingFunc.value.trimEnd() !== selectedFuncCode.value.code.trimEnd()
     ) {
       editingFunc.value = selectedFuncCode.value.code;
+      codeEditorRef.value?.forceUpdateContent(selectedFuncCode.value.code);
     }
   },
   { immediate: true },

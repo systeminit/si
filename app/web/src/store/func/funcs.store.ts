@@ -768,7 +768,12 @@ export const useFuncStore = () => {
           realtimeStore.inflightRequests.set(requestUlid, actionName);
         },
         registerRequestsEnd(requestUlid: string) {
-          realtimeStore.inflightRequests.delete(requestUlid);
+          // Removing the Ulid is delayed for 10 seconds to prevent WSEvent race conditions with saving
+          // Such race conditions could cause the FuncEditor to suddenly reload when a WSEvent arrives
+          // to the frontend after its corresponding request has been deleted from inflightRequests
+          setTimeout(() => {
+            realtimeStore.inflightRequests.delete(requestUlid);
+          }, 10000);
         },
       },
       async onActivated() {
@@ -889,6 +894,7 @@ export const useFuncStore = () => {
               // one that made the change in the function editor. If we were to remove that check
               // every time your code editor saved, it would remount with the new code, and you'd lose
               // your cursor. It would feel like you can't just keep typing, and you'd get angry
+              // This check is why we need to delay removing Ulids from inflightRequests by 10 seconds
               if (funcId === this.selectedFuncId || !this.selectedFuncId) {
                 const didIFireThisRequest =
                   !!realtimeStore.inflightRequests.get(metadata.request_ulid);
