@@ -39,17 +39,28 @@ impl ValueSubscription {
         &self,
         ctx: &DalContext,
     ) -> AttributeValueResult<Option<AttributeValueId>> {
-        let mut av_id = self.attribute_value_id;
         match self.path {
             ValueSubscriptionPath::JsonPointer(ref json_pointer) => {
-                let ptr = jsonptr::Pointer::parse(json_pointer)?;
-                for token in ptr {
-                    let Some(child_av_id) = resolve_child(ctx, av_id, token).await? else {
-                        return Ok(None);
-                    };
-                    av_id = child_av_id;
-                }
+                Self::resolve_json_pointer(ctx, self.attribute_value_id, json_pointer).await
             }
+        }
+    }
+
+    pub async fn resolve_json_pointer(
+        ctx: &DalContext,
+        mut av_id: AttributeValueId,
+        json_pointer: &str,
+    ) -> AttributeValueResult<Option<AttributeValueId>> {
+        // Go through each segment of the JSON pointer (e.g. /foo/bar/0 = foo, bar, 0)
+        // and look for its child
+        let ptr = jsonptr::Pointer::parse(json_pointer)?;
+        for token in ptr {
+            let Some(child_av_id) = resolve_child(ctx, av_id, token).await? else {
+                // If we can't find the child for this segment, we can't resolve the full
+                // path, so return None.
+                return Ok(None);
+            };
+            av_id = child_av_id;
         }
 
         Ok(Some(av_id))

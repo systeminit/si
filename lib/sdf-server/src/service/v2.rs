@@ -23,6 +23,7 @@ pub mod admin;
 pub mod approval_requirement_definition;
 pub mod audit_log;
 pub mod change_set;
+pub mod component;
 pub mod fs;
 pub mod func;
 pub mod index;
@@ -47,6 +48,7 @@ fn workspace_routes(state: AppState) -> Router<AppState> {
             "/change-sets/:change_set_id",
             change_set::change_set_routes(state.clone())
                 .nest("/audit-logs", audit_log::v2_routes())
+                .nest("/components", component::v2_routes())
                 .nest("/funcs", func::v2_routes())
                 .nest("/modules", module::v2_routes())
                 .nest("/schema-variants", variant::v2_routes())

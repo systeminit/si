@@ -68,6 +68,7 @@ futures = { workspace = true }
 futures-lite = { workspace = true }
 hyper = { workspace = true }
 itertools = { workspace = true }
+jsonptr = { workspace = true }
 names = { workspace = true }
 nix = { workspace = true }
 once_cell = { workspace = true }

@@ -1581,6 +1581,18 @@ impl Component {
         Ok(None)
     }
 
+    pub async fn find_by_name(
+        ctx: &DalContext,
+        name: &str,
+    ) -> ComponentResult<Option<ComponentId>> {
+        for component_id in Self::list_ids(ctx).await? {
+            if name == Self::name_by_id(ctx, component_id).await? {
+                return Ok(Some(component_id));
+            }
+        }
+        Ok(None)
+    }
+
     pub async fn geometry(&self, ctx: &DalContext, view_id: ViewId) -> ComponentResult<Geometry> {
         Ok(Geometry::get_by_component_and_view(ctx, self.id, view_id).await?)
     }

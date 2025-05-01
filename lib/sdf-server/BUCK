@@ -62,6 +62,7 @@ rust_library(
         "//third-party/rust:futures-lite",
         "//third-party/rust:hyper",
         "//third-party/rust:itertools",
+        "//third-party/rust:jsonptr",
         "//third-party/rust:names",
         "//third-party/rust:nix",
         "//third-party/rust:once_cell",

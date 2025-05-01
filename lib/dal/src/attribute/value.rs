@@ -25,10 +25,7 @@ use si_pkg::{
     AttributeValuePath,
     KeyOrIndex,
 };
-use subscription::{
-    ValueSubscription,
-    ValueSubscriptionPath,
-};
+use subscription::ValueSubscription;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{
@@ -2196,8 +2193,7 @@ impl AttributeValue {
     pub async fn subscribe(
         ctx: &DalContext,
         subscriber_av_id: AttributeValueId,
-        subscribed_to_av_id: AttributeValueId,
-        path: ValueSubscriptionPath,
+        subscription: ValueSubscription,
     ) -> AttributeValueResult<()> {
         // TODO arity
 
@@ -2210,12 +2206,10 @@ impl AttributeValue {
         AttributePrototypeArgument::set_value_source(
             ctx,
             prototype_arg.id(),
-            ValueSource::ValueSubscription(ValueSubscription {
-                attribute_value_id: subscribed_to_av_id,
-                path,
-            }),
+            ValueSource::ValueSubscription(subscription),
         )
         .await?;
+        // TODO arity (this blows away any existing prototype and replaces it with the single subscription!)
         Self::set_component_prototype_id(ctx, subscriber_av_id, prototype.id(), None).await?;
 
         ctx.add_dependent_values_and_enqueue(vec![subscriber_av_id])
