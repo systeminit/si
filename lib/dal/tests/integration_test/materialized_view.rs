@@ -46,7 +46,7 @@ async fn actions(ctx: &DalContext) -> Result<()> {
     let create_action = Action::get_by_id(ctx, create_action_id).await?;
 
     // Check the frontend payload for actions.
-    let mut mv = Action::as_frontend_list_type(ctx).await?;
+    let mut mv = Action::as_frontend_list_type(ctx.clone()).await?;
     let action_view = mv.actions.pop().ok_or_eyre("empty actions")?;
     assert!(mv.actions.is_empty(), "only one action should exist");
     assert_eq!(
@@ -70,7 +70,7 @@ async fn actions(ctx: &DalContext) -> Result<()> {
     );
 
     // Check the frontend payload for action prototypes.
-    let mv = ActionPrototype::as_frontend_list_type(ctx, schema_variant_id).await?;
+    let mv = ActionPrototype::as_frontend_list_type(ctx.clone(), schema_variant_id).await?;
     assert_eq!(
         schema_variant_id, // expected
         mv.id              // actual

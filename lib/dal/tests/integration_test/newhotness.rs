@@ -33,7 +33,7 @@ async fn attribute_tree(ctx: &DalContext) -> Result<()> {
     // provides a psuedo-benchmark for generating MVs for a new component.
     let mut work_queue = VecDeque::from([root_attribute_value_id]);
     while let Some(attribute_value_id) = work_queue.pop_front() {
-        let tree = attribute_tree::as_frontend_type(ctx, attribute_value_id).await?;
+        let tree = attribute_tree::as_frontend_type(ctx.clone(), attribute_value_id).await?;
         work_queue.extend(tree.children);
     }
     Ok(())
@@ -41,7 +41,7 @@ async fn attribute_tree(ctx: &DalContext) -> Result<()> {
 
 #[test]
 async fn component(ctx: &DalContext) -> Result<()> {
-    let components = component::as_frontend_list_type(ctx).await?;
+    let components = component::as_frontend_list_type(ctx.clone()).await?;
     assert_eq!(
         ComponentList {
             id: ctx.change_set_id(),
@@ -56,7 +56,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
         create_component_for_default_schema_name_in_default_view(ctx, schema_name, component_name)
             .await?;
 
-    let components = component::as_frontend_list_type(ctx).await?;
+    let components = component::as_frontend_list_type(ctx.clone()).await?;
     let reference = components
         .components
         .first()
@@ -70,7 +70,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
         reference.id.0          // actual
     );
 
-    let component = component::as_frontend_type(ctx, created_component.id()).await?;
+    let component = component::as_frontend_type(ctx.clone(), created_component.id()).await?;
     let schema = created_component.schema(ctx).await?;
     let schema_variant = created_component.schema_variant(ctx).await?;
     let stats = QualificationSummary::individual_stats(ctx, created_component.id()).await?;

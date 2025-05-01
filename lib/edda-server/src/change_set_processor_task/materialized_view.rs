@@ -1,10 +1,14 @@
-use std::collections::HashSet;
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
 use dal::{
     ComponentError,
     DalContext,
     SchemaVariantError,
     TransactionsError,
+    Ulid,
     WorkspaceSnapshotError,
     action::{
         ActionError,
@@ -68,8 +72,11 @@ use si_id::{
 };
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
+use telemetry_utils::metric;
 use thiserror::Error;
+use tokio::task::JoinSet;
 
+#[remain::sorted]
 #[derive(Debug, Error)]
 pub enum MaterializedViewError {
     #[error("Action error: {0}")]
@@ -84,6 +91,8 @@ pub enum MaterializedViewError {
     Diagram(#[from] DiagramError),
     #[error("Frigg error: {0}")]
     Frigg(#[from] FriggError),
+    #[error("Join error: {0}")]
+    JoinError(#[from] tokio::task::JoinError),
     #[error("materialized views error: {0}")]
     MaterializedViews(#[from] dal_materialized_views::Error),
     #[error(
@@ -275,6 +284,33 @@ pub async fn build_mv_for_changes_in_change_set(
     Ok(())
 }
 
+macro_rules! spawn_build_mv_task {
+    ($build_tasks:expr, $mv_task_ids: expr, $ctx:expr, $frigg:expr, $change:expr, $mv_id:expr, $mv:ty, $build_fn:expr $(,)?) => {
+        let task_id = ::si_events::ulid::Ulid::new();
+        let kind = <$mv as ::si_frontend_types::materialized_view::MaterializedView>::kind();
+        // Record the task ID of the MV build task we're about to spawn so we can track when all of the build
+        // tasks for any given MV kind have finished.
+        $mv_task_ids
+            .entry(kind)
+            .and_modify(|task_ids| {
+                task_ids.insert(task_id);
+            })
+            .or_insert_with(|| [task_id].iter().copied().collect());
+        // Record the currently running number of MV build tasks so we can see just how parallel this actually
+        // ends up being.
+        metric!(counter.edda.mv_build = 1);
+        $build_tasks.spawn(build_mv_task(
+            task_id,
+            $ctx.clone(),
+            $frigg.clone(),
+            $change,
+            $mv_id,
+            kind,
+            $build_fn,
+        ));
+    };
+}
+
 #[instrument(
     name = "materialized_view.build_mv_inner",
     level = "info",
@@ -294,227 +330,256 @@ async fn build_mv_inner(
     let mut mv_dependency_graph = mv_dependency_graph()?;
     let mut frontend_objects = Vec::new();
     let mut patches = Vec::new();
+    let mut build_tasks = JoinSet::new();
+    let mut ready_to_start_mv_kinds: HashSet<ReferenceKind> =
+        mv_dependency_graph.independent_ids().into_iter().collect();
+    let mut mv_task_ids: HashMap<ReferenceKind, HashSet<Ulid>> = HashMap::new();
 
     loop {
-        let independent_mvs = mv_dependency_graph.independent_ids();
-        if independent_mvs.is_empty() {
+        // If there aren't any ready to start MV kinds, and there aren't any currently running
+        // MV build tasks, then we've finished everything we can and are able to send off the
+        // collected FrontendObjects, and ObjectPatches to update the index & send patches out
+        // over the websocket.
+        if ready_to_start_mv_kinds.is_empty() && mv_task_ids.values().all(|tasks| tasks.is_empty())
+        {
             break;
         }
-        // We eagerly remove the independent MVs as we're going to bail out if anything errors,
-        // instead of attempting to process the remaining MVs.
-        for mv_kind in &independent_mvs {
-            mv_dependency_graph.remove_id(*mv_kind);
-        }
 
-        for change in changes {
-            for &mv_kind in &independent_mvs {
-                match mv_kind {
-                    ReferenceKind::ActionPrototypeViewList => {
-                        let mv_id = change.entity_id.to_string();
+        // If there aren't any ready_to start MV kinds, and there are currently building MVs,
+        // then we don't need to bother looping through the changes only to check against an
+        // empty list of ready to start MVs. We should jump straight to waiting for the next
+        // building MV to finish.
+        if !ready_to_start_mv_kinds.is_empty() {
+            for &change in changes {
+                for &mv_kind in &ready_to_start_mv_kinds {
+                    match mv_kind {
+                        ReferenceKind::ActionPrototypeViewList => {
+                            let mv_id = change.entity_id.to_string();
 
-                        match dal_materialized_views_macros::build_mv!(
-                            ctx,
-                            frigg,
-                            change,
-                            mv_id,
-                            si_frontend_types::action::prototype::ActionPrototypeViewList,
-                            dal::action::prototype::ActionPrototype::as_frontend_list_type(
+                            let trigger_entity = <si_frontend_types::action::prototype::ActionPrototypeViewList as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+                            if change.entity_kind != trigger_entity {
+                                continue;
+                            }
+
+                            spawn_build_mv_task!(
+                                build_tasks,
+                                mv_task_ids,
                                 ctx,
-                                si_events::ulid::Ulid::from(change.entity_id).into()
-                            )
-                            .await,
-                        ) {
-                            Ok(maybe_patch) => {
-                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
-                                    patches.push(patch);
-                                    if let Some(object) = maybe_frontend_object {
-                                        frontend_objects.push(object);
-                                    }
-                                }
-                            }
-                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
-                        };
-                    }
-                    ReferenceKind::ActionViewList => {
-                        let mv_id = change_set_id.to_string();
+                                frigg,
+                                change,
+                                mv_id,
+                                si_frontend_types::action::prototype::ActionPrototypeViewList,
+                                dal::action::prototype::ActionPrototype::as_frontend_list_type(
+                                    ctx.clone(),
+                                    si_events::ulid::Ulid::from(change.entity_id).into()
+                                ),
+                            );
+                        }
+                        ReferenceKind::ActionViewList => {
+                            let mv_id = change_set_id.to_string();
 
-                        match dal_materialized_views_macros::build_mv!(
-                            ctx,
-                            frigg,
-                            change,
-                            mv_id,
-                            si_frontend_types::action::ActionViewList,
-                            dal::action::Action::as_frontend_list_type(ctx).await,
-                        ) {
-                            Ok(maybe_patch) => {
-                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
-                                    patches.push(patch);
-                                    if let Some(object) = maybe_frontend_object {
-                                        frontend_objects.push(object);
-                                    }
-                                }
+                            let trigger_entity = <si_frontend_types::action::ActionViewList as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+                            if change.entity_kind != trigger_entity {
+                                continue;
                             }
-                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
-                        };
-                    }
-                    ReferenceKind::AttributeTree => {
-                        let mv_id = change.entity_id.to_string();
 
-                        match dal_materialized_views_macros::build_mv!(
-                            ctx,
-                            frigg,
-                            change,
-                            mv_id,
-                            si_frontend_types::newhotness::attribute_tree::AttributeTree,
-                            dal_materialized_views::attribute_tree::as_frontend_type(
+                            spawn_build_mv_task!(
+                                build_tasks,
+                                mv_task_ids,
                                 ctx,
-                                si_events::ulid::Ulid::from(change.entity_id).into()
-                            )
-                            .await,
-                        ) {
-                            Ok(maybe_patch) => {
-                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
-                                    patches.push(patch);
-                                    if let Some(object) = maybe_frontend_object {
-                                        frontend_objects.push(object);
-                                    }
-                                }
-                            }
-                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
+                                frigg,
+                                change,
+                                mv_id,
+                                si_frontend_types::action::ActionViewList,
+                                dal::action::Action::as_frontend_list_type(ctx.clone()),
+                            );
                         }
-                    }
-                    ReferenceKind::Component => {
-                        let mv_id = change.entity_id.to_string();
+                        ReferenceKind::AttributeTree => {
+                            let mv_id = change.entity_id.to_string();
 
-                        match dal_materialized_views_macros::build_mv!(
-                            ctx,
-                            frigg,
-                            change,
-                            mv_id,
-                            si_frontend_types::newhotness::component::Component,
-                            dal_materialized_views::component::as_frontend_type(
+                            let trigger_entity = <si_frontend_types::newhotness::attribute_tree::AttributeTree as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+                            if change.entity_kind != trigger_entity {
+                                continue;
+                            }
+
+                            spawn_build_mv_task!(
+                                build_tasks,
+                                mv_task_ids,
                                 ctx,
-                                si_events::ulid::Ulid::from(change.entity_id).into()
-                            )
-                            .await,
-                        ) {
-                            Ok(maybe_patch) => {
-                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
-                                    patches.push(patch);
-                                    if let Some(object) = maybe_frontend_object {
-                                        frontend_objects.push(object);
-                                    }
-                                }
-                            }
-                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
+                                frigg,
+                                change,
+                                mv_id,
+                                si_frontend_types::newhotness::attribute_tree::AttributeTree,
+                                dal_materialized_views::attribute_tree::as_frontend_type(
+                                    ctx.clone(),
+                                    si_events::ulid::Ulid::from(change.entity_id).into(),
+                                ),
+                            );
                         }
-                    }
-                    ReferenceKind::ComponentList => {
-                        let mv_id = change_set_id.to_string();
+                        ReferenceKind::Component => {
+                            let mv_id = change.entity_id.to_string();
 
-                        match dal_materialized_views_macros::build_mv!(
-                            ctx,
-                            frigg,
-                            change,
-                            mv_id,
-                            si_frontend_types::newhotness::component::ComponentList,
-                            dal_materialized_views::component::as_frontend_list_type(ctx).await,
-                        ) {
-                            Ok(maybe_patch) => {
-                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
-                                    patches.push(patch);
-                                    if let Some(object) = maybe_frontend_object {
-                                        frontend_objects.push(object);
-                                    }
-                                }
+                            let trigger_entity = <si_frontend_types::newhotness::component::Component as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+                            if change.entity_kind != trigger_entity {
+                                continue;
                             }
-                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
-                        };
-                    }
-                    ReferenceKind::SchemaVariantCategories => {
-                        let mv_id = change_set_id.to_string();
 
-                        match dal_materialized_views_macros::build_mv!(
-                            ctx,
-                            frigg,
-                            change,
-                            mv_id,
-                            si_frontend_types::schema_variant::SchemaVariantCategories,
-                            dal::schema::variant::SchemaVariant::as_frontend_list_type_by_category(
-                                ctx
-                            )
-                            .await,
-                        ) {
-                            Ok(maybe_patch) => {
-                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
-                                    patches.push(patch);
-                                    if let Some(object) = maybe_frontend_object {
-                                        frontend_objects.push(object);
-                                    }
-                                }
-                            }
-                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
-                        }
-                    }
-                    ReferenceKind::View => {
-                        let mv_id = change.entity_id.to_string();
-
-                        match dal_materialized_views_macros::build_mv!(
-                            ctx,
-                            frigg,
-                            change,
-                            mv_id,
-                            si_frontend_types::view::View,
-                            dal::diagram::view::View::as_frontend_type(
+                            spawn_build_mv_task!(
+                                build_tasks,
+                                mv_task_ids,
                                 ctx,
-                                si_events::ulid::Ulid::from(change.entity_id).into()
-                            )
-                            .await,
-                        ) {
-                            Ok(maybe_patch) => {
-                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
-                                    patches.push(patch);
-                                    if let Some(object) = maybe_frontend_object {
-                                        frontend_objects.push(object);
-                                    }
-                                }
-                            }
-                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
+                                frigg,
+                                change,
+                                mv_id,
+                                si_frontend_types::newhotness::component::Component,
+                                dal_materialized_views::component::as_frontend_type(
+                                    ctx.clone(),
+                                    si_events::ulid::Ulid::from(change.entity_id).into(),
+                                ),
+                            );
                         }
-                    }
-                    ReferenceKind::ViewList => {
-                        let mv_id = change_set_id.to_string();
+                        ReferenceKind::ComponentList => {
+                            let mv_id = change.entity_id.to_string();
 
-                        match dal_materialized_views_macros::build_mv!(
-                            ctx,
-                            frigg,
-                            change,
-                            mv_id,
-                            si_frontend_types::view::ViewList,
-                            dal::diagram::view::View::as_frontend_list_type(ctx).await,
-                        ) {
-                            Ok(maybe_patch) => {
-                                if let Some((patch, maybe_frontend_object)) = maybe_patch {
-                                    patches.push(patch);
-                                    if let Some(object) = maybe_frontend_object {
-                                        frontend_objects.push(object);
-                                    }
-                                }
+                            let trigger_entity = <si_frontend_types::newhotness::component::ComponentList as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+                            if change.entity_kind != trigger_entity {
+                                continue;
                             }
-                            Result::<_, MaterializedViewError>::Err(err) => return Err(err),
+
+                            spawn_build_mv_task!(
+                                build_tasks,
+                                mv_task_ids,
+                                ctx,
+                                frigg,
+                                change,
+                                mv_id,
+                                si_frontend_types::newhotness::component::ComponentList,
+                                dal_materialized_views::component::as_frontend_list_type(
+                                    ctx.clone(),
+                                ),
+                            );
                         }
+                        ReferenceKind::SchemaVariantCategories => {
+                            let mv_id = change_set_id.to_string();
+
+                            let trigger_entity = <si_frontend_types::schema_variant::SchemaVariantCategories as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+                            if change.entity_kind != trigger_entity {
+                                continue;
+                            }
+
+                            spawn_build_mv_task!(
+                                build_tasks,
+                                mv_task_ids,
+                                ctx,
+                                frigg,
+                                change,
+                                mv_id,
+                                si_frontend_types::schema_variant::SchemaVariantCategories,
+                                dal::schema::variant::SchemaVariant::as_frontend_list_type_by_category(
+                                    ctx.clone(),
+                                )
+                            );
+                        }
+                        ReferenceKind::View => {
+                            let mv_id = change.entity_id.to_string();
+
+                            let trigger_entity = <si_frontend_types::view::View as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+                            if change.entity_kind != trigger_entity {
+                                continue;
+                            }
+
+                            spawn_build_mv_task!(
+                                build_tasks,
+                                mv_task_ids,
+                                ctx,
+                                frigg,
+                                change,
+                                mv_id,
+                                si_frontend_types::view::View,
+                                dal::diagram::view::View::as_frontend_type(
+                                    ctx.clone(),
+                                    si_events::ulid::Ulid::from(change.entity_id).into()
+                                )
+                            );
+                        }
+                        ReferenceKind::ViewList => {
+                            let mv_id = change_set_id.to_string();
+
+                            let trigger_entity = <si_frontend_types::view::ViewList as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+                            if change.entity_kind != trigger_entity {
+                                continue;
+                            }
+
+                            spawn_build_mv_task!(
+                                build_tasks,
+                                mv_task_ids,
+                                ctx,
+                                frigg,
+                                change,
+                                mv_id,
+                                si_frontend_types::view::ViewList,
+                                dal::diagram::view::View::as_frontend_list_type(ctx.clone()),
+                            );
+                        }
+
+                        // Building the `MvIndex` itself is handled separately as the logic depends
+                        // on whether we're doing an incremental build or a full build from scratch.
+                        ReferenceKind::MvIndex => continue,
+
+                        // These `ReferenceKind` do not have associated `MaterializedView`s (yet?),
+                        // so we skip them.
+                        ReferenceKind::ChangeSetList | ReferenceKind::ChangeSetRecord => continue,
                     }
-
-                    // Building the `MvIndex` itself is handled separately as the logic depends
-                    // on whether we're doing an incremental build or a full build from scratch.
-                    ReferenceKind::MvIndex => continue,
-
-                    // These `ReferenceKind` do not have associated `MaterializedView`s (yet?),
-                    // so we skip them.
-                    ReferenceKind::ChangeSetList | ReferenceKind::ChangeSetRecord => continue,
                 }
             }
         }
+
+        // Now that these MV kinds have had their build tasks kicked off, we want to prevent kicking them off again
+        // as MV build tasks finish, and we also don't want to free up the things that depend on them until _all_
+        // of the started tasks for that MV kind have finished. Once the build tasks have finished, we'll remove the
+        // MV kind from the graph, which will let the downstream MVs start.
+        for &running_mv_kind in &ready_to_start_mv_kinds {
+            mv_dependency_graph.cycle_on_self(running_mv_kind);
+        }
+
+        if let Some(join_result) = build_tasks.join_next().await {
+            let (kind, mv_id, task_id, execution_result) = join_result?;
+            metric!(counter.edda.mv_build = -1);
+
+            let std::collections::hash_map::Entry::Occupied(mut mv_kind_task_ids) =
+                mv_task_ids.entry(kind)
+            else {
+                error!(
+                    id = %mv_id,
+                    kind = %kind,
+                    si.error.message = "Got a build task that finished for a kind we didn't know had started any builds.",
+                );
+                continue;
+            };
+            mv_kind_task_ids.get_mut().remove(&task_id);
+            // If there are no more running tasks for this MV kind, then we can remove it from the dependency
+            // graph to free up the next batch of MVs to run.
+            if mv_kind_task_ids.get().is_empty() {
+                info!(kind = %kind, "All MV build tasks finished for MV kind.");
+                mv_dependency_graph.remove_id(kind);
+            }
+
+            match execution_result {
+                Ok((maybe_patch, maybe_frontend_object)) => {
+                    if let Some(patch) = maybe_patch {
+                        patches.push(patch);
+                    }
+                    if let Some(frontend_object) = maybe_frontend_object {
+                        frontend_objects.push(frontend_object);
+                    }
+                }
+                Err(err) => {
+                    warn!(name = "mv_build_error", si.error.message = err.to_string(), kind = %kind, id = %mv_id);
+                }
+            }
+        }
+
+        ready_to_start_mv_kinds = mv_dependency_graph.independent_ids().into_iter().collect();
     }
 
     frigg
@@ -522,6 +587,139 @@ async fn build_mv_inner(
         .await?;
 
     Ok((frontend_objects, patches))
+}
+
+type BuildMvTaskResult = (
+    ReferenceKind,
+    String,
+    Ulid,
+    Result<
+        (
+            Option<si_frontend_types::object::patch::ObjectPatch>,
+            Option<si_frontend_types::object::FrontendObject>,
+        ),
+        MaterializedViewError,
+    >,
+);
+
+#[instrument(
+    name = "materialized_view.build_mv_task",
+    level = "info",
+    skip_all,
+    fields(
+        si.mv.kind = %mv_kind,
+        si.mv.id = %mv_id,
+    )
+)]
+async fn build_mv_task<F, T, E>(
+    task_id: Ulid,
+    ctx: DalContext,
+    frigg: FriggStore,
+    change: Change,
+    mv_id: String,
+    mv_kind: ReferenceKind,
+    build_mv_future: F,
+) -> BuildMvTaskResult
+where
+    F: Future<Output = Result<T, E>>,
+    T: serde::Serialize
+        + TryInto<si_frontend_types::object::FrontendObject>
+        + si_frontend_types::checksum::FrontendChecksum,
+    E: Into<MaterializedViewError>,
+    MaterializedViewError: From<E>,
+    MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
+{
+    info!(kind = %mv_kind, id = %mv_id, "Building MV");
+    let result = build_mv_task_inner(
+        &ctx,
+        &frigg,
+        change,
+        mv_id.clone(),
+        mv_kind,
+        build_mv_future,
+    )
+    .await;
+
+    (mv_kind, mv_id, task_id, result)
+}
+
+type MvBuilderResult = Result<
+    (
+        Option<si_frontend_types::object::patch::ObjectPatch>,
+        Option<si_frontend_types::object::FrontendObject>,
+    ),
+    MaterializedViewError,
+>;
+
+async fn build_mv_task_inner<F, T, E>(
+    ctx: &DalContext,
+    frigg: &FriggStore,
+    change: Change,
+    mv_id: String,
+    mv_kind: ReferenceKind,
+    build_mv_future: F,
+) -> MvBuilderResult
+where
+    F: Future<Output = Result<T, E>>,
+    T: serde::Serialize
+        + TryInto<si_frontend_types::object::FrontendObject>
+        + si_frontend_types::checksum::FrontendChecksum,
+    E: Into<MaterializedViewError>,
+    MaterializedViewError: From<E>,
+    MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
+{
+    let mv_kind = mv_kind.to_string();
+    if !ctx
+        .workspace_snapshot()?
+        .node_exists(change.entity_id)
+        .await
+    {
+        // Object was removed
+        Ok((
+            Some(si_frontend_types::object::patch::ObjectPatch {
+                kind: mv_kind,
+                id: mv_id,
+                // TODO: we need to get the prior version of this
+                from_checksum: Checksum::default().to_string(),
+                to_checksum: "0".to_string(),
+                patch: json_patch::Patch(vec![json_patch::PatchOperation::Remove(
+                    json_patch::RemoveOperation::default(),
+                )]),
+            }),
+            None,
+        ))
+    } else {
+        let mv = build_mv_future.await?;
+        let mv_json = serde_json::to_value(&mv)?;
+        let to_checksum = si_frontend_types::checksum::FrontendChecksum::checksum(&mv).to_string();
+        let frontend_object: si_frontend_types::object::FrontendObject = mv.try_into()?;
+
+        let kind = mv_kind;
+        let (from_checksum, previous_data) = if let Some(previous_version) = frigg
+            .get_current_object(ctx.workspace_pk()?, ctx.change_set_id(), &kind, &mv_id)
+            .await?
+        {
+            (previous_version.checksum, previous_version.data)
+        } else {
+            // Object is new
+            ("0".to_string(), serde_json::Value::Null)
+        };
+
+        if from_checksum == to_checksum {
+            Ok((None, None))
+        } else {
+            Ok((
+                Some(si_frontend_types::object::patch::ObjectPatch {
+                    kind,
+                    id: mv_id,
+                    from_checksum,
+                    to_checksum,
+                    patch: json_patch::diff(&previous_data, &mv_json),
+                }),
+                Some(frontend_object),
+            ))
+        }
+    }
 }
 
 macro_rules! add_reference_dependencies_to_dependency_graph {

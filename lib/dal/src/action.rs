@@ -664,7 +664,8 @@ impl Action {
     }
 
     #[instrument(name = "action.as_frontend_list_type", level = "info", skip_all)]
-    pub async fn as_frontend_list_type(ctx: &DalContext) -> ActionResult<ActionViewList> {
+    pub async fn as_frontend_list_type(ctx: DalContext) -> ActionResult<ActionViewList> {
+        let ctx = &ctx;
         let action_ids = Self::list_topologically(ctx).await?;
 
         let mut views = Vec::new();

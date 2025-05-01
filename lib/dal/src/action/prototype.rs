@@ -513,9 +513,10 @@ impl ActionPrototype {
     }
 
     pub async fn as_frontend_list_type(
-        ctx: &DalContext,
+        ctx: DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> ActionPrototypeResult<ActionPrototypeViewList> {
+        let ctx = &ctx;
         let mut views = Vec::new();
 
         for action_prototype in Self::for_variant(ctx, schema_variant_id).await? {
