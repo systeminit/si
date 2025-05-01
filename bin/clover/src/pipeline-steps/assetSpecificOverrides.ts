@@ -863,6 +863,19 @@ const overrides = new Map<string, OverrideFn>([
   }],
   ["VPNConnection VpnTunnelOptionsSpecifications", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
+    const domainId = variant.domain.uniqueId;
+
+    if (!domainId) return;
+
+    const { func, leafFuncSpec } = attachQualificationFunction(
+      "./src/cloud-control-funcs/overrides/VPNConnection VpnTunnelOptionsSpecifications/qualifications/presharedKeyValidations.ts",
+      "Validate PresharedKey",
+      "4e1243bd22c67dd61b0a4c86e9f3c89c84baf7b37a45f93ee4e5ed8a9d7f1c2f",
+      domainId
+    );
+
+    spec.funcs.push(func);
+    variant.leafFunctions.push(leafFuncSpec);
 
     // Remove unnecessary input sockets
     const removedCount = removeInputSockets(variant, [
