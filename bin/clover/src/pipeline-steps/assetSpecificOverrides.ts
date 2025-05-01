@@ -953,9 +953,19 @@ const overrides = new Map<string, OverrideFn>([
     const resource_value = variant.resourceValue;
     const domain = variant.domain;
 
-    const typeProp = findPropByName(domain, "Type");
-    if (typeProp) {
+    removeInputSockets(variant, [
+      "Type",
+    ]);
+
+    const typeProp = propForOverride(variant.domain, "Type");
+    if (typeProp && typeProp.kind === "string") {
+      typeProp.data.widgetKind = "ComboBox";
       typeProp.data.defaultValue = "ipsec.1";
+      typeProp.data.inputs = [];
+      typeProp.data.funcUniqueId = null;
+      typeProp.data.widgetOptions = [
+        { label: "si_create_only_prop", value: "true" }
+      ];
     }
 
     const transitGatewayAttachmentIdProp = createScalarProp(
@@ -993,7 +1003,26 @@ const overrides = new Map<string, OverrideFn>([
     );
     if (!subnetInputSocket) return;
     setAnnotationOnSocket(subnetInputSocket, { tokens: ["subnets"] });
-  }]
+  }],
+  ['AWS::EC2::CustomerGateway', (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+    const domain = variant.domain;
+
+    removeInputSockets(variant, [
+      "Type",
+    ]);
+
+    const typeProp = propForOverride(variant.domain, "Type");
+    if (typeProp && typeProp.kind === "string") {
+      typeProp.data.widgetKind = "ComboBox";
+      typeProp.data.defaultValue = "ipsec.1";
+      typeProp.data.inputs = [];
+      typeProp.data.funcUniqueId = null;
+      typeProp.data.widgetOptions = [
+        { label: "si_create_only_prop", value: "true" }
+      ];
+    }
+  }],
 ]);
 
 function attachExtraActionFunction(
