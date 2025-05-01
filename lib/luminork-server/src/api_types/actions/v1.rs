@@ -16,7 +16,7 @@ use si_id::{
 use utoipa::ToSchema;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
-#[serde(rename_all(serialize = "camelCase"))]
+#[serde(rename_all = "camelCase")]
 pub struct ActionViewV1 {
     #[schema(value_type = String)]
     pub id: ActionId,

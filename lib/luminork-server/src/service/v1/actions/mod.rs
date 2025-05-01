@@ -47,6 +47,7 @@ pub enum ActionsError {
 pub type ActionsResult<T> = Result<T, ActionsError>;
 
 #[derive(Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ActionV1RequestPath {
     #[schema(value_type = String)]
     pub action_id: ActionId,

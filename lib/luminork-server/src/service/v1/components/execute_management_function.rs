@@ -112,12 +112,12 @@ pub enum ManagementFunctionReference {
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[schema(example = json!({
-    "view_name": "MyViewName",
-    "management_function": {"managementPrototypeId": "01H9ZQD35JPMBGHH69BT0Q79VY"}
+    "viewName": "MyViewName",
+    "managementFunction": {"managementPrototypeId": "01H9ZQD35JPMBGHH69BT0Q79VY"}
 }))]
 #[schema(example = json!({
-    "view_name": "MyViewName",
-    "management_function": {"function": "CreateVpc"}
+    "viewName": "MyViewName",
+    "managementFunction": {"function": "CreateVpc"}
 }))]
 pub struct ExecuteManagementFunctionV1Request {
     #[schema(example = "MyViewName")]

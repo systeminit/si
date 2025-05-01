@@ -106,6 +106,7 @@ pub enum ComponentsError {
 pub type ComponentsResult<T> = Result<T, ComponentsError>;
 
 #[derive(Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ComponentV1RequestPath {
     #[schema(value_type = String)]
     pub component_id: ComponentId,
