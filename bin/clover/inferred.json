@@ -133,6 +133,30 @@
       "sqlserver-web"
     ]
   },
+  "The name of the database engine to use for this DB instance. Not every database engine is available in every AWS Region.\n This property is required when creating a DB instance.\n  You can convert an Oracle database from the non-CDB architecture to the container database (CDB) architecture by updating the ``Engine`` value in your templates from ``oracle-ee`` to ``oracle-ee-cdb`` or from ``oracle-se2`` to ``oracle-se2-cdb``. Converting to the CDB architecture requires an interruption.\n  Valid Values:\n  +  ``aurora-mysql`` (for Aurora MySQL DB instances)\n  +  ``aurora-postgresql`` (for Aurora PostgreSQL DB instances)\n  +  ``custom-oracle-ee`` (for RDS Custom for Oracle DB instances)\n  +  ``custom-oracle-ee-cdb`` (for RDS Custom for Oracle DB instances)\n  +  ``custom-sqlserver-ee`` (for RDS Custom for SQL Server DB instances)\n  +  ``custom-sqlserver-se`` (for RDS Custom for SQL Server DB instances)\n  +  ``custom-sqlserver-web`` (for RDS Custom for SQL Server DB instances)\n  +   ``db2-ae`` \n  +   ``db2-se`` \n  +   ``mariadb`` \n  +   ``mysql`` \n  +   ``oracle-ee`` \n  +   ``oracle-ee-cdb`` \n  +   ``oracle-se2`` \n  +   ``oracle-se2-cdb`` \n  +   ``postgres`` \n  +   ``sqlserver-ee`` \n  +   ``sqlserver-se`` \n  +   ``sqlserver-ex`` \n  +   ``sqlserver-web``": {
+    "enum": [
+      "aurora-mysql",
+      "aurora-postgresql",
+      "custom-oracle-ee",
+      "custom-oracle-ee-cdb",
+      "custom-sqlserver-ee",
+      "custom-sqlserver-se",
+      "custom-sqlserver-web",
+      "db2-ae",
+      "db2-se",
+      "mariadb",
+      "mysql",
+      "oracle-ee",
+      "oracle-ee-cdb",
+      "oracle-se2",
+      "oracle-se2-cdb",
+      "postgres",
+      "sqlserver-ee",
+      "sqlserver-se",
+      "sqlserver-ex",
+      "sqlserver-web"
+    ]
+  },
   "The resource type of the resources in the resource set. Enter one of the following values for resource type: \n\nAWS: :AutoScaling: :AutoScalingGroup, AWS: :CloudWatch: :Alarm, AWS: :EC2: :CustomerGateway, AWS: :DynamoDB: :Table, AWS: :EC2: :Volume, AWS: :ElasticLoadBalancing: :LoadBalancer, AWS: :ElasticLoadBalancingV2: :LoadBalancer, AWS: :MSK: :Cluster, AWS: :RDS: :DBCluster, AWS: :Route53: :HealthCheck, AWS: :SQS: :Queue, AWS: :SNS: :Topic, AWS: :SNS: :Subscription, AWS: :EC2: :VPC, AWS: :EC2: :VPNConnection, AWS: :EC2: :VPNGateway, AWS::Route53RecoveryReadiness::DNSTargetResource": {
     "enum": [
       "AWS::AutoScaling::AutoScalingGroup",
@@ -312,7 +336,29 @@
       "DECLARATIVE_POLICY_EC2"
     ]
   },
+  "The interval, in seconds, between points when Enhanced Monitoring metrics are collected for the DB cluster. To turn off collecting Enhanced Monitoring metrics, specify ``0``.\n If ``MonitoringRoleArn`` is specified, also set ``MonitoringInterval`` to a value other than ``0``.\n Valid for Cluster Type: Aurora DB clusters and Multi-AZ DB clusters\n Valid Values: ``0 | 1 | 5 | 10 | 15 | 30 | 60``\n Default: ``0``": {
+    "enum": [
+      "0",
+      "1",
+      "5",
+      "10",
+      "15",
+      "30",
+      "60"
+    ]
+  },
   "The interval, in seconds, between points when Enhanced Monitoring metrics are collected for the DB cluster. To turn off collecting Enhanced Monitoring metrics, specify ``0``.\n If ``MonitoringRoleArn`` is specified, also set ``MonitoringInterval`` to a value other than ``0``.\n Valid for Cluster Type: Aurora DB clusters and Multi-AZ DB clusters\n Valid Values: ``0 | 1 | 5 | 10 | 15 | 30 | 60`` \n Default: ``0``": {
+    "enum": [
+      "0",
+      "1",
+      "5",
+      "10",
+      "15",
+      "30",
+      "60"
+    ]
+  },
+  "The interval, in seconds, between points when Enhanced Monitoring metrics are collected for the DB instance. To disable collection of Enhanced Monitoring metrics, specify ``0``.\n If ``MonitoringRoleArn`` is specified, then you must set ``MonitoringInterval`` to a value other than ``0``.\n This setting doesn't apply to RDS Custom DB instances.\n Valid Values: ``0 | 1 | 5 | 10 | 15 | 30 | 60``\n Default: ``0``": {
     "enum": [
       "0",
       "1",
@@ -343,6 +389,15 @@
       "allExcept"
     ]
   },
+  "The storage type to associate with the DB instance.\n If you specify ``io1``, ``io2``, or ``gp3``, you must also include a value for the ``Iops`` parameter.\n This setting doesn't apply to Amazon Aurora DB instances. Storage is managed by the DB cluster.\n Valid Values: ``gp2 | gp3 | io1 | io2 | standard``\n Default: ``io1``, if the ``Iops`` parameter is specified. Otherwise, ``gp3``.": {
+    "enum": [
+      "gp2",
+      "gp3",
+      "io1",
+      "io2",
+      "standard"
+    ]
+  },
   "The storage type to associate with the DB instance.\n If you specify ``io1``, ``io2``, or ``gp3``, you must also include a value for the ``Iops`` parameter.\n This setting doesn't apply to Amazon Aurora DB instances. Storage is managed by the DB cluster.\n Valid Values: ``gp2 | gp3 | io1 | io2 | standard`` \n Default: ``io1``, if the ``Iops`` parameter is specified. Otherwise, ``gp2``.": {
     "enum": [
       "gp2",
@@ -359,6 +414,15 @@
       "io1",
       "io2",
       "standard"
+    ]
+  },
+  "The storage type to associate with the DB cluster.\n For information on storage types for Aurora DB clusters, see [Storage configurations for Amazon Aurora DB clusters](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html#aurora-storage-type). For information on storage types for Multi-AZ DB clusters, see [Settings for creating Multi-AZ DB clusters](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/create-multi-az-db-cluster.html#create-multi-az-db-cluster-settings).\n This setting is required to create a Multi-AZ DB cluster.\n When specified for a Multi-AZ DB cluster, a value for the ``Iops`` parameter is required.\n Valid for Cluster Type: Aurora DB clusters and Multi-AZ DB clusters\n Valid Values:\n  +  Aurora DB clusters - ``aurora | aurora-iopt1``\n  +  Multi-AZ DB clusters - ``io1 | io2 | gp3``\n  \n Default:\n  +  Aurora DB clusters - ``aurora``\n  +  Multi-AZ DB clusters - ``io1``\n  \n  When you create an Aurora DB cluster with the storage type set to ``aurora-iopt1``, the storage type is returned in the response. The storage type isn't returned when you set it to ``aurora``.": {
+    "enum": [
+      "aurora",
+      "aurora-iopt1",
+      "io1",
+      "io2",
+      "gp3"
     ]
   },
   "The storage type to associate with the DB cluster.\n For information on storage types for Aurora DB clusters, see [Storage configurations for Amazon Aurora DB clusters](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Overview.StorageReliability.html#aurora-storage-type). For information on storage types for Multi-AZ DB clusters, see [Settings for creating Multi-AZ DB clusters](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/create-multi-az-db-cluster.html#create-multi-az-db-cluster-settings).\n This setting is required to create a Multi-AZ DB cluster.\n When specified for a Multi-AZ DB cluster, a value for the ``Iops`` parameter is required.\n Valid for Cluster Type: Aurora DB clusters and Multi-AZ DB clusters\n Valid Values:\n  +  Aurora DB clusters - ``aurora | aurora-iopt1`` \n  +  Multi-AZ DB clusters - ``io1 | io2 | gp3`` \n  \n Default:\n  +  Aurora DB clusters - ``aurora`` \n  +  Multi-AZ DB clusters - ``io1`` \n  \n  When you create an Aurora DB cluster with the storage type set to ``aurora-iopt1``, the storage type is returned in the response. The storage type isn't returned when you set it to ``aurora``.": {
@@ -461,6 +525,14 @@
       "bridge",
       "awsvpc",
       "host"
+    ]
+  },
+  "License model information for this DB instance.\n  Valid Values:\n  +  Aurora MySQL - ``general-public-license``\n  +  Aurora PostgreSQL - ``postgresql-license``\n  +  RDS for Db2 - ``bring-your-own-license``. For more information about RDS for Db2 licensing, see [](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/db2-licensing.html) in the *Amazon RDS User Guide.*\n  +  RDS for MariaDB - ``general-public-license``\n  +  RDS for Microsoft SQL Server - ``license-included``\n  +  RDS for MySQL - ``general-public-license``\n  +  RDS for Oracle - ``bring-your-own-license`` or ``license-included``\n  +  RDS for PostgreSQL - ``postgresql-license``\n  \n  If you've specified ``DBSecurityGroups`` and then you update the license model, AWS CloudFormation replaces the underlying DB instance. This will incur some interruptions to database availability.": {
+    "enum": [
+      "general-public-license",
+      "postgresql-license",
+      "bring-your-own-license",
+      "license-included"
     ]
   },
   "License model information for this DB instance.\n  Valid Values:\n  +  Aurora MySQL - ``general-public-license`` \n  +  Aurora PostgreSQL - ``postgresql-license`` \n  +  RDS for Db2 - ``bring-your-own-license``. For more information about RDS for Db2 licensing, see [](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/db2-licensing.html) in the *Amazon RDS User Guide.* \n  +  RDS for MariaDB - ``general-public-license`` \n  +  RDS for Microsoft SQL Server - ``license-included`` \n  +  RDS for MySQL - ``general-public-license`` \n  +  RDS for Oracle - ``bring-your-own-license`` or ``license-included`` \n  +  RDS for PostgreSQL - ``postgresql-license`` \n  \n  If you've specified ``DBSecurityGroups`` and then you update the license model, AWS CloudFormation replaces the underlying DB instance. This will incur some interruptions to database availability.": {
@@ -713,6 +785,13 @@
     ]
   },
   "Indicates the instance's Capacity Reservation preferences. Possible preferences include:\n  +   ``capacity-reservations-only`` - The instance will only run in a Capacity Reservation or Capacity Reservation group. If capacity isn't available, the instance will fail to launch.\n  +   ``open`` - The instance can run in any ``open`` Capacity Reservation that has matching attributes (instance type, platform, Availability Zone, tenancy).\n  +   ``none`` - The instance avoids running in a Capacity Reservation even if one is available. The instance runs in On-Demand capacity.": {
+    "enum": [
+      "capacity-reservations-only",
+      "open",
+      "none"
+    ]
+  },
+  "Indicates the instance's Capacity Reservation preferences. Possible preferences include:\n  +  ``capacity-reservations-only`` - The instance will only run in a Capacity Reservation or Capacity Reservation group. If capacity isn't available, the instance will fail to launch.\n  +  ``open`` - The instance can run in any ``open`` Capacity Reservation that has matching attributes (instance type, platform, Availability Zone, tenancy).\n  +  ``none`` - The instance avoids running in a Capacity Reservation even if one is available. The instance runs in On-Demand capacity.": {
     "enum": [
       "capacity-reservations-only",
       "open",
@@ -1095,6 +1174,12 @@
       "required"
     ]
   },
+  "Indicates whether IMDSv2 is required.\n  +  ``optional`` - IMDSv2 is optional. You can choose whether to send a session token in your instance metadata retrieval requests. If you retrieve IAM role credentials without a session token, you receive the IMDSv1 role credentials. If you retrieve IAM role credentials using a valid session token, you receive the IMDSv2 role credentials.\n  +  ``required`` - IMDSv2 is required. You must send a session token in your instance metadata retrieval requests. With this option, retrieving the IAM role credentials always returns IMDSv2 credentials; IMDSv1 credentials are not available.\n  \n Default: If the value of ``ImdsSupport`` for the Amazon Machine Image (AMI) for your instance is ``v2.0``, the default is ``required``.": {
+    "enum": [
+      "optional",
+      "required"
+    ]
+  },
   "Indicates whether a signed token header is required for instance metadata retrieval requests. The values affect the response as follows: ": {
     "enum": [
       "optional",
@@ -1107,7 +1192,19 @@
       "required"
     ]
   },
+  "The life cycle type for this DB cluster.\n  By default, this value is set to ``open-source-rds-extended-support``, which enrolls your DB cluster into Amazon RDS Extended Support. At the end of standard support, you can avoid charges for Extended Support by setting the value to ``open-source-rds-extended-support-disabled``. In this case, creating the DB cluster will fail if the DB major version is past its end of standard support date.\n  You can use this setting to enroll your DB cluster into Amazon RDS Extended Support. With RDS Extended Support, you can run the selected major engine version on your DB cluster past the end of standard support for that engine version. For more information, see the following sections:\n  +  Amazon Aurora - [Using Amazon RDS Extended Support](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/extended-support.html) in the *Amazon Aurora User Guide*\n  +  Amazon RDS - [Using Amazon RDS Extended Support](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/extended-support.html) in the *Amazon RDS User Guide*\n  \n Valid for Cluster Type: Aurora DB clusters and Multi-AZ DB clusters\n Valid Values: ``open-source-rds-extended-support | open-source-rds-extended-support-disabled``\n Default: ``open-source-rds-extended-support``": {
+    "enum": [
+      "open-source-rds-extended-support",
+      "open-source-rds-extended-support-disabled"
+    ]
+  },
   "The life cycle type for this DB cluster.\n  By default, this value is set to ``open-source-rds-extended-support``, which enrolls your DB cluster into Amazon RDS Extended Support. At the end of standard support, you can avoid charges for Extended Support by setting the value to ``open-source-rds-extended-support-disabled``. In this case, creating the DB cluster will fail if the DB major version is past its end of standard support date.\n  You can use this setting to enroll your DB cluster into Amazon RDS Extended Support. With RDS Extended Support, you can run the selected major engine version on your DB cluster past the end of standard support for that engine version. For more information, see the following sections:\n  +  Amazon Aurora - [Using Amazon RDS Extended Support](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/extended-support.html) in the *Amazon Aurora User Guide* \n  +  Amazon RDS - [Using Amazon RDS Extended Support](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/extended-support.html) in the *Amazon RDS User Guide* \n  \n Valid for Cluster Type: Aurora DB clusters and Multi-AZ DB clusters\n Valid Values: ``open-source-rds-extended-support | open-source-rds-extended-support-disabled`` \n Default: ``open-source-rds-extended-support``": {
+    "enum": [
+      "open-source-rds-extended-support",
+      "open-source-rds-extended-support-disabled"
+    ]
+  },
+  "The life cycle type for this DB instance.\n  By default, this value is set to ``open-source-rds-extended-support``, which enrolls your DB instance into Amazon RDS Extended Support. At the end of standard support, you can avoid charges for Extended Support by setting the value to ``open-source-rds-extended-support-disabled``. In this case, creating the DB instance will fail if the DB major version is past its end of standard support date.\n  This setting applies only to RDS for MySQL and RDS for PostgreSQL. For Amazon Aurora DB instances, the life cycle type is managed by the DB cluster.\n You can use this setting to enroll your DB instance into Amazon RDS Extended Support. With RDS Extended Support, you can run the selected major engine version on your DB instance past the end of standard support for that engine version. For more information, see [Using Amazon RDS Extended Support](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/extended-support.html) in the *Amazon RDS User Guide*.\n Valid Values: ``open-source-rds-extended-support | open-source-rds-extended-support-disabled``\n Default: ``open-source-rds-extended-support``": {
     "enum": [
       "open-source-rds-extended-support",
       "open-source-rds-extended-support-disabled"
@@ -1117,6 +1214,12 @@
     "enum": [
       "open-source-rds-extended-support",
       "open-source-rds-extended-support-disabled"
+    ]
+  },
+  "The open mode of an Oracle read replica. For more information, see [Working with Oracle Read Replicas for Amazon RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/oracle-read-replicas.html) in the *Amazon RDS User Guide*.\n This setting is only supported in RDS for Oracle.\n Default: ``open-read-only``\n Valid Values: ``open-read-only`` or ``mounted``": {
+    "enum": [
+      "open-read-only",
+      "mounted"
     ]
   },
   "The open mode of an Oracle read replica. For more information, see [Working with Oracle Read Replicas for Amazon RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/oracle-read-replicas.html) in the *Amazon RDS User Guide*.\n This setting is only supported in RDS for Oracle.\n Default: ``open-read-only`` \n Valid Values: ``open-read-only`` or ``mounted``": {
@@ -1240,6 +1343,12 @@
     ]
   },
   "The type of restore to be performed. You can specify one of the following values:\n  +   ``full-copy`` - The new DB cluster is restored as a full copy of the source DB cluster.\n  +   ``copy-on-write`` - The new DB cluster is restored as a clone of the source DB cluster.\n  \n If you don't specify a ``RestoreType`` value, then the new DB cluster is restored as a full copy of the source DB cluster.\n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
+    "enum": [
+      "full-copy",
+      "copy-on-write"
+    ]
+  },
+  "The type of restore to be performed. You can specify one of the following values:\n  +  ``full-copy`` - The new DB cluster is restored as a full copy of the source DB cluster.\n  +  ``copy-on-write`` - The new DB cluster is restored as a clone of the source DB cluster.\n  \n If you don't specify a ``RestoreType`` value, then the new DB cluster is restored as a full copy of the source DB cluster.\n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
     "enum": [
       "full-copy",
       "copy-on-write"
@@ -1671,6 +1780,12 @@
       "DUALSTACK"
     ]
   },
+  "The network type of the DB cluster.\n Valid values:\n  +   ``IPV4`` \n  +   ``DUAL`` \n  \n The network type is determined by the ``DBSubnetGroup`` specified for the DB cluster. A ``DBSubnetGroup`` can support only the IPv4 protocol or the IPv4 and IPv6 protocols (``DUAL``).\n For more information, see [Working with a DB instance in a VPC](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_VPC.WorkingWithRDSInstanceinaVPC.html) in the *Amazon Aurora User Guide.*\n Valid for: Aurora DB clusters only": {
+    "enum": [
+      "IPV4",
+      "DUAL"
+    ]
+  },
   "The network type of the DB cluster.\n Valid values:\n  +   ``IPV4`` \n  +   ``DUAL`` \n  \n The network type is determined by the ``DBSubnetGroup`` specified for the DB cluster. A ``DBSubnetGroup`` can support only the IPv4 protocol or the IPv4 and IPv6 protocols (``DUAL``).\n For more information, see [Working with a DB instance in a VPC](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_VPC.WorkingWithRDSInstanceinaVPC.html) in the *Amazon Aurora User Guide.* \n Valid for: Aurora DB clusters only": {
     "enum": [
       "IPV4",
@@ -1726,6 +1841,12 @@
     ]
   },
   "The action to take when the timeout is reached, either ``ForceApplyCapacityChange`` or ``RollbackCapacityChange``.\n  ``ForceApplyCapacityChange`` sets the capacity to the specified value as soon as possible.\n  ``RollbackCapacityChange``, the default, ignores the capacity change if a scaling point isn't found in the timeout period.\n  If you specify ``ForceApplyCapacityChange``, connections that prevent Aurora Serverless v1 from finding a scaling point might be dropped.\n  For more information, see [Autoscaling for Aurora Serverless v1](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.how-it-works.html#aurora-serverless.how-it-works.auto-scaling) in the *Amazon Aurora User Guide*.": {
+    "enum": [
+      "ForceApplyCapacityChange",
+      "RollbackCapacityChange"
+    ]
+  },
+  "The action to take when the timeout is reached, either ``ForceApplyCapacityChange`` or ``RollbackCapacityChange``.\n ``ForceApplyCapacityChange`` sets the capacity to the specified value as soon as possible.\n ``RollbackCapacityChange``, the default, ignores the capacity change if a scaling point isn't found in the timeout period.\n  If you specify ``ForceApplyCapacityChange``, connections that prevent Aurora Serverless v1 from finding a scaling point might be dropped.\n  For more information, see [Autoscaling for Aurora Serverless v1](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.how-it-works.html#aurora-serverless.how-it-works.auto-scaling) in the *Amazon Aurora User Guide*.": {
     "enum": [
       "ForceApplyCapacityChange",
       "RollbackCapacityChange"
@@ -8185,7 +8306,13 @@
   "The DB cluster identifier. Contains a user-supplied DB cluster identifier. This identifier is the unique key that identifies a DB cluster stored as a lowercase string.": {
     "enum": null
   },
+  "The DB cluster identifier. This parameter is stored as a lowercase string.\n Constraints:\n  +  Must contain from 1 to 63 letters, numbers, or hyphens.\n  +  First character must be a letter.\n  +  Can't end with a hyphen or contain two consecutive hyphens.\n  \n Example: ``my-cluster1``\n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
+    "enum": null
+  },
   "The DB cluster identifier. This parameter is stored as a lowercase string.\n Constraints:\n  +  Must contain from 1 to 63 letters, numbers, or hyphens.\n  +  First character must be a letter.\n  +  Can't end with a hyphen or contain two consecutive hyphens.\n  \n Example: ``my-cluster1`` \n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
+    "enum": null
+  },
+  "The DB cluster parameter group family name. A DB cluster parameter group can be associated with one and only one DB cluster parameter group family, and can be applied only to a DB cluster running a database engine and engine version compatible with that DB cluster parameter group family.\n  *Aurora MySQL* \n Example: ``aurora-mysql5.7``, ``aurora-mysql8.0``\n  *Aurora PostgreSQL* \n Example: ``aurora-postgresql14``\n  *RDS for MySQL* \n Example: ``mysql8.0``\n  *RDS for PostgreSQL* \n Example: ``postgres13``\n To list all of the available parameter group families for a DB engine, use the following command:\n  ``aws rds describe-db-engine-versions --query \"DBEngineVersions[].DBParameterGroupFamily\" --engine <engine>`` \n For example, to list all of the available parameter group families for the Aurora PostgreSQL DB engine, use the following command:\n  ``aws rds describe-db-engine-versions --query \"DBEngineVersions[].DBParameterGroupFamily\" --engine aurora-postgresql`` \n  The output contains duplicates.\n  The following are the valid DB engine values:\n  +   ``aurora-mysql`` \n  +   ``aurora-postgresql`` \n  +   ``mysql`` \n  +   ``postgres``": {
     "enum": null
   },
   "The DB cluster parameter group family name. A DB cluster parameter group can be associated with one and only one DB cluster parameter group family, and can be applied only to a DB cluster running a database engine and engine version compatible with that DB cluster parameter group family.\n  *Aurora MySQL* \n Example: ``aurora-mysql5.7``, ``aurora-mysql8.0`` \n  *Aurora PostgreSQL* \n Example: ``aurora-postgresql14`` \n  *RDS for MySQL* \n Example: ``mysql8.0`` \n  *RDS for PostgreSQL* \n Example: ``postgres13`` \n To list all of the available parameter group families for a DB engine, use the following command:\n  ``aws rds describe-db-engine-versions --query \"DBEngineVersions[].DBParameterGroupFamily\" --engine <engine>`` \n For example, to list all of the available parameter group families for the Aurora PostgreSQL DB engine, use the following command:\n  ``aws rds describe-db-engine-versions --query \"DBEngineVersions[].DBParameterGroupFamily\" --engine aurora-postgresql`` \n  The output contains duplicates.\n  The following are the valid DB engine values:\n  +   ``aurora-mysql`` \n  +   ``aurora-postgresql`` \n  +   ``mysql`` \n  +   ``postgres``": {
@@ -9946,7 +10073,13 @@
   "The daily time range during which automated backups are created for your new database if automated backups are enabled.": {
     "enum": null
   },
+  "The daily time range during which automated backups are created if automated backups are enabled, using the ``BackupRetentionPeriod`` parameter. For more information, see [Backup Window](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html#USER_WorkingWithAutomatedBackups.BackupWindow) in the *Amazon RDS User Guide.*\n Constraints:\n  +  Must be in the format ``hh24:mi-hh24:mi``.\n  +  Must be in Universal Coordinated Time (UTC).\n  +  Must not conflict with the preferred maintenance window.\n  +  Must be at least 30 minutes.\n  \n  *Amazon Aurora* \n Not applicable. The daily time range for creating automated backups is managed by the DB cluster.": {
+    "enum": null
+  },
   "The daily time range during which automated backups are created if automated backups are enabled, using the ``BackupRetentionPeriod`` parameter. For more information, see [Backup Window](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html#USER_WorkingWithAutomatedBackups.BackupWindow) in the *Amazon RDS User Guide.* \n Constraints:\n  +  Must be in the format ``hh24:mi-hh24:mi``.\n  +  Must be in Universal Coordinated Time (UTC).\n  +  Must not conflict with the preferred maintenance window.\n  +  Must be at least 30 minutes.\n  \n  *Amazon Aurora* \n Not applicable. The daily time range for creating automated backups is managed by the DB cluster.": {
+    "enum": null
+  },
+  "The daily time range during which automated backups are created. For more information, see [Backup Window](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Managing.Backups.html#Aurora.Managing.Backups.BackupWindow) in the *Amazon Aurora User Guide.*\n Constraints:\n  +  Must be in the format ``hh24:mi-hh24:mi``.\n  +  Must be in Universal Coordinated Time (UTC).\n  +  Must not conflict with the preferred maintenance window.\n  +  Must be at least 30 minutes.\n  \n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
     "enum": null
   },
   "The daily time range during which automated backups are created. For more information, see [Backup Window](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Aurora.Managing.Backups.html#Aurora.Managing.Backups.BackupWindow) in the *Amazon Aurora User Guide.* \n Constraints:\n  +  Must be in the format ``hh24:mi-hh24:mi``.\n  +  Must be in Universal Coordinated Time (UTC).\n  +  Must not conflict with the preferred maintenance window.\n  +  Must be at least 30 minutes.\n  \n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
@@ -9986,6 +10119,9 @@
     "enum": null
   },
   "The date and time to restore from. This parameter applies to point-in-time recovery. For more information, see [Restoring a DB instance to a specified time](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_PIT.html) in the in the *Amazon RDS User Guide*.\n Constraints:\n  +  Must be a time in Universal Coordinated Time (UTC) format.\n  +  Must be before the latest restorable time for the DB instance.\n  +  Can't be specified if the ``UseLatestRestorableTime`` parameter is enabled.\n  \n Example: ``2009-09-07T23:45:00Z``": {
+    "enum": null
+  },
+  "The date and time to restore the DB cluster to.\n Valid Values: Value must be a time in Universal Coordinated Time (UTC) format\n Constraints:\n  +  Must be before the latest restorable time for the DB instance\n  +  Must be specified if ``UseLatestRestorableTime`` parameter isn't provided\n  +  Can't be specified if the ``UseLatestRestorableTime`` parameter is enabled\n  +  Can't be specified if the ``RestoreType`` parameter is ``copy-on-write``\n  \n This property must be used with ``SourceDBClusterIdentifier`` property. The resulting cluster will have the identifier that matches the value of the ``DBclusterIdentifier`` property.\n Example: ``2015-03-07T23:45:00Z``\n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
     "enum": null
   },
   "The date and time to restore the DB cluster to.\n Valid Values: Value must be a time in Universal Coordinated Time (UTC) format\n Constraints:\n  +  Must be before the latest restorable time for the DB instance\n  +  Must be specified if ``UseLatestRestorableTime`` parameter isn't provided\n  +  Can't be specified if the ``UseLatestRestorableTime`` parameter is enabled\n  +  Can't be specified if the ``RestoreType`` parameter is ``copy-on-write`` \n  \n This property must be used with ``SourceDBClusterIdentifier`` property. The resulting cluster will have the identifier that matches the value of the ``DBclusterIdentifier`` property.\n Example: ``2015-03-07T23:45:00Z`` \n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
@@ -10376,6 +10512,9 @@
     "enum": null
   },
   "The desired HTTP PUT response hop limit for instance metadata requests.": {
+    "enum": null
+  },
+  "The desired HTTP PUT response hop limit for instance metadata requests. The larger the number, the further instance metadata requests can travel.\n Default: ``1``\n Possible values: Integers from 1 to 64": {
     "enum": null
   },
   "The desired HTTP PUT response hop limit for instance metadata requests. The larger the number, the further instance metadata requests can travel.\n Default: ``1`` \n Possible values: Integers from 1 to 64": {
@@ -10880,6 +11019,9 @@
     "enum": null
   },
   "The identifier for the DB snapshot or DB cluster snapshot to restore from.\n You can use either the name or the Amazon Resource Name (ARN) to specify a DB cluster snapshot. However, you can use only the ARN to specify a DB snapshot.\n After you restore a DB cluster with a ``SnapshotIdentifier`` property, you must specify the same ``SnapshotIdentifier`` property for any future updates to the DB cluster. When you specify this property for an update, the DB cluster is not restored from the snapshot again, and the data in the database is not changed. However, if you don't specify the ``SnapshotIdentifier`` property, an empty DB cluster is created, and the original DB cluster is deleted. If you specify a property that is different from the previous snapshot restore property, a new DB cluster is restored from the specified ``SnapshotIdentifier`` property, and the original DB cluster is deleted.\n If you specify the ``SnapshotIdentifier`` property to restore a DB cluster (as opposed to specifying it for DB cluster updates), then don't specify the following properties:\n  +   ``GlobalClusterIdentifier`` \n  +   ``MasterUsername`` \n  +   ``MasterUserPassword`` \n  +   ``ReplicationSourceIdentifier`` \n  +   ``RestoreType`` \n  +   ``SourceDBClusterIdentifier`` \n  +   ``SourceRegion`` \n  +   ``StorageEncrypted`` (for an encrypted snapshot)\n  +   ``UseLatestRestorableTime`` \n  \n Constraints:\n  +  Must match the identifier of an existing Snapshot.\n  \n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
+    "enum": null
+  },
+  "The identifier for the DB snapshot or DB cluster snapshot to restore from.\n You can use either the name or the Amazon Resource Name (ARN) to specify a DB cluster snapshot. However, you can use only the ARN to specify a DB snapshot.\n After you restore a DB cluster with a ``SnapshotIdentifier`` property, you must specify the same ``SnapshotIdentifier`` property for any future updates to the DB cluster. When you specify this property for an update, the DB cluster is not restored from the snapshot again, and the data in the database is not changed. However, if you don't specify the ``SnapshotIdentifier`` property, an empty DB cluster is created, and the original DB cluster is deleted. If you specify a property that is different from the previous snapshot restore property, a new DB cluster is restored from the specified ``SnapshotIdentifier`` property, and the original DB cluster is deleted.\n If you specify the ``SnapshotIdentifier`` property to restore a DB cluster (as opposed to specifying it for DB cluster updates), then don't specify the following properties:\n  +   ``GlobalClusterIdentifier`` \n  +   ``MasterUsername`` \n  +   ``MasterUserPassword`` \n  +   ``ReplicationSourceIdentifier`` \n  +   ``RestoreType`` \n  +   ``SourceDBClusterIdentifier`` \n  +   ``SourceRegion`` \n  +  ``StorageEncrypted`` (for an encrypted snapshot)\n  +   ``UseLatestRestorableTime`` \n  \n Constraints:\n  +  Must match the identifier of an existing Snapshot.\n  \n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
     "enum": null
   },
   "The identifier for the DBProxyTargetGroup": {
@@ -11578,6 +11720,9 @@
   "The maximum video bitrate (bps) to include in output.": {
     "enum": null
   },
+  "The meaning of this parameter differs according to the database engine you use.\n  If you specify the ``DBSnapshotIdentifier`` property, this property only applies to RDS for Oracle.\n   *Amazon Aurora* \n Not applicable. The database name is managed by the DB cluster.\n  *Db2* \n The name of the database to create when the DB instance is created. If this parameter isn't specified, no database is created in the DB instance.\n Constraints:\n  +  Must contain 1 to 64 letters or numbers.\n  +  Must begin with a letter. Subsequent characters can be letters, underscores, or digits (0-9).\n  +  Can't be a word reserved by the specified database engine.\n  \n  *MySQL* \n The name of the database to create when the DB instance is created. If this parameter is not specified, no database is created in the DB instance.\n Constraints:\n  +  Must contain 1 to 64 letters or numbers.\n  +  Can't be a word reserved by the specified database engine\n  \n  *MariaDB* \n The name of the database to create when the DB instance is created. If this parameter is not specified, no database is created in the DB instance.\n Constraints:\n  +  Must contain 1 to 64 letters or numbers.\n  +  Can't be a word reserved by the specified database engine\n  \n  *PostgreSQL* \n The name of the database to create when the DB instance is created. If this parameter is not specified, the default ``postgres`` database is created in the DB instance.\n Constraints:\n  +  Must begin with a letter. Subsequent characters can be letters, underscores, or digits (0-9).\n  +  Must contain 1 to 63 characters.\n  +  Can't be a word reserved by the specified database engine\n  \n  *Oracle* \n The Oracle System ID (SID) of the created DB instance. If you specify ``null``, the default value ``ORCL`` is used. You can't specify the string NULL, or any other reserved word, for ``DBName``. \n Default: ``ORCL``\n Constraints:\n  +  Can't be longer than 8 characters\n  \n  *SQL Server* \n Not applicable. Must be null.": {
+    "enum": null
+  },
   "The meaning of this parameter differs according to the database engine you use.\n  If you specify the ``DBSnapshotIdentifier`` property, this property only applies to RDS for Oracle.\n   *Amazon Aurora* \n Not applicable. The database name is managed by the DB cluster.\n  *Db2* \n The name of the database to create when the DB instance is created. If this parameter isn't specified, no database is created in the DB instance.\n Constraints:\n  +  Must contain 1 to 64 letters or numbers.\n  +  Must begin with a letter. Subsequent characters can be letters, underscores, or digits (0-9).\n  +  Can't be a word reserved by the specified database engine.\n  \n  *MySQL* \n The name of the database to create when the DB instance is created. If this parameter is not specified, no database is created in the DB instance.\n Constraints:\n  +  Must contain 1 to 64 letters or numbers.\n  +  Can't be a word reserved by the specified database engine\n  \n  *MariaDB* \n The name of the database to create when the DB instance is created. If this parameter is not specified, no database is created in the DB instance.\n Constraints:\n  +  Must contain 1 to 64 letters or numbers.\n  +  Can't be a word reserved by the specified database engine\n  \n  *PostgreSQL* \n The name of the database to create when the DB instance is created. If this parameter is not specified, the default ``postgres`` database is created in the DB instance.\n Constraints:\n  +  Must begin with a letter. Subsequent characters can be letters, underscores, or digits (0-9).\n  +  Must contain 1 to 63 characters.\n  +  Can't be a word reserved by the specified database engine\n  \n  *Oracle* \n The Oracle System ID (SID) of the created DB instance. If you specify ``null``, the default value ``ORCL`` is used. You can't specify the string NULL, or any other reserved word, for ``DBName``. \n Default: ``ORCL`` \n Constraints:\n  +  Can't be longer than 8 characters\n  \n  *SQL Server* \n Not applicable. Must be null.": {
     "enum": null
   },
@@ -11729,6 +11874,9 @@
     "enum": null
   },
   "The mode of Database Insights to enable for the DB cluster.\n If you set this value to ``advanced``, you must also set the ``PerformanceInsightsEnabled`` parameter to ``true`` and the ``PerformanceInsightsRetentionPeriod`` parameter to 465.\n Valid for Cluster Type: Aurora DB clusters only": {
+    "enum": null
+  },
+  "The mode of Database Insights to enable for the DB instance.\n  Aurora DB instances inherit this value from the DB cluster, so you can't change this value.": {
     "enum": null
   },
   "The mode of authentication that members use to access the domain.": {
@@ -12745,6 +12893,9 @@
   "The name of the object to pull from the data source.": {
     "enum": null
   },
+  "The name of the option group to be created.\n Constraints:\n  +  Must be 1 to 255 letters, numbers, or hyphens\n  +  First character must be a letter\n  +  Can't end with a hyphen or contain two consecutive hyphens\n  \n Example: ``myoptiongroup``\n If you don't specify a value for ``OptionGroupName`` property, a name is automatically created for the option group.\n  This value is stored as a lowercase string.": {
+    "enum": null
+  },
   "The name of the option group to be created.\n Constraints:\n  +  Must be 1 to 255 letters, numbers, or hyphens\n  +  First character must be a letter\n  +  Can't end with a hyphen or contain two consecutive hyphens\n  \n Example: ``myoptiongroup`` \n If you don't specify a value for ``OptionGroupName`` property, a name is automatically created for the option group.\n  This value is stored as a lowercase string.": {
     "enum": null
   },
@@ -13111,6 +13262,9 @@
   "The name or ARN of the Lambda function, version, or alias.\n  **Name formats**\n +   *Function name* – ``my-function`` (name-only), ``my-function:v1`` (with alias).\n  +   *Function ARN* – ``arn:aws:lambda:us-west-2:123456789012:function:my-function``.\n  +   *Partial ARN* – ``123456789012:function:my-function``.\n  \n You can append a version number or alias to any of the formats. The length constraint applies only to the full ARN. If you specify only the function name, it is limited to 64 characters in length.": {
     "enum": null
   },
+  "The name or ARN of the Lambda function, version, or alias.\n  **Name formats**\n +  *Function name* – ``my-function`` (name-only), ``my-function:v1`` (with alias).\n  +  *Function ARN* – ``arn:aws:lambda:us-west-2:123456789012:function:my-function``.\n  +  *Partial ARN* – ``123456789012:function:my-function``.\n  \n You can append a version number or alias to any of the formats. The length constraint applies only to the full ARN. If you specify only the function name, it is limited to 64 characters in length.": {
+    "enum": null
+  },
   "The name or ARN of the Lambda function.\n  **Name formats**\n +   *Function name* – ``MyFunction``.\n  +   *Function ARN* – ``arn:aws:lambda:us-west-2:123456789012:function:MyFunction``.\n  +   *Version or Alias ARN* – ``arn:aws:lambda:us-west-2:123456789012:function:MyFunction:PROD``.\n  +   *Partial ARN* – ``123456789012:function:MyFunction``.\n  \n The length constraint applies only to the full ARN. If you specify only the function name, it's limited to 64 characters in length.": {
     "enum": null
   },
@@ -13118,6 +13272,9 @@
     "enum": null
   },
   "The name or Amazon Resource Name (ARN) of the DB snapshot that's used to restore the DB instance. If you're restoring from a shared manual DB snapshot, you must specify the ARN of the snapshot.\n By specifying this property, you can create a DB instance from the specified DB snapshot. If the ``DBSnapshotIdentifier`` property is an empty string or the ``AWS::RDS::DBInstance`` declaration has no ``DBSnapshotIdentifier`` property, AWS CloudFormation creates a new database. If the property contains a value (other than an empty string), AWS CloudFormation creates a database from the specified snapshot. If a snapshot with the specified name doesn't exist, AWS CloudFormation can't create the database and it rolls back the stack.\n Some DB instance properties aren't valid when you restore from a snapshot, such as the ``MasterUsername`` and ``MasterUserPassword`` properties, and the point-in-time recovery properties ``RestoreTime`` and ``UseLatestRestorableTime``. For information about the properties that you can specify, see the [RestoreDBInstanceFromDBSnapshot](https://docs.aws.amazon.com/AmazonRDS/latest/APIReference/API_RestoreDBInstanceFromDBSnapshot.html) action in the *Amazon RDS API Reference*.\n After you restore a DB instance with a ``DBSnapshotIdentifier`` property, you must specify the same ``DBSnapshotIdentifier`` property for any future updates to the DB instance. When you specify this property for an update, the DB instance is not restored from the DB snapshot again, and the data in the database is not changed. However, if you don't specify the ``DBSnapshotIdentifier`` property, an empty DB instance is created, and the original DB instance is deleted. If you specify a property that is different from the previous snapshot restore property, a new DB instance is restored from the specified ``DBSnapshotIdentifier`` property, and the original DB instance is deleted.\n If you specify the ``DBSnapshotIdentifier`` property to restore a DB instance (as opposed to specifying it for DB instance updates), then don't specify the following properties:\n  +   ``CharacterSetName`` \n  +   ``DBClusterIdentifier`` \n  +   ``DBName`` \n  +   ``KmsKeyId`` \n  +   ``MasterUsername`` \n  +   ``MasterUserPassword`` \n  +   ``PromotionTier`` \n  +   ``SourceDBInstanceIdentifier`` \n  +   ``SourceRegion`` \n  +   ``StorageEncrypted`` (for an unencrypted snapshot)\n  +   ``Timezone`` \n  \n  *Amazon Aurora* \n Not applicable. Snapshot restore is managed by the DB cluster.": {
+    "enum": null
+  },
+  "The name or Amazon Resource Name (ARN) of the DB snapshot that's used to restore the DB instance. If you're restoring from a shared manual DB snapshot, you must specify the ARN of the snapshot.\n By specifying this property, you can create a DB instance from the specified DB snapshot. If the ``DBSnapshotIdentifier`` property is an empty string or the ``AWS::RDS::DBInstance`` declaration has no ``DBSnapshotIdentifier`` property, AWS CloudFormation creates a new database. If the property contains a value (other than an empty string), AWS CloudFormation creates a database from the specified snapshot. If a snapshot with the specified name doesn't exist, AWS CloudFormation can't create the database and it rolls back the stack.\n Some DB instance properties aren't valid when you restore from a snapshot, such as the ``MasterUsername`` and ``MasterUserPassword`` properties, and the point-in-time recovery properties ``RestoreTime`` and ``UseLatestRestorableTime``. For information about the properties that you can specify, see the [RestoreDBInstanceFromDBSnapshot](https://docs.aws.amazon.com/AmazonRDS/latest/APIReference/API_RestoreDBInstanceFromDBSnapshot.html) action in the *Amazon RDS API Reference*.\n After you restore a DB instance with a ``DBSnapshotIdentifier`` property, you must specify the same ``DBSnapshotIdentifier`` property for any future updates to the DB instance. When you specify this property for an update, the DB instance is not restored from the DB snapshot again, and the data in the database is not changed. However, if you don't specify the ``DBSnapshotIdentifier`` property, an empty DB instance is created, and the original DB instance is deleted. If you specify a property that is different from the previous snapshot restore property, a new DB instance is restored from the specified ``DBSnapshotIdentifier`` property, and the original DB instance is deleted.\n If you specify the ``DBSnapshotIdentifier`` property to restore a DB instance (as opposed to specifying it for DB instance updates), then don't specify the following properties:\n  +   ``CharacterSetName`` \n  +   ``DBClusterIdentifier`` \n  +   ``DBName`` \n  +   ``KmsKeyId`` \n  +   ``MasterUsername`` \n  +   ``MasterUserPassword`` \n  +   ``PromotionTier`` \n  +   ``SourceDBInstanceIdentifier`` \n  +   ``SourceRegion`` \n  +  ``StorageEncrypted`` (for an unencrypted snapshot)\n  +   ``Timezone`` \n  \n  *Amazon Aurora* \n Not applicable. Snapshot restore is managed by the DB cluster.": {
     "enum": null
   },
   "The name or Amazon Resource Name (ARN) of the IAM role associated with this job.": {
@@ -13390,7 +13547,13 @@
   "The number of days to retain Performance Insights data. When creating a DB cluster without enabling Performance Insights, you can't specify the parameter ``PerformanceInsightsRetentionPeriod``.\n Valid for Cluster Type: Aurora DB clusters and Multi-AZ DB clusters\n Valid Values:\n  +   ``7`` \n  +   *month* * 31, where *month* is a number of months from 1-23. Examples: ``93`` (3 months * 31), ``341`` (11 months * 31), ``589`` (19 months * 31)\n  +   ``731`` \n  \n Default: ``7`` days\n If you specify a retention period that isn't valid, such as ``94``, Amazon RDS issues an error.": {
     "enum": null
   },
+  "The number of days to retain Performance Insights data. When creating a DB cluster without enabling Performance Insights, you can't specify the parameter ``PerformanceInsightsRetentionPeriod``.\n Valid for Cluster Type: Aurora DB clusters and Multi-AZ DB clusters\n Valid Values:\n  +   ``7`` \n  +  *month* * 31, where *month* is a number of months from 1-23. Examples: ``93`` (3 months * 31), ``341`` (11 months * 31), ``589`` (19 months * 31)\n  +   ``731`` \n  \n Default: ``7`` days\n If you specify a retention period that isn't valid, such as ``94``, Amazon RDS issues an error.": {
+    "enum": null
+  },
   "The number of days to retain Performance Insights data. When creating a DB instance without enabling Performance Insights, you can't specify the parameter ``PerformanceInsightsRetentionPeriod``.\n This setting doesn't apply to RDS Custom DB instances.\n Valid Values:\n  +   ``7`` \n  +   *month* * 31, where *month* is a number of months from 1-23. Examples: ``93`` (3 months * 31), ``341`` (11 months * 31), ``589`` (19 months * 31)\n  +   ``731`` \n  \n Default: ``7`` days\n If you specify a retention period that isn't valid, such as ``94``, Amazon RDS returns an error.": {
+    "enum": null
+  },
+  "The number of days to retain Performance Insights data. When creating a DB instance without enabling Performance Insights, you can't specify the parameter ``PerformanceInsightsRetentionPeriod``.\n This setting doesn't apply to RDS Custom DB instances.\n Valid Values:\n  +   ``7`` \n  +  *month* * 31, where *month* is a number of months from 1-23. Examples: ``93`` (3 months * 31), ``341`` (11 months * 31), ``589`` (19 months * 31)\n  +   ``731`` \n  \n Default: ``7`` days\n If you specify a retention period that isn't valid, such as ``94``, Amazon RDS returns an error.": {
     "enum": null
   },
   "The number of days to retain automated snapshot in the destination region after they are copied from the source region. If the value is -1, the manual snapshot is retained indefinitely. The value must be either -1 or an integer between 1 and 3,653.": {
@@ -13550,6 +13713,9 @@
     "enum": null
   },
   "The optional description of the migration project.": {
+    "enum": null
+  },
+  "The order of priority in which an Aurora Replica is promoted to the primary instance after a failure of the existing primary instance. For more information, see [Fault Tolerance for an Aurora DB Cluster](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Concepts.AuroraHighAvailability.html#Aurora.Managing.FaultTolerance) in the *Amazon Aurora User Guide*.\n This setting doesn't apply to RDS Custom DB instances.\n Default: ``1``\n Valid Values: ``0 - 15``": {
     "enum": null
   },
   "The order of priority in which an Aurora Replica is promoted to the primary instance after a failure of the existing primary instance. For more information, see [Fault Tolerance for an Aurora DB Cluster](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Concepts.AuroraHighAvailability.html#Aurora.Managing.FaultTolerance) in the *Amazon Aurora User Guide*.\n This setting doesn't apply to RDS Custom DB instances.\n Default: ``1`` \n Valid Values: ``0 - 15``": {
@@ -13765,10 +13931,16 @@
   "The port number on which the DB instances in the DB cluster accept connections.\n Default:\n  +  When ``EngineMode`` is ``provisioned``, ``3306`` (for both Aurora MySQL and Aurora PostgreSQL)\n  +  When ``EngineMode`` is ``serverless``:\n  +   ``3306`` when ``Engine`` is ``aurora`` or ``aurora-mysql`` \n  +   ``5432`` when ``Engine`` is ``aurora-postgresql`` \n  \n  \n  The ``No interruption`` on update behavior only applies to DB clusters. If you are updating a DB instance, see [Port](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-rds-database-instance.html#cfn-rds-dbinstance-port) for the AWS::RDS::DBInstance resource.\n  Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
     "enum": null
   },
+  "The port number on which the DB instances in the DB cluster accept connections.\n Default:\n  +  When ``EngineMode`` is ``provisioned``, ``3306`` (for both Aurora MySQL and Aurora PostgreSQL)\n  +  When ``EngineMode`` is ``serverless``:\n  +  ``3306`` when ``Engine`` is ``aurora`` or ``aurora-mysql``\n  +  ``5432`` when ``Engine`` is ``aurora-postgresql``\n  \n  \n  The ``No interruption`` on update behavior only applies to DB clusters. If you are updating a DB instance, see [Port](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-rds-database-instance.html#cfn-rds-dbinstance-port) for the AWS::RDS::DBInstance resource.\n  Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
+    "enum": null
+  },
   "The port number on which the DB instances in the DB cluster accept connections. \n\nIf not specified, the default port used is `8182`. \n\nNote: `Port` property will soon be deprecated from this resource. Please update existing templates to rename it with new property `DBPort` having same functionalities.": {
     "enum": null
   },
   "The port number on which the cluster accepts incoming connections. The cluster is accessible only via the JDBC and ODBC connection strings": {
+    "enum": null
+  },
+  "The port number on which the database accepts connections.\n This setting doesn't apply to Aurora DB instances. The port number is managed by the cluster.\n Valid Values: ``1150-65535``\n Default:\n  +  RDS for Db2 - ``50000``\n  +  RDS for MariaDB - ``3306``\n  +  RDS for Microsoft SQL Server - ``1433``\n  +  RDS for MySQL - ``3306``\n  +  RDS for Oracle - ``1521``\n  +  RDS for PostgreSQL - ``5432``\n  \n Constraints:\n  +  For RDS for Microsoft SQL Server, the value can't be ``1234``, ``1434``, ``3260``, ``3343``, ``3389``, ``47001``, or ``49152-49156``.": {
     "enum": null
   },
   "The port number on which the database accepts connections.\n This setting doesn't apply to Aurora DB instances. The port number is managed by the cluster.\n Valid Values: ``1150-65535`` \n Default:\n  +  RDS for Db2 - ``50000`` \n  +  RDS for MariaDB - ``3306`` \n  +  RDS for Microsoft SQL Server - ``1433`` \n  +  RDS for MySQL - ``3306`` \n  +  RDS for Oracle - ``1521`` \n  +  RDS for PostgreSQL - ``5432`` \n  \n Constraints:\n  +  For RDS for Microsoft SQL Server, the value can't be ``1234``, ``1434``, ``3260``, ``3343``, ``3389``, ``47001``, or ``49152-49156``.": {
@@ -14665,6 +14837,9 @@
   "The target architecture of the robot.": {
     "enum": null
   },
+  "The target backtrack window, in seconds. To disable backtracking, set this value to ``0``.\n Valid for Cluster Type: Aurora MySQL DB clusters only\n Default: ``0``\n Constraints:\n  +  If specified, this value must be set to a number from 0 to 259,200 (72 hours).": {
+    "enum": null
+  },
   "The target backtrack window, in seconds. To disable backtracking, set this value to ``0``.\n Valid for Cluster Type: Aurora MySQL DB clusters only\n Default: ``0`` \n Constraints:\n  +  If specified, this value must be set to a number from 0 to 259,200 (72 hours).": {
     "enum": null
   },
@@ -15352,6 +15527,9 @@
   "The version number of the application to deploy": {
     "enum": null
   },
+  "The version number of the database engine to use.\n For a list of valid engine versions, use the ``DescribeDBEngineVersions`` action.\n The following are the database engines and links to information about the major and minor versions that are available with Amazon RDS. Not every database engine is available for every AWS Region.\n  *Amazon Aurora* \n Not applicable. The version number of the database engine to be used by the DB instance is managed by the DB cluster.\n  *Db2* \n See [Amazon RDS for Db2](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_Db2.html#Db2.Concepts.VersionMgmt) in the *Amazon RDS User Guide.*\n  *MariaDB* \n See [MariaDB on Amazon RDS Versions](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_MariaDB.html#MariaDB.Concepts.VersionMgmt) in the *Amazon RDS User Guide.*\n  *Microsoft SQL Server* \n See [Microsoft SQL Server Versions on Amazon RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_SQLServer.html#SQLServer.Concepts.General.VersionSupport) in the *Amazon RDS User Guide.*\n  *MySQL* \n See [MySQL on Amazon RDS Versions](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_MySQL.html#MySQL.Concepts.VersionMgmt) in the *Amazon RDS User Guide.*\n  *Oracle* \n See [Oracle Database Engine Release Notes](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Appendix.Oracle.PatchComposition.html) in the *Amazon RDS User Guide.*\n  *PostgreSQL* \n See [Supported PostgreSQL Database Versions](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html#PostgreSQL.Concepts.General.DBVersions) in the *Amazon RDS User Guide.*": {
+    "enum": null
+  },
   "The version number of the database engine to use.\n For a list of valid engine versions, use the ``DescribeDBEngineVersions`` action.\n The following are the database engines and links to information about the major and minor versions that are available with Amazon RDS. Not every database engine is available for every AWS Region.\n  *Amazon Aurora* \n Not applicable. The version number of the database engine to be used by the DB instance is managed by the DB cluster.\n  *Db2* \n See [Amazon RDS for Db2](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_Db2.html#Db2.Concepts.VersionMgmt) in the *Amazon RDS User Guide.* \n  *MariaDB* \n See [MariaDB on Amazon RDS Versions](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_MariaDB.html#MariaDB.Concepts.VersionMgmt) in the *Amazon RDS User Guide.* \n  *Microsoft SQL Server* \n See [Microsoft SQL Server Versions on Amazon RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_SQLServer.html#SQLServer.Concepts.General.VersionSupport) in the *Amazon RDS User Guide.* \n  *MySQL* \n See [MySQL on Amazon RDS Versions](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_MySQL.html#MySQL.Concepts.VersionMgmt) in the *Amazon RDS User Guide.* \n  *Oracle* \n See [Oracle Database Engine Release Notes](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Appendix.Oracle.PatchComposition.html) in the *Amazon RDS User Guide.* \n  *PostgreSQL* \n See [Supported PostgreSQL Database Versions](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html#PostgreSQL.Concepts.General.DBVersions) in the *Amazon RDS User Guide.*": {
     "enum": null
   },
@@ -15482,6 +15660,12 @@
     "enum": null
   },
   "The weekly time range during which system maintenance can occur on your new database.": {
+    "enum": null
+  },
+  "The weekly time range during which system maintenance can occur, in Universal Coordinated Time (UTC).\n Format: ``ddd:hh24:mi-ddd:hh24:mi``\n The default is a 30-minute window selected at random from an 8-hour block of time for each AWS Region, occurring on a random day of the week. To see the time blocks available, see [Maintaining a DB instance](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.Maintenance.html#AdjustingTheMaintenanceWindow) in the *Amazon RDS User Guide.*\n  This property applies when AWS CloudFormation initially creates the DB instance. If you use AWS CloudFormation to update the DB instance, those updates are applied immediately.\n  Constraints: Minimum 30-minute window.": {
+    "enum": null
+  },
+  "The weekly time range during which system maintenance can occur, in Universal Coordinated Time (UTC).\n Format: ``ddd:hh24:mi-ddd:hh24:mi``\n The default is a 30-minute window selected at random from an 8-hour block of time for each AWS Region, occurring on a random day of the week. To see the time blocks available, see [Maintaining an Amazon Aurora DB cluster](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_UpgradeDBInstance.Maintenance.html#AdjustingTheMaintenanceWindow.Aurora) in the *Amazon Aurora User Guide.*\n Valid Days: Mon, Tue, Wed, Thu, Fri, Sat, Sun.\n Constraints: Minimum 30-minute window.\n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
     "enum": null
   },
   "The weekly time range during which system maintenance can occur, in Universal Coordinated Time (UTC).\n Format: ``ddd:hh24:mi-ddd:hh24:mi`` \n The default is a 30-minute window selected at random from an 8-hour block of time for each AWS Region, occurring on a random day of the week. To see the time blocks available, see [Maintaining a DB instance](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.Maintenance.html#AdjustingTheMaintenanceWindow) in the *Amazon RDS User Guide.* \n  This property applies when AWS CloudFormation initially creates the DB instance. If you use AWS CloudFormation to update the DB instance, those updates are applied immediately.\n  Constraints: Minimum 30-minute window.": {
