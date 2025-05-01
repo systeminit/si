@@ -91,6 +91,8 @@ pub enum ComponentsError {
     SchemaNameNotFound(String),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] dal::SchemaVariantError),
+    #[error("serde_json error: {0}")]
+    Serde(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("Ulid Decode Error: {0}")]

@@ -16,6 +16,8 @@ use dal::{
     },
 };
 use serde::Serialize;
+use serde_json::json;
+use si_events::audit_log::AuditLogKind;
 use utoipa::{
     self,
     ToSchema,
@@ -47,11 +49,15 @@ use crate::{
 )]
 pub async fn delete_component(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
-    _tracker: PosthogEventTracker,
+    tracker: PosthogEventTracker,
     Path(ComponentV1RequestPath { component_id }): Path<ComponentV1RequestPath>,
 ) -> Result<Json<DeleteComponentV1Response>, ComponentsError> {
     let head_components: HashSet<ComponentId> =
         Component::exists_on_head(ctx, &[component_id]).await?;
+
+    let comp = Component::get_by_id(ctx, component_id).await?;
+    let variant = comp.schema_variant(ctx).await?;
+    let name = comp.name(ctx).await?;
 
     let mut socket_map = HashMap::new();
     let mut socket_map_head = HashMap::new();
@@ -65,6 +71,26 @@ pub async fn delete_component(
         &mut socket_map_head,
         &base_change_set_ctx,
         component_id,
+    )
+    .await?;
+
+    tracker.track(
+        ctx,
+        "api_delete_component",
+        json!({
+            "component_id": component_id,
+            "component_name": name,
+        }),
+    );
+
+    ctx.write_audit_log_to_head(
+        AuditLogKind::DeleteComponent {
+            name: name.clone(),
+            component_id,
+            schema_variant_id: variant.id,
+            schema_variant_name: variant.display_name().into(),
+        },
+        name.clone(),
     )
     .await?;
 
