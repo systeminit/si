@@ -23,6 +23,13 @@ pub enum ParameterError {
 pub struct Parameter {
     pub name: String,
     pub value: Option<String>,
+    pub r#type: Option<ParameterType>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ParameterType {
+    String,
+    StringList,
 }
 
 #[async_trait]
@@ -83,14 +90,36 @@ impl<P: ParameterProvider> ParameterSource<P> {
         for param in global_params {
             let key = extract_config_key(&global_path, &param.name);
             if !key.is_empty() {
-                builder = builder.set_override(key, Value::from(param.value))?;
+                if let Some(value) = param.value {
+                    let config_value = match param.r#type {
+                        Some(ParameterType::StringList) => Value::from(
+                            value
+                                .split(',')
+                                .map(|s| s.trim().to_string())
+                                .collect::<Vec<String>>(),
+                        ),
+                        _ => Value::from(value),
+                    };
+                    builder = builder.set_override(key, config_value)?;
+                }
             }
         }
 
         for param in service_params {
             let key = extract_config_key(&service_path, &param.name);
             if !key.is_empty() {
-                builder = builder.set_override(key, Value::from(param.value))?;
+                if let Some(value) = param.value {
+                    let config_value = match param.r#type {
+                        Some(ParameterType::StringList) => Value::from(
+                            value
+                                .split(',')
+                                .map(|s| s.trim().to_string())
+                                .collect::<Vec<String>>(),
+                        ),
+                        _ => Value::from(value),
+                    };
+                    builder = builder.set_override(key, config_value)?;
+                }
             }
         }
 

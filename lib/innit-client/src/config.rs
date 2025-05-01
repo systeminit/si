@@ -1,4 +1,7 @@
-use std::env;
+use std::{
+    env,
+    path::Path,
+};
 
 use buck2_resources::Buck2Resources;
 use derive_builder::Builder;
@@ -144,7 +147,7 @@ fn default_env() -> String {
 }
 
 fn default_url() -> Url {
-    Url::parse("http://localhost:5166").expect("Unable to parse default base url!")
+    Url::parse("https://innit.systeminit.com").expect("Unable to parse default base url!")
 }
 
 fn default_auth_config() -> AuthConfig {
@@ -166,7 +169,6 @@ pub fn detect_and_configure_development(config: &mut ConfigFile) -> Result<()> {
 }
 
 fn buck2_development(config: &mut ConfigFile) -> Result<()> {
-    println!("buck2");
     let resources = Buck2Resources::read().map_err(ConfigError::development)?;
 
     let client_cert = resources
@@ -195,6 +197,28 @@ fn buck2_development(config: &mut ConfigFile) -> Result<()> {
     Ok(())
 }
 
-fn cargo_development(_dir: String, _config: &mut ConfigFile) -> Result<()> {
+fn cargo_development(dir: String, config: &mut ConfigFile) -> Result<()> {
+    let client_cert = Path::new(&dir)
+        .join("../../lib/innit-client/innit-client.dev.crt")
+        .to_string_lossy()
+        .to_string();
+
+    let client_key = Path::new(&dir)
+        .join("../../lib/innit-client/innit-client.dev.key")
+        .to_string_lossy()
+        .to_string();
+
+    warn!(
+        client_cert = client_cert,
+        client_key = client_key,
+        "detected development run",
+    );
+
+    config.base_url = Url::parse("http://0.0.0.0:5166").expect("Unable to parse default base url!");
+    config.auth_config.client_cert = Some(CertificateSource::Path(CanonicalFile::try_from(
+        client_cert,
+    )?));
+    config.auth_config.client_key = Some(KeySource::Path(CanonicalFile::try_from(client_key)?));
+
     Ok(())
 }

@@ -151,20 +151,39 @@ impl ParameterStoreClient {
             return Err(ParameterStoreClientError::InvalidPath(path));
         }
 
-        let result = self
-            .inner
-            .get_parameters_by_path()
-            .path(path.clone())
-            .recursive(true)
-            .send()
-            .await
-            .map_err(ParameterStoreClientError::from_sdk_error)?;
+        let mut parameters: Vec<Parameter> = Vec::new();
+        let mut next_token = None;
 
-        let parameters = result.parameters();
+        loop {
+            let mut request = self
+                .inner
+                .get_parameters_by_path()
+                .path(path.clone())
+                .recursive(true)
+                .with_decryption(true);
+
+            if let Some(token) = next_token {
+                request = request.next_token(token);
+            }
+
+            let result = request
+                .send()
+                .await
+                .map_err(ParameterStoreClientError::from_sdk_error)?;
+
+            next_token = result.next_token().map(|token| token.to_string());
+
+            parameters.extend(result.parameters().to_vec());
+
+            if next_token.is_none() {
+                break;
+            }
+        }
+
         if parameters.is_empty() {
             return Err(ParameterStoreClientError::PathNotFound(path));
         }
 
-        Ok(parameters.to_vec())
+        Ok(parameters)
     }
 }

@@ -1,5 +1,11 @@
-use aws_sdk_ssm::types::Parameter as AwsParameter;
-use config_file::parameter_provider::Parameter as ParameterProviderParameter;
+use aws_sdk_ssm::types::{
+    Parameter as AwsParameter,
+    ParameterType as AwsParameterType,
+};
+use config_file::parameter_provider::{
+    Parameter as ParameterProviderParameter,
+    ParameterType as ParameterProviderParameterType,
+};
 use serde::{
     Deserialize,
     Serialize,
@@ -9,6 +15,7 @@ use serde::{
 pub struct Parameter {
     pub name: String,
     pub value: Option<String>,
+    pub r#type: Option<ParameterType>,
 }
 
 impl From<AwsParameter> for Parameter {
@@ -16,6 +23,10 @@ impl From<AwsParameter> for Parameter {
         Self {
             name: p.name().unwrap_or_default().to_string(),
             value: p.value().map(|s| s.to_string()),
+            r#type: p.r#type().map(|t| match t {
+                AwsParameterType::StringList => ParameterType::StringList,
+                _ => ParameterType::String,
+            }),
         }
     }
 }
@@ -25,8 +36,18 @@ impl From<Parameter> for ParameterProviderParameter {
         Self {
             name: p.name,
             value: p.value,
+            r#type: p.r#type.map(|t| match t {
+                ParameterType::String => ParameterProviderParameterType::String,
+                ParameterType::StringList => ParameterProviderParameterType::StringList,
+            }),
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ParameterType {
+    String,
+    StringList,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
