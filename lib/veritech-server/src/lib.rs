@@ -17,6 +17,10 @@ pub use si_pool_noodle::{
     Instance,
     instance::cyclone::LocalUdsInstance,
 };
+pub use si_settings::{
+    ConfigMap,
+    ParameterProvider,
+};
 use thiserror::Error;
 
 pub(crate) use crate::publisher::{

@@ -29,6 +29,7 @@ test_suite(
 rust_binary(
     name = "veritech",
     deps = [
+        "//lib/innit-client:innit-client",
         "//lib/si-service:si-service",
         "//lib/veritech-server:veritech-server",
         "//third-party/rust:clap",
