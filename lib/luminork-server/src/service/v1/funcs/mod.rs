@@ -35,12 +35,14 @@ pub enum FuncsError {
 pub type FuncsResult<T> = Result<T, FuncsError>;
 
 #[derive(Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct FuncRunV1RequestPath {
     #[schema(value_type = String)]
     pub func_run_id: FuncRunId,
 }
 
 #[derive(Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct FuncV1RequestPath {
     #[schema(value_type = String)]
     pub func_id: FuncId,

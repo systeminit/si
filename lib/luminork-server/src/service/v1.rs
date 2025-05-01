@@ -3,6 +3,7 @@ use utoipa::OpenApi;
 
 use crate::AppState;
 
+mod actions;
 mod change_sets;
 pub mod common;
 mod components;
@@ -10,6 +11,13 @@ mod funcs;
 mod schema;
 mod workspaces;
 
+pub use actions::{
+    ActionV1RequestPath,
+    cancel_action::CancelActionV1Response,
+    get_actions::GetActionsV1Response,
+    put_on_hold::PutOnHoldActionV1Response,
+    retry_action::RetryActionV1Response,
+};
 pub use change_sets::{
     ChangeSetError,
     create::{
@@ -125,6 +133,10 @@ pub use crate::api_types::{
         schema::get_default_variant::get_default_variant,
         funcs::get_func_run::get_func_run,
         funcs::get_func::get_func,
+        actions::cancel_action::cancel_action,
+        actions::retry_action::retry_action,
+        actions::get_actions::get_actions,
+        actions::put_on_hold::put_on_hold,
     ),
     components(
         schemas(
@@ -172,13 +184,19 @@ pub use crate::api_types::{
             OutputLineViewV1,
             GetFuncV1Response,
             GetFuncRunV1Response,
+            CancelActionV1Response,
+            RetryActionV1Response,
+            GetActionsV1Response,
+            PutOnHoldActionV1Response,
+            ActionV1RequestPath,
         )
     ),
     tags(
         (name = "workspaces", description = "Workspace management endpoints"),
         (name = "change_sets", description = "Change set management endpoints"),
         (name = "components", description = "Component management endpoints"),
-        (name = "schemas", description = "Schema endpoints")
+        (name = "schemas", description = "Schema endpoints"),
+        (name = "actions", description = "Action endpoints")
     )
 )]
 pub struct V1ApiDoc;

@@ -40,7 +40,7 @@ use utoipa::ToSchema;
 use crate::service::v1::ComponentsResult;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
-#[serde(rename_all(serialize = "camelCase"))]
+#[serde(rename_all = "camelCase")]
 pub struct ComponentViewV1 {
     #[schema(value_type = String)]
     pub id: ComponentId,
