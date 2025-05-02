@@ -15,6 +15,7 @@ use serde_json::Value;
 use telemetry::prelude::*;
 
 use crate::{
+    AttributePrototype,
     AttributeValue,
     AttributeValueId,
     Component,
@@ -24,7 +25,13 @@ use crate::{
     Prop,
     PropId,
     Secret,
-    attribute::value::AttributeValueError,
+    attribute::{
+        prototype::argument::{
+            AttributePrototypeArgument,
+            value_source::ValueSource,
+        },
+        value::AttributeValueError,
+    },
     property_editor::{
         PropertyEditorPropId,
         PropertyEditorResult,
@@ -54,7 +61,7 @@ impl PropertyEditorValues {
         let sockets_on_component: HashSet<InputSocketId> =
             Component::incoming_connections_for_id(ctx, component_id)
                 .await?
-                .iter()
+                .into_iter()
                 .map(|c| c.to_input_socket_id)
                 .chain(
                     Component::inferred_incoming_connections(ctx, component_id)
@@ -124,13 +131,30 @@ impl PropertyEditorValues {
                 let sockets_for_av =
                     AttributeValue::list_input_socket_sources_for_id(ctx, av_id).await?;
                 let can_be_set_by_socket = !sockets_for_av.is_empty();
-                let is_from_external_source = sockets_for_av
-                    .iter()
-                    .any(|s| sockets_on_component.contains(s));
+                let is_set_by_socket = sockets_for_av
+                    .into_iter()
+                    .any(|s| sockets_on_component.contains(&s));
 
                 let controlling_func = *controlling_ancestors_for_av_id
                     .get(&av_id)
                     .ok_or(AttributeValueError::MissingForId(av_id))?;
+
+                let controlling_prototype_id =
+                    AttributeValue::component_prototype_id(ctx, controlling_func.av_id).await?;
+                let mut is_from_external_source = is_set_by_socket;
+                // Check if the component value is explicitly connected to another component.
+                if let Some(controlling_prototype_id) = controlling_prototype_id {
+                    for apa_id in
+                        AttributePrototype::list_arguments_for_id(ctx, controlling_prototype_id)
+                            .await?
+                    {
+                        if let Some(ValueSource::ValueSubscription(_)) =
+                            AttributePrototypeArgument::value_source_opt(ctx, apa_id).await?
+                        {
+                            is_from_external_source = true;
+                        }
+                    }
+                }
 
                 // Note (victor): An attribute value is overridden if there is an attribute
                 // prototype for this specific AV, which means it's set for the component,
@@ -139,10 +163,7 @@ impl PropertyEditorValues {
                 // This could be standalone func for AV, but we'd have to implement a
                 // controlling_ancestors_for_av_id for av, instead of for the whole component.
                 // Not a complicated task, but the PR that adds this has enough code as it is.
-                let overridden =
-                    AttributeValue::component_prototype_id(ctx, controlling_func.av_id)
-                        .await?
-                        .is_some();
+                let overridden = controlling_prototype_id.is_some();
 
                 let validation = ValidationOutputNode::find_for_attribute_value_id(ctx, av_id)
                     .await?
