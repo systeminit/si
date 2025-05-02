@@ -9673,6 +9673,7 @@ name = "veritech"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "innit-client",
  "si-service",
  "veritech-server",
 ]

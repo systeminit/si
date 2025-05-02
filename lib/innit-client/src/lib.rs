@@ -200,15 +200,16 @@ async fn generate_cert_from_acmpca(ca_arn: String, for_app: String) -> Result<Ce
     Ok(cert)
 }
 
-// Attempt to pull the env from our issuing cert and then the env var, failing that
+// Attempt to pull the env the env var then from our issuing cert, failing that
 async fn get_host_environment_from_cert_or_env_vars(cert: &CertificateSource) -> Result<String> {
     Ok(
-        if let Some(cn) = cert.get_issuer_details().await?.common_name() {
+        #[allow(clippy::disallowed_methods)]
+        if let Ok(env) = env::var(DEFAULT_ENVIRONMENT_ENV_VAR) {
+            env
+        } else if let Some(cn) = cert.get_issuer_details().await?.common_name() {
             cn.to_string()
         } else {
-            #[allow(clippy::disallowed_methods)]
-            env::var(DEFAULT_ENVIRONMENT_ENV_VAR)
-                .unwrap_or_else(|_| DEFAULT_ENVIRONMENT.to_string())
+            DEFAULT_ENVIRONMENT.to_string()
         },
     )
 }

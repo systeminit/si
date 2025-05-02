@@ -9,7 +9,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use tracing::warn;
+use tracing::{
+    trace,
+    warn,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ParameterError {
@@ -91,15 +94,7 @@ impl<P: ParameterProvider> ParameterSource<P> {
             let key = extract_config_key(&global_path, &param.name);
             if !key.is_empty() {
                 if let Some(value) = param.value {
-                    let config_value = match param.r#type {
-                        Some(ParameterType::StringList) => Value::from(
-                            value
-                                .split(',')
-                                .map(|s| s.trim().to_string())
-                                .collect::<Vec<String>>(),
-                        ),
-                        _ => Value::from(value),
-                    };
+                    let config_value = create_flexible_value(&value);
                     builder = builder.set_override(key, config_value)?;
                 }
             }
@@ -109,15 +104,7 @@ impl<P: ParameterProvider> ParameterSource<P> {
             let key = extract_config_key(&service_path, &param.name);
             if !key.is_empty() {
                 if let Some(value) = param.value {
-                    let config_value = match param.r#type {
-                        Some(ParameterType::StringList) => Value::from(
-                            value
-                                .split(',')
-                                .map(|s| s.trim().to_string())
-                                .collect::<Vec<String>>(),
-                        ),
-                        _ => Value::from(value),
-                    };
+                    let config_value = create_flexible_value(&value);
                     builder = builder.set_override(key, config_value)?;
                 }
             }
@@ -139,4 +126,41 @@ fn extract_config_key(prefix: &str, name: &str) -> String {
     } else {
         norm_name.replace('/', ".")
     }
+}
+
+fn create_flexible_value(value: &str) -> Value {
+    if value.contains(',') {
+        trace!("Treating value '{}' as a comma-separated list", value);
+        return Value::from(
+            value
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect::<Vec<String>>(),
+        );
+    }
+
+    if let Ok(int_val) = value.parse::<i64>() {
+        trace!("Parsed '{}' as integer", value);
+        return Value::from(int_val);
+    }
+
+    if let Ok(float_val) = value.parse::<f64>() {
+        trace!("Parsed '{}' as float", value);
+        return Value::from(float_val);
+    }
+
+    match value.to_lowercase().as_str() {
+        "true" => {
+            trace!("Parsed '{}' as boolean true", value);
+            return Value::from(true);
+        }
+        "false" => {
+            trace!("Parsed '{}' as boolean false", value);
+            return Value::from(false);
+        }
+        _ => {}
+    }
+
+    trace!("Treating '{}' as string", value);
+    Value::from(value.to_string())
 }

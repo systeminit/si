@@ -9,10 +9,12 @@ use veritech_server::{
     Config,
     ConfigError,
     ConfigFile,
+    ConfigMap,
+    ParameterProvider,
     StandardConfigFile,
 };
 
-const NAME: &str = "veritech";
+pub const NAME: &str = "veritech";
 
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
@@ -160,91 +162,106 @@ impl Args {
     }
 }
 
+fn build_config_map(args: Args, config_map: &mut ConfigMap) -> &ConfigMap {
+    if let Some(url) = args.nats_url {
+        config_map.set("nats.url", url);
+    }
+    if let Some(creds) = args.nats_creds {
+        config_map.set("nats.creds", creds.to_string());
+    }
+    if let Some(creds_file) = args.nats_creds_path {
+        config_map.set("nats.creds_file", creds_file.display().to_string());
+    }
+
+    if args.cyclone_local_firecracker {
+        config_map.set("cyclone.runtime_strategy", "LocalFirecracker");
+    }
+    if args.cyclone_local_docker {
+        config_map.set("cyclone.runtime_strategy", "LocalDocker");
+    }
+    if args.cyclone_local_process {
+        config_map.set("cyclone.runtime_strategy", "LocalProcess");
+    }
+    if let Some(timeout) = args.cyclone_connect_timeout {
+        config_map.set("cyclone.connect_timeout", timeout);
+    }
+    if let Some(size) = args.cyclone_pool_size {
+        config_map.set("cyclone.pool_size", size);
+    }
+    if let Some(cyclone_create_firecracker_setup_scripts) =
+        args.cyclone_create_firecracker_setup_scripts
+    {
+        config_map.set(
+            "cyclone.create_firecracker_setup_scripts",
+            cyclone_create_firecracker_setup_scripts,
+        );
+    }
+
+    if let Some(decryption_key_path) = args.decryption_key {
+        config_map.set(
+            "decryption_key_path",
+            decryption_key_path.display().to_string(),
+        );
+    }
+    config_map.set("nats.connection_name", NAME);
+    if let Some(timeout) = args.cyclone_client_execution_timeout_secs {
+        config_map.set("cyclone_client_execution_timeout_secs", timeout);
+    }
+    if let Some(veritech_requests_concurrency_limit) = args.veritech_requests_concurrency_limit {
+        config_map.set(
+            "veritech_requests_concurrency_limit",
+            i64::from(veritech_requests_concurrency_limit),
+        );
+    }
+    if let Some(instance_id) = args.instance_id {
+        config_map.set("instance_id", instance_id);
+    }
+
+    if let Some(graceful_shutdown_timeout_secs) = args.graceful_shutdown_timeout_secs {
+        config_map.set(
+            "graceful_shutdown_timeout_secs",
+            graceful_shutdown_timeout_secs,
+        );
+    }
+
+    if let Some(heartbeat_app) = args.heartbeat_app {
+        config_map.set("heartbeat_app", heartbeat_app);
+    }
+    if let Some(heartbeat_app_sleep_secs) = args.heartbeat_app_sleep_secs {
+        config_map.set("heartbeat_app_sleep_secs", heartbeat_app_sleep_secs);
+    }
+    if let Some(heartbeat_app_publish_timeout_secs) = args.heartbeat_app_publish_timeout_secs {
+        config_map.set(
+            "heartbeat_app_publish_timeout_secs",
+            heartbeat_app_publish_timeout_secs,
+        );
+    }
+    config_map
+}
+
 impl TryFrom<Args> for Config {
     type Error = ConfigError;
 
     fn try_from(args: Args) -> Result<Self, Self::Error> {
         ConfigFile::layered_load(NAME, move |config_map| {
-            if let Some(url) = args.nats_url {
-                config_map.set("nats.url", url);
-            }
-            if let Some(creds) = args.nats_creds {
-                config_map.set("nats.creds", creds.to_string());
-            }
-            if let Some(creds_file) = args.nats_creds_path {
-                config_map.set("nats.creds_file", creds_file.display().to_string());
-            }
-
-            if args.cyclone_local_firecracker {
-                config_map.set("cyclone.runtime_strategy", "LocalFirecracker");
-            }
-            if args.cyclone_local_docker {
-                config_map.set("cyclone.runtime_strategy", "LocalDocker");
-            }
-            if args.cyclone_local_process {
-                config_map.set("cyclone.runtime_strategy", "LocalProcess");
-            }
-            if let Some(timeout) = args.cyclone_connect_timeout {
-                config_map.set("cyclone.connect_timeout", timeout);
-            }
-            if let Some(size) = args.cyclone_pool_size {
-                config_map.set("cyclone.pool_size", size);
-            }
-            if let Some(cyclone_create_firecracker_setup_scripts) =
-                args.cyclone_create_firecracker_setup_scripts
-            {
-                config_map.set(
-                    "cyclone.create_firecracker_setup_scripts",
-                    cyclone_create_firecracker_setup_scripts,
-                );
-            }
-
-            if let Some(decryption_key_path) = args.decryption_key {
-                config_map.set(
-                    "decryption_key_path",
-                    decryption_key_path.display().to_string(),
-                );
-            }
-            config_map.set("nats.connection_name", NAME);
-            if let Some(timeout) = args.cyclone_client_execution_timeout_secs {
-                config_map.set("cyclone_client_execution_timeout_secs", timeout);
-            }
-            if let Some(veritech_requests_concurrency_limit) =
-                args.veritech_requests_concurrency_limit
-            {
-                config_map.set(
-                    "veritech_requests_concurrency_limit",
-                    i64::from(veritech_requests_concurrency_limit),
-                );
-            }
-            if let Some(instance_id) = args.instance_id {
-                config_map.set("instance_id", instance_id);
-            }
-
-            if let Some(graceful_shutdown_timeout_secs) = args.graceful_shutdown_timeout_secs {
-                config_map.set(
-                    "graceful_shutdown_timeout_secs",
-                    graceful_shutdown_timeout_secs,
-                );
-            }
-
-            if let Some(heartbeat_app) = args.heartbeat_app {
-                config_map.set("heartbeat_app", heartbeat_app);
-            }
-            if let Some(heartbeat_app_sleep_secs) = args.heartbeat_app_sleep_secs {
-                config_map.set("heartbeat_app_sleep_secs", heartbeat_app_sleep_secs);
-            }
-            if let Some(heartbeat_app_publish_timeout_secs) =
-                args.heartbeat_app_publish_timeout_secs
-            {
-                config_map.set(
-                    "heartbeat_app_publish_timeout_secs",
-                    heartbeat_app_publish_timeout_secs,
-                );
-            }
+            build_config_map(args, config_map);
         })?
         .try_into()
     }
+}
+
+pub async fn load_config_with_provider<P>(
+    args: Args,
+    provider: Option<P>,
+) -> Result<Config, ConfigError>
+where
+    P: ParameterProvider + 'static,
+{
+    ConfigFile::layered_load_with_provider::<_, P>(NAME, provider, move |config_map| {
+        build_config_map(args, config_map);
+    })
+    .await?
+    .try_into()
 }
 
 #[cfg(test)]
