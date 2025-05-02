@@ -111,8 +111,15 @@ mod integration_tests {
             .await
             .expect("should make new client");
 
-        // should 401
+        // should 200
         let result = client.check_health().await;
+        assert!(
+            result.is_ok(),
+            "Health is a public endpoint, this should succeed"
+        );
+
+        // should 401
+        let result = client.get_parameter("/fake".to_string()).await;
         assert!(result.is_err(), "Expected an error but got success");
         match result.unwrap_err() {
             InnitClientError::Request(err) => {

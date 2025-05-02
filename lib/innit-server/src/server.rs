@@ -41,9 +41,13 @@ use tower::{
     ServiceBuilder,
     buffer::BufferLayer,
 };
-use tower_http::trace::{
-    DefaultMakeSpan,
-    TraceLayer,
+use tower_http::{
+    compression::CompressionLayer,
+    cors::CorsLayer,
+    trace::{
+        DefaultMakeSpan,
+        TraceLayer,
+    },
 };
 
 use super::routes;
@@ -167,17 +171,21 @@ pub fn build_service(
 ) -> ServerResult<Router> {
     let state = AppState::new(parameter_cache, parameter_store_client, token);
 
-    let routes = routes::routes(state);
+    let public_routes = routes::public_routes(state.clone());
+    let mut protected_routes = routes::protected_routes(state);
 
-    let routes = if let Some(verifier) = client_cert_verifier.clone() {
-        info!("Configuring the server for client cert validation");
-        routes.layer(middleware::from_fn_with_state(
+    if let Some(verifier) = client_cert_verifier.clone() {
+        info!("Configuring protected routes for client cert validation");
+        protected_routes = protected_routes.layer(middleware::from_fn_with_state(
             verifier,
             verify_client_cert_middleware,
-        ))
-    } else {
-        routes
-    };
+        ));
+    }
+
+    let routes = public_routes
+        .merge(protected_routes)
+        .layer(CorsLayer::permissive())
+        .layer(CompressionLayer::new());
 
     let routes = routes
         .layer(

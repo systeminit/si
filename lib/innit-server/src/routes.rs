@@ -18,10 +18,6 @@ use serde_json::{
 };
 use si_data_ssm::ParameterStoreClientError;
 use thiserror::Error;
-use tower_http::{
-    compression::CompressionLayer,
-    cors::CorsLayer,
-};
 
 mod clear_cache;
 mod create_parameter;
@@ -34,11 +30,14 @@ use super::{
 };
 use crate::api_error::ApiError;
 
-#[allow(clippy::too_many_arguments)]
-pub fn routes(state: AppState) -> Router {
-    let mut router: Router<AppState> = Router::new();
-    router = router
+pub fn public_routes(state: AppState) -> Router {
+    Router::new()
         .route("/", get(system_status_route))
+        .with_state(state)
+}
+
+pub fn protected_routes(state: AppState) -> Router {
+    Router::new()
         .route("/cache/clear", post(clear_cache::clear_cache_route))
         .route("/parameter/*path", get(get_parameter::get_parameter_route))
         .route(
@@ -49,10 +48,7 @@ pub fn routes(state: AppState) -> Router {
             "/parameters/*path",
             get(list_parameters::list_parameters_route),
         )
-        .layer(CorsLayer::permissive())
-        .layer(CompressionLayer::new());
-
-    router.with_state(state)
+        .with_state(state)
 }
 
 async fn system_status_route() -> Json<Value> {
