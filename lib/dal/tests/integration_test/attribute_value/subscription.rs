@@ -2,9 +2,9 @@ use dal::{
     AttributeValue,
     Component,
     DalContext,
-    attribute::value::subscription::{
-        ValueSubscription,
-        ValueSubscriptionPath,
+    attribute::{
+        path::AttributePath,
+        value::subscription::ValueSubscription,
     },
 };
 use dal_test::{
@@ -338,6 +338,6 @@ async fn make_subscription(
 ) -> Result<ValueSubscription> {
     Ok(ValueSubscription {
         attribute_value_id: Component::root_attribute_value_id(ctx, component_id).await?,
-        path: ValueSubscriptionPath::JsonPointer(json_pointer.into()),
+        path: AttributePath::JsonPointer(json_pointer.into()),
     })
 }

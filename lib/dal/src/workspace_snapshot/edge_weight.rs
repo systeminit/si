@@ -8,7 +8,7 @@ use serde::{
 };
 use strum::EnumDiscriminants;
 
-use crate::attribute::value::subscription::ValueSubscriptionPath;
+use crate::attribute::path::AttributePath;
 
 /// This type is postcard serialized and new enum variants *MUST* be added to the end *ONLY*.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, EnumDiscriminants)]
@@ -78,9 +78,9 @@ pub enum EdgeWeightKind {
     /// An edge from an
     /// [`AttributePrototypeArgument`][crate::AttributePrototypeArgument] representing a value
     /// from a component, where the edge target points at the component/root av id, and the
-    /// [`ValueSubscriptionPath`] is a path to a nested child AV (e.g.
+    /// [`AttributePath`] is a path to a nested child AV (e.g.
     /// `/domain/PolicyDocument/Statements/0/Operation`).
-    ValueSubscription(ValueSubscriptionPath),
+    ValueSubscription(AttributePath),
 }
 
 impl EdgeWeightKind {

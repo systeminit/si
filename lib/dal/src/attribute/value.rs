@@ -181,6 +181,8 @@ pub enum AttributeValueError {
     FuncRunnerSend,
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
+    #[error("attempt to access out-of-range element {0} of array {1} with length {2}")]
+    IndexOutOfRange(usize, AttributeValueId, usize),
     #[error("InferredConnectionGraph error: {0}")]
     InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("input socket error: {0}")]
@@ -189,6 +191,8 @@ pub enum AttributeValueError {
     InsertionForInvalidPropKind(PropKind),
     #[error("jsonptr parse error: {0}")]
     JsonptrParseError(#[from] jsonptr::ParseError),
+    #[error("jsonptr parse index error: {0}")]
+    JsonptrParseIndexError(#[from] jsonptr::index::ParseIndexError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("missing attribute value with id: {0}")]
@@ -203,6 +207,8 @@ pub enum AttributeValueError {
     MultipleAttributeValuesSameProp(AttributeValueId, AttributeValueId, PropId),
     #[error("found multiple props ({0} and {1}, at minimum) for attribute value: {2}")]
     MultiplePropsFound(PropId, PropId, AttributeValueId),
+    #[error("attribute value {0} has no child named {1}")]
+    NoChildWithName(AttributeValueId, String),
     #[error("no component prototype found for attribute value: {0}")]
     NoComponentPrototype(AttributeValueId),
     #[error("node weight error: {0}")]
@@ -1320,6 +1326,24 @@ impl AttributeValue {
         Ok(result)
     }
 
+    pub async fn map_child_opt(
+        ctx: &DalContext,
+        id: AttributeValueId,
+        name: &str,
+    ) -> AttributeValueResult<Option<AttributeValueId>> {
+        Ok(Self::map_children(ctx, id).await?.get(name).copied())
+    }
+
+    pub async fn map_child(
+        ctx: &DalContext,
+        id: AttributeValueId,
+        name: &str,
+    ) -> AttributeValueResult<AttributeValueId> {
+        Self::map_child_opt(ctx, id, name)
+            .await?
+            .ok_or(AttributeValueError::NoChildWithName(id, name.to_string()))
+    }
+
     /// Return a hashset of all the keys contained by this attribute value (if any)
     pub async fn child_keys_for_id(
         ctx: &DalContext,
@@ -1357,6 +1381,24 @@ impl AttributeValue {
             );
         }
         Ok(result)
+    }
+
+    pub async fn object_child_opt(
+        ctx: &DalContext,
+        id: AttributeValueId,
+        name: &str,
+    ) -> AttributeValueResult<Option<AttributeValueId>> {
+        Ok(Self::object_children(ctx, id).await?.get(name).copied())
+    }
+
+    pub async fn object_child(
+        ctx: &DalContext,
+        id: AttributeValueId,
+        name: &str,
+    ) -> AttributeValueResult<AttributeValueId> {
+        Self::object_child_opt(ctx, id, name)
+            .await?
+            .ok_or(AttributeValueError::NoChildWithName(id, name.to_string()))
     }
 
     #[async_recursion]

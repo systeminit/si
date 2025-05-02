@@ -23,6 +23,8 @@ pub enum Error {
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] dal::ComponentError),
+    #[error("json pointer parse error: {0}")]
+    JsonptrParseError(#[from] jsonptr::ParseError),
     #[error("no value to set at path {0}")]
     NoValueToSet(String),
     #[error("source component not found: {0}")]

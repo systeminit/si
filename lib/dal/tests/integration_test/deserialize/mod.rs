@@ -27,7 +27,7 @@ use dal::{
         prototype::ActionKind,
     },
     approval_requirement::ApprovalRequirementApprover,
-    attribute::value::subscription::ValueSubscriptionPath,
+    attribute::path::AttributePath,
     func::{
         FuncKind,
         argument::FuncArgumentKind,
@@ -274,9 +274,9 @@ fn make_me_one_with_everything(graph: &mut WorkspaceSnapshotGraphVCurrent) {
             EdgeWeightKindDiscriminants::ApprovalRequirementDefinition => {
                 EdgeWeightKind::ApprovalRequirementDefinition
             }
-            EdgeWeightKindDiscriminants::ValueSubscription => EdgeWeightKind::ValueSubscription(
-                ValueSubscriptionPath::from_json_pointer("/json_pointer"),
-            ),
+            EdgeWeightKindDiscriminants::ValueSubscription => {
+                EdgeWeightKind::ValueSubscription(AttributePath::from_json_pointer("/json_pointer"))
+            }
         };
 
         if last_node + 1 == node_indexes.len() {
