@@ -6,6 +6,7 @@
     size="max"
     title="Create a connection"
     @click="focusOnInput"
+    @close="onClose"
   >
     <template #titleIcons>
       <div class="text-xs cursor-pointer" @click="modalRef?.close()">
@@ -31,27 +32,27 @@
       </div>
       <div class="flex flex-row grow min-h-0 children:basis-1/2">
         <!-- Socket A -->
-        <ConnectionMenuSocketList
+        <ConnectionMenuCandidateList
           :active="activeSide === 'a'"
           :controlScheme="controlScheme"
           :doneLoading="doneOpening"
           :filteringBySearchString="searchStringA"
           :highlightedIndex="highlightedIndex"
-          :highlightedSocket="highlightedSocket"
-          :listItems="listAItems"
+          :highlightedSocket="highlightedListEntry"
+          :listItems="fullASideList"
           :selectedComponent="selectedComponentA"
           :selectedSocket="selectedSocketA"
           @select="(index: number) => selectAndProcess('a', index)"
         />
         <!-- Socket B -->
-        <ConnectionMenuSocketList
+        <ConnectionMenuCandidateList
           :active="activeSide === 'b'"
           :controlScheme="controlScheme"
           :doneLoading="doneOpening"
           :filteringBySearchString="searchStringB"
           :highlightedIndex="highlightedIndex"
-          :highlightedSocket="highlightedSocket"
-          :listItems="listBItems"
+          :highlightedSocket="highlightedListEntry"
+          :listItems="fullBSideList"
           :selectedComponent="selectedComponentB"
           :selectedSocket="selectedSocketB"
           @select="(index: number) => selectAndProcess('b', index)"
@@ -151,13 +152,24 @@ import {
   SocketWithParent,
   useComponentsStore,
 } from "@/store/components.store";
-import { DiagramSocketData } from "@/components/ModelingDiagram/diagram_types";
+import {
+  DiagramGroupData,
+  DiagramNodeData,
+  DiagramSocketData,
+} from "@/components/ModelingDiagram/diagram_types";
 import TextPill from "@/components/TextPill.vue";
 import { useViewsStore } from "@/store/views.store";
-import ConnectionMenuSocketList, {
-  SocketListEntry,
-} from "./ConnectionMenuSocketList.vue";
+import { useComponentAttributesStore } from "@/store/component_attributes.store";
+import { PropertyEditorSchema } from "@/api/sdf/dal/property_editor";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import FloatingConnectionMenuInput from "./FloatingConnectionMenuInput.vue";
+import ConnectionMenuCandidateList, {
+  ConnectionCandidateSocket,
+  ConnectionCandidateListEntry,
+  ConnectionCandidateProp,
+  candidateIsSocket,
+  candidateIsProp,
+} from "./ConnectionMenuCandidateList.vue";
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const inputARef = ref<InstanceType<typeof FloatingConnectionMenuInput>>();
@@ -169,6 +181,7 @@ const startingSearchStringB = ref("");
 
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const fetchDataForAllViewsStatus = componentsStore.getRequestStatus(
   "FETCH_ALL_COMPONENTS",
@@ -190,8 +203,8 @@ const activeInputRef = computed(() =>
   activeSide.value === "a" ? inputARef : inputBRef,
 );
 
-const listAItems = ref<SocketListEntry[]>([]);
-const listBItems = ref<SocketListEntry[]>([]);
+const listAItems = ref<ConnectionCandidateListEntry[]>([]);
+const listBItems = ref<ConnectionCandidateListEntry[]>([]);
 
 const focusOnInput = () => {
   nextTick(() => {
@@ -207,10 +220,12 @@ const connectionData = reactive<ConnectionMenuData>({
   A: {
     componentId: undefined,
     socketId: undefined,
+    attributePath: undefined,
   },
   B: {
     componentId: undefined,
     socketId: undefined,
+    attributePath: undefined,
   },
 });
 
@@ -243,15 +258,21 @@ const selectedSocketB = computed(() =>
 );
 
 // this needs to compute based on allComponentsById changes to socket values
-const highlightedSocket = computed(() => {
+const highlightedListEntry = computed(() => {
   const highlighted =
     activeSide.value === "a"
       ? listAItems.value[highlightedIndex.value]
       : listBItems.value[highlightedIndex.value];
   if (!highlighted) return undefined;
-  return componentsStore.allComponentsById[
-    highlighted.component.def.id
-  ]?.sockets.find((s) => s.def.id === highlighted.socket.def.id);
+
+  if (candidateIsSocket(highlighted)) {
+    return componentsStore.allComponentsById[
+      highlighted.component.def.id
+    ]?.sockets.find((s) => s.def.id === highlighted.socket?.def.id);
+  }
+
+  // TODO highlighted prop
+  return undefined;
 });
 
 const activeSide = ref<"a" | "b">("a");
@@ -267,6 +288,19 @@ const undoASelection = () => {
 };
 
 const runningUpdateMenu = ref(false);
+
+const searchStrings = computed(() => {
+  const [active, inactive] =
+    activeSide.value === "a"
+      ? [searchStringA.value, searchStringB.value]
+      : [searchStringB.value, searchStringA.value];
+
+  return {
+    active,
+    inactive,
+  };
+});
+
 // Generate the options on both sides
 // TODO Break this into computed variables
 const updateMenu = async () => {
@@ -283,11 +317,6 @@ const updateMenu = async () => {
     activeSide.value === "a"
       ? [listAItems, listBItems]
       : [listBItems, listAItems];
-
-  const [activeSearchString, otherSideSearchString] =
-    activeSide.value === "a"
-      ? [searchStringA.value, searchStringB.value]
-      : [searchStringB.value, searchStringA.value];
 
   const edges = _.values(componentsStore.diagramEdgesById).filter(
     (e) => e.def.toDelete === false && e.def.changeStatus !== "deleted",
@@ -344,11 +373,14 @@ const updateMenu = async () => {
           }
 
           return acc;
-        }, [] as SocketListEntry[]),
+        }, [] as ConnectionCandidateSocket[]),
     ),
   );
 
-  const sortFn = (s1: SocketListEntry, s2: SocketListEntry) => {
+  const sortFn = (
+    s1: ConnectionCandidateSocket,
+    s2: ConnectionCandidateSocket,
+  ) => {
     if (s1.socket.def.direction === s2.socket.def.direction) {
       if (s1.label < s2.label) {
         return -1;
@@ -358,7 +390,7 @@ const updateMenu = async () => {
       }
       return 0;
     }
-    if (s1.socket.def.direction === "input") {
+    if (s1.socket?.def.direction === "input") {
       return -1;
     } else {
       return 1;
@@ -368,21 +400,23 @@ const updateMenu = async () => {
   activeSideSockets.sort(sortFn);
 
   let matchedActiveSideSockets = activeSideSockets;
-  if (activeSearchString) {
+  if (searchStrings.value.active) {
     const fzf = new Fzf(activeSideSockets, {
       casing: "case-insensitive",
       selector: (item) => item.label,
     });
 
-    matchedActiveSideSockets = fzf.find(activeSearchString).map((e) => ({
-      ...e.item,
-      labelHighlights: e.positions,
-    }));
+    matchedActiveSideSockets = fzf
+      .find(searchStrings.value.active)
+      .map((e) => ({
+        ...e.item,
+        labelHighlights: e.positions,
+      }));
   }
 
   // Get all valid peer sockets for the active sockets
   const peersFunction = componentsStore.possibleAndExistingPeerSocketsFn;
-  type SocketListEntryWithOriginator = SocketListEntry & {
+  type SocketListEntryWithOriginator = ConnectionCandidateSocket & {
     originatorSocketPathKey: string;
   };
 
@@ -446,7 +480,7 @@ const updateMenu = async () => {
     }, [] as SocketListEntryWithOriginator[]);
 
   // Remove the active side sockets without peers
-  const otherSideSockets = {} as Record<string, SocketListEntry>;
+  const otherSideSockets = {} as Record<string, ConnectionCandidateSocket>;
   const socketsWithPossiblePeers = new Set();
   for (const peer of _.compact(validPeers)) {
     otherSideSockets[peer.label] = peer;
@@ -462,16 +496,18 @@ const updateMenu = async () => {
   deduplicatedOtherSideSockets.sort(sortFn);
 
   let matchedOtherSideSockets = deduplicatedOtherSideSockets;
-  if (otherSideSearchString) {
+  if (searchStrings.value.inactive) {
     const fzf = new Fzf(deduplicatedOtherSideSockets, {
       casing: "case-insensitive",
       selector: (item) => item.label,
     });
 
-    matchedOtherSideSockets = fzf.find(otherSideSearchString).map((e) => ({
-      ...e.item,
-      labelHighlights: e.positions,
-    }));
+    matchedOtherSideSockets = fzf
+      .find(searchStrings.value.inactive)
+      .map((e) => ({
+        ...e.item,
+        labelHighlights: e.positions,
+      }));
   }
 
   activeSideList.value = activeSideSocketsWithPeers;
@@ -488,6 +524,161 @@ watch(searchStringB, debouncedUpdate, { immediate: true });
 watch(connectionData, debouncedUpdate, { immediate: true });
 watch(componentsStore.diagramEdgesById, debouncedUpdate, { immediate: true });
 watch(componentsStore.allComponentsById, debouncedUpdate, { immediate: true });
+
+const socketlessConnectionCandidatesA = ref<ConnectionCandidateProp[]>([]);
+const socketlessConnectionCandidatesB = ref<ConnectionCandidateProp[]>([]);
+
+const fullASideList = computed(() => {
+  return [...listAItems.value, ...socketlessConnectionCandidatesA.value];
+});
+
+const fullBSideList = computed(() => {
+  return [...listBItems.value, ...socketlessConnectionCandidatesB.value];
+});
+
+// Prop candidates
+const schemaVariantsById = reactive({} as Record<string, PropertyEditorSchema>);
+const storedInitialComponent = ref();
+const loadingPropConnections = ref(false);
+watch([storedInitialComponent, searchStrings], async () => {
+  if (!featureFlagsStore.PROPS_TO_PROPS_CONNECTIONS) {
+    return;
+  }
+
+  if (!storedInitialComponent.value) return;
+  loadingPropConnections.value = true;
+
+  const allComponents = _.values(componentsStore.allComponentsById).filter(
+    (c) => c.def.changeStatus !== "deleted",
+  );
+
+  // Gather the schemas for the props currently on the diagram
+  const componentsBySvId = {} as Record<
+    string,
+    (DiagramNodeData | DiagramGroupData)[]
+  >;
+  for (const component of allComponents) {
+    const svId = component.def.schemaVariantId;
+    componentsBySvId[svId] ??= [];
+    componentsBySvId[svId]?.push(component);
+
+    if (!schemaVariantsById[component.def.schemaVariantId]) {
+      const attributesStore = useComponentAttributesStore(
+        component.def.componentId,
+      );
+      await attributesStore.FETCH_PROPERTY_EDITOR_SCHEMA();
+      if (attributesStore.schema) {
+        schemaVariantsById[component.def.schemaVariantId] =
+          attributesStore.schema;
+      }
+    }
+  }
+
+  let activeCandidates = [] as ConnectionCandidateProp[];
+  let peerCandidates = [] as ConnectionCandidateProp[];
+
+  for (const schemaId in schemaVariantsById) {
+    const schema = schemaVariantsById[schemaId];
+    if (!schema) continue;
+
+    const queue = (schema.childProps[schema.rootPropId] ?? []).map(
+      (propId) => ({ propId, parentPath: "" }),
+    );
+
+    const svPropPaths = [];
+    while (queue.length > 0) {
+      const entry = queue.shift();
+      if (!entry) continue;
+      const propId = entry.propId;
+      const parentPath = entry.parentPath;
+
+      const prop = schema.props[propId];
+      if (!prop) continue;
+
+      const path = `${parentPath}/${prop.name}`;
+
+      if (
+        !path.startsWith("/domain") &&
+        !path.startsWith("/resource_value") &&
+        !["/si", "/si/name", "/si/resourceId", "/si/color"].includes(path)
+      )
+        continue;
+
+      svPropPaths.push(path);
+
+      for (const childPropId of schema.childProps[propId] ?? []) {
+        queue.unshift({ propId: childPropId, parentPath: path });
+      }
+    }
+
+    for (const component of componentsBySvId[schemaId] ?? []) {
+      const isActiveComponent =
+        storedInitialComponent.value.def.id === component.def.id;
+
+      const componentViews =
+        viewsStore.viewNamesByComponentId[component.def.id] ?? [];
+
+      for (const view of componentViews) {
+        for (const propPath of svPropPaths) {
+          const label = `${view}/${component.def.schemaName}/${component.def.displayName}${propPath}`;
+
+          const entry = {
+            component,
+            propPath,
+            label,
+          };
+
+          if (isActiveComponent) {
+            activeCandidates.push(entry);
+          } else {
+            peerCandidates.push(entry);
+          }
+        }
+        // Don't show options for all views for active component
+        if (isActiveComponent) break;
+      }
+    }
+  }
+
+  // Remove resource value from inputs
+  if (connectionData.aDirection === "input") {
+    activeCandidates = activeCandidates.filter(
+      (e) => !e.propPath.startsWith("/resource_value"),
+    );
+  } else {
+    peerCandidates = peerCandidates.filter(
+      (e) => !e.propPath.startsWith("/resource_value"),
+    );
+  }
+
+  if (searchStringA.value) {
+    const fzf = new Fzf(activeCandidates, {
+      casing: "case-insensitive",
+      selector: (item) => item.label,
+    });
+
+    activeCandidates = fzf.find(searchStringA.value).map((e) => ({
+      ...e.item,
+      labelHighlights: e.positions,
+    }));
+  }
+
+  if (searchStringB.value) {
+    const fzf = new Fzf(peerCandidates, {
+      casing: "case-insensitive",
+      selector: (item) => item.label,
+    });
+
+    peerCandidates = fzf.find(searchStringB.value).map((e) => ({
+      ...e.item,
+      labelHighlights: e.positions,
+    }));
+  }
+
+  socketlessConnectionCandidatesA.value = activeCandidates;
+  socketlessConnectionCandidatesB.value = peerCandidates;
+  loadingPropConnections.value = false;
+});
 
 const highlightedIndex = ref(0);
 // Try to keep the selected option selected when list changes, else reset selected to 0
@@ -571,8 +762,8 @@ const debouncedListener = _.debounce(keyListener, 10, {
 const highlightNext = () => {
   const upperLimit =
     (activeSide.value === "a"
-      ? listAItems.value.length
-      : listBItems.value.length) - 1;
+      ? fullASideList.value.length
+      : fullBSideList.value.length) - 1;
 
   highlightedIndex.value = Math.min(highlightedIndex.value + 1, upperLimit);
 };
@@ -594,44 +785,66 @@ watch(activeSide, () => {
 // this has since changed, but some overengineering was kept in case we change our minds
 const processHighlighted = () => {
   if (activeSide.value === "a") {
-    const selectedItem = listAItems.value[highlightedIndex.value];
-    if (!selectedItem) return;
-    connectionData.A.socketId = selectedItem.socket.def.id;
-    connectionData.aDirection =
-      selectedItem.socket.def.direction === "bidirectional"
-        ? undefined
-        : selectedItem.socket.def.direction;
-    connectionData.A.componentId = selectedItem.component.def.id;
-
-    if (inputARef.value) {
-      inputARef.value.searchString = selectedItem.label;
-    }
-    activeSide.value = "b";
-  } else {
-    const selectedItem = listBItems.value[highlightedIndex.value];
+    const selectedItem = fullASideList.value[highlightedIndex.value];
     if (!selectedItem) return;
 
-    if (connectionData.A.socketId) {
-      connectionData.B.socketId = selectedItem.socket.def.id;
-      connectionData.aDirection = invertDirection(
-        selectedItem.socket.def.direction === "bidirectional"
-          ? undefined
-          : selectedItem.socket.def.direction,
-      );
-      connectionData.B.componentId = selectedItem.component.def.id;
-    } else {
+    if (candidateIsSocket(selectedItem)) {
       connectionData.A.socketId = selectedItem.socket.def.id;
       connectionData.aDirection =
         selectedItem.socket.def.direction === "bidirectional"
           ? undefined
           : selectedItem.socket.def.direction;
       connectionData.A.componentId = selectedItem.component.def.id;
-      if (inputARef.value && inputBRef.value) {
-        inputBRef.value.searchString = inputARef.value.searchString;
+
+      if (inputARef.value) {
         inputARef.value.searchString = selectedItem.label;
       }
-      if (fixedDirection.value) {
-        fixedDirection.value = invertDirection(fixedDirection.value);
+    }
+
+    if (candidateIsProp(selectedItem)) {
+      connectionData.A.attributePath = selectedItem.propPath;
+      connectionData.aDirection = "output";
+      connectionData.A.componentId = selectedItem.component.def.id;
+
+      if (inputARef.value) {
+        inputARef.value.searchString = selectedItem.label;
+      }
+    }
+
+    activeSide.value = "b";
+  } else {
+    const selectedItem = fullBSideList.value[highlightedIndex.value];
+    if (!selectedItem) return;
+    if (candidateIsSocket(selectedItem)) {
+      if (connectionData.A.socketId) {
+        connectionData.B.socketId = selectedItem.socket.def.id;
+        connectionData.aDirection = invertDirection(
+          selectedItem.socket.def.direction === "bidirectional"
+            ? undefined
+            : selectedItem.socket.def.direction,
+        );
+        connectionData.B.componentId = selectedItem.component.def.id;
+      } else {
+        connectionData.aDirection =
+          selectedItem.socket.def.direction === "bidirectional"
+            ? undefined
+            : selectedItem.socket.def.direction;
+
+        connectionData.A.componentId = selectedItem.component.def.id;
+        if (inputARef.value && inputBRef.value) {
+          inputBRef.value.searchString = inputARef.value.searchString;
+          inputARef.value.searchString = selectedItem.label;
+        }
+        if (fixedDirection.value) {
+          fixedDirection.value = invertDirection(fixedDirection.value);
+        }
+      }
+    }
+
+    if (candidateIsProp(selectedItem)) {
+      if (connectionData.A.attributePath) {
+        connectionData.B.attributePath = selectedItem.propPath;
+        connectionData.B.componentId = selectedItem.component.def.id;
       }
     }
   }
@@ -674,6 +887,24 @@ const processHighlighted = () => {
     close();
   }
 
+  // Create connection
+  if (
+    connectionData.A.componentId &&
+    connectionData.B.componentId &&
+    connectionData.A.attributePath &&
+    connectionData.B.attributePath
+  ) {
+    componentsStore.UPDATE_COMPONENT_ATTRIBUTES(connectionData.B.componentId, {
+      [connectionData.B.attributePath]: {
+        $source: {
+          component: connectionData.A.componentId,
+          path: connectionData.A.attributePath,
+        },
+      },
+    });
+    close();
+  }
+
   highlightedIndex.value = 0;
   focusOnInput();
 };
@@ -697,6 +928,7 @@ function open(initialState: ConnectionMenuData) {
   const initialComponentB =
     componentsStore.allComponentsById[initialState.B.componentId || ""];
   if (initialComponentA) {
+    storedInitialComponent.value = initialComponentA;
     const componentViews =
       viewsStore.viewNamesByComponentId[initialComponentA.def.id];
     if (componentViews && componentViews.length > 0) {
@@ -780,6 +1012,10 @@ function open(initialState: ConnectionMenuData) {
     doneOpening.value = true;
     clearInterval(finishOpening);
   }, 1);
+}
+
+function onClose() {
+  storedInitialComponent.value = undefined;
 }
 
 function close() {

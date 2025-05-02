@@ -17,12 +17,12 @@ NOTES / TODOS / IDEAS
 
 import { PiniaPlugin, PiniaPluginContext } from "pinia";
 import { AxiosError, AxiosInstance, AxiosResponse } from "axios";
-import { computed, ComputedRef, reactive, unref, Ref } from "vue";
+import { computed, ComputedRef, reactive, Ref, unref } from "vue";
 import * as _ from "lodash-es";
 import {
-  promiseDelay,
   createDeferredPromise,
   DeferredPromise,
+  promiseDelay,
 } from "@si/ts-lib";
 import { ulid } from "ulid";
 import opentelemetry, { Span } from "@opentelemetry/api";
@@ -91,22 +91,24 @@ export class ApiRequest<
   RequestParams = Record<string, unknown>,
 > {
   // these are used to attach the result which can be used directly by the caller
+  static noop = Symbol("API_REQUEST_NOOP");
   // most data and request status info should be used via the store, but it is useful sometimes
   rawResponseData: Response | undefined;
   rawResponseError: Error | AxiosError | undefined;
   rawSuccess?: boolean;
 
-  setSuccessfulResult(data: Response | undefined) {
-    this.rawSuccess = true;
-    this.rawResponseData = data;
-  }
-
-  setFailedResult(err: AxiosError | Error) {
-    this.rawSuccess = false;
-    this.rawResponseError = err;
+  // eslint-disable-next-line @typescript-eslint/no-useless-constructor
+  constructor(
+    public requestSpec: ApiRequestDescription<Response, RequestParams>,
+  ) {
+    if (!this.requestSpec.api) {
+      this.requestSpec.api = (this.constructor as any).api;
+    }
+    if (!this.requestSpec.method) this.requestSpec.method = "get";
   }
 
   // we use a getter to get the result so that we can add further type restrictions
+
   // ie, checking success guarantees data is present
   get result():
     | {
@@ -121,8 +123,9 @@ export class ApiRequest<
         data?: Response extends undefined ? never : undefined;
       } {
     /* eslint-disable @typescript-eslint/no-non-null-assertion */
-    if (this.rawSuccess === undefined)
+    if (this.rawSuccess === undefined) {
       throw new Error("You must await the request to access the result");
+    }
 
     if (this.rawSuccess) {
       return { success: true, data: this.rawResponseData! };
@@ -140,17 +143,15 @@ export class ApiRequest<
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-useless-constructor
-  constructor(
-    public requestSpec: ApiRequestDescription<Response, RequestParams>,
-  ) {
-    if (!this.requestSpec.api) {
-      this.requestSpec.api = (this.constructor as any).api;
-    }
-    if (!this.requestSpec.method) this.requestSpec.method = "get";
+  setSuccessfulResult(data: Response | undefined) {
+    this.rawSuccess = true;
+    this.rawResponseData = data;
   }
 
-  static noop = Symbol("API_REQUEST_NOOP");
+  setFailedResult(err: AxiosError | Error) {
+    this.rawSuccess = false;
+    this.rawResponseError = err;
+  }
 }
 
 export function registerApi(axiosInstance: AxiosInstance) {
@@ -196,6 +197,11 @@ export type ApiRequestDescription<
   optimistic?: OptimisticFn;
   /** add artificial delay (in ms) before fetching */
   _delay?: number;
+  /**
+   * Set true to *not* pass the request ULID as a query parameter or JSON parameter.
+   * (It is always passed as a header.)
+   */
+  passRequestUlidInHeadersOnly?: boolean;
 };
 
 /** type describing how we store the request statuses */
@@ -286,7 +292,9 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       }
 
       if (!requestSpec.params) requestSpec.params = {};
-      requestSpec.params.requestUlid = requestUlid;
+      if (!requestSpec.passRequestUlidInHeadersOnly) {
+        requestSpec.params.requestUlid = requestUlid;
+      }
 
       // mark the request as pending in the store
       // and attach a deferred promise we'll resolve when completed

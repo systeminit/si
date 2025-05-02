@@ -18,6 +18,7 @@ const FLAG_MAPPING = {
   CONVERT_TO_VIEW: "convert-to-view",
   SIMPLE_SOCKET_UI: "simple-socket-ui",
   SQLITE_TOOLS: "sqlite-tools",
+  PROPS_TO_PROPS_CONNECTIONS: "props-to-props-connections",
 };
 
 const WORKSPACE_FLAG_MAPPING = {

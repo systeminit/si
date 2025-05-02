@@ -30,18 +30,18 @@
           position: 'relative',
         }"
       >
-        <ConnectionMenuSocketListItem
+        <ConnectionMenuCandidateListItem
           v-for="item in socketList"
-          ref="socketListItemsRef"
           :key="item.index"
-          :data-index="item.index"
-          :item="item"
-          :entry="listItems[item.index]!"
-          :highlighted="item.index === localHighlightedIndex"
+          ref="socketListItemsRef"
           :active="active"
-          :selected="listItems[item.index]!.socket.def.id === selectedSocket?.def.id"
-          :filteringBySearchString="filteringBySearchString"
           :controlScheme="controlScheme"
+          :data-index="item.index"
+          :entry="listItems[item.index]!"
+          :filteringBySearchString="filteringBySearchString"
+          :highlighted="item.index === localHighlightedIndex"
+          :item="item"
+          :selected="isSelected(listItems[item.index]!, selectedSocket)"
           @select="(index) => emit('select', index)"
         />
       </div>
@@ -59,8 +59,8 @@
         v-model="socketToShow.value"
         :recordId="''"
         disabled
-        noVim
         json
+        noVim
       />
     </div>
   </div>
@@ -77,19 +77,12 @@ import {
   DiagramNodeData,
   DiagramSocketData,
 } from "../ModelingDiagram/diagram_types";
-import ConnectionMenuSocketListItem from "./ConnectionMenuSocketListItem.vue";
-
-export type SocketListEntry = {
-  component: DiagramNodeData | DiagramGroupData;
-  socket: DiagramSocketData;
-  label: string;
-  labelHighlights?: Set<number>;
-};
+import ConnectionMenuCandidateListItem from "./ConnectionMenuCandidateListItem.vue";
 
 const props = defineProps({
   listItems: {
-    type: Array as PropType<SocketListEntry[]>,
-    default: [] as SocketListEntry[],
+    type: Array as PropType<ConnectionCandidateListEntry[]>,
+    default: [] as ConnectionCandidateListEntry[],
   },
   selectedComponent: {
     type: Object as PropType<DiagramNodeData | DiagramGroupData>,
@@ -163,22 +156,8 @@ watch(
   },
 );
 
-// In order to use the CSS Custom Highlight API with Typescript we have to use some workarounds -
-// https://github.com/microsoft/TypeScript/issues/53003
-declare class Highlight {
-  add(range: Range): undefined;
-  constructor(...range: Range[]);
-}
-
-// eslint-disable-next-line @typescript-eslint/no-namespace
-declare namespace CSS {
-  const highlights: Map<string, Highlight>;
-}
-
-// END WORKAROUND CODE
-
 const socketListItemsRef =
-  ref<InstanceType<typeof ConnectionMenuSocketListItem>[]>();
+  ref<InstanceType<typeof ConnectionMenuCandidateListItem>[]>();
 
 watchEffect(() => {
   if (
@@ -202,6 +181,60 @@ watchEffect(() => {
     console.log("This browser does not support the CSS Custom Highlight API");
   }
 });
+
+function isSelected(
+  selectedEntry: ConnectionCandidateListEntry,
+  selectedSocket?: DiagramSocketData,
+): boolean {
+  if (!selectedSocket) return false;
+
+  if (!candidateIsSocket(selectedEntry)) return false;
+
+  return selectedEntry.socket?.def.id === selectedSocket?.def.id;
+}
+</script>
+
+<script lang="ts">
+type ConnectionCandidateBase = {
+  component: DiagramNodeData | DiagramGroupData;
+  label: string;
+  labelHighlights?: Set<number>;
+};
+
+export type ConnectionCandidateSocket = ConnectionCandidateBase & {
+  socket: DiagramSocketData;
+};
+
+export type ConnectionCandidateProp = ConnectionCandidateBase & {
+  propPath: string;
+};
+
+export type ConnectionCandidateListEntry =
+  | ConnectionCandidateSocket
+  | ConnectionCandidateProp;
+
+export const candidateIsSocket = (
+  entry: ConnectionCandidateListEntry,
+): entry is ConnectionCandidateSocket => "socket" in entry;
+
+export const candidateIsProp = (
+  entry: ConnectionCandidateListEntry,
+): entry is ConnectionCandidateProp => "propPath" in entry;
+
+// In order to use the CSS Custom Highlight API with Typescript we have to use some workarounds -
+// https://github.com/microsoft/TypeScript/issues/53003
+declare class Highlight {
+  constructor(...range: Range[]);
+
+  add(range: Range): undefined;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-namespace
+declare namespace CSS {
+  const highlights: Map<string, Highlight>;
+}
+
+// END WORKAROUND CODE
 </script>
 
 <style lang="css">

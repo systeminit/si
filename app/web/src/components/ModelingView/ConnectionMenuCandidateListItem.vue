@@ -41,11 +41,7 @@
       :class="
         clsx('flex-none', themeClasses('text-neutral-500', 'text-neutral-400'))
       "
-      :name="
-        entry.socket.def.direction === 'output'
-          ? 'output-connection'
-          : 'input-connection'
-      "
+      :name="icon"
       size="sm"
     />
     <div
@@ -56,13 +52,13 @@
         )
       "
     >
-      {{ entry.socket.def.direction === "output" ? "Output" : "Input" }}
+      {{ typeText }}
     </div>
     <div v-if="filteringBySearchString" class="flex flex-row grow items-center">
       <TruncateWithTooltip
         ref="lastPartRef"
-        class="text-xs font-bold flex-1 basis-1/2"
         :lineClamp="3"
+        class="text-xs font-bold flex-1 basis-1/2"
       >
         {{ lastPart }}
       </TruncateWithTooltip>
@@ -110,17 +106,42 @@ import {
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import { VirtualItem } from "@tanstack/vue-virtual";
-import { SocketListEntry } from "./ConnectionMenuSocketList.vue";
 import TextPill from "../TextPill.vue";
+import {
+  ConnectionCandidateListEntry,
+  candidateIsSocket,
+  candidateIsProp,
+} from "./ConnectionMenuCandidateList.vue";
 
 const props = defineProps({
-  entry: { type: Object as PropType<SocketListEntry>, required: true },
+  entry: {
+    type: Object as PropType<ConnectionCandidateListEntry>,
+    required: true,
+  },
   item: { type: Object as PropType<VirtualItem>, required: true },
   active: { type: Boolean },
   highlighted: { type: Boolean },
   selected: { type: Boolean },
   filteringBySearchString: { type: String },
   controlScheme: { type: String, default: "arrows" },
+});
+
+const typeText = computed(() => {
+  if (candidateIsProp(props.entry)) return "Prop";
+
+  if (!candidateIsSocket(props.entry)) return "?";
+
+  return props.entry.socket?.def.direction === "input" ? "Input" : "Ouput";
+});
+
+const icon = computed(() => {
+  if (candidateIsSocket(props.entry)) {
+    return props.entry.socket?.def.direction === "input"
+      ? "input-connection"
+      : "output-connection";
+  }
+
+  return "cursor";
 });
 
 const labelParts = computed(() => {

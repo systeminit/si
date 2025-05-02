@@ -257,10 +257,12 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           async REMOVE_PROPERTY_VALUE(
             removePayload: DeletePropertyEditorValueArgs,
           ) {
-            if (changeSetsStore.creatingChangeSet)
+            if (changeSetsStore.creatingChangeSet) {
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
+            }
+            if (changeSetId === changeSetsStore.headChangeSetId) {
               changeSetsStore.creatingChangeSet = true;
+            }
 
             return new ApiRequest<{ success: true }>({
               method: "post",
@@ -278,10 +280,12 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
               | { update: UpdatePropertyEditorValueArgs }
               | { insert: InsertPropertyEditorValueArgs },
           ) {
-            if (changeSetsStore.creatingChangeSet)
+            if (changeSetsStore.creatingChangeSet) {
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
+            }
+            if (changeSetId === changeSetsStore.headChangeSetId) {
               changeSetsStore.creatingChangeSet = true;
+            }
 
             const isInsert = "insert" in updatePayload;
 
@@ -326,10 +330,12 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
             });
           },
           async SET_COMPONENT_TYPE(payload: SetTypeArgs) {
-            if (changeSetsStore.creatingChangeSet)
+            if (changeSetsStore.creatingChangeSet) {
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
+            }
+            if (changeSetId === changeSetsStore.headChangeSetId) {
               changeSetsStore.creatingChangeSet = true;
+            }
 
             // NOTE Since views came in overriding geometries on this operation
             // became way more complex. Also frames start at the size of the
@@ -427,10 +433,12 @@ export const useComponentAttributesStore = (componentId: ComponentId) => {
           async RESET_PROPERTY_VALUE(
             resetPayload: ResetPropertyEditorValueArgs,
           ) {
-            if (changeSetsStore.creatingChangeSet)
+            if (changeSetsStore.creatingChangeSet) {
               throw new Error("race, wait until the change set is created");
-            if (changeSetId === changeSetsStore.headChangeSetId)
+            }
+            if (changeSetId === changeSetsStore.headChangeSetId) {
               changeSetsStore.creatingChangeSet = true;
+            }
             return new ApiRequest<{ success: true }>({
               method: "post",
               url: "component/restore_default_function",
