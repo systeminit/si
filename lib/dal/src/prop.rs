@@ -97,6 +97,8 @@ pub enum PropError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("path cannot include - (next element) because it will never yield a result")]
+    CannotSubscribeToNextElement(PropId, String),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("child prop of {0} not found by name: {1}")]
@@ -824,7 +826,7 @@ impl Prop {
             .ok_or(PropError::MapOrArrayMissingElementProp(prop_id))
     }
 
-    pub async fn find_child_prop_id_by_name(
+    pub async fn child_prop_id(
         ctx: &DalContext,
         parent_node_id: Ulid,
         child_name: impl AsRef<str>,
@@ -920,9 +922,7 @@ impl Prop {
 
         let mut current_id: Ulid = schema_variant_id.into();
         for part in path_parts {
-            current_id = Self::find_child_prop_id_by_name(ctx, current_id, part)
-                .await?
-                .into();
+            current_id = Self::child_prop_id(ctx, current_id, part).await?.into();
         }
 
         Ok(workspace_snapshot

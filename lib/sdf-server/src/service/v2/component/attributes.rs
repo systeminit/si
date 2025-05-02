@@ -8,13 +8,15 @@ use axum::{
 };
 use dal::{
     AttributeValue,
+    AttributeValueId,
     ChangeSet,
     Component,
     DalContext,
+    PropKind,
     WsEvent,
-    attribute::value::subscription::{
-        ValueSubscription,
-        ValueSubscriptionPath,
+    attribute::{
+        path::AttributePath,
+        value::subscription::ValueSubscription,
     },
 };
 use sdf_core::force_change_set_response::ForceChangeSetResponse;
@@ -126,10 +128,10 @@ pub fn v2_routes() -> Router<AppState> {
 //   avoid injection attacks.
 //
 //       {
-//         "/si/name": "Baby's First Subnet",
-//         "/domain/IpAddresses/0": "10.0.0.1",
-//         "/domain/Tags/Environment": "production",
-//         "/domain/DomainConfig/blah.com/TTL": 3600
+//         "/domain/Tags": {
+//           "$source": "value",
+//           "value": { "Environment": "Prod", "$source": "ThisTagIsActuallyNamed_$source" }
+//         }
 //       }
 //
 async fn update_attributes(
@@ -139,55 +141,82 @@ async fn update_attributes(
     Json(updates): Json<HashMap<String, SetTo>>,
 ) -> Result<ForceChangeSetResponse<()>> {
     let force_change_set_id = ChangeSet::force_new(ctx).await?;
-    let component = Component::get_by_id(ctx, component_id).await?;
-    // TODO 404 if component_id does not exist
-    let root_id = Component::root_attribute_value_id(ctx, component_id).await?;
+    let target_root_id = Component::root_attribute_value_id(ctx, component_id).await?;
     let mut set_count = 0;
     let mut unset_count = 0;
     let mut subscription_count = 0;
-    for (path, value) in updates {
-        // Look up the AV based on its path
-        let av_id = ValueSubscription::resolve_json_pointer(ctx, root_id, &path)
-            .await?
-            .ok_or(Error::NoValueToSet(path))?;
+    for (target_path, value) in updates {
+        let target_path = AttributePath::from_json_pointer(&target_path);
         match value {
             SetTo::Value { value } | SetTo::UntaggedValue(value) => match value {
                 SetToValue::Set(value) => {
                     set_count += 1;
-                    // TODO if value does not exist, insert it (and maybe its parents)
-                    AttributeValue::update(ctx, av_id, value.into()).await?
+
+                    // Create or update the value
+                    let target_av_id = target_path.vivify(ctx, target_root_id).await?;
+                    AttributeValue::update(ctx, target_av_id, value.into()).await?
                 }
                 SetToValue::Unset => {
                     unset_count += 1;
-                    // Unset the value (use the default)
-                    AttributeValue::use_default_prototype(ctx, av_id).await?;
+
+                    // Unset or remove the value if it exists
+                    if let Some(target_av_id) = target_path.resolve(ctx, target_root_id).await? {
+                        if parent_prop_is_map_or_array(ctx, target_av_id).await? {
+                            // If the parent is a map or array, remove the value
+                            AttributeValue::remove_by_id(ctx, target_av_id).await?;
+                        } else {
+                            // Otherwise, just set it to its default value
+                            if AttributeValue::component_prototype_id(ctx, target_av_id)
+                                .await?
+                                .is_some()
+                            {
+                                AttributeValue::use_default_prototype(ctx, target_av_id).await?;
+                            }
+                        }
+                    }
                 }
             },
-            SetTo::Subscription { component, path } => {
+            SetTo::Subscription {
+                component: source_component,
+                path: source_path,
+            } => {
                 set_count += 1;
                 subscription_count += 1;
+
+                // Look up (or create) the AV based on its path
+                let target_av_id = target_path.vivify(ctx, target_root_id).await?;
+
                 // First resolve the component_id (might be a name), then subscribe to the
                 // given path
-                let source_component_id = component
+                let source_component_id = source_component
                     .resolve(ctx)
                     .await?
-                    .ok_or_else(|| Error::SourceComponentNotFound(component.0))?;
+                    .ok_or(Error::SourceComponentNotFound(source_component.0))?;
                 let source_root_id =
                     Component::root_attribute_value_id(ctx, source_component_id).await?;
-                // TODO check if the path is *possible* given the current schema, even if the
-                // value doesn't currently exist
+
+                // Make sure the subscribed-to path is valid (i.e. it doesn't have to resolve
+                // to a value *right now*, but it must be a valid path to the schema as it
+                // exists--correct prop names, numeric indices for arrays, etc.)
+                let source_path = AttributePath::from_json_pointer(source_path);
+                let source_root_prop_id = AttributeValue::prop_id(ctx, source_root_id).await?;
+                source_path.validate(ctx, source_root_prop_id).await?;
+
+                // Subscribe!
                 AttributeValue::subscribe(
                     ctx,
-                    av_id,
+                    target_av_id,
                     ValueSubscription {
                         attribute_value_id: source_root_id,
-                        path: ValueSubscriptionPath::JsonPointer(path),
+                        path: source_path,
                     },
                 )
                 .await?;
             }
         }
     }
+
+    let component = Component::get_by_id(ctx, component_id).await?;
 
     let mut socket_map = HashMap::new();
     let payload = component
@@ -230,6 +259,14 @@ async fn update_attributes(
     );
 
     Ok(ForceChangeSetResponse::new(force_change_set_id, ()))
+}
+
+async fn parent_prop_is_map_or_array(ctx: &DalContext, av_id: AttributeValueId) -> Result<bool> {
+    let Some(parent_av_id) = AttributeValue::parent_attribute_value_id(ctx, av_id).await? else {
+        return Ok(false);
+    };
+    let parent_prop = AttributeValue::prop(ctx, parent_av_id).await?;
+    Ok(matches!(parent_prop.kind, PropKind::Map | PropKind::Array))
 }
 
 #[derive(Deserialize, Clone, Debug)]

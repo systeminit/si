@@ -136,10 +136,10 @@ export interface ResetPropertyEditorValueArgs {
 //   avoid injection attacks.
 //
 //       {
-//         "/si/name": "Baby's First Subnet",
-//         "/domain/IpAddresses/0": "10.0.0.1",
-//         "/domain/Tags/Environment": "production",
-//         "/domain/DomainConfig/blah.com/TTL": 3600
+//         "/domain/Tags": {
+//           "$source": "value",
+//           "value": { "Environment": "Prod", "$source": "ThisTagIsActuallyNamed_$source" }
+//         }
 //       }
 //
 export type UpdateComponentAttributesArgs = Record<
