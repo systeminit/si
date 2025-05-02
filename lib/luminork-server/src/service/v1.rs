@@ -9,6 +9,7 @@ pub mod common;
 mod components;
 mod funcs;
 mod schema;
+mod secrets;
 mod workspaces;
 
 pub use actions::{
@@ -137,6 +138,10 @@ pub use crate::api_types::{
         actions::retry_action::retry_action,
         actions::get_actions::get_actions,
         actions::put_on_hold::put_on_hold,
+        secrets::create_secret::create_secret,
+        secrets::delete_secret::delete_secret,
+        secrets::update_secret::update_secret,
+        secrets::get_secrets::get_secrets,
     ),
     components(
         schemas(
