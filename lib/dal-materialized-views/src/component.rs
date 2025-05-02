@@ -15,6 +15,8 @@ use si_frontend_types::newhotness::component::{
 };
 use telemetry::prelude::*;
 
+pub mod attribute_tree;
+
 #[instrument(name = "dal_materialized_views.component", level = "debug", skip_all)]
 pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Result<ComponentMv> {
     let ctx = &ctx;

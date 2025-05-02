@@ -18,6 +18,8 @@ use crate::reference::{
     ReferenceKind,
 };
 
+pub mod attribute_tree;
+
 #[derive(
     Debug, Serialize, Deserialize, PartialEq, Eq, Clone, si_frontend_types_macros::FrontendChecksum,
 )]

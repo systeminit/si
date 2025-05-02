@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{
     DateTime,
     Utc,
@@ -34,6 +36,10 @@ use crate::{
     OutputSocket,
     Prop,
     PropKind,
+    newhotness::component::attribute_tree::{
+        PropWidgetKind,
+        ValidationStatus,
+    },
     schema_variant::SchemaVariantsByCategory,
 };
 
@@ -212,6 +218,30 @@ where
     }
 }
 
+impl<K, V> FrontendChecksum for HashMap<K, V>
+where
+    K: FrontendChecksum + Ord + std::hash::Hash,
+    V: FrontendChecksum,
+{
+    fn checksum(&self) -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        let mut keys: Vec<&K> = self.keys().collect();
+        keys.sort();
+        for key in keys {
+            hasher.update(key.checksum().as_bytes());
+            hasher.update(
+                match self.get(key) {
+                    Some(val) => val.checksum(),
+                    None => Checksum::default(),
+                }
+                .as_bytes(),
+            );
+        }
+
+        hasher.finalize()
+    }
+}
+
 impl FrontendChecksum for DateTime<Utc> {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_rfc3339())
@@ -272,7 +302,19 @@ impl FrontendChecksum for AttributeValueId {
     }
 }
 
+impl FrontendChecksum for PropWidgetKind {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
 impl FrontendChecksum for serde_json::Value {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for ValidationStatus {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_string())
     }
