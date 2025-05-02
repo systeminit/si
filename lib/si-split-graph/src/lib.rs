@@ -677,6 +677,18 @@ where
         Ok(split_graph_index)
     }
 
+    pub fn add_ordering_node_for_node_id(
+        &mut self,
+        node_id: SplitGraphNodeId,
+    ) -> SplitGraphResult<()> {
+        if let Some(split_graph_index) = self.node_id_to_index(node_id) {
+            let subgraph = self.get_subgraph_mut(split_graph_index.subgraph)?;
+            subgraph.add_or_get_ordering_node_for_node_index(split_graph_index.index);
+        }
+
+        Ok(())
+    }
+
     fn node_weight_by_index(&self, index: SplitGraphNodeIndex) -> Option<&SplitGraphNodeWeight<N>> {
         self.subgraphs
             .get(index.subgraph)

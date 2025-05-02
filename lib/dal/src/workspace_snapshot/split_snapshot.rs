@@ -136,14 +136,38 @@ pub type SplitRebaseBatchVCurrent = SplitRebaseBatchV1;
 #[derive(Serialize, Deserialize, Debug, Clone, EnumDiscriminants)]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString, EnumIter))]
 pub enum SplitSnapshotStorage {
-    SuperGraph(si_split_graph::SuperGraph),
-    SubGraphV1(si_split_graph::SubGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>),
+    SuperGraph(SuperGraphVersion),
+    SubGraphV1(SubGraphVersion),
 }
 
 #[derive(Debug, Clone, EnumDiscriminants)]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString, EnumIter))]
 pub enum SplitSnapshotGraph {
     V1(SplitSnapshotGraphV1),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, EnumDiscriminants)]
+#[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString, EnumIter))]
+pub enum SuperGraphVersion {
+    V1(SuperGraph),
+}
+
+impl SuperGraphVersionDiscriminants {
+    pub fn current_discriminant() -> Self {
+        Self::V1
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, EnumDiscriminants)]
+#[strum_discriminants(derive(strum::Display, Serialize, Deserialize, EnumString, EnumIter))]
+pub enum SubGraphVersion {
+    V1(SubGraphV1),
+}
+
+impl SubGraphVersionDiscriminants {
+    pub fn current() -> Self {
+        Self::V1
+    }
 }
 
 impl std::ops::Deref for SplitSnapshotGraph {
@@ -235,6 +259,17 @@ pub struct SplitSnapshot {
 impl SplitSnapshot {
     pub async fn id(&self) -> WorkspaceSnapshotAddress {
         *self.address.lock().await
+    }
+
+    pub fn from_graph(graph: SplitSnapshotGraph) -> Self {
+        Self {
+            address: Arc::new(Mutex::new(WorkspaceSnapshotAddress::nil())),
+            read_only_graph: Arc::new(graph),
+            working_copy: Arc::new(RwLock::new(None)),
+            cycle_check: Arc::new(AtomicBool::new(false)),
+            dvu_roots: Arc::new(Mutex::new(HashSet::new())),
+            inferred_connection_graph: Arc::new(RwLock::new(None)),
+        }
     }
 
     pub async fn subgraph_count(&self) -> usize {
@@ -572,13 +607,27 @@ impl SplitSnapshot {
                                 );
                                 (orig_idx, new_address)
                             } else {
-                                let subgraph_address = self_clone_clone
-                                    .read_only_graph
-                                    .supergraph()
-                                    .address_for_subgraph(orig_idx)
-                                    .ok_or(WorkspaceSnapshotError::SplitSnapshotSubGraphAddressMissingAtIndex(orig_idx))?;
+                                let subgraph_address: WorkspaceSnapshotAddress =
+                                    match self_clone_clone
+                                        .read_only_graph
+                                        .supergraph()
+                                        .address_for_subgraph(orig_idx)
+                                    {
+                                        Some(addr) => addr.into(),
+                                        None => {
+                                            let (new_address, _) =
+                                                layer_db_clone.split_snapshot_subgraph().write(
+                                                    Arc::new(working.clone()),
+                                                    None,
+                                                    events_tenancy,
+                                                    events_actor,
+                                                )?;
 
-                                (orig_idx, subgraph_address.into())
+                                            new_address
+                                        }
+                                    };
+
+                                (orig_idx, subgraph_address)
                             }
                         }
                         (None, Some((new_index, working))) => {

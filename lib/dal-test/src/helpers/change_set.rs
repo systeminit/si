@@ -101,18 +101,20 @@ impl ChangeSetTestHelpers {
     }
 
     async fn has_updates(ctx: &mut DalContext) -> Result<bool> {
-        Ok(match ctx.get_workspace().await?.snapshot_kind() {
-            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => ctx
-                .change_set()?
-                .detect_updates_that_will_be_applied_legacy(ctx)
-                .await?
-                .is_some_and(|batch| !batch.updates().is_empty()),
-            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => ctx
-                .change_set()?
-                .detect_updates_that_will_be_applied_split(ctx)
-                .await?
-                .is_some_and(|batch| !batch.is_empty()),
-        })
+        Ok(
+            match ctx.get_workspace_or_builtin().await?.snapshot_kind() {
+                WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => ctx
+                    .change_set()?
+                    .detect_updates_that_will_be_applied_legacy(ctx)
+                    .await?
+                    .is_some_and(|batch| !batch.updates().is_empty()),
+                WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => ctx
+                    .change_set()?
+                    .detect_updates_that_will_be_applied_split(ctx)
+                    .await?
+                    .is_some_and(|batch| !batch.is_empty()),
+            },
+        )
     }
 
     async fn apply_change_set_to_base_inner(ctx: &mut DalContext) -> Result<bool> {

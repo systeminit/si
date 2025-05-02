@@ -115,7 +115,11 @@ impl Migrator {
             otel.status_message = Empty,
         )
     )]
-    pub async fn run_migrations(self, update_module_cache: bool) -> MigratorResult<()> {
+    pub async fn run_migrations(
+        self,
+        update_module_cache: bool,
+        migrate_snapshots: bool,
+    ) -> MigratorResult<()> {
         let span = current_span_for_instrument_at!("info");
 
         self.migrate_audit_database()
@@ -130,9 +134,11 @@ impl Migrator {
             .await
             .map_err(|err| span.record_err(err))?;
 
-        self.migrate_snapshots()
-            .await
-            .map_err(|err| span.record_err(err))?;
+        if migrate_snapshots {
+            self.migrate_snapshots()
+                .await
+                .map_err(|err| span.record_err(err))?;
+        }
 
         if update_module_cache {
             self.migrate_module_cache()
