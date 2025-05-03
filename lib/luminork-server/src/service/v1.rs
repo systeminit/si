@@ -35,9 +35,13 @@ pub use change_sets::{
     },
 };
 pub use components::{
+    ComponentPropKey,
     ComponentV1RequestPath,
     ComponentsError,
     ComponentsResult,
+    DomainPropPath,
+    SecretPropKey,
+    SecretPropPath,
     add_action::{
         ActionReference,
         AddActionV1Request,
@@ -65,8 +69,6 @@ pub use components::{
     },
     list_components::ListComponentsV1Response,
     update_component::{
-        ComponentPropKey,
-        DomainPropPath,
         UpdateComponentV1Request,
         UpdateComponentV1Response,
     },
@@ -175,7 +177,9 @@ pub use crate::api_types::{
             ExecuteManagementFunctionV1Request,
             ExecuteManagementFunctionV1Response,
             ComponentPropKey,
+            SecretPropKey,
             DomainPropPath,
+            SecretPropPath,
             ConnectionPoint,
             ComponentReference,
             ComponentViewV1,

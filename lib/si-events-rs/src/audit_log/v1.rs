@@ -339,6 +339,7 @@ pub enum AuditLogKindV1 {
         after_domain_tree: Option<serde_json::Value>,
         added_connections: Option<serde_json::Value>,
         deleted_connections: Option<serde_json::Value>,
+        added_secrets: usize,
     },
     UpdateComponentParent {
         component_id: ComponentId,
@@ -787,6 +788,7 @@ pub enum AuditLogMetadataV1 {
         after_domain_tree: Option<serde_json::Value>,
         added_connections: Option<serde_json::Value>,
         deleted_connections: Option<serde_json::Value>,
+        added_secrets: usize,
     },
     #[serde(rename_all = "camelCase")]
     UpdateComponentParent {
@@ -1468,6 +1470,7 @@ impl From<Kind> for Metadata {
                 after_domain_tree,
                 added_connections,
                 deleted_connections,
+                added_secrets,
             } => Self::UpdateComponent {
                 component_id,
                 component_name,
@@ -1475,6 +1478,7 @@ impl From<Kind> for Metadata {
                 after_domain_tree,
                 added_connections,
                 deleted_connections,
+                added_secrets,
             },
             Kind::UpdateComponentParent {
                 component_id,
