@@ -15,3 +15,4 @@ of System Initiative.
   use.
 - [TypeScript Functions API](./typescript/asset_builder/README.md) - the
   TypeScript API documentation.
+- [External API](./external-api.md) - the External API documentation.
