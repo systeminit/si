@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use axum::Json;
+use axum::{
+    Json,
+    extract::Path,
+};
 use dal::{
     PublicKey,
     Secret,
@@ -21,6 +24,7 @@ use utoipa::{
 };
 
 use super::{
+    SecretV1RequestPath,
     SecretsError,
     SecretsResult,
     encrypt_message,
@@ -34,11 +38,12 @@ use crate::{
 };
 
 #[utoipa::path(
-    patch,
-    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/secrets",
+    put,
+    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/secrets/{secret_id}",
     params(
         ("workspace_id", description = "Workspace identifier"),
         ("change_set_id", description = "Change set identifier"),
+        ("secret_id", description = "Secret identifier"),
     ),
     tag = "secrets",
     request_body = UpdateSecretV1Request,
@@ -51,11 +56,12 @@ use crate::{
 pub async fn update_secret(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
+    Path(SecretV1RequestPath { secret_id }): Path<SecretV1RequestPath>,
     payload: Result<Json<UpdateSecretV1Request>, axum::extract::rejection::JsonRejection>,
 ) -> SecretsResult<Json<UpdateSecretV1Response>> {
     let Json(payload) = payload?;
 
-    let secret_id = payload.id;
+    // let secret_id = payload.id;
     let secret = Secret::get_by_id(ctx, secret_id)
         .await
         .map_err(|_s| SecretsError::SecretNotFound(secret_id))?;

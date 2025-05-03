@@ -81,11 +81,15 @@ pub use funcs::{
     get_func_run::GetFuncRunV1Response,
 };
 pub use schema::{
+    GetSchemaV1Response,
     GetSchemaVariantV1Response,
     SchemaError,
     SchemaV1RequestPath,
     SchemaVariantV1RequestPath,
-    get_schema::GetSchemaV1Response,
+    find_schema::{
+        FindSchemaV1Params,
+        FindSchemaV1Response,
+    },
     list_schema::ListSchemaV1Response,
 };
 pub use workspaces::WorkspaceError;
@@ -131,6 +135,7 @@ pub use crate::api_types::{
         components::execute_management_function::execute_management_function,
         components::add_action::add_action,
         schema::list_schema::list_schemas,
+        schema::find_schema::find_schema,
         schema::get_schema::get_schema,
         schema::get_variant::get_variant,
         schema::get_default_variant::get_default_variant,
@@ -198,6 +203,8 @@ pub use crate::api_types::{
             GetActionsV1Response,
             PutOnHoldActionV1Response,
             ActionV1RequestPath,
+            FindSchemaV1Params,
+            FindSchemaV1Response,
         )
     ),
     tags(

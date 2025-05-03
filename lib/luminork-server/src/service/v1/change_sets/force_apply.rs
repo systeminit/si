@@ -11,7 +11,6 @@ use crate::{
     service::v1::ChangeSetError,
 };
 
-/// Force apply a change set
 #[utoipa::path(
     post,
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/force_apply",

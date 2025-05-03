@@ -50,6 +50,10 @@ pub enum ChangeSetError {
 impl ErrorIntoResponse for ChangeSetError {
     fn status_and_message(&self) -> (StatusCode, String) {
         match self {
+            ChangeSetError::ChangeSet(dal::ChangeSetError::ChangeSetNotFound(_)) => {
+                (StatusCode::NOT_FOUND, self.to_string())
+            }
+            ChangeSetError::CannotAbandonHead => (StatusCode::CONFLICT, self.to_string()),
             ChangeSetError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }

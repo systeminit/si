@@ -79,7 +79,9 @@ impl From<JsonRejection> for ActionsError {
 impl crate::service::v1::common::ErrorIntoResponse for ActionsError {
     fn status_and_message(&self) -> (StatusCode, String) {
         match self {
+            ActionsError::ActionNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             ActionsError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
+            ActionsError::InvalidOnHoldTransition(_) => (StatusCode::BAD_REQUEST, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
     }

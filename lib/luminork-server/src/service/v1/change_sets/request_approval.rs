@@ -16,7 +16,6 @@ use crate::{
     service::v1::ChangeSetError,
 };
 
-/// Request approval for a change set
 #[utoipa::path(
     post,
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/request_approval",
