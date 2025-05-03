@@ -9,6 +9,7 @@ pub mod common;
 mod components;
 mod funcs;
 mod schema;
+mod secrets;
 mod workspaces;
 
 pub use actions::{
@@ -34,9 +35,13 @@ pub use change_sets::{
     },
 };
 pub use components::{
+    ComponentPropKey,
     ComponentV1RequestPath,
     ComponentsError,
     ComponentsResult,
+    DomainPropPath,
+    SecretPropKey,
+    SecretPropPath,
     add_action::{
         ActionReference,
         AddActionV1Request,
@@ -64,8 +69,6 @@ pub use components::{
     },
     list_components::ListComponentsV1Response,
     update_component::{
-        ComponentPropKey,
-        DomainPropPath,
         UpdateComponentV1Request,
         UpdateComponentV1Response,
     },
@@ -137,6 +140,10 @@ pub use crate::api_types::{
         actions::retry_action::retry_action,
         actions::get_actions::get_actions,
         actions::put_on_hold::put_on_hold,
+        secrets::create_secret::create_secret,
+        secrets::delete_secret::delete_secret,
+        secrets::update_secret::update_secret,
+        secrets::get_secrets::get_secrets,
     ),
     components(
         schemas(
@@ -170,7 +177,9 @@ pub use crate::api_types::{
             ExecuteManagementFunctionV1Request,
             ExecuteManagementFunctionV1Response,
             ComponentPropKey,
+            SecretPropKey,
             DomainPropPath,
+            SecretPropPath,
             ConnectionPoint,
             ComponentReference,
             ComponentViewV1,

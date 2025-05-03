@@ -5,6 +5,7 @@ use dal::{
     AttributeValue,
     Component,
     Schema,
+    Secret,
     cached_module::CachedModule,
     diagram::view::View,
 };
@@ -21,11 +22,13 @@ use utoipa::{
 };
 
 use super::{
+    ComponentPropKey,
+    SecretPropKey,
     connections::{
         Connection,
         handle_connection,
     },
-    update_component::ComponentPropKey,
+    resolve_secret_id,
 };
 use crate::{
     extract::{
@@ -124,6 +127,16 @@ pub async fn create_component(
         AttributeValue::update(ctx, attribute_value_id, Some(value.clone())).await?;
     }
 
+    for (key, value) in payload.secrets.clone().into_iter() {
+        let prop_id = key.prop_id(ctx, variant_id).await?;
+
+        let secret_id = resolve_secret_id(ctx, &value).await?;
+
+        let attribute_value_id =
+            Component::attribute_value_for_prop_id(ctx, component.id(), prop_id).await?;
+        Secret::attach_for_attribute_value(ctx, attribute_value_id, Some(secret_id)).await?;
+    }
+
     let av_id = component.domain_prop_attribute_value(ctx).await?;
     let after_domain_tree = AttributeValue::get_by_id(ctx, av_id)
         .await?
@@ -158,6 +171,7 @@ pub async fn create_component(
             after_domain_tree: Some(after_value),
             added_connections: Some(added_connection_summary),
             deleted_connections: None,
+            added_secrets: payload.secrets.len(),
         },
         comp_name.clone(),
     )
@@ -170,7 +184,9 @@ pub async fn create_component(
             "component_id": component.id(),
             "component_name": comp_name.clone(),
             "added_connections": payload.connections.len(),
+            "deleted_connections": "0",
             "updated_props": payload.domain.len(),
+            "updated_secrets": payload.secrets.len()
         }),
     );
 
@@ -187,6 +203,10 @@ pub struct CreateComponentV1Request {
     #[schema(example = json!({"propId1": "value1", "path/to/prop": "value2"}))]
     #[serde(default)]
     pub domain: HashMap<ComponentPropKey, serde_json::Value>,
+
+    #[schema(example = json!({"secretDefinitionName": "secretId", "secretDefinitionName": "secretName"}))]
+    #[serde(default)]
+    pub secrets: HashMap<SecretPropKey, serde_json::Value>,
 
     #[schema(example = "MyComponentName", required = true)]
     pub name: String,

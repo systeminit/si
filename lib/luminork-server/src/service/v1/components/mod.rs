@@ -15,6 +15,8 @@ use dal::{
     Component,
     ComponentId,
     Func,
+    PropId,
+    SchemaVariantId,
     action::{
         ActionError,
         prototype::{
@@ -23,8 +25,16 @@ use dal::{
         },
     },
     management::prototype::ManagementPrototype,
+    prop::{
+        PROP_PATH_SEPARATOR,
+        PropPath,
+        PropResult,
+    },
 };
-use serde::Deserialize;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use thiserror::Error;
 use utoipa::ToSchema;
 
@@ -77,6 +87,8 @@ pub enum ComponentsError {
     Func(#[from] dal::FuncError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] dal::socket::input::InputSocketError),
+    #[error("invalid secret value: {0}")]
+    InvalidSecretValue(String),
     #[error("management function not found: {0}")]
     ManagementFunctionNotFound(String),
     #[error("prop error: {0}")]
@@ -91,6 +103,10 @@ pub enum ComponentsError {
     SchemaNameNotFound(String),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] dal::SchemaVariantError),
+    #[error("secret error: {0}")]
+    Secret(#[from] dal::SecretError),
+    #[error("secret not found: {0}")]
+    SecretNotFound(String),
     #[error("serde_json error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("transactions error: {0}")]
@@ -107,8 +123,48 @@ pub enum ComponentsError {
 
 pub type ComponentsResult<T> = Result<T, ComponentsError>;
 
+/// Resolves a secret value (ID or name) to a SecretId
+pub async fn resolve_secret_id(
+    ctx: &dal::DalContext,
+    value: &serde_json::Value,
+) -> ComponentsResult<dal::SecretId> {
+    match value {
+        serde_json::Value::String(value_str) => {
+            if let Ok(id) = value_str.parse() {
+                if dal::Secret::get_by_id(ctx, id).await.is_ok() {
+                    Ok(id)
+                } else {
+                    let secrets = dal::Secret::list(ctx).await?;
+                    let found_secret = secrets
+                        .into_iter()
+                        .find(|s| s.name() == value_str)
+                        .ok_or_else(|| {
+                            ComponentsError::SecretNotFound(format!(
+                                "Secret '{}' not found",
+                                value_str
+                            ))
+                        })?;
+                    Ok(found_secret.id())
+                }
+            } else {
+                let secrets = dal::Secret::list(ctx).await?;
+                let found_secret = secrets
+                    .into_iter()
+                    .find(|s| s.name() == value_str)
+                    .ok_or_else(|| {
+                        ComponentsError::SecretNotFound(format!("Secret '{}' not found", value_str))
+                    })?;
+                Ok(found_secret.id())
+            }
+        }
+        _ => Err(ComponentsError::InvalidSecretValue(format!(
+            "Secret value must be a string containing ID or name, got: {}",
+            value
+        ))),
+    }
+}
+
 #[derive(Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
 pub struct ComponentV1RequestPath {
     #[schema(value_type = String)]
     pub component_id: ComponentId,
@@ -150,6 +206,10 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
             ComponentsError::ManagementFunctionNotFound(_) => {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
+            ComponentsError::SecretNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            ComponentsError::Secret(dal::SecretError::SecretNotFound(_)) => {
+                (StatusCode::NOT_FOUND, self.to_string())
+            }
             ComponentsError::ActionAlreadyEnqueued(_) => (StatusCode::CONFLICT, self.to_string()),
             ComponentsError::DuplicateComponentName(_) => {
                 (StatusCode::PRECONDITION_FAILED, self.to_string())
@@ -162,6 +222,9 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
             }
             ComponentsError::ViewNotFound(_) => (StatusCode::PRECONDITION_FAILED, self.to_string()),
             ComponentsError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
+            ComponentsError::InvalidSecretValue(_) => {
+                (StatusCode::UNPROCESSABLE_ENTITY, self.to_string())
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
     }
@@ -207,6 +270,71 @@ pub async fn get_component_functions(
     }
 
     Ok((management_functions, action_functions))
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, ToSchema)]
+#[serde(untagged)]
+pub enum ComponentPropKey {
+    #[schema(value_type = String)]
+    PropId(PropId),
+    PropPath(DomainPropPath),
+}
+
+impl ComponentPropKey {
+    pub async fn prop_id(
+        &self,
+        ctx: &dal::DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropResult<PropId> {
+        match self {
+            ComponentPropKey::PropId(prop_id) => Ok(*prop_id),
+            ComponentPropKey::PropPath(path) => {
+                dal::Prop::find_prop_id_by_path(ctx, schema_variant_id, &path.to_prop_path()).await
+            }
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, ToSchema)]
+#[serde(untagged)]
+pub enum SecretPropKey {
+    #[schema(value_type = String)]
+    PropId(PropId),
+    PropPath(SecretPropPath),
+}
+
+impl SecretPropKey {
+    pub async fn prop_id(
+        &self,
+        ctx: &dal::DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropResult<PropId> {
+        match self {
+            SecretPropKey::PropId(prop_id) => Ok(*prop_id),
+            SecretPropKey::PropPath(path) => {
+                dal::Prop::find_prop_id_by_path(ctx, schema_variant_id, &path.to_prop_path()).await
+            }
+        }
+    }
+}
+
+/// A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as its separator
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, ToSchema)]
+pub struct DomainPropPath(pub String);
+
+impl DomainPropPath {
+    pub fn to_prop_path(&self) -> PropPath {
+        PropPath::new(["root", "domain"]).join(&self.0.replace("/", PROP_PATH_SEPARATOR).into())
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, ToSchema)]
+pub struct SecretPropPath(pub String);
+
+impl SecretPropPath {
+    pub fn to_prop_path(&self) -> PropPath {
+        PropPath::new(["root", "secrets"]).join(&self.0.replace("/", PROP_PATH_SEPARATOR).into())
+    }
 }
 
 pub fn routes() -> Router<AppState> {

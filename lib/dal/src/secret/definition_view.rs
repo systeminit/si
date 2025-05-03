@@ -31,21 +31,19 @@ pub enum SecretDefinitionViewError {
 
 type SecretDefinitionViewResult<T> = Result<T, SecretDefinitionViewError>;
 
-/// A view of the definition of a [`Secret`](crate::Secret).
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all(serialize = "camelCase"))]
 pub struct SecretDefinitionView {
-    /// The name of the [`Prop`] that corresponds to the secret definition.
     pub secret_definition: String,
-    form_data: Vec<SecretFormDataView>,
+    pub form_data: Vec<SecretFormDataView>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all(serialize = "camelCase"))]
-struct SecretFormDataView {
-    name: String,
-    kind: String,
-    widget_kind: PropertyEditorPropWidgetKind,
+pub struct SecretFormDataView {
+    pub name: String,
+    pub kind: String,
+    pub widget_kind: PropertyEditorPropWidgetKind,
 }
 
 impl SecretDefinitionView {

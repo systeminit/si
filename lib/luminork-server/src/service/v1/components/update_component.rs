@@ -7,14 +7,7 @@ use axum::{
 use dal::{
     AttributeValue,
     Component,
-    PropId,
-    SchemaVariantId,
     WsEvent,
-    prop::{
-        PROP_PATH_SEPARATOR,
-        PropPath,
-        PropResult,
-    },
 };
 use serde::{
     Deserialize,
@@ -28,11 +21,14 @@ use utoipa::{
 };
 
 use super::{
+    ComponentPropKey,
     ComponentV1RequestPath,
+    SecretPropKey,
     connections::{
         Connection,
         handle_connection,
     },
+    resolve_secret_id,
 };
 use crate::{
     api_types::component::v1::ComponentViewV1,
@@ -47,38 +43,6 @@ use crate::{
 };
 
 /// Component property key
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, ToSchema)]
-#[serde(untagged)]
-pub enum ComponentPropKey {
-    #[schema(value_type = String)]
-    PropId(PropId),
-    PropPath(DomainPropPath),
-}
-
-impl ComponentPropKey {
-    pub async fn prop_id(
-        &self,
-        ctx: &dal::DalContext,
-        schema_variant_id: SchemaVariantId,
-    ) -> PropResult<PropId> {
-        match self {
-            ComponentPropKey::PropId(prop_id) => Ok(*prop_id),
-            ComponentPropKey::PropPath(path) => {
-                dal::Prop::find_prop_id_by_path(ctx, schema_variant_id, &path.to_prop_path()).await
-            }
-        }
-    }
-}
-
-/// A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as its separator
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash, ToSchema)]
-pub struct DomainPropPath(pub String);
-
-impl DomainPropPath {
-    pub fn to_prop_path(&self) -> PropPath {
-        PropPath::new(["root", "domain"]).join(&self.0.replace("/", PROP_PATH_SEPARATOR).into())
-    }
-}
 
 #[utoipa::path(
     put,
@@ -149,6 +113,16 @@ pub async fn update_component(
         let attribute_value_id =
             Component::attribute_value_for_prop_id(ctx, component_id, prop_id).await?;
         AttributeValue::update(ctx, attribute_value_id, Some(value.clone())).await?;
+    }
+
+    for (key, value) in payload.secrets.clone().into_iter() {
+        let prop_id = key.prop_id(ctx, variant_id).await?;
+
+        let secret_id = resolve_secret_id(ctx, &value).await?;
+
+        let attribute_value_id =
+            Component::attribute_value_for_prop_id(ctx, component_id, prop_id).await?;
+        dal::Secret::attach_for_attribute_value(ctx, attribute_value_id, Some(secret_id)).await?;
     }
 
     for unset in payload.unset.iter() {
@@ -222,6 +196,7 @@ pub async fn update_component(
             after_domain_tree: Some(after_value),
             added_connections: Some(added_connection_summary),
             deleted_connections: Some(removed_connection_summary),
+            added_secrets: payload.secrets.len(),
         },
         new_name.clone(),
     )
@@ -236,6 +211,7 @@ pub async fn update_component(
             "added_connections": payload.connection_changes.add.len(),
             "deleted_connections": payload.connection_changes.remove.len(),
             "updated_props": payload.domain.len() + payload.unset.len(),
+            "updated_secrets": payload.secrets.len(),
         }),
     );
 
@@ -255,6 +231,10 @@ pub struct UpdateComponentV1Request {
     #[schema(example = json!({"propId1": "value1", "path/to/prop": "value2"}))]
     #[serde(default)]
     pub domain: HashMap<ComponentPropKey, serde_json::Value>,
+
+    #[schema(example = json!({"secretDefinitionName": "secretId", "secretDefinitionName": "secretName"}))]
+    #[serde(default)]
+    pub secrets: HashMap<SecretPropKey, serde_json::Value>,
 
     #[schema(value_type = Vec<String>, example = json!(["propId1", "path/to/prop"]))]
     #[serde(default)]
