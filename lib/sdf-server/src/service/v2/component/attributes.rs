@@ -88,10 +88,13 @@ pub fn v2_routes() -> Router<AppState> {
 //         "/domain/DomainConfig/blah.com/TTL": 3600
 //       }
 //
-// - UNSET a value using `{ "$source": "value" }`. The value will revert to using its default value.
+// - UNSET a value using `{ "$source": null }`. The value will revert to using its default value.
+//   (NOTE: `{ "$source": {} }` unsets the value as well, allowing JS callers to construct the
+//   API call using `{ "$source": { value: myValueVariable } }``. If myValue is undefined, it
+//   will unset the value, but if it is null, it will set the value to null.
 //
 //       {
-//         "/domain/Timeout": { "$source": "value" },
+//         "/domain/Timeout": { "$source": null },
 //         "/domain/DomainConfig/blah.com/TTL": { "$source": "value" }
 //       }
 //
@@ -102,9 +105,9 @@ pub fn v2_routes() -> Router<AppState> {
 //   reverse order.*
 //
 //       {
-//         "/domain/Tags/Environment": { "$source": "value" },
-//         "/domain/IpAddresses/2": { "$source": "value" },
-//         "/domain/IpAddresses/1": { "$source": "value" }
+//         "/domain/Tags/Environment": { "$source": null },
+//         "/domain/IpAddresses/2": { "$source": null },
+//         "/domain/IpAddresses/1": { "$source": null }
 //       }
 //
 // - SUBSCRIBE to another attribute's value: this will cause the value to always equal another
@@ -113,15 +116,14 @@ pub fn v2_routes() -> Router<AppState> {
 //
 //       {
 //         "/domain/SubnetId": {
-//           "$source": "subscription",
-//           "component": "ComponentNameOrId",
-//           "path": "/resource/SubnetId"
+//           "$source": { "component": "ComponentNameOrId", "path": "/resource/SubnetId" }
 //         }
 //       }
 //
-// - ESCAPE HATCH for setting a value: setting an attribute to `{ "$source": "value", "value": <value> }`
+// - ESCAPE HATCH for setting a value: setting an attribute to `{ "$source": { "value": <value> } }`
 //   has the same behavior as all the above cases. The reason this exists is, if you happen to
-//   have an object whose keys are "$source" and "value", the existing interface would treat that
+//   have an object with a "$source" key, the existing interface would treat that as an error.
+//   This allows you to set that value anyway.
 //
 //   This is a safer way to "escape" values if you are writing code that sets values generically
 //   without knowing their types and can avoid misinterpreted instructions or possibly even
@@ -129,8 +131,9 @@ pub fn v2_routes() -> Router<AppState> {
 //
 //       {
 //         "/domain/Tags": {
-//           "$source": "value",
-//           "value": { "Environment": "Prod", "$source": "ThisTagIsActuallyNamed_$source" }
+//           "$source": {
+//             "value": { "$source": "ThisTagIsActuallyNamed_$source" }
+//           }
 //         }
 //       }
 //
@@ -138,7 +141,7 @@ async fn update_attributes(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
     Path(ComponentIdFromPath { component_id }): Path<ComponentIdFromPath>,
-    Json(updates): Json<HashMap<String, SetTo>>,
+    Json(updates): Json<HashMap<String, ValueOrSourceSpec>>,
 ) -> Result<ForceChangeSetResponse<()>> {
     let force_change_set_id = ChangeSet::force_new(ctx).await?;
     let target_root_id = Component::root_attribute_value_id(ctx, component_id).await?;
@@ -147,71 +150,73 @@ async fn update_attributes(
     let mut subscription_count = 0;
     for (target_path, value) in updates {
         let target_path = AttributePath::from_json_pointer(&target_path);
-        match value {
-            SetTo::Value { value } | SetTo::UntaggedValue(value) => match value {
-                SetToValue::Set(value) => {
-                    set_count += 1;
+        match value.try_into()? {
+            Some(value) => {
+                set_count += 1;
 
-                    // Create or update the value
-                    let target_av_id = target_path.vivify(ctx, target_root_id).await?;
-                    AttributeValue::update(ctx, target_av_id, value.into()).await?
+                // Create or update the attribute at the given path
+                let target_av_id = target_path.vivify(ctx, target_root_id).await?;
+                match value {
+                    Source::Value(value) => {
+                        AttributeValue::update(ctx, target_av_id, value.into()).await?
+                    }
+                    Source::Subscription {
+                        component: source_component,
+                        path: source_path,
+                    } => {
+                        subscription_count += 1;
+
+                        // Look up (or create) the AV based on its path
+                        let target_av_id = target_path.vivify(ctx, target_root_id).await?;
+
+                        // First resolve the component_id (might be a name), then subscribe to the
+                        // given path
+                        let source_component_id = source_component
+                            .resolve(ctx)
+                            .await?
+                            .ok_or(Error::SourceComponentNotFound(source_component.0))?;
+                        let source_root_id =
+                            Component::root_attribute_value_id(ctx, source_component_id).await?;
+
+                        // Make sure the subscribed-to path is valid (i.e. it doesn't have to resolve
+                        // to a value *right now*, but it must be a valid path to the schema as it
+                        // exists--correct prop names, numeric indices for arrays, etc.)
+                        let source_path = AttributePath::from_json_pointer(source_path);
+                        let source_root_prop_id =
+                            AttributeValue::prop_id(ctx, source_root_id).await?;
+                        source_path.validate(ctx, source_root_prop_id).await?;
+
+                        // Subscribe!
+                        AttributeValue::subscribe(
+                            ctx,
+                            target_av_id,
+                            ValueSubscription {
+                                attribute_value_id: source_root_id,
+                                path: source_path,
+                            },
+                        )
+                        .await?;
+                    }
                 }
-                SetToValue::Unset => {
-                    unset_count += 1;
+            }
+            None => {
+                unset_count += 1;
 
-                    // Unset or remove the value if it exists
-                    if let Some(target_av_id) = target_path.resolve(ctx, target_root_id).await? {
-                        if parent_prop_is_map_or_array(ctx, target_av_id).await? {
-                            // If the parent is a map or array, remove the value
-                            AttributeValue::remove_by_id(ctx, target_av_id).await?;
-                        } else {
-                            // Otherwise, just set it to its default value
-                            if AttributeValue::component_prototype_id(ctx, target_av_id)
-                                .await?
-                                .is_some()
-                            {
-                                AttributeValue::use_default_prototype(ctx, target_av_id).await?;
-                            }
+                // Unset or remove the value if it exists
+                if let Some(target_av_id) = target_path.resolve(ctx, target_root_id).await? {
+                    if parent_prop_is_map_or_array(ctx, target_av_id).await? {
+                        // If the parent is a map or array, remove the value
+                        AttributeValue::remove_by_id(ctx, target_av_id).await?;
+                    } else {
+                        // Otherwise, just set it to its default value
+                        if AttributeValue::component_prototype_id(ctx, target_av_id)
+                            .await?
+                            .is_some()
+                        {
+                            AttributeValue::use_default_prototype(ctx, target_av_id).await?;
                         }
                     }
                 }
-            },
-            SetTo::Subscription {
-                component: source_component,
-                path: source_path,
-            } => {
-                set_count += 1;
-                subscription_count += 1;
-
-                // Look up (or create) the AV based on its path
-                let target_av_id = target_path.vivify(ctx, target_root_id).await?;
-
-                // First resolve the component_id (might be a name), then subscribe to the
-                // given path
-                let source_component_id = source_component
-                    .resolve(ctx)
-                    .await?
-                    .ok_or(Error::SourceComponentNotFound(source_component.0))?;
-                let source_root_id =
-                    Component::root_attribute_value_id(ctx, source_component_id).await?;
-
-                // Make sure the subscribed-to path is valid (i.e. it doesn't have to resolve
-                // to a value *right now*, but it must be a valid path to the schema as it
-                // exists--correct prop names, numeric indices for arrays, etc.)
-                let source_path = AttributePath::from_json_pointer(source_path);
-                let source_root_prop_id = AttributeValue::prop_id(ctx, source_root_id).await?;
-                source_path.validate(ctx, source_root_prop_id).await?;
-
-                // Subscribe!
-                AttributeValue::subscribe(
-                    ctx,
-                    target_av_id,
-                    ValueSubscription {
-                        attribute_value_id: source_root_id,
-                        path: source_path,
-                    },
-                )
-                .await?;
             }
         }
     }
@@ -269,39 +274,85 @@ async fn parent_prop_is_map_or_array(ctx: &DalContext, av_id: AttributeValueId) 
     Ok(matches!(parent_prop.kind, PropKind::Map | PropKind::Array))
 }
 
+// The source for a value
 #[derive(Deserialize, Clone, Debug)]
-#[serde(tag = "$source")]
-#[serde(rename_all = "camelCase")]
-#[serde(deny_unknown_fields)]
-enum SetTo {
-    // Set or unset a value for this attribute
-    // { "$source": "value", value: <value> } - set value
-    // { "$source": "value" } - unset value (this is what happens if you send JS { "$source": "value", "value": undefined })
-    Value {
-        #[serde(default)]
-        value: SetToValue,
-    },
-    // Subscribe this value to a path from a component
-    // { "$source": "subscription", component: "ComponentNameOrId", path: "/domain/Foo/Bar/0/Baz" }
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+enum Source {
+    // { value: <value> } - set value (null is a valid value to set it to)
+    Value(serde_json::Value),
+
+    // { component: "ComponentNameOrId", path: "/domain/Foo/Bar/0/Baz" } - subscribe this value to a path from a component
+    #[serde(untagged)]
     Subscription {
         component: ComponentIdent,
         path: String,
     },
-    // Anything else is treated as a value (treated same as { "$source": "value", value: <value> })
-    #[serde(untagged)]
-    UntaggedValue(SetToValue),
 }
 
-// Like Option<serde_json::Value>, except missing values are treated as None (serde special cases
-// Option<serde_json::Value> to treat null as None).
-#[derive(Deserialize, Clone, Debug, Default)]
-#[serde(untagged)]
-enum SetToValue {
-    // All actual values (including null)
-    Set(serde_json::Value),
-    // Missing field is treated as Unset
-    #[default]
-    Unset,
+/// Either raw value or a { "$source": ... } spec (JSON for the source/value for an attribute)
+/// Use TryInto<Option<Source> to get Source out of it. If $source is set wrong, you will BadSourceSpecError.
+#[derive(Deserialize, Clone, Debug)]
+#[serde(untagged, rename = "camelCase")]
+enum ValueOrSourceSpec {
+    /// Explicit sources:
+    /// - static value: { "$source": { value: ... } }
+    /// - subscription: { "$source": { component: "ComponentNameOrId", path: "/domain/Foo/Bar/0/Baz" } }
+    /// - unset value: { "$source": null } or { "$source": {} } - unset value
+    SourceSpec(SourceSpec),
+    /// Catch errors: if it isn't a valid source, but has a "$source" field, treat it as an error
+    /// so you get a 400 if you misuse the API
+    BadSourceSpec {
+        #[serde(rename = "$source")]
+        source: serde_json::Value,
+        #[serde(flatten)]
+        extra: serde_json::Value,
+    },
+    /// Any other JSON value is accepted and treated the same as { "$source": { "value": <value> } }
+    RawValue(serde_json::Value),
+}
+
+/// Used in ValueOrSourceSpecJson { "$source": <source> }
+#[derive(Deserialize, Clone, Debug)]
+#[serde(rename = "camelCase", deny_unknown_fields)]
+struct SourceSpec {
+    #[serde(rename = "$source")]
+    source: MaybeSource,
+}
+
+/// Source or "unset" ({} or null). Used mainly for JSON deserialization.
+/// Use Into<Option<Source>> to get the real source.
+#[derive(Deserialize, Clone, Debug)]
+#[serde(untagged, rename = "camelCase", deny_unknown_fields)]
+enum MaybeSource {
+    Source(Source),
+    EmptyObject {},
+    Null,
+}
+
+impl From<MaybeSource> for Option<Source> {
+    fn from(from: MaybeSource) -> Self {
+        match from {
+            MaybeSource::Source(source) => Some(source),
+            MaybeSource::EmptyObject {} | MaybeSource::Null => None,
+        }
+    }
+}
+
+impl TryFrom<ValueOrSourceSpec> for Option<Source> {
+    type Error = Error;
+    fn try_from(from: ValueOrSourceSpec) -> Result<Self> {
+        match from {
+            ValueOrSourceSpec::SourceSpec(SourceSpec { source }) => Ok(source.into()),
+            ValueOrSourceSpec::BadSourceSpec { source, extra } => {
+                if extra.as_object().is_none_or(|o| o.is_empty()) {
+                    Err(Error::AttributeSourceInvalid(source))
+                } else {
+                    Err(Error::AttributeSourceHasExtraFields(source, extra))
+                }
+            }
+            ValueOrSourceSpec::RawValue(value) => Ok(Some(Source::Value(value))),
+        }
+    }
 }
 
 #[derive(Deserialize, Clone, Debug)]
