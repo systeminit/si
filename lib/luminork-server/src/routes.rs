@@ -65,14 +65,12 @@ async fn app_state_middeware<B>(
 ) -> Response {
     match *state.application_runtime_mode.read().await {
         ApplicationRuntimeMode::Maintenance => {
-            // Return a 503 when the server is in maintenance/offline
             (StatusCode::SERVICE_UNAVAILABLE, MAINTENANCE_MODE_MESSAGE).into_response()
         }
         ApplicationRuntimeMode::Running => next.run(request).await,
     }
 }
 
-// Define the OpenAPI document for your API
 #[derive(OpenApi)]
 #[openapi(
     paths(
@@ -97,20 +95,19 @@ async fn app_state_middeware<B>(
         (name = "funcs", description = "Functions management endpoints"),
     ),
     info(
-        title = "Luminork API",
-        description = "System Initiative External API server",
+        title = "System Initiative API",
+        description = "The API Server for interacting with a System Initiative workspace",
         version = "1.0.0"
     ),
     servers(
-        (url = "/", description = "Public API Server for System Initiative")
+        (url = "/", description = "This API Server")
     )
 )]
 struct ApiDoc;
 
-// Define the schema for the system status response
 #[derive(serde::Serialize, ToSchema)]
 struct SystemStatusResponse {
-    #[schema(example = "I am luminork, the new System Initiative External API server")]
+    #[schema(example = "I am luminork, the new System Initiative External API application")]
     #[serde(rename = "What is this?")]
     what_is_this: String,
 
@@ -119,7 +116,6 @@ struct SystemStatusResponse {
     api_documentation: String,
 }
 
-// Define the schema for error responses
 #[derive(serde::Serialize, ToSchema)]
 struct ErrorResponse {
     error: ErrorDetail,
@@ -153,13 +149,9 @@ pub fn routes(state: AppState) -> Router {
         Ok(Json(openapi))
     }
 
-    // Wrapper for openapi_handler that will inject global query parameter definitions
     async fn openapi_handler_with_globals() -> Result<Json<serde_json::Value>, (StatusCode, String)>
     {
-        // Get the original OpenAPI spec
         let original_response = openapi_handler().await?;
-
-        // Convert to Value for manipulation
         let mut spec = serde_json::to_value(original_response.0).map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -167,18 +159,14 @@ pub fn routes(state: AppState) -> Router {
             )
         })?;
 
-        // Inject global parameters
         if let Some(components) = spec.get_mut("components") {
             if let Some(comp_obj) = components.as_object_mut() {
-                // Create parameters object if it doesn't exist
                 if !comp_obj.contains_key("parameters") {
                     comp_obj.insert("parameters".to_string(), json!({}));
                 }
 
-                // Add global workspace_id parameter
                 if let Some(parameters) = comp_obj.get_mut("parameters") {
                     if let Some(params_obj) = parameters.as_object_mut() {
-                        // Add workspace_id parameter definition
                         params_obj.insert(
                             "WorkspaceId".to_string(),
                             json!({
@@ -193,7 +181,6 @@ pub fn routes(state: AppState) -> Router {
                             }),
                         );
 
-                        // Add change_set_id parameter definition
                         params_obj.insert(
                             "ChangeSetId".to_string(),
                             json!({
@@ -212,7 +199,6 @@ pub fn routes(state: AppState) -> Router {
             }
         }
 
-        // Return the modified spec
         Ok(Json(spec))
     }
 
@@ -275,12 +261,11 @@ pub fn routes(state: AppState) -> Router {
 )]
 async fn system_status_route() -> Json<Value> {
     Json(json!({
-        "What is this?": "I am luminork, the new System Initiative External API server",
+        "What is this?": "I am luminork, the new System Initiative External API application",
         "API Documentation": "Available at /swagger-ui"
     }))
 }
 
-/// Serve a static HTML page that contains Swagger UI
 async fn serve_swagger_ui() -> impl IntoResponse {
     const SWAGGER_UI_HTML: &str = r#"<!DOCTYPE html>
 <html lang="en">
