@@ -18,6 +18,10 @@ pub mod name;
 #[remain::sorted]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("attribute $source: {0} has extra fields: {1}")]
+    AttributeSourceHasExtraFields(serde_json::Value, serde_json::Value),
+    #[error("invalid attribute $source: {0}")]
+    AttributeSourceInvalid(serde_json::Value),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] dal::attribute::value::AttributeValueError),
     #[error("change set error: {0}")]
@@ -43,7 +47,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let status_code = match self {
-            Error::NoValueToSet(_) | Error::SourceComponentNotFound(_) => StatusCode::BAD_REQUEST,
+            Error::AttributeSourceHasExtraFields(..)
+            | Error::AttributeSourceInvalid(..)
+            | Error::NoValueToSet(..)
+            | Error::SourceComponentNotFound(..) => StatusCode::BAD_REQUEST,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 

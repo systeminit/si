@@ -228,6 +228,124 @@ type EventBusEvents = {
   openConnectionsMenu: ConnectionMenuData;
 };
 
+// A set of attributes you want to set, with the values you want to set them to.
+//
+// - SET constant attribute values by putting the path to the attribute you want to set as the key,
+//   and the value you want to set it to on the right.
+//
+//       {
+//         "/si/name": "Baby's First Subnet",
+//         "/domain/IpAddresses/0": "10.0.0.1",
+//         "/domain/Tags/Environment": "production",
+//         "/domain/DomainConfig/blah.com/TTL": 3600
+//       }
+//
+// - REPLACE objects/arrays/maps: of special note, if you set an entire array, map or object,
+//   it *replaces* its value, and all existing keys are removed or unset. Another way of saying
+//   it: after you do this, the attribute on the left will be exactly equal to the value
+//   on the right, nothing more, nothing less.
+//
+//     {
+//       "/domain/Tags": { "Environment": "production" },
+//       "/domain/IpAddresses": [ "10.0.0.1", "10.0.0.2" ],
+//       "/domain/DomainConfig/blah.com": { "TTL": 3600 },
+//       "/domain": { "IpAddresses": [ "10.0.0.1" ] }
+//     }
+//
+// - APPEND to array using `-` (or by setting the n+1'th element). If you set an array element
+//   that doesn't exist yet, it will be created. `-` is a special syntax for "add a new array
+//   element with this value," that doesn't require you to know the (the drawback being you
+//   can't append multiple elements to the same array in one API using `-`).
+//
+//   It is an error to create an array element too far off the end of the array, but you can
+//   specify multiple separate elements in order if you want. (It is probably easier to replace
+//   the whole array in that case.)
+//
+//       {
+//         "/domain/IpAddresses/0": "10.0.0.0",
+//         "/domain/IpAddresses/1": "10.0.0.1",
+//         "/domain/IpAddresses/2": "10.0.0.2",
+//         "/domain/IpAddresses/-": "10.0.0.3"
+//       }
+//
+// - INSERT to map by setting its value: if you set a map element that hasn't been created yet,
+//   it will be created. This will also happen if you set a *field* in a map element that doesn't exist yet (i.e. a
+//   map element with object values).
+//
+//       {
+//         "/domain/Tags/Environment": "production",
+//         "/domain/DomainConfig/blah.com/TTL": 3600
+//       }
+//
+// - UNSET a value using `{ "$source": "value" }`. The value will revert to using its default value.
+//
+//       {
+//         "/domain/Timeout": { "$source": "value" },
+//         "/domain/DomainConfig/blah.com/TTL": { "$source": "value" }
+//       }
+//
+// - REMOVE an array or map element: unsetting an array or map element will remove it from the
+//   array or map. The remaining elements will shift over (it won't "leave a hole").
+//
+//   *Of note: if you want to remove multiple specific array elements, you should pass them in
+//   reverse order.*
+//
+//       {
+//         "/domain/Tags/Environment": { "$source": "value" },
+//         "/domain/IpAddresses/2": { "$source": "value" },
+//         "/domain/IpAddresses/1": { "$source": "value" }
+//       }
+//
+// - SUBSCRIBE to another attribute's value: this will cause the value to always equal another
+//   attribute's value. Components may be specified by their name (which must be globally unique)
+//   or ComponentId.
+//
+//       {
+//         "/domain/SubnetId": {
+//           "$source": "subscription",
+//           "component": "ComponentNameOrId",
+//           "path": "/resource/SubnetId"
+//         }
+//       }
+//
+// - ESCAPE HATCH for setting a value: setting an attribute to `{ "$source": "value", "value": <value> }`
+//   has the same behavior as all the above cases. The reason this exists is, if you happen to
+//   have an object whose keys are "$source" and "value", the existing interface would treat that
+//
+//   This is a safer way to "escape" values if you are writing code that sets values generically
+//   without knowing their types and can avoid misinterpreted instructions or possibly even
+//   avoid injection attacks.
+//
+//       {
+//         "/domain/Tags": {
+//           "$source": "value",
+//           "value": { "Environment": "Prod", "$source": "ThisTagIsActuallyNamed_$source" }
+//         }
+//       }
+//
+export type UpdateComponentAttributesArgs = Record<
+  AttributePath,
+  AttributeSource
+>;
+
+// Things you can set an attribute to
+export type AttributeSource =
+  // Set attribute to a subscription (another component's value feeds it)
+  | { $source: { component: ComponentId | ComponentName; path: AttributePath } }
+  // Unset the value with a null value (or empty object/object with undefined for value)
+  | { $source: null }
+  | { $source: { value?: undefined } }
+  // Set attribute to a constant JS value (safest way to set to a static value that might contain $source keys)
+  | { $source: { value: unknown } }
+  // Set attribute to a constant JS value (can be any JSON--object, array, string, number, boolean, null)
+  // This is a shorthand for { $source: { value: <value> }}
+  | unknown;
+
+// JSON pointer to the attribute, relative to the component root (e.g. /domain/IpAddresses/0 or /si/name)
+export type AttributePath = string;
+// Component name
+export type ComponentName = string;
+
 export const generateSocketPaths = (
   socket: DiagramSocketData,
   viewsStore: ReturnType<typeof useViewsStore>,
@@ -1164,6 +1282,19 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     delete this.diagramEdgesById[edge.id];
                   }
                 };
+              },
+            });
+          },
+
+          async UPDATE_COMPONENT_ATTRIBUTES(
+            componentId: ComponentId,
+            payload: UpdateComponentAttributesArgs,
+          ) {
+            return new ApiRequest({
+              method: "put",
+              url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/components/${componentId}/attributes`,
+              params: {
+                ...payload,
               },
             });
           },
