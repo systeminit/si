@@ -17,6 +17,7 @@ const FLAG_MAPPING = {
   FLOATING_CONNECTION_MENU: "floating-connection-menu",
   SIMPLE_SOCKET_UI: "simple-socket-ui",
   SQLITE_TOOLS: "sqlite-tools",
+  PROPS_TO_PROPS_CONNECTIONS: "props-to-props-connections",
 };
 
 const WORKSPACE_FLAG_MAPPING = {

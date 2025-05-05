@@ -201,6 +201,7 @@ export type APIComponentGeometry = {
 export type ConnectionMenuStateEntry = {
   componentId: ComponentId;
   socketId: SocketId;
+  attributePath: string;
 };
 
 export type ConnectionDirection = "output" | "input";
@@ -1296,6 +1297,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               params: {
                 ...payload,
               },
+              passRequestUlidInHeadersOnly: true,
             });
           },
 
