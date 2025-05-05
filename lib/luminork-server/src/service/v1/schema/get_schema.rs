@@ -5,14 +5,12 @@ use axum::{
 use dal::{
     Schema,
     SchemaVariant,
-    SchemaVariantId,
 };
 use itertools::Itertools;
-use serde::Serialize;
 use serde_json::json;
-use utoipa::ToSchema;
 
 use super::{
+    GetSchemaV1Response,
     SchemaError,
     SchemaResult,
     SchemaV1RequestPath,
@@ -65,15 +63,4 @@ pub async fn get_schema(
         default_variant_id,
         variant_ids: variants.into_iter().map(|v| v.id).collect_vec(),
     }))
-}
-
-#[derive(Serialize, Debug, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct GetSchemaV1Response {
-    #[schema(value_type = String)]
-    pub name: String,
-    #[schema(value_type = String)]
-    pub default_variant_id: SchemaVariantId,
-    #[schema(value_type = Vec<String>)]
-    pub variant_ids: Vec<SchemaVariantId>,
 }

@@ -19,6 +19,7 @@ use utoipa::ToSchema;
 
 use crate::AppState;
 
+pub mod find_schema;
 pub mod get_default_variant;
 pub mod get_schema;
 pub mod get_variant;
@@ -29,8 +30,12 @@ pub mod list_schema;
 pub enum SchemaError {
     #[error("cached module error: {0}")]
     CachedModule(#[from] dal::cached_module::CachedModuleError),
+    #[error("decode error: {0}")]
+    Decode(#[from] ulid::DecodeError),
     #[error("schema error: {0}")]
     Schema(#[from] dal::SchemaError),
+    #[error("schema not found by name: {0}")]
+    SchemaNameNotFound(String),
     #[error("schema not found error: {0}")]
     SchemaNotFound(SchemaId),
     #[error("schema variant error: {0}")]
@@ -70,6 +75,7 @@ impl crate::service::v1::common::ErrorIntoResponse for SchemaError {
     fn status_and_message(&self) -> (StatusCode, String) {
         match self {
             SchemaError::SchemaNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            SchemaError::SchemaNameNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             SchemaError::SchemaVariantNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             SchemaError::SchemaVariantNotMemberOfSchema(_, _) => {
                 (StatusCode::PRECONDITION_REQUIRED, self.to_string())
@@ -100,6 +106,7 @@ impl From<JsonRejection> for SchemaError {
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list_schema::list_schemas))
+        .route("/find", get(find_schema::find_schema))
         .nest(
             "/:schema_id",
             Router::new().route("/", get(get_schema::get_schema)).nest(
@@ -137,4 +144,15 @@ pub struct GetSchemaVariantV1Response {
     pub variant_func_ids: Vec<FuncId>,
     #[schema(value_type = bool)]
     pub is_default_variant: bool,
+}
+
+#[derive(Serialize, Debug, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GetSchemaV1Response {
+    #[schema(value_type = String)]
+    pub name: String,
+    #[schema(value_type = String)]
+    pub default_variant_id: SchemaVariantId,
+    #[schema(value_type = Vec<String>)]
+    pub variant_ids: Vec<SchemaVariantId>,
 }

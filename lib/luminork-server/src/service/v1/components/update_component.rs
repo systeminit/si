@@ -42,8 +42,6 @@ use crate::{
     },
 };
 
-/// Component property key
-
 #[utoipa::path(
     put,
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}",

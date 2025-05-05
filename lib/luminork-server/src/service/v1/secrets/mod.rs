@@ -8,8 +8,8 @@ use axum::{
     routing::{
         delete,
         get,
-        patch,
         post,
+        put,
     },
 };
 use dal::{
@@ -86,6 +86,14 @@ impl From<JsonRejection> for SecretsError {
 impl crate::service::v1::common::ErrorIntoResponse for SecretsError {
     fn status_and_message(&self) -> (StatusCode, String) {
         match self {
+            SecretsError::Secret(dal::SecretError::SecretNotFound(_)) => {
+                (StatusCode::NOT_FOUND, self.to_string())
+            }
+            SecretsError::SecretNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            SecretsError::SecretWithInvalidDefinition(_) => {
+                (StatusCode::NOT_FOUND, self.to_string())
+            }
+            SecretsError::CantDeleteSecret(_) => (StatusCode::CONFLICT, self.to_string()),
             SecretsError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
@@ -96,10 +104,11 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(get_secrets::get_secrets))
         .route("/", post(create_secret::create_secret))
-        .route("/", patch(update_secret::update_secret))
         .nest(
             "/:secret_id",
-            Router::new().route("/", delete(delete_secret::delete_secret)),
+            Router::new()
+                .route("/", delete(delete_secret::delete_secret))
+                .route("/", put(update_secret::update_secret)),
         )
 }
 
