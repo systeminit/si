@@ -301,13 +301,11 @@ const rightClickMenuItems = computed(() => {
       });
     }
   }
-  if (featureFlagsStore.CONVERT_TO_VIEW) {
-    items.push({
-      label: "Convert to View",
-      icon: "create",
-      onSelect: convertToView,
-    });
-  }
+  items.push({
+    label: "Convert to View",
+    icon: "create",
+    onSelect: convertToView,
+  });
   items.push({
     label: "Remove",
     icon: "x-circle",
