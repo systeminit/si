@@ -38,6 +38,7 @@ use dal::{
     slow_rt::SlowRuntimeError,
     workspace::SnapshotVersion,
 };
+use innit_client::InnitClientError;
 use sdf_core::api_error::ApiError;
 use serde::{
     Deserialize,
@@ -63,6 +64,7 @@ use crate::{
 
 mod get_cas_data;
 mod get_snapshot;
+mod innit;
 mod kill_execution;
 mod list_change_sets;
 mod search_workspaces;
@@ -85,6 +87,8 @@ pub enum AdminAPIError {
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("func runner error: {0}")]
     FuncRunner(#[from] FuncRunnerError),
+    #[error("innit error: {0}")]
+    Innit(#[from] InnitClientError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("multipart error: {0}")]
@@ -183,13 +187,14 @@ pub type AdminAPIResult<T> = Result<T, AdminAPIError>;
 
 pub fn v2_routes(state: AppState) -> Router<AppState> {
     Router::new()
-        .route(
-            "/update_module_cache",
-            post(update_module_cache::update_module_cache),
-        )
+        .route("/innit/cache/clear", post(innit::clear_parameter_cache))
         .route(
             "/func/runs/:func_run_id/kill_execution",
             put(kill_execution::kill_execution),
+        )
+        .route(
+            "/update_module_cache",
+            post(update_module_cache::update_module_cache),
         )
         .route("/workspaces", get(search_workspaces::search_workspaces))
         .route(
