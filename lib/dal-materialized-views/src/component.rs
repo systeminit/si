@@ -2,39 +2,18 @@ use dal::{
     AttributePrototype,
     AttributeValue,
     Component,
+    ComponentId,
     DalContext,
     InputSocket,
     OutputSocket,
     attribute::prototype::argument::AttributePrototypeArgument,
     qualification::QualificationSummary,
 };
-use si_frontend_types::newhotness::component::{
-    Component as ComponentMv,
-    ComponentList,
-};
-use si_id::ComponentId;
+use si_frontend_types::newhotness::component::Component as ComponentMv;
+use telemetry::prelude::*;
 
-/// Generates a [`ComponentList`] MV.
-pub async fn as_frontend_list_type(ctx: DalContext) -> super::Result<ComponentList> {
-    let ctx = &ctx;
-    let component_ids = Component::list_ids(ctx).await?;
-    let mut components = Vec::with_capacity(component_ids.len());
-
-    for component_id in component_ids {
-        components.push(as_frontend_type(ctx.clone(), component_id).await?);
-    }
-
-    Ok(ComponentList {
-        id: ctx.change_set_id(),
-        components: components.iter().map(Into::into).collect(),
-    })
-}
-
-/// Generates a [`Component`] MV.
-pub async fn as_frontend_type(
-    ctx: DalContext,
-    component_id: ComponentId,
-) -> super::Result<ComponentMv> {
+#[instrument(name = "dal_materialized_views.component", level = "debug", skip_all)]
+pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Result<ComponentMv> {
     let ctx = &ctx;
     let schema_variant = Component::schema_variant_for_component_id(ctx, component_id).await?;
     let schema = schema_variant.schema(ctx).await?;

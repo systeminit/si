@@ -370,7 +370,7 @@ async fn build_mv_inner(
                                 change,
                                 mv_id,
                                 si_frontend_types::action::prototype::ActionPrototypeViewList,
-                                dal::action::prototype::ActionPrototype::as_frontend_list_type(
+                                dal_materialized_views::action_prototype_view_list::assemble(
                                     ctx.clone(),
                                     si_events::ulid::Ulid::from(change.entity_id).into()
                                 ),
@@ -392,7 +392,7 @@ async fn build_mv_inner(
                                 change,
                                 mv_id,
                                 si_frontend_types::action::ActionViewList,
-                                dal::action::Action::as_frontend_list_type(ctx.clone()),
+                                dal_materialized_views::action_view_list::assemble(ctx.clone()),
                             );
                         }
                         ReferenceKind::AttributeTree => {
@@ -411,7 +411,7 @@ async fn build_mv_inner(
                                 change,
                                 mv_id,
                                 si_frontend_types::newhotness::attribute_tree::AttributeTree,
-                                dal_materialized_views::attribute_tree::as_frontend_type(
+                                dal_materialized_views::attribute_tree::assemble(
                                     ctx.clone(),
                                     si_events::ulid::Ulid::from(change.entity_id).into(),
                                 ),
@@ -433,7 +433,7 @@ async fn build_mv_inner(
                                 change,
                                 mv_id,
                                 si_frontend_types::newhotness::component::Component,
-                                dal_materialized_views::component::as_frontend_type(
+                                dal_materialized_views::component::assemble(
                                     ctx.clone(),
                                     si_events::ulid::Ulid::from(change.entity_id).into(),
                                 ),
@@ -455,9 +455,7 @@ async fn build_mv_inner(
                                 change,
                                 mv_id,
                                 si_frontend_types::newhotness::component::ComponentList,
-                                dal_materialized_views::component::as_frontend_list_type(
-                                    ctx.clone(),
-                                ),
+                                dal_materialized_views::component_list::assemble(ctx.clone(),),
                             );
                         }
                         ReferenceKind::SchemaVariantCategories => {
@@ -476,7 +474,7 @@ async fn build_mv_inner(
                                 change,
                                 mv_id,
                                 si_frontend_types::schema_variant::SchemaVariantCategories,
-                                dal::schema::variant::SchemaVariant::as_frontend_list_type_by_category(
+                                dal_materialized_views::schema_variant_categories::assemble(
                                     ctx.clone(),
                                 )
                             );
@@ -497,7 +495,7 @@ async fn build_mv_inner(
                                 change,
                                 mv_id,
                                 si_frontend_types::view::View,
-                                dal::diagram::view::View::as_frontend_type(
+                                dal_materialized_views::view::assemble(
                                     ctx.clone(),
                                     si_events::ulid::Ulid::from(change.entity_id).into()
                                 )
@@ -519,7 +517,7 @@ async fn build_mv_inner(
                                 change,
                                 mv_id,
                                 si_frontend_types::view::ViewList,
-                                dal::diagram::view::View::as_frontend_list_type(ctx.clone()),
+                                dal_materialized_views::view_list::assemble(ctx.clone()),
                             );
                         }
                         ReferenceKind::ViewComponentList => {
@@ -538,7 +536,7 @@ async fn build_mv_inner(
                                 change,
                                 mv_id,
                                 si_frontend_types::view::ViewComponentList,
-                                dal_materialized_views::view::components_as_frontend_list_type(
+                                dal_materialized_views::view_component_list::assemble(
                                     ctx.clone(),
                                     si_events::ulid::Ulid::from(change.entity_id).into(),
                                 ),

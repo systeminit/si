@@ -11,7 +11,6 @@ use dal::{
     WorkspacePk,
     diagram::{
         Diagram,
-        DiagramError,
         geometry::{
             Geometry,
             GeometryRepresents,
@@ -29,7 +28,6 @@ use serde::{
     Serialize,
 };
 use si_frontend_types::RawGeometry;
-use telemetry::prelude::debug;
 
 use crate::{
     extract::HandlerContext,
@@ -66,23 +64,9 @@ pub async fn get_geometry(
     let mut views = HashMap::new();
 
     for geometry in Geometry::list_by_view_id(&ctx, view_id).await? {
-        let geo_represents = match Geometry::represented_id(&ctx, geometry.id()).await {
-            Ok(id) => id,
-            Err(DiagramError::RepresentedNotFoundForGeometry(geo_id)) => {
-                let changeset_id = ctx.change_set_id();
-                // NOTE(victor): The first version of views didn't delete geometries with components,
-                // so we have dangling geometries in some workspaces. We should clean this up at some point,
-                // but we just skip orphan geometries here to make assemble work.
-
-                debug!(
-                    si.change_set.id = %changeset_id,
-                    si.geometry.id = %geo_id,
-                    "Could not find component for geometry - skipping"
-                );
-
-                continue;
-            }
-            Err(err) => return Err(err)?,
+        let geo_represents = match Geometry::represented_id(&ctx, geometry.id()).await? {
+            Some(id) => id,
+            None => continue,
         };
 
         match geo_represents {

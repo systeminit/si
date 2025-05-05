@@ -13,10 +13,7 @@ use serde::{
     Serialize,
 };
 use si_events::ulid::Ulid;
-use si_frontend_types::action::{
-    ActionView,
-    ActionViewList,
-};
+use si_id::FuncRunId;
 use si_layer_cache::LayerDbError;
 use strum::{
     AsRefStr,
@@ -37,7 +34,6 @@ use crate::{
     DalContext,
     EdgeWeightKind,
     EdgeWeightKindDiscriminants,
-    Func,
     FuncError,
     HelperError,
     TransactionsError,
@@ -663,69 +659,16 @@ impl Action {
         Ok(())
     }
 
-    #[instrument(name = "action.as_frontend_list_type", level = "info", skip_all)]
-    pub async fn as_frontend_list_type(ctx: DalContext) -> ActionResult<ActionViewList> {
-        let ctx = &ctx;
-        let action_ids = Self::list_topologically(ctx).await?;
-
-        let mut views = Vec::new();
-
-        let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
-        if !action_graph.is_acyclic() {
-            warn!("action graph has a cycle");
-        }
-
-        for action_id in action_ids {
-            let action = Self::get_by_id(ctx, action_id).await?;
-
-            let prototype_id = Self::prototype_id(ctx, action_id).await?;
-            let func_id = ActionPrototype::func_id(ctx, prototype_id).await?;
-            let func = Func::get_by_id(ctx, func_id).await?;
-            let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
-            let func_run_id = ctx
-                .layer_db()
-                .func_run()
-                .get_last_run_for_action_id_opt(ctx.events_tenancy().workspace_pk, action.id())
-                .await?
-                .map(|f| f.id());
-
-            let component_id = Self::component_id(ctx, action_id).await?;
-            let (component_schema_name, component_name) = match component_id {
-                Some(component_id) => {
-                    let schema = Component::schema_for_component_id(ctx, component_id).await?;
-                    let component_name = Component::name_by_id(ctx, component_id).await?;
-                    (Some(schema.name().to_owned()), Some(component_name))
-                }
-                None => (None, None),
-            };
-
-            views.push(ActionView {
-                id: action_id,
-                prototype_id: prototype.id(),
-                name: prototype.name().clone(),
-                component_id,
-                component_schema_name,
-                component_name,
-                description: func.display_name,
-                kind: prototype.kind.into(),
-                state: action.state(),
-                func_run_id,
-                originating_change_set_id: action.originating_changeset_id(),
-                my_dependencies: action_graph.get_all_dependencies(action_id),
-                dependent_on: action_graph.direct_dependencies_of(action_id),
-                hold_status_influenced_by: Self::get_hold_status_influenced_by(
-                    ctx,
-                    &action_graph,
-                    action_id,
-                )
-                .await?,
-            })
-        }
-
-        Ok(ActionViewList {
-            id: ctx.change_set_id(),
-            actions: views,
-        })
+    pub async fn last_func_run_id_for_id_opt(
+        ctx: &DalContext,
+        id: ActionId,
+    ) -> ActionResult<Option<FuncRunId>> {
+        Ok(ctx
+            .layer_db()
+            .func_run()
+            .get_last_run_for_action_id_opt(ctx.events_tenancy().workspace_pk, id)
+            .await?
+            .map(|f| f.id()))
     }
 }
 

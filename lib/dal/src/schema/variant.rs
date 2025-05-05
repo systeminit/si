@@ -34,14 +34,6 @@ use si_frontend_types::{
     DiagramSocketDirection,
     DiagramSocketNodeSide,
     SchemaVariant as FrontendVariant,
-    UninstalledVariant,
-    schema_variant::{
-        DisambiguateVariant,
-        SchemaVariantCategories,
-        SchemaVariantsByCategory,
-        Variant,
-        VariantType,
-    },
 };
 use si_layer_cache::LayerDbError;
 use si_pkg::SpecError;
@@ -98,10 +90,7 @@ use crate::{
             ValueIsFor,
         },
     },
-    cached_module::{
-        CachedModule,
-        CachedModuleError,
-    },
+    cached_module::CachedModuleError,
     change_set::ChangeSetError,
     diagram::SummaryDiagramManagementEdge,
     func::{
@@ -315,78 +304,6 @@ pub struct SchemaVariant {
 }
 
 impl SchemaVariant {
-    pub async fn as_frontend_list_type_by_category(
-        ctx: DalContext,
-    ) -> SchemaVariantResult<SchemaVariantCategories> {
-        let ctx = &ctx;
-        let mut variant_by_category = HashMap::new();
-
-        let installed = SchemaVariant::list_user_facing(ctx).await?;
-        let mut installed_schema_ids = HashSet::new();
-        let mut installed_cat_and_name = HashSet::new();
-        for installed_variant in &installed {
-            let category = installed_variant.category.as_str();
-            let variants = variant_by_category
-                .entry(category.to_owned())
-                .or_insert(vec![]);
-            variants.push(DisambiguateVariant {
-                variant: Variant::SchemaVariant(installed_variant.clone()),
-                variant_type: VariantType::Installed,
-                id: installed_variant.schema_variant_id.to_string(),
-            });
-
-            installed_schema_ids.insert(installed_variant.schema_id);
-            installed_cat_and_name.insert((category, installed_variant.schema_name.as_str()));
-        }
-
-        let cached_modules: Vec<CachedModule> = CachedModule::latest_modules(ctx).await?;
-
-        // We want to hide uninstalled modules that would create duplicate assets in
-        // the AssetPanel in old workspace. We do this just by name + category
-        // matching. (We also hide if the schema is installed)
-        for module in cached_modules {
-            let category = module.category.to_owned();
-            let category = category.as_deref().unwrap_or("");
-
-            let schema_name = module.schema_name.as_str();
-            if !installed_schema_ids.contains(&module.schema_id)
-                && !installed_cat_and_name.contains(&(category, schema_name))
-            {
-                let module_id = module.id.to_string();
-                let variants = variant_by_category
-                    .entry(category.to_owned())
-                    .or_insert(vec![]);
-                let uninstalled: UninstalledVariant = module.into();
-                variants.push(DisambiguateVariant {
-                    variant: Variant::UninstalledVariant(uninstalled),
-                    variant_type: VariantType::Uninstalled,
-                    id: module_id, // is this right? no SV id?
-                });
-            }
-        }
-
-        let mut categories: Vec<SchemaVariantsByCategory> = vec![];
-        for (name, variants) in variant_by_category.iter() {
-            let mut variants = variants.to_vec();
-            variants.sort_by_key(|v| match v.variant.to_owned() {
-                Variant::SchemaVariant(schema_variant) => schema_variant.display_name,
-                Variant::UninstalledVariant(uninstalled_variant) => uninstalled_variant
-                    .display_name
-                    .unwrap_or(uninstalled_variant.schema_name),
-            });
-            categories.push(SchemaVariantsByCategory {
-                display_name: name.to_string(),
-                schema_variants: variants,
-            });
-        }
-        categories.sort_by_key(|c| c.display_name.to_owned());
-
-        Ok(SchemaVariantCategories {
-            id: ctx.change_set_id(),
-            categories,
-        })
-    }
-
     pub async fn into_frontend_type(
         self,
         ctx: &DalContext,

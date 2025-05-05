@@ -3,9 +3,11 @@ use std::collections::HashSet;
 use dal::{
     AttributePrototype,
     AttributeValue,
+    AttributeValueId,
     Component,
     DalContext,
     Func,
+    InputSocketId,
     Prop,
     SchemaVariant,
     Secret,
@@ -15,7 +17,7 @@ use dal::{
     validation::ValidationOutputNode,
 };
 use si_frontend_types::newhotness::attribute_tree::{
-    AttributeTree,
+    AttributeTree as AttributeTreeMv,
     AttributeValue as AttributeValueMv,
     Prop as PropMv,
     PropWidgetKind,
@@ -23,17 +25,14 @@ use si_frontend_types::newhotness::attribute_tree::{
     WidgetOption,
     WidgetOptions,
 };
-use si_id::{
-    AttributeValueId,
-    InputSocketId,
-};
-use telemetry::tracing::warn;
+use telemetry::prelude::*;
 
-/// Generates an [`AttributeTree`] MV.
-pub async fn as_frontend_type(
-    ctx: DalContext,
-    id: AttributeValueId,
-) -> super::Result<AttributeTree> {
+#[instrument(
+    name = "dal_materialized_views.attribute_tree",
+    level = "debug",
+    skip_all
+)]
+pub async fn assemble(ctx: DalContext, id: AttributeValueId) -> super::Result<AttributeTreeMv> {
     let ctx = &ctx;
     // FIXME(nick): the controlling func data for this is wrong. We will need to adjust. Why not do it
     // at the time this PR is written? We are not sure what we need and don't need in the new attribute
@@ -264,7 +263,7 @@ pub async fn as_frontend_type(
         overridden,
     };
 
-    Ok(AttributeTree {
+    Ok(AttributeTreeMv {
         id,
         // FIXME(nick): we've gotten into scenarios where this can fail due to a missing edge to a
         // prop. We need to handle this error with more grace.
