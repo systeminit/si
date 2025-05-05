@@ -27,7 +27,6 @@
 
 mod config;
 mod server;
-
 pub use config::{
     Config,
     ConfigError,
@@ -35,3 +34,7 @@ pub use config::{
     StandardConfigFile,
 };
 pub use server::Server;
+pub use si_settings::{
+    ConfigMap,
+    ParameterProvider,
+};

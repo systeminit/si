@@ -8,6 +8,7 @@ load(
 rust_binary(
     name = "pinga",
     deps = [
+        "//lib/innit-client:innit-client",
         "//lib/pinga-server:pinga-server",
         "//lib/si-service:si-service",
         "//third-party/rust:clap",

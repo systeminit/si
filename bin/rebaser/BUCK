@@ -8,6 +8,7 @@ load(
 rust_binary(
     name = "rebaser",
     deps = [
+        "//lib/innit-client:innit-client",
         "//lib/rebaser-server:rebaser-server",
         "//lib/si-service:si-service",
         "//third-party/rust:clap",

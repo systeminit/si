@@ -14,5 +14,6 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { workspace = true }
+innit-client = { path = "../../lib/innit-client" }
 rebaser-server = { path = "../../lib/rebaser-server" }
 si-service = { path = "../../lib/si-service" }

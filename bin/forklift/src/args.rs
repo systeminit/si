@@ -8,11 +8,13 @@ use forklift_server::{
     Config,
     ConfigError,
     ConfigFile,
+    ConfigMap,
+    ParameterProvider,
     StandardConfigFile,
 };
 use si_service::prelude::*;
 
-const NAME: &str = "forklift";
+pub const NAME: &str = "forklift";
 
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
@@ -104,36 +106,55 @@ pub(crate) struct Args {
     pub(crate) enable_audit_logs_app: Option<bool>,
 }
 
+fn build_config_map(args: Args, config_map: &mut ConfigMap) -> &ConfigMap {
+    if let Some(instance_id) = args.instance_id {
+        config_map.set("instance_id", instance_id);
+    }
+    if let Some(concurrency_limit) = args.concurrency_limit {
+        config_map.set("concurrency_limit", i64::from(concurrency_limit));
+    }
+    if let Some(url) = args.nats_url {
+        config_map.set("nats.url", url.clone());
+    }
+    if let Some(creds) = args.nats_creds {
+        config_map.set("nats.creds", creds.to_string());
+    }
+    if let Some(creds_path) = args.nats_creds_path {
+        config_map.set("nats.creds_file", creds_path.display().to_string());
+    }
+    config_map.set("nats.connection_name", NAME);
+    if let Some(data_warehouse_stream_name) = args.data_warehouse_stream_name {
+        config_map.set("data_warehouse_stream_name", data_warehouse_stream_name);
+    }
+    if let Some(enable_audit_logs_app) = args.enable_audit_logs_app {
+        config_map.set("enable_audit_logs_app", enable_audit_logs_app);
+    }
+    config_map
+}
+
 impl TryFrom<Args> for Config {
     type Error = ConfigError;
 
     fn try_from(args: Args) -> Result<Self, Self::Error> {
         ConfigFile::layered_load(NAME, |config_map| {
-            if let Some(instance_id) = args.instance_id {
-                config_map.set("instance_id", instance_id);
-            }
-            if let Some(concurrency_limit) = args.concurrency_limit {
-                config_map.set("concurrency_limit", i64::from(concurrency_limit));
-            }
-            if let Some(url) = args.nats_url {
-                config_map.set("nats.url", url.clone());
-            }
-            if let Some(creds) = args.nats_creds {
-                config_map.set("nats.creds", creds.to_string());
-            }
-            if let Some(creds_path) = args.nats_creds_path {
-                config_map.set("nats.creds_file", creds_path.display().to_string());
-            }
-            config_map.set("nats.connection_name", NAME);
-            if let Some(data_warehouse_stream_name) = args.data_warehouse_stream_name {
-                config_map.set("data_warehouse_stream_name", data_warehouse_stream_name);
-            }
-            if let Some(enable_audit_logs_app) = args.enable_audit_logs_app {
-                config_map.set("enable_audit_logs_app", enable_audit_logs_app);
-            }
+            build_config_map(args, config_map);
         })?
         .try_into()
     }
+}
+
+pub async fn load_config_with_provider<P>(
+    args: Args,
+    provider: Option<P>,
+) -> Result<Config, ConfigError>
+where
+    P: ParameterProvider + 'static,
+{
+    ConfigFile::layered_load_with_provider::<_, P>(NAME, provider, move |config_map| {
+        build_config_map(args, config_map);
+    })
+    .await?
+    .try_into()
 }
 
 #[cfg(test)]

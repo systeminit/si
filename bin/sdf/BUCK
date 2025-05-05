@@ -8,6 +8,7 @@ load(
 rust_binary(
     name = "sdf",
     deps = [
+        "//lib/innit-client:innit-client",
         "//lib/sdf-server:sdf-server",
         "//lib/si-service:si-service",
         "//third-party/rust:clap",

@@ -9,6 +9,7 @@ rust_binary(
     name = "forklift",
     deps = [
         "//lib/forklift-server:forklift-server",
+        "//lib/innit-client:innit-client",
         "//lib/si-service:si-service",
         "//third-party/rust:clap",
     ],

@@ -15,6 +15,10 @@ use si_data_nats::{
     async_nats,
 };
 use si_data_pg::PgPoolError;
+pub use si_settings::{
+    ConfigMap,
+    ParameterProvider,
+};
 use thiserror::Error;
 
 pub use crate::{

@@ -39,6 +39,8 @@ mod serial_dvu_task;
 mod server;
 
 pub use si_settings::{
+    ConfigMap,
+    ParameterProvider,
     StandardConfig,
     StandardConfigFile,
 };

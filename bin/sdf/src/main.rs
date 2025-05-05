@@ -5,6 +5,7 @@ use std::{
     time::Duration,
 };
 
+use innit_client::InnitClient;
 use sdf_server::{
     Config,
     Migrator,
@@ -22,6 +23,11 @@ use si_service::{
         self,
         TelemetryShutdownGuard,
     },
+};
+
+use crate::args::{
+    NAME,
+    load_config_with_provider,
 };
 
 mod args;
@@ -103,7 +109,10 @@ async fn async_main() -> Result<()> {
         )
         .await
     } else {
-        let config = Config::try_from(args)?;
+        debug!("creating innit-client...");
+        let provider = Some(InnitClient::new_from_environment(NAME.to_string()).await?);
+        let config = load_config_with_provider(args, provider).await?;
+
         debug!(?config, "computed configuration");
 
         if config.migration_mode().is_run_and_quit() {

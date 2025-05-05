@@ -12,15 +12,17 @@ use sdf_server::{
     Config,
     ConfigError,
     ConfigFile,
+    ConfigMap,
     FeatureFlag,
     MigrationMode,
+    ParameterProvider,
     StandardConfigFile,
     WorkspacePermissions,
     WorkspacePermissionsMode,
 };
 use si_service::prelude::*;
 
-const NAME: &str = "sdf";
+pub const NAME: &str = "sdf";
 
 /// Parse, validate, and return the CLI arguments as a typed struct.
 pub(crate) fn parse() -> Args {
@@ -288,171 +290,189 @@ impl Args {
         self.generate_symmetric_key_path.clone()
     }
 }
+fn build_config_map(args: Args, config_map: &mut ConfigMap) -> &ConfigMap {
+    if let Some(instance_id) = args.instance_id {
+        config_map.set("instance_id", instance_id);
+    }
+
+    if let Some(dbname) = args.pg_dbname {
+        config_map.set("pg.dbname", dbname);
+    }
+
+    if let Some(layer_cache_pg_dbname) = args.layer_db_pg_dbname {
+        config_map.set(
+            "layer_db_config.pg_pool_config.dbname",
+            layer_cache_pg_dbname,
+        );
+    }
+    if let Some(hostname) = args.pg_hostname {
+        config_map.set("pg.hostname", hostname.clone());
+        config_map.set("layer_db_config.pg_pool_config.hostname", hostname);
+    }
+    if let Some(pool_max_size) = args.pg_pool_max_size {
+        config_map.set("pg.pool_max_size", i64::from(pool_max_size));
+        config_map.set(
+            "layer_db_config.pg_pool_config.pool_max_size",
+            i64::from(pool_max_size),
+        );
+    }
+    if let Some(port) = args.pg_port {
+        config_map.set("pg.port", i64::from(port));
+        config_map.set("layer_db_config.pg_pool_config.port", i64::from(port));
+    }
+    if let Some(user) = args.pg_user {
+        config_map.set("pg.user", user.clone());
+        config_map.set("layer_db_config.pg_pool_config.user", user);
+    }
+    if let Some(cert_path) = args.pg_cert_path {
+        config_map.set("pg.certificate_path", cert_path.display().to_string());
+        config_map.set(
+            "layer_db_config.pg_pool_config.certificate_path",
+            cert_path.display().to_string(),
+        );
+    }
+    if let Some(recycling_method) = args.pg_recycling_method {
+        config_map.set("pg.recycling_method", recycling_method.clone());
+        config_map.set(
+            "layer_db_config.pg_pool_config.recycling_method",
+            recycling_method,
+        );
+    }
+    if let Some(cert) = args.pg_cert_base64 {
+        config_map.set("pg.certificate_base64", cert.to_string());
+        config_map.set(
+            "layer_db_config.pg_pool_config.certificate_base64",
+            cert.to_string(),
+        );
+    }
+    if let Some(migration_mode) = args.migration_mode {
+        config_map.set("migration_mode", migration_mode);
+    }
+    if let Some(url) = args.nats_url {
+        config_map.set("nats.url", url.clone());
+        config_map.set("layer_db_config.nats_config.url", url);
+    }
+    if let Some(creds) = args.nats_creds {
+        config_map.set("nats.creds", creds.to_string());
+        config_map.set("layer_db_config.nats_config.creds", creds.to_string());
+    }
+    if let Some(creds_file) = args.nats_creds_path {
+        config_map.set("nats.creds_file", creds_file.display().to_string());
+        config_map.set(
+            "layer_db_config.nats_config.creds_file",
+            creds_file.display().to_string(),
+        );
+    }
+    if let Some(veritech_encryption_key_file) = args.veritech_encryption_key_path {
+        config_map.set(
+            "crypto.encryption_key_file",
+            veritech_encryption_key_file.display().to_string(),
+        );
+    }
+    if let Some(veritech_encryption_key_base64) = args.veritech_encryption_key_base64 {
+        config_map.set(
+            "crypto.encryption_key_base64",
+            veritech_encryption_key_base64.to_string(),
+        );
+    }
+    if let Some(base64) = args.symmetric_crypto_active_key_base64 {
+        config_map.set(
+            "symmetric_crypto_service.active_key_base64",
+            base64.to_string(),
+        );
+    }
+
+    if let Some(jwt) = args.jwt_public_signing_key_base64 {
+        config_map.set("jwt_signing_public_key.key_base64", jwt);
+    }
+    if let Some(algo) = args.jwt_public_signing_key_algo {
+        config_map.set("jwt_signing_public_key.algo", algo);
+    }
+
+    if let Some(jwt) = args.jwt_secondary_public_signing_key_base64 {
+        config_map.set("jwt_secondary_signing_public_key.key_base64", jwt);
+    }
+    if let Some(algo) = args.jwt_secondary_public_signing_key_algo {
+        config_map.set("jwt_secondary_signing_public_key.algo", algo);
+    }
+
+    if let Some(layer_cache_disk_path) = args.layer_db_disk_path {
+        config_map.set("layer_db_config.disk_path", layer_cache_disk_path);
+    }
+    if let Some(pkgs_path) = args.pkgs_path {
+        config_map.set("pkgs_path", pkgs_path);
+    }
+    if let Some(module_index_url) = args.module_index_url {
+        config_map.set("module_index_url", module_index_url);
+    }
+
+    if let Some(auth_api_url) = args.auth_api_url {
+        config_map.set("auth_api_url", auth_api_url);
+    }
+
+    if let Some(openai_api_key) = args.openai_api_key {
+        config_map.set("openai.api_key", openai_api_key.to_string());
+    }
+    if let Some(openai_api_base) = args.openai_api_base {
+        config_map.set("openai.api_base", openai_api_base);
+    }
+    if let Some(openai_org_id) = args.openai_org_id {
+        config_map.set("openai.org_id", openai_org_id);
+    }
+    if let Some(openai_project_id) = args.openai_project_id {
+        config_map.set("openai.project_id", openai_project_id);
+    }
+
+    if let Some(asset_sprayer_prompts_dir) = args.asset_sprayer_prompts_dir {
+        config_map.set(
+            "asset_sprayer.prompts_dir",
+            asset_sprayer_prompts_dir.to_string(),
+        );
+    }
+
+    config_map.set("boot_feature_flags", args.features);
+
+    if let Some(create_workspace_permissions) = args.create_workspace_permissions {
+        config_map.set("create_workspace_permissions", create_workspace_permissions);
+    }
+
+    if !args.create_workspace_allowlist.is_empty() {
+        config_map.set(
+            "create_workspace_allowlist",
+            args.create_workspace_allowlist,
+        );
+    }
+
+    config_map.set("nats.connection_name", NAME);
+    config_map.set("pg.application_name", NAME);
+    config_map.set("layer_db_config.pg_pool_config.application_name", NAME);
+    config_map.set("layer_db_config.nats_config.connection_name", NAME);
+    config_map
+}
 
 impl TryFrom<Args> for Config {
     type Error = ConfigError;
 
     fn try_from(args: Args) -> Result<Self, Self::Error> {
         ConfigFile::layered_load(NAME, |config_map| {
-            if let Some(instance_id) = args.instance_id {
-                config_map.set("instance_id", instance_id);
-            }
-
-            if let Some(dbname) = args.pg_dbname {
-                config_map.set("pg.dbname", dbname);
-            }
-
-            if let Some(layer_cache_pg_dbname) = args.layer_db_pg_dbname {
-                config_map.set(
-                    "layer_db_config.pg_pool_config.dbname",
-                    layer_cache_pg_dbname,
-                );
-            }
-            if let Some(hostname) = args.pg_hostname {
-                config_map.set("pg.hostname", hostname.clone());
-                config_map.set("layer_db_config.pg_pool_config.hostname", hostname);
-            }
-            if let Some(pool_max_size) = args.pg_pool_max_size {
-                config_map.set("pg.pool_max_size", i64::from(pool_max_size));
-                config_map.set(
-                    "layer_db_config.pg_pool_config.pool_max_size",
-                    i64::from(pool_max_size),
-                );
-            }
-            if let Some(port) = args.pg_port {
-                config_map.set("pg.port", i64::from(port));
-                config_map.set("layer_db_config.pg_pool_config.port", i64::from(port));
-            }
-            if let Some(user) = args.pg_user {
-                config_map.set("pg.user", user.clone());
-                config_map.set("layer_db_config.pg_pool_config.user", user);
-            }
-            if let Some(cert_path) = args.pg_cert_path {
-                config_map.set("pg.certificate_path", cert_path.display().to_string());
-                config_map.set(
-                    "layer_db_config.pg_pool_config.certificate_path",
-                    cert_path.display().to_string(),
-                );
-            }
-            if let Some(recycling_method) = args.pg_recycling_method {
-                config_map.set("pg.recycling_method", recycling_method.clone());
-                config_map.set(
-                    "layer_db_config.pg_pool_config.recycling_method",
-                    recycling_method,
-                );
-            }
-            if let Some(cert) = args.pg_cert_base64 {
-                config_map.set("pg.certificate_base64", cert.to_string());
-                config_map.set(
-                    "layer_db_config.pg_pool_config.certificate_base64",
-                    cert.to_string(),
-                );
-            }
-            if let Some(migration_mode) = args.migration_mode {
-                config_map.set("migration_mode", migration_mode);
-            }
-            if let Some(url) = args.nats_url {
-                config_map.set("nats.url", url.clone());
-                config_map.set("layer_db_config.nats_config.url", url);
-            }
-            if let Some(creds) = args.nats_creds {
-                config_map.set("nats.creds", creds.to_string());
-                config_map.set("layer_db_config.nats_config.creds", creds.to_string());
-            }
-            if let Some(creds_file) = args.nats_creds_path {
-                config_map.set("nats.creds_file", creds_file.display().to_string());
-                config_map.set(
-                    "layer_db_config.nats_config.creds_file",
-                    creds_file.display().to_string(),
-                );
-            }
-            if let Some(veritech_encryption_key_file) = args.veritech_encryption_key_path {
-                config_map.set(
-                    "crypto.encryption_key_file",
-                    veritech_encryption_key_file.display().to_string(),
-                );
-            }
-            if let Some(veritech_encryption_key_base64) = args.veritech_encryption_key_base64 {
-                config_map.set(
-                    "crypto.encryption_key_base64",
-                    veritech_encryption_key_base64.to_string(),
-                );
-            }
-            if let Some(base64) = args.symmetric_crypto_active_key_base64 {
-                config_map.set(
-                    "symmetric_crypto_service.active_key_base64",
-                    base64.to_string(),
-                );
-            }
-
-            if let Some(jwt) = args.jwt_public_signing_key_base64 {
-                config_map.set("jwt_signing_public_key.key_base64", jwt);
-            }
-            if let Some(algo) = args.jwt_public_signing_key_algo {
-                config_map.set("jwt_signing_public_key.algo", algo);
-            }
-
-            if let Some(jwt) = args.jwt_secondary_public_signing_key_base64 {
-                config_map.set("jwt_secondary_signing_public_key.key_base64", jwt);
-            }
-            if let Some(algo) = args.jwt_secondary_public_signing_key_algo {
-                config_map.set("jwt_secondary_signing_public_key.algo", algo);
-            }
-
-            if let Some(layer_cache_disk_path) = args.layer_db_disk_path {
-                config_map.set("layer_db_config.disk_path", layer_cache_disk_path);
-            }
-            if let Some(pkgs_path) = args.pkgs_path {
-                config_map.set("pkgs_path", pkgs_path);
-            }
-            if let Some(module_index_url) = args.module_index_url {
-                config_map.set("module_index_url", module_index_url);
-            }
-
-            if let Some(auth_api_url) = args.auth_api_url {
-                config_map.set("auth_api_url", auth_api_url);
-            }
-
-            if let Some(openai_api_key) = args.openai_api_key {
-                config_map.set("openai.api_key", openai_api_key.to_string());
-            }
-            if let Some(openai_api_base) = args.openai_api_base {
-                config_map.set("openai.api_base", openai_api_base);
-            }
-            if let Some(openai_org_id) = args.openai_org_id {
-                config_map.set("openai.org_id", openai_org_id);
-            }
-            if let Some(openai_project_id) = args.openai_project_id {
-                config_map.set("openai.project_id", openai_project_id);
-            }
-
-            if let Some(asset_sprayer_prompts_dir) = args.asset_sprayer_prompts_dir {
-                config_map.set(
-                    "asset_sprayer.prompts_dir",
-                    asset_sprayer_prompts_dir.to_string(),
-                );
-            }
-
-            config_map.set("boot_feature_flags", args.features);
-
-            if let Some(create_workspace_permissions) = args.create_workspace_permissions {
-                config_map.set("create_workspace_permissions", create_workspace_permissions);
-            }
-
-            if !args.create_workspace_allowlist.is_empty() {
-                config_map.set(
-                    "create_workspace_allowlist",
-                    args.create_workspace_allowlist,
-                );
-            }
-
-            config_map.set("nats.connection_name", NAME);
-            config_map.set("pg.application_name", NAME);
-            config_map.set("layer_db_config.pg_pool_config.application_name", NAME);
-            config_map.set("layer_db_config.nats_config.connection_name", NAME);
+            build_config_map(args, config_map);
         })?
         .try_into()
     }
+}
+
+pub async fn load_config_with_provider<P>(
+    args: Args,
+    provider: Option<P>,
+) -> Result<Config, ConfigError>
+where
+    P: ParameterProvider + 'static,
+{
+    ConfigFile::layered_load_with_provider::<_, P>(NAME, provider, move |config_map| {
+        build_config_map(args, config_map);
+    })
+    .await?
+    .try_into()
 }
 
 #[cfg(test)]
