@@ -179,6 +179,12 @@ where
     trace!("merging defaults config for defaults={:?}", &serde_source);
     builder = builder.add_source(serde_source);
 
+    // Parameter provider (if provided)
+    if let Some(provider) = parameter_provider {
+        let param_source = ParameterSource::new(provider, app_name.to_string());
+        builder = param_source.load(builder).await?;
+    }
+
     // Add a config file, if relevant.
     //
     // # Implementation
@@ -259,12 +265,6 @@ where
                 .set_override(key, value)
                 .expect("tried to set programmatic value that was impossible! bug!");
         }
-    }
-
-    // Parameter provider (if provided)
-    if let Some(provider) = parameter_provider {
-        let param_source = ParameterSource::new(provider, app_name.to_string());
-        builder = param_source.load(builder).await?;
     }
 
     // Deserialize it into a config file struct
