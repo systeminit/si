@@ -8,7 +8,7 @@ use std::{
     str::FromStr,
 };
 
-use chrono::NaiveDateTime;
+use chrono::DateTime;
 use si_events::ulid::Ulid;
 use si_pkg::{
     SchemaVariantSpecPropRoot,
@@ -1233,7 +1233,7 @@ pub(crate) async fn import_schema_variant(
         }
         let old_versions = ["v0", "v1", "v2"];
         let version_date = if old_versions.contains(&variant_spec.version()) {
-            let date = NaiveDateTime::UNIX_EPOCH;
+            let date = DateTime::UNIX_EPOCH;
             format!("{}", date.format("%Y%m%d%H%M%S"))
         } else {
             variant_spec.version().to_owned()
