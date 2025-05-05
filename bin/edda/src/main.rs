@@ -1,9 +1,8 @@
 use std::time::Duration;
 
-use edda_server::{
-    Config,
-    Server,
-};
+use args::NAME;
+use edda_server::Server;
+use innit_client::InnitClient;
 use si_service::{
     color_eyre,
     prelude::*,
@@ -12,6 +11,8 @@ use si_service::{
     startup,
     telemetry_application,
 };
+
+use crate::args::load_config_with_provider;
 
 mod args;
 
@@ -63,7 +64,9 @@ async fn async_main() -> Result<()> {
     }
     debug!(arguments =?args, "parsed cli arguments");
 
-    let config = Config::try_from(args)?;
+    debug!("creating innit-client...");
+    let provider = Some(InnitClient::new_from_environment(NAME.to_string()).await?);
+    let config = load_config_with_provider(args, provider).await?;
     debug!(?config, "computed configuration");
 
     let server = Server::from_config(

@@ -8,6 +8,10 @@ mod config;
 pub mod extract;
 mod handlers;
 mod server;
+pub use si_settings::{
+    ConfigMap,
+    ParameterProvider,
+};
 
 pub use self::{
     config::{

@@ -45,6 +45,10 @@ pub use dal::{
         FeatureFlagService,
     },
 };
+pub use si_settings::{
+    ConfigMap,
+    ParameterProvider,
+};
 
 pub use self::{
     app::AxumApp,

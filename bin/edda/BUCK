@@ -9,6 +9,7 @@ rust_binary(
     name = "edda",
     deps = [
         "//lib/edda-server:edda-server",
+        "//lib/innit-client:innit-client",
         "//lib/si-service:si-service",
         "//third-party/rust:clap",
     ],

@@ -2585,6 +2585,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "edda-server",
+ "innit-client",
  "si-service",
 ]
 
@@ -2981,6 +2982,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "forklift-server",
+ "innit-client",
  "si-service",
 ]
 
@@ -5650,6 +5652,7 @@ name = "pinga"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "innit-client",
  "pinga-server",
  "si-service",
 ]
@@ -6211,6 +6214,7 @@ name = "rebaser"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "innit-client",
  "rebaser-server",
  "si-service",
 ]
@@ -6867,6 +6871,7 @@ name = "sdf"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "innit-client",
  "sdf-server",
  "si-service",
 ]
