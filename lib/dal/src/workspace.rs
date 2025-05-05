@@ -26,6 +26,7 @@ use si_db::workspace::{
     SEARCH_WORKSPACES_BY_ULID,
     SEARCH_WORKSPACES_USER_NAME_EMAIL,
     WORKSPACE_GET_BY_PK,
+    WORKSPACE_LIST_ALL,
     WORKSPACE_LIST_FOR_USER,
 };
 use si_events::{
@@ -85,6 +86,8 @@ use crate::{
         split_snapshot::{
             SplitSnapshot,
             SplitSnapshotGraph,
+            SubGraphVersionDiscriminants,
+            SuperGraphVersionDiscriminants,
         },
     },
 };
@@ -141,6 +144,21 @@ pub enum WorkspaceError {
 
 pub type WorkspaceResult<T> = Result<T, WorkspaceError>;
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SnapshotVersion {
+    Legacy(WorkspaceSnapshotGraphDiscriminants),
+    Split(SuperGraphVersionDiscriminants),
+}
+
+impl SnapshotVersion {
+    pub fn db_string(&self) -> String {
+        match self {
+            SnapshotVersion::Legacy(legacy) => legacy.to_string(),
+            SnapshotVersion::Split(split) => split.to_string(),
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Workspace {
     pk: WorkspacePk,
@@ -150,9 +168,10 @@ pub struct Workspace {
     #[serde(flatten)]
     timestamp: Timestamp,
     token: Option<String>,
-    snapshot_version: WorkspaceSnapshotGraphDiscriminants,
+    snapshot_version: SnapshotVersion,
     component_concurrency_limit: Option<i32>,
     snapshot_kind: WorkspaceSnapshotSelectorDiscriminants,
+    subgraph_version: Option<SubGraphVersionDiscriminants>,
 }
 
 impl TryFrom<PgRow> for Workspace {
@@ -161,10 +180,29 @@ impl TryFrom<PgRow> for Workspace {
     fn try_from(row: PgRow) -> Result<Self, Self::Error> {
         let created_at: DateTime<Utc> = row.try_get("created_at")?;
         let updated_at: DateTime<Utc> = row.try_get("updated_at")?;
-        let snapshot_version: String = row.try_get("snapshot_version")?;
-        let snapshot_kind: String = row.try_get("snapshot_kind")?;
-        let pk = row.try_get("pk")?;
+        let snapshot_version_string: String = row.try_get("snapshot_version")?;
+        let snapshot_kind_string: String = row.try_get("snapshot_kind")?;
+        let subgraph_version_string: Option<String> = row.try_get("subgraph_version")?;
+        let snapshot_kind =
+            WorkspaceSnapshotSelectorDiscriminants::from_str(&snapshot_kind_string)?;
 
+        let snapshot_version = match snapshot_kind {
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => SnapshotVersion::Legacy(
+                WorkspaceSnapshotGraphDiscriminants::from_str(&snapshot_version_string)?,
+            ),
+            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => SnapshotVersion::Split(
+                SuperGraphVersionDiscriminants::from_str(&snapshot_version_string)?,
+            ),
+        };
+
+        let subgraph_version = match subgraph_version_string {
+            Some(subgraph_version_string) => Some(SubGraphVersionDiscriminants::from_str(
+                &subgraph_version_string,
+            )?),
+            None => None,
+        };
+
+        let pk = row.try_get("pk")?;
         Ok(Self {
             pk,
             name: row.try_get("name")?,
@@ -175,9 +213,10 @@ impl TryFrom<PgRow> for Workspace {
                 updated_at,
             },
             token: row.try_get("token")?,
-            snapshot_version: WorkspaceSnapshotGraphDiscriminants::from_str(&snapshot_version)?,
+            snapshot_version,
             component_concurrency_limit: row.try_get("component_concurrency_limit")?,
-            snapshot_kind: WorkspaceSnapshotSelectorDiscriminants::from_str(&snapshot_kind)?,
+            snapshot_kind,
+            subgraph_version,
         })
     }
 }
@@ -199,12 +238,33 @@ impl Workspace {
         self.token.clone()
     }
 
-    pub fn snapshot_version(&self) -> WorkspaceSnapshotGraphDiscriminants {
+    pub fn snapshot_version(&self) -> SnapshotVersion {
         self.snapshot_version
     }
 
     pub fn snapshot_kind(&self) -> WorkspaceSnapshotSelectorDiscriminants {
         self.snapshot_kind
+    }
+
+    pub fn subgraph_version(&self) -> Option<SubGraphVersionDiscriminants> {
+        self.subgraph_version
+    }
+
+    pub fn is_current_version_and_kind(&self) -> bool {
+        match self.snapshot_kind() {
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => false,
+            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
+                match self.snapshot_version() {
+                    SnapshotVersion::Legacy(_) => false,
+                    SnapshotVersion::Split(split_version) => {
+                        split_version == SuperGraphVersionDiscriminants::current_discriminant()
+                            && self.subgraph_version().is_some_and(|version| {
+                                version == SubGraphVersionDiscriminants::current()
+                            })
+                    }
+                }
+            }
+        }
     }
 
     pub async fn set_token(&mut self, ctx: &DalContext, token: String) -> WorkspaceResult<()> {
@@ -248,8 +308,14 @@ impl Workspace {
             // 'reset' the workspace snapshot so that we remigrate all builtins on each startup
             let new_snapshot = WorkspaceSnapshot::initial(ctx).await?;
             let new_snap_address = new_snapshot.write(ctx).await?;
-            let new_change_set =
-                ChangeSet::new(ctx, DEFAULT_CHANGE_SET_NAME, None, new_snap_address).await?;
+            let new_change_set = ChangeSet::new(
+                ctx,
+                DEFAULT_CHANGE_SET_NAME,
+                None,
+                new_snap_address,
+                WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot,
+            )
+            .await?;
             found_builtin
                 .update_default_change_set_id(ctx, new_change_set.id)
                 .await?;
@@ -270,6 +336,7 @@ impl Workspace {
             DEFAULT_CHANGE_SET_NAME,
             None,
             workspace_snapshot.id().await,
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot,
         )
         .await?;
         let change_set_id = change_set.id;
@@ -322,6 +389,23 @@ impl Workspace {
         Ok(maybe_builtin)
     }
 
+    pub async fn list_all(ctx: &DalContext) -> WorkspaceResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(WORKSPACE_LIST_ALL, &[])
+            .await?;
+
+        let mut result = vec![];
+
+        for row in rows {
+            result.push(Self::try_from(row)?);
+        }
+
+        Ok(result)
+    }
+
     pub async fn list_for_user(ctx: &DalContext) -> WorkspaceResult<Vec<Self>> {
         let user_pk = match ctx.history_actor() {
             HistoryActor::User(user_pk) => *user_pk,
@@ -336,10 +420,8 @@ impl Workspace {
 
         let mut result = Vec::new();
 
-        for row in rows.into_iter() {
-            let json: serde_json::Value = row.try_get("object")?;
-            let workspace = serde_json::from_value(json)?;
-            result.push(workspace);
+        for row in rows {
+            result.push(Self::try_from(row)?);
         }
 
         Ok(result)
@@ -353,9 +435,8 @@ impl Workspace {
         let query = query.unwrap_or("").trim();
 
         let rows = if query.len() < 3 {
-            let select_stmt = format!(
-                "SELECT row_to_json(w.*) AS object FROM workspaces AS w ORDER BY created_at DESC LIMIT {limit}"
-            );
+            let select_stmt =
+                format!("SELECT * FROM workspaces AS w ORDER BY created_at DESC LIMIT {limit}");
 
             ctx.txns().await?.pg().query(&select_stmt, &[]).await?
         } else {
@@ -385,18 +466,23 @@ impl Workspace {
 
         let mut result = Vec::new();
         for row in rows.into_iter() {
-            let json: serde_json::Value = row.try_get("object")?;
-            let workspace = serde_json::from_value(json)?;
-            result.push(workspace);
+            result.push(Self::try_from(row)?);
         }
 
         Ok(result)
     }
 
     pub async fn find_first_user_workspace(ctx: &DalContext) -> WorkspaceResult<Option<Self>> {
-        let maybe_row = ctx.txns().await?.pg().query_opt(
-            "SELECT row_to_json(w.*) AS object FROM workspaces AS w WHERE pk != $1 ORDER BY created_at ASC LIMIT 1", &[&WorkspacePk::NONE],
-        ).await?;
+        let maybe_row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(
+                "SELECT w.* FROM workspaces AS w WHERE pk != $1 ORDER BY created_at ASC LIMIT 1",
+                &[&WorkspacePk::NONE],
+            )
+            .await?;
+
         let maybe_workspace = match maybe_row {
             Some(found) => Some(Self::try_from(found)?),
             None => None,
@@ -428,6 +514,7 @@ impl Workspace {
             DEFAULT_CHANGE_SET_NAME,
             None,
             workspace_snapshot_address,
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot,
         )
         .await?;
 
@@ -486,6 +573,7 @@ impl Workspace {
             DEFAULT_CHANGE_SET_NAME,
             None,
             workspace_snapshot_address,
+            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot,
         )
         .await?;
 
@@ -615,6 +703,7 @@ impl Workspace {
             DEFAULT_CHANGE_SET_NAME,
             Some(builtin.default_change_set_id),
             workspace_snapshot.id().await,
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot,
         )
         .await?;
         let change_set_id = change_set.id;
@@ -659,9 +748,9 @@ impl Workspace {
             .pg()
             .query_opt(WORKSPACE_GET_BY_PK, &[&pk])
             .await?;
+
         if let Some(row) = row {
-            let json: serde_json::Value = row.try_get("object")?;
-            Ok(serde_json::from_value(json)?)
+            Ok(Some(Self::try_from(row)?))
         } else {
             Ok(None)
         }
@@ -774,6 +863,8 @@ impl Workspace {
             metadata,
         } = workspace_data.into_latest();
 
+        let workspace = ctx.get_workspace().await?;
+
         // ABANDON PREVIOUS CHANGESETS
         for mut change_set in ChangeSet::list_active(ctx).await? {
             change_set.abandon(ctx).await?;
@@ -820,6 +911,7 @@ impl Workspace {
                     change_set_data.name.clone(),
                     actual_base_changeset,
                     new_snap_address,
+                    workspace.snapshot_kind(),
                 )
                 .await?;
 
@@ -878,27 +970,6 @@ impl Workspace {
             })
     }
 
-    /// Mark all workspaces in the database with a given snapshot version. Use
-    /// only if you know you have migrated the snapshots for these workspaces to
-    /// this version!
-    pub async fn set_snapshot_version_for_all_workspaces(
-        ctx: &DalContext,
-        snapshot_version: WorkspaceSnapshotGraphDiscriminants,
-    ) -> WorkspaceResult<()> {
-        let version_string = snapshot_version.to_string();
-
-        ctx.txns()
-            .await?
-            .pg()
-            .query(
-                "UPDATE workspaces SET snapshot_version = $1",
-                &[&version_string],
-            )
-            .await?;
-
-        Ok(())
-    }
-
     pub fn component_concurrency_limit(&self) -> i32 {
         self.component_concurrency_limit
             .unwrap_or(DEFAULT_COMPONENT_CONCURRENCY_LIMIT)
@@ -928,6 +999,39 @@ impl Workspace {
             .await?;
 
         self.component_concurrency_limit = limit;
+
+        Ok(())
+    }
+
+    pub async fn set_snapshot_versions(
+        &mut self,
+        ctx: &DalContext,
+        snapshot_version: SnapshotVersion,
+        subgraph_version: Option<SubGraphVersionDiscriminants>,
+    ) -> WorkspaceResult<()> {
+        let version_string = snapshot_version.db_string();
+        let subgraph_version_string = subgraph_version.map(|v| v.to_string());
+        let snapshot_kind = match snapshot_version {
+            SnapshotVersion::Legacy(_) => WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot,
+            SnapshotVersion::Split(_) => WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot,
+        };
+        ctx.txns()
+            .await?
+            .pg()
+            .query(
+                "UPDATE workspaces SET snapshot_kind=$2, snapshot_version=$3, subgraph_version=$4 WHERE pk = $1",
+                &[
+                    &self.pk,
+                    &(snapshot_kind.to_string()),
+                    &version_string,
+                    &subgraph_version_string
+                ],
+            )
+            .await?;
+
+        self.snapshot_version = snapshot_version;
+        self.subgraph_version = subgraph_version;
+        self.snapshot_kind = snapshot_kind;
 
         Ok(())
     }

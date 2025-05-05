@@ -57,8 +57,14 @@ impl WorkspaceSignup {
             .write(ctx)
             .await?;
 
-        let mut head_change_set =
-            ChangeSet::new(ctx, "HEAD", None, workspace_snapshot_address).await?;
+        let mut head_change_set = ChangeSet::new(
+            ctx,
+            "HEAD",
+            None,
+            workspace_snapshot_address,
+            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot,
+        )
+        .await?;
 
         let workspace = Workspace::insert_workspace(
             ctx,

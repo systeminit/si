@@ -242,23 +242,35 @@ impl ChangeSet {
         name: impl AsRef<str>,
         base_change_set_id: Option<ChangeSetId>,
         workspace_snapshot_address: WorkspaceSnapshotAddress,
+        snapshot_kind: WorkspaceSnapshotSelectorDiscriminants,
     ) -> ChangeSetResult<Self> {
         let id: Ulid = Ulid::new();
         let change_set_id: ChangeSetId = id.into();
-
-        let workspace_snapshot = WorkspaceSnapshot::find(ctx, workspace_snapshot_address)
-            .await
-            .map_err(Box::new)?;
-        // The workspace snapshot needs to be marked as seen by this new
-        // changeset, so that edit sessions are able to know what is net new in
-        // the edit session vs what the changeset already contained. The "onto"
-        // changeset needs to have seen the "to_rebase" or we will treat them as
-        // completely disjoint changesets.
-        // XXX: None of this is true anymore since we removed vector clocks and we can likely
-        // remove this second write, which would reduce pressure on the database
-        let workspace_snapshot_address = workspace_snapshot.write(ctx).await.map_err(Box::new)?;
-
         let workspace_id = ctx.tenancy().workspace_pk_opt();
+
+        // Originally, we did this write to ensure that new change sets were
+        // marked as seen in the vector clocks. We no longer use vector clocks,
+        // but this double write is still relied on, at least in our test
+        // harness, to prevent eviction of snapshots in a data race. We should
+        // fix this race instead of requiring this write.
+        let workspace_snapshot_address = match snapshot_kind {
+            WorkspaceSnapshotSelectorDiscriminants::LegacySnapshot => {
+                let workspace_snapshot = WorkspaceSnapshot::find(ctx, workspace_snapshot_address)
+                    .await
+                    .map_err(Box::new)?;
+
+                workspace_snapshot.write(ctx).await.map_err(Box::new)?
+            }
+
+            WorkspaceSnapshotSelectorDiscriminants::SplitSnapshot => {
+                let workspace_snapshot = SplitSnapshot::find(ctx, workspace_snapshot_address)
+                    .await
+                    .map_err(Box::new)?;
+
+                workspace_snapshot.write(ctx).await.map_err(Box::new)?
+            }
+        };
+
         let name = name.as_ref();
         let row = ctx
             .txns()
@@ -277,6 +289,7 @@ impl ChangeSet {
             &serde_json::to_value(&change_set)?,
         )
         .await?;
+
         Ok(change_set)
     }
 
@@ -287,8 +300,14 @@ impl ChangeSet {
 
         let head = workspace.default_change_set(ctx).await?;
 
-        let change_set =
-            ChangeSet::new(ctx, name, Some(head.id), head.workspace_snapshot_address).await?;
+        let change_set = ChangeSet::new(
+            ctx,
+            name,
+            Some(head.id),
+            head.workspace_snapshot_address,
+            workspace.snapshot_kind(),
+        )
+        .await?;
 
         Ok(change_set)
     }
@@ -772,19 +791,51 @@ impl ChangeSet {
         Ok(result)
     }
 
+    pub async fn list_active_for_workspace(
+        ctx: &DalContext,
+        workspace_pk: WorkspacePk,
+    ) -> ChangeSetResult<Vec<Self>> {
+        let mut result = vec![];
+
+        let rows = ctx
+            .txns()
+            .await?
+            .pg()
+            .query(
+                "SELECT * from change_set_pointers WHERE workspace_id = $1 AND status IN ($2, $3, $4, $5, $6)",
+                &[
+                    &workspace_pk,
+                    &ChangeSetStatus::Open.to_string(),
+                    &ChangeSetStatus::NeedsApproval.to_string(),
+                    &ChangeSetStatus::NeedsAbandonApproval.to_string(),
+                    &ChangeSetStatus::Approved.to_string(),
+                    &ChangeSetStatus::Rejected.to_string(),
+                ],
+            )
+            .await?;
+
+        for row in rows {
+            result.push(Self::try_from(row)?);
+        }
+
+        Ok(result)
+    }
+
     /// Take care when working on these change sets to set the workspace id on the dal context!!!
-    pub async fn list_open_for_all_workspaces(ctx: &DalContext) -> ChangeSetResult<Vec<Self>> {
+    pub async fn list_active_for_all_workspaces(ctx: &DalContext) -> ChangeSetResult<Vec<Self>> {
         let mut result = vec![];
         let rows = ctx
             .txns()
             .await?
             .pg()
             .query(
-                "SELECT * from change_set_pointers WHERE status IN ($1, $2, $3)",
+                "SELECT * from change_set_pointers WHERE status IN ($1, $2, $3, 4, 5)",
                 &[
                     &ChangeSetStatus::Open.to_string(),
                     &ChangeSetStatus::NeedsApproval.to_string(),
                     &ChangeSetStatus::NeedsAbandonApproval.to_string(),
+                    &ChangeSetStatus::Approved.to_string(),
+                    &ChangeSetStatus::Rejected.to_string(),
                 ],
             )
             .await?;

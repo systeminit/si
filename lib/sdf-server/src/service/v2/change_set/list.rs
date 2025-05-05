@@ -74,7 +74,7 @@ pub async fn list_actionable(
             ),
         );
     }
-    let workspace = &ctx.get_workspace().await?;
+    let workspace = &ctx.get_workspace_or_builtin().await?;
     let workspace_view = si_frontend_types::WorkspaceMetadata {
         name: workspace.name().to_string(),
         id: workspace.pk().to_string(),

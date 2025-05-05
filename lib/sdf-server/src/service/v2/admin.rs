@@ -36,7 +36,7 @@ use dal::{
     cached_module::CachedModuleError,
     func::runner::FuncRunnerError,
     slow_rt::SlowRuntimeError,
-    workspace_snapshot::graph::WorkspaceSnapshotGraphDiscriminants,
+    workspace::SnapshotVersion,
 };
 use sdf_core::api_error::ApiError;
 use serde::{
@@ -115,7 +115,7 @@ pub struct AdminWorkspace {
     pub default_change_set_id: ChangeSetId,
     #[serde(flatten)]
     pub timestamp: si_events::Timestamp,
-    pub snapshot_version: WorkspaceSnapshotGraphDiscriminants,
+    pub snapshot_version: SnapshotVersion,
     pub component_concurrency_limit: Option<i32>,
 }
 

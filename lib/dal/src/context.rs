@@ -529,6 +529,10 @@ impl DalContext {
     }
 
     pub async fn get_workspace(&self) -> Result<Workspace, TransactionsError> {
+        Ok(Workspace::get_by_pk(self, self.tenancy.workspace_pk()?).await?)
+    }
+
+    pub async fn get_workspace_or_builtin(&self) -> Result<Workspace, TransactionsError> {
         let workspace_pk = self.tenancy().workspace_pk().unwrap_or(WorkspacePk::NONE);
         let workspace = Workspace::get_by_pk(self, workspace_pk).await?;
 
@@ -540,7 +544,7 @@ impl DalContext {
     /// for the current [`DalContext`]
     pub async fn update_snapshot_to_visibility(&mut self) -> TransactionsResult<()> {
         let change_set = ChangeSet::get_by_id_across_workspaces(self, self.change_set_id()).await?;
-        let workspace = self.workspace().await?;
+        let workspace = self.get_workspace().await?;
 
         self.workspace_snapshot = Some(
             workspace
@@ -979,16 +983,12 @@ impl DalContext {
         new
     }
 
-    async fn workspace(&self) -> TransactionsResult<Workspace> {
-        Ok(Workspace::get_by_pk(self, self.tenancy.workspace_pk()?).await?)
-    }
-
     pub async fn parent_is_head(&self) -> TransactionsResult<bool> {
         let change_set = self.change_set()?;
         let base_change_set_id = change_set
             .base_change_set_id
             .ok_or(TransactionsError::NoBaseChangeSet(change_set.id))?;
-        Ok(self.workspace().await?.default_change_set_id() == base_change_set_id)
+        Ok(self.get_workspace().await?.default_change_set_id() == base_change_set_id)
     }
 
     /// Updates this context with a new [`Tenancy`]

@@ -16,7 +16,9 @@ use dal::{
     Workspace,
     WorkspacePk,
     WorkspaceSnapshotGraph,
+    workspace::SnapshotVersion,
     workspace_integrations::WorkspaceIntegration,
+    workspace_snapshot::split_snapshot::SuperGraphVersionDiscriminants,
 };
 use hyper::Uri;
 use permissions::{
@@ -157,7 +159,11 @@ async fn find_or_create_user_and_workspace(
                 workspace.set_token(&ctx, auth_api_workspace.token).await?;
             }
 
-            if workspace.snapshot_version() != WorkspaceSnapshotGraph::current_discriminant() {
+            if workspace.snapshot_version()
+                != SnapshotVersion::Legacy(WorkspaceSnapshotGraph::current_discriminant())
+                && workspace.snapshot_version()
+                    != SnapshotVersion::Split(SuperGraphVersionDiscriminants::current_discriminant())
+            {
                 return Err(SessionError::WorkspaceNotYetMigrated(*workspace.pk()));
             }
 

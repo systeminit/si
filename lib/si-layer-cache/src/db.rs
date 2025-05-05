@@ -254,7 +254,7 @@ where
                 tracker.clone(),
                 token.clone(),
                 1,
-                1
+                1,
             ),
             create_layer_cache(
                 split_snapshot_supergraph::CACHE_NAME,

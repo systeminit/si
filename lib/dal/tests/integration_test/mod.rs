@@ -15,6 +15,7 @@ mod func;
 mod input_sources;
 mod management;
 mod materialized_view;
+mod migrate;
 mod module;
 mod newhotness;
 mod node_weight;
