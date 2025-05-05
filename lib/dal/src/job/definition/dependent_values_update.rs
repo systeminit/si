@@ -14,6 +14,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_events::FuncRunValue;
 use si_frontend_types::DiagramSocket;
 use si_id::SchemaVariantId;
@@ -42,7 +43,6 @@ use crate::{
     DalContext,
     Func,
     TransactionsError,
-    Visibility,
     WorkspacePk,
     WorkspaceSnapshotError,
     WsEvent,

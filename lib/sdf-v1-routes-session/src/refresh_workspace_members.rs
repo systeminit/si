@@ -7,10 +7,7 @@ use axum::{
     },
     http::uri::Uri,
 };
-use dal::{
-    DalContext,
-    User,
-};
+use dal::DalContext;
 use permissions::{
     ObjectType,
     Relation,
@@ -31,6 +28,7 @@ use serde::{
     Serialize,
 };
 use si_data_spicedb::SpiceDbClient;
+use si_db::User;
 use strum::{
     Display,
     EnumString,

@@ -27,6 +27,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::{
+    ActorView,
+    HistoryEventMetadata,
+};
 use si_events::{
     ContentHash,
     Timestamp,
@@ -91,10 +95,6 @@ use crate::{
             ActionPrototypeError,
         },
     },
-    actor_view::{
-        ActorView,
-        ActorViewError,
-    },
     attribute::{
         path::AttributePath,
         prototype::{
@@ -132,7 +132,6 @@ use crate::{
         argument::FuncArgumentError,
         binding::FuncBindingError,
     },
-    history_event::HistoryEventMetadata,
     implement_add_edge_to,
     layer_db_types::{
         ComponentContent,
@@ -201,8 +200,6 @@ pub enum ComponentError {
     Action(#[from] Box<ActionError>),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] Box<ActionPrototypeError>),
-    #[error("actor view error: {0}")]
-    ActorView(#[from] ActorViewError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
@@ -319,6 +316,8 @@ pub enum ComponentError {
     SchemaVariantNotFound(ComponentId),
     #[error("serde_json error: {0}")]
     Serde(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("split graph error: {0}")]
     SplitGraph(#[from] SplitGraphError),
     #[error(

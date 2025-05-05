@@ -28,7 +28,6 @@ use crate::{
     ComponentId,
     DalContext,
     FuncError,
-    HistoryEventError,
     TransactionsError,
     attribute::value::AttributeValueError,
     func::{
@@ -78,8 +77,6 @@ pub enum ValidationError {
     FuncRunGone,
     #[error("func runner error: {0}")]
     FuncRunner(#[from] Box<FuncRunnerError>),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
     #[error("invalid prop id")]
     InvalidPropId,
     #[error("layer db error: {0}")]

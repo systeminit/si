@@ -8,8 +8,6 @@ use axum::{
 };
 use dal::{
     ChangeSetId,
-    HistoryActor,
-    User,
     WorkspacePk,
     module::ModuleId,
 };
@@ -17,6 +15,10 @@ use module_index_client::ModuleIndexClient;
 use serde::{
     Deserialize,
     Serialize,
+};
+use si_db::{
+    HistoryActor,
+    User,
 };
 
 use super::{

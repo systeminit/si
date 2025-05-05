@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use si_db::Visibility;
 use si_events::WorkspaceSnapshotAddress;
 use si_layer_cache::LayerDbError;
 use si_split_graph::SplitGraphError;
@@ -24,7 +25,6 @@ use crate::{
     ChangeSetStatus,
     DalContext,
     TransactionsError,
-    Visibility,
     Workspace,
     WorkspaceError,
     WorkspaceSnapshotError,

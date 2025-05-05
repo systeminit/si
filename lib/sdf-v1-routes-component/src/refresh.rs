@@ -8,7 +8,6 @@ use axum::{
 use dal::{
     Component,
     ComponentId,
-    Visibility,
     action::{
         Action,
         prototype::{
@@ -27,6 +26,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use super::ComponentResult;
 

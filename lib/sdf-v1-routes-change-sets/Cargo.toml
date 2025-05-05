@@ -12,6 +12,7 @@ publish.workspace = true
 dal = { path = "../../lib/dal" }
 sdf-core = { path = "../../lib/sdf-core" }
 sdf-extract = { path = "../../lib/sdf-extract" }
+si-db = { path = "../../lib/si-db" }
 si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
 si-events = { path = "../../lib/si-events-rs" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }

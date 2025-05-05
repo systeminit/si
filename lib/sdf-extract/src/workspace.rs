@@ -14,7 +14,6 @@ use axum::{
 };
 use dal::{
     DalContext,
-    User,
     UserPk,
     WorkspacePk,
 };
@@ -24,6 +23,7 @@ use derive_more::{
 };
 use sdf_core::app_state::AppState;
 use serde::Deserialize;
+use si_db::User;
 use si_events::AuthenticationMethod;
 use si_jwt_public_key::SiJwtClaimRole;
 

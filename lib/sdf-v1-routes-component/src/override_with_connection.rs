@@ -12,7 +12,6 @@ use dal::{
     ComponentId,
     InputSocketId,
     OutputSocketId,
-    Visibility,
 };
 use sdf_core::{
     force_change_set_response::ForceChangeSetResponse,
@@ -28,6 +27,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use super::{
     ComponentError,

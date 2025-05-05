@@ -8,7 +8,6 @@ use axum::{
 };
 use dal::{
     ComponentId,
-    Visibility,
     component::resource::ResourceView,
 };
 use sdf_core::tracking::track;
@@ -21,6 +20,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use super::ComponentResult;
 

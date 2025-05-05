@@ -8,7 +8,6 @@ use axum::{
 };
 use dal::{
     ComponentId,
-    Visibility,
     component::debug::ComponentDebugView,
 };
 use sdf_core::tracking::track;
@@ -21,6 +20,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use telemetry::prelude::*;
 
 use super::ComponentResult;

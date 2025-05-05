@@ -7,7 +7,6 @@ use dal::{
     ChangeSetId,
     ComponentId,
     Func,
-    Visibility,
     action::{
         Action,
         ActionId,
@@ -27,6 +26,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_events::FuncRunId;
 use telemetry::prelude::*;
 

@@ -13,6 +13,7 @@ dal = { path = "../../lib/dal" }
 sdf-core = { path = "../../lib/sdf-core" }
 sdf-extract = { path = "../../lib/sdf-extract" }
 sdf-v1-routes-diagram = { path = "../../lib/sdf-v1-routes-diagram" }
+si-db = { path = "../../lib/si-db" }
 si-events = { path = "../../lib/si-events-rs" }
 si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
 si-posthog = { path = "../../lib/si-posthog-rs" }

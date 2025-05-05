@@ -11,6 +11,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_events::{
     ActionResultState,
     FuncRunId,
@@ -30,7 +31,6 @@ use crate::{
     ComponentId,
     DalContext,
     Func,
-    Visibility,
     WsEvent,
     action::{
         Action,

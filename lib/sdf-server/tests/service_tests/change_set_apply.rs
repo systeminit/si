@@ -5,7 +5,6 @@ use std::collections::{
 
 use dal::{
     DalContext,
-    HistoryActor,
     action::Action,
     approval_requirement::{
         ApprovalRequirement,
@@ -29,6 +28,7 @@ use sdf_core::{
 };
 use sdf_test::helpers::SdfTestHelpers;
 use si_data_spicedb::SpiceDbClient;
+use si_db::HistoryActor;
 use si_events::{
     ChangeSetApprovalStatus,
     workspace_snapshot::EntityKind,

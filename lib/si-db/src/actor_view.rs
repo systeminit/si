@@ -9,42 +9,14 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_data_nats::NatsError;
-use si_data_pg::PgError;
 use si_id::UserPk;
-use thiserror::Error;
 
 use crate::{
-    context::{
-        BaseTransactionsError,
-        SiDbContext,
-    },
-    history_event::{
-        HistoryActor,
-        HistoryEventError,
-    },
-    user::{
-        User,
-        UserError,
-    },
+    Result,
+    context::SiDbContext,
+    history_event::HistoryActor,
+    user::User,
 };
-
-#[remain::sorted]
-#[derive(Error, Debug)]
-pub enum ActorViewError {
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("nats error")]
-    Nats(#[from] NatsError),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] BaseTransactionsError),
-    #[error(transparent)]
-    User(#[from] UserError),
-}
 
 /// The actor entitiy that initiates an activitiy--this could represent be a person, service, etc.
 #[remain::sorted]
@@ -82,7 +54,7 @@ impl ActorView {
     pub async fn from_history_actor(
         ctx: &impl SiDbContext,
         history_actor: HistoryActor,
-    ) -> Result<Self, ActorViewError> {
+    ) -> Result<Self> {
         match history_actor {
             HistoryActor::User(user_pk) => {
                 let user = User::get_by_pk(ctx, user_pk).await?;
@@ -104,7 +76,7 @@ impl postgres_types::ToSql for ActorView {
         &self,
         ty: &postgres_types::Type,
         out: &mut postgres_types::private::BytesMut,
-    ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>>
+    ) -> std::result::Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>>
     where
         Self: Sized,
     {
@@ -123,7 +95,7 @@ impl postgres_types::ToSql for ActorView {
         &self,
         ty: &postgres_types::Type,
         out: &mut postgres_types::private::BytesMut,
-    ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
+    ) -> std::result::Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
         let json = serde_json::to_value(self)?;
         postgres_types::ToSql::to_sql(&json, ty, out)
     }

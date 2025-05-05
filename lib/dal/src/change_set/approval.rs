@@ -37,6 +37,7 @@ use si_data_pg::{
     PgError,
     PgRow,
 };
+use si_db::HistoryActor;
 pub use si_events::ChangeSetApprovalStatus;
 use si_events::merkle_tree_hash::MerkleTreeHash;
 use si_id::{
@@ -54,7 +55,6 @@ use super::{
 };
 use crate::{
     DalContext,
-    HistoryActor,
     TransactionsError,
     WorkspaceSnapshotError,
 };

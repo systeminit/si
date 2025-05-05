@@ -13,7 +13,6 @@ use dal::{
     Schema,
     SchemaId,
     SchemaVariant,
-    Visibility,
     WsEvent,
     cached_module::CachedModule,
     pkg::{
@@ -35,6 +34,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use telemetry::prelude::*;
 use ulid::Ulid;
 

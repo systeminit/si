@@ -2,57 +2,24 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_data_nats::NatsError;
-use si_data_pg::PgError;
 use si_events::Timestamp;
 use si_id::{
     UserPk,
     WorkspacePk,
 };
-use telemetry::prelude::*;
-use thiserror::Error;
-use tokio::task::JoinError;
 
 use crate::{
-    context::{
-        BaseTransactionsError,
-        SiDbContext,
-        SiDbTransactions as _,
-    },
+    Error,
+    Result,
+    context::SiDbContext,
     getter,
-    history_event::{
-        HistoryEvent,
-        HistoryEventError,
-    },
-    tenancy::Tenancy,
+    history_event::HistoryEvent,
+    transactions::SiDbTransactions as _,
 };
 
 pub const USER_GET_BY_PK: &str = include_str!("queries/user/get_by_pk.sql");
 pub const USER_LIST_FOR_WORKSPACE: &str =
     include_str!("queries/user/list_members_for_workspace.sql");
-
-#[remain::sorted]
-#[derive(Error, Debug)]
-pub enum UserError {
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("failed to join long lived async task; bug!")]
-    Join(#[from] JoinError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("user not found in tenancy: {0} {1:?}")]
-    NotFoundInTenancy(UserPk, Tenancy),
-    #[error("no workspace in tenancy")]
-    NoWorkspaceInTenancy,
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] BaseTransactionsError),
-}
-
-pub type UserResult<T> = Result<T, UserError>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct User {
@@ -79,7 +46,7 @@ impl User {
         name: impl AsRef<str>,
         email: impl AsRef<str>,
         picture_url: Option<impl AsRef<str>>,
-    ) -> UserResult<Self> {
+    ) -> Result<Self> {
         let name = name.as_ref();
         let email = email.as_ref();
 
@@ -115,7 +82,7 @@ impl User {
         Ok(object)
     }
 
-    pub async fn get_by_pk_opt(ctx: &impl SiDbContext, pk: UserPk) -> UserResult<Option<Self>> {
+    pub async fn get_by_pk_opt(ctx: &impl SiDbContext, pk: UserPk) -> Result<Option<Self>> {
         let row = ctx
             .txns()
             .await?
@@ -129,17 +96,17 @@ impl User {
             Ok(None)
         }
     }
-    pub async fn get_by_pk(ctx: &impl SiDbContext, pk: UserPk) -> UserResult<Self> {
+    pub async fn get_by_pk(ctx: &impl SiDbContext, pk: UserPk) -> Result<Self> {
         Self::get_by_pk_opt(ctx, pk)
             .await?
-            .ok_or_else(|| UserError::NotFoundInTenancy(pk, *ctx.tenancy()))
+            .ok_or(Error::UserNotFound(pk))
     }
 
     pub async fn associate_workspace(
         &self,
         ctx: &impl SiDbContext,
         workspace_pk: WorkspacePk,
-    ) -> UserResult<()> {
+    ) -> Result<()> {
         ctx.txns()
             .await?
             .pg()
@@ -151,7 +118,7 @@ impl User {
         Ok(())
     }
 
-    pub async fn is_first_user(&self, ctx: &impl SiDbContext) -> UserResult<bool> {
+    pub async fn is_first_user(&self, ctx: &impl SiDbContext) -> Result<bool> {
         let row = ctx
             .txns()
             .await?
@@ -172,7 +139,7 @@ impl User {
         ctx: &impl SiDbContext,
         user_pk: UserPk,
         workspace_pkg: String,
-    ) -> UserResult<()> {
+    ) -> Result<()> {
         ctx.txns()
             .await?
             .pg()
@@ -187,7 +154,7 @@ impl User {
     pub async fn list_members_for_workspace(
         ctx: &impl SiDbContext,
         workspace_pk: String,
-    ) -> UserResult<Vec<Self>> {
+    ) -> Result<Vec<Self>> {
         let rows = ctx
             .txns()
             .await?
@@ -208,7 +175,7 @@ impl User {
     pub async fn list_member_pks_for_workspace(
         ctx: &impl SiDbContext,
         workspace_pk: String,
-    ) -> UserResult<Vec<UserPk>> {
+    ) -> Result<Vec<UserPk>> {
         let rows = ctx
                 .txns()
                 .await?

@@ -8,6 +8,7 @@ rust_library(
         "//lib/sdf-extract:sdf-extract",
         "//lib/si-events-rs:si-events",
         "//lib/si-frontend-types-rs:si-frontend-types",
+        "//lib/si-db:si-db",
         "//lib/si-pkg:si-pkg",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:axum",

@@ -17,7 +17,6 @@ use dal::{
     PropId,
     Secret,
     SecretId,
-    Visibility,
     WsEvent,
 };
 use sdf_core::{
@@ -33,6 +32,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_events::audit_log::AuditLogKind;
 
 use super::{

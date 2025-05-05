@@ -4,7 +4,6 @@ use axum::Json;
 use dal::{
     AttributeValueId,
     ComponentId,
-    Visibility,
 };
 use sdf_extract::{
     HandlerContext,
@@ -14,6 +13,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use super::ComponentResult;
 

@@ -12,6 +12,7 @@ publish.workspace = true
 dal = { path = "../../lib/dal" }
 sdf-core = { path = "../../lib/sdf-core" }
 sdf-extract = { path = "../../lib/sdf-extract" }
+si-db = { path = "../../lib/si-db" }
 telemetry = { path = "../../lib/telemetry-rs" }
 
 axum = { workspace = true }

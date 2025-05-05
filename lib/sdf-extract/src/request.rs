@@ -63,8 +63,8 @@ impl<S> FromRequestParts<S> for RequestUlidFromHeader {
 pub struct ValidatedToken(pub SiJwt);
 
 impl ValidatedToken {
-    pub fn history_actor(&self) -> dal::HistoryActor {
-        dal::HistoryActor::from(self.0.custom.user_id())
+    pub fn history_actor(&self) -> si_db::HistoryActor {
+        si_db::HistoryActor::from(self.0.custom.user_id())
     }
     pub fn authentication_method(&self) -> JwtKeyResult<AuthenticationMethod> {
         let role = self.0.custom.role().into();
@@ -114,7 +114,7 @@ impl FromRequestParts<AppState> for ValidatedToken {
 /// Have not checked whether the user is a member of the workspace or has permissions.
 ///
 #[derive(Clone, Debug, Deref, Into)]
-pub struct HistoryActor(pub dal::HistoryActor);
+pub struct HistoryActor(pub si_db::HistoryActor);
 
 #[async_trait]
 impl FromRequestParts<AppState> for HistoryActor {
@@ -127,7 +127,7 @@ impl FromRequestParts<AppState> for HistoryActor {
         let ValidatedToken(token) = parts.extract_with_state(state).await?;
         let user_id = token.custom.user_id();
 
-        let actor = dal::HistoryActor::from(user_id);
+        let actor = si_db::HistoryActor::from(user_id);
 
         Ok(Self(actor))
     }

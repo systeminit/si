@@ -8,7 +8,6 @@ use axum::{
     },
 };
 use dal::{
-    HistoryActor,
     UserPk,
     WorkspacePk,
     workspace_integrations::{
@@ -24,6 +23,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::HistoryActor;
 use si_events::audit_log::AuditLogKind;
 
 use super::{

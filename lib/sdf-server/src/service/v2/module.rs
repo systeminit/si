@@ -14,7 +14,6 @@ use axum::{
 use dal::{
     ChangeSetError,
     FuncError,
-    UserError,
     WsEventError,
     cached_module::CachedModuleError,
     pkg::PkgError,
@@ -68,14 +67,14 @@ pub enum ModulesAPIError {
     SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("changeset error: {0:?}")]
     Serde(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("si pkg error: {0}")]
     SiPkg(#[from] SiPkgError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("url parse error: {0}")]
     UrlParse(#[from] url::ParseError),
-    #[error("user error: {0}")]
-    User(#[from] UserError),
     #[error("WsEvent error: {0}")]
     WsEvent(#[from] WsEventError),
 }

@@ -4,7 +4,6 @@ use axum::extract::{
 };
 use dal::{
     ChangeSetId,
-    Visibility,
     WorkspacePk,
     diagram::view::{
         View,
@@ -15,6 +14,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use crate::{
     extract::HandlerContext,

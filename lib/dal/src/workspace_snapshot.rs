@@ -57,7 +57,6 @@ use crate::{
     DalContext,
     SchemaVariantError,
     SchemaVariantId,
-    TenancyError,
     TransactionsError,
     WorkspaceError,
     WorkspaceSnapshotGraphVCurrent,
@@ -211,8 +210,6 @@ pub enum WorkspaceSnapshotError {
     SplitSnapshotSubGraphMissingAtAddress(WorkspaceSnapshotAddress),
     #[error("split snapshot supergraph missing at address: {0}")]
     SplitSnapshotSuperGraphMissingAtAddress(WorkspaceSnapshotAddress),
-    #[error("tenancy error: {0}")]
-    Tenancy(#[from] TenancyError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]

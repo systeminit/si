@@ -8,7 +8,6 @@ use dal::{
     Secret,
     SecretDefinitionView,
     SecretView,
-    Visibility,
 };
 use sdf_extract::{
     HandlerContext,
@@ -18,6 +17,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use crate::{
     SecretError,

@@ -12,7 +12,6 @@ use dal::{
     ComponentId,
     DalContext,
     Func,
-    Visibility,
     action::prototype::{
         ActionKind,
         ActionPrototype,
@@ -28,6 +27,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use super::ComponentResult;
 

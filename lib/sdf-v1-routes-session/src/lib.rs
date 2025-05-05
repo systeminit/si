@@ -12,7 +12,6 @@ use axum::{
 use dal::{
     KeyPairError,
     TransactionsError,
-    UserError,
     WorkspaceError,
     WorkspacePk,
     workspace_integrations::WorkspaceIntegrationsError,
@@ -55,10 +54,10 @@ pub enum SessionError {
     Pg(#[from] si_data_pg::PgError),
     #[error("http error: {0}")]
     Request(#[from] reqwest::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("SpiceDb error: {0}")]
     SpiceDb(#[from] SpiceDbError),
-    #[error("user error: {0}")]
-    User(#[from] UserError),
     #[error(transparent)]
     Workspace(#[from] WorkspaceError),
     #[error(transparent)]

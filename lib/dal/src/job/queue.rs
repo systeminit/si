@@ -7,6 +7,7 @@ use std::{
     sync::Arc,
 };
 
+use si_db::Visibility;
 use tokio::sync::Mutex;
 use ulid::Ulid;
 
@@ -14,7 +15,6 @@ use super::producer::JobProducer;
 use crate::{
     AccessBuilder,
     ChangeSetId,
-    Visibility,
     job::definition::{
         AttributeValueBasedJobIdentifier,
         DependentValuesUpdate,

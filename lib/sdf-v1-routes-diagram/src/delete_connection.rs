@@ -13,7 +13,6 @@ use dal::{
     InputSocketId,
     OutputSocket,
     OutputSocketId,
-    Visibility,
     WsEvent,
     change_status::ChangeStatus,
     diagram::{
@@ -34,6 +33,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_events::audit_log::AuditLogKind;
 
 use super::DiagramResult;

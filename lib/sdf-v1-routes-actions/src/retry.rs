@@ -1,7 +1,6 @@
 use axum::Json;
 use dal::{
     Func,
-    Visibility,
     WsEvent,
     action::{
         Action,
@@ -18,6 +17,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_events::audit_log::AuditLogKind;
 
 use super::{

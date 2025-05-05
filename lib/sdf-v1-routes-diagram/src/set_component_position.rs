@@ -6,7 +6,6 @@ use dal::{
     Component,
     ComponentId,
     ComponentType,
-    Visibility,
     WsEvent,
     component::{
         InferredConnection,
@@ -26,6 +25,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_frontend_types::{
     RawGeometry,
     StringGeometry,

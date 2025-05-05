@@ -5,6 +5,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use telemetry::prelude::*;
 
 use crate::{
@@ -13,7 +14,6 @@ use crate::{
     ChangeSet,
     ChangeSetStatus,
     DalContext,
-    Visibility,
     job::{
         consumer::{
             JobCompletionState,

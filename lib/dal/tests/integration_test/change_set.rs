@@ -7,7 +7,6 @@ use dal::{
     Component,
     DalContext,
     DalContextBuilder,
-    HistoryActor,
     RequestContext,
     Workspace,
     WorkspacePk,
@@ -24,6 +23,7 @@ use dal_test::{
 };
 use itertools::Itertools;
 use pretty_assertions_sorted::assert_eq;
+use si_db::HistoryActor;
 use si_events::{
     AuthenticationMethod,
     AuthenticationMethodRole,
@@ -200,8 +200,8 @@ async fn build_from_request_context_limits_to_workspaces_user_has_access_to(
         .expect("Unable to set up test data");
 
     let request_context = RequestContext {
-        tenancy: dal::Tenancy::new(*user_2_workspace.pk()),
-        visibility: dal::Visibility {
+        tenancy: si_db::Tenancy::new(*user_2_workspace.pk()),
+        visibility: si_db::Visibility {
             change_set_id: user_2_workspace.default_change_set_id(),
         },
         history_actor: HistoryActor::User(user_1.pk()),
@@ -216,8 +216,8 @@ async fn build_from_request_context_limits_to_workspaces_user_has_access_to(
     );
 
     let request_context = RequestContext {
-        tenancy: dal::Tenancy::new(*user_1_workspace.pk()),
-        visibility: dal::Visibility {
+        tenancy: si_db::Tenancy::new(*user_1_workspace.pk()),
+        visibility: si_db::Visibility {
             change_set_id: user_1_workspace.default_change_set_id(),
         },
         history_actor: HistoryActor::User(user_2.pk()),
@@ -260,8 +260,8 @@ async fn build_from_request_context_limits_to_change_sets_of_current_workspace(
         .expect("Unable to set up test data");
 
     let request_context = RequestContext {
-        tenancy: dal::Tenancy::new(*user_1_workspace.pk()),
-        visibility: dal::Visibility {
+        tenancy: si_db::Tenancy::new(*user_1_workspace.pk()),
+        visibility: si_db::Visibility {
             change_set_id: user_2_workspace.default_change_set_id(),
         },
         history_actor: HistoryActor::User(user_1.pk()),
@@ -276,8 +276,8 @@ async fn build_from_request_context_limits_to_change_sets_of_current_workspace(
     );
 
     let request_context = RequestContext {
-        tenancy: dal::Tenancy::new(*user_2_workspace.pk()),
-        visibility: dal::Visibility {
+        tenancy: si_db::Tenancy::new(*user_2_workspace.pk()),
+        visibility: si_db::Visibility {
             change_set_id: user_1_workspace.default_change_set_id(),
         },
         history_actor: HistoryActor::User(user_2.pk()),
@@ -320,8 +320,8 @@ async fn cannot_find_change_set_across_workspaces(
         .expect("Unable to set up test data");
 
     let request_context = RequestContext {
-        tenancy: dal::Tenancy::new(*user_2_workspace.pk()),
-        visibility: dal::Visibility {
+        tenancy: si_db::Tenancy::new(*user_2_workspace.pk()),
+        visibility: si_db::Visibility {
             change_set_id: user_2_workspace.default_change_set_id(),
         },
         history_actor: HistoryActor::User(user_2.pk()),
@@ -342,7 +342,7 @@ async fn cannot_find_change_set_across_workspaces(
         .await
         .expect("Unable to set up test data");
 
-    let user_1_tenancy = dal::Tenancy::new(*user_1_workspace.pk());
+    let user_1_tenancy = si_db::Tenancy::new(*user_1_workspace.pk());
     let access_builder = AccessBuilder::new(
         user_1_tenancy,
         HistoryActor::User(user_1.pk()),
@@ -395,8 +395,8 @@ async fn build_from_request_context_allows_change_set_from_workspace_with_access
         .expect("Unable to set up test data");
 
     let request_context = RequestContext {
-        tenancy: dal::Tenancy::new(*user_1_workspace.pk()),
-        visibility: dal::Visibility {
+        tenancy: si_db::Tenancy::new(*user_1_workspace.pk()),
+        visibility: si_db::Visibility {
             change_set_id: user_1_workspace.default_change_set_id(),
         },
         history_actor: HistoryActor::User(user_1.pk()),
@@ -411,8 +411,8 @@ async fn build_from_request_context_allows_change_set_from_workspace_with_access
     assert!(builder_result.is_ok());
 
     let request_context = RequestContext {
-        tenancy: dal::Tenancy::new(*user_2_workspace.pk()),
-        visibility: dal::Visibility {
+        tenancy: si_db::Tenancy::new(*user_2_workspace.pk()),
+        visibility: si_db::Visibility {
             change_set_id: user_2_workspace.default_change_set_id(),
         },
         history_actor: HistoryActor::User(user_2.pk()),

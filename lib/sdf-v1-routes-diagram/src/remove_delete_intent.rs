@@ -13,7 +13,6 @@ use dal::{
     Component,
     ComponentId,
     DalContext,
-    Visibility,
     WsEvent,
 };
 use sdf_core::{
@@ -29,6 +28,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use super::DiagramResult;
 

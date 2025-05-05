@@ -12,7 +12,6 @@ use dal::{
     OutputSocketId,
     Prop,
     PropId,
-    Visibility,
 };
 use sdf_core::tracking::track;
 use sdf_extract::{
@@ -25,6 +24,7 @@ use serde::{
     Serialize,
 };
 use serde_json::Value;
+use si_db::Visibility;
 
 use super::{
     AttributeError,

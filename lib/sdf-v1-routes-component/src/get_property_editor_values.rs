@@ -4,7 +4,6 @@ use axum::{
 };
 use dal::{
     ComponentId,
-    Visibility,
     property_editor::values::PropertyEditorValues,
 };
 use sdf_extract::{
@@ -15,6 +14,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use super::ComponentResult;
 

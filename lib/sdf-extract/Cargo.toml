@@ -15,6 +15,7 @@ edda-client = { path = "../../lib/edda-client" }
 frigg = { path = "../../lib/frigg" }
 sdf-core = { path = "../../lib/sdf-core" }
 si-data-nats = { path = "../../lib/si-data-nats" }
+si-db = { path = "../../lib/si-db" }
 si-events = { path = "../../lib/si-events-rs" }
 si-jwt-public-key = { path = "../../lib/si-jwt-public-key" }
 

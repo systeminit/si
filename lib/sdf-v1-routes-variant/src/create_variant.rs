@@ -7,7 +7,6 @@ use axum::{
 };
 use dal::{
     ChangeSet,
-    Visibility,
     WsEvent,
     schema::variant::authoring::VariantAuthoringClient,
 };
@@ -24,6 +23,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 

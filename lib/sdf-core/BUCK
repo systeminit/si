@@ -10,6 +10,7 @@ rust_library(
         "//lib/nats-multiplexer-client:nats-multiplexer-client",
         "//lib/permissions:permissions",
         "//lib/si-data-spicedb:si-data-spicedb",
+        "//lib/si-db:si-db",
         "//lib/si-events-rs:si-events",
         "//lib/si-frontend-types-rs:si-frontend-types",
         "//lib/si-id:si-id",

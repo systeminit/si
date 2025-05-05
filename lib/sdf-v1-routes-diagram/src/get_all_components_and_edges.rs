@@ -7,7 +7,6 @@ use axum::{
     },
 };
 use dal::{
-    Visibility,
     diagram::Diagram,
     slow_rt,
 };
@@ -21,6 +20,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use super::DiagramResult;
 

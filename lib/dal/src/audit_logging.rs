@@ -34,7 +34,6 @@ use crate::{
     ChangeSetError,
     ChangeSetStatus,
     DalContext,
-    TenancyError,
     TransactionsError,
     WsEvent,
     WsEventResult,
@@ -54,6 +53,8 @@ pub enum AuditLoggingError {
     PendingEventsError(#[from] PendingEventsError),
     #[error("shuttle error: {0}")]
     Shuttle(#[from] ShuttleError),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] Box<TransactionsError>),
 }
@@ -80,7 +81,7 @@ pub(crate) async fn publish_pending(
     // TODO(nick): nuke this from intergalactic orbit. Then do it again.
     let workspace_id = match ctx.workspace_pk() {
         Ok(workspace_id) => workspace_id,
-        Err(TransactionsError::Tenancy(TenancyError::NoWorkspace)) => return Ok(()),
+        Err(TransactionsError::SiDb(si_db::Error::NoWorkspace)) => return Ok(()),
         Err(err) => return Err(AuditLoggingError::Transactions(Box::new(err))),
     };
 
@@ -216,7 +217,7 @@ pub(crate) async fn write(
     // TODO(nick): nuke this from intergalactic orbit. Then do it again.
     let workspace_id = match ctx.workspace_pk() {
         Ok(workspace_id) => workspace_id,
-        Err(TransactionsError::Tenancy(TenancyError::NoWorkspace)) => return Ok(()),
+        Err(TransactionsError::SiDb(si_db::Error::NoWorkspace)) => return Ok(()),
         Err(err) => return Err(AuditLoggingError::Transactions(Box::new(err))),
     };
 
@@ -247,7 +248,7 @@ pub(crate) async fn write_final_message(ctx: &DalContext) -> Result<()> {
     // TODO(nick): nuke this from intergalactic orbit. Then do it again.
     let workspace_id = match ctx.workspace_pk() {
         Ok(workspace_id) => workspace_id,
-        Err(TransactionsError::Tenancy(TenancyError::NoWorkspace)) => return Ok(()),
+        Err(TransactionsError::SiDb(si_db::Error::NoWorkspace)) => return Ok(()),
         Err(err) => return Err(AuditLoggingError::Transactions(Box::new(err))),
     };
 

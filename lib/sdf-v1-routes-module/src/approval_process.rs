@@ -5,11 +5,7 @@ use axum::{
         OriginalUri,
     },
 };
-use dal::{
-    HistoryActor,
-    User,
-    WsEvent,
-};
+use dal::WsEvent;
 use module_index_client::ModuleIndexClient;
 use sdf_core::tracking::track;
 use sdf_extract::{
@@ -21,6 +17,10 @@ use sdf_extract::{
 use serde::{
     Deserialize,
     Serialize,
+};
+use si_db::{
+    HistoryActor,
+    User,
 };
 use ulid::Ulid;
 

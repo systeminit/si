@@ -5,10 +5,7 @@ use axum::{
         OriginalUri,
     },
 };
-use dal::{
-    ChangeSet,
-    Visibility,
-};
+use dal::ChangeSet;
 use sdf_core::tracking::track;
 use sdf_extract::{
     HandlerContext,
@@ -19,6 +16,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use super::ChangeSetResult;
 

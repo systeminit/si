@@ -22,7 +22,6 @@ use dal::{
     Schema,
     SchemaVariant,
     SchemaVariantId,
-    User,
     UserPk,
     attribute::{
         path::AttributePath,
@@ -43,6 +42,7 @@ use names::{
     Name,
 };
 use si_data_nats::async_nats::jetstream::stream::Stream;
+use si_db::User;
 use tokio::time::Instant;
 
 mod change_set;

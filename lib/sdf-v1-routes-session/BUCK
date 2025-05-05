@@ -9,6 +9,7 @@ rust_library(
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
         "//lib/si-data-spicedb:si-data-spicedb",
+        "//lib/si-db:si-db",
         "//lib/si-events-rs:si-events",
         "//lib/telemetry-rs:telemetry",
         "//lib/permissions:permissions",

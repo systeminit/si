@@ -13,6 +13,7 @@ use serde::{
 use serde_json::Value;
 use si_data_nats::NatsError;
 use si_data_pg::PgPoolError;
+use si_db::Visibility;
 use thiserror::Error;
 use tokio::task::JoinError;
 
@@ -26,7 +27,6 @@ use crate::{
     DalContextBuilder,
     FuncError,
     TransactionsError,
-    Visibility,
     WorkspaceSnapshotError,
     WsEventError,
     action::{

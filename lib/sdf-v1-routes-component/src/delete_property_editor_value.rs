@@ -8,7 +8,6 @@ use dal::{
     Component,
     ComponentId,
     PropId,
-    Visibility,
     WsEvent,
 };
 use sdf_core::force_change_set_response::ForceChangeSetResponse;
@@ -20,6 +19,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use super::ComponentResult;
 

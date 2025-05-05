@@ -7,7 +7,6 @@ use axum::{
 use dal::{
     EdgeWeight,
     TransactionsError,
-    Visibility,
     WorkspaceSnapshotError,
     workspace_snapshot::{
         Direction,
@@ -23,6 +22,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use telemetry::prelude::*;
 use thiserror::Error;
 use ulid::Ulid;

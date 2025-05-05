@@ -11,7 +11,6 @@ use dal::{
     ChangeSet,
     Component,
     ComponentId,
-    Visibility,
     component::delete,
 };
 use sdf_core::{
@@ -27,6 +26,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use super::DiagramResult;
 

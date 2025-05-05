@@ -6,7 +6,6 @@ use std::{
 
 use dal::{
     DalContextBuilder,
-    TenancyError,
     WorkspacePk,
     job::{
         consumer::{
@@ -50,8 +49,8 @@ use crate::{
 pub enum HandlerError {
     #[error("job consumer error: {0}")]
     JobConsumer(#[from] JobConsumerError),
-    #[error("missing workspace: {0}")]
-    MissingWorkspace(#[source] TenancyError),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("unknown job kind: {0}")]
     UnknownJobKind(String),
     #[error("utf8 error when creating subject")]
@@ -73,11 +72,7 @@ pub async fn process_request(
     Headers(maybe_headers): Headers,
     Json(job_info): Json<JobInfo>,
 ) -> Result<()> {
-    let workspace_id = job_info
-        .access_builder
-        .tenancy()
-        .workspace_pk()
-        .map_err(HandlerError::MissingWorkspace)?;
+    let workspace_id = job_info.access_builder.tenancy().workspace_pk()?;
     let change_set_id = job_info.visibility.change_set_id;
 
     let span = Span::current();

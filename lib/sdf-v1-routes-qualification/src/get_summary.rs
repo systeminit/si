@@ -4,7 +4,6 @@ use axum::{
 };
 use dal::{
     ComponentId,
-    Visibility,
     qualification::{
         QualificationSummary,
         QualificationSummaryForComponent,
@@ -18,6 +17,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use crate::QualificationResult;
 
