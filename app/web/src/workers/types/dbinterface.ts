@@ -254,6 +254,8 @@ export interface BifrostComponent {
   schemaId: SchemaId;
   schemaVariantId: SchemaVariantId;
   schemaVariantName: string;
+  schemaVariantDescription?: string;
+  schemaVariantDocLink?: string;
   schemaCategory: string;
   hasResource: boolean;
   qualificationTotals: ComponentQualificationTotals;

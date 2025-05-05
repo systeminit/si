@@ -106,6 +106,8 @@ pub async fn as_frontend_type(
         schema_variant_id: schema_variant.id(),
         schema_variant_name: schema_variant.display_name().to_owned(),
         schema_category: schema_variant.category().to_owned(),
+        schema_variant_description: schema_variant.description().to_owned(),
+        schema_variant_doc_link: schema_variant.link().to_owned(),
         has_resource,
         qualification_totals: stats,
         input_count,

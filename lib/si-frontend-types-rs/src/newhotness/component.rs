@@ -65,6 +65,8 @@ pub struct Component {
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
     pub schema_variant_name: String,
+    pub schema_variant_description: Option<String>,
+    pub schema_variant_doc_link: Option<String>,
     pub schema_category: String,
     pub has_resource: bool,
     pub qualification_totals: ComponentQualificationStats,
