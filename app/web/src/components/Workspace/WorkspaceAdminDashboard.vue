@@ -21,6 +21,21 @@
           </div>
         </Stack>
         <Stack class="max-w-xl">
+          <h2 class="font-bold text-lg">CLEAR INNIT PARAMETER CACHE</h2>
+          <div class="flex flex-row-reverse gap-sm">
+            <VButton
+              :disabled="adminStore.clearingInnitCacheOperationRunning"
+              class="flex-grow"
+              icon="plus-circle"
+              label="Clear Innit parameter cache"
+              loadingText="Clearing Innit parameter cache"
+              :loading="adminStore.clearingInnitCacheOperationRunning"
+              tone="success"
+              @click="clearInnitCache"
+            />
+          </div>
+        </Stack>
+        <Stack class="max-w-xl">
           <h2 class="font-bold text-lg">KILL FUNCTION EXECUTION</h2>
           <VormInput
             v-model="funcRunId"
@@ -97,6 +112,10 @@ onBeforeMount(async () => {
 
 const updateModuleCache = async () => {
   await adminStore.UPDATE_MODULE_CACHE();
+};
+
+const clearInnitCache = async () => {
+  await adminStore.CLEAR_INNIT_CACHE();
 };
 
 const killExecutionReqStatus = adminStore.getRequestStatus("KILL_EXECUTION");

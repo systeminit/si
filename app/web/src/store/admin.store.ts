@@ -40,6 +40,7 @@ export const useAdminStore = () => {
         updatingModuleCacheOperationId: null as string | null,
         updatingModuleCacheOperationError: undefined as string | undefined,
         updatingModuleCacheOperationRunning: false as boolean,
+        clearingInnitCacheOperationRunning: false as boolean,
       }),
       getters: {},
       actions: {
@@ -143,6 +144,20 @@ export const useAdminStore = () => {
             },
             onFail: () => {
               this.updatingModuleCacheOperationRunning = false;
+            },
+          });
+        },
+        async CLEAR_INNIT_CACHE() {
+          this.clearingInnitCacheOperationRunning = true;
+
+          return new ApiRequest<{ id: string }>({
+            method: "post",
+            url: `${API_PREFIX}/innit/cache/clear`,
+            onSuccess: (response) => {
+              this.clearingInnitCacheOperationRunning = false;
+            },
+            onFail: () => {
+              this.clearingInnitCacheOperationRunning = false;
             },
           });
         },

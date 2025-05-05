@@ -6953,6 +6953,7 @@ dependencies = [
  "futures-lite",
  "hyper 0.14.32",
  "indoc",
+ "innit-client",
  "itertools 0.13.0",
  "jsonptr",
  "module-index-client",
