@@ -1,5 +1,6 @@
 use std::{
     collections::{
+        BTreeMap,
         HashMap,
         HashSet,
     },
@@ -10,10 +11,13 @@ use std::{
 };
 
 use async_trait::async_trait;
-use petgraph::Direction::{
-    self,
-    Incoming,
-    Outgoing,
+use petgraph::{
+    Direction::{
+        self,
+        Incoming,
+        Outgoing,
+    },
+    visit::IntoNeighborsDirected,
 };
 use serde::{
     Deserialize,
@@ -256,6 +260,55 @@ pub struct SplitSnapshot {
     inferred_connection_graph: Arc<RwLock<Option<InferredConnectionGraph>>>,
 }
 
+const SHOULD_SPLIT_FN: fn(&NodeWeight, &SplitSnapshotGraphVCurrent) -> bool =
+    |n: &NodeWeight, graph: &SplitSnapshotGraphVCurrent| {
+        let root_id = graph.root_id().unwrap();
+        match n {
+            NodeWeight::Category(_) => true,
+            NodeWeight::Component(_) => {
+                let component_category_node = graph
+                    .edges_directed(root_id, Outgoing)
+                    .unwrap()
+                    .find(|edge_ref| match graph.node_weight(edge_ref.target()) {
+                        Some(NodeWeight::Category(category_node)) => {
+                            category_node.kind() == CategoryNodeKind::Component
+                        }
+                        _ => false,
+                    })
+                    .map(|edge_ref| edge_ref.target())
+                    .unwrap();
+
+                let component_count = graph
+                    .neighbors_directed(component_category_node, Outgoing)
+                    .collect::<Vec<_>>()
+                    .len();
+
+                component_count % 25 == 0
+            }
+            NodeWeight::SchemaVariant(_) => {
+                let sv_category_node = graph
+                    .edges_directed(root_id, Outgoing)
+                    .unwrap()
+                    .find(|edge_ref| match graph.node_weight(edge_ref.target()) {
+                        Some(NodeWeight::Category(category_node)) => {
+                            category_node.kind() == CategoryNodeKind::Schema
+                        }
+                        _ => false,
+                    })
+                    .map(|edge_ref| edge_ref.target())
+                    .unwrap();
+
+                let sv_count = graph
+                    .neighbors_directed(sv_category_node, Outgoing)
+                    .collect::<Vec<_>>()
+                    .len();
+
+                sv_count % 10 == 0
+            }
+            _ => false,
+        }
+    };
+
 impl SplitSnapshot {
     pub async fn id(&self) -> WorkspaceSnapshotAddress {
         *self.address.lock().await
@@ -288,11 +341,10 @@ impl SplitSnapshot {
                 view_category_id = id;
             }
 
-            graph.add_or_replace_node(NodeWeight::Category(CategoryNodeWeight::new(
-                id,
-                lineage_id,
-                category_node_kind,
-            )))?;
+            graph.add_or_replace_node(
+                NodeWeight::Category(CategoryNodeWeight::new(id, lineage_id, category_node_kind)),
+                Some(&SHOULD_SPLIT_FN),
+            )?;
             graph.add_edge(
                 graph.root_id()?,
                 EdgeWeight::new(EdgeWeightKind::new_use()),
@@ -324,7 +376,7 @@ impl SplitSnapshot {
         )?;
 
         let node_weight = NodeWeight::new_view(id, lineage_id, content_address);
-        graph.add_or_replace_node(node_weight.clone())?;
+        graph.add_or_replace_node(node_weight.clone(), Some(&SHOULD_SPLIT_FN))?;
 
         graph.add_edge(
             view_category_id,
@@ -405,11 +457,12 @@ impl SplitSnapshot {
         Ok((!updates.is_empty()).then_some(updates))
     }
 
-    #[instrument(name = "split_snapshot.find", level = "debug", skip_all, fields())]
+    #[instrument(name = "split_snapshot.find", level = "info", skip_all, fields())]
     pub async fn find(
         ctx: &DalContext,
         split_snapshot_supergraph_addr: WorkspaceSnapshotAddress,
     ) -> WorkspaceSnapshotResult<Self> {
+        let start = Instant::now();
         let snapshot = match ctx
             .layer_db()
             .split_snapshot_supergraph()
@@ -424,22 +477,41 @@ impl SplitSnapshot {
                 )?;
 
                 let mut subgraphs = vec![];
-                for &subgraph_address in supergraph.addresses() {
+                let mut join_set = JoinSet::new();
+                let mut subgraph_map = BTreeMap::new();
+                for (subgraph_idx, &subgraph_address) in supergraph.addresses().iter().enumerate() {
                     let subgraph_address = subgraph_address.into();
-                    let subgraph = ctx
-                        .layer_db()
-                        .split_snapshot_subgraph()
-                        .read_wait_for_memory(&subgraph_address)
-                        .await?
-                        .ok_or(
-                            WorkspaceSnapshotError::SplitSnapshotSubGraphMissingAtAddress(
-                                subgraph_address,
-                            ),
-                        )?;
+                    let ctx_clone = ctx.clone();
+                    join_set.spawn(async move {
+                        let subgraph = ctx_clone
+                            .layer_db()
+                            .split_snapshot_subgraph()
+                            .read_wait_for_memory(&subgraph_address)
+                            .await?
+                            .ok_or(
+                                WorkspaceSnapshotError::SplitSnapshotSubGraphMissingAtAddress(
+                                    subgraph_address,
+                                ),
+                            )?;
 
-                    // xxx: we have to make the splitgraph constructable from arcs, it will
-                    // xxx: need to handle the copy-on-write behavior internally
-                    subgraphs.push(subgraph.as_ref().clone());
+                        Ok::<(usize, Arc<SubGraphV1>), WorkspaceSnapshotError>((
+                            subgraph_idx,
+                            subgraph,
+                        ))
+                    });
+
+                    // // xxx: we have to make the splitgraph constructable from arcs, it will
+                    // // xxx: need to handle the copy-on-write behavior internally
+                    // subgraphs.push(subgraph.as_ref().clone());
+                }
+
+                while let Some(join_result) = join_set.join_next().await {
+                    let (idx, graph_arc) = join_result??;
+                    subgraph_map.insert(idx, graph_arc);
+                }
+
+                for (_, arc) in subgraph_map {
+                    subgraphs.push(arc.as_ref().clone());
                 }
 
                 Arc::new(SplitSnapshotGraph::V1(
@@ -455,6 +527,8 @@ impl SplitSnapshot {
                 err => Err(err)?,
             },
         };
+
+        warn!("snapshot fetch: {:?}", start.elapsed());
 
         Ok(Self {
             address: Arc::new(Mutex::new(split_snapshot_supergraph_addr)),
@@ -736,7 +810,9 @@ impl SplitSnapshot {
     }
 
     pub async fn add_or_replace_node(&self, node: NodeWeight) -> WorkspaceSnapshotResult<()> {
-        self.working_copy_mut().await.add_or_replace_node(node)?;
+        self.working_copy_mut()
+            .await
+            .add_or_replace_node(node, Some(&SHOULD_SPLIT_FN))?;
 
         Ok(())
     }
@@ -971,6 +1047,10 @@ impl SplitSnapshot {
                 )
             })
             .collect())
+    }
+
+    pub async fn tiny_dot_to_file(&self, prefix: &str) {
+        self.working_copy().await.tiny_dot_to_file(prefix);
     }
 
     pub async fn remove_all_edges(&self, id: impl Into<Ulid>) -> WorkspaceSnapshotResult<()> {

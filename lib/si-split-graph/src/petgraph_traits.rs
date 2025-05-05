@@ -22,7 +22,6 @@ use crate::{
     SplitGraphNodeId,
     SplitGraphNodeWeight,
     SubGraph,
-    SubGraphIndex,
     SubGraphNodeIndex,
 };
 
@@ -73,7 +72,7 @@ where
 {
     pub(super) this_subgraph: &'a SubGraph<N, E, K>,
     pub(super) subgraphs: &'a [SubGraph<N, E, K>],
-    pub(super) edges: stable_graph::Edges<'a, SplitGraphEdgeWeight<E, K>, Directed, SubGraphIndex>,
+    pub(super) edges: stable_graph::Edges<'a, SplitGraphEdgeWeight<E, K>, Directed, usize>,
     pub(super) from_id: SplitGraphNodeId,
     pub(super) direction: Direction,
     pub(super) debug: bool,
@@ -88,7 +87,7 @@ where
     pub(super) subgraph: Option<&'a SubGraph<N, E, K>>,
     pub(super) direction: Direction,
     pub(super) incoming_edges:
-        Option<stable_graph::Edges<'a, SplitGraphEdgeWeight<E, K>, Directed, SubGraphIndex>>,
+        Option<stable_graph::Edges<'a, SplitGraphEdgeWeight<E, K>, Directed, usize>>,
     pub(super) outgoing_neighbors:
         Option<stable_graph::Neighbors<'a, SplitGraphEdgeWeight<E, K>, usize>>,
 }

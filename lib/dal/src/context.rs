@@ -1021,6 +1021,7 @@ impl DalContext {
             .ok_or(TransactionsError::NoBaseChangeSet(change_set.id))?;
 
         let mut new = self.clone();
+        warn!("getting again in clone_with_base");
         new.update_visibility_and_snapshot_to_visibility(base_change_set_id)
             .await?;
         Ok(new)

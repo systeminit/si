@@ -34,6 +34,8 @@ use serde::{
     Serialize,
 };
 use si_events::audit_log::AuditLogKind;
+use telemetry::prelude::*;
+use tokio::time::Instant;
 
 use super::{
     ComponentError,
@@ -62,6 +64,7 @@ pub async fn update_property_editor_value(
     Host(host_name): Host,
     Json(request): Json<UpdatePropertyEditorValueRequest>,
 ) -> ComponentResult<ForceChangeSetResponse<()>> {
+    let start = Instant::now();
     let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
@@ -197,7 +200,9 @@ pub async fn update_property_editor_value(
         .publish_on_commit(&ctx)
         .await?;
 
+    warn!("elapsed before commit: {:?}", start.elapsed());
     ctx.commit().await?;
+    warn!("elapsed after commit: {:?}", start.elapsed());
 
     Ok(ForceChangeSetResponse::empty(force_change_set_id))
 }

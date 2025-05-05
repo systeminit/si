@@ -1,3 +1,5 @@
+use std::usize;
+
 use axum::{
     Json,
     extract::{
@@ -196,6 +198,14 @@ async fn find_or_create_user_and_workspace(
             )
             .await?;
 
+            // let workspace = Workspace::new_split_graph_workspace(
+            //     &mut ctx,
+            //     auth_api_workspace.id,
+            //     auth_api_workspace.display_name.clone(),
+            //     auth_api_workspace.token,
+            //     usize::MAX / 2,
+            // )
+            // .await?;
             let _key_pair = KeyPair::new(&ctx, "default").await?;
 
             track(

@@ -148,17 +148,17 @@ pub async fn perform_rebase(
         }
     }
 
-    {
-        let ctx_clone = ctx.clone();
-        server_tracker.spawn(async move {
-            if let Err(err) =
-                evict_unused_snapshots(&ctx_clone, &to_rebase_workspace_snapshot_address).await
-            {
-                error!(?err, "eviction error");
-            }
-            // TODO: RebaseBatch eviction?
-        });
-    }
+    // {
+    //     let ctx_clone = ctx.clone();
+    //     server_tracker.spawn(async move {
+    //         if let Err(err) =
+    //             evict_unused_snapshots(&ctx_clone, &to_rebase_workspace_snapshot_address).await
+    //         {
+    //             error!(?err, "eviction error");
+    //         }
+    //         // TODO: RebaseBatch eviction?
+    //     });
+    // }
 
     if updating_head && *workspace.pk() != WorkspacePk::NONE {
         //todo(brit): what do we want to do about change sets that haven't
@@ -227,7 +227,7 @@ pub async fn perform_rebase(
         }
     }
 
-    debug!("rebase elapsed: {:?}", start.elapsed());
+    warn!("rebase elapsed: {:?}", start.elapsed());
 
     Ok(RebaseStatus::Success {
         updates_performed: request.updates_address,
@@ -265,14 +265,14 @@ async fn rebase_split(
         .await?
         .ok_or(RebaseError::MissingRebaseBatch(request.updates_address))?;
 
-    debug!("rebase batch: {:?}", rebase_batch);
+    // warn!("rebase batch: {:?}", rebase_batch);
 
     to_rebase_workspace_snapshot
         .perform_updates(rebase_batch.as_slice())
         .await?;
 
     let new_snapshot_address = to_rebase_workspace_snapshot.write(ctx).await?;
-    debug!("Workspace snapshot updated to {}", new_snapshot_address);
+    //warn!("Workspace snapshot updated to {}", new_snapshot_address);
 
     to_rebase_change_set
         .update_pointer(ctx, new_snapshot_address)
@@ -289,6 +289,12 @@ async fn rebase_split(
     // Before replying to the requester or sending the Edda request, we must commit.
     ctx.commit_no_rebase().await?;
 
+    // to_rebase_workspace_snapshot
+    //     .tiny_dot_to_file("rebase")
+    //     .await;
+
+    //warn!("committing");
+
     send_updates_to_edda_split_snapshot(
         ctx,
         &original_workspace_snapshot,
@@ -298,6 +304,8 @@ async fn rebase_split(
         span,
     )
     .await?;
+
+    //warn!("rebase done");
 
     Ok(())
 }
@@ -418,6 +426,7 @@ async fn send_updates_to_edda_split_snapshot(
     request: &EnqueueUpdatesRequest,
     span: Span,
 ) -> Result<(), RebaseError> {
+    //    warn!("detecting changes for edda request");
     let changes = original_workspace_snapshot
         .detect_changes(to_rebase_workspace_snapshot)
         .instrument(tracing::info_span!(
@@ -425,6 +434,7 @@ async fn send_updates_to_edda_split_snapshot(
         ))
         .await?;
     let change_batch_address = ctx.write_change_batch(changes).await?;
+    //   warn!("wrote change batch");
     let edda_update_request_id = edda
         .update_from_workspace_snapshot(
             request.workspace_id,

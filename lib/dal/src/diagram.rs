@@ -230,6 +230,7 @@ impl SummaryDiagramEdge {
         })
     }
 
+    #[instrument(skip_all)]
     pub fn assemble(
         incoming_connection: Connection,
         from_component: &Component,
@@ -372,7 +373,9 @@ impl Diagram {
             ..
         } in components.values()
         {
-            let change_status = component.change_status(ctx).await?;
+            let change_status = component
+                .change_status_with_base(ctx, base_snapshot)
+                .await?;
             component_views.push(
                 component
                     .into_frontend_type(ctx, geometry.as_ref(), change_status, diagram_sockets)
@@ -496,6 +499,7 @@ impl Diagram {
     async fn get_base_snapshot(
         ctx: &DalContext,
     ) -> DiagramResult<(WorkspaceSnapshotSelector, bool)> {
+        warn!("getting base snapshot");
         let base_change_set_id = if let Some(change_set_id) = ctx.change_set()?.base_change_set_id {
             change_set_id
         } else {
@@ -775,6 +779,7 @@ impl Diagram {
             let mut map = HashMap::new();
 
             if let Some(view_id) = maybe_view_id {
+                warn!("assembling view for {view_id:?}");
                 for geometry in Geometry::list_by_view_id(ctx, view_id).await? {
                     let geo_represents = match Geometry::represented_id(ctx, geometry.id()).await {
                         Ok(r) => r,

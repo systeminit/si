@@ -126,6 +126,10 @@ where
         let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(1));
         let mut tried = 0;
         let read_wait = Instant::now();
+        if let Some(snap) = self.cache.get(key.to_string().into()).await? {
+            return Ok(Some(snap));
+        }
+
         while tried < MAX_TRIES {
             if let Some(v) = self.cache.cache().get_from_memory(key.clone()).await {
                 span.record("si.layer_cache.memory_cache.hit", true);

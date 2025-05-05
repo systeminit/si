@@ -29,7 +29,10 @@ use serde::{
     Serialize,
 };
 use si_frontend_types::RawGeometry;
-use telemetry::prelude::debug;
+use telemetry::prelude::{
+    debug,
+    *,
+};
 
 use crate::{
     extract::HandlerContext,
@@ -144,6 +147,7 @@ async fn get_diagram_inner(ctx: &DalContext, view: View) -> ViewResult<Json<Resp
     let view_id = view.id();
     let diagram = slow_rt::spawn(async move {
         let ctx = &ctx_clone;
+        warn!("getting diagram for view: {view_id:?}");
         Ok::<Diagram, ViewError>(Diagram::assemble(ctx, Some(view_id)).await?)
     })?
     .await??;

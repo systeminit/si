@@ -49,7 +49,7 @@ pub async fn migrate_v4_to_split_v1(
         }
 
         node_id_by_index.insert(node_index, node_id);
-        split_graph.add_or_replace_node(node)?;
+        split_graph.add_or_replace_node(node, None)?;
 
         if let Some(ordering_node) = v4_graph.ordering_node_for_container(node_index)? {
             let order = ordering_node.order().clone();

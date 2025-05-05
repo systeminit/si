@@ -128,7 +128,7 @@ where
             merkle_tree_hash: MerkleTreeHash::nil(),
         };
         graph
-            .add_or_replace_node(node_weight)
+            .add_or_replace_node(node_weight, None)
             .expect("add_or_replace_node");
 
         node_id_map.insert(node, id);
@@ -217,7 +217,7 @@ fn ordered_edges() -> SplitGraphResult<()> {
         let container_name = container_node.name.to_owned();
         let container_node_id = container_node.id();
 
-        splitgraph.add_or_replace_node(container_node)?;
+        splitgraph.add_or_replace_node(container_node, None)?;
         splitgraph.add_edge(
             splitgraph.root_id()?,
             TestEdgeWeight::EdgeA,
@@ -230,12 +230,15 @@ fn ordered_edges() -> SplitGraphResult<()> {
             let node_name = format!("{container_name}-{i}");
             let node_id = Ulid::new();
             node_name_to_id_map.insert(node_name.to_owned(), node_id);
-            splitgraph.add_or_replace_node(TestNodeWeight {
-                id: node_id,
-                lineage_id: SplitGraphNodeId::new(),
-                name: node_name,
-                merkle_tree_hash: MerkleTreeHash::nil(),
-            })?;
+            splitgraph.add_or_replace_node(
+                TestNodeWeight {
+                    id: node_id,
+                    lineage_id: SplitGraphNodeId::new(),
+                    name: node_name,
+                    merkle_tree_hash: MerkleTreeHash::nil(),
+                },
+                None,
+            )?;
             nodes.push(node_id);
             splitgraph.add_ordered_edge(container_node_id, TestEdgeWeight::EdgeA, node_id)?;
         }
@@ -324,7 +327,7 @@ fn default_edges() -> SplitGraphResult<()> {
 
     let mut node_id_map = HashMap::new();
     for node in &nodes {
-        split_graph.add_or_replace_node(node.clone())?;
+        split_graph.add_or_replace_node(node.clone(), None)?;
         node_id_map.insert(node.name.as_str(), node.id);
         if node.name == "a" {
             split_graph.add_edge(split_graph.root_id()?, TestEdgeWeight::EdgeA, node.id)?;
@@ -406,7 +409,7 @@ fn cross_graph_node_id_updates() -> SplitGraphResult<()> {
     let mut node_id_map = HashMap::new();
     for node in &nodes {
         node_id_map.insert(node.name.as_str(), node.id());
-        split_graph.add_or_replace_node(node.clone())?;
+        split_graph.add_or_replace_node(node.clone(), None)?;
         let subgraph = split_graph.subgraph_mut_for_node(node.id()).unwrap();
         let index = subgraph.node_id_to_index(node.id()).unwrap();
         subgraph.add_edge(
@@ -475,7 +478,7 @@ fn external_source_many_to_one_removal_and_id_updates() -> SplitGraphResult<()> 
         .collect();
 
     for node in &first_graph_nodes {
-        split_graph.add_or_replace_node(node.clone())?;
+        split_graph.add_or_replace_node(node.clone(), None)?;
     }
 
     let second_graph_nodes: Vec<_> = ["d", "e", "f"]
@@ -489,7 +492,7 @@ fn external_source_many_to_one_removal_and_id_updates() -> SplitGraphResult<()> 
         .collect();
 
     for node in &second_graph_nodes {
-        split_graph.add_or_replace_node(node.clone())?;
+        split_graph.add_or_replace_node(node.clone(), None)?;
         let subgraph = split_graph.subgraphs.get_mut(1).unwrap();
         let index = subgraph.node_id_to_index(node.id()).unwrap();
         subgraph.add_edge(
@@ -751,12 +754,12 @@ fn replace_node() -> SplitGraphResult<()> {
         .collect();
 
     for node in &nodes {
-        splitgraph.add_or_replace_node(node.clone())?;
+        splitgraph.add_or_replace_node(node.clone(), None)?;
     }
 
     for node in nodes.iter_mut() {
         node.name = format!("{}-{}", node.name, node.id);
-        splitgraph.add_or_replace_node(node.clone())?;
+        splitgraph.add_or_replace_node(node.clone(), None)?;
     }
 
     for node in &nodes {
@@ -845,18 +848,24 @@ fn cross_graph_edges() -> SplitGraphResult<()> {
         for name in &nodes {
             let id = Ulid::new();
             let lineage_id = SplitGraphNodeId::new();
-            splitgraph.add_or_replace_node(TestNodeWeight {
-                id,
-                lineage_id,
-                name: name.to_string(),
-                merkle_tree_hash: MerkleTreeHash::nil(),
-            })?;
-            unsplitgraph.add_or_replace_node(TestNodeWeight {
-                id,
-                lineage_id,
-                name: name.to_string(),
-                merkle_tree_hash: MerkleTreeHash::nil(),
-            })?;
+            splitgraph.add_or_replace_node(
+                TestNodeWeight {
+                    id,
+                    lineage_id,
+                    name: name.to_string(),
+                    merkle_tree_hash: MerkleTreeHash::nil(),
+                },
+                None,
+            )?;
+            unsplitgraph.add_or_replace_node(
+                TestNodeWeight {
+                    id,
+                    lineage_id,
+                    name: name.to_string(),
+                    merkle_tree_hash: MerkleTreeHash::nil(),
+                },
+                None,
+            )?;
             name_to_id_map.insert(name, id);
         }
 
@@ -1110,7 +1119,7 @@ fn detect_changes_simple() -> SplitGraphResult<()> {
             .cloned()
             .expect("severian node should exist");
         severian.name = "severian the torturer".into();
-        updated_graph.add_or_replace_node(severian)?;
+        updated_graph.add_or_replace_node(severian, None)?;
         updated_graph.cleanup_and_merkle_tree_hash();
 
         let changes = updated_graph.detect_changes(&base_graph)?;
@@ -1138,7 +1147,7 @@ fn detect_changes_simple() -> SplitGraphResult<()> {
             .cloned()
             .expect("thecla node should exist");
         thecla.name = "chatelaine thecla".into();
-        updated_graph.add_or_replace_node(thecla)?;
+        updated_graph.add_or_replace_node(thecla, None)?;
         updated_graph.cleanup_and_merkle_tree_hash();
 
         let changes = updated_graph.detect_changes(&base_graph)?;
@@ -1166,7 +1175,7 @@ fn detect_changes_simple() -> SplitGraphResult<()> {
             .cloned()
             .expect("vodalus node should exist");
         vodalus.name = "vodalus the exultant".into();
-        updated_graph.add_or_replace_node(vodalus)?;
+        updated_graph.add_or_replace_node(vodalus, None)?;
         updated_graph.cleanup_and_merkle_tree_hash();
 
         let changes = updated_graph.detect_changes(&base_graph)?;
@@ -1195,7 +1204,7 @@ fn detect_changes_simple() -> SplitGraphResult<()> {
             .cloned()
             .expect("drotte node should exist");
         drotte.name = "drotte the journeyman".into();
-        updated_graph.add_or_replace_node(drotte)?;
+        updated_graph.add_or_replace_node(drotte, None)?;
         updated_graph.cleanup_and_merkle_tree_hash();
 
         let changes = updated_graph.detect_changes(&base_graph)?;
@@ -1242,9 +1251,9 @@ fn detect_and_perform_updates_ordered_containers() -> SplitGraphResult<()> {
             merkle_tree_hash: MerkleTreeHash::nil(),
         };
 
-        updated_graph.add_or_replace_node(damaya.clone())?;
+        updated_graph.add_or_replace_node(damaya.clone(), None)?;
         updated_graph.add_edge(updated_graph.root_id()?, TestEdgeWeight::EdgeA, damaya.id())?;
-        updated_graph.add_or_replace_node(evil_earth.clone())?;
+        updated_graph.add_or_replace_node(evil_earth.clone(), None)?;
         updated_graph.add_edge(
             updated_graph.root_id()?,
             TestEdgeWeight::EdgeA,
@@ -1262,7 +1271,7 @@ fn detect_and_perform_updates_ordered_containers() -> SplitGraphResult<()> {
                 merkle_tree_hash: MerkleTreeHash::nil(),
             };
             ordered_child_ids.push(new_node.id());
-            updated_graph.add_or_replace_node(new_node.clone())?;
+            updated_graph.add_or_replace_node(new_node.clone(), None)?;
             name_to_id_map.insert(name.to_string(), new_node.id());
             updated_graph.add_ordered_edge(
                 damaya.id(),
@@ -1312,7 +1321,12 @@ fn detect_and_perform_updates_ordered_containers() -> SplitGraphResult<()> {
 
         updated_graph.reorder_node(damaya.id(), |order| order.iter().copied().rev().collect())?;
 
-        let subgraph_for_damaya = updated_graph.subgraph_index_for_node(damaya.id()).unwrap();
+        let SubGraphIndex::SubGraph(subgraph_for_damaya) =
+            updated_graph.subgraph_index_for_node(damaya.id()).unwrap()
+        else {
+            panic!("damaya should not be in the waiting room");
+        };
+
         let updated_root_merkle_before_calculation = updated_graph
             .raw_node_weight(updated_graph.subgraph_root_id(subgraph_for_damaya).unwrap())
             .unwrap()
@@ -1371,7 +1385,7 @@ fn detect_updates_simple() -> SplitGraphResult<()> {
         merkle_tree_hash: MerkleTreeHash::nil(),
     };
 
-    updated_graph.add_or_replace_node(new_node.clone())?;
+    updated_graph.add_or_replace_node(new_node.clone(), None)?;
     updated_graph.add_edge(
         updated_graph.root_id()?,
         TestEdgeWeight::EdgeA,
@@ -1440,7 +1454,7 @@ fn detect_updates_simple() -> SplitGraphResult<()> {
     let mut second_updated_graph = updated_graph.clone();
     let mut updated_node = new_node.clone();
     updated_node.set_name("syenite".into());
-    second_updated_graph.add_or_replace_node(updated_node)?;
+    second_updated_graph.add_or_replace_node(updated_node, None)?;
     second_updated_graph.cleanup_and_merkle_tree_hash();
     let replace_node_update = updated_graph.detect_updates(&second_updated_graph);
     assert!(matches!(

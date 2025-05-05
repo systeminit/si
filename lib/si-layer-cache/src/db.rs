@@ -233,8 +233,8 @@ where
                 compute_executor.clone(),
                 tracker.clone(),
                 token.clone(),
-                5,
-                5
+                10,
+                10
             ),
             create_layer_cache(
                 workspace_snapshot::CACHE_NAME,
@@ -243,8 +243,8 @@ where
                 compute_executor.clone(),
                 tracker.clone(),
                 token.clone(),
-                50,
-                50,
+                10,
+                10,
             ),
             create_layer_cache(
                 split_snapshot_subgraph::CACHE_NAME,
@@ -253,8 +253,8 @@ where
                 compute_executor.clone(),
                 tracker.clone(),
                 token.clone(),
-                1,
-                1,
+                25,
+                25,
             ),
             create_layer_cache(
                 split_snapshot_supergraph::CACHE_NAME,
@@ -263,8 +263,8 @@ where
                 compute_executor.clone(),
                 tracker.clone(),
                 token.clone(),
-                1,
-                1
+                10,
+                10,
             ),
             create_layer_cache(
                 split_snapshot_rebase_batch::CACHE_NAME,
@@ -274,7 +274,7 @@ where
                 tracker.clone(),
                 token.clone(),
                 1,
-                1
+                1,
             )
         )?;
 

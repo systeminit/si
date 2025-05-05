@@ -165,6 +165,7 @@ use crate::{
     workspace_snapshot::{
         DependentValueRoot,
         WorkspaceSnapshotError,
+        WorkspaceSnapshotSelector,
         content_address::ContentAddressDiscriminants,
         dependent_value_root::DependentValueRootError,
         edge_weight::{
@@ -451,6 +452,24 @@ impl Component {
 
     pub fn to_delete(&self) -> bool {
         self.to_delete
+    }
+
+    pub async fn change_status_with_base(
+        &self,
+        ctx: &DalContext,
+        base_snapshot: &WorkspaceSnapshotSelector,
+    ) -> ComponentResult<ChangeStatus> {
+        let status = if base_snapshot.node_exists(self.id()).await {
+            if self.to_delete() {
+                ChangeStatus::Deleted
+            } else {
+                ChangeStatus::Unmodified
+            }
+        } else {
+            ChangeStatus::Added
+        };
+
+        Ok(status)
     }
 
     pub async fn change_status(&self, ctx: &DalContext) -> ComponentResult<ChangeStatus> {
