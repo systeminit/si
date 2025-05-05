@@ -34,21 +34,61 @@ if [ -z "$PARAMETERS" ]; then
     echo "Warning: No parameters found with the specified prefix."
 fi
 
-# Loop through each parameter
+# Process parameters in batches of 10
+batch_names=""
+batch_count=0
+
+# Create a temporary file to store name-value pairs
+TMPFILE=$(mktemp)
+
 for parameter_info in $(echo "$PARAMETERS" | jq -c '.[]'); do
     parameter_name=$(echo "$parameter_info" | jq -r '.Name')
     env_var_name=$(echo "$parameter_info" | jq -r '.Description')
 
     if [ -n "$env_var_name" ] && [ "$env_var_name" != "null" ]; then
-        # Get the parameter value
-        resource_value=$(retry_command aws ssm get-parameter --name "$parameter_name" --query "Parameter.Value" --output json | tr -d '"')
+        # Add to current batch
+        if [ -z "$batch_names" ]; then
+            batch_names="$parameter_name"
+        else
+            batch_names="$batch_names $parameter_name"
+        fi
+        batch_count=$((batch_count + 1))
 
-        # Export the environment variable
-        export "${env_var_name}=${resource_value}"
-        echo "Exported Parameter: $env_var_name"
+        # Process batch when it reaches 10 parameters or at the end
+        if [ $batch_count -eq 10 ]; then
+            # Get values for the batch
+            retry_command aws ssm get-parameters --names $batch_names --with-decryption --query "Parameters[*].[Name,Value]" --output json > "$TMPFILE"
+
+            # Process the values without using a pipe
+            while read -r param; do
+                name=$(echo "$param" | jq -r '.[0]')
+                value=$(echo "$param" | jq -r '.[1]')
+                env_name=$(echo "$PARAMETERS" | jq -r ".[] | select(.Name == \"$name\") | .Description")
+                export "${env_name}=${value}"
+                echo "Exported Parameter: $env_name"
+            done < <(jq -c '.[]' "$TMPFILE")
+
+            # Reset batch
+            batch_names=""
+            batch_count=0
+        fi
     fi
 done
 
+# Process any remaining parameters
+if [ -n "$batch_names" ]; then
+    retry_command aws ssm get-parameters --names $batch_names --with-decryption --query "Parameters[*].[Name,Value]" --output json > "$TMPFILE"
+
+    while read -r param; do
+        name=$(echo "$param" | jq -r '.[0]')
+        value=$(echo "$param" | jq -r '.[1]')
+        env_name=$(echo "$PARAMETERS" | jq -r ".[] | select(.Name == \"$name\") | .Description")
+        export "${env_name}=${value}"
+        echo "Exported Parameter: $env_name"
+    done < <(jq -c '.[]' "$TMPFILE")
+fi
+
+rm -f "$TMPFILE"
 
 # Get a list of secrets that match the prefix
 SECRETS=$(aws secretsmanager list-secrets --query "SecretList[?starts_with(Name, '$SI_HOSTENV')].Name" --output json)
@@ -73,11 +113,11 @@ export SI_HOSTNAME=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.1
 export SI_INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
 
 for file_path in "$DIR"/*; do
-  file_name=$(basename "$file_path")
-  echo "Updating $file_name"
-  for env_var in $(env | grep '^SI_' | awk -F= '{print $1}'); do
-      sed -i "s/\$${env_var}/$(eval echo \"\$$env_var\" | sed 's/[\/&]/\\&/g')/g" "$file_path"
-  done
+    file_name=$(basename "$file_path")
+    echo "Updating $file_name"
+    for env_var in $(env | grep '^SI_' | awk -F= '{print $1}'); do
+        sed -i "s/\$${env_var}/$(eval echo \"\$$env_var\" | sed 's/[\/&]/\\&/g')/g" "$file_path"
+    done
 done
 
 mkdir -p /service
