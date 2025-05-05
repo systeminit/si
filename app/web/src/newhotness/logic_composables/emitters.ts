@@ -30,7 +30,7 @@ export const startKeyEmitter = (document: Document) => {
 
 type AttributeDetails = {
   selectedPath: string;
-  scrolled: void;
+  selectedDocs: { docs: string; link: string; name: string } | null;
 };
 
 export const attributeEmitter: Emitter<AttributeDetails> =

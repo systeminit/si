@@ -1,29 +1,15 @@
 <template>
   <section v-if="component" class="grid gap-md h-full p-md pb-0">
-    <div class="left flex flex-col">
-      <nav class="mb-md">
-        <ol class="text-right [&>li]:cursor-pointer">
-          <li>
-            <VButton
-              class="border-0"
-              icon="arrow--left"
-              size="sm"
-              tone="shade"
-              variant="ghost"
-              label="Back"
-              @click="back"
-            />
-          </li>
-          <li @click="() => goto('attr')">Attributes</li>
-          <li @click="() => goto('action')">Actions</li>
-          <li @click="() => goto('mgmt')">Manangemnt Functions</li>
-        </ol>
-      </nav>
-      <CollapsingFlexItem open>
-        <template #header> Documentation </template>
-      </CollapsingFlexItem>
-    </div>
     <div class="name items-center flex flex-row gap-xs bg-gray-800 p-xs">
+      <VButton
+        class="border-0 mr-2em"
+        icon="arrow--left"
+        size="sm"
+        tone="shade"
+        variant="ghost"
+        label="Back"
+        @click="back"
+      />
       <span>{{ component.schemaVariantName }}</span>
       <span>/</span>
       <span class="grow">
@@ -67,10 +53,7 @@
         </EditInPlace>
       </span>
     </div>
-    <div
-      class="attrs scrollable flex flex-col"
-      @scroll="() => attributeEmitter.emit('scrolled')"
-    >
+    <div class="attrs flex flex-col">
       <CollapsingFlexItem ref="attrRef" :expandable="false" open>
         <template #header>Attributes</template>
         <AttributePanel
@@ -88,6 +71,38 @@
         stuff
       </CollapsingFlexItem>
     </div>
+
+    <div class="docs flex flex-col">
+      <CollapsingFlexItem open>
+        <template #header> Documentation </template>
+        <template v-if="!docs">
+          <p v-if="component.schemaVariantDocLink">
+            <a :href="component.schemaVariantDocLink" target="_blank">{{
+              component.schemaVariantName
+            }}</a>
+          </p>
+          <p>{{ component.schemaVariantDescription }}</p>
+        </template>
+        <template v-else>
+          <VButton
+            class="border-0 mr-2em"
+            icon="arrow--left"
+            size="sm"
+            tone="shade"
+            variant="ghost"
+            label="Back"
+            @click="() => (docs = '')"
+          />
+          <p v-if="docLink">
+            <a :href="docLink" target="_blank">{{
+              component.schemaVariantName
+            }}</a>
+          </p>
+          <p>{{ docs }}</p>
+        </template>
+      </CollapsingFlexItem>
+    </div>
+
     <div class="right flex flex-col">
       <CollapsingFlexItem>
         <template #header>
@@ -160,18 +175,22 @@ const componentQuery = useQuery<BifrostComponent | null>({
 
 const component = computed(() => componentQuery.data.value);
 
+const docs = ref("");
+const docLink = ref("");
+
+attributeEmitter.on("selectedDocs", (data) => {
+  if (!data) docs.value = "";
+  else {
+    docs.value = data.docs;
+    docLink.value = data.link;
+  }
+});
+
 const attrRef = ref<typeof CollapsingFlexItem>();
 const actionRef = ref<typeof CollapsingFlexItem>();
 const mgmtRef = ref<typeof CollapsingFlexItem>();
 const nameRef = ref<HTMLInputElement>();
 const editInPlaceRef = ref<typeof EditInPlace>();
-
-const goto = (target: "attr" | "action" | "mgmt") => {
-  if (attrRef.value) attrRef.value.openState.open.value = target === "attr";
-  if (actionRef.value)
-    actionRef.value.openState.open.value = target === "action";
-  if (mgmtRef.value) mgmtRef.value.openState.open.value = target === "mgmt";
-};
 
 const router = useRouter();
 
@@ -240,14 +259,14 @@ const blur = () => {
 
 <style lang="less" scoped>
 section.grid {
-  grid-template-columns: minmax(0, 25%) minmax(0, 1fr) minmax(0, 25%);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 25%) minmax(0, 25%);
   grid-template-rows: 3rem minmax(0, 1fr);
   grid-template-areas:
-    "left name right"
-    "left attrs right";
+    "name docs right"
+    "attrs docs right";
 }
-.left {
-  grid-area: left;
+.docs {
+  grid-area: docs;
 }
 .right {
   grid-area: right;

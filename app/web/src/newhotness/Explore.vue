@@ -12,7 +12,7 @@
             clsx(themeClasses('border-action-500', 'border-action-300'))
           "
           inactiveClasses="border-neutral-500"
-          :pills="['Up', 'Down']"
+          :pills="['Up', 'Down', 'Left', 'Right']"
           instructions="to navigate"
         >
           <template #default="slotProps">
@@ -33,9 +33,9 @@
         <!-- body -->
         <ComponentGridTile
           v-for="component in componentVirtualItemsList"
-          :key="componentList[component.index]!.id"
-          :component="componentList[component.index]!"
-          @dblclick="componentNavigate(componentList[component.index]!.id)"
+          :key="filteredComponents[component.index]!.id"
+          :component="filteredComponents[component.index]!"
+          @dblclick="componentNavigate(filteredComponents[component.index]!.id)"
         />
       </div>
       <footer
@@ -95,15 +95,17 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { themeClasses, VormInput, VButton } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import { useVirtualizer } from "@tanstack/vue-virtual";
+import { Fzf } from "fzf";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
+  BifrostComponent,
   BifrostComponentList,
 } from "@/workers/types/dbinterface";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
@@ -139,9 +141,33 @@ const componentList = computed(
 
 const scrollRef = ref<HTMLDivElement>();
 
+const filteredComponents = reactive<BifrostComponent[]>([]);
+
+const searchString = ref("");
+
+watch(
+  () => [searchString.value, componentList.value],
+  () => {
+    if (!searchString.value) {
+      filteredComponents.splice(0, Infinity, ...componentList.value);
+      return;
+    }
+
+    const fzf = new Fzf(componentList.value, {
+      casing: "case-insensitive",
+      selector: (c) =>
+        `${c.name} ${c.schemaVariantName} ${c.schemaName} ${c.schemaCategory} ${c.schemaId} ${c.id}`,
+    });
+
+    const results = fzf.find(searchString.value);
+    filteredComponents.splice(0, Infinity, ...results.map((fz) => fz.item));
+  },
+  { immediate: true },
+);
+
 const virtualizerOptions = computed(() => {
   return {
-    count: componentList.value.length,
+    count: filteredComponents.length,
     // `lanes` gives virtualizer a "second-dimension" (aka columns for vertical lists and rows for horizontal lists)
     // https://tanstack.com/virtual/latest/docs/api/virtualizer#lanes
     // Our grid is based on a minimum 250px width tile... so how many tiles can we fit?
@@ -159,8 +185,6 @@ const virtualList = useVirtualizer(virtualizerOptions);
 const componentVirtualItemsList = computed(() =>
   virtualList.value.getVirtualItems(),
 );
-
-const searchString = ref("");
 
 const collapsingStyles = computed(() =>
   collapsingGridStyles([actions.value?.openState, history.value?.openState]),

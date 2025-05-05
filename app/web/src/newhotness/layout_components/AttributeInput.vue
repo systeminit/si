@@ -1,12 +1,11 @@
 <template>
   <!-- eslint-disable vue/no-multiple-template-root -->
-  <label class="pl-xs flex flex-row items-center relative">
+  <label ref="anchorRef" class="pl-xs flex flex-row items-center">
     <span>{{ displayName }}</span>
     <template v-if="maybeOptions.hasOptions"> </template>
     <valueForm.Field name="value">
       <template #default="{ field }">
         <input
-          ref="anchorRef"
           class="block w-72 ml-auto text-white bg-black border-2 border-neutral-300 disabled:bg-neutral-900"
           type="text"
           :value="field.state.value"
@@ -28,17 +27,15 @@
     />
   </label>
 
-  <!-- `relative` on label means we need a `z-100` here to get this above everyone -->
   <div
     v-show="maybeOptions.hasOptions && showOptions"
     ref="optionRef"
-    class="absolute w-1/2 h-[12rem] self-end bg-neutral-500 z-100"
-    :style="optionPos"
+    class="h-[12rem] bg-neutral-500"
   >
     <ol class="scrollable h-full">
       <li class="p-xs">
-        <!-- TODO make it a fuzzy filter -->
         <input
+          v-model="filterStr"
           type="text"
           class="text-white bg-black border-2 border-neutral-300 w-full block"
           placeholder="filter..."
@@ -47,20 +44,24 @@
         />
       </li>
       <li
-        v-for="option in maybeOptions.options"
+        v-for="option in filteredOptions"
         :key="option.value"
         class="cursor-pointer p-xs hover:bg-black"
         @mousedown="select(option)"
       >
         {{ option.label }}
       </li>
+      <li v-if="filteredOptions.length === 0" class="p-xs">
+        <em>No options found</em>
+      </li>
     </ol>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { Icon } from "@si/vue-lib/design-system";
+import { Fzf } from "fzf";
 import { BifrostAttributeTree } from "@/workers/types/dbinterface";
 import {
   PropertyEditorPropWidgetKindComboBox,
@@ -135,6 +136,29 @@ const maybeOptions = computed<{
 const showOptions = ref(false);
 const filterFocus = ref(false);
 
+const filterStr = ref("");
+const filteredOptions = reactive<LabelList<AttrOption>>([]);
+
+watch(
+  () => filterStr.value,
+  () => {
+    if (!filterStr.value) {
+      filteredOptions.splice(0, Infinity, ...maybeOptions.value.options);
+      return;
+    }
+
+    const fzf = new Fzf(maybeOptions.value.options, {
+      casing: "case-insensitive",
+      selector: (o) => `${o.value} ${o.label}`,
+    });
+
+    const results = fzf.find(filterStr.value);
+    const items: LabelList<AttrOption> = results.map((fz) => fz.item);
+    filteredOptions.splice(0, Infinity, ...items);
+  },
+  { immediate: true },
+);
+
 attributeEmitter.on("selectedPath", (selectedPath) => {
   if (selectedPath !== path.value) {
     hideOptions();
@@ -160,32 +184,13 @@ const blurFilter = () => {
 
 const focus = () => {
   attributeEmitter.emit("selectedPath", path.value);
+  attributeEmitter.emit("selectedDocs", {
+    link: props.attributeTree.prop?.docLink ?? "",
+    docs: props.attributeTree.prop?.documentation ?? "",
+    name: props.displayName,
+  });
   showOptions.value = true;
 };
-
-const calcOptionPos = () => {
-  if (!anchorRef.value) return { top: 0, left: 0 };
-  const rect = anchorRef.value.getBoundingClientRect();
-  const top = rect.bottom;
-  const left = rect.left;
-  const pos = {
-    top: `${top}px`,
-    left: `${left}px`,
-  };
-  return pos;
-};
-
-const optionPos = ref();
-
-onMounted(() => {
-  optionPos.value = calcOptionPos();
-});
-
-attributeEmitter.on("scrolled", () => {
-  if (showOptions.value) {
-    optionPos.value = calcOptionPos();
-  }
-});
 
 const select = (option: LabelEntry<AttrOption>) => {
   valueForm.fieldInfo.value.instance?.handleChange(option.label);
@@ -194,6 +199,8 @@ const select = (option: LabelEntry<AttrOption>) => {
 };
 
 const blur = () => {
+  // This make the link/interacting with the docs impossible
+  // attributeEmitter.emit("selectedDocs", null)
   if (valueForm.fieldInfo.value.instance?.state.meta.isDirty) {
     // don't double submit if you were `select()'d'`
     if (!valueForm.baseStore.state.isSubmitted) valueForm.handleSubmit();
