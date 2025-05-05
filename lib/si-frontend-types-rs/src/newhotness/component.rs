@@ -6,27 +6,16 @@ use si_events::{
     ComponentId,
     SchemaId,
     SchemaVariantId,
-    workspace_snapshot::{
-        Checksum,
-        ChecksumHasher,
-        EntityKind,
-    },
+    workspace_snapshot::EntityKind,
 };
 use si_id::{
     AttributeValueId,
     ChangeSetId,
 };
 
-use crate::{
-    MaterializedView,
-    checksum::FrontendChecksum,
-    object::FrontendObject,
-    reference::{
-        Refer,
-        Reference,
-        ReferenceId,
-        ReferenceKind,
-    },
+use crate::reference::{
+    Reference,
+    ReferenceKind,
 };
 
 #[derive(

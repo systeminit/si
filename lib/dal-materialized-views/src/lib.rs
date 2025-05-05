@@ -53,6 +53,8 @@
 pub mod action_prototype_view_list;
 pub mod action_view_list;
 pub mod component;
+pub mod component_connections;
+pub mod component_connections_list;
 pub mod component_list;
 pub mod schema_variant_categories;
 pub mod view;
@@ -80,10 +82,14 @@ pub enum Error {
     Component(#[from] dal::ComponentError),
     #[error("diagram error: {0}")]
     Diagram(#[from] dal::diagram::DiagramError),
+    #[error("empty path for attribute value id {0}")]
+    EmptyPathForAttributeValue(dal::AttributeValueId),
     #[error("func error: {0}")]
     Func(#[from] dal::FuncError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] dal::socket::input::InputSocketError),
+    #[error("invalid value source: {0:?}")]
+    InvalidValueSource(dal::attribute::prototype::argument::value_source::ValueSource),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] dal::socket::output::OutputSocketError),
     #[error("prop error: {0}")]

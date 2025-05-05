@@ -10,11 +10,7 @@ use si_events::{
     SchemaId,
     SchemaVariantId,
     Timestamp,
-    workspace_snapshot::{
-        Checksum,
-        ChecksumHasher,
-        EntityKind,
-    },
+    workspace_snapshot::EntityKind,
 };
 use si_id::ChangeSetId;
 use strum::{
@@ -24,17 +20,7 @@ use strum::{
     EnumString,
 };
 
-use crate::{
-    MaterializedView,
-    checksum::FrontendChecksum,
-    object::FrontendObject,
-    reference::{
-        Refer,
-        Reference,
-        ReferenceId,
-        ReferenceKind,
-    },
-};
+use crate::reference::ReferenceKind;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]

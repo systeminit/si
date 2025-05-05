@@ -4,11 +4,7 @@ use serde::{
 };
 use si_events::{
     ActionKind,
-    workspace_snapshot::{
-        Checksum,
-        ChecksumHasher,
-        EntityKind,
-    },
+    workspace_snapshot::EntityKind,
 };
 use si_id::{
     ActionPrototypeId,
@@ -16,17 +12,7 @@ use si_id::{
     SchemaVariantId,
 };
 
-use crate::{
-    MaterializedView,
-    checksum::FrontendChecksum,
-    object::FrontendObject,
-    reference::{
-        Refer,
-        Reference,
-        ReferenceId,
-        ReferenceKind,
-    },
-};
+use crate::reference::ReferenceKind;
 
 #[derive(
     Debug, Serialize, Deserialize, PartialEq, Eq, Clone, si_frontend_types_macros::FrontendChecksum,

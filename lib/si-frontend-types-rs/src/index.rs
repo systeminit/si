@@ -2,10 +2,6 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_events::workspace_snapshot::{
-    Checksum,
-    ChecksumHasher,
-};
 use si_id::ChangeSetId;
 
 use crate::{

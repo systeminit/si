@@ -36,7 +36,7 @@ fn derive_frontend_checksum(
 
     match &type_data {
         Data::Struct(struct_data) => derive_frontend_checksum_struct(ident, struct_data, errors),
-        Data::Enum(_) => derive_frontend_checksum_enum(ident),
+        Data::Enum(enum_data) => derive_frontend_checksum_enum(ident, enum_data, errors),
         _ => bail!("FrontendChecksum can only be derived for structs and enums"),
     }
 }
@@ -55,9 +55,11 @@ fn derive_frontend_checksum_struct(
             );
             continue;
         };
-        field_update_parts.push(
-            quote! { hasher.update(FrontendChecksum::checksum(&self.#field_ident).as_bytes()); },
-        )
+        field_update_parts.push(quote! {
+            hasher.update(
+                crate::checksum::FrontendChecksum::checksum(&self.#field_ident).as_bytes()
+            );
+        })
     }
     errors.into_result()?;
 
@@ -65,15 +67,15 @@ fn derive_frontend_checksum_struct(
     field_updates.extend(field_update_parts);
 
     let checksum_fn = quote! {
-        fn checksum(&self) -> Checksum {
-            let mut hasher = ChecksumHasher::new();
+        fn checksum(&self) -> ::si_events::workspace_snapshot::Checksum {
+            let mut hasher = ::si_events::workspace_snapshot::ChecksumHasher::new();
             #field_updates
             hasher.finalize()
         }
     };
 
     let output = quote! {
-        impl FrontendChecksum for #ident {
+        impl crate::checksum::FrontendChecksum for #ident {
             #checksum_fn
         }
     };
@@ -81,17 +83,99 @@ fn derive_frontend_checksum_struct(
     Ok(output.into())
 }
 
-fn derive_frontend_checksum_enum(ident: syn::Ident) -> manyhow::Result<proc_macro::TokenStream> {
+fn derive_frontend_checksum_enum(
+    ident: syn::Ident,
+    enum_data: &syn::DataEnum,
+    _errors: &mut manyhow::Emitter,
+) -> manyhow::Result<proc_macro::TokenStream> {
+    let mut variant_match_arms = Vec::new();
+
+    // Iterate through each defined variant for the enum
+    for variant in &enum_data.variants {
+        let variant_ident = &variant.ident;
+
+        let token_stream = match &variant.fields {
+            // Variant is a struct structure with fields
+            syn::Fields::Named(fields_named) => {
+                let fields_named = syn::punctuated::Punctuated::<_, syn::Token![,]>::from_iter(
+                    fields_named
+                        .named
+                        .iter()
+                        .filter_map(|field| field.ident.clone()),
+                );
+                // Checksum each field
+                let checksum_fields = fields_named.iter().map(|field_ident| {
+                    quote! {
+                        hasher.update(
+                            crate::checksum::FrontendChecksum::checksum(#field_ident).as_bytes()
+                        );
+                    }
+                });
+                let checksum_fields_stream = TokenStream::from_iter(checksum_fields);
+
+                quote! {
+                    #ident::#variant_ident { #fields_named } => {
+                        #checksum_fields_stream
+                    }
+                }
+            }
+            // Variant is a tuple structure with unnamed fields
+            syn::Fields::Unnamed(fields_unnamed) => {
+                let fields_count = fields_unnamed.unnamed.len();
+                let fields: Vec<_> = (0..fields_count)
+                    .map(|num| {
+                        syn::Ident::new(&format!("field_{num}"), proc_macro2::Span::call_site())
+                    })
+                    .collect();
+                let fields_named =
+                    syn::punctuated::Punctuated::<_, syn::Token![,]>::from_iter(fields.iter());
+                // Checksum each field
+                let checksum_fields = fields.iter().map(|field_ident| {
+                    quote! {
+                        hasher.update(
+                            crate::checksum::FrontendChecksum::checksum(#field_ident).as_bytes()
+                        );
+                    }
+                });
+                let checksum_fields_stream = TokenStream::from_iter(checksum_fields);
+
+                quote! {
+                    #ident::#variant_ident(#fields_named) => {
+                        #checksum_fields_stream
+                    }
+                }
+            }
+            // Variant has no fields and is a "unit" structure
+            syn::Fields::Unit => {
+                // Use the `ToString` trait as the impl
+                quote! {
+                    #ident::#variant_ident => {
+                        hasher.update(self.to_string().as_bytes());
+                    }
+                }
+            }
+        };
+
+        variant_match_arms.push(token_stream);
+    }
+
+    let mut match_arms_stream = TokenStream::new();
+    match_arms_stream.extend(variant_match_arms);
+
     let checksum_fn = quote! {
-        fn checksum(&self) -> Checksum {
-            let mut hasher = ChecksumHasher::new();
-            hasher.update(self.to_string().as_bytes());
+        fn checksum(&self) -> ::si_events::workspace_snapshot::Checksum {
+            let mut hasher = ::si_events::workspace_snapshot::ChecksumHasher::new();
+
+            match self {
+                #match_arms_stream
+            }
+
             hasher.finalize()
         }
     };
 
     let output = quote! {
-        impl FrontendChecksum for #ident {
+        impl crate::checksum::FrontendChecksum for #ident {
             #checksum_fn
         }
     };
@@ -129,16 +213,16 @@ fn derive_frontend_object(
     errors.into_result()?;
 
     let output = quote! {
-        impl ::std::convert::TryFrom<#ident> for FrontendObject {
+        impl ::std::convert::TryFrom<#ident> for crate::object::FrontendObject {
             type Error = ::serde_json::Error;
 
             fn try_from(value: #ident) -> ::std::result::Result<Self, Self::Error> {
-                let kind = ReferenceKind::#ident.to_string();
+                let kind = crate::reference::ReferenceKind::#ident.to_string();
                 let id = value.id.to_string();
-                let checksum = FrontendChecksum::checksum(&value).to_string();
+                let checksum = crate::checksum::FrontendChecksum::checksum(&value).to_string();
                 let data = ::serde_json::to_value(value)?;
 
-                Ok(FrontendObject {
+                Ok(crate::object::FrontendObject {
                     kind,
                     id,
                     checksum,
@@ -198,29 +282,29 @@ fn derive_refer(
     };
 
     let refer_impl = quote! {
-        impl Refer<#id_type> for #ident {
-            fn reference_kind(&self) -> ReferenceKind {
+        impl crate::reference::Refer<#id_type> for #ident {
+            fn reference_kind(&self) -> crate::reference::ReferenceKind {
                 self.into()
             }
 
-            fn reference_id(&self) -> ReferenceId<#id_type> {
-                ReferenceId(self.#id_field)
+            fn reference_id(&self) -> crate::reference::ReferenceId<#id_type> {
+                crate::reference::ReferenceId(self.#id_field)
             }
         }
     };
 
     let from_for_reference_impl = quote! {
-        impl From<&#ident> for Reference<#id_type> {
+        impl From<&#ident> for crate::reference::Reference<#id_type> {
             fn from(value: &#ident) -> Self {
-                value.reference()
+                crate::reference::Refer::reference(value)
             }
         }
     };
 
     let from_for_reference_kind_impl = quote! {
-        impl From<&#ident> for ReferenceKind {
+        impl From<&#ident> for crate::reference::ReferenceKind {
             fn from(value: &#ident) -> Self {
-                ReferenceKind::#ident
+                crate::reference::ReferenceKind::#ident
             }
         }
     };
@@ -293,16 +377,16 @@ fn derive_materialized_view(
     sorted_reference_kinds.sort_by_cached_key(path_to_string);
 
     let output = quote! {
-        impl MaterializedView for #ident {
-            fn kind() -> ReferenceKind {
+        impl crate::MaterializedView for #ident {
+            fn kind() -> crate::reference::ReferenceKind {
                 #self_reference_kind
             }
 
-            fn reference_dependencies() -> &'static [ReferenceKind] {
+            fn reference_dependencies() -> &'static [crate::reference::ReferenceKind] {
                 &[#(#sorted_reference_kinds),*]
             }
 
-            fn trigger_entity() -> EntityKind {
+            fn trigger_entity() -> ::si_events::workspace_snapshot::EntityKind {
                 #trigger_entity
             }
         }

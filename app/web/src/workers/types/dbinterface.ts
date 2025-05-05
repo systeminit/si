@@ -13,7 +13,12 @@ import { WorkspacePk } from "@/store/workspaces.store";
 import { Categories } from "@/store/components.store";
 import { ActionProposedView } from "@/store/actions.store";
 import { ComponentId } from "@/api/sdf/dal/component";
-import { SchemaId, SchemaVariantId } from "@/api/sdf/dal/schema";
+import {
+  InputSocketId,
+  OutputSocketId,
+  SchemaId,
+  SchemaVariantId,
+} from "@/api/sdf/dal/schema";
 import { ActionKind, ActionPrototypeId } from "@/api/sdf/dal/action";
 import { FuncId } from "@/api/sdf/dal/func";
 import { AttributeValueId } from "@/store/status.store";
@@ -339,3 +344,47 @@ export interface BifrostAttributeTree {
   attributeValue: AttributeValue;
   validation?: ValidationOutput;
 }
+
+export interface RawComponentConnectionsListBeta {
+  id: ChangeSetId;
+  componentConnections: Reference[];
+}
+
+export interface BifrostComponentConnectionsListBeta {
+  id: ChangeSetId;
+  componentConnections: BifrostComponentConnectionsBeta[];
+}
+
+export interface BifrostComponentConnectionsBeta {
+  id: ComponentId;
+  incoming: Connection[];
+  outgoing: Connection[];
+}
+
+type Connection =
+  | {
+      kind: "prop";
+      fromComponentId: ComponentId;
+      fromAttributeValueId: AttributeValueId;
+      fromAttributeValuePath: string;
+      fromPropId: PropId;
+      fromPropPath: string;
+      toComponentId: ComponentId;
+      toPropId: PropId;
+      toPropPath: string;
+      toAttributeValueId: AttributeValueId;
+      toAttributeValuePath: string;
+    }
+  | {
+      kind: "socket";
+      fromComponentId: ComponentId;
+      fromAttributeValueId: AttributeValueId;
+      fromAttributeValuePath: string;
+      fromSocketId: OutputSocketId;
+      fromSocketName: string;
+      toComponentId: ComponentId;
+      toSocketId: InputSocketId;
+      toSocketName: string;
+      toAttributeValueId: AttributeValueId;
+      toAttributeValuePath: string;
+    };

@@ -13,11 +13,7 @@ use si_events::{
     ChangeSetId,
     ChangeSetStatus,
     UserPk,
-    workspace_snapshot::{
-        Checksum,
-        ChecksumHasher,
-        EntityKind,
-    },
+    workspace_snapshot::EntityKind,
 };
 use si_id::{
     ChangeSetApprovalId,
@@ -26,14 +22,8 @@ use si_id::{
 };
 
 use crate::{
-    checksum::FrontendChecksum,
     object::FrontendObject,
-    reference::{
-        Refer,
-        Reference,
-        ReferenceId,
-        ReferenceKind,
-    },
+    reference::Reference,
 };
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
