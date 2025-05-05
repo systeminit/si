@@ -43,6 +43,7 @@ pub enum ReferenceKind {
     MvIndex,
     SchemaVariantCategories,
     View,
+    ViewComponentList,
     ViewList,
 }
 

@@ -12,6 +12,7 @@ use si_events::{
 };
 use si_id::{
     ChangeSetId,
+    ComponentId,
     ViewId,
 };
 
@@ -71,4 +72,25 @@ pub struct ViewList {
     pub id: ChangeSetId,
     #[mv(reference_kind = ReferenceKind::View)]
     pub views: Vec<Reference<ViewId>>,
+}
+
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    PartialEq,
+    Eq,
+    si_frontend_types_macros::FrontendChecksum,
+    si_frontend_types_macros::FrontendObject,
+    si_frontend_types_macros::Refer,
+    si_frontend_types_macros::MV,
+)]
+#[mv(
+    trigger_entity = EntityKind::View,
+    reference_kind = ReferenceKind::ViewComponentList,
+)]
+pub struct ViewComponentList {
+    pub id: ViewId,
+    #[mv(reference_kind = ReferenceKind::Component)]
+    pub components: Vec<Reference<ComponentId>>,
 }

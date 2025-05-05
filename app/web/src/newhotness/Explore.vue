@@ -3,11 +3,16 @@
     <!-- Left column -->
     <!-- 12 pixel padding to align with the SI logo -->
     <div class="pt-xs flex flex-col gap-xs items-stretch [&>div]:mx-[12px]">
-      <div class="flex-none">
-        <!-- TODO(Wendy) - search is not functional yet -->
-        <!-- filter / top header -->
-        <InstructiveVormInput
+      <div class="flex-none flex flex-row items-center gap-xs">
+        <DropdownMenuButton
           class="rounded"
+          :options="viewListOptions"
+          :modelValue="selectedView"
+          placeholder="All Views"
+          @update:modelValue="(val) => (selectedView = val)"
+        />
+        <InstructiveVormInput
+          class="rounded grow"
           :activeClasses="
             clsx(themeClasses('border-action-500', 'border-action-300'))
           "
@@ -30,13 +35,17 @@
         </InstructiveVormInput>
       </div>
       <div ref="scrollRef" class="scrollable tilegrid grow">
-        <!-- body -->
         <ComponentGridTile
           v-for="component in componentVirtualItemsList"
           :key="filteredComponents[component.index]!.id"
           :component="filteredComponents[component.index]!"
           @dblclick="componentNavigate(filteredComponents[component.index]!.id)"
         />
+        <div
+          v-if="componentList.length === 0 && componentListRaw.isSuccess.value"
+        >
+          <em>No components in View</em>
+        </div>
       </div>
       <footer
         :class="
@@ -95,18 +104,25 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, reactive, ref, watch } from "vue";
+import { computed, inject, reactive, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { themeClasses, VormInput, VButton } from "@si/vue-lib/design-system";
+import {
+  themeClasses,
+  VormInput,
+  VButton,
+  DropdownMenuButton,
+} from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import { Fzf } from "fzf";
-import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
+import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
   BifrostComponent,
   BifrostComponentList,
+  BifrostViewList,
+  ViewComponentList,
 } from "@/workers/types/dbinterface";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -117,24 +133,61 @@ import ComponentGridTile from "./ComponentGridTile.vue";
 import Breadcrumbs from "./layout_components/Breadcrumbs.vue";
 import ActionCard from "./ActionCard.vue";
 import FuncRunList from "./FuncRunList.vue";
+import { assertIsDefined, Context } from "./types";
+
+const selectedView = ref("");
 
 const actions = ref<typeof CollapsingGridItem>();
 const history = ref<typeof CollapsingGridItem>();
 
+const key = useMakeKey();
+const args = useMakeArgs();
+
+const viewListQuery = useQuery<BifrostViewList | null>({
+  queryKey: key("ViewList"),
+  queryFn: async () => await bifrost<BifrostViewList>(args("ViewList")),
+});
+const viewListOptions = computed(() => {
+  const list = viewListQuery.data.value?.views || [];
+  const options = [{ value: "", label: "All Views" }];
+  return options.concat(
+    list.map((l) => {
+      return { value: l.id, label: l.name };
+    }),
+  );
+});
+
 const actionViewListRaw = useQuery<BifrostActionViewList | null>({
-  queryKey: makeKey("ActionViewList"),
+  queryKey: key("ActionViewList"),
   queryFn: async () =>
-    await bifrost<BifrostActionViewList>(makeArgs("ActionViewList")),
+    await bifrost<BifrostActionViewList>(args("ActionViewList")),
 });
 const actionViewList = computed(
   () => actionViewListRaw.data.value?.actions ?? [],
 );
 
-const componentListRaw = useQuery<BifrostComponentList | null>({
-  queryKey: makeKey("ComponentList"),
-  queryFn: async () =>
-    await bifrost<BifrostComponentList>(makeArgs("ComponentList")),
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined(ctx);
+const kind = computed(() =>
+  selectedView.value ? "ViewComponentList" : "ComponentList",
+);
+const id = computed(() =>
+  selectedView.value ? selectedView.value : ctx.changeSetId.value,
+);
+const componentQueryKey = key(kind, id);
+
+const componentListRaw = useQuery<
+  BifrostComponentList | ViewComponentList | null
+>({
+  queryKey: componentQueryKey,
+  queryFn: async () => {
+    const arg = selectedView.value
+      ? args("ViewComponentList", selectedView.value)
+      : args("ComponentList");
+    return await bifrost<BifrostComponentList | ViewComponentList>(arg);
+  },
 });
+
 const componentList = computed(
   () => componentListRaw.data.value?.components ?? [],
 );

@@ -1,5 +1,19 @@
 <template>
-  <section v-if="component" class="grid gap-md h-full p-md pb-0">
+  <section v-if="!component">
+    <h3 class="text-destructive-500">
+      This component does not exist on this change set
+    </h3>
+    <VButton
+      class="border-0 mr-2em"
+      icon="arrow--left"
+      size="sm"
+      tone="shade"
+      variant="ghost"
+      label="Back"
+      @click="back"
+    />
+  </section>
+  <section v-else class="grid gap-md h-full p-md pb-0">
     <div class="name items-center flex flex-row gap-xs bg-gray-800 p-xs">
       <VButton
         class="border-0 mr-2em"
@@ -148,7 +162,7 @@ import { useQuery } from "@tanstack/vue-query";
 import { VButton, PillCounter, Icon } from "@si/vue-lib/design-system";
 import { computed, ref, nextTick } from "vue";
 import { useRouter } from "vue-router";
-import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
+import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { BifrostComponent } from "@/workers/types/dbinterface";
 import AttributePanel from "./AttributePanel.vue";
 import { attributeEmitter } from "./logic_composables/emitters";
@@ -164,12 +178,17 @@ const props = defineProps<{
   componentId: string;
 }>();
 
+const componentId = computed(() => props.componentId);
+
+const key = useMakeKey();
+const args = useMakeArgs();
 const componentQuery = useQuery<BifrostComponent | null>({
-  queryKey: makeKey("Component", props.componentId),
+  queryKey: key("Component", componentId),
   queryFn: async () => {
-    return await bifrost<BifrostComponent>(
-      makeArgs("Component", props.componentId),
+    const component = await bifrost<BifrostComponent>(
+      args("Component", componentId.value),
     );
+    return component;
   },
 });
 

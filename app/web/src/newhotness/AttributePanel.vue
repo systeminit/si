@@ -23,7 +23,7 @@
 import { useQuery } from "@tanstack/vue-query";
 import { computed, reactive, ref, watch } from "vue";
 import { Fzf } from "fzf";
-import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
+import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostAttributeTree,
   BifrostComponent,
@@ -42,12 +42,16 @@ const props = defineProps<{
   component: BifrostComponent;
 }>();
 
-const attributeTreeMakeKey = makeKey("AttributeTree", props.attributeValueId);
-const attributeTreeMakeArgs = makeArgs("AttributeTree", props.attributeValueId);
+const attributeValueId = computed(() => props.attributeValueId);
+
+const attributeTreeMakeKey = useMakeKey();
+const attributeTreeMakeArgs = useMakeArgs();
 const attributeTreeQuery = useQuery<BifrostAttributeTree | null>({
-  queryKey: attributeTreeMakeKey,
-  queryFn: async () =>
-    await bifrost<BifrostAttributeTree>(attributeTreeMakeArgs),
+  queryKey: attributeTreeMakeKey("AttributeTree", attributeValueId),
+  queryFn: async () => {
+    const args = attributeTreeMakeArgs("AttributeTree", attributeValueId.value);
+    return await bifrost<BifrostAttributeTree>(args);
+  },
 });
 
 const root = computed(() => attributeTreeQuery.data.value);

@@ -55,6 +55,8 @@
 pub mod attribute_tree;
 /// Provides MV generation function(s) for the component domain.
 pub mod component;
+/// Provides MV generation function(s) for the view domain.
+pub mod view;
 
 #[allow(missing_docs)]
 #[remain::sorted]
@@ -70,6 +72,8 @@ pub enum Error {
     AttributeValue(#[from] dal::attribute::value::AttributeValueError),
     #[error("component error: {0}")]
     Component(#[from] dal::ComponentError),
+    #[error("diagram error: {0}")]
+    Diagram(#[from] dal::diagram::DiagramError),
     #[error("func error: {0}")]
     Func(#[from] dal::FuncError),
     #[error("input socket error: {0}")]

@@ -16,7 +16,7 @@ import { computed } from "vue";
 import { Icon } from "@si/vue-lib/design-system";
 import { useQuery } from "@tanstack/vue-query";
 import { ActionProposedView } from "@/store/actions.store";
-import { makeKey, bifrost, makeArgs } from "@/store/realtime/heimdall";
+import { useMakeKey, bifrost, useMakeArgs } from "@/store/realtime/heimdall";
 import { BifrostActionViewList } from "@/workers/types/dbinterface";
 import FuncRunDetails from "./FuncRunDetails.vue";
 import { FunctionKind } from "./types";
@@ -26,10 +26,12 @@ const props = defineProps<{
   actionId?: string;
 }>();
 
+const key = useMakeKey();
+const args = useMakeArgs();
 const actionViewListRaw = useQuery<BifrostActionViewList | null>({
-  queryKey: makeKey("ActionViewList"),
+  queryKey: key("ActionViewList"),
   queryFn: async () =>
-    await bifrost<BifrostActionViewList>(makeArgs("ActionViewList")),
+    await bifrost<BifrostActionViewList>(args("ActionViewList")),
 });
 const action = computed(
   () =>
