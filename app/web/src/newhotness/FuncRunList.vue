@@ -57,21 +57,20 @@ import { useRouter, useRoute } from "vue-router";
 import { FuncRun } from "@/store/func_runs.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import FuncRunCard from "./FuncRunCard.vue";
-import { useApi } from "./api_composables";
-import { assertIsDefined, WSCS } from "./types";
-
-export interface GetFuncRunsPaginatedResponse {
-  funcRuns: FuncRun[];
-  nextCursor: string | null;
-}
+import {
+  GetFuncRunsPaginatedResponse,
+  useApi,
+  routes,
+} from "./api_composables";
+import { assertIsDefined, Context } from "./types";
 
 // Component props
 const props = defineProps<{
   limit?: number;
 }>();
 
-const wscs = inject<WSCS>("WSCS");
-assertIsDefined(wscs);
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined(ctx);
 
 // Router setup
 const router = useRouter();
@@ -103,14 +102,15 @@ const {
   queryFn: async ({
     pageParam = undefined,
   }): Promise<GetFuncRunsPaginatedResponse> => {
-    // FUTURE: move url paths out of vue components and into a consolidated list in the api composable
-    const call = api.endpoint("/funcs/runs/paginated");
+    const call = api.endpoint<GetFuncRunsPaginatedResponse>(
+      routes.GetFuncRunsPaginated,
+    );
     const params = new URLSearchParams();
     params.append("limit", pageSize.value.toString());
     if (pageParam) {
       params.append("cursor", pageParam);
     }
-    const req = await call.get<GetFuncRunsPaginatedResponse>(params);
+    const req = await call.get(params);
     if (api.ok(req)) {
       return req.data;
     }
@@ -161,22 +161,18 @@ let executionKey: string | undefined;
 
 // Set up subscription on mount
 onMounted(async () => {
-  realtimeStore.subscribe(
-    "paginatedFuncRuns",
-    `changeset/${wscs.changeSetId}`,
-    [
-      {
-        eventType: "FuncRunLogUpdated",
-        callback: async (payload) => {
-          if (payload.funcRunId) {
-            queryClient.invalidateQueries({
-              queryKey: ["paginatedFuncRuns"],
-            });
-          }
-        },
+  realtimeStore.subscribe("paginatedFuncRuns", `changeset/${ctx.changeSetId}`, [
+    {
+      eventType: "FuncRunLogUpdated",
+      callback: async (payload) => {
+        if (payload.funcRunId) {
+          queryClient.invalidateQueries({
+            queryKey: ["paginatedFuncRuns"],
+          });
+        }
       },
-    ],
-  );
+    },
+  ]);
 });
 
 // Clean up on unmount

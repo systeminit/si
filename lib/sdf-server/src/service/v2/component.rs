@@ -13,6 +13,7 @@ use si_id::ComponentId;
 use crate::app_state::AppState;
 
 pub mod attributes;
+pub mod name;
 
 #[remain::sorted]
 #[derive(Debug, thiserror::Error)]
@@ -54,7 +55,9 @@ impl IntoResponse for Error {
 pub fn v2_routes() -> Router<AppState> {
     Router::new().nest(
         "/:componentId",
-        Router::new().nest("/attributes", attributes::v2_routes()),
+        Router::new()
+            .nest("/attributes", attributes::v2_routes())
+            .nest("/name", name::v2_routes()),
     )
 }
 

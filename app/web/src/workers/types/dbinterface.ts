@@ -315,11 +315,20 @@ interface AttributeValue {
   overriden: boolean;
 }
 
-export interface BifrostAttributeTree {
+export interface RawAttributeTree {
   id: AttributeValueId;
   children: AttributeValueId[];
   parent?: AttributeValueId;
   prop?: Prop;
-  attribute_value: AttributeValue;
+  attributeValue: AttributeValue;
+  validation?: ValidationOutput;
+}
+
+export interface BifrostAttributeTree {
+  id: AttributeValueId;
+  children: BifrostAttributeTree[];
+  parent?: AttributeValueId;
+  prop?: Prop;
+  attributeValue: AttributeValue;
   validation?: ValidationOutput;
 }

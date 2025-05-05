@@ -63,6 +63,7 @@ However, there may be times where, because of the graph structure, you may need 
 In fact, multiple MVs is totally fine!
 It's the cross-referential-big-ass-computed types that can get hairy.
 So long as we are cognizant here, we will setup a good foundational for the future.
+[JohnO here]: The goal here is to prevent graph structure leaking into the front end. We have the webworker layer where we handle references (and soon weak references). There is no "logic" involved in the connection–its just the "graph" after all. In ye olden days we would have branching logic for "walk these related things and if its X do Y and if its A do B". That way lies madness.
 
 ## I want to change my MV on `main`. What can I do?
 

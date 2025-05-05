@@ -1,0 +1,77 @@
+<template>
+  <!-- requires that its parent container is flex (either direction) -->
+  <div
+    :class="
+      clsx(
+        'border-2 border-neutral-900 basis-0', // basis-0 makes items take equal size when multiple are open
+        openState.open.value ? 'scrollable grow' : 'shrink',
+      )
+    "
+  >
+    <h3
+      :class="
+        clsx(
+          'flex flex-row items-center gap-xs p-2xs',
+          'sticky top-0 cursor-pointer text-lg font-bold',
+          themeClasses('bg-neutral-200', 'bg-neutral-900'),
+          h3class,
+        )
+      "
+      @click="openState.toggle"
+    >
+      <slot name="header" />
+      <template v-if="expandable">
+        <IconButton
+          class="ml-auto"
+          size="xs"
+          icon="arrows-out"
+          iconTone="shade"
+          @click.prevent.stop="expand"
+        />
+      </template>
+    </h3>
+    <!-- only show contents when open, this makes flexbox grow/shrink work :chefskiss: -->
+    <slot v-if="openState.open.value" />
+
+    <Modal ref="modalRef" size="4xl">
+      <template #title>
+        <slot name="header" />
+      </template>
+      <slot />
+    </Modal>
+  </div>
+</template>
+
+<script lang="ts" setup>
+import { themeClasses, IconButton, Modal } from "@si/vue-lib/design-system";
+import clsx from "clsx";
+import { onMounted, ref, withDefaults } from "vue";
+import { useToggle } from "../logic_composables/toggle_containers";
+
+const openState = useToggle();
+
+const modalRef = ref<InstanceType<typeof Modal>>();
+
+const expand = () => {
+  modalRef.value?.open();
+};
+
+const props = withDefaults(
+  defineProps<{
+    open?: boolean;
+    h3class?: string;
+    expandable?: boolean;
+  }>(),
+  {
+    expandable: true,
+  },
+);
+
+onMounted(() => {
+  openState.open.value = props.open;
+});
+
+defineExpose({
+  openState,
+});
+</script>
