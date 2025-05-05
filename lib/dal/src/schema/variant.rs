@@ -316,8 +316,9 @@ pub struct SchemaVariant {
 
 impl SchemaVariant {
     pub async fn as_frontend_list_type_by_category(
-        ctx: &DalContext,
+        ctx: DalContext,
     ) -> SchemaVariantResult<SchemaVariantCategories> {
+        let ctx = &ctx;
         let mut variant_by_category = HashMap::new();
 
         let installed = SchemaVariant::list_user_facing(ctx).await?;

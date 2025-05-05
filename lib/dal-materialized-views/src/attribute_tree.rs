@@ -31,9 +31,10 @@ use telemetry::tracing::warn;
 
 /// Generates an [`AttributeTree`] MV.
 pub async fn as_frontend_type(
-    ctx: &DalContext,
+    ctx: DalContext,
     id: AttributeValueId,
 ) -> super::Result<AttributeTree> {
+    let ctx = &ctx;
     // FIXME(nick): the controlling func data for this is wrong. We will need to adjust. Why not do it
     // at the time this PR is written? We are not sure what we need and don't need in the new attribute
     // panel in the newhotness.

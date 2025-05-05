@@ -113,10 +113,8 @@ impl View {
         }
     }
 
-    pub async fn as_frontend_type(
-        ctx: &DalContext,
-        view_id: ViewId,
-    ) -> DiagramResult<FrontendView> {
+    pub async fn as_frontend_type(ctx: DalContext, view_id: ViewId) -> DiagramResult<FrontendView> {
+        let ctx = &ctx;
         let view = Self::get_by_id(ctx, view_id).await?;
         let is_default = view.is_default(ctx).await?;
 
@@ -128,7 +126,8 @@ impl View {
         })
     }
 
-    pub async fn as_frontend_list_type(ctx: &DalContext) -> DiagramResult<FrontendViewList> {
+    pub async fn as_frontend_list_type(ctx: DalContext) -> DiagramResult<FrontendViewList> {
+        let ctx = &ctx;
         let mut view_ids: Vec<_> = Self::list_node_weights(ctx)
             .await?
             .into_iter()
@@ -138,7 +137,7 @@ impl View {
 
         let mut views = Vec::with_capacity(view_ids.len());
         for view_id in view_ids {
-            views.push(Self::as_frontend_type(ctx, view_id).await?);
+            views.push(Self::as_frontend_type(ctx.clone(), view_id).await?);
         }
 
         Ok(FrontendViewList {
