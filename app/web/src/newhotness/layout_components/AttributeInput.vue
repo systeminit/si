@@ -1,6 +1,11 @@
 <template>
   <!-- eslint-disable vue/no-multiple-template-root -->
-  <label ref="anchorRef" class="pl-xs flex flex-row items-center">
+  <label
+    ref="anchorRef"
+    :class="
+      clsx(showOptions && 'bg-neutral-500', 'pl-xs flex flex-row items-center')
+    "
+  >
     <span>{{ displayName }}</span>
     <template v-if="maybeOptions.hasOptions"> </template>
     <valueForm.Field name="value">
@@ -60,6 +65,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
+import clsx from "clsx";
 import { Icon } from "@si/vue-lib/design-system";
 import { Fzf } from "fzf";
 import { BifrostAttributeTree } from "@/workers/types/dbinterface";
