@@ -38,6 +38,7 @@
         <ComponentGridTile
           v-for="component in componentVirtualItemsList"
           :key="filteredComponents[component.index]!.id"
+          :class="clsx(tileClasses(component.index))"
           :component="filteredComponents[component.index]!"
           @dblclick="componentNavigate(filteredComponents[component.index]!.id)"
         />
@@ -134,6 +135,7 @@ import Breadcrumbs from "./layout_components/Breadcrumbs.vue";
 import ActionCard from "./ActionCard.vue";
 import FuncRunList from "./FuncRunList.vue";
 import { assertIsDefined, Context } from "./types";
+import { keyEmitter } from "./logic_composables/emitters";
 
 const selectedView = ref("");
 
@@ -218,6 +220,11 @@ watch(
   { immediate: true },
 );
 
+const lanes = computed(() =>
+  // Our grid is based on a minimum 250px width tile... so how many tiles can we fit?
+  Math.floor((scrollRef.value?.offsetWidth ?? 0) / 250),
+);
+
 const virtualizerOptions = computed(() => {
   return {
     count: filteredComponents.length,
@@ -225,7 +232,7 @@ const virtualizerOptions = computed(() => {
     // https://tanstack.com/virtual/latest/docs/api/virtualizer#lanes
     // Our grid is based on a minimum 250px width tile... so how many tiles can we fit?
     // thats the value of `lanes`
-    lanes: Math.floor(scrollRef.value?.offsetWidth ?? 0 / 250),
+    lanes: lanes.value,
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     getScrollElement: () => scrollRef.value!,
     estimateSize: () => 200,
@@ -242,6 +249,52 @@ const componentVirtualItemsList = computed(() =>
 const collapsingStyles = computed(() =>
   collapsingGridStyles([actions.value?.openState, history.value?.openState]),
 );
+
+const selectedComponentIds = reactive<Set<string>>(new Set());
+const selectorGridPosition = ref<number>(-1);
+const constrainPosition = () => {
+  selectorGridPosition.value = Math.min(
+    filteredComponents.length - 1,
+    Math.max(-1, selectorGridPosition.value),
+  );
+};
+const isSelected = (idx: number) =>
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  selectedComponentIds.has(filteredComponents[idx]!.id);
+const isHovered = (idx: number) => selectorGridPosition.value === idx;
+const tileClasses = (idx: number) => {
+  const selected = isSelected(idx);
+  const hovered = isHovered(idx);
+  if (hovered) return "border-white border-[1px]";
+  else if (selected) return "border-action-400 border-[1px]";
+  else return "";
+};
+
+keyEmitter.on("ArrowDown", () => {
+  selectorGridPosition.value += lanes.value;
+  constrainPosition();
+});
+keyEmitter.on("ArrowUp", () => {
+  selectorGridPosition.value -= lanes.value;
+  constrainPosition();
+});
+keyEmitter.on("ArrowLeft", () => {
+  selectorGridPosition.value -= 1;
+  constrainPosition();
+});
+keyEmitter.on("ArrowRight", () => {
+  selectorGridPosition.value += 1;
+  constrainPosition();
+});
+keyEmitter.on("Enter", () => {
+  if (selectorGridPosition.value !== -1) {
+    const componentId = filteredComponents[selectorGridPosition.value]?.id;
+    if (!componentId) return;
+    if (selectedComponentIds.has(componentId))
+      selectedComponentIds.delete(componentId);
+    else selectedComponentIds.add(componentId);
+  }
+});
 
 const router = useRouter();
 const route = useRoute();
