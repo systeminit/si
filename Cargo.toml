@@ -152,7 +152,7 @@ clap = { version = "4.5.23", features = [
     "env",
     "wrap_help",
 ] }
-color-eyre = "0.6.3"
+color-eyre = "0.6.4"
 config = { version = "0.14.1", default-features = false, features = ["toml"] }
 console-subscriber = { version = "0.4.1", default-features = false }
 convert_case = "0.6.0"
