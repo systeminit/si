@@ -12,7 +12,7 @@ scrape_configs:
     - targets:
       - node-exporter:9100
 remote_write:
-  - url: $SI_PROMETHEUS_REMOTE_WRITE_URL
+  - url: {{ prometheus_remote_write_url }}
     sigv4:
       region: us-east-1
     queue_config:
@@ -23,4 +23,4 @@ remote_write:
     - source_labels:
       - '__address__'
       target_label: 'instance'
-      replacement: '$SI_SERVICE;$SI_INSTANCE_ID'
+      replacement: '{{ service_name }};{{ instance_id }}'

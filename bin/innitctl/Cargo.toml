@@ -1,0 +1,21 @@
+[package]
+name = "innitctl"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "innitctl"
+path = "src/main.rs"
+
+[dependencies]
+innitctl-backend = { path = "../../lib/innitctl" }
+innit-client = { path = "../../lib/innit-client" }
+si-service = { path = "../../lib/si-service" }
+
+clap = { workspace = true }
+tokio = { workspace = true }

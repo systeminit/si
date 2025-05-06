@@ -2,8 +2,9 @@
 
 export SI_SERVICE={}
 export SI_HOSTENV={}
+export SI_INSTANCE_ID=$(ec2-metadata --instance-id | cut -d " " -f 2)
 export SI_VERSION=$(aws ssm get-parameter --query "Parameter.Value" --output text --name "$SI_HOSTENV-si-version-$SI_SERVICE")
-export INIT_VERSION=$(aws ssm get-parameter --query "Parameter.Value" --output text --name "$SI_HOSTENV-si-version-init")
+export SI_PRIVATE_CA_ARN=$(aws ssm get-parameter --query "Parameter.Value" --output text --name "$SI_HOSTENV-private-ca-arn")
 
 # prep attached storage
 mkfs -t xfs /dev/nvme1n1
@@ -27,7 +28,7 @@ DOCKER_CREDS=$(aws secretsmanager get-secret-value --region us-east-1 --secret-i
 docker login --username $(echo $DOCKER_CREDS | jq -r '.username') --password-stdin <<< $(echo $DOCKER_CREDS | jq -r '.password')
 wget https://raw.githubusercontent.com/systeminit/si/${BRANCH:-main}/component/deploy/docker-compose.yaml -O /run/app/docker-compose.yaml
 
-docker-compose -f /run/app/docker-compose.yaml --profile $SI_SERVICE up --wait
+docker-compose -f /run/app/docker-compose.yaml up --wait
 
 cat << EOF > /etc/systemd/system/$SI_SERVICE.service
 
@@ -37,6 +38,7 @@ After=network.target
 
 [Service]
 ExecStart=/usr/local/bin/$SI_SERVICE
+Environment="SI_INNIT__CLIENT_CA_ARN=$SI_PRIVATE_CA_ARN"
 
 Type=exec
 Restart=always

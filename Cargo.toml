@@ -9,6 +9,7 @@ members = [
     "bin/forklift",
     "bin/hoist",
     "bin/innit",
+    "bin/innitctl",
     "bin/luminork",
     "bin/module-index",
     "bin/pinga",
@@ -37,6 +38,7 @@ members = [
     "lib/edda-server",
     "lib/forklift-server",
     "lib/frigg",
+    "lib/innitctl",
     "lib/innit-client",
     "lib/innit-core",
     "lib/innit-server",
@@ -177,6 +179,7 @@ fuser = { version = "0.15.1", default-features = false }
 futures = "0.3.31"
 futures-lite = "2.5.0"
 glob = "0.3.1"
+handlebars = "6.3.2"
 hex = "0.4.3"
 http = "0.2.12" # todo: upgrade this alongside hyper/axum/tokio-tungstenite/tower-http
 hyper = { version = "0.14.28", features = [

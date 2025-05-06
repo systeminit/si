@@ -1,0 +1,28 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "innitctl",
+    deps = [
+        "//lib/innitctl:innitctl-backend",
+        "//lib/innit-client:innit-client",
+        "//lib/si-service:si-service",
+
+        "//third-party/rust:clap",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    env = {"CARGO_BIN_NAME": "innitctl"},
+)
+
+docker_image(
+    name = "image",
+    image_name = "innitctl",
+    build_deps = ["//bin/innitctl:innitctl"],
+    srcs = {
+        "configs/": ".",
+    },
+)

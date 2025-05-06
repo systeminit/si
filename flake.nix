@@ -336,6 +336,8 @@
 
           innit = binDerivation {pkgName = "innit";};
 
+          innitctl = binDerivation {pkgName = "innitctl";};
+
           module-index = binDerivation {pkgName = "module-index";};
 
           pinga = binDerivation {pkgName = "pinga";};

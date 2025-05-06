@@ -1,9 +1,9 @@
 sources:
   docker:
     type: "docker_logs"
-  $SI_SERVICE-journal:
+  {{ service_name }}-journal:
     type: "journald"
-    include_units: ["$SI_SERVICE"]
+    include_units: ["{{ service_name }}"]
     journal_directory: "/var/log/journal"
   sdf-migration:
     type: "journald"
@@ -14,7 +14,7 @@ sources:
 transforms:
   honeycomb_format:
     type: remap
-    inputs: ["$SI_SERVICE-journal", "sdf-migration"]
+    inputs: ["{{ service_name }}-journal", "sdf-migration"]
     source: |-
       if exists(.message) {
         message = string!(.message)
@@ -35,12 +35,12 @@ transforms:
 sinks:
   cloudwatch:
     type: "aws_cloudwatch_logs"
-    inputs: ["$SI_SERVICE-journal", "sdf-migration"]
+    inputs: ["{{ service_name }}-journal", "sdf-migration"]
     compression: "gzip"
     encoding:
       codec: "text"
     region: "us-east-1"
-    group_name: "/ec2/$SI_HOSTENV-$SI_SERVICE"
+    group_name: "/ec2/{{ host_environment }}-{{ service_name }}"
     stream_name: "{{ host }}"
   cloudwatch-docker:
     type: "aws_cloudwatch_logs"
@@ -49,10 +49,10 @@ sinks:
     encoding:
       codec: "text"
     region: "us-east-1"
-    group_name: "/ec2/$SI_HOSTENV-$SI_SERVICE-docker"
+    group_name: "/ec2/{{ host_environment }}-{{ service_name }}-docker"
     stream_name: "{{ host }}"
   honeycomb:
     type: "honeycomb"
     inputs: ["honeycomb_format"]
-    api_key: "$SI_HONEYCOMB_API_KEY"
-    dataset: "$SI_SERVICE"
+    api_key: "{{ honeycomb_api_key }}"
+    dataset: "{{ service_name }}"
