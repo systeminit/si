@@ -169,8 +169,6 @@ pub enum DiagramError {
     Pg(#[from] PgError),
     #[error("position not found")]
     PositionNotFound,
-    #[error("represented node not found for geometry: {0}")]
-    RepresentedNotFoundForGeometry(GeometryId),
     #[error("schema not found")]
     SchemaNotFound,
     #[error("schema variant error: {0}")]
@@ -776,23 +774,9 @@ impl Diagram {
 
             if let Some(view_id) = maybe_view_id {
                 for geometry in Geometry::list_by_view_id(ctx, view_id).await? {
-                    let geo_represents = match Geometry::represented_id(ctx, geometry.id()).await {
-                        Ok(r) => r,
-                        Err(DiagramError::RepresentedNotFoundForGeometry(geo_id)) => {
-                            let changeset_id = ctx.change_set_id();
-                            // NOTE(victor): The first version of views didn't delete geometries with components,
-                            // so we have dangling geometries in some workspaces. We should clean this up at some point,
-                            // but we just skip orphan geometries here to make assemble work.
-
-                            debug!(
-                                si.change_set.id = %changeset_id,
-                                si.geometry.id = %geo_id,
-                                "Could not find represented node for geometry - skipping"
-                            );
-
-                            continue;
-                        }
-                        Err(e) => return Err(e),
+                    let geo_represents = match Geometry::represented_id(ctx, geometry.id()).await? {
+                        Some(r) => r,
+                        None => continue,
                     };
                     match geo_represents {
                         GeometryRepresents::Component(component_id) => {

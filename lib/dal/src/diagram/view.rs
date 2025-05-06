@@ -18,11 +18,7 @@ use si_events::{
     Timestamp,
     ulid::Ulid,
 };
-use si_frontend_types::{
-    RawGeometry,
-    View as FrontendView,
-    ViewList as FrontendViewList,
-};
+use si_frontend_types::RawGeometry;
 pub use si_id::ViewId;
 
 use crate::{
@@ -113,39 +109,6 @@ impl View {
         }
     }
 
-    pub async fn as_frontend_type(ctx: DalContext, view_id: ViewId) -> DiagramResult<FrontendView> {
-        let ctx = &ctx;
-        let view = Self::get_by_id(ctx, view_id).await?;
-        let is_default = view.is_default(ctx).await?;
-
-        Ok(FrontendView {
-            id: view.id,
-            name: view.name,
-            is_default,
-            timestamp: view.timestamp,
-        })
-    }
-
-    pub async fn as_frontend_list_type(ctx: DalContext) -> DiagramResult<FrontendViewList> {
-        let ctx = &ctx;
-        let mut view_ids: Vec<_> = Self::list_node_weights(ctx)
-            .await?
-            .into_iter()
-            .map(|w| ViewId::from(w.id()))
-            .collect();
-        view_ids.sort();
-
-        let mut views = Vec::with_capacity(view_ids.len());
-        for view_id in view_ids {
-            views.push(Self::as_frontend_type(ctx.clone(), view_id).await?);
-        }
-
-        Ok(FrontendViewList {
-            id: ctx.change_set_id(),
-            views: views.iter().map(Into::into).collect(),
-        })
-    }
-
     pub async fn new(ctx: &DalContext, name: impl AsRef<str>) -> DiagramResult<Self> {
         let snap = ctx.workspace_snapshot()?;
         let id = snap.generate_ulid().await?;
@@ -210,6 +173,14 @@ impl View {
         }
 
         Ok(None)
+    }
+
+    pub async fn list_ids(ctx: &DalContext) -> DiagramResult<Vec<ViewId>> {
+        Ok(Self::list_node_weights(ctx)
+            .await?
+            .into_iter()
+            .map(|w| ViewId::from(w.id()))
+            .collect())
     }
 
     async fn list_node_weights(ctx: &DalContext) -> DiagramResult<Vec<ViewNodeWeight>> {

@@ -12,13 +12,7 @@ use si_events::{
     ActionResultState,
     FuncRunId,
 };
-use si_frontend_types::{
-    DiagramComponentView,
-    action::{
-        ActionPrototypeView,
-        prototype::ActionPrototypeViewList,
-    },
-};
+use si_frontend_types::DiagramComponentView;
 use si_layer_cache::LayerDbError;
 use si_pkg::ActionFuncSpecKind;
 use strum::Display;
@@ -38,7 +32,6 @@ use crate::{
     DalContext,
     EdgeWeightKind,
     EdgeWeightKindDiscriminants,
-    Func,
     FuncError,
     HelperError,
     SchemaVariant,
@@ -510,32 +503,6 @@ impl ActionPrototype {
         ctx.workspace_snapshot()?.remove_node_by_id(id).await?;
 
         Ok(())
-    }
-
-    pub async fn as_frontend_list_type(
-        ctx: DalContext,
-        schema_variant_id: SchemaVariantId,
-    ) -> ActionPrototypeResult<ActionPrototypeViewList> {
-        let ctx = &ctx;
-        let mut views = Vec::new();
-
-        for action_prototype in Self::for_variant(ctx, schema_variant_id).await? {
-            let func_id = Self::func_id(ctx, action_prototype.id).await?;
-            let func = Func::get_by_id(ctx, func_id).await?;
-
-            views.push(ActionPrototypeView {
-                id: action_prototype.id,
-                func_id,
-                kind: action_prototype.kind.into(),
-                display_name: func.display_name,
-                name: func.name,
-            });
-        }
-
-        Ok(ActionPrototypeViewList {
-            id: schema_variant_id,
-            action_prototypes: views,
-        })
     }
 }
 

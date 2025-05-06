@@ -36,7 +36,6 @@
     dead_code,
     improper_ctypes,
     missing_debug_implementations,
-    missing_docs,
     no_mangle_generic_items,
     non_shorthand_field_patterns,
     overflowing_literals,
@@ -51,17 +50,23 @@
     while_true
 )]
 
-/// Provides MV generation function(s) for the attribute tree domain.
+pub mod action_prototype_view_list;
+pub mod action_view_list;
 pub mod attribute_tree;
-/// Provides MV generation function(s) for the component domain.
 pub mod component;
-/// Provides MV generation function(s) for the view domain.
+pub mod component_list;
+pub mod schema_variant_categories;
 pub mod view;
+pub mod view_component_list;
+pub mod view_list;
 
-#[allow(missing_docs)]
 #[remain::sorted]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("action error: {0}")]
+    Action(#[from] dal::action::ActionError),
+    #[error("action prototype error: {0}")]
+    ActionPrototype(#[from] dal::action::prototype::ActionPrototypeError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] dal::attribute::prototype::AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
@@ -70,6 +75,8 @@ pub enum Error {
     ),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] dal::attribute::value::AttributeValueError),
+    #[error("cached module error: {0}")]
+    CachedModule(#[from] dal::cached_module::CachedModuleError),
     #[error("component error: {0}")]
     Component(#[from] dal::ComponentError),
     #[error("diagram error: {0}")]
@@ -94,4 +101,4 @@ pub enum Error {
     Validation(#[from] dal::validation::ValidationError),
 }
 
-pub(crate) type Result<T> = std::result::Result<T, Error>;
+type Result<T> = std::result::Result<T, Error>;

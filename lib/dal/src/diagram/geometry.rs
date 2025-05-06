@@ -207,22 +207,37 @@ impl Geometry {
         Ok((node_weight, content))
     }
 
-    // Some changesets have orphan geometries because of an old bug, so when calling this function.
-    // be careful when dealing with the ComponentNotFoundForGeometry error
+    /// Returns a [`GeometryRepresents`] for a given [`GeometryId`](Geometry). Returns `None` if we
+    /// are dealing with dangling geometries from older iterations of [`Views`](View).
+    ///
+    /// _Note_: some change sets have orphan geometries because of an old bug, so when calling this
+    /// function, be careful when dealing with the `ComponentNotFoundForGeometry` error.
     pub async fn represented_id(
         ctx: &DalContext,
         geometry_id: GeometryId,
-    ) -> DiagramResult<GeometryRepresents> {
+    ) -> DiagramResult<Option<GeometryRepresents>> {
         let snap = ctx.workspace_snapshot()?;
 
-        let component_id = snap
+        let component_id = match snap
             .outgoing_targets_for_edge_weight_kind(
                 geometry_id,
                 EdgeWeightKindDiscriminants::Represents,
             )
             .await?
             .pop()
-            .ok_or(DiagramError::RepresentedNotFoundForGeometry(geometry_id))?;
+        {
+            Some(component_id) => component_id,
+            None => {
+                // NOTE(nick): I moved Victor's comment here and made the return type optional. I
+                // updated the function doc comment too. Every single caller passed on this error
+                // and logged it solely at the debug level.
+                //
+                // NOTE(victor): The first version of views didn't delete geometries with components,
+                // so we have dangling geometries in some workspaces. We should clean this up at some point,
+                // but we just skip orphan geometries here to make assemble work.
+                return Ok(None);
+            }
+        };
 
         let node_weight = snap.get_node_weight(component_id).await?;
 
@@ -257,7 +272,7 @@ impl Geometry {
             }
         };
 
-        Ok(geo_represents)
+        Ok(Some(geo_represents))
     }
 
     pub async fn get_by_id(ctx: &DalContext, geometry_id: GeometryId) -> DiagramResult<Self> {
@@ -547,8 +562,8 @@ impl Geometry {
 
     /// Removes a [Geometry] from the graph, provided it's not the last geometry for a component
     pub async fn remove(ctx: &DalContext, geometry_id: GeometryId) -> DiagramResult<()> {
-        match Self::represented_id(ctx, geometry_id).await {
-            Ok(GeometryRepresents::Component(component_id)) => {
+        match Self::represented_id(ctx, geometry_id).await? {
+            Some(GeometryRepresents::Component(component_id)) => {
                 if Self::list_ids_by_component(ctx, component_id).await?.len() == 1 {
                     let view_id = Self::get_view_id_by_id(ctx, geometry_id).await?;
                     return Err(DiagramError::DeletingLastGeometryForComponent(
@@ -558,10 +573,9 @@ impl Geometry {
                 }
             }
             // There's no problem in deleting all geometries for a view
-            Ok(GeometryRepresents::View(_)) => {}
+            Some(GeometryRepresents::View(_)) => {}
             // There's no problem in deleting orphan geometries
-            Err(DiagramError::RepresentedNotFoundForGeometry(_)) => {}
-            Err(e) => return Err(e),
+            None => {}
         }
 
         ctx.workspace_snapshot()?
