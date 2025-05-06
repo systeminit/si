@@ -69,6 +69,12 @@ alias(
     actual = "//support/buck2:all-rust-targets",
 )
 
+alias(
+    name = "update-api-docs",
+    actual = "//app/docs:generate-api-docs",
+    visibility = ["PUBLIC"],
+)
+
 export_file(
     name = ".editorconfig",
 )

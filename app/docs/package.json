@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "pnpm run start",
     "start": "vitepress dev src",
-    "build": "vitepress build src"
+    "build": "vitepress build src",
+    "generate-api-docs": "npx widdershins --omitHeader --search false --language_tabs \"typescript:TypeScript\" --summary ../../bin/openapi-extractor/data/openapi.json -o src/reference/external-api.md -u ./custom-templates"
   },
   "devDependencies": {
     "@si/eslint-config": "workspace:*",
@@ -16,7 +17,8 @@
     "medium-zoom": "^1.1.0",
     "typescript": "^4.9.5",
     "vitepress": "~1.0.2",
-    "vitepress-plugin-lightbox": "^1.0.2"
+    "vitepress-plugin-lightbox": "^1.0.2",
+    "widdershins": "^4.0.1"
   },
   "dependencies": {
     "dotenv": "^16.0.3",

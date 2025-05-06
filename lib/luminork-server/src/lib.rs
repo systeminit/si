@@ -28,7 +28,7 @@ mod init;
 pub mod key_generation;
 pub mod middleware;
 mod nats_multiplexer;
-mod routes;
+pub mod routes;
 mod runnable;
 mod server;
 pub mod service;

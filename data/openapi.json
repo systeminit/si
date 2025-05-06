@@ -1,0 +1,3465 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "System Initiative API",
+    "description": "The API Server for interacting with a System Initiative workspace",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "This API Server"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "root"
+        ],
+        "operationId": "system_status_route",
+        "responses": {
+          "200": {
+            "description": "System status information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatusResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service in maintenance mode"
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets": {
+      "get": {
+        "tags": [
+          "change_sets"
+        ],
+        "operationId": "list_change_sets",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Change sets listed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListChangeSetV1Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "change_sets"
+        ],
+        "operationId": "create_change_set",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateChangeSetV1Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Change set created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateChangeSetV1Response"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error - Invalid request data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}": {
+      "get": {
+        "tags": [
+          "change_sets"
+        ],
+        "operationId": "get_change_set",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Change sets listed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetChangeSetV1Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "change_sets"
+        ],
+        "operationId": "abandon_change_set",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Change set deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteChangeSetV1Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/actions/": {
+      "get": {
+        "tags": [
+          "actions"
+        ],
+        "operationId": "get_actions",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actions retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetActionsV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/actions/{action_id}/cancel": {
+      "post": {
+        "tags": [
+          "actions"
+        ],
+        "operationId": "cancel_action",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "action_id",
+            "in": "path",
+            "description": "Func identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action cancelled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelActionV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Action not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/actions/{action_id}/put_on_hold": {
+      "post": {
+        "tags": [
+          "actions"
+        ],
+        "operationId": "put_on_hold",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "action_id",
+            "in": "path",
+            "description": "Func identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action successfully put on hold",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PutOnHoldActionV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Action not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/actions/{action_id}/retry": {
+      "post": {
+        "tags": [
+          "actions"
+        ],
+        "operationId": "retry_action",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "action_id",
+            "in": "path",
+            "description": "Func identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action successfully requeued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetryActionV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Action not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/components": {
+      "get": {
+        "tags": [
+          "components"
+        ],
+        "operationId": "list_components",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Components retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "components"
+        ],
+        "operationId": "create_component",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateComponentV1Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Component created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateComponentV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Component not found"
+          },
+          "412": {
+            "description": "Precondition Failed - View not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error - Invalid request data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/components/find": {
+      "get": {
+        "tags": [
+          "components"
+        ],
+        "operationId": "find_component",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "component",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "style": "form"
+          },
+          {
+            "name": "componentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Component retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetComponentV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Component not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}": {
+      "get": {
+        "tags": [
+          "components"
+        ],
+        "operationId": "get_component",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "component_id",
+            "in": "path",
+            "description": "Component identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Component retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetComponentV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Component not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "components"
+        ],
+        "operationId": "update_component",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "component_id",
+            "in": "path",
+            "description": "Component identifier",
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateComponentV1Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Component updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateComponentV1Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Component not found"
+          },
+          "412": {
+            "description": "Precondition failed - Duplicate component name"
+          },
+          "422": {
+            "description": "Validation error - Invalid request data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "components"
+        ],
+        "operationId": "delete_component",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "component_id",
+            "in": "path",
+            "description": "Component identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Component deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteComponentV1Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Component not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/action": {
+      "post": {
+        "tags": [
+          "components"
+        ],
+        "operationId": "add_action",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "component_id",
+            "in": "path",
+            "description": "Component identifier",
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddActionV1Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Action successfully queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddActionV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Component or function not found"
+          },
+          "409": {
+            "description": "action already enqueued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Precondition Failed - View not found or duplicate function name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error - Invalid request data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/execute-management-function": {
+      "post": {
+        "tags": [
+          "components"
+        ],
+        "operationId": "execute_management_function",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "component_id",
+            "in": "path",
+            "description": "Component identifier",
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteManagementFunctionV1Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Function successfully dispatched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecuteManagementFunctionV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Component or function not found"
+          },
+          "412": {
+            "description": "Precondition Failed - View not found or duplicate function name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error - Invalid request data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/force_apply": {
+      "post": {
+        "tags": [
+          "change_sets"
+        ],
+        "operationId": "force_apply",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Change set force applied successfully"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/runs/{func_run_id}": {
+      "get": {
+        "tags": [
+          "funcs"
+        ],
+        "operationId": "get_func_run",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "func_run_id",
+            "in": "path",
+            "description": "Func run identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Func Run retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetFuncRunV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Func run not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/{func_id}": {
+      "get": {
+        "tags": [
+          "funcs"
+        ],
+        "operationId": "get_func",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "func_id",
+            "in": "path",
+            "description": "Func identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Func retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetFuncV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Func not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/merge_status": {
+      "get": {
+        "tags": [
+          "change_sets"
+        ],
+        "operationId": "merge_status",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Change set merge status retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MergeStatusV1Response"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/request_approval": {
+      "post": {
+        "tags": [
+          "change_sets"
+        ],
+        "operationId": "request_approval",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Change set approval requested successfully"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/schema": {
+      "get": {
+        "tags": [
+          "schemas"
+        ],
+        "operationId": "list_schemas",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schemas listed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSchemaV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/find": {
+      "get": {
+        "tags": [
+          "schemas"
+        ],
+        "operationId": "find_schema",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "schema",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "style": "form"
+          },
+          {
+            "name": "schemaId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schema retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FindSchemaV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Schema not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}": {
+      "get": {
+        "tags": [
+          "schemas"
+        ],
+        "operationId": "get_schema",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "schema_id",
+            "in": "path",
+            "description": "Schema identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schema retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSchemaV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Schema not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}/variant/default": {
+      "get": {
+        "tags": [
+          "schemas"
+        ],
+        "operationId": "get_default_variant",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "schema_id",
+            "in": "path",
+            "description": "Schema identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schema variant retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSchemaVariantV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Schema variant not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}/variant/{schema_variant_id}": {
+      "get": {
+        "tags": [
+          "schemas"
+        ],
+        "operationId": "get_variant",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "schema_id",
+            "in": "path",
+            "description": "Schema identifier",
+            "required": true
+          },
+          {
+            "name": "schema_variant_id",
+            "in": "path",
+            "description": "Schema variant identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schema variant retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSchemaVariantV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Schema variant not found"
+          },
+          "412": {
+            "description": "Schema variant not found for schema"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/secrets": {
+      "get": {
+        "tags": [
+          "secrets"
+        ],
+        "operationId": "get_secrets",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Secrets retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "secrets"
+        ],
+        "operationId": "create_secret",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSecretV1Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Secret created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateSecretV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "422": {
+            "description": "Validation error - Invalid request data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/w/{workspace_id}/change-sets/{change_set_id}/secrets/{secret_id}": {
+      "put": {
+        "tags": [
+          "secrets"
+        ],
+        "operationId": "update_secret",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "secret_id",
+            "in": "path",
+            "description": "Secret identifier",
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSecretV1Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Secret updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateSecretV1Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Secret not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "secrets"
+        ],
+        "operationId": "delete_secret",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "description": "Workspace identifier",
+            "required": true
+          },
+          {
+            "name": "change_set_id",
+            "in": "path",
+            "description": "Change set identifier",
+            "required": true
+          },
+          {
+            "name": "secret_id",
+            "in": "path",
+            "description": "Secret identifier",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Secret deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteSecretV1Response"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Secret not found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/whoami": {
+      "get": {
+        "tags": [
+          "whoami"
+        ],
+        "operationId": "whoami",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved user information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhoamiResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or expired token"
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActionReference": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "function"
+            ],
+            "properties": {
+              "function": {
+                "type": "string",
+                "example": "Create Asset"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "actionPrototypeId"
+            ],
+            "properties": {
+              "actionPrototypeId": {
+                "type": "string",
+                "example": "01H9ZQD35JPMBGHH69BT0Q79VY"
+              }
+            }
+          }
+        ],
+        "description": "Reference to a management function by either name or ID.\nThis allows clients to use the more human-friendly name approach\nor the more precise ID approach when working with actions."
+      },
+      "ActionV1RequestPath": {
+        "type": "object",
+        "required": [
+          "action_id"
+        ],
+        "properties": {
+          "action_id": {
+            "type": "string"
+          }
+        }
+      },
+      "ActionViewV1": {
+        "type": "object",
+        "required": [
+          "id",
+          "prototypeId",
+          "componentId",
+          "name",
+          "description",
+          "kind",
+          "state",
+          "originatingChangeSetId",
+          "funcRunId"
+        ],
+        "properties": {
+          "componentId": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "funcRunId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "originatingChangeSetId": {
+            "type": "string"
+          },
+          "prototypeId": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        }
+      },
+      "AddActionV1Request": {
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ActionReference"
+          }
+        },
+        "example": {
+          "action": {
+            "function": "Create Asset"
+          }
+        }
+      },
+      "AddActionV1Response": {
+        "type": "object"
+      },
+      "ApiError": {
+        "type": "object",
+        "description": "Standard error response format for v1 API",
+        "required": [
+          "message",
+          "statusCode"
+        ],
+        "properties": {
+          "code": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          },
+          "statusCode": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "ApiSuccess_String": {
+        "type": "object",
+        "description": "Standard success response format for v1 API",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "string"
+          }
+        }
+      },
+      "CancelActionV1Response": {
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ComponentPropKey": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "#/components/schemas/DomainPropPath"
+          }
+        ]
+      },
+      "ComponentPropViewV1": {
+        "type": "object",
+        "required": [
+          "id",
+          "propId",
+          "value",
+          "path"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "example": "path/to/prop"
+          },
+          "propId": {
+            "type": "string"
+          },
+          "value": {
+            "type": "object"
+          }
+        }
+      },
+      "ComponentReference": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "component"
+            ],
+            "properties": {
+              "component": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "componentId"
+            ],
+            "properties": {
+              "componentId": {
+                "type": "string",
+                "example": "01H9ZQD35JPMBGHH69BT0Q79VY"
+              }
+            }
+          }
+        ],
+        "example": {
+          "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY"
+        }
+      },
+      "ComponentV1RequestPath": {
+        "type": "object",
+        "required": [
+          "component_id"
+        ],
+        "properties": {
+          "component_id": {
+            "type": "string"
+          }
+        }
+      },
+      "ComponentViewV1": {
+        "type": "object",
+        "required": [
+          "id",
+          "schemaId",
+          "schemaVariantId",
+          "sockets",
+          "domainProps",
+          "resourceProps",
+          "name",
+          "resourceId",
+          "toDelete",
+          "canBeUpgraded",
+          "connections",
+          "views"
+        ],
+        "properties": {
+          "canBeUpgraded": {
+            "type": "boolean"
+          },
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectionViewV1"
+            }
+          },
+          "domainProps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComponentPropViewV1"
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "resourceId": {
+            "type": "string"
+          },
+          "resourceProps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ComponentPropViewV1"
+            }
+          },
+          "schemaId": {
+            "type": "string"
+          },
+          "schemaVariantId": {
+            "type": "string"
+          },
+          "sockets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SocketViewV1"
+            }
+          },
+          "toDelete": {
+            "type": "boolean"
+          },
+          "views": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ViewV1"
+            }
+          }
+        }
+      },
+      "Connection": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "from",
+              "to"
+            ],
+            "properties": {
+              "from": {
+                "$ref": "#/components/schemas/ConnectionPoint"
+              },
+              "to": {
+                "type": "string"
+              }
+            },
+            "example": {
+              "from": {
+                "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+                "socketName": "output"
+              },
+              "to": "ThisComponentInputSocketName"
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "from",
+              "to"
+            ],
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "$ref": "#/components/schemas/ConnectionPoint"
+              }
+            },
+            "example": {
+              "from": "ThisComponentOutputSocketName",
+              "to": {
+                "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+                "socketName": "InputSocketName"
+              }
+            }
+          }
+        ]
+      },
+      "ConnectionDetails": {
+        "type": "object",
+        "properties": {
+          "add": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Connection"
+            },
+            "example": [
+              {
+                "from": {
+                  "component": "OtherComponentName",
+                  "socketName": "output"
+                },
+                "to": "ThisComponentInputSocketName"
+              },
+              {
+                "from": "ThisComponentOutputSocketName",
+                "to": {
+                  "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+                  "socketName": "InputSocketName"
+                }
+              }
+            ]
+          },
+          "remove": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Connection"
+            },
+            "example": [
+              {
+                "from": {
+                  "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+                  "socketName": "output"
+                },
+                "to": "ThisComponentInputSocketName"
+              },
+              {
+                "from": "ThisComponentOutputSocketName",
+                "to": {
+                  "component": "OtherComponentName",
+                  "socketName": "InputSocketName"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "ConnectionPoint": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ComponentReference"
+          },
+          {
+            "type": "object",
+            "required": [
+              "socketName"
+            ],
+            "properties": {
+              "socketName": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "example": {
+          "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+          "socketName": "OutputSocketName"
+        }
+      },
+      "ConnectionViewV1": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "incoming"
+            ],
+            "properties": {
+              "incoming": {
+                "$ref": "#/components/schemas/IncomingConnectionViewV1"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "outgoing"
+            ],
+            "properties": {
+              "outgoing": {
+                "$ref": "#/components/schemas/OutgoingConnectionViewV1"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "managing"
+            ],
+            "properties": {
+              "managing": {
+                "$ref": "#/components/schemas/ManagingConnectionViewV1"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "managedBy"
+            ],
+            "properties": {
+              "managedBy": {
+                "$ref": "#/components/schemas/ManagedByConnectionViewV1"
+              }
+            }
+          }
+        ]
+      },
+      "CreateChangeSetV1Request": {
+        "type": "object",
+        "required": [
+          "changeSetName"
+        ],
+        "properties": {
+          "changeSetName": {
+            "type": "string",
+            "example": "My new feature"
+          }
+        }
+      },
+      "CreateChangeSetV1Response": {
+        "type": "object",
+        "required": [
+          "changeSet"
+        ],
+        "properties": {
+          "changeSet": {
+            "type": "object"
+          }
+        }
+      },
+      "CreateComponentV1Request": {
+        "type": "object",
+        "required": [
+          "name",
+          "schemaName"
+        ],
+        "properties": {
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Connection"
+            },
+            "example": [
+              {
+                "from": {
+                  "component": "OtherComponentName",
+                  "socketName": "SocketName"
+                },
+                "to": "ThisComponentInputSocketName"
+              },
+              {
+                "from": {
+                  "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+                  "socketName": "SocketName"
+                },
+                "to": "ThisComponentInputSocketName"
+              },
+              {
+                "from": "ThisComponentOutputSocketName",
+                "to": {
+                  "component": "OtherComponentName",
+                  "socketName": "InputSocketName"
+                }
+              },
+              {
+                "from": "ThisComponentOutputSocketName",
+                "to": {
+                  "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+                  "socketName": "InputSocketName"
+                }
+              }
+            ]
+          },
+          "domain": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/components/schemas/DomainPropPath"
+                }
+              ]
+            },
+            "example": {
+              "propId1": "value1",
+              "path/to/prop": "value2"
+            }
+          },
+          "name": {
+            "type": "string",
+            "example": "MyComponentName"
+          },
+          "schemaName": {
+            "type": "string",
+            "example": "AWS::EC2::Instance"
+          },
+          "secrets": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/components/schemas/SecretPropPath"
+                }
+              ]
+            },
+            "example": {
+              "secretDefinitionName": "secretName"
+            }
+          },
+          "viewName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "MyView"
+          }
+        }
+      },
+      "CreateComponentV1Response": {
+        "type": "object",
+        "required": [
+          "component"
+        ],
+        "properties": {
+          "component": {
+            "$ref": "#/components/schemas/ComponentViewV1"
+          }
+        }
+      },
+      "CreateSecretV1Request": {
+        "type": "object",
+        "required": [
+          "name",
+          "definitionName",
+          "description",
+          "rawData"
+        ],
+        "properties": {
+          "definitionName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rawData": {
+            "type": "object"
+          }
+        }
+      },
+      "CreateSecretV1Response": {
+        "type": "object",
+        "required": [
+          "secret"
+        ],
+        "properties": {
+          "secret": {
+            "$ref": "#/components/schemas/SecretV1"
+          }
+        }
+      },
+      "DeleteChangeSetV1Response": {
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": "true"
+          }
+        }
+      },
+      "DeleteComponentV1Response": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "MarkedForDeletion"
+          }
+        }
+      },
+      "DeleteSecretV1Response": {
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DomainPropPath": {
+        "type": "string",
+        "description": "A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as its separator"
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "required": [
+          "message",
+          "code",
+          "status_code"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          },
+          "status_code": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        }
+      },
+      "ExecuteManagementFunctionV1Request": {
+        "type": "object",
+        "required": [
+          "managementFunction"
+        ],
+        "properties": {
+          "managementFunction": {
+            "$ref": "#/components/schemas/ManagementFunctionReference"
+          },
+          "viewName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "MyViewName"
+          }
+        },
+        "example": {
+          "viewName": "MyViewName",
+          "managementFunction": {
+            "function": "CreateVpc"
+          }
+        }
+      },
+      "ExecuteManagementFunctionV1Response": {
+        "type": "object",
+        "required": [
+          "funcRunId"
+        ],
+        "properties": {
+          "funcRunId": {
+            "type": "string",
+            "example": "01H9ZQD35JPMBGHH69BT0Q79VY"
+          }
+        }
+      },
+      "FindComponentV1Params": {
+        "type": "object",
+        "required": [
+          "componentId"
+        ],
+        "properties": {
+          "component": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "componentId": {
+            "type": "string"
+          }
+        }
+      },
+      "FindSchemaV1Params": {
+        "type": "object",
+        "required": [
+          "schemaId"
+        ],
+        "properties": {
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schemaId": {
+            "type": "string"
+          }
+        }
+      },
+      "FindSchemaV1Response": {
+        "type": "object",
+        "required": [
+          "schemaName",
+          "schemaId",
+          "category",
+          "installed"
+        ],
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "installed": {
+            "type": "boolean"
+          },
+          "schemaId": {
+            "type": "string"
+          },
+          "schemaName": {
+            "type": "string"
+          }
+        }
+      },
+      "FuncRunLogViewV1": {
+        "type": "object",
+        "required": [
+          "id",
+          "createdAt",
+          "updatedAt",
+          "funcRunId",
+          "logs",
+          "finalized"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "finalized": {
+            "type": "boolean"
+          },
+          "funcRunId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "logs": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "FuncRunV1RequestPath": {
+        "type": "object",
+        "required": [
+          "func_run_id"
+        ],
+        "properties": {
+          "func_run_id": {
+            "type": "string"
+          }
+        }
+      },
+      "FuncRunViewV1": {
+        "type": "object",
+        "required": [
+          "id",
+          "state",
+          "attributeValueId",
+          "componentId",
+          "componentName",
+          "schemaName",
+          "actionId",
+          "actionPrototypeId",
+          "actionKind",
+          "actionDisplayName",
+          "actionOriginatingChangeSetId",
+          "actionOriginatingChangeSetName",
+          "actionResultState",
+          "backendKind",
+          "backendResponseType",
+          "functionName",
+          "functionDisplayName",
+          "functionKind",
+          "functionDescription",
+          "functionLink",
+          "functionArgs",
+          "functionCodeBase64",
+          "resultValue",
+          "logs",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "actionDisplayName": {
+            "type": "string"
+          },
+          "actionId": {
+            "type": "string"
+          },
+          "actionKind": {
+            "type": "string"
+          },
+          "actionOriginatingChangeSetId": {
+            "type": "string"
+          },
+          "actionOriginatingChangeSetName": {
+            "type": "string"
+          },
+          "actionPrototypeId": {
+            "type": "string"
+          },
+          "actionResultState": {
+            "type": "string"
+          },
+          "attributeValueId": {
+            "type": "string"
+          },
+          "backendKind": {
+            "type": "string"
+          },
+          "backendResponseType": {
+            "type": "string"
+          },
+          "componentId": {
+            "type": "string"
+          },
+          "componentName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "functionArgs": {
+            "type": "object"
+          },
+          "functionCodeBase64": {
+            "type": "object"
+          },
+          "functionDescription": {
+            "type": "string"
+          },
+          "functionDisplayName": {
+            "type": "string"
+          },
+          "functionKind": {
+            "type": "string"
+          },
+          "functionLink": {
+            "type": "string"
+          },
+          "functionName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "logs": {
+            "type": "object"
+          },
+          "resultValue": {
+            "type": "object"
+          },
+          "schemaName": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "GetActionsV1Response": {
+        "type": "object",
+        "required": [
+          "actions"
+        ],
+        "properties": {
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActionViewV1"
+            }
+          }
+        }
+      },
+      "GetChangeSetV1Response": {
+        "type": "object",
+        "required": [
+          "changeSet"
+        ],
+        "properties": {
+          "changeSet": {
+            "type": "object"
+          }
+        }
+      },
+      "GetComponentV1Response": {
+        "type": "object",
+        "required": [
+          "component",
+          "managementFunctions",
+          "actionFunctions"
+        ],
+        "properties": {
+          "actionFunctions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GetComponentV1ResponseActionFunction"
+            }
+          },
+          "component": {
+            "$ref": "#/components/schemas/ComponentViewV1"
+          },
+          "managementFunctions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GetComponentV1ResponseManagementFunction"
+            }
+          }
+        }
+      },
+      "GetComponentV1ResponseActionFunction": {
+        "type": "object",
+        "required": [
+          "prototypeId",
+          "funcName"
+        ],
+        "properties": {
+          "funcName": {
+            "type": "string"
+          },
+          "prototypeId": {
+            "type": "string"
+          }
+        }
+      },
+      "GetComponentV1ResponseManagementFunction": {
+        "type": "object",
+        "required": [
+          "managementPrototypeId",
+          "funcName"
+        ],
+        "properties": {
+          "funcName": {
+            "type": "string"
+          },
+          "managementPrototypeId": {
+            "type": "string"
+          }
+        }
+      },
+      "GetFuncRunV1Response": {
+        "type": "object",
+        "required": [
+          "funcRun"
+        ],
+        "properties": {
+          "funcRun": {
+            "$ref": "#/components/schemas/FuncRunViewV1"
+          }
+        }
+      },
+      "GetFuncV1Response": {
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "displayName",
+          "kind",
+          "isLocked",
+          "code",
+          "link"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "isLocked": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "GetSchemaV1Response": {
+        "type": "object",
+        "required": [
+          "name",
+          "defaultVariantId",
+          "variantIds"
+        ],
+        "properties": {
+          "defaultVariantId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "variantIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "GetSchemaVariantV1Response": {
+        "type": "object",
+        "required": [
+          "variantId",
+          "displayName",
+          "category",
+          "color",
+          "isLocked",
+          "description",
+          "link",
+          "assetFuncId",
+          "variantFuncIds",
+          "isDefaultVariant"
+        ],
+        "properties": {
+          "assetFuncId": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "isDefaultVariant": {
+            "type": "boolean"
+          },
+          "isLocked": {
+            "type": "boolean"
+          },
+          "link": {
+            "type": "string"
+          },
+          "variantFuncIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "variantId": {
+            "type": "string"
+          }
+        }
+      },
+      "IncomingConnectionViewV1": {
+        "type": "object",
+        "required": [
+          "fromComponentId",
+          "fromComponentName",
+          "from",
+          "to"
+        ],
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "fromComponentId": {
+            "type": "string"
+          },
+          "fromComponentName": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        }
+      },
+      "ListChangeSetV1Response": {
+        "type": "object",
+        "required": [
+          "changeSets"
+        ],
+        "properties": {
+          "changeSets": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "example": "[{\"id\":\"01H9ZQD35JPMBGHH69BT0Q79VY\",\"name\":\"Add new feature\",\"status\":\"Draft\"}]"
+          }
+        }
+      },
+      "ListComponentsV1Response": {
+        "type": "object",
+        "required": [
+          "components"
+        ],
+        "properties": {
+          "components": {
+            "type": "string"
+          }
+        }
+      },
+      "ListSchemaV1Response": {
+        "type": "object",
+        "required": [
+          "schemas"
+        ],
+        "properties": {
+          "schemas": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "example": "[{\"schemaId\":\"01H9ZQD35JPMBGHH69BT0Q79VY\",\"schemaName\":\"AWS::EC2::Instance\",\"category\":\"AWS::EC2\",\"installed\": \"true\"}]"
+          }
+        }
+      },
+      "ManagedByConnectionViewV1": {
+        "type": "object",
+        "required": [
+          "componentId",
+          "componentName"
+        ],
+        "properties": {
+          "componentId": {
+            "type": "string"
+          },
+          "componentName": {
+            "type": "string"
+          }
+        }
+      },
+      "ManagementFunctionReference": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "function"
+            ],
+            "properties": {
+              "function": {
+                "type": "string",
+                "example": "CreateVpc"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "managementPrototypeId"
+            ],
+            "properties": {
+              "managementPrototypeId": {
+                "type": "string",
+                "example": "01H9ZQD35JPMBGHH69BT0Q79VY"
+              }
+            }
+          }
+        ],
+        "description": "Reference to a management function by either name or ID.\nThis allows clients to use the more human-friendly name approach\nor the more precise ID approach when working with management functions."
+      },
+      "ManagingConnectionViewV1": {
+        "type": "object",
+        "required": [
+          "componentId",
+          "componentName"
+        ],
+        "properties": {
+          "componentId": {
+            "type": "string"
+          },
+          "componentName": {
+            "type": "string"
+          }
+        }
+      },
+      "MergeStatusV1Response": {
+        "type": "object",
+        "description": "Response for merge status",
+        "required": [
+          "changeSet",
+          "actions"
+        ],
+        "properties": {
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MergeStatusV1ResponseAction"
+            }
+          },
+          "changeSet": {
+            "type": "object"
+          }
+        }
+      },
+      "MergeStatusV1ResponseAction": {
+        "type": "object",
+        "description": "Action item in merge status response",
+        "required": [
+          "id",
+          "state",
+          "kind",
+          "name"
+        ],
+        "properties": {
+          "component": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MergeStatusV1ResponseActionComponent"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        }
+      },
+      "MergeStatusV1ResponseActionComponent": {
+        "type": "object",
+        "description": "Component details in action response",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "OutgoingConnectionViewV1": {
+        "type": "object",
+        "required": [
+          "toComponentId",
+          "toComponentName",
+          "from"
+        ],
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "toComponentId": {
+            "type": "string"
+          },
+          "toComponentName": {
+            "type": "string"
+          }
+        }
+      },
+      "OutputLineViewV1": {
+        "type": "object",
+        "required": [
+          "stream",
+          "executionId",
+          "level",
+          "message",
+          "timestamp"
+        ],
+        "properties": {
+          "executionId": {
+            "type": "string"
+          },
+          "group": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "level": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "stream": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "PutOnHoldActionV1Response": {
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RetryActionV1Response": {
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SchemaV1RequestPath": {
+        "type": "object",
+        "required": [
+          "schema_id"
+        ],
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          }
+        }
+      },
+      "SchemaVariantV1RequestPath": {
+        "type": "object",
+        "required": [
+          "schema_id",
+          "schema_variant_id"
+        ],
+        "properties": {
+          "schema_id": {
+            "type": "string"
+          },
+          "schema_variant_id": {
+            "type": "string"
+          }
+        }
+      },
+      "SecretPropKey": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "#/components/schemas/SecretPropPath"
+          }
+        ]
+      },
+      "SecretPropPath": {
+        "type": "string"
+      },
+      "SecretV1": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "definition",
+          "description"
+        ],
+        "properties": {
+          "definition": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "SocketDirection": {
+        "type": "string",
+        "enum": [
+          "input",
+          "output"
+        ]
+      },
+      "SocketViewV1": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "direction",
+          "arity",
+          "value"
+        ],
+        "properties": {
+          "arity": {
+            "type": "string",
+            "example": "one"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/SocketDirection"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "object"
+          }
+        }
+      },
+      "SystemStatusResponse": {
+        "type": "object",
+        "required": [
+          "What is this?",
+          "API Documentation"
+        ],
+        "properties": {
+          "API Documentation": {
+            "type": "string",
+            "example": "Available at /swagger-ui"
+          },
+          "What is this?": {
+            "type": "string",
+            "example": "I am luminork, the new System Initiative External API application"
+          }
+        }
+      },
+      "UpdateComponentV1Request": {
+        "type": "object",
+        "properties": {
+          "connectionChanges": {
+            "$ref": "#/components/schemas/ConnectionDetails"
+          },
+          "domain": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/components/schemas/DomainPropPath"
+                }
+              ]
+            },
+            "example": {
+              "propId1": "value1",
+              "path/to/prop": "value2"
+            }
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "MyUpdatedComponentName"
+          },
+          "secrets": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/components/schemas/SecretPropPath"
+                }
+              ]
+            },
+            "example": {
+              "secretDefinitionName": "secretName"
+            }
+          },
+          "unset": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "propId1",
+              "path/to/prop"
+            ]
+          }
+        }
+      },
+      "UpdateComponentV1Response": {
+        "type": "object",
+        "required": [
+          "component"
+        ],
+        "properties": {
+          "component": {
+            "$ref": "#/components/schemas/ComponentViewV1"
+          }
+        }
+      },
+      "UpdateSecretV1Request": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "rawData"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rawData": {
+            "type": "object"
+          }
+        }
+      },
+      "UpdateSecretV1Response": {
+        "type": "object",
+        "required": [
+          "secret"
+        ],
+        "properties": {
+          "secret": {
+            "$ref": "#/components/schemas/SecretV1"
+          }
+        }
+      },
+      "ViewV1": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "isDefault"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "WhoamiResponse": {
+        "type": "object",
+        "required": [
+          "userId",
+          "userEmail",
+          "workspaceId",
+          "token"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          },
+          "userEmail": {
+            "type": "string",
+            "example": "user@example.com"
+          },
+          "userId": {
+            "type": "string",
+            "example": "01H9ZQCBJ3E7HBTRN3J58JQX8K"
+          },
+          "workspaceId": {
+            "type": "string",
+            "example": "01H9ZQD35JPMBGHH69BT0Q79VY"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "root",
+      "description": "Root API endpoints"
+    },
+    {
+      "name": "whoami",
+      "description": "User identity endpoints"
+    },
+    {
+      "name": "change_sets",
+      "description": "Change set management endpoints"
+    },
+    {
+      "name": "components",
+      "description": "Component management endpoints"
+    },
+    {
+      "name": "funcs",
+      "description": "Functions management endpoints"
+    }
+  ]
+}

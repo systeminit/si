@@ -11,6 +11,7 @@ members = [
     "bin/innit",
     "bin/luminork",
     "bin/module-index",
+    "bin/openapi-extractor",
     "bin/pinga",
     "bin/rebaser",
     "bin/sdf",
