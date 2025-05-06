@@ -337,7 +337,7 @@ const overrides = new Map<string, OverrideFn>([
   [
     "AWS::RDS::DBInstance", (spec: ExpandedPkgSpec) => {
     addSecretProp("Secret String", "secretString", ["MasterUserPassword"])(spec);
-    
+
     const variant = spec.schemas[0].variants[0];
 
     const securityGroupsSocket = variant.sockets.find(
@@ -815,7 +815,7 @@ const overrides = new Map<string, OverrideFn>([
   }],
   ["AWS::WAFv2::WebACLAssociation", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
-    
+
     const resourceArnSocket = variant.sockets.find(
       (s: ExpandedSocketSpec) => s.name === "Resource Arn" && s.data.kind === "output",
     );
@@ -896,7 +896,7 @@ const overrides = new Map<string, OverrideFn>([
       "Phase1IntegrityAlgorithms",
       "Phase2DHGroupNumbers",
       "Phase2EncryptionAlgorithms",
-      "Phase2IntegrityAlgorithms"  
+      "Phase2IntegrityAlgorithms"
     ];
 
     for (const propName of propsToFix) {
@@ -912,7 +912,7 @@ const overrides = new Map<string, OverrideFn>([
         if (valueProp) {
           valueProp.data.widgetKind = "ComboBox";
         }
-      }  
+      }
     }
   }],
   ["AWS::ElastiCache::ServerlessCache", (spec: ExpandedPkgSpec) => {
@@ -978,7 +978,7 @@ const overrides = new Map<string, OverrideFn>([
     resource_value.entries.push(transitGatewayAttachmentIdProp);
 
     const tgwaIdOutputSocket = createOutputSocketFromProp(
-      transitGatewayAttachmentIdProp, 
+      transitGatewayAttachmentIdProp,
       "Transit Gateway Attachment Id"
     );
     variant.sockets.push(tgwaIdOutputSocket);
@@ -1019,6 +1019,24 @@ const overrides = new Map<string, OverrideFn>([
       typeProp.data.inputs = [];
       typeProp.data.funcUniqueId = null;
       typeProp.data.widgetOptions = [
+        { label: "si_create_only_prop", value: "true" }
+      ];
+    }
+  }],
+  ['AWS::S3::Bucket', (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+    const domain = variant.domain;
+
+    removeInputSockets(variant, [
+      "Bucket Name",
+    ]);
+
+    const bucketNameProp = propForOverride(domain, "BucketName");
+    if (bucketNameProp && bucketNameProp.kind === "string") {
+      bucketNameProp.data.widgetKind = "Text";
+      bucketNameProp.data.inputs = [];
+      bucketNameProp.data.funcUniqueId = null;
+      bucketNameProp.data.widgetOptions = [
         { label: "si_create_only_prop", value: "true" }
       ];
     }
@@ -1074,11 +1092,11 @@ function attachQualificationFunction(
   func.data!.displayName = name;
 
   const leafFuncSpec = createLeafFuncSpec(
-    "qualification", 
+    "qualification",
     func.uniqueId,
     ["domain"]
   );
-  
+
   return { func, leafFuncSpec };
 }
 
