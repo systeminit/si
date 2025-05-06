@@ -80,7 +80,6 @@ import {
   onBeforeMount,
   ref,
   provide,
-  toRef,
   watch,
 } from "vue";
 import { useQueryClient } from "@tanstack/vue-query";
@@ -112,16 +111,21 @@ const authStore = useAuthStore();
 const featureFlagsStore = useFeatureFlagsStore();
 const changeSetsStore = useChangeSetsStore();
 
-const context: Context = {
-  workspacePk: toRef(props.workspacePk),
-  changeSetId: toRef(props.changeSetId),
-  user: authStore.user,
-  onHead: changeSetsStore.headSelected,
-};
+const workspacePk = computed(() => props.workspacePk);
+const changeSetId = computed(() => props.changeSetId);
+
+const context = computed<Context>(() => {
+  return {
+    workspacePk,
+    changeSetId,
+    user: authStore.user,
+    onHead: changeSetsStore.headSelected,
+  };
+});
 
 startKeyEmitter(document);
 
-provide("CONTEXT", context);
+provide("CONTEXT", context.value);
 
 const compositionLink = computed(() => {
   // eslint-disable-next-line no-nested-ternary
@@ -172,6 +176,13 @@ onBeforeMount(async () => {
   // Initial setup with resolved change set ID
   heimdall.niflheim(props.workspacePk, props.changeSetId, true);
 });
+
+watch(
+  () => props.changeSetId,
+  () => {
+    heimdall.niflheim(props.workspacePk, props.changeSetId, true);
+  },
+);
 
 const connectionShouldBeEnabled = computed(() => {
   try {

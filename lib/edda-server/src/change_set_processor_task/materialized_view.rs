@@ -63,6 +63,7 @@ use si_frontend_types::{
     schema_variant::SchemaVariantCategories as SchemaVariantCategoriesMv,
     view::{
         View as ViewMv,
+        ViewComponentList as ViewComponentListMv,
         ViewList as ViewListMv,
     },
 };
@@ -521,6 +522,28 @@ async fn build_mv_inner(
                                 dal::diagram::view::View::as_frontend_list_type(ctx.clone()),
                             );
                         }
+                        ReferenceKind::ViewComponentList => {
+                            let mv_id = change.entity_id.to_string();
+
+                            let trigger_entity = <si_frontend_types::view::ViewComponentList as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+                            if change.entity_kind != trigger_entity {
+                                continue;
+                            }
+
+                            spawn_build_mv_task!(
+                                build_tasks,
+                                mv_task_ids,
+                                ctx,
+                                frigg,
+                                change,
+                                mv_id,
+                                si_frontend_types::view::ViewComponentList,
+                                dal_materialized_views::view::components_as_frontend_list_type(
+                                    ctx.clone(),
+                                    si_events::ulid::Ulid::from(change.entity_id).into(),
+                                ),
+                            );
+                        }
 
                         // Building the `MvIndex` itself is handled separately as the logic depends
                         // on whether we're doing an incremental build or a full build from scratch.
@@ -744,6 +767,7 @@ fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedV
     // All `MaterializedView` types must be covered here for them to be built.
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewComponentListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantCategoriesMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionPrototypeViewListMv);

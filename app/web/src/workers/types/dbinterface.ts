@@ -274,6 +274,11 @@ export interface BifrostComponentList {
   components: BifrostComponent[];
 }
 
+export interface ViewComponentList {
+  id: string; // ViewId
+  components: BifrostComponent[];
+}
+
 export interface RawComponentList {
   id: ChangeSetId;
   components: Reference[];

@@ -1,9 +1,9 @@
-import { Ref } from "vue";
+import { ComputedRef } from "vue";
 import { User } from "@/api/sdf/dal/user";
 
 export interface Context {
-  workspacePk: Ref<string, string>;
-  changeSetId: Ref<string, string>;
+  workspacePk: ComputedRef<string>;
+  changeSetId: ComputedRef<string>;
   user: User | null;
   onHead: boolean;
 }

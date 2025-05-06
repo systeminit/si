@@ -918,7 +918,7 @@ const get = async (
       views,
     };
     return list;
-  } else if (kind === "ComponentList") {
+  } else if (kind === "ComponentList" || kind === "ViewComponentList") {
     const rawList = atomDoc as RawComponentList;
     const maybeComponents = await Promise.all(
       rawList.components.map(async (c) => {

@@ -1,5 +1,5 @@
 import * as Comlink from "comlink";
-import { computed, reactive, Reactive, inject } from "vue";
+import { computed, reactive, Reactive, inject, ComputedRef, unref } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
 import { DBInterface, Id, BustCacheFn } from "@/workers/types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
@@ -118,17 +118,11 @@ export const niflheim = async (
 };
 
 export const changeSetId = computed(() => {
-  const CTX: Context | undefined = inject("CONTEXT");
-  if (CTX && CTX.changeSetId.value) return CTX.changeSetId.value;
-
   const changeSetsStore = useChangeSetsStore();
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return changeSetsStore.selectedChangeSetId!;
 });
 const workspaceId = computed(() => {
-  const CTX: Context | undefined = inject("CONTEXT");
-  if (CTX && CTX.workspacePk.value) return CTX.workspacePk.value;
-
   const workspaceStore = useWorkspacesStore();
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return workspaceStore.selectedWorkspacePk!;
@@ -149,6 +143,36 @@ export const makeArgs = (kind: string, id?: string) => {
     kind,
     id: id ?? changeSetId.value,
   };
+};
+
+export const useMakeArgs = () => {
+  const ctx: Context | undefined = inject("CONTEXT");
+
+  return (kind: string, id?: string) => {
+    return {
+      workspaceId: ctx?.workspacePk.value ?? "",
+      changeSetId: ctx?.changeSetId.value ?? "",
+      kind,
+      id: id ?? ctx?.changeSetId.value ?? "",
+    };
+  };
+};
+
+export const useMakeKey = () => {
+  const ctx: Context | undefined = inject("CONTEXT");
+
+  return (
+    kind: ComputedRef<string> | string,
+    id?: ComputedRef<string> | string,
+  ) =>
+    computed(() => {
+      return [
+        ctx?.workspacePk.value,
+        ctx?.changeSetId.value,
+        kind,
+        unref(id) ?? ctx?.changeSetId.value,
+      ];
+    });
 };
 
 export const odin = async (changeSetId: string) => {
