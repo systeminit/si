@@ -40,12 +40,9 @@ use si_frontend_types::{
         ActionViewList as ActionViewListMv,
     },
     index::MvIndex,
-    newhotness::{
-        attribute_tree::AttributeTree as AttributeTreeMv,
-        component::{
-            Component as ComponentMv,
-            ComponentList as ComponentListMv,
-        },
+    newhotness::component::{
+        Component as ComponentMv,
+        ComponentList as ComponentListMv,
     },
     object::{
         FrontendObject,
@@ -393,28 +390,6 @@ async fn build_mv_inner(
                                 mv_id,
                                 si_frontend_types::action::ActionViewList,
                                 dal_materialized_views::action_view_list::assemble(ctx.clone()),
-                            );
-                        }
-                        ReferenceKind::AttributeTree => {
-                            let mv_id = change.entity_id.to_string();
-
-                            let trigger_entity = <si_frontend_types::newhotness::attribute_tree::AttributeTree as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
-                            if change.entity_kind != trigger_entity {
-                                continue;
-                            }
-
-                            spawn_build_mv_task!(
-                                build_tasks,
-                                mv_task_ids,
-                                ctx,
-                                frigg,
-                                change,
-                                mv_id,
-                                si_frontend_types::newhotness::attribute_tree::AttributeTree,
-                                dal_materialized_views::attribute_tree::assemble(
-                                    ctx.clone(),
-                                    si_events::ulid::Ulid::from(change.entity_id).into(),
-                                ),
                             );
                         }
                         ReferenceKind::Component => {
@@ -771,7 +746,6 @@ fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedV
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionPrototypeViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, AttributeTreeMv);
 
     // The MvIndex depends on everything else, but doesn't define any
     // `MaterializedView::reference_dependencies()` directly.
