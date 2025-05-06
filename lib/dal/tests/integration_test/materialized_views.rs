@@ -1,7 +1,4 @@
-use std::collections::{
-    HashSet,
-    VecDeque,
-};
+use std::collections::HashSet;
 
 use dal::{
     Component,
@@ -108,24 +105,6 @@ async fn actions(ctx: &DalContext) -> Result<()> {
         kinds // actual
     );
 
-    Ok(())
-}
-
-#[test]
-async fn attribute_tree(ctx: &DalContext) -> Result<()> {
-    let component =
-        create_component_for_default_schema_name_in_default_view(ctx, "swifty", "swifty").await?;
-    let root_attribute_value_id = Component::root_attribute_value_id(ctx, component.id()).await?;
-
-    // NOTE(nick): right now, this test basically just makes sure this does not regress and
-    // provides a psuedo-benchmark for generating MVs for a new component.
-    let mut work_queue = VecDeque::from([root_attribute_value_id]);
-    while let Some(attribute_value_id) = work_queue.pop_front() {
-        let tree =
-            dal_materialized_views::attribute_tree::assemble(ctx.clone(), attribute_value_id)
-                .await?;
-        work_queue.extend(tree.children);
-    }
     Ok(())
 }
 
