@@ -117,6 +117,7 @@ import MaterialSymbolsBackspaceOutline from "~icons/material-symbols/backspace-o
 import IconoirMouseScrollWheel from "~icons/iconoir/mouse-scroll-wheel";
 import MdiCursorDefaultClickOutline from "~icons/mdi/cursor-default-click-outline";
 import MaterialSymbolsShiftLockOutline from "~icons/material-symbols/shift-lock-outline";
+import MaterialSymbolsAddLink from "~icons/material-symbols/add-link";
 
 import TdesignLinkUnlink from "~icons/tdesign/link-unlink";
 import PhTestTubeFill from "~icons/ph/test-tube-fill";
@@ -210,6 +211,7 @@ import Mjolnir from "./custom-icons/mjolnir.svg?raw";
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
 export const ICONS = Object.freeze({
+  "add-connection": MaterialSymbolsAddLink,
   "alert-circle": AlertCircle,
   "alert-square": AlertSquare,
   "alert-triangle": AlertTriangle,

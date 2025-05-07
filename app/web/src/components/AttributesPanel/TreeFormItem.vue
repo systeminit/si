@@ -231,9 +231,9 @@
           <div class="text-xs">Add an approver user for this requirement -</div>
           <UserSelectMenu
             ref="userSelectMenuRef"
+            :usersToFilterOut="usersToFilterOut"
             class="flex-none"
             noUsersLabel="All users are approvers!"
-            :usersToFilterOut="usersToFilterOut"
             @select="addUser"
           />
         </div>
@@ -244,6 +244,9 @@
           :attributesPanel="attributesPanel"
           :context="context"
           :level="level + 1"
+          :parentPath="
+            parentPath ? `${parentPath}/${propName}` : `/${propName}`
+          "
           :treeDef="childProp"
         />
 
@@ -273,11 +276,11 @@
             class="flex flex-row grow relative overflow-hidden items-center justify-center pt-xs"
           >
             <VButton
+              icon="trash"
               label="Delete Requirement"
+              size="sm"
               tone="destructive"
               variant="ghost"
-              icon="trash"
-              size="sm"
               @click="deleteRequirement"
             />
           </div>
@@ -358,14 +361,14 @@
       <DropdownMenuButton
         v-if="socketDropDownShouldBeShown"
         ref="socketConnectionDropdownButtonRef"
-        :placeholder="socketDropdownPlaceholder"
-        search
-        :searchFilters="socketSearchFilters"
         :disabled="widgetOptions.length < 1"
+        :placeholder="socketDropdownPlaceholder"
+        :searchFilters="socketSearchFilters"
         class="mr-xs flex-grow"
+        search
         @blur="onBlur"
-        @focus="widgetOptions.length > 0 ? onFocus() : null"
         @click="openSocketWidgetDropdownMenu"
+        @focus="widgetOptions.length > 0 ? onFocus() : null"
       >
         <DropdownMenuItem
           v-if="filteredSocketOptions.length === 0"
@@ -407,17 +410,17 @@
         }}</TruncateWithTooltip>
         <IconButton
           v-if="!connection.isInferred"
+          class="flex-none ml-auto"
           icon="trash"
           iconTone="destructive"
           size="sm"
-          class="flex-none ml-auto"
           @click="unsetHandler(connection.value)"
         />
         <IconButton
           v-else
+          class="flex-none ml-auto"
           icon="question-circle"
           iconTone="neutral"
-          class="flex-none ml-auto"
           tooltip="Connection can't be unmade because it's inferred from a parent. You can override it above."
         />
       </div>
@@ -455,13 +458,13 @@
         />
         <div
           v-tooltip="propDocumentationTooltip"
-          :title="`${propLabelParts[0]}${propLabelParts[1]}`"
           :class="
             clsx(
               'shrink truncate py-2xs px-0 [&_i]:opacity-50',
               propDocumentation ? 'cursor-pointer' : 'cursor-default',
             )
           "
+          :title="`${propLabelParts[0]}${propLabelParts[1]}`"
           @click="openPropDocModal"
         >
           <template v-if="isChildOfMap">{{ propLabelParts[1] }}</template>
@@ -473,6 +476,18 @@
         <div
           class="flex flex-row gap-2xs mr-2xs flex-none ml-auto items-center [&>*]:cursor-pointer"
         >
+          <button
+            v-if="
+              useFeatureFlagsStore().PROPS_TO_PROPS_CONNECTIONS &&
+              !props.parentPath?.startsWith('/secrets') &&
+              !props.parentPath?.startsWith('/resource_value')
+            "
+            v-tooltip="'Connect'"
+            class="text-neutral-400 hover:text-shade-0 hover:scale-125 z-30 flex-none"
+            @click="openConnectionsMenu"
+          >
+            <Icon name="add-connection" size="xs" />
+          </button>
           <button
             v-if="isChildOfMap || isChildOfArray"
             v-tooltip="'Delete'"
@@ -574,9 +589,9 @@
         />
         <Icon
           v-if="validationIconShow"
-          class="absolute top-3xs right-0"
           :name="validation?.status === 'Success' ? 'check' : 'x'"
           :tone="validation?.status === 'Success' ? 'success' : 'error'"
+          class="absolute top-3xs right-0"
         />
         <template v-if="propKind === 'integer'">
           <input
@@ -698,19 +713,19 @@
         >
           <DropdownMenuButton
             ref="comboBoxSelectRef"
-            :placeholder="currentLabelForDropdown"
-            :search="widgetOptions.length > DEFAULT_DROPDOWN_SEARCH_THRESHOLD"
-            :disabled="!widgetOptions || widgetOptions.length < 1"
+            :checkable="!!currentValue"
             :class="
               clsx(
                 `w-full ${propLabelParts[0]}${propLabelParts[1]}`,
                 unsetButtonShow && 'pr-6',
               )
             "
-            noBorder
-            minWidthToAnchor
+            :disabled="!widgetOptions || widgetOptions.length < 1"
+            :placeholder="currentLabelForDropdown"
+            :search="widgetOptions.length > DEFAULT_DROPDOWN_SEARCH_THRESHOLD"
             alignRightOnAnchor
-            :checkable="!!currentValue"
+            minWidthToAnchor
+            noBorder
             @blur="onBlur"
             @focus="widgetOptions.length > 0 ? onFocus() : null"
           >
@@ -722,9 +737,9 @@
             <DropdownMenuItem
               v-for="option in filteredWidgetOptions"
               :key="option.value"
-              :label="option.label"
               :checkable="!!currentValue"
               :checked="currentValue === option.value"
+              :label="option.label"
               @select="updateValueString(option.value)"
             >
             </DropdownMenuItem>
@@ -779,10 +794,6 @@
 
         <SourceTooltip
           v-if="!propIsEditable && attributesPanel"
-          :icon="sourceIcon"
-          :overridden="sourceOverridden"
-          :tooltipText="disabledOverlayTooltipText"
-          justMessage
           :class="
             clsx(
               'attributes-panel-item__blocked-overlay',
@@ -790,6 +801,10 @@
               themeClasses('bg-caution-lines-light', 'bg-caution-lines-dark'),
             )
           "
+          :icon="sourceIcon"
+          :overridden="sourceOverridden"
+          :tooltipText="disabledOverlayTooltipText"
+          justMessage
           @click="openNonEditableModal"
         >
           <div class="w-full h-full" />
@@ -798,16 +813,16 @@
       <!-- users widget is just a delete button -->
       <IconButton
         v-else
-        icon="trash"
-        iconTone="destructive"
-        iconIdleTone="shade"
+        :disabled="treeDef.propDef.isReadonly"
         :tooltip="
           treeDef.propDef.isReadonly
             ? 'Can\'t Remove Only Approver!'
             : 'Remove Approver'
         "
+        icon="trash"
+        iconIdleTone="shade"
+        iconTone="destructive"
         size="xs"
-        :disabled="treeDef.propDef.isReadonly"
         @click="() => removeUser(treeDef.propId)"
       />
     </div>
@@ -945,10 +960,10 @@
         <CodeViewer
           v-if="currentValue && widgetKind !== 'secret'"
           :code="String(currentValue)"
-          border
-          showTitle
           :title="`Current Value for &quot;${propName}&quot;`"
+          border
           copyTooltip="Copy prop value to clipboard"
+          showTitle
         />
         <div v-else-if="widgetKind !== 'secret'" class="italic">
           "{{ propName }}" does not currently have a value.
@@ -1031,6 +1046,11 @@ import {
   LabelList,
 } from "@/api/sdf/dal/label_list";
 import { ViewDescription } from "@/api/sdf/dal/views";
+import {
+  ConnectionDirection,
+  useComponentsStore,
+} from "@/store/components.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import CodeEditor from "../CodeEditor.vue";
 import SecretsModal from "../SecretsModal.vue";
 import SourceIconWithTooltip from "./SourceIconWithTooltip.vue";
@@ -1079,6 +1099,7 @@ const props = defineProps({
 
   // Only set this boolean to true if this TreeFormItem is part of AttributesPanel
   attributesPanel: { type: Boolean },
+  parentPath: { type: String },
 });
 
 const propDocModalRef = ref<InstanceType<typeof Modal>>();
@@ -1467,6 +1488,22 @@ function removeChildHandler() {
   } else {
     // TODO(Wendy) - make this functional for TreeForm when needed
   }
+}
+
+function openConnectionsMenu() {
+  if (!attributesStore.value) return;
+
+  const componentId = attributesStore.value.selectedComponentId;
+
+  const attributePath = `${props.parentPath ?? ""}/${propName.value}`;
+
+  const menuData = {
+    aDirection: "input" as ConnectionDirection,
+    A: { componentId, attributePath },
+    B: {},
+  };
+
+  useComponentsStore().eventBus.emit("openConnectionsMenu", menuData);
 }
 
 const validation = computed(() => {
