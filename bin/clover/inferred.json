@@ -1433,6 +1433,12 @@
       "dedicated"
     ]
   },
+  "The allowed tenancy of instances launched into the VPC.\n  +  ``default``: An instance launched into the VPC runs on shared hardware by default, unless you explicitly specify a different tenancy during instance launch.\n  +  ``dedicated``: An instance launched into the VPC runs on dedicated hardware by default, unless you explicitly specify a tenancy of ``host`` during instance launch. You cannot specify a tenancy of ``default`` during instance launch.\n  \n Updating ``InstanceTenancy`` requires no replacement only if you are updating its value from ``dedicated`` to ``default``. Updating ``InstanceTenancy`` from ``default`` to ``dedicated`` requires replacement.": {
+    "enum": [
+      "default",
+      "dedicated"
+    ]
+  },
   "The tenancy of the instance, either default or dedicated.": {
     "enum": [
       "default",
@@ -8802,6 +8808,12 @@
   "The ID of the distribution that you are enabling metrics for.": {
     "enum": null
   },
+  "The ID of the domain in which you want to add the entity owner.": {
+    "enum": null
+  },
+  "The ID of the domain where you want to create a domain unit.": {
+    "enum": null
+  },
   "The ID of the endpoint service.": {
     "enum": null
   },
@@ -8809,6 +8821,9 @@
     "enum": null
   },
   "The ID of the endpoint.": {
+    "enum": null
+  },
+  "The ID of the entity to which you want to add an owner.": {
     "enum": null
   },
   "The ID of the entity.": {
@@ -8911,6 +8926,9 @@
     "enum": null
   },
   "The ID of the only AWS resource that you want to trigger an evaluation for the rule. If you specify a resource ID, you must specify one resource type for ``ComplianceResourceTypes``.": {
+    "enum": null
+  },
+  "The ID of the parent domain unit.": {
     "enum": null
   },
   "The ID of the parent entity.": {
@@ -10351,6 +10369,9 @@
     "enum": null
   },
   "The description of the distribution configuration.": {
+    "enum": null
+  },
+  "The description of the domain unit.": {
     "enum": null
   },
   "The description of the entity.": {
@@ -12628,6 +12649,9 @@
     "enum": null
   },
   "The name of the domain that contains the repository.": {
+    "enum": null
+  },
+  "The name of the domain unit.": {
     "enum": null
   },
   "The name of the domain.": {
@@ -15079,6 +15103,9 @@
     "enum": null
   },
   "The type of algorithm that is used for the encryption (such as aes128, aes192, or aes256).": {
+    "enum": null
+  },
+  "The type of an entity.": {
     "enum": null
   },
   "The type of app.": {
