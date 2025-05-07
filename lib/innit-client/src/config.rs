@@ -1,6 +1,9 @@
 use std::{
     env,
-    path::Path,
+    path::{
+        Path,
+        PathBuf,
+    },
 };
 
 use buck2_resources::Buck2Resources;
@@ -63,6 +66,9 @@ pub struct Config {
     #[builder(default = "default_env()")]
     environment: String,
 
+    #[builder(default = None)]
+    generated_cert_location: Option<PathBuf>,
+
     #[builder(default = "default_app_name()")]
     for_app: String,
 }
@@ -91,6 +97,10 @@ impl Config {
     pub fn environment(&self) -> &str {
         &self.environment
     }
+
+    pub fn generated_cert_location(&self) -> Option<&PathBuf> {
+        self.generated_cert_location.as_ref()
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -105,6 +115,8 @@ pub struct ConfigFile {
     environment: String,
     #[serde(default = "default_app_name")]
     for_app: String,
+    #[serde(default)]
+    generated_cert_location: Option<PathBuf>,
 }
 
 impl Default for ConfigFile {
@@ -115,6 +127,7 @@ impl Default for ConfigFile {
             base_url: default_url(),
             environment: default_env(),
             for_app: default_app_name(),
+            generated_cert_location: None,
         }
     }
 }
@@ -134,6 +147,7 @@ impl TryFrom<ConfigFile> for Config {
         config.client_ca_arn(value.client_ca_arn);
         config.base_url(value.base_url);
         config.for_app(value.for_app);
+        config.generated_cert_location(value.generated_cert_location);
         config.build().map_err(Into::into)
     }
 }

@@ -1,4 +1,7 @@
-use std::env;
+use std::{
+    env,
+    path::PathBuf,
+};
 
 use async_trait::async_trait;
 use base64::{
@@ -21,6 +24,10 @@ use si_data_acmpca::{
     PrivateCertManagerClientError,
 };
 use si_settings::StandardConfigFile;
+use si_std::{
+    CanonicalFile,
+    CanonicalFileError,
+};
 use si_tls::CertificateSource;
 use telemetry::tracing::info;
 use thiserror::Error;
@@ -37,6 +44,8 @@ const DEFAULT_ENVIRONMENT: &str = "local";
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum InnitClientError {
+    #[error("canonical file error: {0}")]
+    CanonicalFile(#[from] CanonicalFileError),
     #[error(transparent)]
     CertificateClient(#[from] PrivateCertManagerClientError),
     #[error(transparent)]
@@ -45,6 +54,8 @@ pub enum InnitClientError {
     Deserialization(serde_json::Error),
     #[error("Request error: {0}")]
     InvalidHeaderValue(#[from] reqwest::header::InvalidHeaderValue),
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
     #[error("module not found (module id: {0})")]
     ModuleNotFound(String),
     #[error("ParameterProvider error: {0}")]
@@ -79,7 +90,12 @@ impl InnitClient {
             info!("Determined we are running in environment: {environment}");
             Self::configure_client_with_certs(client_builder, cert).await?
         } else if let Some(ca_arn) = &config.client_ca_arn() {
-            let cert = generate_cert_from_acmpca(ca_arn.to_string(), config.for_app()).await?;
+            let cert = get_or_generate_cert(
+                ca_arn.to_string(),
+                config.for_app(),
+                config.generated_cert_location().cloned(),
+            )
+            .await?;
 
             environment = get_host_environment_from_cert_or_env_vars(&cert).await?;
             info!("Determined we are running in environment: {environment}");
@@ -198,6 +214,37 @@ async fn generate_cert_from_acmpca(ca_arn: String, for_app: String) -> Result<Ce
         .get_new_cert_from_ca(ca_arn, for_app, "innit".to_string())
         .await?;
     Ok(cert)
+}
+
+/// Generate a certificate, first checking the cache location if provided
+async fn get_or_generate_cert(
+    ca_arn: String,
+    for_app: String,
+    cached_cert: Option<PathBuf>,
+) -> Result<CertificateSource> {
+    // If we have a cache location, try to load from it first
+    if let Some(cert_path) = &cached_cert {
+        if cert_path.exists() {
+            let cert = CanonicalFile::try_from(cert_path.as_path())?;
+            let cached_source = CertificateSource::Path(cert);
+            if cached_source.load_certificates().await.is_ok() {
+                info!("Using cached certificate from: {:?}", cert_path);
+                return Ok(cached_source);
+            }
+        }
+        info!("Failed to load cached certificate. Generating new one.");
+    }
+
+    let cert = generate_cert_from_acmpca(ca_arn, for_app).await?;
+
+    if let Some(cert_path) = cached_cert {
+        let cert_bytes = cert.load_certificates_as_bytes().await?;
+        info!("Writing new certificate to cache: {:?}", cert_path);
+        tokio::fs::write(&cert_path, &cert_bytes).await?;
+        Ok(CertificateSource::Path(CanonicalFile::try_from(cert_path)?))
+    } else {
+        Ok(cert)
+    }
 }
 
 // Attempt to pull the env the env var then from our issuing cert, failing that
