@@ -36,7 +36,7 @@ use crate::{
     OutputSocket,
     Prop,
     PropKind,
-    newhotness::component::attribute_tree::{
+    component::attribute_tree::{
         PropWidgetKind,
         ValidationStatus,
     },

@@ -14,7 +14,10 @@ use dal::{
     WorkspacePk,
     cached_module::CachedModule,
 };
-use si_frontend_types::ListVariantsResponse;
+use si_frontend_types::{
+    ListVariantsResponse,
+    UninstalledVariant,
+};
 
 use crate::{
     extract::{
@@ -65,7 +68,16 @@ pub async fn list_variants(
         if !installed_schema_ids.contains(&module.schema_id)
             && !installed_cat_and_name.contains(&(category, schema_name))
         {
-            uninstalled.push(module.into());
+            uninstalled.push(UninstalledVariant {
+                schema_id: module.schema_id,
+                schema_name: module.schema_name,
+                display_name: module.display_name,
+                category: module.category,
+                link: module.link,
+                color: module.color,
+                description: module.description,
+                component_type: module.component_type.into(),
+            });
         }
     }
 

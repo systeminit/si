@@ -2843,4 +2843,13 @@ impl AttributeValue {
 
         Ok(values)
     }
+
+    // FIXME(nick): use John K's real version of this function once it is on main.
+    #[allow(unused_mut)]
+    pub async fn path_from_root(
+        _ctx: &DalContext,
+        mut child_id: AttributeValueId,
+    ) -> AttributeValueResult<(AttributeValueId, String)> {
+        Ok((child_id, "/fake/path".to_string()))
+    }
 }

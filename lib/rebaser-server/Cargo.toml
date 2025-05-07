@@ -23,7 +23,6 @@ si-data-nats             = { path = "../../lib/si-data-nats" }
 si-data-pg               = { path = "../../lib/si-data-pg" }
 si-events                = { path = "../../lib/si-events-rs" }
 si-frontend-types        = { path = "../../lib/si-frontend-types-rs" }
-si-frontend-types-macros = { path = "../../lib/si-frontend-types-macros" }
 si-layer-cache           = { path = "../../lib/si-layer-cache" }
 si-settings              = { path = "../../lib/si-settings" }
 si-std                   = { path = "../../lib/si-std" }

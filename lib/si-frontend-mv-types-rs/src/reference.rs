@@ -15,6 +15,10 @@ use crate::{
     object::FrontendObject,
 };
 
+pub mod weak;
+
+pub use weak::WeakReference;
+
 #[remain::sorted]
 #[derive(
     Clone,
@@ -39,9 +43,9 @@ pub enum ReferenceKind {
     ChangeSetList,
     ChangeSetRecord,
     Component,
-    ComponentConnectionsBeta,
-    ComponentConnectionsListBeta,
     ComponentList,
+    IncomingConnections,
+    IncomingConnectionsList,
     MvIndex,
     SchemaVariantCategories,
     View,
@@ -76,7 +80,7 @@ impl ReferenceKind {
 //
 // See: https://github.com/serde-rs/serde/issues/964#issuecomment-364326970
 // See: https://serde.rs/attr-bound.html
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ReferenceId<T>(#[serde(bound(deserialize = "T: Deserialize<'de>"))] pub T)
 where
     T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize + std::fmt::Display;
@@ -100,7 +104,7 @@ where
     pub checksum: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, si_frontend_types_macros::FrontendChecksum)]
+#[derive(Clone, Debug, Serialize, Deserialize, si_frontend_mv_types_macros::FrontendChecksum)]
 pub struct IndexReference {
     pub kind: String,
     pub id: String,

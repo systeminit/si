@@ -18,7 +18,7 @@ use dal::{
     property_editor::schema::WidgetKind,
     validation::ValidationOutputNode,
 };
-use si_frontend_types::newhotness::component::attribute_tree::{
+use si_frontend_mv_types::component::attribute_tree::{
     self,
     AttributeTree,
     AttributeValue as AttributeValueMv,
@@ -77,7 +77,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
 
         let maybe_prop = AttributeValue::prop_opt(ctx, av_id).await?;
 
-        // Build si_frontend_types::newhotness::AttributeValue & add to attribute_values HashMap.
+        // Build si_frontend_mv_types::AttributeValue & add to attribute_values HashMap.
         let key = AttributeValue::key_for_id(ctx, av_id).await?;
         let value = {
             let mut value = match AttributeValue::get_by_id(ctx, av_id)
@@ -189,7 +189,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         attribute_values.insert(av_id, av_mv);
 
         if let Some(prop) = maybe_prop {
-            // If si_frontend_types::newhotness::Prop is not already in props HashMap, build & add.
+            // If si_frontend_mv_types::Prop is not already in props HashMap, build & add.
             if let std::collections::hash_map::Entry::Vacant(e) = props.entry(prop.id) {
                 let mut is_create_only = false;
                 let filtered_widget_options = prop.widget_options.clone().map(|options| {

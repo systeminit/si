@@ -21,9 +21,9 @@ use si_events::{
     ActionKind,
     ActionState,
 };
-use si_frontend_types::{
+use si_frontend_mv_types::{
     action::ActionView,
-    newhotness::component::{
+    component::{
         Component as ComponentMv,
         ComponentDiff,
         ComponentList,
@@ -157,7 +157,9 @@ async fn component(ctx: &DalContext) -> Result<()> {
         dal_materialized_views::component::assemble(ctx.clone(), created_component.id()).await?;
     let schema = created_component.schema(ctx).await?;
     let schema_variant = created_component.schema_variant(ctx).await?;
-    let stats = QualificationSummary::individual_stats(ctx, created_component.id()).await?;
+    let stats = QualificationSummary::individual_stats(ctx, created_component.id())
+        .await?
+        .into();
 
     let root_attribute_value_id =
         Component::root_attribute_value_id(ctx, created_component.id()).await?;
@@ -213,3 +215,17 @@ async fn component(ctx: &DalContext) -> Result<()> {
 
     Ok(())
 }
+
+// TODO(nick): add test using LEGOs for both prop-to-prop and socket-to-socket connections in
+// the follow-up PR.
+// #[test]
+// async fn incoming_connections(ctx: &DalContext) -> Result<()> {
+//     connect_components_with_socket_names(ctx).await?;
+//
+//     let mv =
+//         dal_materialized_views::incoming_connections::assemble(ctx.clone(), created_component.id())
+//             .await?;
+//
+//     assert!(false);
+//     Ok(())
+// }

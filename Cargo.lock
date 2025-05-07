@@ -2000,7 +2000,6 @@ dependencies = [
  "derive_more",
  "diff",
  "dyn-clone",
- "frigg",
  "futures",
  "hex",
  "iftree",
@@ -2036,8 +2035,8 @@ dependencies = [
  "si-data-pg",
  "si-db",
  "si-events",
+ "si-frontend-mv-types",
  "si-frontend-types",
- "si-frontend-types-macros",
  "si-hash",
  "si-id",
  "si-layer-cache",
@@ -2085,7 +2084,7 @@ dependencies = [
  "pretty_assertions_sorted",
  "remain",
  "serde_json",
- "si-frontend-types",
+ "si-frontend-mv-types",
  "si-id",
  "telemetry",
  "thiserror 2.0.12",
@@ -2635,7 +2634,7 @@ dependencies = [
  "si-data-nats",
  "si-data-pg",
  "si-events",
- "si-frontend-types",
+ "si-frontend-mv-types",
  "si-id",
  "si-layer-cache",
  "si-settings",
@@ -3141,7 +3140,7 @@ dependencies = [
  "serde_json",
  "si-data-nats",
  "si-events",
- "si-frontend-types",
+ "si-frontend-mv-types",
  "si-id",
  "telemetry",
  "thiserror 2.0.12",
@@ -6366,7 +6365,6 @@ dependencies = [
  "si-data-pg",
  "si-events",
  "si-frontend-types",
- "si-frontend-types-macros",
  "si-layer-cache",
  "si-settings",
  "si-std",
@@ -7089,6 +7087,7 @@ dependencies = [
  "si-data-spicedb",
  "si-db",
  "si-events",
+ "si-frontend-mv-types",
  "si-frontend-types",
  "si-id",
  "si-jwt-public-key",
@@ -7392,6 +7391,7 @@ dependencies = [
  "si-data-pg",
  "si-data-spicedb",
  "si-events",
+ "si-frontend-mv-types",
  "si-frontend-types",
  "si-posthog",
  "telemetry",
@@ -7880,81 +7880,24 @@ dependencies = [
 name = "si-db"
 version = "0.1.0"
 dependencies = [
- "async-recursion",
  "async-trait",
- "audit-database",
- "audit-logs-stream",
- "base64 0.22.1",
- "billing-events",
- "blake3",
- "buck2-resources",
  "chrono",
- "ciborium",
- "clap",
- "convert_case 0.6.0",
- "dal-macros",
- "dal-test",
- "derive_more",
- "diff",
- "dyn-clone",
- "frigg",
- "futures",
- "hex",
- "iftree",
- "indexmap 2.9.0",
- "itertools 0.13.0",
- "joi-validator",
- "json-patch",
- "jwt-simple",
- "lazy_static",
- "module-index-client",
- "object-tree",
- "once_cell",
- "paste",
- "pending-events",
- "petgraph",
- "pinga-core",
- "postcard",
  "postgres-types",
- "pretty_assertions_sorted",
- "rand 0.8.5",
- "rebaser-client",
  "refinery",
- "regex",
  "remain",
  "serde",
  "serde-aux",
  "serde_json",
  "serde_with",
- "shuttle-server",
- "si-crypto",
  "si-data-nats",
  "si-data-pg",
  "si-events",
- "si-frontend-types",
- "si-frontend-types-macros",
- "si-hash",
  "si-id",
- "si-layer-cache",
- "si-pkg",
- "si-runtime",
- "si-settings",
- "si-split-graph",
- "si-std",
- "sodiumoxide",
  "strum",
  "telemetry",
- "telemetry-nats",
- "telemetry-utils",
- "tempfile",
  "thiserror 2.0.12",
  "tokio",
- "tokio-stream",
- "tokio-util",
- "tryhard",
  "ulid",
- "url",
- "veritech-client",
 ]
 
 [[package]]
@@ -8013,6 +7956,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "si-frontend-mv-types"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "json-patch",
+ "module-index-types",
+ "remain",
+ "serde",
+ "serde_json",
+ "si-events",
+ "si-frontend-mv-types-macros",
+ "si-frontend-types",
+ "si-id",
+ "strum",
+]
+
+[[package]]
+name = "si-frontend-mv-types-macros"
+version = "0.1.0"
+dependencies = [
+ "darling 0.20.11",
+ "manyhow",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.101",
+]
+
+[[package]]
 name = "si-frontend-types"
 version = "0.1.0"
 dependencies = [
@@ -8023,20 +7994,8 @@ dependencies = [
  "serde",
  "serde_json",
  "si-events",
- "si-frontend-types-macros",
  "si-id",
  "strum",
-]
-
-[[package]]
-name = "si-frontend-types-macros"
-version = "0.1.0"
-dependencies = [
- "darling 0.20.11",
- "manyhow",
- "proc-macro2",
- "quote",
- "syn 2.0.101",
 ]
 
 [[package]]

@@ -4,7 +4,7 @@ use dal::{
     SchemaVariantId,
     action::prototype::ActionPrototype,
 };
-use si_frontend_types::action::{
+use si_frontend_mv_types::action::{
     ActionPrototypeView,
     ActionPrototypeViewList as ActionPrototypeViewListMv,
 };

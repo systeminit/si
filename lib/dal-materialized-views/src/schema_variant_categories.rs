@@ -8,7 +8,8 @@ use dal::{
     SchemaVariant,
     cached_module::CachedModule,
 };
-use si_frontend_types::{
+use si_frontend_mv_types::{
+    ComponentType,
     UninstalledVariant,
     schema_variant::{
         DisambiguateVariant,
@@ -38,7 +39,7 @@ pub async fn assemble(ctx: DalContext) -> super::Result<SchemaVariantCategoriesM
             .entry(category.to_owned())
             .or_insert(vec![]);
         variants.push(DisambiguateVariant {
-            variant: Variant::SchemaVariant(installed_variant.clone()),
+            variant: Variant::SchemaVariant(installed_variant.to_owned().into()),
             variant_type: VariantType::Installed,
             id: installed_variant.schema_variant_id.to_string(),
         });
@@ -63,8 +64,24 @@ pub async fn assemble(ctx: DalContext) -> super::Result<SchemaVariantCategoriesM
             let module_id = module.id.to_string();
             let variants = variant_by_category
                 .entry(category.to_owned())
-                .or_insert(vec![]);
-            let uninstalled: UninstalledVariant = module.into();
+                .or_insert(Vec::new());
+            let uninstalled = UninstalledVariant {
+                schema_id: module.schema_id,
+                schema_name: module.schema_name,
+                display_name: module.display_name,
+                category: module.category,
+                link: module.link,
+                color: module.color,
+                description: module.description,
+                component_type: match module.component_type {
+                    dal::ComponentType::AggregationFrame => ComponentType::AggregationFrame,
+                    dal::ComponentType::Component => ComponentType::Component,
+                    dal::ComponentType::ConfigurationFrameDown => {
+                        ComponentType::ConfigurationFrameDown
+                    }
+                    dal::ComponentType::ConfigurationFrameUp => ComponentType::ConfigurationFrameUp,
+                },
+            };
             variants.push(DisambiguateVariant {
                 variant: Variant::UninstalledVariant(uninstalled),
                 variant_type: VariantType::Uninstalled,

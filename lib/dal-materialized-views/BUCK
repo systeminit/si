@@ -4,7 +4,7 @@ rust_library(
     name = "dal-materialized-views",
     deps = [
         "//lib/dal:dal",
-        "//lib/si-frontend-types-rs:si-frontend-types",
+        "//lib/si-frontend-mv-types-rs:si-frontend-mv-types",
         "//lib/si-id:si-id",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:remain",

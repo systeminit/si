@@ -23,6 +23,7 @@ use strum::{
 };
 use telemetry::prelude::*;
 use thiserror::Error;
+
 pub mod action;
 pub mod approval_requirement;
 pub mod attribute;
@@ -36,7 +37,6 @@ pub mod change_status;
 pub mod code_view;
 pub mod component;
 pub mod context;
-pub mod data_cache;
 pub mod dependency_graph;
 pub mod diagram;
 pub mod entity_kind;

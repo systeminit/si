@@ -129,7 +129,7 @@
           <PillCounter :count="component.inputCount + component.outputCount" />
           Connections
         </template>
-        {{ componentConnectionsPretty }}
+        {{ incomingConnectionsPretty }}
       </CollapsingFlexItem>
       <CollapsingFlexItem open>
         <template #header>
@@ -181,7 +181,7 @@ import { useRouter } from "vue-router";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostComponent,
-  BifrostComponentConnectionsBeta,
+  BifrostIncomingConnections,
 } from "@/workers/types/dbinterface";
 import AttributePanel from "./AttributePanel.vue";
 import { attributeEmitter } from "./logic_composables/emitters";
@@ -216,23 +216,19 @@ const componentQuery = useQuery<BifrostComponent | null>({
 });
 const component = computed(() => componentQuery.data.value);
 
-const componentConnectionsQuery =
-  useQuery<BifrostComponentConnectionsBeta | null>({
-    queryKey: key("ComponentConnectionsBeta", componentId),
-    queryFn: async () => {
-      const componentConnections =
-        await bifrost<BifrostComponentConnectionsBeta>(
-          args("ComponentConnectionsBeta", componentId.value),
-        );
-      return componentConnections;
-    },
-  });
-const componentConnections = computed(
-  () => componentConnectionsQuery.data.value,
-);
-const componentConnectionsPretty = computed(() => {
-  if (!componentConnections.value) return "";
-  return JSON.stringify(componentConnections.value, null, 2);
+const incomingConnectionsQuery = useQuery<BifrostIncomingConnections | null>({
+  queryKey: key("IncomingConnections", componentId),
+  queryFn: async () => {
+    const incomingConnections = await bifrost<BifrostIncomingConnections>(
+      args("IncomingConnections", componentId.value),
+    );
+    return incomingConnections;
+  },
+});
+const incomingConnections = computed(() => incomingConnectionsQuery.data.value);
+const incomingConnectionsPretty = computed(() => {
+  if (!incomingConnections.value) return "NONE";
+  return JSON.stringify(incomingConnections.value, null, 2);
 });
 
 const docs = ref("");

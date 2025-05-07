@@ -109,21 +109,6 @@ pub struct PackageSummary {
     pub socket_count: u32,
 }
 
-impl From<CachedModule> for si_frontend_types::UninstalledVariant {
-    fn from(value: CachedModule) -> Self {
-        Self {
-            schema_id: value.schema_id,
-            schema_name: value.schema_name,
-            display_name: value.display_name,
-            category: value.category,
-            link: value.link,
-            color: value.color,
-            description: value.description,
-            component_type: value.component_type.into(),
-        }
-    }
-}
-
 // NOTE(nick): the frontend type's shape might be able to be refactored now that syncing only
 // relies on the cache.
 impl From<CachedModule> for si_frontend_types::LatestModule {
