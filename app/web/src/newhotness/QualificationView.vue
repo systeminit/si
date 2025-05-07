@@ -1,0 +1,87 @@
+<template>
+  <li class="rounded border border-neutral-600 [&>div]:p-xs">
+    <div class="border-b border-neutral-600">
+      {{ qualification.name }}
+    </div>
+
+    <div class="flex flex-col gap-xs text-sm">
+      <StatusMessageBox :status="qualificationStatus" class="break-all">
+        <template v-if="qualificationStatus === 'success'"> Passed! </template>
+        <template v-else-if="qualificationStatus === 'failure'">
+          {{ qualification.message }}
+        </template>
+        <template v-else> Qualification running, standby...</template>
+      </StatusMessageBox>
+
+      <template v-if="showDetails && qualification.av_id">
+        <div
+          v-if="output?.length"
+          class="my-xs p-xs border border-warning-600 text-warning-500 rounded"
+        >
+          <b>Raw Output:</b>
+
+          <CodeViewer
+            :code="output.map((o) => o).join('\n')"
+            :showTitle="false"
+            :allowCopy="false"
+          >
+          </CodeViewer>
+        </div>
+        <LoadingMessage v-else message="Loading Details..." />
+      </template>
+
+      <div
+        v-if="qualification.av_id && (qualification.message || output?.length)"
+        class="text-right"
+      >
+        <button class="underline text-action-400" @click="toggleHidden">
+          {{ showDetails ? "Hide" : "View" }} Details
+        </button>
+      </div>
+    </div>
+  </li>
+</template>
+
+<script lang="ts" setup>
+import { computed, ref, toRef } from "vue";
+import * as _ from "lodash-es";
+import { LoadingMessage } from "@si/vue-lib/design-system";
+import StatusMessageBox from "@/components/StatusMessageBox.vue";
+import CodeViewer from "@/components/CodeViewer.vue";
+import { QualItem } from "@/newhotness/QualificationPanel.vue";
+import {
+  FuncRunLogsResponse,
+  routes,
+  useApi,
+} from "@/newhotness/api_composables";
+
+const api = useApi();
+
+const props = defineProps<{
+  qualification: QualItem;
+}>();
+
+const showDetails = ref(false);
+
+const qualification = toRef(props, "qualification");
+
+const qualificationStatus = computed(() => {
+  if (_.isNil(props.qualification.result)) return "running";
+  return props.qualification.result;
+});
+
+const toggleHidden = async () => {
+  showDetails.value = !showDetails.value;
+  if (showDetails.value && props.qualification.av_id) {
+    const call = api.endpoint<FuncRunLogsResponse>(routes.FuncRunByAv, {
+      id: props.qualification.av_id,
+    });
+    const result = await call.get();
+    if (api.ok(result)) {
+      output.value = result.data.logs.logs.map((l) => l.message);
+    }
+  }
+};
+
+const output = ref<string[] | undefined>(undefined);
+</script>

@@ -163,6 +163,7 @@ export type UpdateComponentNameArgs = {
 export enum routes {
   GetFuncRunsPaginated = "GetFuncRunsPaginated",
   FuncRun = "FuncRun",
+  FuncRunByAv = "FuncRunByAv",
   FuncRunLogs = "FuncRunLogs",
   UpdateComponentAttributes = "UpdateComponentAttributes",
   UpdateComponentName = "UpdateComponentName",
@@ -171,6 +172,7 @@ export enum routes {
 const _routes: Record<routes, string> = {
   GetFuncRunsPaginated: "/funcs/runs/paginated",
   FuncRun: "/funcs/runs/<id>",
+  FuncRunByAv: "/funcs/runs/latest_av/<id>/logs",
   FuncRunLogs: "/funcs/runs/<id>/logs",
   UpdateComponentAttributes: "/components/<id>/attributes",
   UpdateComponentName: "/components/<id>/name",
