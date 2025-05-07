@@ -542,7 +542,7 @@ impl Secret {
                 .get_node_weight(attribute_prototype_argument_index)
                 .await?
                 .get_attribute_prototype_argument_node_weight()?;
-            let attribute_prototype_id = AttributePrototypeArgument::prototype_id_for_argument_id(
+            let attribute_prototype_id = AttributePrototypeArgument::prototype_id(
                 ctx,
                 attribute_prototype_argument_node_weight.id().into(),
             )

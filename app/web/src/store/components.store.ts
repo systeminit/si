@@ -29,6 +29,7 @@ import {
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import {
   ComponentDiff,
+  ComponentEdge,
   ComponentId,
   Edge,
   EdgeId,
@@ -488,8 +489,8 @@ export function getPossibleAndExistingPeerSockets(
 
   const edgeCountForInputKey = {} as Record<string, number>;
   nonDeletedEdges.forEach((e) => {
-    edgeCountForInputKey[e.toSocketKey] ??= 0;
-    edgeCountForInputKey[e.toSocketKey] += 1;
+    edgeCountForInputKey[e.toSocketKey] =
+      (edgeCountForInputKey[e.toSocketKey] ?? 0) + 1;
   });
 
   const existingEdges = nonDeletedEdges
@@ -1008,6 +1009,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               edges: RawEdge[];
               inferredEdges: RawEdge[];
               managementEdges: RawEdge[];
+              attributeSubscriptionEdges: ComponentEdge[];
             }>({
               method: "get",
               url: "diagram/get_all_components_and_edges",

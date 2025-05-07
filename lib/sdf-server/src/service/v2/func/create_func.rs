@@ -453,8 +453,7 @@ pub async fn create_func(
             schema_variant_id: Some(schema_variant_id),
             ..
         } => {
-            let schema_id =
-                SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
+            let schema_id = SchemaVariant::schema_id(&ctx, schema_variant_id).await?;
             let schema_variant = SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
             WsEvent::schema_variant_updated(&ctx, schema_id, schema_variant)
                 .await?

@@ -1183,7 +1183,7 @@ impl SchemaVariant {
         ctx: &DalContext,
         id: SchemaVariantId,
     ) -> SchemaVariantResult<bool> {
-        let schema_id = Self::schema_id_for_schema_variant_id(ctx, id).await?;
+        let schema_id = Self::schema_id(ctx, id).await?;
 
         Ok(Self::default_id_for_schema(ctx, schema_id).await? == id)
     }
@@ -1753,8 +1753,7 @@ impl SchemaVariant {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<(DiagramSocket, Option<DiagramSocket>)> {
-        let schema_id =
-            SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
+        let schema_id = SchemaVariant::schema_id(ctx, schema_variant_id).await?;
         let has_mgmt_protos =
             ManagementPrototype::variant_has_management_prototype(ctx, schema_variant_id)
                 .await
@@ -1941,20 +1940,16 @@ impl SchemaVariant {
         Self::schema_for_schema_variant_id(ctx, self.id).await
     }
 
-    pub async fn schema_id(&self, ctx: &DalContext) -> SchemaVariantResult<SchemaId> {
-        Self::schema_id_for_schema_variant_id(ctx, self.id).await
-    }
-
     pub async fn schema_for_schema_variant_id(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Schema> {
-        let schema_id = Self::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
+        let schema_id = Self::schema_id(ctx, schema_variant_id).await?;
 
         Ok(Schema::get_by_id(ctx, schema_id).await?)
     }
 
-    pub async fn schema_id_for_schema_variant_id(
+    pub async fn schema_id(
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<SchemaId> {

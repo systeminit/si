@@ -26,6 +26,7 @@ import {
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
 import {
+  ComponentEdge,
   ComponentId,
   Edge,
   EdgeId,
@@ -873,6 +874,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               edges: RawEdge[];
               inferredEdges: RawEdge[];
               managementEdges: RawEdge[];
+              attributeSubscriptionEdges: ComponentEdge[];
               views: ViewNodeGeometry[];
             };
           }>({
