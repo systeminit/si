@@ -67,7 +67,6 @@ export const createTypescriptSource = async (
     allowJs: true,
     checkJs: true,
     strict: false,
-    suppressImplicitAnyIndexErrors: true,
   };
 
   if (!fsMap && !vfsSystem) {
