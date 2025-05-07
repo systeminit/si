@@ -1,0 +1,6 @@
+*
+!.gitignore
+!.dockerignore
+!*.template
+!*/
+.git/

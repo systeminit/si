@@ -48,7 +48,7 @@ impl ConfigError {
 
 type Result<T> = std::result::Result<T, ConfigError>;
 
-/// The config for the forklift server.
+/// The config for the innit client.
 #[derive(Debug, Builder)]
 pub struct Config {
     #[builder(default = "default_auth_config()")]

@@ -1,19 +1,25 @@
 ---
 services:
 
-  init:
-    container_name: init
-    image: systeminit/init:${INIT_VERSION:-stable}
+  innitctl:
+    container_name: innitctl
+    image: systeminit/innitctl:stable
+    command:
+      - "--configs"
+      - "/configs"
+      - "--output"
+      - "/output"
     environment:
-      - SI_HOSTENV=${SI_HOSTENV}
-      - SI_SERVICE=${SI_SERVICE}
+      - SI_INNITCTL__HOST_ENVIRONMENT=${SI_HOSTENV}
+      - SI_INNITCTL__SERVICE_NAME=${SI_SERVICE}
+      - SI_INNITCTL__INSTANCE_ID=${SI_INSTANCE_ID}
+      - SI_INNIT__CLIENT_CA_ARN=${SI_PRIVATE_CA_ARN}
     volumes:
-      - config:/config
-      - /etc/${SI_SERVICE}:/service
+      - config:/output
 
   otelcol:
     container_name: otelcol
-    image: systeminit/otelcol:${INIT_VERSION:-stable}
+    image: systeminit/otelcol:stable
     ports:
       - 4317:4317
       - 55679:55679
@@ -21,7 +27,7 @@ services:
     volumes:
       - config:/etc/otelcol/
     depends_on:
-      init:
+      innitctl:
         condition: service_completed_successfully
 
   node-exporter:
@@ -52,7 +58,7 @@ services:
       - /var/log/journal:/var/log/journal
       - config:/etc/vector/
     depends_on:
-      init:
+      innitctl:
         condition: service_completed_successfully
 
   prometheus:
