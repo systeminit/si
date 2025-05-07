@@ -39,3 +39,14 @@ pnpm_task_binary(
     ],
     visibility = ["PUBLIC"],
 )
+
+pnpm_task_binary(
+    name = "generate-api-docs",
+    command = "generate-api-docs",
+    srcs = [],
+    path = "app/docs",
+    deps = [
+        "//:node_modules",
+    ],
+    visibility = ["PUBLIC"],
+)

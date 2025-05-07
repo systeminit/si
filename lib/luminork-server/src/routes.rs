@@ -128,27 +128,27 @@ struct ErrorDetail {
     status_code: u16,
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn routes(state: AppState) -> Router {
-    async fn openapi_handler() -> Result<Json<utoipa::openapi::OpenApi>, (StatusCode, String)> {
-        let mut openapi = ApiDoc::openapi();
-        let v1_openapi = v1::get_openapi();
+pub async fn openapi_handler() -> Result<Json<utoipa::openapi::OpenApi>, (StatusCode, String)> {
+    let mut openapi = ApiDoc::openapi();
+    let v1_openapi = v1::get_openapi();
 
-        for (path, path_item) in v1_openapi.paths.paths {
-            openapi.paths.paths.insert(path, path_item);
-        }
-
-        if let Some(openapi_components) = openapi.components.as_mut() {
-            if let Some(v1_components) = v1_openapi.components {
-                for (name, schema) in v1_components.schemas {
-                    openapi_components.schemas.insert(name, schema);
-                }
-            }
-        }
-
-        Ok(Json(openapi))
+    for (path, path_item) in v1_openapi.paths.paths {
+        openapi.paths.paths.insert(path, path_item);
     }
 
+    if let Some(openapi_components) = openapi.components.as_mut() {
+        if let Some(v1_components) = v1_openapi.components {
+            for (name, schema) in v1_components.schemas {
+                openapi_components.schemas.insert(name, schema);
+            }
+        }
+    }
+
+    Ok(Json(openapi))
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn routes(state: AppState) -> Router {
     async fn openapi_handler_with_globals() -> Result<Json<serde_json::Value>, (StatusCode, String)>
     {
         let original_response = openapi_handler().await?;

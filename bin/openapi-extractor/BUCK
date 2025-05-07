@@ -1,0 +1,21 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "openapi-extractor",
+    deps = [
+        "//lib/luminork-server:luminork-server",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:tokio",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    env = {"CARGO_BIN_NAME": "openapi-extractor"},
+)
+
+export_file(
+    name = "openapi-spec",
+    src = "data/openapi.json",
+    visibility = ["PUBLIC"],
+)

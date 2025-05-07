@@ -1,0 +1,183 @@
+---
+outline:
+  level: [1, 2, 3, 4]
+---
+
+{{= data.tags.section }}
+# System Initiative Public API
+
+This is the API spec for the System Initiative Public API. All endpoints require a workspace scoped API token for the workspace to interact with.
+
+{{= data.tags.endSection }}
+
+{{? data.api.components && data.api.components.securitySchemes }}
+{{#def.security}}
+{{?}}
+
+{{
+/* First, organize operations by tag */
+var operationsByTag = {};
+
+/* Collect all tags */
+var allTags = [];
+if (data.api.tags) {
+  allTags = data.api.tags.map(function(t) { return t.name; });
+}
+
+/* Add operations to tags */
+for (var r in data.resources) {
+  var resource = data.resources[r];
+  for (var m in resource.methods) {
+    var method = resource.methods[m];
+    var operation = method.operation;
+
+    /* Get the tags for this operation */
+    var tags = operation.tags || ['default'];
+
+    /* Add this operation to each of its tags */
+    for (var i = 0; i < tags.length; i++) {
+      var tag = tags[i];
+
+      /* Initialize the tag if this is the first operation for it */
+      if (!operationsByTag[tag]) {
+        operationsByTag[tag] = [];
+      }
+
+      /* Add the operation data to the tag */
+      operationsByTag[tag].push({
+        resource: resource,
+        method: method,
+        operation: operation,
+        methodName: m
+      });
+    }
+  }
+}
+
+/* Process each tag in order */
+var processedTags = [];
+
+/* First, process the tags that were defined in the API */
+for (var i = 0; i < allTags.length; i++) {
+  if (operationsByTag[allTags[i]]) {
+    processedTags.push(allTags[i]);
+  }
+}
+
+/* Then process any other tags that we found in operations but weren't defined in the API */
+for (var tag in operationsByTag) {
+  if (processedTags.indexOf(tag) === -1) {
+    processedTags.push(tag);
+  }
+}
+}}
+
+{{ for (var i = 0; i < processedTags.length; i++) { }}
+{{ var tag = processedTags[i]; }}
+{{ var operations = operationsByTag[tag]; }}
+
+{{= data.tags.section }}
+# [{{= tag}}](#{{=data.title_prefix+'-'+data.utils.slugify(tag)}})
+
+{{ /* Add tag description if available */ }}
+{{ var tagInfo = data.api.tags && data.api.tags.find(function(t) { return t.name === tag; }); }}
+{{? tagInfo && tagInfo.description }}{{= tagInfo.description}}{{?}}
+
+{{ for (var j = 0; j < operations.length; j++) { }}
+{{ var op = operations[j]; }}
+{{ data.operationUniqueName = op.methodName; }}
+{{ data.method = op.method; }}
+{{ data.operationUniqueSlug = op.method.slug; }}
+{{ data.operation = op.operation; }}
+{{ data.resource = op.resource; }}
+{{= data.templates.operation(data) }}
+{{ } /* of operations */ }}
+
+{{= data.tags.endSection }}
+{{ } /* of tags */ }}
+
+{{? data.api.components && data.api.components.schemas }}
+{{= data.tags.section }}
+
+# [Schemas](#schemas)
+
+{{ for (var s in data.components.schemas) { }}
+{{ var origSchema = data.components.schemas[s]; }}
+{{ var schema = data.api.components.schemas[s]; }}
+
+{{= data.tags.section }}
+## [{{=s}}](#tocS_{{=s}})
+{{ /* backwards compatibility */ }}
+<a id="schema{{=s.toLowerCase()}}"></a>
+<a id="schema_{{=s}}"></a>
+<a id="tocS{{=s.toLowerCase()}}"></a>
+<a id="tocs{{=s.toLowerCase()}}"></a>
+
+{{? data.options.yaml }}
+```yaml
+{{=data.utils.yaml.stringify(data.utils.getSample(schema,data.options,{quiet:true},data.api))}}
+{{??}}
+```json
+{{=data.utils.safejson(data.utils.getSample(schema,data.options,{quiet:true},data.api),null,2)}}
+{{?}}
+```
+
+{{ var enums = []; }}
+{{ var blocks = data.utils.schemaToArray(origSchema,-1,{trim:true,join:true},data); }}
+{{ for (var block of blocks) {
+     for (var p of block.rows) {
+       if (p.schema && p.schema.enum) {
+         for (var e of p.schema.enum) {
+           enums.push({name:p.name,value:e});
+         }
+       }
+     }
+   }
+}}
+
+{{~ blocks :block}}
+{{? block.title }}{{= block.title}}{{= '\n\n'}}{{?}}
+{{? block.externalDocs}}
+<a href="{{=block.externalDocs.url}}">{{=block.externalDocs.description||'External documentation'}}</a>
+{{?}}
+
+{{? block===blocks[0] }}
+{{= data.tags.section }}
+
+### [Properties](#{{=data.utils.slugify(s)}}-properties)
+{{?}}
+
+{{? block.rows.length}}|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|{{?}}
+{{~ block.rows :p}}|{{=p.displayName}}|{{=p.safeType}}|{{=p.required}}|{{=p.restrictions||'none'}}|{{=p.description||'none'}}|
+{{~}}
+{{~}}
+{{? (blocks[0].rows.length === 0) && (blocks.length === 1) }}
+*None*
+{{?}}
+
+{{? enums.length > 0 }}
+{{= data.tags.section }}
+
+#### [Enumerated Values](#{{=data.utils.slugify(s)}}-enumerated-values)
+
+|Property|Value|
+|---|---|
+{{~ enums :e}}|{{=e.name}}|{{=data.utils.toPrimitive(e.value)}}|
+{{~}}
+
+{{= data.tags.endSection }}
+{{?}}
+
+{{= data.tags.endSection }}
+{{= data.tags.endSection }}
+
+{{ } /* of schemas */ }}
+
+{{?}}
+
+{{#def.footer}}
+
+{{? data.options.discovery}}
+{{#def.discovery}}
+{{?}}
