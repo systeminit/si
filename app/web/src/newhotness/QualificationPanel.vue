@@ -1,8 +1,10 @@
 <template>
-  <ul class="p-xs">
-    <li v-for="item in items" :key="item.name">
-      <TextPill>{{ item.result }}</TextPill> {{ item.name }}: {{ item.message }}
-    </li>
+  <ul class="p-xs flex flex-col gap-xs">
+    <QualificationView
+      v-for="item in items"
+      :key="item.av_id"
+      :qualification="item"
+    />
   </ul>
 </template>
 
@@ -14,7 +16,16 @@ import {
   BifrostAttributeTree,
   BifrostComponent,
 } from "@/workers/types/dbinterface";
-import TextPill from "./layout_components/TextPill.vue";
+import QualificationView from "@/newhotness/QualificationView.vue";
+import { AttributeValueId } from "@/store/status.store";
+import { QualificationStatus } from "@/store/qualifications.store";
+
+export interface QualItem {
+  name: string;
+  message: string;
+  result: QualificationStatus;
+  av_id?: AttributeValueId;
+}
 
 const props = defineProps<{
   attributeValueId: string;
@@ -35,32 +46,78 @@ const attributeTreeQuery = useQuery<BifrostAttributeTree | null>({
 
 const root = computed(() => attributeTreeQuery.data.value);
 
+const domain = computed(() =>
+  root.value?.children.find((c) => c.prop?.name === "domain"),
+);
+
 const quals = computed(() =>
   root.value?.children.find((c) => c.prop?.name === "qualification"),
 );
 
-interface QualItem {
-  name: string;
-  message: string;
-  result: string;
-}
+const validations = computed(() => {
+  const output: BifrostAttributeTree[] = [];
+  if (!domain.value) return output;
+  const getValidations = (c: BifrostAttributeTree) =>
+    c.validation?.status && c.validation?.status !== "Success";
+  const walking = [...domain.value.children];
+  // walk all the children and find if they match
+  while (walking.length > 0) {
+    const c = walking.shift();
+    if (!c) break;
+    walking.push(...c.children);
+
+    const v = getValidations(c);
+    if (v) {
+      output.push(c);
+    }
+  }
+
+  return output;
+});
+
+// TODO(Wendy) - this is very annoying!
+// Why are statuses sometimes capitalized and sometimes not?!?!?!
+const fixStatus = (status: string): QualificationStatus => {
+  switch (status) {
+    case "Success":
+      return "success";
+    case "Failure":
+      return "failure";
+    case "Error":
+      return "failure";
+    default:
+      return "running";
+  }
+};
 
 const items = computed<QualItem[]>(() => {
-  return (
+  const qualItems =
     quals.value?.children.map((c): QualItem => {
       const name = c.attributeValue.key ?? "";
       const message =
         c.children.find((_c) => _c.prop?.name === "message")?.attributeValue
           .value ?? "";
-      const result =
-        c.children.find((_c) => _c.prop?.name === "result")?.attributeValue
-          .value ?? "";
+      const result = (c.children.find((_c) => _c.prop?.name === "result")
+        ?.attributeValue.value ?? "running") as QualificationStatus;
+      const av_id = c.id;
       return {
         name,
         message,
         result,
+        av_id,
       };
-    }) ?? []
-  );
+    }) ?? [];
+
+  validations.value.forEach((v) => {
+    if (v.validation && v.prop) {
+      qualItems.push({
+        name: v.prop.name,
+        message: v.validation.message || "",
+        result: fixStatus(v.validation.status),
+      });
+    }
+  });
+
+  return qualItems;
 });
 </script>

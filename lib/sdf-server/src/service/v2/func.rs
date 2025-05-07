@@ -52,6 +52,7 @@ pub mod execute_func;
 pub mod get_code;
 pub mod get_func_run;
 pub mod get_func_run_logs;
+pub mod get_func_run_logs_av;
 pub mod get_func_runs_paginated;
 pub mod list_funcs;
 pub mod save_code;
@@ -63,6 +64,8 @@ pub mod update_func;
 pub enum FuncAPIError {
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] dal::action::prototype::ActionPrototypeError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] dal::attribute::value::AttributeValueError),
     #[error("cannot delete binding for func kind")]
     CannotDeleteBindingForFunc,
     #[error("cannot delete locked func: {0}")]
@@ -109,6 +112,8 @@ pub enum FuncAPIError {
     NoActionTypes(FuncId),
     #[error("prompt override error: {0}")]
     PromptOverride(#[from] dal::prompt_override::PromptOverrideError),
+    #[error("qualification error: {0}")]
+    Qualification(#[from] dal::qualification::QualificationError),
     #[error("schema error: {0}")]
     Schema(#[from] dal::SchemaError),
     #[error("schema error: {0}")]
@@ -218,6 +223,10 @@ pub fn v2_routes() -> Router<AppState> {
         .route(
             "/runs/paginated",
             get(get_func_runs_paginated::get_func_runs_paginated),
+        )
+        .route(
+            "/runs/latest_av/:attribute_value_id/logs",
+            get(get_func_run_logs_av::get_func_run_logs_av),
         )
         .route("/", post(create_func::create_func))
         .route("/:func_id", put(update_func::update_func)) // only save the func's metadata
