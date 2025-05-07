@@ -55,7 +55,9 @@ fn derive_frontend_checksum_struct(
             );
             continue;
         };
+        let field_name = field_ident.to_string();
         field_update_parts.push(quote! {
+            hasher.update(#field_name.as_bytes());
             hasher.update(
                 crate::checksum::FrontendChecksum::checksum(&self.#field_ident).as_bytes()
             );
@@ -105,7 +107,9 @@ fn derive_frontend_checksum_enum(
                 );
                 // Checksum each field
                 let checksum_fields = fields_named.iter().map(|field_ident| {
+                    let field_name = field_ident.to_string();
                     quote! {
+                        hasher.update(#field_name.as_bytes());
                         hasher.update(
                             crate::checksum::FrontendChecksum::checksum(#field_ident).as_bytes()
                         );
@@ -113,8 +117,10 @@ fn derive_frontend_checksum_enum(
                 });
                 let checksum_fields_stream = TokenStream::from_iter(checksum_fields);
 
+                let variant_name = variant_ident.to_string();
                 quote! {
                     #ident::#variant_ident { #fields_named } => {
+                        hasher.update(#variant_name.as_bytes());
                         #checksum_fields_stream
                     }
                 }
@@ -131,7 +137,9 @@ fn derive_frontend_checksum_enum(
                     syn::punctuated::Punctuated::<_, syn::Token![,]>::from_iter(fields.iter());
                 // Checksum each field
                 let checksum_fields = fields.iter().map(|field_ident| {
+                    let field_name = field_ident.to_string();
                     quote! {
+                        hasher.update(#field_name.as_bytes());
                         hasher.update(
                             crate::checksum::FrontendChecksum::checksum(#field_ident).as_bytes()
                         );
@@ -139,8 +147,10 @@ fn derive_frontend_checksum_enum(
                 });
                 let checksum_fields_stream = TokenStream::from_iter(checksum_fields);
 
+                let variant_name = variant_ident.to_string();
                 quote! {
                     #ident::#variant_ident(#fields_named) => {
+                        hasher.update(#variant_name.as_bytes());
                         #checksum_fields_stream
                     }
                 }

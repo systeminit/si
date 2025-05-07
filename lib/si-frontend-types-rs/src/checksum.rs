@@ -283,3 +283,19 @@ impl FrontendChecksum for u64 {
         FrontendChecksum::checksum(&self.to_string())
     }
 }
+
+impl FrontendChecksum for Vec<u8> {
+    fn checksum(&self) -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(self.as_slice());
+        hasher.finalize()
+    }
+}
+
+impl FrontendChecksum for &[u8] {
+    fn checksum(&self) -> Checksum {
+        let mut hasher = ChecksumHasher::new();
+        hasher.update(self);
+        hasher.finalize()
+    }
+}
