@@ -240,6 +240,9 @@ async fn get_or_generate_cert(
     if let Some(cert_path) = cached_cert {
         let cert_bytes = cert.load_certificates_as_bytes().await?;
         info!("Writing new certificate to cache: {:?}", cert_path);
+        if let Some(parent) = cert_path.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
         tokio::fs::write(&cert_path, &cert_bytes).await?;
         Ok(CertificateSource::Path(CanonicalFile::try_from(cert_path)?))
     } else {
