@@ -13,8 +13,8 @@
       class="flex flex-row items-center justify-between p-xs text-base align-middle"
       :class="titleClasses"
     >
-      <slot name="title"
-        ><div v-if="title" class="text-lg">{{ title }}</div>
+      <slot name="title">
+        <TruncateWithTooltip v-if="title">{{ title }}</TruncateWithTooltip>
       </slot>
 
       <div class="flex">
@@ -100,7 +100,12 @@ import { properties as JsonModeParser } from "@codemirror/legacy-modes/mode/prop
 import { yaml as YamlModeParser } from "@codemirror/legacy-modes/mode/yaml";
 import { diff as DiffModeParser } from "@codemirror/legacy-modes/mode/diff";
 import clsx from "clsx";
-import { IconButton, themeClasses, useTheme } from "@si/vue-lib/design-system";
+import {
+  IconButton,
+  themeClasses,
+  TruncateWithTooltip,
+  useTheme,
+} from "@si/vue-lib/design-system";
 import { javascript as CodemirrorJsLang } from "@codemirror/lang-javascript";
 import { CodeLanguage } from "@/api/sdf/dal/code_view";
 
@@ -116,7 +121,7 @@ const props = defineProps({
   showTitle: { type: Boolean },
   allowCopy: { type: Boolean, default: true },
   title: { type: String },
-  titleClasses: { type: String, default: "h-10" },
+  titleClasses: { type: String, default: "h-10 text-lg" },
   border: { type: Boolean, default: false },
   disableScroll: { type: Boolean },
   copyTooltip: { type: String, default: "Copy code to clipboard" },

@@ -150,11 +150,14 @@
           <Icon v-else name="refresh-hex-outline" tone="shade" size="sm" />
           Resource
         </template>
-        <ResourcePanel
-          v-if="component.rootAttributeValueId"
-          :attributeValueId="component.rootAttributeValueId"
-          :component="component"
-        />
+        <ResourcePanel :attributeValueId="component.rootAttributeValueId" />
+      </CollapsingFlexItem>
+      <CollapsingFlexItem h3class="flex flex-row items-center">
+        <template #header>
+          <Icon name="brackets-curly" size="sm" />
+          Generated Code
+        </template>
+        <CodePanel :attributeValueId="component.rootAttributeValueId" />
       </CollapsingFlexItem>
     </div>
   </section>
@@ -179,6 +182,7 @@ import { useWatchedForm } from "./logic_composables/watched_form";
 import QualificationPanel from "./QualificationPanel.vue";
 import ResourcePanel from "./ResourcePanel.vue";
 import { prevPage } from "./logic_composables/navigation_stack";
+import CodePanel from "./CodePanel.vue";
 
 const props = defineProps<{
   componentId: string;
