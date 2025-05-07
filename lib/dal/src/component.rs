@@ -1010,7 +1010,7 @@ impl Component {
             for old_child_av_id in AttributeValue::get_child_av_ids_in_order(ctx, old_av_id).await?
             {
                 let old_key_or_index =
-                    AttributeValue::get_index_or_key_of_child_entry(ctx, old_child_av_id).await?;
+                    AttributeValue::get_key_or_index_of_child_entry(ctx, old_child_av_id).await?;
                 value_q.push_back((old_child_av_id, old_key_or_index, Some(new_av_id)));
             }
         }
