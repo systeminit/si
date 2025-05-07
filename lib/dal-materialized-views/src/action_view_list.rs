@@ -8,7 +8,7 @@ use dal::{
         prototype::ActionPrototype,
     },
 };
-use si_frontend_types::action::{
+use si_frontend_mv_types::action::{
     ActionView,
     ActionViewList as ActionViewListMv,
 };

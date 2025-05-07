@@ -12,6 +12,7 @@ pub use si_settings::{
     ConfigMap,
     ParameterProvider,
 };
+pub(crate) mod data_cache;
 
 pub use self::{
     config::{

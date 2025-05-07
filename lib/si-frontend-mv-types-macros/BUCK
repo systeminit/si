@@ -3,12 +3,12 @@ load("@prelude-si//:macros.bzl", "rust_library")
 
 cargo_test(
     name = "test-unit",
-    crate = "si-frontend-types-macros",
+    crate = "si-frontend-mv-types-macros",
     srcs = glob(["src/**/*.rs", "tests/**"]),
 )
 
 rust_library(
-    name = "si-frontend-types-macros",
+    name = "si-frontend-mv-types-macros",
     deps = [
         "//third-party/rust:darling",
         "//third-party/rust:manyhow",

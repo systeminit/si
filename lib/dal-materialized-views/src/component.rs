@@ -8,7 +8,7 @@ use dal::{
     attribute::prototype::argument::AttributePrototypeArgument,
     qualification::QualificationSummary,
 };
-use si_frontend_types::newhotness::component::{
+use si_frontend_mv_types::component::{
     Component as ComponentMv,
     ComponentDiff,
 };
@@ -24,7 +24,9 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
     let has_resource = Component::resource_by_id(ctx, component_id)
         .await?
         .is_some();
-    let stats = QualificationSummary::individual_stats(ctx, component_id).await?;
+    let stats = QualificationSummary::individual_stats(ctx, component_id)
+        .await?
+        .into();
 
     // TODO(Wendy) - There is probably a better way to do this
     let input_socket_ids =

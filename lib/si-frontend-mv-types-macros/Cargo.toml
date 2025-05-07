@@ -1,5 +1,5 @@
 [package]
-name = "si-frontend-types-macros"
+name = "si-frontend-mv-types-macros"
 version.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -17,8 +17,3 @@ manyhow     = { workspace = true }
 proc-macro2 = { workspace = true }
 quote       = { workspace = true }
 syn         = { workspace = true }
-
-# [dev-dependencies]
-# dal = { path = "../../lib/dal" }
-# si-events = { path = "../../lib/si-events-rs" }
-# trybuild = { workspace = true }

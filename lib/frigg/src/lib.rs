@@ -31,7 +31,7 @@ use si_data_nats::{
     },
     jetstream,
 };
-use si_frontend_types::{
+use si_frontend_mv_types::{
     index::MvIndex,
     object::FrontendObject,
     reference::ReferenceKind,

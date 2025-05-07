@@ -9,7 +9,7 @@ use dal::{
     ChangeSetId,
     WorkspacePk,
 };
-use si_frontend_types::object::FrontendObject;
+use si_frontend_mv_types::object::FrontendObject;
 
 use super::{
     AccessBuilder,

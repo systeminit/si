@@ -27,7 +27,13 @@ pub enum ValidationStatus {
 }
 
 #[derive(
-    Clone, Debug, Deserialize, Eq, PartialEq, Serialize, si_frontend_types_macros::FrontendChecksum,
+    Clone,
+    Debug,
+    Deserialize,
+    Eq,
+    PartialEq,
+    Serialize,
+    si_frontend_mv_types_macros::FrontendChecksum,
 )]
 pub struct WidgetOption {
     pub label: String,
@@ -55,7 +61,13 @@ pub enum PropWidgetKind {
 }
 
 #[derive(
-    Clone, Debug, Serialize, Deserialize, PartialEq, Eq, si_frontend_types_macros::FrontendChecksum,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Prop {
@@ -73,7 +85,13 @@ pub struct Prop {
 }
 
 #[derive(
-    Deserialize, Serialize, Debug, Clone, PartialEq, Eq, si_frontend_types_macros::FrontendChecksum,
+    Deserialize,
+    Serialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    si_frontend_mv_types_macros::FrontendChecksum,
 )]
 pub struct ValidationOutput {
     pub status: ValidationStatus,
@@ -81,7 +99,13 @@ pub struct ValidationOutput {
 }
 
 #[derive(
-    Clone, Debug, Serialize, Deserialize, PartialEq, Eq, si_frontend_types_macros::FrontendChecksum,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct AttributeValue {
@@ -105,10 +129,10 @@ pub struct AttributeValue {
     PartialEq,
     Eq,
     Clone,
-    si_frontend_types_macros::FrontendChecksum,
-    si_frontend_types_macros::FrontendObject,
-    si_frontend_types_macros::Refer,
-    si_frontend_types_macros::MV,
+    si_frontend_mv_types_macros::FrontendChecksum,
+    si_frontend_mv_types_macros::FrontendObject,
+    si_frontend_mv_types_macros::Refer,
+    si_frontend_mv_types_macros::MV,
 )]
 #[serde(rename_all = "camelCase")]
 #[mv(
@@ -123,7 +147,13 @@ pub struct AttributeTree {
 }
 
 #[derive(
-    Debug, Serialize, Deserialize, PartialEq, Eq, Clone, si_frontend_types_macros::FrontendChecksum,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    Clone,
+    si_frontend_mv_types_macros::FrontendChecksum,
 )]
 pub struct AvTreeInfo {
     pub parent: Option<AttributeValueId>,

@@ -2,7 +2,7 @@ use dal::{
     Component,
     DalContext,
 };
-use si_frontend_types::newhotness::component::ComponentList as ComponentListMv;
+use si_frontend_mv_types::component::ComponentList as ComponentListMv;
 use telemetry::prelude::*;
 
 #[instrument(

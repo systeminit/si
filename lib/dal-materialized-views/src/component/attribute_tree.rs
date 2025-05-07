@@ -18,16 +18,19 @@ use dal::{
     property_editor::schema::WidgetKind,
     validation::ValidationOutputNode,
 };
-use si_frontend_types::newhotness::component::attribute_tree::{
-    self,
-    AttributeTree,
-    AttributeValue as AttributeValueMv,
-    AvTreeInfo,
-    Prop as PropMv,
-    PropWidgetKind,
-    ValidationOutput,
-    WidgetOption,
-    WidgetOptions,
+use si_frontend_mv_types::{
+    PropKind,
+    component::attribute_tree::{
+        self,
+        AttributeTree,
+        AttributeValue as AttributeValueMv,
+        AvTreeInfo,
+        Prop as PropMv,
+        PropWidgetKind,
+        ValidationOutput,
+        WidgetOption,
+        WidgetOptions,
+    },
 };
 use si_id::{
     AttributeValueId,
@@ -77,7 +80,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
 
         let maybe_prop = AttributeValue::prop_opt(ctx, av_id).await?;
 
-        // Build si_frontend_types::newhotness::AttributeValue & add to attribute_values HashMap.
+        // Build si_frontend_mv_types::AttributeValue & add to attribute_values HashMap.
         let key = AttributeValue::key_for_id(ctx, av_id).await?;
         let value = {
             let mut value = match AttributeValue::get_by_id(ctx, av_id)
@@ -189,7 +192,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         attribute_values.insert(av_id, av_mv);
 
         if let Some(prop) = maybe_prop {
-            // If si_frontend_types::newhotness::Prop is not already in props HashMap, build & add.
+            // If si_frontend_mv_types::Prop is not already in props HashMap, build & add.
             if let std::collections::hash_map::Entry::Vacant(e) = props.entry(prop.id) {
                 let mut is_create_only = false;
                 let filtered_widget_options = prop.widget_options.clone().map(|options| {
@@ -237,7 +240,16 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
                     id: prop.id,
                     path: prop.path(ctx).await?.as_str().to_string(),
                     name: prop.name,
-                    kind: prop.kind.into(),
+                    kind: match prop.kind {
+                        dal::PropKind::Array => PropKind::Array,
+                        dal::PropKind::Boolean => PropKind::Boolean,
+                        dal::PropKind::Integer => PropKind::Integer,
+                        dal::PropKind::Json => PropKind::Json,
+                        dal::PropKind::Map => PropKind::Map,
+                        dal::PropKind::Object => PropKind::Object,
+                        dal::PropKind::String => PropKind::String,
+                        dal::PropKind::Float => PropKind::Float,
+                    },
                     widget_kind: match prop.widget_kind {
                         WidgetKind::Array => PropWidgetKind::Array,
                         WidgetKind::Checkbox => PropWidgetKind::Checkbox,

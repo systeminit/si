@@ -9,7 +9,7 @@ use dal::{
     ChangeSetId,
     WorkspacePk,
 };
-use si_frontend_types::{
+use si_frontend_mv_types::{
     index::MvIndex,
     reference::ReferenceKind,
 };

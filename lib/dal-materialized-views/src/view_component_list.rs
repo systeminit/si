@@ -5,7 +5,7 @@ use dal::{
         GeometryRepresents,
     },
 };
-use si_frontend_types::view::ViewComponentList as ViewComponentListMv;
+use si_frontend_mv_types::view::ViewComponentList as ViewComponentListMv;
 use si_id::ViewId;
 use telemetry::prelude::*;
 

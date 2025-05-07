@@ -15,7 +15,6 @@ use dal::{
         ChangeSetError,
         ChangeSetId,
     },
-    data_cache::DataCacheError,
     workspace_snapshot::{
         WorkspaceSnapshotError,
         selector::WorkspaceSnapshotSelectorDiscriminants,
@@ -48,8 +47,6 @@ pub(crate) enum RebaseError {
     AuditLogsStream(#[from] AuditLogsStreamError),
     #[error("workspace snapshot error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    #[error("Data Cache error: {0}")]
-    DataCache(#[from] DataCacheError),
     #[error("edda client error: {0}")]
     EddaClient(#[from] edda_client::ClientError),
     #[error("layerdb error: {0}")]

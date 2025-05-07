@@ -16,7 +16,7 @@ use si_data_nats::{
     NatsClient,
     Subject,
 };
-use si_frontend_types::object::patch::DATA_CACHE_SUBJECT_PREFIX;
+use si_frontend_mv_types::object::patch::DATA_CACHE_SUBJECT_PREFIX;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::{
