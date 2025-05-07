@@ -100,6 +100,10 @@ export function useFeatureFlagsStore() {
         // events (e.g. change set abandoned). For now, let's play it safe and make sure that
         // everything in the new frontend arch comes in together. Both of these flags should
         // eventually die though.
+
+        // turning this on for local development
+        if (import.meta.env.VITE_SI_ENV === "local") this.NEW_HOTNESS = true;
+
         if (this.NEW_HOTNESS) {
           // eslint-disable-next-line no-console
           console.log(

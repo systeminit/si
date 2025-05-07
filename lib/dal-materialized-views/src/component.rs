@@ -9,7 +9,10 @@ use dal::{
     attribute::prototype::argument::AttributePrototypeArgument,
     qualification::QualificationSummary,
 };
-use si_frontend_types::newhotness::component::Component as ComponentMv;
+use si_frontend_types::newhotness::component::{
+    Component as ComponentMv,
+    ComponentDiff,
+};
 use telemetry::prelude::*;
 
 #[instrument(name = "dal_materialized_views.component", level = "debug", skip_all)]
@@ -77,6 +80,16 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
     let resource_value_attribute_value_id =
         Component::attribute_value_for_prop(ctx, component_id, &["root", "resource_value"]).await?;
 
+    let dal_component_diff = Component::get_diff(ctx, component_id).await?;
+    let diff = match dal_component_diff.diff {
+        Some(code_view) => code_view.code,
+        None => None,
+    };
+    let resource_diff = ComponentDiff {
+        current: dal_component_diff.current.code,
+        diff,
+    };
+
     Ok(ComponentMv {
         id: component_id,
         name: Component::name_by_id(ctx, component_id).await?,
@@ -101,5 +114,6 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         secrets_attribute_value_id,
         si_attribute_value_id,
         resource_value_attribute_value_id,
+        resource_diff,
     })
 }

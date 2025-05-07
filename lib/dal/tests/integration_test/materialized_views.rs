@@ -1,32 +1,19 @@
 use std::collections::HashSet;
 
 use dal::{
-    Component,
-    DalContext,
-    Func,
-    action::{
-        Action,
-        prototype::ActionPrototype,
-    },
+    Component, DalContext, Func,
+    action::{Action, prototype::ActionPrototype},
     qualification::QualificationSummary,
 };
 use dal_test::{
-    Result,
-    helpers::create_component_for_default_schema_name_in_default_view,
-    prelude::OptionExt,
+    Result, helpers::create_component_for_default_schema_name_in_default_view, prelude::OptionExt,
     test,
 };
 use pretty_assertions_sorted::assert_eq;
-use si_events::{
-    ActionKind,
-    ActionState,
-};
+use si_events::{ActionKind, ActionState};
 use si_frontend_types::{
     action::ActionView,
-    newhotness::component::{
-        Component as ComponentMv,
-        ComponentList,
-    },
+    newhotness::component::{Component as ComponentMv, ComponentDiff, ComponentList},
     reference::ReferenceKind,
 };
 
@@ -162,6 +149,15 @@ async fn component(ctx: &DalContext) -> Result<()> {
     )
     .await?;
 
+    let resource_diff = ComponentDiff {
+        current: Some(String::from(
+            "{\n  \"si\": {\n    \"name\": \"starfield\",\n    \"type\": \"component\",\n    \"color\": \"#ffffff\"\n  }\n}",
+        )),
+        diff: Some(String::from(
+            "+{\n+  \"si\": {\n+    \"name\": \"starfield\",\n+    \"type\": \"component\",\n+    \"color\": \"#ffffff\"\n+  }\n+}",
+        )),
+    };
+
     assert_eq!(
         ComponentMv {
             id: created_component.id(),
@@ -183,6 +179,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
             secrets_attribute_value_id,
             si_attribute_value_id,
             resource_value_attribute_value_id,
+            resource_diff,
         }, // expected
         component // actual
     );
