@@ -28,6 +28,7 @@ import {
 } from "@/api/sdf/dal/schema";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import {
+  AttributePath,
   ComponentDiff,
   ComponentId,
   Edge,
@@ -342,8 +343,6 @@ export type AttributeSource =
   // This is a shorthand for { $source: { value: <value> }}
   | unknown;
 
-// JSON pointer to the attribute, relative to the component root (e.g. /domain/IpAddresses/0 or /si/name)
-export type AttributePath = string;
 // Component name
 export type ComponentName = string;
 

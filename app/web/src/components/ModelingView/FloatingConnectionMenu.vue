@@ -911,56 +911,34 @@ const processHighlighted = () => {
     }
   }
 
-  if (
-    connectionData.A.componentId &&
-    connectionData.B.componentId &&
-    connectionData.A.socketId &&
-    connectionData.B.socketId
-  ) {
-    const [from, to] =
-      connectionData.aDirection === "output"
-        ? [
-            {
-              componentId: connectionData.A.componentId,
-              socketId: connectionData.A.socketId,
-            },
-            {
-              componentId: connectionData.B.componentId,
-              socketId: connectionData.B.socketId,
-            },
-          ]
-        : [
-            {
-              componentId: connectionData.B.componentId,
-              socketId: connectionData.B.socketId,
-            },
-            {
-              componentId: connectionData.A.componentId,
-              socketId: connectionData.A.socketId,
-            },
-          ];
+  const [from, to] =
+    connectionData.aDirection === "output"
+      ? [connectionData.A, connectionData.B]
+      : [connectionData.B, connectionData.A];
 
-    componentsStore.CREATE_COMPONENT_CONNECTION(from, to);
+  if (from.componentId && from.socketId && to.componentId && to.socketId) {
+    componentsStore.CREATE_COMPONENT_CONNECTION(
+      { componentId: from.componentId, socketId: from.socketId },
+      { componentId: to.componentId, socketId: to.socketId },
+    );
     // FIXME select both components when we show edges between the components that are selected
-    componentsStore.eventBus.emit("setSelection", [
-      connectionData.A.componentId,
-    ]);
+    componentsStore.eventBus.emit("setSelection", [to.componentId]);
 
     close();
   }
 
   // Create connection
   if (
-    connectionData.A.componentId &&
-    connectionData.B.componentId &&
-    connectionData.A.attributePath &&
-    connectionData.B.attributePath
+    from.componentId &&
+    from.attributePath &&
+    to.componentId &&
+    to.attributePath
   ) {
-    componentsStore.UPDATE_COMPONENT_ATTRIBUTES(connectionData.B.componentId, {
-      [connectionData.B.attributePath]: {
+    componentsStore.UPDATE_COMPONENT_ATTRIBUTES(to.componentId, {
+      [to.attributePath]: {
         $source: {
-          component: connectionData.A.componentId,
-          path: connectionData.A.attributePath,
+          component: from.componentId,
+          path: from.attributePath,
         },
       },
     });
@@ -986,6 +964,7 @@ function open(initialState: ConnectionMenuData) {
   let initialBSearch = "";
 
   let aSocketSelected = false;
+  let bSocketSelected = false;
   const initialComponentA =
     componentsStore.allComponentsById[initialState.A.componentId || ""];
   const initialComponentB =
@@ -1050,7 +1029,13 @@ function open(initialState: ConnectionMenuData) {
         ? filteredSockets[0]
         : filteredSockets.find((s) => s.def.id === initialState.B.socketId);
     if (initialSocket) {
+      bSocketSelected = true;
       initialBSearch += `${initialSocket.def.label}`;
+    }
+    if (initialState.B.attributePath) {
+      const strippedPath = initialState.B.attributePath.replace(/\//, "");
+      bSocketSelected = true;
+      initialBSearch += strippedPath;
     }
   }
 

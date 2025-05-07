@@ -7,6 +7,7 @@ use std::collections::{
     VecDeque,
 };
 
+use petgraph::prelude::*;
 use serde::{
     Deserialize,
     Serialize,
@@ -21,15 +22,13 @@ use crate::{
     Component,
     ComponentId,
     DalContext,
+    EdgeWeightKind,
     InputSocketId,
     Prop,
     PropId,
     Secret,
     attribute::{
-        prototype::argument::{
-            AttributePrototypeArgument,
-            value_source::ValueSource,
-        },
+        path::AttributePath,
         value::AttributeValueError,
     },
     property_editor::{
@@ -112,6 +111,7 @@ impl PropertyEditorValues {
                 is_controlled_by_dynamic_func: false,
                 is_controlled_by_ancestor: false,
                 overridden: false,
+                source: None,
             },
         );
 
@@ -131,7 +131,7 @@ impl PropertyEditorValues {
                 let sockets_for_av =
                     AttributeValue::list_input_socket_sources_for_id(ctx, av_id).await?;
                 let can_be_set_by_socket = !sockets_for_av.is_empty();
-                let is_set_by_socket = sockets_for_av
+                let is_from_external_source = sockets_for_av
                     .into_iter()
                     .any(|s| sockets_on_component.contains(&s));
 
@@ -141,17 +141,29 @@ impl PropertyEditorValues {
 
                 let controlling_prototype_id =
                     AttributeValue::component_prototype_id(ctx, controlling_func.av_id).await?;
-                let mut is_from_external_source = is_set_by_socket;
+                let mut source = None;
                 // Check if the component value is explicitly connected to another component.
                 if let Some(controlling_prototype_id) = controlling_prototype_id {
                     for apa_id in
                         AttributePrototype::list_arguments_for_id(ctx, controlling_prototype_id)
                             .await?
                     {
-                        if let Some(ValueSource::ValueSubscription(_)) =
-                            AttributePrototypeArgument::value_source_opt(ctx, apa_id).await?
+                        for (edge, _, target) in ctx
+                            .workspace_snapshot()?
+                            .edges_directed(apa_id, Direction::Outgoing)
+                            .await?
                         {
-                            is_from_external_source = true;
+                            if let EdgeWeightKind::ValueSubscription(AttributePath::JsonPointer(
+                                path,
+                            )) = edge.kind
+                            {
+                                let component =
+                                    AttributeValue::component_id(ctx, target.into()).await?;
+                                source = Some(PropertyEditorValueSource::Subscription {
+                                    component,
+                                    path,
+                                });
+                            }
                         }
                     }
                 }
@@ -213,6 +225,7 @@ impl PropertyEditorValues {
                     is_controlled_by_ancestor: controlling_func.av_id != av_id,
                     is_controlled_by_dynamic_func: controlling_func.is_dynamic_func,
                     overridden,
+                    source,
                 };
 
                 // Load the work queue with the child attribute value.
@@ -312,6 +325,25 @@ pub struct PropertyEditorValue {
     pub is_controlled_by_ancestor: bool, // if ancestor of prop is set by dynamic func, ID of ancestor that sets it
     pub is_controlled_by_dynamic_func: bool, // props driven by non-dynamic funcs have a statically set value
     pub overridden: bool, // true if this prop has a different controlling func id than the default for this asset
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<PropertyEditorValueSource>, // The source of this value (set to None if it's a static value)
+}
+
+// The source for a value (unless it's a static value).
+// Try to keep this in sync with v2::component::attributes::Source
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub enum PropertyEditorValueSource {
+    // We don't send this
+    // // { value: <value> } - set value (null is a valid value to set it to)
+    // Value(serde_json::Value),
+
+    // { component: "ComponentNameOrId", path: "/domain/Foo/Bar/0/Baz" } - subscribe this value to a path from a component
+    #[serde(untagged)]
+    Subscription {
+        component: ComponentId,
+        path: String,
+    },
 }
 
 impl PropertyEditorValue {

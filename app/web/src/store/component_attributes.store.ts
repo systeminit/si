@@ -59,7 +59,7 @@ export interface OutputStream {
   message: string;
 }
 
-export type AttributeTreeItem = {
+export interface AttributeTreeItem {
   propDef: PropertyEditorProp;
   children: AttributeTreeItem[];
   value: PropertyEditorValue | undefined;
@@ -70,7 +70,7 @@ export type AttributeTreeItem = {
   mapKey?: string;
   arrayKey?: string;
   arrayIndex?: number;
-};
+}
 
 export const useComponentAttributesStore = (componentId: ComponentId) => {
   const changeSetsStore = useChangeSetsStore();
