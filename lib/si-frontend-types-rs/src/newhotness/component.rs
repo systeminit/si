@@ -42,6 +42,15 @@ pub struct ComponentQualificationStats {
 }
 
 #[derive(
+    Debug, Serialize, Deserialize, PartialEq, Eq, Clone, si_frontend_types_macros::FrontendChecksum,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentDiff {
+    pub current: Option<String>,
+    pub diff: Option<String>,
+}
+
+#[derive(
     Debug,
     Serialize,
     Deserialize,
@@ -78,6 +87,7 @@ pub struct Component {
     pub secrets_attribute_value_id: AttributeValueId,
     pub si_attribute_value_id: AttributeValueId,
     pub resource_value_attribute_value_id: AttributeValueId,
+    pub resource_diff: ComponentDiff,
 }
 
 #[derive(
