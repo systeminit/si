@@ -1782,6 +1782,16 @@ impl Component {
             None => None,
         })
     }
+    pub async fn color_by_id(ctx: &DalContext, id: ComponentId) -> ComponentResult<Option<String>> {
+        let color_value_id =
+            Component::attribute_value_for_prop(ctx, id, &["root", "si", "color"]).await?;
+        let color_av = AttributeValue::get_by_id(ctx, color_value_id).await?;
+
+        Ok(match color_av.view(ctx).await? {
+            Some(serde_value) => Some(serde_json::from_value(serde_value)?),
+            None => None,
+        })
+    }
 
     #[instrument(level="debug" skip(ctx))]
     pub async fn get_type_by_id(

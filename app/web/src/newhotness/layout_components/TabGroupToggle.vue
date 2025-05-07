@@ -1,0 +1,54 @@
+<template>
+  <div class="flex flex-row">
+    <div
+      :class="
+        clsx('[&>*]:rounded-tr-none [&>*]:rounded-br-none [&>*]:border-r-0')
+      "
+    >
+      <slot name="a" :selected="isA" :toggle="toggle"> </slot>
+    </div>
+    <div :class="clsx('[&>*]:rounded-tl-none [&>*]:rounded-bl-none')">
+      <slot name="b" :selected="isB" :toggle="toggle"> </slot>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import clsx from "clsx";
+import { computed, watch } from "vue";
+import { useToggle } from "../logic_composables/toggle_containers";
+
+const openState = useToggle();
+
+const A = Symbol("A");
+const B = Symbol("B");
+
+const props = defineProps<{
+  aOrB: boolean;
+}>();
+
+watch(
+  () => props.aOrB,
+  () => {
+    if (props.aOrB && !openState.open.value) openState.open.value = true;
+    if (!props.aOrB && openState.open.value) openState.open.value = false;
+  },
+  { immediate: true },
+);
+
+const _aOrB = computed(() => (openState.open.value ? A : B));
+
+const isA = computed(() => _aOrB.value === A);
+const isB = computed(() => _aOrB.value === B);
+
+const toggle = (e?: Event) => openState.toggle(e);
+
+defineExpose({
+  aOrB: _aOrB,
+  toggle,
+  isA,
+  isB,
+  A,
+  B,
+});
+</script>

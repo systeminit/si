@@ -255,6 +255,7 @@ export interface ComponentQualificationTotals {
 export interface BifrostComponent {
   id: ComponentId;
   name: string;
+  color?: string;
   schemaName: string;
   schemaId: SchemaId;
   schemaVariantId: SchemaVariantId;
@@ -265,7 +266,6 @@ export interface BifrostComponent {
   hasResource: boolean;
   qualificationTotals: ComponentQualificationTotals;
   inputCount: number;
-  outputCount: number;
   diffCount: number;
   rootAttributeValueId: AttributeValueId;
   domainAttributeValueId: AttributeValueId;
@@ -352,11 +352,19 @@ export interface RawComponentConnectionsListBeta {
 
 export interface BifrostComponentConnectionsListBeta {
   id: ChangeSetId;
-  componentConnections: BifrostComponentConnectionsBeta[];
+  componentConnections: BifrostComponentConnectionsBetaWithComponent[];
 }
 
 export interface BifrostComponentConnectionsBeta {
   id: ComponentId;
+  component: BifrostComponent;
+  incoming: Connection[];
+  outgoing: Connection[];
+}
+
+export interface BifrostComponentConnectionsBetaWithComponent {
+  id: ComponentId;
+  component: BifrostComponent;
   incoming: Connection[];
   outgoing: Connection[];
 }

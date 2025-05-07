@@ -123,7 +123,7 @@
     <div class="right flex flex-col">
       <CollapsingFlexItem>
         <template #header>
-          <PillCounter :count="component.inputCount + component.outputCount" />
+          <PillCounter :count="component.inputCount + 0" />
           Connections
         </template>
         {{ componentConnectionsPretty }}

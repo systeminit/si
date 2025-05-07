@@ -59,6 +59,7 @@ pub struct ComponentDiff {
 pub struct Component {
     pub id: ComponentId,
     pub name: String,
+    pub color: Option<String>,
     pub schema_name: String,
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
@@ -69,7 +70,6 @@ pub struct Component {
     pub has_resource: bool,
     pub qualification_totals: ComponentQualificationStats,
     pub input_count: usize,
-    pub output_count: usize,
     pub diff_count: usize,
     pub root_attribute_value_id: AttributeValueId,
     pub domain_attribute_value_id: AttributeValueId,

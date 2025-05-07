@@ -127,6 +127,12 @@ startKeyEmitter(document);
 
 provide("CONTEXT", context.value);
 
+export type SelectionsInQueryString = Partial<{
+  map: string;
+  grid: string;
+  c: string;
+}>;
+
 const compositionLink = computed(() => {
   // eslint-disable-next-line no-nested-ternary
   const name = props.componentId

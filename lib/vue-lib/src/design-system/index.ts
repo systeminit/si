@@ -25,6 +25,7 @@ export { default as TruncateWithTooltip } from "./general/TruncateWithTooltip.vu
 
 // ./icons
 export { default as Icon } from "./icons/Icon.vue";
+export { default as IconNoWrapper } from "./icons/IconNoWrapper.vue";
 export type { IconSizes } from "./icons/Icon.vue";
 export * from "./icons/icon_set";
 

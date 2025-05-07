@@ -62,7 +62,7 @@
       <li>
         <Icon name="input-connection" size="sm" />
         <div>Outputs</div>
-        <PillCounter :count="component.outputCount" size="sm" class="ml-auto" />
+        <PillCounter :count="0" size="sm" class="ml-auto" />
       </li>
     </ol>
     <!-- <footer class="grid grid-cols-2 p-xs">
@@ -86,13 +86,13 @@ import {
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { computed, PropType } from "vue";
+import { computed } from "vue";
 import { BifrostComponent } from "@/workers/types/dbinterface";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 
-const props = defineProps({
-  component: { type: Object as PropType<BifrostComponent>, required: true },
-});
+const props = defineProps<{
+  component: BifrostComponent;
+}>();
 
 const qualificationSummary = computed(() => {
   if (props.component.qualificationTotals.failed > 0) return "failure";

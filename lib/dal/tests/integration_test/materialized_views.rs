@@ -1,19 +1,33 @@
 use std::collections::HashSet;
 
 use dal::{
-    Component, DalContext, Func,
-    action::{Action, prototype::ActionPrototype},
+    Component,
+    DalContext,
+    Func,
+    action::{
+        Action,
+        prototype::ActionPrototype,
+    },
     qualification::QualificationSummary,
 };
 use dal_test::{
-    Result, helpers::create_component_for_default_schema_name_in_default_view, prelude::OptionExt,
+    Result,
+    helpers::create_component_for_default_schema_name_in_default_view,
+    prelude::OptionExt,
     test,
 };
 use pretty_assertions_sorted::assert_eq;
-use si_events::{ActionKind, ActionState};
+use si_events::{
+    ActionKind,
+    ActionState,
+};
 use si_frontend_types::{
     action::ActionView,
-    newhotness::component::{Component as ComponentMv, ComponentDiff, ComponentList},
+    newhotness::component::{
+        Component as ComponentMv,
+        ComponentDiff,
+        ComponentList,
+    },
     reference::ReferenceKind,
 };
 
@@ -162,6 +176,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
         ComponentMv {
             id: created_component.id(),
             name: component_name.to_owned(),
+            color: created_component.color(ctx).await?.to_owned(),
             schema_name: schema_name.to_owned(),
             schema_id: schema.id(),
             schema_variant_id: schema_variant.id(),
@@ -172,7 +187,6 @@ async fn component(ctx: &DalContext) -> Result<()> {
             has_resource: false,
             qualification_totals: stats,
             input_count: 0,
-            output_count: 0,
             diff_count: 0,
             root_attribute_value_id,
             domain_attribute_value_id,
