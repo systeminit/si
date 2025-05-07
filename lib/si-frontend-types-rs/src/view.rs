@@ -4,11 +4,13 @@ use serde::{
 };
 use si_events::{
     Timestamp,
-    workspace_snapshot::{
-        Checksum,
-        ChecksumHasher,
-        EntityKind,
-    },
+    workspace_snapshot::EntityKind,
+};
+use si_frontend_types_macros::{
+    FrontendChecksum,
+    FrontendObject,
+    MV,
+    Refer,
 };
 use si_id::{
     ChangeSetId,
@@ -16,29 +18,13 @@ use si_id::{
     ViewId,
 };
 
-use crate::{
-    MaterializedView,
-    checksum::FrontendChecksum,
-    object::FrontendObject,
-    reference::{
-        Refer,
-        Reference,
-        ReferenceId,
-        ReferenceKind,
-    },
+use crate::reference::{
+    Reference,
+    ReferenceKind,
 };
 
 #[derive(
-    Clone,
-    Debug,
-    Deserialize,
-    Serialize,
-    Eq,
-    PartialEq,
-    si_frontend_types_macros::FrontendChecksum,
-    si_frontend_types_macros::FrontendObject,
-    si_frontend_types_macros::Refer,
-    si_frontend_types_macros::MV,
+    Clone, Debug, Deserialize, Serialize, Eq, PartialEq, FrontendChecksum, FrontendObject, Refer, MV,
 )]
 #[serde(rename_all = "camelCase")]
 #[mv(
@@ -53,17 +39,7 @@ pub struct View {
     pub timestamp: Timestamp,
 }
 
-#[derive(
-    Debug,
-    Clone,
-    Serialize,
-    PartialEq,
-    Eq,
-    si_frontend_types_macros::FrontendChecksum,
-    si_frontend_types_macros::FrontendObject,
-    si_frontend_types_macros::Refer,
-    si_frontend_types_macros::MV,
-)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, FrontendChecksum, FrontendObject, Refer, MV)]
 #[mv(
     trigger_entity = EntityKind::CategoryView,
     reference_kind = ReferenceKind::ViewList,

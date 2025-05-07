@@ -56,7 +56,10 @@
                   class="block w-full text-white bg-black border-2 border-neutral-300 disabled:bg-neutral-900"
                   type="text"
                   :value="field.state.value"
-                  @input="(e) => field.handleChange((e.target as HTMLInputElement).value)"
+                  @input="
+                    (e) =>
+                      field.handleChange((e.target as HTMLInputElement).value)
+                  "
                   @blur="blur"
                   @keydown.enter.stop.prevent="blur"
                   @keydown.esc.stop.prevent="reset"
@@ -123,7 +126,7 @@
           <PillCounter :count="component.inputCount + component.outputCount" />
           Connections
         </template>
-        stuff
+        {{ componentConnectionsPretty }}
       </CollapsingFlexItem>
       <CollapsingFlexItem open>
         <template #header>
@@ -163,7 +166,10 @@ import { VButton, PillCounter, Icon } from "@si/vue-lib/design-system";
 import { computed, ref, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
-import { BifrostComponent } from "@/workers/types/dbinterface";
+import {
+  BifrostComponent,
+  BifrostComponentConnectionsBeta,
+} from "@/workers/types/dbinterface";
 import AttributePanel from "./AttributePanel.vue";
 import { attributeEmitter } from "./logic_composables/emitters";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
@@ -182,6 +188,7 @@ const componentId = computed(() => props.componentId);
 
 const key = useMakeKey();
 const args = useMakeArgs();
+
 const componentQuery = useQuery<BifrostComponent | null>({
   queryKey: key("Component", componentId),
   queryFn: async () => {
@@ -191,8 +198,26 @@ const componentQuery = useQuery<BifrostComponent | null>({
     return component;
   },
 });
-
 const component = computed(() => componentQuery.data.value);
+
+const componentConnectionsQuery =
+  useQuery<BifrostComponentConnectionsBeta | null>({
+    queryKey: key("ComponentConnectionsBeta", componentId),
+    queryFn: async () => {
+      const componentConnections =
+        await bifrost<BifrostComponentConnectionsBeta>(
+          args("ComponentConnectionsBeta", componentId.value),
+        );
+      return componentConnections;
+    },
+  });
+const componentConnections = computed(
+  () => componentConnectionsQuery.data.value,
+);
+const componentConnectionsPretty = computed(() => {
+  if (!componentConnections.value) return "";
+  return JSON.stringify(componentConnections.value, null, 2);
+});
 
 const docs = ref("");
 const docLink = ref("");

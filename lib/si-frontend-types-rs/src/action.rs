@@ -5,11 +5,7 @@ use serde::{
 use si_events::{
     ActionKind,
     ActionState,
-    workspace_snapshot::{
-        Checksum,
-        ChecksumHasher,
-        EntityKind,
-    },
+    workspace_snapshot::EntityKind,
 };
 use si_id::{
     ActionId,
@@ -19,17 +15,7 @@ use si_id::{
     FuncRunId,
 };
 
-use crate::{
-    MaterializedView,
-    checksum::FrontendChecksum,
-    object::FrontendObject,
-    reference::{
-        Refer,
-        Reference,
-        ReferenceId,
-        ReferenceKind,
-    },
-};
+use crate::reference::ReferenceKind;
 
 pub mod prototype;
 

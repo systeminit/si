@@ -40,15 +40,22 @@ use si_frontend_types::{
         ActionPrototypeViewList as ActionPrototypeViewListMv,
         ActionViewList as ActionViewListMv,
     },
+    checksum::FrontendChecksum,
     index::MvIndex,
-    newhotness::component::{
-        Component as ComponentMv,
-        ComponentList as ComponentListMv,
+    newhotness::{
+        component::{
+            Component as ComponentMv,
+            ComponentList as ComponentListMv,
+        },
+        component_connections::{
+            ComponentConnectionsBeta as ComponentConnectionsMv,
+            ComponentConnectionsListBeta as ComponentConnectionsListMv,
+        },
     },
     object::{
         FrontendObject,
         patch::{
-            ObjectPatch as FrontendObjectPatch,
+            ObjectPatch,
             PATCH_BATCH_KIND,
             PatchBatch,
             PatchBatchMeta,
@@ -329,7 +336,7 @@ async fn build_mv_inner(
     workspace_pk: si_id::WorkspacePk,
     change_set_id: ChangeSetId,
     changes: &[Change],
-) -> Result<(Vec<FrontendObject>, Vec<FrontendObjectPatch>), MaterializedViewError> {
+) -> Result<(Vec<FrontendObject>, Vec<ObjectPatch>), MaterializedViewError> {
     let mut mv_dependency_graph = mv_dependency_graph()?;
     let mut frontend_objects = Vec::new();
     let mut patches = Vec::new();
@@ -461,13 +468,7 @@ type BuildMvTaskResult = (
     ReferenceKind,
     String,
     Ulid,
-    Result<
-        (
-            Option<si_frontend_types::object::patch::ObjectPatch>,
-            Option<si_frontend_types::object::FrontendObject>,
-        ),
-        MaterializedViewError,
-    >,
+    Result<(Option<ObjectPatch>, Option<FrontendObject>), MaterializedViewError>,
 );
 
 #[instrument(
@@ -490,9 +491,7 @@ async fn build_mv_task<F, T, E>(
 ) -> BuildMvTaskResult
 where
     F: Future<Output = Result<T, E>>,
-    T: serde::Serialize
-        + TryInto<si_frontend_types::object::FrontendObject>
-        + si_frontend_types::checksum::FrontendChecksum,
+    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum,
     E: Into<MaterializedViewError>,
     MaterializedViewError: From<E>,
     MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
@@ -511,13 +510,7 @@ where
     (mv_kind, mv_id, task_id, result)
 }
 
-type MvBuilderResult = Result<
-    (
-        Option<si_frontend_types::object::patch::ObjectPatch>,
-        Option<si_frontend_types::object::FrontendObject>,
-    ),
-    MaterializedViewError,
->;
+type MvBuilderResult = Result<(Option<ObjectPatch>, Option<FrontendObject>), MaterializedViewError>;
 
 async fn build_mv_task_inner<F, T, E>(
     ctx: &DalContext,
@@ -529,9 +522,7 @@ async fn build_mv_task_inner<F, T, E>(
 ) -> MvBuilderResult
 where
     F: Future<Output = Result<T, E>>,
-    T: serde::Serialize
-        + TryInto<si_frontend_types::object::FrontendObject>
-        + si_frontend_types::checksum::FrontendChecksum,
+    T: serde::Serialize + TryInto<FrontendObject> + FrontendChecksum,
     E: Into<MaterializedViewError>,
     MaterializedViewError: From<E>,
     MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
@@ -544,7 +535,7 @@ where
     {
         // Object was removed
         Ok((
-            Some(si_frontend_types::object::patch::ObjectPatch {
+            Some(ObjectPatch {
                 kind: mv_kind,
                 id: mv_id,
                 // TODO: we need to get the prior version of this
@@ -559,8 +550,8 @@ where
     } else {
         let mv = build_mv_future.await?;
         let mv_json = serde_json::to_value(&mv)?;
-        let to_checksum = si_frontend_types::checksum::FrontendChecksum::checksum(&mv).to_string();
-        let frontend_object: si_frontend_types::object::FrontendObject = mv.try_into()?;
+        let to_checksum = FrontendChecksum::checksum(&mv).to_string();
+        let frontend_object: FrontendObject = mv.try_into()?;
 
         let kind = mv_kind;
         let (from_checksum, previous_data) = if let Some(previous_version) = frigg
@@ -577,7 +568,7 @@ where
             Ok((None, None))
         } else {
             Ok((
-                Some(si_frontend_types::object::patch::ObjectPatch {
+                Some(ObjectPatch {
                     kind,
                     id: mv_id,
                     from_checksum,
@@ -618,6 +609,8 @@ fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedV
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionPrototypeViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentConnectionsMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentConnectionsListMv);
 
     // The MvIndex depends on everything else, but doesn't define any
     // `MaterializedView::reference_dependencies()` directly.
@@ -653,9 +646,9 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
 ) -> Result<Option<QueuedBuildMvTask>, MaterializedViewError> {
     match mv_kind {
         ReferenceKind::ActionPrototypeViewList => {
-            let mv_id = change.entity_id.to_string();
+            let entity_mv_id = change.entity_id.to_string();
 
-            let trigger_entity = <si_frontend_types::action::prototype::ActionPrototypeViewList as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+            let trigger_entity = <ActionPrototypeViewListMv as MaterializedView>::trigger_entity();
             if change.entity_kind != trigger_entity {
                 return Ok(None);
             }
@@ -667,8 +660,8 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx,
                     frigg,
                     change,
-                    mv_id,
-                    si_frontend_types::action::prototype::ActionPrototypeViewList,
+                    entity_mv_id,
+                    ActionPrototypeViewListMv,
                     dal_materialized_views::action_prototype_view_list::assemble(
                         ctx.clone(),
                         si_events::ulid::Ulid::from(change.entity_id).into()
@@ -679,9 +672,9 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             }
         }
         ReferenceKind::ActionViewList => {
-            let mv_id = change_set_id.to_string();
+            let change_set_mv_id = change_set_id.to_string();
 
-            let trigger_entity = <si_frontend_types::action::ActionViewList as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+            let trigger_entity = <ActionViewListMv as MaterializedView>::trigger_entity();
             if change.entity_kind != trigger_entity {
                 return Ok(None);
             }
@@ -693,8 +686,8 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx,
                     frigg,
                     change,
-                    mv_id,
-                    si_frontend_types::action::ActionViewList,
+                    change_set_mv_id,
+                    ActionViewListMv,
                     dal_materialized_views::action_view_list::assemble(ctx.clone()),
                 );
             } else {
@@ -702,9 +695,9 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             }
         }
         ReferenceKind::Component => {
-            let mv_id = change.entity_id.to_string();
+            let entity_mv_id = change.entity_id.to_string();
 
-            let trigger_entity = <si_frontend_types::newhotness::component::Component as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+            let trigger_entity = <ComponentMv as MaterializedView>::trigger_entity();
             if change.entity_kind != trigger_entity {
                 return Ok(None);
             }
@@ -716,8 +709,8 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx,
                     frigg,
                     change,
-                    mv_id,
-                    si_frontend_types::newhotness::component::Component,
+                    entity_mv_id,
+                    ComponentMv,
                     dal_materialized_views::component::assemble(
                         ctx.clone(),
                         si_events::ulid::Ulid::from(change.entity_id).into(),
@@ -727,10 +720,10 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(Some(QueuedBuildMvTask { change, mv_kind }));
             }
         }
-        ReferenceKind::ComponentList => {
-            let mv_id = change.entity_id.to_string();
+        ReferenceKind::ComponentConnectionsBeta => {
+            let entity_mv_id = change.entity_id.to_string();
 
-            let trigger_entity = <si_frontend_types::newhotness::component::ComponentList as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+            let trigger_entity = <ComponentConnectionsMv as MaterializedView>::trigger_entity();
             if change.entity_kind != trigger_entity {
                 return Ok(None);
             }
@@ -742,8 +735,57 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx,
                     frigg,
                     change,
-                    mv_id,
-                    si_frontend_types::newhotness::component::ComponentList,
+                    entity_mv_id,
+                    ComponentConnectionsMv,
+                    dal_materialized_views::component_connections::assemble(
+                        ctx.clone(),
+                        si_events::ulid::Ulid::from(change.entity_id).into(),
+                    ),
+                );
+            } else {
+                return Ok(Some(QueuedBuildMvTask { change, mv_kind }));
+            }
+        }
+        ReferenceKind::ComponentConnectionsListBeta => {
+            let change_set_mv_id = change_set_id.to_string();
+
+            let trigger_entity = <ComponentConnectionsListMv as MaterializedView>::trigger_entity();
+            if change.entity_kind != trigger_entity {
+                return Ok(None);
+            }
+
+            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+                spawn_build_mv_task!(
+                    build_tasks,
+                    mv_task_ids,
+                    ctx,
+                    frigg,
+                    change,
+                    change_set_mv_id,
+                    ComponentConnectionsListMv,
+                    dal_materialized_views::component_connections_list::assemble(ctx.clone()),
+                );
+            } else {
+                return Ok(Some(QueuedBuildMvTask { change, mv_kind }));
+            }
+        }
+        ReferenceKind::ComponentList => {
+            let entity_mv_id = change.entity_id.to_string();
+
+            let trigger_entity = <ComponentListMv as MaterializedView>::trigger_entity();
+            if change.entity_kind != trigger_entity {
+                return Ok(None);
+            }
+
+            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+                spawn_build_mv_task!(
+                    build_tasks,
+                    mv_task_ids,
+                    ctx,
+                    frigg,
+                    change,
+                    entity_mv_id,
+                    ComponentListMv,
                     dal_materialized_views::component_list::assemble(ctx.clone(),),
                 );
             } else {
@@ -751,9 +793,9 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             }
         }
         ReferenceKind::SchemaVariantCategories => {
-            let mv_id = change_set_id.to_string();
+            let change_set_mv_id = change_set_id.to_string();
 
-            let trigger_entity = <si_frontend_types::schema_variant::SchemaVariantCategories as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+            let trigger_entity = <SchemaVariantCategoriesMv as MaterializedView>::trigger_entity();
             if change.entity_kind != trigger_entity {
                 return Ok(None);
             }
@@ -765,18 +807,18 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx,
                     frigg,
                     change,
-                    mv_id,
-                    si_frontend_types::schema_variant::SchemaVariantCategories,
-                    dal_materialized_views::schema_variant_categories::assemble(ctx.clone(),)
+                    change_set_mv_id,
+                    SchemaVariantCategoriesMv,
+                    dal_materialized_views::schema_variant_categories::assemble(ctx.clone()),
                 );
             } else {
                 return Ok(Some(QueuedBuildMvTask { change, mv_kind }));
             }
         }
         ReferenceKind::View => {
-            let mv_id = change.entity_id.to_string();
+            let entity_mv_id = change.entity_id.to_string();
 
-            let trigger_entity = <si_frontend_types::view::View as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+            let trigger_entity = <ViewMv as MaterializedView>::trigger_entity();
             if change.entity_kind != trigger_entity {
                 return Ok(None);
             }
@@ -788,8 +830,8 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx,
                     frigg,
                     change,
-                    mv_id,
-                    si_frontend_types::view::View,
+                    entity_mv_id,
+                    ViewMv,
                     dal_materialized_views::view::assemble(
                         ctx.clone(),
                         si_events::ulid::Ulid::from(change.entity_id).into()
@@ -800,9 +842,9 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             }
         }
         ReferenceKind::ViewList => {
-            let mv_id = change_set_id.to_string();
+            let change_set_mv_id = change_set_id.to_string();
 
-            let trigger_entity = <si_frontend_types::view::ViewList as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+            let trigger_entity = <ViewListMv as MaterializedView>::trigger_entity();
             if change.entity_kind != trigger_entity {
                 return Ok(None);
             }
@@ -814,8 +856,8 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx,
                     frigg,
                     change,
-                    mv_id,
-                    si_frontend_types::view::ViewList,
+                    change_set_mv_id,
+                    ViewListMv,
                     dal_materialized_views::view_list::assemble(ctx.clone()),
                 );
             } else {
@@ -823,9 +865,9 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             }
         }
         ReferenceKind::ViewComponentList => {
-            let mv_id = change.entity_id.to_string();
+            let entity_mv_id = change.entity_id.to_string();
 
-            let trigger_entity = <si_frontend_types::view::ViewComponentList as si_frontend_types::materialized_view::MaterializedView>::trigger_entity();
+            let trigger_entity = <ViewComponentListMv as MaterializedView>::trigger_entity();
             if change.entity_kind != trigger_entity {
                 return Ok(None);
             }
@@ -837,8 +879,8 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx,
                     frigg,
                     change,
-                    mv_id,
-                    si_frontend_types::view::ViewComponentList,
+                    entity_mv_id,
+                    ViewComponentListMv,
                     dal_materialized_views::view_component_list::assemble(
                         ctx.clone(),
                         si_events::ulid::Ulid::from(change.entity_id).into(),

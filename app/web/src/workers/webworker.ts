@@ -52,6 +52,9 @@ import {
   BifrostComponentList,
   RawAttributeTree,
   BifrostAttributeTree,
+  RawComponentConnectionsListBeta,
+  BifrostComponentConnectionsBeta,
+  BifrostComponentConnectionsListBeta,
 } from "./types/dbinterface";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
@@ -959,6 +962,22 @@ const get = async (
       children,
     };
     return attrTree;
+  } else if (kind === "ComponentConnectionsListBeta") {
+    const rawList = atomDoc as RawComponentConnectionsListBeta;
+    const maybeComponentConnections = await Promise.all(
+      rawList.componentConnections.map(async (c) => {
+        return await get(workspaceId, changeSetId, c.kind, c.id);
+      }),
+    );
+    const componentConnections = maybeComponentConnections.filter(
+      (c): c is BifrostComponentConnectionsBeta =>
+        c !== -1 && Object.keys(c).length > 0,
+    );
+    const list: BifrostComponentConnectionsListBeta = {
+      id: rawList.id,
+      componentConnections,
+    };
+    return list;
   } else return atomDoc;
 };
 

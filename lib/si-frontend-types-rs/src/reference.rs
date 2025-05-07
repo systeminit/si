@@ -38,6 +38,8 @@ pub enum ReferenceKind {
     ChangeSetList,
     ChangeSetRecord,
     Component,
+    ComponentConnectionsBeta,
+    ComponentConnectionsListBeta,
     ComponentList,
     MvIndex,
     SchemaVariantCategories,
