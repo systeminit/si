@@ -920,8 +920,7 @@ async fn create_func_binding(ctx: &DalContext, binding: FuncBinding) -> FsResult
     };
 
     if let Some(schema_variant_id) = maybe_schema_variant_id {
-        let schema_id =
-            SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
+        let schema_id = SchemaVariant::schema_id(ctx, schema_variant_id).await?;
 
         let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
         WsEvent::schema_variant_updated(ctx, schema_id, schema_variant)
@@ -975,8 +974,7 @@ async fn delete_binding(
     if did_delete {
         let func = Func::get_by_id(ctx, func_id).await?;
         let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
-        let schema_id =
-            SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
+        let schema_id = SchemaVariant::schema_id(ctx, schema_variant_id).await?;
 
         ctx.write_audit_log(
             AuditLogKind::DetachFunc {

@@ -180,10 +180,7 @@ pub async fn create_binding(
                             .await?;
 
                             if let Some(variant_id) = schema_variant_id {
-                                let schema = SchemaVariant::schema_id_for_schema_variant_id(
-                                    &ctx, variant_id,
-                                )
-                                .await?;
+                                let schema = SchemaVariant::schema_id(&ctx, variant_id).await?;
                                 let schema_variant =
                                     SchemaVariant::get_by_id(&ctx, variant_id).await?;
                                 WsEvent::schema_variant_updated(&ctx, schema, schema_variant)
@@ -210,11 +207,7 @@ pub async fn create_binding(
                         Some(func_id) => {
                             AuthBinding::create_auth_binding(&ctx, func_id, schema_variant_id)
                                 .await?;
-                            let schema = SchemaVariant::schema_id_for_schema_variant_id(
-                                &ctx,
-                                schema_variant_id,
-                            )
-                            .await?;
+                            let schema = SchemaVariant::schema_id(&ctx, schema_variant_id).await?;
                             let schema_variant =
                                 SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
                             let func = Func::get_by_id(&ctx, func_id).await?;
@@ -255,11 +248,7 @@ pub async fn create_binding(
                                 schema_variant_id,
                             )
                             .await?;
-                            let schema = SchemaVariant::schema_id_for_schema_variant_id(
-                                &ctx,
-                                schema_variant_id,
-                            )
-                            .await?;
+                            let schema = SchemaVariant::schema_id(&ctx, schema_variant_id).await?;
                             let schema_variant =
                                 SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
                             let func = Func::get_by_id(&ctx, func_id).await?;
@@ -309,11 +298,7 @@ pub async fn create_binding(
                                 &inputs,
                             )
                             .await?;
-                            let schema = SchemaVariant::schema_id_for_schema_variant_id(
-                                &ctx,
-                                schema_variant_id,
-                            )
-                            .await?;
+                            let schema = SchemaVariant::schema_id(&ctx, schema_variant_id).await?;
                             let schema_variant =
                                 SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
                             let func = Func::get_by_id(&ctx, func_id).await?;
@@ -356,11 +341,7 @@ pub async fn create_binding(
                                 &inputs,
                             )
                             .await?;
-                            let schema = SchemaVariant::schema_id_for_schema_variant_id(
-                                &ctx,
-                                schema_variant_id,
-                            )
-                            .await?;
+                            let schema = SchemaVariant::schema_id(&ctx, schema_variant_id).await?;
                             let schema_variant =
                                 SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
                             let func = Func::get_by_id(&ctx, func_id).await?;
@@ -405,11 +386,7 @@ pub async fn create_binding(
                                 schema_variant_id,
                             )
                             .await?;
-                            let schema = SchemaVariant::schema_id_for_schema_variant_id(
-                                &ctx,
-                                schema_variant_id,
-                            )
-                            .await?;
+                            let schema = SchemaVariant::schema_id(&ctx, schema_variant_id).await?;
                             let schema_variant =
                                 SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
                             let func = Func::get_by_id(&ctx, func_id).await?;

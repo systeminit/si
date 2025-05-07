@@ -459,7 +459,7 @@ impl FuncAuthoringClient {
     ) -> FuncAuthoringResult<Func> {
         let old_func = Func::get_by_id(ctx, func_id).await?;
 
-        let schema = SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
+        let schema = SchemaVariant::schema_id(ctx, schema_variant_id).await?;
         // is the current schema varaint already unlocked? if so, proceed
         let current_schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
         let new_func = if !current_schema_variant.is_locked() {

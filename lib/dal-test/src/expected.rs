@@ -303,7 +303,7 @@ impl ExpectSchemaVariant {
     }
 
     pub async fn schema(self, ctx: &DalContext) -> ExpectSchema {
-        SchemaVariant::schema_id_for_schema_variant_id(ctx, self.0)
+        SchemaVariant::schema_id(ctx, self.0)
             .await
             .expect("get schema by id")
             .into()

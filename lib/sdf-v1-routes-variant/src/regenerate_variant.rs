@@ -97,8 +97,7 @@ pub async fn regenerate_variant(
         variant.display_name,
     )
     .await?;
-    let schema =
-        SchemaVariant::schema_id_for_schema_variant_id(&ctx, updated_schema_variant_id).await?;
+    let schema = SchemaVariant::schema_id(&ctx, updated_schema_variant_id).await?;
     let updated_schema_variant = SchemaVariant::get_by_id(&ctx, updated_schema_variant_id).await?;
 
     if schema_variant_id == updated_schema_variant_id {

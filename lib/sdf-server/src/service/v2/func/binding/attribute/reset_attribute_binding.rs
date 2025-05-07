@@ -77,8 +77,7 @@ pub async fn reset_attribute_binding(
 
         match eventual_parent {
             EventualParent::SchemaVariant(schema_variant_id) => {
-                let schema =
-                    SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
+                let schema = SchemaVariant::schema_id(&ctx, schema_variant_id).await?;
                 let schema_variant = SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
                 ctx.write_audit_log(
                     AuditLogKind::DetachFunc {
