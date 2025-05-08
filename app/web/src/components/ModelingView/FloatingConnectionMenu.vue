@@ -18,6 +18,31 @@
       @click="focusOnInput"
       @keydown="debouncedListener"
     >
+      <div
+        v-if="featureFlagsStore.PROPS_TO_PROPS_CONNECTIONS"
+        class="flex justify-between w-full my-sm"
+      >
+        <div class="grow basis-0">
+          {{ sideATitle }}
+        </div>
+        <div class="">
+          <IconButton
+            v-if="connectionData.aDirection"
+            :class="
+              clsx([
+                'transition-transform',
+                connectionData.aDirection === 'input' ? '-rotate-180' : '',
+              ])
+            "
+            icon="arrow--right"
+            iconTone="neutral"
+            @click="invertModalDirection"
+          />
+        </div>
+        <div class="grow basis-0 text-end">
+          {{ sideBTitle }}
+        </div>
+      </div>
       <div class="flex flex-row w-full children:basis-1/2">
         <FloatingConnectionMenuInput
           ref="inputARef"
@@ -133,7 +158,12 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { Modal, themeClasses, Icon } from "@si/vue-lib/design-system";
+import {
+  Modal,
+  themeClasses,
+  Icon,
+  IconButton,
+} from "@si/vue-lib/design-system";
 import {
   computed,
   nextTick,
@@ -229,6 +259,10 @@ const connectionData = reactive<ConnectionMenuData>({
   },
 });
 
+const invertModalDirection = () => {
+  connectionData.aDirection = invertDirection(connectionData.aDirection);
+};
+
 const invertDirection = (direction?: string) => {
   switch (direction) {
     case "input":
@@ -256,6 +290,20 @@ const selectedSocketB = computed(() =>
     (s) => s.def.id === connectionData.B.socketId,
   ),
 );
+
+const sideATitle = computed(() => {
+  const direction =
+    connectionData.aDirection === "input" ? "Destination" : "Source";
+
+  return `${direction} value`;
+});
+
+const sideBTitle = computed(() => {
+  const direction =
+    connectionData.aDirection === "input" ? "Source" : "Destination";
+
+  return `${direction} value`;
+});
 
 // this needs to compute based on allComponentsById changes to socket values
 const highlightedListEntry = computed(() => {
@@ -528,11 +576,18 @@ watch(componentsStore.allComponentsById, debouncedUpdate, { immediate: true });
 const socketlessConnectionCandidatesA = ref<ConnectionCandidateProp[]>([]);
 const socketlessConnectionCandidatesB = ref<ConnectionCandidateProp[]>([]);
 
-const fullASideList = computed(() => {
-  return [...listAItems.value, ...socketlessConnectionCandidatesA.value];
-});
+const fullASideList = computed(() => [
+  ...listAItems.value,
+  ...socketlessConnectionCandidatesA.value,
+]);
 
 const fullBSideList = computed(() => {
+  if (connectionData.A.socketId) {
+    return [...listBItems.value];
+  } else if (connectionData.A.attributePath) {
+    return [...socketlessConnectionCandidatesB.value];
+  }
+
   return [...listBItems.value, ...socketlessConnectionCandidatesB.value];
 });
 
@@ -540,145 +595,152 @@ const fullBSideList = computed(() => {
 const schemaVariantsById = reactive({} as Record<string, PropertyEditorSchema>);
 const storedInitialComponent = ref();
 const loadingPropConnections = ref(false);
-watch([storedInitialComponent, searchStrings], async () => {
-  if (!featureFlagsStore.PROPS_TO_PROPS_CONNECTIONS) {
-    return;
-  }
-
-  if (!storedInitialComponent.value) return;
-  loadingPropConnections.value = true;
-
-  const allComponents = _.values(componentsStore.allComponentsById).filter(
-    (c) => c.def.changeStatus !== "deleted",
-  );
-
-  // Gather the schemas for the props currently on the diagram
-  const componentsBySvId = {} as Record<
-    string,
-    (DiagramNodeData | DiagramGroupData)[]
-  >;
-  for (const component of allComponents) {
-    const svId = component.def.schemaVariantId;
-    componentsBySvId[svId] ??= [];
-    componentsBySvId[svId]?.push(component);
-
-    if (!schemaVariantsById[component.def.schemaVariantId]) {
-      const attributesStore = useComponentAttributesStore(
-        component.def.componentId,
-      );
-      await attributesStore.FETCH_PROPERTY_EDITOR_SCHEMA();
-      if (attributesStore.schema) {
-        schemaVariantsById[component.def.schemaVariantId] =
-          attributesStore.schema;
-      }
+const loadedPropConnections = ref(false);
+watch(
+  [storedInitialComponent, searchStrings, connectionData.aDirection],
+  async () => {
+    if (!featureFlagsStore.PROPS_TO_PROPS_CONNECTIONS) {
+      return;
     }
-  }
 
-  let activeCandidates = [] as ConnectionCandidateProp[];
-  let peerCandidates = [] as ConnectionCandidateProp[];
+    if (!storedInitialComponent.value) return;
+    loadingPropConnections.value = true;
+    loadedPropConnections.value = false;
 
-  for (const schemaId in schemaVariantsById) {
-    const schema = schemaVariantsById[schemaId];
-    if (!schema) continue;
-
-    const queue = (schema.childProps[schema.rootPropId] ?? []).map(
-      (propId) => ({ propId, parentPath: "" }),
+    const allComponents = _.values(componentsStore.allComponentsById).filter(
+      (c) => c.def.changeStatus !== "deleted",
     );
 
-    const svPropPaths = [];
-    while (queue.length > 0) {
-      const entry = queue.shift();
-      if (!entry) continue;
-      const propId = entry.propId;
-      const parentPath = entry.parentPath;
+    // Gather the schemas for the props currently on the diagram
+    const componentsBySvId = {} as Record<
+      string,
+      (DiagramNodeData | DiagramGroupData)[]
+    >;
+    for (const component of allComponents) {
+      const svId = component.def.schemaVariantId;
+      componentsBySvId[svId] ??= [];
+      componentsBySvId[svId]?.push(component);
 
-      const prop = schema.props[propId];
-      if (!prop) continue;
-
-      const path = `${parentPath}/${prop.name}`;
-
-      if (
-        !path.startsWith("/domain") &&
-        !path.startsWith("/resource_value") &&
-        !["/si", "/si/name", "/si/resourceId", "/si/color"].includes(path)
-      )
-        continue;
-
-      svPropPaths.push(path);
-
-      for (const childPropId of schema.childProps[propId] ?? []) {
-        queue.unshift({ propId: childPropId, parentPath: path });
-      }
-    }
-
-    for (const component of componentsBySvId[schemaId] ?? []) {
-      const isActiveComponent =
-        storedInitialComponent.value.def.id === component.def.id;
-
-      const componentViews =
-        viewsStore.viewNamesByComponentId[component.def.id] ?? [];
-
-      for (const view of componentViews) {
-        for (const propPath of svPropPaths) {
-          const label = `${view}/${component.def.schemaName}/${component.def.displayName}${propPath}`;
-
-          const entry = {
-            component,
-            propPath,
-            label,
-          };
-
-          if (isActiveComponent) {
-            activeCandidates.push(entry);
-          } else {
-            peerCandidates.push(entry);
-          }
+      if (!schemaVariantsById[component.def.schemaVariantId]) {
+        const attributesStore = useComponentAttributesStore(
+          component.def.componentId,
+        );
+        await attributesStore.FETCH_PROPERTY_EDITOR_SCHEMA();
+        if (attributesStore.schema) {
+          schemaVariantsById[component.def.schemaVariantId] =
+            attributesStore.schema;
         }
-        // Don't show options for all views for active component
-        if (isActiveComponent) break;
       }
     }
-  }
 
-  // Remove resource value from inputs
-  if (connectionData.aDirection === "input") {
-    activeCandidates = activeCandidates.filter(
-      (e) => !e.propPath.startsWith("/resource_value"),
-    );
-  } else {
-    peerCandidates = peerCandidates.filter(
-      (e) => !e.propPath.startsWith("/resource_value"),
-    );
-  }
+    let activeCandidates = [] as ConnectionCandidateProp[];
+    let peerCandidates = [] as ConnectionCandidateProp[];
 
-  if (searchStringA.value) {
-    const fzf = new Fzf(activeCandidates, {
-      casing: "case-insensitive",
-      selector: (item) => item.label,
-    });
+    for (const schemaId in schemaVariantsById) {
+      const schema = schemaVariantsById[schemaId];
+      if (!schema) continue;
 
-    activeCandidates = fzf.find(searchStringA.value).map((e) => ({
-      ...e.item,
-      labelHighlights: e.positions,
-    }));
-  }
+      const queue = (schema.childProps[schema.rootPropId] ?? []).map(
+        (propId) => ({ propId, parentPath: "" }),
+      );
 
-  if (searchStringB.value) {
-    const fzf = new Fzf(peerCandidates, {
-      casing: "case-insensitive",
-      selector: (item) => item.label,
-    });
+      const svPropPaths = [];
+      while (queue.length > 0) {
+        const entry = queue.shift();
+        if (!entry) continue;
+        const propId = entry.propId;
+        const parentPath = entry.parentPath;
 
-    peerCandidates = fzf.find(searchStringB.value).map((e) => ({
-      ...e.item,
-      labelHighlights: e.positions,
-    }));
-  }
+        const prop = schema.props[propId];
+        if (!prop) continue;
 
-  socketlessConnectionCandidatesA.value = activeCandidates;
-  socketlessConnectionCandidatesB.value = peerCandidates;
-  loadingPropConnections.value = false;
-});
+        const path = `${parentPath}/${prop.name}`;
+
+        if (
+          !path.startsWith("/domain") &&
+          !path.startsWith("/resource_value") &&
+          !["/si", "/si/name", "/si/resourceId", "/si/color"].includes(path)
+        )
+          continue;
+
+        svPropPaths.push(path);
+
+        for (const childPropId of schema.childProps[propId] ?? []) {
+          queue.unshift({ propId: childPropId, parentPath: path });
+        }
+      }
+
+      for (const component of componentsBySvId[schemaId] ?? []) {
+        const isActiveComponent =
+          storedInitialComponent.value.def.id === component.def.id;
+
+        const componentViews =
+          viewsStore.viewNamesByComponentId[component.def.id] ?? [];
+
+        for (const view of componentViews) {
+          for (const propPath of svPropPaths) {
+            const label = `${view}/${component.def.schemaName}/${component.def.displayName}${propPath}`;
+
+            const entry = {
+              component,
+              propPath,
+              label,
+            };
+
+            if (isActiveComponent) {
+              activeCandidates.push(entry);
+            } else {
+              peerCandidates.push(entry);
+            }
+          }
+          // Don't show options for all views for active component
+          if (isActiveComponent) break;
+        }
+      }
+    }
+
+    const inputFilterFn = (e: ConnectionCandidateProp) =>
+      !e.propPath.startsWith("/resource_value") &&
+      e.propPath !== "/si" &&
+      e.propPath !== "/si/resourceId";
+
+    // Remove resource value from inputs
+    if (connectionData.aDirection === "input") {
+      activeCandidates = activeCandidates.filter(inputFilterFn);
+    } else {
+      peerCandidates = peerCandidates.filter(inputFilterFn);
+    }
+
+    if (searchStringA.value) {
+      const fzf = new Fzf(activeCandidates, {
+        casing: "case-insensitive",
+        selector: (item) => item.label,
+      });
+
+      activeCandidates = fzf.find(searchStringA.value).map((e) => ({
+        ...e.item,
+        labelHighlights: e.positions,
+      }));
+    }
+
+    if (searchStringB.value) {
+      const fzf = new Fzf(peerCandidates, {
+        casing: "case-insensitive",
+        selector: (item) => item.label,
+      });
+
+      peerCandidates = fzf.find(searchStringB.value).map((e) => ({
+        ...e.item,
+        labelHighlights: e.positions,
+      }));
+    }
+
+    socketlessConnectionCandidatesA.value = activeCandidates;
+    socketlessConnectionCandidatesB.value = peerCandidates;
+    loadingPropConnections.value = false;
+    loadedPropConnections.value = true;
+  },
+);
 
 const highlightedIndex = ref(0);
 // Try to keep the selected option selected when list changes, else reset selected to 0
@@ -803,7 +865,7 @@ const processHighlighted = () => {
 
     if (candidateIsProp(selectedItem)) {
       connectionData.A.attributePath = selectedItem.propPath;
-      connectionData.aDirection = "output";
+      connectionData.aDirection = "input";
       connectionData.A.componentId = selectedItem.component.def.id;
 
       if (inputARef.value) {
@@ -916,12 +978,13 @@ function open(initialState: ConnectionMenuData) {
   activeSide.value = "a";
   connectionData.A = {};
   connectionData.B = {};
-  activeSide.value = "a";
+
   if (inputBRef.value) {
     inputBRef.value.searchString = "";
   }
   let initialASearch = "";
   let initialBSearch = "";
+
   let aSocketSelected = false;
   const initialComponentA =
     componentsStore.allComponentsById[initialState.A.componentId || ""];
@@ -955,6 +1018,11 @@ function open(initialState: ConnectionMenuData) {
     if (initialSocket) {
       aSocketSelected = true;
       initialASearch += `${initialSocket.def.label}`;
+    }
+    if (initialState.A.attributePath) {
+      const strippedPath = initialState.A.attributePath.replace(/\//, "");
+      aSocketSelected = true;
+      initialASearch += strippedPath;
     }
   }
   if (initialComponentB) {
@@ -999,18 +1067,34 @@ function open(initialState: ConnectionMenuData) {
   modalRef.value?.open();
 
   const finishOpening = setInterval(async () => {
+    if (
+      featureFlagsStore.PROPS_TO_PROPS_CONNECTIONS &&
+      !loadedPropConnections.value
+    ) {
+      return;
+    }
     if (!inputARef.value || !inputBRef.value) {
       return;
     }
+    clearInterval(finishOpening);
     inputARef.value.searchString = initialASearch;
     inputBRef.value.searchString = initialBSearch;
-    activeInputRef.value.value?.focus();
+
     if (aSocketSelected) {
+      // This make sure we selected the right item from the list before selecting it
+      for (const i in fullASideList.value) {
+        const item = fullASideList.value[i];
+        if (item && item.label === initialASearch) {
+          highlightedIndex.value = Number(i);
+          break;
+        }
+      }
+
       processHighlighted();
     }
-    await updateMenu();
+
+    activeInputRef.value.value?.focus();
     doneOpening.value = true;
-    clearInterval(finishOpening);
   }, 1);
 }
 
@@ -1022,9 +1106,7 @@ function close() {
   modalRef.value?.close();
 }
 
-const isOpen = computed(() => modalRef.value?.isOpen);
-
-defineExpose({ open, close, isOpen });
+defineExpose({ open, close });
 </script>
 
 <script lang="ts">
