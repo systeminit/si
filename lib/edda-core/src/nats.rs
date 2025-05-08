@@ -30,6 +30,7 @@ pub async fn edda_tasks_jetstream_stream(
             max_messages_per_subject: 1,
             discard_new_per_subject: true,
             allow_direct: true,
+            num_replicas: 3,
             subjects,
             ..Default::default()
         })
@@ -56,6 +57,7 @@ pub async fn edda_requests_jetstream_stream(
             retention: async_nats::jetstream::stream::RetentionPolicy::Limits,
             discard: async_nats::jetstream::stream::DiscardPolicy::New,
             allow_direct: true,
+            num_replicas: 3,
             subjects,
             ..Default::default()
         })
