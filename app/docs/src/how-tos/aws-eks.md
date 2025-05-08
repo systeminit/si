@@ -224,7 +224,7 @@ AWS IAM Service Principal to the `Principal` Input Socket of your
 
 ### Connect Additional Access Policy to the IAM Role
 
-![Create IAM Role Policy](./aws-eks/create-iam-role-policy-for-fargate-profile-role)
+![Create IAM Role Policy](./aws-eks/create-iam-role-policy-for-fargate-profile-role.png)
 
 Add an `AWS::IAM::RolePolicy` Component to the `fargate-profile-role` AWS IAM
 Role frame.
@@ -323,7 +323,7 @@ Service Principal to the `Principal` Input Socket of your
 
 ### Connect Additional Access Policies to the IAM Role
 
-![Create Additional Access Policies to Node Group IAM](./aws-eks/create-additional-policies-for-node-group-iam-role)
+![Create Additional Access Policies to Node Group IAM](./aws-eks/create-additional-policies-for-node-group-iam-role.png)
 
 Add 3 `AWS::IAM::RolePolicy` Components to the `nodegroup-profile-role` AWS IAM
 Role frame.
