@@ -23,9 +23,6 @@ const lessVars = readFileSync(
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  optimizeDeps: {
-    exclude: ["vue-router"],
-  },
   server: {
     port: 9000,
     strictPort: true,
@@ -73,7 +70,6 @@ export default defineConfig({
     ],
   },
   build: {
-    minify: false,
     manifest: true,
   },
 });
