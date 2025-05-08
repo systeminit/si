@@ -1041,6 +1041,15 @@ const overrides = new Map<string, OverrideFn>([
       ];
     }
   }],
+  ['AWS::CloudFront::Distribution', (spec: ExpandedPkgSpec) => {
+    const variant = spec.schemas[0].variants[0];
+
+    const certificateInputSocket = variant.sockets.find(
+      (s: ExpandedSocketSpec) => s.name === "Distribution Viewer Certificate Acm Certificate Arn" && s.data.kind === "input",
+    );
+    if (!certificateInputSocket) return;
+    setAnnotationOnSocket(certificateInputSocket, { tokens: ["certificate arn"] });
+  }],
 ]);
 
 function attachExtraActionFunction(
