@@ -393,21 +393,27 @@ export class DiagramEdgeData extends DiagramElementData {
   }
 
   get fromSocketKey() {
+    if (!this.def.fromSocketId) {
+      throw new Error("fromSocketId is required for fromSocketKey");
+    }
     const comp =
       useComponentsStore().allComponentsById[this.def.fromComponentId];
     if (comp?.def.isGroup) {
       return DiagramSocketData.generateUniqueKey(
         DiagramGroupData.generateUniqueKey(this.def.fromComponentId),
-        this.def.fromSocketId,
+        this.def.fromSocketId ?? "<ERROR THIS SHOULD NOT BE CALLED>",
       );
     }
     return DiagramSocketData.generateUniqueKey(
       DiagramNodeData.generateUniqueKey(this.def.fromComponentId),
-      this.def.fromSocketId,
+      this.def.fromSocketId ?? "subscribedTo",
     );
   }
 
   get toSocketKey() {
+    if (!this.def.toSocketId) {
+      throw new Error("toSocketId is required for fromSocketKey");
+    }
     const comp = useComponentsStore().allComponentsById[this.def.toComponentId];
     if (comp?.def.isGroup) {
       return DiagramSocketData.generateUniqueKey(
@@ -567,9 +573,9 @@ export type DiagramEdgeDef = {
   type?: string;
   name?: string;
   fromComponentId: DiagramElementId;
-  fromSocketId: DiagramElementId;
+  fromSocketId?: DiagramElementId;
   toComponentId: DiagramElementId;
-  toSocketId: DiagramElementId;
+  toSocketId?: DiagramElementId;
   isBidirectional?: boolean;
   isInferred?: boolean;
   isManagement?: boolean;

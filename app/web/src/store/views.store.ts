@@ -51,7 +51,11 @@ import {
   diagramUlid as clientUlid,
   useChangeSetsStore,
 } from "./change_sets.store";
-import { processRawComponent, useComponentsStore } from "./components.store";
+import {
+  ComponentsAndEdges,
+  processRawComponent,
+  useComponentsStore,
+} from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRouterStore } from "./router.store";
@@ -869,12 +873,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
           return new ApiRequest<{
             view: ViewDescription;
-            diagram: {
-              components: RawComponent[];
-              edges: RawEdge[];
-              inferredEdges: RawEdge[];
-              managementEdges: RawEdge[];
-              attributeSubscriptionEdges: ComponentEdge[];
+            diagram: ComponentsAndEdges & {
               views: ViewNodeGeometry[];
             };
           }>({

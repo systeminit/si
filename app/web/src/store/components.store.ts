@@ -37,7 +37,9 @@ import {
   PotentialConnection,
   RawComponent,
   RawEdge,
+  RawSubscriptionEdge,
   SocketId,
+  SubscriptionEdge,
 } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
@@ -212,6 +214,14 @@ export type ConnectionMenuData = {
   aDirection: ConnectionDirection | undefined;
   A: Partial<ConnectionMenuStateEntry>;
   B: Partial<ConnectionMenuStateEntry>;
+};
+
+export type ComponentsAndEdges = {
+  components: RawComponent[];
+  edges: RawEdge[];
+  inferredEdges: RawEdge[];
+  managementEdges: RawEdge[];
+  attributeSubscriptionEdges: RawSubscriptionEdge[];
 };
 
 type EventBusEvents = {
@@ -657,7 +667,7 @@ export const processRawComponent = (
 };
 
 const processRawEdge = (
-  edge: Edge,
+  edge: DiagramEdgeDef,
   allComponentsById: Record<ComponentId, DiagramGroupData | DiagramNodeData>,
 ): DiagramEdgeData | null => {
   const featureFlagsStore = useFeatureFlagsStore();
@@ -724,6 +734,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           >,
 
           rawEdgesById: {} as Record<EdgeId, Edge>,
+          subscriptionEdgesById: {} as Record<EdgeId, SubscriptionEdge>,
           diagramEdgesById: {} as Record<EdgeId, DiagramEdgeData>,
           copyingFrom: null as { x: number; y: number } | null,
 
@@ -743,6 +754,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           debugDataByComponentId: {} as Record<ComponentId, ComponentDebugView>,
         }),
         getters: {
+          diagramSubscriptionEdgesById(): Record<EdgeId, DiagramEdgeData> {
+            return Object.fromEntries(
+              Object.values(this.subscriptionEdgesById)
+                .map((edge) => processRawEdge(edge, this.allComponentsById))
+                .filter((edge) => !!edge)
+                .map((edge) => [edge.def.id, edge]),
+            );
+          },
+
           // transforming the diagram-y data back into more generic looking data
           // TODO: ideally we just fetch it like this...
           componentsByParentId(): Record<
@@ -1003,13 +1023,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           async FETCH_ALL_COMPONENTS() {
-            return new ApiRequest<{
-              components: RawComponent[];
-              edges: RawEdge[];
-              inferredEdges: RawEdge[];
-              managementEdges: RawEdge[];
-              attributeSubscriptionEdges: ComponentEdge[];
-            }>({
+            return new ApiRequest<ComponentsAndEdges>({
               method: "get",
               url: "diagram/get_all_components_and_edges",
               params: {
@@ -1024,12 +1038,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           SET_COMPONENTS_FROM_VIEW(
-            response: {
-              components: RawComponent[];
-              edges: RawEdge[];
-              inferredEdges: RawEdge[];
-              managementEdges: RawEdge[];
-            },
+            response: ComponentsAndEdges,
             options: { representsAllComponents: boolean } = {
               representsAllComponents: false,
             },
@@ -1093,11 +1102,18 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               idsToDelete.forEach((id) => {
                 delete this.rawEdgesById[id];
               });
+              // TODO do this for subscriptions
             }
             edgesToSet.forEach((edge) => {
               this.rawEdgesById[edge.id] = edge;
               this.processRawEdge(edge.id);
             });
+            this.subscriptionEdgesById = Object.fromEntries(
+              response.attributeSubscriptionEdges.map((edge) => {
+                const id = `${edge.toComponentId}_${edge.toAttributeValueId}_${edge.fromAttributePath}_${edge.fromComponentId}`;
+                return [id, { id, ...edge }];
+              }),
+            );
           },
 
           async FETCH_COMPONENT_DEBUG_VIEW(componentId: ComponentId) {

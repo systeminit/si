@@ -3503,6 +3503,29 @@ const displayEdges = computed(() => {
         existingDisplayEdge.connectionCount++;
       }
     });
+    for (const edge of Object.values(componentsStore.diagramSubscriptionEdgesById)) {
+      const to = edge.toNodeKey.substring(2);
+      const from = edge.fromNodeKey.substring(2);
+      const connection = to + from;
+      const isManagement = edge.def.isManagement;
+      const existingDisplayEdge = displayEdgesByConnection[connection];
+      if (isManagement) {
+        displayEdges.push(edge);
+      } else if (!connections.includes(connection)) {
+        connections.push(connection); // we have the one connection for these two components
+        const displayEdge = new DiagramEdgeDataWithConnectionCount({
+          ...edge.def,
+        });
+        displayEdges.push(displayEdge);
+        displayEdgesByConnection[connection] = displayEdge;
+      } else if (existingDisplayEdge) {
+        // this is a repeat edge, multiple connections between the same components
+        if (existingDisplayEdge.def.changeStatus !== edge.def.changeStatus) {
+          existingDisplayEdge.def.changeStatus = "unmodified";
+        }
+        existingDisplayEdge.connectionCount++;
+      }
+    }
     return displayEdges;
   }
   return viewsStore.edges;

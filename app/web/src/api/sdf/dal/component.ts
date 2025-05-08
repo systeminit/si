@@ -81,6 +81,17 @@ export interface ComponentEdge {
   changeStatus?: ChangeStatus;
 }
 
+export interface RawSubscriptionEdge extends ComponentEdge {
+  fromAttributePath: string;
+  toAttributeValueId: string;
+  fromSocketId?: undefined;
+  toSocketId?: undefined;
+}
+
+export interface SubscriptionEdge extends RawSubscriptionEdge {
+  id: EdgeId;
+}
+
 export interface RawEdge extends ComponentEdge {
   fromSocketId: SocketId;
   toSocketId: SocketId;
