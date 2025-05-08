@@ -104,3 +104,6 @@ export interface PotentialMatch {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   value: any | null;
 }
+
+// JSON pointer to an attribute, relative to the component root (e.g. /domain/IpAddresses/0 or /si/name)
+export type AttributePath = string;

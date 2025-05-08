@@ -118,6 +118,7 @@ import IconoirMouseScrollWheel from "~icons/iconoir/mouse-scroll-wheel";
 import MdiCursorDefaultClickOutline from "~icons/mdi/cursor-default-click-outline";
 import MaterialSymbolsShiftLockOutline from "~icons/material-symbols/shift-lock-outline";
 import MaterialSymbolsAddLink from "~icons/material-symbols/add-link";
+import MaterialSymbolsLink from "~icons/material-symbols/link";
 
 import TdesignLinkUnlink from "~icons/tdesign/link-unlink";
 import PhTestTubeFill from "~icons/ph/test-tube-fill";
@@ -254,6 +255,7 @@ export const ICONS = Object.freeze({
   command: MaterialSymbolsKeyboardCommandKey,
   component: Cube,
   "component-plus": CubePlus,
+  connection: MaterialSymbolsLink,
   create: Create,
   "credit-card": CreditCard,
   cursor: PhCursorTextBold,

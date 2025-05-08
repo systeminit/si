@@ -5,6 +5,7 @@
 // * require a key/index (map or array)
 
 import { DoubleLabelList, LabelList } from "@/api/sdf/dal/label_list";
+import { ComponentId, AttributePath } from "./component";
 
 export enum PropertyEditorPropKind {
   Array = "array",
@@ -143,6 +144,7 @@ export interface PropertyEditorValue {
   overridden: boolean;
   ancestorManual: boolean;
   validation?: ValidationOutput;
+  source?: { component: ComponentId; path: AttributePath };
   // TODO(Wendy) - we also need the default funcId and funcName for this prop to tell the user the default func that was overriden
 }
 

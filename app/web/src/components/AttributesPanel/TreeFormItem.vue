@@ -244,9 +244,7 @@
           :attributesPanel="attributesPanel"
           :context="context"
           :level="level + 1"
-          :parentPath="
-            parentPath ? `${parentPath}/${propName}` : `/${propName}`
-          "
+          :parentPath="attributePath"
           :treeDef="childProp"
         />
 
@@ -476,18 +474,12 @@
         <div
           class="flex flex-row gap-2xs mr-2xs flex-none ml-auto items-center [&>*]:cursor-pointer"
         >
-          <button
-            v-if="
-              useFeatureFlagsStore().PROPS_TO_PROPS_CONNECTIONS &&
-              !props.parentPath?.startsWith('/secrets') &&
-              !props.parentPath?.startsWith('/resource_value')
-            "
-            v-tooltip="'Connect'"
-            class="text-neutral-400 hover:text-shade-0 hover:scale-125 z-30 flex-none"
+          <SourceIconWithTooltip
+            v-if="canSubscribe && !sourceSubscription"
+            :tooltipText="'Connect'"
+            icon="add-connection"
             @click="openConnectionsMenu"
-          >
-            <Icon name="add-connection" size="xs" />
-          </button>
+          />
           <button
             v-if="isChildOfMap || isChildOfArray"
             v-tooltip="'Delete'"
@@ -502,6 +494,7 @@
             :icon="sourceIcon"
             :overridden="sourceOverridden"
             :tooltipText="sourceTooltipText"
+            @click="openUpdateConnectionsMenu"
           />
 
           <a
@@ -952,6 +945,11 @@
             component whose asset defines it). For example, an "AWS Credential"
             secret must be set on an "AWS Credential" component.
           </template>
+          <template v-else-if="sourceSubscription">
+            You cannot edit prop "{{ propName }}" because it is populated by a
+            subscription to attribute "{{ sourceSubscription.path }}" on
+            component "{{ sourceSubscriptionComponent?.def.title }}"
+          </template>
           <template v-else>
             Editing the prop "{{ propName }}" directly will override the current
             value that is set by a dynamic function.
@@ -1216,7 +1214,26 @@ const propLabelParts = computed(() => {
   return ["", propName.value];
 });
 const propLabel = computed(() => propLabelParts.value.join(""));
+const attributePath = computed(() => {
+  // We don't support array or map elements right now because the floaty menu only supports props
+  if (isChildOfArray.value || isChildOfMap.value) return undefined;
 
+  // We don't support subscriptions on resource_value or secrets
+  // The root prop will have undefined parentPath (because it has no parents :)) so we construct
+  // its path using /{propName}
+  if (props.isRootProp) {
+    // We don't support subscriptions on resource_value or secrets
+    if (propName.value === "secrets") return undefined;
+    if (propName.value === "resource_value") return undefined;
+    return `/${propName.value}`;
+  }
+
+  // If we are a *nested* child of an array or map, our parentPath is undefined, and we want to
+  // keep returning undefined because we're still unsupported!
+  if (!props.parentPath) return undefined;
+
+  return `${props.parentPath}/${propName.value}`;
+});
 const isArray = computed(() => propKind.value === "array");
 const isMap = computed(() => propKind.value === "map");
 const isMapKeyError = ref(false);
@@ -1400,20 +1417,35 @@ const setSource = (source: AttributeValueSource) => {
 };
 
 const sourceIcon = computed(() => {
-  if (propPopulatedBySocket.value) return "circle-full";
+  if (sourceSubscription.value) return "connection";
+  else if (propPopulatedBySocket.value) return "circle-full";
   else if (propSetByDynamicFunc.value) return "func";
   else if (propHasSocket.value) return "circle-empty";
   else return "cursor";
 });
 
 const sourceOverridden = computed(() => props.treeDef.value?.overridden);
-
+const sourceSubscription = computed(() => props.treeDef.value?.source);
+const sourceSubscriptionComponent = computed(() => {
+  const componentId = sourceSubscription.value?.component;
+  if (!componentId) return undefined;
+  return useComponentsStore().allComponentsById[
+    sourceSubscription.value?.component
+  ];
+});
+const isSetManually = computed(
+  () => sourceOverridden.value && !sourceSubscription.value,
+);
+const canSubscribe = computed(
+  () =>
+    useFeatureFlagsStore().PROPS_TO_PROPS_CONNECTIONS && attributePath.value,
+);
 const propIsEditable = computed(() => {
   if (isImmutableSecretProp.value || isCreateOnly.value) {
     return false;
   }
   return (
-    sourceOverridden.value ||
+    isSetManually.value ||
     editOverride.value ||
     (!propPopulatedBySocket.value && !propSetByDynamicFunc.value)
   );
@@ -1428,12 +1460,14 @@ const sourceTooltipText = computed(() => {
     return `${propName.value} can only be set before resource creation`;
   }
   if (sourceOverridden.value) {
-    if (propPopulatedBySocket.value) {
-      return `${propName.value} has been overriden to be set via a populated socket`;
+    if (sourceSubscription.value) {
+      return `${propName.value} is subscribed to ${sourceSubscription.value.path} on ${sourceSubscriptionComponent?.value?.def.title}`;
+    } else if (propPopulatedBySocket.value) {
+      return `${propName.value} has been overridden to be set via a populated socket`;
     } else if (propSetByDynamicFunc.value) {
-      return `${propName.value} has been overriden to be set by a dynamic function`;
+      return `${propName.value} has been overridden to be set by a dynamic function`;
     } else if (propHasSocket.value) {
-      return `${propName.value} has been overriden to be set via an empty socket`;
+      return `${propName.value} has been overridden to be set via an empty socket`;
     }
     return `${propName.value} has been set manually`;
   } else {
@@ -1491,19 +1525,28 @@ function removeChildHandler() {
 }
 
 function openConnectionsMenu() {
+  if (!useFeatureFlagsStore().PROPS_TO_PROPS_CONNECTIONS) return;
   if (!attributesStore.value) return;
-
-  const componentId = attributesStore.value.selectedComponentId;
-
-  const attributePath = `${props.parentPath ?? ""}/${propName.value}`;
 
   const menuData = {
     aDirection: "input" as ConnectionDirection,
-    A: { componentId, attributePath },
-    B: {},
+    A: {
+      componentId: attributesStore.value.selectedComponentId,
+      attributePath: attributePath.value,
+    },
+    B: {
+      componentId: props.treeDef.value?.source?.component,
+      attributePath: props.treeDef.value?.source?.path,
+    },
   };
 
   useComponentsStore().eventBus.emit("openConnectionsMenu", menuData);
+}
+
+function openUpdateConnectionsMenu() {
+  if (!sourceSubscription.value) return;
+
+  openConnectionsMenu();
 }
 
 const validation = computed(() => {
