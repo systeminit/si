@@ -127,8 +127,7 @@ const setSockets = (
   const right = component.layoutRightSockets(width);
   right.sockets.forEach((s) => {
     const center = {
-      x:
-        geometry.x +
+      x: geometry.x +
         right.x +
         width - // we add the full width to get to the right side...
         SOCKET_SIZE + // minus the size of the socket, b/c later code adds half the size of the socket
@@ -295,7 +294,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           | undefined {
           return (
             componentsStore.allComponentsById[this.selectedComponentId || 0] ??
-            this.viewNodes[this.selectedComponentId || 0]
+              this.viewNodes[this.selectedComponentId || 0]
           );
         },
         selectedComponents(): (
@@ -405,15 +404,24 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           const idx = state.viewList.findIndex((v) => v.isDefault);
           return idx !== -1 ? state.viewList[idx]?.id : state.viewList[0]?.id;
         },
-        edges: (state) =>
-          Object.values(componentsStore.diagramEdgesById).filter((e) => {
-            const to = e.toNodeKey.substring(2);
-            const from = e.fromNodeKey.substring(2);
-            const componentIds = Object.keys(state.components).concat(
-              Object.keys(state.groups),
-            );
-            return componentIds.includes(to) && componentIds.includes(from);
-          }),
+        edges: (state) => {
+          const subscriptions = featureFlagsStore.SIMPLE_SOCKET_UI
+            ? _.values(componentsStore.diagramSubscriptionEdgesById)
+            : [];
+
+          const edges = Object.values(componentsStore.diagramEdgesById)
+            .concat(subscriptions)
+            .filter((e) => {
+              const to = e.toNodeKey.substring(2);
+              const from = e.fromNodeKey.substring(2);
+              const componentIds = Object.keys(state.components).concat(
+                Object.keys(state.groups),
+              );
+              return componentIds.includes(to) && componentIds.includes(from);
+            });
+
+          return edges;
+        },
         selectedView: (state) => state.viewsById[state.selectedViewId || ""],
         outlinerView: (state) => state.viewsById[state.outlinerViewId || ""],
         // NOTE: this is computed for now, but we could easily make this state
@@ -434,8 +442,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             let right;
 
             for (const childId of childIds) {
-              const geometry =
-                state.groups[childId] || state.components[childId];
+              const geometry = state.groups[childId] ||
+                state.components[childId];
               if (!geometry) continue;
 
               if (!top || geometry.y < top) top = geometry.y;
@@ -464,8 +472,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
               x: left - GROUP_INTERNAL_PADDING,
               y: top - GROUP_INTERNAL_PADDING,
               width: right - left + GROUP_INTERNAL_PADDING * 2,
-              height:
-                bottom -
+              height: bottom -
                 top +
                 GROUP_INTERNAL_PADDING +
                 GROUP_BOTTOM_INTERNAL_PADDING,
@@ -477,9 +484,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
         requirementDefintionsByViewId: (state) => {
           const out = {} as Record<ViewId, ViewApprovalRequirementDefinition[]>;
-          for (const requirement of Object.values(
-            state.requirementDefinitionsById,
-          )) {
+          for (
+            const requirement of Object.values(
+              state.requirementDefinitionsById,
+            )
+          ) {
             if (!out[requirement.entityId]) {
               out[requirement.entityId] = [];
             }
@@ -587,8 +596,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             this.selectedViewDetailsId = null;
           }
 
-          const tabSlug =
-            (router.currentRoute.value.query?.t as string) || null;
+          const tabSlug = (router.currentRoute.value.query?.t as string) ||
+            null;
           if (this.selectedComponentIds.length === 1) {
             this.selectedComponentDetailsTab = tabSlug;
           } else {
@@ -672,7 +681,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             ids.push(...Object.keys(v2.groups));
           }
           const valid = this.selectedComponentIds.filter((cId) =>
-            ids.includes(cId),
+            ids.includes(cId)
           );
           this.selectedComponentIds = valid;
           this.syncSelectionIntoUrl();
@@ -814,9 +823,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                       zIndex: 0,
                     };
                   }
-                  for (const [key, loc] of Object.entries(
-                    setSockets(node, geometry),
-                  )) {
+                  for (
+                    const [key, loc] of Object.entries(
+                      setSockets(node, geometry),
+                    )
+                  ) {
                     view.sockets[key] = loc;
                   }
                 },
@@ -973,9 +984,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             const node = componentsStore.allComponentsById[
               group.id
             ]! as DiagramGroupData;
-            for (const [key, loc] of Object.entries(
-              setSockets(node, geometry),
-            )) {
+            for (
+              const [key, loc] of Object.entries(
+                setSockets(node, geometry),
+              )
+            ) {
               sockets[key] = loc;
             }
           }
@@ -1308,9 +1321,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           };
           this.setGroupZIndex();
 
-          for (const [key, loc] of Object.entries(
-            setSockets(component, geometry),
-          )) {
+          for (
+            const [key, loc] of Object.entries(
+              setSockets(component, geometry),
+            )
+          ) {
             this.sockets[key] = loc;
           }
 
@@ -1429,16 +1444,15 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             return;
           }
 
-          const idAndType =
-            categoryVariant.type === "installed"
-              ? {
-                  schemaType: "installed",
-                  schemaVariantId: categoryVariant.variant.schemaVariantId,
-                }
-              : {
-                  schemaType: "uninstalled",
-                  schemaId: categoryVariant.variant.schemaId,
-                };
+          const idAndType = categoryVariant.type === "installed"
+            ? {
+              schemaType: "installed",
+              schemaVariantId: categoryVariant.variant.schemaVariantId,
+            }
+            : {
+              schemaType: "uninstalled",
+              schemaId: categoryVariant.variant.schemaId,
+            };
 
           const tempInsertId = _.uniqueId("temp-insert-component");
 
@@ -1839,9 +1853,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                   geometry.height = node.height;
                   geometry.width = node.width;
                   view.components[data.component.id] = geometry as IRect;
-                  for (const [key, loc] of Object.entries(
-                    setSockets(node, geometry),
-                  )) {
+                  for (
+                    const [key, loc] of Object.entries(
+                      setSockets(node, geometry),
+                    )
+                  ) {
                     view.sockets[key] = loc;
                   }
                 } else {
@@ -1857,9 +1873,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                     data.component,
                     componentsStore.rawComponentsById,
                   ) as DiagramGroupData;
-                  for (const [key, loc] of Object.entries(
-                    setSockets(node, geometry),
-                  )) {
+                  for (
+                    const [key, loc] of Object.entries(
+                      setSockets(node, geometry),
+                    )
+                  ) {
                     view.sockets[key] = loc;
                   }
                 }
@@ -1917,9 +1935,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                       // and that component was a frame, it would not resize itself
                       // and the sockets would appear outside the frame
                     }
-                    for (const [key, loc] of Object.entries(
-                      setSockets(node, geo),
-                    )) {
+                    for (
+                      const [key, loc] of Object.entries(
+                        setSockets(node, geo),
+                      )
+                    ) {
                       view.sockets[key] = loc;
                     }
                   }
@@ -1968,9 +1988,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                     finalGeo.height = node.height;
                     finalGeo.width = node.width;
                     view.components[data.component.id] = finalGeo as IRect;
-                    for (const [key, loc] of Object.entries(
-                      setSockets(node, finalGeo),
-                    )) {
+                    for (
+                      const [key, loc] of Object.entries(
+                        setSockets(node, finalGeo),
+                      )
+                    ) {
                       view.sockets[key] = loc;
                     }
                   } else {
@@ -1985,9 +2007,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                       data.component,
                       componentsStore.rawComponentsById,
                     ) as DiagramGroupData;
-                    for (const [key, loc] of Object.entries(
-                      setSockets(node, finalGeo),
-                    )) {
+                    for (
+                      const [key, loc] of Object.entries(
+                        setSockets(node, finalGeo),
+                      )
+                    ) {
                       view.sockets[key] = loc;
                     }
                   }
@@ -2065,9 +2089,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                       viewComponent.y = geo.y;
                     }
 
-                    for (const [key, loc] of Object.entries(
-                      setSockets(component, geo),
-                    )) {
+                    for (
+                      const [key, loc] of Object.entries(
+                        setSockets(component, geo),
+                      )
+                    ) {
                       _view.sockets[key] = loc;
                     }
                   } else {
@@ -2142,8 +2168,8 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                 }
                 this.SORT_LIST_VIEWS();
                 await this.FETCH_VIEW_GEOMETRY(view.id);
-                const actionWhichCreatedView =
-                  realtimeStore.inflightRequests.get(metadata.request_ulid);
+                const actionWhichCreatedView = realtimeStore.inflightRequests
+                  .get(metadata.request_ulid);
                 if (
                   metadata.actor !== "System" &&
                   metadata.actor.User === authStore.userPk &&
@@ -2201,9 +2227,11 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
                         };
                       } else view.components[componentId] = geo;
                       if (geo) {
-                        for (const [key, loc] of Object.entries(
-                          setSockets(c, geo),
-                        )) {
+                        for (
+                          const [key, loc] of Object.entries(
+                            setSockets(c, geo),
+                          )
+                        ) {
                           view.sockets[key] = loc;
                         }
                       }
@@ -2223,10 +2251,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             {
               eventType: "ApprovalRequirementAddIndividualApprover",
               callback: (payload) => {
-                const viewId =
-                  this.requirementDefinitionsById[
-                    payload.approvalRequirementDefinitionId
-                  ]?.entityId;
+                const viewId = this.requirementDefinitionsById[
+                  payload.approvalRequirementDefinitionId
+                ]?.entityId;
                 if (viewId) {
                   this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
                 }
@@ -2242,10 +2269,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             {
               eventType: "ApprovalRequirementDefinitionRemoved",
               callback: (payload) => {
-                const viewId =
-                  this.requirementDefinitionsById[
-                    payload.approvalRequirementDefinitionId
-                  ]?.entityId;
+                const viewId = this.requirementDefinitionsById[
+                  payload.approvalRequirementDefinitionId
+                ]?.entityId;
                 if (viewId) {
                   this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
                 }
@@ -2254,10 +2280,9 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             {
               eventType: "ApprovalRequirementRemoveIndividualApprover",
               callback: (payload) => {
-                const viewId =
-                  this.requirementDefinitionsById[
-                    payload.approvalRequirementDefinitionId
-                  ]?.entityId;
+                const viewId = this.requirementDefinitionsById[
+                  payload.approvalRequirementDefinitionId
+                ]?.entityId;
                 if (viewId) {
                   this.LIST_VIEW_APPROVAL_REQUIREMENTS(viewId);
                 }
