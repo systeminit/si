@@ -41,7 +41,7 @@ sinks:
       codec: "text"
     region: "us-east-1"
     group_name: "/ec2/{{ host_environment }}-{{ service_name }}"
-    stream_name: "{{ host }}"
+    stream_name: "{{ instance_id }}"
   cloudwatch-docker:
     type: "aws_cloudwatch_logs"
     inputs: ["docker"]
@@ -50,7 +50,7 @@ sinks:
       codec: "text"
     region: "us-east-1"
     group_name: "/ec2/{{ host_environment }}-{{ service_name }}-docker"
-    stream_name: "{{ host }}"
+    stream_name: "{{ instance_id }}"
   honeycomb:
     type: "honeycomb"
     inputs: ["honeycomb_format"]
