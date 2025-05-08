@@ -85,9 +85,9 @@
       <div class="flex gap-sm">
         <VButton tone="shade" variant="ghost" @click="close"> Cancel </VButton>
         <VButton
+          class="flex-grow"
           icon="trash"
           tone="destructive"
-          class="flex-grow"
           @click="onConfirmDelete"
         >
           <template v-if="selectedEdge"> Delete </template>
@@ -98,7 +98,7 @@
   </Modal>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import * as _ from "lodash-es";
 import {
   Modal,
@@ -114,6 +114,7 @@ import clsx from "clsx";
 import { useComponentsStore } from "@/store/components.store";
 import { useViewsStore } from "@/store/views.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
+import { isSocketEdge } from "@/api/sdf/dal/component";
 import ComponentCard from "../ComponentCard.vue";
 import Connection from "../Connection.vue";
 
@@ -130,11 +131,11 @@ const selectedConnection = computed(() => {
   if (!fromComponent || !toComponent) return undefined;
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const fromSocket = fromComponent.sockets.find(
-    (socket) => socket.def.id === edge.fromSocketId,
+    (socket) => isSocketEdge(edge) && socket.def.id === edge.fromSocketId,
   )!;
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const toSocket = toComponent.sockets.find(
-    (socket) => socket.def.id === edge.toSocketId,
+    (socket) => isSocketEdge(edge) && socket.def.id === edge.toSocketId,
   )!;
   return {
     ...selectedEdge.value,
@@ -195,18 +196,24 @@ const removeOrDelete = ref(DELETE);
 async function onConfirmDelete() {
   close();
   if (selectedEdge.value || removeOrDelete.value === DELETE) {
-    if (
-      viewStore.selectedEdgeId &&
-      viewStore.selectedEdge?.toSocketId &&
-      viewStore.selectedEdge?.fromSocketId
-    ) {
-      const resp = await componentsStore.DELETE_EDGE(
-        viewStore.selectedEdgeId,
-        viewStore.selectedEdge?.toSocketId,
-        viewStore.selectedEdge?.fromSocketId,
-        viewStore.selectedEdge?.toComponentId,
-        viewStore.selectedEdge?.fromComponentId,
-      );
+    if (viewStore.selectedEdge) {
+      let resp;
+      if (isSocketEdge(viewStore.selectedEdge)) {
+        resp = await componentsStore.DELETE_EDGE(
+          viewStore.selectedEdge.id,
+          viewStore.selectedEdge.toSocketId,
+          viewStore.selectedEdge.fromSocketId,
+          viewStore.selectedEdge.toComponentId,
+          viewStore.selectedEdge.fromComponentId,
+        );
+      } else {
+        resp = await componentsStore.UPDATE_COMPONENT_ATTRIBUTES(
+          viewStore.selectedEdge.toComponentId,
+          {
+            [viewStore.selectedEdge.toAttributePath]: { $source: null },
+          },
+        );
+      }
       if (resp.result.success) {
         viewStore.selectedEdgeId = null;
         viewStore.selectedDisplayEdgeId = null;

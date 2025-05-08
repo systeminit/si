@@ -351,6 +351,7 @@ import {
   DiagramElementUniqueKey,
   DiagramNodeData,
   DiagramSocketData,
+  DiagramSocketEdgeData,
   ElementHoverMeta,
 } from "./diagram_types";
 import DiagramNodeSocket from "./DiagramNodeSocket.vue";
@@ -461,7 +462,8 @@ const connectedEdgesBySocketKey = computed(() => {
         lookup[`${props.node.def.id}-outputsocket`] ||= [];
         lookup[`${props.node.def.id}-outputsocket`]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
       }
-    } else {
+      // If it's not the simple socket UI, subscriptions are not connected
+    } else if (edge instanceof DiagramSocketEdgeData) {
       lookup[edge.fromSocketKey] ||= [];
       lookup[edge.fromSocketKey]!.push(edge); // eslint-disable-line @typescript-eslint/no-non-null-assertion
       lookup[edge.toSocketKey] ||= [];

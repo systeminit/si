@@ -9,44 +9,22 @@
     "
   >
     <div class="flex gap-xs items-center">
-      <Stack spacing="2xs" class="min-w-0">
+      <Stack class="min-w-0" spacing="2xs">
         <div class="flex flex-row gap-2xs items-center">
-          <Icon
-            :name="outputSocket ? 'output-socket' : 'input-socket'"
-            size="xs"
-          />
+          <Icon :name="statusIcon" size="xs" />
           <div class="font-bold break-all line-clamp-4 pb-[1px] text-sm">
-            {{ socket.def.label }}
+            {{ subjectLabel }}
           </div>
         </div>
         <div class="text-xs italic capsize">
           <TruncateWithTooltip class="pr-xs">
-            {{ socket.parent.def.displayName }}
+            {{ componentName }}
           </TruncateWithTooltip>
         </div>
       </Stack>
 
       <!-- ICONS AFTER THIS POINT ARE RIGHT ALIGNED DUE TO THE ml-auto STYLE ON THIS DIV -->
       <div class="ml-auto"></div>
-
-      <!-- change status icon -->
-      <div
-        v-if="
-          'changeStatus' in socket.def &&
-          socket.def.changeStatus !== 'unmodified'
-        "
-        v-tooltip="{
-          content: socket.def.changeStatus,
-          theme: 'instant-show',
-        }"
-        class="cursor-pointer rounded hover:scale-125"
-      >
-        <StatusIndicatorIcon
-          type="change"
-          :status="(socket.def.changeStatus as string)"
-          @click="viewsStore.setComponentDetailsTab('diff')"
-        />
-      </div>
 
       <slot />
     </div>
@@ -63,18 +41,29 @@ import {
 } from "@si/vue-lib/design-system";
 import { computed, PropType } from "vue";
 import { tw } from "@si/vue-lib";
-import { useViewsStore } from "@/store/views.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
-import { DiagramSocketData } from "./ModelingDiagram/diagram_types";
-import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
 const props = defineProps({
-  socket: { type: Object as PropType<DiagramSocketData>, required: true },
+  subjectLabel: { type: String, required: true },
+  componentName: { type: String, required: true },
   changeStatus: { type: String as PropType<ChangeStatus> },
-  outputSocket: { type: Boolean },
+  type: {
+    type: String as PropType<"input-socket" | "output-socket" | "prop">,
+    required: true,
+  },
 });
 
-const viewsStore = useViewsStore();
+const statusIcon = computed(() => {
+  switch (props.type) {
+    case "input-socket":
+      return "input-socket";
+    case "output-socket":
+      return "output-socket";
+    case "prop":
+    default:
+      return "cursor";
+  }
+});
 
 const statusColors = computed(() => {
   const unmodified = themeClasses(tw`border-shade-100`, tw`border-shade-0`);
