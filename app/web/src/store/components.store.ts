@@ -410,26 +410,25 @@ export const generateEdgeId = (
   toSocketId: string,
 ) => `${toComponentId}_${toSocketId}_${fromSocketId}_${fromComponentId}`;
 
-const edgeFromRawEdge =
-  ({
-    isInferred,
-    isManagement,
-  }: {
-    isInferred?: boolean;
-    isManagement?: boolean;
-  }) =>
-  (e: RawEdge): Edge => {
-    const edge = structuredClone(toRaw(e)) as Edge;
-    edge.id = generateEdgeId(
-      edge.fromComponentId,
-      edge.toComponentId,
-      edge.fromSocketId,
-      edge.toSocketId,
-    );
-    edge.isInferred = isInferred ?? false;
-    edge.isManagement = isManagement ?? false;
-    return edge;
-  };
+const edgeFromRawEdge = ({
+  isInferred,
+  isManagement,
+}: {
+  isInferred?: boolean;
+  isManagement?: boolean;
+}) =>
+(e: RawEdge): Edge => {
+  const edge = structuredClone(toRaw(e)) as Edge;
+  edge.id = generateEdgeId(
+    edge.fromComponentId,
+    edge.toComponentId,
+    edge.fromSocketId,
+    edge.toSocketId,
+  );
+  edge.isInferred = isInferred ?? false;
+  edge.isManagement = isManagement ?? false;
+  return edge;
+};
 
 export const loadCollapsedData = (
   prefix: string,
@@ -507,19 +506,19 @@ export function getPossibleAndExistingPeerSockets(
     .map((edge) =>
       targetSocket.direction === "input"
         ? {
-            edge,
-            thisComponentId: edge.def.toComponentId,
-            thisSocketId: edge.def.toSocketId,
-            peerComponentId: edge.def.fromComponentId,
-            peerSocketId: edge.def.fromSocketId,
-          }
+          edge,
+          thisComponentId: edge.def.toComponentId,
+          thisSocketId: edge.def.toSocketId,
+          peerComponentId: edge.def.fromComponentId,
+          peerSocketId: edge.def.fromSocketId,
+        }
         : {
-            edge,
-            thisComponentId: edge.def.fromComponentId,
-            thisSocketId: edge.def.fromSocketId,
-            peerComponentId: edge.def.toComponentId,
-            peerSocketId: edge.def.toSocketId,
-          },
+          edge,
+          thisComponentId: edge.def.fromComponentId,
+          thisSocketId: edge.def.fromSocketId,
+          peerComponentId: edge.def.toComponentId,
+          peerSocketId: edge.def.toSocketId,
+        }
     )
     // Get only edges relevant to this  socket
     .filter(
@@ -550,9 +549,10 @@ export function getPossibleAndExistingPeerSockets(
             }
 
             if (peerSocket.direction === "input") {
-              const componentAndSocketKey = `${c.uniqueKey}--s-${peerSocket.id}`;
-              const edgeCount =
-                edgeCountForInputKey[componentAndSocketKey] ?? 0;
+              const componentAndSocketKey =
+                `${c.uniqueKey}--s-${peerSocket.id}`;
+              const edgeCount = edgeCountForInputKey[componentAndSocketKey] ??
+                0;
 
               if (
                 peerSocket.maxConnections &&
@@ -562,16 +562,15 @@ export function getPossibleAndExistingPeerSockets(
               }
             }
 
-            const [outputCAs, inputCAs] =
-              targetSocket.direction === "output"
-                ? [
-                    targetSocket.connectionAnnotations,
-                    peerSocket.connectionAnnotations,
-                  ]
-                : [
-                    peerSocket.connectionAnnotations,
-                    targetSocket.connectionAnnotations,
-                  ];
+            const [outputCAs, inputCAs] = targetSocket.direction === "output"
+              ? [
+                targetSocket.connectionAnnotations,
+                peerSocket.connectionAnnotations,
+              ]
+              : [
+                peerSocket.connectionAnnotations,
+                targetSocket.connectionAnnotations,
+              ];
 
             // check socket connection annotations compatibility
             for (const outputCA of outputCAs) {
@@ -755,12 +754,13 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
         }),
         getters: {
           diagramSubscriptionEdgesById(): Record<EdgeId, DiagramEdgeData> {
-            return Object.fromEntries(
-              Object.values(this.subscriptionEdgesById)
-                .map((edge) => processRawEdge(edge, this.allComponentsById))
-                .filter((edge) => !!edge)
-                .map((edge) => [edge.def.id, edge]),
-            );
+            const edges = _.values(this.subscriptionEdgesById);
+
+            const rawEdges = _.compact(
+              edges.map((edge) => processRawEdge(edge, this.allComponentsById)),
+            ).map((edge) => [edge.def.id, edge]);
+
+            return Object.fromEntries(rawEdges);
           },
 
           // transforming the diagram-y data back into more generic looking data
@@ -817,7 +817,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     a.variant.displayName || a.variant.schemaName
                   )?.localeCompare(
                     b.variant.displayName || b.variant.schemaName,
-                  ),
+                  )
                 );
 
                 return {
@@ -960,8 +960,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                         return {
                           socketId: pc.socketId,
                           socketName: socket?.label || "",
-                          socketArity:
-                            socket?.maxConnections === 1 ? "one" : "many",
+                          socketArity: socket?.maxConnections === 1
+                            ? "one"
+                            : "many",
                           attributeValueId: pc.attributeValueId,
                           value: pc.value,
                           direction: pc.direction,
@@ -974,17 +975,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                             }) => {
                               const otherComponent =
                                 this.allComponentsById[m.componentId];
-                              const otherSocket =
-                                otherComponent?.def.sockets?.find(
+                              const otherSocket = otherComponent?.def.sockets
+                                ?.find(
                                   (s) => s.id === m.socketId,
                                 );
                               return {
                                 socketId: m.socketId,
                                 socketName: otherSocket?.label,
-                                socketArity:
-                                  otherSocket?.maxConnections === 1
-                                    ? "one"
-                                    : "many",
+                                socketArity: otherSocket?.maxConnections === 1
+                                  ? "one"
+                                  : "many",
                                 componentId: m.componentId,
                                 componentName:
                                   otherComponent?.def.displayName || "",
@@ -1072,25 +1072,23 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               });
             });
 
-            const edges =
-              response.edges && response.edges.length > 0
-                ? response.edges.map(
-                    edgeFromRawEdge({ isInferred: false, isManagement: false }),
-                  )
-                : [];
+            const edges = response.edges && response.edges.length > 0
+              ? response.edges.map(
+                edgeFromRawEdge({ isInferred: false, isManagement: false }),
+              )
+              : [];
             const inferred =
               response.inferredEdges && response.inferredEdges.length > 0
                 ? response.inferredEdges.map(
-                    edgeFromRawEdge({ isInferred: true, isManagement: false }),
-                  )
+                  edgeFromRawEdge({ isInferred: true, isManagement: false }),
+                )
                 : [];
 
-            const management =
-              response.managementEdges?.length > 0
-                ? response.managementEdges.map(
-                    edgeFromRawEdge({ isInferred: false, isManagement: true }),
-                  )
-                : [];
+            const management = response.managementEdges?.length > 0
+              ? response.managementEdges.map(
+                edgeFromRawEdge({ isInferred: false, isManagement: true }),
+              )
+              : [];
 
             const edgesToSet = [...edges, ...inferred, ...management];
             if (options.representsAllComponents) {
@@ -1110,7 +1108,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             });
             this.subscriptionEdgesById = Object.fromEntries(
               response.attributeSubscriptionEdges.map((edge) => {
-                const id = `${edge.toComponentId}_${edge.toAttributeValueId}_${edge.fromAttributePath}_${edge.fromComponentId}`;
+                const id =
+                  `${edge.toComponentId}_${edge.toAttributeValueId}_${edge.fromAttributePath}_${edge.fromComponentId}`;
                 return [id, { id, ...edge }];
               }),
             );
@@ -1310,7 +1309,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           ) {
             return new ApiRequest({
               method: "put",
-              url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/components/${componentId}/attributes`,
+              url:
+                `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/components/${componentId}/attributes`,
               params: {
                 ...payload,
               },
@@ -1421,17 +1421,17 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
             const edge = this.rawEdgesById[edgeId];
             const params = edge?.isManagement
               ? {
-                  managedComponentId: toComponentId,
-                  managerComponentId: fromComponentId,
-                  ...visibilityParams,
-                }
+                managedComponentId: toComponentId,
+                managerComponentId: fromComponentId,
+                ...visibilityParams,
+              }
               : {
-                  fromSocketId,
-                  toSocketId,
-                  toComponentId,
-                  fromComponentId,
-                  ...visibilityParams,
-                };
+                fromSocketId,
+                toSocketId,
+                toComponentId,
+                fromComponentId,
+                ...visibilityParams,
+              };
 
             const url = edge?.isManagement
               ? "component/unmanage"
@@ -1610,7 +1610,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               funcId: string;
             }>({
               method: "post",
-              url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/management/generate_template/${viewId}`,
+              url:
+                `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/management/generate_template/${viewId}`,
               params: {
                 componentIds,
                 assetName,
@@ -1756,8 +1757,8 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   // don't update
                   if (metadata.change_set_id !== changeSetId) return;
                   const componentId = data.component.id;
-                  const oldParent =
-                    this.rawComponentsById[componentId]?.parentId;
+                  const oldParent = this.rawComponentsById[componentId]
+                    ?.parentId;
 
                   this.rawComponentsById[componentId] = data.component;
                   this.processAndStoreRawComponent(componentId, {});
@@ -1770,10 +1771,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 eventType: "InferredEdgeUpsert",
                 callback: (data) => {
                   if (data.changeSetId !== changeSetId) return;
-                  const edges =
-                    data.edges && data.edges.length > 0
-                      ? data.edges.map(edgeFromRawEdge({ isInferred: true }))
-                      : [];
+                  const edges = data.edges && data.edges.length > 0
+                    ? data.edges.map(edgeFromRawEdge({ isInferred: true }))
+                    : [];
                   for (const edge of edges) {
                     this.rawEdgesById[edge.id] = edge;
                     this.processRawEdge(edge.id);
@@ -1784,10 +1784,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 eventType: "InferredEdgeRemove",
                 callback: (data) => {
                   if (data.changeSetId !== changeSetId) return;
-                  const edges =
-                    data.edges && data.edges.length > 0
-                      ? data.edges.map(edgeFromRawEdge({ isInferred: true }))
-                      : [];
+                  const edges = data.edges && data.edges.length > 0
+                    ? data.edges.map(edgeFromRawEdge({ isInferred: true }))
+                    : [];
                   for (const edge of edges) {
                     delete this.rawEdgesById[edge.id];
                     delete this.diagramEdgesById[edge.id];

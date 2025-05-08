@@ -102,9 +102,11 @@ export interface DBInterface {
   handlePatchMessage(data: PatchBatch, span?: Span): Promise<void>;
   handleHammer(msg: AtomMessage, span?: Span): Promise<void>;
   exec(
-    opts: ExecBaseOptions &
-      ExecRowModeArrayOptions &
-      (ExecReturnThisOptions | ExecReturnResultRowsOptions) & {
+    opts:
+      & ExecBaseOptions
+      & ExecRowModeArrayOptions
+      & (ExecReturnThisOptions | ExecReturnResultRowsOptions)
+      & {
         sql: FlexibleString;
       },
   ): SqlValue[][];
@@ -363,28 +365,28 @@ export interface BifrostComponentConnectionsBeta {
 
 type Connection =
   | {
-      kind: "prop";
-      fromComponentId: ComponentId;
-      fromAttributeValueId: AttributeValueId;
-      fromAttributeValuePath: string;
-      fromPropId: PropId;
-      fromPropPath: string;
-      toComponentId: ComponentId;
-      toPropId: PropId;
-      toPropPath: string;
-      toAttributeValueId: AttributeValueId;
-      toAttributeValuePath: string;
-    }
+    kind: "prop";
+    fromComponentId: ComponentId;
+    fromAttributeValueId: AttributeValueId;
+    fromAttributeValuePath: string;
+    fromPropId: PropId;
+    fromPropPath: string;
+    toComponentId: ComponentId;
+    toPropId: PropId;
+    toPropPath: string;
+    toAttributeValueId: AttributeValueId;
+    toAttributeValuePath: string;
+  }
   | {
-      kind: "socket";
-      fromComponentId: ComponentId;
-      fromAttributeValueId: AttributeValueId;
-      fromAttributeValuePath: string;
-      fromSocketId: OutputSocketId;
-      fromSocketName: string;
-      toComponentId: ComponentId;
-      toSocketId: InputSocketId;
-      toSocketName: string;
-      toAttributeValueId: AttributeValueId;
-      toAttributeValuePath: string;
-    };
+    kind: "socket";
+    fromComponentId: ComponentId;
+    fromAttributeValueId: AttributeValueId;
+    fromAttributeValuePath: string;
+    fromSocketId: OutputSocketId;
+    fromSocketName: string;
+    toComponentId: ComponentId;
+    toSocketId: InputSocketId;
+    toSocketName: string;
+    toAttributeValueId: AttributeValueId;
+    toAttributeValuePath: string;
+  };

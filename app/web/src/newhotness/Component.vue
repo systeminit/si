@@ -6,10 +6,10 @@
     <VButton
       class="border-0 mr-2em"
       icon="arrow--left"
+      label="Back"
       size="sm"
       tone="shade"
       variant="ghost"
-      label="Back"
       @click="back"
     />
   </section>
@@ -18,10 +18,10 @@
       <VButton
         class="border-0 mr-2em"
         icon="arrow--left"
+        label="Back"
         size="sm"
         tone="shade"
         variant="ghost"
-        label="Back"
         @click="back"
       />
       <span>{{ component.schemaVariantName }}</span>
@@ -30,37 +30,37 @@
         <EditInPlace ref="editInPlaceRef" @hidden="reset" @showing="focus">
           <template #trigger>
             <VButton
-              class="border-0 font-normal"
               :label="component.name"
+              :loading="wForm.bifrosting.value"
+              :loadingText="component.name"
+              class="border-0 font-normal"
+              iconRight="edit"
+              loadingIcon="loader"
               size="sm"
               tone="shade"
               variant="ghost"
-              iconRight="edit"
-              loadingIcon="loader"
-              :loading="wForm.bifrosting.value"
-              :loadingText="component.name"
               @click="editInPlaceRef?.toggle"
             />
           </template>
           <template #input>
             <nameForm.Field
-              name="name"
               :validators="{
                 onChange: required,
                 onBlur: required,
               }"
+              name="name"
             >
               <template #default="{ field }">
                 <input
                   ref="nameRef"
+                  :value="field.state.value"
                   class="block w-full text-white bg-black border-2 border-neutral-300 disabled:bg-neutral-900"
                   type="text"
-                  :value="field.state.value"
+                  @blur="blur"
                   @input="
                     (e) =>
                       field.handleChange((e.target as HTMLInputElement).value)
                   "
-                  @blur="blur"
                   @keydown.enter.stop.prevent="blur"
                   @keydown.esc.stop.prevent="reset"
                 />
@@ -104,10 +104,10 @@
           <VButton
             class="border-0 mr-2em"
             icon="arrow--left"
+            label="Back"
             size="sm"
             tone="shade"
             variant="ghost"
-            label="Back"
             @click="() => (docs = '')"
           />
           <p v-if="docLink">
@@ -144,10 +144,10 @@
           <Icon
             v-if="component.hasResource"
             name="check-hex"
-            tone="success"
             size="sm"
+            tone="success"
           />
-          <Icon v-else name="refresh-hex-outline" tone="shade" size="sm" />
+          <Icon v-else name="refresh-hex-outline" size="sm" tone="shade" />
           Resource
         </template>
         <ResourcePanel :attributeValueId="component.rootAttributeValueId" />
@@ -170,8 +170,7 @@ import { computed, ref, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
-  BifrostComponent,
-  BifrostComponentConnectionsBeta,
+  BifrostComponent, BifrostComponentConnectionsBeta,
 } from "@/workers/types/dbinterface";
 import AttributePanel from "./AttributePanel.vue";
 import { attributeEmitter } from "./logic_composables/emitters";
