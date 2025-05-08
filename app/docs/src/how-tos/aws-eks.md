@@ -140,7 +140,7 @@ Service Principal to the `Principal` Input Socket of your
 
 ### Connect Additional Access Policies to the IAM Role
 
-![Create Role Policies](./aws-eks/create-iam-role-policies)
+![Create Role Policies](./aws-eks/create-iam-role-policies.png)
 
 Add 2 `AWS::IAM::RolePolicy` Components to the `demo-eks-cluster-role` AWS IAM
 Role frame.
@@ -532,5 +532,5 @@ Click `Apply Change Set`.
 All your new resources should be deleted from your AWS account.
 
 ## Vocabulary
-In this guide bits of System Initiative Vocabulary will be shown with a capital letter. 
-All definitions for these can be found here: [System Initiative - Vocabulary](https://docs.systeminit.com/reference/vocabulary) 
+In this guide bits of System Initiative Vocabulary will be shown with a capital letter.
+All definitions for these can be found here: [System Initiative - Vocabulary](https://docs.systeminit.com/reference/vocabulary)
