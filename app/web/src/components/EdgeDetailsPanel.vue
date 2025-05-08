@@ -1,7 +1,7 @@
 <template>
   <ScrollArea v-if="selectedEdge">
     <template #top>
-      <SidebarSubpanelTitle label="Connection Details" icon="plug">
+      <SidebarSubpanelTitle icon="plug" label="Connection Details">
         <DetailsPanelMenuIcon
           v-if="!featureFlagsStore.SIMPLE_SOCKET_UI"
           :selected="menuSelected"
@@ -18,9 +18,9 @@
       >
         <VButton
           class="grow"
-          size="sm"
-          label="Add Connection"
           icon="plus"
+          label="Add Connection"
+          size="sm"
           variant="ghost"
           @click="addConnection"
         />
@@ -49,11 +49,11 @@
         This edge will be removed from your model when this change set is merged
       </ErrorMessage>
       <VButton
-        tone="shade"
-        variant="ghost"
-        size="md"
         icon="trash-restore"
         label="Restore edge"
+        size="md"
+        tone="shade"
+        variant="ghost"
         @click="modelingEventBus.emit('restoreSelection')"
       />
     </Stack>
