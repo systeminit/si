@@ -18,7 +18,10 @@ use si_data_nats::{
                 StreamError,
                 push::OrderedConfig,
             },
-            context::RequestError,
+            context::{
+                KeyValueErrorKind,
+                RequestError,
+            },
             kv::{
                 self,
                 Watch,
@@ -58,6 +61,8 @@ pub enum Error {
     Deserialize(#[source] serde_json::Error),
     #[error("entry error: {0}")]
     Entry(#[from] kv::EntryError),
+    #[error("error getting kv store: {0}")]
+    GetKeyValue(#[from] async_nats::jetstream::context::KeyValueError),
     #[error("index object not found at key: {0}")]
     IndexObjectNotFound(Subject),
     #[error("nats request error: {0}")]
@@ -455,6 +460,25 @@ impl FriggStore {
 }
 
 pub async fn frigg_kv(context: &jetstream::Context, prefix: Option<&str>) -> Result<kv::Store> {
+    let bucket = nats_stream_name(prefix, NATS_KV_BUCKET_NAME);
+
+    let kv = match context.get_key_value(bucket).await {
+        Ok(kv) => kv,
+        Err(err) => match err.kind() {
+            KeyValueErrorKind::GetBucket | KeyValueErrorKind::JetStream => {
+                frigg_create_kv(context, context.metadata().subject_prefix()).await?
+            }
+            _ => return Err(err.into()),
+        },
+    };
+
+    Ok(kv)
+}
+
+pub async fn frigg_create_kv(
+    context: &jetstream::Context,
+    prefix: Option<&str>,
+) -> Result<kv::Store> {
     let bucket = nats_stream_name(prefix, NATS_KV_BUCKET_NAME);
 
     let kv = context
