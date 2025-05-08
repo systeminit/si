@@ -1,14 +1,5 @@
 ---
 services:
-
-  files-init:
-    image: alpine
-    restart: "no"
-    entrypoint: |
-          sh -c "chown -R 1000:1000 /output && chmod -R 775 /output"
-    volumes:
-        - config:/output
-
   innitctl:
     container_name: innitctl
     image: systeminit/innitctl:stable
@@ -17,8 +8,6 @@ services:
       - "/configs"
       - "--output"
       - "/output"
-    depends_on:
-      - files-init
     environment:
       - SI_INNITCTL__HOST_ENVIRONMENT=${SI_HOSTENV}
       - SI_INNITCTL__SERVICE_NAME=${SI_SERVICE}
@@ -26,6 +15,7 @@ services:
       - SI_INNIT__CLIENT_CA_ARN=${SI_PRIVATE_CA_ARN}
     volumes:
       - config:/output
+      - /etc/ssl/private:/etc/ssl/private
 
   otelcol:
     container_name: otelcol
