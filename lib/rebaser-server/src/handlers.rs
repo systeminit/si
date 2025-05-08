@@ -34,7 +34,6 @@ use tokio_util::{
     sync::CancellationToken,
     task::TaskTracker,
 };
-use ulid::Ulid;
 
 use crate::{
     Shutdown,
@@ -48,8 +47,6 @@ use crate::{
         SerialDvuTaskError,
     },
 };
-
-const CONSUMER_NAME_PREFIX: &str = "rebaser-requests";
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -139,9 +136,6 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         .create_consumer(rebaser_requests_per_change_set_consumer_config(
             &nats,
             &requests_stream_filter_subject,
-            metadata.instance_id(),
-            &workspace,
-            &change_set,
         ))
         .await
         .map_err(HandlerError::ConsumerCreate)?
@@ -354,18 +348,8 @@ fn parse_subject<'a>(
 fn rebaser_requests_per_change_set_consumer_config(
     nats: &NatsClient,
     filter_subject: &Subject,
-    instance_id: &str,
-    workspace: &ParsedWorkspaceId<'_>,
-    change_set: &ParsedChangeSetId<'_>,
 ) -> push::OrderedConfig {
     push::OrderedConfig {
-        name: Some(format!(
-            "{CONSUMER_NAME_PREFIX}-{}-{}-{}-{}",
-            workspace.str,
-            change_set.str,
-            instance_id,
-            Ulid::new(),
-        )),
         deliver_subject: nats.new_inbox(),
         filter_subject: filter_subject.to_string(),
         ..Default::default()

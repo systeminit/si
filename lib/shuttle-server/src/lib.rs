@@ -146,7 +146,6 @@ impl Shuttle {
         let incoming = {
             limits_based_source_stream
                 .create_consumer(async_nats::jetstream::consumer::push::OrderedConfig {
-                    name: Some(consumer_name.to_owned()),
                     deliver_subject,
                     filter_subject: source_subject.to_string(),
                     ..Default::default()
