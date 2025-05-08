@@ -11,7 +11,7 @@
     <h3
       :class="
         clsx(
-          'flex flex-row items-center gap-xs p-2xs',
+          'flex flex-row items-center gap-xs p-2xs z-30',
           'sticky top-0 cursor-pointer text-lg font-bold',
           themeClasses('bg-neutral-200', 'bg-neutral-900'),
           h3class,
