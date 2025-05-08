@@ -407,14 +407,20 @@ pub struct SplitGraphNodeIndex {
     index: SubGraphNodeIndex,
 }
 
+impl SplitGraphNodeIndex {
+    pub fn new(subgraph: SubGraphIndex, index: SubGraphNodeIndex) -> Self {
+        Self { subgraph, index }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct SplitGraphEdgeIndex {
     subgraph: SubGraphIndex,
     index: SubGraphEdgeIndex,
 }
 
-impl SplitGraphNodeIndex {
-    pub fn new(subgraph: SubGraphIndex, index: SubGraphNodeIndex) -> Self {
+impl SplitGraphEdgeIndex {
+    pub fn new(subgraph: SubGraphIndex, index: SubGraphEdgeIndex) -> Self {
         Self { subgraph, index }
     }
 }
@@ -518,6 +524,49 @@ where
             subgraphs: vec![first_subgraph],
             id_to_split_graph_index: DashMap::new(),
         }
+    }
+
+    pub fn remove_external_source_edges(&mut self, id: SplitGraphNodeId) {
+        let mut edge_indexes = vec![];
+        for (subgraph_idx, subgraph) in self.subgraphs().iter().enumerate() {
+            edge_indexes.extend(
+                subgraph
+                    .graph
+                    .edges_directed(subgraph.root_index, Outgoing)
+                    .filter(|edge_ref| {
+                        edge_ref
+                            .weight()
+                            .external_source_data()
+                            .is_some_and(|ext_source| ext_source.source_id() == id)
+                    })
+                    .map(|edge_ref| (subgraph_idx, edge_ref.id())),
+            );
+        }
+
+        for (subgraph_idx, edge_index) in edge_indexes {
+            self.remove_edge_by_index(SplitGraphEdgeIndex::new(subgraph_idx, edge_index));
+        }
+    }
+
+    pub fn brute_search_external_source_edges(
+        &self,
+        id: SplitGraphNodeId,
+    ) -> Vec<SplitGraphEdgeWeight<E, K>> {
+        self.subgraphs()
+            .iter()
+            .flat_map(|subgraph| {
+                subgraph
+                    .graph
+                    .edges_directed(subgraph.root_index, Outgoing)
+                    .filter(|edge_ref| {
+                        edge_ref
+                            .weight()
+                            .external_source_data()
+                            .is_some_and(|ext_source| ext_source.source_id() == id)
+                    })
+            })
+            .map(|edge_ref| edge_ref.weight().clone())
+            .collect()
     }
 
     pub fn external_edge_map_for_id(
@@ -765,11 +814,16 @@ where
             };
 
         for external_source in external_sources_incoming_to_old_id {
-            let external_source_index = self.node_id_to_index(external_source).unwrap();
-            let external_source_subgraph = self
-                .subgraphs
-                .get_mut(external_source_index.subgraph)
-                .unwrap();
+            let Some(external_source_index) = self.node_id_to_index(external_source) else {
+                continue;
+            };
+
+            let Some(external_source_subgraph) =
+                self.subgraphs.get_mut(external_source_index.subgraph)
+            else {
+                continue;
+            };
+
             external_source_subgraph.update_external_target_ids(
                 external_source_index.index,
                 old_id,
@@ -1489,27 +1543,52 @@ where
             });
     }
 
+    /// Cleanup the split graph by removing nodes with no incoming edges and cleaning up mappings.
+    /// This is more complicated than before because we need to cascade "external" detection across subgraphs.
+    /// So we remove all externals, then remove all external source edges, then look for externals yet again,
+    /// looping until no more edges to delete are found.
+    ///
+    /// This could be made more efficient by turning the external source edge into a B+tree on each subgraph
+    /// (keyed by source id) to avoid brute force searches of the edges
     pub fn cleanup(&mut self) {
         let mut removal_set = HashSet::new();
-        for subgraph in self.subgraphs.iter_mut() {
-            let removed_ids = subgraph.cleanup();
-            removal_set.extend(removed_ids);
-        }
-        for subgraph in self.subgraphs.iter_mut() {
-            let edges_to_delete: Vec<_> = subgraph
-                .graph
-                .edge_indices()
-                .filter(|edge_idx| {
-                    subgraph.graph.edge_weight(*edge_idx).is_some_and(|weight| {
-                        weight
-                            .external_source_data()
-                            .is_some_and(|source_data| removal_set.contains(&source_data.source_id))
-                    })
-                })
-                .collect();
-            for edge_idx in edges_to_delete {
-                subgraph.graph.remove_edge(edge_idx);
+
+        loop {
+            let mut found_removals = false;
+
+            for subgraph in self.subgraphs.iter_mut() {
+                if !removal_set.is_empty() {
+                    let edges_to_delete: Vec<_> =
+                        subgraph
+                            .graph
+                            .edges_directed(subgraph.root_index, Outgoing)
+                            .filter(|edge_ref| {
+                                edge_ref.weight().external_source_data().is_some_and(
+                                    |source_data| removal_set.contains(&source_data.source_id()),
+                                )
+                            })
+                            .map(|edge_ref| edge_ref.id())
+                            .collect();
+
+                    for edge_idx in edges_to_delete {
+                        subgraph.graph.remove_edge(edge_idx);
+                    }
+                }
+
+                let new_removals = subgraph.remove_externals();
+                if !found_removals && !new_removals.is_empty() {
+                    found_removals = true;
+                }
+                removal_set.extend(new_removals);
             }
+
+            if !found_removals {
+                break;
+            }
+        }
+
+        for subgraph in self.subgraphs.iter_mut() {
+            subgraph.cleanup_maps();
         }
 
         self.id_to_split_graph_index.clear();
@@ -1640,11 +1719,29 @@ where
         // parents of these changed nodes, *across* subgraphs, since these will have also changed.
         // reversed so that parents come before children in the finalized list
         for change in &changes {
-            for parent_id in self
+            // We want to prefer nodes in the updated graph, since those will be the
+            // updated version of these nodes, but when the change is a removal,
+            // we have to switch to the base graph
+            let graph_to_search = if updated_graph
+                .node_id_to_index(change.entity_id.into())
+                .is_some()
+            {
+                updated_graph
+            } else {
+                self
+            };
+
+            for parent_id in graph_to_search
                 .all_parents_of(change.entity_id.into())?
                 .into_iter()
                 .rev()
             {
+                let graph_to_search = if updated_graph.node_id_to_index(parent_id).is_some() {
+                    updated_graph
+                } else {
+                    self
+                };
+
                 if detected_ids.contains(&parent_id.into()) {
                     continue;
                 }
@@ -1653,7 +1750,7 @@ where
                 if let Some(
                     weight @ SplitGraphNodeWeight::GraphRoot { .. }
                     | weight @ SplitGraphNodeWeight::Custom(_),
-                ) = self.raw_node_weight(parent_id)
+                ) = graph_to_search.raw_node_weight(parent_id)
                 {
                     // If we find this node now, that means its merkle tree hash
                     // hasn't changed since it was in different subgraph than the
@@ -1679,9 +1776,7 @@ where
     }
 
     pub fn is_acyclic_directed(&self) -> bool {
-        true
-        // XXX: this is reporting cycles in situations where there is no cycle
-        //petgraph::algo::toposort(self, None).is_ok()
+        petgraph::algo::toposort(self, None).is_ok()
     }
 
     pub fn perform_updates(&mut self, updates: &[Update<N, E, K>]) {
@@ -1778,7 +1873,9 @@ where
                                     node_weight.id(),
                                     SplitGraphNodeIndex::new(*subgraph_index, node_index),
                                 );
-                                self.id_to_split_graph_index.remove(&(previous_id.unwrap()));
+                                if let Some(previous_id) = previous_id {
+                                    self.id_to_split_graph_index.remove(&previous_id);
+                                }
                             }
                         }
                         None => {
@@ -1824,6 +1921,10 @@ where
                 }
             }
         }
+    }
+
+    pub fn raw_nodes(&self) -> impl Iterator<Item = &SplitGraphNodeWeight<N>> {
+        self.subgraphs.iter().flat_map(|subgraph| subgraph.nodes())
     }
 
     pub fn nodes(&self) -> impl Iterator<Item = &N> {

@@ -519,6 +519,88 @@ impl SplitSnapshot {
         Err(WorkspaceSnapshotError::WorkspaceSnapshotNotFetched)
     }
 
+    pub async fn has_mutable_working_copy(&self) -> bool {
+        self.working_copy.read().await.is_some()
+    }
+
+    // pub async fn write_to_files(&self, read_only: bool, rebase_batch_bytes: Option<Vec<u8>>) {
+    //     std::fs::create_dir_all("snapshot_dumps").unwrap_or_else(|_| {
+    //         warn!("Directory snapshot_dumps already exists or could not be created");
+    //     });
+
+    //     let working_copy = if read_only {
+    //         self.read_only_graph.as_ref()
+    //     } else {
+    //         self.cleanup_and_merkle_tree_hash().await.unwrap();
+    //         &*self.working_copy_mut().await
+    //     };
+
+    //     let prefix = if read_only {
+    //         "read_only"
+    //     } else {
+    //         "working_copy"
+    //     };
+
+    //     // Write the supergraph
+    //     if let Ok(file) =
+    //         std::fs::File::create(format!("snapshot_dumps/{prefix}_supergraph.snapshot"))
+    //     {
+    //         if let Ok((bytes, _)) =
+    //             si_layer_cache::db::serialize::to_vec(&working_copy.supergraph())
+    //         {
+    //             if let Err(e) =
+    //                 std::io::Write::write_all(&mut std::io::BufWriter::new(file), &bytes)
+    //             {
+    //                 error!("Failed to write supergraph to file: {}", e);
+    //             }
+    //         } else {
+    //             println!("Failed to serialize supergraph");
+    //         }
+    //     }
+
+    //     // Write each subgraph
+    //     for (i, subgraph) in working_copy.subgraphs().iter().enumerate() {
+    //         let filename = format!("snapshot_dumps/{prefix}_subgraph_{i}.snapshot");
+    //         if let Ok(file) = std::fs::File::create(&filename) {
+    //             match si_layer_cache::db::serialize::to_vec(&subgraph) {
+    //                 Ok((bytes, _)) => {
+    //                     match std::io::Write::write_all(&mut std::io::BufWriter::new(file), &bytes)
+    //                     {
+    //                         Ok(_) => {}
+    //                         Err(e) => {
+    //                             println!("Failed to write subgraph {} to file: {}", i, e);
+    //                         }
+    //                     }
+    //                 }
+    //                 Err(e) => {
+    //                     println!("Failed to serialize subgraph {}: {}", i, e);
+    //                 }
+    //             }
+    //         } else {
+    //             println!("Failed to create file {}", filename);
+    //         }
+    //     }
+
+    //     // Write the rebase batch to a file if it exists
+    //     if let Some(bytes) = rebase_batch_bytes {
+    //         let filename = "snapshot_dumps/rebase_batch.rbatch";
+    //         if let Ok(file) = std::fs::File::create(filename) {
+    //             match std::io::Write::write_all(&mut std::io::BufWriter::new(file), &bytes) {
+    //                 Ok(_) => {
+    //                     println!("Wrote rebase batch to {}", filename);
+    //                 }
+    //                 Err(e) => {
+    //                     println!("Failed to write rebase batch to file: {}", e);
+    //                 }
+    //             }
+    //         } else {
+    //             println!("Failed to create file {}", filename);
+    //         }
+    //     }
+
+    //     println!("Wrote working_copy supergraph and subgraphs to snapshot_dumps directory");
+    // }
+
     pub async fn write(
         &self,
         ctx: &DalContext,

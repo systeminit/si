@@ -1499,7 +1499,8 @@ fn single_subgraph_as_updates() -> SplitGraphResult<()> {
         );
     }
 
-    subgraph.cleanup();
+    subgraph.remove_externals();
+    subgraph.cleanup_maps();
 
     let root_id = subgraph
         .graph
@@ -1626,7 +1627,6 @@ fn graph_dfs() -> SplitGraphResult<()> {
 }
 
 #[test]
-#[ignore]
 fn graph_cycle_test() -> SplitGraphResult<()> {
     let mut split_graph = SplitGraph::new(3);
 
@@ -1772,9 +1772,8 @@ fn graph_cycle_test() -> SplitGraphResult<()> {
 }
 
 #[test]
-#[ignore]
 fn graph_cycle_test_mimic_component_parentage() -> SplitGraphResult<()> {
-    for split_max in [500] {
+    for split_max in [1, 2, 3, 500] {
         let mut split_graph = SplitGraph::new(split_max);
 
         let node_id_map = add_nodes_to_splitgraph(
@@ -1868,8 +1867,6 @@ fn graph_cycle_test_mimic_component_parentage() -> SplitGraphResult<()> {
                 )
                 .is_err()
         );
-
-        split_graph.tiny_dot_to_file("foo");
     }
 
     Ok(())
