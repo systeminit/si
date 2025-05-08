@@ -165,7 +165,7 @@ async fn prop_order_preserved(ctx: &mut DalContext) -> Result<()> {
             component_prop_names(ctx, component_id).await?,
             expected_props,
         );
-        SchemaVariant::schema_id_for_schema_variant_id(ctx, variant_id).await?
+        SchemaVariant::schema_id(ctx, variant_id).await?
     };
 
     // Export variant -> PkgSpec

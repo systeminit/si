@@ -175,8 +175,7 @@ pub async fn delete_binding(
     }
 
     for schema_variant_id in modified_sv_ids {
-        let schema =
-            SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
+        let schema = SchemaVariant::schema_id(&ctx, schema_variant_id).await?;
         let schema_variant = SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
 
         WsEvent::schema_variant_updated(&ctx, schema, schema_variant)

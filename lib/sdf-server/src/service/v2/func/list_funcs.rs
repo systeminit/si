@@ -86,8 +86,7 @@ async fn treat_single_function(
                 should_hide = false;
             }
 
-            let schema =
-                SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
+            let schema = SchemaVariant::schema_id(ctx, schema_variant_id).await?;
 
             if let Some(default_sv_id) = schema_default_map.get(&schema) {
                 if schema_variant_id == *default_sv_id {

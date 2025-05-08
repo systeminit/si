@@ -374,8 +374,7 @@ impl DependentValueGraph {
             // on the value of the current value
             for apa in relevant_apas {
                 let prototype_id =
-                    AttributePrototypeArgument::prototype_id_for_argument_id(ctx, apa.id().into())
-                        .await?;
+                    AttributePrototypeArgument::prototype_id(ctx, apa.id().into()).await?;
 
                 let attribute_value_ids =
                     AttributePrototype::attribute_value_ids(ctx, prototype_id).await?;

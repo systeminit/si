@@ -15,6 +15,7 @@ use dal::{
     ChangeSetId,
     ComponentId,
     FuncId,
+    SchemaVariant,
     SchemaVariantId,
     WorkspacePk,
     WsEvent,
@@ -113,7 +114,7 @@ pub async fn generate_template(
     )
     .await?;
 
-    let schema_id = new_variant.schema_id(&ctx).await?;
+    let schema_id = SchemaVariant::schema_id(&ctx, new_variant.id()).await?;
 
     let func = FuncAuthoringClient::create_new_management_func(
         &ctx,
