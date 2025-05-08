@@ -37,4 +37,4 @@ COPY --from=builder /tmp/nix-store-closure /nix/store
 COPY --from=builder /tmp/local-bin/* /usr/local/bin/
 COPY --chown=app:app ./configs /configs
 
-ENTRYPOINT ["/sbin/runuser", "-u", "app", "--", "/usr/local/bin/innitctl"]
+ENTRYPOINT ["/usr/local/bin/innitctl"]
