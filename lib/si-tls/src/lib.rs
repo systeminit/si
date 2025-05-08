@@ -119,21 +119,23 @@ impl CertificateSource {
         )))
     }
 
-    /// Get issuer details from a cert
-    pub async fn get_issuer_details(&self) -> Result<CertificateIssuer> {
+    /// Process an X509Certificate within its valid lifetime
+    pub async fn as_x509_certificate<F, T>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&X509Certificate) -> T,
+    {
         let bytes = self.load_certificates_as_bytes().await?;
 
-        // Try to extract certificate data, handling both PEM and DER formats
         // Try parsing as PEM first
         if let Ok((_, pem)) = pem::parse_x509_pem(&bytes) {
             if let Ok((_, cert)) = parse_x509_certificate(&pem.contents) {
-                return Ok(Self::extract_issuer_from_cert(&cert));
+                return Ok(f(&cert));
             }
         }
 
-        // Fall back to DER format if PEM parsing failed
+        // Fall back to DER format
         if let Ok((_, cert)) = parse_x509_certificate(&bytes) {
-            return Ok(Self::extract_issuer_from_cert(&cert));
+            return Ok(f(&cert));
         }
 
         Err(TlsError::X509Parse(
@@ -141,9 +143,9 @@ impl CertificateSource {
         ))
     }
 
-    // Helper function to extract issuer details from a certificate
-    fn extract_issuer_from_cert(cert: &X509Certificate) -> CertificateIssuer {
-        CertificateIssuer {
+    /// Get issuer details from a cert
+    pub async fn get_issuer_details(&self) -> Result<CertificateIssuer> {
+        self.as_x509_certificate(|cert| CertificateIssuer {
             common_name: cert
                 .issuer()
                 .iter_common_name()
@@ -159,7 +161,23 @@ impl CertificateSource {
                 .iter_organizational_unit()
                 .next()
                 .and_then(|cn| cn.as_str().ok().map(String::from)),
-        }
+        })
+        .await
+    }
+
+    /// Check if the certificate has expired
+    pub async fn is_expired(&self) -> Result<bool> {
+        self.as_x509_certificate(|cert| {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("Attempted to calculate a duration before the UNIX_EPOCH. This is bad.")
+                .as_secs();
+
+            let not_after = cert.validity().not_after.timestamp();
+
+            now >= not_after as u64
+        })
+        .await
     }
 
     /// Add certificates from any source to a RootCertStore

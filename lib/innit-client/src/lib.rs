@@ -227,7 +227,12 @@ async fn get_or_generate_cert(
         if cert_path.exists() {
             let cert = CanonicalFile::try_from(cert_path.as_path())?;
             let cached_source = CertificateSource::Path(cert);
-            if cached_source.load_certificates().await.is_ok() {
+            if cached_source.is_expired().await? {
+                info!(
+                    "Cached cert is expired, generating a new one: {:?}",
+                    cert_path
+                );
+            } else if cached_source.load_certificates().await.is_ok() {
                 info!("Using cached certificate from: {:?}", cert_path);
                 return Ok(cached_source);
             }

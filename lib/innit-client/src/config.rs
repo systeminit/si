@@ -66,7 +66,7 @@ pub struct Config {
     #[builder(default = "default_env()")]
     environment: String,
 
-    #[builder(default = None)]
+    #[builder(default = "default_cert_cache_location()")]
     generated_cert_location: Option<PathBuf>,
 
     #[builder(default = "default_app_name()")]
@@ -115,7 +115,7 @@ pub struct ConfigFile {
     environment: String,
     #[serde(default = "default_app_name")]
     for_app: String,
-    #[serde(default)]
+    #[serde(default = "default_cert_cache_location")]
     generated_cert_location: Option<PathBuf>,
 }
 
@@ -127,7 +127,7 @@ impl Default for ConfigFile {
             base_url: default_url(),
             environment: default_env(),
             for_app: default_app_name(),
-            generated_cert_location: None,
+            generated_cert_location: default_cert_cache_location(),
         }
     }
 }
@@ -150,6 +150,10 @@ impl TryFrom<ConfigFile> for Config {
         config.generated_cert_location(value.generated_cert_location);
         config.build().map_err(Into::into)
     }
+}
+
+fn default_cert_cache_location() -> Option<PathBuf> {
+    Some("/etc/ssl/private/si-cert".to_string().into())
 }
 
 fn default_app_name() -> String {
