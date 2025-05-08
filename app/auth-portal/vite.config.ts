@@ -70,6 +70,7 @@ export default defineConfig({
     ],
   },
   build: {
+    minify: false,
     manifest: true,
   },
 });
