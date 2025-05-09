@@ -68,7 +68,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: ["pinga", "rebaser", "sdf", "forklift", "veritech", "edda"]
+        service: ["pinga", "rebaser", "sdf", "forklift", "veritech", "edda", "luminork"]
     with:
       environment: ${{ inputs.environment }}
       service: ${{ matrix.service }}
@@ -99,7 +99,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: ["pinga", "rebaser", "forklift", "veritech", "edda"]
+        service: ["pinga", "rebaser", "forklift", "veritech", "edda", "luminork"]
     uses: ./.github/workflows/upgrade-service.yml
     with:
       environment: ${{ inputs.environment }}
