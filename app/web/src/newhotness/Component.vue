@@ -81,7 +81,10 @@
       </CollapsingFlexItem>
       <CollapsingFlexItem ref="actionRef" :expandable="false">
         <template #header>Actions</template>
-        stuff
+        <ActionsPanel
+          :component="component"
+          :attributeValueId="component.rootAttributeValueId"
+        />
       </CollapsingFlexItem>
       <CollapsingFlexItem ref="mgmtRef" :expandable="false">
         <template #header>Management Functions</template>
@@ -139,7 +142,7 @@
           :component="component"
         />
       </CollapsingFlexItem>
-      <CollapsingFlexItem h3class="flex flex-row items-center">
+      <CollapsingFlexItem>
         <template #header>
           <Icon
             v-if="component.hasResource"
@@ -152,12 +155,19 @@
         </template>
         <ResourcePanel :attributeValueId="component.rootAttributeValueId" />
       </CollapsingFlexItem>
-      <CollapsingFlexItem h3class="flex flex-row items-center">
+      <CollapsingFlexItem>
         <template #header>
           <Icon name="brackets-curly" size="sm" />
           Generated Code
         </template>
         <CodePanel :attributeValueId="component.rootAttributeValueId" />
+      </CollapsingFlexItem>
+      <CollapsingFlexItem>
+        <template #header>
+          <Icon name="tilde" size="sm" />
+          Diff
+        </template>
+        <DiffPanel :component="component" />
       </CollapsingFlexItem>
     </div>
   </section>
@@ -183,6 +193,8 @@ import QualificationPanel from "./QualificationPanel.vue";
 import ResourcePanel from "./ResourcePanel.vue";
 import { prevPage } from "./logic_composables/navigation_stack";
 import CodePanel from "./CodePanel.vue";
+import DiffPanel from "./DiffPanel.vue";
+import ActionsPanel from "./ActionsPanel.vue";
 
 const props = defineProps<{
   componentId: string;

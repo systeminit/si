@@ -3,10 +3,14 @@
     class=""
     :class="
       clsx(
-        'group relative p-xs border-b border-neutral-800 cursor-pointer hover:bg-neutral-900 transition-all duration-200',
+        'group/funcruncard relative p-xs border border-transparent cursor-pointer transition-all duration-200',
+        themeClasses(
+          'hover:border-action-500 border-b-neutral-300',
+          'hover:border-action-300 border-b-neutral-800',
+        ),
         isRunning
-          ? 'border-l-2 border-l-action-500 pl-xs animate-[pulse_2s_infinite]'
-          : 'border-l-0',
+          ? 'border-l-4 border-l-action-500 pl-xs animate-[pulse_2s_infinite]'
+          : 'border-l-1',
       )
     "
     @click="$emit('click', funcRun.id)"
@@ -25,7 +29,15 @@
       <div class="flex-grow">
         <div class="flex items-center justify-between">
           <div
-            class="text-sm font-medium"
+            :class="
+              clsx(
+                'text-sm font-medium',
+                themeClasses(
+                  'group-hover/funcruncard:text-action-500',
+                  'group-hover/funcruncard:text-action-300',
+                ),
+              )
+            "
             :title="funcRun.functionDisplayName || funcRun.functionName"
           >
             {{ funcRun.functionDisplayName || funcRun.functionName }}
@@ -65,7 +77,7 @@
 <script lang="ts" setup>
 import clsx from "clsx";
 import { computed } from "vue";
-import { Icon } from "@si/vue-lib/design-system";
+import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import { FuncRun, funcRunStatus } from "@/store/func_runs.store";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 

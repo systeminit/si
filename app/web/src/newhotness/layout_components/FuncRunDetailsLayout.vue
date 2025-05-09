@@ -1,11 +1,21 @@
 <template>
-  <section class="flex flex-col h-full bg-neutral-900 text-white">
+  <section
+    :class="
+      clsx(
+        'flex flex-col h-full',
+        themeClasses(
+          'bg-shade-0 text-shade-100',
+          'bg-neutral-900 text-shade-0',
+        ),
+      )
+    "
+  >
     <header
       class="flex flex-row items-center px-sm py-xs border-b border-neutral-700"
     >
       <!-- Back button (smaller with no border) -->
       <button
-        class="text-neutral-400 hover:text-white mr-xs flex items-center justify-center"
+        class="text-neutral-400 hover:text-white mr-xs flex flex-row items-center justify-center"
         aria-label="Back to actions list"
         @click="navigateBack"
       >
@@ -14,8 +24,7 @@
 
       <!-- Function info -->
       <div class="flex-1 flex flex-row items-center gap-xs">
-        <!-- negative top margin to pull it up because its a larger font size than everything else on the same line, now it centered to our eyes -->
-        <span class="font-medium mt-[-0.25em]">
+        <span class="font-medium">
           {{
             funcRun?.functionDisplayName ||
             funcRun?.functionName ||
@@ -24,8 +33,9 @@
         </span>
 
         <!-- add a bit more "gap" to the first (dt) element, so the pairs have more space between them -->
+        <!-- negative bottom margin to pull it down so all items are visually aligned -->
         <dl
-          class="text-sm text-neutral-400 flex items-center gap-2xs [&>dt]:ml-2xs"
+          class="text-sm text-neutral-400 flex flex-row items-center gap-2xs [&>dt]:ml-2xs mb-[-0.25em]"
         >
           <template v-if="funcRun?.functionKind">
             <dt><Icon name="func" size="xs" /></dt>
@@ -116,8 +126,9 @@
 
 <script lang="ts" setup>
 import { ref, watch } from "vue";
-import { Icon } from "@si/vue-lib/design-system";
+import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import { useRoute, useRouter } from "vue-router";
+import clsx from "clsx";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { FuncRun } from "@/store/func_runs.store";
 import FuncRunStatusBadge from "../FuncRunStatusBadge.vue";

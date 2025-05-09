@@ -272,6 +272,10 @@ export interface BifrostComponent {
   secretsAttributeValueId: AttributeValueId;
   siAttributeValueId: AttributeValueId;
   resourceValueAttributeValueId: AttributeValueId;
+  resourceDiff: {
+    current?: string;
+    diff?: string;
+  };
 }
 
 export interface BifrostComponentList {
