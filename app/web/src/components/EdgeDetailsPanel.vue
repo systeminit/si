@@ -29,7 +29,7 @@
 
     <div
       v-for="connection in connections"
-      :key="connection.fromSocket.uniqueKey"
+      :key="connection.uniqueKeyForVue"
       class="border-b dark:border-neutral-600 p-xs"
     >
       <Connection
@@ -77,7 +77,8 @@ import { useViewsStore } from "@/store/views.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import SidebarSubpanelTitle from "./SidebarSubpanelTitle.vue";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
-import Connection from "./Connection.vue";
+import Connection, { SocketConnection, SubscriptionConnection } from "./Connection.vue";
+import { Edge, isSocketEdge } from "@/api/sdf/dal/component";
 
 defineProps({
   menuSelected: { type: Boolean },
@@ -98,57 +99,38 @@ const connections = computed(() => {
     componentsStore.allComponentsById[selectedEdge.value.toComponentId];
   if (!fromComponent || !toComponent) return [];
 
+  let edgesToDisplay: Edge[];
   if (featureFlagsStore.SIMPLE_SOCKET_UI && !selectedEdge.value.isManagement) {
     const allEdges = Object.values(componentsStore.rawEdgesById);
-    const edgesToDisplay = allEdges.filter(
+    edgesToDisplay = allEdges.filter(
       (edge) =>
         edge.fromComponentId === fromComponent.def.id &&
         edge.toComponentId === toComponent.def.id &&
         !edge.isManagement,
     );
-    const connections = edgesToDisplay.map((edge) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const fromSocket = fromComponent.sockets.find(
-        (socket) => socket.def.id === edge.fromSocketId,
-      )!;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const toSocket = toComponent.sockets.find(
-        (socket) => socket.def.id === edge.toSocketId,
-      )!;
-
-      return {
-        id: edge.id,
-        changeStatus: edge.changeStatus,
-        createdInfo: edge.createdInfo,
-        deletedInfo: edge.deletedInfo,
-        isManagement: !!edge.isManagement,
-        fromSocket,
-        toSocket,
-      };
-    });
-
-    return connections;
   } else {
-    const fromSocket = fromComponent.sockets.find(
-      (socket) => socket.def.id === selectedEdge.value?.fromSocketId,
-    );
-    const toSocket = toComponent.sockets.find(
-      (socket) => socket.def.id === selectedEdge.value?.toSocketId,
-    );
-
-    if (!fromSocket || !toSocket) return []; // this should not happen!
-
-    const connection = {
-      id: selectedEdge.value.id,
-      changeStatus: selectedEdge.value.changeStatus,
-      createdInfo: selectedEdge.value.createdInfo,
-      deletedInfo: selectedEdge.value.deletedInfo,
-      isManagement: !!selectedEdge.value.isManagement,
-      toSocket,
-      fromSocket,
-    };
-    return [connection];
+    edgesToDisplay = [selectedEdge.value];
   }
+  return edgesToDisplay.map((edge) => {
+    if (isSocketEdge(edge)) {
+      return {
+        ...edge,
+        fromSocket: fromComponent.sockets.find(
+          (socket) => isSocketEdge(edge) && socket.def.id === edge.fromSocketId,
+        )!,
+        toSocket: toComponent.sockets.find(
+          (socket) => isSocketEdge(edge) && socket.def.id === edge.toSocketId,
+        )!,
+        uniqueKeyForVue: `${edge.fromSocketId}-${edge.toSocketId}`,
+      };
+    } else {
+      // It's a subscription edge, then.
+      return {
+        ...edge,
+        uniqueKeyForVue: `${edge.fromAttributePath}-${edge.toAttributeValueId}`,
+      };
+    }
+  })
 });
 
 const addConnection = () => {

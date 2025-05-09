@@ -7,6 +7,7 @@
       ID = {{ connection.id }}
     </div>
     <SocketCard
+      v-if="isSocketConnection(connection)"
       :socket="connection.fromSocket"
       outputSocket
       :changeStatus="connection.changeStatus"
@@ -26,9 +27,13 @@
       </div>
     </div>
     <SocketCard
+      v-if="isSocketConnection(connection)"
       :socket="connection.toSocket"
       :changeStatus="connection.changeStatus"
     />
+    <div v-else>
+      <h1>TODO show subscription here</h1>
+    </div>
   </div>
 </template>
 
@@ -45,22 +50,43 @@ import { tw } from "@si/vue-lib";
 import { isDevMode } from "@/utils/debug";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ActorAndTimestamp } from "@/api/sdf/dal/component";
-import { useComponentsStore } from "@/store/components.store";
+import { AttributePath, useComponentsStore } from "@/store/components.store";
 import { useViewsStore } from "@/store/views.store";
-import { DiagramSocketData } from "./ModelingDiagram/diagram_types";
+import { DiagramNodeData, DiagramSocketData } from "./ModelingDiagram/diagram_types";
 import SocketCard from "./SocketCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
+import { AttributeValueId } from "@/store/status.store";
 
-export type Connection = {
+interface BaseConnection {
   id: string;
   changeStatus?: ChangeStatus;
-  createdInfo: ActorAndTimestamp;
+  createdInfo?: ActorAndTimestamp;
   deletedInfo?: ActorAndTimestamp;
+}
+
+export interface SocketConnection extends BaseConnection {
+  isManagement?: boolean;
   fromSocket: DiagramSocketData;
   toSocket: DiagramSocketData;
-  isManagement: boolean;
-};
+}
+function isSocketConnection(
+  connection: Connection,
+): connection is SocketConnection {
+  return "fromSocket" in connection;
+}
+
+export interface SubscriptionConnection extends BaseConnection {
+  fromAttributePath: AttributePath;
+  toAttributeValueId: AttributeValueId;
+}
+function isSubscriptionConnection(
+  connection: Connection,
+): connection is SubscriptionConnection {
+  return "attributePath" in connection;
+}
+
+export type Connection = SocketConnection | SubscriptionConnection;
 
 const props = defineProps({
   connection: { type: Object as PropType<Connection>, required: true },

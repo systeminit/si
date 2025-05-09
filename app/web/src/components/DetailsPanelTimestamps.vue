@@ -89,7 +89,7 @@ import StatusIndicatorIcon from "./StatusIndicatorIcon.vue";
 
 defineProps({
   changeStatus: { type: String as PropType<ChangeStatus> },
-  created: { type: Object as PropType<ActorAndTimestamp>, required: true },
+  created: { type: Object as PropType<ActorAndTimestamp> },
   modified: { type: Object as PropType<ActorAndTimestamp> },
   deleted: { type: Object as PropType<ActorAndTimestamp> },
   noMargin: { type: Boolean },

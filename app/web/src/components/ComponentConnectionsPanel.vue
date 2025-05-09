@@ -371,12 +371,12 @@ const resetHandler = (item: TreeFormData, value?: string) => {
           },
         ];
 
-  const edgeId = generateEdgeId(
-    from.componentId,
-    to.componentId,
-    from.socketId,
-    to.socketId,
-  );
+  const edgeId = generateEdgeId({
+    fromComponentId: from.componentId,
+    fromSocketId: from.socketId,
+    toComponentId: to.componentId,
+    toSocketId: to.socketId,
+  });
 
   componentsStore.DELETE_EDGE(
     edgeId,

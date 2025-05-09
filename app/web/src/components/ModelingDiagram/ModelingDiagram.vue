@@ -399,6 +399,7 @@ import {
   Bounds,
   toRequiredBounds,
   DiagramEdgeDataWithConnectionCount,
+  DiagramSocketEdgeData,
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramCursor from "./DiagramCursor.vue";
@@ -2529,9 +2530,8 @@ const drawEdgePossibleTargetSocketKeys = computed(() => {
     (e) => e.def.changeStatus === "deleted",
   );
   const existingConnectedSocketKeys = _.map(actualExistingEdges, (edge) =>
-    edge.fromSocketKey === fromSocket.uniqueKey
-      ? edge.toSocketKey
-      : edge.fromSocketKey,
+    edge instanceof DiagramSocketEdgeData &&
+    (edge.fromSocketKey === fromSocket.uniqueKey ? edge.toSocketKey : edge.fromSocketKey),
   );
 
   const possibleSockets = _.filter(sockets.value, (possibleToSocket) => {
@@ -3031,7 +3031,8 @@ function getSocketLocationInfo(
         ? edge.simpleDisplayFromSocketKey
         : edge.simpleDisplayToSocketKey;
     return viewsStore.sockets[key];
-  } else if (edge) {
+  // If we're not in the simple socket UI, we only support input/output socket connections
+  } else if (edge instanceof DiagramSocketEdgeData) {
     const key = direction === "from" ? edge.fromSocketKey : edge.toSocketKey;
     return viewsStore.sockets[key];
   }
@@ -3279,10 +3280,13 @@ const connectedEdgesByElementKey = computed(() => {
     lookup[edge.fromNodeKey]!.push(edge);
     lookup[edge.toNodeKey] ||= [];
     lookup[edge.toNodeKey]!.push(edge);
-    lookup[edge.fromSocketKey] ||= [];
-    lookup[edge.fromSocketKey]!.push(edge);
-    lookup[edge.toSocketKey] ||= [];
-    lookup[edge.toSocketKey]!.push(edge);
+    // There is nothing on the diagram for subscriptions, only socket connections
+    if (edge instanceof DiagramSocketEdgeData) {
+      lookup[edge.fromSocketKey] ||= [];
+      lookup[edge.fromSocketKey]!.push(edge);
+      lookup[edge.toSocketKey] ||= [];
+      lookup[edge.toSocketKey]!.push(edge);
+    }
   });
   return lookup;
 });

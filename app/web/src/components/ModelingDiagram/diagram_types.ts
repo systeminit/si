@@ -2,7 +2,7 @@ import * as _ from "lodash-es";
 import { IconNames, Tones } from "@si/vue-lib/design-system";
 import { ConnectionAnnotation } from "@si/ts-lib";
 import { Vector2d } from "konva/lib/types";
-import { useComponentsStore } from "@/store/components.store";
+import { AttributePath, useComponentsStore } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ActorAndTimestamp, ComponentId } from "@/api/sdf/dal/component";
 import { ComponentType } from "@/api/sdf/dal/schema";
@@ -19,6 +19,7 @@ import {
   SOCKET_SIZE,
   SOCKET_TOP_MARGIN,
 } from "./diagram_constants";
+import { AttributeValueId } from "@/store/status.store";
 
 export type Bounds = {
   left: number;
@@ -110,97 +111,72 @@ abstract class DiagramNodeHasSockets extends DiagramElementData {
   }
 
   diagramSocketsLeft() {
-    if (!this.sockets) return [];
     const featureFlagsStore = useFeatureFlagsStore();
-    const leftManagementSocket = this.sockets.find(
+
+    // Always return the management socket first
+    const sockets = this.sockets.filter(
       (s) => s.def.isManagement && s.def.nodeSide === "left",
     );
-    const sockets = _.sortBy(
-      this.sockets.filter(
-        (s) =>
-          s.def.label !== "Frame" &&
-          s.def.nodeSide === "left" &&
-          !s.def.isManagement,
-      ),
-      (s) => s.def.label,
-    );
-    if (leftManagementSocket) {
-      sockets.unshift(leftManagementSocket);
-    }
 
     if (featureFlagsStore.SIMPLE_SOCKET_UI) {
-      let dataSocket: DiagramSocketData;
-      let oldSocket: DiagramSocketData;
-      if (leftManagementSocket && sockets[1]) {
-        oldSocket = sockets[1];
-        sockets.splice(1, sockets.length);
-        dataSocket = new DiagramSocketData(oldSocket.parent, {
-          ...oldSocket.def,
-        });
-      } else if (sockets[0]) {
-        oldSocket = sockets[0];
-        sockets.splice(0, sockets.length);
-        dataSocket = new DiagramSocketData(oldSocket.parent, {
-          ...oldSocket.def,
-        });
-      } else {
-        return [];
-      }
-      if (dataSocket) {
-        dataSocket.def.label = "Input";
-        dataSocket.def.connectionAnnotations = [];
-        dataSocket.def.maxConnections = null;
-        dataSocket.def.id = this.inputSocketId();
-        sockets.push(dataSocket);
-      }
+      sockets.push(
+        new DiagramSocketData(this, {
+          id: this.inputSocketId(),
+          label: "Input",
+          connectionAnnotations: [],
+          maxConnections: null,
+          direction: "input",
+          nodeSide: "left",
+        }),
+      );
+    } else {
+      // Not single-socket UI, so add the real data sockets
+      const dataSockets = _.sortBy(
+        this.sockets.filter(
+          (s) =>
+            s.def.label !== "Frame" &&
+            s.def.nodeSide === "left" &&
+            !s.def.isManagement,
+        ),
+        (s) => s.def.label,
+      );
+      sockets.push(...dataSockets);
     }
+
     return sockets;
   }
 
   diagramSocketsRight() {
-    if (!this.sockets) return [];
     const featureFlagsStore = useFeatureFlagsStore();
-    const rightManagementSocket = this.sockets.find(
+
+    // Always return the management socket first
+    const sockets = this.sockets.filter(
       (s) => s.def.isManagement && s.def.nodeSide === "right",
     );
-    const sockets = _.sortBy(
-      this.sockets.filter(
-        (s) =>
-          s.def.label !== "Frame" &&
-          s.def.nodeSide === "right" &&
-          !s.def.isManagement,
-      ),
-      (s) => s.def.label,
-    );
-    if (rightManagementSocket) {
-      sockets.unshift(rightManagementSocket);
-    }
 
     if (featureFlagsStore.SIMPLE_SOCKET_UI) {
-      let dataSocket: DiagramSocketData;
-      let oldSocket: DiagramSocketData;
-      if (rightManagementSocket && sockets[1]) {
-        oldSocket = sockets[1];
-        sockets.splice(1, sockets.length);
-        dataSocket = new DiagramSocketData(oldSocket.parent, {
-          ...oldSocket.def,
-        });
-      } else if (sockets[0]) {
-        oldSocket = sockets[0];
-        sockets.splice(0, sockets.length);
-        dataSocket = new DiagramSocketData(oldSocket.parent, {
-          ...oldSocket.def,
-        });
-      } else {
-        return [];
-      }
-      if (dataSocket) {
-        dataSocket.def.label = "Output";
-        dataSocket.def.connectionAnnotations = [];
-        dataSocket.def.maxConnections = null;
-        dataSocket.def.id = this.outputSocketId();
-        sockets.push(dataSocket);
-      }
+      sockets.push(
+        new DiagramSocketData(this, {
+          id: this.outputSocketId(),
+          label: "Output",
+          connectionAnnotations: [],
+          maxConnections: null,
+          direction: "output",
+          nodeSide: "right",
+        }),
+      );
+    } else {
+      // Not single-socket UI, so add the real data sockets
+      const dataSockets = _.sortBy(
+        this.sockets.filter(
+          (s) =>
+            s.def.label !== "Frame" &&
+            s.def.nodeSide === "right" &&
+            !s.def.isManagement,
+        ),
+        (s) => s.def.label,
+      );
+      sockets.push(...dataSockets);
     }
 
     return sockets;
@@ -392,41 +368,6 @@ export class DiagramEdgeData extends DiagramElementData {
     return DiagramNodeData.generateUniqueKey(this.def.toComponentId);
   }
 
-  get fromSocketKey() {
-    if (!this.def.fromSocketId) {
-      throw new Error("fromSocketId is required for fromSocketKey");
-    }
-    const comp =
-      useComponentsStore().allComponentsById[this.def.fromComponentId];
-    if (comp?.def.isGroup) {
-      return DiagramSocketData.generateUniqueKey(
-        DiagramGroupData.generateUniqueKey(this.def.fromComponentId),
-        this.def.fromSocketId ?? "<ERROR THIS SHOULD NOT BE CALLED>",
-      );
-    }
-    return DiagramSocketData.generateUniqueKey(
-      DiagramNodeData.generateUniqueKey(this.def.fromComponentId),
-      this.def.fromSocketId ?? "subscribedTo",
-    );
-  }
-
-  get toSocketKey() {
-    if (!this.def.toSocketId) {
-      throw new Error("toSocketId is required for fromSocketKey");
-    }
-    const comp = useComponentsStore().allComponentsById[this.def.toComponentId];
-    if (comp?.def.isGroup) {
-      return DiagramSocketData.generateUniqueKey(
-        DiagramGroupData.generateUniqueKey(this.def.toComponentId),
-        this.def.toSocketId,
-      );
-    }
-    return DiagramSocketData.generateUniqueKey(
-      DiagramNodeData.generateUniqueKey(this.def.toComponentId),
-      this.def.toSocketId,
-    );
-  }
-
   get simpleDisplayFromSocketKey() {
     const comp =
       useComponentsStore().allComponentsById[this.def.fromComponentId];
@@ -446,6 +387,45 @@ export class DiagramEdgeData extends DiagramElementData {
 
   static generateUniqueKey(id: string | number) {
     return `e-${id}`;
+  }
+}
+
+export class DiagramSocketEdgeData extends DiagramEdgeData {
+  declare def: DiagramSocketEdgeDef;
+
+  get fromSocketKey() {
+    if (!("fromSocketId" in this.def)) {
+      throw new Error("fromSocketId is required for fromSocketKey");
+    }
+    const comp =
+      useComponentsStore().allComponentsById[this.def.fromComponentId];
+    if (comp?.def.isGroup) {
+      return DiagramSocketData.generateUniqueKey(
+        DiagramGroupData.generateUniqueKey(this.def.fromComponentId),
+        this.def.fromSocketId,
+      );
+    }
+    return DiagramSocketData.generateUniqueKey(
+      DiagramNodeData.generateUniqueKey(this.def.fromComponentId),
+      this.def.fromSocketId,
+    );
+  }
+
+  get toSocketKey() {
+    if (!this.def.toSocketId) {
+      throw new Error("toSocketId is required for fromSocketKey");
+    }
+    const comp = useComponentsStore().allComponentsById[this.def.toComponentId];
+    if (comp?.def.isGroup) {
+      return DiagramSocketData.generateUniqueKey(
+        DiagramGroupData.generateUniqueKey(this.def.toComponentId),
+        this.def.toSocketId,
+      );
+    }
+    return DiagramSocketData.generateUniqueKey(
+      DiagramNodeData.generateUniqueKey(this.def.toComponentId),
+      this.def.toSocketId,
+    );
   }
 }
 
@@ -568,14 +548,12 @@ export type DiagramViewDef = ViewNode & {
   schemaDocsLink?: string;
 };
 
-export type DiagramEdgeDef = {
+export interface DiagramEdgeDef {
   id: DiagramElementId;
   type?: string;
   name?: string;
   fromComponentId: DiagramElementId;
-  fromSocketId?: DiagramElementId;
   toComponentId: DiagramElementId;
-  toSocketId?: DiagramElementId;
   isBidirectional?: boolean;
   isInferred?: boolean;
   isManagement?: boolean;
@@ -583,8 +561,17 @@ export type DiagramEdgeDef = {
   changeStatus?: ChangeStatus;
   createdAt?: Date;
   deletedAt?: Date;
-  toDelete: boolean;
-};
+  toDelete?: boolean;
+}
+export interface DiagramSocketEdgeDef extends DiagramEdgeDef {
+  fromSocketId: DiagramElementId;
+  toSocketId: DiagramElementId;
+}
+export function isDiagramSocketEdgeDef(
+  edge: DiagramEdgeDef,
+): edge is DiagramSocketEdgeDef {
+  return "fromSocketId" in edge;
+}
 
 export type DiagramDrawEdgeState = {
   active: boolean;

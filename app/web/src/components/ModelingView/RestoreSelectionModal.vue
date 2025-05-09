@@ -37,6 +37,7 @@ import {
   DiagramGroupData,
   DiagramNodeData,
 } from "../ModelingDiagram/diagram_types";
+import { isSocketEdge } from "@/api/sdf/dal/component";
 
 const componentsStore = useComponentsStore();
 const viewStore = useViewsStore();
@@ -87,16 +88,27 @@ async function onConfirmRestore() {
       ...toRaw(viewStore.selectedComponentIds),
     );
   } else if (viewStore.selectedEdge) {
-    await componentsStore.CREATE_COMPONENT_CONNECTION(
-      {
-        componentId: viewStore.selectedEdge.fromComponentId,
-        socketId: viewStore.selectedEdge.fromSocketId,
-      },
-      {
-        componentId: viewStore.selectedEdge.toComponentId,
-        socketId: viewStore.selectedEdge.toSocketId,
-      },
-    );
+    if (isSocketEdge(viewStore.selectedEdge)) {
+      await componentsStore.CREATE_COMPONENT_CONNECTION(
+        {
+          componentId: viewStore.selectedEdge.fromComponentId,
+          socketId: viewStore.selectedEdge.fromSocketId,
+        },
+        {
+          componentId: viewStore.selectedEdge.toComponentId,
+          socketId: viewStore.selectedEdge.toSocketId,
+        },
+      );
+    } else {
+      throw new Error("Restoring subscription edges is not yet implemented in UI");
+      // TODO fix endpoint to give us attribute path or take id
+      // resp = await componentsStore.UPDATE_COMPONENT_ATTRIBUTES(
+      //   viewStore.selectedEdge.toComponentId,
+      //   {
+      //     [viewStore.selectedEdge.toAttributePath]: { $source: null },
+      //   }
+      // );
+    }
   }
   viewStore.setSelectedComponentId(null);
   close();
