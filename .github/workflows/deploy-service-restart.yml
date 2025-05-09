@@ -53,9 +53,17 @@ jobs:
       environment: ${{ inputs.environment }}
       service: edda
     secrets: inherit
+    
+  restart-luminork:
+    needs: restart-pinga
+    uses: ./.github/workflows/service-restart.yml
+    with:
+      environment: ${{ inputs.environment }}
+      service: luminork
+    secrets: inherit
 
   restart-sdf:
-    needs: restart-pinga
+    needs: restart-luminork
     uses: ./.github/workflows/service-restart.yml
     with:
       environment: ${{ inputs.environment }}
