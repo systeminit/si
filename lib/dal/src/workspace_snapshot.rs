@@ -157,6 +157,8 @@ pub enum WorkspaceSnapshotError {
     ConnectionAnnotation(#[from] Box<ConnectionAnnotationError>),
     #[error("error correcting transforms: {0}")]
     CorrectTransforms(#[from] CorrectTransformsError),
+    #[error("error correcting transforms split graph: {0}")]
+    CorrectTransformsSplit(#[from] split_snapshot::corrections::CorrectTransformsError),
     #[error("Action would create a graph cycle")]
     CreateGraphCycle,
     #[error("InferredConnectionGraph error: {0}")]

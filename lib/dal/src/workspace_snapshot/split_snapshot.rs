@@ -10,6 +10,7 @@ use std::{
 };
 
 use async_trait::async_trait;
+use corrections::correct_transforms;
 use petgraph::Direction::{
     self,
     Incoming,
@@ -120,6 +121,8 @@ use crate::{
     slow_rt,
     socket::input::InputSocketError,
 };
+
+pub mod corrections;
 
 pub type SplitSnapshotGraphV1 = SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>;
 pub type SplitSnapshotGraphVCurrent = SplitSnapshotGraphV1;
@@ -1300,6 +1303,18 @@ impl SplitSnapshot {
         if working_copy.is_some() {
             *working_copy = None;
         }
+    }
+
+    pub async fn correct_transforms(
+        &self,
+        updates: Vec<UpdateVCurrent>,
+        from_different_change_set: bool,
+    ) -> WorkspaceSnapshotResult<Vec<UpdateVCurrent>> {
+        Ok(correct_transforms(
+            &*self.working_copy().await,
+            updates,
+            from_different_change_set,
+        )?)
     }
 }
 #[async_trait]

@@ -79,6 +79,45 @@ where
     pub(super) debug: bool,
 }
 
+pub struct RawSplitGraphEdges<'a, N, E, K>
+where
+    N: CustomNodeWeight,
+    E: CustomEdgeWeight<K>,
+    K: EdgeKind,
+{
+    pub(super) this_subgraph: &'a SubGraph<N, E, K>,
+    pub(super) edges: stable_graph::Edges<'a, SplitGraphEdgeWeight<E, K>, Directed, SubGraphIndex>,
+}
+
+#[derive(Debug)]
+pub struct RawSplitGraphEdgeReference<'a, E, K>
+where
+    E: 'a + CustomEdgeWeight<K>,
+    K: EdgeKind,
+{
+    source_id: SplitGraphNodeId,
+    target_id: SplitGraphNodeId,
+    weight: &'a SplitGraphEdgeWeight<E, K>,
+}
+
+impl<'a, E, K> RawSplitGraphEdgeReference<'a, E, K>
+where
+    E: 'a + CustomEdgeWeight<K>,
+    K: EdgeKind,
+{
+    pub fn weight(&self) -> &'a SplitGraphEdgeWeight<E, K> {
+        self.weight
+    }
+
+    pub fn source(&self) -> SplitGraphNodeId {
+        self.source_id
+    }
+
+    pub fn target(&self) -> SplitGraphNodeId {
+        self.target_id
+    }
+}
+
 pub struct SplitGraphNeighbors<'a, N, E, K>
 where
     N: CustomNodeWeight,
@@ -244,6 +283,29 @@ where
     }
 }
 
+impl<'a, N, E, K> Iterator for RawSplitGraphEdges<'a, N, E, K>
+where
+    N: CustomNodeWeight,
+    E: CustomEdgeWeight<K>,
+    K: EdgeKind,
+{
+    type Item = RawSplitGraphEdgeReference<'a, E, K>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.edges.next().and_then(|edge_ref| {
+            self.this_subgraph
+                .graph
+                .node_weight(edge_ref.source())
+                .zip(self.this_subgraph.graph.node_weight(edge_ref.target()))
+                .map(|(source_node, target_node)| RawSplitGraphEdgeReference {
+                    source_id: source_node.id(),
+                    target_id: target_node.id(),
+                    weight: edge_ref.weight(),
+                })
+        })
+    }
+}
+
 impl<N, E, K> petgraph::visit::GraphBase for SplitGraph<N, E, K>
 where
     N: CustomNodeWeight,
@@ -338,7 +400,7 @@ where
     type NeighborsDirected = SplitGraphNeighbors<'a, N, E, K>;
 
     fn neighbors_directed(self, n: Self::NodeId, d: Direction) -> Self::Neighbors {
-        self.neighbors_directed_raw(n, d)
+        self.raw_neighbors_directed(n, d)
     }
 }
 
@@ -351,7 +413,7 @@ where
     type Neighbors = SplitGraphNeighbors<'a, N, E, K>;
 
     fn neighbors(self, a: Self::NodeId) -> Self::Neighbors {
-        self.neighbors_raw(a)
+        self.raw_neighbors(a)
     }
 }
 
