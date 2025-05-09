@@ -91,8 +91,11 @@ async fn app_state_middeware<B>(
         (name = "root", description = "Root API endpoints"),
         (name = "whoami", description = "User identity endpoints"),
         (name = "change_sets", description = "Change set management endpoints"),
-        (name = "components", description = "Component management endpoints"),
-        (name = "funcs", description = "Functions management endpoints"),
+        (name = "components", description = "Components management endpoints"),
+        (name = "schemas", description = "Schemsa management endpoints"),
+        (name = "actions", description = "Actions management endpoints"),
+        (name = "secrets", description = "Secrets management endpoints"),
+        (name = "funcs", description = "Functions management endpoints")
     ),
     info(
         title = "System Initiative API",
@@ -256,6 +259,7 @@ pub fn routes(state: AppState) -> Router {
     tag = "root",
     responses(
         (status = 200, description = "System status information", body = SystemStatusResponse),
+        (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 503, description = "Service in maintenance mode")
     )
 )]

@@ -6,6 +6,7 @@ use axum::{
         Response,
     },
 };
+use dal::ChangeSetId;
 use thiserror::Error;
 
 pub mod create;
@@ -18,6 +19,8 @@ pub mod request_approval;
 
 use super::common::ErrorIntoResponse;
 
+pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
+
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ChangeSetError {
@@ -29,6 +32,8 @@ pub enum ChangeSetError {
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("change set apply error: {0}")]
     ChangeSetApply(#[from] dal::ChangeSetApplyError),
+    #[error("change set not found: {0}")]
+    ChangeSetNotFound(ChangeSetId),
     #[error("component error: {0}")]
     Component(#[from] dal::ComponentError),
     #[error("func error: {0}")]

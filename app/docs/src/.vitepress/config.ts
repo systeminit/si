@@ -160,6 +160,10 @@ export default defineConfig({
             link: "/reference/github-action",
           },
           {
+            text: "Public API",
+            link: "/reference/public-api",
+          },
+          {
             text: "TypeScript Function API",
             link: "/reference/typescript/README",
           },

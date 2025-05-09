@@ -1,15 +1,19 @@
 use axum::response::Json;
 use dal::change_set::ChangeSet;
-use serde::Serialize;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::json;
 use utoipa::ToSchema;
 
+use super::ChangeSetResult;
 use crate::{
+    api_types::change_sets::v1::ChangeSetViewV1,
     extract::{
         PosthogEventTracker,
         change_set::ChangeSetDalContext,
     },
-    service::v1::ChangeSetError,
 };
 
 #[utoipa::path(
@@ -21,24 +25,40 @@ use crate::{
     ),
     tag = "change_sets",
     responses(
-        (status = 200, description = "Change sets listed successfully", body = GetChangeSetV1Response),
+        (status = 200, description = "Change details retrieved successfully", body = GetChangeSetV1Response),
+        (status = 401, description = "Unauthorized - Invalid or missing token"),
+        (status = 404, description = "Change set not found"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
 pub async fn get_change_set(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
-) -> Result<Json<GetChangeSetV1Response>, ChangeSetError> {
+) -> ChangeSetResult<Json<GetChangeSetV1Response>> {
     tracker.track(ctx, "api_get_change_set", json!({}));
 
     let change_set = ChangeSet::get_by_id(ctx, ctx.change_set_id()).await?;
 
-    Ok(Json(GetChangeSetV1Response { change_set }))
+    let change_set_vew = ChangeSetViewV1 {
+        id: change_set.clone().id,
+        name: change_set.clone().name,
+        status: change_set.status,
+        is_head: change_set.clone().is_head(ctx).await?,
+    };
+
+    Ok(Json(GetChangeSetV1Response {
+        change_set: change_set_vew,
+    }))
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetChangeSetV1Response {
-    #[schema(value_type = Object, example = json!({"id": "01FXNV4P306V3KGZ73YSVN8A60", "name": "My new feature"}))]
-    pub change_set: ChangeSet,
+    #[schema(example = json!({
+        "id": "01FXNV4P306V3KGZ73YSVN8A60",
+        "name": "My new feature",
+        "status": "NeedsApproval",
+        "isHead": "false"
+    }))]
+    pub change_set: ChangeSetViewV1,
 }

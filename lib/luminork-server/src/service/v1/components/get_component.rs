@@ -31,24 +31,46 @@ use crate::{
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetComponentV1Response {
+    #[schema(example = json!({
+        "id": "01H9ZQD35JPMBGHH69BT0Q79AA",
+        "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+        "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+        "sockets": [{"id": "socket1", "name": "input", "direction": "input", "arity": "one", "value": null}],
+        "domainProps": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YAA", "propId": "01HAXYZF3GC9CYA6ZVSM3E4YBB", "value": "my-value", "path": "domain/path"}],
+        "resourceProps": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YCC", "propId": "01HAXYZF3GC9CYA6ZVSM3E4YDD", "value": "resource-value", "path": "resource/path"}],
+        "name": "My EC2 Instance",
+        "resourceId": "i-1234567890abcdef0",
+        "toDelete": false,
+        "canBeUpgraded": true,
+        "connections": [],
+        "views": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YEE", "name": "Default View", "isDefault": true}]
+    }))]
     pub component: ComponentViewV1,
+    #[schema(example = json!([
+        {"managementPrototypeId": "01HAXYZF3GC9CYA6ZVSM3E4YFF", "funcName": "Start Instance"}
+    ]))]
     pub management_functions: Vec<GetComponentV1ResponseManagementFunction>,
+    #[schema(example = json!([
+        {"prototypeId": "01HAXYZF3GC9CYA6ZVSM3E4YGG", "funcName": "Terminate Instance"}
+    ]))]
     pub action_functions: Vec<GetComponentV1ResponseActionFunction>,
 }
 
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetComponentV1ResponseManagementFunction {
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01HAXYZF3GC9CYA6ZVSM3E4YFF")]
     pub management_prototype_id: ManagementPrototypeId,
+    #[schema(example = "Start Instance")]
     pub func_name: String,
 }
 
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetComponentV1ResponseActionFunction {
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01HAXYZF3GC9CYA6ZVSM3E4YGG")]
     pub prototype_id: ActionPrototypeId,
+    #[schema(example = "Terminate Instance")]
     pub func_name: String,
 }
 

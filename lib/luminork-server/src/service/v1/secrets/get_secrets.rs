@@ -36,7 +36,74 @@ use crate::{
     ),
     tag = "secrets",
     responses(
-        (status = 200, description = "Secrets retrieved successfully"),
+        (status = 200, description = "Secrets retrieved successfully", body = GetSecretsV1Response,
+          example = json!({
+            "aws_credentials": {
+              "definition": {
+                "secretDefinition": "aws_credentials",
+                "formData": [
+                  {
+                    "name": "access_key_id",
+                    "kind": "string"
+                  },
+                  {
+                    "name": "secret_access_key",
+                    "kind": "password"
+                  },
+                  {
+                    "name": "region",
+                    "kind": "string"
+                  },
+                  {
+                    "name": "default_output",
+                    "kind": "string"
+                  }
+                ]
+              },
+              "secrets": [
+                {
+                  "id": "01HAXYZF3GC9CYA6ZVSM3E4YHH",
+                  "name": "Production AWS Key",
+                  "definition": "aws_credentials",
+                  "description": "AWS credentials for production environment"
+                },
+                {
+                  "id": "01HAXYZF3GC9CYA6ZVSM3E4YHI",
+                  "name": "Development AWS Key",
+                  "definition": "aws_credentials",
+                  "description": "AWS credentials for development environment"
+                }
+              ]
+            },
+            "docker_registry": {
+              "definition": {
+                "secretDefinition": "docker_registry",
+                "formData": [
+                  {
+                    "name": "username",
+                    "kind": "string"
+                  },
+                  {
+                    "name": "password",
+                    "kind": "password"
+                  },
+                  {
+                    "name": "registry_url",
+                    "kind": "string"
+                  }
+                ]
+              },
+              "secrets": [
+                {
+                  "id": "01HAXYZF3GC9CYA6ZVSM3E4YHJ",
+                  "name": "DockerHub Access",
+                  "definition": "docker_registry",
+                  "description": "DockerHub registry credentials"
+                }
+              ]
+            }
+          })
+        ),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )

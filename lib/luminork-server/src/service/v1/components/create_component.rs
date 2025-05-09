@@ -230,5 +230,19 @@ pub struct CreateComponentV1Request {
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateComponentV1Response {
+    #[schema(example = json!({
+        "id": "01H9ZQD35JPMBGHH69BT0Q79AA",
+        "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+        "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+        "sockets": [{"id": "socket1", "name": "input", "direction": "input", "arity": "one", "value": null}],
+        "domainProps": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YAA", "propId": "01HAXYZF3GC9CYA6ZVSM3E4YBB", "value": "my-value", "path": "domain/path"}],
+        "resourceProps": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YCC", "propId": "01HAXYZF3GC9CYA6ZVSM3E4YDD", "value": "resource-value", "path": "resource/path"}],
+        "name": "My EC2 Instance",
+        "resourceId": "i-1234567890abcdef0",
+        "toDelete": false,
+        "canBeUpgraded": true,
+        "connections": [],
+        "views": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YEE", "name": "Default View", "isDefault": true}]
+    }))]
     pub component: ComponentViewV1,
 }

@@ -19,7 +19,7 @@ use crate::extract::{
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ListComponentsV1Response {
-    #[schema(value_type = String)]
+    #[schema(value_type = Vec<String>, example = json!(["01H9ZQD35JPMBGHH69BT0Q79AA", "01H9ZQD35JPMBGHH69BT0Q79BB", "01H9ZQD35JPMBGHH69BT0Q79CC"]))]
     pub components: Vec<ComponentId>,
 }
 
@@ -32,7 +32,7 @@ pub struct ListComponentsV1Response {
     ),
     tag = "components",
     responses(
-        (status = 200, description = "Components retrieved successfully"),
+        (status = 200, description = "Components retrieved successfully", body = ListComponentsV1Response, example = json!(["01H9ZQD35JPMBGHH69BT0Q79AA", "01H9ZQD35JPMBGHH69BT0Q79BB", "01H9ZQD35JPMBGHH69BT0Q79CC"])),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )

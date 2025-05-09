@@ -30,7 +30,18 @@ use crate::extract::{
     ),
     tag = "funcs",
     responses(
-        (status = 200, description = "Func retrieved successfully", body = GetFuncV1Response),
+        (status = 200, description = "Func retrieved successfully", body = GetFuncV1Response,
+          example = json!([{
+            "funcId": "01JP8A3S8VDQ1KRQWQRHB1ZEB2",
+            "code": "async function main(input: Input): Promise < Output > {\n    if (!input.domain?.region) {\n        return {\n            result: \"failure\",\n            message: \"No Region Name to validate\",\n        };\n    }\n\n    const child = await siExec.waitUntilEnd(\"aws\", [\n        \"ec2\",\n        \"describe-regions\",\n        \"--region-names\",\n        input.domain?.region!,\n        \"--region\",\n        \"us-east-1\",\n    ]);\n\n    if (child.exitCode !== 0) {\n        console.error(child.stderr);\n        return {\n            result: \"failure\",\n            message: \"Error from API\"\n        }\n    }\n\n    const regionDetails = JSON.parse(child.stdout).Regions;\n    if (regionDetails.length === 0 || regionDetails.length > 1) {\n        return {\n            result: \"failure\",\n            message: \"Unable to find Region\"\n        }\n    }\n\n    if (regionDetails[0].OptInStatus === \"not-opted-in\") {\n        return {\n            result: \"failure\",\n            message: \"Region not-opted-in for use\"\n        }\n    }\n\n    return {\n        result: \"success\",\n        message: \"Region is available to use\",\n    };\n}",
+            "name": "AWS Region Validator",
+            "description": "Validates if an AWS region exists and is available for use",
+            "displayName": "Validate Region",
+            "kind": "Qualification",
+            "isLocked": false,
+            "link": "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeRegions.html"
+          }])
+        ),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 404, description = "Func not found"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
@@ -68,18 +79,20 @@ pub async fn get_func(
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetFuncV1Response {
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "AWS Region Validator")]
     pub name: String,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "Validates if an AWS region exists and is available for use")]
     pub description: Option<String>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "Validate Region")]
     pub display_name: Option<String>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "Qualification")]
     pub kind: FuncKind,
-    #[schema(value_type = bool)]
+    #[schema(value_type = bool, example = false)]
     pub is_locked: bool,
-    #[schema(value_type = String)]
+    #[schema(
+        example = "async function main(input: Input): Promise < Output > {\n    if (!input.domain?.region) {\n        return {\n            result: \"failure\",\n            message: \"No Region Name to validate\",\n        };\n    }\n\n    const child = await siExec.waitUntilEnd(\"aws\", [\n        \"ec2\",\n        \"describe-regions\",\n        \"--region-names\",\n        input.domain?.region!,\n        \"--region\",\n        \"us-east-1\",\n    ]);\n\n    if (child.exitCode !== 0) {\n        console.error(child.stderr);\n        return {\n            result: \"failure\",\n            message: \"Error from API\"\n        }\n    }\n\n    const regionDetails = JSON.parse(child.stdout).Regions;\n    if (regionDetails.length === 0 || regionDetails.length > 1) {\n        return {\n            result: \"failure\",\n            message: \"Unable to find Region\"\n        }\n    }\n\n    if (regionDetails[0].OptInStatus === \"not-opted-in\") {\n        return {\n            result: \"failure\",\n            message: \"Region not-opted-in for use\"\n        }\n    }\n\n    return {\n        result: \"success\",\n        message: \"Region is available to use\",\n    };\n}"
+    )]
     pub code: String,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeRegions.html")]
     pub link: Option<String>,
 }
