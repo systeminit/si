@@ -9,7 +9,7 @@
     "
   >
     <div class="flex gap-xs items-center">
-      <Stack spacing="2xs" class="min-w-0">
+      <Stack class="min-w-0" spacing="2xs">
         <div class="flex flex-row gap-2xs items-center">
           <Icon
             :name="outputSocket ? 'output-socket' : 'input-socket'"
@@ -28,25 +28,6 @@
 
       <!-- ICONS AFTER THIS POINT ARE RIGHT ALIGNED DUE TO THE ml-auto STYLE ON THIS DIV -->
       <div class="ml-auto"></div>
-
-      <!-- change status icon -->
-      <div
-        v-if="
-          'changeStatus' in socket.def &&
-          socket.def.changeStatus !== 'unmodified'
-        "
-        v-tooltip="{
-          content: socket.def.changeStatus,
-          theme: 'instant-show',
-        }"
-        class="cursor-pointer rounded hover:scale-125"
-      >
-        <StatusIndicatorIcon
-          type="change"
-          :status="(socket.def.changeStatus as string)"
-          @click="viewsStore.setComponentDetailsTab('diff')"
-        />
-      </div>
 
       <slot />
     </div>

@@ -2,7 +2,7 @@ import * as _ from "lodash-es";
 import { IconNames, Tones } from "@si/vue-lib/design-system";
 import { ConnectionAnnotation } from "@si/ts-lib";
 import { Vector2d } from "konva/lib/types";
-import { AttributePath, useComponentsStore } from "@/store/components.store";
+import { useComponentsStore } from "@/store/components.store";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
 import { ActorAndTimestamp, ComponentId } from "@/api/sdf/dal/component";
 import { ComponentType } from "@/api/sdf/dal/schema";
@@ -19,7 +19,6 @@ import {
   SOCKET_SIZE,
   SOCKET_TOP_MARGIN,
 } from "./diagram_constants";
-import { AttributeValueId } from "@/store/status.store";
 
 export type Bounds = {
   left: number;
@@ -70,13 +69,13 @@ export interface DiagramSocketDataWithPosition extends DiagramSocketData {
 abstract class DiagramNodeHasSockets extends DiagramElementData {
   public sockets: DiagramSocketData[];
   public diagramSockets: DiagramSocketData[]; // contains both actual sockets and data sockets which show on the diagram in Simple Socket UI
-  public readonly socketStartingY: number =
-    NODE_HEADER_HEIGHT + SOCKET_TOP_MARGIN + SOCKET_MARGIN_TOP;
+  public readonly socketStartingY: number = NODE_HEADER_HEIGHT +
+    SOCKET_TOP_MARGIN + SOCKET_MARGIN_TOP;
 
   constructor(readonly def: DiagramNodeDef) {
     super();
-    this.sockets =
-      def.sockets?.map((s) => new DiagramSocketData(this, s)) || [];
+    this.sockets = def.sockets?.map((s) => new DiagramSocketData(this, s)) ||
+      [];
     const featureFlagsStore = useFeatureFlagsStore();
     if (featureFlagsStore.SIMPLE_SOCKET_UI) {
       this.diagramSockets = [
@@ -268,12 +267,12 @@ export class DiagramNodeData extends DiagramNodeHasSockets {
 }
 
 export class DiagramGroupData extends DiagramNodeHasSockets {
+  public readonly socketStartingY: number = SOCKET_TOP_MARGIN +
+    SOCKET_MARGIN_TOP;
+
   get uniqueKey() {
     return DiagramGroupData.generateUniqueKey(this.def.id);
   }
-
-  public readonly socketStartingY: number =
-    SOCKET_TOP_MARGIN + SOCKET_MARGIN_TOP;
 
   static generateUniqueKey(id: string | number) {
     return `g-${id}`;

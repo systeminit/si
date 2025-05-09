@@ -14,7 +14,7 @@ import {
   DiagramSocketDirection,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
-import { AttributePath } from "@/store/components.store";
+
 import { AttributeValueId } from "@/store/status.store";
 
 export interface Component extends StandardModel {
@@ -115,8 +115,7 @@ interface ExtraEdgeProperties {
 }
 export interface SocketEdge extends RawSocketEdge, ExtraEdgeProperties {}
 export interface SubscriptionEdge
-  extends RawSubscriptionEdge,
-    ExtraEdgeProperties {}
+  extends RawSubscriptionEdge, ExtraEdgeProperties {}
 export type Edge = SocketEdge | SubscriptionEdge;
 export function isSocketEdge(edge: Edge | undefined): edge is SocketEdge {
   return edge ? "fromSocketId" in edge : false;

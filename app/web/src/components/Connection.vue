@@ -6,19 +6,19 @@
     >
       ID = {{ connection.id }}
     </div>
-    <SocketCard
+    <ConnectionEndCard
       v-if="isSocketConnection(connection)"
+      :changeStatus="connection.changeStatus"
       :socket="connection.fromSocket"
       outputSocket
-      :changeStatus="connection.changeStatus"
     />
     <div :class="clsx('_connection-label border-l-2', statusColors)">
       <div class="flex flex-row items-center">
         <DetailsPanelTimestamps
-          noMargin
           :changeStatus="connection.changeStatus"
           :created="connection.createdInfo"
           :deleted="connection.deletedInfo"
+          noMargin
         />
         <template v-if="showMenu">
           <DetailsPanelMenuIcon @click="openMenu" />
@@ -26,10 +26,10 @@
         </template>
       </div>
     </div>
-    <SocketCard
+    <ConnectionEndCard
       v-if="isSocketConnection(connection)"
-      :socket="connection.toSocket"
       :changeStatus="connection.changeStatus"
+      :socket="connection.toSocket"
     />
     <div v-else>
       <h1>TODO show subscription here</h1>
@@ -49,11 +49,11 @@ import {
 import { tw } from "@si/vue-lib";
 import { isDevMode } from "@/utils/debug";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
-import { ActorAndTimestamp } from "@/api/sdf/dal/component";
-import { AttributePath, useComponentsStore } from "@/store/components.store";
+import { ActorAndTimestamp, AttributePath } from "@/api/sdf/dal/component";
+import { useComponentsStore } from "@/store/components.store";
 import { useViewsStore } from "@/store/views.store";
-import { DiagramNodeData, DiagramSocketData } from "./ModelingDiagram/diagram_types";
-import SocketCard from "./SocketCard.vue";
+import { DiagramSocketData } from "./ModelingDiagram/diagram_types";
+import ConnectionEndCard from "./ConnectionEndCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
 import { AttributeValueId } from "@/store/status.store";
@@ -64,6 +64,7 @@ interface BaseConnection {
   createdInfo?: ActorAndTimestamp;
   deletedInfo?: ActorAndTimestamp;
 }
+
 
 export interface SocketConnection extends BaseConnection {
   isManagement?: boolean;
