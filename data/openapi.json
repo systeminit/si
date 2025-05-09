@@ -29,6 +29,9 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
           "503": {
             "description": "Service in maintenance mode"
           }
@@ -59,6 +62,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
           },
           "500": {
             "description": "Internal server error",
@@ -106,6 +112,9 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
           "422": {
             "description": "Validation error - Invalid request data",
             "content": {
@@ -151,7 +160,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Change sets listed successfully",
+            "description": "Change details retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -159,6 +168,12 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
+          "404": {
+            "description": "Change set not found"
           },
           "500": {
             "description": "Internal server error",
@@ -201,6 +216,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
           },
           "500": {
             "description": "Internal server error",
@@ -452,7 +470,19 @@
         ],
         "responses": {
           "200": {
-            "description": "Components retrieved successfully"
+            "description": "Components retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListComponentsV1Response"
+                },
+                "example": [
+                  "01H9ZQD35JPMBGHH69BT0Q79AA",
+                  "01H9ZQD35JPMBGHH69BT0Q79BB",
+                  "01H9ZQD35JPMBGHH69BT0Q79CC"
+                ]
+              }
+            }
           },
           "401": {
             "description": "Unauthorized - Invalid or missing token"
@@ -723,6 +753,9 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
           "404": {
             "description": "Component not found"
           },
@@ -786,6 +819,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
           },
           "404": {
             "description": "Component not found"
@@ -1007,7 +1043,17 @@
         ],
         "responses": {
           "200": {
-            "description": "Change set force applied successfully"
+            "description": "Change set force applied successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForceApplyChangeSetV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
           },
           "500": {
             "description": "Internal server error",
@@ -1055,6 +1101,85 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GetFuncRunV1Response"
+                },
+                "example": {
+                  "funcRun": {
+                    "id": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+                    "state": "Success",
+                    "actor": "System",
+                    "componentId": "01JP8KHZP3DZKGNXRP83Q6WTQ5",
+                    "attributeValueId": null,
+                    "componentName": "NAT Gateway IP 1",
+                    "schemaName": "AWS::EC2::EIP",
+                    "actionId": "01JQCHZZY99G3R0C1FA3W4AFR6",
+                    "actionPrototypeId": "01JPNHEE9Z3DFW48XVZ1FX04KA",
+                    "actionKind": "Destroy",
+                    "actionDisplayName": "Destroy",
+                    "actionOriginatingChangeSetId": "01JQCHZZVTAHHZ7DG0ZSCB9RXB",
+                    "actionOriginatingChangeSetName": "2025-03-27-19:41",
+                    "actionResultState": "Success",
+                    "backendKind": "JsAction",
+                    "backendResponseType": "Action",
+                    "functionName": "Delete Asset",
+                    "functionDisplayName": null,
+                    "functionKind": "Action",
+                    "functionDescription": null,
+                    "functionLink": null,
+                    "functionArgs": {
+                      "properties": {
+                        "domain": {
+                          "Domain": "vpc",
+                          "Tags": []
+                        },
+                        "resource": {
+                          "payload": {
+                            "AllocationId": "eipalloc-033720f9556a3b0c1",
+                            "PublicIp": "3.213.242.163"
+                          }
+                        },
+                        "si": {
+                          "name": "NAT Gateway IP 1",
+                          "resourceId": "3.213.242.163|eipalloc-033720f9556a3b0c1",
+                          "type": "component"
+                        }
+                      }
+                    },
+                    "resultValue": {
+                      "error": null,
+                      "executionId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+                      "message": null,
+                      "payload": null,
+                      "resourceId": null,
+                      "status": "ok"
+                    },
+                    "logs": {
+                      "id": "01JQCJ0ABJSCE01GNQDWVY1ZP5",
+                      "createdAt": "2025-03-27T19:41:58.514416748Z",
+                      "updatedAt": "2025-03-27T19:41:58.514416748Z",
+                      "funcRunId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+                      "logs": [
+                        {
+                          "stream": "stdout",
+                          "executionId": "",
+                          "level": "info",
+                          "group": "log",
+                          "message": "Running CLI command",
+                          "timestamp": 1743104518
+                        },
+                        {
+                          "stream": "output",
+                          "executionId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+                          "level": "info",
+                          "group": "log",
+                          "message": "Output: {\"status\":\"success\"}",
+                          "timestamp": 1743104521
+                        }
+                      ],
+                      "finalized": true
+                    },
+                    "createdAt": "2025-03-27T19:41:58.493298051Z",
+                    "updatedAt": "2025-03-27T19:42:02.192033089Z"
+                  }
                 }
               }
             }
@@ -1111,7 +1236,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GetFuncV1Response"
-                }
+                },
+                "example": [
+                  {
+                    "funcId": "01JP8A3S8VDQ1KRQWQRHB1ZEB2",
+                    "code": "async function main(input: Input): Promise < Output > {\n    if (!input.domain?.region) {\n        return {\n            result: \"failure\",\n            message: \"No Region Name to validate\",\n        };\n    }\n\n    const child = await siExec.waitUntilEnd(\"aws\", [\n        \"ec2\",\n        \"describe-regions\",\n        \"--region-names\",\n        input.domain?.region!,\n        \"--region\",\n        \"us-east-1\",\n    ]);\n\n    if (child.exitCode !== 0) {\n        console.error(child.stderr);\n        return {\n            result: \"failure\",\n            message: \"Error from API\"\n        }\n    }\n\n    const regionDetails = JSON.parse(child.stdout).Regions;\n    if (regionDetails.length === 0 || regionDetails.length > 1) {\n        return {\n            result: \"failure\",\n            message: \"Unable to find Region\"\n        }\n    }\n\n    if (regionDetails[0].OptInStatus === \"not-opted-in\") {\n        return {\n            result: \"failure\",\n            message: \"Region not-opted-in for use\"\n        }\n    }\n\n    return {\n        result: \"success\",\n        message: \"Region is available to use\",\n    };\n}",
+                    "name": "AWS Region Validator",
+                    "description": "Validates if an AWS region exists and is available for use",
+                    "displayName": "Validate Region",
+                    "kind": "Qualification",
+                    "isLocked": false,
+                    "link": "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeRegions.html"
+                  }
+                ]
               }
             }
           },
@@ -1165,6 +1302,9 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
           "500": {
             "description": "Internal server error",
             "content": {
@@ -1200,7 +1340,17 @@
         ],
         "responses": {
           "200": {
-            "description": "Change set approval requested successfully"
+            "description": "Change set approval requested successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestApprovalChangeSetV1Response"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
           },
           "500": {
             "description": "Internal server error",
@@ -1535,7 +1685,80 @@
         ],
         "responses": {
           "200": {
-            "description": "Secrets retrieved successfully"
+            "description": "Secrets retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HashMap"
+                },
+                "example": {
+                  "aws_credentials": {
+                    "definition": {
+                      "secretDefinition": "aws_credentials",
+                      "formData": [
+                        {
+                          "name": "access_key_id",
+                          "kind": "string"
+                        },
+                        {
+                          "name": "secret_access_key",
+                          "kind": "password"
+                        },
+                        {
+                          "name": "region",
+                          "kind": "string"
+                        },
+                        {
+                          "name": "default_output",
+                          "kind": "string"
+                        }
+                      ]
+                    },
+                    "secrets": [
+                      {
+                        "id": "01HAXYZF3GC9CYA6ZVSM3E4YHH",
+                        "name": "Production AWS Key",
+                        "definition": "aws_credentials",
+                        "description": "AWS credentials for production environment"
+                      },
+                      {
+                        "id": "01HAXYZF3GC9CYA6ZVSM3E4YHI",
+                        "name": "Development AWS Key",
+                        "definition": "aws_credentials",
+                        "description": "AWS credentials for development environment"
+                      }
+                    ]
+                  },
+                  "docker_registry": {
+                    "definition": {
+                      "secretDefinition": "docker_registry",
+                      "formData": [
+                        {
+                          "name": "username",
+                          "kind": "string"
+                        },
+                        {
+                          "name": "password",
+                          "kind": "password"
+                        },
+                        {
+                          "name": "registry_url",
+                          "kind": "string"
+                        }
+                      ]
+                    },
+                    "secrets": [
+                      {
+                        "id": "01HAXYZF3GC9CYA6ZVSM3E4YHJ",
+                        "name": "DockerHub Access",
+                        "definition": "docker_registry",
+                        "description": "DockerHub registry credentials"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
           },
           "401": {
             "description": "Unauthorized - Invalid or missing token"
@@ -1665,6 +1888,9 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
+          },
           "404": {
             "description": "Secret not found"
           },
@@ -1715,6 +1941,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or missing token"
           },
           "404": {
             "description": "Secret not found"
@@ -1861,7 +2090,19 @@
         }
       },
       "AddActionV1Response": {
-        "type": "object"
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "example": {
+          "success": true
+        }
       },
       "ApiError": {
         "type": "object",
@@ -1876,16 +2117,24 @@
               "integer",
               "null"
             ],
-            "format": "int32"
+            "format": "int32",
+            "example": 4001
           },
           "message": {
-            "type": "string"
+            "type": "string",
+            "example": "Invalid request data"
           },
           "statusCode": {
             "type": "integer",
             "format": "int32",
+            "example": 422,
             "minimum": 0
           }
+        },
+        "example": {
+          "message": "Invalid request data",
+          "statusCode": 422,
+          "code": 4001
         }
       },
       "ApiSuccess_String": {
@@ -1908,6 +2157,29 @@
         "properties": {
           "success": {
             "type": "boolean"
+          }
+        }
+      },
+      "ChangeSetViewV1": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "status",
+          "isHead"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "isHead": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
           }
         }
       },
@@ -2242,7 +2514,7 @@
         ],
         "properties": {
           "changeSet": {
-            "type": "object"
+            "$ref": "#/components/schemas/ChangeSetViewV1"
           }
         }
       },
@@ -2357,21 +2629,35 @@
         "required": [
           "name",
           "definitionName",
-          "description",
-          "rawData"
+          "description"
         ],
         "properties": {
           "definitionName": {
-            "type": "string"
+            "type": "string",
+            "example": "aws_credentials"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "example": "AWS credentials for production environment"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "example": "AWS Access Key"
           },
           "rawData": {
-            "type": "object"
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "example": {
+              "access_key_id": "AKIAIOSFODNN7EXAMPLE",
+              "secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+              "region": "us-west-2",
+              "default_output": "json"
+            }
           }
         }
       },
@@ -2551,6 +2837,18 @@
           }
         }
       },
+      "ForceApplyChangeSetV1Response": {
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": "true"
+          }
+        }
+      },
       "FuncRunLogViewV1": {
         "type": "object",
         "required": [
@@ -2563,25 +2861,48 @@
         ],
         "properties": {
           "createdAt": {
-            "type": "string"
+            "type": "string",
+            "example": "2025-03-27T19:41:58.514416748Z"
           },
           "finalized": {
-            "type": "boolean"
+            "type": "boolean",
+            "example": true
           },
           "funcRunId": {
-            "type": "string"
+            "type": "string",
+            "example": "01JQCJ0AAXGX5M9QY10AVF4GK1"
           },
           "id": {
-            "type": "string"
+            "type": "string",
+            "example": "01JQCJ0ABJSCE01GNQDWVY1ZP5"
           },
           "logs": {
             "type": "array",
             "items": {
               "type": "object"
-            }
+            },
+            "example": [
+              {
+                "stream": "stdout",
+                "executionId": "",
+                "level": "info",
+                "group": "log",
+                "message": "Running CLI command: \"aws 'cloudcontrol' 'delete-resource'\"",
+                "timestamp": 1743104518
+              },
+              {
+                "stream": "output",
+                "executionId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+                "level": "info",
+                "group": "log",
+                "message": "Output: {\"protocol\":\"result\",\"status\":\"success\"}",
+                "timestamp": 1743104521
+              }
+            ]
           },
           "updatedAt": {
-            "type": "string"
+            "type": "string",
+            "example": "2025-03-27T19:41:58.514416748Z"
           }
         }
       },
@@ -2621,89 +2942,113 @@
           "functionLink",
           "functionArgs",
           "functionCodeBase64",
-          "resultValue",
-          "logs",
           "createdAt",
           "updatedAt"
         ],
         "properties": {
           "actionDisplayName": {
-            "type": "string"
+            "type": "string",
+            "example": "Destroy"
           },
           "actionId": {
-            "type": "string"
+            "type": "string",
+            "example": "01JQCHZZY99G3R0C1FA3W4AFR6"
           },
           "actionKind": {
-            "type": "string"
+            "type": "string",
+            "example": "Destroy"
           },
           "actionOriginatingChangeSetId": {
-            "type": "string"
+            "type": "string",
+            "example": "01JQCHZZVTAHHZ7DG0ZSCB9RXB"
           },
           "actionOriginatingChangeSetName": {
-            "type": "string"
+            "type": "string",
+            "example": "2025-03-27-19:41"
           },
           "actionPrototypeId": {
-            "type": "string"
+            "type": "string",
+            "example": "01JPNHEE9Z3DFW48XVZ1FX04KA"
           },
           "actionResultState": {
-            "type": "string"
+            "type": "string",
+            "example": "Success"
           },
           "attributeValueId": {
-            "type": "string"
+            "type": "string",
+            "example": "null"
           },
           "backendKind": {
-            "type": "string"
+            "type": "string",
+            "example": "JsAction"
           },
           "backendResponseType": {
-            "type": "string"
+            "type": "string",
+            "example": "Action"
           },
           "componentId": {
-            "type": "string"
+            "type": "string",
+            "example": "01JP8KHZP3DZKGNXRP83Q6WTQ5"
           },
           "componentName": {
-            "type": "string"
+            "type": "string",
+            "example": "NAT Gateway IP 1"
           },
           "createdAt": {
-            "type": "string"
+            "type": "string",
+            "example": "2025-03-27T19:41:58.493298051Z"
           },
-          "functionArgs": {
-            "type": "object"
-          },
+          "functionArgs": {},
           "functionCodeBase64": {
-            "type": "object"
+            "type": "string",
+            "example": "YXN5bmMgZnVuY3Rpb24gbWFpbihjb21wb2..."
           },
           "functionDescription": {
-            "type": "string"
+            "type": "string",
+            "example": "null"
           },
           "functionDisplayName": {
-            "type": "string"
+            "type": "string",
+            "example": "null"
           },
           "functionKind": {
-            "type": "string"
+            "type": "string",
+            "example": "Action"
           },
           "functionLink": {
-            "type": "string"
+            "type": "string",
+            "example": "null"
           },
           "functionName": {
-            "type": "string"
+            "type": "string",
+            "example": "Delete Asset"
           },
           "id": {
-            "type": "string"
+            "type": "string",
+            "example": "01JQCJ0AAXGX5M9QY10AVF4GK1"
           },
           "logs": {
-            "type": "object"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/FuncRunLogViewV1"
+              }
+            ]
           },
-          "resultValue": {
-            "type": "object"
-          },
+          "resultValue": {},
           "schemaName": {
-            "type": "string"
+            "type": "string",
+            "example": "AWS::EC2::EIP"
           },
           "state": {
-            "type": "string"
+            "type": "string",
+            "example": "Success"
           },
           "updatedAt": {
-            "type": "string"
+            "type": "string",
+            "example": "2025-03-27T19:42:02.192033089Z"
           }
         }
       },
@@ -2719,6 +3064,21 @@
               "$ref": "#/components/schemas/ActionViewV1"
             }
           }
+        },
+        "example": {
+          "actions": [
+            {
+              "id": "01H9ZQD35JPMBGHH69BT0Q79VY",
+              "prototypeId": "01H9ZQD35JPMBGHH69BT0Q79AB",
+              "componentId": "01H9ZQD35JPMBGHH69BT0Q79CD",
+              "name": "Create EC2 Instance",
+              "description": "Provisions a new EC2 instance in AWS",
+              "kind": "Create",
+              "state": "Pending",
+              "originatingChangeSetId": "01H9ZQD35JPMBGHH69BT0Q79EF",
+              "funcRunId": "01H9ZQD35JPMBGHH69BT0Q79GH"
+            }
+          ]
         }
       },
       "GetChangeSetV1Response": {
@@ -2728,7 +3088,7 @@
         ],
         "properties": {
           "changeSet": {
-            "type": "object"
+            "$ref": "#/components/schemas/ChangeSetViewV1"
           }
         }
       },
@@ -2744,7 +3104,13 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/GetComponentV1ResponseActionFunction"
-            }
+            },
+            "example": [
+              {
+                "prototypeId": "01HAXYZF3GC9CYA6ZVSM3E4YGG",
+                "funcName": "Terminate Instance"
+              }
+            ]
           },
           "component": {
             "$ref": "#/components/schemas/ComponentViewV1"
@@ -2753,7 +3119,13 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/GetComponentV1ResponseManagementFunction"
-            }
+            },
+            "example": [
+              {
+                "managementPrototypeId": "01HAXYZF3GC9CYA6ZVSM3E4YFF",
+                "funcName": "Start Instance"
+              }
+            ]
           }
         }
       },
@@ -2765,10 +3137,12 @@
         ],
         "properties": {
           "funcName": {
-            "type": "string"
+            "type": "string",
+            "example": "Terminate Instance"
           },
           "prototypeId": {
-            "type": "string"
+            "type": "string",
+            "example": "01HAXYZF3GC9CYA6ZVSM3E4YGG"
           }
         }
       },
@@ -2780,10 +3154,12 @@
         ],
         "properties": {
           "funcName": {
-            "type": "string"
+            "type": "string",
+            "example": "Start Instance"
           },
           "managementPrototypeId": {
-            "type": "string"
+            "type": "string",
+            "example": "01HAXYZF3GC9CYA6ZVSM3E4YFF"
           }
         }
       },
@@ -2811,25 +3187,32 @@
         ],
         "properties": {
           "code": {
-            "type": "string"
+            "type": "string",
+            "example": "async function main(input: Input): Promise < Output > {\n    if (!input.domain?.region) {\n        return {\n            result: \"failure\",\n            message: \"No Region Name to validate\",\n        };\n    }\n\n    const child = await siExec.waitUntilEnd(\"aws\", [\n        \"ec2\",\n        \"describe-regions\",\n        \"--region-names\",\n        input.domain?.region!,\n        \"--region\",\n        \"us-east-1\",\n    ]);\n\n    if (child.exitCode !== 0) {\n        console.error(child.stderr);\n        return {\n            result: \"failure\",\n            message: \"Error from API\"\n        }\n    }\n\n    const regionDetails = JSON.parse(child.stdout).Regions;\n    if (regionDetails.length === 0 || regionDetails.length > 1) {\n        return {\n            result: \"failure\",\n            message: \"Unable to find Region\"\n        }\n    }\n\n    if (regionDetails[0].OptInStatus === \"not-opted-in\") {\n        return {\n            result: \"failure\",\n            message: \"Region not-opted-in for use\"\n        }\n    }\n\n    return {\n        result: \"success\",\n        message: \"Region is available to use\",\n    };\n}"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "example": "Validates if an AWS region exists and is available for use"
           },
           "displayName": {
-            "type": "string"
+            "type": "string",
+            "example": "Validate Region"
           },
           "isLocked": {
-            "type": "boolean"
+            "type": "boolean",
+            "example": false
           },
           "kind": {
-            "type": "string"
+            "type": "string",
+            "example": "Qualification"
           },
           "link": {
-            "type": "string"
+            "type": "string",
+            "example": "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeRegions.html"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "example": "AWS Region Validator"
           }
         }
       },
@@ -2842,16 +3225,22 @@
         ],
         "properties": {
           "defaultVariantId": {
-            "type": "string"
+            "type": "string",
+            "example": "01H9ZQD35JPMBGHH69BT0Q79VZ"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "example": "AWS::EC2::Instance"
           },
           "variantIds": {
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "example": [
+              "01H9ZQD35JPMBGHH69BT0Q79VZ",
+              "01H9ZQD35JPMBGHH69BT0Q79VY"
+            ]
           }
         }
       },
@@ -2871,38 +3260,89 @@
         ],
         "properties": {
           "assetFuncId": {
-            "type": "string"
+            "type": "string",
+            "example": "01H9ZQD35JPMBGHH69BT0Q75XY"
           },
           "category": {
-            "type": "string"
+            "type": "string",
+            "example": "AWS::EC2"
           },
           "color": {
-            "type": "string"
+            "type": "string",
+            "example": "#FF5733"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "example": "Amazon EC2 Instance resource type"
           },
           "displayName": {
-            "type": "string"
+            "type": "string",
+            "example": "AWS EC2 Instance"
           },
           "isDefaultVariant": {
-            "type": "boolean"
+            "type": "boolean",
+            "example": true
           },
           "isLocked": {
-            "type": "boolean"
+            "type": "boolean",
+            "example": false
           },
           "link": {
-            "type": "string"
+            "type": "string",
+            "example": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html"
           },
           "variantFuncIds": {
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "example": [
+              "01H9ZQD35JPMBGHH69BT0Q75AA",
+              "01H9ZQD35JPMBGHH69BT0Q75BB"
+            ]
           },
           "variantId": {
-            "type": "string"
+            "type": "string",
+            "example": "01H9ZQD35JPMBGHH69BT0Q79VZ"
           }
+        }
+      },
+      "HashMap": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "required": [
+            "definition",
+            "secrets"
+          ],
+          "properties": {
+            "definition": {
+              "$ref": "#/components/schemas/SecretDefinitionV1"
+            },
+            "secrets": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/SecretV1"
+              },
+              "example": [
+                {
+                  "id": "01HAXYZF3GC9CYA6ZVSM3E4YHH",
+                  "name": "Production AWS Key",
+                  "definition": "aws_credentials",
+                  "description": "AWS credentials for production environment"
+                },
+                {
+                  "id": "01HAXYZF3GC9CYA6ZVSM3E4YHI",
+                  "name": "Development AWS Key",
+                  "definition": "aws_credentials",
+                  "description": "AWS credentials for development environment"
+                }
+              ]
+            }
+          }
+        },
+        "propertyNames": {
+          "type": "string"
         }
       },
       "IncomingConnectionViewV1": {
@@ -2939,7 +3379,7 @@
             "items": {
               "type": "object"
             },
-            "example": "[{\"id\":\"01H9ZQD35JPMBGHH69BT0Q79VY\",\"name\":\"Add new feature\",\"status\":\"Draft\"}]"
+            "example": "[{\"id\":\"01H9ZQD35JPMBGHH69BT0Q79VY\",\"name\":\"Add new feature\",\"status\":\"Open\",\"isHead\": \"false\"},{\"id\":\"01H9ZQE356JPMBGHH69BT0Q70UO\",\"name\":\"HEAD\",\"status\":\"Open\", \"isHead\": \"true\"}]"
           }
         }
       },
@@ -2950,7 +3390,15 @@
         ],
         "properties": {
           "components": {
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "01H9ZQD35JPMBGHH69BT0Q79AA",
+              "01H9ZQD35JPMBGHH69BT0Q79BB",
+              "01H9ZQD35JPMBGHH69BT0Q79CC"
+            ]
           }
         }
       },
@@ -3045,6 +3493,25 @@
           "changeSet": {
             "type": "object"
           }
+        },
+        "example": {
+          "changeSet": {
+            "id": "01FXNV4P306V3KGZ73YSVN8A60",
+            "name": "My feature",
+            "status": "Ready"
+          },
+          "actions": [
+            {
+              "id": "01H9ZQD35JPMBGHH69BT0Q79VY",
+              "component": {
+                "id": "01H9ZQD35JPMBGHH69BT0Q79AB",
+                "name": "my-ec2-instance"
+              },
+              "state": "Pending",
+              "kind": "Create",
+              "name": "Create EC2 Instance"
+            }
+          ]
         }
       },
       "MergeStatusV1ResponseAction": {
@@ -3068,17 +3535,31 @@
             ]
           },
           "id": {
-            "type": "string"
+            "type": "string",
+            "example": "01H9ZQD35JPMBGHH69BT0Q79VY"
           },
           "kind": {
-            "type": "string"
+            "type": "string",
+            "example": "Create"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "example": "Create EC2 Instance"
           },
           "state": {
-            "type": "string"
+            "type": "string",
+            "example": "Pending"
           }
+        },
+        "example": {
+          "id": "01H9ZQD35JPMBGHH69BT0Q79VY",
+          "component": {
+            "id": "01H9ZQD35JPMBGHH69BT0Q79AB",
+            "name": "my-ec2-instance"
+          },
+          "state": "Pending",
+          "kind": "Create",
+          "name": "Create EC2 Instance"
         }
       },
       "MergeStatusV1ResponseActionComponent": {
@@ -3090,11 +3571,17 @@
         ],
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "example": "01H9ZQD35JPMBGHH69BT0Q79AB"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "example": "my-ec2-instance"
           }
+        },
+        "example": {
+          "id": "01H9ZQD35JPMBGHH69BT0Q79AB",
+          "name": "my-ec2-instance"
         }
       },
       "OutgoingConnectionViewV1": {
@@ -3127,26 +3614,32 @@
         ],
         "properties": {
           "executionId": {
-            "type": "string"
+            "type": "string",
+            "example": "01JQCJ0AAXGX5M9QY10AVF4GK1"
           },
           "group": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "example": "log"
           },
           "level": {
-            "type": "string"
+            "type": "string",
+            "example": "info"
           },
           "message": {
-            "type": "string"
+            "type": "string",
+            "example": "Running CLI command: \"aws 'cloudcontrol' 'delete-resource'\""
           },
           "stream": {
-            "type": "string"
+            "type": "string",
+            "example": "stdout"
           },
           "timestamp": {
             "type": "integer",
             "format": "int64",
+            "example": 1743104518,
             "minimum": 0
           }
         }
@@ -3159,6 +3652,18 @@
         "properties": {
           "success": {
             "type": "boolean"
+          }
+        }
+      },
+      "RequestApprovalChangeSetV1Response": {
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": "true"
           }
         }
       },
@@ -3199,6 +3704,52 @@
           }
         }
       },
+      "SecretDefinitionV1": {
+        "type": "object",
+        "required": [
+          "secretDefinition",
+          "formData"
+        ],
+        "properties": {
+          "formData": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SecretFormDataV1"
+            },
+            "example": [
+              {
+                "name": "access_key_id",
+                "kind": "string"
+              },
+              {
+                "name": "secret_access_key",
+                "kind": "password"
+              }
+            ]
+          },
+          "secretDefinition": {
+            "type": "string",
+            "example": "aws_credentials"
+          }
+        }
+      },
+      "SecretFormDataV1": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "example": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "access_key_id"
+          }
+        }
+      },
       "SecretPropKey": {
         "oneOf": [
           {
@@ -3222,16 +3773,20 @@
         ],
         "properties": {
           "definition": {
-            "type": "string"
+            "type": "string",
+            "example": "aws_credentials"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "example": "AWS credentials for production environment"
           },
           "id": {
-            "type": "string"
+            "type": "string",
+            "example": "01HAXYZF3GC9CYA6ZVSM3E4YHH"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "example": "Production AWS Key"
           }
         }
       },
@@ -3363,21 +3918,35 @@
         "required": [
           "id",
           "name",
-          "description",
-          "rawData"
+          "description"
         ],
         "properties": {
           "description": {
-            "type": "string"
+            "type": "string",
+            "example": "Updated AWS Secret Key for EC2 access"
           },
           "id": {
-            "type": "string"
+            "type": "string",
+            "example": "01HAXYZF3GC9CYA6ZVSM3E4YHH"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "example": "AWS Access Key"
           },
           "rawData": {
-            "type": "object"
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "example": {
+              "access_key_id": "AKIAIOSFODNN7EXAMPLE",
+              "secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+              "region": "us-west-2",
+              "default_output": "json"
+            }
           }
         }
       },
@@ -3455,7 +4024,19 @@
     },
     {
       "name": "components",
-      "description": "Component management endpoints"
+      "description": "Components management endpoints"
+    },
+    {
+      "name": "schemas",
+      "description": "Schemsa management endpoints"
+    },
+    {
+      "name": "actions",
+      "description": "Actions management endpoints"
+    },
+    {
+      "name": "secrets",
+      "description": "Secrets management endpoints"
     },
     {
       "name": "funcs",

@@ -76,6 +76,21 @@ pub async fn get_actions(
 
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(example = json!({
+    "actions": [
+        {
+            "id": "01H9ZQD35JPMBGHH69BT0Q79VY",
+            "prototypeId": "01H9ZQD35JPMBGHH69BT0Q79AB",
+            "componentId": "01H9ZQD35JPMBGHH69BT0Q79CD",
+            "name": "Create EC2 Instance",
+            "description": "Provisions a new EC2 instance in AWS",
+            "kind": "Create",
+            "state": "Pending",
+            "originatingChangeSetId": "01H9ZQD35JPMBGHH69BT0Q79EF",
+            "funcRunId": "01H9ZQD35JPMBGHH69BT0Q79GH"
+        }
+    ]
+}))]
 pub struct GetActionsV1Response {
     pub actions: Vec<ActionViewV1>,
 }

@@ -14,12 +14,13 @@ use serde_json::json;
 use si_events::audit_log::AuditLogKind;
 use utoipa::ToSchema;
 
+use super::ChangeSetResult;
 use crate::{
+    api_types::change_sets::v1::ChangeSetViewV1,
     extract::{
         PosthogEventTracker,
         workspace::WorkspaceDalContext,
     },
-    service::v1::ChangeSetError,
 };
 
 #[utoipa::path(
@@ -32,6 +33,7 @@ use crate::{
     request_body = CreateChangeSetV1Request,
     responses(
         (status = 200, description = "Change set created successfully", body = CreateChangeSetV1Response),
+        (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 422, description = "Validation error - Invalid request data", body = crate::service::v1::common::ApiError),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
@@ -40,9 +42,16 @@ pub async fn create_change_set(
     WorkspaceDalContext(ref ctx): WorkspaceDalContext,
     tracker: PosthogEventTracker,
     payload: Result<Json<CreateChangeSetV1Request>, JsonRejection>,
-) -> Result<Json<CreateChangeSetV1Response>, ChangeSetError> {
+) -> ChangeSetResult<Json<CreateChangeSetV1Response>> {
     let Json(payload) = payload?;
     let change_set = ChangeSet::fork_head(ctx, &payload.change_set_name).await?;
+
+    let view = ChangeSetViewV1 {
+        id: change_set.id,
+        name: change_set.clone().name,
+        status: change_set.status,
+        is_head: change_set.is_head(ctx).await?,
+    };
 
     tracker.track(ctx, "api_create_change_set", json!(payload));
 
@@ -56,7 +65,7 @@ pub async fn create_change_set(
 
     ctx.commit_no_rebase().await?;
 
-    Ok(Json(CreateChangeSetV1Response { change_set }))
+    Ok(Json(CreateChangeSetV1Response { change_set: view }))
 }
 
 #[derive(Deserialize, Serialize, ToSchema)]
@@ -66,9 +75,14 @@ pub struct CreateChangeSetV1Request {
     pub change_set_name: String,
 }
 
-#[derive(Serialize, ToSchema)]
+#[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateChangeSetV1Response {
-    #[schema(value_type = Object, example = json!({"id": "01FXNV4P306V3KGZ73YSVN8A60", "name": "My new feature"}))]
-    pub change_set: ChangeSet,
+    #[schema(example = json!({
+        "id": "01FXNV4P306V3KGZ73YSVN8A60",
+        "name": "My new feature",
+        "status": "Open",
+        "isHead": "false"
+    }))]
+    pub change_set: ChangeSetViewV1,
 }

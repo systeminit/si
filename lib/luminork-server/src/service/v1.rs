@@ -111,7 +111,7 @@ pub use crate::api_types::{
 #[derive(OpenApi)]
 #[openapi(
     info(
-        title = "Luminork API - V1",
+        title = "System Initiative API - V1",
         description = "System Initiative External API server - V1 Routes",
         version = "1.0.0"
     ),
@@ -211,8 +211,10 @@ pub use crate::api_types::{
         (name = "workspaces", description = "Workspace management endpoints"),
         (name = "change_sets", description = "Change set management endpoints"),
         (name = "components", description = "Component management endpoints"),
-        (name = "schemas", description = "Schema endpoints"),
-        (name = "actions", description = "Action endpoints")
+        (name = "schemas", description = "Schema management endpoints"),
+        (name = "actions", description = "Action management endpoints"),
+        (name = "secrets", description = "Secret management endpoints"),
+        (name = "funcs", description = "Functions management endpoints")
     )
 )]
 pub struct V1ApiDoc;

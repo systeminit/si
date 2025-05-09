@@ -43,6 +43,7 @@ use crate::{
     tag = "components",
     responses(
         (status = 200, description = "Component deleted successfully", body = DeleteComponentV1Response),
+        (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 404, description = "Component not found"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )

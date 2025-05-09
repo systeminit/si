@@ -39,74 +39,154 @@ use crate::service::v1::FuncsResult;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FuncRunViewV1 {
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01JQCJ0AAXGX5M9QY10AVF4GK1")]
     id: FuncRunId,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "Success")]
     state: FuncRunState,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "null")]
     attribute_value_id: Option<AttributeValueId>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01JP8KHZP3DZKGNXRP83Q6WTQ5")]
     component_id: Option<ComponentId>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "NAT Gateway IP 1")]
     component_name: Option<String>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "AWS::EC2::EIP")]
     schema_name: Option<String>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01JQCHZZY99G3R0C1FA3W4AFR6")]
     action_id: Option<ActionId>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01JPNHEE9Z3DFW48XVZ1FX04KA")]
     action_prototype_id: Option<ActionPrototypeId>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "Destroy")]
     action_kind: Option<ActionKind>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "Destroy")]
     action_display_name: Option<String>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01JQCHZZVTAHHZ7DG0ZSCB9RXB")]
     action_originating_change_set_id: Option<ChangeSetId>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "2025-03-27-19:41")]
     action_originating_change_set_name: Option<String>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "Success")]
     action_result_state: Option<ActionResultState>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "JsAction")]
     backend_kind: FuncBackendKind,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "Action")]
     backend_response_type: FuncBackendResponseType,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "Delete Asset")]
     function_name: String,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "null")]
     function_display_name: Option<String>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "Action")]
     function_kind: FuncKind,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "null")]
     function_description: Option<String>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "null")]
     function_link: Option<String>,
-    #[schema(value_type = Object)]
+    #[schema(example = json!({
+        "properties": {
+            "code": {
+                "awsCloudControlCreate": {
+                    "code": "{\n  \"TypeName\": \"AWS::EC2::EIP\",\n  \"DesiredState\": {\n    \"Domain\": \"vpc\"\n  }\n}",
+                    "format": "json"
+                },
+                "awsCloudControlUpdate": {
+                    "code": "{\n  \"TypeName\": \"AWS::EC2::EIP\",\n  \"DesiredState\": {}\n}",
+                    "format": "json"
+                }
+            },
+            "domain": {
+                "Domain": "vpc",
+                "Tags": [],
+                "extra": {
+                    "AwsResourceType": "AWS::EC2::EIP",
+                    "Region": "us-east-1"
+                }
+            },
+            "resource": {
+                "payload": {
+                    "AllocationId": "eipalloc-033720f9556a3b0c1",
+                    "PublicIp": "3.213.242.163"
+                }
+            },
+            "si": {
+                "name": "NAT Gateway IP 1",
+                "resourceId": "3.213.242.163|eipalloc-033720f9556a3b0c1",
+                "type": "component"
+            }
+        }
+    }))]
     function_args: serde_json::Value,
-    #[schema(value_type = Object)]
+    #[schema(value_type = String, example = "YXN5bmMgZnVuY3Rpb24gbWFpbihjb21wb2...")]
     function_code_base64: String,
-    #[schema(value_type = Object)]
+    #[schema(example = json!({
+        "error": null,
+        "executionId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+        "message": null,
+        "payload": null,
+        "resourceId": null,
+        "status": "ok"
+    }))]
     result_value: Option<serde_json::Value>,
-    #[schema(value_type = Object)]
+    #[schema(example = json!({
+        "id": "01JQCJ0ABJSCE01GNQDWVY1ZP5",
+        "createdAt": "2025-03-27T19:41:58.514416748Z",
+        "updatedAt": "2025-03-27T19:41:58.514416748Z",
+        "funcRunId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+        "logs": [
+            {
+                "stream": "stdout",
+                "executionId": "",
+                "level": "info",
+                "group": "log",
+                "message": "Running CLI command: \"aws 'cloudcontrol' 'delete-resource'\"",
+                "timestamp": 1743104518
+            },
+            {
+                "stream": "output",
+                "executionId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+                "level": "info",
+                "group": "log",
+                "message": "Output: {\"protocol\":\"result\",\"status\":\"success\"}",
+                "timestamp": 1743104521
+            }
+        ],
+        "finalized": true
+    }))]
     logs: Option<FuncRunLogViewV1>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "2025-03-27T19:41:58.493298051Z")]
     created_at: DateTime<Utc>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "2025-03-27T19:42:02.192033089Z")]
     updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FuncRunLogViewV1 {
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01JQCJ0ABJSCE01GNQDWVY1ZP5")]
     id: FuncRunLogId,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "2025-03-27T19:41:58.514416748Z")]
     created_at: DateTime<Utc>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "2025-03-27T19:41:58.514416748Z")]
     updated_at: DateTime<Utc>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01JQCJ0AAXGX5M9QY10AVF4GK1")]
     func_run_id: FuncRunId,
-    #[schema(value_type = Vec<Object>)]
+    #[schema(value_type = Vec<Object>, example = json!([
+        {
+            "stream": "stdout",
+            "executionId": "",
+            "level": "info",
+            "group": "log",
+            "message": "Running CLI command: \"aws 'cloudcontrol' 'delete-resource'\"",
+            "timestamp": 1743104518
+        },
+        {
+            "stream": "output",
+            "executionId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+            "level": "info",
+            "group": "log",
+            "message": "Output: {\"protocol\":\"result\",\"status\":\"success\"}",
+            "timestamp": 1743104521
+        }
+    ]))]
     logs: Vec<OutputLineViewV1>,
-    #[schema(value_type = bool)]
+    #[schema(value_type = bool, example = true)]
     finalized: bool,
 }
 
@@ -126,11 +206,17 @@ impl From<&OutputLine> for OutputLineViewV1 {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputLineViewV1 {
+    #[schema(example = "stdout")]
     pub stream: String,
+    #[schema(example = "01JQCJ0AAXGX5M9QY10AVF4GK1")]
     pub execution_id: String,
+    #[schema(example = "info")]
     pub level: String,
+    #[schema(example = "log")]
     pub group: Option<String>,
+    #[schema(example = "Running CLI command: \"aws 'cloudcontrol' 'delete-resource'\"")]
     pub message: String,
+    #[schema(example = 1743104518)]
     pub timestamp: u64,
 }
 

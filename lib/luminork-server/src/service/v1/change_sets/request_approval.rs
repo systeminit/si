@@ -1,19 +1,27 @@
-use axum::extract::Host;
+use axum::{
+    Json,
+    extract::Host,
+};
 use dal::{
     WsEvent,
     change_set::ChangeSet,
 };
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::json;
 use si_events::audit_log::AuditLogKind;
-use utoipa;
+use utoipa::{
+    self,
+    ToSchema,
+};
 
-use crate::{
-    extract::{
-        PosthogEventTracker,
-        change_set::ChangeSetDalContext,
-        workspace::WorkspaceAuthorization,
-    },
-    service::v1::ChangeSetError,
+use super::ChangeSetResult;
+use crate::extract::{
+    PosthogEventTracker,
+    change_set::ChangeSetDalContext,
+    workspace::WorkspaceAuthorization,
 };
 
 #[utoipa::path(
@@ -25,7 +33,8 @@ use crate::{
     ),
     tag = "change_sets",
     responses(
-        (status = 200, description = "Change set approval requested successfully"),
+        (status = 200, description = "Change set approval requested successfully", body = RequestApprovalChangeSetV1Response),
+        (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
@@ -34,7 +43,7 @@ pub async fn request_approval(
     WorkspaceAuthorization { .. }: WorkspaceAuthorization,
     tracker: PosthogEventTracker,
     Host(_host_name): Host,
-) -> Result<(), ChangeSetError> {
+) -> ChangeSetResult<Json<RequestApprovalChangeSetV1Response>> {
     let mut change_set = ctx.change_set()?.clone();
     let change_set_id = change_set.id;
     let old_status = change_set.status;
@@ -69,5 +78,12 @@ pub async fn request_approval(
 
     ctx.commit().await?;
 
-    Ok(())
+    Ok(Json(RequestApprovalChangeSetV1Response { success: true }))
+}
+
+#[derive(Serialize, Deserialize, Debug, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct RequestApprovalChangeSetV1Response {
+    #[schema(example = "true")]
+    pub success: bool,
 }

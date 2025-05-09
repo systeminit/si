@@ -124,35 +124,35 @@ pub fn routes() -> Router<AppState> {
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetSchemaVariantV1Response {
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VZ")]
     pub variant_id: SchemaVariantId,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "AWS EC2 Instance")]
     pub display_name: String,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "AWS::EC2")]
     pub category: String,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "#FF5733")]
     pub color: String,
-    #[schema(value_type = bool)]
+    #[schema(value_type = bool, example = false)]
     pub is_locked: bool,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "Amazon EC2 Instance resource type")]
     pub description: Option<String>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html")]
     pub link: Option<String>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q75XY")]
     pub asset_func_id: FuncId,
-    #[schema(value_type = Vec<String>)]
+    #[schema(value_type = Vec<String>, example = json!(["01H9ZQD35JPMBGHH69BT0Q75AA", "01H9ZQD35JPMBGHH69BT0Q75BB"]))]
     pub variant_func_ids: Vec<FuncId>,
-    #[schema(value_type = bool)]
+    #[schema(value_type = bool, example = true)]
     pub is_default_variant: bool,
 }
 
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetSchemaV1Response {
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "AWS::EC2::Instance")]
     pub name: String,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VZ")]
     pub default_variant_id: SchemaVariantId,
-    #[schema(value_type = Vec<String>)]
+    #[schema(value_type = Vec<String>, example = json!(["01H9ZQD35JPMBGHH69BT0Q79VZ", "01H9ZQD35JPMBGHH69BT0Q79VY"]))]
     pub variant_ids: Vec<SchemaVariantId>,
 }

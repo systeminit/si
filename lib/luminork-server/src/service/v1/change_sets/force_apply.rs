@@ -1,14 +1,20 @@
+use axum::Json;
 use dal::change_set::ChangeSet;
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use serde_json::json;
 use si_events::audit_log::AuditLogKind;
-use utoipa;
+use utoipa::{
+    self,
+    ToSchema,
+};
 
-use crate::{
-    extract::{
-        PosthogEventTracker,
-        change_set::ChangeSetDalContext,
-    },
-    service::v1::ChangeSetError,
+use super::ChangeSetResult;
+use crate::extract::{
+    PosthogEventTracker,
+    change_set::ChangeSetDalContext,
 };
 
 #[utoipa::path(
@@ -20,14 +26,15 @@ use crate::{
     ),
     tag = "change_sets",
     responses(
-        (status = 200, description = "Change set force applied successfully"),
+        (status = 200, description = "Change set force applied successfully", body = ForceApplyChangeSetV1Response),
+        (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
 pub async fn force_apply(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
-) -> Result<(), ChangeSetError> {
+) -> ChangeSetResult<Json<ForceApplyChangeSetV1Response>> {
     let change_set_id = ctx.change_set_id();
     let old_status = ctx.change_set()?.status;
     ChangeSet::prepare_for_force_apply(ctx).await?;
@@ -58,5 +65,12 @@ pub async fn force_apply(
 
     ctx.commit().await?;
 
-    Ok(())
+    Ok(Json(ForceApplyChangeSetV1Response { success: true }))
+}
+
+#[derive(Serialize, Deserialize, Debug, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ForceApplyChangeSetV1Response {
+    #[schema(example = "true")]
+    pub success: bool,
 }

@@ -54,6 +54,7 @@ use crate::{
     request_body = UpdateComponentV1Request,
     responses(
         (status = 200, description = "Component updated successfully", body = UpdateComponentV1Response),
+        (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 404, description = "Component not found"),
         (status = 412, description = "Precondition failed - Duplicate component name"),
         (status = 422, description = "Validation error - Invalid request data", body = crate::service::v1::common::ApiError),
@@ -283,5 +284,19 @@ pub struct ConnectionDetails {
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateComponentV1Response {
+    #[schema(example = json!({
+        "id": "01H9ZQD35JPMBGHH69BT0Q79AA",
+        "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+        "schemaVariantId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+        "sockets": [{"id": "socket1", "name": "input", "direction": "input", "arity": "one", "value": null}],
+        "domainProps": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YAA", "propId": "01HAXYZF3GC9CYA6ZVSM3E4YBB", "value": "updated-value", "path": "domain/path"}],
+        "resourceProps": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YCC", "propId": "01HAXYZF3GC9CYA6ZVSM3E4YDD", "value": "updated-resource-value", "path": "resource/path"}],
+        "name": "My Updated EC2 Instance",
+        "resourceId": "i-1234567890abcdef0",
+        "toDelete": false,
+        "canBeUpgraded": true,
+        "connections": [{"incoming": {"fromComponentId": "01H9ZQD35JPMBGHH69BT0Q79BB", "fromComponentName": "Other Component", "from": "output1", "to": "input1"}}],
+        "views": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YEE", "name": "Default View", "isDefault": true}]
+    }))]
     pub component: ComponentViewV1,
 }

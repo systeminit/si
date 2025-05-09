@@ -107,7 +107,7 @@ pub async fn add_action(
 
     ctx.commit().await?;
 
-    Ok(Json(AddActionV1Response {}))
+    Ok(Json(AddActionV1Response { success: true }))
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
@@ -145,7 +145,13 @@ pub struct AddActionV1Request {
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AddActionV1Response {}
+#[schema(example = json!({
+    "success": true
+}))]
+pub struct AddActionV1Response {
+    #[schema(example = true)]
+    pub success: bool,
+}
 
 async fn resolve_action_function_reference(
     ctx: &dal::DalContext,

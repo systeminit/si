@@ -7,7 +7,7 @@
     "dev": "pnpm run start",
     "start": "vitepress dev src",
     "build": "vitepress build src",
-    "generate-api-docs": "npx widdershins --omitHeader --search false --language_tabs \"typescript:TypeScript\" --summary ../../bin/openapi-extractor/data/openapi.json -o src/reference/external-api.md -u ./custom-templates"
+    "generate-api-docs": "npx widdershins --omitHeader --search false --language_tabs \"typescript:TypeScript\" --summary ../../bin/openapi-extractor/data/openapi.json -o src/reference/public-api.md -u ./custom-templates/openapi3"
   },
   "devDependencies": {
     "@si/eslint-config": "workspace:*",

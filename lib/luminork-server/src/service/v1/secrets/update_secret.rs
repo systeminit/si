@@ -49,6 +49,7 @@ use crate::{
     request_body = UpdateSecretV1Request,
     responses(
         (status = 200, description = "Secret updated successfully", body = UpdateSecretV1Response),
+        (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 404, description = "Secret not found"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
@@ -61,7 +62,6 @@ pub async fn update_secret(
 ) -> SecretsResult<Json<UpdateSecretV1Response>> {
     let Json(payload) = payload?;
 
-    // let secret_id = payload.id;
     let secret = Secret::get_by_id(ctx, secret_id)
         .await
         .map_err(|_s| SecretsError::SecretNotFound(secret_id))?;
@@ -127,18 +127,30 @@ pub async fn update_secret(
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateSecretV1Request {
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01HAXYZF3GC9CYA6ZVSM3E4YHH")]
     pub id: SecretId,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "AWS Access Key")]
     pub name: String,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "Updated AWS Secret Key for EC2 access")]
     pub description: Option<String>,
-    #[schema(value_type = Object, example = json!({"key1": "value1", "key2": "value2"}))]
+    #[schema(value_type = HashMap<String, String>, example = json!({
+        "access_key_id": "AKIAIOSFODNN7EXAMPLE",
+        "secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+        "region": "us-west-2",
+        "default_output": "json"
+    }))]
+    #[serde(default)]
     pub raw_data: Option<HashMap<String, String>>,
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateSecretV1Response {
+    #[schema(example = json!({
+        "id": "01HAXYZF3GC9CYA6ZVSM3E4YHH",
+        "name": "Updated AWS Secret Key",
+        "definition": "aws_secret_key",
+        "description": "Updated AWS Secret Key for EC2 access"
+    }))]
     pub secret: SecretV1,
 }

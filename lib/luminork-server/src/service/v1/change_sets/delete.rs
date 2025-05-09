@@ -5,6 +5,7 @@ use serde_json::json;
 use si_events::audit_log::AuditLogKind;
 use utoipa::ToSchema;
 
+use super::ChangeSetResult;
 use crate::{
     extract::{
         PosthogEventTracker,
@@ -23,13 +24,14 @@ use crate::{
     tag = "change_sets",
     responses(
         (status = 200, description = "Change set deleted successfully", body = DeleteChangeSetV1Response),
+        (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
 pub async fn abandon_change_set(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
-) -> Result<Json<DeleteChangeSetV1Response>, ChangeSetError> {
+) -> ChangeSetResult<Json<DeleteChangeSetV1Response>> {
     let maybe_head_changeset = ctx.get_workspace_default_change_set_id().await?;
     if maybe_head_changeset == ctx.change_set_id() {
         return Err(ChangeSetError::CannotAbandonHead);

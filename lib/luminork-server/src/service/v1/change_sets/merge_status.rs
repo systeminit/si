@@ -20,6 +20,7 @@ use si_events::{
 };
 use utoipa::ToSchema;
 
+use super::ChangeSetResult;
 use crate::{
     extract::{
         PosthogEventTracker,
@@ -38,13 +39,14 @@ use crate::{
     tag = "change_sets",
     responses(
         (status = 200, description = "Change set merge status retrieved successfully", body = MergeStatusV1Response),
+        (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
 pub async fn merge_status(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
-) -> Result<Json<MergeStatusV1Response>, ChangeSetError> {
+) -> ChangeSetResult<Json<MergeStatusV1Response>> {
     let change_set = ctx.change_set()?.into_frontend_type(ctx).await?;
 
     tracker.track(
@@ -105,6 +107,25 @@ async fn get_action_statuses(
 /// Response for merge status
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(example = json!({
+    "changeSet": {
+        "id": "01FXNV4P306V3KGZ73YSVN8A60",
+        "name": "My feature",
+        "status": "Ready"
+    },
+    "actions": [
+        {
+            "id": "01H9ZQD35JPMBGHH69BT0Q79VY",
+            "component": {
+                "id": "01H9ZQD35JPMBGHH69BT0Q79AB",
+                "name": "my-ec2-instance"
+            },
+            "state": "Pending",
+            "kind": "Create",
+            "name": "Create EC2 Instance"
+        }
+    ]
+}))]
 pub struct MergeStatusV1Response {
     #[schema(value_type = Object, example = json!({"id": "01FXNV4P306V3KGZ73YSVN8A60", "name": "My feature", "status": "Ready"}))]
     pub change_set: si_frontend_types::ChangeSet,
@@ -114,22 +135,38 @@ pub struct MergeStatusV1Response {
 /// Action item in merge status response
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(example = json!({
+    "id": "01H9ZQD35JPMBGHH69BT0Q79VY",
+    "component": {
+        "id": "01H9ZQD35JPMBGHH69BT0Q79AB",
+        "name": "my-ec2-instance"
+    },
+    "state": "Pending",
+    "kind": "Create",
+    "name": "Create EC2 Instance"
+}))]
 pub struct MergeStatusV1ResponseAction {
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VY")]
     pub id: ActionId,
     pub component: Option<MergeStatusV1ResponseActionComponent>,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "Pending")]
     pub state: ActionState,
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "Create")]
     pub kind: ActionKind,
+    #[schema(example = "Create EC2 Instance")]
     pub name: String,
 }
 
 /// Component details in action response
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(example = json!({
+    "id": "01H9ZQD35JPMBGHH69BT0Q79AB",
+    "name": "my-ec2-instance"
+}))]
 pub struct MergeStatusV1ResponseActionComponent {
-    #[schema(value_type = String)]
+    #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79AB")]
     pub id: ComponentId,
+    #[schema(example = "my-ec2-instance")]
     pub name: String,
 }

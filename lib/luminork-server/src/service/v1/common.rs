@@ -24,9 +24,17 @@ pub struct ApiSuccess<T> {
 /// Standard error response format for v1 API
 #[derive(Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(example = json!({
+    "message": "Invalid request data",
+    "statusCode": 422,
+    "code": 4001
+}))]
 pub struct ApiError {
+    #[schema(example = "Invalid request data")]
     pub message: String,
+    #[schema(example = 422)]
     pub status_code: u16,
+    #[schema(example = 4001)]
     pub code: Option<i32>,
 }
 

@@ -35,6 +35,7 @@ use crate::extract::{
     tag = "secrets",
     responses(
         (status = 200, description = "Secret deleted successfully", body = DeleteSecretV1Response),
+        (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 404, description = "Secret not found"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
