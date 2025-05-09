@@ -103,33 +103,36 @@ where
         subgraph
     }
 
-    pub(crate) fn cleanup(&mut self) -> Vec<SplitGraphNodeId> {
-        loop {
-            let orphaned_node_indexes: Vec<SubGraphNodeIndex> = self
-                .graph
-                .externals(Incoming)
-                .filter(|idx| *idx != self.root_index)
-                .collect();
-
-            if orphaned_node_indexes.is_empty() {
-                break;
+    /// Remove any nodes with no incoming edges from the graph, returning the ids of removed nodes.
+    /// Note that this does not automatically cascade to remove nodes that were orphaned by the
+    /// removal of the first "layer" of orphaned nodes. This function is intended to be used
+    /// by the `SiSplitGraph::cleanup` call to remove orphaned nodes along with ExternalSource
+    /// edges in *other* subgraphs that might point to the orphaned nodes.
+    /// That method will call this in a loop until no orphaned nodes remain.
+    pub(crate) fn remove_externals(&mut self) -> Vec<SplitGraphNodeId> {
+        let mut removed_ids = vec![];
+        let mut indexes_to_remove = vec![];
+        for external in self
+            .graph
+            .externals(Incoming)
+            .filter(|idx| *idx != self.root_index)
+        {
+            if let Some(node_id) = self.graph.node_weight(external).map(|node| node.id()) {
+                removed_ids.push(node_id);
             }
-
-            for node_index in orphaned_node_indexes {
-                self.graph.remove_node(node_index);
-            }
+            indexes_to_remove.push(external);
         }
 
-        let mut removed_ids = vec![];
+        for index in indexes_to_remove {
+            self.graph.remove_node(index);
+        }
 
-        self.node_index_by_id.retain(|id, index| {
-            if self.graph.node_weight(*index).is_some() {
-                true
-            } else {
-                removed_ids.push(*id);
-                false
-            }
-        });
+        removed_ids
+    }
+
+    pub fn cleanup_maps(&mut self) {
+        self.node_index_by_id
+            .retain(|_, index| self.graph.node_weight(*index).is_some());
         self.node_indexes_by_lineage_id
             .iter_mut()
             .for_each(|(_, node_indexes)| {
@@ -137,8 +140,6 @@ where
             });
         self.node_indexes_by_lineage_id
             .retain(|_, indexes| !indexes.is_empty());
-
-        removed_ids
     }
 
     pub(crate) fn add_ids_to_indexes(

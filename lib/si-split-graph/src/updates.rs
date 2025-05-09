@@ -41,6 +41,15 @@ where
     pub kind: K,
 }
 
+impl<K> ExternalSourceData<K>
+where
+    K: EdgeKind,
+{
+    pub fn source_id(&self) -> SplitGraphNodeId {
+        self.source_id
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, EnumDiscriminants)]
 pub enum Update<N, E, K>
 where

@@ -49,7 +49,7 @@ impl WorkspaceSignup {
         ctx.set_workspace_split_snapshot(workspace_snapshot);
 
         migrate_intrinsics_no_commit(ctx).await.map_err(Box::new)?;
-        // crate::test_exclusive_schemas::migrate(ctx).await?;
+        crate::test_exclusive_schemas::migrate(ctx).await?;
 
         let workspace_snapshot_address = ctx
             .workspace_snapshot()?
@@ -106,18 +106,20 @@ impl WorkspaceSignup {
         user_email: impl AsRef<str>,
         token: impl AsRef<str>,
     ) -> color_eyre::Result<Self> {
-        let workspace =
-            Workspace::new_from_builtin(ctx, WorkspacePk::generate(), workspace_name, token)
-                .await?;
+        let use_split = false;
 
-        // let workspace = Self::new_split_graph_workspace(
-        //     ctx,
-        //     WorkspacePk::generate(),
-        //     workspace_name,
-        //     token,
-        //     500,
-        // )
-        // .await?;
+        let workspace = if use_split {
+            Self::new_split_graph_workspace(
+                ctx,
+                WorkspacePk::generate(),
+                workspace_name,
+                token,
+                500,
+            )
+            .await?
+        } else {
+            Workspace::new_from_builtin(ctx, WorkspacePk::generate(), workspace_name, token).await?
+        };
 
         let key_pair = KeyPair::new(ctx, "default").await?;
 

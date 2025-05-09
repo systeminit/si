@@ -114,7 +114,8 @@ pub mod prelude {
     };
 }
 mod signup;
-mod test_exclusive_schemas;
+/// Schema variants the test harness expects to be installed
+pub mod test_exclusive_schemas;
 
 pub use color_eyre::{
     self,
