@@ -21,8 +21,8 @@ use crate::extract::{
     post,
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/force_apply",
     params(
-        ("workspace_id", description = "Workspace identifier"),
-        ("change_set_id", description = "Change set identifier")
+        ("workspace_id" = String, Path, description = "Workspace identifier"),
+        ("change_set_id" = String, Path, description = "Change set identifier")
     ),
     tag = "change_sets",
     responses(

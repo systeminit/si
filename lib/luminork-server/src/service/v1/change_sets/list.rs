@@ -17,7 +17,7 @@ use crate::{
     get,
     path = "/v1/w/{workspace_id}/change-sets",
     params(
-        ("workspace_id", description = "Workspace identifier")
+        ("workspace_id" = String, Path, description = "Workspace identifier")
     ),
     tag = "change_sets",
     responses(

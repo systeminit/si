@@ -49,7 +49,10 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -88,7 +91,10 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -149,13 +155,19 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -197,13 +209,19 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -244,13 +262,19 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -291,19 +315,28 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "action_id",
             "in": "path",
-            "description": "Func identifier",
-            "required": true
+            "description": "Action identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -347,19 +380,28 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "action_id",
             "in": "path",
-            "description": "Func identifier",
-            "required": true
+            "description": "Action identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -403,19 +445,28 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "action_id",
             "in": "path",
-            "description": "Func identifier",
-            "required": true
+            "description": "Action identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -459,13 +510,19 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -509,13 +566,19 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -589,13 +652,19 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "component",
@@ -663,19 +732,28 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "component_id",
             "in": "path",
             "description": "Component identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -717,19 +795,28 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "component_id",
             "in": "path",
             "description": "Component identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -794,19 +881,28 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "component_id",
             "in": "path",
             "description": "Component identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -850,19 +946,28 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "component_id",
             "in": "path",
             "description": "Component identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -946,19 +1051,28 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "component_id",
             "in": "path",
             "description": "Component identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -1032,13 +1146,19 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1079,19 +1199,28 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "func_run_id",
             "in": "path",
             "description": "Func run identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1214,19 +1343,28 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "func_id",
             "in": "path",
             "description": "Func identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1282,13 +1420,19 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1329,13 +1473,19 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1376,13 +1526,19 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1423,13 +1579,19 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "schema",
@@ -1497,19 +1659,28 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "schema_id",
             "in": "path",
             "description": "Schema identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1553,19 +1724,28 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "schema_id",
             "in": "path",
             "description": "Schema identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1609,25 +1789,37 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "schema_id",
             "in": "path",
             "description": "Schema identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "schema_variant_id",
             "in": "path",
             "description": "Schema variant identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1674,13 +1866,19 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1785,13 +1983,19 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -1852,19 +2056,28 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "secret_id",
             "in": "path",
             "description": "Secret identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -1916,19 +2129,28 @@
             "name": "workspace_id",
             "in": "path",
             "description": "Workspace identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "change_set_id",
             "in": "path",
             "description": "Change set identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "secret_id",
             "in": "path",
             "description": "Secret identifier",
-            "required": true
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
