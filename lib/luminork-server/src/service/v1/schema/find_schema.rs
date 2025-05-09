@@ -46,8 +46,8 @@ pub struct FindSchemaV1Params {
     get,
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/find",
     params(
-        ("workspace_id", description = "Workspace identifier"),
-        ("change_set_id", description = "Change set identifier"),
+        ("workspace_id" = String, Path, description = "Workspace identifier"),
+        ("change_set_id" = String, Path, description = "Change set identifier"),
         FindSchemaV1Params,
     ),
     tag = "schemas",

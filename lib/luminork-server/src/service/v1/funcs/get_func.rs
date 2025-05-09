@@ -24,9 +24,9 @@ use crate::extract::{
     get,
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/{func_id}",
     params(
-        ("workspace_id", description = "Workspace identifier"),
-        ("change_set_id", description = "Change set identifier"),
-        ("func_id", description = "Func identifier"),
+        ("workspace_id" = String, Path, description = "Workspace identifier"),
+        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("func_id" = String, Path, description = "Func identifier"),
     ),
     tag = "funcs",
     responses(
