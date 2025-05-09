@@ -172,11 +172,12 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
                 message: node.validation.message,
             });
 
+        let (_, av_path) = AttributeValue::path_from_root(ctx, av_id).await?;
         let av_mv = AttributeValueMv {
             id: av_id,
             prop_id: maybe_prop.as_ref().map(|p| p.id),
             key,
-            path: AttributeValue::get_path_for_id(ctx, av_id).await?,
+            path: Some(av_path),
             value,
             can_be_set_by_socket,
             is_from_external_source,
