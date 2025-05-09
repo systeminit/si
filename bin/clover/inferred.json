@@ -7391,6 +7391,9 @@
   "The ARN of the policy used to set the permissions boundary for the role.\n For more information about permissions boundaries, see [Permissions boundaries for IAM identities](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) in the *IAM User Guide*.": {
     "enum": null
   },
+  "The ARN of the public certificate issued by ACM to validate ownership of your custom domain. Only required when configuring mutual TLS and using an ACM imported or private CA certificate ARN as the RegionalCertificateArn.": {
+    "enum": null
+  },
   "The ARN of the recipe to use for model training. Only specified when performAutoML is false.": {
     "enum": null
   },
@@ -12647,6 +12650,9 @@
   "The name of the dedicated IP pool.": {
     "enum": null
   },
+  "The name of the delivery destination to assign this policy to": {
+    "enum": null
+  },
   "The name of the delivery source that is associated with this delivery.": {
     "enum": null
   },
@@ -14340,6 +14346,9 @@
     "enum": null
   },
   "The repository namespace prefix associated with the repository creation template.": {
+    "enum": null
+  },
+  "The repository policy to apply to repositories created using the template. A repository policy is a permissions policy associated with a repository to control access permissions.": {
     "enum": null
   },
   "The request header name that you want CloudFront to send to your staging distribution. The header must contain the prefix ``aws-cf-cd-``.": {
