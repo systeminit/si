@@ -88,7 +88,7 @@
             />
           </ul>
         </CollapsingGridItem>
-        <CollapsingGridItem ref="history">
+        <CollapsingGridItem ref="history" disableScroll>
           <template #header>History</template>
           <FuncRunList :limit="25" />
         </CollapsingGridItem>

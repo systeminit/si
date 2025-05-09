@@ -1,0 +1,87 @@
+<template>
+  <EmptyStateCard
+    v-if="actionPrototypeViews.length === 0"
+    iconName="no-changes"
+    primaryText="No Actions Available"
+    secondaryText="This component does not have any available actions to run."
+  />
+  <div v-else class="flex flex-col">
+    <div
+      class="text-sm text-neutral-700 dark:text-neutral-300 p-xs italic border-b dark:border-neutral-600"
+    >
+      The changes below will run when you click "Apply Changes".
+    </div>
+    <ActionWidget
+      v-for="actionPrototypeView in actionPrototypeViews"
+      :key="actionPrototypeView.id"
+      :actionPrototypeView="actionPrototypeView"
+      :actionId="actionByPrototype[actionPrototypeView.id]"
+      :component="props.component"
+    />
+  </div>
+</template>
+
+<script lang="ts" setup>
+import { useQuery } from "@tanstack/vue-query";
+import { computed } from "vue";
+import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
+import {
+  BifrostActionPrototypeViewList,
+  BifrostActionViewList,
+  BifrostComponent,
+} from "@/workers/types/dbinterface";
+import EmptyStateCard from "@/components/EmptyStateCard.vue";
+import { ActionId, ActionPrototypeId } from "@/api/sdf/dal/action";
+import ActionWidget from "@/mead-hall/ActionWidget.vue";
+
+const props = defineProps<{
+  component: BifrostComponent;
+}>();
+
+// The code below is the same as in AssetActionsDetails in the mead hall
+
+// This is the core materialized view for this component. We need it to know what action prototypes
+// are available for the given component.
+const queryKeyForActionPrototypeViews = makeKey(
+  "ActionPrototypeViewList",
+  props.component.schemaVariantId,
+);
+const actionPrototypeViewsRaw = useQuery<BifrostActionPrototypeViewList | null>(
+  {
+    queryKey: queryKeyForActionPrototypeViews,
+    queryFn: async () =>
+      await bifrost<BifrostActionPrototypeViewList>(
+        makeArgs("ActionPrototypeViewList", props.component.schemaVariantId),
+      ),
+  },
+);
+const actionPrototypeViews = computed(
+  () => actionPrototypeViewsRaw.data.value?.actionPrototypes ?? [],
+);
+
+// Use the materialized view for actions to know what actions exist for a given prototype and the
+// selected component.
+const queryKeyForActionViewList = makeKey("ActionViewList");
+const actionViewList = useQuery<BifrostActionViewList | null>({
+  queryKey: queryKeyForActionViewList,
+  queryFn: async () =>
+    await bifrost<BifrostActionViewList>(makeArgs("ActionViewList")),
+});
+const actionByPrototype = computed(() => {
+  if (!actionViewList.data.value?.actions) return {};
+  if (actionViewList.data.value.actions.length < 1) return {};
+
+  const result: Record<ActionPrototypeId, ActionId> = {};
+  for (const action of actionViewList.data.value.actions) {
+    if (action.componentId === props.component.id) {
+      // NOTE(nick): this assumes that there can be one action for a given prototype and component.
+      // As of the time of writing, this is true, but multiple actions per prototype and component
+      // aren't disallowed from the underlying graph's perspective. Theorhetically, you could
+      // enqueue two refreshes back-to-back. What then? I don't think we'll expose an interface to
+      // do that for awhile, so this should be sufficient.
+      result[action.prototypeId] = action.id;
+    }
+  }
+  return result;
+});
+</script>

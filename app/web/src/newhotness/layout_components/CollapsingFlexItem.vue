@@ -46,6 +46,7 @@
 import { themeClasses, IconButton, Modal } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { onMounted, ref, withDefaults } from "vue";
+import { tw } from "@si/vue-lib";
 import { useToggle } from "../logic_composables/toggle_containers";
 
 const openState = useToggle();
@@ -63,6 +64,7 @@ const props = withDefaults(
     expandable?: boolean;
   }>(),
   {
+    h3class: tw`flex flex-row items-center`,
     expandable: true,
   },
 );

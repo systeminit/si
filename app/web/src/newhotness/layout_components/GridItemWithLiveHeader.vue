@@ -1,5 +1,15 @@
 <template>
-  <div class="flex flex-col rounded bg-neutral-800 overflow-hidden">
+  <div
+    :class="
+      clsx(
+        'flex flex-col rounded overflow-hidden border',
+        themeClasses(
+          'bg-shade-0 border-neutral-300',
+          'bg-neutral-800 border-transparent',
+        ),
+      )
+    "
+  >
     <div class="flex flex-row items-center justify-between px-sm py-2xs">
       <h2 class="text-sm font-medium">{{ title }}</h2>
       <!-- Live updating indicator -->
@@ -26,7 +36,8 @@
 </template>
 
 <script setup lang="ts">
-import { VButton, Icon } from "@si/vue-lib/design-system";
+import { VButton, Icon, themeClasses } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 
 defineProps<{
   live: boolean;

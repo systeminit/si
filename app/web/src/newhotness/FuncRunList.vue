@@ -1,6 +1,13 @@
 <template>
-  <div class="h-full flex flex-col">
-    <div class="header flex justify-between items-center mb-2">
+  <div class="flex flex-col min-h-0">
+    <div
+      :class="
+        clsx(
+          'header flex flex-row justify-between items-center p-2xs',
+          themeClasses('bg-neutral-200', 'bg-neutral-900'),
+        )
+      "
+    >
       <div class="text-sm font-medium">Recent Function Runs</div>
       <div
         v-if="isFetching && !isFetchingNextPage"
@@ -52,8 +59,9 @@
 <script lang="ts" setup>
 import { computed, ref, onMounted, onBeforeUnmount, inject } from "vue";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/vue-query";
-import { Icon } from "@si/vue-lib/design-system";
+import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import { useRouter, useRoute } from "vue-router";
+import clsx from "clsx";
 import { FuncRun } from "@/store/func_runs.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import FuncRunCard from "./FuncRunCard.vue";

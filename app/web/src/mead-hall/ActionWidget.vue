@@ -57,10 +57,13 @@ import {
   DiagramNodeData,
 } from "@/components/ModelingDiagram/diagram_types";
 import { ActionId } from "@/api/sdf/dal/action";
-import { ActionPrototypeView } from "@/workers/types/dbinterface";
+import {
+  ActionPrototypeView,
+  BifrostComponent,
+} from "@/workers/types/dbinterface";
 
 const props = defineProps<{
-  component: DiagramGroupData | DiagramNodeData;
+  component: DiagramGroupData | DiagramNodeData | BifrostComponent;
   actionPrototypeView: ActionPrototypeView;
   actionId?: ActionId;
 }>();
@@ -70,18 +73,27 @@ const { selectedComponent } = storeToRefs(viewStore);
 const actionsStore = useActionsStore();
 const router = useRouter();
 
+const componentId = computed(() => {
+  if (
+    props.component instanceof DiagramGroupData ||
+    props.component instanceof DiagramNodeData
+  ) {
+    return props.component.def.id;
+  } else {
+    return props.component.id;
+  }
+});
+
 function clickHandler() {
   if (props.actionId) {
     actionsStore.CANCEL([props.actionId]);
   } else {
-    actionsStore.ADD_ACTION(
-      props.component.def.id,
-      props.actionPrototypeView.id,
-    );
+    actionsStore.ADD_ACTION(componentId.value, props.actionPrototypeView.id);
   }
 }
 
 function onClickView() {
+  // TODO(Wendy) - for now this always goes to the old UI, we should have a new UI version of this!
   if (selectedComponent.value?.def.componentType !== ComponentType.View) {
     router.push({
       name: "workspace-lab-assets",
@@ -94,7 +106,7 @@ function onClickView() {
 
 const addRequestStatus = actionsStore.getRequestStatus(
   "ADD_ACTION",
-  props.component.def.id,
+  componentId.value,
   props.actionPrototypeView.id,
 );
 const removeRequestStatus = actionsStore.getRequestStatus(
