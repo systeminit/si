@@ -240,7 +240,7 @@ async fn rebase_split(
     edda: &EddaClient,
     request: &EnqueueUpdatesRequest,
     _features: Features,
-    _updating_head: bool,
+    updating_head: bool,
     to_rebase_change_set: &mut ChangeSet,
 ) -> RebaseResult<()> {
     let span = current_span_for_instrument_at!("info");
@@ -267,8 +267,17 @@ async fn rebase_split(
 
     debug!("rebase batch: {:?}", rebase_batch);
 
+    let from_different_change_set = !updating_head
+        && request
+            .from_change_set_id
+            .is_some_and(|from_id| from_id != to_rebase_change_set.id);
+
+    let corrected_transforms = to_rebase_workspace_snapshot
+        .correct_transforms(rebase_batch.to_vec(), from_different_change_set)
+        .await?;
+
     to_rebase_workspace_snapshot
-        .perform_updates(rebase_batch.as_slice())
+        .perform_updates(corrected_transforms.as_slice())
         .await?;
 
     let new_snapshot_address = to_rebase_workspace_snapshot.write(ctx).await?;

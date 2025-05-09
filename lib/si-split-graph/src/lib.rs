@@ -11,6 +11,7 @@ use dashmap::DashMap;
 use opt_zip::OptZip;
 use petgraph::prelude::*;
 use petgraph_traits::{
+    RawSplitGraphEdges,
     SplitGraphEdgeReference,
     SplitGraphEdges,
     SplitGraphNeighbors,
@@ -410,6 +411,10 @@ pub struct SplitGraphNodeIndex {
 impl SplitGraphNodeIndex {
     pub fn new(subgraph: SubGraphIndex, index: SubGraphNodeIndex) -> Self {
         Self { subgraph, index }
+    }
+
+    pub fn subgraph(&self) -> SubGraphIndex {
+        self.subgraph
     }
 }
 
@@ -1139,10 +1144,6 @@ where
                 })
                 .map(|edge_ref| edge_ref.id())
             {
-                // println!(
-                //     "attempting to find and remove external source to {:?}",
-                //     from_id
-                // );
                 from_subgraph.remove_edge_by_index(edge_idx);
                 let to_subgraph = self.get_subgraph_mut(to_subgraph_idx)?;
                 if let Some(edge_idx) = to_subgraph
@@ -1453,7 +1454,23 @@ where
         })
     }
 
-    pub fn neighbors_directed_raw(
+    pub fn raw_edges_directed(
+        &self,
+        from_id: SplitGraphNodeId,
+        direction: Direction,
+    ) -> SplitGraphResult<RawSplitGraphEdges<'_, N, E, K>> {
+        let index = self
+            .node_id_to_index(from_id)
+            .ok_or(SplitGraphError::NodeNotFound(from_id))?;
+        let subgraph = self.get_subgraph(index.subgraph)?;
+
+        Ok(RawSplitGraphEdges {
+            this_subgraph: subgraph,
+            edges: subgraph.graph.edges_directed(index.index, direction),
+        })
+    }
+
+    pub fn raw_neighbors_directed(
         &self,
         from_id: SplitGraphNodeId,
         direction: Direction,
@@ -1481,7 +1498,7 @@ where
         }
     }
 
-    pub fn neighbors_raw(&self, from_id: SplitGraphNodeId) -> SplitGraphNeighbors<'_, N, E, K> {
+    pub fn raw_neighbors(&self, from_id: SplitGraphNodeId) -> SplitGraphNeighbors<'_, N, E, K> {
         let split_graph_index = self.node_id_to_index(from_id);
         let subgraph = split_graph_index.and_then(|index| self.subgraphs().get(index.subgraph));
 
@@ -1901,7 +1918,7 @@ where
                         // *later* subgraph. If there is no corresponding remove node
                         // update for the node in the later subgraph, the graph *WILL*
                         // be in a broken state. So ensure when doing a node id update, that
-                        // if you giving a new node an existing node's id, that you always
+                        // if you are giving a new node an existing node's id, that you always
                         // remove the existing node first.
                         if split_graph_index.subgraph == *subgraph_index {
                             continue;
