@@ -96,6 +96,7 @@ use crate::{
         ActorViewError,
     },
     attribute::{
+        path::AttributePath,
         prototype::{
             AttributePrototypeError,
             AttributePrototypeSource,
@@ -1319,6 +1320,16 @@ impl Component {
         }
 
         Ok(input_socket_ids)
+    }
+
+    /// Gets the list of subscriptions pointing at this root AV, returning the subscriber AV
+    /// as well as the path they are subscribed to.
+    pub async fn subscribers(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<impl Iterator<Item = (AttributePath, AttributePrototypeArgumentId)>> {
+        let root_av_id = Self::root_attribute_value_id(ctx, component_id).await?;
+        Ok(AttributeValue::subscribers(ctx, root_av_id).await?)
     }
 
     pub async fn get_children_for_id(

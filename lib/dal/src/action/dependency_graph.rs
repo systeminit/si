@@ -23,6 +23,8 @@ use super::{
     },
 };
 use crate::{
+    AttributePrototype,
+    AttributeValue,
     Component,
     ComponentId,
     DalContext,
@@ -30,6 +32,7 @@ use crate::{
         Action,
         ActionId,
     },
+    attribute::prototype::argument::AttributePrototypeArgument,
     dependency_graph::DependencyGraph,
 };
 
@@ -115,19 +118,16 @@ impl ActionDependencyGraph {
                 .or_insert_with(|| component_dependencies.add_node(component_id))
                 .to_owned();
             for incoming_connection in component.incoming_connections(ctx).await? {
-                component_dependencies_index_by_id
+                // The edges of this graph go `output_socket_component (source) ->
+                // input_socket_component (target)`, matching the flow of the data between
+                // components.
+                let source_component_index = component_dependencies_index_by_id
                     .entry(incoming_connection.from_component_id)
                     .or_insert_with(|| {
                         component_dependencies.add_node(incoming_connection.from_component_id)
-                    });
-                if let Some(&source_component_index) =
-                    component_dependencies_index_by_id.get(&incoming_connection.from_component_id)
-                {
-                    // The edges of this graph go `output_socket_component (source) ->
-                    // input_socket_component (target)`, matching the flow of the data between
-                    // components.
-                    component_dependencies.update_edge(source_component_index, component_index, ());
-                }
+                    })
+                    .to_owned();
+                component_dependencies.update_edge(source_component_index, component_index, ());
                 if seen_list.insert(incoming_connection.from_component_id) {
                     components_to_process.push_back(incoming_connection.from_component_id);
                 }
@@ -136,21 +136,37 @@ impl ActionDependencyGraph {
                 .inferred_incoming_connections_for_component(ctx, component_id)
                 .await?
             {
-                component_dependencies_index_by_id
+                // The edges of this graph go `output_socket_component (source) ->
+                // input_socket_component (target)`, matching the flow of the data between
+                // components.
+                let source_component_index = component_dependencies_index_by_id
                     .entry(inferred_connection.source_component_id)
                     .or_insert_with(|| {
                         component_dependencies.add_node(inferred_connection.source_component_id)
-                    });
-                if let Some(&source_component_index) =
-                    component_dependencies_index_by_id.get(&inferred_connection.source_component_id)
-                {
-                    // The edges of this graph go `output_socket_component (source) ->
-                    // input_socket_component (target)`, matching the flow of the data between
-                    // components.
-                    component_dependencies.update_edge(source_component_index, component_index, ());
-                }
+                    })
+                    .to_owned();
+                component_dependencies.update_edge(source_component_index, component_index, ());
                 if seen_list.insert(inferred_connection.source_component_id) {
                     components_to_process.push_back(inferred_connection.source_component_id);
+                }
+            }
+            for (_, apa_id) in Component::subscribers(ctx, component_id).await? {
+                let prototype_id = AttributePrototypeArgument::prototype_id(ctx, apa_id).await?;
+                if let Some(av_id) =
+                    AttributePrototype::attribute_value_id(ctx, prototype_id).await?
+                {
+                    let subscriber_id = AttributeValue::component_id(ctx, av_id).await?;
+                    // The edges of this graph go `subscribed_to_component (source) ->
+                    // subscriber_component (target)`, matching the flow of the data between
+                    // components.
+                    let subscriber_index = component_dependencies_index_by_id
+                        .entry(subscriber_id)
+                        .or_insert_with(|| component_dependencies.add_node(subscriber_id))
+                        .to_owned();
+                    component_dependencies.update_edge(component_index, subscriber_index, ());
+                    if seen_list.insert(subscriber_id) {
+                        components_to_process.push_back(subscriber_id);
+                    }
                 }
             }
         }

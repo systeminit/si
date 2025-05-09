@@ -17,6 +17,7 @@ use dal_test::{
     Result,
     helpers::{
         ChangeSetTestHelpers,
+        component,
         connect_components_with_socket_names,
         create_component_for_default_schema_name_in_default_view,
         create_component_for_schema_name_with_type_on_default_view,
@@ -26,205 +27,142 @@ use dal_test::{
 };
 use itertools::Itertools;
 use pretty_assertions_sorted::assert_eq;
+use si_id::ActionId;
 
 #[test]
-async fn prototype_id(ctx: &mut DalContext) {
+async fn prototype_id(ctx: &mut DalContext) -> Result<()> {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
-            .await
-            .expect("could not create component");
-    let variant_id = Component::schema_variant_id(ctx, component.id())
-        .await
-        .expect("find variant id for component");
+            .await?;
+    let variant_id = Component::schema_variant_id(ctx, component.id()).await?;
     let mut action = None;
     let mut prototype = None;
-    for proto in ActionPrototype::for_variant(ctx, variant_id)
-        .await
-        .expect("unable to list prototypes for variant")
-    {
+    for proto in ActionPrototype::for_variant(ctx, variant_id).await? {
         if proto.kind == ActionKind::Create {
-            action = Some(
-                Action::new(ctx, proto.id, Some(component.id()))
-                    .await
-                    .expect("unable to upsert action"),
-            );
+            action = Some(Action::new(ctx, proto.id, Some(component.id())).await?);
             prototype = Some(proto);
             break;
         }
     }
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     assert_eq!(
-        Action::prototype_id(ctx, action.expect("no action found").id())
-            .await
-            .expect("unable to find prototype"),
+        Action::prototype_id(ctx, action.expect("no action found").id()).await?,
         prototype.expect("unable to find prototype").id()
     );
+
+    Ok(())
 }
 
 #[test]
-async fn component(ctx: &mut DalContext) {
+async fn component(ctx: &mut DalContext) -> Result<()> {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
-            .await
-            .expect("could not create component");
-    let variant_id = Component::schema_variant_id(ctx, component.id())
-        .await
-        .expect("find variant id for component");
+            .await?;
+    let variant_id = Component::schema_variant_id(ctx, component.id()).await?;
     let mut action = None;
-    for prototype in ActionPrototype::for_variant(ctx, variant_id)
-        .await
-        .expect("unable to list prototypes for variant")
-    {
+    for prototype in ActionPrototype::for_variant(ctx, variant_id).await? {
         if prototype.kind == ActionKind::Create {
-            action = Some(
-                Action::new(ctx, prototype.id, Some(component.id()))
-                    .await
-                    .expect("unable to upsert action"),
-            );
+            action = Some(Action::new(ctx, prototype.id, Some(component.id())).await?);
             break;
         }
     }
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     assert_eq!(
-        Action::component_id(ctx, action.expect("no action found").id())
-            .await
-            .expect("unable to find component"),
+        Action::component_id(ctx, action.expect("no action found").id()).await?,
         Some(component.id())
     );
+
+    Ok(())
 }
 
 #[test]
-async fn get_by_id(ctx: &mut DalContext) {
+async fn get_by_id(ctx: &mut DalContext) -> Result<()> {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
-            .await
-            .expect("could not create component");
-    let variant_id = Component::schema_variant_id(ctx, component.id())
-        .await
-        .expect("find variant id for component");
+            .await?;
+    let variant_id = Component::schema_variant_id(ctx, component.id()).await?;
     let mut action = None;
-    for prototype in ActionPrototype::for_variant(ctx, variant_id)
-        .await
-        .expect("unable to list prototypes for variant")
-    {
+    for prototype in ActionPrototype::for_variant(ctx, variant_id).await? {
         if prototype.kind == ActionKind::Create {
-            action = Some(
-                Action::new(ctx, prototype.id, Some(component.id()))
-                    .await
-                    .expect("unable to upsert action"),
-            );
+            action = Some(Action::new(ctx, prototype.id, Some(component.id())).await?);
             break;
         }
     }
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     let action = action.expect("no action found");
-    assert_eq!(
-        Action::get_by_id(ctx, action.id())
-            .await
-            .expect("unable to get action"),
-        action
-    );
+    assert_eq!(Action::get_by_id(ctx, action.id()).await?, action);
+
+    Ok(())
 }
 
 #[test]
-async fn set_state(ctx: &mut DalContext) {
+async fn set_state(ctx: &mut DalContext) -> Result<()> {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
-            .await
-            .expect("could not create component");
-    let variant_id = Component::schema_variant_id(ctx, component.id())
-        .await
-        .expect("find variant id for component");
-    let prototypes = ActionPrototype::for_variant(ctx, variant_id)
-        .await
-        .expect("unable to list prototypes for variant");
+            .await?;
+    let variant_id = Component::schema_variant_id(ctx, component.id()).await?;
+    let prototypes = ActionPrototype::for_variant(ctx, variant_id).await?;
     assert!(!prototypes.is_empty());
     for prototype in prototypes {
         if prototype.kind == ActionKind::Create {
-            let action = Action::new(ctx, prototype.id, Some(component.id()))
-                .await
-                .expect("unable to upsert action");
+            let action = Action::new(ctx, prototype.id, Some(component.id())).await?;
             assert_eq!(action.state(), ActionState::Queued);
 
-            Action::set_state(ctx, action.id(), ActionState::Running)
-                .await
-                .expect("unable to set state");
+            Action::set_state(ctx, action.id(), ActionState::Running).await?;
 
-            let action = Action::get_by_id(ctx, action.id())
-                .await
-                .expect("unable to get action by id");
+            let action = Action::get_by_id(ctx, action.id()).await?;
             assert_eq!(action.state(), ActionState::Running);
             break;
         }
     }
+
+    Ok(())
 }
 
 #[test]
-async fn run(ctx: &mut DalContext) {
+async fn run(ctx: &mut DalContext) -> Result<()> {
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "swifty", "shake it off")
-            .await
-            .expect("could not create component");
-    let variant_id = Component::schema_variant_id(ctx, component.id())
-        .await
-        .expect("find variant id for component");
+            .await?;
+    let variant_id = Component::schema_variant_id(ctx, component.id()).await?;
     let proto = ActionPrototype::for_variant(ctx, variant_id)
-        .await
-        .expect("unable to list prototypes for variant")
+        .await?
         .pop()
         .expect("unable to find prototype for variant");
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-    let (maybe_resource, _func_run_id) = ActionPrototype::run(ctx, proto.id(), component.id())
-        .await
-        .expect("unable to run ActionPrototype");
+    let (maybe_resource, _func_run_id) =
+        ActionPrototype::run(ctx, proto.id(), component.id()).await?;
     assert!(maybe_resource.is_some());
+
+    Ok(())
 }
 
 #[test]
-async fn auto_queue_creation(ctx: &mut DalContext) {
+async fn auto_queue_creation(ctx: &mut DalContext) -> Result<()> {
     // ======================================================
     // Creating a component  should enqueue a create action
     // ======================================================
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "swifty", "jack antonoff")
-            .await
-            .expect("could not create component");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+            .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-    let action_ids = Action::list_topologically(ctx)
-        .await
-        .expect("find action ids");
+    let action_ids = Action::list_topologically(ctx).await?;
     assert_eq!(action_ids.len(), 1);
 
     for action_id in action_ids {
-        let action = Action::get_by_id(ctx, action_id)
-            .await
-            .expect("find action by id");
+        let action = Action::get_by_id(ctx, action_id).await?;
         if action.state() == ActionState::Queued {
-            let prototype_id = Action::prototype_id(ctx, action_id)
-                .await
-                .expect("get prototype id from action");
-            let prototype = ActionPrototype::get_by_id(ctx, prototype_id)
-                .await
-                .expect("get prototype from id");
+            let prototype_id = Action::prototype_id(ctx, action_id).await?;
+            let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
 
             assert_eq!(prototype.kind, ActionKind::Create);
         }
@@ -233,44 +171,33 @@ async fn auto_queue_creation(ctx: &mut DalContext) {
     // ======================================================
     // Deleting a component with no resource should dequeue the creation action
     // ======================================================
-    component.delete(ctx).await.expect("delete component");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit and update snapshot to visibility");
+    component.delete(ctx).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-    let action_ids = Action::list_topologically(ctx)
-        .await
-        .expect("find action ids");
+    let action_ids = Action::list_topologically(ctx).await?;
 
     assert!(action_ids.is_empty());
+
+    Ok(())
 }
 
 #[test]
-async fn auto_queue_update(ctx: &mut DalContext) {
+async fn auto_queue_update(ctx: &mut DalContext) -> Result<()> {
     // ======================================================
     // Creating a component  should enqueue a create action
     // ======================================================
     let component =
         create_component_for_default_schema_name_in_default_view(ctx, "swifty", "jack antonoff")
-            .await
-            .expect("could not create component");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("commit and update snapshot to visibility");
+            .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Apply changeset so it runs the creation action
-    ChangeSetTestHelpers::apply_change_set_to_base(ctx)
-        .await
-        .expect("apply changeset to base");
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
 
     // wait for actions to run
-    ChangeSetTestHelpers::wait_for_actions_to_run(ctx)
-        .await
-        .expect("deadline for actions to run exceeded");
+    ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
 
-    ChangeSetTestHelpers::fork_from_head_change_set(ctx)
-        .await
-        .expect("fork from head");
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
     // ======================================================
     // Updating values in a component that has a resource should enqueue an update action
@@ -279,36 +206,23 @@ async fn auto_queue_update(ctx: &mut DalContext) {
     let name_path = &["root", "si", "name"];
     let av_id = component
         .attribute_values_for_prop(ctx, name_path)
-        .await
-        .expect("find value ids for the prop treasure")
+        .await?
         .pop()
         .expect("there should only be one value id");
 
-    AttributeValue::update(ctx, av_id, Some(serde_json::json!("whomever")))
-        .await
-        .expect("override domain/name attribute value");
-    Component::enqueue_relevant_update_actions(ctx, av_id)
-        .await
-        .expect("could enqueue update func");
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!("whomever"))).await?;
+    Component::enqueue_relevant_update_actions(ctx, av_id).await?;
 
-    let action_ids = Action::list_topologically(ctx)
-        .await
-        .expect("find action ids");
+    let action_ids = Action::list_topologically(ctx).await?;
 
     let mut update_action_count = 0;
 
     for action_id in action_ids {
-        let action = Action::get_by_id(ctx, action_id)
-            .await
-            .expect("find action by id");
+        let action = Action::get_by_id(ctx, action_id).await?;
 
         if action.state() == ActionState::Queued {
-            let prototype_id = Action::prototype_id(ctx, action_id)
-                .await
-                .expect("get prototype id from action");
-            let prototype = ActionPrototype::get_by_id(ctx, prototype_id)
-                .await
-                .expect("get action prototype by id");
+            let prototype_id = Action::prototype_id(ctx, action_id).await?;
+            let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
 
             if prototype.kind == ActionKind::Update {
                 update_action_count += 1;
@@ -316,10 +230,12 @@ async fn auto_queue_update(ctx: &mut DalContext) {
         }
     }
     assert_eq!(update_action_count, 1);
+
+    Ok(())
 }
 
 #[test]
-async fn actions_are_ordered_correctly(ctx: &mut DalContext) {
+async fn actions_are_ordered_correctly(ctx: &mut DalContext) -> Result<()> {
     // create two components and connect them via edge
     let first_component = create_component_for_schema_name_with_type_on_default_view(
         ctx,
@@ -327,16 +243,14 @@ async fn actions_are_ordered_correctly(ctx: &mut DalContext) {
         "first component",
         dal::ComponentType::ConfigurationFrameDown,
     )
-    .await
-    .expect("could not create component");
+    .await?;
     let second_component = create_component_for_schema_name_with_type_on_default_view(
         ctx,
         "small even lego",
         "second component",
         dal::ComponentType::ConfigurationFrameDown,
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     connect_components_with_socket_names(
         ctx,
@@ -345,28 +259,21 @@ async fn actions_are_ordered_correctly(ctx: &mut DalContext) {
         second_component.id(),
         "two",
     )
-    .await
-    .expect("could not create connection");
+    .await?;
 
-    let actions = Action::list_topologically(ctx)
-        .await
-        .expect("could not list actions");
+    let actions = Action::list_topologically(ctx).await?;
     // make sure two actions are enqueued
     assert_eq!(actions.len(), 2);
 
     let first_component_action = Action::find_for_component_id(ctx, first_component.id())
-        .await
-        .expect("could not get actions")
+        .await?
         .pop()
         .expect("doesn't have one");
     let second_component_actions = Action::find_for_component_id(ctx, second_component.id())
-        .await
-        .expect("could not list actions")
+        .await?
         .pop()
         .expect("didnt have an action");
-    let action_graph = ActionDependencyGraph::for_workspace(ctx)
-        .await
-        .expect("could not get graph");
+    let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
 
     assert_eq!(
         action_graph.get_all_dependencies(first_component_action),
@@ -384,27 +291,20 @@ async fn actions_are_ordered_correctly(ctx: &mut DalContext) {
         second_component.id(),
         "two",
     )
-    .await
-    .expect("could not create connection");
-    let actions = Action::list_topologically(ctx)
-        .await
-        .expect("could not list actions");
+    .await?;
+    let actions = Action::list_topologically(ctx).await?;
     // make sure two actions are enqueued
     assert_eq!(actions.len(), 2);
 
     let first_component_action = Action::find_for_component_id(ctx, first_component.id())
-        .await
-        .expect("could not get actions")
+        .await?
         .pop()
         .expect("doesn't have one");
     let second_component_actions = Action::find_for_component_id(ctx, second_component.id())
-        .await
-        .expect("could not list actions")
+        .await?
         .pop()
         .expect("didnt have an action");
-    let action_graph = ActionDependencyGraph::for_workspace(ctx)
-        .await
-        .expect("could not get graph");
+    let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
 
     assert_eq!(
         action_graph.get_all_dependencies(first_component_action),
@@ -415,28 +315,20 @@ async fn actions_are_ordered_correctly(ctx: &mut DalContext) {
         vec![]
     );
 
-    Frame::upsert_parent(ctx, second_component.id(), first_component.id())
-        .await
-        .expect("could not upsert");
-    let actions = Action::list_topologically(ctx)
-        .await
-        .expect("could not list actions");
+    Frame::upsert_parent(ctx, second_component.id(), first_component.id()).await?;
+    let actions = Action::list_topologically(ctx).await?;
     // make sure two actions are enqueued
     assert_eq!(actions.len(), 2);
 
     let first_component_action = Action::find_for_component_id(ctx, first_component.id())
-        .await
-        .expect("could not get actions")
+        .await?
         .pop()
         .expect("doesn't have one");
     let second_component_actions = Action::find_for_component_id(ctx, second_component.id())
-        .await
-        .expect("could not list actions")
+        .await?
         .pop()
         .expect("didnt have an action");
-    let action_graph = ActionDependencyGraph::for_workspace(ctx)
-        .await
-        .expect("could not get graph");
+    let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
 
     assert_eq!(
         action_graph.get_all_dependencies(first_component_action),
@@ -454,8 +346,7 @@ async fn actions_are_ordered_correctly(ctx: &mut DalContext) {
         "third component",
         dal::ComponentType::ConfigurationFrameDown,
     )
-    .await
-    .expect("could not create component");
+    .await?;
 
     connect_components_with_socket_names(
         ctx,
@@ -464,35 +355,27 @@ async fn actions_are_ordered_correctly(ctx: &mut DalContext) {
         third_component.id(),
         "two",
     )
-    .await
-    .expect("could not create connection");
+    .await?;
 
     // make sure actions are ordered correctly
-    let actions = Action::list_topologically(ctx)
-        .await
-        .expect("could not list actions");
+    let actions = Action::list_topologically(ctx).await?;
 
     // make sure three actions are enqueued now
     assert_eq!(actions.len(), 3);
 
     let first_component_action = Action::find_for_component_id(ctx, first_component.id())
-        .await
-        .expect("could not get actions")
+        .await?
         .pop()
         .expect("doesn't have one");
     let second_component_action = Action::find_for_component_id(ctx, second_component.id())
-        .await
-        .expect("could not list actions")
+        .await?
         .pop()
         .expect("didnt have an action");
     let third_component_action = Action::find_for_component_id(ctx, third_component.id())
-        .await
-        .expect("could not list actions")
+        .await?
         .pop()
         .expect("didnt have an action");
-    let action_graph = ActionDependencyGraph::for_workspace(ctx)
-        .await
-        .expect("could not get graph");
+    let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
     let dependencies = action_graph.get_all_dependencies(first_component_action);
     assert_eq!(dependencies.len(), 2);
     assert!(dependencies.contains(&second_component_action));
@@ -505,6 +388,8 @@ async fn actions_are_ordered_correctly(ctx: &mut DalContext) {
         action_graph.direct_dependencies_of(third_component_action),
         vec![first_component_action]
     );
+
+    Ok(())
 }
 
 #[test]
@@ -563,25 +448,19 @@ async fn simple_transitive_action_ordering(ctx: &mut DalContext) -> Result<()> {
     Action::remove_all_for_component_id(ctx, second_component_id).await?;
 
     // there should be two actions enqueued
-    let actions = Action::list_topologically(ctx)
-        .await
-        .expect("could not list actions");
+    let actions = Action::list_topologically(ctx).await?;
     // make sure two actions are enqueued
     assert_eq!(actions.len(), 2);
 
     let first_component_action = Action::find_for_component_id(ctx, first_component_id)
-        .await
-        .expect("could not get actions")
+        .await?
         .pop()
         .expect("doesn't have one");
     let third_component_actions = Action::find_for_component_id(ctx, third_component_id)
-        .await
-        .expect("could not list actions")
+        .await?
         .pop()
         .expect("didnt have an action");
-    let action_graph = ActionDependencyGraph::for_workspace(ctx)
-        .await
-        .expect("could not get graph");
+    let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
 
     // Create for the third action is dependent on the create for the first action
     assert_eq!(
@@ -601,8 +480,7 @@ async fn simple_transitive_action_ordering(ctx: &mut DalContext) -> Result<()> {
         second_component_id,
         "two",
     )
-    .await
-    .expect("could not create connection");
+    .await?;
     disconnect_components_with_socket_names(
         ctx,
         second_component_id,
@@ -610,32 +488,25 @@ async fn simple_transitive_action_ordering(ctx: &mut DalContext) -> Result<()> {
         third_component_id,
         "one",
     )
-    .await
-    .expect("could not create connection");
+    .await?;
     Frame::upsert_parent(ctx, second_component_id, first_component_id).await?;
     Frame::upsert_parent(ctx, third_component_id, second_component_id).await?;
 
     // there should be two actions enqueued
-    let actions = Action::list_topologically(ctx)
-        .await
-        .expect("could not list actions");
+    let actions = Action::list_topologically(ctx).await?;
     // make sure two actions are enqueued
     assert_eq!(actions.len(), 2);
 
     // order is still preserved
     let first_component_action = Action::find_for_component_id(ctx, first_component_id)
-        .await
-        .expect("could not get actions")
+        .await?
         .pop()
         .expect("doesn't have one");
     let third_component_actions = Action::find_for_component_id(ctx, third_component_id)
-        .await
-        .expect("could not list actions")
+        .await?
         .pop()
         .expect("didnt have an action");
-    let action_graph = ActionDependencyGraph::for_workspace(ctx)
-        .await
-        .expect("could not get graph");
+    let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
 
     assert_eq!(
         action_graph.get_all_dependencies(first_component_action),
@@ -649,15 +520,12 @@ async fn simple_transitive_action_ordering(ctx: &mut DalContext) -> Result<()> {
     Action::remove_all_for_component_id(ctx, first_component_id).await?;
     Action::remove_all_for_component_id(ctx, third_component_id).await?;
     // there should be no actions enqueued
-    let actions = Action::list_topologically(ctx)
-        .await
-        .expect("could not list actions");
+    let actions = Action::list_topologically(ctx).await?;
     // make sure two actions are enqueued
     assert!(actions.is_empty());
     // manually enqueue deletes for the first and third component
     let first_actions = ActionPrototype::for_variant(ctx, first_component_sv_id)
-        .await
-        .expect("could not list actions")
+        .await?
         .into_iter()
         .filter(|proto| proto.kind == ActionKind::Destroy)
         .collect_vec();
@@ -681,9 +549,7 @@ async fn simple_transitive_action_ordering(ctx: &mut DalContext) -> Result<()> {
     let actions = Action::list_topologically(ctx).await?;
     assert_eq!(actions.len(), 2);
 
-    let action_graph = ActionDependencyGraph::for_workspace(ctx)
-        .await
-        .expect("could not get graph");
+    let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
 
     // Delete for the first action is dependent on the delete for the third action
     assert_eq!(
@@ -696,4 +562,218 @@ async fn simple_transitive_action_ordering(ctx: &mut DalContext) -> Result<()> {
     );
 
     Ok(())
+}
+
+#[test]
+async fn create_action_ordering_subscriptions(ctx: &mut DalContext) -> Result<()> {
+    // create two components and connect a.two -> b.two and b.two -> c.two via subscriptions
+    let a = component::create(ctx, "small odd lego", "a").await?;
+    let b = component::create(ctx, "small even lego", "b").await?;
+    let c = component::create(ctx, "medium odd lego", "c").await?;
+    assert_eq!(
+        vec!["Create a", "Create b", "Create c"],
+        next_actions(ctx).await?
+    );
+
+    // Now check that the actions are ordered correctly
+    component::subscribe(ctx, b, "/domain/two", a, "/domain/two").await?;
+    assert_eq!(vec!["Create a", "Create c"], next_actions(ctx).await?);
+    component::subscribe(ctx, c, "/domain/one", b, "/domain/one").await?;
+    assert_eq!(vec!["Create a"], next_actions(ctx).await?);
+
+    Ok(())
+}
+
+#[test]
+async fn create_action_ordering_sockets(ctx: &mut DalContext) -> Result<()> {
+    // create two components and connect a.two -> b.two and b.two -> c.two via subscriptions
+    let a = component::create(ctx, "small odd lego", "a").await?;
+    let b = component::create(ctx, "small even lego", "b").await?;
+    let c = component::create(ctx, "medium odd lego", "c").await?;
+    assert_eq!(
+        vec!["Create a", "Create b", "Create c"],
+        next_actions(ctx).await?
+    );
+
+    // Now check that the actions are ordered correctly
+    connect_components_with_socket_names(ctx, a, "two", b, "two").await?;
+    assert_eq!(vec!["Create a", "Create c"], next_actions(ctx).await?);
+    connect_components_with_socket_names(ctx, b, "one", c, "one").await?;
+    assert_eq!(vec!["Create a"], next_actions(ctx).await?);
+
+    Ok(())
+}
+
+#[test]
+async fn create_action_ordering_mixed(ctx: &mut DalContext) -> Result<()> {
+    // create two components and connect a.two -> b.two and b.two -> c.two via subscriptions
+    let a = component::create(ctx, "small odd lego", "a").await?;
+    let b = component::create(ctx, "small even lego", "b").await?;
+    let c = component::create(ctx, "medium odd lego", "c").await?;
+    assert_eq!(
+        vec!["Create a", "Create b", "Create c"],
+        next_actions(ctx).await?
+    );
+
+    // Now check that the actions are ordered correctly
+    connect_components_with_socket_names(ctx, a, "two", b, "two").await?;
+    assert_eq!(vec!["Create a", "Create c"], next_actions(ctx).await?);
+    component::subscribe(ctx, c, "/domain/one", b, "/domain/one").await?;
+    assert_eq!(vec!["Create a"], next_actions(ctx).await?);
+
+    Ok(())
+}
+
+#[test]
+async fn create_action_ordering_mixed_2(ctx: &mut DalContext) -> Result<()> {
+    // create two components and connect a.two -> b.two and b.two -> c.two via subscriptions
+    let a = component::create(ctx, "small odd lego", "a").await?;
+    let b = component::create(ctx, "small even lego", "b").await?;
+    let c = component::create(ctx, "medium odd lego", "c").await?;
+    assert_eq!(
+        vec!["Create a", "Create b", "Create c"],
+        next_actions(ctx).await?
+    );
+
+    // Now check that the actions are ordered correctly
+    component::subscribe(ctx, b, "/domain/two", a, "/domain/two").await?;
+    assert_eq!(vec!["Create a", "Create c"], next_actions(ctx).await?);
+    connect_components_with_socket_names(ctx, b, "one", c, "one").await?;
+    assert_eq!(vec!["Create a"], next_actions(ctx).await?);
+
+    Ok(())
+}
+
+#[test]
+async fn delete_action_ordering_subscriptions(ctx: &mut DalContext) -> Result<()> {
+    // create two components and connect a.two -> b.two and b.two -> c.two via subscriptions
+    let a = component::create(ctx, "small odd lego", "a").await?;
+    let b = component::create(ctx, "small even lego", "b").await?;
+    let c = component::create(ctx, "medium odd lego", "c").await?;
+    Action::remove_all_for_component_id(ctx, a).await?;
+    Action::remove_all_for_component_id(ctx, b).await?;
+    Action::remove_all_for_component_id(ctx, c).await?;
+    enqueue_delete_action(ctx, a).await?;
+    enqueue_delete_action(ctx, b).await?;
+    enqueue_delete_action(ctx, c).await?;
+    assert_eq!(
+        vec!["Destroy a", "Destroy b", "Destroy c"],
+        next_actions(ctx).await?
+    );
+
+    // Now check that the actions are ordered correctly
+    component::subscribe(ctx, b, "/domain/two", a, "/domain/two").await?;
+    assert_eq!(vec!["Destroy b", "Destroy c"], next_actions(ctx).await?);
+    component::subscribe(ctx, c, "/domain/one", b, "/domain/one").await?;
+    assert_eq!(vec!["Destroy c"], next_actions(ctx).await?);
+
+    Ok(())
+}
+
+#[test]
+async fn delete_action_ordering_sockets(ctx: &mut DalContext) -> Result<()> {
+    // create two components and connect a.two -> b.two and b.two -> c.two via subscriptions
+    let a = component::create(ctx, "small odd lego", "a").await?;
+    let b = component::create(ctx, "small even lego", "b").await?;
+    let c = component::create(ctx, "medium odd lego", "c").await?;
+    Action::remove_all_for_component_id(ctx, a).await?;
+    Action::remove_all_for_component_id(ctx, b).await?;
+    Action::remove_all_for_component_id(ctx, c).await?;
+    enqueue_delete_action(ctx, a).await?;
+    enqueue_delete_action(ctx, b).await?;
+    enqueue_delete_action(ctx, c).await?;
+    assert_eq!(
+        vec!["Destroy a", "Destroy b", "Destroy c"],
+        next_actions(ctx).await?
+    );
+
+    // Now check that the actions are ordered correctly
+    connect_components_with_socket_names(ctx, a, "two", b, "two").await?;
+    assert_eq!(vec!["Destroy b", "Destroy c"], next_actions(ctx).await?);
+    connect_components_with_socket_names(ctx, b, "one", c, "one").await?;
+    assert_eq!(vec!["Destroy c"], next_actions(ctx).await?);
+
+    Ok(())
+}
+
+#[test]
+async fn delete_action_ordering_mixed(ctx: &mut DalContext) -> Result<()> {
+    // create two components and connect a.two -> b.two and b.two -> c.two via subscriptions
+    let a = component::create(ctx, "small odd lego", "a").await?;
+    let b = component::create(ctx, "small even lego", "b").await?;
+    let c = component::create(ctx, "medium odd lego", "c").await?;
+    Action::remove_all_for_component_id(ctx, a).await?;
+    Action::remove_all_for_component_id(ctx, b).await?;
+    Action::remove_all_for_component_id(ctx, c).await?;
+    enqueue_delete_action(ctx, a).await?;
+    enqueue_delete_action(ctx, b).await?;
+    enqueue_delete_action(ctx, c).await?;
+    assert_eq!(
+        vec!["Destroy a", "Destroy b", "Destroy c"],
+        next_actions(ctx).await?
+    );
+
+    // Now check that the actions are ordered correctly
+    connect_components_with_socket_names(ctx, a, "two", b, "two").await?;
+    assert_eq!(vec!["Destroy b", "Destroy c"], next_actions(ctx).await?);
+    component::subscribe(ctx, c, "/domain/one", b, "/domain/one").await?;
+    assert_eq!(vec!["Destroy c"], next_actions(ctx).await?);
+
+    Ok(())
+}
+
+#[test]
+async fn delete_action_ordering_mixed_2(ctx: &mut DalContext) -> Result<()> {
+    // create two components and connect a.two -> b.two and b.two -> c.two via subscriptions
+    let a = component::create(ctx, "small odd lego", "a").await?;
+    let b = component::create(ctx, "small even lego", "b").await?;
+    let c = component::create(ctx, "medium odd lego", "c").await?;
+    Action::remove_all_for_component_id(ctx, a).await?;
+    Action::remove_all_for_component_id(ctx, b).await?;
+    Action::remove_all_for_component_id(ctx, c).await?;
+    enqueue_delete_action(ctx, a).await?;
+    enqueue_delete_action(ctx, b).await?;
+    enqueue_delete_action(ctx, c).await?;
+    assert_eq!(
+        vec!["Destroy a", "Destroy b", "Destroy c"],
+        next_actions(ctx).await?
+    );
+
+    // Now check that the actions are ordered correctly
+    component::subscribe(ctx, b, "/domain/two", a, "/domain/two").await?;
+    assert_eq!(vec!["Destroy b", "Destroy c"], next_actions(ctx).await?);
+    connect_components_with_socket_names(ctx, b, "one", c, "one").await?;
+    assert_eq!(vec!["Destroy c"], next_actions(ctx).await?);
+
+    Ok(())
+}
+
+async fn next_actions(ctx: &mut DalContext) -> Result<Vec<String>> {
+    let mut result = vec![];
+    let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
+    for action_id in action_graph.independent_actions() {
+        let component_id = Action::component_id(ctx, action_id)
+            .await?
+            .expect("component");
+        result.push(format!(
+            "{} {}",
+            Action::prototype(ctx, action_id).await?.kind,
+            Component::name_by_id(ctx, component_id).await?,
+        ));
+    }
+    result.sort();
+    Ok(result)
+}
+
+async fn enqueue_delete_action(
+    ctx: &mut DalContext,
+    component_id: dal::ComponentId,
+) -> Result<ActionId> {
+    let variant_id = Component::schema_variant_id(ctx, component_id).await?;
+    let action = ActionPrototype::for_variant(ctx, variant_id)
+        .await?
+        .into_iter()
+        .find(|proto| proto.kind == ActionKind::Destroy)
+        .expect("no destroy action found");
+    Ok(Action::new(ctx, action.id, Some(component_id)).await?.id())
 }

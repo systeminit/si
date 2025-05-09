@@ -78,6 +78,12 @@ pub mod prototype;
 pub enum ActionError {
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] crate::attribute::prototype::AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(
+        #[from] crate::attribute::prototype::argument::AttributePrototypeArgumentError,
+    ),
     #[error("AttributeValue error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("Change Set error: {0}")]

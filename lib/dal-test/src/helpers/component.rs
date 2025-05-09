@@ -2,10 +2,15 @@
 
 use color_eyre::eyre::eyre;
 use dal::{
+    AttributeValue,
     Component,
     ComponentId,
     DalContext,
     FuncId,
+    attribute::{
+        path::AttributePath,
+        value::subscription::ValueSubscription,
+    },
     diagram::{
         geometry::Geometry,
         view::View,
@@ -36,6 +41,31 @@ pub async fn create(
             .await?
             .id(),
     )
+}
+
+/// Subscribe from one component's attribute to another component's attribute
+pub async fn subscribe(
+    ctx: &mut DalContext,
+    subscriber: ComponentId,
+    path: impl Into<String>,
+    subscribed_to: ComponentId,
+    subscribed_to_path: &str,
+) -> Result<()> {
+    let subscriber_root_id = Component::root_attribute_value_id(ctx, subscriber).await?;
+    let subscriber_av_id = AttributePath::from_json_pointer(path)
+        .resolve(ctx, subscriber_root_id)
+        .await?
+        .expect("attribute to exist");
+    AttributeValue::subscribe(
+        ctx,
+        subscriber_av_id,
+        ValueSubscription {
+            attribute_value_id: Component::root_attribute_value_id(ctx, subscribed_to).await?,
+            path: AttributePath::from_json_pointer(subscribed_to_path),
+        },
+    )
+    .await?;
+    Ok(())
 }
 
 /// Execute a the management function and apply the result to the component
