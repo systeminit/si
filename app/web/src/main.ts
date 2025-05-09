@@ -176,6 +176,9 @@ const filterToasts = (toasts: any[]) => {
     if (t.content.component?.__name === "MaintenanceMode") {
       return [t];
     }
+    if (t.content.component?.__name === "UnscheduledDowntime") {
+      return [t];
+    }
   }
   return toasts;
 };
