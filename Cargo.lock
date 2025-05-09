@@ -3137,6 +3137,7 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "futures",
+ "pin-project-lite",
  "remain",
  "serde_json",
  "si-data-nats",
