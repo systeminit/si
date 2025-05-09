@@ -59,6 +59,7 @@ import { useWorkspacesStore } from "./workspaces.store";
 import { useFeatureFlagsStore } from "./feature_flags.store";
 import { useRouterStore } from "./router.store";
 import { useViewsStore } from "./views.store";
+import { AttributeValueId } from "./status.store";
 
 export type ComponentNodeId = string;
 
@@ -341,7 +342,7 @@ type EventBusEvents = {
 //       }
 //
 export type UpdateComponentAttributesArgs = Record<
-  AttributePath,
+  AttributePath | AttributeValueId,
   AttributeSource
 >;
 

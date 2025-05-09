@@ -6,6 +6,7 @@ use axum::{
         Response,
     },
 };
+use dal::AttributeValueId;
 use sdf_core::api_error::ApiError;
 use serde::Deserialize;
 use si_id::ComponentId;
@@ -24,6 +25,8 @@ pub enum Error {
     AttributeSourceInvalid(serde_json::Value),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] dal::attribute::value::AttributeValueError),
+    #[error("attribute value {0} not from component {1}")]
+    AttributeValueNotFromComponent(AttributeValueId, ComponentId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("component error: {0}")]
@@ -32,6 +35,8 @@ pub enum Error {
     JsonptrParseError(#[from] jsonptr::ParseError),
     #[error("no value to set at path {0}")]
     NoValueToSet(String),
+    #[error("serde json error: {0}")]
+    SerdeJsonError(#[from] serde_json::Error),
     #[error("source component not found: {0}")]
     SourceComponentNotFound(String),
     #[error("transactions error: {0}")]

@@ -141,21 +141,20 @@ async fn update_attributes(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
     Path(ComponentIdFromPath { component_id }): Path<ComponentIdFromPath>,
-    Json(updates): Json<HashMap<String, ValueOrSourceSpec>>,
+    Json(updates): Json<HashMap<AttributeValueIdent, ValueOrSourceSpec>>,
 ) -> Result<ForceChangeSetResponse<()>> {
     let force_change_set_id = ChangeSet::force_new(ctx).await?;
-    let target_root_id = Component::root_attribute_value_id(ctx, component_id).await?;
     let mut set_count = 0;
     let mut unset_count = 0;
     let mut subscription_count = 0;
-    for (target_path, value) in updates {
-        let target_path = AttributePath::from_json_pointer(&target_path);
+    for (av_to_set, value) in updates {
         match value.try_into()? {
             Some(value) => {
                 set_count += 1;
 
-                // Create or update the attribute at the given path
-                let target_av_id = target_path.vivify(ctx, target_root_id).await?;
+                // Create the attribute at the given path if it does not exist
+                let target_av_id = av_to_set.vivify(ctx, component_id).await?;
+
                 match value {
                     Source::Value(value) => {
                         AttributeValue::update(ctx, target_av_id, value.into()).await?
@@ -165,9 +164,6 @@ async fn update_attributes(
                         path: source_path,
                     } => {
                         subscription_count += 1;
-
-                        // Look up (or create) the AV based on its path
-                        let target_av_id = target_path.vivify(ctx, target_root_id).await?;
 
                         // First resolve the component_id (might be a name), then subscribe to the
                         // given path
@@ -203,7 +199,7 @@ async fn update_attributes(
                 unset_count += 1;
 
                 // Unset or remove the value if it exists
-                if let Some(target_av_id) = target_path.resolve(ctx, target_root_id).await? {
+                if let Some(target_av_id) = av_to_set.resolve(ctx, component_id).await? {
                     if parent_prop_is_map_or_array(ctx, target_av_id).await? {
                         // If the parent is a map or array, remove the value
                         AttributeValue::remove_by_id(ctx, target_av_id).await?;
@@ -355,19 +351,79 @@ impl TryFrom<ValueOrSourceSpec> for Option<Source> {
     }
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 struct ComponentIdent(String);
 
 impl ComponentIdent {
     async fn resolve(&self, ctx: &DalContext) -> Result<Option<ComponentId>> {
-        // If it is a guid, try to find it by id
-        if let Ok(component_id) = self.0.parse::<ComponentId>() {
-            if ctx.workspace_snapshot()?.node_exists(component_id).await {
-                return Ok(Some(component_id));
-            }
+        if let Some(id) = self.resolve_as_id(ctx).await? {
+            return Ok(Some(id));
         }
         // Otherwise, try to find it by name
         Ok(Component::find_by_name(ctx, &self.0).await?)
+    }
+
+    async fn resolve_as_id(&self, ctx: &DalContext) -> Result<Option<ComponentId>> {
+        // If it is not a ulid, we'll try the alternative
+        let Ok(id) = self.0.parse() else {
+            return Ok(None);
+        };
+        // If it doesn't exist, we'll try the alternative
+        if !ctx.workspace_snapshot()?.node_exists(id).await {
+            return Ok(None);
+        }
+        Ok(Some(id))
+    }
+}
+
+#[derive(Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
+#[serde(rename = "camelCase")]
+struct AttributeValueIdent(String);
+
+impl AttributeValueIdent {
+    async fn resolve(
+        self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> Result<Option<AttributeValueId>> {
+        if let Some(id) = self.resolve_as_id(ctx, component_id).await? {
+            return Ok(Some(id));
+        }
+
+        let root_id = Component::root_attribute_value_id(ctx, component_id).await?;
+        let path = AttributePath::from_json_pointer(self.0);
+        Ok(path.resolve(ctx, root_id).await?)
+    }
+
+    async fn vivify(self, ctx: &DalContext, component_id: ComponentId) -> Result<AttributeValueId> {
+        if let Some(id) = self.resolve_as_id(ctx, component_id).await? {
+            return Ok(id);
+        }
+
+        let root_id = Component::root_attribute_value_id(ctx, component_id).await?;
+        let path = AttributePath::from_json_pointer(&self.0);
+        Ok(path.vivify(ctx, root_id).await?)
+    }
+
+    async fn resolve_as_id(
+        &self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> Result<Option<AttributeValueId>> {
+        // If it is not a ulid, we'll try the alternative
+        let Ok(id) = self.0.parse() else {
+            return Ok(None);
+        };
+        // If it doesn't exist, we'll try the alternative
+        if !ctx.workspace_snapshot()?.node_exists(id).await {
+            return Ok(None);
+        }
+        // If it *does* exist but is from a different component or not from a component,
+        // that is a hard error.
+        if AttributeValue::component_id(ctx, id).await? != component_id {
+            return Err(Error::AttributeValueNotFromComponent(id, component_id));
+        }
+        Ok(Some(id))
     }
 }

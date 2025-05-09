@@ -207,14 +207,12 @@ async function onConfirmDelete() {
           viewStore.selectedEdge.fromComponentId,
         );
       } else {
-        throw new Error("Deleting subscription edges via DELETE key on selected edge is unimplemented");
-        // TODO fix endpoint to give us attribute path or take id
-        // resp = await componentsStore.UPDATE_COMPONENT_ATTRIBUTES(
-        //   viewStore.selectedEdge.toComponentId,
-        //   {
-        //     [viewStore.selectedEdge.toAttributePath]: { $source: null },
-        //   }
-        // );
+        resp = await componentsStore.UPDATE_COMPONENT_ATTRIBUTES(
+          viewStore.selectedEdge.toComponentId,
+          {
+            [viewStore.selectedEdge.toAttributeValueId]: { $source: null },
+          }
+        );
       }
       if (resp.result.success) {
         viewStore.selectedEdgeId = null;

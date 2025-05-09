@@ -100,14 +100,12 @@ async function onConfirmRestore() {
         },
       );
     } else {
-      throw new Error("Restoring subscription edges is not yet implemented in UI");
-      // TODO fix endpoint to give us attribute path or take id
-      // resp = await componentsStore.UPDATE_COMPONENT_ATTRIBUTES(
-      //   viewStore.selectedEdge.toComponentId,
-      //   {
-      //     [viewStore.selectedEdge.toAttributePath]: { $source: null },
-      //   }
-      // );
+      await componentsStore.UPDATE_COMPONENT_ATTRIBUTES(
+        viewStore.selectedEdge.toComponentId,
+        {
+          [viewStore.selectedEdge.toAttributeValueId]: { $source: null },
+        }
+      );
     }
   }
   viewStore.setSelectedComponentId(null);
