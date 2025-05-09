@@ -57,7 +57,7 @@ done
 
 profile=$(get_param_or_env "$profile" "AWS_PROFILE" "Enter the AWS profile to use")
 region=$(get_param_or_env "$region" "AWS_REGION" "Enter the AWS region (e.g., us-west-2)")
-nats=$(get_param_or_env "$nats" "NATS_CLUSTER" "Enter the nats cluster to connect to (tools-prod, prod, perf)")
+nats=$(get_param_or_env "$nats" "NATS_CLUSTER" "Enter the nats cluster to connect to (tools-prod, production, perf)")
 
 export AWS_PROFILE="$profile"
 export AWS_REGION="$region"
@@ -66,7 +66,7 @@ case "$nats" in
   tools-prod|perf)
     url="nats://global.tools-internal.nats-si.com:4222"
     ;;
-  prod)
+  production)
     url="nats://global.prod-internal.nats-si.com:4222"
     ;;
   *)
