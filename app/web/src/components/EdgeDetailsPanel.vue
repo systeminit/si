@@ -127,7 +127,7 @@ const connections = computed(() => {
       // It's a subscription edge, then.
       return {
         ...edge,
-        uniqueKeyForVue: `${edge.fromAttributePath}-${edge.toAttributeValueId}`,
+        uniqueKeyForVue: `${edge.fromAttributePath}-${edge.toAttributePath}`,
       };
     }
   })

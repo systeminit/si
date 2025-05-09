@@ -412,7 +412,7 @@ export function generateEdgeId(edge: RawEdge): EdgeId {
   if (isRawSocketEdge(edge)) {
     return `${edge.toComponentId}_${edge.toSocketId}_${edge.fromSocketId}_${edge.fromComponentId}`;
   } else {
-    return `${edge.toComponentId}_${edge.toAttributeValueId}_${edge.fromAttributePath}_${edge.fromComponentId}`;
+    return `${edge.toComponentId}_${edge.toAttributePath}_${edge.fromAttributePath}_${edge.fromComponentId}`;
   }
 }
 

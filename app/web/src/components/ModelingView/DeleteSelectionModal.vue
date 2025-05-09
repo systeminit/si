@@ -210,7 +210,7 @@ async function onConfirmDelete() {
         resp = await componentsStore.UPDATE_COMPONENT_ATTRIBUTES(
           viewStore.selectedEdge.toComponentId,
           {
-            [viewStore.selectedEdge.toAttributeValueId]: { $source: null },
+            [viewStore.selectedEdge.toAttributePath]: { $source: null },
           }
         );
       }

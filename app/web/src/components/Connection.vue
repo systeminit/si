@@ -79,7 +79,7 @@ function isSocketConnection(
 
 export interface SubscriptionConnection extends BaseConnection {
   fromAttributePath: AttributePath;
-  toAttributeValueId: AttributeValueId;
+  toAttributePath: AttributePath;
 }
 function isSubscriptionConnection(
   connection: Connection,

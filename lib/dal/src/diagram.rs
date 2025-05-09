@@ -336,6 +336,7 @@ pub struct SummaryDiagramAttributeSubscriptionEdge {
     pub from_attribute_path: String,
     pub to_component_id: ComponentId,
     pub to_attribute_value_id: AttributeValueId,
+    pub to_attribute_path: String,
     // this is inferred by if either the to or from component is marked to_delete
     pub to_delete: bool,
     pub change_status: ChangeStatus,
@@ -477,8 +478,9 @@ impl Diagram {
                 if let Some(to_attribute_value_id) =
                     AttributePrototype::attribute_value_id(ctx, to_ap_id).await?
                 {
-                    let to_component_id =
-                        AttributeValue::component_id(ctx, to_attribute_value_id).await?;
+                    let (root_id, to_attribute_path) =
+                        AttributeValue::path_from_root(ctx, to_attribute_value_id).await?;
+                    let to_component_id = AttributeValue::component_id(ctx, root_id).await?;
                     if let Some(ComponentInfo {
                         component: to_component,
                         ..
@@ -495,6 +497,7 @@ impl Diagram {
                                 from_attribute_path: subscriber.0,
                                 to_component_id,
                                 to_attribute_value_id,
+                                to_attribute_path,
                                 change_status,
                                 to_delete: component.to_delete() || to_component.to_delete(),
                             },

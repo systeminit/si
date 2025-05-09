@@ -96,6 +96,7 @@ export interface RawSocketEdge extends RawComponentEdge {
 export interface RawSubscriptionEdge extends RawComponentEdge {
   fromAttributePath: AttributePath;
   toAttributeValueId: AttributeValueId;
+  toAttributePath: AttributePath;
 }
 export type RawEdge = RawSocketEdge | RawSubscriptionEdge;
 
