@@ -1,6 +1,9 @@
 use std::{
+    marker::PhantomData,
+    ops,
     result,
     str::Utf8Error,
+    sync::Arc,
 };
 
 use bytes::Bytes;
@@ -24,6 +27,7 @@ use si_data_nats::{
             },
             kv::{
                 self,
+                PurgeError,
                 Watch,
             },
             stream::ConsumerError,
@@ -34,7 +38,10 @@ use si_data_nats::{
 use si_frontend_mv_types::{
     index::MvIndex,
     object::FrontendObject,
-    reference::ReferenceKind,
+    reference::{
+        IndexReference,
+        ReferenceKind,
+    },
 };
 use si_id::{
     ChangeSetId,
@@ -65,6 +72,8 @@ pub enum Error {
     GetKeyValue(#[from] async_nats::jetstream::context::KeyValueError),
     #[error("index object not found at key: {0}")]
     IndexObjectNotFound(Subject),
+    #[error("kv watcher error: {0}")]
+    KvWatcher(#[from] KvWatcherError),
     #[error("nats request error: {0}")]
     NatsRequest(#[from] RequestError),
     #[error("object kind was expected to be 'MvIndex' but was '{0}'")]
@@ -78,6 +87,12 @@ pub enum Error {
         kind: String,
         id: String,
     },
+    #[error("failed to parse index key: {0}")]
+    ParseIndexKey(&'static str),
+    #[error("failed to parse object key: {0}")]
+    ParseObjectKey(&'static str),
+    #[error("error purging key")]
+    Purge(#[source] PurgeError),
     #[error("put error: {0}")]
     Put(#[from] kv::PutError),
     #[error("error serializing kv value: {0}")]
@@ -95,6 +110,8 @@ pub enum Error {
 pub type FriggError = Error;
 
 type Result<T> = result::Result<T, Error>;
+
+pub use kv_history::KvWatcherError;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct KvRevision(u64);
@@ -131,7 +148,7 @@ impl FriggStore {
         workspace_id: WorkspacePk,
         object: &FrontendObject,
     ) -> Result<Subject> {
-        let key = Self::object_key(
+        let key = object_key(
             workspace_id,
             &object.kind.to_string(),
             &object.id,
@@ -179,7 +196,7 @@ impl FriggStore {
         checksum: &str,
     ) -> Result<Option<FrontendObject>> {
         match self
-            .get_object_raw_bytes(&Self::object_key(workspace_id, kind, id, checksum))
+            .get_object_raw_bytes(&object_key(workspace_id, kind, id, checksum))
             .await?
         {
             Some((bytes, _)) => Ok(Some(
@@ -239,7 +256,7 @@ impl FriggStore {
         }
 
         let index_object_key = self.insert_object(workspace_id, object).await?;
-        let index_pointer_key = Self::index_key(workspace_id, &object.id);
+        let index_pointer_key = index_key(workspace_id, &object.id);
 
         Ok((index_object_key, index_pointer_key))
     }
@@ -359,7 +376,7 @@ impl FriggStore {
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
     ) -> Result<Option<(FrontendObject, KvRevision)>> {
-        let index_pointer_key = Self::index_key(workspace_id, &change_set_id.to_string());
+        let index_pointer_key = index_key(workspace_id, &change_set_id.to_string());
 
         let Some((bytes, revision)) = self.get_object_raw_bytes(&index_pointer_key).await? else {
             return Ok(None);
@@ -377,6 +394,33 @@ impl FriggStore {
     }
 
     #[instrument(
+        name = "frigg.get_mv_index",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace.id = %workspace_id,
+            si.change_set.id = %change_set_id,
+        )
+    )]
+    pub async fn get_mv_index(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+    ) -> Result<MvIndex> {
+        let (frontend_object, _) = self
+            .get_index(workspace_id, change_set_id)
+            .await?
+            .ok_or_else(|| {
+                Error::IndexObjectNotFound(index_key(workspace_id, &change_set_id.to_string()))
+            })?;
+
+        let mv_index: MvIndex =
+            serde_json::from_value(frontend_object.data).map_err(FriggError::Deserialize)?;
+
+        Ok(mv_index)
+    }
+
+    #[instrument(
         name = "frigg.watch_index",
         level = "debug",
         skip_all,
@@ -390,11 +434,46 @@ impl FriggStore {
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
     ) -> Result<Watch> {
-        let index_pointer_key = Self::index_key(workspace_id, &change_set_id.to_string());
+        let index_pointer_key = index_key(workspace_id, &change_set_id.to_string());
         self.store
             .watch(index_pointer_key)
             .await
             .map_err(Into::into)
+    }
+
+    #[instrument(
+        name = "frigg.delete_index",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace.id = %workspace_id,
+            si.change_set.id = %change_set_id,
+        )
+    )]
+    pub async fn delete_index(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+    ) -> Result<()> {
+        let index_pointer_key = index_key(workspace_id, &change_set_id.to_string());
+
+        // Get subject for frontend object containing the MvIndex
+        let (bytes, index_key_pointer_revision) = self
+            .get_object_raw_bytes(&index_pointer_key)
+            .await?
+            .ok_or_else(|| Error::IndexObjectNotFound(index_pointer_key.clone()))?;
+        let object_key = Subject::from_utf8(bytes)?;
+
+        // Delete MvIndex key
+        self.store.purge(object_key).await?;
+
+        // Delete index pointer key
+        self.store
+            .purge_expect_revision(index_pointer_key, Some(index_key_pointer_revision.0))
+            .await
+            .map_err(Error::Purge)?;
+
+        Ok(())
     }
 
     #[instrument(
@@ -416,10 +495,19 @@ impl FriggStore {
         }
     }
 
-    // NOTE: this will be useful when garbage-collecting old indexes
-    #[allow(dead_code)]
-    async fn index_keys_for_workspace(&self, workspace_id: WorkspacePk) -> Result<Keys> {
-        let filter_subject = Self::index_key(workspace_id, "*").into_string();
+    #[instrument(
+        name = "frigg.index_keys_for_workspace",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace.id = %workspace_id,
+        )
+    )]
+    pub async fn index_keys_for_workspace(
+        &self,
+        workspace_id: WorkspacePk,
+    ) -> Result<Keys<IndexKey>> {
+        let filter_subject = index_key(workspace_id, "*").into_string();
 
         let mut keys_consumer = self
             .store
@@ -443,19 +531,299 @@ impl FriggStore {
             bucket: self.store.name.clone(),
         };
 
-        Ok(Keys { inner: entries })
+        Ok(Keys {
+            inner: entries,
+            _phantom: PhantomData,
+        })
     }
 
-    #[inline]
-    fn object_key(workspace_id: WorkspacePk, kind: &str, id: &str, checksum: &str) -> Subject {
-        Subject::from(format!(
-            "{KEY_PREFIX_OBJECT}.{workspace_id}.{kind}.{id}.{checksum}"
-        ))
+    #[instrument(
+        name = "frigg.object_keys_for_workspace",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace.id = %workspace_id,
+        )
+    )]
+    pub async fn object_keys_for_workspace(
+        &self,
+        workspace_id: WorkspacePk,
+    ) -> Result<Keys<ObjectKey>> {
+        let filter_subject = object_key(workspace_id, "*", "*", "*").into_string();
+
+        let mut keys_consumer = self
+            .store
+            .stream
+            .create_consumer(OrderedConfig {
+                deliver_subject: self.nats.new_inbox(),
+                description: Some("kv object keys consumer".to_string()),
+                filter_subject,
+                headers_only: true,
+                replay_policy: async_nats::jetstream::consumer::ReplayPolicy::Instant,
+                // We only need to know the latest state for each key, not the whole history
+                deliver_policy: async_nats::jetstream::consumer::DeliverPolicy::LastPerSubject,
+                ..Default::default()
+            })
+            .await?;
+
+        let entries = History {
+            done: keys_consumer.info().await?.num_pending == 0,
+            subscription: keys_consumer.messages().await?,
+            prefix: self.store.prefix.clone(),
+            bucket: self.store.name.clone(),
+        };
+
+        Ok(Keys {
+            inner: entries,
+            _phantom: PhantomData,
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct IndexKey {
+    inner: Arc<str>,
+    workspace_id: WorkspacePk,
+    workspace_id_str_range: ops::Range<usize>,
+    change_set_id: ChangeSetId,
+    change_set_id_str_range: ops::Range<usize>,
+}
+
+impl IndexKey {
+    pub fn workspace_id(&self) -> WorkspacePk {
+        self.workspace_id
     }
 
+    pub fn workspace_id_str(&self) -> &str {
+        &self.inner.as_ref()[self.workspace_id_str_range.start..self.workspace_id_str_range.end]
+    }
+
+    pub fn change_set_id(&self) -> ChangeSetId {
+        self.change_set_id
+    }
+
+    pub fn change_set_id_str(&self) -> &str {
+        &self.inner.as_ref()[self.change_set_id_str_range.start..self.change_set_id_str_range.end]
+    }
+
+    pub fn to_subject(&self) -> Subject {
+        self.inner.as_ref().into()
+    }
+}
+
+impl TryFrom<String> for IndexKey {
+    type Error = Error;
+
+    fn try_from(value: String) -> result::Result<Self, Self::Error> {
+        let mut parts = value.splitn(4, '.');
+
+        if let (Some(prefix), Some(workspace_id_str), Some(_change_set_id_str), None) =
+            (parts.next(), parts.next(), parts.next(), parts.next())
+        {
+            if prefix != KEY_PREFIX_INDEX {
+                return Err(Self::Error::ParseIndexKey("incorrect key prefix"));
+            }
+
+            let prefix_len = prefix.len();
+            let workspace_len = workspace_id_str.len();
+            let inner: Arc<str> = value.into();
+            let inner_len = inner.len();
+
+            let workspace_id_str_range = ops::Range {
+                start: prefix_len + 1,
+                end: prefix_len + 1 + workspace_len,
+            };
+            let change_set_id_str_range = ops::Range {
+                start: prefix_len + 1 + workspace_len + 1,
+                end: inner_len,
+            };
+
+            let workspace_id = inner.as_ref()
+                [workspace_id_str_range.start..workspace_id_str_range.end]
+                .parse()
+                .map_err(|_| Self::Error::ParseIndexKey("failed to parse workspace id"))?;
+            let change_set_id = inner.as_ref()
+                [change_set_id_str_range.start..change_set_id_str_range.end]
+                .parse()
+                .map_err(|_| Self::Error::ParseIndexKey("failed to parse change set id"))?;
+
+            Ok(Self {
+                inner,
+                workspace_id,
+                workspace_id_str_range,
+                change_set_id,
+                change_set_id_str_range,
+            })
+        } else {
+            Err(Self::Error::ParseIndexKey("invalid index key format"))
+        }
+    }
+}
+
+impl TryFrom<Subject> for IndexKey {
+    type Error = Error;
+
     #[inline]
-    fn index_key(workspace_id: WorkspacePk, change_set_id: &str) -> Subject {
-        Subject::from(format!("{KEY_PREFIX_INDEX}.{workspace_id}.{change_set_id}"))
+    fn try_from(value: Subject) -> result::Result<Self, Self::Error> {
+        value.to_string().try_into()
+    }
+}
+
+impl TryFrom<(WorkspacePk, ChangeSetId)> for IndexKey {
+    type Error = Error;
+
+    #[inline]
+    fn try_from(value: (WorkspacePk, ChangeSetId)) -> result::Result<Self, Self::Error> {
+        let inner = index_key(value.0, &value.1.to_string());
+        inner.try_into()
+    }
+}
+
+impl From<IndexKey> for String {
+    fn from(value: IndexKey) -> Self {
+        value.inner.to_string()
+    }
+}
+
+impl AsRef<str> for IndexKey {
+    fn as_ref(&self) -> &str {
+        &self.inner
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ObjectKey {
+    inner: Arc<str>,
+    workspace_id: WorkspacePk,
+    workspace_id_str_range: ops::Range<usize>,
+    kind_range: ops::Range<usize>,
+    id_range: ops::Range<usize>,
+    checksum_range: ops::Range<usize>,
+}
+
+impl ObjectKey {
+    pub fn workspace_id(&self) -> WorkspacePk {
+        self.workspace_id
+    }
+
+    pub fn workspace_id_str(&self) -> &str {
+        &self.inner.as_ref()[self.workspace_id_str_range.start..self.workspace_id_str_range.end]
+    }
+
+    pub fn kind(&self) -> &str {
+        &self.inner.as_ref()[self.kind_range.start..self.kind_range.end]
+    }
+
+    pub fn id(&self) -> &str {
+        &self.inner.as_ref()[self.id_range.start..self.id_range.end]
+    }
+
+    pub fn checksum(&self) -> &str {
+        &self.inner.as_ref()[self.checksum_range.start..self.checksum_range.end]
+    }
+
+    pub fn to_subject(&self) -> Subject {
+        self.inner.as_ref().into()
+    }
+
+    pub fn to_index_reference(&self) -> IndexReference {
+        IndexReference {
+            kind: self.kind().to_string(),
+            id: self.id().to_string(),
+            checksum: self.checksum().to_string(),
+        }
+    }
+}
+
+impl TryFrom<String> for ObjectKey {
+    type Error = Error;
+
+    fn try_from(value: String) -> result::Result<Self, Self::Error> {
+        let mut parts = value.splitn(6, '.');
+
+        if let (Some(prefix), Some(workspace_id_str), Some(kind), Some(id), Some(_checksum), None) = (
+            parts.next(),
+            parts.next(),
+            parts.next(),
+            parts.next(),
+            parts.next(),
+            parts.next(),
+        ) {
+            if prefix != KEY_PREFIX_OBJECT {
+                return Err(Self::Error::ParseObjectKey("incorrect key prefix"));
+            }
+
+            let prefix_len = prefix.len();
+            let workspace_len = workspace_id_str.len();
+            let kind_len = kind.len();
+            let id_len = id.len();
+            let inner: Arc<str> = value.into();
+            let inner_len = inner.len();
+
+            let workspace_id_str_range = ops::Range {
+                start: prefix_len + 1,
+                end: prefix_len + 1 + workspace_len,
+            };
+            let kind_range = ops::Range {
+                start: prefix_len + 1 + workspace_len + 1,
+                end: prefix_len + 1 + workspace_len + 1 + kind_len,
+            };
+            let id_range = ops::Range {
+                start: prefix_len + 1 + workspace_len + 1 + kind_len + 1,
+                end: prefix_len + 1 + workspace_len + 1 + kind_len + 1 + id_len,
+            };
+            let checksum_range = ops::Range {
+                start: prefix_len + 1 + workspace_len + 1 + kind_len + 1 + id_len + 1,
+                end: inner_len,
+            };
+
+            let workspace_id = inner.as_ref()
+                [workspace_id_str_range.start..workspace_id_str_range.end]
+                .parse()
+                .map_err(|_| Self::Error::ParseObjectKey("failed to parse workspace id"))?;
+
+            Ok(Self {
+                inner,
+                workspace_id,
+                workspace_id_str_range,
+                kind_range,
+                id_range,
+                checksum_range,
+            })
+        } else {
+            Err(Self::Error::ParseObjectKey("invalid object key format"))
+        }
+    }
+}
+
+impl TryFrom<Subject> for ObjectKey {
+    type Error = Error;
+
+    #[inline]
+    fn try_from(value: Subject) -> result::Result<Self, Self::Error> {
+        value.to_string().try_into()
+    }
+}
+
+impl TryFrom<(WorkspacePk, &str, &str, &str)> for ObjectKey {
+    type Error = Error;
+
+    #[inline]
+    fn try_from(value: (WorkspacePk, &str, &str, &str)) -> result::Result<Self, Self::Error> {
+        let inner = object_key(value.0, value.1, value.2, value.3);
+        inner.try_into()
+    }
+}
+
+impl From<ObjectKey> for String {
+    fn from(value: ObjectKey) -> Self {
+        value.inner.to_string()
+    }
+}
+
+impl AsRef<str> for ObjectKey {
+    fn as_ref(&self) -> &str {
+        &self.inner
     }
 }
 
@@ -501,17 +869,31 @@ fn nats_stream_name(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
     }
 }
 
+#[inline]
+fn object_key(workspace_id: WorkspacePk, kind: &str, id: &str, checksum: &str) -> Subject {
+    Subject::from(format!(
+        "{KEY_PREFIX_OBJECT}.{workspace_id}.{kind}.{id}.{checksum}"
+    ))
+}
+
+#[inline]
+fn index_key(workspace_id: WorkspacePk, change_set_id: &str) -> Subject {
+    Subject::from(format!("{KEY_PREFIX_INDEX}.{workspace_id}.{change_set_id}"))
+}
+
 // Internal impl of a `Watch` type vendored from the `async-nats` crate.
 //
 // See: https://github.com/nats-io/nats.rs/blob/7d63f1dd725c86a4f01723ea3194f17e30a0561b/async-nats/src/jetstream/kv/mod.rs#L1263-L1323
 mod kv_history {
     use std::{
+        marker::PhantomData,
         result,
-        str::FromStr as _,
+        str::FromStr,
         task::Poll,
     };
 
     use futures::StreamExt as _;
+    use pin_project_lite::pin_project;
     use si_data_nats::async_nats::{
         self,
         jetstream::{
@@ -540,7 +922,7 @@ mod kv_history {
     }
 
     #[derive(Debug, Error)]
-    pub enum WatcherError {
+    pub enum KvWatcherError {
         #[error("{0}")]
         Default(WatcherErrorKind, String),
         #[error("{0}")]
@@ -548,7 +930,7 @@ mod kv_history {
     }
 
     impl futures::Stream for History {
-        type Item = result::Result<Entry, WatcherError>;
+        type Item = result::Result<Entry, KvWatcherError>;
 
         fn poll_next(
             mut self: std::pin::Pin<&mut Self>,
@@ -563,7 +945,7 @@ mod kv_history {
                     Some(message) => {
                         let message = message?;
                         let info = message.info().map_err(|err| {
-                            WatcherError::Default(
+                            KvWatcherError::Default(
                                 WatcherErrorKind::Other,
                                 format!("failed to parse message metadata: {}", err),
                             )
@@ -602,19 +984,29 @@ mod kv_history {
         }
     }
 
-    pub struct Keys {
-        pub inner: History,
+    pin_project! {
+        pub struct Keys<T> {
+            #[pin]
+            pub(super) inner: History,
+            pub(super) _phantom: PhantomData<T>,
+        }
     }
 
-    impl futures::Stream for Keys {
-        type Item = Result<String, WatcherError>;
+    impl<T> futures::Stream for Keys<T>
+    where
+        T: TryFrom<String>,
+        T::Error: Into<super::Error>,
+    {
+        type Item = Result<T, super::Error>;
 
         fn poll_next(
-            mut self: std::pin::Pin<&mut Self>,
+            self: std::pin::Pin<&mut Self>,
             cx: &mut std::task::Context<'_>,
         ) -> std::task::Poll<Option<Self::Item>> {
+            let mut this = self.project();
+
             loop {
-                match self.inner.poll_next_unpin(cx) {
+                match this.inner.poll_next_unpin(cx) {
                     Poll::Ready(None) => return Poll::Ready(None),
                     Poll::Ready(Some(res)) => match res {
                         Ok(entry) => {
@@ -623,10 +1015,10 @@ mod kv_history {
                                 // Try to poll again if we skip this one
                                 continue;
                             } else {
-                                return Poll::Ready(Some(Ok(entry.key)));
+                                return Poll::Ready(Some(entry.key.try_into().map_err(Into::into)));
                             }
                         }
-                        Err(e) => return Poll::Ready(Some(Err(e))),
+                        Err(e) => return Poll::Ready(Some(Err(e.into()))),
                     },
                     Poll::Pending => return Poll::Pending,
                 }

@@ -6,6 +6,7 @@ mod app_state;
 mod change_set_processor_task;
 mod config;
 pub mod extract;
+mod garbage_collect_workspace_task;
 mod handlers;
 mod server;
 pub use si_settings::{

@@ -3136,11 +3136,13 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "futures",
+ "pin-project-lite",
  "remain",
  "serde_json",
  "si-data-nats",
  "si-events",
  "si-frontend-mv-types",
+ "si-frontend-types",
  "si-id",
  "telemetry",
  "thiserror 2.0.12",

@@ -1,3 +1,4 @@
+use core::hash;
 use std::collections::HashSet;
 
 use serde::{
@@ -164,6 +165,14 @@ impl std::cmp::PartialEq for IndexReference {
 }
 
 impl Eq for IndexReference {}
+
+impl hash::Hash for IndexReference {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.kind.hash(state);
+        self.id.hash(state);
+        self.checksum.hash(state);
+    }
+}
 
 impl<T> FrontendChecksum for ReferenceId<T>
 where
