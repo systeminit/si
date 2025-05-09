@@ -1,19 +1,33 @@
 use std::collections::HashSet;
 
 use dal::{
-    Component, DalContext, Func,
-    action::{Action, prototype::ActionPrototype},
+    Component,
+    DalContext,
+    Func,
+    action::{
+        Action,
+        prototype::ActionPrototype,
+    },
     qualification::QualificationSummary,
 };
 use dal_test::{
-    Result, helpers::create_component_for_default_schema_name_in_default_view, prelude::OptionExt,
+    Result,
+    helpers::create_component_for_default_schema_name_in_default_view,
+    prelude::OptionExt,
     test,
 };
 use pretty_assertions_sorted::assert_eq;
-use si_events::{ActionKind, ActionState};
+use si_events::{
+    ActionKind,
+    ActionState,
+};
 use si_frontend_types::{
     action::ActionView,
-    newhotness::component::{Component as ComponentMv, ComponentDiff, ComponentList},
+    newhotness::component::{
+        Component as ComponentMv,
+        ComponentDiff,
+        ComponentList,
+    },
     reference::ReferenceKind,
 };
 
@@ -91,6 +105,19 @@ async fn actions(ctx: &DalContext) -> Result<()> {
         ]), // expected
         kinds // actual
     );
+
+    Ok(())
+}
+
+#[test]
+async fn attribute_tree(ctx: &DalContext) -> Result<()> {
+    let component =
+        create_component_for_default_schema_name_in_default_view(ctx, "swifty", "swifty").await?;
+
+    // NOTE(nick): right now, this test basically just makes sure this does not regress and
+    // provides a psuedo-benchmark for generating MVs for a new component.
+    dal_materialized_views::component::attribute_tree::assemble(ctx.clone(), component.id())
+        .await?;
 
     Ok(())
 }
