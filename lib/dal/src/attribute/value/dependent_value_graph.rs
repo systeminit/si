@@ -421,11 +421,8 @@ impl DependentValueGraph {
             // prop, we have to be sure we add that output socket to the graph if a child of root
             // changes, because if a child of root has changed, then the view of root to the leaves
             // will also change)
-            if let Some(parent_attribute_value_id) = AttributeValue::parent_attribute_value_id(
-                ctx,
-                current_attribute_value_controlling_value_id,
-            )
-            .await?
+            if let Some(parent_attribute_value_id) =
+                AttributeValue::parent_id(ctx, current_attribute_value_controlling_value_id).await?
             {
                 // If this is one of child values we added speculatively we
                 // should only walk the parent tree if we have actually found a

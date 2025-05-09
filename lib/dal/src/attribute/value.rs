@@ -151,6 +151,21 @@ pub enum AttributeValueError {
     CannotExplicitlySetSocketValues(AttributeValueId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error(
+        "scalar attribute value {parent_id} has child {child_id} but has scalar type {parent_kind}"
+    )]
+    ChildOfScalar {
+        parent_id: AttributeValueId,
+        child_id: AttributeValueId,
+        parent_kind: PropKind,
+    },
+    #[error(
+        "socket {socket:?} has a child attribute value {child_id} (should only have a single av)"
+    )]
+    ChildOfSocket {
+        socket: ValueIsFor,
+        child_id: AttributeValueId,
+    },
     #[error("component error: {0}")]
     Component(#[from] Box<ComponentError>),
     #[error("dependent value root error: {0}")]
@@ -161,6 +176,8 @@ pub enum AttributeValueError {
         child1: AttributeValueId,
         child2: AttributeValueId,
     },
+    #[error("array element missing from parent ordering node: {0}")]
+    ElementMissingFromOrderingNode(AttributeValueId),
     #[error("empty attribute prototype arguments for group name: {0}")]
     EmptyAttributePrototypeArgumentsForGroup(String),
     #[error("object field is not a child prop of the object prop: {0}")]
@@ -197,6 +214,8 @@ pub enum AttributeValueError {
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("missing attribute value with id: {0}")]
     MissingForId(AttributeValueId),
+    #[error("missing key for map entry {0}")]
+    MissingKeyForMapEntry(AttributeValueId),
     #[error("attribute value {0} missing prop edge when one was expected")]
     MissingPropEdge(AttributeValueId),
     #[error("missing prototype for attribute value {0}")]
@@ -296,6 +315,7 @@ pub struct AttributeValue {
 ///
 /// Returned from AttributeValue::get_child_av_id_pairs_in_order(ctx, first, second)
 ///
+#[remain::sorted]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChildAttributeValuePair {
     Both(Option<String>, AttributeValueId, AttributeValueId),
@@ -924,9 +944,7 @@ impl AttributeValue {
         // Otherwise it would be impossible to determine the function that sets the value (two
         // functions would set it with two different sets of inputs). So vivify the parent and
         // above, but not this value.
-        if let Some(parent_attribute_value_id) =
-            Self::parent_attribute_value_id(ctx, attribute_value_id).await?
-        {
+        if let Some(parent_attribute_value_id) = Self::parent_id(ctx, attribute_value_id).await? {
             Self::vivify_value_and_parent_values(ctx, parent_attribute_value_id).await?;
         }
 
@@ -1147,8 +1165,7 @@ impl AttributeValue {
                 }
             }
 
-            current_attribute_value_id =
-                AttributeValue::parent_attribute_value_id(ctx, attribute_value_id).await?;
+            current_attribute_value_id = AttributeValue::parent_id(ctx, attribute_value_id).await?;
         }
 
         Ok(())
@@ -1647,7 +1664,7 @@ impl AttributeValue {
         Ok((work_queue_extension, view_stack_extension))
     }
 
-    pub async fn parent_attribute_value_id(
+    pub async fn parent_id(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Option<AttributeValueId>> {
@@ -2589,7 +2606,7 @@ impl AttributeValue {
     }
 
     pub async fn remove_by_id(ctx: &DalContext, id: AttributeValueId) -> AttributeValueResult<()> {
-        let parent_av_id = Self::parent_attribute_value_id(ctx, id)
+        let parent_av_id = Self::parent_id(ctx, id)
             .await?
             .ok_or(AttributeValueError::RemovingWhenNotChildOrMapOrArray(id))?;
 
@@ -2607,7 +2624,50 @@ impl AttributeValue {
         Ok(AttributePrototype::list_input_socket_sources_for_id(ctx, prototype_id).await?)
     }
 
-    /// Get the moral equivalent of the [`PropPath`]for a given [`AttributeValueId`].
+    // The JSON pointer path to this attribute value, relative to its AV root.
+    // Returns the root attribute value id as well as the path.
+    // - for a domain prop AV: (:root_av_id, "/domain/ExposedPorts/1")
+    // - for a socket AV, it returns the current id and empty path: (:id, "/")
+    #[instrument(level = "debug", skip_all)]
+    pub async fn path_from_root(
+        ctx: &DalContext,
+        mut child_id: AttributeValueId,
+    ) -> AttributeValueResult<(AttributeValueId, String)> {
+        let mut pointer = jsonptr::PointerBuf::new();
+        while let Some((parent_id, key)) = Self::parent_and_map_key(ctx, child_id).await? {
+            // Only props can have child AVs at the moment.
+            match AttributeValue::prop(ctx, parent_id).await?.kind {
+                PropKind::Object => {
+                    let child_prop = AttributeValue::prop(ctx, child_id).await?;
+                    pointer.push_front(child_prop.name)
+                }
+                PropKind::Map => {
+                    let Some(key) = key else {
+                        return Err(AttributeValueError::MissingKeyForMapEntry(child_id));
+                    };
+                    pointer.push_front(key)
+                }
+                PropKind::Array => {
+                    let index = Self::child_array_index(ctx, parent_id, child_id).await?;
+                    pointer.push_front(index)
+                }
+                parent_kind @ PropKind::Boolean
+                | parent_kind @ PropKind::Float
+                | parent_kind @ PropKind::Integer
+                | parent_kind @ PropKind::Json
+                | parent_kind @ PropKind::String => {
+                    return Err(AttributeValueError::ChildOfScalar {
+                        parent_id,
+                        child_id,
+                        parent_kind,
+                    });
+                }
+            };
+            child_id = parent_id;
+        }
+        Ok((child_id, pointer.to_string()))
+    }
+
     /// This includes the key/index in the path, unlike the [`PropPath`] which doesn't
     /// include the key/index
     #[instrument(level = "debug", skip_all)]
@@ -2625,10 +2685,10 @@ impl AttributeValue {
                     // check the parent of this attribute value
                     // if the parent is an array or map, we need to add the key/index to the attribute value path
                     if let Some(parent_attribute_value_id) =
-                        Self::parent_attribute_value_id(ctx, attribute_value_id).await?
+                        Self::parent_id(ctx, attribute_value_id).await?
                     {
                         let key_or_index =
-                            Self::get_index_or_key_of_child_entry(ctx, attribute_value_id).await?;
+                            Self::get_key_or_index_of_child_entry(ctx, attribute_value_id).await?;
 
                         attribute_value_id = parent_attribute_value_id;
                         work_queue.push_back(attribute_value_id);
@@ -2669,63 +2729,72 @@ impl AttributeValue {
         }
     }
 
-    /// If the child attribute value is the child of a map, return its map key. Otherwise return None
-    pub async fn get_key_of_child_entry(
-        ctx: &DalContext,
-        parent_attribute_value_id: AttributeValueId,
-        child_attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<Option<String>> {
-        Ok(ctx
-            .workspace_snapshot()?
-            .find_edge(
-                parent_attribute_value_id,
-                child_attribute_value_id,
-                EdgeWeightKindDiscriminants::Contain,
-            )
-            .await
-            .and_then(|weight| match weight.kind() {
-                EdgeWeightKind::Contain(key) => key.to_owned(),
-                _ => None,
-            }))
-    }
-
-    pub async fn get_index_or_key_of_child_entry(
+    pub async fn get_key_or_index_of_child_entry(
         ctx: &DalContext,
         child_id: AttributeValueId,
     ) -> AttributeValueResult<Option<KeyOrIndex>> {
-        Ok(
-            match Self::parent_attribute_value_id(ctx, child_id).await? {
-                Some(pav_id) => match Self::is_for(ctx, pav_id).await? {
-                    ValueIsFor::Prop(prop_id) => match Prop::get_by_id(ctx, prop_id).await?.kind {
-                        PropKind::Array => {
-                            match ctx
-                                .workspace_snapshot()?
-                                .ordered_children_for_node(pav_id)
-                                .await?
-                            {
-                                Some(order) => {
-                                    let index = order
-                                        .iter()
-                                        .position(|id| *id == child_id.into())
-                                        .ok_or(NodeWeightError::MissingKeyForChildEntry(
-                                            child_id.into(),
-                                        ))?;
-
-                                    Some(KeyOrIndex::Index(index as i64))
-                                }
-                                None => None,
-                            }
-                        }
-                        PropKind::Map => Self::get_key_of_child_entry(ctx, pav_id, child_id)
+        Ok(match Self::parent_and_map_key(ctx, child_id).await? {
+            Some((pav_id, map_key)) => match Self::is_for(ctx, pav_id).await? {
+                ValueIsFor::Prop(prop_id) => match Prop::get_by_id(ctx, prop_id).await?.kind {
+                    PropKind::Array => {
+                        match ctx
+                            .workspace_snapshot()?
+                            .ordered_children_for_node(pav_id)
                             .await?
-                            .map(KeyOrIndex::Key),
-                        _ => None,
-                    },
+                        {
+                            Some(order) => {
+                                let index =
+                                    order.iter().position(|id| *id == child_id.into()).ok_or(
+                                        NodeWeightError::MissingKeyForChildEntry(child_id.into()),
+                                    )?;
+
+                                Some(KeyOrIndex::Index(index as i64))
+                            }
+                            None => None,
+                        }
+                    }
+                    PropKind::Map => map_key.map(KeyOrIndex::Key),
                     _ => None,
                 },
-                None => None,
+                _ => None,
             },
-        )
+            None => None,
+        })
+    }
+
+    // Get the parent attribute value id and optional map key (if it's a child of a map)
+    async fn parent_and_map_key(
+        ctx: &DalContext,
+        id: AttributeValueId,
+    ) -> AttributeValueResult<Option<(AttributeValueId, Option<String>)>> {
+        for (edge, source, _) in ctx
+            .workspace_snapshot()?
+            .edges_directed(id, Direction::Incoming)
+            .await?
+        {
+            if let EdgeWeightKind::Contain(key) = edge.kind {
+                return Ok(Some((source.into(), key)));
+            }
+        }
+        Ok(None)
+    }
+
+    async fn child_array_index(
+        ctx: &DalContext,
+        parent_id: AttributeValueId,
+        child_id: AttributeValueId,
+    ) -> AttributeValueResult<usize> {
+        ctx.workspace_snapshot()?
+            .ordered_children_for_node(parent_id)
+            .await?
+            .ok_or(AttributeValueError::NoOrderingNodeForAttributeValue(
+                parent_id,
+            ))?
+            .iter()
+            .position(|&id| id == child_id.into())
+            .ok_or(AttributeValueError::ElementMissingFromOrderingNode(
+                child_id,
+            ))
     }
 
     pub async fn tree_for_component(

@@ -59,7 +59,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
     let mut work_queue = VecDeque::from([root_av_id]);
 
     while let Some(av_id) = work_queue.pop_front() {
-        let maybe_parent_av_id = AttributeValue::parent_attribute_value_id(ctx, av_id).await?;
+        let maybe_parent_av_id = AttributeValue::parent_id(ctx, av_id).await?;
         let child_av_ids: Vec<AttributeValueId> =
             AttributeValue::get_child_avs_in_order(ctx, av_id)
                 .await?
