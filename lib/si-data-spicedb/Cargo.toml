@@ -19,6 +19,7 @@ spicedb-client = { workspace = true }
 spicedb-grpc = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tonic = { workspace = true }
 url = { workspace = true }
 
 [dev-dependencies]
