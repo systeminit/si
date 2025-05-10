@@ -73,11 +73,7 @@
     <div class="attrs flex flex-col">
       <CollapsingFlexItem ref="attrRef" :expandable="false" open>
         <template #header>Attributes</template>
-        <AttributePanel
-          v-if="component.rootAttributeValueId"
-          :attributeValueId="component.rootAttributeValueId"
-          :component="component"
-        />
+        <AttributePanel :component="component" />
       </CollapsingFlexItem>
       <CollapsingFlexItem ref="actionRef" :expandable="false">
         <template #header>Actions</template>
@@ -136,11 +132,7 @@
           <PillCounter :count="component.qualificationTotals.total" />
           Qualifications
         </template>
-        <QualificationPanel
-          v-if="component.rootAttributeValueId"
-          :attributeValueId="component.rootAttributeValueId"
-          :component="component"
-        />
+        <QualificationPanel :component="component" />
       </CollapsingFlexItem>
       <CollapsingFlexItem>
         <template #header>
@@ -153,14 +145,14 @@
           <Icon v-else name="refresh-hex-outline" tone="shade" size="sm" />
           Resource
         </template>
-        <ResourcePanel :attributeValueId="component.rootAttributeValueId" />
+        <ResourcePanel :componentId="component.id" />
       </CollapsingFlexItem>
       <CollapsingFlexItem>
         <template #header>
           <Icon name="brackets-curly" size="sm" />
           Generated Code
         </template>
-        <CodePanel :attributeValueId="component.rootAttributeValueId" />
+        <CodePanel :componentId="component.id" />
       </CollapsingFlexItem>
       <CollapsingFlexItem>
         <template #header>
