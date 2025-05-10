@@ -306,7 +306,7 @@ export interface BifrostActionPrototypeViewList {
   actionPrototypes: ActionPrototypeView[];
 }
 
-interface Prop {
+export interface Prop {
   id: PropId;
   path: string;
   name: string;
@@ -320,33 +320,30 @@ interface Prop {
   createOnly: boolean;
 }
 
-interface AttributeValue {
+export interface AttributeValue {
   id: AttributeValueId;
   key?: string;
+  path?: string;
+  propId?: string;
   value: string;
   canBeSetBySocket: boolean;
   isFromExternalSource: boolean;
   isControlledByAncestor: boolean;
   isControlledByDynamicFunc: boolean;
   overriden: boolean;
+  validation?: ValidationOutput;
 }
 
-export interface RawAttributeTree {
-  id: AttributeValueId;
-  children: AttributeValueId[];
+export interface AVTree {
   parent?: AttributeValueId;
-  prop?: Prop;
-  attributeValue: AttributeValue;
-  validation?: ValidationOutput;
+  children: AttributeValueId[];
 }
 
 export interface BifrostAttributeTree {
-  id: AttributeValueId;
-  children: BifrostAttributeTree[];
-  parent?: AttributeValueId;
-  prop?: Prop;
-  attributeValue: AttributeValue;
-  validation?: ValidationOutput;
+  id: ComponentId;
+  attributeValues: Record<AttributeValueId, AttributeValue>;
+  props: Record<PropId, Prop>;
+  treeInfo: Record<AttributeValueId, AVTree>;
 }
 
 export interface RawComponentConnectionsListBeta {

@@ -13,7 +13,7 @@
         <template v-else> Qualification running, standby...</template>
       </StatusMessageBox>
 
-      <template v-if="showDetails && qualification.av_id">
+      <template v-if="showDetails && qualification.avId">
         <div
           v-if="output?.length"
           class="my-xs p-xs border border-warning-600 text-warning-500 rounded"
@@ -31,7 +31,7 @@
       </template>
 
       <div
-        v-if="qualification.av_id && (qualification.message || output?.length)"
+        v-if="qualification.avId && (qualification.message || output?.length)"
         class="text-right"
       >
         <button class="underline text-action-400" @click="toggleHidden">
@@ -72,9 +72,9 @@ const qualificationStatus = computed(() => {
 
 const toggleHidden = async () => {
   showDetails.value = !showDetails.value;
-  if (showDetails.value && props.qualification.av_id) {
+  if (showDetails.value && props.qualification.avId) {
     const call = api.endpoint<FuncRunLogsResponse>(routes.FuncRunByAv, {
-      id: props.qualification.av_id,
+      id: props.qualification.avId,
     });
     const result = await call.get();
     if (api.ok(result)) {

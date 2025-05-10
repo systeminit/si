@@ -41,13 +41,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { VButton } from "@si/vue-lib/design-system";
-import { BifrostAttributeTree } from "@/workers/types/dbinterface";
 import { filterMissingAtom } from "../util";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
+import { AttributeTree } from "../AttributePanel.vue";
 
 const props = defineProps<{
-  attributeTree: BifrostAttributeTree;
+  attributeTree: AttributeTree;
 }>();
 
 // this handles objects and arrays but not empty arrays
