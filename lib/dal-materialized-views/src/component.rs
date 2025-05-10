@@ -5,7 +5,6 @@ use dal::{
     ComponentId,
     DalContext,
     InputSocket,
-    OutputSocket,
     attribute::prototype::argument::AttributePrototypeArgument,
     qualification::QualificationSummary,
 };
@@ -52,25 +51,8 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         }
     }
 
-    // TODO(Wendy) - There is DEFINITELY a better way to do this, this approach can't react to the output socket changing!
-    let output_socket_ids =
-        OutputSocket::list_ids_for_schema_variant(ctx, schema_variant.id()).await?;
-    let mut output_count = 0;
-    for output_socket_id in output_socket_ids {
-        let attribute_prototype_argument_ids =
-            OutputSocket::prototype_arguments_using_for_id(ctx, output_socket_id).await?;
-        for attribute_prototype_argument_id in attribute_prototype_argument_ids {
-            let attribute_prototype_argument =
-                AttributePrototypeArgument::get_by_id(ctx, attribute_prototype_argument_id).await?;
-            if let Some(targets) = attribute_prototype_argument.targets() {
-                if targets.source_component_id == component_id {
-                    output_count += 1;
-                }
-            }
-        }
-    }
-
     let diff_count = Component::get_diff_count(ctx, component_id).await?;
+    let color = Component::color_by_id(ctx, component_id).await?;
 
     let root_attribute_value_id = Component::root_attribute_value_id(ctx, component_id).await?;
     let domain_attribute_value_id =
@@ -95,6 +77,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
     Ok(ComponentMv {
         id: component_id,
         name: Component::name_by_id(ctx, component_id).await?,
+        color,
         schema_name: schema.name.to_owned(),
         schema_id: schema.id(),
         schema_variant_id: schema_variant.id(),
@@ -105,11 +88,6 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         has_resource,
         qualification_totals: stats,
         input_count,
-        // FIXME(nick): the output count will be out of date given the output socket is not
-        // relevant to the component's merkle tree hash. We will need to find (likely through
-        // derivation or inference rather than an MV) a way to calculate this efficiently and
-        // accurately.
-        output_count,
         diff_count,
         root_attribute_value_id,
         domain_attribute_value_id,

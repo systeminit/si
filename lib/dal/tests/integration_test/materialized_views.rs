@@ -189,6 +189,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
         ComponentMv {
             id: created_component.id(),
             name: component_name.to_owned(),
+            color: created_component.color(ctx).await?.to_owned(),
             schema_name: schema_name.to_owned(),
             schema_id: schema.id(),
             schema_variant_id: schema_variant.id(),
@@ -199,7 +200,6 @@ async fn component(ctx: &DalContext) -> Result<()> {
             has_resource: false,
             qualification_totals: stats,
             input_count: 0,
-            output_count: 0,
             diff_count: 0,
             root_attribute_value_id,
             domain_attribute_value_id,

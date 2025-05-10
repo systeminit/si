@@ -29,6 +29,7 @@ use crate::reference::{
 #[remain::sorted]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum Connection {
+    #[serde(rename_all = "camelCase")]
     Prop {
         from_component_id: ComponentId,
         from_attribute_value_id: AttributeValueId,
@@ -41,6 +42,7 @@ pub enum Connection {
         to_attribute_value_id: AttributeValueId,
         to_attribute_value_path: String,
     },
+    #[serde(rename_all = "camelCase")]
     Socket {
         from_component_id: ComponentId,
         from_attribute_value_id: AttributeValueId,

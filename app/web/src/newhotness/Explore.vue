@@ -1,9 +1,31 @@
 <template>
-  <section class="grid h-full">
+  <section :class="clsx('grid h-full', showGrid ? 'explore' : 'map')">
     <!-- Left column -->
     <!-- 12 pixel padding to align with the SI logo -->
-    <div class="pt-xs flex flex-col gap-xs items-stretch [&>div]:mx-[12px]">
+    <div
+      class="main pt-xs flex flex-col gap-xs items-stretch [&>div]:mx-[12px]"
+    >
       <div class="flex-none flex flex-row items-center gap-xs">
+        <TabGroupToggle ref="group" :aOrB="urlGridOrMap === 'grid'">
+          <template #a="{ selected, toggle }">
+            <VButton
+              label="Grid"
+              size="sm"
+              variant="ghost"
+              :tone="selected ? 'action' : 'shade'"
+              @click="toggle"
+            />
+          </template>
+          <template #b="{ selected, toggle }">
+            <VButton
+              label="Map"
+              size="sm"
+              variant="ghost"
+              :tone="selected ? 'action' : 'shade'"
+              @click="toggle"
+            />
+          </template>
+        </TabGroupToggle>
         <DropdownMenuButton
           class="rounded"
           :options="viewListOptions"
@@ -34,42 +56,49 @@
           </template>
         </InstructiveVormInput>
       </div>
-      <div ref="scrollRef" class="scrollable tilegrid grow">
-        <ComponentGridTile
-          v-for="component in componentVirtualItemsList"
-          :key="filteredComponents[component.index]!.id"
-          :class="clsx(tileClasses(component.index))"
-          :component="filteredComponents[component.index]!"
-          @dblclick="componentNavigate(filteredComponents[component.index]!.id)"
-        />
-        <div
-          v-if="componentList.length === 0 && componentListRaw.isSuccess.value"
-        >
-          <em>No components in View</em>
+      <template v-if="showGrid">
+        <div ref="scrollRef" class="scrollable tilegrid grow">
+          <ComponentGridTile
+            v-for="component in componentVirtualItemsList"
+            :key="filteredComponents[component.index]!.id"
+            :class="clsx(tileClasses(component.index))"
+            :component="filteredComponents[component.index]!"
+            @dblclick="
+              componentNavigate(filteredComponents[component.index]!.id)
+            "
+          />
+          <div
+            v-if="
+              componentList.length === 0 && componentListRaw.isSuccess.value
+            "
+          >
+            <em>No components in View</em>
+          </div>
         </div>
-      </div>
-      <footer
-        :class="
-          clsx(
-            'flex-none h-12 p-2xs border-t border-neutral-500 flex flex-row justify-end items-center',
-            themeClasses('bg-neutral-100', 'bg-neutral-800'),
-          )
-        "
-      >
-        <!-- footer -->
-        <VButton
-          label="Add a component"
-          pill="Cmd + A"
-          tone="action"
-          size="sm"
-        />
-      </footer>
+        <footer
+          :class="
+            clsx(
+              'flex-none h-12 p-2xs border-t border-neutral-500 flex flex-row justify-end items-center',
+              themeClasses('bg-neutral-100', 'bg-neutral-800'),
+            )
+          "
+        >
+          <!-- footer -->
+          <VButton
+            label="Add a component"
+            pill="Cmd + A"
+            tone="action"
+            size="sm"
+          />
+        </footer>
+      </template>
+      <Map v-else :active="!showGrid" />
     </div>
     <!-- Right column -->
     <div
       :class="
         clsx(
-          'flex flex-col border-l border-neutral-500',
+          'right flex flex-col border-l border-neutral-500',
           themeClasses('bg-neutral-100', 'bg-neutral-800'),
         )
       "
@@ -105,7 +134,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, inject, reactive, ref, watch } from "vue";
+import { computed, inject, provide, reactive, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import {
   themeClasses,
@@ -127,6 +156,7 @@ import {
 } from "@/workers/types/dbinterface";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
+import Map from "./Map.vue";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
@@ -136,8 +166,33 @@ import ActionCard from "./ActionCard.vue";
 import FuncRunList from "./FuncRunList.vue";
 import { assertIsDefined, Context } from "./types";
 import { keyEmitter } from "./logic_composables/emitters";
+import TabGroupToggle from "./layout_components/TabGroupToggle.vue";
+import { SelectionsInQueryString } from "./Workspace.vue";
+
+const router = useRouter();
+const route = useRoute();
 
 const selectedView = ref("");
+const group = ref<InstanceType<typeof TabGroupToggle>>();
+
+const urlGridOrMap = computed(() => {
+  const q: SelectionsInQueryString = router.currentRoute.value?.query;
+  const keys = Object.keys(q);
+  if (keys.includes("grid")) return "grid";
+  if (keys.includes("map")) return "map";
+  return "grid";
+});
+const showGrid = computed(() => group.value?.isA);
+watch(showGrid, () => {
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  delete query.map;
+  delete query.grid;
+  if (showGrid.value) query.grid = "1";
+  else query.map = "1";
+  router.replace({ query });
+});
 
 const actions = ref<typeof CollapsingGridItem>();
 const history = ref<typeof CollapsingGridItem>();
@@ -199,6 +254,10 @@ const scrollRef = ref<HTMLDivElement>();
 const filteredComponents = reactive<BifrostComponent[]>([]);
 
 const searchString = ref("");
+const computedSearchString = computed(() => searchString.value);
+
+// send this down to any components that might use it
+provide("SEARCH", computedSearchString);
 
 watch(
   () => [searchString.value, componentList.value],
@@ -270,19 +329,30 @@ const tileClasses = (idx: number) => {
   else return "";
 };
 
+const inputRef = ref<HTMLInputElement>();
+keyEmitter.on("k", (e) => {
+  if (e.metaKey || e.ctrlKey) {
+    inputRef.value?.focus();
+  }
+});
+
 keyEmitter.on("ArrowDown", () => {
+  if (!showGrid.value) return;
   selectorGridPosition.value += lanes.value;
   constrainPosition();
 });
 keyEmitter.on("ArrowUp", () => {
+  if (!showGrid.value) return;
   selectorGridPosition.value -= lanes.value;
   constrainPosition();
 });
 keyEmitter.on("ArrowLeft", () => {
+  if (!showGrid.value) return;
   selectorGridPosition.value -= 1;
   constrainPosition();
 });
 keyEmitter.on("ArrowRight", () => {
+  if (!showGrid.value) return;
   selectorGridPosition.value += 1;
   constrainPosition();
 });
@@ -296,8 +366,6 @@ keyEmitter.on("Enter", () => {
   }
 });
 
-const router = useRouter();
-const route = useRoute();
 const componentNavigate = (componentId: ComponentId) => {
   const params = { ...route.params };
   params.componentId = componentId;
@@ -309,8 +377,22 @@ const componentNavigate = (componentId: ComponentId) => {
 </script>
 
 <style lang="css" scoped>
-section.grid {
+section.grid.explore {
   grid-template-columns: minmax(0, 70%) minmax(0, 30%);
   grid-template-rows: 100%;
+  grid-template-areas: "main right";
+}
+
+section.grid.map {
+  grid-template-columns: 100%;
+  grid-template-rows: 100%;
+  grid-template-areas: "main";
+}
+
+div.main {
+  grid-area: "main";
+}
+div.right {
+  grid-area: "right";
 }
 </style>

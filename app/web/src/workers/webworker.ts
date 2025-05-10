@@ -55,6 +55,7 @@ import {
   RawComponentConnectionsListBeta,
   BifrostComponentConnectionsBeta,
   BifrostComponentConnectionsListBeta,
+  BifrostComponentConnectionsBetaWithComponent,
 } from "./types/dbinterface";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
@@ -855,6 +856,7 @@ const weak_reference = async (
       (change_set_id, target_kind, target_args, referrer_kind, referrer_args)
     values
       (?, ?, ?, ?, ?)
+    on conflict do nothing
   ;`;
   const bind = [
     changeSetId,
@@ -970,7 +972,7 @@ const get = async (
       }),
     );
     const componentConnections = maybeComponentConnections.filter(
-      (c): c is BifrostComponentConnectionsBeta =>
+      (c): c is BifrostComponentConnectionsBetaWithComponent =>
         c !== -1 && Object.keys(c).length > 0,
     );
     const list: BifrostComponentConnectionsListBeta = {
@@ -978,6 +980,18 @@ const get = async (
       componentConnections,
     };
     return list;
+  } else if (kind === "ComponentConnectionsBeta") {
+    const raw = atomDoc as BifrostComponentConnectionsBeta;
+    const component = await get(workspaceId, changeSetId, "Component", raw.id);
+    weak_reference(
+      changeSetId,
+      { kind: "Component", args: raw.id },
+      { kind: "BifrostComponentConnectionsBeta", args: raw.id },
+    );
+    return {
+      ...raw,
+      component,
+    } as BifrostComponentConnectionsBetaWithComponent;
   } else return atomDoc;
 };
 
