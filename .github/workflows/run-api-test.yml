@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: tests
-        working-directory: bin/si-api-test/tests
+        working-directory: bin/si-sdf-api-test/tests
         run: |
           # Find .ts files, remove ./ prefix, and format as JSON array
           files=$(find "." -mindepth 1 -maxdepth 1 -type f -name "*.ts" | sed -r "s/\.\/(.*)\.ts/\1/" | sort)
@@ -78,7 +78,7 @@ jobs:
 
       - name: Run the deno exec with retry
         run: |
-          cd bin/si-api-test
+          cd bin/si-sdf-api-test
 
           echo "Running test ${{ matrix.tests.name }} with index: ${{ matrix.tests.index }}"
 

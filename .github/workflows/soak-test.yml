@@ -44,7 +44,7 @@ on:
         default: true
 
 env:
-  DENO_DIR: bin/si-api-test
+  DENO_DIR: bin/si-sdf-api-test
 
 jobs:
   define-test-matrix:
@@ -117,11 +117,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.DENO_DIR }}
-          key: ${{ hashFiles('./bin/si-api-test/*') }}
+          key: ${{ hashFiles('./bin/si-sdf-api-test/*') }}
 
       - name: Run the deno exec
         id: runTest
-        working-directory: bin/si-api-test
+        working-directory: bin/si-sdf-api-test
         run: |
           TOKEN=$(echo "${{ needs.login.outputs.token }}" \
           | base64 -d \
@@ -155,7 +155,7 @@ jobs:
 
     - name: Concatenate reports
       run: |
-        cat ./reports/bin/si-api-test/*.json | jq -s '
+        cat ./reports/bin/si-sdf-api-test/*.json | jq -s '
           {
             total_success: flatten | map(select(.test_result == "success")) | length,
             total_failure: flatten | map(select(.test_result == "failure")) | length,
