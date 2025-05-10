@@ -1,15 +1,17 @@
 load("@prelude-si//:macros.bzl", "rust_library")
 
 alias(
-    name = "si-frontend-types-rs",
-    actual = ":si-frontend-types",
+    name = "si-frontend-mv-types-rs",
+    actual = ":si-frontend-mv-types",
 )
 
 rust_library(
-    name = "si-frontend-types",
+    name = "si-frontend-mv-types",
     deps = [
         "//lib/module-index-types:module-index-types",
         "//lib/si-events-rs:si-events",
+        "//lib/si-frontend-mv-types-macros:si-frontend-mv-types-macros",
+        "//lib/si-frontend-types-rs:si-frontend-types", # FIXME(nick): this dep needs to be removed from this crate
         "//lib/si-id:si-id",
         "//third-party/rust:chrono",
         "//third-party/rust:json-patch",

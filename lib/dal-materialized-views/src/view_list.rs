@@ -2,7 +2,7 @@ use dal::{
     DalContext,
     diagram::view::View,
 };
-use si_frontend_types::ViewList as ViewListMv;
+use si_frontend_mv_types::ViewList as ViewListMv;
 use telemetry::prelude::*;
 
 #[instrument(name = "dal_materialized_views.view_list", level = "debug", skip_all)]

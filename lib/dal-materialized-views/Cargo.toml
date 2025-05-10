@@ -10,7 +10,7 @@ publish.workspace = true
 
 [dependencies]
 dal = { path = "../../lib/dal" }
-si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
+si-frontend-mv-types = { path = "../../lib/si-frontend-mv-types-rs" }
 si-id = { path = "../../lib/si-id" }
 telemetry = { path = "../../lib/telemetry-rs" }
 

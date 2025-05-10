@@ -209,13 +209,21 @@ export interface IndexObjectMeta {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AtomDocument = any;
 
-// FAKING IT
+// ==========================================================================
+// FAKING IT - CORE TYPES
 interface Reference {
   id: string;
   checksum: string;
   kind: string;
 }
 
+interface WeakReference {
+  id: string;
+  kind: string;
+}
+
+// ==========================================================================
+// FAKING IT - EVERYTHING ELSE
 export interface BifrostView {
   id: string;
   name: string;
@@ -349,31 +357,35 @@ export interface BifrostAttributeTree {
   validation?: ValidationOutput;
 }
 
-export interface RawComponentConnectionsListBeta {
+export interface RawIncomingConnectionsList {
   id: ChangeSetId;
   componentConnections: Reference[];
 }
 
-export interface BifrostComponentConnectionsListBeta {
+export interface BifrostIncomingConnectionsList {
   id: ChangeSetId;
-  componentConnections: BifrostComponentConnectionsBeta[];
+  componentConnections: BifrostIncomingConnections[];
 }
 
-export interface BifrostComponentConnectionsBeta {
+export interface RawIncomingConnections {
   id: ComponentId;
-  incoming: Connection[];
-  outgoing: Connection[];
+  connections: RawConnection[];
 }
 
-type Connection =
+export interface BifrostIncomingConnections {
+  id: ComponentId;
+  connections: Connection[];
+}
+
+type RawConnection =
   | {
       kind: "prop";
-      fromComponentId: ComponentId;
+      fromComponentId: WeakReference; // this is why we need the raw object
       fromAttributeValueId: AttributeValueId;
       fromAttributeValuePath: string;
       fromPropId: PropId;
       fromPropPath: string;
-      toComponentId: ComponentId;
+      toComponentId: WeakReference; // this is why we need the raw object
       toPropId: PropId;
       toPropPath: string;
       toAttributeValueId: AttributeValueId;
@@ -381,12 +393,40 @@ type Connection =
     }
   | {
       kind: "socket";
-      fromComponentId: ComponentId;
+      fromComponentId: WeakReference; // this is why we need the raw object
       fromAttributeValueId: AttributeValueId;
       fromAttributeValuePath: string;
       fromSocketId: OutputSocketId;
       fromSocketName: string;
-      toComponentId: ComponentId;
+      toComponentId: WeakReference; // this is why we need the raw object
+      toSocketId: InputSocketId;
+      toSocketName: string;
+      toAttributeValueId: AttributeValueId;
+      toAttributeValuePath: string;
+    };
+
+type Connection =
+  | {
+      kind: "prop";
+      fromComponentId: BifrostComponent; // we will have the full component from the weak reference
+      fromAttributeValueId: AttributeValueId;
+      fromAttributeValuePath: string;
+      fromPropId: PropId;
+      fromPropPath: string;
+      toComponentId: BifrostComponent; // we will have the full component from the weak reference
+      toPropId: PropId;
+      toPropPath: string;
+      toAttributeValueId: AttributeValueId;
+      toAttributeValuePath: string;
+    }
+  | {
+      kind: "socket";
+      fromComponentId: BifrostComponent; // we will have the full component from the weak reference
+      fromAttributeValueId: AttributeValueId;
+      fromAttributeValuePath: string;
+      fromSocketId: OutputSocketId;
+      fromSocketName: string;
+      toComponentId: BifrostComponent; // we will have the full component from the weak reference
       toSocketId: InputSocketId;
       toSocketName: string;
       toAttributeValueId: AttributeValueId;

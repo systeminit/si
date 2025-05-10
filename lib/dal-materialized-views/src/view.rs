@@ -2,7 +2,7 @@ use dal::{
     DalContext,
     diagram::view::View,
 };
-use si_frontend_types::View as ViewMv;
+use si_frontend_mv_types::View as ViewMv;
 use si_id::ViewId;
 use telemetry::prelude::*;
 

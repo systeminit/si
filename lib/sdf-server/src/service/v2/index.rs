@@ -23,7 +23,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_frontend_types::object::FrontendObject;
+use si_frontend_mv_types::object::FrontendObject;
 use telemetry::prelude::*;
 use thiserror::Error;
 

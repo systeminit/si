@@ -28,6 +28,7 @@ si-data-nats = { path = "../si-data-nats" }
 si-data-pg = { path = "../si-data-pg" }
 si-data-spicedb = { path = "../si-data-spicedb" }
 si-events = { path = "../si-events-rs" }
+si-frontend-mv-types = { path = "../si-frontend-mv-types-rs" }
 si-frontend-types = { path = "../si-frontend-types-rs" }
 si-posthog = { path = "../si-posthog-rs" }
 telemetry = { path = "../telemetry-rs" }

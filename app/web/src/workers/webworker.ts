@@ -52,9 +52,10 @@ import {
   BifrostComponentList,
   RawAttributeTree,
   BifrostAttributeTree,
-  RawComponentConnectionsListBeta,
-  BifrostComponentConnectionsBeta,
-  BifrostComponentConnectionsListBeta,
+  RawIncomingConnectionsList,
+  BifrostIncomingConnectionsList,
+  BifrostIncomingConnections,
+  RawIncomingConnections,
 } from "./types/dbinterface";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
@@ -962,18 +963,67 @@ const get = async (
       children,
     };
     return attrTree;
-  } else if (kind === "ComponentConnectionsListBeta") {
-    const rawList = atomDoc as RawComponentConnectionsListBeta;
-    const maybeComponentConnections = await Promise.all(
+  } else if (kind === "IncomingConnections") {
+    // FIXME(nick): talked with John O and this is not working fully. We are close though. Do not
+    // be alarmed if you come here and go "oh shit it's not quite right" because it isn't.
+    const raw = atomDoc as RawIncomingConnections;
+    clear_weak_references(changeSetId, { kind, args: raw.id });
+
+    // Collect all weak references within the incoming connections.
+    const connections = await Promise.all(
+      raw.connections.map(async (c) => {
+        const fromComponent = (await get(
+          workspaceId,
+          changeSetId,
+          c.fromComponentId.kind,
+          c.fromComponentId.id,
+        )) as BifrostComponent;
+        const toComponent = (await get(
+          workspaceId,
+          changeSetId,
+          c.toComponentId.kind,
+          c.toComponentId.id,
+        )) as BifrostComponent;
+
+        // Grab both the weak reference for the "from" side and the "to" side.
+        weak_reference(
+          changeSetId,
+          { kind: c.fromComponentId.kind, args: c.fromComponentId.id },
+          { kind, args: raw.id },
+        );
+        weak_reference(
+          changeSetId,
+          { kind: c.toComponentId.kind, args: c.toComponentId.id },
+          { kind, args: raw.id },
+        );
+
+        // Convert from a "raw" connection to the full connection with the component MV.
+        return {
+          ...c,
+          fromComponentId: fromComponent,
+          toComponentId: toComponent,
+        };
+      }),
+    );
+
+    // Now that we have all weak references sorted, we can return the full object.
+    const incomingConnections: BifrostIncomingConnections = {
+      id: raw.id,
+      connections,
+    };
+    return incomingConnections;
+  } else if (kind === "IncomingConnectionsList") {
+    const rawList = atomDoc as RawIncomingConnectionsList;
+    const maybeIncomingConnections = await Promise.all(
       rawList.componentConnections.map(async (c) => {
         return await get(workspaceId, changeSetId, c.kind, c.id);
       }),
     );
-    const componentConnections = maybeComponentConnections.filter(
-      (c): c is BifrostComponentConnectionsBeta =>
+    const componentConnections = maybeIncomingConnections.filter(
+      (c): c is BifrostIncomingConnections =>
         c !== -1 && Object.keys(c).length > 0,
     );
-    const list: BifrostComponentConnectionsListBeta = {
+    const list: BifrostIncomingConnectionsList = {
       id: rawList.id,
       componentConnections,
     };
