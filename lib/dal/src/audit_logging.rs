@@ -96,7 +96,6 @@ pub(crate) async fn publish_pending(
     // Create a shuttle instance for shuttling audit logs from the pending events stream.
     let audit_logs_shuttle = Shuttle::new(
         ctx.nats_conn().to_owned(),
-        tracker.to_owned(),
         source_stream.stream().await?,
         source_stream.subject_for_audit_log(
             workspace_id,

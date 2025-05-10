@@ -60,18 +60,13 @@ use si_data_nats::{
         },
     },
     jetstream,
-    jetstream::Context,
 };
-use si_events::ulid::Ulid;
 use telemetry::{
     prelude::*,
     tracing::error,
 };
 use thiserror::Error;
-use tokio_util::{
-    sync::CancellationToken,
-    task::TaskTracker,
-};
+use tokio_util::sync::CancellationToken;
 
 mod app_state;
 mod handlers;
@@ -100,7 +95,6 @@ type Result<T> = std::result::Result<T, ShuttleError>;
 pub struct Shuttle {
     source_subject: Subject,
     destination_subject: Subject,
-    shutdown_cleanup_toolkit: ShuttleShutdownCleanupToolkit,
     inner: Box<dyn Future<Output = io::Result<()>> + Unpin + Send>,
 }
 
@@ -109,7 +103,6 @@ impl std::fmt::Debug for Shuttle {
         f.debug_struct("Shuttle")
             .field("source_subject", &self.source_subject)
             .field("destination_subject", &self.destination_subject)
-            .field("shutdown_cleanup_toolkit", &self.shutdown_cleanup_toolkit)
             .finish_non_exhaustive()
     }
 }
@@ -124,7 +117,6 @@ impl Shuttle {
     )]
     pub async fn new(
         nats: NatsClient,
-        tracker: TaskTracker,
         limits_based_source_stream: async_nats::jetstream::stream::Stream,
         source_subject: Subject,
         destination_subject: Subject,
@@ -134,14 +126,6 @@ impl Shuttle {
         let deliver_subject = nats.new_inbox();
         let connection_metadata = nats.metadata_clone();
         let context = jetstream::new(nats);
-
-        let consumer_name = format!("shuttle-{}", Ulid::new());
-        let source_stream_name = limits_based_source_stream
-            .get_info()
-            .await?
-            .config
-            .name
-            .to_owned();
 
         let incoming = {
             limits_based_source_stream
@@ -182,12 +166,6 @@ impl Shuttle {
         Ok(Self {
             source_subject,
             destination_subject,
-            shutdown_cleanup_toolkit: ShuttleShutdownCleanupToolkit {
-                consumer_name,
-                source_stream_name,
-                context,
-                tracker,
-            },
             inner: Box::new(inner.into_future()),
         })
     }
@@ -196,37 +174,7 @@ impl Shuttle {
     #[instrument(name = "shuttle.try_run", level = "trace", skip_all)]
     pub async fn try_run(self) -> Result<()> {
         self.inner.await.map_err(ShuttleError::Naxum)?;
-        trace!(%self.source_subject, %self.destination_subject, "shuttle inner loop exited, now performing cleanup");
-        self.shutdown_cleanup_toolkit.spawn_cleanup_task()?;
         trace!(%self.source_subject, %self.destination_subject, "shuttle main loop shutdown complete");
-        Ok(())
-    }
-}
-
-#[derive(Debug)]
-struct ShuttleShutdownCleanupToolkit {
-    consumer_name: String,
-    source_stream_name: String,
-    context: Context,
-    tracker: TaskTracker,
-}
-
-impl ShuttleShutdownCleanupToolkit {
-    #[instrument(
-        name = "shuttle.shutdown_cleanup_toolkit.spawn_cleanup_task",
-        level = "trace",
-        skip_all
-    )]
-    pub(crate) fn spawn_cleanup_task(self) -> Result<()> {
-        self.tracker.spawn(async move {
-            if let Err(err) = self
-                .context
-                .delete_consumer_from_stream(self.consumer_name, self.source_stream_name)
-                .await
-            {
-                error!(?err, "error deleting consumer from stream");
-            }
-        });
         Ok(())
     }
 }
