@@ -401,6 +401,7 @@
               jq
               nats-top
               natscli
+              openapi-generator-cli
               # pgcli
               reindeer
               shellcheck

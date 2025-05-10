@@ -1,6 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
     "rust_binary",
+    "sh_binary",
 )
 
 rust_binary(
@@ -14,8 +15,18 @@ rust_binary(
     env = {"CARGO_BIN_NAME": "openapi-extractor"},
 )
 
-export_file(
-    name = "openapi-spec",
-    src = "data/openapi.json",
-    visibility = ["PUBLIC"],
+sh_binary(
+    name = "build-python-sdk",
+    main = "sdk-generators/generate-python-sdk.sh",
+    resources = [
+        "data/openapi.json",
+    ],
+)
+
+sh_binary(
+    name = "build-typescript-sdk",
+    main = "sdk-generators/generate-typescript-sdk.sh",
+    resources = [
+        "data/openapi.json",
+    ],
 )
