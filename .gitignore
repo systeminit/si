@@ -39,6 +39,9 @@ CLAUDE.md
 # Local Netlify folder
 .netlify
 
+sdk-venv/
+.pytest_cache/
+
 # Buck
 /buck-out/
 

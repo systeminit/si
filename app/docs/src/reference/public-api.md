@@ -35,6 +35,7 @@ Root API endpoints
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|System status information|[SystemStatusResponse](#schemasystemstatusresponse)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |503|[Service Unavailable](https://tools.ietf.org/html/rfc7231#section-6.6.4)|Service in maintenance mode|None|
 
 # [whoami](#system-initiative-api-whoami)
@@ -86,7 +87,7 @@ Change set management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
+|workspace_id|path|string|true|Workspace identifier|
 
 > Example responses
 
@@ -94,7 +95,7 @@ Change set management endpoints
 
 ```json
 {
-  "changeSets": "[{\"id\":\"01H9ZQD35JPMBGHH69BT0Q79VY\",\"name\":\"Add new feature\",\"status\":\"Draft\"}]"
+  "changeSets": "[{\"id\":\"01H9ZQD35JPMBGHH69BT0Q79VY\",\"name\":\"Add new feature\",\"status\":\"Open\",\"isHead\": \"false\"},{\"id\":\"01H9ZQE356JPMBGHH69BT0Q70UO\",\"name\":\"HEAD\",\"status\":\"Open\", \"isHead\": \"true\"}]"
 }
 ```
 
@@ -103,6 +104,7 @@ Change set management endpoints
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change sets listed successfully|[ListChangeSetV1Response](#schemalistchangesetv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 ## create_change_set
@@ -125,7 +127,7 @@ Change set management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
+|workspace_id|path|string|true|Workspace identifier|
 |body|body|[CreateChangeSetV1Request](#schemacreatechangesetv1request)|true|none|
 
 > Example responses
@@ -134,7 +136,12 @@ Change set management endpoints
 
 ```json
 {
-  "changeSet": {}
+  "changeSet": {
+    "id": "string",
+    "isHead": true,
+    "name": "string",
+    "status": "string"
+  }
 }
 ```
 
@@ -143,6 +150,7 @@ Change set management endpoints
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change set created successfully|[CreateChangeSetV1Response](#schemacreatechangesetv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
@@ -158,8 +166,8 @@ Change set management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
 
 > Example responses
 
@@ -167,7 +175,12 @@ Change set management endpoints
 
 ```json
 {
-  "changeSet": {}
+  "changeSet": {
+    "id": "string",
+    "isHead": true,
+    "name": "string",
+    "status": "string"
+  }
 }
 ```
 
@@ -175,7 +188,9 @@ Change set management endpoints
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change sets listed successfully|[GetChangeSetV1Response](#schemagetchangesetv1response)|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change details retrieved successfully|[GetChangeSetV1Response](#schemagetchangesetv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Change set not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 ## abandon_change_set
@@ -190,8 +205,8 @@ Change set management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
 
 > Example responses
 
@@ -208,6 +223,7 @@ Change set management endpoints
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change set deleted successfully|[DeleteChangeSetV1Response](#schemadeletechangesetv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 ## force_apply
@@ -222,18 +238,16 @@ Change set management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
 
 > Example responses
 
-> 500 Response
+> 200 Response
 
 ```json
 {
-  "code": 0,
-  "message": "string",
-  "statusCode": 0
+  "success": "true"
 }
 ```
 
@@ -241,7 +255,8 @@ Change set management endpoints
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change set force applied successfully|None|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change set force applied successfully|[ForceApplyChangeSetV1Response](#schemaforceapplychangesetv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 ## merge_status
@@ -256,8 +271,8 @@ Change set management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
 
 > Example responses
 
@@ -265,16 +280,23 @@ Change set management endpoints
 
 ```json
 {
+  "changeSet": {
+    "id": "01FXNV4P306V3KGZ73YSVN8A60",
+    "name": "My feature",
+    "status": "Ready"
+  },
   "actions": [
     {
-      "component": {},
-      "id": "string",
-      "kind": "string",
-      "name": "string",
-      "state": "string"
+      "id": "01H9ZQD35JPMBGHH69BT0Q79VY",
+      "component": {
+        "id": "01H9ZQD35JPMBGHH69BT0Q79AB",
+        "name": "my-ec2-instance"
+      },
+      "state": "Pending",
+      "kind": "Create",
+      "name": "Create EC2 Instance"
     }
-  ],
-  "changeSet": {}
+  ]
 }
 ```
 
@@ -283,6 +305,7 @@ Change set management endpoints
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change set merge status retrieved successfully|[MergeStatusV1Response](#schemamergestatusv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 ## request_approval
@@ -297,18 +320,16 @@ Change set management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
 
 > Example responses
 
-> 500 Response
+> 200 Response
 
 ```json
 {
-  "code": 0,
-  "message": "string",
-  "statusCode": 0
+  "success": "true"
 }
 ```
 
@@ -316,12 +337,13 @@ Change set management endpoints
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change set approval requested successfully|None|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change set approval requested successfully|[RequestApprovalChangeSetV1Response](#schemarequestapprovalchangesetv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 # [components](#system-initiative-api-components)
 
-Component management endpoints
+Components management endpoints
 
 ## list_components
 
@@ -335,18 +357,28 @@ Component management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
 
 > Example responses
+
+> 200 Response
+
+```json
+[
+  "01H9ZQD35JPMBGHH69BT0Q79AA",
+  "01H9ZQD35JPMBGHH69BT0Q79BB",
+  "01H9ZQD35JPMBGHH69BT0Q79CC"
+]
+```
 
 > 500 Response
 
 ```json
 {
-  "code": 0,
-  "message": "string",
-  "statusCode": 0
+  "message": "Invalid request data",
+  "statusCode": 422,
+  "code": 4001
 }
 ```
 
@@ -354,7 +386,7 @@ Component management endpoints
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Components retrieved successfully|None|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Components retrieved successfully|[ListComponentsV1Response](#schemalistcomponentsv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
@@ -417,8 +449,8 @@ Component management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
 |body|body|[CreateComponentV1Request](#schemacreatecomponentv1request)|true|none|
 
 > Example responses
@@ -504,8 +536,8 @@ Component management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
 |component|query|string,null|false|none|
 |componentId|query|string,null|false|none|
 
@@ -517,8 +549,8 @@ Component management endpoints
 {
   "actionFunctions": [
     {
-      "funcName": "string",
-      "prototypeId": "string"
+      "prototypeId": "01HAXYZF3GC9CYA6ZVSM3E4YGG",
+      "funcName": "Terminate Instance"
     }
   ],
   "component": {
@@ -574,8 +606,8 @@ Component management endpoints
   },
   "managementFunctions": [
     {
-      "funcName": "string",
-      "managementPrototypeId": "string"
+      "managementPrototypeId": "01HAXYZF3GC9CYA6ZVSM3E4YFF",
+      "funcName": "Start Instance"
     }
   ]
 }
@@ -602,9 +634,9 @@ Component management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|component_id|path|undefined|true|Component identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|component_id|path|string|true|Component identifier|
 
 > Example responses
 
@@ -614,8 +646,8 @@ Component management endpoints
 {
   "actionFunctions": [
     {
-      "funcName": "string",
-      "prototypeId": "string"
+      "prototypeId": "01HAXYZF3GC9CYA6ZVSM3E4YGG",
+      "funcName": "Terminate Instance"
     }
   ],
   "component": {
@@ -671,8 +703,8 @@ Component management endpoints
   },
   "managementFunctions": [
     {
-      "funcName": "string",
-      "managementPrototypeId": "string"
+      "managementPrototypeId": "01HAXYZF3GC9CYA6ZVSM3E4YFF",
+      "funcName": "Start Instance"
     }
   ]
 }
@@ -752,9 +784,9 @@ Component management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|component_id|path|undefined|true|Component identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|component_id|path|string|true|Component identifier|
 |body|body|[UpdateComponentV1Request](#schemaupdatecomponentv1request)|true|none|
 
 > Example responses
@@ -822,6 +854,7 @@ Component management endpoints
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Component updated successfully|[UpdateComponentV1Response](#schemaupdatecomponentv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Precondition failed - Duplicate component name|None|
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
@@ -839,9 +872,9 @@ Component management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|component_id|path|undefined|true|Component identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|component_id|path|string|true|Component identifier|
 
 > Example responses
 
@@ -858,6 +891,7 @@ Component management endpoints
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Component deleted successfully|[DeleteComponentV1Response](#schemadeletecomponentv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
@@ -883,9 +917,9 @@ Component management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|component_id|path|undefined|true|Component identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|component_id|path|string|true|Component identifier|
 |body|body|[AddActionV1Request](#schemaaddactionv1request)|true|none|
 
 > Example responses
@@ -893,7 +927,9 @@ Component management endpoints
 > 200 Response
 
 ```json
-{}
+{
+  "success": true
+}
 ```
 
 <h3 id="add_action-responses">Responses</h3>
@@ -931,9 +967,9 @@ Component management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|component_id|path|undefined|true|Component identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|component_id|path|string|true|Component identifier|
 |body|body|[ExecuteManagementFunctionV1Request](#schemaexecutemanagementfunctionv1request)|true|none|
 
 > Example responses
@@ -957,266 +993,9 @@ Component management endpoints
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-# [funcs](#system-initiative-api-funcs)
-
-Functions management endpoints
-
-## get_func_run
-
-<a id="opIdget_func_run"></a>
-
-> Request format
-
-`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/runs/{func_run_id}`
-
-<h3 id="get_func_run-parameters">Parameters</h3>
-
-|Name|In|Type|Required|Description|
-|---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|func_run_id|path|undefined|true|Func run identifier|
-
-> Example responses
-
-> 200 Response
-
-```json
-{
-  "funcRun": {
-    "actionDisplayName": "string",
-    "actionId": "string",
-    "actionKind": "string",
-    "actionOriginatingChangeSetId": "string",
-    "actionOriginatingChangeSetName": "string",
-    "actionPrototypeId": "string",
-    "actionResultState": "string",
-    "attributeValueId": "string",
-    "backendKind": "string",
-    "backendResponseType": "string",
-    "componentId": "string",
-    "componentName": "string",
-    "createdAt": "string",
-    "functionArgs": {},
-    "functionCodeBase64": {},
-    "functionDescription": "string",
-    "functionDisplayName": "string",
-    "functionKind": "string",
-    "functionLink": "string",
-    "functionName": "string",
-    "id": "string",
-    "logs": {},
-    "resultValue": {},
-    "schemaName": "string",
-    "state": "string",
-    "updatedAt": "string"
-  }
-}
-```
-
-<h3 id="get_func_run-responses">Responses</h3>
-
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Func Run retrieved successfully|[GetFuncRunV1Response](#schemagetfuncrunv1response)|
-|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
-|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func run not found|None|
-|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
-
-## get_func
-
-<a id="opIdget_func"></a>
-
-> Request format
-
-`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/{func_id}`
-
-<h3 id="get_func-parameters">Parameters</h3>
-
-|Name|In|Type|Required|Description|
-|---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|func_id|path|undefined|true|Func identifier|
-
-> Example responses
-
-> 200 Response
-
-```json
-{
-  "code": "string",
-  "description": "string",
-  "displayName": "string",
-  "isLocked": true,
-  "kind": "string",
-  "link": "string",
-  "name": "string"
-}
-```
-
-<h3 id="get_func-responses">Responses</h3>
-
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Func retrieved successfully|[GetFuncV1Response](#schemagetfuncv1response)|
-|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
-|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func not found|None|
-|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
-
-# [actions](#system-initiative-api-actions)
-
-## get_actions
-
-<a id="opIdget_actions"></a>
-
-> Request format
-
-`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/actions/`
-
-<h3 id="get_actions-parameters">Parameters</h3>
-
-|Name|In|Type|Required|Description|
-|---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-
-> Example responses
-
-> 200 Response
-
-```json
-{
-  "actions": [
-    {
-      "componentId": "string",
-      "description": "string",
-      "funcRunId": "string",
-      "id": "string",
-      "kind": "string",
-      "name": "string",
-      "originatingChangeSetId": "string",
-      "prototypeId": "string",
-      "state": "string"
-    }
-  ]
-}
-```
-
-<h3 id="get_actions-responses">Responses</h3>
-
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Actions retrieved successfully|[GetActionsV1Response](#schemagetactionsv1response)|
-|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
-|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
-
-## cancel_action
-
-<a id="opIdcancel_action"></a>
-
-> Request format
-
-`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/actions/{action_id}/cancel`
-
-<h3 id="cancel_action-parameters">Parameters</h3>
-
-|Name|In|Type|Required|Description|
-|---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|action_id|path|undefined|true|Func identifier|
-
-> Example responses
-
-> 200 Response
-
-```json
-{
-  "success": true
-}
-```
-
-<h3 id="cancel_action-responses">Responses</h3>
-
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Action cancelled successfully|[CancelActionV1Response](#schemacancelactionv1response)|
-|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
-|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Action not found|None|
-|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
-
-## put_on_hold
-
-<a id="opIdput_on_hold"></a>
-
-> Request format
-
-`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/actions/{action_id}/put_on_hold`
-
-<h3 id="put_on_hold-parameters">Parameters</h3>
-
-|Name|In|Type|Required|Description|
-|---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|action_id|path|undefined|true|Func identifier|
-
-> Example responses
-
-> 200 Response
-
-```json
-{
-  "success": true
-}
-```
-
-<h3 id="put_on_hold-responses">Responses</h3>
-
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Action successfully put on hold|[PutOnHoldActionV1Response](#schemaputonholdactionv1response)|
-|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
-|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Action not found|None|
-|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
-
-## retry_action
-
-<a id="opIdretry_action"></a>
-
-> Request format
-
-`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/actions/{action_id}/retry`
-
-<h3 id="retry_action-parameters">Parameters</h3>
-
-|Name|In|Type|Required|Description|
-|---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|action_id|path|undefined|true|Func identifier|
-
-> Example responses
-
-> 200 Response
-
-```json
-{
-  "success": true
-}
-```
-
-<h3 id="retry_action-responses">Responses</h3>
-
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Action successfully requeued|[RetryActionV1Response](#schemaretryactionv1response)|
-|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
-|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Action not found|None|
-|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
-
 # [schemas](#system-initiative-api-schemas)
+
+Schemsa management endpoints
 
 ## list_schemas
 
@@ -1230,8 +1009,8 @@ Functions management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
 
 > Example responses
 
@@ -1263,8 +1042,8 @@ Functions management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
 |schema|query|string,null|false|none|
 |schemaId|query|string,null|false|none|
 
@@ -1302,9 +1081,9 @@ Functions management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|schema_id|path|undefined|true|Schema identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|schema_id|path|string|true|Schema identifier|
 
 > Example responses
 
@@ -1312,10 +1091,11 @@ Functions management endpoints
 
 ```json
 {
-  "defaultVariantId": "string",
-  "name": "string",
+  "defaultVariantId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "name": "AWS::EC2::Instance",
   "variantIds": [
-    "string"
+    "01H9ZQD35JPMBGHH69BT0Q79VZ",
+    "01H9ZQD35JPMBGHH69BT0Q79VY"
   ]
 }
 ```
@@ -1341,9 +1121,9 @@ Functions management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|schema_id|path|undefined|true|Schema identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|schema_id|path|string|true|Schema identifier|
 
 > Example responses
 
@@ -1351,18 +1131,19 @@ Functions management endpoints
 
 ```json
 {
-  "assetFuncId": "string",
-  "category": "string",
-  "color": "string",
-  "description": "string",
-  "displayName": "string",
+  "assetFuncId": "01H9ZQD35JPMBGHH69BT0Q75XY",
+  "category": "AWS::EC2",
+  "color": "#FF5733",
+  "description": "Amazon EC2 Instance resource type",
+  "displayName": "AWS EC2 Instance",
   "isDefaultVariant": true,
-  "isLocked": true,
-  "link": "string",
+  "isLocked": false,
+  "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
   "variantFuncIds": [
-    "string"
+    "01H9ZQD35JPMBGHH69BT0Q75AA",
+    "01H9ZQD35JPMBGHH69BT0Q75BB"
   ],
-  "variantId": "string"
+  "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
 }
 ```
 
@@ -1387,10 +1168,10 @@ Functions management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|schema_id|path|undefined|true|Schema identifier|
-|schema_variant_id|path|undefined|true|Schema variant identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
 
 > Example responses
 
@@ -1398,18 +1179,19 @@ Functions management endpoints
 
 ```json
 {
-  "assetFuncId": "string",
-  "category": "string",
-  "color": "string",
-  "description": "string",
-  "displayName": "string",
+  "assetFuncId": "01H9ZQD35JPMBGHH69BT0Q75XY",
+  "category": "AWS::EC2",
+  "color": "#FF5733",
+  "description": "Amazon EC2 Instance resource type",
+  "displayName": "AWS EC2 Instance",
   "isDefaultVariant": true,
-  "isLocked": true,
-  "link": "string",
+  "isLocked": false,
+  "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
   "variantFuncIds": [
-    "string"
+    "01H9ZQD35JPMBGHH69BT0Q75AA",
+    "01H9ZQD35JPMBGHH69BT0Q75BB"
   ],
-  "variantId": "string"
+  "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
 }
 ```
 
@@ -1423,7 +1205,163 @@ Functions management endpoints
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Schema variant not found for schema|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+# [actions](#system-initiative-api-actions)
+
+Actions management endpoints
+
+## get_actions
+
+<a id="opIdget_actions"></a>
+
+> Request format
+
+`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/actions/`
+
+<h3 id="get_actions-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "actions": [
+    {
+      "id": "01H9ZQD35JPMBGHH69BT0Q79VY",
+      "prototypeId": "01H9ZQD35JPMBGHH69BT0Q79AB",
+      "componentId": "01H9ZQD35JPMBGHH69BT0Q79CD",
+      "name": "Create EC2 Instance",
+      "description": "Provisions a new EC2 instance in AWS",
+      "kind": "Create",
+      "state": "Pending",
+      "originatingChangeSetId": "01H9ZQD35JPMBGHH69BT0Q79EF",
+      "funcRunId": "01H9ZQD35JPMBGHH69BT0Q79GH"
+    }
+  ]
+}
+```
+
+<h3 id="get_actions-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Actions retrieved successfully|[GetActionsV1Response](#schemagetactionsv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## cancel_action
+
+<a id="opIdcancel_action"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/actions/{action_id}/cancel`
+
+<h3 id="cancel_action-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|action_id|path|string|true|Action identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "success": true
+}
+```
+
+<h3 id="cancel_action-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Action cancelled successfully|[CancelActionV1Response](#schemacancelactionv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Action not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## put_on_hold
+
+<a id="opIdput_on_hold"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/actions/{action_id}/put_on_hold`
+
+<h3 id="put_on_hold-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|action_id|path|string|true|Action identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "success": true
+}
+```
+
+<h3 id="put_on_hold-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Action successfully put on hold|[PutOnHoldActionV1Response](#schemaputonholdactionv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Action not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## retry_action
+
+<a id="opIdretry_action"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/actions/{action_id}/retry`
+
+<h3 id="retry_action-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|action_id|path|string|true|Action identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "success": true
+}
+```
+
+<h3 id="retry_action-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Action successfully requeued|[RetryActionV1Response](#schemaretryactionv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Action not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 # [secrets](#system-initiative-api-secrets)
+
+Secrets management endpoints
 
 ## get_secrets
 
@@ -1437,18 +1375,89 @@ Functions management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
 
 > Example responses
+
+> 200 Response
+
+```json
+{
+  "aws_credentials": {
+    "definition": {
+      "secretDefinition": "aws_credentials",
+      "formData": [
+        {
+          "name": "access_key_id",
+          "kind": "string"
+        },
+        {
+          "name": "secret_access_key",
+          "kind": "password"
+        },
+        {
+          "name": "region",
+          "kind": "string"
+        },
+        {
+          "name": "default_output",
+          "kind": "string"
+        }
+      ]
+    },
+    "secrets": [
+      {
+        "id": "01HAXYZF3GC9CYA6ZVSM3E4YHH",
+        "name": "Production AWS Key",
+        "definition": "aws_credentials",
+        "description": "AWS credentials for production environment"
+      },
+      {
+        "id": "01HAXYZF3GC9CYA6ZVSM3E4YHI",
+        "name": "Development AWS Key",
+        "definition": "aws_credentials",
+        "description": "AWS credentials for development environment"
+      }
+    ]
+  },
+  "docker_registry": {
+    "definition": {
+      "secretDefinition": "docker_registry",
+      "formData": [
+        {
+          "name": "username",
+          "kind": "string"
+        },
+        {
+          "name": "password",
+          "kind": "password"
+        },
+        {
+          "name": "registry_url",
+          "kind": "string"
+        }
+      ]
+    },
+    "secrets": [
+      {
+        "id": "01HAXYZF3GC9CYA6ZVSM3E4YHJ",
+        "name": "DockerHub Access",
+        "definition": "docker_registry",
+        "description": "DockerHub registry credentials"
+      }
+    ]
+  }
+}
+```
 
 > 500 Response
 
 ```json
 {
-  "code": 0,
-  "message": "string",
-  "statusCode": 0
+  "message": "Invalid request data",
+  "statusCode": 422,
+  "code": 4001
 }
 ```
 
@@ -1456,7 +1465,7 @@ Functions management endpoints
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Secrets retrieved successfully|None|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Secrets retrieved successfully|[HashMap](#schemahashmap)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
@@ -1472,10 +1481,15 @@ Functions management endpoints
 
 ```json
 {
-  "definitionName": "string",
-  "description": "string",
-  "name": "string",
-  "rawData": {}
+  "definitionName": "aws_credentials",
+  "description": "AWS credentials for production environment",
+  "name": "AWS Access Key",
+  "rawData": {
+    "access_key_id": "AKIAIOSFODNN7EXAMPLE",
+    "secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+    "region": "us-west-2",
+    "default_output": "json"
+  }
 }
 ```
 
@@ -1483,8 +1497,8 @@ Functions management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
 |body|body|[CreateSecretV1Request](#schemacreatesecretv1request)|true|none|
 
 > Example responses
@@ -1494,10 +1508,10 @@ Functions management endpoints
 ```json
 {
   "secret": {
-    "definition": "string",
-    "description": "string",
-    "id": "string",
-    "name": "string"
+    "definition": "aws_credentials",
+    "description": "AWS credentials for production environment",
+    "id": "01HAXYZF3GC9CYA6ZVSM3E4YHH",
+    "name": "Production AWS Key"
   }
 }
 ```
@@ -1523,10 +1537,15 @@ Functions management endpoints
 
 ```json
 {
-  "description": "string",
-  "id": "string",
-  "name": "string",
-  "rawData": {}
+  "description": "Updated AWS Secret Key for EC2 access",
+  "id": "01HAXYZF3GC9CYA6ZVSM3E4YHH",
+  "name": "AWS Access Key",
+  "rawData": {
+    "access_key_id": "AKIAIOSFODNN7EXAMPLE",
+    "secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+    "region": "us-west-2",
+    "default_output": "json"
+  }
 }
 ```
 
@@ -1534,9 +1553,9 @@ Functions management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|secret_id|path|undefined|true|Secret identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|secret_id|path|string|true|Secret identifier|
 |body|body|[UpdateSecretV1Request](#schemaupdatesecretv1request)|true|none|
 
 > Example responses
@@ -1546,10 +1565,10 @@ Functions management endpoints
 ```json
 {
   "secret": {
-    "definition": "string",
-    "description": "string",
-    "id": "string",
-    "name": "string"
+    "definition": "aws_credentials",
+    "description": "AWS credentials for production environment",
+    "id": "01HAXYZF3GC9CYA6ZVSM3E4YHH",
+    "name": "Production AWS Key"
   }
 }
 ```
@@ -1559,6 +1578,7 @@ Functions management endpoints
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Secret updated successfully|[UpdateSecretV1Response](#schemaupdatesecretv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Secret not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
@@ -1574,9 +1594,9 @@ Functions management endpoints
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|workspace_id|path|undefined|true|Workspace identifier|
-|change_set_id|path|undefined|true|Change set identifier|
-|secret_id|path|undefined|true|Secret identifier|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|secret_id|path|string|true|Secret identifier|
 
 > Example responses
 
@@ -1593,7 +1613,187 @@ Functions management endpoints
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Secret deleted successfully|[DeleteSecretV1Response](#schemadeletesecretv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Secret not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+# [funcs](#system-initiative-api-funcs)
+
+Functions management endpoints
+
+## get_func_run
+
+<a id="opIdget_func_run"></a>
+
+> Request format
+
+`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/runs/{func_run_id}`
+
+<h3 id="get_func_run-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|func_run_id|path|string|true|Func run identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "funcRun": {
+    "id": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+    "state": "Success",
+    "actor": "System",
+    "componentId": "01JP8KHZP3DZKGNXRP83Q6WTQ5",
+    "attributeValueId": null,
+    "componentName": "NAT Gateway IP 1",
+    "schemaName": "AWS::EC2::EIP",
+    "actionId": "01JQCHZZY99G3R0C1FA3W4AFR6",
+    "actionPrototypeId": "01JPNHEE9Z3DFW48XVZ1FX04KA",
+    "actionKind": "Destroy",
+    "actionDisplayName": "Destroy",
+    "actionOriginatingChangeSetId": "01JQCHZZVTAHHZ7DG0ZSCB9RXB",
+    "actionOriginatingChangeSetName": "2025-03-27-19:41",
+    "actionResultState": "Success",
+    "backendKind": "JsAction",
+    "backendResponseType": "Action",
+    "functionName": "Delete Asset",
+    "functionDisplayName": null,
+    "functionKind": "Action",
+    "functionDescription": null,
+    "functionLink": null,
+    "functionArgs": {
+      "properties": {
+        "domain": {
+          "Domain": "vpc",
+          "Tags": []
+        },
+        "resource": {
+          "payload": {
+            "AllocationId": "eipalloc-033720f9556a3b0c1",
+            "PublicIp": "3.213.242.163"
+          }
+        },
+        "si": {
+          "name": "NAT Gateway IP 1",
+          "resourceId": "3.213.242.163|eipalloc-033720f9556a3b0c1",
+          "type": "component"
+        }
+      }
+    },
+    "resultValue": {
+      "error": null,
+      "executionId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+      "message": null,
+      "payload": null,
+      "resourceId": null,
+      "status": "ok"
+    },
+    "logs": {
+      "id": "01JQCJ0ABJSCE01GNQDWVY1ZP5",
+      "createdAt": "2025-03-27T19:41:58.514416748Z",
+      "updatedAt": "2025-03-27T19:41:58.514416748Z",
+      "funcRunId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+      "logs": [
+        {
+          "stream": "stdout",
+          "executionId": "",
+          "level": "info",
+          "group": "log",
+          "message": "Running CLI command",
+          "timestamp": 1743104518
+        },
+        {
+          "stream": "output",
+          "executionId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+          "level": "info",
+          "group": "log",
+          "message": "Output: {\"status\":\"success\"}",
+          "timestamp": 1743104521
+        }
+      ],
+      "finalized": true
+    },
+    "createdAt": "2025-03-27T19:41:58.493298051Z",
+    "updatedAt": "2025-03-27T19:42:02.192033089Z"
+  }
+}
+```
+
+> 500 Response
+
+```json
+{
+  "message": "Invalid request data",
+  "statusCode": 422,
+  "code": 4001
+}
+```
+
+<h3 id="get_func_run-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Func Run retrieved successfully|[GetFuncRunV1Response](#schemagetfuncrunv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func run not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## get_func
+
+<a id="opIdget_func"></a>
+
+> Request format
+
+`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/{func_id}`
+
+<h3 id="get_func-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change set identifier|
+|func_id|path|string|true|Func identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+[
+  {
+    "funcId": "01JP8A3S8VDQ1KRQWQRHB1ZEB2",
+    "code": "async function main(input: Input): Promise < Output > {\n    if (!input.domain?.region) {\n        return {\n            result: \"failure\",\n            message: \"No Region Name to validate\",\n        };\n    }\n\n    const child = await siExec.waitUntilEnd(\"aws\", [\n        \"ec2\",\n        \"describe-regions\",\n        \"--region-names\",\n        input.domain?.region!,\n        \"--region\",\n        \"us-east-1\",\n    ]);\n\n    if (child.exitCode !== 0) {\n        console.error(child.stderr);\n        return {\n            result: \"failure\",\n            message: \"Error from API\"\n        }\n    }\n\n    const regionDetails = JSON.parse(child.stdout).Regions;\n    if (regionDetails.length === 0 || regionDetails.length > 1) {\n        return {\n            result: \"failure\",\n            message: \"Unable to find Region\"\n        }\n    }\n\n    if (regionDetails[0].OptInStatus === \"not-opted-in\") {\n        return {\n            result: \"failure\",\n            message: \"Region not-opted-in for use\"\n        }\n    }\n\n    return {\n        result: \"success\",\n        message: \"Region is available to use\",\n    };\n}",
+    "name": "AWS Region Validator",
+    "description": "Validates if an AWS region exists and is available for use",
+    "displayName": "Validate Region",
+    "kind": "Qualification",
+    "isLocked": false,
+    "link": "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeRegions.html"
+  }
+]
+```
+
+> 500 Response
+
+```json
+{
+  "message": "Invalid request data",
+  "statusCode": 422,
+  "code": 4001
+}
+```
+
+<h3 id="get_func-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Func retrieved successfully|[GetFuncV1Response](#schemagetfuncv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 # [Schemas](#schemas)
@@ -1718,13 +1918,17 @@ xor
 <a id="tocsaddactionv1response"></a>
 
 ```json
-{}
+{
+  "success": true
+}
 
 ```
 
 ### [Properties](#addactionv1response-properties)
 
-*None*
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|success|boolean|true|none|none|
 
 ## [ApiError](#tocS_ApiError)
 
@@ -1735,9 +1939,9 @@ xor
 
 ```json
 {
-  "code": 0,
-  "message": "string",
-  "statusCode": 0
+  "message": "Invalid request data",
+  "statusCode": 422,
+  "code": 4001
 }
 
 ```
@@ -1793,6 +1997,32 @@ Standard success response format for v1 API
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |success|boolean|true|none|none|
+
+## [ChangeSetViewV1](#tocS_ChangeSetViewV1)
+
+<a id="schemachangesetviewv1"></a>
+<a id="schema_ChangeSetViewV1"></a>
+<a id="tocSchangesetviewv1"></a>
+<a id="tocschangesetviewv1"></a>
+
+```json
+{
+  "id": "string",
+  "isHead": true,
+  "name": "string",
+  "status": "string"
+}
+
+```
+
+### [Properties](#changesetviewv1-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|id|string|true|none|none|
+|isHead|boolean|true|none|none|
+|name|string|true|none|none|
+|status|string|true|none|none|
 
 ## [ComponentPropKey](#tocS_ComponentPropKey)
 
@@ -2171,7 +2401,12 @@ xor
 
 ```json
 {
-  "changeSet": {}
+  "changeSet": {
+    "id": "string",
+    "isHead": true,
+    "name": "string",
+    "status": "string"
+  }
 }
 
 ```
@@ -2180,7 +2415,7 @@ xor
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|changeSet|object|true|none|none|
+|changeSet|[ChangeSetViewV1](#schemachangesetviewv1)|true|none|none|
 
 ## [CreateComponentV1Request](#tocS_CreateComponentV1Request)
 
@@ -2327,10 +2562,15 @@ xor
 
 ```json
 {
-  "definitionName": "string",
-  "description": "string",
-  "name": "string",
-  "rawData": {}
+  "definitionName": "aws_credentials",
+  "description": "AWS credentials for production environment",
+  "name": "AWS Access Key",
+  "rawData": {
+    "access_key_id": "AKIAIOSFODNN7EXAMPLE",
+    "secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+    "region": "us-west-2",
+    "default_output": "json"
+  }
 }
 
 ```
@@ -2342,7 +2582,8 @@ xor
 |definitionName|string|true|none|none|
 |description|string|true|none|none|
 |name|string|true|none|none|
-|rawData|object|true|none|none|
+|rawData|object|false|none|none|
+|» **additionalProperties**|string|false|none|none|
 
 ## [CreateSecretV1Response](#tocS_CreateSecretV1Response)
 
@@ -2354,10 +2595,10 @@ xor
 ```json
 {
   "secret": {
-    "definition": "string",
-    "description": "string",
-    "id": "string",
-    "name": "string"
+    "definition": "aws_credentials",
+    "description": "AWS credentials for production environment",
+    "id": "01HAXYZF3GC9CYA6ZVSM3E4YHH",
+    "name": "Production AWS Key"
   }
 }
 
@@ -2611,6 +2852,26 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 |schemaId|string|true|none|none|
 |schemaName|string|true|none|none|
 
+## [ForceApplyChangeSetV1Response](#tocS_ForceApplyChangeSetV1Response)
+
+<a id="schemaforceapplychangesetv1response"></a>
+<a id="schema_ForceApplyChangeSetV1Response"></a>
+<a id="tocSforceapplychangesetv1response"></a>
+<a id="tocsforceapplychangesetv1response"></a>
+
+```json
+{
+  "success": "true"
+}
+
+```
+
+### [Properties](#forceapplychangesetv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|success|boolean|true|none|none|
+
 ## [FuncRunLogViewV1](#tocS_FuncRunLogViewV1)
 
 <a id="schemafuncrunlogviewv1"></a>
@@ -2620,14 +2881,29 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 ```json
 {
-  "createdAt": "string",
+  "createdAt": "2025-03-27T19:41:58.514416748Z",
   "finalized": true,
-  "funcRunId": "string",
-  "id": "string",
+  "funcRunId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+  "id": "01JQCJ0ABJSCE01GNQDWVY1ZP5",
   "logs": [
-    {}
+    {
+      "stream": "stdout",
+      "executionId": "",
+      "level": "info",
+      "group": "log",
+      "message": "Running CLI command: \"aws 'cloudcontrol' 'delete-resource'\"",
+      "timestamp": 1743104518
+    },
+    {
+      "stream": "output",
+      "executionId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+      "level": "info",
+      "group": "log",
+      "message": "Output: {\"protocol\":\"result\",\"status\":\"success\"}",
+      "timestamp": 1743104521
+    }
   ],
-  "updatedAt": "string"
+  "updatedAt": "2025-03-27T19:41:58.514416748Z"
 }
 
 ```
@@ -2672,32 +2948,32 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 ```json
 {
-  "actionDisplayName": "string",
-  "actionId": "string",
-  "actionKind": "string",
-  "actionOriginatingChangeSetId": "string",
-  "actionOriginatingChangeSetName": "string",
-  "actionPrototypeId": "string",
-  "actionResultState": "string",
-  "attributeValueId": "string",
-  "backendKind": "string",
-  "backendResponseType": "string",
-  "componentId": "string",
-  "componentName": "string",
-  "createdAt": "string",
-  "functionArgs": {},
-  "functionCodeBase64": {},
-  "functionDescription": "string",
-  "functionDisplayName": "string",
-  "functionKind": "string",
-  "functionLink": "string",
-  "functionName": "string",
-  "id": "string",
+  "actionDisplayName": "Destroy",
+  "actionId": "01JQCHZZY99G3R0C1FA3W4AFR6",
+  "actionKind": "Destroy",
+  "actionOriginatingChangeSetId": "01JQCHZZVTAHHZ7DG0ZSCB9RXB",
+  "actionOriginatingChangeSetName": "2025-03-27-19:41",
+  "actionPrototypeId": "01JPNHEE9Z3DFW48XVZ1FX04KA",
+  "actionResultState": "Success",
+  "attributeValueId": "null",
+  "backendKind": "JsAction",
+  "backendResponseType": "Action",
+  "componentId": "01JP8KHZP3DZKGNXRP83Q6WTQ5",
+  "componentName": "NAT Gateway IP 1",
+  "createdAt": "2025-03-27T19:41:58.493298051Z",
+  "functionArgs": null,
+  "functionCodeBase64": "YXN5bmMgZnVuY3Rpb24gbWFpbihjb21wb2...",
+  "functionDescription": "null",
+  "functionDisplayName": "null",
+  "functionKind": "Action",
+  "functionLink": "null",
+  "functionName": "Delete Asset",
+  "id": "01JQCJ0AAXGX5M9QY10AVF4GK1",
   "logs": {},
-  "resultValue": {},
-  "schemaName": "string",
-  "state": "string",
-  "updatedAt": "string"
+  "resultValue": null,
+  "schemaName": "AWS::EC2::EIP",
+  "state": "Success",
+  "updatedAt": "2025-03-27T19:42:02.192033089Z"
 }
 
 ```
@@ -2719,16 +2995,33 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 |componentId|string|true|none|none|
 |componentName|string|true|none|none|
 |createdAt|string|true|none|none|
-|functionArgs|object|true|none|none|
-|functionCodeBase64|object|true|none|none|
+|functionArgs|any|true|none|none|
+|functionCodeBase64|string|true|none|none|
 |functionDescription|string|true|none|none|
 |functionDisplayName|string|true|none|none|
 |functionKind|string|true|none|none|
 |functionLink|string|true|none|none|
 |functionName|string|true|none|none|
 |id|string|true|none|none|
-|logs|object|true|none|none|
-|resultValue|object|true|none|none|
+|logs|any|false|none|none|
+
+oneOf
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|» *anonymous*|null|false|none|none|
+
+xor
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|» *anonymous*|[FuncRunLogViewV1](#schemafuncrunlogviewv1)|false|none|none|
+
+continued
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|resultValue|any|false|none|none|
 |schemaName|string|true|none|none|
 |state|string|true|none|none|
 |updatedAt|string|true|none|none|
@@ -2744,15 +3037,15 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 {
   "actions": [
     {
-      "componentId": "string",
-      "description": "string",
-      "funcRunId": "string",
-      "id": "string",
-      "kind": "string",
-      "name": "string",
-      "originatingChangeSetId": "string",
-      "prototypeId": "string",
-      "state": "string"
+      "id": "01H9ZQD35JPMBGHH69BT0Q79VY",
+      "prototypeId": "01H9ZQD35JPMBGHH69BT0Q79AB",
+      "componentId": "01H9ZQD35JPMBGHH69BT0Q79CD",
+      "name": "Create EC2 Instance",
+      "description": "Provisions a new EC2 instance in AWS",
+      "kind": "Create",
+      "state": "Pending",
+      "originatingChangeSetId": "01H9ZQD35JPMBGHH69BT0Q79EF",
+      "funcRunId": "01H9ZQD35JPMBGHH69BT0Q79GH"
     }
   ]
 }
@@ -2774,7 +3067,12 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 ```json
 {
-  "changeSet": {}
+  "changeSet": {
+    "id": "string",
+    "isHead": true,
+    "name": "string",
+    "status": "string"
+  }
 }
 
 ```
@@ -2783,7 +3081,7 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|changeSet|object|true|none|none|
+|changeSet|[ChangeSetViewV1](#schemachangesetviewv1)|true|none|none|
 
 ## [GetComponentV1Response](#tocS_GetComponentV1Response)
 
@@ -2796,8 +3094,8 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 {
   "actionFunctions": [
     {
-      "funcName": "string",
-      "prototypeId": "string"
+      "prototypeId": "01HAXYZF3GC9CYA6ZVSM3E4YGG",
+      "funcName": "Terminate Instance"
     }
   ],
   "component": {
@@ -2853,8 +3151,8 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
   },
   "managementFunctions": [
     {
-      "funcName": "string",
-      "managementPrototypeId": "string"
+      "managementPrototypeId": "01HAXYZF3GC9CYA6ZVSM3E4YFF",
+      "funcName": "Start Instance"
     }
   ]
 }
@@ -2878,8 +3176,8 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 ```json
 {
-  "funcName": "string",
-  "prototypeId": "string"
+  "funcName": "Terminate Instance",
+  "prototypeId": "01HAXYZF3GC9CYA6ZVSM3E4YGG"
 }
 
 ```
@@ -2900,8 +3198,8 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 ```json
 {
-  "funcName": "string",
-  "managementPrototypeId": "string"
+  "funcName": "Start Instance",
+  "managementPrototypeId": "01HAXYZF3GC9CYA6ZVSM3E4YFF"
 }
 
 ```
@@ -2923,32 +3221,32 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 ```json
 {
   "funcRun": {
-    "actionDisplayName": "string",
-    "actionId": "string",
-    "actionKind": "string",
-    "actionOriginatingChangeSetId": "string",
-    "actionOriginatingChangeSetName": "string",
-    "actionPrototypeId": "string",
-    "actionResultState": "string",
-    "attributeValueId": "string",
-    "backendKind": "string",
-    "backendResponseType": "string",
-    "componentId": "string",
-    "componentName": "string",
-    "createdAt": "string",
-    "functionArgs": {},
-    "functionCodeBase64": {},
-    "functionDescription": "string",
-    "functionDisplayName": "string",
-    "functionKind": "string",
-    "functionLink": "string",
-    "functionName": "string",
-    "id": "string",
+    "actionDisplayName": "Destroy",
+    "actionId": "01JQCHZZY99G3R0C1FA3W4AFR6",
+    "actionKind": "Destroy",
+    "actionOriginatingChangeSetId": "01JQCHZZVTAHHZ7DG0ZSCB9RXB",
+    "actionOriginatingChangeSetName": "2025-03-27-19:41",
+    "actionPrototypeId": "01JPNHEE9Z3DFW48XVZ1FX04KA",
+    "actionResultState": "Success",
+    "attributeValueId": "null",
+    "backendKind": "JsAction",
+    "backendResponseType": "Action",
+    "componentId": "01JP8KHZP3DZKGNXRP83Q6WTQ5",
+    "componentName": "NAT Gateway IP 1",
+    "createdAt": "2025-03-27T19:41:58.493298051Z",
+    "functionArgs": null,
+    "functionCodeBase64": "YXN5bmMgZnVuY3Rpb24gbWFpbihjb21wb2...",
+    "functionDescription": "null",
+    "functionDisplayName": "null",
+    "functionKind": "Action",
+    "functionLink": "null",
+    "functionName": "Delete Asset",
+    "id": "01JQCJ0AAXGX5M9QY10AVF4GK1",
     "logs": {},
-    "resultValue": {},
-    "schemaName": "string",
-    "state": "string",
-    "updatedAt": "string"
+    "resultValue": null,
+    "schemaName": "AWS::EC2::EIP",
+    "state": "Success",
+    "updatedAt": "2025-03-27T19:42:02.192033089Z"
   }
 }
 
@@ -2969,13 +3267,13 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 ```json
 {
-  "code": "string",
-  "description": "string",
-  "displayName": "string",
-  "isLocked": true,
-  "kind": "string",
-  "link": "string",
-  "name": "string"
+  "code": "async function main(input: Input): Promise < Output > {\n    if (!input.domain?.region) {\n        return {\n            result: \"failure\",\n            message: \"No Region Name to validate\",\n        };\n    }\n\n    const child = await siExec.waitUntilEnd(\"aws\", [\n        \"ec2\",\n        \"describe-regions\",\n        \"--region-names\",\n        input.domain?.region!,\n        \"--region\",\n        \"us-east-1\",\n    ]);\n\n    if (child.exitCode !== 0) {\n        console.error(child.stderr);\n        return {\n            result: \"failure\",\n            message: \"Error from API\"\n        }\n    }\n\n    const regionDetails = JSON.parse(child.stdout).Regions;\n    if (regionDetails.length === 0 || regionDetails.length > 1) {\n        return {\n            result: \"failure\",\n            message: \"Unable to find Region\"\n        }\n    }\n\n    if (regionDetails[0].OptInStatus === \"not-opted-in\") {\n        return {\n            result: \"failure\",\n            message: \"Region not-opted-in for use\"\n        }\n    }\n\n    return {\n        result: \"success\",\n        message: \"Region is available to use\",\n    };\n}",
+  "description": "Validates if an AWS region exists and is available for use",
+  "displayName": "Validate Region",
+  "isLocked": false,
+  "kind": "Qualification",
+  "link": "https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeRegions.html",
+  "name": "AWS Region Validator"
 }
 
 ```
@@ -3001,10 +3299,11 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 ```json
 {
-  "defaultVariantId": "string",
-  "name": "string",
+  "defaultVariantId": "01H9ZQD35JPMBGHH69BT0Q79VZ",
+  "name": "AWS::EC2::Instance",
   "variantIds": [
-    "string"
+    "01H9ZQD35JPMBGHH69BT0Q79VZ",
+    "01H9ZQD35JPMBGHH69BT0Q79VY"
   ]
 }
 
@@ -3027,18 +3326,19 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 ```json
 {
-  "assetFuncId": "string",
-  "category": "string",
-  "color": "string",
-  "description": "string",
-  "displayName": "string",
+  "assetFuncId": "01H9ZQD35JPMBGHH69BT0Q75XY",
+  "category": "AWS::EC2",
+  "color": "#FF5733",
+  "description": "Amazon EC2 Instance resource type",
+  "displayName": "AWS EC2 Instance",
   "isDefaultVariant": true,
-  "isLocked": true,
-  "link": "string",
+  "isLocked": false,
+  "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
   "variantFuncIds": [
-    "string"
+    "01H9ZQD35JPMBGHH69BT0Q75AA",
+    "01H9ZQD35JPMBGHH69BT0Q75BB"
   ],
-  "variantId": "string"
+  "variantId": "01H9ZQD35JPMBGHH69BT0Q79VZ"
 }
 
 ```
@@ -3057,6 +3357,85 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 |link|string|true|none|none|
 |variantFuncIds|[string]|true|none|none|
 |variantId|string|true|none|none|
+
+## [HashMap](#tocS_HashMap)
+
+<a id="schemahashmap"></a>
+<a id="schema_HashMap"></a>
+<a id="tocShashmap"></a>
+<a id="tocshashmap"></a>
+
+```json
+{
+  "property1": {
+    "definition": {
+      "formData": [
+        {
+          "name": "access_key_id",
+          "kind": "string"
+        },
+        {
+          "name": "secret_access_key",
+          "kind": "password"
+        }
+      ],
+      "secretDefinition": "aws_credentials"
+    },
+    "secrets": [
+      {
+        "id": "01HAXYZF3GC9CYA6ZVSM3E4YHH",
+        "name": "Production AWS Key",
+        "definition": "aws_credentials",
+        "description": "AWS credentials for production environment"
+      },
+      {
+        "id": "01HAXYZF3GC9CYA6ZVSM3E4YHI",
+        "name": "Development AWS Key",
+        "definition": "aws_credentials",
+        "description": "AWS credentials for development environment"
+      }
+    ]
+  },
+  "property2": {
+    "definition": {
+      "formData": [
+        {
+          "name": "access_key_id",
+          "kind": "string"
+        },
+        {
+          "name": "secret_access_key",
+          "kind": "password"
+        }
+      ],
+      "secretDefinition": "aws_credentials"
+    },
+    "secrets": [
+      {
+        "id": "01HAXYZF3GC9CYA6ZVSM3E4YHH",
+        "name": "Production AWS Key",
+        "definition": "aws_credentials",
+        "description": "AWS credentials for production environment"
+      },
+      {
+        "id": "01HAXYZF3GC9CYA6ZVSM3E4YHI",
+        "name": "Development AWS Key",
+        "definition": "aws_credentials",
+        "description": "AWS credentials for development environment"
+      }
+    ]
+  }
+}
+
+```
+
+### [Properties](#hashmap-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|**additionalProperties**|object|false|none|none|
+|» definition|[SecretDefinitionV1](#schemasecretdefinitionv1)|true|none|none|
+|» secrets|[[SecretV1](#schemasecretv1)]|true|none|none|
 
 ## [IncomingConnectionViewV1](#tocS_IncomingConnectionViewV1)
 
@@ -3093,7 +3472,7 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 ```json
 {
-  "changeSets": "[{\"id\":\"01H9ZQD35JPMBGHH69BT0Q79VY\",\"name\":\"Add new feature\",\"status\":\"Draft\"}]"
+  "changeSets": "[{\"id\":\"01H9ZQD35JPMBGHH69BT0Q79VY\",\"name\":\"Add new feature\",\"status\":\"Open\",\"isHead\": \"false\"},{\"id\":\"01H9ZQE356JPMBGHH69BT0Q70UO\",\"name\":\"HEAD\",\"status\":\"Open\", \"isHead\": \"true\"}]"
 }
 
 ```
@@ -3113,7 +3492,11 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 ```json
 {
-  "components": "string"
+  "components": [
+    "01H9ZQD35JPMBGHH69BT0Q79AA",
+    "01H9ZQD35JPMBGHH69BT0Q79BB",
+    "01H9ZQD35JPMBGHH69BT0Q79CC"
+  ]
 }
 
 ```
@@ -3122,7 +3505,7 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|components|string|true|none|none|
+|components|[string]|true|none|none|
 
 ## [ListSchemaV1Response](#tocS_ListSchemaV1Response)
 
@@ -3231,16 +3614,23 @@ xor
 
 ```json
 {
+  "changeSet": {
+    "id": "01FXNV4P306V3KGZ73YSVN8A60",
+    "name": "My feature",
+    "status": "Ready"
+  },
   "actions": [
     {
-      "component": {},
-      "id": "string",
-      "kind": "string",
-      "name": "string",
-      "state": "string"
+      "id": "01H9ZQD35JPMBGHH69BT0Q79VY",
+      "component": {
+        "id": "01H9ZQD35JPMBGHH69BT0Q79AB",
+        "name": "my-ec2-instance"
+      },
+      "state": "Pending",
+      "kind": "Create",
+      "name": "Create EC2 Instance"
     }
-  ],
-  "changeSet": {}
+  ]
 }
 
 ```
@@ -3263,11 +3653,14 @@ Response for merge status
 
 ```json
 {
-  "component": {},
-  "id": "string",
-  "kind": "string",
-  "name": "string",
-  "state": "string"
+  "id": "01H9ZQD35JPMBGHH69BT0Q79VY",
+  "component": {
+    "id": "01H9ZQD35JPMBGHH69BT0Q79AB",
+    "name": "my-ec2-instance"
+  },
+  "state": "Pending",
+  "kind": "Create",
+  "name": "Create EC2 Instance"
 }
 
 ```
@@ -3310,8 +3703,8 @@ continued
 
 ```json
 {
-  "id": "string",
-  "name": "string"
+  "id": "01H9ZQD35JPMBGHH69BT0Q79AB",
+  "name": "my-ec2-instance"
 }
 
 ```
@@ -3358,12 +3751,12 @@ Component details in action response
 
 ```json
 {
-  "executionId": "string",
-  "group": "string",
-  "level": "string",
-  "message": "string",
-  "stream": "string",
-  "timestamp": 0
+  "executionId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
+  "group": "log",
+  "level": "info",
+  "message": "Running CLI command: \"aws 'cloudcontrol' 'delete-resource'\"",
+  "stream": "stdout",
+  "timestamp": 1743104518
 }
 
 ```
@@ -3394,6 +3787,26 @@ Component details in action response
 ```
 
 ### [Properties](#putonholdactionv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|success|boolean|true|none|none|
+
+## [RequestApprovalChangeSetV1Response](#tocS_RequestApprovalChangeSetV1Response)
+
+<a id="schemarequestapprovalchangesetv1response"></a>
+<a id="schema_RequestApprovalChangeSetV1Response"></a>
+<a id="tocSrequestapprovalchangesetv1response"></a>
+<a id="tocsrequestapprovalchangesetv1response"></a>
+
+```json
+{
+  "success": "true"
+}
+
+```
+
+### [Properties](#requestapprovalchangesetv1response-properties)
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
@@ -3461,6 +3874,59 @@ Component details in action response
 |schema_id|string|true|none|none|
 |schema_variant_id|string|true|none|none|
 
+## [SecretDefinitionV1](#tocS_SecretDefinitionV1)
+
+<a id="schemasecretdefinitionv1"></a>
+<a id="schema_SecretDefinitionV1"></a>
+<a id="tocSsecretdefinitionv1"></a>
+<a id="tocssecretdefinitionv1"></a>
+
+```json
+{
+  "formData": [
+    {
+      "name": "access_key_id",
+      "kind": "string"
+    },
+    {
+      "name": "secret_access_key",
+      "kind": "password"
+    }
+  ],
+  "secretDefinition": "aws_credentials"
+}
+
+```
+
+### [Properties](#secretdefinitionv1-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|formData|[[SecretFormDataV1](#schemasecretformdatav1)]|true|none|none|
+|secretDefinition|string|true|none|none|
+
+## [SecretFormDataV1](#tocS_SecretFormDataV1)
+
+<a id="schemasecretformdatav1"></a>
+<a id="schema_SecretFormDataV1"></a>
+<a id="tocSsecretformdatav1"></a>
+<a id="tocssecretformdatav1"></a>
+
+```json
+{
+  "kind": "string",
+  "name": "access_key_id"
+}
+
+```
+
+### [Properties](#secretformdatav1-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|kind|string|true|none|none|
+|name|string|true|none|none|
+
 ## [SecretPropKey](#tocS_SecretPropKey)
 
 <a id="schemasecretpropkey"></a>
@@ -3514,10 +3980,10 @@ xor
 
 ```json
 {
-  "definition": "string",
-  "description": "string",
-  "id": "string",
-  "name": "string"
+  "definition": "aws_credentials",
+  "description": "AWS credentials for production environment",
+  "id": "01HAXYZF3GC9CYA6ZVSM3E4YHH",
+  "name": "Production AWS Key"
 }
 
 ```
@@ -3756,10 +4222,15 @@ xor
 
 ```json
 {
-  "description": "string",
-  "id": "string",
-  "name": "string",
-  "rawData": {}
+  "description": "Updated AWS Secret Key for EC2 access",
+  "id": "01HAXYZF3GC9CYA6ZVSM3E4YHH",
+  "name": "AWS Access Key",
+  "rawData": {
+    "access_key_id": "AKIAIOSFODNN7EXAMPLE",
+    "secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+    "region": "us-west-2",
+    "default_output": "json"
+  }
 }
 
 ```
@@ -3771,7 +4242,8 @@ xor
 |description|string|true|none|none|
 |id|string|true|none|none|
 |name|string|true|none|none|
-|rawData|object|true|none|none|
+|rawData|object|false|none|none|
+|» **additionalProperties**|string|false|none|none|
 
 ## [UpdateSecretV1Response](#tocS_UpdateSecretV1Response)
 
@@ -3783,10 +4255,10 @@ xor
 ```json
 {
   "secret": {
-    "definition": "string",
-    "description": "string",
-    "id": "string",
-    "name": "string"
+    "definition": "aws_credentials",
+    "description": "AWS credentials for production environment",
+    "id": "01HAXYZF3GC9CYA6ZVSM3E4YHH",
+    "name": "Production AWS Key"
   }
 }
 
