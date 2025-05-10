@@ -16,6 +16,7 @@ rust_library(
         "//third-party/rust:spicedb-grpc",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
+        "//third-party/rust:tonic",
         "//third-party/rust:url",
     ],
     srcs = glob([

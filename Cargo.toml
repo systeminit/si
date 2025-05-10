@@ -300,6 +300,7 @@ tokio-tungstenite = "0.20.1" # todo: pinning back from 0.21.0, upgrade this alon
 tokio-util = { version = "0.7.10", features = ["codec", "rt"] }
 tokio-vsock = { version = "0.7.0" }
 toml = { version = "0.8.19" }
+tonic = { version = "0.12.1" }
 tower = { version = "0.4.13", features = ["full"] }
 tower-http = { version = "0.4.4", features = [
     "compression-br",

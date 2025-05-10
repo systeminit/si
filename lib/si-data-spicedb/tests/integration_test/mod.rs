@@ -8,6 +8,7 @@ use rand::{
 };
 use si_data_spicedb::{
     Client,
+    Error,
     Permission,
     Relationship,
     SpiceDBObject,
@@ -201,4 +202,44 @@ async fn check_permissions() {
         .expect("could not list subjects");
     assert!(users.contains(&"scott".to_string()));
     assert!(!users.contains(&"fletcher".to_string()));
+}
+
+#[tokio::test]
+async fn test_client_connection_with_schema() {
+    let config = spicedb_config();
+    let mut client = Client::new(&config)
+        .await
+        .expect("failed to connect to spicedb");
+
+    let schema = indoc! {"
+        definition user {}
+    "};
+    client
+        .write_schema(schema)
+        .await
+        .expect("failed to write schema");
+
+    let result = Client::new(&config).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_client_connection_without_schema() {
+    let config = spicedb_config();
+
+    let result = Client::new(&config).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_client_connection_failure() {
+    let mut config = spicedb_config();
+    config.endpoint = "http://localhost:0".parse().expect("failed to parse URL");
+
+    let result = Client::new(&config).await;
+    assert!(result.is_err());
+    match result {
+        Err(Error::Connection(..)) => (),
+        _ => panic!("Expected connection error"),
+    }
 }
