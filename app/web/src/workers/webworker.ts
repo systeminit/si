@@ -50,8 +50,6 @@ import {
   RawComponentList,
   BifrostComponent,
   BifrostComponentList,
-  RawAttributeTree,
-  BifrostAttributeTree,
   RawComponentConnectionsListBeta,
   BifrostComponentConnectionsBeta,
   BifrostComponentConnectionsListBeta,
@@ -831,7 +829,7 @@ const ragnarok = async (workspaceId: string, changeSetId: string) => {
   await niflheim(workspaceId, changeSetId);
 };
 
-const clear_weak_references = async (
+const _clear_weak_references = async (
   changeSetId: string,
   referrer: { kind: string; args: string },
 ) => {
@@ -938,32 +936,6 @@ const get = async (
       components,
     };
     return list;
-  } else if (kind === "AttributeTree") {
-    const rawTree = atomDoc as RawAttributeTree;
-    clear_weak_references(changeSetId, { kind, args: rawTree.id });
-    const children: BifrostAttributeTree[] = await Promise.all(
-      rawTree.children.map(async (c): Promise<BifrostAttributeTree> => {
-        const t = (await get(
-          workspaceId,
-          changeSetId,
-          kind,
-          c,
-        )) as BifrostAttributeTree;
-
-        weak_reference(
-          changeSetId,
-          { kind, args: c },
-          { kind, args: rawTree.id },
-        );
-
-        return t;
-      }),
-    );
-    const attrTree: BifrostAttributeTree = {
-      ...rawTree,
-      children,
-    };
-    return attrTree;
   } else if (kind === "ComponentConnectionsListBeta") {
     const rawList = atomDoc as RawComponentConnectionsListBeta;
     const maybeComponentConnections = await Promise.all(

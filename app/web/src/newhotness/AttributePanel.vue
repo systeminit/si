@@ -27,6 +27,8 @@ import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostAttributeTree,
   BifrostComponent,
+  Prop,
+  AttributeValue,
 } from "@/workers/types/dbinterface";
 import {
   useApi,
@@ -38,29 +40,77 @@ import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
 const q = ref("");
 
 const props = defineProps<{
-  attributeValueId: string;
   component: BifrostComponent;
 }>();
 
-const attributeValueId = computed(() => props.attributeValueId);
+const componentId = computed(() => props.component.id);
 
 const attributeTreeMakeKey = useMakeKey();
 const attributeTreeMakeArgs = useMakeArgs();
 const attributeTreeQuery = useQuery<BifrostAttributeTree | null>({
-  queryKey: attributeTreeMakeKey("AttributeTree", attributeValueId),
+  queryKey: attributeTreeMakeKey("AttributeTree", componentId),
   queryFn: async () => {
-    const args = attributeTreeMakeArgs("AttributeTree", attributeValueId.value);
+    const args = attributeTreeMakeArgs("AttributeTree", componentId.value);
     return await bifrost<BifrostAttributeTree>(args);
   },
 });
 
-const root = computed(() => attributeTreeQuery.data.value);
+export interface AttributeTree {
+  id: string;
+  children: AttributeTree[];
+  parent?: string;
+  prop?: Prop;
+  attributeValue: AttributeValue;
+}
+
+const makeAvTree = (
+  data: BifrostAttributeTree,
+  avId: string,
+  parent?: string,
+): AttributeTree => {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const childrenIds = data.treeInfo[avId]!.children;
+  const children = childrenIds.map((id) => makeAvTree(data, id, avId));
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const av = data.attributeValues[avId]!;
+  const prop = av.propId ? data.props[av.propId] : undefined;
+  const tree: AttributeTree = {
+    id: avId,
+    children,
+    parent,
+    attributeValue: av,
+    prop,
+  };
+  return tree;
+};
+
+const root = computed<AttributeTree>(() => {
+  const empty = {
+    id: "",
+    children: [] as AttributeTree[],
+    attributeValue: {} as AttributeValue,
+  };
+  const raw = attributeTreeQuery.data.value;
+  if (!raw) return empty;
+
+  // find the root node in the tree, the only one with parent null
+  const rootId = Object.keys(raw.treeInfo).find((avId) => {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const av = raw.treeInfo[avId]!;
+    if (!av.parent) return true;
+    return false;
+  });
+  if (!rootId) return empty;
+
+  const tree = makeAvTree(raw, rootId);
+  return tree;
+});
 
 const domain = computed(() =>
   root.value?.children.find((c) => c.prop?.name === "domain"),
 );
 
-const filtered = reactive<{ tree: BifrostAttributeTree | object }>({
+const filtered = reactive<{ tree: AttributeTree | object }>({
   tree: {},
 });
 
@@ -77,7 +127,7 @@ watch(
     }
 
     // we need to access attrs by id
-    const map: Record<string, BifrostAttributeTree> = {};
+    const map: Record<string, AttributeTree> = {};
     map[domain.value.id] = domain.value;
     const walking = [...domain.value.children];
     // walk all the children and find if they match
@@ -86,10 +136,6 @@ watch(
       if (!attr) break;
       map[attr.id] = attr;
       walking.push(...attr.children);
-
-      // TODO fuzzy this
-      // if (attr.prop?.name.toLowerCase().startsWith(q.value.toLowerCase()))
-      // matches.push(attr);
     }
 
     const fzf = new Fzf(Object.values(map), {
@@ -100,7 +146,7 @@ watch(
 
     const results = fzf.find(q.value);
     // Maybe we want to get rid of low scoring options (via std dev)?
-    const matches: BifrostAttributeTree[] = results.map((fz) => fz.item);
+    const matches: AttributeTree[] = results.map((fz) => fz.item);
 
     // get new instances of all the objects with empty children arrays
     const parentsWithoutChildren = Object.values(map)
@@ -113,9 +159,9 @@ watch(
       .reduce((map, attr) => {
         map[attr.id] = attr;
         return map;
-      }, {} as Record<string, BifrostAttributeTree>);
+      }, {} as Record<string, AttributeTree>);
 
-    const matchesAsTree: Record<string, BifrostAttributeTree> = {};
+    const matchesAsTree: Record<string, AttributeTree> = {};
     // work backwards from the leaf node, filling in their parents children arrays
     // make sure there are no dupes b/c matches will give us dupes
     matches.forEach((attr) => {
@@ -124,7 +170,7 @@ watch(
       while (parents.length > 0) {
         const pId = parents.shift();
         if (!pId) throw new Error("no pid");
-        let p: BifrostAttributeTree | undefined;
+        let p: AttributeTree | undefined;
         p = matchesAsTree[pId];
         if (!p) p = parentsWithoutChildren[pId];
         if (p) {

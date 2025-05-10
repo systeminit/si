@@ -1,6 +1,6 @@
 <template>
   <ul class="p-xs flex flex-col gap-xs">
-    <template v-if="attributeValueId && codes">
+    <template v-if="componentId && codes">
       <CodeViewer
         v-for="(item, index) in codes"
         :key="item.name ?? index"
@@ -26,13 +26,14 @@ import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import { BifrostAttributeTree } from "@/workers/types/dbinterface";
 import CodeViewer from "@/components/CodeViewer.vue";
 import EmptyStateCard from "@/components/EmptyStateCard.vue";
+import { findAvsAtPropPath } from "./util";
 
 const props = defineProps<{
-  attributeValueId?: string;
+  componentId: string;
 }>();
 
-const attributeTreeMakeKey = makeKey("AttributeTree", props.attributeValueId);
-const attributeTreeMakeArgs = makeArgs("AttributeTree", props.attributeValueId);
+const attributeTreeMakeKey = makeKey("AttributeTree", props.componentId);
+const attributeTreeMakeArgs = makeArgs("AttributeTree", props.componentId);
 const attributeTreeQuery = useQuery<BifrostAttributeTree | null>({
   queryKey: attributeTreeMakeKey,
   queryFn: async () =>
@@ -42,23 +43,25 @@ const attributeTreeQuery = useQuery<BifrostAttributeTree | null>({
 const root = computed(() => attributeTreeQuery.data.value);
 
 const codes = computed(() => {
-  const codeValueTree = root.value?.children.find(
-    (child) => child.prop?.name === "code",
-  );
-  const itemTrees = codeValueTree?.children.filter(
-    (child) => child.prop?.name === "codeItem",
-  );
   const codes: { code: string; name: string | undefined }[] = [];
-  itemTrees?.forEach((tree) => {
-    const code = tree?.children.find((child) => child.prop?.name === "code")
-      ?.attributeValue.value;
-    if (code)
-      codes.push({
-        code,
-        name: tree.attributeValue.key,
-      });
+  if (!root.value) return codes;
+
+  const data = findAvsAtPropPath(root.value, [
+    "root",
+    "code",
+    "codeItem",
+    "code",
+  ]);
+  if (!data) return codes;
+  const { attributeValues } = data;
+
+  attributeValues.forEach((av) => {
+    codes.push({
+      code: av.value,
+      name: av.path?.split("/")[2], // "/code/<name>/code"
+    });
   });
-  if (codes.length === 0) return undefined;
+
   return codes;
 });
 </script>
