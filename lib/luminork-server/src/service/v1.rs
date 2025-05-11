@@ -33,6 +33,7 @@ pub use change_sets::{
         MergeStatusV1ResponseAction,
         MergeStatusV1ResponseActionComponent,
     },
+    purge_open::PurgeOpenChangeSetsV1Response,
 };
 pub use components::{
     ComponentPropKey,
@@ -126,6 +127,7 @@ pub use crate::api_types::{
         change_sets::force_apply::force_apply,
         change_sets::merge_status::merge_status,
         change_sets::request_approval::request_approval,
+        change_sets::purge_open::purge_open,
         components::get_component::get_component,
         components::create_component::create_component,
         components::list_components::list_components,
@@ -159,6 +161,7 @@ pub use crate::api_types::{
             DeleteChangeSetV1Response,
             ListChangeSetV1Response,
             GetChangeSetV1Response,
+            PurgeOpenChangeSetsV1Response,
             MergeStatusV1Response,
             MergeStatusV1ResponseAction,
             MergeStatusV1ResponseActionComponent,

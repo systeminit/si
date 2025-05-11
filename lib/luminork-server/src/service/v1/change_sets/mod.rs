@@ -15,6 +15,7 @@ pub mod force_apply;
 pub mod get;
 pub mod list;
 pub mod merge_status;
+pub mod purge_open;
 pub mod request_approval;
 
 use super::common::ErrorIntoResponse;
