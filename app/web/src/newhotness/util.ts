@@ -1,6 +1,29 @@
 import { Ref, unref } from "vue";
+import { IconNames } from "@si/vue-lib/design-system";
 import { BifrostAttributeTree } from "@/workers/types/dbinterface";
 import { Toggle } from "./logic_composables/toggle_containers";
+
+export const getAssetIcon = (name: string) => {
+  const icons = {
+    AWS: "logo-aws",
+    "AWS EC2": "logo-aws",
+    CoreOS: "logo-coreos",
+    Docker: "logo-docker",
+    Kubernetes: "logo-k8s",
+  } as Record<string, string>;
+
+  let icon = icons[name];
+
+  if (!icon) {
+    for (const k in icons) {
+      if (name.includes(k)) {
+        icon = icons[k];
+      }
+    }
+  }
+
+  return (icon || "logo-si") as IconNames; // fallback to SI logo
+};
 
 /**
  * Specify the height of a collapsed grid when its closed (e.g. just enough to show a header)
