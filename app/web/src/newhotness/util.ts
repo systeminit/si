@@ -1,4 +1,5 @@
 import { Ref, unref } from "vue";
+import { BifrostAttributeTree } from "@/workers/types/dbinterface";
 import { Toggle } from "./logic_composables/toggle_containers";
 
 /**
@@ -30,4 +31,30 @@ export const collapsingGridStyles = (
 export const filterMissingAtom = (obj: unknown) => {
   if (obj === -1) return {};
   return obj;
+};
+
+// Used in the component page vue components
+export const findAvsAtPropPath = (
+  data: BifrostAttributeTree,
+  parts: string[],
+) => {
+  const path = parts.join("\u000b");
+  const propId = Object.keys(data.props).find((pId) => {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const p = data.props[pId]!;
+    if (p.path === path) return true;
+    return false;
+  });
+  if (!propId) return null;
+  const avIds = Object.keys(data.attributeValues).filter((avId) => {
+    const a = data.attributeValues[avId];
+    if (a?.propId === propId) return true;
+    return false;
+  });
+  if (avIds.length === 0) return null;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const prop = data.props[propId]!;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const attributeValues = avIds.map((avId) => data.attributeValues[avId]!);
+  return { prop, attributeValues };
 };

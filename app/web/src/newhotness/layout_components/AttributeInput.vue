@@ -3,7 +3,10 @@
   <label
     ref="anchorRef"
     :class="
-      clsx(showOptions && 'bg-neutral-500', 'pl-xs flex flex-row items-center')
+      clsx(
+        showOptions && 'bg-neutral-500',
+        'pl-xs flex flex-row items-center relative',
+      )
     "
   >
     <span>{{ displayName }}</span>
@@ -68,7 +71,6 @@ import { computed, reactive, ref, watch } from "vue";
 import clsx from "clsx";
 import { Icon } from "@si/vue-lib/design-system";
 import { Fzf } from "fzf";
-import { BifrostAttributeTree } from "@/workers/types/dbinterface";
 import {
   PropertyEditorPropWidgetKindComboBox,
   PropertyEditorPropWidgetKindSelect,
@@ -76,9 +78,10 @@ import {
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
 import { attributeEmitter } from "../logic_composables/emitters";
 import { useWatchedForm } from "../logic_composables/watched_form";
+import { AttributeTree } from "../AttributePanel.vue";
 
 const props = defineProps<{
-  attributeTree: BifrostAttributeTree;
+  attributeTree: AttributeTree;
   displayName: string;
 }>();
 
@@ -88,8 +91,10 @@ const optionRef = ref<InstanceType<typeof HTMLDivElement>>();
 const path = computed(() => {
   // fix the MV! for arrays path": "root\u000bdomain\u000btags\u000btag"
   // we need the _last_ `tag` it needs to be the index (e.g. 0, 1, 2...)
+  // update: this is fixed!
   let path = props.attributeTree.prop?.path ?? "";
   // fix the MV!
+  // update: this is still in there :(
   path = path.replaceAll("\u000b", "/");
   return path;
 });

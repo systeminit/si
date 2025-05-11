@@ -2,7 +2,7 @@
   <ul class="p-xs flex flex-col gap-xs">
     <QualificationView
       v-for="item in items"
-      :key="item.av_id"
+      :key="item.avId"
       :qualification="item"
     />
   </ul>
@@ -13,66 +13,84 @@ import { useQuery } from "@tanstack/vue-query";
 import { computed } from "vue";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
+  AttributeValue,
   BifrostAttributeTree,
   BifrostComponent,
+  Prop,
 } from "@/workers/types/dbinterface";
 import QualificationView from "@/newhotness/QualificationView.vue";
 import { AttributeValueId } from "@/store/status.store";
 import { QualificationStatus } from "@/store/qualifications.store";
+import { findAvsAtPropPath } from "./util";
 
 export interface QualItem {
-  name: string;
-  message: string;
-  result: QualificationStatus;
-  av_id?: AttributeValueId;
+  name?: string;
+  message?: string;
+  result?: QualificationStatus;
+  avId?: AttributeValueId;
 }
 
 const props = defineProps<{
-  attributeValueId: string;
   component: BifrostComponent;
 }>();
 
-const attributeValueId = computed(() => props.attributeValueId);
+const componentId = computed(() => props.component.id);
 
 const key = useMakeKey();
 const args = useMakeArgs();
 const attributeTreeQuery = useQuery<BifrostAttributeTree | null>({
-  queryKey: key("AttributeTree", attributeValueId),
+  queryKey: key("AttributeTree", componentId),
   queryFn: async () =>
     await bifrost<BifrostAttributeTree>(
-      args("AttributeTree", attributeValueId.value),
+      args("AttributeTree", componentId.value),
     ),
 });
 
 const root = computed(() => attributeTreeQuery.data.value);
 
-const domain = computed(() =>
-  root.value?.children.find((c) => c.prop?.name === "domain"),
-);
-
-const quals = computed(() =>
-  root.value?.children.find((c) => c.prop?.name === "qualification"),
-);
+const qualItems = computed<QualItem[]>(() => {
+  const items: QualItem[] = [];
+  if (!root.value) return items;
+  const r = root.value;
+  const data = findAvsAtPropPath(r, [
+    "root",
+    "qualification",
+    "qualificationItem",
+  ]);
+  if (!data) return items;
+  const { attributeValues } = data;
+  attributeValues.forEach((av) => {
+    const name = av.key;
+    const children = r.treeInfo[av.id]?.children ?? [];
+    let result;
+    let message;
+    children.forEach((avId) => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const child = r.attributeValues[avId]!;
+      if (child.path?.endsWith("result")) result = child.value;
+      else if (child.path?.endsWith("message")) message = child.value;
+    });
+    items.push({
+      avId: av.id,
+      name,
+      result,
+      message,
+    });
+  });
+  return items;
+});
 
 const validations = computed(() => {
-  const output: BifrostAttributeTree[] = [];
-  if (!domain.value) return output;
-  const getValidations = (c: BifrostAttributeTree) =>
-    c.validation?.status && c.validation?.status !== "Success";
-  const walking = [...domain.value.children];
-  // walk all the children and find if they match
-  while (walking.length > 0) {
-    const c = walking.shift();
-    if (!c) break;
-    walking.push(...c.children);
-
-    const v = getValidations(c);
-    if (v) {
-      output.push(c);
+  const avsWithValidation: { prop?: Prop; attributeValue: AttributeValue }[] =
+    [];
+  if (!root.value) return avsWithValidation;
+  Object.values(root.value.attributeValues).forEach((attributeValue) => {
+    if (attributeValue.validation !== null) {
+      const prop = root.value?.props[attributeValue.propId ?? ""];
+      avsWithValidation.push({ attributeValue, prop });
     }
-  }
-
-  return output;
+  });
+  return avsWithValidation;
 });
 
 // TODO(Wendy) - this is very annoying!
@@ -91,33 +109,18 @@ const fixStatus = (status: string): QualificationStatus => {
 };
 
 const items = computed<QualItem[]>(() => {
-  const qualItems =
-    quals.value?.children.map((c): QualItem => {
-      const name = c.attributeValue.key ?? "";
-      const message =
-        c.children.find((_c) => _c.prop?.name === "message")?.attributeValue
-          .value ?? "";
-      const result = (c.children.find((_c) => _c.prop?.name === "result")
-        ?.attributeValue.value ?? "running") as QualificationStatus;
-      const av_id = c.id;
-      return {
-        name,
-        message,
-        result,
-        av_id,
-      };
-    }) ?? [];
+  const items = [...qualItems.value];
 
-  validations.value.forEach((v) => {
-    if (v.validation && v.prop) {
-      qualItems.push({
-        name: v.prop.name,
-        message: v.validation.message || "",
-        result: fixStatus(v.validation.status),
+  validations.value.forEach(({ attributeValue, prop }) => {
+    if (attributeValue.validation && prop) {
+      items.push({
+        name: prop.name,
+        message: attributeValue.validation.message || "",
+        result: fixStatus(attributeValue.validation.status),
       });
     }
   });
 
-  return qualItems;
+  return items;
 });
 </script>
