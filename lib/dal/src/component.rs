@@ -1216,7 +1216,8 @@ impl Component {
                     destination_component_id,
                 }) = apa.targets()
                 {
-                    let prototype_id = apa.prototype_id(ctx).await?;
+                    let prototype_id =
+                        AttributePrototypeArgument::prototype_id(ctx, apa_id).await?;
                     let input_sources =
                         AttributePrototype::input_sources(ctx, prototype_id).await?;
                     if input_sources.len() > 1 {
@@ -3234,7 +3235,9 @@ impl Component {
                     AttributePrototypeArgument::get_by_id(ctx, argument_using_id).await?;
                 if let Some(targets) = argument_using.targets() {
                     if targets.source_component_id == self.id() {
-                        let prototype_id = argument_using.prototype_id(ctx).await?;
+                        let prototype_id =
+                            AttributePrototypeArgument::prototype_id(ctx, argument_using_id)
+                                .await?;
                         for maybe_downstream_av_id in
                             AttributePrototype::attribute_value_ids(ctx, prototype_id).await?
                         {

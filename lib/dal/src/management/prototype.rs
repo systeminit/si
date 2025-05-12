@@ -331,9 +331,7 @@ impl ManagementPrototype {
 
         let sv_id = snapshot.get_node_weight(sv_source_idx).await?.id();
 
-        Ok(Some(
-            SchemaVariant::schema_id_for_schema_variant_id(ctx, sv_id.into()).await?,
-        ))
+        Ok(Some(SchemaVariant::schema_id(ctx, sv_id.into()).await?))
     }
 
     pub async fn new(

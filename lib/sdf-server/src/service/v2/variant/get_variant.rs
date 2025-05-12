@@ -43,7 +43,7 @@ pub async fn get_variant(
         .await?;
 
     let schema_variant = SchemaVariant::get_by_id(&ctx, schema_variant_id).await?;
-    let schema_id = SchemaVariant::schema_id_for_schema_variant_id(&ctx, schema_variant_id).await?;
+    let schema_id = SchemaVariant::schema_id(&ctx, schema_variant_id).await?;
     let schema_variant = schema_variant.into_frontend_type(&ctx, schema_id).await?;
 
     track(

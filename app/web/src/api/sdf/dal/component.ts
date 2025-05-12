@@ -71,24 +71,30 @@ export interface RawComponent {
 export type EdgeId = string;
 export type SocketId = string;
 
-export type RawEdge = {
+// This encompasses all edges, from socket connections to management edges to subscriptions
+// (which don't have sockets)
+export interface ComponentEdge {
   fromComponentId: ComponentId;
-  fromSocketId: SocketId;
   toComponentId: ComponentId;
-  toSocketId: SocketId;
   toDelete: boolean;
   /** change status of edge in relation to head */
   changeStatus?: ChangeStatus;
+}
+
+export interface RawEdge extends ComponentEdge {
+  fromSocketId: SocketId;
+  toSocketId: SocketId;
+  // TODO this does not exist for management edges or subscriptions
   createdInfo: ActorAndTimestamp;
   // updatedInfo?: ActorAndTimestamp; // currently we dont ever update an edge...
   deletedInfo?: ActorAndTimestamp;
-};
+}
 
-export type Edge = RawEdge & {
+export interface Edge extends RawEdge {
   id: EdgeId;
   isInferred: boolean;
   isManagement?: boolean;
-};
+}
 
 export interface PotentialConnection {
   socketId: SocketId;

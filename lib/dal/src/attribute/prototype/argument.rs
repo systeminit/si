@@ -511,7 +511,7 @@ impl AttributePrototypeArgument {
         Ok(())
     }
 
-    pub async fn prototype_id_for_argument_id(
+    pub async fn prototype_id(
         ctx: &DalContext,
         attribute_prototype_argument_id: AttributePrototypeArgumentId,
     ) -> AttributePrototypeArgumentResult<AttributePrototypeId> {
@@ -541,13 +541,6 @@ impl AttributePrototypeArgument {
         let prototype_node_weight = workspace_snapshot.get_node_weight(prototype_idx).await?;
 
         Ok(prototype_node_weight.id().into())
-    }
-
-    pub async fn prototype_id(
-        &self,
-        ctx: &DalContext,
-    ) -> AttributePrototypeArgumentResult<AttributePrototypeId> {
-        Self::prototype_id_for_argument_id(ctx, self.id).await
     }
 
     pub async fn set_value_from_input_socket_id(
@@ -734,7 +727,7 @@ impl AttributePrototypeArgument {
     /// A _private_ method that consumes self and removes the corresponding
     /// [`AttributePrototypeArgument`].
     async fn remove_inner(self, ctx: &DalContext) -> AttributePrototypeArgumentResult<()> {
-        let prototype_id = self.prototype_id(ctx).await?;
+        let prototype_id = Self::prototype_id(ctx, self.id).await?;
         // Find all of the "destination" attribute values.
         let mut avs_to_update = AttributePrototype::attribute_value_ids(ctx, prototype_id).await?;
         // If the argument has targets, then we only care about AVs that are for the same

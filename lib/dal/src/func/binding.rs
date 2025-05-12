@@ -473,8 +473,7 @@ impl FuncBinding {
         for binding in bindings {
             if let Some(schema_variant_id) = binding.get_schema_variant() {
                 // check the schema for this variant
-                let schema_id =
-                    SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
+                let schema_id = SchemaVariant::schema_id(ctx, schema_variant_id).await?;
                 let maybe_variant = schema_variant_map.get(&schema_id);
                 match maybe_variant {
                     Some(_) => {
@@ -511,8 +510,7 @@ impl FuncBinding {
         for binding in bindings {
             if let Some(schema_variant_id) = binding.get_schema_variant() {
                 // check the schema for this variant
-                let schema =
-                    SchemaVariant::schema_id_for_schema_variant_id(ctx, schema_variant_id).await?;
+                let schema = SchemaVariant::schema_id(ctx, schema_variant_id).await?;
                 // check the map
                 let maybe_default_for_variant = schema_default_map.get_key_value(&schema);
                 match maybe_default_for_variant {

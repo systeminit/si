@@ -68,12 +68,10 @@ async fn list_attribute_prototype_argument_ids(ctx: &DalContext) {
         .pop()
         .expect("empty attribute prototype argument ids");
     assert!(attribute_prototype_argument_ids.is_empty());
-    let attribute_prototype_id = AttributePrototypeArgument::prototype_id_for_argument_id(
-        ctx,
-        attribute_prototype_argument_id,
-    )
-    .await
-    .expect("could not get attribute prototype id");
+    let attribute_prototype_id =
+        AttributePrototypeArgument::prototype_id(ctx, attribute_prototype_argument_id)
+            .await
+            .expect("could not get attribute prototype id");
     let found_func_id = AttributePrototype::func_id(ctx, attribute_prototype_id)
         .await
         .expect("could not get func id");

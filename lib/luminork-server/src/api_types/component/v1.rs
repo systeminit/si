@@ -311,7 +311,7 @@ impl ComponentViewV1 {
 
         let result = ComponentViewV1 {
             id: component_id,
-            schema_id: schema_variant.schema_id(ctx).await?,
+            schema_id: SchemaVariant::schema_id(ctx, schema_variant.id()).await?,
             schema_variant_id: schema_variant.id(),
             sockets,
             domain_props,

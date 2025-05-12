@@ -23,26 +23,34 @@ use si_frontend_types::{
     DiagramComponentView,
     DiagramSocket,
 };
+use si_id::{
+    AttributePrototypeId,
+    AttributeValueId,
+    ComponentId,
+    GeometryId,
+    InputSocketId,
+    OutputSocketId,
+    SchemaId,
+    SchemaVariantId,
+    ViewId,
+};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    AttributePrototypeId,
+    AttributePrototype,
+    AttributeValue,
     ChangeSetError,
     Component,
-    ComponentId,
     DalContext,
+    EdgeWeightKind,
     EdgeWeightKindDiscriminants,
     FuncError,
     HelperError,
     HistoryEventError,
-    InputSocketId,
     NodeWeightDiscriminants,
-    OutputSocketId,
-    SchemaId,
     SchemaVariant,
-    SchemaVariantId,
     TenancyError,
     TransactionsError,
     Workspace,
@@ -50,9 +58,14 @@ use crate::{
     WorkspaceSnapshot,
     approval_requirement::ApprovalRequirementError,
     attribute::{
-        prototype::argument::{
-            AttributePrototypeArgumentError,
-            AttributePrototypeArgumentId,
+        path::AttributePath,
+        prototype::{
+            AttributePrototypeError,
+            argument::{
+                AttributePrototypeArgument,
+                AttributePrototypeArgumentError,
+                AttributePrototypeArgumentId,
+            },
         },
         value::AttributeValueError,
     },
@@ -67,12 +80,10 @@ use crate::{
     diagram::{
         geometry::{
             Geometry,
-            GeometryId,
             GeometryRepresents,
         },
         view::{
             View,
-            ViewId,
             ViewObjectView,
         },
     },
@@ -99,6 +110,8 @@ use crate::{
 pub enum DiagramError {
     #[error("approval requirement error: {0}")]
     ApprovalRequirement(#[from] ApprovalRequirementError),
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute prototype not found")]
@@ -247,6 +260,7 @@ impl SummaryDiagramEdge {
         })
     }
 }
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(rename_all(serialize = "camelCase"))]
 pub struct SummaryDiagramInferredEdge {
@@ -315,6 +329,18 @@ impl SummaryDiagramManagementEdge {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all(serialize = "camelCase"))]
+pub struct SummaryDiagramAttributeSubscriptionEdge {
+    pub from_component_id: ComponentId,
+    pub from_attribute_path: String,
+    pub to_component_id: ComponentId,
+    pub to_attribute_value_id: AttributeValueId,
+    // this is inferred by if either the to or from component is marked to_delete
+    pub to_delete: bool,
+    pub change_status: ChangeStatus,
+}
+
 struct ComponentInfo {
     component: Component,
     geometry: Option<Geometry>,
@@ -342,13 +368,15 @@ pub struct Diagram {
     pub edges: Vec<SummaryDiagramEdge>,
     pub inferred_edges: Vec<SummaryDiagramInferredEdge>,
     pub management_edges: Vec<SummaryDiagramManagementEdge>,
+    pub attribute_subscription_edges: Vec<SummaryDiagramAttributeSubscriptionEdge>,
     pub views: Vec<ViewObjectView>,
 }
 
 pub struct DiagramComponentViews {
-    component_views: Vec<DiagramComponentView>,
-    diagram_edges: Vec<SummaryDiagramEdge>,
-    management_edges: Vec<SummaryDiagramManagementEdge>,
+    pub component_views: Vec<DiagramComponentView>,
+    pub diagram_edges: Vec<SummaryDiagramEdge>,
+    pub management_edges: Vec<SummaryDiagramManagementEdge>,
+    pub attribute_subscription_edges: Vec<SummaryDiagramAttributeSubscriptionEdge>,
 }
 
 impl Diagram {
@@ -362,6 +390,7 @@ impl Diagram {
         let mut component_views = Vec::with_capacity(components.len());
         let mut diagram_edges = Vec::with_capacity(components.len());
         let mut management_edges = Vec::with_capacity(components.len() / 2);
+        let mut attribute_subscription_edges = Vec::with_capacity(components.len());
 
         for ComponentInfo {
             component,
@@ -437,13 +466,71 @@ impl Diagram {
                     )?);
                 }
             }
+
+            let from_root_av_id = Component::root_attribute_value_id(ctx, component.id()).await?;
+            let base_subscribers = Self::get_subscribers(base_snapshot, from_root_av_id).await;
+            for subscriber in
+                Self::get_subscribers(&ctx.workspace_snapshot()?, from_root_av_id).await
+            {
+                let (_, to_apa_id) = subscriber;
+                let to_ap_id = AttributePrototypeArgument::prototype_id(ctx, to_apa_id).await?;
+                if let Some(to_attribute_value_id) =
+                    AttributePrototype::attribute_value_id(ctx, to_ap_id).await?
+                {
+                    let to_component_id =
+                        AttributeValue::component_id(ctx, to_attribute_value_id).await?;
+                    if let Some(ComponentInfo {
+                        component: to_component,
+                        ..
+                    }) = components.get(&to_component_id)
+                    {
+                        let change_status = if base_subscribers.contains(&subscriber) {
+                            ChangeStatus::Unmodified
+                        } else {
+                            ChangeStatus::Added
+                        };
+                        attribute_subscription_edges.push(
+                            SummaryDiagramAttributeSubscriptionEdge {
+                                from_component_id: component.id(),
+                                from_attribute_path: subscriber.0,
+                                to_component_id,
+                                to_attribute_value_id,
+                                change_status,
+                                to_delete: component.to_delete() || to_component.to_delete(),
+                            },
+                        );
+                    }
+                }
+            }
         }
 
         Ok(DiagramComponentViews {
             component_views,
             diagram_edges,
             management_edges,
+            attribute_subscription_edges,
         })
+    }
+
+    async fn get_subscribers(
+        snapshot: &WorkspaceSnapshotSelector,
+        subscribed_to_av_id: AttributeValueId,
+    ) -> HashSet<(String, AttributePrototypeArgumentId)> {
+        let Ok(edges) = snapshot
+            .edges_directed(subscribed_to_av_id, Direction::Incoming)
+            .await
+        else {
+            return HashSet::new();
+        };
+        edges
+            .into_iter()
+            .filter_map(|(edge, source_ulid, _)| match edge.kind {
+                EdgeWeightKind::ValueSubscription(path) => match path {
+                    AttributePath::JsonPointer(path) => Some((path, source_ulid.into())),
+                },
+                _ => None,
+            })
+            .collect()
     }
 
     #[instrument(level = "info", skip_all)]
@@ -701,7 +788,7 @@ impl Diagram {
     #[instrument(level = "info", skip_all)]
     async fn assemble_removed_management_edges(
         ctx: &DalContext,
-        base_snapshot: WorkspaceSnapshotSelector,
+        base_snapshot: &WorkspaceSnapshotSelector,
     ) -> DiagramResult<Vec<SummaryDiagramManagementEdge>> {
         let mut removed_edges = vec![];
 
@@ -729,8 +816,7 @@ impl Diagram {
         let head_ctx = ctx.clone_with_head().await?;
         for from_id in Component::list_ids(&head_ctx).await? {
             let from_sv = Component::schema_variant_for_component_id(&head_ctx, from_id).await?;
-            let from_schema_id =
-                SchemaVariant::schema_id_for_schema_variant_id(&head_ctx, from_sv.id()).await?;
+            let from_schema_id = SchemaVariant::schema_id(&head_ctx, from_sv.id()).await?;
 
             for (_, _, to_id) in base_snapshot
                 .edges_directed_for_edge_weight_kind(
@@ -742,8 +828,7 @@ impl Diagram {
             {
                 let to_sv =
                     Component::schema_variant_for_component_id(&head_ctx, to_id.into()).await?;
-                let to_schema_id =
-                    SchemaVariant::schema_id_for_schema_variant_id(&head_ctx, to_sv.id()).await?;
+                let to_schema_id = SchemaVariant::schema_id(&head_ctx, to_sv.id()).await?;
 
                 if existing_management_edges.contains(&(from_id, to_id.into())) {
                     continue;
@@ -760,6 +845,20 @@ impl Diagram {
         }
 
         Ok(removed_edges)
+    }
+
+    /// If a subscription is in the base snapshot, but not in the current
+    /// snapshot, that means it has been deleted. If one of the components is
+    /// not in this changeset, we can ignore the deleted edge, since we won't
+    /// render it. If the components are restored from the base, the edge will
+    /// *magically* reappear as deleted.
+    #[instrument(level = "info", skip_all)]
+    async fn assemble_removed_attribute_subscription_edges(
+        _ctx: &DalContext,
+        _base_snapshot: &WorkspaceSnapshotSelector,
+    ) -> DiagramResult<Vec<SummaryDiagramAttributeSubscriptionEdge>> {
+        // TODO implement this
+        Ok(vec![])
     }
 
     /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
@@ -848,10 +947,15 @@ impl Diagram {
             let removed_edges = Self::assemble_removed_edges(ctx).await?;
             diagram_component_views.diagram_edges.extend(removed_edges);
             let removed_management_edges =
-                Self::assemble_removed_management_edges(ctx, base_snapshot).await?;
+                Self::assemble_removed_management_edges(ctx, &base_snapshot).await?;
             diagram_component_views
                 .management_edges
                 .extend(removed_management_edges);
+            let removed_attribute_subscription_edges =
+                Self::assemble_removed_attribute_subscription_edges(ctx, &base_snapshot).await?;
+            diagram_component_views
+                .attribute_subscription_edges
+                .extend(removed_attribute_subscription_edges);
         }
 
         Ok(Self {
@@ -859,6 +963,7 @@ impl Diagram {
             components: diagram_component_views.component_views,
             inferred_edges: diagram_inferred_edges,
             management_edges: diagram_component_views.management_edges,
+            attribute_subscription_edges: diagram_component_views.attribute_subscription_edges,
             views,
         })
     }
