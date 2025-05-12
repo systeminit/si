@@ -208,7 +208,7 @@ impl InnitClient {
 }
 
 async fn generate_cert_from_acmpca(ca_arn: String, for_app: String) -> Result<CertificateSource> {
-    let acmpca_client = PrivateCertManagerClient::new().await;
+    let acmpca_client = PrivateCertManagerClient::new().await?;
     info!("Generating cert for ARN: {ca_arn}");
     let (cert, _) = acmpca_client
         .get_new_cert_from_ca(ca_arn, for_app, "innit".to_string())

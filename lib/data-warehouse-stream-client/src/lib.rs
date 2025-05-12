@@ -30,6 +30,10 @@ use aws_sdk_firehose::{
     primitives::Blob,
     types::Record,
 };
+use si_aws_config::{
+    AwsConfig,
+    AwsConfigError,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -37,6 +41,8 @@ use thiserror::Error;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum DataWarehouseStreamClientError {
+    #[error("AWS Config Error error: {0}")]
+    AwsConfig(#[from] AwsConfigError),
     #[error("firehose error: {0}")]
     Firehose(#[from] aws_sdk_firehose::Error),
     #[error("firehose build error: {0}")]
@@ -61,13 +67,15 @@ impl DataWarehouseStreamClient {
         level = "info",
         skip(delivery_stream_name)
     )]
-    pub async fn new(delivery_stream_name: impl Into<String>) -> Self {
-        let config = aws_config::load_from_env().await;
+    pub async fn new(
+        delivery_stream_name: impl Into<String>,
+    ) -> DataWarehouseStreamClientResult<Self> {
+        let config = AwsConfig::from_env().await?;
         let client = aws_sdk_firehose::Client::new(&config);
-        Self {
+        Ok(Self {
             inner: Box::new(client),
             delivery_stream_name: delivery_stream_name.into(),
-        }
+        })
     }
 
     /// Publishes a message to a stream to a data warehouse.

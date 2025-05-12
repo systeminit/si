@@ -27,14 +27,20 @@
 
 use std::fmt::Debug;
 
-use aws_config::Region;
 use aws_sdk_ssm::{
-    config::Credentials,
+    config::{
+        Credentials,
+        Region,
+    },
     error::SdkError,
     types::{
         Parameter,
         ParameterType,
     },
+};
+use si_aws_config::{
+    AwsConfig,
+    AwsConfigError,
 };
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -43,6 +49,8 @@ use thiserror::Error;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ParameterStoreClientError {
+    #[error("AWS Config Error error: {0}")]
+    AwsConfig(#[from] AwsConfigError),
     #[error("AWS Parameter Store error: {0}")]
     AwsParameterStore(String),
     #[error("Parameter path invalid, must start with /: {0}")]
@@ -70,12 +78,12 @@ pub struct ParameterStoreClient {
 impl ParameterStoreClient {
     /// Creates a new [client for interacting with SSM Parameter Store](ParameterStoreClient).
     #[instrument(name = "parameter_store_client.new", level = "info")]
-    pub async fn new() -> Self {
-        let config = aws_config::load_from_env().await;
+    pub async fn new() -> ParameterStoreClientResult<Self> {
+        let config = AwsConfig::from_env().await?;
         let client = aws_sdk_ssm::Client::new(&config);
-        Self {
+        Ok(Self {
             inner: Box::new(client),
-        }
+        })
     }
 
     /// Creates a [ParameterStoreClient] configured for testing (e.g., LocalStack).

@@ -51,6 +51,10 @@ use rcgen::{
     KeyPair,
     KeyUsagePurpose,
 };
+use si_aws_config::{
+    AwsConfig,
+    AwsConfigError,
+};
 use si_tls::{
     CertificateSource,
     KeySource,
@@ -64,6 +68,8 @@ const DEFAULT_CERT_VALIDITY: i64 = 7;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum PrivateCertManagerClientError {
+    #[error("AWS Config Error error: {0}")]
+    AwsConfig(#[from] AwsConfigError),
     #[error("AWS ACM PCA error: {0}")]
     AwsPrivateCertManager(String),
     #[error("Certificate Authority not found with arn: {0}")]
@@ -95,12 +101,12 @@ pub struct PrivateCertManagerClient {
 impl PrivateCertManagerClient {
     /// Creates a new [client for interacting with ACM PCA](PrivateCertManagerClient).
     #[instrument(name = "private_cert_manager_client.new", level = "info")]
-    pub async fn new() -> Self {
-        let config = aws_config::load_from_env().await;
+    pub async fn new() -> PrivateCertManagerClientResult<Self> {
+        let config = AwsConfig::from_env().await?;
         let client = aws_sdk_acmpca::Client::new(&config);
-        Self {
+        Ok(Self {
             inner: Box::new(client),
-        }
+        })
     }
 
     /// Gets a CA

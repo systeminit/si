@@ -15,7 +15,10 @@ use billing_events::{
     BillingEventsError,
     BillingEventsWorkQueue,
 };
-use data_warehouse_stream_client::DataWarehouseStreamClient;
+use data_warehouse_stream_client::{
+    DataWarehouseStreamClient,
+    DataWarehouseStreamClientError,
+};
 use naxum::{
     MessageHead,
     ServiceBuilder,
@@ -66,6 +69,8 @@ pub enum BillingEventsAppSetupError {
     AsyncNatsStream(#[from] AsyncNatsError<StreamErrorKind>),
     #[error("billing events error: {0}")]
     BillingEvents(#[from] BillingEventsError),
+    #[error("data warehouse error: {0}")]
+    DataWarehouse(#[from] DataWarehouseStreamClientError),
 }
 
 type Result<T> = std::result::Result<T, BillingEventsAppSetupError>;
@@ -102,7 +107,7 @@ pub(crate) async fn build_and_run(
     let inner = match data_warehouse_stream_name {
         Some(stream_name) => {
             info!(%stream_name, "creating billing events app in data warehouse stream delivery mode...");
-            let client = DataWarehouseStreamClient::new(stream_name).await;
+            let client = DataWarehouseStreamClient::new(stream_name).await?;
             let state = AppState::new(client);
             build_app(
                 state,
