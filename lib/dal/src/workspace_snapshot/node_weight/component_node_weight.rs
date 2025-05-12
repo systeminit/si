@@ -423,7 +423,7 @@ impl CorrectTransforms for ComponentNodeWeight {
     ) -> CorrectTransformsResult<Vec<Update>> {
         // New components don't have any corrective transforms.
         let component_id: ComponentId = self.id.into();
-        let Some(component) = graph.get_node_index_by_id_opt(component_id) else {
+        let Some(component_node_idx) = graph.get_node_index_by_id_opt(component_id) else {
             return Ok(updates);
         };
 
@@ -445,8 +445,9 @@ impl CorrectTransforms for ComponentNodeWeight {
                     && is_self(destination) =>
                 {
                     // We want to remove any existing FrameContains edges and honor this AddEdge.
-                    remove_edges
-                        .extend(graph.incoming_edges(component, EdgeWeightKind::FrameContains));
+                    remove_edges.extend(
+                        graph.incoming_edges(component_node_idx, EdgeWeightKind::FrameContains),
+                    );
                 }
 
                 // If the component is being deleted, the RemoveEdges may be stale (from an old
@@ -494,14 +495,16 @@ impl CorrectTransforms for ComponentNodeWeight {
                     // Root props and sockets get all new AttributeValues during upgrade, but
                     // the RemoveEdges for the old ones may be stale; RemoveEdge the real ones
                     // just in case.
-                    remove_edges.extend(graph.outgoing_edges(component, EdgeWeightKind::Root));
                     remove_edges
-                        .extend(graph.outgoing_edges(component, EdgeWeightKind::SocketValue));
+                        .extend(graph.outgoing_edges(component_node_idx, EdgeWeightKind::Root));
+                    remove_edges.extend(
+                        graph.outgoing_edges(component_node_idx, EdgeWeightKind::SocketValue),
+                    );
 
                     // Input and output sockets get new connection PrototypeArguments during
                     // upgrade, but the RemoveEdge for the old ones may be stale; remove
                     // all existing connection nodes just in case.
-                    let connections = sockets(graph, component).flat_map(|socket| {
+                    let connections = sockets(graph, component_node_idx).flat_map(|socket| {
                         input_socket_connections(graph, component_id, socket)
                             .chain(output_socket_connections(graph, component_id, socket))
                     });
@@ -517,12 +520,27 @@ impl CorrectTransforms for ComponentNodeWeight {
 
         if component_will_be_deleted {
             updates.extend(remove_hanging_socket_connections(
-                graph, self.id, component,
+                graph,
+                self.id,
+                component_node_idx,
             )?);
+
+            // All edges incoming to the root attribute value node (for example, ValueSubscription edges)
+            // must be deleted, so that the attribute value tree disappears from the graph on cleanup.
+            if let Some((_, _, root_av_idx)) = graph
+                .edges_directed_for_edge_weight_kind(
+                    component_node_idx,
+                    Outgoing,
+                    EdgeWeightKindDiscriminants::Root,
+                )
+                .next()
+            {
+                remove_edges.extend(graph.edges_directed(root_av_idx, Incoming));
+            }
 
             // Also remove any incoming edges to the component in case there
             // is a frame contains in another change set
-            remove_edges.extend(graph.edges_directed(component, Incoming));
+            remove_edges.extend(graph.edges_directed(component_node_idx, Incoming));
         }
 
         // Prepend any RemoveEdges so they happen *before* any NewEdge
