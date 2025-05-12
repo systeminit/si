@@ -8,7 +8,7 @@ mod change_sets;
 pub mod common;
 mod components;
 mod funcs;
-mod schema;
+mod schemas;
 mod secrets;
 mod workspaces;
 
@@ -81,9 +81,10 @@ pub use funcs::{
     get_func::GetFuncV1Response,
     get_func_run::GetFuncRunV1Response,
 };
-pub use schema::{
+pub use schemas::{
     GetSchemaV1Response,
     GetSchemaVariantV1Response,
+    PropSchemaV1,
     SchemaError,
     SchemaV1RequestPath,
     SchemaVariantV1RequestPath,
@@ -91,7 +92,7 @@ pub use schema::{
         FindSchemaV1Params,
         FindSchemaV1Response,
     },
-    list_schema::ListSchemaV1Response,
+    list_schemas::ListSchemaV1Response,
 };
 pub use workspaces::WorkspaceError;
 
@@ -136,11 +137,11 @@ pub use crate::api_types::{
         components::delete_component::delete_component,
         components::execute_management_function::execute_management_function,
         components::add_action::add_action,
-        schema::list_schema::list_schemas,
-        schema::find_schema::find_schema,
-        schema::get_schema::get_schema,
-        schema::get_variant::get_variant,
-        schema::get_default_variant::get_default_variant,
+        schemas::list_schemas::list_schemas,
+        schemas::find_schema::find_schema,
+        schemas::get_schema::get_schema,
+        schemas::get_variant::get_variant,
+        schemas::get_default_variant::get_default_variant,
         funcs::get_func_run::get_func_run,
         funcs::get_func::get_func,
         actions::cancel_action::cancel_action,
@@ -201,6 +202,7 @@ pub use crate::api_types::{
             OutputLineViewV1,
             GetFuncV1Response,
             GetFuncRunV1Response,
+            PropSchemaV1,
             CancelActionV1Response,
             RetryActionV1Response,
             GetActionsV1Response,

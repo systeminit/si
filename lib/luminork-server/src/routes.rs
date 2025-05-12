@@ -92,7 +92,7 @@ async fn app_state_middeware<B>(
         (name = "whoami", description = "User identity endpoints"),
         (name = "change_sets", description = "Change set management endpoints"),
         (name = "components", description = "Components management endpoints"),
-        (name = "schemas", description = "Schemsa management endpoints"),
+        (name = "schemas", description = "Schemas management endpoints"),
         (name = "actions", description = "Actions management endpoints"),
         (name = "secrets", description = "Secrets management endpoints"),
         (name = "funcs", description = "Functions management endpoints")
