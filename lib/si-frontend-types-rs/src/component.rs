@@ -195,3 +195,13 @@ pub struct PotentialMatch {
     pub component_id: String,
     pub value: Option<Value>,
 }
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentQualificationStats {
+    pub total: u64,
+    pub warned: u64,
+    pub succeeded: u64,
+    pub failed: u64,
+    pub running: u64,
+}

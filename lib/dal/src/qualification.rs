@@ -3,7 +3,7 @@ use serde::{
     Serialize,
 };
 use si_data_pg::PgError;
-use si_frontend_types::newhotness::component::ComponentQualificationStats;
+use si_frontend_types::ComponentQualificationStats;
 use si_layer_cache::LayerDbError;
 use strum::{
     AsRefStr,

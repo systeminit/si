@@ -5,7 +5,7 @@ rust_library(
     deps = [
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-events-rs:si-events",
-        "//lib/si-frontend-types-rs:si-frontend-types",
+        "//lib/si-frontend-mv-types-rs:si-frontend-mv-types",
         "//lib/si-id:si-id",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:bytes",

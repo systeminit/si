@@ -105,8 +105,8 @@ import { Fzf } from "fzf";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
   BifrostComponent,
-  BifrostComponentConnectionsBeta,
-  BifrostComponentConnectionsListBeta,
+  BifrostIncomingConnections,
+  BifrostIncomingConnectionsList,
 } from "@/workers/types/dbinterface";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { SelectionsInQueryString } from "./Workspace.vue";
@@ -283,7 +283,7 @@ const mousemove = (event: MouseEvent) => {
 const key = useMakeKey();
 const args = useMakeArgs();
 
-const queryKey = key("BifrostComponentConnectionsListBeta");
+const queryKey = key("BifrostIncomingConnectionsList");
 
 const logos = reactive<IconNames[]>(Object.keys(LOGO_ICONS) as IconNames[]);
 
@@ -294,11 +294,11 @@ const icons = reactive<IconNames[]>([
 ]);
 const tones = reactive<Tones[]>(["success", "destructive"]);
 
-const connections = useQuery<BifrostComponentConnectionsListBeta>({
+const connections = useQuery<BifrostIncomingConnectionsList>({
   queryKey,
   queryFn: async () => {
-    const d = await bifrost<BifrostComponentConnectionsListBeta | null>(
-      args("ComponentConnectionsListBeta"),
+    const d = await bifrost<BifrostIncomingConnectionsList | null>(
+      args("IncomingConnectionsList"),
     );
 
     if (d) {
@@ -317,7 +317,7 @@ const connections = useQuery<BifrostComponentConnectionsListBeta>({
     } else
       return {
         id: unref(ctx.changeSetId),
-        componentConnections: [] as BifrostComponentConnectionsBeta[],
+        componentConnections: [] as BifrostIncomingConnections[],
       };
   },
 });
@@ -353,20 +353,23 @@ const mapData = computed(() => {
 
     nodes.add(c.id);
     components[c.id] = c.component;
-    c.incoming.forEach((e) => {
+    c.connections.forEach((e) => {
       // incoming, so "to" is me, always start with "me"
       if (
         searchString?.value &&
-        (!matchingIds.includes(e.toComponentId) ||
-          !matchingIds.includes(e.fromComponentId))
+        (!matchingIds.includes(e.toComponent.id) ||
+          !matchingIds.includes(e.fromComponent.id))
       )
         return;
 
+      // TODO(nick): found this... technically isn't possible anymore, but I'm leaving until we get
+      // weak references working... Original comment continues below:
+      //
       // in case of problems with the data, filter out undefined
       // if they're left in the graph won't render
-      if (!e.toComponentId || !e.fromComponentId) return;
+      if (!e.toComponent.id || !e.fromComponent.id) return;
 
-      const edge = `${e.toComponentId}-${e.fromComponentId}`;
+      const edge = `${e.toComponent.id}-${e.fromComponent.id}`;
       edges.add(edge);
     });
   });

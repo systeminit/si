@@ -3,7 +3,7 @@ use serde::{
     Serialize,
 };
 use si_events::workspace_snapshot::EntityKind;
-use si_frontend_types_macros::{
+use si_frontend_mv_types_macros::{
     FrontendChecksum,
     FrontendObject,
     MV,
@@ -21,6 +21,8 @@ use si_id::{
 use crate::reference::{
     Reference,
     ReferenceKind,
+    WeakReference,
+    weak,
 };
 
 #[derive(
@@ -44,7 +46,7 @@ pub enum Connection {
     },
     #[serde(rename_all = "camelCase")]
     Socket {
-        from_component_id: ComponentId,
+        from_component_id: WeakReference<ComponentId, weak::markers::Component>,
         from_attribute_value_id: AttributeValueId,
         from_attribute_value_path: String,
         from_socket_id: OutputSocketId,
@@ -63,12 +65,11 @@ pub enum Connection {
 #[serde(rename_all = "camelCase")]
 #[mv(
     trigger_entity = EntityKind::Component,
-    reference_kind = ReferenceKind::ComponentConnectionsBeta,
+    reference_kind = ReferenceKind::IncomingConnections,
 )]
-pub struct ComponentConnectionsBeta {
+pub struct IncomingConnections {
     pub id: ComponentId,
-    pub incoming: Vec<Connection>,
-    pub outgoing: Vec<Connection>,
+    pub connections: Vec<Connection>,
 }
 
 #[derive(
@@ -77,10 +78,10 @@ pub struct ComponentConnectionsBeta {
 #[serde(rename_all = "camelCase")]
 #[mv(
   trigger_entity = EntityKind::CategoryComponent,
-  reference_kind = ReferenceKind::ComponentConnectionsListBeta,
+  reference_kind = ReferenceKind::IncomingConnectionsList,
 )]
-pub struct ComponentConnectionsListBeta {
+pub struct IncomingConnectionsList {
     pub id: ChangeSetId,
-    #[mv(reference_kind = ReferenceKind::ComponentConnectionsBeta)]
+    #[mv(reference_kind = ReferenceKind::IncomingConnections)]
     pub component_connections: Vec<Reference<ComponentId>>,
 }

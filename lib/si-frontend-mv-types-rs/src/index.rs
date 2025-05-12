@@ -14,7 +14,13 @@ use crate::{
 };
 
 #[derive(
-    Clone, Debug, Eq, PartialEq, Deserialize, Serialize, si_frontend_types_macros::FrontendChecksum,
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    Deserialize,
+    Serialize,
+    si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct MvIndex {

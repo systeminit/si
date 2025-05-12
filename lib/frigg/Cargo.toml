@@ -11,7 +11,7 @@ publish.workspace = true
 [dependencies]
 si-data-nats      = { path = "../../lib/si-data-nats" }
 si-events         = { path = "../../lib/si-events-rs" }
-si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
+si-frontend-mv-types = { path = "../../lib/si-frontend-mv-types-rs" }
 si-id             = { path = "../../lib/si-id" }
 bytes             = { workspace = true }
 futures           = { workspace = true }

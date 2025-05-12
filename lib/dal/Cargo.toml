@@ -15,7 +15,6 @@ billing-events           = { path = "../../lib/billing-events" }
 dal-macros               = { path = "../../lib/dal-macros" }
 si-db                  = { path = "../../lib/si-db" }
 joi-validator            = { path = "../../lib/joi-validator" }
-frigg                    = { path = "../../lib/frigg" }
 module-index-client      = { path = "../../lib/module-index-client" }
 object-tree              = { path = "../../lib/object-tree" }
 pending-events           = { path = "../../lib/pending-events" }
@@ -27,7 +26,6 @@ si-data-nats             = { path = "../../lib/si-data-nats" }
 si-data-pg               = { path = "../../lib/si-data-pg" }
 si-events                = { path = "../../lib/si-events-rs" }
 si-frontend-types        = { path = "../../lib/si-frontend-types-rs" }
-si-frontend-types-macros = { path = "../../lib/si-frontend-types-macros" }
 si-hash                  = { path = "../../lib/si-hash" }
 si-id                    = { path = "../../lib/si-id" }
 si-layer-cache           = { path = "../../lib/si-layer-cache" }
@@ -88,6 +86,7 @@ url             = { workspace = true }
 buck2-resources        = { path = "../../lib/buck2-resources" }
 dal-materialized-views = { path = "../../lib/dal-materialized-views" }
 dal-test               = { path = "../../lib/dal-test" }
+si-frontend-mv-types   = { path = "../../lib/si-frontend-mv-types-rs" }
 telemetry              = { path = "../../lib/telemetry-rs" }
 telemetry-nats         = { path = "../../lib/telemetry-nats-rs" }
 veritech-client        = { path = "../../lib/veritech-client" }

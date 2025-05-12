@@ -6,7 +6,7 @@ use si_events::{
     Timestamp,
     workspace_snapshot::EntityKind,
 };
-use si_frontend_types_macros::{
+use si_frontend_mv_types_macros::{
     FrontendChecksum,
     FrontendObject,
     MV,
@@ -56,10 +56,10 @@ pub struct ViewList {
     Serialize,
     PartialEq,
     Eq,
-    si_frontend_types_macros::FrontendChecksum,
-    si_frontend_types_macros::FrontendObject,
-    si_frontend_types_macros::Refer,
-    si_frontend_types_macros::MV,
+    si_frontend_mv_types_macros::FrontendChecksum,
+    si_frontend_mv_types_macros::FrontendObject,
+    si_frontend_mv_types_macros::Refer,
+    si_frontend_mv_types_macros::MV,
 )]
 #[mv(
     trigger_entity = EntityKind::View,
