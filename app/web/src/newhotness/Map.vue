@@ -46,6 +46,16 @@
       @mouseup="mouseup"
       @mousemove="mousemove"
     >
+      <defs v-for="logo in logos" :key="logo">
+        <pattern
+          :id="`${logo}`"
+          width="1"
+          height="1"
+          patternUnits="objectBoundingBox"
+        >
+          <IconNoWrapper :name="logo" class="text-white" />
+        </pattern>
+      </defs>
       <template v-for="icon in icons" :key="icon">
         <defs v-for="tone in tones" :key="tone">
           <pattern
@@ -54,7 +64,7 @@
             height="30"
             patternUnits="objectBoundingBox"
           >
-            <IconNoWrapper :name="icon" :tone="tone" />
+            <IconNoWrapper :name="icon" :tone="tone" size="sm" />
           </pattern>
         </defs>
       </template>
@@ -72,6 +82,7 @@ import {
   IconNames,
   Tones,
   themeClasses,
+  LOGO_ICONS,
 } from "@si/vue-lib/design-system";
 import {
   computed,
@@ -102,6 +113,7 @@ import { SelectionsInQueryString } from "./Workspace.vue";
 import { keyEmitter } from "./logic_composables/emitters";
 import { assertIsDefined, Context } from "./types";
 import ComponentGridTile from "./ComponentGridTile.vue";
+import { getAssetIcon } from "./util";
 
 const props = defineProps<{ active: boolean }>();
 
@@ -273,6 +285,8 @@ const args = useMakeArgs();
 
 const queryKey = key("BifrostComponentConnectionsListBeta");
 
+const logos = reactive<IconNames[]>(Object.keys(LOGO_ICONS) as IconNames[]);
+
 const icons = reactive<IconNames[]>([
   "check-hex-outline",
   "check-hex",
@@ -347,6 +361,11 @@ const mapData = computed(() => {
           !matchingIds.includes(e.fromComponentId))
       )
         return;
+
+      // in case of problems with the data, filter out undefined
+      // if they're left in the graph won't render
+      if (!e.toComponentId || !e.fromComponentId) return;
+
       const edge = `${e.toComponentId}-${e.fromComponentId}`;
       edges.add(edge);
     });
@@ -522,29 +541,39 @@ watch(
             [0, HEIGHT],
           ]);
         })
-        // TODO plumb the schema color to the component
-        // TODO plumb the logo/icon to the component
         .attr("stroke", (d) => d.component.color ?? "#111111")
         .attr("stroke-width", 3);
 
-      // TODO ellipsis
+      // logos
+      groups
+        .append("path")
+        .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
+        .attr("transform", () => {
+          return "translate(23, 35)";
+        })
+        .style("fill", (d) => {
+          const icon = getAssetIcon(d.component.schemaCategory);
+          return `url(#${icon})`;
+        });
+
+      // TODO ellipsis / truncation
       groups
         .append("text")
         .text((d) => d.component.name)
-        .attr("dx", ".5rem")
-        .attr("dy", "1rem")
+        .attr("dx", "45")
+        .attr("dy", "25")
         .attr("class", "name")
         .attr("alignment-baseline", "middle");
 
       groups
         .append("text")
         .text((d) => d.component.schemaVariantName)
-        .attr("dx", ".5rem")
-        .attr("dy", "2.25rem")
+        .attr("dx", "45")
+        .attr("dy", "45")
         .attr("alignment-baseline", "middle")
         .attr("color", "white");
 
-      // icon
+      // qual & resource icons
       groups.each(function doTheIcons(d) {
         d.icons.forEach((icon, idx) => {
           d3.select(this)
@@ -555,7 +584,7 @@ watch(
             // even larger and it starts moving on
             .attr("d", d3.symbol().size(1000).type(d3.symbolSquare))
             .attr("transform", () => {
-              return `translate(${WIDTH - 17 - 34 * idx}, ${HEIGHT - 17})`;
+              return `translate(${WIDTH - 13 - 23 * idx}, ${HEIGHT - 9})`;
             })
             .style("fill", () => {
               return icon ? `url(#${icon})` : "none";
@@ -633,10 +662,10 @@ const componentNavigate = (componentId: ComponentId) => {
 
   text {
     fill: white;
-    font-size: 0.85rem;
+    font-size: 1rem;
     &.name {
       font-weight: bold;
-      font-size: 1rem;
+      font-size: 1.2rem;
     }
   }
 

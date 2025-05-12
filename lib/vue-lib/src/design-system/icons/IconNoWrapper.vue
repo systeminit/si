@@ -1,21 +1,13 @@
 <!-- eslint-disable vue/no-v-html -->
 <!--
-  General Icon component to use throughout the codebase
-
-  Why not just import the icons directly?
-  - single import rather than importing many icons in each file, no need to change import to try different icon
-  - easier to keep icons consistent and swap all icons of a certain type at once (ex: use the same "x-circle" everywhere)
-  - allows multiple aliases for the same icon so the use can be a bit more specific (ex: "qualification-passing")
-  - easier to apply consistent styling throughout
-  - using a simple string lets us easily add `icon` properties on other components (like buttons / form inputs)
-  - rotation helpers so we can use a single icon for each direction of things like arrows / carets
+Note: the 40x30 is intentional for the aws logo et al
 -->
 
 <template>
   <svg
-    width="30"
-    height="30"
-    viewBox="0 0 30 30"
+    :width="viewBoxX"
+    :height="viewBoxY"
+    :viewBox="`0 0 40 30`"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
     v-html="iconSvgRaw"
@@ -28,15 +20,25 @@ import { computed, PropType } from "vue";
 import { getToneColorHex, Tones } from "../utils/color_utils";
 import { getIconByName, IconNames } from "./icon_set";
 
-export type IconSizes =
-  | "2xs"
-  | "xs"
-  | "sm"
-  | "md"
-  | "lg"
-  | "xl"
-  | "2xl"
-  | "full";
+export type IconSizes = "sm" | "md";
+
+const viewBoxX = computed(() => {
+  switch (props.size) {
+    case "sm":
+      return 35;
+    default:
+      return 40;
+  }
+});
+
+const viewBoxY = computed(() => {
+  switch (props.size) {
+    case "sm":
+      return 20;
+    default:
+      return 30;
+  }
+});
 
 const props = defineProps({
   name: { type: String as PropType<IconNames>, required: true },
@@ -47,7 +49,6 @@ const props = defineProps({
   },
   tone: {
     type: String as PropType<Tones>,
-    default: "neutral",
   },
 });
 
@@ -55,7 +56,7 @@ const iconSvgRaw = computed(() => {
   const raw = getIconByName(props.name);
   const updated = raw?.replace(
     /(fill|stroke)="(#[A-F0-9]{3,6}|currentColor|black)"/gi,
-    `$1="${toneColor.value}"`,
+    `$1="${toneColor.value ?? "white"}"`,
   );
   // eslint-disable-next-line no-useless-escape
   const svgRe = /<svg\b[^>]* (viewBox=\"(\b[^"]*)\").*?>([\s\S]*?)<\/svg>/gim;

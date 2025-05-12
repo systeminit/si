@@ -11,7 +11,7 @@
     <header
       :class="clsx('p-xs', themeClasses('bg-neutral-200', 'bg-neutral-800'))"
     >
-      <Icon name="logo-aws" size="lg" />
+      <Icon :name="getAssetIcon(component.schemaCategory)" size="lg" />
       <h2>
         <TruncateWithTooltip class="pb-xs">{{
           component.name
@@ -22,7 +22,6 @@
           component.schemaName
         }}</TruncateWithTooltip>
       </h3>
-      <Icon name="none" size="lg" />
     </header>
     <ol
       class="[&>li]:p-xs [&>li]:flex [&>li]:flex-row [&>li]:items-center [&>li]:gap-xs [&_.pillcounter]:w-5 [&_.pillcounter]:h-5"
@@ -89,6 +88,7 @@ import clsx from "clsx";
 import { computed } from "vue";
 import { BifrostComponent } from "@/workers/types/dbinterface";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
+import { getAssetIcon } from "./util";
 
 const props = defineProps<{
   component: BifrostComponent;
