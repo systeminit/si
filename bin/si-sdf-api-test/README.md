@@ -1,4 +1,4 @@
-# SI API Tester
+# SI SDF API Tester
 
 ## Running
 
@@ -39,4 +39,5 @@ param in the binary execution
 
 ## Benchmarking
 
-To run a benchmark test, specify `--tests /benchmark/{testName}` when invoking Deno. We only allow you to run a single benchmark test at a time right now.
+To run a benchmark test, specify `--tests /benchmark/{testName}` when invoking
+Deno. We only allow you to run a single benchmark test at a time right now.
