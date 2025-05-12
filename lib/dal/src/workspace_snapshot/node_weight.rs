@@ -1229,7 +1229,11 @@ impl CorrectExclusiveOutgoingEdge for NodeWeight {
     }
 }
 
-impl si_split_graph::CustomNodeWeight for NodeWeight {
+impl si_split_graph::CustomNodeWeight<NodeWeightDiscriminants> for NodeWeight {
+    fn kind(&self) -> NodeWeightDiscriminants {
+        self.into()
+    }
+
     fn id(&self) -> si_split_graph::SplitGraphNodeId {
         self.id()
     }

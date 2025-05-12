@@ -362,3 +362,6 @@ fn resolve_ordering(
 
     final_order
 }
+
+// corrections todo
+// - geometry node weight correction
