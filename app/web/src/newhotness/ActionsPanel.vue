@@ -26,16 +26,16 @@ import { useQuery } from "@tanstack/vue-query";
 import { computed } from "vue";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import {
-  BifrostActionPrototypeViewList,
+  ActionPrototypeViewList,
   BifrostActionViewList,
-  BifrostComponent,
+  Component,
 } from "@/workers/types/dbinterface";
 import EmptyStateCard from "@/components/EmptyStateCard.vue";
 import { ActionId, ActionPrototypeId } from "@/api/sdf/dal/action";
 import ActionWidget from "@/mead-hall/ActionWidget.vue";
 
 const props = defineProps<{
-  component: BifrostComponent;
+  component: Component;
 }>();
 
 // The code below is the same as in AssetActionsDetails in the mead hall
@@ -46,15 +46,13 @@ const queryKeyForActionPrototypeViews = makeKey(
   "ActionPrototypeViewList",
   props.component.schemaVariantId,
 );
-const actionPrototypeViewsRaw = useQuery<BifrostActionPrototypeViewList | null>(
-  {
-    queryKey: queryKeyForActionPrototypeViews,
-    queryFn: async () =>
-      await bifrost<BifrostActionPrototypeViewList>(
-        makeArgs("ActionPrototypeViewList", props.component.schemaVariantId),
-      ),
-  },
-);
+const actionPrototypeViewsRaw = useQuery<ActionPrototypeViewList | null>({
+  queryKey: queryKeyForActionPrototypeViews,
+  queryFn: async () =>
+    await bifrost<ActionPrototypeViewList>(
+      makeArgs("ActionPrototypeViewList", props.component.schemaVariantId),
+    ),
+});
 const actionPrototypeViews = computed(
   () => actionPrototypeViewsRaw.data.value?.actionPrototypes ?? [],
 );

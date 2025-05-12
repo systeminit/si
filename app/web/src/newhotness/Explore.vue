@@ -149,7 +149,7 @@ import { Fzf } from "fzf";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
-  BifrostComponent,
+  Component,
   BifrostComponentList,
   BifrostViewList,
   ViewComponentList,
@@ -251,7 +251,7 @@ const componentList = computed(
 
 const scrollRef = ref<HTMLDivElement>();
 
-const filteredComponents = reactive<BifrostComponent[]>([]);
+const filteredComponents = reactive<Component[]>([]);
 
 const searchString = ref("");
 const computedSearchString = computed(() => searchString.value);

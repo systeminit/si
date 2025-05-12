@@ -14,10 +14,10 @@
 import { computed } from "vue";
 import CodeViewer from "@/components/CodeViewer.vue";
 import EmptyStateCard from "@/components/EmptyStateCard.vue";
-import { BifrostComponent } from "@/workers/types/dbinterface";
+import { Component } from "@/workers/types/dbinterface";
 
 const component = defineProps<{
-  component: BifrostComponent;
+  component: Component;
 }>();
 
 const diff = computed(() => {

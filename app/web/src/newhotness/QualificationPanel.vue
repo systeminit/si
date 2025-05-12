@@ -14,8 +14,8 @@ import { computed } from "vue";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   AttributeValue,
-  BifrostAttributeTree,
-  BifrostComponent,
+  AttributeTree,
+  Component,
   Prop,
 } from "@/workers/types/dbinterface";
 import QualificationView from "@/newhotness/QualificationView.vue";
@@ -31,19 +31,17 @@ export interface QualItem {
 }
 
 const props = defineProps<{
-  component: BifrostComponent;
+  component: Component;
 }>();
 
 const componentId = computed(() => props.component.id);
 
 const key = useMakeKey();
 const args = useMakeArgs();
-const attributeTreeQuery = useQuery<BifrostAttributeTree | null>({
+const attributeTreeQuery = useQuery<AttributeTree | null>({
   queryKey: key("AttributeTree", componentId),
   queryFn: async () =>
-    await bifrost<BifrostAttributeTree>(
-      args("AttributeTree", componentId.value),
-    ),
+    await bifrost<AttributeTree>(args("AttributeTree", componentId.value)),
 });
 
 const root = computed(() => attributeTreeQuery.data.value);

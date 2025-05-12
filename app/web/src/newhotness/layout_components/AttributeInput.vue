@@ -78,10 +78,10 @@ import {
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
 import { attributeEmitter } from "../logic_composables/emitters";
 import { useWatchedForm } from "../logic_composables/watched_form";
-import { AttributeTree } from "../AttributePanel.vue";
+import { AttrTree } from "../AttributePanel.vue";
 
 const props = defineProps<{
-  attributeTree: AttributeTree;
+  attributeTree: AttrTree;
   displayName: string;
 }>();
 

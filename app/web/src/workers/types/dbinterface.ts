@@ -27,6 +27,8 @@ import {
   PropertyEditorPropWidgetKind,
   ValidationOutput,
 } from "@/api/sdf/dal/property_editor";
+import { ViewId } from "@/api/sdf/dal/views";
+import { DefaultMap } from "@/utils/defaultmap";
 import { WorkspaceMetadata } from "../../api/sdf/dal/workspace";
 
 export interface QueryMeta {
@@ -59,6 +61,7 @@ export type BustCacheFn = (
   id: string,
 ) => void;
 
+export type OutgoingConnections = DefaultMap<string, BifrostConnection[]>;
 export interface DBInterface {
   initDB: (testing: boolean) => Promise<void>;
   migrate: (testing: boolean) => void;
@@ -67,6 +70,10 @@ export interface DBInterface {
   initBifrost(): void;
   bifrostClose(): void;
   bifrostReconnect(): void;
+  getOutgoingConnectionsByComponentId(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): OutgoingConnections | undefined;
   get(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -210,7 +217,7 @@ export interface IndexObjectMeta {
 export type AtomDocument = any;
 
 // ==========================================================================
-// FAKING IT - CORE TYPES
+// CORE TYPES
 interface Reference {
   id: string;
   checksum: string;
@@ -223,7 +230,25 @@ interface WeakReference {
 }
 
 // ==========================================================================
-// FAKING IT - EVERYTHING ELSE
+//  EVERYTHING ELSE
+
+/**
+ * NAMING RULES
+ * 1. If the type is not mutated at all
+ * (e.g. it does not have an if-block in `getReferences` or `getComputed`)
+ * THOU SHALT name it according the entity kind--EXACT MATCH PLEASE
+ *
+ * 2. If the type is mutated, you will prefix the EXACT entity kind with
+ * THOU SHALT prefix the type that comes over the wire with `Edda`
+ * THOU SHALT prefix the type that returns from `bifrost` fn with `Bifrost`
+ *
+ * 3. `EddaXXX` types SHALL NOT have `BifrostXXX` types on them
+ * 4. `BifrostXXX` types SHALL NOT have `EddaXXX` types on them
+ * 5. Vue components SHALL NEVER use `EddaXXX` types
+ * 6. `getReferences` SHALL NEVER return an `EddaXXX` type
+ *    (e.g. perform the full translation from Edda to Bifrost)
+ * 7. `getReferences` SHALL set default/warning data that `getComputed` will write over
+ */
 export interface BifrostView {
   id: string;
   name: string;
@@ -260,7 +285,7 @@ export interface ComponentQualificationTotals {
   running: number;
 }
 
-export interface BifrostComponent {
+export interface Component {
   id: ComponentId;
   name: string;
   color?: string;
@@ -274,6 +299,8 @@ export interface BifrostComponent {
   hasResource: boolean;
   qualificationTotals: ComponentQualificationTotals;
   inputCount: number;
+  // this will only be filled in when it is computed
+  outputCount: number;
   diffCount: number;
   rootAttributeValueId: AttributeValueId;
   domainAttributeValueId: AttributeValueId;
@@ -288,15 +315,15 @@ export interface BifrostComponent {
 
 export interface BifrostComponentList {
   id: ChangeSetId;
-  components: BifrostComponent[];
+  components: Component[];
 }
 
 export interface ViewComponentList {
-  id: string; // ViewId
-  components: BifrostComponent[];
+  id: ViewId;
+  components: Component[];
 }
 
-export interface RawComponentList {
+export interface EddaComponentList {
   id: ChangeSetId;
   components: Reference[];
 }
@@ -309,7 +336,7 @@ export interface ActionPrototypeView {
   name: string;
 }
 
-export interface BifrostActionPrototypeViewList {
+export interface ActionPrototypeViewList {
   id: SchemaVariantId;
   actionPrototypes: ActionPrototypeView[];
 }
@@ -347,43 +374,44 @@ export interface AVTree {
   children: AttributeValueId[];
 }
 
-export interface BifrostAttributeTree {
+export interface AttributeTree {
   id: ComponentId;
   attributeValues: Record<AttributeValueId, AttributeValue>;
   props: Record<PropId, Prop>;
   treeInfo: Record<AttributeValueId, AVTree>;
 }
 
-export interface RawIncomingConnectionsList {
+export interface EddaIncomingConnectionsList {
   id: ChangeSetId;
   componentConnections: Reference[];
 }
 
 export interface BifrostIncomingConnectionsList {
   id: ChangeSetId;
-  componentConnections: BifrostIncomingConnections[];
+  componentConnections: BifrostComponentConnections[];
 }
 
-export interface RawIncomingConnections {
+export interface EddaIncomingConnections {
   id: ComponentId;
-  connections: RawConnection[];
+  connections: EddaConnection[];
 }
 
-export interface BifrostIncomingConnections {
+export interface BifrostComponentConnections {
   id: ComponentId;
-  component: BifrostComponent;
-  connections: Connection[];
+  component: Component;
+  incoming: BifrostConnection[];
+  // note: outgoing connections cannot be computed right now
 }
 
-type RawConnection =
+export type EddaConnection =
   | {
       kind: "prop";
-      fromComponentId: WeakReference; // this is why we need the raw object
+      fromComponentId: WeakReference;
       fromAttributeValueId: AttributeValueId;
       fromAttributeValuePath: string;
       fromPropId: PropId;
       fromPropPath: string;
-      toComponentId: WeakReference; // this is why we need the raw object
+      toComponentId: WeakReference;
       toPropId: PropId;
       toPropPath: string;
       toAttributeValueId: AttributeValueId;
@@ -391,27 +419,27 @@ type RawConnection =
     }
   | {
       kind: "socket";
-      fromComponentId: WeakReference; // this is why we need the raw object
+      fromComponentId: WeakReference;
       fromAttributeValueId: AttributeValueId;
       fromAttributeValuePath: string;
       fromSocketId: OutputSocketId;
       fromSocketName: string;
-      toComponentId: WeakReference; // this is why we need the raw object
+      toComponentId: WeakReference;
       toSocketId: InputSocketId;
       toSocketName: string;
       toAttributeValueId: AttributeValueId;
       toAttributeValuePath: string;
     };
 
-type Connection =
+export type BifrostConnection =
   | {
       kind: "prop";
-      fromComponent: BifrostComponent; // we will have the full component from the weak reference
+      fromComponent: Component;
       fromAttributeValueId: AttributeValueId;
       fromAttributeValuePath: string;
       fromPropId: PropId;
       fromPropPath: string;
-      toComponent: BifrostComponent; // we will have the full component from the weak reference
+      toComponent: Component;
       toPropId: PropId;
       toPropPath: string;
       toAttributeValueId: AttributeValueId;
@@ -419,12 +447,12 @@ type Connection =
     }
   | {
       kind: "socket";
-      fromComponent: BifrostComponent; // we will have the full component from the weak reference
+      fromComponent: Component;
       fromAttributeValueId: AttributeValueId;
       fromAttributeValuePath: string;
       fromSocketId: OutputSocketId;
       fromSocketName: string;
-      toComponent: BifrostComponent; // we will have the full component from the weak reference
+      toComponent: Component;
       toSocketId: InputSocketId;
       toSocketName: string;
       toAttributeValueId: AttributeValueId;

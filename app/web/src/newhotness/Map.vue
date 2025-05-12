@@ -4,12 +4,16 @@
     <div
       v-if="selectedComponent"
       id="selection"
-      class="absolute top-[11vh] max-w-[350px] min-w-[300px] right-3 p-xs bg-action-800 border-2 border-action-700"
+      class="absolute top-[110px] max-w-[350px] min-w-[300px] right-3 p-xs bg-action-800 border-2 border-action-700 scrollable"
+      style="max-height: calc(100vh - 115px)"
     >
+      <!-- NOTE: 110 is the fixed size (nothing expands/dynamic) above, extra 5px on the bottom, unforuntately tailwind doesn't support that calc -->
       <ComponentGridTile
         :component="selectedComponent"
+        hideConnections
         @dblclick="componentNavigate(selectedComponent.id)"
       />
+      <ConnectionsPanel :component="selectedComponent" />
     </div>
 
     <div
@@ -104,8 +108,8 @@ import * as _ from "lodash-es";
 import { Fzf } from "fzf";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
-  BifrostComponent,
-  BifrostIncomingConnections,
+  Component,
+  BifrostComponentConnections,
   BifrostIncomingConnectionsList,
 } from "@/workers/types/dbinterface";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
@@ -113,11 +117,12 @@ import { SelectionsInQueryString } from "./Workspace.vue";
 import { keyEmitter } from "./logic_composables/emitters";
 import { assertIsDefined, Context } from "./types";
 import ComponentGridTile from "./ComponentGridTile.vue";
+import ConnectionsPanel from "./ConnectionsPanel.vue";
 import { getAssetIcon } from "./util";
 
 const props = defineProps<{ active: boolean }>();
 
-const selectedComponent = ref<BifrostComponent | null>(null);
+const selectedComponent = ref<Component | null>(null);
 
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
@@ -283,7 +288,7 @@ const mousemove = (event: MouseEvent) => {
 const key = useMakeKey();
 const args = useMakeArgs();
 
-const queryKey = key("BifrostIncomingConnectionsList");
+const queryKey = key("IncomingConnectionsList");
 
 const logos = reactive<IconNames[]>(Object.keys(LOGO_ICONS) as IconNames[]);
 
@@ -317,7 +322,7 @@ const connections = useQuery<BifrostIncomingConnectionsList>({
     } else
       return {
         id: unref(ctx.changeSetId),
-        componentConnections: [] as BifrostIncomingConnections[],
+        componentConnections: [] as BifrostComponentConnections[],
       };
   },
 });
@@ -325,14 +330,14 @@ const connections = useQuery<BifrostIncomingConnectionsList>({
 const mapData = computed(() => {
   const nodes = new Set<string>();
   const edges = new Set<string>();
-  const components: Record<string, BifrostComponent> = {};
+  const components: Record<string, Component> = {};
   if (!connections.data.value) {
     return { nodes, edges, components };
   }
 
   const matchingIds: string[] = [];
   if (searchString?.value && searchString.value.trim().length > 0) {
-    const componentsMap: Record<string, BifrostComponent> = {};
+    const componentsMap: Record<string, Component> = {};
     connections.data.value.componentConnections.forEach((c) => {
       componentsMap[c.id] = c.component;
     });
@@ -353,7 +358,7 @@ const mapData = computed(() => {
 
     nodes.add(c.id);
     components[c.id] = c.component;
-    c.connections.forEach((e) => {
+    c.incoming.forEach((e) => {
       // incoming, so "to" is me, always start with "me"
       if (
         searchString?.value &&
@@ -381,7 +386,7 @@ type node = {
   id: string;
   width: number;
   height: number;
-  component: BifrostComponent;
+  component: Component;
   icons: [string | null];
 };
 

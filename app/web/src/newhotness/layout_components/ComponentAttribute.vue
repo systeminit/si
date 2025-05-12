@@ -44,10 +44,10 @@ import { VButton } from "@si/vue-lib/design-system";
 import { filterMissingAtom } from "../util";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
-import { AttributeTree } from "../AttributePanel.vue";
+import { AttrTree } from "../AttributePanel.vue";
 
 const props = defineProps<{
-  attributeTree: AttributeTree;
+  attributeTree: AttrTree;
 }>();
 
 // this handles objects and arrays but not empty arrays

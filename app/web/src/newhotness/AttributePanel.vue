@@ -25,8 +25,8 @@ import { computed, reactive, ref, watch } from "vue";
 import { Fzf } from "fzf";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
-  BifrostAttributeTree,
-  BifrostComponent,
+  AttributeTree,
+  Component,
   Prop,
   AttributeValue,
 } from "@/workers/types/dbinterface";
@@ -40,41 +40,41 @@ import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
 const q = ref("");
 
 const props = defineProps<{
-  component: BifrostComponent;
+  component: Component;
 }>();
 
 const componentId = computed(() => props.component.id);
 
 const attributeTreeMakeKey = useMakeKey();
 const attributeTreeMakeArgs = useMakeArgs();
-const attributeTreeQuery = useQuery<BifrostAttributeTree | null>({
+const attributeTreeQuery = useQuery<AttributeTree | null>({
   queryKey: attributeTreeMakeKey("AttributeTree", componentId),
   queryFn: async () => {
     const args = attributeTreeMakeArgs("AttributeTree", componentId.value);
-    return await bifrost<BifrostAttributeTree>(args);
+    return await bifrost<AttributeTree>(args);
   },
 });
 
-export interface AttributeTree {
+export interface AttrTree {
   id: string;
-  children: AttributeTree[];
+  children: AttrTree[];
   parent?: string;
   prop?: Prop;
   attributeValue: AttributeValue;
 }
 
 const makeAvTree = (
-  data: BifrostAttributeTree,
+  data: AttributeTree,
   avId: string,
   parent?: string,
-): AttributeTree => {
+): AttrTree => {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const childrenIds = data.treeInfo[avId]!.children;
   const children = childrenIds.map((id) => makeAvTree(data, id, avId));
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const av = data.attributeValues[avId]!;
   const prop = av.propId ? data.props[av.propId] : undefined;
-  const tree: AttributeTree = {
+  const tree: AttrTree = {
     id: avId,
     children,
     parent,
@@ -84,10 +84,10 @@ const makeAvTree = (
   return tree;
 };
 
-const root = computed<AttributeTree>(() => {
+const root = computed<AttrTree>(() => {
   const empty = {
     id: "",
-    children: [] as AttributeTree[],
+    children: [] as AttrTree[],
     attributeValue: {} as AttributeValue,
   };
   const raw = attributeTreeQuery.data.value;
@@ -110,7 +110,7 @@ const domain = computed(() =>
   root.value?.children.find((c) => c.prop?.name === "domain"),
 );
 
-const filtered = reactive<{ tree: AttributeTree | object }>({
+const filtered = reactive<{ tree: AttrTree | object }>({
   tree: {},
 });
 
@@ -127,7 +127,7 @@ watch(
     }
 
     // we need to access attrs by id
-    const map: Record<string, AttributeTree> = {};
+    const map: Record<string, AttrTree> = {};
     map[domain.value.id] = domain.value;
     const walking = [...domain.value.children];
     // walk all the children and find if they match
@@ -146,7 +146,7 @@ watch(
 
     const results = fzf.find(q.value);
     // Maybe we want to get rid of low scoring options (via std dev)?
-    const matches: AttributeTree[] = results.map((fz) => fz.item);
+    const matches: AttrTree[] = results.map((fz) => fz.item);
 
     // get new instances of all the objects with empty children arrays
     const parentsWithoutChildren = Object.values(map)
@@ -159,9 +159,9 @@ watch(
       .reduce((map, attr) => {
         map[attr.id] = attr;
         return map;
-      }, {} as Record<string, AttributeTree>);
+      }, {} as Record<string, AttrTree>);
 
-    const matchesAsTree: Record<string, AttributeTree> = {};
+    const matchesAsTree: Record<string, AttrTree> = {};
     // work backwards from the leaf node, filling in their parents children arrays
     // make sure there are no dupes b/c matches will give us dupes
     matches.forEach((attr) => {
@@ -170,7 +170,7 @@ watch(
       while (parents.length > 0) {
         const pId = parents.shift();
         if (!pId) throw new Error("no pid");
-        let p: AttributeTree | undefined;
+        let p: AttrTree | undefined;
         p = matchesAsTree[pId];
         if (!p) p = parentsWithoutChildren[pId];
         if (p) {
