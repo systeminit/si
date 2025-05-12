@@ -269,7 +269,9 @@ pub enum AuditLogKindV1 {
         previous_parent_id: ComponentId,
         previous_parent_name: String,
     },
-
+    PurgeOpenChangeSets {
+        change_set_ids: Vec<ChangeSetId>,
+    },
     PutActionOnHold {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
@@ -715,6 +717,8 @@ pub enum AuditLogMetadataV1 {
         previous_parent_name: String,
     },
     #[serde(rename_all = "camelCase")]
+    PurgeOpenChangeSets { change_set_ids: Vec<ChangeSetId> },
+    #[serde(rename_all = "camelCase")]
     PutActionOnHold {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
@@ -972,6 +976,7 @@ impl AuditLogMetadataV1 {
                 ("Executed", Some("Management Operations"))
             }
             MetadataDiscrim::OrphanComponent => ("Orphaned", Some("Component")),
+            MetadataDiscrim::PurgeOpenChangeSets => ("Purged Open", Some("Change Sets")),
             MetadataDiscrim::PutActionOnHold => ("Paused", Some("Action")),
             MetadataDiscrim::RegenerateSchemaVariant => ("Regenerated", Some("Schema Variant")),
             MetadataDiscrim::RejectChangeSetApply => {
@@ -1361,6 +1366,9 @@ impl From<Kind> for Metadata {
                 previous_parent_id,
                 previous_parent_name,
             },
+            Kind::PurgeOpenChangeSets { change_set_ids } => {
+                Self::PurgeOpenChangeSets { change_set_ids }
+            }
             Kind::PutActionOnHold {
                 prototype_id,
                 action_kind,

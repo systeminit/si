@@ -57,6 +57,10 @@ pub fn routes(state: AppState) -> Router<AppState> {
                 Router::new()
                     .route("/", post(super::change_sets::create::create_change_set))
                     .route("/", get(super::change_sets::list::list_change_sets))
+                    .route(
+                        "/purge_open",
+                        post(super::change_sets::purge_open::purge_open),
+                    )
                     .nest(
                         "/:change_set_id",
                         Router::new()
