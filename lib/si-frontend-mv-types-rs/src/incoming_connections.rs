@@ -33,12 +33,12 @@ use crate::reference::{
 pub enum Connection {
     #[serde(rename_all = "camelCase")]
     Prop {
-        from_component_id: ComponentId,
+        from_component_id: WeakReference<ComponentId, weak::markers::Component>,
         from_attribute_value_id: AttributeValueId,
         from_attribute_value_path: String,
         from_prop_id: PropId,
         from_prop_path: String,
-        to_component_id: ComponentId,
+        to_component_id: WeakReference<ComponentId, weak::markers::Component>,
         to_prop_id: PropId,
         to_prop_path: String,
         to_attribute_value_id: AttributeValueId,
@@ -51,7 +51,7 @@ pub enum Connection {
         from_attribute_value_path: String,
         from_socket_id: OutputSocketId,
         from_socket_name: String,
-        to_component_id: ComponentId,
+        to_component_id: WeakReference<ComponentId, weak::markers::Component>,
         to_socket_id: InputSocketId,
         to_socket_name: String,
         to_attribute_value_id: AttributeValueId,
