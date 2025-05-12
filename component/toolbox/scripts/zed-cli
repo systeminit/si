@@ -1,0 +1,107 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------------------------------
+# Connect to a SpiceDB cluster using AWS credentials and the zed CLI
+# ---------------------------------------------------------------------------------------------------
+
+set -eo pipefail
+
+IMPORT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+
+for script in ${IMPORT_DIR}/supporting-funcs/*.sh; do
+    if [[ -f "$script" ]]; then
+        source "$script"
+    fi
+done
+
+usage() {
+    echo
+    echo "zed-cli"
+    echo "----------------------------------"
+    echo "This script uses AWS creds to retrieve a preshared key"
+    echo "for a SpiceDB cluster and open a zed session to it."
+    echo "----------------------------------"
+    echo "Usage: spicedb [-p profile] [-r region] [-s spicedb]"
+    echo "  -p profile    AWS profile to use"
+    echo "  -r region     AWS region to use"
+    echo "  -s spicedb    SpiceDB cluster (tools, production, perf)"
+    echo
+    exit 1
+}
+
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    usage
+fi
+
+while getopts ":p:r:s:" opt; do
+    case ${opt} in
+        p)
+            profile=$OPTARG
+            ;;
+        r)
+            region=$OPTARG
+            ;;
+        s)
+            spicedb=$OPTARG
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            usage
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument." >&2
+            usage
+            ;;
+    esac
+done
+
+profile=$(get_param_or_env "$profile" "AWS_PROFILE" "Enter the AWS profile to use")
+region=$(get_param_or_env "$region" "AWS_REGION" "Enter the AWS region")
+spicedb=$(get_param_or_env "$spicedb" "SPICEDB_CLUSTER" "Enter the SpiceDB cluster (tools, production, perf)")
+
+export AWS_PROFILE="$profile"
+export AWS_REGION="$region"
+
+# Map environment to endpoint
+case "$spicedb" in
+  tools)
+    endpoint="tools-prod-generous-mallard-148888.us-east-1.ahdi0ule.aws.authzed.net:443"
+    ;;
+  production)
+    endpoint="production-neat-mink-us-east-1-cluster.us-east-1.ahdi0ule.aws.authzed.net:443"
+    ;;
+  perf)
+    endpoint="performance-suitable-raccoon-816401.us-east-1.ahdi0ule.aws.authzed.net:443"
+    ;;
+  *)
+    echo "Invalid value for spicedb: $spicedb. Must be one of (tools, production, perf)"
+    exit 1
+    ;;
+esac
+
+# Get preshared key from Secrets Manager
+secret_name="${spicedb}-spicedb-preshared-key"
+preshared_key=$(aws secretsmanager get-secret-value \
+    --secret-id "$secret_name" \
+    --query "SecretString" \
+    --output text)
+
+# Configure zed context
+export ZED_KEYRING_PASSWORD="toolbox-default-pass"
+zed context set "$spicedb" "$endpoint" "$preshared_key"
+zed context use "$spicedb"
+
+export PS1="\e[1;32m[ZED:$spicedb]\e[0m \w \$ "
+
+cat << EOF
+🚀 Welcome to SpiceDB (zed) CLI Interactive Shell 🚀
+---------------------------------------------------
+Connected to:  $endpoint
+Context:       $spicedb
+AWS Profile:   $profile
+AWS Region:    $region
+
+Use 'zed schema read' or another command to begin
+---------------------------------------------------
+EOF
+
+exec bash --norc
