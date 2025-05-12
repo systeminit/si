@@ -304,6 +304,89 @@ async fn subscribe_to_two_values(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
+#[test]
+async fn delete_component_with_subscriptions_correction(ctx: &mut DalContext) -> Result<()> {
+    setup(ctx).await?;
+
+    // Create a component with a Value prop
+    let component_id = component::create(ctx, "testy", "testy").await?;
+    let value_av_id =
+        Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value"])
+            .await?;
+    let value2_av_id =
+        Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value2"])
+            .await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
+
+    // Create another component
+    let other_component_id = component::create(ctx, "testy", "other").await?;
+    let other_value_av_id =
+        Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value"])
+            .await?;
+    AttributeValue::update(ctx, other_value_av_id, Some(json!("value"))).await?;
+
+    // Subscribe to the values and see if it flows through!
+    AttributeValue::subscribe(
+        ctx,
+        value_av_id,
+        make_subscription(ctx, other_component_id, "/domain/Value").await?,
+    )
+    .await?;
+
+    let other_component_root_av_id =
+        Component::root_attribute_value_id(ctx, other_component_id).await?;
+
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+
+    let cs_1 = ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
+
+    AttributeValue::subscribe(
+        ctx,
+        value2_av_id,
+        make_subscription(ctx, other_component_id, "/domain/Value2").await?,
+    )
+    .await?;
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let _cs_2 = ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
+
+    Component::remove(ctx, other_component_id).await?;
+
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+
+    assert!(
+        !ctx.workspace_snapshot()?
+            .node_exists(other_component_id)
+            .await
+    );
+
+    assert!(
+        !ctx.workspace_snapshot()?
+            .node_exists(other_component_root_av_id)
+            .await
+    );
+
+    ctx.update_visibility_and_snapshot_to_visibility(cs_1.id)
+        .await?;
+
+    assert!(
+        !ctx.workspace_snapshot()?
+            .node_exists(other_component_id)
+            .await
+    );
+
+    assert!(
+        !ctx.workspace_snapshot()?
+            .node_exists(other_component_root_av_id)
+            .await
+    );
+
+    Ok(())
+}
+
 async fn setup(ctx: &DalContext) -> Result<()> {
     // Make a variant with a Value prop
     variant::create(

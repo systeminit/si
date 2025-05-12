@@ -2615,6 +2615,7 @@ impl Component {
     #[instrument(level = "info", skip(ctx))]
     pub async fn remove(ctx: &DalContext, id: ComponentId) -> ComponentResult<()> {
         let component = Self::get_by_id(ctx, id).await?;
+        let root_attribute_value_id = Self::root_attribute_value_id(ctx, id).await?;
 
         if let Some(parent_id) = component.parent(ctx).await? {
             // if we are removing a component with children, re-parent them if I have a parent
@@ -2660,6 +2661,10 @@ impl Component {
             .publish_on_commit(ctx)
             .await?;
 
+        // Deleting the root attribute value will remove all ValueSubscription edges that point to it.
+        ctx.workspace_snapshot()?
+            .remove_node_by_id(root_attribute_value_id)
+            .await?;
         ctx.workspace_snapshot()?.remove_node_by_id(id).await?;
 
         Ok(())
