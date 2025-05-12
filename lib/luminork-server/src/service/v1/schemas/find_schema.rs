@@ -44,7 +44,7 @@ pub struct FindSchemaV1Params {
 
 #[utoipa::path(
     get,
-    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/find",
+    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/find",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
         ("change_set_id" = String, Path, description = "Change set identifier"),

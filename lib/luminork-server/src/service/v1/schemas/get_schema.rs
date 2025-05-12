@@ -22,7 +22,7 @@ use crate::extract::{
 
 #[utoipa::path(
     get,
-    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}",
+    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
         ("change_set_id" = String, Path, description = "Change set identifier"),

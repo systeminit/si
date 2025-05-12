@@ -63,7 +63,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
                             .route("/", get(super::change_sets::get::get_change_set))
                             .route("/", delete(super::change_sets::delete::abandon_change_set))
                             .nest("/components", super::components::routes())
-                            .nest("/schema", super::schema::routes())
+                            .nest("/schemas", super::schemas::routes())
                             .nest("/funcs", super::funcs::routes())
                             .nest("/actions", super::actions::routes())
                             .nest("/secrets", super::secrets::routes())

@@ -3,8 +3,10 @@ use axum::{
     extract::Path,
 };
 use dal::{
+    Prop,
     Schema,
     SchemaVariant,
+    schema::variant::root_prop::RootPropChild,
 };
 use serde_json::json;
 
@@ -13,6 +15,7 @@ use super::{
     SchemaError,
     SchemaResult,
     SchemaV1RequestPath,
+    build_prop_schema_tree,
 };
 use crate::extract::{
     PosthogEventTracker,
@@ -21,11 +24,12 @@ use crate::extract::{
 
 #[utoipa::path(
     get,
-    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}/variant/default",
+    path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/default",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
         ("change_set_id" = String, Path, description = "Change set identifier"),
         ("schema_id" = String, Path, description = "Schema identifier"),
+        ("schema_variant_id" = String, Path, description = "Schema variant identifier"),
     ),
     tag = "schemas",
     responses(
@@ -35,6 +39,7 @@ use crate::extract::{
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
+
 pub async fn get_default_variant(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
@@ -50,6 +55,12 @@ pub async fn get_default_variant(
         .await?
         .into_iter()
         .collect();
+
+    let domain =
+        Prop::find_prop_by_path(ctx, default_variant_id, &RootPropChild::Domain.prop_path())
+            .await
+            .map_err(Box::new)?;
+    let domain_prop_schema = build_prop_schema_tree(ctx, domain.id).await?;
 
     tracker.track(
         ctx,
@@ -74,5 +85,6 @@ pub async fn get_default_variant(
         asset_func_id: variant.asset_func_id_or_error()?,
         variant_func_ids,
         is_default_variant: true,
+        domain_props: domain_prop_schema,
     }))
 }

@@ -115,3 +115,12 @@ pub struct ComponentIdParam {
     #[schema(value_type = String)]
     pub component_id: dal::ComponentId,
 }
+
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PaginationParams {
+    #[schema(example = "50", nullable = true, value_type = Option<String>)]
+    pub limit: Option<u32>,
+    #[schema(example = "01H9ZQD35JPMBGHH69BT0Q79VY", nullable = true, value_type = Option<String>)]
+    pub cursor: Option<String>,
+}
