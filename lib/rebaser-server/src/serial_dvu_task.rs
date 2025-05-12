@@ -18,6 +18,7 @@ use telemetry_utils::metric;
 use thiserror::Error;
 use tokio::sync::Notify;
 use tokio_util::sync::CancellationToken;
+use ulid::{DecodeError, Ulid};
 
 use crate::{
     ServerMetadata,
@@ -27,11 +28,15 @@ use crate::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub(crate) enum SerialDvuTaskError {
+    #[error("borked change set error")]
+    BorkedChangeSetError,
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     /// Error when using a DAL context
     #[error("dal context transaction error: {0}")]
     DalContext(#[from] dal::TransactionsError),
+    #[error("ulid error: {0}")]
+        Ulid(#[from] DecodeError),
     /// When failing to do an operation using the [`WorkspaceSnapshot`]
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
@@ -159,9 +164,15 @@ impl SerialDvuTask {
             warn!("Trying to enqueue DVU for abandoned change set. Returning early.");
             return Ok(());
         }
-
+        let borked_str = "01JT6YN08QC5B804V7QZ8NDDEJ";
+                let borked_change_set_id:ChangeSetId = Ulid::from_string(borked_str)?.into();
+        if change_set.id == borked_change_set_id {
+            error!("Borked change set shall not pass");
+            return Err(SerialDvuTaskError::BorkedChangeSetError);
+        }
         ctx.enqueue_dependent_values_update().await?;
-        ctx.blocking_commit_no_rebase().await?;
+        // I think this is what's actually returning the error, because we can't build a dvu graph due to the orphaned AV. 
+        ctx.blocking_commit_no_rebase().await?; 
         metric!(counter.serial_dvu_task.dvu_running = -1);
 
         Ok(())

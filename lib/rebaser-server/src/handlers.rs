@@ -220,8 +220,9 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
             }
         }
     };
-
+    error!("tokio select returned {:?}",&result);
     tasks_token.cancel();
+    error!("Didn't get to here");
     tracker.wait().await;
 
     // If the processor task was ended via a quiesced shutdown, then check one last time if there

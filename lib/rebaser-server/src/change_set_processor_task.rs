@@ -307,18 +307,12 @@ mod handlers {
     use std::result;
 
     use dal::{
-        ChangeSet,
-        Workspace,
-        WsEvent,
         action::{
             Action,
             ActionError,
-        },
-        billing_publish,
-        workspace_snapshot::{
-            DependentValueRoot,
-            dependent_value_root::DependentValueRootError,
-        },
+        }, billing_publish, workspace_snapshot::{
+            dependent_value_root::DependentValueRootError, DependentValueRoot
+        }, ChangeSet, ChangeSetError, ChangeSetId, Workspace, WsEvent
     };
     use naxum::{
         extract::State,
@@ -343,6 +337,7 @@ mod handlers {
     use telemetry_nats::propagation;
     use telemetry_utils::metric;
     use thiserror::Error;
+    use ulid::{DecodeError, Ulid};
 
     use super::app_state::AppState;
     use crate::{
@@ -362,6 +357,8 @@ mod handlers {
         /// Failures related to Actions
         #[error("action error: {0}")]
         Action(#[from] ActionError),
+        #[error("borked change set error")]
+        BorkedChangeSetError,
         /// Failures related to ChangeSets
         #[error("Change set error: {0}")]
         ChangeSet(#[from] dal::ChangeSetError),
@@ -379,6 +376,8 @@ mod handlers {
         Rebase(#[from] RebaseError),
         #[error("error serializing: {0}")]
         Serialize(#[from] SerializeError),
+        #[error("ulid error: {0}")]
+        Ulid(#[from] DecodeError),
         /// When failing to find the workspace
         #[error("workspace error: {0}")]
         Workspace(#[from] dal::WorkspaceError),
@@ -442,16 +441,16 @@ mod handlers {
         // Dispatch eligible actions if the change set is the default for the workspace.
         // Actions are **ONLY** ever dispatched from the default change set for a workspace.
         if matches!(rebase_status, RebaseStatus::Success { .. }) {
-            // If we find dependent value roots, then notify the serial dvu task to run at least
-            // one more dvu
-            if DependentValueRoot::roots_exist(&ctx).await? {
-                run_notify.notify_one();
-            }
+           
 
             if let Some(workspace) = Workspace::get_by_pk_opt(&ctx, workspace_id).await? {
+                let borked_str = "01JT6YN08QC5B804V7QZ8NDDEJ";
+                let borked_change_set_id:ChangeSetId = Ulid::from_string(borked_str)?.into();
+
                 if workspace.default_change_set_id() == ctx.visibility().change_set_id {
                     let mut change_set =
                         ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;
+                    // Log messages show this is where we see the error
                     if Action::dispatch_actions(&ctx).await? {
                         // Write out the snapshot to get the new address/id.
                         let new_snapshot_id = ctx
@@ -460,6 +459,7 @@ mod handlers {
                             .ok_or(dal::WorkspaceSnapshotError::WorkspaceSnapshotNotWritten)?;
                         // Manually update the pointer to the new address/id that reflects the new
                         // Action states.
+                        // which means for head, we did not update this pointer... what happened in perform_rebase() above...?
                         change_set.update_pointer(&ctx, new_snapshot_id).await?;
 
                         if let Err(err) =
@@ -473,6 +473,15 @@ mod handlers {
                         ctx.commit_no_rebase().await?;
                     }
                 }
+                else if borked_change_set_id == ctx.visibility().change_set_id {
+                    error!("Borked change set shall not pass");
+                    return Err(HandlerError::BorkedChangeSetError);
+                }
+            }
+             // If we find dependent value roots, then notify the serial dvu task to run at least
+            // one more dvu
+            if DependentValueRoot::roots_exist(&ctx).await? {
+                run_notify.notify_one();
             }
         }
 
