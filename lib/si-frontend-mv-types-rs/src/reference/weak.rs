@@ -58,6 +58,16 @@ where
     }
 }
 
+impl<T, R> From<T> for WeakReference<T, R>
+where
+    T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize + std::fmt::Display,
+    R: ReferenceKindMarker,
+{
+    fn from(value: T) -> Self {
+        Self::new(value)
+    }
+}
+
 impl<T, R> FrontendChecksum for WeakReference<T, R>
 where
     T: Eq + PartialEq + Clone + std::fmt::Debug + Serialize + std::fmt::Display,

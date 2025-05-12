@@ -13,12 +13,9 @@ use dal::{
         value_source::ValueSource,
     },
 };
-use si_frontend_mv_types::{
-    incoming_connections::{
-        Connection,
-        IncomingConnections as IncomingConnectionsMv,
-    },
-    reference::WeakReference,
+use si_frontend_mv_types::incoming_connections::{
+    Connection,
+    IncomingConnections as IncomingConnectionsMv,
 };
 use si_id::ComponentId;
 use telemetry::prelude::*;
@@ -105,12 +102,12 @@ async fn socket_to_socket(ctx: &DalContext, component_id: ComponentId) -> Result
                         ))?;
 
                 connections.push(Connection::Socket {
-                    from_component_id: WeakReference::new(component_id),
+                    from_component_id: targets.source_component_id.into(),
                     from_attribute_value_id: output_socket_attribute_value_id,
                     from_attribute_value_path: output_socket_attribute_value_path,
                     from_socket_id: output_socket_id,
                     from_socket_name: output_socket.name().to_string(),
-                    to_component_id: component_id,
+                    to_component_id: component_id.into(),
                     to_socket_id: input_socket_id,
                     to_socket_name: input_socket.name().to_string(),
                     to_attribute_value_id: input_socket_attribute_value_id,
@@ -186,12 +183,12 @@ async fn prop_to_prop(ctx: &DalContext, component_id: ComponentId) -> Result<Vec
             ) in in_progress
             {
                 connections.push(Connection::Prop {
-                    from_component_id,
+                    from_component_id: from_component_id.into(),
                     from_attribute_value_id,
                     from_attribute_value_path,
                     from_prop_id,
                     from_prop_path,
-                    to_component_id: component_id,
+                    to_component_id: component_id.into(),
                     to_prop_id: prop_id,
                     to_prop_path: prop_path.clone(),
                     to_attribute_value_id: attribute_value_id,
