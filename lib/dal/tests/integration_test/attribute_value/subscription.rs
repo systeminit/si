@@ -2,16 +2,13 @@ use dal::{
     AttributeValue,
     Component,
     DalContext,
-    attribute::{
-        path::AttributePath,
-        value::subscription::ValueSubscription,
-    },
 };
 use dal_test::{
     Result,
     helpers::{
         ChangeSetTestHelpers,
         component,
+        make_subscription,
         schema::variant,
     },
     test,
@@ -412,15 +409,4 @@ async fn setup(ctx: &DalContext) -> Result<()> {
     .await?;
 
     Ok(())
-}
-
-async fn make_subscription(
-    ctx: &DalContext,
-    component_id: dal::ComponentId,
-    json_pointer: impl Into<String>,
-) -> Result<ValueSubscription> {
-    Ok(ValueSubscription {
-        attribute_value_id: Component::root_attribute_value_id(ctx, component_id).await?,
-        path: AttributePath::JsonPointer(json_pointer.into()),
-    })
 }

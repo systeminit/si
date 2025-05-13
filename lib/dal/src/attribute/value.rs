@@ -888,7 +888,7 @@ impl AttributeValue {
             // XXX: the two to just be "null" when passing these to a function.
             let output_av = AttributeValue::get_by_id(
                 ctx,
-                OutputSocket::component_attribute_value_for_output_socket_id(
+                OutputSocket::component_attribute_value_id(
                     ctx,
                     inferred_connection.output_socket_id,
                     inferred_connection.source_component_id,

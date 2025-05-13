@@ -52,12 +52,7 @@ async fn socket_to_socket(ctx: &DalContext, component_id: ComponentId) -> Result
     for input_socket in input_sockets {
         let input_socket_id = input_socket.id();
         let input_socket_attribute_value_id =
-            InputSocket::component_attribute_value_for_input_socket_id(
-                ctx,
-                input_socket_id,
-                component_id,
-            )
-            .await?;
+            InputSocket::component_attribute_value_id(ctx, input_socket_id, component_id).await?;
         let attribute_prototype_id =
             AttributeValue::prototype_id(ctx, input_socket_attribute_value_id).await?;
         let attribute_prototype_argument_ids =
@@ -68,12 +63,8 @@ async fn socket_to_socket(ctx: &DalContext, component_id: ComponentId) -> Result
             continue;
         }
 
-        let input_socket_attribute_value_path =
-            AttributeValue::get_path_for_id(ctx, input_socket_attribute_value_id)
-                .await?
-                .ok_or(Error::EmptyPathForAttributeValue(
-                    input_socket_attribute_value_id,
-                ))?;
+        let (_, input_socket_attribute_value_path) =
+            AttributeValue::path_from_root(ctx, input_socket_attribute_value_id).await?;
 
         for attribute_prototype_argument_id in attribute_prototype_argument_ids {
             let attribute_prototype_argument =
@@ -86,34 +77,37 @@ async fn socket_to_socket(ctx: &DalContext, component_id: ComponentId) -> Result
             };
             let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
 
-            if let Some(targets) = attribute_prototype_argument.targets() {
-                let output_socket_attribute_value_id =
-                    OutputSocket::component_attribute_value_for_output_socket_id(
-                        ctx,
-                        output_socket_id,
-                        targets.source_component_id,
-                    )
-                    .await?;
-                let output_socket_attribute_value_path =
-                    AttributeValue::get_path_for_id(ctx, output_socket_attribute_value_id)
-                        .await?
-                        .ok_or(Error::EmptyPathForAttributeValue(
-                            output_socket_attribute_value_id,
-                        ))?;
+            // We've found the connection if the attribute prototype argument has targets whose
+            // destination component ID for the current component. We also need to ensure that we
+            // do not accidentally collect an outgoing connection.
+            let source_component_id = match attribute_prototype_argument.targets() {
+                Some(targets) if targets.destination_component_id == component_id => {
+                    targets.source_component_id
+                }
+                Some(_) | None => continue,
+            };
 
-                connections.push(Connection::Socket {
-                    from_component_id: targets.source_component_id.into(),
-                    from_attribute_value_id: output_socket_attribute_value_id,
-                    from_attribute_value_path: output_socket_attribute_value_path,
-                    from_socket_id: output_socket_id,
-                    from_socket_name: output_socket.name().to_string(),
-                    to_component_id: component_id.into(),
-                    to_socket_id: input_socket_id,
-                    to_socket_name: input_socket.name().to_string(),
-                    to_attribute_value_id: input_socket_attribute_value_id,
-                    to_attribute_value_path: input_socket_attribute_value_path.clone(),
-                });
-            }
+            let output_socket_attribute_value_id = OutputSocket::component_attribute_value_id(
+                ctx,
+                output_socket_id,
+                source_component_id,
+            )
+            .await?;
+            let (_, output_socket_attribute_value_path) =
+                AttributeValue::path_from_root(ctx, output_socket_attribute_value_id).await?;
+
+            connections.push(Connection::Socket {
+                from_component_id: source_component_id.into(),
+                from_attribute_value_id: output_socket_attribute_value_id,
+                from_attribute_value_path: output_socket_attribute_value_path,
+                from_socket_id: output_socket_id,
+                from_socket_name: output_socket.name().to_string(),
+                to_component_id: component_id.into(),
+                to_socket_id: input_socket_id,
+                to_socket_name: input_socket.name().to_string(),
+                to_attribute_value_id: input_socket_attribute_value_id,
+                to_attribute_value_path: input_socket_attribute_value_path.clone(),
+            });
         }
     }
 
@@ -150,7 +144,8 @@ async fn prop_to_prop(ctx: &DalContext, component_id: ComponentId) -> Result<Vec
                         AttributeValue::path_from_root(ctx, from_attribute_value_id).await?;
                     let from_component_id =
                         AttributeValue::component_id(ctx, from_attribute_value_id).await?;
-                    let from_prop_id = AttributeValue::prop_id(ctx, attribute_value_id).await?;
+                    let from_prop_id =
+                        AttributeValue::prop_id(ctx, from_attribute_value_id).await?;
                     let from_prop_path = Prop::path_by_id(ctx, from_prop_id)
                         .await?
                         .with_replaced_sep_and_prefix("/");

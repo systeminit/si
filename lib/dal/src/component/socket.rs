@@ -239,7 +239,7 @@ impl ComponentInputSocket {
             .inferred_connections_for_input_socket(ctx, self.component_id, self.input_socket_id)
             .await?
         {
-            let attribute_value_id = OutputSocket::component_attribute_value_for_output_socket_id(
+            let attribute_value_id = OutputSocket::component_attribute_value_id(
                 ctx,
                 inferred_connection.output_socket_id,
                 inferred_connection.source_component_id,

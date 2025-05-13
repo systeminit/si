@@ -309,7 +309,7 @@ impl InputSocket {
             .map_err(Into::into)
     }
 
-    pub async fn component_attribute_value_for_input_socket_id(
+    pub async fn component_attribute_value_id(
         ctx: &DalContext,
         input_socket_id: InputSocketId,
         component_id: ComponentId,

@@ -493,7 +493,7 @@ impl Frame {
             let component_input_socket = ComponentInputSocket {
                 component_id: incoming_connection.destination_component_id,
                 input_socket_id: incoming_connection.input_socket_id,
-                attribute_value_id: InputSocket::component_attribute_value_for_input_socket_id(
+                attribute_value_id: InputSocket::component_attribute_value_id(
                     ctx,
                     incoming_connection.input_socket_id,
                     incoming_connection.destination_component_id,
@@ -503,7 +503,7 @@ impl Frame {
             let component_output_socket = ComponentOutputSocket {
                 component_id: incoming_connection.source_component_id,
                 output_socket_id: incoming_connection.output_socket_id,
-                attribute_value_id: OutputSocket::component_attribute_value_for_output_socket_id(
+                attribute_value_id: OutputSocket::component_attribute_value_id(
                     ctx,
                     incoming_connection.output_socket_id,
                     incoming_connection.source_component_id,

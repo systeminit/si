@@ -82,8 +82,6 @@ pub enum Error {
     Component(#[from] dal::ComponentError),
     #[error("diagram error: {0}")]
     Diagram(#[from] dal::diagram::DiagramError),
-    #[error("empty path for attribute value id {0}")]
-    EmptyPathForAttributeValue(dal::AttributeValueId),
     #[error("func error: {0}")]
     Func(#[from] dal::FuncError),
     #[error("input socket error: {0}")]

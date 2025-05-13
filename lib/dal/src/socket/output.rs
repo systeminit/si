@@ -314,7 +314,7 @@ impl OutputSocket {
         Ok(result)
     }
 
-    pub async fn component_attribute_value_for_output_socket_id(
+    pub async fn component_attribute_value_id(
         ctx: &DalContext,
         output_socket_id: OutputSocketId,
         component_id: ComponentId,

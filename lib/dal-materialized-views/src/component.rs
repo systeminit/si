@@ -33,12 +33,8 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         InputSocket::list_ids_for_schema_variant(ctx, schema_variant.id()).await?;
     let mut input_count = 0;
     for input_socket_id in input_socket_ids {
-        let attribute_value_id = InputSocket::component_attribute_value_for_input_socket_id(
-            ctx,
-            input_socket_id,
-            component_id,
-        )
-        .await?;
+        let attribute_value_id =
+            InputSocket::component_attribute_value_id(ctx, input_socket_id, component_id).await?;
         let attribute_prototype_id = AttributeValue::prototype_id(ctx, attribute_value_id).await?;
         let attribute_prototype_argument_ids =
             AttributePrototype::list_arguments_for_id(ctx, attribute_prototype_id).await?;

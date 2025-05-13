@@ -256,12 +256,8 @@ async fn build_connection(
         .await?
         .name()
         .to_owned();
-    let av_id = OutputSocket::component_attribute_value_for_output_socket_id(
-        ctx,
-        from_socket_id,
-        from_component_id,
-    )
-    .await?;
+    let av_id =
+        OutputSocket::component_attribute_value_id(ctx, from_socket_id, from_component_id).await?;
     let value = AttributeValue::get_by_id(ctx, av_id)
         .await?
         .view(ctx)
