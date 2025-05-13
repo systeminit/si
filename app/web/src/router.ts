@@ -290,33 +290,21 @@ router.beforeResolve((to) => {
 });
 
 router.afterEach((to) => {
-  /**
-   * Something about this operation seems to break the init render of the app
-   * I thought it might be a caught exception, it wasn't, hence the try catch
-   * The best way to test this is actually the /svg route, since its lightning fast and doesn't re-render
-   * I tried it in nextTick (like below), that still broke things
-   * I tried it with setTimeout 10ms, still broke most of the time, but worked some of the time
-   * 100ms, it works like 7 out of 10.
-   * Just going with 250 for now...
-   * That makes no sense, I will continue to investigate...
-   */
-  setTimeout(() => {
-    let name = "unknown";
-    try {
-      // NOTE: the `matched` array is least specific to most specific, so the one you want is the last one
-      const _name = to.matched.pop()?.name?.toString();
-      if (_name) name = _name;
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error("cant find name", e);
-    }
-    try {
-      pushBreadcrumb(to.path, name, { ...to.params });
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error("cant push", e);
-    }
-  }, 250);
+  let name = "unknown";
+  try {
+    // NOTE: the `matched` array is least specific to most specific, so the one you want is the last one
+    const _name = to.matched[to.matched.length - 1]?.name?.toString();
+    if (_name) name = _name;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("can't find name in matched route", e);
+  }
+  try {
+    pushBreadcrumb(to.path, name, { ...to.params });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("can't push breadcrumb", e);
+  }
 
   nextTick(() => {
     posthog.capture("$pageview", {
