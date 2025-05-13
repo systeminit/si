@@ -35,14 +35,14 @@ class TestWhoamiResponse(unittest.TestCase):
         model = WhoamiResponse()
         if include_optional:
             return WhoamiResponse(
-                token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                token = None,
                 user_email = 'user@example.com',
                 user_id = '01H9ZQCBJ3E7HBTRN3J58JQX8K',
                 workspace_id = '01H9ZQD35JPMBGHH69BT0Q79VY'
             )
         else:
             return WhoamiResponse(
-                token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+                token = None,
                 user_email = 'user@example.com',
                 user_id = '01H9ZQCBJ3E7HBTRN3J58JQX8K',
                 workspace_id = '01H9ZQD35JPMBGHH69BT0Q79VY',

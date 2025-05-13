@@ -43,7 +43,7 @@ pub struct WhoamiResponse {
     #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VY")]
     pub workspace_id: WorkspacePk,
 
-    #[schema(value_type = String, example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")]
+    #[schema(value_type = Object,  example = "{\"iat\":\"1746915092\",\"exp\":\"1747001492\",\"sub\":\"01GW0KXH4YJBWC7BTBAZ6ZR7EA\",\"jti\":\"01JTY41T273V8KAP9E01MWRRCN\",\"version\":\"2\",\"userId\":\"01GW0KXH4YJBWC7BTBAZ6ZR7EA\",\"workspaceId\": \"01JCKRDPB7XATNMS25FKQ1WGZZ\",\"role\": \"automation\"}")]
     pub token: SiJwt,
 }
 

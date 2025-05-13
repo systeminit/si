@@ -19,6 +19,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
 from typing import Any, ClassVar, Dict, List
+from system_initiative_api_client.models.prop_schema_v1 import PropSchemaV1
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -31,12 +32,13 @@ class GetSchemaVariantV1Response(BaseModel):
     color: StrictStr
     description: StrictStr
     display_name: StrictStr = Field(alias="displayName")
+    domain_props: PropSchemaV1 = Field(alias="domainProps")
     is_default_variant: StrictBool = Field(alias="isDefaultVariant")
     is_locked: StrictBool = Field(alias="isLocked")
     link: StrictStr
     variant_func_ids: List[StrictStr] = Field(alias="variantFuncIds")
     variant_id: StrictStr = Field(alias="variantId")
-    __properties: ClassVar[List[str]] = ["assetFuncId", "category", "color", "description", "displayName", "isDefaultVariant", "isLocked", "link", "variantFuncIds", "variantId"]
+    __properties: ClassVar[List[str]] = ["assetFuncId", "category", "color", "description", "displayName", "domainProps", "isDefaultVariant", "isLocked", "link", "variantFuncIds", "variantId"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -77,6 +79,9 @@ class GetSchemaVariantV1Response(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of domain_props
+        if self.domain_props:
+            _dict['domainProps'] = self.domain_props.to_dict()
         return _dict
 
     @classmethod
@@ -94,6 +99,7 @@ class GetSchemaVariantV1Response(BaseModel):
             "color": obj.get("color"),
             "description": obj.get("description"),
             "displayName": obj.get("displayName"),
+            "domainProps": PropSchemaV1.from_dict(obj["domainProps"]) if obj.get("domainProps") is not None else None,
             "isDefaultVariant": obj.get("isDefaultVariant"),
             "isLocked": obj.get("isLocked"),
             "link": obj.get("link"),

@@ -41,6 +41,7 @@ CLAUDE.md
 
 sdk-venv/
 .pytest_cache/
+__pycache__
 
 # Buck
 /buck-out/

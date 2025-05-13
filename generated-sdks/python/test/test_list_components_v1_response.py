@@ -35,7 +35,8 @@ class TestListComponentsV1Response(unittest.TestCase):
         model = ListComponentsV1Response()
         if include_optional:
             return ListComponentsV1Response(
-                components = [01H9ZQD35JPMBGHH69BT0Q79AA, 01H9ZQD35JPMBGHH69BT0Q79BB, 01H9ZQD35JPMBGHH69BT0Q79CC]
+                components = [01H9ZQD35JPMBGHH69BT0Q79AA, 01H9ZQD35JPMBGHH69BT0Q79BB, 01H9ZQD35JPMBGHH69BT0Q79CC],
+                next_cursor = ''
             )
         else:
             return ListComponentsV1Response(

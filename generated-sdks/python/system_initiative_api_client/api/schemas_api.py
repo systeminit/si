@@ -341,7 +341,7 @@ class SchemasApi:
 
         return self.api_client.param_serialize(
             method='GET',
-            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/find',
+            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/find',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,
@@ -363,6 +363,7 @@ class SchemasApi:
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
         change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
         schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -385,6 +386,8 @@ class SchemasApi:
         :type change_set_id: str
         :param schema_id: Schema identifier (required)
         :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -411,6 +414,7 @@ class SchemasApi:
             workspace_id=workspace_id,
             change_set_id=change_set_id,
             schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -440,6 +444,7 @@ class SchemasApi:
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
         change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
         schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -462,6 +467,8 @@ class SchemasApi:
         :type change_set_id: str
         :param schema_id: Schema identifier (required)
         :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -488,6 +495,7 @@ class SchemasApi:
             workspace_id=workspace_id,
             change_set_id=change_set_id,
             schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -517,6 +525,7 @@ class SchemasApi:
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
         change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
         schema_id: Annotated[StrictStr, Field(description="Schema identifier")],
+        schema_variant_id: Annotated[StrictStr, Field(description="Schema variant identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -539,6 +548,8 @@ class SchemasApi:
         :type change_set_id: str
         :param schema_id: Schema identifier (required)
         :type schema_id: str
+        :param schema_variant_id: Schema variant identifier (required)
+        :type schema_variant_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -565,6 +576,7 @@ class SchemasApi:
             workspace_id=workspace_id,
             change_set_id=change_set_id,
             schema_id=schema_id,
+            schema_variant_id=schema_variant_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -589,6 +601,7 @@ class SchemasApi:
         workspace_id,
         change_set_id,
         schema_id,
+        schema_variant_id,
         _request_auth,
         _content_type,
         _headers,
@@ -616,6 +629,8 @@ class SchemasApi:
             _path_params['change_set_id'] = change_set_id
         if schema_id is not None:
             _path_params['schema_id'] = schema_id
+        if schema_variant_id is not None:
+            _path_params['schema_variant_id'] = schema_variant_id
         # process the query parameters
         # process the header parameters
         # process the form parameters
@@ -637,7 +652,7 @@ class SchemasApi:
 
         return self.api_client.param_serialize(
             method='GET',
-            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}/variant/default',
+            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/default',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,
@@ -933,7 +948,7 @@ class SchemasApi:
 
         return self.api_client.param_serialize(
             method='GET',
-            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}',
+            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,
@@ -1247,7 +1262,7 @@ class SchemasApi:
 
         return self.api_client.param_serialize(
             method='GET',
-            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}/variant/{schema_variant_id}',
+            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,
@@ -1268,6 +1283,8 @@ class SchemasApi:
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
         change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
+        cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (SchemaId of the last item from previous page)")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1288,6 +1305,10 @@ class SchemasApi:
         :type workspace_id: str
         :param change_set_id: Change set identifier (required)
         :type change_set_id: str
+        :param limit: Maximum number of results to return (default: 50, max: 300)
+        :type limit: str
+        :param cursor: Cursor for pagination (SchemaId of the last item from previous page)
+        :type cursor: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1313,6 +1334,8 @@ class SchemasApi:
         _param = self._list_schemas_serialize(
             workspace_id=workspace_id,
             change_set_id=change_set_id,
+            limit=limit,
+            cursor=cursor,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1340,6 +1363,8 @@ class SchemasApi:
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
         change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
+        cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (SchemaId of the last item from previous page)")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1360,6 +1385,10 @@ class SchemasApi:
         :type workspace_id: str
         :param change_set_id: Change set identifier (required)
         :type change_set_id: str
+        :param limit: Maximum number of results to return (default: 50, max: 300)
+        :type limit: str
+        :param cursor: Cursor for pagination (SchemaId of the last item from previous page)
+        :type cursor: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1385,6 +1414,8 @@ class SchemasApi:
         _param = self._list_schemas_serialize(
             workspace_id=workspace_id,
             change_set_id=change_set_id,
+            limit=limit,
+            cursor=cursor,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1412,6 +1443,8 @@ class SchemasApi:
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
         change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
+        cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (SchemaId of the last item from previous page)")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1432,6 +1465,10 @@ class SchemasApi:
         :type workspace_id: str
         :param change_set_id: Change set identifier (required)
         :type change_set_id: str
+        :param limit: Maximum number of results to return (default: 50, max: 300)
+        :type limit: str
+        :param cursor: Cursor for pagination (SchemaId of the last item from previous page)
+        :type cursor: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1457,6 +1494,8 @@ class SchemasApi:
         _param = self._list_schemas_serialize(
             workspace_id=workspace_id,
             change_set_id=change_set_id,
+            limit=limit,
+            cursor=cursor,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1479,6 +1518,8 @@ class SchemasApi:
         self,
         workspace_id,
         change_set_id,
+        limit,
+        cursor,
         _request_auth,
         _content_type,
         _headers,
@@ -1505,6 +1546,14 @@ class SchemasApi:
         if change_set_id is not None:
             _path_params['change_set_id'] = change_set_id
         # process the query parameters
+        if limit is not None:
+            
+            _query_params.append(('limit', limit))
+            
+        if cursor is not None:
+            
+            _query_params.append(('cursor', cursor))
+            
         # process the header parameters
         # process the form parameters
         # process the body parameter
@@ -1525,7 +1574,7 @@ class SchemasApi:
 
         return self.api_client.param_serialize(
             method='GET',
-            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schema',
+            resource_path='/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas',
             path_params=_path_params,
             query_params=_query_params,
             header_params=_header_params,

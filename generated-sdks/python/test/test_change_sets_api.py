@@ -62,6 +62,12 @@ class TestChangeSetsApi(unittest.TestCase):
         """
         pass
 
+    def test_purge_open(self) -> None:
+        """Test case for purge_open
+
+        """
+        pass
+
     def test_request_approval(self) -> None:
         """Test case for request_approval
 

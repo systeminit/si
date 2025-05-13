@@ -1,0 +1,10 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "sh_binary",
+)
+
+sh_binary(
+    name = "update_sdks",
+    main = "update-sdks.sh",
+    visibility = ["PUBLIC"],
+)

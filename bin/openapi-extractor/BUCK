@@ -15,18 +15,25 @@ rust_binary(
     env = {"CARGO_BIN_NAME": "openapi-extractor"},
 )
 
-sh_binary(
-    name = "build-python-sdk",
-    main = "sdk-generators/generate-python-sdk.sh",
-    resources = [
-        "data/openapi.json",
-    ],
+genrule(
+  name = 'generate_api_spec',
+  cmd = '$(exe :openapi-extractor) $OUT',
+  out = 'data/openapi.json',
+  visibility = ["PUBLIC"],
 )
 
-sh_binary(
-    name = "build-typescript-sdk",
-    main = "sdk-generators/generate-typescript-sdk.sh",
-    resources = [
-        "data/openapi.json",
-    ],
+genrule(
+  name = "generate_python_sdk",
+  cmd = "./sdk-generators/generate-python-sdk.sh $(location :generate_api_spec) $OUT",
+  out = "generated-python-sdk",
+  srcs = ["sdk-generators/generate-python-sdk.sh"],
+  visibility = ["PUBLIC"],
+)
+
+genrule(
+  name = "generate_typescript_sdk",
+  cmd = "./sdk-generators/generate-typescript-sdk.sh $(location :generate_api_spec) $OUT",
+  out = "generated-python-sdk",
+  srcs = ["sdk-generators/generate-typescript-sdk.sh"],
+  visibility = ["PUBLIC"],
 )

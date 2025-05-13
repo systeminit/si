@@ -96,6 +96,7 @@ Class | Method | HTTP request | Description
 *ChangeSetsApi* | [**get_change_set**](docs/ChangeSetsApi.md#get_change_set) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id} | 
 *ChangeSetsApi* | [**list_change_sets**](docs/ChangeSetsApi.md#list_change_sets) | **GET** /v1/w/{workspace_id}/change-sets | 
 *ChangeSetsApi* | [**merge_status**](docs/ChangeSetsApi.md#merge_status) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id}/merge_status | 
+*ChangeSetsApi* | [**purge_open**](docs/ChangeSetsApi.md#purge_open) | **POST** /v1/w/{workspace_id}/change-sets/purge_open | 
 *ChangeSetsApi* | [**request_approval**](docs/ChangeSetsApi.md#request_approval) | **POST** /v1/w/{workspace_id}/change-sets/{change_set_id}/request_approval | 
 *ComponentsApi* | [**add_action**](docs/ComponentsApi.md#add_action) | **POST** /v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/action | 
 *ComponentsApi* | [**create_component**](docs/ComponentsApi.md#create_component) | **POST** /v1/w/{workspace_id}/change-sets/{change_set_id}/components | 
@@ -108,11 +109,11 @@ Class | Method | HTTP request | Description
 *FuncsApi* | [**get_func**](docs/FuncsApi.md#get_func) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/{func_id} | 
 *FuncsApi* | [**get_func_run**](docs/FuncsApi.md#get_func_run) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/runs/{func_run_id} | 
 *RootApi* | [**system_status_route**](docs/RootApi.md#system_status_route) | **GET** / | 
-*SchemasApi* | [**find_schema**](docs/SchemasApi.md#find_schema) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id}/schema/find | 
-*SchemasApi* | [**get_default_variant**](docs/SchemasApi.md#get_default_variant) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}/variant/default | 
-*SchemasApi* | [**get_schema**](docs/SchemasApi.md#get_schema) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id} | 
-*SchemasApi* | [**get_variant**](docs/SchemasApi.md#get_variant) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}/variant/{schema_variant_id} | 
-*SchemasApi* | [**list_schemas**](docs/SchemasApi.md#list_schemas) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id}/schema | 
+*SchemasApi* | [**find_schema**](docs/SchemasApi.md#find_schema) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/find | 
+*SchemasApi* | [**get_default_variant**](docs/SchemasApi.md#get_default_variant) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/default | 
+*SchemasApi* | [**get_schema**](docs/SchemasApi.md#get_schema) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id} | 
+*SchemasApi* | [**get_variant**](docs/SchemasApi.md#get_variant) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id} | 
+*SchemasApi* | [**list_schemas**](docs/SchemasApi.md#list_schemas) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas | 
 *SecretsApi* | [**create_secret**](docs/SecretsApi.md#create_secret) | **POST** /v1/w/{workspace_id}/change-sets/{change_set_id}/secrets | 
 *SecretsApi* | [**delete_secret**](docs/SecretsApi.md#delete_secret) | **DELETE** /v1/w/{workspace_id}/change-sets/{change_set_id}/secrets/{secret_id} | 
 *SecretsApi* | [**get_secrets**](docs/SecretsApi.md#get_secrets) | **GET** /v1/w/{workspace_id}/change-sets/{change_set_id}/secrets | 
@@ -194,9 +195,12 @@ Class | Method | HTTP request | Description
  - [MergeStatusV1ResponseActionComponent](docs/MergeStatusV1ResponseActionComponent.md)
  - [OutgoingConnectionViewV1](docs/OutgoingConnectionViewV1.md)
  - [OutputLineViewV1](docs/OutputLineViewV1.md)
+ - [PropSchemaV1](docs/PropSchemaV1.md)
+ - [PurgeOpenChangeSetsV1Response](docs/PurgeOpenChangeSetsV1Response.md)
  - [PutOnHoldActionV1Response](docs/PutOnHoldActionV1Response.md)
  - [RequestApprovalChangeSetV1Response](docs/RequestApprovalChangeSetV1Response.md)
  - [RetryActionV1Response](docs/RetryActionV1Response.md)
+ - [SchemaResponse](docs/SchemaResponse.md)
  - [SchemaV1RequestPath](docs/SchemaV1RequestPath.md)
  - [SchemaVariantV1RequestPath](docs/SchemaVariantV1RequestPath.md)
  - [SecretDefinitionV1](docs/SecretDefinitionV1.md)

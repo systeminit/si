@@ -1295,6 +1295,12 @@ export interface GetSchemaVariantV1Response {
     'displayName': string;
     /**
      * 
+     * @type {PropSchemaV1}
+     * @memberof GetSchemaVariantV1Response
+     */
+    'domainProps': PropSchemaV1;
+    /**
+     * 
      * @type {boolean}
      * @memberof GetSchemaVariantV1Response
      */
@@ -1395,10 +1401,16 @@ export interface ListChangeSetV1Response {
 export interface ListComponentsV1Response {
     /**
      * 
-     * @type {Array<string>}
+     * @type {Array<Array<string>>}
      * @memberof ListComponentsV1Response
      */
-    'components': Array<string>;
+    'components': Array<Array<string>>;
+    /**
+     * 
+     * @type {string}
+     * @memberof ListComponentsV1Response
+     */
+    'nextCursor'?: string | null;
 }
 /**
  * 
@@ -1408,10 +1420,16 @@ export interface ListComponentsV1Response {
 export interface ListSchemaV1Response {
     /**
      * 
-     * @type {Array<object>}
+     * @type {string}
      * @memberof ListSchemaV1Response
      */
-    'schemas': Array<object>;
+    'nextCursor'?: string | null;
+    /**
+     * 
+     * @type {Array<SchemaResponse>}
+     * @memberof ListSchemaV1Response
+     */
+    'schemas': Array<SchemaResponse>;
 }
 /**
  * 
@@ -1630,6 +1648,56 @@ export interface OutputLineViewV1 {
 /**
  * 
  * @export
+ * @interface PropSchemaV1
+ */
+export interface PropSchemaV1 {
+    /**
+     * 
+     * @type {Array<PropSchemaV1>}
+     * @memberof PropSchemaV1
+     */
+    'children': Array<PropSchemaV1>;
+    /**
+     * 
+     * @type {string}
+     * @memberof PropSchemaV1
+     */
+    'description': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof PropSchemaV1
+     */
+    'name': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof PropSchemaV1
+     */
+    'propId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof PropSchemaV1
+     */
+    'propType': string;
+}
+/**
+ * 
+ * @export
+ * @interface PurgeOpenChangeSetsV1Response
+ */
+export interface PurgeOpenChangeSetsV1Response {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof PurgeOpenChangeSetsV1Response
+     */
+    'success': boolean;
+}
+/**
+ * 
+ * @export
  * @interface PutOnHoldActionV1Response
  */
 export interface PutOnHoldActionV1Response {
@@ -1665,6 +1733,37 @@ export interface RetryActionV1Response {
      * @memberof RetryActionV1Response
      */
     'success': boolean;
+}
+/**
+ * 
+ * @export
+ * @interface SchemaResponse
+ */
+export interface SchemaResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof SchemaResponse
+     */
+    'category'?: string | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SchemaResponse
+     */
+    'installed': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof SchemaResponse
+     */
+    'schemaId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SchemaResponse
+     */
+    'schemaName': string;
 }
 /**
  * 
@@ -1970,10 +2069,10 @@ export interface ViewV1 {
 export interface WhoamiResponse {
     /**
      * 
-     * @type {string}
+     * @type {object}
      * @memberof WhoamiResponse
      */
-    'token': string;
+    'token': object;
     /**
      * 
      * @type {string}
@@ -2706,6 +2805,39 @@ export const ChangeSetsApiAxiosParamCreator = function (configuration?: Configur
         /**
          * 
          * @param {string} workspaceId Workspace identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        purgeOpen: async (workspaceId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('purgeOpen', 'workspaceId', workspaceId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/purge_open`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2830,6 +2962,18 @@ export const ChangeSetsApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @param {string} workspaceId Workspace identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async purgeOpen(workspaceId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PurgeOpenChangeSetsV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.purgeOpen(workspaceId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ChangeSetsApi.purgeOpen']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2906,6 +3050,15 @@ export const ChangeSetsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @param {ChangeSetsApiPurgeOpenRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        purgeOpen(requestParameters: ChangeSetsApiPurgeOpenRequest, options?: RawAxiosRequestConfig): AxiosPromise<PurgeOpenChangeSetsV1Response> {
+            return localVarFp.purgeOpen(requestParameters.workspaceId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @param {ChangeSetsApiRequestApprovalRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2975,6 +3128,15 @@ export interface ChangeSetsApiInterface {
      * @memberof ChangeSetsApiInterface
      */
     mergeStatus(requestParameters: ChangeSetsApiMergeStatusRequest, options?: RawAxiosRequestConfig): AxiosPromise<MergeStatusV1Response>;
+
+    /**
+     * 
+     * @param {ChangeSetsApiPurgeOpenRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ChangeSetsApiInterface
+     */
+    purgeOpen(requestParameters: ChangeSetsApiPurgeOpenRequest, options?: RawAxiosRequestConfig): AxiosPromise<PurgeOpenChangeSetsV1Response>;
 
     /**
      * 
@@ -3107,6 +3269,20 @@ export interface ChangeSetsApiMergeStatusRequest {
 }
 
 /**
+ * Request parameters for purgeOpen operation in ChangeSetsApi.
+ * @export
+ * @interface ChangeSetsApiPurgeOpenRequest
+ */
+export interface ChangeSetsApiPurgeOpenRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof ChangeSetsApiPurgeOpen
+     */
+    readonly workspaceId: string
+}
+
+/**
  * Request parameters for requestApproval operation in ChangeSetsApi.
  * @export
  * @interface ChangeSetsApiRequestApprovalRequest
@@ -3198,6 +3374,17 @@ export class ChangeSetsApi extends BaseAPI implements ChangeSetsApiInterface {
      */
     public mergeStatus(requestParameters: ChangeSetsApiMergeStatusRequest, options?: RawAxiosRequestConfig) {
         return ChangeSetsApiFp(this.configuration).mergeStatus(requestParameters.workspaceId, requestParameters.changeSetId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {ChangeSetsApiPurgeOpenRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ChangeSetsApi
+     */
+    public purgeOpen(requestParameters: ChangeSetsApiPurgeOpenRequest, options?: RawAxiosRequestConfig) {
+        return ChangeSetsApiFp(this.configuration).purgeOpen(requestParameters.workspaceId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3490,10 +3677,12 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
          * 
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change set identifier
+         * @param {string} [limit] Maximum number of results to return (default: 50, max: 300)
+         * @param {string} [cursor] Cursor for pagination (ComponentId of the last item from previous page)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listComponents: async (workspaceId: string, changeSetId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        listComponents: async (workspaceId: string, changeSetId: string, limit?: string, cursor?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'workspaceId' is not null or undefined
             assertParamExists('listComponents', 'workspaceId', workspaceId)
             // verify required parameter 'changeSetId' is not null or undefined
@@ -3511,6 +3700,14 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
             const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
+
+            if (limit !== undefined) {
+                localVarQueryParameter['limit'] = limit;
+            }
+
+            if (cursor !== undefined) {
+                localVarQueryParameter['cursor'] = cursor;
+            }
 
 
     
@@ -3671,11 +3868,13 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
          * 
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change set identifier
+         * @param {string} [limit] Maximum number of results to return (default: 50, max: 300)
+         * @param {string} [cursor] Cursor for pagination (ComponentId of the last item from previous page)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async listComponents(workspaceId: string, changeSetId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListComponentsV1Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.listComponents(workspaceId, changeSetId, options);
+        async listComponents(workspaceId: string, changeSetId: string, limit?: string, cursor?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListComponentsV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listComponents(workspaceId, changeSetId, limit, cursor, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ComponentsApi.listComponents']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -3766,7 +3965,7 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
          * @throws {RequiredError}
          */
         listComponents(requestParameters: ComponentsApiListComponentsRequest, options?: RawAxiosRequestConfig): AxiosPromise<ListComponentsV1Response> {
-            return localVarFp.listComponents(requestParameters.workspaceId, requestParameters.changeSetId, options).then((request) => request(axios, basePath));
+            return localVarFp.listComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -4068,6 +4267,20 @@ export interface ComponentsApiListComponentsRequest {
      * @memberof ComponentsApiListComponents
      */
     readonly changeSetId: string
+
+    /**
+     * Maximum number of results to return (default: 50, max: 300)
+     * @type {string}
+     * @memberof ComponentsApiListComponents
+     */
+    readonly limit?: string
+
+    /**
+     * Cursor for pagination (ComponentId of the last item from previous page)
+     * @type {string}
+     * @memberof ComponentsApiListComponents
+     */
+    readonly cursor?: string
 }
 
 /**
@@ -4186,7 +4399,7 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
      * @memberof ComponentsApi
      */
     public listComponents(requestParameters: ComponentsApiListComponentsRequest, options?: RawAxiosRequestConfig) {
-        return ComponentsApiFp(this.configuration).listComponents(requestParameters.workspaceId, requestParameters.changeSetId, options).then((request) => request(this.axios, this.basePath));
+        return ComponentsApiFp(this.configuration).listComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -4607,7 +4820,7 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
             assertParamExists('findSchema', 'workspaceId', workspaceId)
             // verify required parameter 'changeSetId' is not null or undefined
             assertParamExists('findSchema', 'changeSetId', changeSetId)
-            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/find`
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/find`
                 .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
                 .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
@@ -4645,20 +4858,24 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change set identifier
          * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        getDefaultVariant: async (workspaceId: string, changeSetId: string, schemaId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        getDefaultVariant: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'workspaceId' is not null or undefined
             assertParamExists('getDefaultVariant', 'workspaceId', workspaceId)
             // verify required parameter 'changeSetId' is not null or undefined
             assertParamExists('getDefaultVariant', 'changeSetId', changeSetId)
             // verify required parameter 'schemaId' is not null or undefined
             assertParamExists('getDefaultVariant', 'schemaId', schemaId)
-            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}/variant/default`
+            // verify required parameter 'schemaVariantId' is not null or undefined
+            assertParamExists('getDefaultVariant', 'schemaVariantId', schemaVariantId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/default`
                 .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
                 .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
-                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)));
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
+                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -4696,7 +4913,7 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
             assertParamExists('getSchema', 'changeSetId', changeSetId)
             // verify required parameter 'schemaId' is not null or undefined
             assertParamExists('getSchema', 'schemaId', schemaId)
-            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}`
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}`
                 .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
                 .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
                 .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)));
@@ -4740,7 +4957,7 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
             assertParamExists('getVariant', 'schemaId', schemaId)
             // verify required parameter 'schemaVariantId' is not null or undefined
             assertParamExists('getVariant', 'schemaVariantId', schemaVariantId)
-            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}/variant/{schema_variant_id}`
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}`
                 .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
                 .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
                 .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
@@ -4771,15 +4988,17 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change set identifier
+         * @param {string} [limit] Maximum number of results to return (default: 50, max: 300)
+         * @param {string} [cursor] Cursor for pagination (SchemaId of the last item from previous page)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listSchemas: async (workspaceId: string, changeSetId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        listSchemas: async (workspaceId: string, changeSetId: string, limit?: string, cursor?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'workspaceId' is not null or undefined
             assertParamExists('listSchemas', 'workspaceId', workspaceId)
             // verify required parameter 'changeSetId' is not null or undefined
             assertParamExists('listSchemas', 'changeSetId', changeSetId)
-            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schema`
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas`
                 .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
                 .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
@@ -4792,6 +5011,14 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
             const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
+
+            if (limit !== undefined) {
+                localVarQueryParameter['limit'] = limit;
+            }
+
+            if (cursor !== undefined) {
+                localVarQueryParameter['cursor'] = cursor;
+            }
 
 
     
@@ -4834,11 +5061,12 @@ export const SchemasApiFp = function(configuration?: Configuration) {
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change set identifier
          * @param {string} schemaId Schema identifier
+         * @param {string} schemaVariantId Schema variant identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async getDefaultVariant(workspaceId: string, changeSetId: string, schemaId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetSchemaVariantV1Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getDefaultVariant(workspaceId, changeSetId, schemaId, options);
+        async getDefaultVariant(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetSchemaVariantV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getDefaultVariant(workspaceId, changeSetId, schemaId, schemaVariantId, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['SchemasApi.getDefaultVariant']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -4876,11 +5104,13 @@ export const SchemasApiFp = function(configuration?: Configuration) {
          * 
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change set identifier
+         * @param {string} [limit] Maximum number of results to return (default: 50, max: 300)
+         * @param {string} [cursor] Cursor for pagination (SchemaId of the last item from previous page)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async listSchemas(workspaceId: string, changeSetId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListSchemaV1Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.listSchemas(workspaceId, changeSetId, options);
+        async listSchemas(workspaceId: string, changeSetId: string, limit?: string, cursor?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListSchemaV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listSchemas(workspaceId, changeSetId, limit, cursor, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['SchemasApi.listSchemas']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -4911,7 +5141,7 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
          * @throws {RequiredError}
          */
         getDefaultVariant(requestParameters: SchemasApiGetDefaultVariantRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetSchemaVariantV1Response> {
-            return localVarFp.getDefaultVariant(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, options).then((request) => request(axios, basePath));
+            return localVarFp.getDefaultVariant(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -4938,7 +5168,7 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
          * @throws {RequiredError}
          */
         listSchemas(requestParameters: SchemasApiListSchemasRequest, options?: RawAxiosRequestConfig): AxiosPromise<ListSchemaV1Response> {
-            return localVarFp.listSchemas(requestParameters.workspaceId, requestParameters.changeSetId, options).then((request) => request(axios, basePath));
+            return localVarFp.listSchemas(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -5057,6 +5287,13 @@ export interface SchemasApiGetDefaultVariantRequest {
      * @memberof SchemasApiGetDefaultVariant
      */
     readonly schemaId: string
+
+    /**
+     * Schema variant identifier
+     * @type {string}
+     * @memberof SchemasApiGetDefaultVariant
+     */
+    readonly schemaVariantId: string
 }
 
 /**
@@ -5141,6 +5378,20 @@ export interface SchemasApiListSchemasRequest {
      * @memberof SchemasApiListSchemas
      */
     readonly changeSetId: string
+
+    /**
+     * Maximum number of results to return (default: 50, max: 300)
+     * @type {string}
+     * @memberof SchemasApiListSchemas
+     */
+    readonly limit?: string
+
+    /**
+     * Cursor for pagination (SchemaId of the last item from previous page)
+     * @type {string}
+     * @memberof SchemasApiListSchemas
+     */
+    readonly cursor?: string
 }
 
 /**
@@ -5169,7 +5420,7 @@ export class SchemasApi extends BaseAPI implements SchemasApiInterface {
      * @memberof SchemasApi
      */
     public getDefaultVariant(requestParameters: SchemasApiGetDefaultVariantRequest, options?: RawAxiosRequestConfig) {
-        return SchemasApiFp(this.configuration).getDefaultVariant(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, options).then((request) => request(this.axios, this.basePath));
+        return SchemasApiFp(this.configuration).getDefaultVariant(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -5202,7 +5453,7 @@ export class SchemasApi extends BaseAPI implements SchemasApiInterface {
      * @memberof SchemasApi
      */
     public listSchemas(requestParameters: SchemasApiListSchemasRequest, options?: RawAxiosRequestConfig) {
-        return SchemasApiFp(this.configuration).listSchemas(requestParameters.workspaceId, requestParameters.changeSetId, options).then((request) => request(this.axios, this.basePath));
+        return SchemasApiFp(this.configuration).listSchemas(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

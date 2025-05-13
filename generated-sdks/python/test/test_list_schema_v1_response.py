@@ -35,11 +35,24 @@ class TestListSchemaV1Response(unittest.TestCase):
         model = ListSchemaV1Response()
         if include_optional:
             return ListSchemaV1Response(
-                schemas = [{"schemaId":"01H9ZQD35JPMBGHH69BT0Q79VY","schemaName":"AWS::EC2::Instance","category":"AWS::EC2","installed": "true"}]
+                next_cursor = '',
+                schemas = [
+                    system_initiative_api_client.models.schema_response.SchemaResponse(
+                        category = 'AWS::EC2', 
+                        installed = False, 
+                        schema_id = '01H9ZQD35JPMBGHH69BT0Q79VY', 
+                        schema_name = 'AWS::EC2::Instance', )
+                    ]
             )
         else:
             return ListSchemaV1Response(
-                schemas = [{"schemaId":"01H9ZQD35JPMBGHH69BT0Q79VY","schemaName":"AWS::EC2::Instance","category":"AWS::EC2","installed": "true"}],
+                schemas = [
+                    system_initiative_api_client.models.schema_response.SchemaResponse(
+                        category = 'AWS::EC2', 
+                        installed = False, 
+                        schema_id = '01H9ZQD35JPMBGHH69BT0Q79VY', 
+                        schema_name = 'AWS::EC2::Instance', )
+                    ],
         )
         """
 

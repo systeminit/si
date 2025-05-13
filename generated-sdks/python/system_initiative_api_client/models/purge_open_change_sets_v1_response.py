@@ -17,20 +17,17 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, StrictBool
 from typing import Any, ClassVar, Dict, List
 from typing import Optional, Set
 from typing_extensions import Self
 
-class WhoamiResponse(BaseModel):
+class PurgeOpenChangeSetsV1Response(BaseModel):
     """
-    WhoamiResponse
+    PurgeOpenChangeSetsV1Response
     """ # noqa: E501
-    token: Dict[str, Any]
-    user_email: StrictStr = Field(alias="userEmail")
-    user_id: StrictStr = Field(alias="userId")
-    workspace_id: StrictStr = Field(alias="workspaceId")
-    __properties: ClassVar[List[str]] = ["token", "userEmail", "userId", "workspaceId"]
+    success: StrictBool
+    __properties: ClassVar[List[str]] = ["success"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -50,7 +47,7 @@ class WhoamiResponse(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of WhoamiResponse from a JSON string"""
+        """Create an instance of PurgeOpenChangeSetsV1Response from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -75,7 +72,7 @@ class WhoamiResponse(BaseModel):
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of WhoamiResponse from a dict"""
+        """Create an instance of PurgeOpenChangeSetsV1Response from a dict"""
         if obj is None:
             return None
 
@@ -83,10 +80,7 @@ class WhoamiResponse(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "token": obj.get("token"),
-            "userEmail": obj.get("userEmail"),
-            "userId": obj.get("userId"),
-            "workspaceId": obj.get("workspaceId")
+            "success": obj.get("success")
         })
         return _obj
 

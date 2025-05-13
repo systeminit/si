@@ -40,6 +40,21 @@ class TestGetSchemaVariantV1Response(unittest.TestCase):
                 color = '#FF5733',
                 description = 'Amazon EC2 Instance resource type',
                 display_name = 'AWS EC2 Instance',
+                domain_props = system_initiative_api_client.models.prop_schema_v1.PropSchemaV1(
+                    children = [
+                        system_initiative_api_client.models.prop_schema_v1.PropSchemaV1(
+                            children = [
+                                
+                                ], 
+                            description = '', 
+                            name = '', 
+                            prop_id = '', 
+                            prop_type = '', )
+                        ], 
+                    description = '', 
+                    name = '', 
+                    prop_id = '', 
+                    prop_type = '', ),
                 is_default_variant = True,
                 is_locked = False,
                 link = 'https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html',
@@ -53,6 +68,21 @@ class TestGetSchemaVariantV1Response(unittest.TestCase):
                 color = '#FF5733',
                 description = 'Amazon EC2 Instance resource type',
                 display_name = 'AWS EC2 Instance',
+                domain_props = system_initiative_api_client.models.prop_schema_v1.PropSchemaV1(
+                    children = [
+                        system_initiative_api_client.models.prop_schema_v1.PropSchemaV1(
+                            children = [
+                                
+                                ], 
+                            description = '', 
+                            name = '', 
+                            prop_id = '', 
+                            prop_type = '', )
+                        ], 
+                    description = '', 
+                    name = '', 
+                    prop_id = '', 
+                    prop_type = '', ),
                 is_default_variant = True,
                 is_locked = False,
                 link = 'https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html',

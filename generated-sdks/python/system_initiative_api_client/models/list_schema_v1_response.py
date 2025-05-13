@@ -17,8 +17,9 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict
-from typing import Any, ClassVar, Dict, List
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
+from system_initiative_api_client.models.schema_response import SchemaResponse
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -26,8 +27,9 @@ class ListSchemaV1Response(BaseModel):
     """
     ListSchemaV1Response
     """ # noqa: E501
-    schemas: List[Dict[str, Any]]
-    __properties: ClassVar[List[str]] = ["schemas"]
+    next_cursor: Optional[StrictStr] = Field(default=None, alias="nextCursor")
+    schemas: List[SchemaResponse]
+    __properties: ClassVar[List[str]] = ["nextCursor", "schemas"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -68,6 +70,18 @@ class ListSchemaV1Response(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of each item in schemas (list)
+        _items = []
+        if self.schemas:
+            for _item_schemas in self.schemas:
+                if _item_schemas:
+                    _items.append(_item_schemas.to_dict())
+            _dict['schemas'] = _items
+        # set to None if next_cursor (nullable) is None
+        # and model_fields_set contains the field
+        if self.next_cursor is None and "next_cursor" in self.model_fields_set:
+            _dict['nextCursor'] = None
+
         return _dict
 
     @classmethod
@@ -80,7 +94,8 @@ class ListSchemaV1Response(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "schemas": obj.get("schemas")
+            "nextCursor": obj.get("nextCursor"),
+            "schemas": [SchemaResponse.from_dict(_item) for _item in obj["schemas"]] if obj.get("schemas") is not None else None
         })
         return _obj
 

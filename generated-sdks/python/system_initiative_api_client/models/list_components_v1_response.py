@@ -17,8 +17,8 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, StrictStr
-from typing import Any, ClassVar, Dict, List
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -26,8 +26,9 @@ class ListComponentsV1Response(BaseModel):
     """
     ListComponentsV1Response
     """ # noqa: E501
-    components: List[StrictStr]
-    __properties: ClassVar[List[str]] = ["components"]
+    components: List[List[StrictStr]]
+    next_cursor: Optional[StrictStr] = Field(default=None, alias="nextCursor")
+    __properties: ClassVar[List[str]] = ["components", "nextCursor"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -68,6 +69,11 @@ class ListComponentsV1Response(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if next_cursor (nullable) is None
+        # and model_fields_set contains the field
+        if self.next_cursor is None and "next_cursor" in self.model_fields_set:
+            _dict['nextCursor'] = None
+
         return _dict
 
     @classmethod
@@ -80,7 +86,8 @@ class ListComponentsV1Response(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "components": obj.get("components")
+            "components": obj.get("components"),
+            "nextCursor": obj.get("nextCursor")
         })
         return _obj
 

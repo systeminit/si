@@ -50,3 +50,9 @@ pnpm_task_binary(
     ],
     visibility = ["PUBLIC"],
 )
+
+sh_binary(
+    name = "generate_api_docs",
+    main = "generate-api-docs.sh",
+    visibility = ["PUBLIC"],
+)

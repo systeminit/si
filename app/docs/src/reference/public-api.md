@@ -56,7 +56,7 @@ User identity endpoints
 
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token": {},
   "userEmail": "user@example.com",
   "userId": "01H9ZQCBJ3E7HBTRN3J58JQX8K",
   "workspaceId": "01H9ZQD35JPMBGHH69BT0Q79VY"
@@ -152,6 +152,40 @@ Change set management endpoints
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change set created successfully|[CreateChangeSetV1Response](#schemacreatechangesetv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## purge_open
+
+<a id="opIdpurge_open"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/purge_open`
+
+<h3 id="purge_open-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "success": {
+    "success": "true"
+  }
+}
+```
+
+<h3 id="purge_open-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change sets purged successfully|[PurgeOpenChangeSetsV1Response](#schemapurgeopenchangesetsv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 ## get_change_set
@@ -359,6 +393,8 @@ Components management endpoints
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
 |change_set_id|path|string|true|Change set identifier|
+|limit|query|string|false|Maximum number of results to return (default: 50, max: 300)|
+|cursor|query|string|false|Cursor for pagination (ComponentId of the last item from previous page)|
 
 > Example responses
 
@@ -995,7 +1031,7 @@ Components management endpoints
 
 # [schemas](#system-initiative-api-schemas)
 
-Schemsa management endpoints
+Schemas management endpoints
 
 ## list_schemas
 
@@ -1003,7 +1039,7 @@ Schemsa management endpoints
 
 > Request format
 
-`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schema`
+`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas`
 
 <h3 id="list_schemas-parameters">Parameters</h3>
 
@@ -1011,6 +1047,8 @@ Schemsa management endpoints
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
 |change_set_id|path|string|true|Change set identifier|
+|limit|query|string|false|Maximum number of results to return (default: 50, max: 300)|
+|cursor|query|string|false|Cursor for pagination (SchemaId of the last item from previous page)|
 
 > Example responses
 
@@ -1018,7 +1056,15 @@ Schemsa management endpoints
 
 ```json
 {
-  "schemas": "[{\"schemaId\":\"01H9ZQD35JPMBGHH69BT0Q79VY\",\"schemaName\":\"AWS::EC2::Instance\",\"category\":\"AWS::EC2\",\"installed\": \"true\"}]"
+  "nextCursor": "string",
+  "schemas": [
+    {
+      "category": "AWS::EC2",
+      "installed": "false",
+      "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+      "schemaName": "AWS::EC2::Instance"
+    }
+  ]
 }
 ```
 
@@ -1036,7 +1082,7 @@ Schemsa management endpoints
 
 > Request format
 
-`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schema/find`
+`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/find`
 
 <h3 id="find_schema-parameters">Parameters</h3>
 
@@ -1075,7 +1121,7 @@ Schemsa management endpoints
 
 > Request format
 
-`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}`
+`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}`
 
 <h3 id="get_schema-parameters">Parameters</h3>
 
@@ -1115,7 +1161,7 @@ Schemsa management endpoints
 
 > Request format
 
-`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}/variant/default`
+`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/default`
 
 <h3 id="get_default_variant-parameters">Parameters</h3>
 
@@ -1124,6 +1170,7 @@ Schemsa management endpoints
 |workspace_id|path|string|true|Workspace identifier|
 |change_set_id|path|string|true|Change set identifier|
 |schema_id|path|string|true|Schema identifier|
+|schema_variant_id|path|string|true|Schema variant identifier|
 
 > Example responses
 
@@ -1136,6 +1183,15 @@ Schemsa management endpoints
   "color": "#FF5733",
   "description": "Amazon EC2 Instance resource type",
   "displayName": "AWS EC2 Instance",
+  "domainProps": {
+    "children": [
+      {}
+    ],
+    "description": "string",
+    "name": "string",
+    "propId": "string",
+    "propType": "string"
+  },
   "isDefaultVariant": true,
   "isLocked": false,
   "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
@@ -1162,7 +1218,7 @@ Schemsa management endpoints
 
 > Request format
 
-`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schema/{schema_id}/variant/{schema_variant_id}`
+`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}`
 
 <h3 id="get_variant-parameters">Parameters</h3>
 
@@ -1184,6 +1240,15 @@ Schemsa management endpoints
   "color": "#FF5733",
   "description": "Amazon EC2 Instance resource type",
   "displayName": "AWS EC2 Instance",
+  "domainProps": {
+    "children": [
+      {}
+    ],
+    "description": "string",
+    "name": "string",
+    "propId": "string",
+    "propType": "string"
+  },
   "isDefaultVariant": true,
   "isLocked": false,
   "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
@@ -3331,6 +3396,15 @@ continued
   "color": "#FF5733",
   "description": "Amazon EC2 Instance resource type",
   "displayName": "AWS EC2 Instance",
+  "domainProps": {
+    "children": [
+      {}
+    ],
+    "description": "string",
+    "name": "string",
+    "propId": "string",
+    "propType": "string"
+  },
   "isDefaultVariant": true,
   "isLocked": false,
   "link": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-instance.html",
@@ -3352,6 +3426,7 @@ continued
 |color|string|true|none|none|
 |description|string|true|none|none|
 |displayName|string|true|none|none|
+|domainProps|[PropSchemaV1](#schemapropschemav1)|true|none|none|
 |isDefaultVariant|boolean|true|none|none|
 |isLocked|boolean|true|none|none|
 |link|string|true|none|none|
@@ -3496,7 +3571,8 @@ continued
     "01H9ZQD35JPMBGHH69BT0Q79AA",
     "01H9ZQD35JPMBGHH69BT0Q79BB",
     "01H9ZQD35JPMBGHH69BT0Q79CC"
-  ]
+  ],
+  "nextCursor": "string"
 }
 
 ```
@@ -3505,7 +3581,8 @@ continued
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|components|[string]|true|none|none|
+|components|[array]|true|none|none|
+|nextCursor|string,null|false|none|none|
 
 ## [ListSchemaV1Response](#tocS_ListSchemaV1Response)
 
@@ -3516,7 +3593,15 @@ continued
 
 ```json
 {
-  "schemas": "[{\"schemaId\":\"01H9ZQD35JPMBGHH69BT0Q79VY\",\"schemaName\":\"AWS::EC2::Instance\",\"category\":\"AWS::EC2\",\"installed\": \"true\"}]"
+  "nextCursor": "string",
+  "schemas": [
+    {
+      "category": "AWS::EC2",
+      "installed": "false",
+      "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+      "schemaName": "AWS::EC2::Instance"
+    }
+  ]
 }
 
 ```
@@ -3525,7 +3610,8 @@ continued
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|schemas|[object]|true|none|none|
+|nextCursor|string,null|false|none|none|
+|schemas|[[SchemaResponse](#schemaschemaresponse)]|true|none|none|
 
 ## [ManagedByConnectionViewV1](#tocS_ManagedByConnectionViewV1)
 
@@ -3772,6 +3858,64 @@ Component details in action response
 |stream|string|true|none|none|
 |timestamp|integer(int64)|true|none|none|
 
+## [PropSchemaV1](#tocS_PropSchemaV1)
+
+<a id="schemapropschemav1"></a>
+<a id="schema_PropSchemaV1"></a>
+<a id="tocSpropschemav1"></a>
+<a id="tocspropschemav1"></a>
+
+```json
+{
+  "children": [
+    {
+      "children": [],
+      "description": "string",
+      "name": "string",
+      "propId": "string",
+      "propType": "string"
+    }
+  ],
+  "description": "string",
+  "name": "string",
+  "propId": "string",
+  "propType": "string"
+}
+
+```
+
+### [Properties](#propschemav1-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|children|[[PropSchemaV1](#schemapropschemav1)]|true|none|none|
+|description|string|true|none|none|
+|name|string|true|none|none|
+|propId|string|true|none|none|
+|propType|string|true|none|none|
+
+## [PurgeOpenChangeSetsV1Response](#tocS_PurgeOpenChangeSetsV1Response)
+
+<a id="schemapurgeopenchangesetsv1response"></a>
+<a id="schema_PurgeOpenChangeSetsV1Response"></a>
+<a id="tocSpurgeopenchangesetsv1response"></a>
+<a id="tocspurgeopenchangesetsv1response"></a>
+
+```json
+{
+  "success": {
+    "success": "true"
+  }
+}
+
+```
+
+### [Properties](#purgeopenchangesetsv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|success|boolean|true|none|none|
+
 ## [PutOnHoldActionV1Response](#tocS_PutOnHoldActionV1Response)
 
 <a id="schemaputonholdactionv1response"></a>
@@ -3831,6 +3975,32 @@ Component details in action response
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |success|boolean|true|none|none|
+
+## [SchemaResponse](#tocS_SchemaResponse)
+
+<a id="schemaschemaresponse"></a>
+<a id="schema_SchemaResponse"></a>
+<a id="tocSschemaresponse"></a>
+<a id="tocsschemaresponse"></a>
+
+```json
+{
+  "category": "AWS::EC2",
+  "installed": "false",
+  "schemaId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+  "schemaName": "AWS::EC2::Instance"
+}
+
+```
+
+### [Properties](#schemaresponse-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|category|string,null|false|none|none|
+|installed|boolean|true|none|none|
+|schemaId|string|true|none|none|
+|schemaName|string|true|none|none|
 
 ## [SchemaV1RequestPath](#tocS_SchemaV1RequestPath)
 
@@ -4303,7 +4473,7 @@ xor
 
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token": {},
   "userEmail": "user@example.com",
   "userId": "01H9ZQCBJ3E7HBTRN3J58JQX8K",
   "workspaceId": "01H9ZQD35JPMBGHH69BT0Q79VY"
@@ -4315,7 +4485,7 @@ xor
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|token|string|true|none|none|
+|token|object|true|none|none|
 |userEmail|string|true|none|none|
 |userId|string|true|none|none|
 |workspaceId|string|true|none|none|

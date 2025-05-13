@@ -1939,6 +1939,8 @@ class ComponentsApi:
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
         change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
+        cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (ComponentId of the last item from previous page)")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1959,6 +1961,10 @@ class ComponentsApi:
         :type workspace_id: str
         :param change_set_id: Change set identifier (required)
         :type change_set_id: str
+        :param limit: Maximum number of results to return (default: 50, max: 300)
+        :type limit: str
+        :param cursor: Cursor for pagination (ComponentId of the last item from previous page)
+        :type cursor: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1984,6 +1990,8 @@ class ComponentsApi:
         _param = self._list_components_serialize(
             workspace_id=workspace_id,
             change_set_id=change_set_id,
+            limit=limit,
+            cursor=cursor,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2011,6 +2019,8 @@ class ComponentsApi:
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
         change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
+        cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (ComponentId of the last item from previous page)")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2031,6 +2041,10 @@ class ComponentsApi:
         :type workspace_id: str
         :param change_set_id: Change set identifier (required)
         :type change_set_id: str
+        :param limit: Maximum number of results to return (default: 50, max: 300)
+        :type limit: str
+        :param cursor: Cursor for pagination (ComponentId of the last item from previous page)
+        :type cursor: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2056,6 +2070,8 @@ class ComponentsApi:
         _param = self._list_components_serialize(
             workspace_id=workspace_id,
             change_set_id=change_set_id,
+            limit=limit,
+            cursor=cursor,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2083,6 +2099,8 @@ class ComponentsApi:
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
         change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
+        cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (ComponentId of the last item from previous page)")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2103,6 +2121,10 @@ class ComponentsApi:
         :type workspace_id: str
         :param change_set_id: Change set identifier (required)
         :type change_set_id: str
+        :param limit: Maximum number of results to return (default: 50, max: 300)
+        :type limit: str
+        :param cursor: Cursor for pagination (ComponentId of the last item from previous page)
+        :type cursor: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2128,6 +2150,8 @@ class ComponentsApi:
         _param = self._list_components_serialize(
             workspace_id=workspace_id,
             change_set_id=change_set_id,
+            limit=limit,
+            cursor=cursor,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2150,6 +2174,8 @@ class ComponentsApi:
         self,
         workspace_id,
         change_set_id,
+        limit,
+        cursor,
         _request_auth,
         _content_type,
         _headers,
@@ -2176,6 +2202,14 @@ class ComponentsApi:
         if change_set_id is not None:
             _path_params['change_set_id'] = change_set_id
         # process the query parameters
+        if limit is not None:
+            
+            _query_params.append(('limit', limit))
+            
+        if cursor is not None:
+            
+            _query_params.append(('cursor', cursor))
+            
         # process the header parameters
         # process the form parameters
         # process the body parameter
