@@ -461,13 +461,12 @@ impl AttributeBinding {
                         .await?;
                     }
                     EventualParent::Component(component_id) => {
-                        let attribute_value_id =
-                            OutputSocket::component_attribute_value_for_output_socket_id(
-                                ctx,
-                                output_socket_id,
-                                component_id,
-                            )
-                            .await?;
+                        let attribute_value_id = OutputSocket::component_attribute_value_id(
+                            ctx,
+                            output_socket_id,
+                            component_id,
+                        )
+                        .await?;
                         // if we're setting this to unset, need to also clear any existing attribute values
                         if func.backend_kind == FuncBackendKind::Unset {
                             attribute_values_to_update.push(attribute_value_id);

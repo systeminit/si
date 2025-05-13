@@ -1,19 +1,31 @@
 use std::collections::HashSet;
 
 use dal::{
+    AttributeValue,
     Component,
     DalContext,
     Func,
+    InputSocket,
+    OutputSocket,
+    Prop,
     action::{
         Action,
         prototype::ActionPrototype,
     },
+    prop::PropPath,
     qualification::QualificationSummary,
 };
 use dal_test::{
     Result,
-    helpers::create_component_for_default_schema_name_in_default_view,
-    prelude::OptionExt,
+    helpers::{
+        connect_components_with_socket_names,
+        create_component_for_default_schema_name_in_default_view,
+        make_subscription,
+    },
+    prelude::{
+        ChangeSetTestHelpers,
+        OptionExt,
+    },
     test,
 };
 use pretty_assertions_sorted::assert_eq;
@@ -28,6 +40,7 @@ use si_frontend_mv_types::{
         ComponentDiff,
         ComponentList,
     },
+    incoming_connections::Connection,
     reference::ReferenceKind,
 };
 
@@ -216,16 +229,224 @@ async fn component(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
-// TODO(nick): add test using LEGOs for both prop-to-prop and socket-to-socket connections in
-// the follow-up PR.
-// #[test]
-// async fn incoming_connections(ctx: &DalContext) -> Result<()> {
-//     connect_components_with_socket_names(ctx).await?;
-//
-//     let mv =
-//         dal_materialized_views::incoming_connections::assemble(ctx.clone(), created_component.id())
-//             .await?;
-//
-//     assert!(false);
-//     Ok(())
-// }
+#[test]
+async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
+    // Create all components.
+    let alpha =
+        create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "alpha")
+            .await?;
+    let beta =
+        create_component_for_default_schema_name_in_default_view(ctx, "small even lego", "beta")
+            .await?;
+    let charlie =
+        create_component_for_default_schema_name_in_default_view(ctx, "small odd lego", "charlie")
+            .await?;
+
+    // Cache everything with need for making subscriptions (as well as for assertions later).
+    let alpha_schema_variant_id = Component::schema_variant_id(ctx, alpha.id()).await?;
+    let beta_schema_variant_id = Component::schema_variant_id(ctx, beta.id()).await?;
+    let charlie_schema_variant_id = alpha_schema_variant_id;
+
+    let alpha_si_name_prop_path = PropPath::new(["root", "si", "name"]);
+    let charlie_si_name_prop_path = alpha_si_name_prop_path.clone();
+    let beta_domain_name_prop_path = PropPath::new(["root", "domain", "name"]);
+    let charlie_domain_name_prop_path = beta_domain_name_prop_path.clone();
+
+    let alpha_si_name_prop_id =
+        Prop::find_prop_id_by_path(ctx, alpha_schema_variant_id, &alpha_si_name_prop_path).await?;
+    let charlie_si_name_prop_id =
+        Prop::find_prop_id_by_path(ctx, charlie_schema_variant_id, &charlie_si_name_prop_path)
+            .await?;
+    let beta_domain_name_prop_id =
+        Prop::find_prop_id_by_path(ctx, beta_schema_variant_id, &beta_domain_name_prop_path)
+            .await?;
+    let charlie_domain_name_prop_id = Prop::find_prop_id_by_path(
+        ctx,
+        charlie_schema_variant_id,
+        &charlie_domain_name_prop_path,
+    )
+    .await?;
+
+    let alpha_si_name_attribute_value_id =
+        Component::attribute_value_for_prop_id(ctx, alpha.id(), alpha_si_name_prop_id).await?;
+    let charlie_si_name_attribute_value_id =
+        Component::attribute_value_for_prop_id(ctx, charlie.id(), charlie_si_name_prop_id).await?;
+    let beta_domain_name_attribute_value_id =
+        Component::attribute_value_for_prop_id(ctx, beta.id(), beta_domain_name_prop_id).await?;
+    let charlie_domain_name_attribute_value_id =
+        Component::attribute_value_for_prop_id(ctx, charlie.id(), charlie_domain_name_prop_id)
+            .await?;
+
+    let (_, alpha_si_name_attribute_value_path) =
+        AttributeValue::path_from_root(ctx, alpha_si_name_attribute_value_id).await?;
+    let (_, charlie_si_name_attribute_value_path) =
+        AttributeValue::path_from_root(ctx, charlie_si_name_attribute_value_id).await?;
+    let (_, beta_domain_name_attribute_value_path) =
+        AttributeValue::path_from_root(ctx, beta_domain_name_attribute_value_id).await?;
+    let (_, charlie_domain_name_attribute_value_path) =
+        AttributeValue::path_from_root(ctx, charlie_domain_name_attribute_value_id).await?;
+
+    // Check that the attribue value paths look as we expect for the subscriptions.
+    {
+        assert_eq!(
+            "/si/name",                                  // expected
+            alpha_si_name_attribute_value_path.as_str()  // actual
+        );
+        assert_eq!(
+            "/si/name",                                    // expected
+            charlie_si_name_attribute_value_path.as_str()  // actual
+        );
+        assert_eq!(
+            "/domain/name",                                 // expected
+            beta_domain_name_attribute_value_path.as_str()  // actual
+        );
+        assert_eq!(
+            "/domain/name",                                    // expected
+            charlie_domain_name_attribute_value_path.as_str()  // actual
+        );
+    }
+
+    // Perform all connections and commit. This is the core of the test!
+    {
+        connect_components_with_socket_names(ctx, alpha.id(), "two", beta.id(), "two").await?;
+        connect_components_with_socket_names(ctx, beta.id(), "one", charlie.id(), "one").await?;
+        AttributeValue::subscribe(
+            ctx,
+            charlie_si_name_attribute_value_id,
+            make_subscription(ctx, alpha.id(), alpha_si_name_attribute_value_path.as_str()).await?,
+        )
+        .await?;
+        AttributeValue::subscribe(
+            ctx,
+            charlie_domain_name_attribute_value_id,
+            make_subscription(
+                ctx,
+                beta.id(),
+                beta_domain_name_attribute_value_path.as_str(),
+            )
+            .await?,
+        )
+        .await?;
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    }
+
+    // Cache everything else needed for assertions.
+    let alpha_output_socket =
+        OutputSocket::find_with_name_or_error(ctx, "two", alpha_schema_variant_id).await?;
+    let beta_input_socket =
+        InputSocket::find_with_name_or_error(ctx, "two", beta_schema_variant_id).await?;
+    let beta_output_socket =
+        OutputSocket::find_with_name_or_error(ctx, "one", beta_schema_variant_id).await?;
+    let charlie_input_socket =
+        InputSocket::find_with_name_or_error(ctx, "one", charlie_schema_variant_id).await?;
+
+    let alpha_output_socket_attribute_value_id =
+        OutputSocket::component_attribute_value_id(ctx, alpha_output_socket.id(), alpha.id())
+            .await?;
+    let beta_input_socket_attribute_value_id =
+        InputSocket::component_attribute_value_id(ctx, beta_input_socket.id(), beta.id()).await?;
+    let beta_output_socket_attribute_value_id =
+        OutputSocket::component_attribute_value_id(ctx, beta_output_socket.id(), beta.id()).await?;
+    let charlie_input_socket_attribute_value_id =
+        InputSocket::component_attribute_value_id(ctx, charlie_input_socket.id(), charlie.id())
+            .await?;
+
+    let (_, alpha_output_socket_attribute_value_path) =
+        AttributeValue::path_from_root(ctx, alpha_output_socket_attribute_value_id).await?;
+    let (_, beta_input_socket_attribute_value_path) =
+        AttributeValue::path_from_root(ctx, beta_input_socket_attribute_value_id).await?;
+    let (_, beta_output_socket_attribute_value_path) =
+        AttributeValue::path_from_root(ctx, beta_output_socket_attribute_value_id).await?;
+    let (_, charlie_input_socket_attribute_value_path) =
+        AttributeValue::path_from_root(ctx, charlie_input_socket_attribute_value_id).await?;
+
+    // Check the alpha MV.
+    {
+        let alpha_mv =
+            dal_materialized_views::incoming_connections::assemble(ctx.clone(), alpha.id()).await?;
+        assert_eq!(
+            alpha.id(),  // expected
+            alpha_mv.id  // actual
+        );
+        assert!(alpha_mv.connections.is_empty());
+    }
+
+    // Check the beta MV.
+    {
+        let beta_mv =
+            dal_materialized_views::incoming_connections::assemble(ctx.clone(), beta.id()).await?;
+        assert_eq!(
+            beta.id(),  // expected
+            beta_mv.id  // actual
+        );
+        assert_eq!(
+            vec![Connection::Socket {
+                from_component_id: alpha.id().into(),
+                from_attribute_value_id: alpha_output_socket_attribute_value_id,
+                from_attribute_value_path: alpha_output_socket_attribute_value_path,
+                from_socket_id: alpha_output_socket.id(),
+                from_socket_name: alpha_output_socket.name().to_owned(),
+                to_component_id: beta.id().into(),
+                to_socket_id: beta_input_socket.id(),
+                to_socket_name: beta_input_socket.name().to_owned(),
+                to_attribute_value_id: beta_input_socket_attribute_value_id,
+                to_attribute_value_path: beta_input_socket_attribute_value_path,
+            }], // expected
+            beta_mv.connections // actual
+        );
+    }
+
+    // Check the charlie MV.
+    {
+        let charlie_mv =
+            dal_materialized_views::incoming_connections::assemble(ctx.clone(), charlie.id())
+                .await?;
+        assert_eq!(
+            charlie.id(),  // expected
+            charlie_mv.id  // actual
+        );
+        assert_eq!(
+            vec![
+                Connection::Prop {
+                    from_component_id: alpha.id().into(),
+                    from_attribute_value_id: alpha_si_name_attribute_value_id,
+                    from_attribute_value_path: alpha_si_name_attribute_value_path,
+                    from_prop_id: alpha_si_name_prop_id,
+                    from_prop_path: alpha_si_name_prop_path.with_replaced_sep_and_prefix("/"),
+                    to_component_id: charlie.id().into(),
+                    to_attribute_value_id: charlie_si_name_attribute_value_id,
+                    to_attribute_value_path: charlie_si_name_attribute_value_path,
+                    to_prop_id: charlie_si_name_prop_id,
+                    to_prop_path: charlie_si_name_prop_path.with_replaced_sep_and_prefix("/"),
+                },
+                Connection::Prop {
+                    from_component_id: beta.id().into(),
+                    from_attribute_value_id: beta_domain_name_attribute_value_id,
+                    from_attribute_value_path: beta_domain_name_attribute_value_path,
+                    from_prop_id: beta_domain_name_prop_id,
+                    from_prop_path: beta_domain_name_prop_path.with_replaced_sep_and_prefix("/"),
+                    to_component_id: charlie.id().into(),
+                    to_attribute_value_id: charlie_domain_name_attribute_value_id,
+                    to_attribute_value_path: charlie_domain_name_attribute_value_path,
+                    to_prop_id: charlie_domain_name_prop_id,
+                    to_prop_path: charlie_domain_name_prop_path.with_replaced_sep_and_prefix("/"),
+                },
+                Connection::Socket {
+                    from_component_id: beta.id().into(),
+                    from_attribute_value_id: beta_output_socket_attribute_value_id,
+                    from_attribute_value_path: beta_output_socket_attribute_value_path,
+                    from_socket_id: beta_output_socket.id(),
+                    from_socket_name: beta_output_socket.name().to_owned(),
+                    to_component_id: charlie.id().into(),
+                    to_socket_id: charlie_input_socket.id(),
+                    to_socket_name: charlie_input_socket.name().to_owned(),
+                    to_attribute_value_id: charlie_input_socket_attribute_value_id,
+                    to_attribute_value_path: charlie_input_socket_attribute_value_path,
+                }
+            ], // expected
+            charlie_mv.connections // actual
+        );
+    }
+
+    Ok(())
+}

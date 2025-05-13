@@ -669,7 +669,7 @@ impl ExpectComponentInputSocket {
     }
 
     pub async fn attribute_value(self, ctx: &DalContext) -> ExpectAttributeValue {
-        InputSocket::component_attribute_value_for_input_socket_id(ctx, self.1, self.0)
+        InputSocket::component_attribute_value_id(ctx, self.1, self.0)
             .await
             .expect("get attribute value for input socket")
             .into()
@@ -736,7 +736,7 @@ impl ExpectComponentOutputSocket {
     }
 
     pub async fn attribute_value(self, ctx: &DalContext) -> ExpectAttributeValue {
-        OutputSocket::component_attribute_value_for_output_socket_id(ctx, self.1, self.0)
+        OutputSocket::component_attribute_value_id(ctx, self.1, self.0)
             .await
             .expect("get attribute value for output socket")
             .into()
