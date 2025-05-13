@@ -74,6 +74,7 @@ impl CorrectTransforms<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>
             SplitGraphNodeWeight::ExternalTarget { .. } => Ok(updates),
             SplitGraphNodeWeight::Ordering { id, order, .. } => correct_transforms_ordering_node(
                 *id,
+                self,
                 order.as_slice(),
                 graph,
                 updates,
@@ -113,8 +114,8 @@ pub fn correct_transforms(
                 edge_weight,
                 ..
             } => {
-                nodes_to_interrogate.insert(*source);
-                nodes_to_interrogate.insert(*destination);
+                nodes_to_interrogate.insert(source.id);
+                nodes_to_interrogate.insert(destination.id);
                 if let Some(external_source_id) = edge_weight
                     .external_source_data()
                     .map(|data| data.source_id())
@@ -128,8 +129,8 @@ pub fn correct_transforms(
                 external_source_data,
                 ..
             } => {
-                nodes_to_interrogate.insert(*source);
-                nodes_to_interrogate.insert(*destination);
+                nodes_to_interrogate.insert(source.id);
+                nodes_to_interrogate.insert(destination.id);
                 if let Some(external_source_id) = external_source_data.map(|data| data.source_id())
                 {
                     nodes_to_interrogate.insert(external_source_id);
@@ -173,6 +174,7 @@ pub fn correct_transforms(
 
 pub fn correct_transforms_ordering_node(
     id: SplitGraphNodeId,
+    this_ordering_node: &SplitGraphNodeWeight<NodeWeight>,
     order: &[SplitGraphNodeId],
     graph: &SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
     mut updates: Vec<Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
@@ -210,10 +212,10 @@ pub fn correct_transforms_ordering_node(
                 edge_weight,
                 ..
             } => {
-                if *source == id && matches!(edge_weight, SplitGraphEdgeWeight::Ordinal) {
-                    final_children.insert(*destination);
+                if source.id == id && matches!(edge_weight, SplitGraphEdgeWeight::Ordinal) {
+                    final_children.insert(destination.id);
                 } else if let Some(av_container_id) = maybe_attribute_value_container_id {
-                    if *source == av_container_id {
+                    if source.id == av_container_id {
                         if let Some(EdgeWeightKind::Contain(Some(new_key))) =
                             edge_weight.custom().map(|e| e.kind())
                         {
@@ -227,8 +229,8 @@ pub fn correct_transforms_ordering_node(
                 destination,
                 edge_kind: SplitGraphEdgeWeightKind::Ordinal,
                 ..
-            } if *source == id => {
-                final_children.remove(destination);
+            } if source.id == id => {
+                final_children.remove(&destination.id);
             }
             Update::ReplaceNode { node_weight, .. } if node_weight.id() == id => {
                 replace_node_update_index = Some(update_index);
@@ -256,8 +258,8 @@ pub fn correct_transforms_ordering_node(
                 // ExternalSource edge and produce a remove edge update for it as well.
                 duplicate_contain_edge_target_updates.push(Update::RemoveEdge {
                     subgraph_index: split_node_index.subgraph(),
-                    source: id,
-                    destination: duplicate_contain_edge_target.id(),
+                    source: this_ordering_node.into(),
+                    destination: duplicate_contain_edge_target.into(),
                     edge_kind: SplitGraphEdgeWeightKind::Custom(
                         EdgeWeightKindDiscriminants::Contain,
                     ),
@@ -267,7 +269,7 @@ pub fn correct_transforms_ordering_node(
                 match duplicate_contain_edge_target {
                     SplitGraphNodeWeight::ExternalTarget { target, .. } => {
                         if let Some(target_node_index) = graph.node_id_to_index(*target) {
-                            let external_source_source_id = graph
+                            let source_and_target = graph
                                 .raw_edges_directed(*target, Incoming)?
                                 .find(|edge_ref| match edge_ref.weight() {
                                     SplitGraphEdgeWeight::ExternalSource {
@@ -280,13 +282,17 @@ pub fn correct_transforms_ordering_node(
                                     }
                                     _ => false,
                                 })
-                                .map(|edge_ref| edge_ref.source());
+                                .and_then(|edge_ref| {
+                                    graph
+                                        .raw_node_weight(edge_ref.source())
+                                        .zip(graph.raw_node_weight(*target))
+                                });
 
-                            if let Some(external_source_source_id) = external_source_source_id {
+                            if let Some((source, target)) = source_and_target {
                                 duplicate_contain_edge_target_updates.push(Update::RemoveEdge {
                                     subgraph_index: target_node_index.subgraph(),
-                                    source: external_source_source_id,
-                                    destination: *target,
+                                    source: source.into(),
+                                    destination: target.into(),
                                     edge_kind: SplitGraphEdgeWeightKind::ExternalSource,
                                     external_source_data: Some(ExternalSourceData {
                                         source_id: id,

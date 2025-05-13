@@ -82,6 +82,12 @@ where
         &self.graph
     }
 
+    pub fn root_id(&self) -> Option<SplitGraphNodeId> {
+        self.graph
+            .node_weight(self.root_index)
+            .map(|node| node.id())
+    }
+
     pub(crate) fn new_with_root() -> Self {
         let mut subgraph = Self {
             graph: StableDiGraph::with_capacity(32768, 32768 * 2),
@@ -128,6 +134,11 @@ where
         }
 
         removed_ids
+    }
+
+    pub fn node_weight(&self, node_id: SplitGraphNodeId) -> Option<&SplitGraphNodeWeight<N>> {
+        self.node_id_to_index(node_id)
+            .and_then(|index| self.graph.node_weight(index))
     }
 
     pub fn cleanup_maps(&mut self) {

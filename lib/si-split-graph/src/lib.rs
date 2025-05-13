@@ -1,6 +1,7 @@
 use std::{
     collections::{
         BTreeMap,
+        BTreeSet,
         HashSet,
         VecDeque,
     },
@@ -19,6 +20,7 @@ use petgraph_traits::{
 use serde::{
     Deserialize,
     Serialize,
+    de::DeserializeOwned,
 };
 use si_events::{
     ContentHash,
@@ -29,6 +31,7 @@ use si_events::{
     },
 };
 use si_id::ulid::Ulid;
+use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -76,7 +79,8 @@ pub type SplitGraphResult<T> = Result<T, SplitGraphError>;
 pub type SplitGraphNodeId = Ulid;
 pub type SubGraphIndex = usize;
 
-#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize, EnumDiscriminants)]
+#[strum_discriminants(derive(Hash, Serialize, Deserialize))]
 pub enum SplitGraphNodeWeight<N>
 where
     N: CustomNodeWeight,
@@ -88,6 +92,8 @@ where
         id: SplitGraphNodeId,
         target: SplitGraphNodeId,
         merkle_tree_hash: MerkleTreeHash,
+        kind: SplitGraphNodeWeightDiscriminants,
+        custom_kind: Option<N::Kind>,
     },
     /// The ordering node for an ordered container
     Ordering {
@@ -373,8 +379,16 @@ where
 }
 
 pub trait EdgeKind: std::hash::Hash + PartialEq + Eq + Copy + Clone + std::fmt::Debug {}
+pub trait NodeKind:
+    std::hash::Hash + PartialEq + Eq + Copy + Clone + std::fmt::Debug + Serialize + DeserializeOwned
+{
+}
 
 pub trait CustomNodeWeight: PartialEq + Eq + Clone + std::fmt::Debug {
+    type Kind: NodeKind;
+
+    fn kind(&self) -> Self::Kind;
+
     fn id(&self) -> SplitGraphNodeId;
     fn set_id(&mut self, id: SplitGraphNodeId);
 
@@ -757,8 +771,7 @@ where
     pub fn subgraph_root_id(&self, subgraph_index: usize) -> Option<SplitGraphNodeId> {
         self.subgraphs
             .get(subgraph_index)
-            .and_then(|sub| sub.graph.node_weight(sub.root_index))
-            .map(|n| n.id())
+            .and_then(|sub| sub.root_id())
     }
 
     pub fn raw_node_weight(&self, node_id: SplitGraphNodeId) -> Option<&SplitGraphNodeWeight<N>> {
@@ -1239,7 +1252,6 @@ where
         let to_index = self
             .node_id_to_index(to_id)
             .ok_or(SplitGraphError::NodeNotFound(to_id))?;
-
         let custom_edge_weight = SplitGraphEdgeWeight::Custom(edge.clone());
 
         let subgraph_edge_index;
@@ -1258,6 +1270,15 @@ where
                     from_subgraph.add_edge(from_index.index, custom_edge_weight, to_index.index);
             }
         } else {
+            let (kind, custom_kind) = {
+                let to_subgraph = self.get_subgraph(to_subgraph_idx)?;
+                let to_node = to_subgraph
+                    .node_weight(to_id)
+                    .ok_or(SplitGraphError::NodeNotFound(to_id))?;
+
+                (to_node.into(), to_node.custom().map(|node| node.kind()))
+            };
+
             let ext_target_id = SplitGraphNodeId::new();
             let ext_target_idx = self.add_node_to_subgraph(
                 from_subgraph_idx,
@@ -1265,6 +1286,8 @@ where
                     id: ext_target_id,
                     target: to_id,
                     merkle_tree_hash: MerkleTreeHash::nil(),
+                    kind,
+                    custom_kind,
                 },
             )?;
 
@@ -1627,25 +1650,25 @@ where
     pub fn detect_updates(&self, updated_graph: &SplitGraph<N, E, K>) -> Vec<Update<N, E, K>> {
         let mut updates = vec![];
 
-        let mut subgraph_iter = OptZip::new(
-            updated_graph.subgraphs.iter().enumerate(),
-            self.subgraphs.iter(),
-        );
+        let mut subgraph_iter = OptZip::new(updated_graph.subgraphs.iter(), self.subgraphs.iter());
 
-        while let Some((Some((updated_subgraph_index, updated_subgraph)), maybe_base_subgraph)) =
-            subgraph_iter.next()
-        {
+        while let Some((Some(updated_subgraph), maybe_base_subgraph)) = subgraph_iter.next() {
+            let Some(root_node_id) = updated_subgraph.root_id() else {
+                continue;
+            };
+
             match maybe_base_subgraph {
                 Some(base_subgraph) => updates.extend(
-                    updates::Detector::new(base_subgraph, updated_subgraph, updated_subgraph_index)
+                    updates::Detector::new(base_subgraph, updated_subgraph, root_node_id)
                         .detect_updates()
                         .into_iter(),
                 ),
                 None => {
-                    updates.push(Update::NewSubGraph);
+                    updates.push(Update::NewSubGraph {
+                        subgraph_root_id: root_node_id,
+                    });
                     updates.extend(
-                        updates::subgraph_as_updates(updated_subgraph, updated_subgraph_index)
-                            .into_iter(),
+                        updates::subgraph_as_updates(updated_subgraph, root_node_id).into_iter(),
                     )
                 }
             }
@@ -1660,22 +1683,21 @@ where
     ) -> SplitGraphResult<Vec<Change>> {
         let mut changes = vec![];
 
-        let mut subgraph_iter = OptZip::new(
-            updated_graph.subgraphs.iter().enumerate(),
-            self.subgraphs.iter(),
-        );
+        let mut subgraph_iter = OptZip::new(updated_graph.subgraphs.iter(), self.subgraphs.iter());
 
         let mut detected_ids = HashSet::new();
 
-        while let Some((Some((updated_subgraph_index, updated_subgraph)), maybe_base_subgraph)) =
-            subgraph_iter.next()
-        {
+        while let Some((Some(updated_subgraph), maybe_base_subgraph)) = subgraph_iter.next() {
+            let Some(updated_subgraph_root_id) = updated_subgraph.root_id() else {
+                continue;
+            };
+
             match maybe_base_subgraph {
                 Some(base_subgraph) => {
                     let mut subgraph_changes = updates::Detector::new(
                         base_subgraph,
                         updated_subgraph,
-                        updated_subgraph_index,
+                        updated_subgraph_root_id,
                     )
                     .detect_changes();
 
@@ -1797,21 +1819,32 @@ where
     }
 
     pub fn perform_updates(&mut self, updates: &[Update<N, E, K>]) {
-        let mut removed_node_ids = HashSet::new();
+        let mut removed_node_ids = BTreeSet::new();
+        let mut subgraph_id_to_index = BTreeMap::new();
+
+        for (subgraph_idx, subgraph) in self.subgraphs.iter().enumerate() {
+            if let Some(root_id) = subgraph.root_id() {
+                subgraph_id_to_index.insert(root_id, subgraph_idx);
+            }
+        }
+
         for update in updates {
             match update {
                 Update::NewEdge {
-                    subgraph_index,
+                    subgraph_root_id,
                     source,
                     destination,
                     edge_weight,
                 } => {
+                    let Some(subgraph_index) = subgraph_id_to_index.get(subgraph_root_id) else {
+                        continue;
+                    };
                     let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index) else {
                         continue;
                     };
                     let Some((from_index, to_index)) = subgraph
-                        .node_id_to_index(*source)
-                        .zip(subgraph.node_id_to_index(*destination))
+                        .node_id_to_index(source.id)
+                        .zip(subgraph.node_id_to_index(destination.id))
                     else {
                         continue;
                     };
@@ -1828,18 +1861,22 @@ where
                     subgraph.add_edge_raw(from_index, edge_weight.clone(), to_index);
                 }
                 Update::RemoveEdge {
-                    subgraph_index,
+                    subgraph_root_id,
                     source,
                     destination,
                     edge_kind,
                     external_source_data,
                 } => {
+                    let Some(subgraph_index) = subgraph_id_to_index.get(subgraph_root_id) else {
+                        continue;
+                    };
                     let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index) else {
                         continue;
                     };
+
                     let Some((from_index, to_index)) = subgraph
-                        .node_id_to_index(*source)
-                        .zip(subgraph.node_id_to_index(*destination))
+                        .node_id_to_index(source.id)
+                        .zip(subgraph.node_id_to_index(destination.id))
                     else {
                         continue;
                     };
@@ -1855,7 +1892,13 @@ where
                         None => subgraph.remove_edge_raw(from_index, *edge_kind, to_index),
                     }
                 }
-                Update::RemoveNode { subgraph_index, id } => {
+                Update::RemoveNode {
+                    subgraph_root_id,
+                    id,
+                } => {
+                    let Some(subgraph_index) = subgraph_id_to_index.get(subgraph_root_id) else {
+                        continue;
+                    };
                     let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index) else {
                         continue;
                     };
@@ -1864,20 +1907,20 @@ where
                     };
 
                     removed_node_ids.insert((*subgraph_index, node_index));
-                    // println!(
-                    //     "calling remove node for index {}, node_id: {:?}",
-                    //     *subgraph_index, id
-                    // );
                     subgraph.remove_node(node_index);
                 }
                 Update::ReplaceNode {
-                    subgraph_index,
+                    subgraph_root_id,
                     node_weight,
                     base_graph_node_id,
                 } => {
+                    let Some(subgraph_index) = subgraph_id_to_index.get(subgraph_root_id) else {
+                        continue;
+                    };
                     let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index) else {
                         continue;
                     };
+
                     let node_id_in_base_graph = base_graph_node_id.unwrap_or(node_weight.id());
                     match subgraph.node_id_to_index(node_id_in_base_graph) {
                         Some(node_index) => {
@@ -1905,11 +1948,15 @@ where
                     }
                 }
                 Update::NewNode {
-                    subgraph_index,
+                    subgraph_root_id,
                     node_weight,
                 } => {
                     let node_id = node_weight.id();
                     let maybe_existing_node_index = self.node_id_to_index(node_id);
+
+                    let Some(subgraph_index) = subgraph_id_to_index.get(subgraph_root_id) else {
+                        continue;
+                    };
 
                     if let Some(split_graph_index) = maybe_existing_node_index {
                         // NOTE: the main reason we might see a new node update for an
@@ -1933,8 +1980,9 @@ where
                         SplitGraphNodeIndex::new(*subgraph_index, index),
                     );
                 }
-                Update::NewSubGraph => {
-                    self.new_empty_subgraph();
+                Update::NewSubGraph { subgraph_root_id } => {
+                    let new_subgraph_index = self.new_empty_subgraph();
+                    subgraph_id_to_index.insert(*subgraph_root_id, new_subgraph_index);
                 }
             }
         }

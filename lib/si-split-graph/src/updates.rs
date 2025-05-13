@@ -1,7 +1,10 @@
-use std::collections::{
-    BTreeMap,
-    HashMap,
-    HashSet,
+use std::{
+    collections::{
+        BTreeMap,
+        HashMap,
+        HashSet,
+    },
+    marker::PhantomData,
 };
 
 use petgraph::{
@@ -26,6 +29,7 @@ use crate::{
     SplitGraphEdgeWeightKind,
     SplitGraphNodeId,
     SplitGraphNodeWeight,
+    SplitGraphNodeWeightDiscriminants,
     subgraph::{
         SubGraph,
         SubGraphNodeIndex,
@@ -50,6 +54,51 @@ where
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+pub struct UpdateNodeInfo<N>
+where
+    N: CustomNodeWeight,
+{
+    pub id: SplitGraphNodeId,
+    pub kind: SplitGraphNodeWeightDiscriminants,
+    pub custom_kind: Option<N::Kind>,
+
+    #[serde(skip)]
+    pub phantom_n: PhantomData<N>,
+}
+
+impl<N> PartialOrd for UpdateNodeInfo<N>
+where
+    N: CustomNodeWeight,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<N> Ord for UpdateNodeInfo<N>
+where
+    N: CustomNodeWeight,
+{
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id.cmp(&other.id)
+    }
+}
+
+impl<N> From<&SplitGraphNodeWeight<N>> for UpdateNodeInfo<N>
+where
+    N: CustomNodeWeight,
+{
+    fn from(value: &SplitGraphNodeWeight<N>) -> Self {
+        Self {
+            id: value.id(),
+            custom_kind: value.custom().map(|n| n.kind()),
+            kind: value.into(),
+            phantom_n: std::marker::PhantomData,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, EnumDiscriminants)]
 pub enum Update<N, E, K>
 where
@@ -58,32 +107,34 @@ where
     K: EdgeKind,
 {
     NewEdge {
-        subgraph_index: usize,
-        source: SplitGraphNodeId,
-        destination: SplitGraphNodeId,
+        subgraph_root_id: SplitGraphNodeId,
+        source: UpdateNodeInfo<N>,
+        destination: UpdateNodeInfo<N>,
         edge_weight: SplitGraphEdgeWeight<E, K>,
     },
     RemoveEdge {
-        subgraph_index: usize,
-        source: SplitGraphNodeId,
-        destination: SplitGraphNodeId,
+        subgraph_root_id: SplitGraphNodeId,
+        source: UpdateNodeInfo<N>,
+        destination: UpdateNodeInfo<N>,
         edge_kind: SplitGraphEdgeWeightKind<K>,
         external_source_data: Option<ExternalSourceData<K>>,
     },
     RemoveNode {
-        subgraph_index: usize,
+        subgraph_root_id: SplitGraphNodeId,
         id: SplitGraphNodeId,
     },
     ReplaceNode {
-        subgraph_index: usize,
+        subgraph_root_id: SplitGraphNodeId,
         base_graph_node_id: Option<SplitGraphNodeId>,
         node_weight: SplitGraphNodeWeight<N>,
     },
     NewNode {
-        subgraph_index: usize,
+        subgraph_root_id: SplitGraphNodeId,
         node_weight: SplitGraphNodeWeight<N>,
     },
-    NewSubGraph,
+    NewSubGraph {
+        subgraph_root_id: SplitGraphNodeId,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -98,7 +149,7 @@ where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
 {
-    updated_graph_index: usize,
+    graph_root_id: SplitGraphNodeId,
     base_graph: &'a SubGraph<N, E, K>,
     updated_graph: &'b SubGraph<N, E, K>,
 }
@@ -112,10 +163,10 @@ where
     pub fn new(
         base_graph: &'a SubGraph<N, E, K>,
         updated_graph: &'b SubGraph<N, E, K>,
-        updated_graph_index: usize,
+        graph_root_id: SplitGraphNodeId,
     ) -> Self {
         Self {
-            updated_graph_index,
+            graph_root_id,
             base_graph,
             updated_graph,
         }
@@ -145,7 +196,7 @@ where
                 .keys()
                 .filter(|id| !self.updated_graph.node_index_by_id.contains_key(id))
                 .map(|id| Update::RemoveNode {
-                    subgraph_index: self.updated_graph_index,
+                    subgraph_root_id: self.graph_root_id,
                     id: *id,
                 }),
         );
@@ -284,7 +335,7 @@ where
                             // are in the update array *before* the new edge
                             // updates which refer to them
                             updates.push(Update::NewNode {
-                                subgraph_index: self.updated_graph_index,
+                                subgraph_root_id: self.graph_root_id,
                                 node_weight: node_weight.to_owned(),
                             });
                         }
@@ -328,9 +379,9 @@ where
                                                 )
                                             {
                                                 Some(Update::NewEdge {
-                                                    subgraph_index: self.updated_graph_index,
-                                                    source: source_node.id(),
-                                                    destination: destination_node.id(),
+                                                    subgraph_root_id: self.graph_root_id,
+                                                    source: source_node.into(),
+                                                    destination: destination_node.into(),
                                                     edge_weight,
                                                 })
                                             } else {
@@ -367,13 +418,14 @@ where
         base_graph_indexes: &[SubGraphNodeIndex],
     ) -> Vec<Update<N, E, K>> {
         #[derive(Debug, Clone)]
-        struct EdgeInfo<E, K>
+        struct EdgeInfo<N, E, K>
         where
+            N: CustomNodeWeight,
             E: CustomEdgeWeight<K>,
             K: EdgeKind,
         {
-            source_node: SplitGraphNodeId,
-            target_node: SplitGraphNodeId,
+            source_node: UpdateNodeInfo<N>,
+            target_node: UpdateNodeInfo<N>,
             edge_weight: SplitGraphEdgeWeight<E, K>,
         }
 
@@ -415,7 +467,7 @@ where
                     || updated_graph_node_weight.id() != base_graph_node_weight.id()
                 {
                     updates.push(Update::ReplaceNode {
-                        subgraph_index: self.updated_graph_index,
+                        subgraph_root_id: self.graph_root_id,
                         base_graph_node_id: (base_graph_node_weight.id()
                             != updated_graph_node_weight.id())
                         .then_some(base_graph_node_weight.id()),
@@ -423,7 +475,7 @@ where
                     });
                 };
 
-                let base_graph_edges: HashMap<UniqueEdgeInfo<K>, EdgeInfo<E, K>> = self
+                let base_graph_edges: HashMap<UniqueEdgeInfo<K>, EdgeInfo<N, E, K>> = self
                     .base_graph
                     .graph
                     .edges_directed(base_graph_index, Outgoing)
@@ -450,8 +502,8 @@ where
                                         target_lineage: target_node_weight.lineage_id(),
                                     },
                                     EdgeInfo {
-                                        source_node: base_graph_node_weight.id(),
-                                        target_node: target_node_weight.id(),
+                                        source_node: base_graph_node_weight.into(),
+                                        target_node: target_node_weight.into(),
                                         edge_weight: edge_ref.weight().to_owned(),
                                     },
                                 )
@@ -460,7 +512,7 @@ where
                     })
                     .collect();
 
-                let update_graph_edges: HashMap<UniqueEdgeInfo<K>, EdgeInfo<E, K>> = self
+                let update_graph_edges: HashMap<UniqueEdgeInfo<K>, EdgeInfo<N, E, K>> = self
                     .updated_graph
                     .graph
                     .edges_directed(updated_graph_node_index, Outgoing)
@@ -487,8 +539,8 @@ where
                                         target_lineage: target_node_weight.lineage_id(),
                                     },
                                     EdgeInfo {
-                                        source_node: updated_graph_node_weight.id(),
-                                        target_node: target_node_weight.id(),
+                                        source_node: updated_graph_node_weight.into(),
+                                        target_node: target_node_weight.into(),
                                         edge_weight: edge_ref.weight().to_owned(),
                                     },
                                 )
@@ -502,9 +554,9 @@ where
                         .iter()
                         .filter(|(edge_key, _)| !update_graph_edges.contains_key(edge_key))
                         .map(|(_, edge_info)| Update::RemoveEdge {
-                            subgraph_index: self.updated_graph_index,
-                            source: edge_info.source_node,
-                            destination: edge_info.target_node,
+                            subgraph_root_id: self.graph_root_id,
+                            source: edge_info.source_node.clone(),
+                            destination: edge_info.target_node.clone(),
                             edge_kind: (&edge_info.edge_weight).into(),
                             external_source_data: edge_info.edge_weight.external_source_data(),
                         }),
@@ -515,7 +567,7 @@ where
                         .into_iter()
                         .filter(|(edge_key, _)| !base_graph_edges.contains_key(edge_key))
                         .map(|(_, edge_info)| Update::NewEdge {
-                            subgraph_index: self.updated_graph_index,
+                            subgraph_root_id: self.graph_root_id,
                             source: edge_info.source_node,
                             destination: edge_info.target_node,
                             edge_weight: edge_info.edge_weight,
@@ -531,7 +583,7 @@ where
 /// Transforms a subgraph into NewNode and NewEdge updates
 pub fn subgraph_as_updates<N, E, K>(
     subgraph: &SubGraph<N, E, K>,
-    subgraph_index: usize,
+    subgraph_root_id: SplitGraphNodeId,
 ) -> Vec<Update<N, E, K>>
 where
     N: CustomNodeWeight,
@@ -539,15 +591,15 @@ where
     K: EdgeKind,
 {
     let mut updates = vec![];
-    let mut node_index_to_id = BTreeMap::new();
+    let mut node_index_to_info: BTreeMap<NodeIndex<usize>, UpdateNodeInfo<N>> = BTreeMap::new();
 
     petgraph::visit::depth_first_search(&subgraph.graph, Some(subgraph.root_index), |event| {
         match event {
             DfsEvent::Discover(node_index, _) => {
                 if let Some(node_weight) = subgraph.graph.node_weight(node_index).cloned() {
-                    node_index_to_id.insert(node_index, node_weight.id());
+                    node_index_to_info.insert(node_index, (&node_weight).into());
                     updates.push(Update::NewNode {
-                        subgraph_index,
+                        subgraph_root_id,
                         node_weight,
                     })
                 }
@@ -558,13 +610,13 @@ where
                         .graph
                         .edges_directed(node_index, Outgoing)
                         .filter_map(|edge_ref| {
-                            node_index_to_id
+                            node_index_to_info
                                 .get(&edge_ref.source())
-                                .zip(node_index_to_id.get(&edge_ref.target()))
-                                .map(|(&source, &destination)| Update::NewEdge {
-                                    subgraph_index,
-                                    source,
-                                    destination,
+                                .zip(node_index_to_info.get(&edge_ref.target()))
+                                .map(|(source, destination)| Update::NewEdge {
+                                    subgraph_root_id,
+                                    source: source.clone(),
+                                    destination: destination.clone(),
                                     edge_weight: edge_ref.weight().to_owned(),
                                 })
                         }),
