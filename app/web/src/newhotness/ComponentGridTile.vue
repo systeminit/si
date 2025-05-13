@@ -52,17 +52,28 @@
         />
         <div>Resource</div>
       </li>
-      <hr class="border-neutral-500" />
-      <li>
-        <Icon name="output-connection" size="sm" />
-        <div>Inputs</div>
-        <PillCounter :count="component.inputCount" size="sm" class="ml-auto" />
-      </li>
-      <li>
-        <Icon name="input-connection" size="sm" />
-        <div>Outputs</div>
-        <PillCounter :count="0" size="sm" class="ml-auto" />
-      </li>
+      <!-- NOTE: when coming from the Map page we don't have accurate outputCount, hiding this -->
+      <template v-if="!props.hideConnections">
+        <hr class="border-neutral-500" />
+        <li>
+          <Icon name="output-connection" size="sm" />
+          <div>Inputs</div>
+          <PillCounter
+            :count="component.inputCount"
+            size="sm"
+            class="ml-auto"
+          />
+        </li>
+        <li>
+          <Icon name="input-connection" size="sm" />
+          <div>Outputs</div>
+          <PillCounter
+            :count="component.outputCount"
+            size="sm"
+            class="ml-auto"
+          />
+        </li>
+      </template>
     </ol>
     <!-- <footer class="grid grid-cols-2 p-xs">
       <div class="place-self-start">
@@ -86,12 +97,13 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed } from "vue";
-import { BifrostComponent } from "@/workers/types/dbinterface";
+import { Component } from "@/workers/types/dbinterface";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon } from "./util";
 
 const props = defineProps<{
-  component: BifrostComponent;
+  component: Component;
+  hideConnections?: boolean;
 }>();
 
 const qualificationSummary = computed(() => {

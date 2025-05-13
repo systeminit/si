@@ -122,17 +122,16 @@
     <div class="right flex flex-col">
       <CollapsingFlexItem>
         <template #header>
-          <PillCounter :count="component.inputCount + 0" />
+          <PillCounter
+            :count="(component.inputCount ?? 0) + (component.outputCount ?? 0)"
+          />
           Connections
         </template>
-        <h2 class="text-xl font-semibold">Inputs</h2>
-        <div
-          v-for="incomingConnection in incomingConnections?.connections"
-          :key="incomingConnection.fromAttributeValueId"
-          class="border border-gray-700 rounded-md p-xs"
-        >
-          {{ incomingConnection }}
-        </div>
+        <ConnectionsPanel
+          v-if="componentConnections"
+          :component="component"
+          :connections="componentConnections"
+        />
       </CollapsingFlexItem>
       <CollapsingFlexItem open>
         <template #header>
@@ -179,8 +178,8 @@ import { computed, ref, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
-  BifrostComponent,
-  BifrostIncomingConnections,
+  Component,
+  BifrostComponentConnections,
 } from "@/workers/types/dbinterface";
 import AttributePanel from "./AttributePanel.vue";
 import { attributeEmitter } from "./logic_composables/emitters";
@@ -194,6 +193,7 @@ import { prevPage } from "./logic_composables/navigation_stack";
 import CodePanel from "./CodePanel.vue";
 import DiffPanel from "./DiffPanel.vue";
 import ActionsPanel from "./ActionsPanel.vue";
+import ConnectionsPanel from "./ConnectionsPanel.vue";
 
 const props = defineProps<{
   componentId: string;
@@ -204,10 +204,10 @@ const componentId = computed(() => props.componentId);
 const key = useMakeKey();
 const args = useMakeArgs();
 
-const componentQuery = useQuery<BifrostComponent | null>({
+const componentQuery = useQuery<Component | null>({
   queryKey: key("Component", componentId),
   queryFn: async () => {
-    const component = await bifrost<BifrostComponent>(
+    const component = await bifrost<Component>(
       args("Component", componentId.value),
     );
     return component;
@@ -215,16 +215,18 @@ const componentQuery = useQuery<BifrostComponent | null>({
 });
 const component = computed(() => componentQuery.data.value);
 
-const incomingConnectionsQuery = useQuery<BifrostIncomingConnections | null>({
+const componentConnectionsQuery = useQuery<BifrostComponentConnections | null>({
   queryKey: key("IncomingConnections", componentId),
   queryFn: async () => {
-    const incomingConnections = await bifrost<BifrostIncomingConnections>(
+    const incomingConnections = await bifrost<BifrostComponentConnections>(
       args("IncomingConnections", componentId.value),
     );
     return incomingConnections;
   },
 });
-const incomingConnections = computed(() => incomingConnectionsQuery.data.value);
+const componentConnections = computed(
+  () => componentConnectionsQuery.data.value,
+);
 
 const docs = ref("");
 const docLink = ref("");

@@ -29,6 +29,8 @@ import Axios, {
 } from "axios";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { nonNullable } from "@/utils/typescriptLinter";
+import { DefaultMap } from "@/utils/defaultmap";
+import { ComponentId } from "@/api/sdf/dal/component";
 import {
   DBInterface,
   NOROW,
@@ -47,13 +49,15 @@ import {
   RawViewList,
   BifrostView,
   Ragnarok,
-  RawComponentList,
-  BifrostComponent,
+  EddaComponentList,
+  Component,
   BifrostComponentList,
-  RawIncomingConnectionsList,
+  EddaIncomingConnectionsList,
   BifrostIncomingConnectionsList,
-  BifrostIncomingConnections,
-  RawIncomingConnections,
+  EddaIncomingConnections,
+  BifrostComponentConnections,
+  BifrostConnection,
+  EddaConnection,
 } from "./types/dbinterface";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
@@ -358,6 +362,13 @@ const kindAndArgsFromKey = (key: QueryKey): { kind: string; id: Id } => {
   return { kind, id };
 };
 
+const dirtyConnections: Record<string, boolean> = {};
+const areConnectionsDirty = (workspaceId: string, changeSetId: string) => {
+  return dirtyConnections[`${workspaceId}-${changeSetId}`];
+};
+const markConnectionDirty = (workspaceId: string, changeSetId: string) => {
+  dirtyConnections[`${workspaceId}-${changeSetId}`] = true;
+};
 const bustCacheAndReferences: BustCacheFn = async (
   workspaceId: string,
   changeSetId: string,
@@ -388,6 +399,56 @@ const bustCacheAndReferences: BustCacheFn = async (
   });
 };
 
+const cachedConnections: Record<
+  ChangeSetId,
+  DefaultMap<ComponentId, BifrostConnection[]>
+> = {};
+
+const getOutgoingConnectionsByComponentId = (
+  _workspaceId: string,
+  changeSetId: string,
+) => {
+  return cachedConnections[changeSetId];
+};
+
+const cleanConnections = async (workspaceId: string, changeSetId: string) => {
+  await tracer.startActiveSpan("cleanConnections", async (span: Span) => {
+    debug("🧹 connections start...");
+    const connectionsById = await _getOutgoingConnectionsByComponentId(
+      workspaceId,
+      changeSetId,
+    );
+    cachedConnections[changeSetId] = connectionsById;
+
+    delete dirtyConnections[`${workspaceId}-${changeSetId}`];
+
+    // whenever these change, the outgoing connections must bust as well
+    bustCacheFn(workspaceId, changeSetId, "OutgoingConnections", changeSetId);
+    const sql = `
+      select referrer_kind, referrer_args from weak_references where target_kind = ? and target_args = ? and change_set_id = ?;
+    `;
+    const bind = ["OutgoingConnections", changeSetId, changeSetId];
+    const refs = await db.exec({
+      sql,
+      bind,
+      returnValue: "resultRows",
+    });
+    refs.forEach(([ref_kind, ref_id]) => {
+      if (ref_kind && ref_id)
+        bustCacheFn(
+          workspaceId,
+          changeSetId,
+          ref_kind as string,
+          ref_id as string,
+        );
+    });
+    span.setAttribute("numBusts", refs.length);
+    span.setAttribute("busts", JSON.stringify(refs));
+    span.end();
+    debug("...connections end 🧹");
+  });
+};
+
 const handleHammer = async (msg: AtomMessage, span?: Span) => {
   // in between throwing a hammer and receiving it, i might already have written the atom
   const snapshots = await atomExistsOnSnapshots(msg.atom, msg.atom.toChecksum);
@@ -406,8 +467,16 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     );
   await insertAtomMTM(msg.atom, toSnapshotAddress);
 
+  if (
+    ["IncomingConnections", "IncomingConnectionsList"].includes(msg.atom.kind)
+  )
+    markConnectionDirty(msg.atom.workspaceId, msg.atom.changeSetId);
+
   updateChangeSetWithNewSnapshot(msg.atom);
   removeOldSnapshot();
+
+  if (areConnectionsDirty(msg.atom.workspaceId, msg.atom.changeSetId))
+    cleanConnections(msg.atom.workspaceId, msg.atom.changeSetId);
 
   bustCacheAndReferences(
     msg.atom.workspaceId,
@@ -520,11 +589,30 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
   span?.setAttribute("numAtoms", atoms.length);
   if (!toSnapshotAddress)
     throw new Error(`Expected snapshot for ${data.meta.snapshotToAddress}`);
-  await Promise.all(
+
+  atoms.forEach((atom) => {
+    if (["IncomingConnections", "IncomingConnectionsList"].includes(atom.kind))
+      markConnectionDirty(atom.workspaceId, atom.changeSetId);
+  });
+
+  const atomsToBust = await Promise.all(
     atoms.map(async (atom) => {
-      await applyPatch(atom, toSnapshotAddress);
+      return await applyPatch(atom, toSnapshotAddress);
     }),
   );
+
+  if (areConnectionsDirty(data.meta.workspaceId, data.meta.changeSetId))
+    cleanConnections(data.meta.workspaceId, data.meta.changeSetId);
+
+  atomsToBust.forEach((atom) => {
+    if (atom)
+      bustCacheAndReferences(
+        atom.workspaceId,
+        atom.changeSetId,
+        atom.kind,
+        atom.id,
+      );
+  });
 
   updateChangeSetWithNewSnapshot(data.meta);
   removeOldSnapshot();
@@ -534,7 +622,7 @@ const applyPatch = async (
   atom: Required<Atom>,
   toSnapshotAddress: Checksum,
 ) => {
-  await tracer.startActiveSpan("applyPatch", async (span) => {
+  return await tracer.startActiveSpan("applyPatch", async (span) => {
     span.setAttribute("atom", JSON.stringify(atom));
 
     // if we have the change already don't do anything
@@ -595,14 +683,9 @@ const applyPatch = async (
     // this insert potentially replaces the MTM row that exists for the current snapshot
     // based on the table constraint
     if (needToInsertMTM) await insertAtomMTM(atom, toSnapshotAddress);
-    if (bustCache)
-      bustCacheAndReferences(
-        atom.workspaceId,
-        atom.changeSetId,
-        atom.kind,
-        atom.id,
-      );
     span.end();
+    if (bustCache) return atom;
+    return undefined;
   });
 };
 
@@ -784,6 +867,7 @@ const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
       { changeSetId },
       "index",
     ] as URLPattern;
+
     const [url, desc] = describePattern(pattern);
     const frigg = tracer.startSpan(`GET ${desc}`);
     frigg.setAttributes({ workspaceId, changeSetId });
@@ -813,6 +897,8 @@ const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
     });
     compare.setAttribute("numHammers", numHammers);
     compare.end();
+
+    await cleanConnections(workspaceId, changeSetId);
     span.end();
   });
 };
@@ -869,12 +955,280 @@ const weak_reference = async (
   });
 };
 
+const flip = (i: BifrostConnection): BifrostConnection => {
+  const o: BifrostConnection = {
+    ...i,
+    fromComponent: i.toComponent,
+    fromAttributeValueId: i.toAttributeValueId,
+    fromAttributeValuePath: i.toAttributeValuePath,
+    toComponent: i.fromComponent,
+    toAttributeValueId: i.fromAttributeValueId,
+    toAttributeValuePath: i.fromAttributeValuePath,
+  };
+  if ("toPropId" in i && o.kind === "prop") {
+    o.fromPropId = i.toPropId;
+    o.fromPropPath = i.toPropPath;
+    o.toPropId = i.fromPropId;
+    o.toPropPath = i.fromPropId;
+  }
+  if ("toSocketId" in i && o.kind === "socket") {
+    o.fromSocketId = i.toSocketId;
+    o.fromSocketName = i.toSocketName;
+    o.toSocketId = i.fromSocketId;
+    o.toSocketName = i.fromSocketName;
+  }
+  return o;
+};
+
+const _getOutgoingConnectionsByComponentId = async (
+  workspaceId: string,
+  changeSetId: string,
+) => {
+  const list = (await get(
+    workspaceId,
+    changeSetId,
+    "IncomingConnectionsList",
+    changeSetId,
+    undefined,
+    false, // don't compute
+  )) as BifrostIncomingConnectionsList;
+
+  const all = list.componentConnections.flatMap((conn) => conn.incoming);
+
+  return all.reduce((obj, conn) => {
+    const m = obj.get(conn.fromComponent.id);
+    m.push(flip(conn));
+    obj.set(conn.fromComponent.id, m);
+    return obj;
+  }, new DefaultMap<string, BifrostConnection[]>(() => [] as BifrostConnection[]));
+};
+
+/**
+ * EXAMPLE OF HOW WE MOVE FROM
+ * - `get` (aka `bifrost`)
+ * - `getReferences`
+ * - `getComputed`
+
+ * Looking at `get` where `kind="ComponentList"
+ * 
+ * 1. get the atom, edda generates references for us
+ * 2. That type is the `EddaComponentList`
+ * 3. Call `getReferences`
+ * 3. Look up the strong references and fill them in with the `Component` type
+ * 4. This translates type to `BifrostComponentList`, which is what we are returning
+ * 6. Call `getComputed`
+ * 7. Create a map of outgoing connections based on the incoming connections
+ * 8. Fill in the `Component.outputCount` connections with them
+ * 9. return (we don't need to translate this type)
+ */
+
+const getComputed = async (
+  atomDoc: AtomDocument,
+  workspaceId: string,
+  changeSetId: string,
+  kind: string,
+  id: string,
+) => {
+  // PSA: in general, any `get` you do in here, you're going to want to pass `followComputed=false`
+  // otherwise you're liable to run into an infinite recursion lookup
+  if (!["Component", "ViewComponentList", "ComponentList"].includes(kind))
+    return atomDoc;
+
+  const connectionsById = getOutgoingConnectionsByComponentId(
+    workspaceId,
+    changeSetId,
+  );
+  if (!connectionsById) {
+    debug("~ missing connections ~");
+    // making this, so when connections populate, we re-query
+    weak_reference(
+      changeSetId,
+      { kind: "OutgoingConnections", args: changeSetId },
+      { kind, args: id },
+    );
+    return atomDoc;
+  }
+
+  debug("🔗 computed operation", kind, id);
+
+  if (kind === "ViewComponentList" || kind === "ComponentList") {
+    const data = atomDoc as BifrostComponentList;
+    data.components.forEach((c) => {
+      c.outputCount = connectionsById.get(c.id).length;
+    });
+    clear_weak_references(changeSetId, { kind, args: id });
+    weak_reference(
+      changeSetId,
+      { kind: "OutgoingConnections", args: changeSetId },
+      { kind, args: id },
+    );
+    return data;
+  } else if (kind === "Component") {
+    const data = atomDoc as Component;
+    data.outputCount = connectionsById.get(id).length;
+    clear_weak_references(changeSetId, { kind, args: id });
+    weak_reference(
+      changeSetId,
+      { kind: "OutgoingConnections", args: changeSetId },
+      { kind, args: id },
+    );
+    return data;
+  } else return atomDoc;
+};
+
+const getReferences = async (
+  atomDoc: AtomDocument,
+  workspaceId: string,
+  changeSetId: ChangeSetId,
+  kind: string,
+  id: Id,
+  followComputed?: boolean,
+) => {
+  if (
+    ![
+      "ViewList",
+      "ComponentList",
+      "ViewComponentList",
+      "IncomingConnections",
+      "IncomingConnectionsList",
+    ].includes(kind)
+  )
+    return atomDoc;
+
+  debug("🔗 reference query", kind, id);
+  if (kind === "ViewList") {
+    const rawList = atomDoc as RawViewList;
+    const maybeViews = await Promise.all(
+      rawList.views.map(async (v) => {
+        return await get(
+          workspaceId,
+          changeSetId,
+          v.kind,
+          v.id,
+          undefined,
+          followComputed,
+        );
+      }),
+    );
+    const views = maybeViews.filter(
+      (v): v is BifrostView => v !== -1 && Object.keys(v).length > 0,
+    );
+    const list: BifrostViewList = {
+      id: rawList.id,
+      views,
+    };
+    return list;
+  } else if (kind === "ComponentList" || kind === "ViewComponentList") {
+    const rawList = atomDoc as EddaComponentList;
+    const maybeComponents = await Promise.all(
+      rawList.components.map(async (c) => {
+        return await get(
+          workspaceId,
+          changeSetId,
+          c.kind,
+          c.id,
+          undefined,
+          followComputed,
+        );
+      }),
+    );
+    const components = maybeComponents.filter(
+      (c): c is Component => c !== -1 && Object.keys(c).length > 0,
+    );
+    // NOTE: this is either a bifrost component list or a view component list
+    // FUTURE: improve this with some typing magic
+    const list: BifrostComponentList = {
+      id: rawList.id,
+      components,
+    };
+    return list;
+  } else if (kind === "IncomingConnections") {
+    const raw = atomDoc as EddaIncomingConnections;
+    const component = (await get(
+      workspaceId,
+      changeSetId,
+      "Component",
+      raw.id,
+      undefined,
+      false,
+    )) as Component;
+    clear_weak_references(changeSetId, {
+      kind: "IncomingConnections",
+      args: raw.id,
+    });
+    weak_reference(
+      changeSetId,
+      { kind: "Component", args: component.id },
+      { kind: "IncomingConnections", args: raw.id },
+    );
+
+    const connections = await Promise.all(
+      raw.connections.map(async (c: EddaConnection) => {
+        // NOTE: when looking up the weak referenced components in a list of component connections
+        // we pass `followComputed=false` because we don't need the BifrostComponent objects to look up
+        // their own connection stats, we're calling `IncomingConnections` after all!
+        const fromComponent = await get(
+          workspaceId,
+          changeSetId,
+          c.fromComponentId.kind,
+          c.fromComponentId.id,
+          undefined,
+          false,
+        );
+
+        if (fromComponent === -1) throw new Error("Missing component");
+        weak_reference(
+          changeSetId,
+          { kind: c.fromComponentId.kind, args: c.fromComponentId.id },
+          { kind: "IncomingConnections", args: raw.id },
+        );
+
+        const conn: BifrostConnection = {
+          ...c,
+          fromComponent: fromComponent as Component,
+          toComponent: component as Component,
+        };
+        // explicitly setting this as a warning that these fields are not to be used
+        conn.fromComponent.outputCount = -1;
+        conn.toComponent.outputCount = -1;
+        return conn;
+      }),
+    );
+
+    return {
+      id: raw.id,
+      component,
+      incoming: connections,
+      outgoing: [] as BifrostConnection[],
+    } as BifrostComponentConnections;
+  } else if (kind === "IncomingConnectionsList") {
+    const rawList = atomDoc as EddaIncomingConnectionsList;
+    const maybeIncomingConnections = await Promise.all(
+      rawList.componentConnections.map(async (c) => {
+        return (await get(workspaceId, changeSetId, c.kind, c.id)) as
+          | BifrostComponentConnections
+          | -1;
+      }),
+    );
+    const componentConnections = maybeIncomingConnections.filter(
+      (c) => c !== -1 && c && "id" in c,
+    ) as BifrostComponentConnections[];
+    const list: BifrostIncomingConnectionsList = {
+      id: rawList.id,
+      componentConnections,
+    };
+    return list;
+  } else return atomDoc;
+};
+
 const get = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
   kind: string,
   id: Id,
   checksum?: string, // intentionally not used in sql, putting it on the wire for consistency & observability purposes
+  followComputed = true,
+  followReferences = true,
 ): Promise<-1 | object> => {
   const sql = `
     select
@@ -891,13 +1245,21 @@ const get = async (
       atoms.args = ?
     ;`;
   const bind = [changeSetId, kind, id];
+  const start = Date.now();
   const atomData = await db.exec({
     sql,
     bind,
     returnValue: "resultRows",
   });
+  const end = Date.now();
   const data = oneInOne(atomData);
-  debug("❓ sql get", bind, " returns ?", !(data === NOROW));
+  debug(
+    "❓ sql get",
+    `[${end - start}ms]`,
+    bind,
+    " returns ?",
+    !(data === NOROW),
+  );
   if (data === NOROW) {
     mjolnir(workspaceId, changeSetId, kind, id, checksum);
     return -1;
@@ -906,116 +1268,23 @@ const get = async (
   debug("📄 atom doc", atomDoc);
 
   // THIS GETS REPLACED WITH AUTO-GEN CODE
-  if (kind === "ViewList") {
-    const rawList = atomDoc as RawViewList;
-    const maybeViews = await Promise.all(
-      rawList.views.map(async (v) => {
-        return await get(workspaceId, changeSetId, v.kind, v.id);
-      }),
-    );
-    const views = maybeViews.filter(
-      (v): v is BifrostView => v !== -1 && Object.keys(v).length > 0,
-    );
-    const list: BifrostViewList = {
-      id: rawList.id,
-      views,
-    };
-    return list;
-  } else if (kind === "ComponentList" || kind === "ViewComponentList") {
-    const rawList = atomDoc as RawComponentList;
-    const maybeComponents = await Promise.all(
-      rawList.components.map(async (c) => {
-        return await get(workspaceId, changeSetId, c.kind, c.id);
-      }),
-    );
-    const components = maybeComponents.filter(
-      (c): c is BifrostComponent => c !== -1 && Object.keys(c).length > 0,
-    );
-    const list: BifrostComponentList = {
-      id: rawList.id,
-      components,
-    };
-    return list;
-  } else if (kind === "IncomingConnections") {
-    // FIXME(nick): talked with John O and this is not working fully. We are close though. Do not
-    // be alarmed if you come here and go "oh shit it's not quite right" because it isn't.
-    const raw = atomDoc as RawIncomingConnections;
-    clear_weak_references(changeSetId, { kind, args: raw.id });
+  if (!followReferences) return atomDoc;
 
-    // First, get the current component.
-    const component = (await get(
-      workspaceId,
-      changeSetId,
-      "Component",
-      raw.id,
-    )) as BifrostComponent;
-    weak_reference(
-      changeSetId,
-      { kind: "Component", args: raw.id },
-      { kind, args: raw.id },
-    );
-
-    // Collect all weak references within the incoming connections.
-    const connections = await Promise.all(
-      raw.connections.map(async (c) => {
-        const fromComponent = (await get(
-          workspaceId,
-          changeSetId,
-          c.fromComponentId.kind,
-          c.fromComponentId.id,
-        )) as BifrostComponent;
-        const toComponent = (await get(
-          workspaceId,
-          changeSetId,
-          c.toComponentId.kind,
-          c.toComponentId.id,
-        )) as BifrostComponent;
-
-        // Grab both the weak reference for the "from" side and the "to" side.
-        weak_reference(
-          changeSetId,
-          { kind: c.fromComponentId.kind, args: c.fromComponentId.id },
-          { kind, args: raw.id },
-        );
-        weak_reference(
-          changeSetId,
-          { kind: c.toComponentId.kind, args: c.toComponentId.id },
-          { kind, args: raw.id },
-        );
-
-        // Convert from a "raw" connection to the full connection with the component MV.
-        return {
-          ...c,
-          fromComponent,
-          toComponent,
-        };
-      }),
-    );
-
-    // Now that we have all weak references sorted, we can return the full object.
-    const incomingConnections: BifrostIncomingConnections = {
-      id: raw.id,
-      component,
-      connections,
-    };
-    return incomingConnections;
-  } else if (kind === "IncomingConnectionsList") {
-    const rawList = atomDoc as RawIncomingConnectionsList;
-    const maybeIncomingConnections = await Promise.all(
-      rawList.componentConnections.map(async (c) => {
-        return await get(workspaceId, changeSetId, c.kind, c.id);
-      }),
-    );
-    const componentConnections = maybeIncomingConnections.filter(
-      (c): c is BifrostIncomingConnections =>
-        c !== -1 && Object.keys(c).length > 0,
-    );
-    const list: BifrostIncomingConnectionsList = {
-      id: rawList.id,
-      componentConnections,
-    };
-    return list;
-  } else return atomDoc;
+  const docAndRefs = await getReferences(
+    atomDoc,
+    workspaceId,
+    changeSetId,
+    kind,
+    id,
+    followComputed,
+  );
+  // NOTE: Whenever we ask for the full list of connections
+  // This implementation will not compute the outgoing connections (infinite recursion)
+  // You will only get incoming—which is all we need when we ask for the whole list
+  if (followComputed && !["IncomingConnectionsList"].includes(kind)) {
+    return await getComputed(docAndRefs, workspaceId, changeSetId, kind, id);
+  }
+  return docAndRefs;
 };
 
 let socket: ReconnectingWebSocket;
@@ -1145,6 +1414,7 @@ const dbInterface: DBInterface = {
   },
 
   get,
+  getOutgoingConnectionsByComponentId,
   partialKeyFromKindAndId: partialKeyFromKindAndArgs,
   kindAndIdFromKey: kindAndArgsFromKey,
   mjolnir,

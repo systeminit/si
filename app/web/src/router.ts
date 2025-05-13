@@ -2,7 +2,10 @@ import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
 import * as _ from "lodash-es";
 import { nextTick } from "vue";
 import { posthog } from "@/utils/posthog";
-import { push as pushBreadcrumb } from "@/newhotness/logic_composables/navigation_stack";
+import {
+  push as pushBreadcrumb,
+  query,
+} from "@/newhotness/logic_composables/navigation_stack";
 import { useAuthStore } from "./store/auth.store";
 import { useRouterStore } from "./store/router.store";
 import { isDevMode } from "./utils/debug";
@@ -300,7 +303,7 @@ router.afterEach((to) => {
     console.error("can't find name in matched route", e);
   }
   try {
-    pushBreadcrumb(to.path, name, { ...to.params });
+    pushBreadcrumb(to.path, name, { ...to.params }, { ...to.query } as query);
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error("can't push breadcrumb", e);

@@ -1,9 +1,15 @@
 import * as Comlink from "comlink";
 import { computed, reactive, Reactive, inject, ComputedRef, unref } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
-import { DBInterface, Id, BustCacheFn } from "@/workers/types/dbinterface";
+import {
+  DBInterface,
+  Id,
+  BustCacheFn,
+  BifrostConnection,
+} from "@/workers/types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Context } from "@/newhotness/types";
+import { DefaultMap } from "@/utils/defaultmap";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useWorkspacesStore } from "../workspaces.store";
 
@@ -102,6 +108,20 @@ export const bifrost = async <T>(args: {
   return reactive(maybeAtomDoc);
 };
 
+export const getOutgoingConnections = async (args: {
+  workspaceId: string;
+  changeSetId: ChangeSetId;
+}) => {
+  if (!initCompleted.value) throw new Error("bifrost not initiated");
+
+  const connectionsById = await db.getOutgoingConnectionsByComponentId(
+    args.workspaceId,
+    args.changeSetId,
+  );
+  if (connectionsById) return reactive(connectionsById);
+  return new DefaultMap<string, BifrostConnection[]>(() => []);
+};
+
 // cold start
 export const niflheim = async (
   workspaceId: string,
@@ -114,6 +134,8 @@ export const niflheim = async (
     // eslint-disable-next-line no-console
     console.log("❄️ NIFLHEIM ❄️");
     await db.niflheim(workspaceId, changeSetId);
+    // eslint-disable-next-line no-console
+    console.log("❄️ DONE ❄️");
   }
 };
 

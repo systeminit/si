@@ -1,6 +1,6 @@
 import { Ref, unref } from "vue";
 import { IconNames } from "@si/vue-lib/design-system";
-import { BifrostAttributeTree } from "@/workers/types/dbinterface";
+import { AttributeTree } from "@/workers/types/dbinterface";
 import { Toggle } from "./logic_composables/toggle_containers";
 
 export const getAssetIcon = (name: string) => {
@@ -57,10 +57,7 @@ export const filterMissingAtom = (obj: unknown) => {
 };
 
 // Used in the component page vue components
-export const findAvsAtPropPath = (
-  data: BifrostAttributeTree,
-  parts: string[],
-) => {
+export const findAvsAtPropPath = (data: AttributeTree, parts: string[]) => {
   const path = parts.join("\u000b");
   const propId = Object.keys(data.props).find((pId) => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

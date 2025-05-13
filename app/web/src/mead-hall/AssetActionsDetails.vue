@@ -53,7 +53,7 @@ import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import EmptyStateIcon from "@/components/EmptyStateIcon.vue";
 import { ActionPrototypeId, ActionId } from "@/api/sdf/dal/action";
 import {
-  BifrostActionPrototypeViewList,
+  ActionPrototypeViewList,
   BifrostActionViewList,
 } from "@/workers/types/dbinterface";
 import ActionWidget from "./ActionWidget.vue";
@@ -75,18 +75,13 @@ const queryKeyForActionPrototypeViews = makeKey(
   "ActionPrototypeViewList",
   props.component.def.schemaVariantId,
 );
-const actionPrototypeViewsRaw = useQuery<BifrostActionPrototypeViewList | null>(
-  {
-    queryKey: queryKeyForActionPrototypeViews,
-    queryFn: async () =>
-      await bifrost<BifrostActionPrototypeViewList>(
-        makeArgs(
-          "ActionPrototypeViewList",
-          props.component.def.schemaVariantId,
-        ),
-      ),
-  },
-);
+const actionPrototypeViewsRaw = useQuery<ActionPrototypeViewList | null>({
+  queryKey: queryKeyForActionPrototypeViews,
+  queryFn: async () =>
+    await bifrost<ActionPrototypeViewList>(
+      makeArgs("ActionPrototypeViewList", props.component.def.schemaVariantId),
+    ),
+});
 const actionPrototypeViews = computed(
   () => actionPrototypeViewsRaw.data.value?.actionPrototypes ?? [],
 );
