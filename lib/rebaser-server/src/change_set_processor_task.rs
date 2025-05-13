@@ -38,12 +38,14 @@ use naxum::{
         Response,
     },
 };
+use rebaser_core::nats;
 use si_data_nats::{
     NatsClient,
     async_nats::jetstream::{
         self,
         consumer::push,
     },
+    jetstream::Context,
 };
 use si_events::{
     ChangeSetId,
@@ -63,6 +65,7 @@ use self::app_state::AppState;
 use crate::{
     Features,
     ServerMetadata,
+    subject::parse_subject,
 };
 
 #[remain::sorted]
@@ -108,6 +111,8 @@ impl ChangeSetProcessorTask {
         let connection_metadata = nats.metadata_clone();
 
         let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
+
+        let context = si_data_nats::jetstream::new(nats.clone());
 
         let state = AppState::new(
             workspace_id,
@@ -164,7 +169,11 @@ impl ChangeSetProcessorTask {
                     )
                     .on_response(telemetry_nats::NatsOnResponse::new()),
             )
-            .layer(PostProcessLayer::new().on_success(DeleteMessageOnSuccess::new(stream)))
+            .layer(
+                PostProcessLayer::new()
+                    .on_success(DeleteMessageOnSuccess::new(stream.clone()))
+                    .on_failure(MoveMessageOnFailure::new(context, stream)),
+            )
             .service(handlers::default.with_state(state))
             .map_response(Response::into_response);
 
@@ -226,6 +235,97 @@ impl post_process::OnSuccess for DeleteMessageOnSuccess {
             debug!("deleting message on success");
             if let Err(err) = stream.delete_message(info.stream_sequence).await {
                 warn!(
+                    si.error.message = ?err,
+                    subject = head.subject.as_str(),
+                    "failed to delete the message",
+                );
+            }
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+struct MoveMessageOnFailure {
+    context: Context,
+    stream: jetstream::stream::Stream,
+}
+
+impl MoveMessageOnFailure {
+    fn new(context: Context, stream: jetstream::stream::Stream) -> Self {
+        Self { context, stream }
+    }
+}
+
+impl post_process::OnFailure for MoveMessageOnFailure {
+    fn call(
+        &mut self,
+        head: Arc<naxum::Head>,
+        info: Arc<post_process::Info>,
+    ) -> BoxFuture<'static, ()> {
+        let stream = self.stream.clone();
+        let context = self.context.clone();
+
+        Box::pin(async move {
+            error!(
+                subject = head.subject.as_str(),
+                stream_sequence = info.stream_sequence,
+                subject = head.subject.as_str(),
+                "error encoutered when processing message; moving to errored messages subject",
+            );
+
+            // Fetch the message associated with the error
+            let msg = match stream.get_raw_message(info.stream_sequence).await {
+                Ok(msg) => msg,
+                Err(err) => {
+                    error!(
+                        si.error.message = ?err,
+                        subject = head.subject.as_str(),
+                        "failed to read errored message from stream",
+                    );
+                    return;
+                }
+            };
+
+            // Derive an errored subject where we will publish a copy of the message
+            let errored_subject = {
+                let subject_prefix = context.metadata().subject_prefix();
+                let msg_subject_str = msg.subject.as_str();
+
+                let (workspace, change_set) = match parse_subject(subject_prefix, msg_subject_str) {
+                    Ok(parsed) => parsed,
+                    Err(err) => {
+                        error!(
+                            si.error.message = ?err,
+                            subject = head.subject.as_str(),
+                            "failed to parsed errored message subject",
+                        );
+                        return;
+                    }
+                };
+
+                nats::subject::errored_updates_for_change_set(
+                    subject_prefix,
+                    workspace.str(),
+                    change_set.str(),
+                )
+            };
+
+            // Publish copy of errored message to an "errored requests" subject on stream
+            if let Err(err) = context
+                .publish_with_headers(errored_subject.clone(), msg.headers, msg.payload)
+                .await
+            {
+                error!(
+                    si.error.message = ?err,
+                    subject = errored_subject.as_str(),
+                    "failed to re-publish errored message",
+                );
+                return;
+            }
+
+            // Delete errored message from original stream location
+            if let Err(err) = stream.delete_message(info.stream_sequence).await {
+                error!(
                     si.error.message = ?err,
                     subject = head.subject.as_str(),
                     "failed to delete the message",

@@ -76,6 +76,7 @@ fn nats_stream_name(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
 pub mod subject {
     use si_data_nats::Subject;
 
+    const ERRORED_REQUESTS_SUBJECT_PREFIX: &str = "rebaser.errored.requests";
     const REQUESTS_SUBJECT_PREFIX: &str = "rebaser.requests";
     const TASKS_SUBJECT_PREFIX: &str = "rebaser.tasks";
 
@@ -92,6 +93,20 @@ pub mod subject {
         nats_subject(prefix, TASKS_INCOMING_SUBJECT)
     }
 
+    #[inline]
+    pub fn errored_updates_for_change_set(
+        prefix: Option<&str>,
+        workspace_id: &str,
+        change_set_id: &str,
+    ) -> Subject {
+        nats_subject(
+            prefix,
+            format!(
+                "{ERRORED_REQUESTS_SUBJECT_PREFIX}.{}.{}",
+                workspace_id, change_set_id,
+            ),
+        )
+    }
     #[inline]
     pub fn enqueue_updates_for_change_set(
         prefix: Option<&str>,

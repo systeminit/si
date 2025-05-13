@@ -37,6 +37,7 @@ mod handlers;
 mod rebase;
 mod serial_dvu_task;
 mod server;
+mod subject;
 
 pub use si_settings::{
     ConfigMap,
