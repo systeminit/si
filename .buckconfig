@@ -29,3 +29,21 @@ ignore = \
   target, \
   third-party/rust/.cargo/**/BUCK, \
   third-party/rust/vendor/**/BUCK
+
+[buck2]
+digest_algorithms = SHA256
+
+# deferred materialization settings
+# https://buck2.build/docs/users/advanced/deferred_materialization/
+defer_write_actions = true
+materializations = deferred
+restarter = true
+sqlite_materializer_state = true
+
+[buck2_re_client]
+action_cache_address = bb.systeminit.com:443
+cas_address = bb.systeminit.com:443
+engine_address = bb.systeminit.com:443
+
+[build]
+execution_platforms = prelude-si//platforms:default

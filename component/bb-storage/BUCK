@@ -1,0 +1,15 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "docker_image",
+)
+
+docker_image(
+    name = "bb-storage",
+    srcs = {
+        "config.yml": ".",
+        "docker-entrypoint.sh": ".",
+    },
+    build_args = {
+        "BASE_VERSION": "20250408t112116z-1d733a3",
+    },
+)

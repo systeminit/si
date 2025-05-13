@@ -19,6 +19,11 @@ def _execution_platform_impl(ctx: AnalysisContext) -> list[Provider]:
         executor_config = CommandExecutorConfig(
             local_enabled = True,
             remote_enabled = False,
+            remote_cache_enabled = True,
+            allow_cache_uploads = True,
+            use_limited_hybrid = False,
+            remote_execution_use_case = "buck2-default",
+            remote_output_paths = "output_paths",
             use_windows_path_separators = ctx.attrs.use_windows_path_separators,
         ),
     )
