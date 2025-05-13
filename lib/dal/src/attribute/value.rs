@@ -33,14 +33,17 @@ use tokio::sync::{
     TryLockError,
 };
 
-use super::prototype::argument::{
-    AttributePrototypeArgument,
-    AttributePrototypeArgumentError,
-    AttributePrototypeArgumentId,
-    static_value::StaticArgumentValue,
-    value_source::{
-        ValueSource,
-        ValueSourceError,
+use super::{
+    path::AttributePath,
+    prototype::argument::{
+        AttributePrototypeArgument,
+        AttributePrototypeArgumentError,
+        AttributePrototypeArgumentId,
+        static_value::StaticArgumentValue,
+        value_source::{
+            ValueSource,
+            ValueSourceError,
+        },
     },
 };
 use crate::{
@@ -2275,6 +2278,22 @@ impl AttributeValue {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn subscribers(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<impl Iterator<Item = (AttributePath, AttributePrototypeArgumentId)>>
+    {
+        Ok(ctx
+            .workspace_snapshot()?
+            .edges_directed(attribute_value_id, Direction::Incoming)
+            .await?
+            .into_iter()
+            .filter_map(|(edge, source, _)| match edge.kind {
+                EdgeWeightKind::ValueSubscription(path) => Some((path, source.into())),
+                _ => None,
+            }))
     }
 
     pub async fn get_by_id(
