@@ -26,7 +26,6 @@
         <Stack>
           <ErrorMessage :asyncState="createAuthToken" />
           <form
-            v-if="workspace.role === 'OWNER'"
             class="flex flex-row flex-wrap items-center justify-center gap-md"
           >
             <VormInput
