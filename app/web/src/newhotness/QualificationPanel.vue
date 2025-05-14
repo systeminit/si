@@ -15,7 +15,7 @@ import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   AttributeValue,
   AttributeTree,
-  Component,
+  BifrostComponent,
   Prop,
 } from "@/workers/types/dbinterface";
 import QualificationView from "@/newhotness/QualificationView.vue";
@@ -31,7 +31,7 @@ export interface QualItem {
 }
 
 const props = defineProps<{
-  component: Component;
+  component: BifrostComponent;
 }>();
 
 const componentId = computed(() => props.component.id);

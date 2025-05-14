@@ -108,7 +108,7 @@ import * as _ from "lodash-es";
 import { Fzf } from "fzf";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
-  Component,
+  BifrostComponent,
   BifrostComponentConnections,
   BifrostIncomingConnectionsList,
 } from "@/workers/types/dbinterface";
@@ -122,7 +122,7 @@ import { getAssetIcon } from "./util";
 
 const props = defineProps<{ active: boolean }>();
 
-const selectedComponent = ref<Component | null>(null);
+const selectedComponent = ref<BifrostComponent | null>(null);
 
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
@@ -330,14 +330,14 @@ const connections = useQuery<BifrostIncomingConnectionsList>({
 const mapData = computed(() => {
   const nodes = new Set<string>();
   const edges = new Set<string>();
-  const components: Record<string, Component> = {};
+  const components: Record<string, BifrostComponent> = {};
   if (!connections.data.value) {
     return { nodes, edges, components };
   }
 
   const matchingIds: string[] = [];
   if (searchString?.value && searchString.value.trim().length > 0) {
-    const componentsMap: Record<string, Component> = {};
+    const componentsMap: Record<string, BifrostComponent> = {};
     connections.data.value.componentConnections.forEach((c) => {
       componentsMap[c.id] = c.component;
     });
@@ -386,7 +386,7 @@ type node = {
   id: string;
   width: number;
   height: number;
-  component: Component;
+  component: BifrostComponent;
   icons: [string | null];
 };
 

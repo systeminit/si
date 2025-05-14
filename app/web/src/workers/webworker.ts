@@ -50,7 +50,7 @@ import {
   BifrostView,
   Ragnarok,
   EddaComponentList,
-  Component,
+  EddaComponent,
   BifrostComponentList,
   EddaIncomingConnectionsList,
   BifrostIncomingConnectionsList,
@@ -58,6 +58,8 @@ import {
   BifrostComponentConnections,
   BifrostConnection,
   EddaConnection,
+  BifrostComponent,
+  SchemaVariant,
 } from "./types/dbinterface";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
@@ -1064,7 +1066,7 @@ const getComputed = async (
     );
     return data;
   } else if (kind === "Component") {
-    const data = atomDoc as Component;
+    const data = atomDoc as BifrostComponent;
     data.outputCount = connectionsById.get(id).length;
     clear_weak_references(changeSetId, { kind, args: id });
     weak_reference(
@@ -1086,6 +1088,7 @@ const getReferences = async (
 ) => {
   if (
     ![
+      "Component",
       "ViewList",
       "ComponentList",
       "ViewComponentList",
@@ -1096,7 +1099,25 @@ const getReferences = async (
     return atomDoc;
 
   debug("🔗 reference query", kind, id);
-  if (kind === "ViewList") {
+
+  if (kind === "Component") {
+    const data = atomDoc as EddaComponent;
+    const sv = await get(
+      workspaceId,
+      changeSetId,
+      data.schemaVariantId.kind,
+      data.schemaVariantId.id,
+      data.schemaVariantId.checksum,
+      followComputed,
+    );
+    const schemaVariant = sv !== -1 ? (sv as SchemaVariant) : undefined;
+    if (!schemaVariant) throw new Error("Schema Variant not found");
+    const component: BifrostComponent = {
+      ...data,
+      schemaVariant,
+    };
+    return component;
+  } else if (kind === "ViewList") {
     const rawList = atomDoc as RawViewList;
     const maybeViews = await Promise.all(
       rawList.views.map(async (v) => {
@@ -1133,7 +1154,7 @@ const getReferences = async (
       }),
     );
     const components = maybeComponents.filter(
-      (c): c is Component => c !== -1 && Object.keys(c).length > 0,
+      (c): c is BifrostComponent => c !== -1 && Object.keys(c).length > 0,
     );
     // NOTE: this is either a bifrost component list or a view component list
     // FUTURE: improve this with some typing magic
@@ -1151,7 +1172,7 @@ const getReferences = async (
       raw.id,
       undefined,
       false,
-    )) as Component;
+    )) as BifrostComponent;
     clear_weak_references(changeSetId, {
       kind: "IncomingConnections",
       args: raw.id,
@@ -1185,8 +1206,8 @@ const getReferences = async (
 
         const conn: BifrostConnection = {
           ...c,
-          fromComponent: fromComponent as Component,
-          toComponent: component as Component,
+          fromComponent: fromComponent as BifrostComponent,
+          toComponent: component as BifrostComponent,
         };
         // explicitly setting this as a warning that these fields are not to be used
         conn.fromComponent.outputCount = -1;

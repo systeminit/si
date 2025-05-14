@@ -3,7 +3,6 @@ use serde::{
     Serialize,
 };
 use si_events::{
-    FuncId,
     InputSocketId,
     OutputSocketId,
     PropId,
@@ -20,7 +19,10 @@ use strum::{
     EnumString,
 };
 
-use crate::reference::ReferenceKind;
+use crate::{
+    management::MgmtPrototypeView,
+    reference::ReferenceKind,
+};
 
 #[derive(
     Clone,
@@ -30,9 +32,17 @@ use crate::reference::ReferenceKind;
     Serialize,
     PartialEq,
     si_frontend_mv_types_macros::FrontendChecksum,
+    si_frontend_mv_types_macros::FrontendObject,
+    si_frontend_mv_types_macros::Refer,
+    si_frontend_mv_types_macros::MV,
 )]
 #[serde(rename_all = "camelCase")]
+#[mv(
+    trigger_entity = EntityKind::SchemaVariant,
+    reference_kind = ReferenceKind::SchemaVariant,
+)]
 pub struct SchemaVariant {
+    pub id: SchemaVariantId,
     pub schema_id: SchemaId,
     pub schema_name: String,
     pub schema_variant_id: SchemaVariantId,
@@ -42,9 +52,6 @@ pub struct SchemaVariant {
     pub description: Option<String>,
     pub link: Option<String>,
     pub color: String,
-    pub asset_func_id: FuncId,
-    pub func_ids: Vec<FuncId>,
-    pub component_type: ComponentType,
     pub input_sockets: Vec<InputSocket>,
     pub output_sockets: Vec<OutputSocket>,
     pub props: Vec<Prop>,
@@ -53,6 +60,7 @@ pub struct SchemaVariant {
     pub timestamp: Timestamp,
     pub can_create_new_components: bool, // if yes, show in modeling screen, if not, only show in customize
     pub can_contribute: bool,
+    pub mgmt_functions: Vec<MgmtPrototypeView>,
 }
 
 #[derive(
@@ -103,10 +111,18 @@ pub enum ComponentType {
 
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+pub struct ConnectionAnnotation {
+    pub tokens: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct InputSocket {
     pub id: InputSocketId,
     pub name: String,
     pub eligible_to_send_data: bool,
+    pub annotations: Vec<ConnectionAnnotation>,
+    pub arity: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
@@ -115,6 +131,8 @@ pub struct OutputSocket {
     pub id: OutputSocketId,
     pub name: String,
     pub eligible_to_receive_data: bool,
+    pub annotations: Vec<ConnectionAnnotation>,
+    pub arity: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]

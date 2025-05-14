@@ -56,6 +56,8 @@ pub mod component;
 pub mod component_list;
 pub mod incoming_connections;
 pub mod incoming_connections_list;
+pub mod mgmt_prototype_view_list;
+pub mod schema_variant;
 pub mod schema_variant_categories;
 pub mod view;
 pub mod view_component_list;
@@ -88,6 +90,8 @@ pub enum Error {
     InputSocket(#[from] dal::socket::input::InputSocketError),
     #[error("invalid value source: {0:?}")]
     InvalidValueSource(dal::attribute::prototype::argument::value_source::ValueSource),
+    #[error("mgmt prototype error: {0}")]
+    ManagementPrototype(#[from] dal::management::prototype::ManagementPrototypeError),
     #[error("output socket error: {0}")]
     OutputSocket(#[from] dal::socket::output::OutputSocketError),
     #[error("prop error: {0}")]

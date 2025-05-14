@@ -39,6 +39,7 @@ impl From<DeprecatedComponentQualificationStats> for ComponentQualificationStats
 impl From<DeprecatedSchemaVariant> for SchemaVariant {
     fn from(value: DeprecatedSchemaVariant) -> Self {
         Self {
+            id: value.schema_variant_id,
             schema_id: value.schema_id,
             schema_name: value.schema_name,
             schema_variant_id: value.schema_variant_id,
@@ -48,9 +49,6 @@ impl From<DeprecatedSchemaVariant> for SchemaVariant {
             description: value.description,
             link: value.link,
             color: value.color,
-            asset_func_id: value.asset_func_id,
-            func_ids: value.func_ids,
-            component_type: value.component_type.into(),
             input_sockets: value.input_sockets.into_iter().map(Into::into).collect(),
             output_sockets: value.output_sockets.into_iter().map(Into::into).collect(),
             props: value.props.into_iter().map(Into::into).collect(),
@@ -58,6 +56,7 @@ impl From<DeprecatedSchemaVariant> for SchemaVariant {
             timestamp: value.timestamp,
             can_create_new_components: value.can_create_new_components,
             can_contribute: value.can_contribute,
+            mgmt_functions: [].to_vec(),
         }
     }
 }
@@ -82,6 +81,8 @@ impl From<DeprecatedInputSocket> for InputSocket {
             id: value.id,
             name: value.name,
             eligible_to_send_data: value.eligible_to_send_data,
+            annotations: Vec::new(),
+            arity: String::new(),
         }
     }
 }
@@ -92,6 +93,8 @@ impl From<DeprecatedOutputSocket> for OutputSocket {
             id: value.id,
             name: value.name,
             eligible_to_receive_data: value.eligible_to_receive_data,
+            annotations: Vec::new(),
+            arity: String::new(),
         }
     }
 }

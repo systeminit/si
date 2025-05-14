@@ -57,10 +57,13 @@ import {
   DiagramNodeData,
 } from "@/components/ModelingDiagram/diagram_types";
 import { ActionId } from "@/api/sdf/dal/action";
-import { ActionPrototypeView, Component } from "@/workers/types/dbinterface";
+import {
+  ActionPrototypeView,
+  BifrostComponent,
+} from "@/workers/types/dbinterface";
 
 const props = defineProps<{
-  component: DiagramGroupData | DiagramNodeData | Component;
+  component: DiagramGroupData | DiagramNodeData | BifrostComponent;
   actionPrototypeView: ActionPrototypeView;
   actionId?: ActionId;
 }>();
