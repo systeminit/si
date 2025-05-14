@@ -5,6 +5,7 @@ use std::{
 
 use dal::DalContextBuilder;
 use edda_client::EddaClient;
+use nats_dead_letter_queue::DeadLetterQueue;
 use si_data_nats::{
     NatsClient,
     async_nats::jetstream,
@@ -26,6 +27,7 @@ pub(crate) struct AppState {
     pub(crate) nats: NatsClient,
     pub(crate) edda: EddaClient,
     pub(crate) requests_stream: jetstream::stream::Stream,
+    pub(crate) dead_letter_queue: DeadLetterQueue,
     pub(crate) ctx_builder: DalContextBuilder,
     pub(crate) quiescent_period: Duration,
     pub(crate) token: CancellationToken,
@@ -41,6 +43,7 @@ impl AppState {
         nats: NatsClient,
         edda: EddaClient,
         requests_stream: jetstream::stream::Stream,
+        dead_letter_queue: DeadLetterQueue,
         ctx_builder: DalContextBuilder,
         quiescent_period: Duration,
         token: CancellationToken,
@@ -52,6 +55,7 @@ impl AppState {
             nats,
             edda,
             requests_stream,
+            dead_letter_queue,
             ctx_builder,
             quiescent_period,
             token,

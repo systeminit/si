@@ -15,6 +15,7 @@ use futures::{
     TryStreamExt,
     future::BoxFuture,
 };
+use nats_dead_letter_queue::DeadLetterQueue;
 use naxum::{
     MessageHead,
     ServiceBuilder,
@@ -38,14 +39,12 @@ use naxum::{
         Response,
     },
 };
-use rebaser_core::nats;
 use si_data_nats::{
     NatsClient,
     async_nats::jetstream::{
         self,
         consumer::push,
     },
-    jetstream::Context,
 };
 use si_events::{
     ChangeSetId,
@@ -65,7 +64,6 @@ use self::app_state::AppState;
 use crate::{
     Features,
     ServerMetadata,
-    subject::parse_request_subject,
 };
 
 #[remain::sorted]
@@ -95,6 +93,7 @@ impl ChangeSetProcessorTask {
         metadata: Arc<ServerMetadata>,
         nats: NatsClient,
         stream: jetstream::stream::Stream,
+        dead_letter_queue: DeadLetterQueue,
         incoming: push::Ordered,
         edda: EddaClient,
         workspace_id: WorkspacePk,
@@ -111,8 +110,6 @@ impl ChangeSetProcessorTask {
         let connection_metadata = nats.metadata_clone();
 
         let prefix = nats.metadata().subject_prefix().map(|s| s.to_owned());
-
-        let context = si_data_nats::jetstream::new(nats.clone());
 
         let state = AppState::new(
             workspace_id,
@@ -172,7 +169,7 @@ impl ChangeSetProcessorTask {
             .layer(
                 PostProcessLayer::new()
                     .on_success(DeleteMessageOnSuccess::new(stream.clone()))
-                    .on_failure(MoveMessageOnFailure::new(context, stream)),
+                    .on_failure(MoveMessageOnFailure::new(stream, dead_letter_queue)),
             )
             .service(handlers::default.with_state(state))
             .map_response(Response::into_response);
@@ -246,13 +243,16 @@ impl post_process::OnSuccess for DeleteMessageOnSuccess {
 
 #[derive(Clone, Debug)]
 struct MoveMessageOnFailure {
-    context: Context,
     stream: jetstream::stream::Stream,
+    dead_letter_queue: DeadLetterQueue,
 }
 
 impl MoveMessageOnFailure {
-    fn new(context: Context, stream: jetstream::stream::Stream) -> Self {
-        Self { context, stream }
+    fn new(stream: jetstream::stream::Stream, dead_letter_queue: DeadLetterQueue) -> Self {
+        Self {
+            stream,
+            dead_letter_queue,
+        }
     }
 }
 
@@ -263,7 +263,7 @@ impl post_process::OnFailure for MoveMessageOnFailure {
         info: Arc<post_process::Info>,
     ) -> BoxFuture<'static, ()> {
         let stream = self.stream.clone();
-        let context = self.context.clone();
+        let dead_letter_queue = self.dead_letter_queue.clone();
 
         Box::pin(async move {
             error!(
@@ -286,39 +286,15 @@ impl post_process::OnFailure for MoveMessageOnFailure {
                 }
             };
 
-            // Derive an errored subject where we will publish a copy of the message
-            let errored_subject = {
-                let subject_prefix = context.metadata().subject_prefix();
-
-                let (workspace, change_set) =
-                    match parse_request_subject(subject_prefix, head.subject.as_str()) {
-                        Ok(parsed) => parsed,
-                        Err(err) => {
-                            error!(
-                                si.error.message = ?err,
-                                subject = head.subject.as_str(),
-                                "failed to parsed errored message subject",
-                            );
-                            return;
-                        }
-                    };
-
-                nats::subject::errored_updates_for_change_set(
-                    subject_prefix,
-                    workspace.str(),
-                    change_set.str(),
-                )
-            };
-
-            // Publish copy of errored message to an "errored requests" subject on stream
-            if let Err(err) = context
-                .publish_with_headers(errored_subject.clone(), msg.headers, msg.payload)
+            // Publish copy of errored message to the dead letter queues stream
+            if let Err(err) = dead_letter_queue
+                .publish_with_headers(msg.subject, msg.headers, msg.payload)
                 .await
             {
                 error!(
                     si.error.message = ?err,
-                    subject = errored_subject.as_str(),
-                    "failed to re-publish errored message",
+                    src_subject = head.subject.as_str(),
+                    "failed to re-publish errored message to dead letter queue",
                 );
                 return;
             }

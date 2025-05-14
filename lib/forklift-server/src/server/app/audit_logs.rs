@@ -14,7 +14,10 @@ use audit_logs_stream::{
     AuditLogsStream,
     AuditLogsStreamError,
 };
-use nats_dead_letter_queue::NatsDeadLetterQueueError;
+use nats_dead_letter_queue::{
+    DeadLetterQueue,
+    NatsDeadLetterQueueError,
+};
 use naxum::{
     MessageHead,
     ServiceBuilder,
@@ -83,7 +86,7 @@ pub(crate) async fn build_and_run(
     insert_concurrency_limit: usize,
     token: CancellationToken,
 ) -> Result<Box<dyn Future<Output = io::Result<()>> + Unpin + Send>> {
-    nats_dead_letter_queue::create_stream(&jetstream_context).await?;
+    DeadLetterQueue::create_stream(jetstream_context.clone()).await?;
 
     let incoming = {
         let stream = AuditLogsStream::get_or_create(jetstream_context).await?;

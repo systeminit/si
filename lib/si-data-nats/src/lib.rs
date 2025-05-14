@@ -21,7 +21,6 @@ use async_nats::{
     ToServerAddrs,
     subject::ToSubject,
 };
-use bytes::Bytes;
 use serde::{
     Deserialize,
     Serialize,
@@ -56,6 +55,7 @@ pub use async_nats::{
     status,
     subject,
 };
+pub use bytes::Bytes;
 pub use connect_options::ConnectOptions;
 pub use message::{
     InnerMessage,
