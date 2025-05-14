@@ -53,7 +53,7 @@ pub enum ValueSourceError {
 pub type ValueSourceResult<T> = Result<T, ValueSourceError>;
 
 #[remain::sorted]
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, derive_more::From)]
 pub enum ValueSource {
     InputSocket(InputSocketId),
     OutputSocket(OutputSocketId),
@@ -61,32 +61,6 @@ pub enum ValueSource {
     Secret(SecretId),
     StaticArgumentValue(StaticArgumentValueId),
     ValueSubscription(ValueSubscription),
-}
-
-impl From<InputSocketId> for ValueSource {
-    fn from(id: InputSocketId) -> Self {
-        Self::InputSocket(id)
-    }
-}
-impl From<OutputSocketId> for ValueSource {
-    fn from(id: OutputSocketId) -> Self {
-        Self::OutputSocket(id)
-    }
-}
-impl From<PropId> for ValueSource {
-    fn from(id: PropId) -> Self {
-        Self::Prop(id)
-    }
-}
-impl From<SecretId> for ValueSource {
-    fn from(id: SecretId) -> Self {
-        Self::Secret(id)
-    }
-}
-impl From<StaticArgumentValueId> for ValueSource {
-    fn from(id: StaticArgumentValueId) -> Self {
-        Self::StaticArgumentValue(id)
-    }
 }
 
 impl ValueSource {

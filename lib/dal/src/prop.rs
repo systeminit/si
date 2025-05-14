@@ -1066,7 +1066,7 @@ impl Prop {
 
         AttributePrototype::update_func_by_id(ctx, prototype_id, intrinsic_id).await?;
 
-        if let Some(existing_apa) =
+        if let Some(apa_id) =
             AttributePrototypeArgument::find_by_func_argument_id_and_attribute_prototype_id(
                 ctx,
                 func_arg_id,
@@ -1074,15 +1074,11 @@ impl Prop {
             )
             .await?
         {
-            let existing_apa = AttributePrototypeArgument::get_by_id(ctx, existing_apa).await?;
-            existing_apa.set_value_from_static_value(ctx, value).await?;
+            AttributePrototypeArgument::set_static_value_source(ctx, apa_id, value).await?;
         } else {
-            AttributePrototypeArgument::new(ctx, prototype_id, func_arg_id)
-                .await?
-                .set_value_from_static_value(ctx, value)
+            AttributePrototypeArgument::new_static_value(ctx, prototype_id, func_arg_id, value)
                 .await?;
-        }
-
+        };
         Ok(())
     }
 

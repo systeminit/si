@@ -312,10 +312,13 @@ impl SchemaVariant {
             )
             .await?;
 
-            AttributePrototypeArgument::new(ctx, attribute_prototype_id, input.func_argument_id)
-                .await?
-                .set_value_from_prop_id(ctx, input_prop_id)
-                .await?;
+            AttributePrototypeArgument::new(
+                ctx,
+                attribute_prototype_id,
+                input.func_argument_id,
+                input_prop_id,
+            )
+            .await?;
         }
 
         Ok((map_prop_id, attribute_prototype_id))

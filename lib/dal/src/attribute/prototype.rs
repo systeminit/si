@@ -96,6 +96,8 @@ pub enum AttributePrototypeError {
     ChangeSet(#[from] ChangeSetError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("func error: {0}")]
+    FuncArgument(#[from] crate::func::argument::FuncArgumentError),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("layer db error: {0}")]

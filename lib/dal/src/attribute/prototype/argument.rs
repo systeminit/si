@@ -231,6 +231,17 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
         arg_id: FuncArgumentId,
+        value_source: impl Into<ValueSource>,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        let argument = Self::new_without_source(ctx, prototype_id, arg_id).await?;
+        Self::set_value_source(ctx, argument.id, value_source).await?;
+        Ok(argument)
+    }
+
+    pub async fn new_without_source(
+        ctx: &DalContext,
+        prototype_id: AttributePrototypeId,
+        arg_id: FuncArgumentId,
     ) -> AttributePrototypeArgumentResult<Self> {
         let id = ctx.workspace_snapshot()?.generate_ulid().await?;
         let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
@@ -258,6 +269,16 @@ impl AttributePrototypeArgument {
             .await?;
 
         Ok(argument)
+    }
+
+    pub async fn new_static_value(
+        ctx: &DalContext,
+        prototype_id: AttributePrototypeId,
+        arg_id: FuncArgumentId,
+        value: serde_json::Value,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        let static_value = StaticArgumentValue::new(ctx, value).await?;
+        Self::new(ctx, prototype_id, arg_id, static_value.id()).await
     }
 
     #[instrument(level = "info", skip(ctx))]
@@ -460,7 +481,7 @@ impl AttributePrototypeArgument {
     pub async fn set_value_source(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,
-        value_source: ValueSource,
+        value_source: impl Into<ValueSource>,
     ) -> AttributePrototypeArgumentResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
@@ -480,6 +501,7 @@ impl AttributePrototypeArgument {
                 .await?;
         }
 
+        let value_source = value_source.into();
         match value_source {
             ValueSource::InputSocket(_)
             | ValueSource::OutputSocket(_)
@@ -548,7 +570,7 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         input_socket_id: InputSocketId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        Self::set_value_source(ctx, self.id, input_socket_id.into())
+        Self::set_value_source(ctx, self.id, input_socket_id)
             .await
             .and(Ok(self))
     }
@@ -558,9 +580,8 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         output_socket_id: OutputSocketId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        Self::set_value_source(ctx, self.id, output_socket_id.into())
-            .await
-            .and(Ok(self))
+        Self::set_value_source(ctx, self.id, output_socket_id).await?;
+        Ok(self)
     }
 
     pub async fn set_value_from_prop_id(
@@ -568,9 +589,8 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         prop_id: PropId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        Self::set_value_source(ctx, self.id, prop_id.into())
-            .await
-            .and(Ok(self))
+        Self::set_value_source(ctx, self.id, prop_id).await?;
+        Ok(self)
     }
 
     pub async fn set_value_from_secret_id(
@@ -578,9 +598,8 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         secret_id: SecretId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        Self::set_value_source(ctx, self.id, secret_id.into())
-            .await
-            .and(Ok(self))
+        Self::set_value_source(ctx, self.id, secret_id).await?;
+        Ok(self)
     }
 
     pub async fn set_value_from_static_value_id(
@@ -588,9 +607,8 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         value_id: StaticArgumentValueId,
     ) -> AttributePrototypeArgumentResult<Self> {
-        Self::set_value_source(ctx, self.id, value_id.into())
-            .await
-            .and(Ok(self))
+        Self::set_value_source(ctx, self.id, value_id).await?;
+        Ok(self)
     }
 
     pub async fn set_value_from_static_value(
@@ -598,10 +616,18 @@ impl AttributePrototypeArgument {
         ctx: &DalContext,
         value: serde_json::Value,
     ) -> AttributePrototypeArgumentResult<Self> {
-        let static_value = StaticArgumentValue::new(ctx, value).await?;
+        Self::set_static_value_source(ctx, self.id, value).await?;
+        Ok(self)
+    }
 
-        self.set_value_from_static_value_id(ctx, static_value.id())
-            .await
+    pub async fn set_static_value_source(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+        value: serde_json::Value,
+    ) -> AttributePrototypeArgumentResult<StaticArgumentValue> {
+        let static_value = StaticArgumentValue::new(ctx, value).await?;
+        Self::set_value_source(ctx, apa_id, static_value.id()).await?;
+        Ok(static_value)
     }
 
     pub async fn list_ids_for_prototype(

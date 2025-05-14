@@ -457,9 +457,7 @@ impl Secret {
                 func_id,
                 func_argument_name.to_owned(),
             ))?;
-        AttributePrototypeArgument::new(ctx, attribute_prototype.id(), func_argument.id)
-            .await?
-            .set_value_from_secret_id(ctx, secret_id)
+        AttributePrototypeArgument::new(ctx, attribute_prototype.id(), func_argument.id, secret_id)
             .await?;
         ctx.add_dependent_values_and_enqueue(vec![secret_id])
             .await?;

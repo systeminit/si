@@ -417,7 +417,7 @@ async fn inputs_into_attribute_argument_bindings(
 
                 let apa_id = match proto_id {
                     Some(proto_id) => Some(
-                        AttributePrototypeArgument::new(ctx, proto_id, func_arg.id)
+                        AttributePrototypeArgument::new_without_source(ctx, proto_id, func_arg.id)
                             .await?
                             .id(),
                     ),
