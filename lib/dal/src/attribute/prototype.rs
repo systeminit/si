@@ -56,7 +56,10 @@ use crate::{
         value::AttributeValueError,
     },
     change_set::ChangeSetError,
-    func::intrinsics::IntrinsicFunc,
+    func::{
+        argument::FuncArgument,
+        intrinsics::IntrinsicFunc,
+    },
     implement_add_edge_to,
     layer_db_types::{
         AttributePrototypeContent,
@@ -469,6 +472,21 @@ impl AttributePrototype {
         }
 
         Ok(attribute_value_ids)
+    }
+
+    /// Adds a new APA with the given source, to the single function argument (used for intrinsics)
+    pub async fn add_arg_to_intrinsic(
+        ctx: &DalContext,
+        attribute_prototype_id: AttributePrototypeId,
+        value_source: impl Into<ValueSource>,
+    ) -> AttributePrototypeResult<AttributePrototypeArgumentId> {
+        let func_id = Self::func_id(ctx, attribute_prototype_id).await?;
+        let arg_id = FuncArgument::single_arg_for_intrinsic(ctx, func_id).await?;
+        Ok(
+            AttributePrototypeArgument::new(ctx, attribute_prototype_id, arg_id, value_source)
+                .await?
+                .id(),
+        )
     }
 
     /// If this prototype is defined at the component level, it will have an incoming edge from the
