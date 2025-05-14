@@ -24,9 +24,7 @@ use dal::{
     SchemaId,
     SchemaVariantError,
     SchemaVariantId,
-    TenancyError,
     TransactionsError,
-    UserError,
     WorkspaceError,
     WorkspacePk,
     WorkspaceSnapshotError,
@@ -121,10 +119,10 @@ pub enum ModuleError {
     SchemaVariantNotFound(SchemaVariantId),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("si pkg error: {0}")]
     SiPkg(#[from] SiPkgError),
-    #[error("tenancy error: {0}")]
-    Tenancy(#[from] TenancyError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("ulid decode error: {0}")]
@@ -135,8 +133,6 @@ pub enum ModuleError {
     UnlockedSchemaVariantForModuleToInstall(String, SchemaId),
     #[error("Unable to parse URL: {0}")]
     Url(#[from] url::ParseError),
-    #[error("user error: {0}")]
-    User(#[from] UserError),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
     #[error("Could not find current workspace {0}")]

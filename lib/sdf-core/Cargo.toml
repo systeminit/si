@@ -17,6 +17,7 @@ frigg = { path = "../../lib/frigg" }
 nats-multiplexer-client = { path = "../../lib/nats-multiplexer-client" }
 permissions = { path = "../../lib/permissions" }
 si-data-spicedb = { path = "../../lib/si-data-spicedb" }
+si-db = { path = "../../lib/si-db" }
 si-events = { path = "../../lib/si-events-rs" }
 si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
 si-id = { path = "../../lib/si-id" }

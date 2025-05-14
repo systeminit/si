@@ -8,10 +8,7 @@ use axum::{
 };
 use dal::{
     DalContext,
-    HistoryActor,
     KeyPair,
-    Tenancy,
-    User,
     UserPk,
     Workspace,
     WorkspacePk,
@@ -47,6 +44,11 @@ use serde::{
 };
 use serde_json::json;
 use si_data_spicedb::SpiceDbClient;
+use si_db::{
+    HistoryActor,
+    Tenancy,
+    User,
+};
 use si_events::audit_log::AuditLogKind;
 use telemetry::tracing::warn;
 

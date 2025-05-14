@@ -43,6 +43,7 @@ use si_crypto::{
     SymmetricNonce,
 };
 use si_data_pg::PgError;
+use si_db::HistoryActor;
 use si_events::{
     ContentHash,
     EncryptedSecretKey,
@@ -76,8 +77,6 @@ use crate::{
     FuncError,
     FuncId,
     HelperError,
-    HistoryActor,
-    HistoryEventError,
     KeyPair,
     KeyPairError,
     Prop,
@@ -186,8 +185,6 @@ pub enum SecretError {
     FuncArgumentNotFound(FuncId, String),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
     #[error("key pair error: {0}")]
     KeyPair(#[from] KeyPairError),
     #[error("key pair not found for secret")]

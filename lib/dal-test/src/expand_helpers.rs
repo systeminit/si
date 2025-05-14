@@ -9,7 +9,6 @@ use dal::{
     ChangeSet,
     ChangeSetId,
     DalContext,
-    Tenancy,
     WorkspacePk,
 };
 use jwt_simple::{
@@ -17,6 +16,7 @@ use jwt_simple::{
     claims::Claims,
     prelude::Duration,
 };
+use si_db::Tenancy;
 use si_jwt_public_key::SiJwtClaims;
 use tracing_subscriber::{
     EnvFilter,
@@ -45,7 +45,7 @@ pub async fn setup_history_actor_ctx(ctx: &mut DalContext) {
     )
     .await
     .expect("unable to associate user with workspace");
-    ctx.update_history_actor(dal::HistoryActor::User(user.pk()));
+    ctx.update_history_actor(si_db::HistoryActor::User(user.pk()));
 }
 
 /// This function is used during macro expansion for setting up a [`ChangeSet`] in an integration test.

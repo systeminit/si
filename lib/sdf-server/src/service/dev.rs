@@ -6,7 +6,6 @@ use axum::{
 };
 use dal::{
     TransactionsError,
-    UserError,
     WsEventError,
 };
 use thiserror::Error;
@@ -28,10 +27,10 @@ pub enum DevError {
     Nats(#[from] si_data_nats::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data_pg::PgError),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("user error: {0}")]
-    User(#[from] UserError),
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),
 }

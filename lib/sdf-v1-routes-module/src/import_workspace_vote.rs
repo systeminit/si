@@ -5,11 +5,7 @@ use axum::{
         OriginalUri,
     },
 };
-use dal::{
-    HistoryActor,
-    User,
-    WsEvent,
-};
+use dal::WsEvent;
 use sdf_core::tracking::track;
 use sdf_extract::{
     HandlerContext,
@@ -19,6 +15,10 @@ use sdf_extract::{
 use serde::{
     Deserialize,
     Serialize,
+};
+use si_db::{
+    HistoryActor,
+    User,
 };
 
 use crate::{

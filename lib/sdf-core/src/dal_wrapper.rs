@@ -57,6 +57,8 @@ pub enum DalWrapperError {
     NoUsersInWorkspace(si_id::WorkspacePk),
     #[error("permissions error: {0}")]
     Permissions(#[from] permissions::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("spicedb lookup subjects error: {0}")]
     SpiceDBLookupSubjects(#[source] si_data_spicedb::Error),
     #[error("transactions error: {0}")]
@@ -65,8 +67,6 @@ pub enum DalWrapperError {
     UlidDecode(#[from] ulid::DecodeError),
     #[error("unsupported permission lookup: {0}")]
     UnsupportedPermissionLookup(String, String, String),
-    #[error("user error: {0}")]
-    User(#[from] dal::UserError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
 }

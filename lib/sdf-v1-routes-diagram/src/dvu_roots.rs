@@ -2,10 +2,7 @@ use axum::extract::{
     Json,
     Query,
 };
-use dal::{
-    Visibility,
-    workspace_snapshot::DependentValueRoot,
-};
+use dal::workspace_snapshot::DependentValueRoot;
 use sdf_extract::{
     HandlerContext,
     v1::AccessBuilder,
@@ -14,6 +11,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use super::DiagramResult;
 

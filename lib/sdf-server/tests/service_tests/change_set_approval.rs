@@ -7,7 +7,6 @@ use dal::{
     Component,
     ComponentType,
     DalContext,
-    HistoryActor,
     SchemaVariant,
     Ulid,
     action::Action,
@@ -39,6 +38,7 @@ use permissions::{
 use pretty_assertions_sorted::assert_eq;
 use sdf_core::dal_wrapper;
 use si_data_spicedb::SpiceDbClient;
+use si_db::HistoryActor;
 use si_events::{
     ChangeSetApprovalStatus,
     workspace_snapshot::EntityKind,

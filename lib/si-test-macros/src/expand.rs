@@ -621,7 +621,7 @@ pub(crate) trait FnSetupExpander {
                     .build_default(None)
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_default")?;
-                ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
+                ctx.update_tenancy(::si_db::Tenancy::new(*#nw.workspace.pk()));
                 ::dal_test::expand_helpers::create_change_set_and_update_ctx(&mut ctx, #nw.workspace.default_change_set_id()).await;
                 ::dal_test::expand_helpers::setup_history_actor_ctx(&mut ctx).await;
                 ctx.commit_no_rebase()
@@ -653,7 +653,7 @@ pub(crate) trait FnSetupExpander {
                     .build_default(None)
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_default_mut")?;
-                ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
+                ctx.update_tenancy(::si_db::Tenancy::new(*#nw.workspace.pk()));
                 ::dal_test::expand_helpers::create_change_set_and_update_ctx(&mut ctx, #nw.workspace.default_change_set_id()).await;
                 ::dal_test::expand_helpers::setup_history_actor_ctx(&mut ctx).await;
                 ctx.commit_no_rebase()
@@ -685,7 +685,7 @@ pub(crate) trait FnSetupExpander {
                     .build_default(None)
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_head")?;
-                ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
+                ctx.update_tenancy(::si_db::Tenancy::new(*#nw.workspace.pk()));
 
                 ::dal_test::DalContextHead(ctx)
             };
@@ -712,7 +712,7 @@ pub(crate) trait FnSetupExpander {
                     .build_default(None)
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_head_ref")?;
-                ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
+                ctx.update_tenancy(::si_db::Tenancy::new(*#nw.workspace.pk()));
 
                 ctx
             };
@@ -740,7 +740,7 @@ pub(crate) trait FnSetupExpander {
                     .build_default(None)
                     .await
                     .wrap_err("failed to build default dal ctx for dal_context_head_mut_ref")?;
-                ctx.update_tenancy(::dal::Tenancy::new(*#nw.workspace.pk()));
+                ctx.update_tenancy(::si_db::Tenancy::new(*#nw.workspace.pk()));
 
                 ctx
             };

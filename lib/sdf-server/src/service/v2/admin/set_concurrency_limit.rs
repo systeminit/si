@@ -7,7 +7,6 @@ use axum::{
     response::Json,
 };
 use dal::{
-    Tenancy,
     Workspace,
     WorkspacePk,
 };
@@ -15,6 +14,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Tenancy;
 use telemetry::prelude::*;
 
 use crate::{

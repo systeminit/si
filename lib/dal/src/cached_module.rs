@@ -26,6 +26,7 @@ use si_data_pg::{
     PgError,
     PgRow,
 };
+use si_db::HistoryActor;
 pub use si_id::CachedModuleId;
 use si_id::UserPk;
 use si_pkg::{
@@ -42,7 +43,6 @@ use ulid::Ulid;
 use crate::{
     ComponentType,
     DalContext,
-    HistoryActor,
     SchemaId,
     TransactionsError,
     slow_rt::{

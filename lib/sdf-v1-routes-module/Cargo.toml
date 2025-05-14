@@ -15,6 +15,7 @@ permissions = { path = "../../lib/permissions" }
 sdf-core = { path = "../../lib/sdf-core" }
 sdf-extract = { path = "../../lib/sdf-extract" }
 si-data-pg = { path = "../../lib/si-data-pg" }
+si-db = { path = "../../lib/si-db" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
 si-pkg = { path = "../../lib/si-pkg" }

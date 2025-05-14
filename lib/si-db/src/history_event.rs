@@ -6,45 +6,20 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_data_nats::NatsError;
-use si_data_pg::PgError;
 use si_events::Timestamp;
 use si_id::UserPk;
-use telemetry::prelude::*;
-use thiserror::Error;
 
 use crate::{
+    Result,
     actor_view::ActorView,
-    context::{
-        BaseTransactionsError,
-        SiDbContext,
-        SiDbTransactions as _,
-    },
+    context::SiDbContext,
     tenancy::Tenancy,
+    transactions::SiDbTransactions as _,
     user::User,
 };
 
 const SYSTEMINIT_EMAIL_SUFFIX: &str = "@systeminit.com";
 const TEST_SYSTEMINIT_EMAIL_SUFFIX: &str = "@test.systeminit.com";
-
-#[remain::sorted]
-#[derive(Error, Debug)]
-pub enum HistoryEventError {
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("standard model error: {0}")]
-    StandardModel(String),
-    #[error("transactions error: {0}")]
-    Transactions(#[from] BaseTransactionsError),
-    #[error("user error: {0}")]
-    User(String),
-}
-
-pub type HistoryEventResult<T> = Result<T, HistoryEventError>;
 
 #[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, strum::Display, Clone, Copy, Hash)]
@@ -61,18 +36,14 @@ impl HistoryActor {
         }
     }
 
-    pub async fn email(&self, ctx: &impl SiDbContext) -> HistoryEventResult<String> {
+    pub async fn email(&self, ctx: &impl SiDbContext) -> Result<String> {
         Ok(match self {
             HistoryActor::SystemInit => "sally@systeminit.com".to_string(),
-            HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk)
-                .await
-                .map_err(|e| HistoryEventError::User(e.to_string()))?
-                .email()
-                .clone(),
+            HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk).await?.email().clone(),
         })
     }
 
-    pub async fn email_is_systeminit(&self, ctx: &impl SiDbContext) -> HistoryEventResult<bool> {
+    pub async fn email_is_systeminit(&self, ctx: &impl SiDbContext) -> Result<bool> {
         let email_as_lowercase = self.email(ctx).await?.to_lowercase();
         Ok(email_as_lowercase.ends_with(SYSTEMINIT_EMAIL_SUFFIX)
             || email_as_lowercase.ends_with(TEST_SYSTEMINIT_EMAIL_SUFFIX))
@@ -109,7 +80,7 @@ impl HistoryEvent {
         label: impl AsRef<str>,
         message: impl AsRef<str>,
         data: &serde_json::Value,
-    ) -> HistoryEventResult<HistoryEvent> {
+    ) -> Result<HistoryEvent> {
         let label = label.as_ref();
         let message = message.as_ref();
         let actor = serde_json::to_value(ctx.history_actor())?;
@@ -133,27 +104,5 @@ impl HistoryEvent {
 #[serde(rename_all = "camelCase")]
 pub struct HistoryEventMetadata {
     pub actor: ActorView,
-    pub timestamp: DateTime<Utc>,
-}
-
-impl HistoryEventMetadata {
-    pub async fn from_history_actor_timestamp(
-        ctx: &impl SiDbContext,
-        value: HistoryActorTimestamp,
-    ) -> HistoryEventResult<Self> {
-        let actor = ActorView::from_history_actor(ctx, value.actor)
-            .await
-            .map_err(|e| HistoryEventError::StandardModel(e.to_string()))?;
-
-        Ok(Self {
-            actor,
-            timestamp: value.timestamp,
-        })
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct HistoryActorTimestamp {
-    pub actor: HistoryActor,
     pub timestamp: DateTime<Utc>,
 }

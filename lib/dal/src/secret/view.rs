@@ -2,29 +2,32 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_id::PropId;
+use si_db::{
+    ActorView,
+    HistoryActor,
+    HistoryEventMetadata,
+};
+use si_id::{
+    ComponentId,
+    PropId,
+    SecretId,
+};
 use thiserror::Error;
 
 use crate::{
-    ActorView,
-    ComponentId,
     DalContext,
-    HistoryActor,
     Secret,
     SecretError,
-    SecretId,
-    actor_view::ActorViewError,
-    history_event::HistoryEventMetadata,
 };
 
 #[allow(missing_docs)]
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum SecretViewError {
-    #[error("actor view error: {0}")]
-    ActorView(#[from] ActorViewError),
     #[error("secret error: {0}")]
     Secret(#[from] SecretError),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
 }
 
 #[allow(missing_docs)]

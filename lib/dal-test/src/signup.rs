@@ -5,11 +5,7 @@
 use dal::{
     ChangeSet,
     DalContext,
-    HistoryActor,
-    HistoryEvent,
     KeyPair,
-    Tenancy,
-    User,
     UserPk,
     Workspace,
     WorkspacePk,
@@ -23,6 +19,12 @@ use dal::{
 use serde::{
     Deserialize,
     Serialize,
+};
+use si_db::{
+    HistoryActor,
+    HistoryEvent,
+    Tenancy,
+    User,
 };
 
 /// A wrapper for creating [`Workspaces`](Workspace) for integration tests.

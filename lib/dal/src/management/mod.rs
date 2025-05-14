@@ -10,6 +10,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::{
+    ActorView,
+    HistoryEventMetadata,
+};
 use si_events::audit_log::AuditLogKind;
 use si_id::AttributeValueId;
 use telemetry::prelude::*;
@@ -20,7 +24,6 @@ use veritech_client::{
 };
 
 use crate::{
-    ActorView,
     AttributeValue,
     Component,
     ComponentError,
@@ -53,7 +56,6 @@ use crate::{
             ActionPrototypeError,
         },
     },
-    actor_view::ActorViewError,
     attribute::{
         prototype::argument::{
             AttributePrototypeArgument,
@@ -92,7 +94,6 @@ use crate::{
             ViewView,
         },
     },
-    history_event::HistoryEventMetadata,
     prop::{
         PropError,
         PropPath,
@@ -112,8 +113,6 @@ pub enum ManagementError {
     Action(#[from] ActionError),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
-    #[error("actor view error: {0}")]
-    ActorView(#[from] ActorViewError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
@@ -156,6 +155,8 @@ pub enum ManagementError {
     Prop(#[from] PropError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("ulid decode error: {0}")]

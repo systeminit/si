@@ -31,7 +31,6 @@ use crate::{
     Func,
     FuncError,
     FuncId,
-    HistoryEventError,
     PropKind,
     TransactionsError,
     attribute::prototype::argument::{
@@ -69,8 +68,6 @@ pub enum FuncArgumentError {
     Func(#[from] FuncError),
     #[error("func id not found for func arg id: {0}")]
     FuncIdNotFound(FuncArgumentId),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
     #[error("intrinsic func {0} ({1}) missing func argument edge")]
     IntrinsicMissingFuncArgumentEdge(String, FuncId),
     #[error("layer db error: {0}")]

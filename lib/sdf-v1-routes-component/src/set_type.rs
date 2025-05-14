@@ -12,7 +12,6 @@ use dal::{
     Component,
     ComponentId,
     ComponentType,
-    Visibility,
     WsEvent,
 };
 use sdf_core::{
@@ -28,6 +27,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use super::ComponentResult;
 

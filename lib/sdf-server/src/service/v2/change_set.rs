@@ -12,7 +12,6 @@ use axum::{
 use dal::{
     ChangeSetId,
     DalContext,
-    HistoryEventError,
     WorkspacePk,
     WsEventError,
     workspace_integrations::WorkspaceIntegration,
@@ -56,10 +55,10 @@ pub enum Error {
     DependentValueRoot(#[from] DependentValueRootError),
     #[error("dvu roots are not empty for change set: {0}")]
     DvuRootsNotEmpty(ChangeSetId),
-    #[error("history event: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
     #[error("http error: {0}")]
     Request(#[from] reqwest::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("spice db error: {0}")]
     SpiceDB(#[from] SpiceDbError),
     #[error("spicedb client not found")]

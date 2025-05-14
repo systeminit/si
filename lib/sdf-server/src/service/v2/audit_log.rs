@@ -22,8 +22,8 @@ pub enum AuditLogError {
     DalChangeSet(#[from] dal::ChangeSetError),
     #[error("dal transactions error: {0}")]
     DalTransactions(#[from] dal::TransactionsError),
-    #[error("dal user error: {0}")]
-    DalUser(#[from] dal::UserError),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
 }
 
 pub type AuditLogResult<T> = Result<T, AuditLogError>;

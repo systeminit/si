@@ -11,7 +11,6 @@ use dal::{
     ComponentId,
     InputSocket,
     OutputSocket,
-    Visibility,
     WsEvent,
     change_status::ChangeStatus,
     diagram::SummaryDiagramEdge,
@@ -30,6 +29,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::{
     DiagramSocketDirection,

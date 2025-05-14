@@ -15,6 +15,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::{
+    HistoryActor,
+    User,
+};
 use si_events::{
     ContentHash,
     Timestamp,
@@ -35,7 +39,6 @@ use crate::{
     DalContext,
     Func,
     FuncError,
-    HistoryActor,
     Schema,
     SchemaError,
     SchemaId,
@@ -43,8 +46,6 @@ use crate::{
     SchemaVariantError,
     SchemaVariantId,
     TransactionsError,
-    User,
-    UserError,
     cached_module::{
         CachedModule,
         CachedModuleError,
@@ -100,14 +101,14 @@ pub enum ModuleError {
     Schema(#[from] SchemaError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("too many latest modules for schema: {0} (at least two hashes found: {1} and {2})")]
     TooManyLatestModulesForSchema(SchemaId, String, String),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
     TryLock(#[from] TryLockError),
-    #[error("user error: {0}")]
-    User(#[from] UserError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }

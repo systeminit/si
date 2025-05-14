@@ -12,7 +12,6 @@ use axum::{
 use dal::{
     ChangeSet,
     ChangeSetId,
-    Tenancy,
     WorkspacePk,
     WorkspaceSnapshotAddress,
     WorkspaceSnapshotGraph,
@@ -21,6 +20,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Tenancy;
 use telemetry::prelude::*;
 
 use crate::{

@@ -9,7 +9,6 @@ use axum::extract::{
 use dal::{
     ChangeSetId,
     ContentHash,
-    Tenancy,
     WorkspacePk,
     WorkspaceSnapshotAddress,
     layer_db_types::ContentTypes,
@@ -18,6 +17,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Tenancy;
 use si_layer_cache::db;
 use telemetry::prelude::*;
 

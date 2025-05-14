@@ -12,10 +12,6 @@ use serde_with::{
     DeserializeFromStr,
     SerializeDisplay,
 };
-pub use si_db::{
-    history_event,
-    visibility,
-};
 use strum::{
     Display,
     EnumString,
@@ -118,11 +114,6 @@ pub use func::{
         FuncBackendResponseType,
     },
 };
-pub use history_event::{
-    HistoryActor,
-    HistoryEvent,
-    HistoryEventError,
-};
 pub use jetstream_streams::{
     JetstreamStreams,
     JetstreamStreamsError,
@@ -173,16 +164,12 @@ pub use secret::{
     SecretView,
     SecretViewError,
 };
-pub use si_db::{
-    actor_view,
-    actor_view::ActorView,
-    tenancy,
-};
 pub use si_events::{
     WorkspaceSnapshotAddress,
     content_hash::ContentHash,
     ulid::Ulid,
 };
+pub use si_id::UserPk;
 pub use si_runtime::{
     DedicatedExecutor,
     DedicatedExecutorError,
@@ -206,17 +193,6 @@ pub use standard_connection::{
     HelperError,
     HelperResult,
 };
-pub use tenancy::{
-    Tenancy,
-    TenancyError,
-};
-pub use user::{
-    User,
-    UserError,
-    UserPk,
-    UserResult,
-};
-pub use visibility::Visibility;
 pub use workspace::{
     Workspace,
     WorkspaceError,

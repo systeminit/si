@@ -25,8 +25,8 @@ pub struct User {
     pub email: String,
 }
 
-impl From<dal::User> for User {
-    fn from(value: dal::User) -> Self {
+impl From<si_db::User> for User {
+    fn from(value: si_db::User) -> Self {
         Self {
             id: value.pk(),
             name: value.name().to_owned(),
@@ -48,7 +48,7 @@ pub async fn list_workspace_users(
 ) -> Result<Json<Response>, WorkspaceAPIError> {
     let ctx = builder.build_head(access_builder).await?;
 
-    let users = dal::User::list_members_for_workspace(&ctx, workspace_id.to_string())
+    let users = si_db::User::list_members_for_workspace(&ctx, workspace_id.to_string())
         .await?
         .into_iter()
         .map(Into::into)

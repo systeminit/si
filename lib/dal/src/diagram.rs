@@ -48,10 +48,8 @@ use crate::{
     EdgeWeightKindDiscriminants,
     FuncError,
     HelperError,
-    HistoryEventError,
     NodeWeightDiscriminants,
     SchemaVariant,
-    TenancyError,
     TransactionsError,
     Workspace,
     WorkspaceError,
@@ -160,8 +158,6 @@ pub enum DiagramError {
     GeometryNotFoundForViewObjectAndView(ViewId, ViewId),
     #[error("Helper error: {0}")]
     Helper(#[from] HelperError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
     #[error("InferredConnectionGraph error: {0}")]
     InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("input socket error: {0}")]
@@ -190,10 +186,10 @@ pub enum DiagramError {
     SchemaVariantNotFound,
     #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("socket not found")]
     SocketNotFound,
-    #[error("tenancy error: {0}")]
-    Tenancy(#[from] TenancyError),
     #[error("Transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]

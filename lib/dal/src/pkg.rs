@@ -28,7 +28,6 @@ use crate::{
     FuncBackendKind,
     FuncBackendResponseType,
     FuncId,
-    HistoryEventError,
     OutputSocketId,
     PropId,
     PropKind,
@@ -106,8 +105,6 @@ pub enum PkgError {
     FuncArgument(#[from] FuncArgumentError),
     #[error("func argument for {0} not found with name {1}")]
     FuncArgumentNotFoundByName(FuncId, String),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("found multiple intrinsic func specs for name: {0}")]
@@ -156,6 +153,8 @@ pub enum PkgError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error(
         "taking output socket as input for a prop is unsupported for name ({0}) and socket name ({1})"
     )]

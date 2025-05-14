@@ -5,7 +5,6 @@ use dal::{
     SecretAlgorithm,
     SecretVersion,
     SecretView,
-    Visibility,
     WsEvent,
     key_pair::KeyPairPk,
 };
@@ -18,6 +17,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_events::audit_log::AuditLogKind;
 
 use crate::SecretResult;

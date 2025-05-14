@@ -2,24 +2,14 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_data_pg::{
-    PgError,
-    PgTxn,
-};
+use si_data_pg::PgTxn;
 use si_id::WorkspacePk;
 use telemetry::prelude::*;
-use thiserror::Error;
 
-#[remain::sorted]
-#[derive(Error, Debug)]
-pub enum TenancyError {
-    #[error("no workspace")]
-    NoWorkspace,
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-}
-
-pub type TenancyResult<T> = Result<T, TenancyError>;
+use crate::{
+    Error,
+    Result,
+};
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Tenancy {
@@ -39,7 +29,7 @@ impl Tenancy {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub async fn check(&self, txn: &PgTxn, tenancy: &Tenancy) -> TenancyResult<bool> {
+    pub async fn check(&self, txn: &PgTxn, tenancy: &Tenancy) -> Result<bool> {
         let row = txn
             .query_one(
                 "SELECT in_tenancy_v1($1::jsonb, $2::ident) AS result",
@@ -50,8 +40,8 @@ impl Tenancy {
         Ok(result)
     }
 
-    pub fn workspace_pk(&self) -> TenancyResult<WorkspacePk> {
-        self.workspace_pk.ok_or(TenancyError::NoWorkspace)
+    pub fn workspace_pk(&self) -> Result<WorkspacePk> {
+        self.workspace_pk.ok_or(Error::NoWorkspace)
     }
 
     pub fn workspace_pk_opt(&self) -> Option<WorkspacePk> {
@@ -75,7 +65,7 @@ impl postgres_types::ToSql for Tenancy {
         &self,
         ty: &postgres_types::Type,
         out: &mut postgres_types::private::BytesMut,
-    ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>>
+    ) -> std::result::Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>>
     where
         Self: Sized,
     {
@@ -94,7 +84,7 @@ impl postgres_types::ToSql for Tenancy {
         &self,
         ty: &postgres_types::Type,
         out: &mut postgres_types::private::BytesMut,
-    ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
+    ) -> std::result::Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
         let json = serde_json::to_value(self)?;
         postgres_types::ToSql::to_sql(&json, ty, out)
     }

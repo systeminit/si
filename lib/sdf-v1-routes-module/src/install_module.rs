@@ -10,7 +10,6 @@ use dal::{
     Func,
     Schema,
     SchemaVariant,
-    Visibility,
     WsEvent,
     pkg::{
         ImportOptions,
@@ -32,6 +31,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 use si_pkg::SiPkg;
 use telemetry::prelude::*;

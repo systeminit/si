@@ -42,10 +42,13 @@ use si_data_pg::{
     PgPoolResult,
     PgTxn,
 };
-use si_db::context::{
-    BaseTransactionsError,
+use si_db::{
+    HistoryActor,
     SiDbContext,
     SiDbTransactions,
+    SiDbTransactionsError,
+    Tenancy,
+    Visibility,
 };
 use si_events::{
     AuthenticationMethod,
@@ -86,10 +89,6 @@ use crate::{
     AttributeValueId,
     ChangeSetError,
     EncryptedSecret,
-    HistoryActor,
-    Tenancy,
-    TenancyError,
-    Visibility,
     Workspace,
     WorkspaceError,
     WorkspacePk,
@@ -333,11 +332,11 @@ impl ConnectionState {
         }
     }
 
-    async fn start_txns(self) -> Result<Self, BaseTransactionsError> {
+    async fn start_txns(self) -> Result<Self, SiDbTransactionsError> {
         match self {
-            Self::Invalid => Err(BaseTransactionsError::TxnStart("invalid")),
+            Self::Invalid => Err(SiDbTransactionsError::TxnStart("invalid")),
             Self::Connections(conns) => Ok(Self::Transactions(conns.start_txns().await?)),
-            Self::Transactions(_) => Err(BaseTransactionsError::TxnStart("transactions")),
+            Self::Transactions(_) => Err(SiDbTransactionsError::TxnStart("transactions")),
         }
     }
 
@@ -476,7 +475,7 @@ impl SiDbContext for DalContext {
 
     async fn txns(
         &self,
-    ) -> Result<MappedMutexGuard<'_, Self::Transactions>, BaseTransactionsError> {
+    ) -> Result<MappedMutexGuard<'_, Self::Transactions>, SiDbTransactionsError> {
         self.txns_internal().await
     }
 
@@ -1127,7 +1126,7 @@ impl DalContext {
     // shared by dal and si-db
     async fn txns_internal(
         &self,
-    ) -> Result<MappedMutexGuard<'_, Transactions>, BaseTransactionsError> {
+    ) -> Result<MappedMutexGuard<'_, Transactions>, SiDbTransactionsError> {
         let mut guard = self.conns_state.lock().await;
 
         let conns_state = guard.take();
@@ -1613,10 +1612,10 @@ pub enum TransactionsError {
     RebaserReplyDeadlineElasped(Duration, RequestId),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("slow rt error: {0}")]
     SlowRuntime(#[from] SlowRuntimeError),
-    #[error("tenancy error: {0}")]
-    Tenancy(#[from] TenancyError),
     #[error("unable to acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
     #[error("cannot commit transactions on invalid connections state")]
@@ -1647,11 +1646,11 @@ impl From<ChangeSetError> for TransactionsError {
     }
 }
 
-impl From<BaseTransactionsError> for TransactionsError {
-    fn from(err: BaseTransactionsError) -> Self {
+impl From<SiDbTransactionsError> for TransactionsError {
+    fn from(err: SiDbTransactionsError) -> Self {
         match err {
-            BaseTransactionsError::Pg(err) => TransactionsError::Pg(err),
-            BaseTransactionsError::TxnStart(state) => TransactionsError::TxnStart(state),
+            SiDbTransactionsError::Pg(err) => TransactionsError::Pg(err),
+            SiDbTransactionsError::TxnStart(state) => TransactionsError::TxnStart(state),
         }
     }
 }

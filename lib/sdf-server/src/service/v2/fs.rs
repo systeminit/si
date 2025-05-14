@@ -31,7 +31,6 @@ use dal::{
     Schema,
     SchemaId,
     SchemaVariant,
-    Visibility,
     WsEvent,
     WsEventError,
     attribute::prototype::argument::AttributePrototypeArgumentError,
@@ -71,6 +70,7 @@ use dal::{
     workspace::WorkspaceId,
 };
 use hyper::StatusCode;
+use si_db::Visibility;
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::fs::{
     self,

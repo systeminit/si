@@ -12,7 +12,6 @@ use dal::{
     Component,
     ComponentError,
     ComponentId,
-    Visibility,
     WsEvent,
     diagram::{
         geometry::Geometry,
@@ -36,6 +35,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_frontend_types::{
     RawGeometry,
     StringGeometry,

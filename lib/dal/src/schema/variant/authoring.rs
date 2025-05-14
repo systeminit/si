@@ -49,7 +49,6 @@ use crate::{
     FuncBackendResponseType,
     FuncError,
     FuncId,
-    HistoryEventError,
     Schema,
     SchemaError,
     SchemaId,
@@ -118,8 +117,6 @@ pub enum VariantAuthoringError {
     FuncRun(#[from] FuncRunnerError),
     #[error("func run value sender has terminated without sending")]
     FuncRunGone,
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("layer db error: {0}")]
@@ -152,6 +149,8 @@ pub enum VariantAuthoringError {
     SchemaVariantUpdatedFailed(SchemaVariantId),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("si pkg error: {0}")]
     SiPkg(#[from] SiPkgError),
     #[error("spec error: {0}")]

@@ -12,7 +12,6 @@ use dal::{
     KeyPairError,
     SecretId,
     TransactionsError,
-    UserError,
     WorkspacePk,
     WsEventError,
 };
@@ -56,10 +55,10 @@ pub enum SecretError {
     SecretWithInvalidDefinition(SecretId),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("user error: {0}")]
-    User(#[from] UserError),
     #[error("workspace not found: {0}")]
     WorkspaceNotFound(WorkspacePk),
     #[error("ws event error: {0}")]

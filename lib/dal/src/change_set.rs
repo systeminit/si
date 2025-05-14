@@ -17,7 +17,12 @@ use si_data_pg::{
     PgError,
     PgRow,
 };
-use si_db::change_set::FIND_ANCESTORS_QUERY;
+use si_db::{
+    HistoryActor,
+    HistoryEvent,
+    User,
+    change_set::FIND_ANCESTORS_QUERY,
+};
 use si_events::{
     RebaseBatchAddressKind,
     WorkspaceSnapshotAddress,
@@ -26,7 +31,12 @@ use si_events::{
     ulid::Ulid,
     workspace_snapshot::Checksum,
 };
-use si_id::EntityId;
+use si_id::{
+    ActionId,
+    EntityId,
+    UserPk,
+    WorkspacePk,
+};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -38,28 +48,18 @@ use crate::{
     DalContext,
     Func,
     FuncError,
-    HistoryActor,
-    HistoryEvent,
-    HistoryEventError,
     Schema,
     SchemaError,
     SchemaVariant,
     SchemaVariantError,
     TransactionsError,
-    User,
-    UserError,
-    UserPk,
     Workspace,
     WorkspaceError,
-    WorkspacePk,
     WorkspaceSnapshot,
     WorkspaceSnapshotError,
     WsEvent,
     WsEventError,
-    action::{
-        ActionError,
-        ActionId,
-    },
+    action::ActionError,
     billing_publish::{
         self,
         BillingPublishError,
@@ -101,8 +101,6 @@ pub enum ChangeSetError {
     EnumParse(#[from] strum::ParseError),
     #[error("func error: {0}")]
     Func(#[from] Box<FuncError>),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
     #[error("invalid user actor pk")]
     InvalidActor(UserPk),
     #[error("invalid user system init")]
@@ -133,6 +131,8 @@ pub enum ChangeSetError {
     SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("slow runtime error: {0}")]
     SlowRuntime(#[from] SlowRuntimeError),
     #[error("transactions error: {0}")]
@@ -143,8 +143,6 @@ pub enum ChangeSetError {
         "found an unexpected number of open change sets matching default change set (should be one, found {0:?})"
     )]
     UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(Vec<ChangeSetId>),
-    #[error("user error: {0}")]
-    User(#[from] UserError),
     #[error("workspace error: {0}")]
     Workspace(#[from] Box<WorkspaceError>),
     #[error("workspace snapshot error: {0}")]
@@ -186,10 +184,10 @@ pub enum ChangeSetApplyError {
     InvalidUserSystemInit,
     #[error("change set ({0}) does not have a base change set")]
     NoBaseChangeSet(ChangeSetId),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error("user error: {0}")]
-    User(#[from] UserError),
 }
 
 /// A superset of [`ChangeSetResult`] used when performing apply logic.
@@ -1089,13 +1087,7 @@ impl ChangeSet {
     }
     pub async fn extract_userid_from_context_or_error(ctx: &DalContext) -> ChangeSetResult<UserPk> {
         let user_id = match ctx.history_actor() {
-            HistoryActor::User(user_pk) => {
-                let maybe_user = User::get_by_pk(ctx, *user_pk).await;
-                match maybe_user {
-                    Ok(user) => user.pk(),
-                    Err(err) => return Err(ChangeSetError::User(err)),
-                }
-            }
+            HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk).await?.pk(),
             HistoryActor::SystemInit => return Err(ChangeSetError::InvalidUserSystemInit),
         };
         Ok(user_id)

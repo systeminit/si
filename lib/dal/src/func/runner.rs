@@ -88,7 +88,6 @@ use crate::{
     FuncBackendKind,
     FuncError,
     FuncId,
-    HistoryEventError,
     KeyPairError,
     Prop,
     PropId,
@@ -161,8 +160,6 @@ pub enum FuncRunnerError {
     FuncBackend(#[from] FuncBackendError),
     #[error("func run builder error: {0}")]
     FuncRunBuilder(#[from] FuncRunBuilderError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
     #[error("invalid resolver function type: {0}")]
     InvalidResolverFunctionType(#[from] InvalidResolverFunctionTypeError),
     #[error("kill execution failure: {0:?}")]
@@ -189,6 +186,8 @@ pub enum FuncRunnerError {
     Secret(#[from] SecretError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error(
         "too many attribute prototype arguments for protoype corresponding to component ({0}) and prop ({1}): {2:?}"
     )]

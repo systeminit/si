@@ -9,7 +9,6 @@ use dal::{
     Component,
     ComponentId,
     Func,
-    Visibility,
     action::{
         Action,
         prototype::{
@@ -31,6 +30,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_events::audit_log::AuditLogKind;
 
 use super::ChangeSetResult;

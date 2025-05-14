@@ -15,7 +15,6 @@ use base64::prelude::*;
 use dal::{
     ChangeSetId,
     ContentHash,
-    Tenancy,
     WorkspacePk,
     layer_db_types::ContentTypes,
     slow_rt,
@@ -24,6 +23,7 @@ use hyper::{
     Body,
     header,
 };
+use si_db::Tenancy;
 use si_layer_cache::db;
 
 use crate::{

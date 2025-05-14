@@ -16,7 +16,6 @@ use dal::{
     SchemaId,
     SchemaVariant,
     SchemaVariantId,
-    Visibility,
     WsEvent,
     change_status::ChangeStatus,
     component::frame::Frame,
@@ -36,6 +35,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_events::audit_log::AuditLogKind;
 use si_frontend_types::SchemaVariant as FrontendVariant;
 

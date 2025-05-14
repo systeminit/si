@@ -12,13 +12,13 @@ use axum::{
 use dal::{
     ChangeSet,
     DalContext,
-    User,
     audit_logging,
 };
 use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::User;
 use si_events::{
     ChangeSetId,
     UserPk,

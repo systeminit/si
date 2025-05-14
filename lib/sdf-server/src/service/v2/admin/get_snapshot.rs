@@ -10,13 +10,13 @@ use base64::prelude::*;
 use dal::{
     ChangeSet,
     ChangeSetId,
-    Tenancy,
     WorkspacePk,
 };
 use hyper::{
     Body,
     header,
 };
+use si_db::Tenancy;
 
 use crate::{
     extract::PosthogClient,

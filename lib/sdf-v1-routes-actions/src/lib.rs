@@ -15,7 +15,6 @@ use dal::{
     ComponentId,
     FuncError as DalFuncError,
     TransactionsError,
-    UserError,
     UserPk,
     WsEventError,
     action::{
@@ -68,10 +67,10 @@ pub enum ActionError {
     NoSchemaForComponent(ComponentId),
     #[error("no schema variant found for component {0}")]
     NoSchemaVariantForComponent(ComponentId),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
-    #[error(transparent)]
-    User(#[from] UserError),
     #[error("wsevent error: {0}")]
     WsEventError(#[from] WsEventError),
 }

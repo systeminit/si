@@ -8,7 +8,6 @@ use axum::{
 use dal::{
     ChangeSet,
     SchemaVariantId,
-    Visibility,
     WsEvent,
     schema::variant::authoring::VariantAuthoringClient,
 };
@@ -25,6 +24,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 
 use crate::SchemaVariantResult;
 

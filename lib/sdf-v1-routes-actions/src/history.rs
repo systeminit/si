@@ -6,7 +6,6 @@ use chrono::{
     DateTime,
     Utc,
 };
-use dal::Visibility;
 use sdf_extract::{
     HandlerContext,
     v1::AccessBuilder,
@@ -15,6 +14,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_events::{
     ActionId,
     ActionKind,

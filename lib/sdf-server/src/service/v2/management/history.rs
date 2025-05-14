@@ -6,11 +6,11 @@ use chrono::{
     DateTime,
     Utc,
 };
-use dal::Visibility;
 use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_events::{
     ActionResultState,
     ComponentId,

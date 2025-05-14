@@ -13,9 +13,12 @@ use si_crypto::{
 };
 use si_data_nats::NatsError;
 use si_data_pg::PgError;
-use si_db::key_pair::{
-    GET_BY_PK,
-    PUBLIC_KEY_GET_CURRENT,
+use si_db::{
+    HistoryEvent,
+    key_pair::{
+        GET_BY_PK,
+        PUBLIC_KEY_GET_CURRENT,
+    },
 };
 use si_events::Timestamp;
 use si_hash::Hash;
@@ -29,9 +32,6 @@ use thiserror::Error;
 
 use crate::{
     DalContext,
-    HistoryEvent,
-    HistoryEventError,
-    TenancyError,
     TransactionsError,
     Workspace,
     WorkspaceError,
@@ -47,8 +47,6 @@ mod key_pair_box_public_key_serde;
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum KeyPairError {
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
     #[error("invalid secret key bytes")]
     InvalidSecretKeyBytes,
     #[error("Invalid workspace: {0}")]
@@ -63,10 +61,10 @@ pub enum KeyPairError {
     Pg(#[from] PgError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("symmetric crypto error: {0}")]
     SymmetricCrypto(#[from] SymmetricCryptoError),
-    #[error("tenancy error: {0}")]
-    Tenancy(#[from] TenancyError),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("cannot get key for different workspace")]

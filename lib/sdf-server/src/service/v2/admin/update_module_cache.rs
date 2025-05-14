@@ -8,7 +8,6 @@ use axum::{
 };
 use dal::{
     DalContext,
-    Tenancy,
     WsEvent,
     cached_module::CachedModule,
 };
@@ -17,6 +16,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Tenancy;
 use telemetry::prelude::*;
 use ulid::Ulid;
 

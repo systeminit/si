@@ -17,7 +17,6 @@ use dal::{
     SchemaVariantId,
     TransactionsError,
     Ulid,
-    Visibility,
     attribute::value::AttributeValueError,
     schema::variant::SchemaVariantError,
     workspace_snapshot::{
@@ -42,6 +41,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use telemetry::prelude::*;
 use thiserror::Error;
 

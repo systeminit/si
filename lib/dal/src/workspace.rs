@@ -21,13 +21,19 @@ use si_data_pg::{
     PgError,
     PgRow,
 };
-use si_db::workspace::{
-    SEARCH_WORKSPACES_BY_SNAPSHOT_ADDRESS,
-    SEARCH_WORKSPACES_BY_ULID,
-    SEARCH_WORKSPACES_USER_NAME_EMAIL,
-    WORKSPACE_GET_BY_PK,
-    WORKSPACE_LIST_ALL,
-    WORKSPACE_LIST_FOR_USER,
+use si_db::{
+    HistoryActor,
+    HistoryEvent,
+    Tenancy,
+    User,
+    workspace::{
+        SEARCH_WORKSPACES_BY_SNAPSHOT_ADDRESS,
+        SEARCH_WORKSPACES_BY_ULID,
+        SEARCH_WORKSPACES_USER_NAME_EMAIL,
+        WORKSPACE_GET_BY_PK,
+        WORKSPACE_LIST_ALL,
+        WORKSPACE_LIST_FOR_USER,
+    },
 };
 use si_events::{
     ContentHash,
@@ -55,14 +61,8 @@ use ulid::Ulid;
 use crate::{
     BuiltinsError,
     DalContext,
-    HistoryActor,
-    HistoryEvent,
-    HistoryEventError,
     KeyPairError,
-    Tenancy,
     TransactionsError,
-    User,
-    UserError,
     WorkspaceSnapshot,
     WorkspaceSnapshotGraph,
     builtins::func::migrate_intrinsics_no_commit,
@@ -110,8 +110,6 @@ pub enum WorkspaceError {
     DefaultChangeSetNotFound(WorkspacePk, ChangeSetId),
     #[error("Trying to export from system actor. This can only be done by a user actor")]
     ExportingFromSystemActor,
-    #[error(transparent)]
-    HistoryEvent(#[from] HistoryEventError),
     #[error("Trying to import a changeset that does not have a valid base: {0}")]
     ImportingOrphanChangeset(ChangeSetId),
     #[error(transparent)]
@@ -126,14 +124,14 @@ pub enum WorkspaceError {
     Pg(#[from] PgError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("strum parse error: {0}")]
     StrumParse(#[from] strum::ParseError),
     #[error(transparent)]
     Transactions(#[from] TransactionsError),
     #[error("unknown snapshot kind {0} for workspace: {1}")]
     UnknownSnapshotKind(String, WorkspacePk),
-    #[error(transparent)]
-    User(#[from] UserError),
     #[error("workspace integration error: {0}")]
     WorkspaceIntegration(#[from] WorkspaceIntegrationsError),
     #[error("workspace not found: {0}")]

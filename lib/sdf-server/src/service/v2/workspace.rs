@@ -29,12 +29,12 @@ pub enum WorkspaceAPIError {
     RootTenancyExportAttempt,
     #[error("cannot install workspace using root tenancy")]
     RootTenancyInstallAttempt,
+    #[error("si db error: {0}")]
+    SiDb(#[from] si_db::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("unable to parse url: {0}")]
     Url(#[from] url::ParseError),
-    #[error("user error: {0}")]
-    User(#[from] dal::UserError),
     #[error("workspace error: {0}")]
     Workspace(#[from] dal::WorkspaceError),
 }

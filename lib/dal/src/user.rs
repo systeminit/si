@@ -2,7 +2,6 @@ use serde::{
     Deserialize,
     Serialize,
 };
-pub use si_db::user::*;
 pub use si_id::{
     ChangeSetId,
     UserPk,

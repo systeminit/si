@@ -9,6 +9,7 @@ rust_library(
         "//lib/frigg:frigg",
         "//lib/sdf-core:sdf-core",
         "//lib/si-data-nats:si-data-nats",
+        "//lib/si-db:si-db",
         "//lib/si-events-rs:si-events",
         "//lib/si-jwt-public-key:si-jwt-public-key",
 

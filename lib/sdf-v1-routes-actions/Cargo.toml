@@ -13,6 +13,7 @@ dal = { path = "../../lib/dal" }
 sdf-core = { path = "../../lib/sdf-core" }
 sdf-extract = { path = "../../lib/sdf-extract" }
 si-events = { path = "../../lib/si-events-rs" }
+si-db = { path = "../../lib/si-db" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
 telemetry = { path = "../../lib/telemetry-rs" }
 

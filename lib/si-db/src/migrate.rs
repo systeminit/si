@@ -11,23 +11,19 @@ use serde_with::{
     DeserializeFromStr,
     SerializeDisplay,
 };
-use si_data_nats::NatsError;
-use si_data_pg::{
-    PgError,
-    PgPool,
-    PgPoolError,
-};
+use si_data_pg::PgPool;
 use strum::{
     Display,
     EnumString,
     VariantNames,
 };
 use telemetry::prelude::*;
-use thiserror::Error;
 use tokio::{
     time,
     time::Instant,
 };
+
+use crate::Result;
 
 mod embedded {
     use refinery::embed_migrations;
@@ -35,27 +31,14 @@ mod embedded {
     embed_migrations!("./src/migrations");
 }
 
-#[remain::sorted]
-#[derive(Error, Debug)]
-pub enum MigrateError {
-    #[error("nats error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("database error: {0}")]
-    PgError(#[from] PgError),
-    #[error("pg pool error: {0}")]
-    PgPool(#[from] PgPoolError),
-}
-
-pub type MigrateResult<T> = Result<T, MigrateError>;
-
 #[instrument(level = "info", skip_all)]
-pub async fn migrate_all(pg_pool: &PgPool) -> MigrateResult<()> {
+pub async fn migrate_all(pg_pool: &PgPool) -> Result<()> {
     migrate(pg_pool).await?;
     Ok(())
 }
 
 #[instrument(level = "info", skip_all)]
-pub async fn migrate_all_with_progress(pg_pool: &PgPool) -> MigrateResult<()> {
+pub async fn migrate_all_with_progress(pg_pool: &PgPool) -> Result<()> {
     let mut interval = time::interval(Duration::from_secs(5));
     let instant = Instant::now();
     let migrate_all = migrate_all(pg_pool);
@@ -80,7 +63,7 @@ pub async fn migrate_all_with_progress(pg_pool: &PgPool) -> MigrateResult<()> {
 }
 
 #[instrument(level = "info", skip_all)]
-pub async fn migrate(pg: &PgPool) -> MigrateResult<()> {
+pub async fn migrate(pg: &PgPool) -> Result<()> {
     pg.migrate(embedded::migrations::runner()).await?;
     Ok(())
 }

@@ -8,8 +8,6 @@ use std::{
 use dal::{
     ChangeSet,
     DalContext,
-    HistoryActor,
-    User,
     UserPk,
     WorkspacePk,
     approval_requirement::{
@@ -24,6 +22,10 @@ use dal::{
 use permissions::{
     Permission,
     PermissionBuilder,
+};
+use si_db::{
+    HistoryActor,
+    User,
 };
 use si_events::{
     ChangeSetApprovalStatus,

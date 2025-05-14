@@ -9,7 +9,6 @@ use dal::{
     ChangeSet,
     SchemaVariant,
     SchemaVariantId,
-    Visibility,
     WsEvent,
     schema::variant::authoring::VariantAuthoringClient,
 };
@@ -26,6 +25,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::Visibility;
 use si_events::audit_log::AuditLogKind;
 
 use crate::SchemaVariantResult;
