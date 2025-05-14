@@ -123,6 +123,7 @@ deno_workspace(
         "//lib/jsr-systeminit/ecs-template-qualification:deno.json",
         "//lib/jsr-systeminit/cf-db:deno.json",
         "//lib/jsr-systeminit/ai-agent:deno.json",
+        "//bin/si-luminork-api-tests:deno.json",
     ],
     visibility = ["PUBLIC"],
 )
