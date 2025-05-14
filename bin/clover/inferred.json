@@ -1692,6 +1692,18 @@
       "SECTION_ONLY"
     ]
   },
+  "The scoring mode of the evaluation form.\n *Allowed values*: ``QUESTION_ONLY`` | ``SECTION_ONLY``": {
+    "enum": [
+      "QUESTION_ONLY",
+      "SECTION_ONLY"
+    ]
+  },
+  "The type of IPv4 address assigned to the outside interface of the customer gateway device.\n Valid values: ``PrivateIpv4`` | ``PublicIpv4``\n Default: ``PublicIpv4``": {
+    "enum": [
+      "PrivateIpv4",
+      "PublicIpv4"
+    ]
+  },
   "The type of IPv4 address assigned to the outside interface of the customer gateway device.\n Valid values: ``PrivateIpv4`` | ``PublicIpv4`` \n Default: ``PublicIpv4``": {
     "enum": [
       "PrivateIpv4",
@@ -1962,6 +1974,12 @@
       "DISABLED"
     ]
   },
+  "The scoring status of the evaluation form.\n *Allowed values*: ``ENABLED`` | ``DISABLED``": {
+    "enum": [
+      "ENABLED",
+      "DISABLED"
+    ]
+  },
   "The state of the workgroup: ENABLED or DISABLED.": {
     "enum": [
       "ENABLED",
@@ -1993,6 +2011,12 @@
     ]
   },
   "The status of the evaluation form.\n  *Allowed values*: ``DRAFT`` | ``ACTIVE``": {
+    "enum": [
+      "DRAFT",
+      "ACTIVE"
+    ]
+  },
+  "The status of the evaluation form.\n *Allowed values*: ``DRAFT`` | ``ACTIVE``": {
     "enum": [
       "DRAFT",
       "ACTIVE"
@@ -10418,6 +10442,9 @@
     "enum": null
   },
   "The description of the evaluation form.\n  *Length Constraints*: Minimum length of 0. Maximum length of 1024.": {
+    "enum": null
+  },
+  "The description of the evaluation form.\n *Length Constraints*: Minimum length of 0. Maximum length of 1024.": {
     "enum": null
   },
   "The description of the event bus.": {
