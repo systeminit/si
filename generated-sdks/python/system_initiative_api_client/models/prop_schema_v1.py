@@ -22,15 +22,16 @@ from typing import Any, ClassVar, Dict, List
 from typing import Optional, Set
 from typing_extensions import Self
 
-class WhoamiResponse(BaseModel):
+class PropSchemaV1(BaseModel):
     """
-    WhoamiResponse
+    PropSchemaV1
     """ # noqa: E501
-    token: Dict[str, Any]
-    user_email: StrictStr = Field(alias="userEmail")
-    user_id: StrictStr = Field(alias="userId")
-    workspace_id: StrictStr = Field(alias="workspaceId")
-    __properties: ClassVar[List[str]] = ["token", "userEmail", "userId", "workspaceId"]
+    children: List[PropSchemaV1]
+    description: StrictStr
+    name: StrictStr
+    prop_id: StrictStr = Field(alias="propId")
+    prop_type: StrictStr = Field(alias="propType")
+    __properties: ClassVar[List[str]] = ["children", "description", "name", "propId", "propType"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -50,7 +51,7 @@ class WhoamiResponse(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of WhoamiResponse from a JSON string"""
+        """Create an instance of PropSchemaV1 from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -71,11 +72,18 @@ class WhoamiResponse(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of each item in children (list)
+        _items = []
+        if self.children:
+            for _item_children in self.children:
+                if _item_children:
+                    _items.append(_item_children.to_dict())
+            _dict['children'] = _items
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of WhoamiResponse from a dict"""
+        """Create an instance of PropSchemaV1 from a dict"""
         if obj is None:
             return None
 
@@ -83,11 +91,14 @@ class WhoamiResponse(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "token": obj.get("token"),
-            "userEmail": obj.get("userEmail"),
-            "userId": obj.get("userId"),
-            "workspaceId": obj.get("workspaceId")
+            "children": [PropSchemaV1.from_dict(_item) for _item in obj["children"]] if obj.get("children") is not None else None,
+            "description": obj.get("description"),
+            "name": obj.get("name"),
+            "propId": obj.get("propId"),
+            "propType": obj.get("propType")
         })
         return _obj
 
+# TODO: Rewrite to not use raise_errors
+PropSchemaV1.model_rebuild(raise_errors=False)
 

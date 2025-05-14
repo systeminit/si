@@ -1,6 +1,7 @@
 use std::{
+    env,
     fs,
-    path::Path,
+    path::PathBuf,
 };
 
 use luminork_server::routes::openapi_handler;
@@ -9,22 +10,19 @@ use luminork_server::routes::openapi_handler;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_result = openapi_handler().await;
 
-    // Handle the result - properly handle the specific error type
+    let out_dir = env::args().nth(1).expect("No output passed");
+
     let api = match api_result {
-        Ok(json_api) => json_api.0, // Extract the OpenApi from Json wrapper
+        Ok(json_api) => json_api.0,
         Err((status, message)) => {
-            // Convert Axum error to standard error
             return Err(format!("API Error ({}): {}", status, message).into());
         }
     };
 
-    // Create the output directory
-    let output_dir = Path::new("data");
-    fs::create_dir_all(output_dir)?;
+    let output_file = PathBuf::from(out_dir);
 
-    // Use serde_json for pretty printing
     let json_content = serde_json::to_string_pretty(&api)?;
-    fs::write(output_dir.join("openapi.json"), json_content)?;
+    fs::write(output_file, json_content)?;
 
     println!("OpenAPI spec written to data/openapi.json");
     Ok(())

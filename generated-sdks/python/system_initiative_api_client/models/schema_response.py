@@ -17,20 +17,20 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
-from typing import Any, ClassVar, Dict, List
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr
+from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 
-class WhoamiResponse(BaseModel):
+class SchemaResponse(BaseModel):
     """
-    WhoamiResponse
+    SchemaResponse
     """ # noqa: E501
-    token: Dict[str, Any]
-    user_email: StrictStr = Field(alias="userEmail")
-    user_id: StrictStr = Field(alias="userId")
-    workspace_id: StrictStr = Field(alias="workspaceId")
-    __properties: ClassVar[List[str]] = ["token", "userEmail", "userId", "workspaceId"]
+    category: Optional[StrictStr] = None
+    installed: StrictBool
+    schema_id: StrictStr = Field(alias="schemaId")
+    schema_name: StrictStr = Field(alias="schemaName")
+    __properties: ClassVar[List[str]] = ["category", "installed", "schemaId", "schemaName"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -50,7 +50,7 @@ class WhoamiResponse(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of WhoamiResponse from a JSON string"""
+        """Create an instance of SchemaResponse from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -71,11 +71,16 @@ class WhoamiResponse(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # set to None if category (nullable) is None
+        # and model_fields_set contains the field
+        if self.category is None and "category" in self.model_fields_set:
+            _dict['category'] = None
+
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of WhoamiResponse from a dict"""
+        """Create an instance of SchemaResponse from a dict"""
         if obj is None:
             return None
 
@@ -83,10 +88,10 @@ class WhoamiResponse(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "token": obj.get("token"),
-            "userEmail": obj.get("userEmail"),
-            "userId": obj.get("userId"),
-            "workspaceId": obj.get("workspaceId")
+            "category": obj.get("category"),
+            "installed": obj.get("installed"),
+            "schemaId": obj.get("schemaId"),
+            "schemaName": obj.get("schemaName")
         })
         return _obj
 
