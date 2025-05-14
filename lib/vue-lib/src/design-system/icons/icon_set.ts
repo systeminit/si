@@ -169,6 +169,7 @@ import PhCursorTextBold from "~icons/ph/cursor-text-bold";
 // MDI
 import MdiCheckboxBlankCircle from "~icons/mdi/checkbox-blank-circle";
 import MdiCheckboxBlankCircleOutline from "~icons/mdi/checkbox-blank-circle-outline";
+import MdiInformationVariantCircleOutline from "~icons/mdi/information-variant-circle-outline";
 
 // attribute widget types
 import InputTypeString from "~icons/carbon/string-text";
@@ -285,6 +286,7 @@ export const ICONS = Object.freeze({
   "git-merge": GitMerge,
   globe: Globe,
   hide: EyeOff,
+  "info-circle": MdiInformationVariantCircleOutline,
   "input-connection": InputConnection,
   "input-socket": InputSocket,
   "input-type-number": InputTypeNumber,

@@ -5,7 +5,7 @@
         'siSearchRoot',
         dropdownMenuSearch
           ? 'rounded-t-md'
-          : 'dark:border-neutral-600 border-b',
+          : borderBottom && 'dark:border-neutral-600 border-b',
       )
     "
   >
@@ -17,6 +17,7 @@
         )
       "
     >
+      <!-- data-1p-ignore is used to prevent 1password from targeting this field -->
       <input
         ref="searchInputRef"
         v-model="searchString"
@@ -33,6 +34,7 @@
             filtersEnabled ? 'pr-[58px]' : 'pr-[30px]',
           )
         "
+        data-1p-ignore
         @keydown="onKeyDown"
       />
       <Icon
@@ -59,6 +61,7 @@
           :selected="showFilters"
           @click="toggleShowFilters"
         />
+        <slot name="right" />
       </div>
     </label>
 
@@ -152,6 +155,7 @@ const props = defineProps({
   filters: { type: Array<Filter> },
   disableFilters: { type: Boolean },
   dropdownMenuSearch: { type: Boolean },
+  borderBottom: { type: Boolean, default: true },
   allFilter: { type: Object as PropType<Filter> },
 });
 

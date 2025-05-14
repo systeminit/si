@@ -5,7 +5,12 @@
     </div>
     <div
       ref="scrollDivRef"
-      class="overflow-auto flex-grow relative scroll-slot"
+      :class="
+        clsx(
+          'overflow-auto flex-grow relative scroll-slot',
+          hideScrollbar && 'scrollbar-hidden',
+        )
+      "
     >
       <slot />
     </div>
@@ -16,7 +21,12 @@
 </template>
 
 <script lang="ts" setup>
+import clsx from "clsx";
 import { ref } from "vue";
+
+defineProps({
+  hideScrollbar: { type: Boolean },
+});
 
 const scrollDivRef = ref<HTMLElement | null>(null);
 defineExpose({ scrollElement: scrollDivRef });

@@ -3,3 +3,15 @@
 @tailwind components;
 
 @tailwind utilities;
+
+@layer utilities {
+  /* Chrome, Safari and Opera */
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .scrollbar-hidden {
+    scrollbar-width: none !important; /* Firefox */
+    -ms-overflow-style: none !important; /* IE and Edge */
+  }
+}

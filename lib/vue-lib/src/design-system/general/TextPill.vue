@@ -3,7 +3,7 @@
     :class="
       clsx(
         'border rounded-sm font-normal',
-        tighter ? 'leading-snug px-3xs' : 'py-3xs px-2xs',
+        tighter ? 'leading-snug tracking-tighter px-3xs' : 'py-3xs px-2xs',
         computedClasses,
       )
     "
