@@ -38,7 +38,7 @@ router.post("/workspaces/:workspaceId/authTokens", async (ctx) => {
     authUser,
     userId,
     workspace,
-  } = await authorizeWorkspaceRoute(ctx, [RoleType.OWNER]);
+  } = await authorizeWorkspaceRoute(ctx, [RoleType.OWNER, RoleType.APPROVER, RoleType.EDITOR]);
 
   // TODO - this should also get an expiration instead of just defaulting to 1d!
   // Get params from body
