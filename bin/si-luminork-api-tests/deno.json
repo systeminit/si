@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.window"],
+    "strict": true
+  },
+  "lint": {
+    "include": ["src/", "tests/"],
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "fmt": {
+    "include": ["src/", "tests/", "deno.json"],
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": true,
+    "proseWrap": "preserve"
+  },
+  "test": {
+    "include": ["tests/"]
+  },
+  "tasks": {
+    "test": "deno test --allow-env --allow-net --allow-read",
+    "test:watch": "deno test --allow-env --allow-net --allow-read --watch",
+    "debug": "deno run --allow-env --allow-net --allow-read debug-api.ts",
+    "format": "deno fmt",
+    "lint": "deno lint"
+  },
+  "imports": {
+    "@/": "./src/",
+    "@tests/": "./tests/",
+    "std/": "https://deno.land/std@0.220.1/"
+  }
+}

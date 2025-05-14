@@ -1,0 +1,10 @@
+{
+  "imports": {
+    "@/": "./src/",
+    "@tests/": "./tests/",
+    "std/": "https://deno.land/std@0.220.1/",
+    "asserts": "https://deno.land/std@0.220.1/assert/mod.ts",
+    "testing": "https://deno.land/std@0.220.1/testing/mod.ts",
+    "dotenv": "https://deno.land/std@0.220.1/dotenv/mod.ts"
+  }
+}
