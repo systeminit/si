@@ -14,7 +14,9 @@ import { Categories } from "@/store/components.store";
 import { ActionProposedView } from "@/store/actions.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
+  InputSocket,
   InputSocketId,
+  OutputSocket,
   OutputSocketId,
   SchemaId,
   SchemaVariantId,
@@ -285,13 +287,75 @@ export interface ComponentQualificationTotals {
   running: number;
 }
 
-export interface Component {
+export interface EddaComponent {
   id: ComponentId;
   name: string;
   color?: string;
   schemaName: string;
   schemaId: SchemaId;
-  schemaVariantId: SchemaVariantId;
+  schemaVariantId: Reference;
+  schemaVariantName: string;
+  schemaVariantDescription?: string;
+  schemaVariantDocLink?: string;
+  schemaCategory: string;
+  hasResource: boolean;
+  qualificationTotals: ComponentQualificationTotals;
+  inputCount: number;
+  // this will only be filled in when it is computed
+  outputCount: number;
+  diffCount: number;
+  rootAttributeValueId: AttributeValueId;
+  domainAttributeValueId: AttributeValueId;
+  secretsAttributeValueId: AttributeValueId;
+  siAttributeValueId: AttributeValueId;
+  resourceValueAttributeValueId: AttributeValueId;
+  resourceDiff: {
+    current?: string;
+    diff?: string;
+  };
+}
+
+export interface SchemaVariant {
+  id: string;
+  schemaVariantId: string;
+  schemaName: string;
+  schemaDocLinks?: string;
+  displayName: string | null;
+  category: string;
+  color: string;
+  link: string | null;
+  description: string | null;
+
+  created_at: IsoDateString;
+  updated_at: IsoDateString;
+
+  version: string;
+  isLocked: boolean;
+
+  schemaId: SchemaId;
+
+  inputSockets: InputSocket[];
+  outputSockets: OutputSocket[];
+  props: Prop[];
+  canCreateNewComponents: boolean;
+
+  canContribute: boolean;
+  mgmtFunctions: {
+    id: string;
+    funcId: FuncId;
+    description?: string;
+    prototypeName: string;
+    name: string;
+  }[];
+}
+
+export interface BifrostComponent {
+  id: ComponentId;
+  name: string;
+  color?: string;
+  schemaName: string;
+  schemaId: SchemaId;
+  schemaVariant: SchemaVariant;
   schemaVariantName: string;
   schemaVariantDescription?: string;
   schemaVariantDocLink?: string;
@@ -315,12 +379,12 @@ export interface Component {
 
 export interface BifrostComponentList {
   id: ChangeSetId;
-  components: Component[];
+  components: BifrostComponent[];
 }
 
 export interface ViewComponentList {
   id: ViewId;
-  components: Component[];
+  components: BifrostComponent[];
 }
 
 export interface EddaComponentList {
@@ -398,7 +462,7 @@ export interface EddaIncomingConnections {
 
 export interface BifrostComponentConnections {
   id: ComponentId;
-  component: Component;
+  component: BifrostComponent;
   incoming: BifrostConnection[];
   // note: outgoing connections cannot be computed right now
 }
@@ -434,12 +498,12 @@ export type EddaConnection =
 export type BifrostConnection =
   | {
       kind: "prop";
-      fromComponent: Component;
+      fromComponent: BifrostComponent;
       fromAttributeValueId: AttributeValueId;
       fromAttributeValuePath: string;
       fromPropId: PropId;
       fromPropPath: string;
-      toComponent: Component;
+      toComponent: BifrostComponent;
       toPropId: PropId;
       toPropPath: string;
       toAttributeValueId: AttributeValueId;
@@ -447,12 +511,12 @@ export type BifrostConnection =
     }
   | {
       kind: "socket";
-      fromComponent: Component;
+      fromComponent: BifrostComponent;
       fromAttributeValueId: AttributeValueId;
       fromAttributeValuePath: string;
       fromSocketId: OutputSocketId;
       fromSocketName: string;
-      toComponent: Component;
+      toComponent: BifrostComponent;
       toSocketId: InputSocketId;
       toSocketName: string;
       toAttributeValueId: AttributeValueId;

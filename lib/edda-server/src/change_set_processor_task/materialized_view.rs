@@ -60,7 +60,10 @@ use si_frontend_mv_types::{
         IndexReference,
         ReferenceKind,
     },
-    schema_variant::SchemaVariantCategories as SchemaVariantCategoriesMv,
+    schema_variant::{
+        SchemaVariant as SchemaVariantMv,
+        SchemaVariantCategories as SchemaVariantCategoriesMv,
+    },
     view::{
         View as ViewMv,
         ViewComponentList as ViewComponentListMv,
@@ -605,6 +608,7 @@ fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedV
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewComponentListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantCategoriesMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionPrototypeViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentListMv);
@@ -813,6 +817,32 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     change_set_mv_id,
                     IncomingConnectionsListMv,
                     dal_materialized_views::incoming_connections_list::assemble(ctx.clone()),
+                );
+            } else {
+                return Ok(Some(QueuedBuildMvTask { change, mv_kind }));
+            }
+        }
+        ReferenceKind::SchemaVariant => {
+            let entity_mv_id = change.entity_id.to_string();
+
+            let trigger_entity = <SchemaVariantMv as MaterializedView>::trigger_entity();
+            if change.entity_kind != trigger_entity {
+                return Ok(None);
+            }
+
+            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+                spawn_build_mv_task!(
+                    build_tasks,
+                    mv_task_ids,
+                    ctx,
+                    frigg,
+                    change,
+                    entity_mv_id,
+                    SchemaVariantMv,
+                    dal_materialized_views::schema_variant::assemble(
+                        ctx.clone(),
+                        si_events::ulid::Ulid::from(change.entity_id).into()
+                    ),
                 );
             } else {
                 return Ok(Some(QueuedBuildMvTask { change, mv_kind }));

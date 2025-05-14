@@ -26,7 +26,7 @@ pub enum ConnectionAnnotationError {
 
 #[derive(Clone, Eq, Debug, PartialEq, Deserialize, Serialize)]
 pub struct ConnectionAnnotation {
-    tokens: Vec<String>,
+    pub tokens: Vec<String>,
 }
 
 impl From<ConnectionAnnotation> for FeConnectionAnnotation {

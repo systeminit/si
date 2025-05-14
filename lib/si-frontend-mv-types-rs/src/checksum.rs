@@ -23,6 +23,7 @@ use si_id::{
     FuncId,
     FuncRunId,
     InputSocketId,
+    ManagementPrototypeId,
     OutputSocketId,
     PropId,
     SchemaId,
@@ -82,6 +83,12 @@ impl FrontendChecksum for ViewId {
 }
 
 impl FrontendChecksum for SchemaId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for ManagementPrototypeId {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_string())
     }

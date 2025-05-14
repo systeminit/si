@@ -28,6 +28,7 @@ pub mod checksum;
 pub mod component;
 pub mod incoming_connections;
 pub mod index;
+pub mod management;
 pub mod materialized_view;
 pub mod object;
 pub mod reference;

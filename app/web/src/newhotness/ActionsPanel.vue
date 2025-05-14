@@ -28,14 +28,14 @@ import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import {
   ActionPrototypeViewList,
   BifrostActionViewList,
-  Component,
+  BifrostComponent,
 } from "@/workers/types/dbinterface";
 import EmptyStateCard from "@/components/EmptyStateCard.vue";
 import { ActionId, ActionPrototypeId } from "@/api/sdf/dal/action";
 import ActionWidget from "@/mead-hall/ActionWidget.vue";
 
 const props = defineProps<{
-  component: Component;
+  component: BifrostComponent;
 }>();
 
 // The code below is the same as in AssetActionsDetails in the mead hall
@@ -44,13 +44,13 @@ const props = defineProps<{
 // are available for the given component.
 const queryKeyForActionPrototypeViews = makeKey(
   "ActionPrototypeViewList",
-  props.component.schemaVariantId,
+  props.component.schemaVariant.id,
 );
 const actionPrototypeViewsRaw = useQuery<ActionPrototypeViewList | null>({
   queryKey: queryKeyForActionPrototypeViews,
   queryFn: async () =>
     await bifrost<ActionPrototypeViewList>(
-      makeArgs("ActionPrototypeViewList", props.component.schemaVariantId),
+      makeArgs("ActionPrototypeViewList", props.component.schemaVariant.id),
     ),
 });
 const actionPrototypeViews = computed(

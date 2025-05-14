@@ -26,7 +26,7 @@ import { Fzf } from "fzf";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   AttributeTree,
-  Component,
+  BifrostComponent,
   Prop,
   AttributeValue,
 } from "@/workers/types/dbinterface";
@@ -40,7 +40,7 @@ import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
 const q = ref("");
 
 const props = defineProps<{
-  component: Component;
+  component: BifrostComponent;
 }>();
 
 const componentId = computed(() => props.component.id);

@@ -178,7 +178,7 @@ import { computed, ref, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
-  Component,
+  BifrostComponent,
   BifrostComponentConnections,
 } from "@/workers/types/dbinterface";
 import AttributePanel from "./AttributePanel.vue";
@@ -204,10 +204,10 @@ const componentId = computed(() => props.componentId);
 const key = useMakeKey();
 const args = useMakeArgs();
 
-const componentQuery = useQuery<Component | null>({
+const componentQuery = useQuery<BifrostComponent | null>({
   queryKey: key("Component", componentId),
   queryFn: async () => {
-    const component = await bifrost<Component>(
+    const component = await bifrost<BifrostComponent>(
       args("Component", componentId.value),
     );
     return component;

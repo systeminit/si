@@ -56,6 +56,7 @@ export interface UninstalledVariant {
 }
 
 export interface SchemaVariant {
+  id: string;
   schemaVariantId: string;
   schemaName: string;
   schemaDocLinks?: string;

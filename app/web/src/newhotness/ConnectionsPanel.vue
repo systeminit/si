@@ -16,7 +16,7 @@
 import { computed, Reactive } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import {
-  Component,
+  BifrostComponent,
   BifrostComponentConnections,
   BifrostConnection,
   OutgoingConnections,
@@ -32,7 +32,7 @@ import ConnectionLayout, {
 } from "./layout_components/ConnectionLayout.vue";
 
 const props = defineProps<{
-  component: Component;
+  component: BifrostComponent;
   connections?: BifrostComponentConnections;
 }>();
 
