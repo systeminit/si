@@ -285,6 +285,8 @@ pub enum ComponentError {
     NodeWeight(#[from] NodeWeightError),
     #[error("component not found: {0}")]
     NotFound(ComponentId),
+    #[error("component not found by name: {0}")]
+    NotFoundByName(String),
     #[error("object prop {0} has no ordering node")]
     ObjectPropHasNoOrderingNode(PropId),
     #[error("output socket error: {0}")]
@@ -1591,6 +1593,12 @@ impl Component {
         }
 
         Ok(None)
+    }
+
+    pub async fn get_by_name(ctx: &DalContext, name: &str) -> ComponentResult<ComponentId> {
+        Self::find_by_name(ctx, name)
+            .await?
+            .ok_or(ComponentError::NotFoundByName(name.into()))
     }
 
     pub async fn find_by_name(

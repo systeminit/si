@@ -16,8 +16,9 @@ use crate::{
 // NOTE Most of these should just be in VariantAuthoringClient
 
 ///
-/// Things that you can pass as schema variant ids
+/// Things that you can pass as schema variants (schema name or variant id)
 ///
+#[allow(async_fn_in_trait)]
 pub trait SchemaVariantKey {
     ///
     /// Turn this into a real SchemaVariantId

@@ -369,7 +369,7 @@ impl AttributePrototypeArgument {
     ) -> AttributePrototypeArgumentResult<Option<AttributePrototypeArgumentId>> {
         // AP --> APA --> Func Arg
 
-        for apa_id in AttributePrototype::list_arguments_for_id(ctx, ap_id).await? {
+        for apa_id in AttributePrototype::list_arguments(ctx, ap_id).await? {
             let this_func_arg_id = Self::func_argument_id_by_id(ctx, apa_id).await?;
 
             if this_func_arg_id == func_argument_id {

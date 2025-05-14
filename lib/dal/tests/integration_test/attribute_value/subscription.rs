@@ -2,13 +2,15 @@ use dal::{
     AttributeValue,
     Component,
     DalContext,
+    attribute::value::subscription::ValueSubscription,
 };
 use dal_test::{
     Result,
     helpers::{
         ChangeSetTestHelpers,
+        attribute::value,
+        change_set,
         component,
-        make_subscription,
         schema::variant,
     },
     test,
@@ -44,12 +46,7 @@ async fn subscribe_to_name_on_same_component(ctx: &mut DalContext) -> Result<()>
     assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
 
     // Subscribe to the value and see if it flows through!
-    AttributeValue::subscribe(
-        ctx,
-        value_av_id,
-        make_subscription(ctx, component_id, "/si/name").await?,
-    )
-    .await?;
+    value::subscribe(ctx, value_av_id, [(component_id, "/si/name")]).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     assert_eq!(
         Some(json!("my name is testy")),
@@ -76,7 +73,7 @@ async fn subscribe_to_name_on_same_component(ctx: &mut DalContext) -> Result<()>
 // AV subscribes to AV on same component
 #[test]
 async fn subscribe_to_string(ctx: &mut DalContext) -> Result<()> {
-    setup(ctx).await?;
+    create_testy_variant(ctx).await?;
 
     // Create a component with a Value prop
     let component_id = component::create(ctx, "testy", "testy").await?;
@@ -94,12 +91,7 @@ async fn subscribe_to_string(ctx: &mut DalContext) -> Result<()> {
     AttributeValue::update(ctx, other_value_av_id, Some(json!("value"))).await?;
 
     // Subscribe to the value and see if it flows through!
-    AttributeValue::subscribe(
-        ctx,
-        value_av_id,
-        make_subscription(ctx, other_component_id, "/domain/Value").await?,
-    )
-    .await?;
+    value::subscribe(ctx, value_av_id, [(other_component_id, "/domain/Value")]).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     assert_eq!(
         Some(json!("value")),
@@ -125,7 +117,7 @@ async fn subscribe_to_string(ctx: &mut DalContext) -> Result<()> {
 // AV subscribes to array element of another AV
 #[test]
 async fn subscribe_to_array_element(ctx: &mut DalContext) -> Result<()> {
-    setup(ctx).await?;
+    create_testy_variant(ctx).await?;
 
     // Create a component with a Value prop
     let component_id = component::create(ctx, "testy", "testy").await?;
@@ -142,12 +134,7 @@ async fn subscribe_to_array_element(ctx: &mut DalContext) -> Result<()> {
     assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
 
     // Subscribe to a specific index and watch the value come through!
-    AttributeValue::subscribe(
-        ctx,
-        value_av_id,
-        make_subscription(ctx, component_id, "/domain/Values/1").await?,
-    )
-    .await?;
+    value::subscribe(ctx, value_av_id, [(component_id, "/domain/Values/1")]).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     assert_eq!(
         Some(json!("b")),
@@ -176,7 +163,7 @@ async fn subscribe_to_array_element(ctx: &mut DalContext) -> Result<()> {
 // AV subscribes to map element of another AV
 #[test]
 async fn subscribe_to_map_element(ctx: &mut DalContext) -> Result<()> {
-    setup(ctx).await?;
+    create_testy_variant(ctx).await?;
 
     // Create a component with a Value prop
     let component_id = component::create(ctx, "testy", "testy").await?;
@@ -193,12 +180,7 @@ async fn subscribe_to_map_element(ctx: &mut DalContext) -> Result<()> {
     assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
 
     // Subscribe to a specific index and watch the value come through!
-    AttributeValue::subscribe(
-        ctx,
-        value_av_id,
-        make_subscription(ctx, component_id, "/domain/ValueMap/B").await?,
-    )
-    .await?;
+    value::subscribe(ctx, value_av_id, [(component_id, "/domain/ValueMap/B")]).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     assert_eq!(
         Some(json!("b")),
@@ -230,7 +212,7 @@ async fn subscribe_to_map_element(ctx: &mut DalContext) -> Result<()> {
 // Two different subscriptions to different values on the same component (tests dirty logic)
 #[test]
 async fn subscribe_to_two_values(ctx: &mut DalContext) -> Result<()> {
-    setup(ctx).await?;
+    create_testy_variant(ctx).await?;
 
     // Create a component with a Value prop
     let component_id = component::create(ctx, "testy", "testy").await?;
@@ -256,18 +238,8 @@ async fn subscribe_to_two_values(ctx: &mut DalContext) -> Result<()> {
     AttributeValue::update(ctx, other_value2_av_id, Some(json!("value2"))).await?;
 
     // Subscribe to the values and see if it flows through!
-    AttributeValue::subscribe(
-        ctx,
-        value_av_id,
-        make_subscription(ctx, other_component_id, "/domain/Value").await?,
-    )
-    .await?;
-    AttributeValue::subscribe(
-        ctx,
-        value2_av_id,
-        make_subscription(ctx, other_component_id, "/domain/Value2").await?,
-    )
-    .await?;
+    value::subscribe(ctx, value_av_id, [(other_component_id, "/domain/Value")]).await?;
+    value::subscribe(ctx, value2_av_id, [(other_component_id, "/domain/Value2")]).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     assert_eq!(
         Some(json!("value")),
@@ -303,7 +275,7 @@ async fn subscribe_to_two_values(ctx: &mut DalContext) -> Result<()> {
 
 #[test]
 async fn delete_component_with_subscriptions_correction(ctx: &mut DalContext) -> Result<()> {
-    setup(ctx).await?;
+    create_testy_variant(ctx).await?;
 
     // Create a component with a Value prop
     let component_id = component::create(ctx, "testy", "testy").await?;
@@ -325,12 +297,7 @@ async fn delete_component_with_subscriptions_correction(ctx: &mut DalContext) ->
     AttributeValue::update(ctx, other_value_av_id, Some(json!("value"))).await?;
 
     // Subscribe to the values and see if it flows through!
-    AttributeValue::subscribe(
-        ctx,
-        value_av_id,
-        make_subscription(ctx, other_component_id, "/domain/Value").await?,
-    )
-    .await?;
+    value::subscribe(ctx, value_av_id, [(other_component_id, "/domain/Value")]).await?;
 
     let other_component_root_av_id =
         Component::root_attribute_value_id(ctx, other_component_id).await?;
@@ -339,12 +306,7 @@ async fn delete_component_with_subscriptions_correction(ctx: &mut DalContext) ->
 
     let cs_1 = ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
-    AttributeValue::subscribe(
-        ctx,
-        value2_av_id,
-        make_subscription(ctx, other_component_id, "/domain/Value2").await?,
-    )
-    .await?;
+    value::subscribe(ctx, value2_av_id, [(other_component_id, "/domain/Value2")]).await?;
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
@@ -384,7 +346,179 @@ async fn delete_component_with_subscriptions_correction(ctx: &mut DalContext) ->
     Ok(())
 }
 
-async fn setup(ctx: &DalContext) -> Result<()> {
+#[test]
+async fn array_subscription(ctx: &mut DalContext) -> Result<()> {
+    create_testy_variant(ctx).await?;
+
+    // Create a component with a Value prop
+    component::create(ctx, "testy", "subscriber").await?;
+    change_set::commit(ctx).await?;
+    assert!(!value::has_value(ctx, ("subscriber", "/domain/Values")).await?);
+
+    // Create another component and subscribe to its values
+    component::create(ctx, "testy", "input").await?;
+    value::set(ctx, ("input", "/domain/Values"), ["value1", "value2"]).await?;
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Values"),
+        [("input", "/domain/Values")],
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(
+        json!(["value1", "value2"]),
+        value::get(ctx, ("subscriber", "/domain/Values")).await?
+    );
+
+    // Update the values and watch them flow through!
+    value::set(ctx, ("input", "/domain/Values"), ["alt1", "alt2"]).await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(
+        json!(["alt1", "alt2"]),
+        value::get(ctx, ("subscriber", "/domain/Values")).await?
+    );
+
+    Ok(())
+}
+
+#[test]
+async fn array_single_subscription(ctx: &mut DalContext) -> Result<()> {
+    create_testy_variant(ctx).await?;
+
+    // Create a component with a Value prop
+    component::create(ctx, "testy", "subscriber").await?;
+    change_set::commit(ctx).await?;
+    assert!(!value::has_value(ctx, ("subscriber", "/domain/Values")).await?);
+
+    // Create another component and subscribe to one of its values
+    component::create(ctx, "testy", "input").await?;
+    value::set(ctx, ("input", "/domain/Value"), "value1").await?;
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Values"),
+        [("input", "/domain/Value")],
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+    // Make sure it was upleveled to an array
+    assert_eq!(
+        json!(["value1"]),
+        value::get(ctx, ("subscriber", "/domain/Values")).await?
+    );
+
+    // Update the values and watch them flow through!
+    value::set(ctx, ("input", "/domain/Value"), "alt1").await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(
+        json!(["alt1"]),
+        value::get(ctx, ("subscriber", "/domain/Values")).await?
+    );
+
+    Ok(())
+}
+
+#[test]
+async fn array_multiple_subscriptions(ctx: &mut DalContext) -> Result<()> {
+    create_testy_variant(ctx).await?;
+
+    // Create a component with a Value prop
+    component::create(ctx, "testy", "subscriber").await?;
+    change_set::commit(ctx).await?;
+    assert!(!value::has_value(ctx, ("subscriber", "/domain/Values")).await?);
+
+    // Create another component and subscribe to its values
+    component::create(ctx, "testy", "input").await?;
+    value::set(ctx, ("input", "/domain/Value"), "value1").await?;
+    value::set(ctx, ("input", "/domain/Value2"), "value2").await?;
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Values"),
+        [("input", "/domain/Value"), ("input", "/domain/Value2")],
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+    // Make sure they were upleveled to an array
+    assert_eq!(
+        json!(["value1", "value2"]),
+        value::get(ctx, ("subscriber", "/domain/Values")).await?
+    );
+
+    // Update the values and watch them flow through!
+    value::set(ctx, ("input", "/domain/Value"), "alt1").await?;
+    value::set(ctx, ("input", "/domain/Value2"), "alt2").await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(
+        json!(["alt1", "alt2"]),
+        value::get(ctx, ("subscriber", "/domain/Values")).await?
+    );
+
+    Ok(())
+}
+
+#[test]
+async fn array_zero_subscriptions(ctx: &mut DalContext) -> Result<()> {
+    create_testy_variant(ctx).await?;
+
+    // Create a component with a Value prop
+    component::create(ctx, "testy", "subscriber").await?;
+    change_set::commit(ctx).await?;
+    assert!(!value::has_value(ctx, ("subscriber", "/domain/Values")).await?);
+
+    // Subscribe to nothing and make sure the value is an empty array
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Values"),
+        Vec::<ValueSubscription>::new(),
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+    // Make sure it was upleveled to an array
+    assert_eq!(
+        json!([]),
+        value::get(ctx, ("subscriber", "/domain/Values")).await?
+    );
+
+    Ok(())
+}
+
+#[test]
+async fn subscription_count_errors(ctx: &mut DalContext) -> Result<()> {
+    create_testy_variant(ctx).await?;
+
+    // Create a component with a Value prop
+    component::create(ctx, "testy", "subscriber").await?;
+    change_set::commit(ctx).await?;
+    assert!(!value::has_value(ctx, ("subscriber", "/domain/Values")).await?);
+
+    // Create another component and subscribe to its values
+    component::create(ctx, "testy", "input").await?;
+
+    // Test that you cannot subscribe a single valued prop to multiple subscriptions
+    assert!(
+        value::subscribe(
+            ctx,
+            ("subscriber", "/domain/Value"),
+            [("input", "/domain/Value"), ("input", "/domain/Value2")],
+        )
+        .await
+        .is_err()
+    );
+
+    // Test that you cannot subscribe a single valued prop to zero subscriptions
+    assert!(
+        value::subscribe(
+            ctx,
+            ("subscriber", "/domain/Value"),
+            Vec::<ValueSubscription>::new(),
+        )
+        .await
+        .is_err()
+    );
+
+    Ok(())
+}
+
+async fn create_testy_variant(ctx: &DalContext) -> Result<()> {
     // Make a variant with a Value prop
     variant::create(
         ctx,

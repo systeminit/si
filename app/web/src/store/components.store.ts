@@ -295,10 +295,13 @@ type EventBusEvents = {
 //         "/domain/DomainConfig/blah.com/TTL": 3600
 //       }
 //
-// - UNSET a value using `{ "$source": "value" }`. The value will revert to using its default value.
+// - UNSET a value using `{ "$source": null }`. The value will revert to using its default value.
+//   (NOTE: `{ "$source": {} }` unsets the value as well, allowing JS callers to construct the
+//   API call using `{ "$source": { value: myValueVariable } }``. If myValue is undefined, it
+//   will unset the value, but if it is null, it will set the value to null.
 //
 //       {
-//         "/domain/Timeout": { "$source": "value" },
+//         "/domain/Timeout": { "$source": null },
 //         "/domain/DomainConfig/blah.com/TTL": { "$source": "value" }
 //       }
 //
@@ -309,9 +312,9 @@ type EventBusEvents = {
 //   reverse order.*
 //
 //       {
-//         "/domain/Tags/Environment": { "$source": "value" },
-//         "/domain/IpAddresses/2": { "$source": "value" },
-//         "/domain/IpAddresses/1": { "$source": "value" }
+//         "/domain/Tags/Environment": { "$source": null },
+//         "/domain/IpAddresses/2": { "$source": null },
+//         "/domain/IpAddresses/1": { "$source": null }
 //       }
 //
 // - SUBSCRIBE to another attribute's value: this will cause the value to always equal another
@@ -320,15 +323,26 @@ type EventBusEvents = {
 //
 //       {
 //         "/domain/SubnetId": {
-//           "$source": "subscription",
-//           "component": "ComponentNameOrId",
-//           "path": "/resource/SubnetId"
+//           "$source": { "component": "ComponentNameOrId", "path": "/resource/SubnetId" }
 //         }
 //       }
 //
-// - ESCAPE HATCH for setting a value: setting an attribute to `{ "$source": "value", "value": <value> }`
+//   You may also APPEND a subscription by adding `keepExistingSubscriptions: true` to the
+//   subscription:
+//
+//       {
+//         "/domain/SubnetId": {
+//           "$source": { "component": "ComponentNameOrId", "path": "/resource/SubnetId", keepExistingSubscriptions: true }
+//         }
+//       }
+//
+//   If you do this, the subscription will be added to the list if it's not already there, and
+//   any other subscriptions will also be kept.
+//
+// - ESCAPE HATCH for setting a value: setting an attribute to `{ "$source": { "value": <value> } }`
 //   has the same behavior as all the above cases. The reason this exists is, if you happen to
-//   have an object whose keys are "$source" and "value", the existing interface would treat that
+//   have an object with a "$source" key, the existing interface would treat that as an error.
+//   This allows you to set that value anyway.
 //
 //   This is a safer way to "escape" values if you are writing code that sets values generically
 //   without knowing their types and can avoid misinterpreted instructions or possibly even
@@ -336,8 +350,9 @@ type EventBusEvents = {
 //
 //       {
 //         "/domain/Tags": {
-//           "$source": "value",
-//           "value": { "Environment": "Prod", "$source": "ThisTagIsActuallyNamed_$source" }
+//           "$source": {
+//             "value": { "$source": "ThisTagIsActuallyNamed_$source" }
+//           }
 //         }
 //       }
 //
@@ -346,10 +361,13 @@ export type UpdateComponentAttributesArgs = Record<
   AttributeSource
 >;
 
-// Things you can set an attribute to
 // Set attribute to a subscription (another component's value feeds it)
 type AttributeSourceSetSubscription = {
-  $source: { component: ComponentId | ComponentName; path: AttributePath };
+  $source: {
+    component: ComponentId | ComponentName;
+    path: AttributePath;
+    keepExistingSubscriptions?: boolean;
+  };
 };
 const isAttributeSourceSetSubscription = (
   s: AttributeSource,

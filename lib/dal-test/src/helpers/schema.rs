@@ -1,5 +1,3 @@
-#![allow(async_fn_in_trait)]
-
 use dal::{
     DalContext,
     Schema,
@@ -17,6 +15,7 @@ pub mod variant;
 ///
 /// Things that you can pass as schema ids
 ///
+#[allow(async_fn_in_trait)]
 pub trait SchemaKey {
     ///
     /// Turn this into a real SchemaId

@@ -710,7 +710,7 @@ impl AttributePrototype {
         Ok(sources)
     }
 
-    pub async fn list_arguments_for_id(
+    pub async fn list_arguments(
         ctx: &DalContext,
         ap_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<Vec<AttributePrototypeArgumentId>> {
@@ -744,7 +744,7 @@ impl AttributePrototype {
             }
             return Err(AttributePrototypeError::NonIdentityFunc(func.id));
         }
-        let args = AttributePrototype::list_arguments_for_id(ctx, ap_id).await?;
+        let args = AttributePrototype::list_arguments(ctx, ap_id).await?;
         let arg_id = args
             .first()
             .ok_or(AttributePrototypeError::NoArgumentsToIdentityFunction(

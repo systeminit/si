@@ -2,15 +2,10 @@
 
 use color_eyre::eyre::eyre;
 use dal::{
-    AttributeValue,
     Component,
     ComponentId,
     DalContext,
     FuncId,
-    attribute::{
-        path::AttributePath,
-        value::subscription::ValueSubscription,
-    },
     diagram::{
         geometry::Geometry,
         view::View,
@@ -25,7 +20,42 @@ use si_id::ViewId;
 use veritech_client::ManagementFuncStatus;
 
 use super::schema::variant::SchemaVariantKey;
-use crate::Result;
+use crate::{
+    Result,
+    expected::ExpectComponent,
+};
+
+///
+/// Things that you can pass to reference components (name or id)
+///
+#[allow(async_fn_in_trait)]
+pub trait ComponentKey {
+    ///
+    /// Turn this into a real ComponentId
+    ///
+    async fn lookup_component(self, ctx: &DalContext) -> Result<ComponentId>;
+}
+impl ComponentKey for ComponentId {
+    async fn lookup_component(self, _: &DalContext) -> Result<ComponentId> {
+        Ok(self)
+    }
+}
+// "ComponentName" finds the component with that name
+impl ComponentKey for &str {
+    async fn lookup_component(self, ctx: &DalContext) -> Result<ComponentId> {
+        Ok(Component::get_by_name(ctx, self).await?)
+    }
+}
+impl ComponentKey for ExpectComponent {
+    async fn lookup_component(self, _: &DalContext) -> Result<ComponentId> {
+        Ok(self.id())
+    }
+}
+impl ComponentKey for Component {
+    async fn lookup_component(self, _: &DalContext) -> Result<ComponentId> {
+        Ok(self.id())
+    }
+}
 
 /// Create a component with the given name and schema variant
 pub async fn create(
@@ -41,31 +71,6 @@ pub async fn create(
             .await?
             .id(),
     )
-}
-
-/// Subscribe from one component's attribute to another component's attribute
-pub async fn subscribe(
-    ctx: &mut DalContext,
-    subscriber: ComponentId,
-    path: impl Into<String>,
-    subscribed_to: ComponentId,
-    subscribed_to_path: &str,
-) -> Result<()> {
-    let subscriber_root_id = Component::root_attribute_value_id(ctx, subscriber).await?;
-    let subscriber_av_id = AttributePath::from_json_pointer(path)
-        .resolve(ctx, subscriber_root_id)
-        .await?
-        .expect("attribute to exist");
-    AttributeValue::subscribe(
-        ctx,
-        subscriber_av_id,
-        ValueSubscription {
-            attribute_value_id: Component::root_attribute_value_id(ctx, subscribed_to).await?,
-            path: AttributePath::from_json_pointer(subscribed_to_path),
-        },
-    )
-    .await?;
-    Ok(())
 }
 
 /// Execute a the management function and apply the result to the component
