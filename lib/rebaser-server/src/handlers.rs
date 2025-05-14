@@ -43,7 +43,7 @@ use crate::{
     },
     subject::{
         SubjectParseError,
-        parse_subject,
+        parse_task_subject,
     },
 };
 
@@ -114,7 +114,7 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
     let subject_prefix = nats.metadata().subject_prefix();
 
     let subject_str = subject.as_str();
-    let (workspace, change_set) = parse_subject(subject_prefix, subject_str)?;
+    let (workspace, change_set) = parse_task_subject(subject_prefix, subject_str)?;
 
     let requests_stream_filter_subject = nats::subject::enqueue_updates_for_change_set(
         subject_prefix,

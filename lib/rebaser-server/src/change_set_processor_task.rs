@@ -65,7 +65,7 @@ use self::app_state::AppState;
 use crate::{
     Features,
     ServerMetadata,
-    subject::parse_subject,
+    subject::parse_request_subject,
 };
 
 #[remain::sorted]
@@ -289,19 +289,19 @@ impl post_process::OnFailure for MoveMessageOnFailure {
             // Derive an errored subject where we will publish a copy of the message
             let errored_subject = {
                 let subject_prefix = context.metadata().subject_prefix();
-                let msg_subject_str = msg.subject.as_str();
 
-                let (workspace, change_set) = match parse_subject(subject_prefix, msg_subject_str) {
-                    Ok(parsed) => parsed,
-                    Err(err) => {
-                        error!(
-                            si.error.message = ?err,
-                            subject = head.subject.as_str(),
-                            "failed to parsed errored message subject",
-                        );
-                        return;
-                    }
-                };
+                let (workspace, change_set) =
+                    match parse_request_subject(subject_prefix, head.subject.as_str()) {
+                        Ok(parsed) => parsed,
+                        Err(err) => {
+                            error!(
+                                si.error.message = ?err,
+                                subject = head.subject.as_str(),
+                                "failed to parsed errored message subject",
+                            );
+                            return;
+                        }
+                    };
 
                 nats::subject::errored_updates_for_change_set(
                     subject_prefix,

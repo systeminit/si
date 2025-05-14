@@ -92,7 +92,7 @@ impl SerialDvuTask {
                         si.change_set.id = %self.change_set_id,
                         "notified, preparing dvu run",
                     );
-                    self.run_dvu().await?;
+                    self.run_dvu().await;
                 }
                 // Signal to shutdown from a quiet period has fired
                 _ = self.quiesced_notify.notified() => {
@@ -147,9 +147,21 @@ impl SerialDvuTask {
             si.workspace.id = %self.workspace_id,
         ),
     )]
-    async fn run_dvu(&self) -> Result<()> {
+    async fn run_dvu(&self) {
         metric!(counter.serial_dvu_task.dvu_running = 1);
 
+        if let Err(err) = self.try_run_dvu().await {
+            error!(
+                si.error.message = ?err,
+                "error encountered when waiting on dvu job from pinga; continuing",
+            );
+        }
+
+        metric!(counter.serial_dvu_task.dvu_running = -1);
+    }
+
+    #[inline]
+    async fn try_run_dvu(&self) -> Result<()> {
         let builder = self.ctx_builder.clone();
         let ctx = builder
             .build_for_change_set_as_system(self.workspace_id, self.change_set_id, None)
@@ -161,8 +173,21 @@ impl SerialDvuTask {
         }
 
         ctx.enqueue_dependent_values_update().await?;
-        ctx.blocking_commit_no_rebase().await?;
-        metric!(counter.serial_dvu_task.dvu_running = -1);
+
+        match ctx.blocking_commit_no_rebase().await {
+            Ok(_) => {}
+            Err(dal::TransactionsError::JobQueueProcessor(
+                dal::job::processor::JobQueueProcessorError::BlockingJob(
+                    dal::job::producer::BlockingJobError::JobExecution(job_execution_error_report),
+                ),
+            )) => {
+                warn!(
+                    job_execution_error_report,
+                    "pinga job(s) reported an error during execution; continuing",
+                );
+            }
+            Err(other_err) => return Err(other_err.into()),
+        };
 
         Ok(())
     }
