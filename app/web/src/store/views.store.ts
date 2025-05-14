@@ -26,12 +26,10 @@ import {
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
 import {
-  ComponentEdge,
   ComponentId,
   Edge,
   EdgeId,
   RawComponent,
-  RawEdge,
   ViewNodeGeometry,
 } from "@/api/sdf/dal/component";
 import {
@@ -51,7 +49,11 @@ import {
   diagramUlid as clientUlid,
   useChangeSetsStore,
 } from "./change_sets.store";
-import { processRawComponent, useComponentsStore } from "./components.store";
+import {
+  ComponentsAndEdges,
+  processRawComponent,
+  useComponentsStore,
+} from "./components.store";
 import { useRealtimeStore } from "./realtime/realtime.store";
 import { useWorkspacesStore } from "./workspaces.store";
 import { useRouterStore } from "./router.store";
@@ -401,15 +403,24 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
           const idx = state.viewList.findIndex((v) => v.isDefault);
           return idx !== -1 ? state.viewList[idx]?.id : state.viewList[0]?.id;
         },
-        edges: (state) =>
-          Object.values(componentsStore.diagramEdgesById).filter((e) => {
-            const to = e.toNodeKey.substring(2);
-            const from = e.fromNodeKey.substring(2);
-            const componentIds = Object.keys(state.components).concat(
-              Object.keys(state.groups),
-            );
-            return componentIds.includes(to) && componentIds.includes(from);
-          }),
+        edges: (state) => {
+          const subscriptions = featureFlagsStore.SIMPLE_SOCKET_UI
+            ? _.values(componentsStore.diagramSubscriptionEdgesById)
+            : [];
+
+          const edges = Object.values(componentsStore.diagramEdgesById)
+            .concat(subscriptions)
+            .filter((e) => {
+              const to = e.toNodeKey.substring(2);
+              const from = e.fromNodeKey.substring(2);
+              const componentIds = Object.keys(state.components).concat(
+                Object.keys(state.groups),
+              );
+              return componentIds.includes(to) && componentIds.includes(from);
+            });
+
+          return edges;
+        },
         selectedView: (state) => state.viewsById[state.selectedViewId || ""],
         outlinerView: (state) => state.viewsById[state.outlinerViewId || ""],
         // NOTE: this is computed for now, but we could easily make this state
@@ -869,12 +880,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
 
           return new ApiRequest<{
             view: ViewDescription;
-            diagram: {
-              components: RawComponent[];
-              edges: RawEdge[];
-              inferredEdges: RawEdge[];
-              managementEdges: RawEdge[];
-              attributeSubscriptionEdges: ComponentEdge[];
+            diagram: ComponentsAndEdges & {
               views: ViewNodeGeometry[];
             };
           }>({

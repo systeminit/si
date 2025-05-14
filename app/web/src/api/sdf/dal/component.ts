@@ -3,7 +3,11 @@ import { StandardModel } from "@/api/sdf/dal/standard_model";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { ActorView } from "@/api/sdf/dal/history_actor";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
-import { ComponentType } from "@/api/sdf/dal/schema";
+import {
+  ComponentType,
+  InputSocketId,
+  OutputSocketId,
+} from "@/api/sdf/dal/schema";
 import { ViewDescription, ViewId } from "@/api/sdf/dal/views";
 import {
   DiagramSocketDef,
@@ -71,29 +75,54 @@ export interface RawComponent {
 export type EdgeId = string;
 export type SocketId = string;
 
-// This encompasses all edges, from socket connections to management edges to subscriptions
-// (which don't have sockets)
-export interface ComponentEdge {
+export interface RawComponentEdge {
   fromComponentId: ComponentId;
+
   toComponentId: ComponentId;
-  toDelete: boolean;
+
+  toDelete?: boolean;
   /** change status of edge in relation to head */
   changeStatus?: ChangeStatus;
-}
-
-export interface RawEdge extends ComponentEdge {
-  fromSocketId: SocketId;
-  toSocketId: SocketId;
-  // TODO this does not exist for management edges or subscriptions
-  createdInfo: ActorAndTimestamp;
+  createdInfo?: ActorAndTimestamp;
   // updatedInfo?: ActorAndTimestamp; // currently we dont ever update an edge...
   deletedInfo?: ActorAndTimestamp;
 }
+export interface RawSocketEdge extends RawComponentEdge {
+  fromSocketId: OutputSocketId;
+  toSocketId: InputSocketId;
+}
+export interface RawSubscriptionEdge extends RawComponentEdge {
+  fromAttributePath: AttributePath;
+  toAttributePath: AttributePath;
+}
+export type RawEdge = RawSocketEdge | RawSubscriptionEdge;
 
-export interface Edge extends RawEdge {
+export function isRawSocketEdge(edge: RawEdge): edge is RawSocketEdge {
+  return "fromSocketId" in edge;
+}
+export function isRawSubscriptionEdge(
+  edge: RawEdge,
+): edge is RawSubscriptionEdge {
+  return "fromAttributePath" in edge;
+}
+
+interface ExtraEdgeProperties {
   id: EdgeId;
   isInferred: boolean;
   isManagement?: boolean;
+}
+export interface SocketEdge extends RawSocketEdge, ExtraEdgeProperties {}
+export interface SubscriptionEdge
+  extends RawSubscriptionEdge,
+    ExtraEdgeProperties {}
+export type Edge = SocketEdge | SubscriptionEdge;
+export function isSocketEdge(edge: Edge | undefined): edge is SocketEdge {
+  return edge ? "fromSocketId" in edge : false;
+}
+export function isSubscriptionEdge(
+  edge: Edge | undefined,
+): edge is SubscriptionEdge {
+  return edge ? "fromSocketId" in edge : false;
 }
 
 export interface PotentialConnection {

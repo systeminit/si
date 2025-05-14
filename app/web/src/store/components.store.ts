@@ -18,7 +18,9 @@ import {
   DiagramSocketData,
   DiagramSocketDef,
   DiagramSocketDirection,
+  DiagramSocketEdgeData,
   DiagramStatusIcon,
+  isDiagramSocketEdgeDef,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
 import {
@@ -30,14 +32,19 @@ import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import {
   AttributePath,
   ComponentDiff,
-  ComponentEdge,
   ComponentId,
   Edge,
   EdgeId,
+  isRawSocketEdge,
+  isSocketEdge,
+  isSubscriptionEdge,
   PotentialConnection,
   RawComponent,
   RawEdge,
+  RawSocketEdge,
+  RawSubscriptionEdge,
   SocketId,
+  SubscriptionEdge,
 } from "@/api/sdf/dal/component";
 import { Resource } from "@/api/sdf/dal/resource";
 import { CodeView } from "@/api/sdf/dal/code_view";
@@ -214,6 +221,14 @@ export type ConnectionMenuData = {
   B: Partial<ConnectionMenuStateEntry>;
 };
 
+export type ComponentsAndEdges = {
+  components: RawComponent[];
+  edges: RawSocketEdge[];
+  inferredEdges: RawSocketEdge[];
+  managementEdges: RawSocketEdge[];
+  attributeSubscriptionEdges: RawSubscriptionEdge[];
+};
+
 type EventBusEvents = {
   deleteSelection: void;
   restoreSelection: void;
@@ -332,12 +347,36 @@ export type UpdateComponentAttributesArgs = Record<
 >;
 
 // Things you can set an attribute to
-export type AttributeSource =
-  // Set attribute to a subscription (another component's value feeds it)
-  | { $source: { component: ComponentId | ComponentName; path: AttributePath } }
-  // Unset the value with a null value (or empty object/object with undefined for value)
+// Set attribute to a subscription (another component's value feeds it)
+type AttributeSourceSetSubscription = {
+  $source: { component: ComponentId | ComponentName; path: AttributePath };
+};
+const isAttributeSourceSetSubscription = (
+  s: AttributeSource,
+): s is AttributeSourceSetSubscription => {
+  const setPayload = s as AttributeSourceSetSubscription;
+  if (!setPayload.$source) return false;
+
+  return "component" in setPayload.$source && "path" in setPayload.$source;
+};
+
+// Unset the value with a null value (or empty object/object with undefined for value)
+type AttributeSourceUnset =
   | { $source: null }
-  | { $source: { value?: undefined } }
+  | { $source: { value?: undefined } };
+
+const isAttributeSourceUnset = (
+  s: AttributeSource,
+): s is AttributeSourceUnset => {
+  const unsetPayload = s as AttributeSourceUnset;
+  return (
+    unsetPayload.$source === null || unsetPayload.$source.value === undefined
+  );
+};
+
+export type AttributeSource =
+  | AttributeSourceSetSubscription
+  | AttributeSourceUnset
   // Set attribute to a constant JS value (safest way to set to a static value that might contain $source keys)
   | { $source: { value: unknown } }
   // Set attribute to a constant JS value (can be any JSON--object, array, string, number, boolean, null)
@@ -393,33 +432,30 @@ export const getAssetIcon = (name: string) => {
   return (icon || "logo-si") as IconNames; // fallback to SI logo
 };
 
-export const generateEdgeId = (
-  fromComponentId: string,
-  toComponentId: string,
-  fromSocketId: string,
-  toSocketId: string,
-) => `${toComponentId}_${toSocketId}_${fromSocketId}_${fromComponentId}`;
+export function generateEdgeId(edge: RawEdge): EdgeId {
+  if (isRawSocketEdge(edge)) {
+    return `${edge.toComponentId}_${edge.toSocketId}_${edge.fromSocketId}_${edge.fromComponentId}`;
+  } else {
+    return `${edge.toComponentId}_${edge.toAttributePath}_${edge.fromAttributePath}_${edge.fromComponentId}`;
+  }
+}
 
-const edgeFromRawEdge =
-  ({
-    isInferred,
-    isManagement,
-  }: {
-    isInferred?: boolean;
-    isManagement?: boolean;
-  }) =>
-  (e: RawEdge): Edge => {
-    const edge = structuredClone(toRaw(e)) as Edge;
-    edge.id = generateEdgeId(
-      edge.fromComponentId,
-      edge.toComponentId,
-      edge.fromSocketId,
-      edge.toSocketId,
-    );
-    edge.isInferred = isInferred ?? false;
-    edge.isManagement = isManagement ?? false;
-    return edge;
+function edgeFromRawEdge({
+  isInferred,
+  isManagement,
+}: {
+  isInferred?: boolean;
+  isManagement?: boolean;
+}) {
+  return (edge: RawEdge): Edge => {
+    return {
+      ...structuredClone(toRaw(edge)),
+      id: generateEdgeId(edge),
+      isInferred: isInferred ?? false,
+      isManagement: isManagement ?? false,
+    };
   };
+}
 
 export const loadCollapsedData = (
   prefix: string,
@@ -473,7 +509,7 @@ export function getPossibleAndExistingPeerSockets(
   targetSocket: DiagramSocketDef,
   targetComponentId: ComponentId,
   allComponents: (DiagramNodeData | DiagramGroupData)[],
-  allEdges: DiagramEdgeData[],
+  allEdges: DiagramSocketEdgeData[],
   peerCache: Record<string, PossibleAndExistingPeersLists>,
 ): PossibleAndExistingPeersLists {
   const cacheKey = `${targetComponentId}-${targetSocket.id}`;
@@ -656,29 +692,13 @@ export const processRawComponent = (
   }
 };
 
-const processRawEdge = (
-  edge: Edge,
-  allComponentsById: Record<ComponentId, DiagramGroupData | DiagramNodeData>,
-): DiagramEdgeData | null => {
-  const featureFlagsStore = useFeatureFlagsStore();
-  const toComponent = allComponentsById[edge.toComponentId];
-  if (!allComponentsById[edge.fromComponentId]) return null;
-  if (!toComponent) return null;
-  else if (
-    !featureFlagsStore.SIMPLE_SOCKET_UI &&
-    !toComponent.def.sockets?.find((s) => s.id === edge.toSocketId)
-  ) {
-    return null;
-  }
-  return new DiagramEdgeData(edge);
-};
-
 export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const workspacesStore = useWorkspacesStore();
   const workspaceId = workspacesStore.selectedWorkspacePk;
   const changeSetsStore = useChangeSetsStore();
   const routerStore = useRouterStore();
   const realtimeStore = useRealtimeStore();
+  const featureFlagsStore = useFeatureFlagsStore();
 
   // this needs some work... but we'll probably want a way to force using HEAD
   // so we can load HEAD data in some scenarios while also loading a change set?
@@ -694,6 +714,27 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
   const visibilityParams = {
     visibility_change_set_pk: changeSetId,
     workspaceId,
+  };
+
+  const processRawEdge = (
+    edge: DiagramEdgeDef,
+    allComponentsById: Record<ComponentId, DiagramGroupData | DiagramNodeData>,
+  ): DiagramEdgeData | null => {
+    const toComponent = allComponentsById[edge.toComponentId];
+    if (!allComponentsById[edge.fromComponentId]) return null;
+    if (!toComponent) return null;
+    if (!featureFlagsStore.SIMPLE_SOCKET_UI) {
+      if (!isDiagramSocketEdgeDef(edge)) return null;
+      if (!toComponent.def.sockets?.find((s) => s.id === edge.toSocketId)) {
+        return null;
+      }
+    }
+    // Create the socket-specific subclass of DiagramSocketEdgeData
+    if (isDiagramSocketEdgeDef(edge)) {
+      return new DiagramSocketEdgeData(edge);
+    } else {
+      return new DiagramEdgeData(edge);
+    }
   };
 
   return addStoreHooks(
@@ -724,6 +765,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           >,
 
           rawEdgesById: {} as Record<EdgeId, Edge>,
+          subscriptionEdgesById: {} as Record<EdgeId, SubscriptionEdge>,
           diagramEdgesById: {} as Record<EdgeId, DiagramEdgeData>,
           copyingFrom: null as { x: number; y: number } | null,
 
@@ -743,6 +785,16 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           debugDataByComponentId: {} as Record<ComponentId, ComponentDebugView>,
         }),
         getters: {
+          diagramSubscriptionEdgesById(): Record<EdgeId, DiagramEdgeData> {
+            const edges = _.values(this.subscriptionEdgesById);
+
+            const rawEdges = _.compact(
+              edges.map((edge) => processRawEdge(edge, this.allComponentsById)),
+            ).map((edge) => [edge.def.id, edge]);
+
+            return Object.fromEntries(rawEdges);
+          },
+
           // transforming the diagram-y data back into more generic looking data
           // TODO: ideally we just fetch it like this...
           componentsByParentId(): Record<
@@ -825,7 +877,9 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
 
           possibleAndExistingPeerSocketsFn: (state) => {
             const allComponents = _.values(state.allComponentsById);
-            const allEdges = _.values(state.diagramEdgesById);
+            const allEdges = _.values(state.diagramEdgesById).filter(
+              (e) => e instanceof DiagramSocketEdgeData,
+            ) as DiagramSocketEdgeData[]; // TODO upgrade typescript in web app and remove this cast
             const peerCache = {};
             return (
               targetSocket: DiagramSocketDef,
@@ -1003,13 +1057,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           async FETCH_ALL_COMPONENTS() {
-            return new ApiRequest<{
-              components: RawComponent[];
-              edges: RawEdge[];
-              inferredEdges: RawEdge[];
-              managementEdges: RawEdge[];
-              attributeSubscriptionEdges: ComponentEdge[];
-            }>({
+            return new ApiRequest<ComponentsAndEdges>({
               method: "get",
               url: "diagram/get_all_components_and_edges",
               params: {
@@ -1024,12 +1072,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
           },
 
           SET_COMPONENTS_FROM_VIEW(
-            response: {
-              components: RawComponent[];
-              edges: RawEdge[];
-              inferredEdges: RawEdge[];
-              managementEdges: RawEdge[];
-            },
+            response: ComponentsAndEdges,
             options: { representsAllComponents: boolean } = {
               representsAllComponents: false,
             },
@@ -1083,7 +1126,20 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                   )
                 : [];
 
-            const edgesToSet = [...edges, ...inferred, ...management];
+            const subscription =
+              featureFlagsStore.SIMPLE_SOCKET_UI &&
+              response.attributeSubscriptionEdges?.length > 0
+                ? response.attributeSubscriptionEdges.map(
+                    edgeFromRawEdge({ isInferred: false, isManagement: false }),
+                  )
+                : [];
+
+            const edgesToSet = [
+              ...edges,
+              ...inferred,
+              ...management,
+              ...subscription,
+            ];
             if (options.representsAllComponents) {
               const existingIds = Object.keys(this.rawEdgesById);
               const allIds = Object.keys(edgesToSet);
@@ -1093,6 +1149,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               idsToDelete.forEach((id) => {
                 delete this.rawEdgesById[id];
               });
+              // TODO do this for subscriptions
             }
             edgesToSet.forEach((edge) => {
               this.rawEdgesById[edge.id] = edge;
@@ -1205,6 +1262,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ).filter(
                   (e) =>
                     e.isInferred &&
+                    isSocketEdge(e) &&
                     e.toSocketId === to.socketId &&
                     e.toComponentId === to.componentId,
                 );
@@ -1269,6 +1327,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ).filter(
                   (e) =>
                     e.isInferred &&
+                    isSocketEdge(e) &&
                     e.toSocketId === to.socketId &&
                     e.toComponentId === to.componentId,
                 );
@@ -1299,6 +1358,72 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 ...payload,
               },
               passRequestUlidInHeadersOnly: true,
+              optimistic: () => {
+                for (const toPath in payload) {
+                  const update = payload[toPath];
+                  if (!update) continue;
+
+                  if (isAttributeSourceSetSubscription(update)) {
+                    const newEdge = edgeFromRawEdge({})({
+                      fromComponentId: update.$source.component,
+                      fromAttributePath: update.$source.path,
+                      toComponentId: componentId,
+                      toAttributePath: toPath,
+                      toDelete: false,
+                      changeStatus: "added",
+                    });
+
+                    this.rawEdgesById[newEdge.id] = newEdge;
+                    this.processRawEdge(newEdge.id);
+
+                    const edgesBeingReplaced = Object.values(
+                      this.rawEdgesById,
+                    ).filter(
+                      (e) =>
+                        isSubscriptionEdge(e) &&
+                        e.toAttributePath === toPath &&
+                        e.toComponentId === componentId,
+                    );
+
+                    // TODO Bring back the edges that were deleted by the optimistic call on the callback
+                    // Or don't, this won't live much anyway
+                    for (const edge of edgesBeingReplaced) {
+                      delete this.rawEdgesById[edge.id];
+                      delete this.diagramEdgesById[edge.id];
+                    }
+                    return () => {
+                      delete this.rawEdgesById[newEdge.id];
+                      for (const edge of edgesBeingReplaced) {
+                        delete this.rawEdgesById[edge.id];
+                        delete this.diagramEdgesById[edge.id];
+                      }
+                    };
+                  }
+
+                  if (isAttributeSourceUnset(update)) {
+                    const edgesBeingDeleted = Object.values(
+                      this.rawEdgesById,
+                    ).filter(
+                      (e) =>
+                        isSubscriptionEdge(e) &&
+                        e.toAttributePath === toPath &&
+                        e.toComponentId === componentId,
+                    );
+
+                    edgesBeingDeleted.forEach((edge) => {
+                      delete this.rawEdgesById[edge.id];
+                      delete this.diagramEdgesById[edge.id];
+                    });
+
+                    return () => {
+                      edgesBeingDeleted.forEach((edge) => {
+                        this.rawEdgesById[edge.id] = edge;
+                        this.processRawEdge(edge.id);
+                      });
+                    };
+                  }
+                }
+              },
             });
           },
 
@@ -1688,7 +1813,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                 callback: (edge, metadata) => {
                   if (metadata.change_set_id !== changeSetId) return;
 
-                  let removedEdge: RawEdge;
+                  let removedEdge: RawSocketEdge;
                   if (edge.type === "attributeValueEdge") {
                     removedEdge = {
                       toDelete: true,

@@ -33,6 +33,7 @@ import { computed, onBeforeUnmount, onMounted, ref, toRaw } from "vue";
 import { useComponentsStore } from "@/store/components.store";
 import { nonNullable } from "@/utils/typescriptLinter";
 import { useViewsStore } from "@/store/views.store";
+import { isSocketEdge } from "@/api/sdf/dal/component";
 import {
   DiagramGroupData,
   DiagramNodeData,
@@ -87,16 +88,25 @@ async function onConfirmRestore() {
       ...toRaw(viewStore.selectedComponentIds),
     );
   } else if (viewStore.selectedEdge) {
-    await componentsStore.CREATE_COMPONENT_CONNECTION(
-      {
-        componentId: viewStore.selectedEdge.fromComponentId,
-        socketId: viewStore.selectedEdge.fromSocketId,
-      },
-      {
-        componentId: viewStore.selectedEdge.toComponentId,
-        socketId: viewStore.selectedEdge.toSocketId,
-      },
-    );
+    if (isSocketEdge(viewStore.selectedEdge)) {
+      await componentsStore.CREATE_COMPONENT_CONNECTION(
+        {
+          componentId: viewStore.selectedEdge.fromComponentId,
+          socketId: viewStore.selectedEdge.fromSocketId,
+        },
+        {
+          componentId: viewStore.selectedEdge.toComponentId,
+          socketId: viewStore.selectedEdge.toSocketId,
+        },
+      );
+    } else {
+      await componentsStore.UPDATE_COMPONENT_ATTRIBUTES(
+        viewStore.selectedEdge.toComponentId,
+        {
+          [viewStore.selectedEdge.toAttributePath]: { $source: null },
+        },
+      );
+    }
   }
   viewStore.setSelectedComponentId(null);
   close();

@@ -186,6 +186,7 @@ import {
   DiagramGroupData,
   DiagramNodeData,
   DiagramSocketData,
+  DiagramSocketEdgeData,
 } from "@/components/ModelingDiagram/diagram_types";
 import TextPill from "@/components/TextPill.vue";
 import { useViewsStore } from "@/store/views.store";
@@ -405,7 +406,9 @@ const updateMenu = async () => {
 
           // this is to check if the socket is full already
           const incomingConnections = edges.filter(
-            (e) => e.toSocketKey === s.uniqueKey,
+            (e) =>
+              e instanceof DiagramSocketEdgeData &&
+              e.toSocketKey === s.uniqueKey,
           );
 
           return incomingConnections.length < s.def.maxConnections;

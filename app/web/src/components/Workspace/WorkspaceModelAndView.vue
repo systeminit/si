@@ -87,7 +87,7 @@
     >
       <div class="h-full overflow-hidden relative">
         <EdgeDetailsPanel
-          v-if="selectedEdge"
+          v-if="viewsStore.selectedEdgeId"
           :menuSelected="contextMenuRef?.isOpen ?? false"
           @openMenu="onThreeDotMenuClick"
         />
@@ -362,7 +362,6 @@ const contextMenuRef = ref<InstanceType<typeof ModelingRightClickMenu>>();
 
 const selectedComponentIds = computed(() => viewsStore.selectedComponentIds);
 
-const selectedEdge = computed(() => viewsStore.selectedEdge);
 const selectedComponent = computed<
   DiagramGroupData | DiagramNodeData | undefined
 >(() =>

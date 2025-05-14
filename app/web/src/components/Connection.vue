@@ -6,18 +6,27 @@
     >
       ID = {{ connection.id }}
     </div>
-    <SocketCard
-      :socket="connection.fromSocket"
-      outputSocket
+    <ConnectionEndCard
+      v-if="isSocketConnection(connection)"
       :changeStatus="connection.changeStatus"
+      :componentName="componentNames.from"
+      :subjectLabel="connection.fromSocket.def.label"
+      type="input-socket"
+    />
+    <ConnectionEndCard
+      v-else
+      :changeStatus="connection.changeStatus"
+      :componentName="componentNames.from"
+      :subjectLabel="connection.fromAttributePath"
+      type="prop"
     />
     <div :class="clsx('_connection-label border-l-2', statusColors)">
       <div class="flex flex-row items-center">
         <DetailsPanelTimestamps
-          noMargin
           :changeStatus="connection.changeStatus"
           :created="connection.createdInfo"
           :deleted="connection.deletedInfo"
+          noMargin
         />
         <template v-if="showMenu">
           <DetailsPanelMenuIcon @click="openMenu" />
@@ -25,9 +34,19 @@
         </template>
       </div>
     </div>
-    <SocketCard
-      :socket="connection.toSocket"
+    <ConnectionEndCard
+      v-if="isSocketConnection(connection)"
       :changeStatus="connection.changeStatus"
+      :componentName="componentNames.to"
+      :subjectLabel="connection.toSocket.def.label"
+      type="input-socket"
+    />
+    <ConnectionEndCard
+      v-else
+      :changeStatus="connection.changeStatus"
+      :componentName="componentNames.to"
+      :subjectLabel="connection.toAttributePath"
+      type="prop"
     />
   </div>
 </template>
@@ -44,23 +63,49 @@ import {
 import { tw } from "@si/vue-lib";
 import { isDevMode } from "@/utils/debug";
 import { ChangeStatus } from "@/api/sdf/dal/change_set";
-import { ActorAndTimestamp } from "@/api/sdf/dal/component";
+import {
+  ActorAndTimestamp,
+  AttributePath,
+  ComponentId,
+} from "@/api/sdf/dal/component";
 import { useComponentsStore } from "@/store/components.store";
 import { useViewsStore } from "@/store/views.store";
 import { DiagramSocketData } from "./ModelingDiagram/diagram_types";
-import SocketCard from "./SocketCard.vue";
+import ConnectionEndCard from "./ConnectionEndCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
 
-export type Connection = {
+interface BaseConnection {
   id: string;
   changeStatus?: ChangeStatus;
-  createdInfo: ActorAndTimestamp;
+  createdInfo?: ActorAndTimestamp;
   deletedInfo?: ActorAndTimestamp;
+}
+
+export interface SocketConnection extends BaseConnection {
+  isManagement?: boolean;
   fromSocket: DiagramSocketData;
   toSocket: DiagramSocketData;
-  isManagement: boolean;
-};
+}
+function isSocketConnection(
+  connection: Connection,
+): connection is SocketConnection {
+  return "fromSocket" in connection;
+}
+
+export interface SubscriptionConnection extends BaseConnection {
+  fromComponentId: ComponentId;
+  fromAttributePath: AttributePath;
+  toComponentId: ComponentId;
+  toAttributePath: AttributePath;
+}
+function isSubscriptionConnection(
+  connection: Connection,
+): connection is SubscriptionConnection {
+  return "fromAttributePath" in connection;
+}
+
+export type Connection = SocketConnection | SubscriptionConnection;
 
 const props = defineProps({
   connection: { type: Object as PropType<Connection>, required: true },
@@ -72,6 +117,25 @@ const menuRef = ref<InstanceType<typeof DropdownMenu>>();
 const componentsStore = useComponentsStore();
 const viewsStore = useViewsStore();
 const modelingEventBus = componentsStore.eventBus;
+
+const componentNames = computed(() => {
+  if (isSubscriptionConnection(props.connection)) {
+    const toComponent =
+      componentsStore.allComponentsById[props.connection.toComponentId];
+    const fromComponent =
+      componentsStore.allComponentsById[props.connection.fromComponentId];
+    return {
+      to: toComponent?.def.displayName ?? "?",
+      from: fromComponent?.def.displayName ?? "?",
+    };
+  } else {
+    // Is socket connection
+    return {
+      to: props.connection.toSocket.parent.def.displayName ?? "?",
+      from: props.connection.fromSocket.parent.def.displayName ?? "?",
+    };
+  }
+});
 
 const openMenu = (e: MouseEvent) => {
   menuRef.value?.open(e);

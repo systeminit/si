@@ -8,7 +8,11 @@ import {
   ChangeSetStatus,
   ChangeSet,
 } from "@/api/sdf/dal/change_set";
-import { ComponentId, RawComponent, RawEdge } from "@/api/sdf/dal/component";
+import {
+  ComponentId,
+  RawComponent,
+  RawSocketEdge,
+} from "@/api/sdf/dal/component";
 import {
   ComponentType,
   SchemaVariant,
@@ -182,7 +186,7 @@ export type WsEventPayloadMap = {
 
   ComponentCreated: {
     component: RawComponent;
-    inferredEdges?: RawEdge[];
+    inferredEdges?: RawSocketEdge[];
     changeSetId: string;
   };
   ComponentDeleted: {
@@ -200,15 +204,15 @@ export type WsEventPayloadMap = {
   };
   InferredEdgeUpsert: {
     changeSetId: string;
-    edges: RawEdge[];
+    edges: RawSocketEdge[];
   };
   InferredEdgeRemove: {
     changeSetId: string;
-    edges: RawEdge[];
+    edges: RawSocketEdge[];
   };
   ConnectionUpserted: {
     type: "attributeValueEdge" | "managementEdge";
-  } & RawEdge;
+  } & RawSocketEdge;
   ConnectionDeleted:
     | {
         type: "attributeValueEdge";
