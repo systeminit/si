@@ -494,7 +494,7 @@ impl AttributeBinding {
             AttributeValue::update_from_prototype_function(ctx, attribute_value).await?;
         }
 
-        for arg in &prototype_arguments {
+        for arg in prototype_arguments {
             // Ensure a func argument exists for each input location, before creating new Attribute Prototype Arguments
             if let Err(err) = FuncArgument::get_by_id(ctx, arg.func_argument_id).await {
                 match err {
@@ -509,50 +509,44 @@ impl AttributeBinding {
                 }
             }
 
-            match &arg.attribute_func_input_location {
+            match arg.attribute_func_input_location {
                 super::AttributeFuncArgumentSource::Prop(prop_id) => {
-                    let attribute_prototype_argument = AttributePrototypeArgument::new(
+                    AttributePrototypeArgument::new(
                         ctx,
                         attribute_prototype_id,
                         arg.func_argument_id,
+                        prop_id,
                     )
                     .await?;
-                    attribute_prototype_argument
-                        .set_value_from_prop_id(ctx, *prop_id)
-                        .await?;
                 }
                 super::AttributeFuncArgumentSource::InputSocket(input_socket_id) => {
-                    let attribute_prototype_argument = AttributePrototypeArgument::new(
+                    AttributePrototypeArgument::new(
                         ctx,
                         attribute_prototype_id,
                         arg.func_argument_id,
+                        input_socket_id,
                     )
                     .await?;
-                    attribute_prototype_argument
-                        .set_value_from_input_socket_id(ctx, *input_socket_id)
-                        .await?;
                 }
                 // note: this isn't in use yet, but is ready for when we enable users to set default values via the UI
                 super::AttributeFuncArgumentSource::StaticArgument(value) => {
-                    let attribute_prototype_argument = AttributePrototypeArgument::new(
+                    AttributePrototypeArgument::new_static_value(
                         ctx,
                         attribute_prototype_id,
                         arg.func_argument_id,
+                        value,
                     )
                     .await?;
-                    attribute_prototype_argument
-                        .set_value_from_static_value(ctx, value.clone())
-                        .await?;
                 }
                 // we do not allow users to manually set these as inputs right now
                 super::AttributeFuncArgumentSource::Secret(secret_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
-                        AttributeFuncArgumentSource::Secret(*secret_id),
+                        AttributeFuncArgumentSource::Secret(secret_id),
                     ));
                 }
                 super::AttributeFuncArgumentSource::OutputSocket(output_socket_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
-                        AttributeFuncArgumentSource::OutputSocket(*output_socket_id),
+                        AttributeFuncArgumentSource::OutputSocket(output_socket_id),
                     ));
                 }
             };
@@ -595,7 +589,7 @@ impl AttributeBinding {
         Self::delete_attribute_prototype_args(ctx, attribute_prototype_id).await?;
 
         // recreate them
-        for arg in &prototype_arguments {
+        for arg in prototype_arguments {
             // Ensure the func argument exists before continuing. By continuing, we will not add the
             // attribute prototype to the id set and will be deleted.
             if let Err(err) = FuncArgument::get_by_id(ctx, arg.func_argument_id).await {
@@ -609,50 +603,44 @@ impl AttributeBinding {
                 }
             }
 
-            match &arg.attribute_func_input_location {
+            match arg.attribute_func_input_location {
                 super::AttributeFuncArgumentSource::Prop(prop_id) => {
-                    let attribute_prototype_argument = AttributePrototypeArgument::new(
+                    AttributePrototypeArgument::new(
                         ctx,
                         attribute_prototype_id,
                         arg.func_argument_id,
+                        prop_id,
                     )
                     .await?;
-                    attribute_prototype_argument
-                        .set_value_from_prop_id(ctx, *prop_id)
-                        .await?;
                 }
                 super::AttributeFuncArgumentSource::InputSocket(input_socket_id) => {
-                    let attribute_prototype_argument = AttributePrototypeArgument::new(
+                    AttributePrototypeArgument::new(
                         ctx,
                         attribute_prototype_id,
                         arg.func_argument_id,
+                        input_socket_id,
                     )
                     .await?;
-                    attribute_prototype_argument
-                        .set_value_from_input_socket_id(ctx, *input_socket_id)
-                        .await?;
                 }
                 // note: this isn't in use yet, but is ready for when we enable users to set default values via the UI
                 super::AttributeFuncArgumentSource::StaticArgument(value) => {
-                    let attribute_prototype_argument = AttributePrototypeArgument::new(
+                    AttributePrototypeArgument::new_static_value(
                         ctx,
                         attribute_prototype_id,
                         arg.func_argument_id,
+                        value,
                     )
                     .await?;
-                    attribute_prototype_argument
-                        .set_value_from_static_value(ctx, value.clone())
-                        .await?;
                 }
                 // we do not allow users to manually set these as inputs right now
                 super::AttributeFuncArgumentSource::Secret(secret_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
-                        AttributeFuncArgumentSource::Secret(*secret_id),
+                        AttributeFuncArgumentSource::Secret(secret_id),
                     ));
                 }
                 super::AttributeFuncArgumentSource::OutputSocket(output_socket_id) => {
                     return Err(FuncBindingError::InvalidAttributePrototypeArgumentSource(
-                        AttributeFuncArgumentSource::OutputSocket(*output_socket_id),
+                        AttributeFuncArgumentSource::OutputSocket(output_socket_id),
                     ));
                 }
             };
