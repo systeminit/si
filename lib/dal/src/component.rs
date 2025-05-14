@@ -112,6 +112,7 @@ use crate::{
             ChildAttributeValuePair,
             DependentValueGraph,
             ValueIsFor,
+            subscription::ValueSubscription,
         },
     },
     change_set::ChangeSetError,
@@ -3618,6 +3619,9 @@ impl Component {
         let original_managers = original_component.managers(ctx).await?;
         let original_incoming_connections = original_component.incoming_connections(ctx).await?;
         let original_outgoing_connections = original_component.outgoing_connections(ctx).await?;
+        let original_root_id =
+            Component::root_attribute_value_id(ctx, original_component_id).await?;
+        let original_subscriber_apas = AttributeValue::subscribers(ctx, original_root_id).await?;
 
         let original_parent = original_component.parent(ctx).await?;
         let original_children = Component::get_children_for_id(ctx, original_component_id).await?;
@@ -3680,6 +3684,12 @@ impl Component {
         }
         for &original_manager_id in &original_managers {
             Component::unmanage_component(ctx, original_manager_id, original_component_id).await?;
+        }
+        let mut original_subscriber_prototypes = vec![];
+        for (path, apa_id) in original_subscriber_apas {
+            let prototype_id = AttributePrototypeArgument::prototype_id(ctx, apa_id).await?;
+            AttributePrototypeArgument::remove(ctx, apa_id).await?;
+            original_subscriber_prototypes.push((path, prototype_id));
         }
 
         for incoming in &original_incoming_connections {
@@ -3762,35 +3772,33 @@ impl Component {
         .await?;
 
         // Re fetch the component with the old id
-        let finalized_new_component = Self::get_by_id(ctx, original_component_id).await?;
+        let upgraded_component = Self::get_by_id(ctx, original_component_id).await?;
         let mut diagram_sockets = HashMap::new();
 
         // Restore parent connection on new component
         if let Some(parent) = original_parent {
-            Frame::upsert_parent(ctx, finalized_new_component.id(), parent).await?;
+            Frame::upsert_parent(ctx, upgraded_component.id(), parent).await?;
         }
 
-        let payload = finalized_new_component
+        let payload = upgraded_component
             .into_frontend_type(ctx, None, ChangeStatus::Unmodified, &mut diagram_sockets)
             .await?;
-        WsEvent::component_upgraded(ctx, payload, finalized_new_component.id())
+        WsEvent::component_upgraded(ctx, payload, upgraded_component.id())
             .await?
             .publish_on_commit(ctx)
             .await?;
 
         // Restore child connections on new component
         for child in original_children {
-            Frame::upsert_parent(ctx, child, finalized_new_component.id()).await?;
+            Frame::upsert_parent(ctx, child, upgraded_component.id()).await?;
         }
 
         // Restore connections on new component
         for original_managed_id in original_managed {
-            Component::manage_component(ctx, finalized_new_component.id(), original_managed_id)
-                .await?;
+            Component::manage_component(ctx, upgraded_component.id(), original_managed_id).await?;
         }
         for original_manager_id in original_managers {
-            Component::manage_component(ctx, original_manager_id, finalized_new_component.id())
-                .await?;
+            Component::manage_component(ctx, original_manager_id, upgraded_component.id()).await?;
         }
         for incoming in &original_incoming_connections {
             let socket = InputSocket::get_by_id(ctx, incoming.to_input_socket_id).await?;
@@ -3801,14 +3809,14 @@ impl Component {
                     ctx,
                     incoming.from_component_id,
                     incoming.from_output_socket_id,
-                    finalized_new_component.id(),
+                    upgraded_component.id(),
                     socket.id(),
                 )
                 .await?;
                 let edge = SummaryDiagramEdge {
                     from_component_id: incoming.from_component_id,
                     from_socket_id: incoming.from_output_socket_id,
-                    to_component_id: finalized_new_component.id(),
+                    to_component_id: upgraded_component.id(),
                     to_socket_id: socket.id(),
                     // was Unmodified, but get_diagram shows them as Added
                     change_status: ChangeStatus::Added,
@@ -3825,7 +3833,7 @@ impl Component {
                 debug!(
                     "Unable to reconnect to socket_id: {0} for component_id: {1}",
                     socket.id(),
-                    finalized_new_component.id()
+                    upgraded_component.id()
                 );
             }
         }
@@ -3837,14 +3845,14 @@ impl Component {
             {
                 Component::connect(
                     ctx,
-                    finalized_new_component.id(),
+                    upgraded_component.id(),
                     socket.id(),
                     outgoing.to_component_id,
                     outgoing.to_input_socket_id,
                 )
                 .await?;
                 let edge = SummaryDiagramEdge {
-                    from_component_id: finalized_new_component.id(),
+                    from_component_id: upgraded_component.id(),
                     from_socket_id: socket.id(),
                     to_component_id: outgoing.to_component_id,
                     to_socket_id: outgoing.to_input_socket_id,
@@ -3863,12 +3871,27 @@ impl Component {
                 debug!(
                     "Unable to reconnect to socket_id: {0} for component_id: {1}",
                     socket.id(),
-                    finalized_new_component.id()
+                    upgraded_component.id()
                 );
             }
         }
 
-        Ok(finalized_new_component)
+        // Reconnect subscribers
+        let finalized_root_id =
+            Component::root_attribute_value_id(ctx, upgraded_component.id()).await?;
+        for (path, prototype_id) in original_subscriber_prototypes {
+            AttributePrototype::add_arg_to_intrinsic(
+                ctx,
+                prototype_id,
+                ValueSubscription {
+                    attribute_value_id: finalized_root_id,
+                    path,
+                },
+            )
+            .await?;
+        }
+
+        Ok(upgraded_component)
     }
 
     async fn requeue_actions_for_upgraded_component(

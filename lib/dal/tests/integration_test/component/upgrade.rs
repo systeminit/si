@@ -34,8 +34,13 @@ use dal_test::{
     helpers::{
         ChangeSetTestHelpers,
         PropEditorTestView,
+        attribute::value,
+        change_set,
         create_component_for_default_schema_name_in_default_view,
-        schema::variant,
+        schema::variant::{
+            self,
+            SchemaVariantKey,
+        },
     },
     test,
 };
@@ -1037,12 +1042,32 @@ async fn upgrade_component_multiplayer_new_and_removed_sockets(ctx: &mut DalCont
     Ok(())
 }
 
+#[test]
+async fn upgrade_component_with_subscriptions(ctx: &mut DalContext) -> Result<()> {
+    let test = ConnectableTest::setup(ctx).await?;
+    test.create_connectable(ctx, "in", None, []).await?;
+    let out = test.create_connectable(ctx, "out", None, []).await?;
+    value::subscribe(ctx, ("out", "/domain/Value"), [("in", "/domain/Value")]).await?;
+    value::set(ctx, ("in", "/domain/Value"), "old").await?;
+    change_set::commit(ctx).await?;
+    assert_eq!("old", value::get(ctx, ("out", "/domain/Value")).await?);
+
+    // Upgrade and make sure value still flows through
+    let updated = update_schema_variant_description(ctx, "connectable", "new").await?;
+    Component::upgrade_to_new_variant(ctx, out.id, updated.id()).await?;
+    value::set(ctx, ("in", "/domain/Value"), "new").await?;
+    change_set::commit(ctx).await?;
+    assert_eq!("new", value::get(ctx, ("out", "/domain/Value")).await?);
+
+    Ok(())
+}
+
 async fn update_schema_variant_component_type(
     ctx: &mut DalContext,
-    variant: ExpectSchemaVariant,
+    variant: impl SchemaVariantKey,
     component_type: ComponentType,
 ) -> Result<ExpectSchemaVariant> {
-    let variant = variant.schema_variant(ctx).await;
+    let variant = SchemaVariant::get_by_id(ctx, variant.lookup_schema_variant(ctx).await?).await?;
     VariantAuthoringClient::save_variant_content(
         ctx,
         variant.id(),
@@ -1062,10 +1087,10 @@ async fn update_schema_variant_component_type(
 
 async fn update_schema_variant_description(
     ctx: &mut DalContext,
-    variant: ExpectSchemaVariant,
+    variant: impl SchemaVariantKey,
     description: impl Into<String>,
 ) -> Result<ExpectSchemaVariant> {
-    let variant = variant.schema_variant(ctx).await;
+    let variant = SchemaVariant::get_by_id(ctx, variant.lookup_schema_variant(ctx).await?).await?;
     VariantAuthoringClient::save_variant_content(
         ctx,
         variant.id(),

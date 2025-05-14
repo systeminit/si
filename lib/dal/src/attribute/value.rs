@@ -2299,13 +2299,7 @@ impl AttributeValue {
         // Add the subscriptions as the argument
         let arg_id = FuncArgument::single_arg_for_intrinsic(ctx, func_id).await?;
         for subscription in subscriptions {
-            AttributePrototypeArgument::new(
-                ctx,
-                prototype_id,
-                arg_id,
-                ValueSource::ValueSubscription(subscription),
-            )
-            .await?;
+            AttributePrototypeArgument::new(ctx, prototype_id, arg_id, subscription).await?;
         }
 
         // DVU all the way!
