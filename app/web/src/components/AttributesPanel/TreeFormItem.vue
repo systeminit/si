@@ -155,8 +155,20 @@
             </div>
           </div>
           <SourceIconWithTooltip
+            v-if="isArray && canSubscribe"
+            :overridden="!!sourceSubscription"
+            header
+            icon="add-connection"
+            justMessage
+            tooltipText="Connect"
+            @click="tryOpenConnectionsMenu"
+          />
+          <SourceIconWithTooltip
             v-if="
-              !(widgetKind === 'secret') && !props.isRootProp && attributesPanel
+              !(widgetKind === 'secret') &&
+              !props.isRootProp &&
+              attributesPanel &&
+              !(isArray && sourceOverridden)
             "
             :icon="sourceIcon"
             :overridden="sourceOverridden"
@@ -476,9 +488,10 @@
         >
           <SourceIconWithTooltip
             v-if="canSubscribe && !sourceSubscription"
-            :tooltipText="'Connect'"
             icon="add-connection"
-            @click="openConnectionsMenu"
+            justMessage
+            tooltipText="Connect"
+            @click="tryOpenConnectionsMenu"
           />
           <button
             v-if="isChildOfMap || isChildOfArray"
@@ -935,7 +948,11 @@
     <Modal ref="confirmEditModalRef" :title="confirmEditModalTitle" size="lg">
       <div class="flex flex-col gap-xs max-h-[80vh] overflow-hidden">
         <div>
-          <template v-if="propControlledByParent">
+          <template v-if="openingConnectionsMenu">
+            Connections menu You cannot edit prop "{{ propName }}" because it is
+            populated by a function from an ancestor prop.
+          </template>
+          <template v-else-if="propControlledByParent">
             You cannot edit prop "{{ propName }}" because it is populated by a
             function from an ancestor prop.
           </template>
@@ -1433,7 +1450,7 @@ const sourceSubscriptionComponent = computed(() => {
     sourceSubscription.value?.component
   ];
 });
-const isSetManually = computed(
+const sourceIsManual = computed(
   () => sourceOverridden.value && !sourceSubscription.value,
 );
 const canSubscribe = computed(
@@ -1445,7 +1462,7 @@ const propIsEditable = computed(() => {
     return false;
   }
   return (
-    isSetManually.value ||
+    sourceIsManual.value ||
     editOverride.value ||
     (!propPopulatedBySocket.value && !propSetByDynamicFunc.value)
   );
@@ -1524,12 +1541,23 @@ function removeChildHandler() {
   }
 }
 
-function openConnectionsMenu() {
+function tryOpenConnectionsMenu() {
   if (!useFeatureFlagsStore().PROPS_TO_PROPS_CONNECTIONS) return;
+  if (!attributesStore.value) return;
+
+  if (!propIsEditable.value || sourceIsManual.value) {
+    openConfirmEditModal(true);
+  } else {
+    openConnectionsMenu();
+  }
+}
+
+function openConnectionsMenu() {
   if (!attributesStore.value) return;
 
   const menuData = {
     aDirection: "input" as ConnectionDirection,
+    appendConnection: isArray.value,
     A: {
       componentId: attributesStore.value.selectedComponentId,
       attributePath: attributePath.value,
@@ -1762,8 +1790,10 @@ const openNonEditableModal = () => {
   }
 };
 
-const openConfirmEditModal = () => {
+const openingConnectionsMenu = ref(false);
+const openConfirmEditModal = (openConnectionsMenu?: boolean) => {
   if (confirmEditModalRef.value) {
+    openingConnectionsMenu.value = openConnectionsMenu ?? false;
     confirmEditModalRef.value.open();
   }
 };
@@ -1775,8 +1805,12 @@ const closeConfirmEditModal = () => {
 };
 
 const confirmEdit = () => {
-  editOverride.value = true;
   closeConfirmEditModal();
+  if (openingConnectionsMenu.value) {
+    openConnectionsMenu();
+  } else {
+    editOverride.value = true;
+  }
 };
 
 const unsetButtonEnabled = computed(

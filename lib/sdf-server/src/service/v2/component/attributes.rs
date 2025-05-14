@@ -1,12 +1,16 @@
 use std::collections::HashMap;
 
 use axum::{
-    Json,
-    Router,
     extract::Path,
     routing::put,
+    Json,
+    Router,
 };
 use dal::{
+    attribute::{
+        path::AttributePath,
+        value::subscription::ValueSubscription,
+    },
     AttributeValue,
     AttributeValueId,
     ChangeSet,
@@ -14,15 +18,11 @@ use dal::{
     DalContext,
     PropKind,
     WsEvent,
-    attribute::{
-        path::AttributePath,
-        value::subscription::ValueSubscription,
-    },
 };
 use sdf_core::force_change_set_response::ForceChangeSetResponse;
 use sdf_extract::{
-    PosthogEventTracker,
     change_set::ChangeSetDalContext,
+    PosthogEventTracker,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -297,7 +297,7 @@ enum Source {
     Value(serde_json::Value),
 
     // { component: "ComponentNameOrId", path: "/domain/Foo/Bar/0/Baz" } - subscribe this value to a path from a component
-    #[serde(untagged)]
+    #[serde(untagged, rename_all = "camelCase")]
     Subscription {
         component: ComponentIdent,
         path: String,
