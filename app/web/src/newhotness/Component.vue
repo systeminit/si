@@ -84,7 +84,16 @@
       </CollapsingFlexItem>
       <CollapsingFlexItem ref="mgmtRef" :expandable="false">
         <template #header>Management Functions</template>
-        stuff
+        <ul class="p-xs">
+          <li
+            v-for="func in mgmtFuncs"
+            :key="func.id"
+            class="rounded border border-neutral-600 p-xs h-12 flex flex-row items-center"
+          >
+            <IconButton disabled size="md" icon="play" iconTone="action" />
+            {{ func.prototypeName }}
+          </li>
+        </ul>
       </CollapsingFlexItem>
     </div>
 
@@ -173,7 +182,12 @@
 
 <script lang="ts" setup>
 import { useQuery } from "@tanstack/vue-query";
-import { VButton, PillCounter, Icon } from "@si/vue-lib/design-system";
+import {
+  VButton,
+  PillCounter,
+  Icon,
+  IconButton,
+} from "@si/vue-lib/design-system";
 import { computed, ref, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
@@ -214,6 +228,10 @@ const componentQuery = useQuery<BifrostComponent | null>({
   },
 });
 const component = computed(() => componentQuery.data.value);
+
+const mgmtFuncs = computed(
+  () => component.value?.schemaVariant.mgmtFunctions ?? [],
+);
 
 const componentConnectionsQuery = useQuery<BifrostComponentConnections | null>({
   queryKey: key("IncomingConnections", componentId),
