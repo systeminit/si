@@ -145,8 +145,7 @@ impl PropertyEditorValues {
                 // Check if the component value is explicitly connected to another component.
                 if let Some(controlling_prototype_id) = controlling_prototype_id {
                     for apa_id in
-                        AttributePrototype::list_arguments_for_id(ctx, controlling_prototype_id)
-                            .await?
+                        AttributePrototype::list_arguments(ctx, controlling_prototype_id).await?
                     {
                         for (edge, _, target) in ctx
                             .workspace_snapshot()?
