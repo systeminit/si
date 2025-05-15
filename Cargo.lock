@@ -1088,6 +1088,67 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "89e25b6adfb930f02d1981565a6e5d9c547ac15a96606256d3b59040e5cd4ca3"
 
 [[package]]
+name = "bedrock"
+version = "0.1.0"
+dependencies = [
+ "bedrock-server",
+ "clap",
+ "si-service",
+]
+
+[[package]]
+name = "bedrock-core"
+version = "0.1.0"
+dependencies = [
+ "aws-sdk-ssm",
+ "chrono",
+ "config-file",
+ "serde",
+ "serde_json",
+ "ulid",
+]
+
+[[package]]
+name = "bedrock-server"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum 0.6.20",
+ "base64 0.22.1",
+ "bedrock-core",
+ "buck2-resources",
+ "ciborium",
+ "dashmap",
+ "derive_builder",
+ "futures",
+ "hex",
+ "hyper 0.14.32",
+ "remain",
+ "rustls 0.23.27",
+ "rustls-pemfile 2.2.0",
+ "serde",
+ "serde_json",
+ "si-data-acmpca",
+ "si-data-nats",
+ "si-data-ssm",
+ "si-settings",
+ "si-std",
+ "si-tls",
+ "telemetry",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-rustls 0.26.2",
+ "tokio-stream",
+ "tokio-util",
+ "tower 0.4.13",
+ "tower-http",
+ "tracing-tunnel",
+ "ulid",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "bigdecimal"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"

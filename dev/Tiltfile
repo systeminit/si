@@ -9,7 +9,6 @@ cfg = config.parse()
 # Define groups of services
 groups = {
     "platform": [
-        "db",
         "nats",
         "otelcol",
         "postgres",
@@ -161,7 +160,6 @@ allow_k8s_contexts(k8s_context())
 # Use Docker Compose to provide the platform services
 docker_compose("./docker-compose.platform.yml")
 compose_services = {
-    "db": {},
     "db-test": {},
     "grafana": {
         "links": [

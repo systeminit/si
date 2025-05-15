@@ -4,6 +4,7 @@ debug = true
 [workspace]
 resolver = "2"
 members = [
+    "bin/bedrock",
     "bin/cyclone",
     "bin/edda",
     "bin/forklift",
@@ -21,6 +22,7 @@ members = [
     "lib/audit-database",
     "lib/audit-logs-stream",
     "lib/auth-api-client",
+    "lib/bedrock-server",
     "lib/billing-events",
     "lib/buck2-resources",
     "lib/bytes-lines-codec",
