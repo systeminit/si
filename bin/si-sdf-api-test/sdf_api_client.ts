@@ -199,10 +199,21 @@ export const ROUTES = {
   },
 
   // Modules --------------------------------------
-
   install_module: {
     path: () => `/module/install_module`,
     method: "POST",
+  },
+
+  // Materialized Views --------------------------------------
+  index: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/index`,
+    method: "GET",
+  },
+  mjolnir: {
+    path: (vars: ROUTE_VARS) =>
+      `/v2/workspaces/${vars.workspaceId}/change-sets/${vars.changeSetId}/index/mjolnir?changeSetId=${vars.changeSetId}&kind=${vars.referenceKind}&id=${vars.materializedViewId}&checksum=${vars.materializedViewChecksum}`,
+    method: "GET",
   },
 
   // Websockets -----------------------------------------
@@ -264,7 +275,7 @@ export class SdfApiClient {
     return new SdfApiClient(token, baseUrl, workspaceId);
   }
 
-  public async call({ route, routeVars, params, body }: API_CALL) {
+  public async call({ route, routeVars, params, body }: API_CALL, noThrow?: boolean) {
     const { path, method, headers } = ROUTES[route] as API_DESCRIPTION;
   
     // Ensure routeVars is always defined and contains workspaceId
@@ -285,13 +296,18 @@ export class SdfApiClient {
       body,
     };
   
-    const response = await this.fetch(url, optionsWithDefaultHeaders);
+    if (noThrow) {
+      // If the caller wants the raw response, let's give it to them
+      return await this.fetch_no_throw(url, optionsWithDefaultHeaders);
+    } else {
+      const response = await this.fetch(url, optionsWithDefaultHeaders);
   
-    // Some endpoints return a body, others return nothing on success
-    try {
-      return await response.json();
-    } catch {
-      return null;
+      // Some endpoints return a body, others return nothing on success
+      try {
+        return await response.json();
+      } catch {
+        return null;
+      }
     }
   }
 
