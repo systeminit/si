@@ -21,7 +21,7 @@
     flake-utils.lib.eachDefaultSystem (system: let
       overlays = [
         (self: super: {
-          nodejs = super.nodejs-18_x;
+          nodejs = super.nodejs_20;
         })
         (import rust-overlay)
       ];
@@ -35,7 +35,7 @@
       rustfmt-nightly = pkgs.rust-bin.nightly."2025-04-17".rustfmt;
 
       nodePkgs = pkgs.nodePackages.override {
-        nodejs = pkgs.nodejs_18;
+        nodejs = pkgs.nodejs_20;
       };
 
       buck2NativeBuildInputs = with pkgs;
