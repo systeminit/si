@@ -28,6 +28,7 @@ export type Workspace = {
   isFavourite: boolean;
   isHidden: boolean;
   quarantinedAt: Date;
+  approvalStatus: boolean;
 };
 
 export type WorkspaceMember = {
@@ -223,6 +224,18 @@ export const useWorkspacesStore = defineStore("workspaces", {
       return new ApiRequest<{ user: User }>({
         method: "patch",
         url: `/workspaces/${workspaceId}/setDefault`,
+      });
+    },
+    async CHANGE_WORKSPACE_APPROVAL_STATUS(
+      workspaceId: string,
+      approvalsEnabled: boolean,
+    ) {
+      return new ApiRequest<{ user: User }>({
+        method: "patch",
+        url: `/workspaces/${workspaceId}/approvalsEnabled`,
+        params: {
+          approvalsEnabled,
+        },
       });
     },
 

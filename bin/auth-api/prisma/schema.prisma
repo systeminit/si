@@ -107,6 +107,12 @@ model Workspace {
     /// Denotes whether this will show up in the workspaces list in app.systeminit.com
     /// If it's true, then it will not be shown in the workspaces list
     isHidden Boolean @default(false) @map("is_hidden")
+    
+    // This will determine whether approvals are enabled for the workspace
+    // only a workspace owner can enable / disable this. It's off by default
+    // but enabling it will force the workspace to be refreshed and will determine
+    // how the UI reacts
+    approvalsEnabled Boolean @default(false) @map("approvals_enabled")
 
     tokens AuthToken[]
 

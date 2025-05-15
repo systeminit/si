@@ -173,6 +173,7 @@ router.patch("/workspaces/:workspaceId", async (ctx) => {
     reqBody.description,
     workspace.isFavourite,
     workspace.isHidden,
+    workspace.approvalsEnabled,
   );
 
   tracker.trackEvent(authUser, "workspace_updated", {
@@ -387,6 +388,47 @@ router.patch("/workspaces/:workspaceId/favourite", async (ctx) => {
     workspace.description,
     reqBody.isFavourite,
     workspace.isHidden,
+    workspace.approvalsEnabled,
+  );
+
+  ctx.body = await getUserWorkspaces(authUser.id);
+});
+
+router.patch("/workspaces/:workspaceId/approvalsEnabled", async (ctx) => {
+  extractAuthUser(ctx, true);
+  const { authUser, workspace } = await authorizeWorkspaceRoute(ctx, [RoleType.OWNER]);
+
+  const reqBody = validate(
+    ctx.request.body,
+    z.object({
+      approvalsEnabled: z.boolean(),
+    }),
+  );
+
+  const approvalsStatusChangeDate = new Date();
+  if (reqBody.approvalsEnabled) {
+    tracker.trackEvent(authUser, "enable_workspace_approvals", {
+      approvalsEnabledBy: authUser.email,
+      approvalsEnabledDate: approvalsStatusChangeDate,
+      workspaceId: workspace.id,
+    });
+  } else {
+    tracker.trackEvent(authUser, "disable_workspace_approvals", {
+      approvalsDisabledBy: authUser.email,
+      approvalsDisabledDate: approvalsStatusChangeDate,
+      workspaceId: workspace.id,
+    });
+  }
+
+  await patchWorkspace(
+    workspace.id,
+    workspace.instanceUrl,
+    workspace.displayName,
+    workspace.quarantinedAt,
+    workspace.description,
+    workspace.isFavourite,
+    workspace.isHidden,
+    reqBody.approvalsEnabled,
   );
 
   ctx.body = await getUserWorkspaces(authUser.id);
@@ -426,6 +468,7 @@ router.patch("/workspaces/:workspaceId/setHidden", async (ctx) => {
     workspace.description,
     workspace.isFavourite,
     reqBody.isHidden,
+    workspace.approvalsEnabled,
   );
 
   ctx.body = await getUserWorkspaces(authUser.id);

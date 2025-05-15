@@ -143,6 +143,7 @@ router.patch("/workspaces/:workspaceId/quarantine", async (ctx) => {
     workspace.description,
     workspace.isFavourite,
     workspace.isHidden,
+    workspace.approvalsEnabled,
   );
 
   ctx.body = await getUserWorkspaces(authUser.id);
