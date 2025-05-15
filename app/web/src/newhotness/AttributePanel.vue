@@ -27,7 +27,7 @@ import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   AttributeTree,
   BifrostComponent,
-  Prop,
+  PropOnComponent,
   AttributeValue,
 } from "@/workers/types/dbinterface";
 import {
@@ -59,7 +59,7 @@ export interface AttrTree {
   id: string;
   children: AttrTree[];
   parent?: string;
-  prop?: Prop;
+  prop?: PropOnComponent;
   attributeValue: AttributeValue;
 }
 

@@ -42,6 +42,9 @@
           :pills="['Up', 'Down', 'Left', 'Right']"
           instructions="to navigate"
         >
+          <template #left>
+            <Icon name="search" tone="neutral" size="sm" />
+          </template>
           <template #default="slotProps">
             <VormInput
               ref="inputRef"
@@ -131,7 +134,10 @@
         <RealtimeStatusPageState />
       </div>
     </div>
-    <AddComponentModal ref="addComponentModalRef" />
+    <AddComponentModal
+      ref="addComponentModalRef"
+      :viewId="selectedViewOrDefaultId"
+    />
   </section>
 </template>
 
@@ -143,6 +149,7 @@ import {
   VormInput,
   VButton,
   DropdownMenuButton,
+  Icon,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
@@ -215,6 +222,14 @@ const viewListOptions = computed(() => {
       return { value: l.id, label: l.name };
     }),
   );
+});
+
+const selectedViewOrDefaultId = computed(() => {
+  if (selectedView.value) return selectedView.value;
+  if (!viewListQuery.data.value) return "";
+  const view = viewListQuery.data.value.views.find((v) => v.isDefault);
+  if (!view) return "";
+  return view.id;
 });
 
 const actionViewListRaw = useQuery<BifrostActionViewList | null>({

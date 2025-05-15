@@ -15,12 +15,12 @@
       )
     "
     :style="
-      filter.color
-        ? `border-left-color: ${filter.color}; border-radius: 0 0.25rem 0.25rem 0; border-left-width: 2px`
+      color
+        ? `border-left-color: ${color}; border-radius: 0 0.25rem 0.25rem 0; border-left-width: 2px`
         : 'border-radius: 0.25rem'
     "
   >
-    <Icon :name="filter.icon" class="flex-none" />
+    <Icon v-if="icon" :name="icon" class="flex-none" />
     <TruncateWithTooltip
       :class="
         themeClasses(
@@ -29,25 +29,27 @@
         )
       "
     >
-      {{ filter.name }}
+      {{ label }}
     </TruncateWithTooltip>
-    <PillCounter :count="filter.count" />
+    <PillCounter v-if="count !== undefined" :count="count" />
   </div>
 </template>
 
 <script setup lang="ts">
 import {
   Icon,
+  IconNames,
   PillCounter,
   themeClasses,
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { PropType } from "vue";
-import { AssetFilter } from "./AddComponentModal.vue";
 
-defineProps({
-  filter: { type: Object as PropType<AssetFilter>, required: true },
-  selected: { type: Boolean },
-});
+defineProps<{
+  count?: number;
+  color?: string;
+  label: string;
+  icon?: IconNames;
+  selected: boolean;
+}>();
 </script>

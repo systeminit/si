@@ -94,7 +94,7 @@ import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import { bifrost, makeKey, makeArgs } from "@/store/realtime/heimdall";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ViewDescription } from "@/api/sdf/dal/views";
-import { BifrostView, BifrostViewList } from "@/workers/types/dbinterface";
+import { View, BifrostViewList } from "@/workers/types/dbinterface";
 import ViewCard from "./ViewCard.vue";
 
 const props = defineProps<{ changeSetId: ChangeSetId | undefined }>();
@@ -179,9 +179,9 @@ const bifrostCreate = () => {
   }
 };
 
-const filteredViews = computed<ViewDescription[] | BifrostView[]>(() => {
+const filteredViews = computed<ViewDescription[] | View[]>(() => {
   if (ffStore.FRONTEND_ARCH_VIEWS) {
-    let data: BifrostView[] = [];
+    let data: View[] = [];
     if (viewListOverBifrost.isError.value) {
       // eslint-disable-next-line @typescript-eslint/no-throw-literal
       throw viewListOverBifrost.error;
@@ -204,7 +204,7 @@ const filteredViews = computed<ViewDescription[] | BifrostView[]>(() => {
   }
 });
 
-const sortedViews = computed<ViewDescription[] | BifrostView[]>(() => {
+const sortedViews = computed<ViewDescription[] | View[]>(() => {
   return [...filteredViews.value].sort((a, b) => {
     if (a.isDefault) return -1;
     if (b.isDefault) return 1;

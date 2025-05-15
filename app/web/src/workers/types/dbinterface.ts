@@ -251,7 +251,7 @@ interface WeakReference {
  *    (e.g. perform the full translation from Edda to Bifrost)
  * 7. `getReferences` SHALL set default/warning data that `getComputed` will write over
  */
-export interface BifrostView {
+export interface View {
   id: string;
   name: string;
   isDefault: boolean;
@@ -261,7 +261,7 @@ export interface BifrostView {
 
 export interface BifrostViewList {
   id: string;
-  views: BifrostView[];
+  views: View[];
 }
 
 export interface RawViewList {
@@ -336,7 +336,7 @@ export interface SchemaVariant {
 
   inputSockets: InputSocket[];
   outputSockets: OutputSocket[];
-  props: Prop[];
+  props: PropOnComponent[];
   canCreateNewComponents: boolean;
 
   canContribute: boolean;
@@ -405,7 +405,8 @@ export interface ActionPrototypeViewList {
   actionPrototypes: ActionPrototypeView[];
 }
 
-export interface Prop {
+// this matches what comes over the wire from Jacob's attribute tree MV
+export interface PropOnComponent {
   id: PropId;
   path: string;
   name: string;
@@ -417,6 +418,20 @@ export interface Prop {
   defaultCanBeSetBySocket: boolean;
   isOriginSecret: boolean;
   createOnly: boolean;
+}
+
+// this matches what comes over the wire from both SDF
+// and `SchemaVariantCategories` MV
+export interface PropOnVariant {
+  id: PropId;
+  path: string;
+  name: string;
+  kind: PropKind;
+  // this is for output sources
+  eligibleToReceiveData: boolean;
+  // this is for input sources
+  eligibleToSendData: boolean;
+  hidden: boolean;
 }
 
 export interface AttributeValue {
@@ -441,7 +456,7 @@ export interface AVTree {
 export interface AttributeTree {
   id: ComponentId;
   attributeValues: Record<AttributeValueId, AttributeValue>;
-  props: Record<PropId, Prop>;
+  props: Record<PropId, PropOnComponent>;
   treeInfo: Record<AttributeValueId, AVTree>;
 }
 
