@@ -1,16 +1,12 @@
 use std::collections::HashMap;
 
 use axum::{
-    extract::Path,
-    routing::put,
     Json,
     Router,
+    extract::Path,
+    routing::put,
 };
 use dal::{
-    attribute::{
-        path::AttributePath,
-        value::subscription::ValueSubscription,
-    },
     AttributeValue,
     AttributeValueId,
     ChangeSet,
@@ -18,11 +14,15 @@ use dal::{
     DalContext,
     PropKind,
     WsEvent,
+    attribute::{
+        path::AttributePath,
+        value::subscription::ValueSubscription,
+    },
 };
 use sdf_core::force_change_set_response::ForceChangeSetResponse;
 use sdf_extract::{
-    change_set::ChangeSetDalContext,
     PosthogEventTracker,
+    change_set::ChangeSetDalContext,
 };
 use serde::Deserialize;
 use serde_json::json;
