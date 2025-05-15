@@ -61,6 +61,16 @@ Deno.test("Schemas API - List and Find Schemas", async () => {
       
       assertEquals(schemaFound, true, `Schema ${firstSchema.schemaId} not found in search results`);
       
+      // Ensure we install the schema if it doesn't exist so we can guarantee we can get the schema details
+      await api.components.createComponent(
+        config.workspaceId, 
+        changeSetId, 
+        {
+          name: "Ensuring Schema Installed",
+          schemaName: firstSchema.schemaName
+        }
+      );
+      
       // Get specific schema
       const getSchemaResponse = await api.schemas.getSchema(
         config.workspaceId,
