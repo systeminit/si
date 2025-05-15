@@ -27,6 +27,21 @@
             DEFAULT
           </div>
         </template>
+        <div
+          v-if="featureFlagStore.APPROVALS_OPT_IN_OUT"
+          :class="
+            clsx(
+              'rounded text-sm px-xs py-2xs my-2xs w-fit',
+              themeClasses(
+                'bg-success-600 text-shade-0',
+                'bg-success-500 text-shade-100',
+              ),
+            )
+          "
+        >
+          Approvals are {{ approvalStatus }}
+        </div>
+
         <IconButton
           v-if="!createMode"
           class="flex-none"
@@ -37,34 +52,6 @@
           tooltipPlacement="top"
           @click="openApiTokens"
         />
-        <!-- <IconButton
-          :icon="draftWorkspace.isHidden ? 'hide' : 'show'"
-          :iconIdleTone="draftWorkspace.isHidden ? 'warning' : 'shade'"
-          :tooltip="
-            draftWorkspace.isHidden
-              ? 'Hidden from Workspace List'
-              : 'Shown in Workspace List'
-          "
-          class="flex-none"
-          iconBgActiveTone="action"
-          iconTone="warning"
-          size="lg"
-          tooltipPlacement="top"
-          @click="hideWorkspace(!draftWorkspace.isHidden)"
-        />
-        <IconButton
-          :icon="draftWorkspace.isFavourite ? 'star' : 'starOutline'"
-          :iconIdleTone="draftWorkspace.isFavourite ? 'warning' : 'shade'"
-          :tooltip="
-            draftWorkspace.isFavourite ? 'Remove Favourite' : 'Add Favourite'
-          "
-          class="flex-none"
-          iconBgActiveTone="action"
-          iconTone="warning"
-          size="lg"
-          tooltipPlacement="top"
-          @click="favouriteWorkspace(!draftWorkspace.isFavourite)"
-        /> -->
       </WorkspacePageHeader>
 
       <Stack>
@@ -136,17 +123,20 @@
           >
             {{ createMode ? "Create Workspace" : "Save Workspace" }}
           </VButton>
-          <!-- <VButton
-            v-if="!createMode"
-            :disabled="isDefaultWorkspace"
+          <VButton
+            v-if="!createMode && featureFlagStore.APPROVALS_OPT_IN_OUT"
             class="basis-[calc(25%-0.5rem)] flex-grow-0"
             iconRight="chevron--right"
-            loadingText="Setting as default..."
+            loadingText="Changing approval status..."
             tone="action"
             variant="solid"
-            @click="setDefaultWorkspace()"
-            >Set as Default</VButton
-          > -->
+            :label="
+              draftWorkspace.approvalsEnabled
+                ? 'Disable Workspace Approvals'
+                : 'Enable Workspace Approvals'
+            "
+            @click="changeApprovalsStatus"
+          />
         </div>
       </Stack>
       <div v-if="!createMode" class="mt-sm">
@@ -266,6 +256,7 @@ import { useHead } from "@vueuse/head";
 import { useRouter } from "vue-router";
 import { useWorkspacesStore, WorkspaceId } from "@/store/workspaces.store";
 import { useAuthStore } from "@/store/auth.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { tracker } from "@/lib/posthog";
 import { API_HTTP_URL } from "@/store/api";
 import MemberListItem from "@/components/MemberListItem.vue";
@@ -275,6 +266,7 @@ import { ALLOWED_INPUT_REGEX, ALLOWED_URL_REGEX } from "@/lib/validations";
 const workspacesStore = useWorkspacesStore();
 const router = useRouter();
 const authStore = useAuthStore();
+const featureFlagStore = useFeatureFlagsStore();
 
 const props = defineProps({
   workspaceId: { type: String as PropType<WorkspaceId>, required: true },
@@ -305,6 +297,7 @@ const blankWorkspace = {
   description: "",
   isFavourite: false,
   isHidden: false,
+  approvalsEnabled: false,
 };
 const draftWorkspace = reactive(_.cloneDeep(blankWorkspace));
 const newMember = reactive({ email: "", role: "editor" });
@@ -429,12 +422,6 @@ const editWorkspace = async () => {
   const res = await workspacesStore.EDIT_WORKSPACE(draftWorkspace);
 
   if (res.result.success) {
-    // TODO(Wendy) - do we want to send users back to the workspaces when they save their edits?
-    // setTimeout(async () => {
-    //   await router.push({
-    //     name: "workspaces",
-    //   });
-    // }, 500);
     return;
   }
 };
@@ -445,20 +432,35 @@ const openApiTokens = async () => {
     params: { workspaceId: props.workspaceId },
   });
 };
-// const favouriteWorkspace = async (isFavourite: boolean) => {
-//   if (!props.workspaceId) return;
 
-//   await workspacesStore.SET_FAVOURITE(props.workspaceId, isFavourite);
+const changeApprovalsStatus = async () => {
+  if (!props.workspaceId) return;
 
-//   draftWorkspace.isFavourite = isFavourite;
-// };
-// const hideWorkspace = async (isHidden: boolean) => {
-//   if (!props.workspaceId) return;
+  let newStatus = false;
+  if (!draftWorkspace.approvalsEnabled) {
+    newStatus = true;
+  }
 
-//   await workspacesStore.SET_HIDDEN(props.workspaceId, isHidden);
+  const res = await workspacesStore.CHANGE_WORKSPACE_APPROVAL_STATUS(
+    props.workspaceId,
+    newStatus,
+  );
 
-//   draftWorkspace.isHidden = isHidden;
-// };
+  draftWorkspace.approvalsEnabled = newStatus;
+
+  if (res.result.success) {
+    if (!draftWorkspace.instanceUrl.includes("localhost")) {
+      window.location.href = `${draftWorkspace.instanceUrl}/refresh-auth?workspaceId=${props.workspaceId}`;
+    }
+  }
+};
+const approvalStatus = computed(() => {
+  if (!props.workspaceId) return "disabled";
+
+  if (draftWorkspace.approvalsEnabled) return "enabled";
+
+  return "disabled";
+});
 
 const deleteWorkspace = async () => {
   const res = await workspacesStore.DELETE_WORKSPACE(props.workspaceId);

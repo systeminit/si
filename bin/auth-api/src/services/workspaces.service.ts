@@ -75,6 +75,7 @@ export async function patchWorkspace(
   description: string | null,
   isFavourite: boolean,
   isHidden: boolean,
+  approvalsEnabled: boolean,
 ) {
   return prisma.workspace.update({
     where: { id },
@@ -85,6 +86,7 @@ export async function patchWorkspace(
       description,
       isFavourite,
       isHidden,
+      approvalsEnabled,
     },
   });
 }

@@ -10,10 +10,12 @@ export const useFeatureFlagsStore = () => {
     defineStore("feature-flags", {
       state: () => ({
         ADMIN_PAGE: false,
+        APPROVALS_OPT_IN_OUT: false,
       }),
       onActivated() {
         posthog.onFeatureFlags((flags) => {
           this.ADMIN_PAGE = flags.includes("auth_portal_admin_page");
+          this.APPROVALS_OPT_IN_OUT = flags.includes("approvals-opt-in-out");
         });
       },
     }),
