@@ -34,6 +34,7 @@ export { default as Divider } from "./layout/Divider.vue";
 export { default as Inline } from "./layout/Inline.vue";
 export { default as Stack } from "./layout/Stack.vue";
 export { default as ScrollArea } from "./layout/ScrollArea.vue";
+export { default as HorizontalScrollArea } from "./layout/HorizontalScrollArea.vue";
 export { default as Tiles } from "./layout/Tiles.vue";
 
 // ./menus

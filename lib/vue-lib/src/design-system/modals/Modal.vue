@@ -75,8 +75,9 @@
               <div
                 :class="
                   clsx(
-                    'border-t border-neutral-200 dark:border-shade-100 flex flex-col place-content-center text-sm',
+                    'border-neutral-200 dark:border-shade-100 flex flex-col place-content-center text-sm',
                     !noInnerPadding && 'p-sm',
+                    !noWrapper && 'border-t',
                   )
                 "
               >

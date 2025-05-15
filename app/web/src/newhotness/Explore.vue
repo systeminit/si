@@ -89,6 +89,7 @@
             pill="Cmd + A"
             tone="action"
             size="sm"
+            @click="openAddComponentModal"
           />
         </footer>
       </template>
@@ -130,6 +131,7 @@
         <RealtimeStatusPageState />
       </div>
     </div>
+    <AddComponentModal ref="addComponentModalRef" />
   </section>
 </template>
 
@@ -168,6 +170,7 @@ import { assertIsDefined, Context } from "./types";
 import { keyEmitter } from "./logic_composables/emitters";
 import TabGroupToggle from "./layout_components/TabGroupToggle.vue";
 import { SelectionsInQueryString } from "./Workspace.vue";
+import AddComponentModal from "./AddComponentModal.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -335,6 +338,11 @@ keyEmitter.on("k", (e) => {
     inputRef.value?.focus();
   }
 });
+keyEmitter.on("a", (e) => {
+  if (e.metaKey || e.ctrlKey) {
+    openAddComponentModal();
+  }
+});
 
 keyEmitter.on("ArrowDown", () => {
   if (!showGrid.value) return;
@@ -373,6 +381,12 @@ const componentNavigate = (componentId: ComponentId) => {
     name: "new-hotness-component",
     params,
   });
+};
+
+const addComponentModalRef = ref<InstanceType<typeof AddComponentModal>>();
+
+const openAddComponentModal = () => {
+  addComponentModalRef.value?.open();
 };
 </script>
 

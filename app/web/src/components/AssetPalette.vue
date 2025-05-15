@@ -131,6 +131,7 @@ import {
   Filter,
   TruncateWithTooltip,
   themeClasses,
+  BRAND_COLOR_FILTER_HEX_CODES,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { windowListenerManager } from "@si/vue-lib";
@@ -269,7 +270,7 @@ const searchFiltersWithCounts = computed(() => {
   const searchFilters: Array<Filter> = [
     {
       name: "AWS",
-      iconColor: "#FF9900",
+      iconColor: BRAND_COLOR_FILTER_HEX_CODES.AWS,
       iconName: "logo-aws",
       count: computed(() =>
         getAssetCount(
@@ -282,7 +283,7 @@ const searchFiltersWithCounts = computed(() => {
     },
     {
       name: "Docker",
-      iconColor: "#4695e7",
+      iconColor: BRAND_COLOR_FILTER_HEX_CODES.Docker,
       iconName: "logo-docker",
       count: computed(() =>
         getAssetCount(

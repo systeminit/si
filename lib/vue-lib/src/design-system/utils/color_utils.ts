@@ -5,6 +5,22 @@ import { useTheme } from "./theme_tools";
 
 export const COLOR_PALETTE = colorsJson;
 
+export const BRAND_COLOR_FILTER_HEX_CODES = {
+  AWS: "#FF9900",
+  Docker: "#1D63ED",
+  Azure: "#89C402",
+  "Google Cloud": "#EF6255",
+  Github: "#9467EC",
+  Netlify: "#05BDBA",
+  "Digital Ocean": "#ABF7FF",
+  Posthog: "#F54E00",
+  CoreOS: "#E9659C",
+  "Open AI": "#FFBE19",
+  Tailscale: "#A7DAC2",
+  Helpers: "#E1A7FE",
+  Custom: "#E5E5E5",
+};
+
 const TONES = {
   action: {
     colorHex: COLOR_PALETTE.action[500],
