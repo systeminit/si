@@ -205,7 +205,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
     };
 
     let sv_id = created_component.schema_variant(ctx).await?.id();
-   
+
     let attribute_tree = dal_materialized_views::component::attribute_tree::assemble(
         ctx.clone(),
         created_component.id(),

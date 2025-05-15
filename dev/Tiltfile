@@ -9,7 +9,6 @@ cfg = config.parse()
 # Define groups of services
 groups = {
     "platform": [
-        "db",
         "nats",
         "otelcol",
         "postgres",
@@ -37,6 +36,7 @@ groups = {
         "db-test",
         "localstack",
         "postgres-test",
+        "bedrock",
     ],
     "telemetry": [
         "grafana",
@@ -160,7 +160,6 @@ allow_k8s_contexts(k8s_context())
 # Use Docker Compose to provide the platform services
 docker_compose("./docker-compose.platform.yml")
 compose_services = {
-    "db": {},
     "db-test": {},
     "grafana": {
         "links": [
@@ -335,6 +334,19 @@ si_buck2_resource(
             port = 5173,
         ),
     ),
+)
+
+# Locally build and run `bedrock`
+si_buck2_resource(
+    "//bin/bedrock:bedrock",
+    readiness_probe = probe(
+        period_secs = 5,
+        http_get = http_get_action(
+            port = 3020,
+            path = "/",
+        ),
+    ),
+    **RUST_RESOURCE_ARGS
 )
 
 # Locally build and run `module-index`
