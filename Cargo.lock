@@ -6353,6 +6353,7 @@ dependencies = [
  "edda-client",
  "futures",
  "json-patch",
+ "nats-dead-letter-queue",
  "naxum",
  "pending-events",
  "rebaser-client",

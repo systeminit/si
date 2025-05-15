@@ -20,6 +20,7 @@ use dal::{
     feature_flags::FeatureFlagService,
 };
 use edda_client::EddaClient;
+use nats_dead_letter_queue::DeadLetterQueue;
 use naxum::{
     Message,
     MessageHead,
@@ -204,6 +205,8 @@ impl Server {
 
         let requests_stream = nats::rebaser_requests_jetstream_stream(&context).await?;
 
+        let dead_letter_queue = DeadLetterQueue::create_stream(context.clone()).await?;
+
         let edda = EddaClient::new(nats.clone()).await?;
 
         let ctx_builder = DalContext::builder(services_context, false);
@@ -214,6 +217,7 @@ impl Server {
             nats,
             edda,
             requests_stream,
+            dead_letter_queue,
             ctx_builder,
             quiescent_period,
             shutdown_token.clone(),

@@ -15,6 +15,7 @@ use futures::{
     TryStreamExt,
     future::BoxFuture,
 };
+use nats_dead_letter_queue::DeadLetterQueue;
 use naxum::{
     MessageHead,
     ServiceBuilder,
@@ -92,6 +93,7 @@ impl ChangeSetProcessorTask {
         metadata: Arc<ServerMetadata>,
         nats: NatsClient,
         stream: jetstream::stream::Stream,
+        dead_letter_queue: DeadLetterQueue,
         incoming: push::Ordered,
         edda: EddaClient,
         workspace_id: WorkspacePk,
@@ -164,7 +166,11 @@ impl ChangeSetProcessorTask {
                     )
                     .on_response(telemetry_nats::NatsOnResponse::new()),
             )
-            .layer(PostProcessLayer::new().on_success(DeleteMessageOnSuccess::new(stream)))
+            .layer(
+                PostProcessLayer::new()
+                    .on_success(DeleteMessageOnSuccess::new(stream.clone()))
+                    .on_failure(MoveMessageOnFailure::new(stream, dead_letter_queue)),
+            )
             .service(handlers::default.with_state(state))
             .map_response(Response::into_response);
 
@@ -226,6 +232,76 @@ impl post_process::OnSuccess for DeleteMessageOnSuccess {
             debug!("deleting message on success");
             if let Err(err) = stream.delete_message(info.stream_sequence).await {
                 warn!(
+                    si.error.message = ?err,
+                    subject = head.subject.as_str(),
+                    "failed to delete the message",
+                );
+            }
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+struct MoveMessageOnFailure {
+    stream: jetstream::stream::Stream,
+    dead_letter_queue: DeadLetterQueue,
+}
+
+impl MoveMessageOnFailure {
+    fn new(stream: jetstream::stream::Stream, dead_letter_queue: DeadLetterQueue) -> Self {
+        Self {
+            stream,
+            dead_letter_queue,
+        }
+    }
+}
+
+impl post_process::OnFailure for MoveMessageOnFailure {
+    fn call(
+        &mut self,
+        head: Arc<naxum::Head>,
+        info: Arc<post_process::Info>,
+    ) -> BoxFuture<'static, ()> {
+        let stream = self.stream.clone();
+        let dead_letter_queue = self.dead_letter_queue.clone();
+
+        Box::pin(async move {
+            error!(
+                subject = head.subject.as_str(),
+                stream_sequence = info.stream_sequence,
+                subject = head.subject.as_str(),
+                "error encoutered when processing message; moving to errored messages subject",
+            );
+
+            // Fetch the message associated with the error
+            let msg = match stream.get_raw_message(info.stream_sequence).await {
+                Ok(msg) => msg,
+                Err(err) => {
+                    error!(
+                        si.error.message = ?err,
+                        subject = head.subject.as_str(),
+                        "failed to read errored message from stream",
+                    );
+                    return;
+                }
+            };
+
+            // Publish copy of errored message to the dead letter queues stream
+            if let Err(err) = dead_letter_queue
+                .publish_with_headers(msg.subject, msg.headers, msg.payload)
+                .await
+            {
+                error!(
+                    si.error.message = ?err,
+                    src_subject = head.subject.as_str(),
+                    "failed to re-publish errored message to dead letter queue",
+                );
+                return;
+            }
+
+            // Delete errored message from original stream location
+            if let Err(err) = stream.delete_message(info.stream_sequence).await {
+                error!(
                     si.error.message = ?err,
                     subject = head.subject.as_str(),
                     "failed to delete the message",
@@ -439,42 +515,12 @@ mod handlers {
                 }
             });
 
-        // Dispatch eligible actions if the change set is the default for the workspace.
-        // Actions are **ONLY** ever dispatched from the default change set for a workspace.
-        if matches!(rebase_status, RebaseStatus::Success { .. }) {
-            // If we find dependent value roots, then notify the serial dvu task to run at least
-            // one more dvu
-            if DependentValueRoot::roots_exist(&ctx).await? {
-                run_notify.notify_one();
-            }
-
-            if let Some(workspace) = Workspace::get_by_pk_opt(&ctx, workspace_id).await? {
-                if workspace.default_change_set_id() == ctx.visibility().change_set_id {
-                    let mut change_set =
-                        ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;
-                    if Action::dispatch_actions(&ctx).await? {
-                        // Write out the snapshot to get the new address/id.
-                        let new_snapshot_id = ctx
-                            .write_snapshot()
-                            .await?
-                            .ok_or(dal::WorkspaceSnapshotError::WorkspaceSnapshotNotWritten)?;
-                        // Manually update the pointer to the new address/id that reflects the new
-                        // Action states.
-                        change_set.update_pointer(&ctx, new_snapshot_id).await?;
-
-                        if let Err(err) =
-                            billing_publish::for_head_change_set_pointer_update(&ctx, &change_set)
-                                .await
-                        {
-                            error!(si.error.message = ?err, "Failed to publish billing for change set pointer update on HEAD");
-                        }
-
-                        // No need to send the request over to the rebaser as we are the rebaser.
-                        ctx.commit_no_rebase().await?;
-                    }
-                }
-            }
-        }
+        let maybe_post_rebase_activities_result =
+            if matches!(rebase_status, RebaseStatus::Success { .. }) {
+                Some(post_rebase_activities(workspace_id, run_notify, &ctx).await)
+            } else {
+                None
+            };
 
         // If a reply was requested, send it
         if let Some(reply) = maybe_reply {
@@ -502,6 +548,54 @@ mod handlers {
         event.set_workspace_pk(workspace_id);
         event.set_change_set_id(Some(change_set_id));
         event.publish_immediately(&ctx).await?;
+
+        match maybe_post_rebase_activities_result {
+            // If no error is returned in post-rebase activities, return ok
+            Some(Ok(_)) | None => Ok(()),
+            // Otherwise, if error is returned in post-rebase activities, return it
+            Some(Err(post_rebase_activities_err)) => Err(post_rebase_activities_err),
+        }
+    }
+
+    async fn post_rebase_activities(
+        workspace_id: dal::WorkspacePk,
+        run_notify: std::sync::Arc<tokio::sync::Notify>,
+        ctx: &dal::DalContext,
+    ) -> Result<()> {
+        if DependentValueRoot::roots_exist(ctx).await? {
+            run_notify.notify_one();
+        }
+
+        // Dispatch eligible actions if the change set is the default for the workspace.
+        // Actions are **ONLY** ever dispatched from the default change set for a workspace.
+        if let Some(workspace) = Workspace::get_by_pk_opt(ctx, workspace_id).await? {
+            if workspace.default_change_set_id() == ctx.visibility().change_set_id {
+                let mut change_set =
+                    ChangeSet::get_by_id(ctx, ctx.visibility().change_set_id).await?;
+                if Action::dispatch_actions(ctx).await? {
+                    // Write out the snapshot to get the new address/id.
+                    let new_snapshot_id = ctx
+                        .write_snapshot()
+                        .await?
+                        .ok_or(dal::WorkspaceSnapshotError::WorkspaceSnapshotNotWritten)?;
+                    // Manually update the pointer to the new address/id that reflects the new
+                    // Action states.
+                    change_set.update_pointer(ctx, new_snapshot_id).await?;
+
+                    if let Err(err) =
+                        billing_publish::for_head_change_set_pointer_update(ctx, &change_set).await
+                    {
+                        error!(
+                            si.error.message = ?err,
+                            "Failed to publish billing for change set pointer update on HEAD",
+                        );
+                    }
+
+                    // No need to send the request over to the rebaser as we are the rebaser.
+                    ctx.commit_no_rebase().await?;
+                }
+            }
+        }
 
         Ok(())
     }

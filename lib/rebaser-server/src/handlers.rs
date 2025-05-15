@@ -1,6 +1,5 @@
 use std::{
     result,
-    str::FromStr,
     sync::Arc,
 };
 
@@ -23,10 +22,6 @@ use si_data_nats::{
         stream::ConsumerError,
     },
 };
-use si_events::{
-    ChangeSetId,
-    WorkspacePk,
-};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::Notify;
@@ -45,6 +40,10 @@ use crate::{
     serial_dvu_task::{
         SerialDvuTask,
         SerialDvuTaskError,
+    },
+    subject::{
+        SubjectParseError,
+        parse_task_subject,
     },
 };
 
@@ -65,8 +64,8 @@ pub(crate) enum HandlerError {
     SerialDvuCompleted,
     #[error("serial dvu error on tokio join")]
     SerialDvuJoin,
-    #[error("failed to parse subject: subject={0}, reason={1}")]
-    SubjectParse(String, String),
+    #[error("subject parse error: {0}")]
+    SubjectParse(#[from] SubjectParseError),
     #[error("error while subscribing for messages: {0}")]
     Subscribe(#[source] StreamError),
     #[error("task has remaining messages: {0}")]
@@ -82,7 +81,7 @@ type Result<T> = result::Result<T, HandlerError>;
 impl IntoResponse for HandlerError {
     fn into_response(self) -> Response {
         match self {
-            HandlerError::SubjectParse(_, _) => {
+            HandlerError::SubjectParse(_) => {
                 warn!(si.error.message = ?self, "subject parse error");
                 Response::default_bad_request()
             }
@@ -106,6 +105,7 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         nats,
         edda,
         requests_stream,
+        dead_letter_queue,
         ctx_builder,
         quiescent_period,
         token: server_token,
@@ -115,12 +115,12 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
     let subject_prefix = nats.metadata().subject_prefix();
 
     let subject_str = subject.as_str();
-    let (workspace, change_set) = parse_subject(subject_prefix, subject_str)?;
+    let (workspace, change_set) = parse_task_subject(subject_prefix, subject_str)?;
 
     let requests_stream_filter_subject = nats::subject::enqueue_updates_for_change_set(
         subject_prefix,
-        workspace.str,
-        change_set.str,
+        workspace.str(),
+        change_set.str(),
     );
 
     let tracker = TaskTracker::new();
@@ -145,8 +145,8 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
 
     let dvu_task = SerialDvuTask::create(
         metadata.clone(),
-        workspace.id,
-        change_set.id,
+        workspace.id(),
+        change_set.id(),
         ctx_builder.clone(),
         run_dvu_notify.clone(),
         quiesced_notify.clone(),
@@ -158,10 +158,11 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         metadata.clone(),
         nats,
         requests_stream.clone(),
+        dead_letter_queue,
         incoming,
         edda,
-        workspace.id,
-        change_set.id,
+        workspace.id(),
+        change_set.id(),
         ctx_builder,
         run_dvu_notify,
         quiescent_period,
@@ -183,8 +184,8 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         _ = server_token.cancelled() => {
             debug!(
                 service.instance.id = metadata.instance_id(),
-                si.workspace.id = %workspace.str,
-                si.change_set.id = %change_set.str,
+                si.workspace.id = %workspace.str(),
+                si.change_set.id = %change_set.str(),
                 "received cancellation",
             );
             // Task may not be complete but was interupted; reply `Err` to nack for task to persist
@@ -240,8 +241,8 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
                     messaging.message.id = message.sequence,
                     messaging.destination.name = message.subject.as_str(),
                     service.instance.id = metadata.instance_id(),
-                    si.change_set.id = %change_set.str,
-                    si.workspace.id = %workspace.str,
+                    si.change_set.id = %change_set.str(),
+                    si.workspace.id = %workspace.str(),
                     "message found after graceful shutdown",
                 );
                 Err(Error::TaskHasMessages(
@@ -255,93 +256,6 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
     } else {
         // In all other cases, return our computed `result` value
         result
-    }
-}
-
-struct ParsedWorkspaceId<'a> {
-    id: WorkspacePk,
-    str: &'a str,
-}
-
-struct ParsedChangeSetId<'a> {
-    id: ChangeSetId,
-    str: &'a str,
-}
-
-#[inline]
-fn parse_subject<'a>(
-    subject_prefix: Option<&str>,
-    subject_str: &'a str,
-) -> Result<(ParsedWorkspaceId<'a>, ParsedChangeSetId<'a>)> {
-    let mut parts = subject_str.split('.');
-
-    if let Some(prefix) = subject_prefix {
-        match parts.next() {
-            // Prefix part matches expected/configured prefix
-            Some(parsed_prefix) if parsed_prefix == prefix => {}
-            // Prefix part does not match expected/configured prefix
-            Some(unexpected) => {
-                return Err(HandlerError::SubjectParse(
-                    subject_str.to_string(),
-                    format!(
-                        "found unexpected subject prefix; expected={prefix}, parsed={unexpected}"
-                    ),
-                ));
-            }
-            // Prefix part not found but expected
-            None => {
-                return Err(HandlerError::SubjectParse(
-                    subject_str.to_string(),
-                    format!("expected subject prefix not found; expected={prefix}"),
-                ));
-            }
-        };
-    }
-
-    match (
-        parts.next(),
-        parts.next(),
-        parts.next(),
-        parts.next(),
-        parts.next(),
-        parts.next(), // assert last part is `None` to ensure there are no additional parts
-    ) {
-        (
-            Some(_),
-            Some(_),
-            Some(workspace_id_str),
-            Some(change_set_id_str),
-            Some("process"),
-            None,
-        ) => {
-            let workspace_id = WorkspacePk::from_str(workspace_id_str).map_err(|err| {
-                HandlerError::SubjectParse(
-                    subject_str.to_string(),
-                    format!("workspace id parse error: {err}"),
-                )
-            })?;
-            let change_set_id = ChangeSetId::from_str(change_set_id_str).map_err(|err| {
-                HandlerError::SubjectParse(
-                    subject_str.to_string(),
-                    format!("change set id parse error: {err}"),
-                )
-            })?;
-
-            Ok((
-                ParsedWorkspaceId {
-                    id: workspace_id,
-                    str: workspace_id_str,
-                },
-                ParsedChangeSetId {
-                    id: change_set_id,
-                    str: change_set_id_str,
-                },
-            ))
-        }
-        _ => Err(HandlerError::SubjectParse(
-            subject_str.to_string(),
-            "subject failed to parse with unexpected parts".to_string(),
-        )),
     }
 }
 

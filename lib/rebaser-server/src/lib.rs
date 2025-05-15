@@ -37,6 +37,7 @@ mod handlers;
 mod rebase;
 mod serial_dvu_task;
 mod server;
+mod subject;
 
 pub use si_settings::{
     ConfigMap,
@@ -100,6 +101,9 @@ pub enum ServerError {
     /// When a NATS client fails to be created successfully
     #[error("nats error: {0}")]
     Nats(#[from] si_data_nats::NatsError),
+    /// When the dead letter queue stream can't be created or when a message fails to publish
+    #[error("failed to create dead letter stream: {0}")]
+    NatsDeadLetterQueue(#[from] nats_dead_letter_queue::NatsDeadLetterQueueError),
     /// When a naxum-based service encounters an I/O error
     #[error("naxum error: {0}")]
     Naxum(#[source] std::io::Error),
