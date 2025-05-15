@@ -9,12 +9,13 @@
       )
     "
   >
+    <slot name="left"> </slot>
     <slot
       :focus="() => (show = true)"
       :blur="() => (show = showInstructions ?? false)"
       :class="
         clsx(
-          'flex-1 border-none outline-none',
+          'flex-1 border-none outline-none [&_input]:placeholder:italic',
           themeClasses('bg-shade-0', 'bg-shade-100'),
         )
       "

@@ -47,7 +47,7 @@ import {
   BustCacheFn,
   BifrostViewList,
   RawViewList,
-  BifrostView,
+  View,
   Ragnarok,
   EddaComponentList,
   EddaComponent,
@@ -1132,7 +1132,7 @@ const getReferences = async (
       }),
     );
     const views = maybeViews.filter(
-      (v): v is BifrostView => v !== -1 && Object.keys(v).length > 0,
+      (v): v is View => v !== -1 && Object.keys(v).length > 0,
     );
     const list: BifrostViewList = {
       id: rawList.id,

@@ -5,7 +5,7 @@ export interface Context {
   workspacePk: ComputedRef<string>;
   changeSetId: ComputedRef<string>;
   user: User | null;
-  onHead: boolean;
+  onHead: ComputedRef<boolean>;
 }
 
 export function assertIsDefined<T>(value: T | undefined): asserts value is T {

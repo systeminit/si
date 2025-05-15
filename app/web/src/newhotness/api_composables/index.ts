@@ -138,6 +138,40 @@ export type UpdateComponentAttributesArgs = Record<
   SetAttributeTo
 >;
 
+export type ComponentIdType =
+  | {
+      schemaType: string;
+      schemaVariantId: string;
+    }
+  | {
+      schemaType: string;
+      schemaId: string;
+    };
+export type CreateComponentPayload = ComponentIdType & {
+  parentId: null;
+  x: "0";
+  y: "0";
+  height: "0";
+  width: "0";
+};
+export const createComponentPayload = (
+  idType: ComponentIdType,
+): CreateComponentPayload => {
+  if (
+    ("schemaId" in idType && !idType.schemaId) ||
+    ("schemaVariantId" in idType && !idType.schemaVariantId)
+  )
+    throw new Error("schemaId or schemaVariantId required");
+  return {
+    ...idType,
+    parentId: null,
+    x: "0",
+    y: "0",
+    height: "0",
+    width: "0",
+  };
+};
+
 // Things you can set an attribute to
 export type SetAttributeTo =
   // Set attribute to a static JS value (can be any JSON--object, array, string, number, boolean, null)
@@ -167,6 +201,7 @@ export enum routes {
   FuncRunLogs = "FuncRunLogs",
   UpdateComponentAttributes = "UpdateComponentAttributes",
   UpdateComponentName = "UpdateComponentName",
+  CreateComponent = "CreateComponent",
 }
 
 const _routes: Record<routes, string> = {
@@ -176,6 +211,7 @@ const _routes: Record<routes, string> = {
   FuncRunLogs: "/funcs/runs/<id>/logs",
   UpdateComponentAttributes: "/components/<id>/attributes",
   UpdateComponentName: "/components/<id>/name",
+  CreateComponent: "/views/<viewId>/component",
 } as const;
 
 // the mechanics

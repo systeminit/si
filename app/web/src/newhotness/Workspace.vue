@@ -119,7 +119,7 @@ const context = computed<Context>(() => {
     workspacePk,
     changeSetId,
     user: authStore.user,
-    onHead: changeSetsStore.headSelected,
+    onHead: computed(() => changeSetsStore.headSelected),
   };
 });
 

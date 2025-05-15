@@ -180,7 +180,7 @@ import { useToast } from "vue-toastification";
 import { ViewDescription } from "@/api/sdf/dal/views";
 import { useViewsStore } from "@/store/views.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
-import { BifrostView } from "@/workers/types/dbinterface";
+import { View } from "@/workers/types/dbinterface";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
 import ComponentCard from "./ComponentCard.vue";
 import { DiagramViewData } from "./ModelingDiagram/diagram_types";
@@ -192,7 +192,7 @@ const props = defineProps<{
   selected?: boolean;
   outlined?: boolean;
   displayAsComponentCard?: DiagramViewData;
-  view: ViewDescription | BifrostView;
+  view: ViewDescription | View;
 }>();
 
 const mouseNode = ref();
