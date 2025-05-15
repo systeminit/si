@@ -1145,6 +1145,13 @@
       "SPECIFIED_REGIONS"
     ]
   },
+  "Indicates whether to aggregate findings from all of the available Regions in the current partition. Also determines whether to automatically aggregate findings from new Regions as Security Hub supports them and you opt into them.\n The selected option also determines how to use the Regions provided in the Regions list.\n In CFN, the options for this property are as follows:\n  +  ``ALL_REGIONS`` - Indicates to aggregate findings from all of the Regions where Security Hub is enabled. When you choose this option, Security Hub also automatically aggregates findings from new Regions as Security Hub supports them and you opt into them. \n  +  ``ALL_REGIONS_EXCEPT_SPECIFIED`` - Indicates to aggregate findings from all of the Regions where Security Hub is enabled, except for the Regions listed in the ``Regions`` parameter. When you choose this option, Security Hub also automatically aggregates findings from new Regions as Security Hub supports them and you opt into them. \n  +  ``SPECIFIED_REGIONS`` - Indicates to aggregate findings only from the Regions listed in the ``Regions`` parameter. Security Hub does not automatically aggregate findings from new Regions.": {
+    "enum": [
+      "ALL_REGIONS",
+      "ALL_REGIONS_EXCEPT_SPECIFIED",
+      "SPECIFIED_REGIONS"
+    ]
+  },
   "Specifies whether to create standby DB shard groups for the DB shard group. Valid values are the following:\n  +  0 - Creates a DB shard group without a standby DB shard group. This is the default value.\n  +  1 - Creates a DB shard group with a standby DB shard group in a different Availability Zone (AZ).\n  +  2 - Creates a DB shard group with two standby DB shard groups in two different AZs.": {
     "enum": [
       "0",
@@ -5243,6 +5250,9 @@
     "enum": null
   },
   "Indicates whether an instance stops or terminates when you initiate shutdown from the instance (using the operating system command for system shutdown).": {
+    "enum": null
+  },
+  "Indicates whether auto-mounting of an EFS volume is supported for the user profile. ": {
     "enum": null
   },
   "Indicates whether automatic application layer DDoS mitigation is enabled for the protection.": {
@@ -11453,6 +11463,9 @@
     "enum": null
   },
   "The life cycle type of the global cluster. You can use this setting to enroll your global cluster into Amazon RDS Extended Support.": {
+    "enum": null
+  },
+  "The lifecycle configuration that runs before the default lifecycle configuration.": {
     "enum": null
   },
   "The lifecycle policy to use for repositories created using the template.": {
