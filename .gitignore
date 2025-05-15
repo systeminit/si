@@ -19,6 +19,8 @@ app/web/cypress/screenshots/
 app/web/cypress/videos/
 bin/si/src/version.txt
 
+bin/si-luminork-api-tests/.env
+
 app/docs/src/.vitepress/cache/
 app/docs/dist/
 

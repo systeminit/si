@@ -31,7 +31,11 @@ function show_help {
 }
 
 # Default values
-API_URL="http://localhost:5380"
+if [ -z "$LUMINORK_API_URL" ]; then
+  API_URL="http://localhost:5380"
+else
+  API_URL="$LUMINORK_API_URL"
+fi
 AUTH_TOKEN=""
 WORKSPACE_ID=""
 FILTER=""
