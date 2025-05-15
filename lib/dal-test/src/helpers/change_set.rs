@@ -25,6 +25,12 @@ use dal::{
 
 use crate::helpers::generate_fake_name;
 
+/// First, this function performs a blocking commit which will return an error if
+/// there are conflicts.  Then, it updates the snapshot to the current visibility.
+pub async fn commit(ctx: &mut DalContext) -> Result<()> {
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await
+}
+
 /// This unit struct providers helper functions for working with [`ChangeSets`](ChangeSet). It is
 /// designed to centralize logic for test authors wishing to commit changes, fork, apply, abandon,
 /// etc.

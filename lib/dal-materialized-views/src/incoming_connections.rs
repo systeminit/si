@@ -56,7 +56,7 @@ async fn socket_to_socket(ctx: &DalContext, component_id: ComponentId) -> Result
         let attribute_prototype_id =
             AttributeValue::prototype_id(ctx, input_socket_attribute_value_id).await?;
         let attribute_prototype_argument_ids =
-            AttributePrototype::list_arguments_for_id(ctx, attribute_prototype_id).await?;
+            AttributePrototype::list_arguments(ctx, attribute_prototype_id).await?;
 
         // Don't bother gathering information to cache if there are no prototype arguments.
         if attribute_prototype_argument_ids.is_empty() {
@@ -131,7 +131,7 @@ async fn prop_to_prop(ctx: &DalContext, component_id: ComponentId) -> Result<Vec
         // connections are found.
         let mut in_progress = Vec::new();
         for attribute_prototype_argument_id in
-            AttributePrototype::list_arguments_for_id(ctx, attribute_prototype_id).await?
+            AttributePrototype::list_arguments(ctx, attribute_prototype_id).await?
         {
             if let Some(ValueSource::ValueSubscription(subscription)) =
                 AttributePrototypeArgument::value_source_opt(ctx, attribute_prototype_argument_id)

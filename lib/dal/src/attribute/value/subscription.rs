@@ -1,6 +1,10 @@
-use super::AttributeValueResult;
+use si_id::AttributeValueId;
+
+use super::{
+    AttributeValue,
+    AttributeValueResult,
+};
 use crate::{
-    AttributeValueId,
     DalContext,
     attribute::path::AttributePath,
 };
@@ -22,5 +26,11 @@ impl ValueSubscription {
         ctx: &DalContext,
     ) -> AttributeValueResult<Option<AttributeValueId>> {
         self.path.resolve(ctx, self.attribute_value_id).await
+    }
+
+    /// Validate the subscription path matches the schema of the attribute value
+    pub async fn validate(&self, ctx: &DalContext) -> AttributeValueResult<()> {
+        let prop_id = AttributeValue::prop_id(ctx, self.attribute_value_id).await?;
+        self.path.validate(ctx, prop_id).await
     }
 }

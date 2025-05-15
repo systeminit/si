@@ -23,10 +23,6 @@ use dal::{
     SchemaVariant,
     SchemaVariantId,
     UserPk,
-    attribute::{
-        path::AttributePath,
-        value::subscription::ValueSubscription,
-    },
     audit_logging,
     component::socket::{
         ComponentInputSocket,
@@ -45,9 +41,12 @@ use si_data_nats::async_nats::jetstream::stream::Stream;
 use si_db::User;
 use tokio::time::Instant;
 
-mod change_set;
 mod property_editor_test_view;
 
+/// Test helpers for attribute values and prototypes
+pub mod attribute;
+/// Test helpers for change sets
+pub mod change_set;
 /// Test helpers for components
 pub mod component;
 /// Test helpers for schemas
@@ -493,16 +492,4 @@ pub async fn list_audit_logs_until_expected_number_of_rows(
     Err(eyre!(
         "hit timeout before audit logs query returns expected number of rows (expected: {expected_number_of_rows}, actual: {actual_number_of_rows})"
     ))
-}
-
-/// Make a [`ValueSubscription`] for a given [`Component`] and path.
-pub async fn make_subscription(
-    ctx: &DalContext,
-    component_id: dal::ComponentId,
-    json_pointer: impl Into<String>,
-) -> Result<ValueSubscription> {
-    Ok(ValueSubscription {
-        attribute_value_id: Component::root_attribute_value_id(ctx, component_id).await?,
-        path: AttributePath::JsonPointer(json_pointer.into()),
-    })
 }

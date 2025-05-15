@@ -261,6 +261,10 @@ pub enum AttributeValueError {
     Secret(#[from] Box<SecretError>),
     #[error("serde_json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error(
+        "attribute value {0} with type {1} must be set to 1 subscription, attempted to include {2} subscriptions"
+    )]
+    SingleValueMustHaveOneSubscription(AttributeValueId, PropKind, usize),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
@@ -2252,32 +2256,80 @@ impl AttributeValue {
         Ok(())
     }
 
-    pub async fn subscribe(
+    /// Set the source of this attribute value to one or more subscriptions.
+    ///
+    /// This overwrites or overrides any existing value; if your intent is to append
+    /// subscriptions, you should first call AttributeValue::subscriptions() and append to that
+    /// list.
+    pub async fn set_to_subscriptions(
         ctx: &DalContext,
         subscriber_av_id: AttributeValueId,
-        subscription: ValueSubscription,
+        subscriptions: Vec<ValueSubscription>,
     ) -> AttributeValueResult<()> {
-        // TODO arity
+        // Pick the prototype for the function based on prop type: if it's Array, use
+        // si:normalizeToArray, otherwise use si:identity
+        let func = match Self::prop(ctx, subscriber_av_id).await?.kind {
+            PropKind::Array => IntrinsicFunc::NormalizeToArray,
+            kind @ PropKind::Boolean
+            | kind @ PropKind::Integer
+            | kind @ PropKind::Json
+            | kind @ PropKind::Map
+            | kind @ PropKind::Object
+            | kind @ PropKind::String
+            | kind @ PropKind::Float => {
+                if subscriptions.len() != 1 {
+                    return Err(AttributeValueError::SingleValueMustHaveOneSubscription(
+                        subscriber_av_id,
+                        kind,
+                        subscriptions.len(),
+                    ));
+                }
+                IntrinsicFunc::Identity
+            }
+        };
+        let func_id = Func::find_intrinsic(ctx, func).await?;
+        let prototype_id = AttributePrototype::new(ctx, func_id).await?.id();
+        Self::set_component_prototype_id(ctx, subscriber_av_id, prototype_id, None).await?;
 
-        // Create an si:identity prototype with the appropriate argument
-        let identity_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
-        let identity_arg_id = FuncArgument::single_arg_for_intrinsic(ctx, identity_func_id).await?;
-        let prototype = AttributePrototype::new(ctx, identity_func_id).await?;
-        let prototype_arg =
-            AttributePrototypeArgument::new(ctx, prototype.id(), identity_arg_id).await?;
-        AttributePrototypeArgument::set_value_source(
-            ctx,
-            prototype_arg.id(),
-            ValueSource::ValueSubscription(subscription),
-        )
-        .await?;
-        // TODO arity (this blows away any existing prototype and replaces it with the single subscription!)
-        Self::set_component_prototype_id(ctx, subscriber_av_id, prototype.id(), None).await?;
+        // Add the subscriptions as the argument
+        let arg_id = FuncArgument::single_arg_for_intrinsic(ctx, func_id).await?;
+        for subscription in subscriptions {
+            let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg_id).await?;
+            AttributePrototypeArgument::set_value_source(
+                ctx,
+                apa.id(),
+                ValueSource::ValueSubscription(subscription),
+            )
+            .await?;
+        }
 
+        // DVU all the way!
         ctx.add_dependent_values_and_enqueue(vec![subscriber_av_id])
             .await?;
 
         Ok(())
+    }
+
+    // Subscriptions from this attribute value to others. If this attribute value is unset or
+    // is not set solely to subscriptions, this returns None.
+    pub async fn subscriptions(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<Option<Vec<ValueSubscription>>> {
+        let Some(prototype_id) = Self::component_prototype_id(ctx, attribute_value_id).await?
+        else {
+            return Ok(None);
+        };
+        let mut subscriptions = vec![];
+        for apa_id in AttributePrototype::list_arguments(ctx, prototype_id).await? {
+            let ValueSource::ValueSubscription(subscription) =
+                AttributePrototypeArgument::value_source(ctx, apa_id).await?
+            else {
+                return Ok(None);
+            };
+            subscriptions.push(subscription);
+        }
+        Ok(Some(subscriptions))
     }
 
     pub async fn subscribers(

@@ -18,9 +18,9 @@ use dal::{
 use dal_test::{
     Result,
     helpers::{
+        attribute::value,
         connect_components_with_socket_names,
         create_component_for_default_schema_name_in_default_view,
-        make_subscription,
     },
     prelude::{
         ChangeSetTestHelpers,
@@ -314,21 +314,16 @@ async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
     {
         connect_components_with_socket_names(ctx, alpha.id(), "two", beta.id(), "two").await?;
         connect_components_with_socket_names(ctx, beta.id(), "one", charlie.id(), "one").await?;
-        AttributeValue::subscribe(
+        value::subscribe(
             ctx,
             charlie_si_name_attribute_value_id,
-            make_subscription(ctx, alpha.id(), alpha_si_name_attribute_value_path.as_str()).await?,
+            [(alpha.id(), alpha_si_name_attribute_value_path.as_str())],
         )
         .await?;
-        AttributeValue::subscribe(
+        value::subscribe(
             ctx,
             charlie_domain_name_attribute_value_id,
-            make_subscription(
-                ctx,
-                beta.id(),
-                beta_domain_name_attribute_value_path.as_str(),
-            )
-            .await?,
+            [(beta.id(), beta_domain_name_attribute_value_path.as_str())],
         )
         .await?;
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;

@@ -39,7 +39,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
             InputSocket::component_attribute_value_id(ctx, input_socket_id, component_id).await?;
         let attribute_prototype_id = AttributeValue::prototype_id(ctx, attribute_value_id).await?;
         let attribute_prototype_argument_ids =
-            AttributePrototype::list_arguments_for_id(ctx, attribute_prototype_id).await?;
+            AttributePrototype::list_arguments(ctx, attribute_prototype_id).await?;
         for attribute_prototype_argument_id in attribute_prototype_argument_ids {
             let attribute_prototype_argument =
                 AttributePrototypeArgument::get_by_id(ctx, attribute_prototype_argument_id).await?;

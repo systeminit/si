@@ -17,6 +17,7 @@ use dal_test::{
     Result,
     helpers::{
         ChangeSetTestHelpers,
+        attribute::value,
         component,
         connect_components_with_socket_names,
         create_component_for_default_schema_name_in_default_view,
@@ -576,9 +577,9 @@ async fn create_action_ordering_subscriptions(ctx: &mut DalContext) -> Result<()
     );
 
     // Now check that the actions are ordered correctly
-    component::subscribe(ctx, b, "/domain/two", a, "/domain/two").await?;
+    value::subscribe(ctx, (b, "/domain/two"), [(a, "/domain/two")]).await?;
     assert_eq!(vec!["Create a", "Create c"], next_actions(ctx).await?);
-    component::subscribe(ctx, c, "/domain/one", b, "/domain/one").await?;
+    value::subscribe(ctx, (c, "/domain/one"), [(b, "/domain/one")]).await?;
     assert_eq!(vec!["Create a"], next_actions(ctx).await?);
 
     Ok(())
@@ -618,7 +619,7 @@ async fn create_action_ordering_mixed(ctx: &mut DalContext) -> Result<()> {
     // Now check that the actions are ordered correctly
     connect_components_with_socket_names(ctx, a, "two", b, "two").await?;
     assert_eq!(vec!["Create a", "Create c"], next_actions(ctx).await?);
-    component::subscribe(ctx, c, "/domain/one", b, "/domain/one").await?;
+    value::subscribe(ctx, (c, "/domain/one"), [(b, "/domain/one")]).await?;
     assert_eq!(vec!["Create a"], next_actions(ctx).await?);
 
     Ok(())
@@ -636,7 +637,7 @@ async fn create_action_ordering_mixed_2(ctx: &mut DalContext) -> Result<()> {
     );
 
     // Now check that the actions are ordered correctly
-    component::subscribe(ctx, b, "/domain/two", a, "/domain/two").await?;
+    value::subscribe(ctx, (b, "/domain/two"), [(a, "/domain/two")]).await?;
     assert_eq!(vec!["Create a", "Create c"], next_actions(ctx).await?);
     connect_components_with_socket_names(ctx, b, "one", c, "one").await?;
     assert_eq!(vec!["Create a"], next_actions(ctx).await?);
@@ -662,9 +663,9 @@ async fn delete_action_ordering_subscriptions(ctx: &mut DalContext) -> Result<()
     );
 
     // Now check that the actions are ordered correctly
-    component::subscribe(ctx, b, "/domain/two", a, "/domain/two").await?;
+    value::subscribe(ctx, (b, "/domain/two"), [(a, "/domain/two")]).await?;
     assert_eq!(vec!["Destroy b", "Destroy c"], next_actions(ctx).await?);
-    component::subscribe(ctx, c, "/domain/one", b, "/domain/one").await?;
+    value::subscribe(ctx, (c, "/domain/one"), [(b, "/domain/one")]).await?;
     assert_eq!(vec!["Destroy c"], next_actions(ctx).await?);
 
     Ok(())
@@ -716,7 +717,7 @@ async fn delete_action_ordering_mixed(ctx: &mut DalContext) -> Result<()> {
     // Now check that the actions are ordered correctly
     connect_components_with_socket_names(ctx, a, "two", b, "two").await?;
     assert_eq!(vec!["Destroy b", "Destroy c"], next_actions(ctx).await?);
-    component::subscribe(ctx, c, "/domain/one", b, "/domain/one").await?;
+    value::subscribe(ctx, (c, "/domain/one"), [(b, "/domain/one")]).await?;
     assert_eq!(vec!["Destroy c"], next_actions(ctx).await?);
 
     Ok(())
@@ -740,7 +741,7 @@ async fn delete_action_ordering_mixed_2(ctx: &mut DalContext) -> Result<()> {
     );
 
     // Now check that the actions are ordered correctly
-    component::subscribe(ctx, b, "/domain/two", a, "/domain/two").await?;
+    value::subscribe(ctx, (b, "/domain/two"), [(a, "/domain/two")]).await?;
     assert_eq!(vec!["Destroy b", "Destroy c"], next_actions(ctx).await?);
     connect_components_with_socket_names(ctx, b, "one", c, "one").await?;
     assert_eq!(vec!["Destroy c"], next_actions(ctx).await?);

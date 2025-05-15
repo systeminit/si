@@ -120,6 +120,18 @@ pub fn v2_routes() -> Router<AppState> {
 //         }
 //       }
 //
+//   You may also APPEND a subscription by adding `keepExistingSubscriptions: true` to the
+//   subscription:
+//
+//       {
+//         "/domain/SubnetId": {
+//           "$source": { "component": "ComponentNameOrId", "path": "/resource/SubnetId", keepExistingSubscriptions: true }
+//         }
+//       }
+//
+//   If you do this, the subscription will be added to the list if it's not already there, and
+//   any other subscriptions will also be kept.
+//
 // - ESCAPE HATCH for setting a value: setting an attribute to `{ "$source": { "value": <value> } }`
 //   has the same behavior as all the above cases. The reason this exists is, if you happen to
 //   have an object with a "$source" key, the existing interface would treat that as an error.
@@ -162,6 +174,7 @@ async fn update_attributes(
                     Source::Subscription {
                         component: source_component,
                         path: source_path,
+                        keep_existing_subscriptions,
                     } => {
                         subscription_count += 1;
 
@@ -171,27 +184,33 @@ async fn update_attributes(
                             .resolve(ctx)
                             .await?
                             .ok_or(Error::SourceComponentNotFound(source_component.0))?;
-                        let source_root_id =
-                            Component::root_attribute_value_id(ctx, source_component_id).await?;
+                        let subscription = ValueSubscription {
+                            attribute_value_id: Component::root_attribute_value_id(
+                                ctx,
+                                source_component_id,
+                            )
+                            .await?,
+                            path: AttributePath::from_json_pointer(source_path),
+                        };
 
                         // Make sure the subscribed-to path is valid (i.e. it doesn't have to resolve
                         // to a value *right now*, but it must be a valid path to the schema as it
                         // exists--correct prop names, numeric indices for arrays, etc.)
-                        let source_path = AttributePath::from_json_pointer(source_path);
-                        let source_root_prop_id =
-                            AttributeValue::prop_id(ctx, source_root_id).await?;
-                        source_path.validate(ctx, source_root_prop_id).await?;
+                        subscription.validate(ctx).await?;
+
+                        // Add our subscription unless the subscription is already there
+                        let existing_subscriptions = match keep_existing_subscriptions {
+                            Some(true) => AttributeValue::subscriptions(ctx, target_av_id).await?,
+                            Some(false) | None => None,
+                        };
+                        let mut subscriptions = existing_subscriptions.unwrap_or(vec![]);
+                        if !subscriptions.contains(&subscription) {
+                            subscriptions.push(subscription);
+                        }
 
                         // Subscribe!
-                        AttributeValue::subscribe(
-                            ctx,
-                            target_av_id,
-                            ValueSubscription {
-                                attribute_value_id: source_root_id,
-                                path: source_path,
-                            },
-                        )
-                        .await?;
+                        AttributeValue::set_to_subscriptions(ctx, target_av_id, subscriptions)
+                            .await?;
                     }
                 }
             }
@@ -282,6 +301,8 @@ enum Source {
     Subscription {
         component: ComponentIdent,
         path: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        keep_existing_subscriptions: Option<bool>,
     },
 }
 
@@ -307,7 +328,7 @@ enum ValueOrSourceSpec {
     RawValue(serde_json::Value),
 }
 
-/// Used in ValueOrSourceSpecJson { "$source": <source> }
+/// { $source: <source> }. Separated from ValueOrSourceSpec so we could use deny_unknown_fields
 #[derive(Deserialize, Clone, Debug)]
 #[serde(rename = "camelCase", deny_unknown_fields)]
 struct SourceSpec {
