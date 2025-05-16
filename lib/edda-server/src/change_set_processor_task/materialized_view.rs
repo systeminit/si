@@ -604,17 +604,17 @@ fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedV
     // fields... too easy to shoot yourself in the foot.
     //
     // All `MaterializedView` types must be covered here for them to be built.
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewListMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewComponentListMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantCategoriesMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionPrototypeViewListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, IncomingConnectionsMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, IncomingConnectionsListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, IncomingConnectionsMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantCategoriesMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewComponentListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewMv);
 
     // The MvIndex depends on everything else, but doesn't define any
     // `MaterializedView::reference_dependencies()` directly.
