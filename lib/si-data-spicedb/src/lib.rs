@@ -34,6 +34,7 @@ use spicedb_grpc::authzed::api::v1::{
 };
 use telemetry::prelude::*;
 use thiserror::Error;
+use tonic::Code;
 use url::Url;
 
 mod types;
@@ -156,13 +157,24 @@ impl Client {
         span.record("server.address", metadata.server_address.as_str());
         span.record("server.port", metadata.server_port);
 
-        let inner = SpicedbClient::from_url_and_preshared_key(
+        let mut inner = SpicedbClient::from_url_and_preshared_key(
             config.endpoint.to_string(),
             config.preshared_key.as_str(),
         )
         .await
         .map_err(|err| span.record_err(Error::Connection(err, config.endpoint.clone())))?;
 
+        // validate the connection. There is no native way to do this in spicedb, but if we can
+        // either read a schema or be told that there is no schema, we know we can talk to spicedb
+        match inner.read_schema().await {
+            Ok(_) => (), // connection good and schema exists
+            Err(spicedb_client::result::Error::TonicStatus(status))
+                if status.code() == Code::NotFound
+                    && status.message().contains("No schema has been defined") => {} // connection good but no schema
+            Err(err) => return Err(Error::Connection(err, config.endpoint.clone())), // connection failed
+        }
+
+        info!("Connected to spicedb!");
         span.record_ok();
         Ok(Self {
             inner,
