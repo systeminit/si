@@ -428,7 +428,7 @@ def rust_test_impl(ctx: AnalysisContext) -> list[Provider]:
         # lib.rs as potential candidates.
         default_roots = ctx.attrs.default_roots or ["main.rs", "lib.rs"],
         extra_flags = extra_flags,
-        allow_cache_upload = False,
+        allow_cache_upload = True,
     )
 
     # Setup RE executors based on the `remote_execution` param.
