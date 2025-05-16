@@ -216,6 +216,7 @@ si_buck2_resource(
 # Locally build and run `innit`
 si_buck2_resource(
     "//bin/innit:innit",
+    auto_init = False,
     resource_deps = [
         "rust-initial-build",
         "otelcol",

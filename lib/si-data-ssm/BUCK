@@ -3,8 +3,8 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "si-data-ssm",
     deps = [
+        "//lib/si-aws-config:si-aws-config",
         "//lib/telemetry-rs:telemetry",
-        "//third-party/rust:aws-config",
         "//third-party/rust:aws-sdk-ssm",
         "//third-party/rust:remain",
         "//third-party/rust:thiserror",

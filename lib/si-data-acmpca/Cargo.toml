@@ -9,10 +9,10 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+si-aws-config = { path = "../../lib/si-aws-config" }
 si-tls = { path = "../../lib/si-tls" }
 telemetry = { path = "../../lib/telemetry-rs" }
 
-aws-config = { workspace = true }
 aws-sdk-acmpca = { workspace = true }
 remain = { workspace = true }
 rcgen = { workspace = true }

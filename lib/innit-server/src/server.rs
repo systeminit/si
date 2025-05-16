@@ -24,7 +24,10 @@ use si_data_acmpca::{
     PrivateCertManagerClient,
     PrivateCertManagerClientError,
 };
-use si_data_ssm::ParameterStoreClient;
+use si_data_ssm::{
+    ParameterStoreClient,
+    ParameterStoreClientError,
+};
 use si_tls::{
     CertificateSource,
     ClientCertificateVerifier,
@@ -65,6 +68,8 @@ pub enum ServerError {
     CertificateClient(#[from] PrivateCertManagerClientError),
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
+    #[error("Parameter Store error: {0}")]
+    ParameterStore(#[from] ParameterStoreClientError),
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error("failed to setup signal handler")]
@@ -95,7 +100,7 @@ impl Server<()> {
         let parameter_store_client = if let Some(endpoint) = config.test_endpoint() {
             ParameterStoreClient::new_for_test(endpoint)
         } else {
-            ParameterStoreClient::new().await
+            ParameterStoreClient::new().await?
         };
 
         // dev mode, no certs necessary
@@ -136,7 +141,7 @@ impl Server<()> {
 }
 
 async fn get_ca_certs_from_arns(ca_cert_arns: &[String]) -> ServerResult<Vec<CertificateSource>> {
-    let acmpca_client = PrivateCertManagerClient::new().await;
+    let acmpca_client = PrivateCertManagerClient::new().await?;
     let mut ca_certs = vec![];
     for ca_cert_arn in ca_cert_arns {
         info!("Fetching CA Cert for ARN: {ca_cert_arn}");

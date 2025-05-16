@@ -3,10 +3,10 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "si-data-acmpca",
     deps = [
+        "//lib/si-aws-config:si-aws-config",
         "//lib/si-tls:si-tls",
         "//lib/telemetry-rs:telemetry",
 
-        "//third-party/rust:aws-config",
         "//third-party/rust:aws-sdk-acmpca",
         "//third-party/rust:remain",
         "//third-party/rust:rcgen",
