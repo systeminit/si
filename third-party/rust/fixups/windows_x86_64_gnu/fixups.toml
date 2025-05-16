@@ -4,9 +4,10 @@
 # commit-date: 2022-12-01T03:10:27-0800
 # source: https://github.com/facebook/buck2/blob/9080cce1b8588afc08e5c9d53d22c652f7567ecf/shim/third-party/rust/fixups/windows_x86_64_gnu/fixups.toml
 
-buildscript = []
+buildscript.run = false
+['cfg(all(target_os = "windows", target_env = "gnu"))']
+version = "=0.48.0"
+[['cfg(all(target_os = "windows", target_env = "gnu"))'.prebuilt_cxx_library]]
+name = "libwindows"
 
-[[platform_fixup.'cfg(target_os = "windows")'.buildscript]]
-[platform_fixup.'cfg(target_os = "windows")'.buildscript.prebuilt_cxx_library]
-name = "libwindows.a"
-static_libs = ["lib/libwindows.a"]
+static_libs = ["lib/libwindows.0.48.0.a"]

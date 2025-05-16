@@ -4,9 +4,11 @@
 # commit-date: 2022-12-01T03:10:27-0800
 # source: https://github.com/facebook/buck2/blob/9080cce1b8588afc08e5c9d53d22c652f7567ecf/shim/third-party/rust/fixups/windows_x86_64_msvc/fixups.toml
 
-buildscript = []
+buildscript.run = false
 
-[[platform_fixup.'cfg(target_os = "windows")'.buildscript]]
-[platform_fixup.'cfg(target_os = "windows")'.buildscript.prebuilt_cxx_library]
-name = "windows.lib"
+
+['cfg(all(target_os = "windows", target_env = "msvc"))']
+version = "=0.48.0"
+[['cfg(all(target_os = "windows", target_env = "msvc"))'.prebuilt_cxx_library]]
+name = "windows"
 static_libs = ["lib/windows.lib"]

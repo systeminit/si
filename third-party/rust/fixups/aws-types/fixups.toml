@@ -9,5 +9,4 @@ extra_deps = []
 omit_deps = []
 cargo_env = true
 
-[[buildscript]]
-[buildscript.gen_srcs]
+buildscript.run = true

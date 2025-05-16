@@ -19,10 +19,6 @@ vendor = false
 # fixups.toml adding extra srcs if it fails.
 precise_srcs = true
 
-# If a fixups.toml file is needed (eg, the package has a build.rs), then
-# generate a template fixups.toml to be edited.
-fixup_templates = true
-
 # Include an explicit public top-level target which depends on all other library
 # targets, so that you can to a test/check build.
 include_top_level = true

@@ -1,5 +1,5 @@
-[[buildscript]]
-[buildscript.cxx_library]
+buildscript.run = true
+[[cxx_library]]
 name = "lz4-sys"
 srcs = [
     "liblz4/lib/*.c",
