@@ -568,7 +568,7 @@ where
         };
 
         if from_checksum == to_checksum {
-            Ok((None, None))
+            Ok((None, Some(frontend_object)))
         } else {
             Ok((
                 Some(ObjectPatch {
