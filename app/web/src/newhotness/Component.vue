@@ -1,5 +1,6 @@
 <template>
-  <section v-if="!component">
+  <DelayedLoader v-if="componentQuery.isLoading.value" :size="'full'" />
+  <section v-else-if="!component">
     <h3 class="text-destructive-500">
       This component does not exist on this change set
     </h3>
@@ -198,6 +199,7 @@ import {
 import AttributePanel from "./AttributePanel.vue";
 import { attributeEmitter } from "./logic_composables/emitters";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
+import DelayedLoader from "./layout_components/DelayedLoader.vue";
 import EditInPlace from "./layout_components/EditInPlace.vue";
 import { useApi, routes, UpdateComponentNameArgs } from "./api_composables";
 import { useWatchedForm } from "./logic_composables/watched_form";
