@@ -20,7 +20,6 @@ const NATS_EVENT_STREAM_SUBJECTS: &[&str] = &["si.layerdb.events.*.*.*.*"];
 const NATS_ACTIVITIES_STREAM_NAME: &str = "LAYERDB_ACTIVITIES";
 const NATS_ACTIVITIES_STREAM_SUBJECTS: &[&str] = &["si.layerdb.activities.>"];
 
-const NATS_REBASER_REQUESTS_WORK_QUEUE_STREAM_NAME: &str = "REBASER_REQUESTS";
 const MAX_BYTES: i64 = 1024 * 1024; // mirrors settings in Synadia NATs
 
 /// Returns a Jetstream Stream and creates it if it doesn't yet exist.
@@ -75,36 +74,6 @@ pub async fn layerdb_activities_stream(
     Ok(stream)
 }
 
-// FIXME(nick): move this out of layer cache.
-pub async fn rebaser_requests_work_queue_stream(
-    context: &Context,
-    prefix: Option<&str>,
-) -> Result<jetstream::stream::Stream, jetstream::context::CreateStreamError> {
-    let requests_subject = subject::for_activity_discriminate(
-        prefix,
-        crate::activities::ActivityPayloadDiscriminants::RebaseRequest,
-    );
-
-    let source = jetstream::stream::Source {
-        name: nats_stream_name(prefix, NATS_ACTIVITIES_STREAM_NAME),
-        filter_subject: Some(requests_subject.to_string()),
-        ..Default::default()
-    };
-
-    let stream = context
-        .get_or_create_stream(jetstream::stream::Config {
-            name: nats_stream_name(prefix, NATS_REBASER_REQUESTS_WORK_QUEUE_STREAM_NAME),
-            description: Some("Rebaser requests work queue".to_owned()),
-            retention: jetstream::stream::RetentionPolicy::WorkQueue,
-            sources: Some(vec![source]),
-            max_bytes: MAX_BYTES,
-            ..Default::default()
-        })
-        .await?;
-
-    Ok(stream)
-}
-
 fn nats_stream_name(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
     let suffix = suffix.as_ref();
 
@@ -122,10 +91,6 @@ fn nats_stream_name(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
 
 pub mod subject {
     use si_data_nats::Subject;
-    use si_events::{
-        ChangeSetId,
-        WorkspacePk,
-    };
 
     use crate::{
         activities::{
@@ -211,36 +176,6 @@ pub mod subject {
         suffix.push('*');
         suffix.push('.');
         suffix.push_str(&activity_payload_discriminate.to_subject());
-
-        nats_subject(prefix, suffix)
-    }
-
-    // FIXME(nick): move this out of layer cache.
-    pub fn for_rebaser_requests(
-        prefix: Option<&str>,
-        workspace_id: WorkspacePk,
-        change_set_id: ChangeSetId,
-    ) -> Subject {
-        // Cuts down on the amount of `String` allocations dealing with Ulids
-        let mut buf = [0; ulid::ULID_LEN];
-
-        let activity_payload_discriminate =
-            ActivityPayloadDiscriminants::RebaseRequest.to_subject();
-
-        // A string with enough capacity to avoid multiple reallocations
-        let mut suffix = String::with_capacity(
-            ACTIVITIES_PREFIX.len()
-                + (2 * ulid::ULID_LEN)
-                + activity_payload_discriminate.len()
-                + 3,
-        );
-        suffix.push_str(ACTIVITIES_PREFIX);
-        suffix.push('.');
-        suffix.push_str(workspace_id.array_to_str(&mut buf));
-        suffix.push('.');
-        suffix.push_str(change_set_id.array_to_str(&mut buf));
-        suffix.push('.');
-        suffix.push_str(&activity_payload_discriminate);
 
         nats_subject(prefix, suffix)
     }

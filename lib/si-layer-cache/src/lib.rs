@@ -42,13 +42,3 @@ pub use pg::{
     DBNAME,
     default_pg_pool_config,
 };
-
-// FIXME(nick): this needs to move outside the layer cache.
-pub mod external {
-    pub mod rebaser_server {
-        pub use crate::nats::{
-            rebaser_requests_work_queue_stream,
-            subject::for_rebaser_requests,
-        };
-    }
-}
