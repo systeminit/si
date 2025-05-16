@@ -292,7 +292,10 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
       }
 
       if (!requestSpec.params) requestSpec.params = {};
-      if (!requestSpec.passRequestUlidInHeadersOnly) {
+      if (
+        !requestSpec.passRequestUlidInHeadersOnly &&
+        requestSpec.method !== "get"
+      ) {
         requestSpec.params.requestUlid = requestUlid;
       }
 
