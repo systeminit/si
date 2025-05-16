@@ -102,11 +102,6 @@ const routes: RouteRecordRaw[] = [
     },
     children: [
       {
-        path: ":changeSetId/viz",
-        name: "workspace-viz",
-        component: () => import("@/components/Workspace/WorkspaceViz.vue"),
-      },
-      {
         path: ":changeSetId",
         name: "change-set-home",
         // TODO: will probably want a change set "home" page at some point

@@ -7059,9 +7059,7 @@ dependencies = [
  "sdf-v1-routes-change-sets",
  "sdf-v1-routes-component",
  "sdf-v1-routes-diagram",
- "sdf-v1-routes-graphviz",
  "sdf-v1-routes-module",
- "sdf-v1-routes-node-debug",
  "sdf-v1-routes-qualification",
  "sdf-v1-routes-secret",
  "sdf-v1-routes-session",
@@ -7217,23 +7215,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdf-v1-routes-graphviz"
-version = "0.1.0"
-dependencies = [
- "axum 0.6.20",
- "dal",
- "remain",
- "sdf-core",
- "sdf-extract",
- "serde",
- "serde_json",
- "si-db",
- "telemetry",
- "thiserror 2.0.12",
- "tokio",
-]
-
-[[package]]
 name = "sdf-v1-routes-module"
 version = "0.1.0"
 dependencies = [
@@ -7263,23 +7244,6 @@ dependencies = [
  "tokio-stream",
  "ulid",
  "url",
-]
-
-[[package]]
-name = "sdf-v1-routes-node-debug"
-version = "0.1.0"
-dependencies = [
- "axum 0.6.20",
- "dal",
- "remain",
- "sdf-core",
- "sdf-extract",
- "serde",
- "serde_json",
- "si-db",
- "telemetry",
- "thiserror 2.0.12",
- "ulid",
 ]
 
 [[package]]
