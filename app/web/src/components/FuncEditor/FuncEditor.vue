@@ -118,7 +118,7 @@ const updateFuncCode = (funcId: string, code: string, debounce: boolean) => {
   if (updatedHead.value) return;
   if (!funcId) return; // protecting empty string, should never happen
   if (selectedFuncSummary.value?.isLocked) return;
-
+  if (selectedFuncSummary.value?.funcId !== funcId) return;
   updatedHead.value =
     changeSetsStore.selectedChangeSetId === changeSetsStore.headChangeSetId;
   funcStore.updateFuncCode(funcId, code, debounce);
