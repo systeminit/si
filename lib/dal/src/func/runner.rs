@@ -284,7 +284,14 @@ impl FuncRunner {
                 ctx.events_tenancy(),
                 ctx.events_actor(),
             )?;
-            let before = FuncRunner::before_funcs(ctx, component_id).await?;
+            let before = if func.is_intrinsic() {
+                // Intrinsic functions can't have before functions as they're never dispatched
+                // to Veritech, so don't bother doing the expensive lookup to see what before
+                // functions exist.
+                vec![]
+            } else {
+                FuncRunner::before_funcs(ctx, component_id).await?
+            };
 
             let func_run_create_time = Utc::now();
             let func_run_inner = FuncRunBuilder::default()
