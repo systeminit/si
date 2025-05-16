@@ -1133,6 +1133,14 @@ impl AttributeValue {
         Ok(new_attribute_value.id())
     }
 
+    #[instrument(
+        name = "attribute_value.vivify_value_and_parent_values",
+        level = "info",
+        skip_all,
+        fields(
+            attribute_value_id = ?attribute_value_id,
+        ),
+    )]
     async fn vivify_value_and_parent_values(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -1240,6 +1248,14 @@ impl AttributeValue {
         Ok(new_attribute_value.id)
     }
 
+    #[instrument(
+        name = "attribute_value.populate_nested_values",
+        level = "info",
+        skip_all,
+        fields(
+            attribute_value_id =?attribute_value_id,
+        ),
+    )]
     async fn populate_nested_values(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -1969,7 +1985,7 @@ impl AttributeValue {
         Ok(())
     }
 
-    #[instrument(name = "attribute_value.set_value", level = "debug", skip_all)]
+    #[instrument(name = "attribute_value.set_value", level = "info", skip_all)]
     pub async fn set_value(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,

@@ -702,7 +702,7 @@ impl FuncRunner {
         // and in order to time the function's preparation vs. execution timings.
         #[instrument(
             name = "func_runner.run_attribute_value.prepare",
-            level = "debug",
+            level = "info",
             skip_all,
             fields()
         )]
@@ -1416,6 +1416,7 @@ impl FuncRunner {
         }
     }
 
+    #[instrument(name = "func_runner.update_run", level = "info", skip_all)]
     // Update the given func run in LayerDB, setting tenancy/actor to ctx.events_tenancy()/events_actor()).
     pub async fn update_run(
         ctx: &DalContext,
@@ -1464,6 +1465,7 @@ impl FuncRunner {
         self.func_run.id()
     }
 
+    #[instrument(name = "func_runner.execute", level = "info", skip_all)]
     pub async fn execute(
         self,
         ctx: DalContext,
@@ -1844,7 +1846,7 @@ impl FuncRunnerExecutionTask {
 
     #[instrument(
         name = "func_runner.execution_task.run",
-        level = "debug",
+        level = "info",
         parent = &self.parent_span,
         skip_all,
         fields()
@@ -1874,6 +1876,7 @@ impl FuncRunnerExecutionTask {
         }
     }
 
+    #[instrument(name = "func_runner.execution_task.try_run", level = "info", skip_all)]
     async fn try_run(self) -> FuncRunnerResult<()> {
         if !self.func.is_intrinsic() {
             FuncRunner::update_run(&self.ctx, self.func_run.id(), |func_run| {
