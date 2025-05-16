@@ -411,14 +411,14 @@ async fn build_mv_inner(
                     }
                 }
             }
-        }
 
-        // Now that these MV kinds have had their build tasks kicked off, we want to prevent kicking them off again
-        // as MV build tasks finish, and we also don't want to free up the things that depend on them until _all_
-        // of the started tasks for that MV kind have finished. Once the build tasks have finished, we'll remove the
-        // MV kind from the graph, which will let the downstream MVs start.
-        for &running_mv_kind in &ready_to_start_mv_kinds {
-            mv_dependency_graph.cycle_on_self(running_mv_kind);
+            // Now that these MV kinds have had their build tasks kicked off, we want to prevent kicking them off again
+            // as MV build tasks finish, and we also don't want to free up the things that depend on them until _all_
+            // of the started tasks for that MV kind have finished. Once the build tasks have finished, we'll remove the
+            // MV kind from the graph, which will let the downstream MVs start.
+            for &running_mv_kind in &ready_to_start_mv_kinds {
+                mv_dependency_graph.cycle_on_self(running_mv_kind);
+            }
         }
 
         if let Some(join_result) = build_tasks.join_next().await {
