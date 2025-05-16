@@ -97,7 +97,9 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
                 },
             };
 
-            if maybe_parent_av_id == Some(secrets_category_av_id) {
+            if value != serde_json::Value::Null
+                && maybe_parent_av_id == Some(secrets_category_av_id)
+            {
                 let secret_key = Secret::key_from_value_in_attribute_value(value)?;
                 value = match secret_ids_by_key.get(&secret_key) {
                     Some(secret_id) => serde_json::to_value(secret_id)?,
