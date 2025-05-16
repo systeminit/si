@@ -106,6 +106,7 @@
         :onSelect="() => removeFromView()"
       />
       <DropdownMenuItem
+        v-if="workspacesStore.workspaceApprovalsEnabled"
         label="Approval Requirements"
         icon="bullet-list"
         :onSelect="() => displayApprovalRequirements()"
@@ -179,6 +180,7 @@ import { windowListenerManager } from "@si/vue-lib";
 import { useToast } from "vue-toastification";
 import { ViewDescription } from "@/api/sdf/dal/views";
 import { useViewsStore } from "@/store/views.store";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import { View } from "@/workers/types/dbinterface";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
@@ -187,6 +189,7 @@ import { DiagramViewData } from "./ModelingDiagram/diagram_types";
 
 const toast = useToast();
 const viewsStore = useViewsStore();
+const workspacesStore = useWorkspacesStore();
 
 const props = defineProps<{
   selected?: boolean;

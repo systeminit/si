@@ -9,6 +9,7 @@ use dal::{
     ChangeSet,
     DalContext,
     UserPk,
+    Workspace,
     WorkspacePk,
     approval_requirement::{
         ApprovalRequirement,
@@ -63,30 +64,37 @@ pub async fn approval_requirements_are_satisfied_or_error(
 }
 
 /// Applies the current change set to the base change set, but with protections in place, such as
-/// ensuring that the requirements are met and that we have committed preparations.
+/// ensuring that the workspace is opt-ed into approvals, requirements are met and that we have
+/// committed preparations.
 pub async fn protected_apply_to_base_change_set(
     ctx: &mut DalContext,
     spicedb_client: &mut si_data_spicedb::Client,
 ) -> Result<()> {
-    let solo_user_in_workspace = match ctx.history_actor() {
-        HistoryActor::SystemInit => return Err(DalWrapperError::InvalidUser),
-        HistoryActor::User(user_pk) => {
-            let workspace_pk = ctx.workspace_pk()?;
-            let user_pks =
-                User::list_member_pks_for_workspace(ctx, workspace_pk.to_string()).await?;
+    let workspace_pk = ctx.workspace_pk()?;
+    let workspace = Workspace::get_by_pk(ctx, workspace_pk).await?;
 
-            user_pks.len() == 1
-                && user_pks
-                    .first()
-                    .ok_or(DalWrapperError::NoUsersInWorkspace(workspace_pk))?
-                    == user_pk
+    // Let's check if the workspace is opt-ed in for approvals
+    if workspace.approvals_enabled() {
+        let solo_user_in_workspace = match ctx.history_actor() {
+            HistoryActor::SystemInit => return Err(DalWrapperError::InvalidUser),
+            HistoryActor::User(user_pk) => {
+                let workspace_pk = ctx.workspace_pk()?;
+                let user_pks =
+                    User::list_member_pks_for_workspace(ctx, workspace_pk.to_string()).await?;
+
+                user_pks.len() == 1
+                    && user_pks
+                        .first()
+                        .ok_or(DalWrapperError::NoUsersInWorkspace(workspace_pk))?
+                        == user_pk
+            }
+        };
+
+        // First, check if all requirements have been satisfied. We do not need to check this
+        // if we are allowed to skip the approval flow
+        if !solo_user_in_workspace {
+            approval_requirements_are_satisfied_or_error(ctx, spicedb_client).await?;
         }
-    };
-
-    // First, check if all requirements have been satisfied. We do not need to check this
-    // if we are allowed to skip the approval flow.
-    if !solo_user_in_workspace {
-        approval_requirements_are_satisfied_or_error(ctx, spicedb_client).await?;
     }
 
     // With no unsatisfied requirements, we can prepare to apply.

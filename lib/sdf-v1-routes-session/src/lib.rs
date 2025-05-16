@@ -26,6 +26,7 @@ use serde::{
     Serialize,
 };
 use si_data_spicedb::SpiceDbError;
+use si_events::ulid;
 use thiserror::Error;
 
 pub mod auth_connect;
@@ -40,6 +41,8 @@ pub enum SessionError {
     AuthApiError(String),
     #[error(transparent)]
     ContextTransactions(#[from] TransactionsError),
+    #[error("ulid decode error: {0}")]
+    Decode(#[from] ulid::DecodeError),
     #[error("json serialize failed")]
     JSONSerialize(#[from] serde_json::Error),
     #[error(transparent)]

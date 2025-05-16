@@ -29,7 +29,9 @@
             icon="tools"
             :tone="workspaceHasOneUser ? 'success' : undefined"
             :label="
-              workspaceHasOneUser ? 'Apply Change Set' : 'Request Approval'
+              workspaceHasOneUser || !workspacesStore.workspaceApprovalsEnabled
+                ? 'Apply Change Set'
+                : 'Request Approval'
             "
             class="grow"
             @click="applyButtonHandler"
@@ -51,11 +53,13 @@ import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import ApprovalFlowCancelled from "@/components/toasts/ApprovalFlowCancelled.vue";
 import { usePresenceStore } from "@/store/presence.store";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import ActionsList from "./Actions/ActionsList.vue";
 
 const presenceStore = usePresenceStore();
 const changeSetsStore = useChangeSetsStore();
 const authStore = useAuthStore();
+const workspacesStore = useWorkspacesStore();
 const toast = useToast();
 
 const modalRef = ref<InstanceType<typeof Modal> | null>(null);
@@ -73,20 +77,24 @@ function closeModalHandler() {
 }
 
 function applyButtonHandler() {
-  if (workspaceHasOneUser.value && authStore.user) {
+  if (!workspacesStore.workspaceApprovalsEnabled && authStore.user) {
     changeSetsStore.APPLY_CHANGE_SET(authStore.user.name);
   } else {
-    changeSetsStore.REQUEST_CHANGE_SET_APPROVAL();
+    if (workspaceHasOneUser.value && authStore.user) {
+      changeSetsStore.APPLY_CHANGE_SET(authStore.user.name);
+    } else {
+      changeSetsStore.REQUEST_CHANGE_SET_APPROVAL();
 
-    // TODO(nick): we should remove this in favor of only the WsEvent fetching. It appears that
-    // requesting the approval itself is insufficient for getting the latest approval status at
-    // the time of writing and the reason appears to be that the change set is "open" by the
-    // time the inset modal opens. Fortunately, this will work since we are the requester.
-    if (changeSet.value) {
-      changeSetsStore.FETCH_APPROVAL_STATUS(changeSet.value.id);
+      // TODO(nick): we should remove this in favor of only the WsEvent fetching. It appears that
+      // requesting the approval itself is insufficient for getting the latest approval status at
+      // the time of writing and the reason appears to be that the change set is "open" by the
+      // time the inset modal opens. Fortunately, this will work since we are the requester.
+      if (changeSet.value) {
+        changeSetsStore.FETCH_APPROVAL_STATUS(changeSet.value.id);
+      }
+
+      presenceStore.leftDrawerOpen = false; // close the left draw for the InsetModal
     }
-
-    presenceStore.leftDrawerOpen = false; // close the left draw for the InsetModal
   }
 
   closeModalHandler();
