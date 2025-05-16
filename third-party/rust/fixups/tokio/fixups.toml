@@ -6,7 +6,7 @@
 
 extra_srcs = ["src/**/*.rs"]
 
-buildscript = []
+buildscript.run = false
 features = ["tokio_track_caller"]
 
 [platform_fixup.'cfg(target_os = "linux")']

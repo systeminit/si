@@ -8,7 +8,7 @@ omit_features = []
 extra_deps = []
 omit_deps = []
 cargo_env = false
-buildscript = []
+buildscript.run = false
 
 [env]
 

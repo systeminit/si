@@ -1,7 +1,3 @@
 cargo_env = true
 
-[[buildscript]]
-[buildscript.rustc_flags]
-
-[[buildscript]]
-[buildscript.gen_srcs]
+buildscript.run = true

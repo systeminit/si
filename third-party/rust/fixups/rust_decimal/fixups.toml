@@ -6,5 +6,4 @@ omit_deps = [
   "serde_json",
 ]
 
-[[buildscript]]
-[buildscript.gen_srcs]
+buildscript.run = true

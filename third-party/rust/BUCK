@@ -684,6 +684,7 @@ cargo.rust_library(
     crate_root = "async-nats-0.39.0.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "async_nats",
         "CARGO_MANIFEST_DIR": "async-nats-0.39.0.crate",
         "CARGO_PKG_AUTHORS": "Tomasz Pietrek <tomasz@nats.io>:Casper Beyer <caspervonb@pm.me>",
         "CARGO_PKG_DESCRIPTION": "A async Rust NATS client",
@@ -693,6 +694,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "39",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "default",
@@ -957,6 +959,7 @@ cargo.rust_library(
     crate_root = "attohttpc-0.26.1.crate/src/lib.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "attohttpc",
         "CARGO_MANIFEST_DIR": "attohttpc-0.26.1.crate",
         "CARGO_PKG_AUTHORS": "Simon Bernier St-Pierre <git@sbstp.ca>",
         "CARGO_PKG_DESCRIPTION": "Small and lightweight HTTP client",
@@ -966,6 +969,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "26",
         "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "__rustls",
@@ -1058,6 +1062,7 @@ cargo.rust_library(
     crate_root = "aws-config-1.5.18.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "aws_config",
         "CARGO_MANIFEST_DIR": "aws-config-1.5.18.crate",
         "CARGO_PKG_AUTHORS": "AWS Rust SDK Team <aws-sdk-rust@amazon.com>:Russell Cohen <rcoh@amazon.com>",
         "CARGO_PKG_DESCRIPTION": "AWS SDK config and credential provider implementations.",
@@ -1067,6 +1072,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "5",
         "CARGO_PKG_VERSION_PATCH": "18",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "behavior-version-latest",
@@ -1221,6 +1227,7 @@ cargo.rust_library(
     crate_root = "aws-sdk-acmpca-1.72.0.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "aws_sdk_acmpca",
         "CARGO_MANIFEST_DIR": "aws-sdk-acmpca-1.72.0.crate",
         "CARGO_PKG_AUTHORS": "AWS Rust SDK Team <aws-sdk-rust@amazon.com>:Russell Cohen <rcoh@amazon.com>",
         "CARGO_PKG_DESCRIPTION": "AWS SDK for AWS Certificate Manager Private Certificate Authority",
@@ -1230,6 +1237,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "72",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = ["rt-tokio"],
     visibility = [],
@@ -1273,6 +1281,7 @@ cargo.rust_library(
     crate_root = "aws-sdk-firehose-1.68.0.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "aws_sdk_firehose",
         "CARGO_MANIFEST_DIR": "aws-sdk-firehose-1.68.0.crate",
         "CARGO_PKG_AUTHORS": "AWS Rust SDK Team <aws-sdk-rust@amazon.com>:Russell Cohen <rcoh@amazon.com>",
         "CARGO_PKG_DESCRIPTION": "AWS SDK for Amazon Kinesis Firehose",
@@ -1282,6 +1291,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "68",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "default",
@@ -1328,6 +1338,7 @@ cargo.rust_library(
     crate_root = "aws-sdk-ssm-1.75.0.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "aws_sdk_ssm",
         "CARGO_MANIFEST_DIR": "aws-sdk-ssm-1.75.0.crate",
         "CARGO_PKG_AUTHORS": "AWS Rust SDK Team <aws-sdk-rust@amazon.com>:Russell Cohen <rcoh@amazon.com>",
         "CARGO_PKG_DESCRIPTION": "AWS SDK for Amazon Simple Systems Manager (SSM)",
@@ -1337,6 +1348,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "75",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = ["rt-tokio"],
     visibility = [],
@@ -1374,6 +1386,7 @@ cargo.rust_library(
     crate_root = "aws-sdk-sso-1.67.0.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "aws_sdk_sso",
         "CARGO_MANIFEST_DIR": "aws-sdk-sso-1.67.0.crate",
         "CARGO_PKG_AUTHORS": "AWS Rust SDK Team <aws-sdk-rust@amazon.com>:Russell Cohen <rcoh@amazon.com>",
         "CARGO_PKG_DESCRIPTION": "AWS SDK for AWS Single Sign-On",
@@ -1383,6 +1396,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "67",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     visibility = [],
     deps = [
@@ -1419,6 +1433,7 @@ cargo.rust_library(
     crate_root = "aws-sdk-ssooidc-1.68.0.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "aws_sdk_ssooidc",
         "CARGO_MANIFEST_DIR": "aws-sdk-ssooidc-1.68.0.crate",
         "CARGO_PKG_AUTHORS": "AWS Rust SDK Team <aws-sdk-rust@amazon.com>:Russell Cohen <rcoh@amazon.com>",
         "CARGO_PKG_DESCRIPTION": "AWS SDK for AWS SSO OIDC",
@@ -1428,6 +1443,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "68",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     visibility = [],
     deps = [
@@ -1470,6 +1486,7 @@ cargo.rust_library(
     crate_root = "aws-sdk-sts-1.68.0.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "aws_sdk_sts",
         "CARGO_MANIFEST_DIR": "aws-sdk-sts-1.68.0.crate",
         "CARGO_PKG_AUTHORS": "AWS Rust SDK Team <aws-sdk-rust@amazon.com>:Russell Cohen <rcoh@amazon.com>",
         "CARGO_PKG_DESCRIPTION": "AWS SDK for AWS Security Token Service",
@@ -1479,6 +1496,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "68",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = ["rt-tokio"],
     visibility = [],
@@ -1907,6 +1925,7 @@ cargo.rust_library(
     crate_root = "aws-types-1.3.7.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "aws_types",
         "CARGO_MANIFEST_DIR": "aws-types-1.3.7.crate",
         "CARGO_PKG_AUTHORS": "AWS Rust SDK Team <aws-sdk-rust@amazon.com>:Russell Cohen <rcoh@amazon.com>",
         "CARGO_PKG_DESCRIPTION": "Cross-service types for the AWS SDK.",
@@ -1916,8 +1935,10 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "3",
         "CARGO_PKG_VERSION_PATCH": "7",
+        "CARGO_PKG_VERSION_PRE": "",
         "OUT_DIR": "$(location :aws-types-1.3.7-build-script-run[out_dir])",
     },
+    rustc_flags = ["@$(location :aws-types-1.3.7-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
         ":aws-credential-types-1.2.3",
@@ -1935,6 +1956,7 @@ cargo.rust_binary(
     crate_root = "aws-types-1.3.7.crate/build.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "build_script_build",
         "CARGO_MANIFEST_DIR": "aws-types-1.3.7.crate",
         "CARGO_PKG_AUTHORS": "AWS Rust SDK Team <aws-sdk-rust@amazon.com>:Russell Cohen <rcoh@amazon.com>",
         "CARGO_PKG_DESCRIPTION": "Cross-service types for the AWS SDK.",
@@ -1944,6 +1966,7 @@ cargo.rust_binary(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "3",
         "CARGO_PKG_VERSION_PATCH": "7",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     visibility = [],
     deps = [":rustc_version-0.4.1"],
@@ -1953,6 +1976,15 @@ buildscript_run(
     name = "aws-types-1.3.7-build-script-run",
     package_name = "aws-types",
     buildscript_rule = ":aws-types-1.3.7-build-script-build",
+    env = {
+        "CARGO_PKG_AUTHORS": "AWS Rust SDK Team <aws-sdk-rust@amazon.com>:Russell Cohen <rcoh@amazon.com>",
+        "CARGO_PKG_DESCRIPTION": "Cross-service types for the AWS SDK.",
+        "CARGO_PKG_REPOSITORY": "https://github.com/smithy-lang/smithy-rs",
+        "CARGO_PKG_VERSION_MAJOR": "1",
+        "CARGO_PKG_VERSION_MINOR": "3",
+        "CARGO_PKG_VERSION_PATCH": "7",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     version = "1.3.7",
 )
 
@@ -2384,6 +2416,7 @@ cargo.rust_library(
     crate_root = "bigdecimal-0.4.8.crate/src/lib.rs",
     edition = "2015",
     env = {
+        "CARGO_CRATE_NAME": "bigdecimal",
         "CARGO_MANIFEST_DIR": "bigdecimal-0.4.8.crate",
         "CARGO_PKG_AUTHORS": "Andrew Kubera",
         "CARGO_PKG_DESCRIPTION": "Arbitrary precision decimal numbers",
@@ -2393,6 +2426,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "4",
         "CARGO_PKG_VERSION_PATCH": "8",
+        "CARGO_PKG_VERSION_PRE": "",
         "OUT_DIR": "$(location :bigdecimal-0.4.8-build-script-run[out_dir])",
     },
     features = [
@@ -2400,6 +2434,7 @@ cargo.rust_library(
         "serde",
         "std",
     ],
+    rustc_flags = ["@$(location :bigdecimal-0.4.8-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
         ":libm-0.2.15",
@@ -2417,6 +2452,7 @@ cargo.rust_binary(
     crate_root = "bigdecimal-0.4.8.crate/build.rs",
     edition = "2015",
     env = {
+        "CARGO_CRATE_NAME": "build_script_build",
         "CARGO_MANIFEST_DIR": "bigdecimal-0.4.8.crate",
         "CARGO_PKG_AUTHORS": "Andrew Kubera",
         "CARGO_PKG_DESCRIPTION": "Arbitrary precision decimal numbers",
@@ -2426,6 +2462,7 @@ cargo.rust_binary(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "4",
         "CARGO_PKG_VERSION_PATCH": "8",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "default",
@@ -2440,6 +2477,15 @@ buildscript_run(
     name = "bigdecimal-0.4.8-build-script-run",
     package_name = "bigdecimal",
     buildscript_rule = ":bigdecimal-0.4.8-build-script-build",
+    env = {
+        "CARGO_PKG_AUTHORS": "Andrew Kubera",
+        "CARGO_PKG_DESCRIPTION": "Arbitrary precision decimal numbers",
+        "CARGO_PKG_REPOSITORY": "https://github.com/akubera/bigdecimal-rs",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "4",
+        "CARGO_PKG_VERSION_PATCH": "8",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     features = [
         "default",
         "serde",
@@ -2481,6 +2527,7 @@ cargo.rust_library(
     crate_root = "bindgen-0.68.1.crate/lib.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "bindgen",
         "CARGO_MANIFEST_DIR": "bindgen-0.68.1.crate",
         "CARGO_PKG_AUTHORS": "Jyun-Yan You <jyyou.tw@gmail.com>:Emilio Cobos Álvarez <emilio@crisal.io>:Nick Fitzgerald <fitzgen@gmail.com>:The Servo project developers",
         "CARGO_PKG_DESCRIPTION": "Automatically generates Rust FFI bindings to C and C++ libraries.",
@@ -2490,13 +2537,14 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "68",
         "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
         "OUT_DIR": "$(location :bindgen-0.68.1-build-script-run[out_dir])",
     },
     features = ["runtime"],
     rustc_flags = ["@$(location :bindgen-0.68.1-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
-        ":bitflags-2.9.0",
+        ":bitflags-2.9.1",
         ":cexpr-0.6.0",
         ":clang-sys-1.8.1",
         ":lazy_static-1.5.0",
@@ -2518,6 +2566,7 @@ cargo.rust_binary(
     crate_root = "bindgen-0.68.1.crate/build.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "build_script_build",
         "CARGO_MANIFEST_DIR": "bindgen-0.68.1.crate",
         "CARGO_PKG_AUTHORS": "Jyun-Yan You <jyyou.tw@gmail.com>:Emilio Cobos Álvarez <emilio@crisal.io>:Nick Fitzgerald <fitzgen@gmail.com>:The Servo project developers",
         "CARGO_PKG_DESCRIPTION": "Automatically generates Rust FFI bindings to C and C++ libraries.",
@@ -2527,6 +2576,7 @@ cargo.rust_binary(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "68",
         "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = ["runtime"],
     visibility = [],
@@ -2536,23 +2586,32 @@ buildscript_run(
     name = "bindgen-0.68.1-build-script-run",
     package_name = "bindgen",
     buildscript_rule = ":bindgen-0.68.1-build-script-build",
+    env = {
+        "CARGO_PKG_AUTHORS": "Jyun-Yan You <jyyou.tw@gmail.com>:Emilio Cobos Álvarez <emilio@crisal.io>:Nick Fitzgerald <fitzgen@gmail.com>:The Servo project developers",
+        "CARGO_PKG_DESCRIPTION": "Automatically generates Rust FFI bindings to C and C++ libraries.",
+        "CARGO_PKG_REPOSITORY": "https://github.com/rust-lang/rust-bindgen",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "68",
+        "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     features = ["runtime"],
     version = "0.68.1",
 )
 
 http_archive(
-    name = "binstring-0.1.6.crate",
-    sha256 = "9a3a3c2603413428303761fae99d4b6d936404208221a44eba47d7c1e6dd03a3",
-    strip_prefix = "binstring-0.1.6",
-    urls = ["https://static.crates.io/crates/binstring/0.1.6/download"],
+    name = "binstring-0.1.7.crate",
+    sha256 = "0669d5a35b64fdb5ab7fb19cae13148b6b5cbdf4b8247faf54ece47f699c8cef",
+    strip_prefix = "binstring-0.1.7",
+    urls = ["https://static.crates.io/crates/binstring/0.1.7/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "binstring-0.1.6",
-    srcs = [":binstring-0.1.6.crate"],
+    name = "binstring-0.1.7",
+    srcs = [":binstring-0.1.7.crate"],
     crate = "binstring",
-    crate_root = "binstring-0.1.6.crate/src/lib.rs",
+    crate_root = "binstring-0.1.7.crate/src/lib.rs",
     edition = "2021",
     visibility = [],
 )
@@ -2576,18 +2635,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "bitflags-2.9.0.crate",
-    sha256 = "5c8214115b7bf84099f1309324e63141d4c5d7cc26862f97a0a857dbefe165bd",
-    strip_prefix = "bitflags-2.9.0",
-    urls = ["https://static.crates.io/crates/bitflags/2.9.0/download"],
+    name = "bitflags-2.9.1.crate",
+    sha256 = "1b8e56985ec62d17e9c1001dc89c88ecd7dc08e47eba5ec7c29c7b5eeecde967",
+    strip_prefix = "bitflags-2.9.1",
+    urls = ["https://static.crates.io/crates/bitflags/2.9.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "bitflags-2.9.0",
-    srcs = [":bitflags-2.9.0.crate"],
+    name = "bitflags-2.9.1",
+    srcs = [":bitflags-2.9.1.crate"],
     crate = "bitflags",
-    crate_root = "bitflags-2.9.0.crate/src/lib.rs",
+    crate_root = "bitflags-2.9.1.crate/src/lib.rs",
     edition = "2021",
     features = [
         "serde",
@@ -3089,18 +3148,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "cc-1.2.22.crate",
-    sha256 = "32db95edf998450acc7881c932f94cd9b05c87b4b2599e8bab064753da4acfd1",
-    strip_prefix = "cc-1.2.22",
-    urls = ["https://static.crates.io/crates/cc/1.2.22/download"],
+    name = "cc-1.2.23.crate",
+    sha256 = "5f4ac86a9e5bc1e2b3449ab9d7d3a6a405e3d1bb28d7b9be8614f55846ae3766",
+    strip_prefix = "cc-1.2.23",
+    urls = ["https://static.crates.io/crates/cc/1.2.23/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "cc-1.2.22",
-    srcs = [":cc-1.2.22.crate"],
+    name = "cc-1.2.23",
+    srcs = [":cc-1.2.23.crate"],
     crate = "cc",
-    crate_root = "cc-1.2.22.crate/src/lib.rs",
+    crate_root = "cc-1.2.23.crate/src/lib.rs",
     edition = "2018",
     features = ["parallel"],
     platform = {
@@ -3328,6 +3387,7 @@ cargo.rust_library(
     crate_root = "clang-sys-1.8.1.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "clang_sys",
         "CARGO_MANIFEST_DIR": "clang-sys-1.8.1.crate",
         "CARGO_PKG_AUTHORS": "Kyle Mayes <kyle@mayeses.com>",
         "CARGO_PKG_DESCRIPTION": "Rust bindings for libclang.",
@@ -3337,6 +3397,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "8",
         "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
         "OUT_DIR": "$(location :clang-sys-1.8.1-build-script-run[out_dir])",
     },
     features = [
@@ -3351,6 +3412,7 @@ cargo.rust_library(
         "libloading",
         "runtime",
     ],
+    rustc_flags = ["@$(location :clang-sys-1.8.1-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
         ":glob-0.3.2",
@@ -3366,6 +3428,7 @@ cargo.rust_binary(
     crate_root = "clang-sys-1.8.1.crate/build.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "build_script_build",
         "CARGO_MANIFEST_DIR": "clang-sys-1.8.1.crate",
         "CARGO_PKG_AUTHORS": "Kyle Mayes <kyle@mayeses.com>",
         "CARGO_PKG_DESCRIPTION": "Rust bindings for libclang.",
@@ -3375,6 +3438,7 @@ cargo.rust_binary(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "8",
         "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "clang_3_5",
@@ -3396,6 +3460,16 @@ buildscript_run(
     name = "clang-sys-1.8.1-build-script-run",
     package_name = "clang-sys",
     buildscript_rule = ":clang-sys-1.8.1-build-script-build",
+    env = {
+        "CARGO_MANIFEST_LINKS": "clang",
+        "CARGO_PKG_AUTHORS": "Kyle Mayes <kyle@mayeses.com>",
+        "CARGO_PKG_DESCRIPTION": "Rust bindings for libclang.",
+        "CARGO_PKG_REPOSITORY": "https://github.com/KyleMayes/clang-sys",
+        "CARGO_PKG_VERSION_MAJOR": "1",
+        "CARGO_PKG_VERSION_MINOR": "8",
+        "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     features = [
         "clang_3_5",
         "clang_3_6",
@@ -3632,7 +3706,7 @@ cargo.rust_library(
         ":eyre-0.6.12",
         ":indenter-0.3.3",
         ":once_cell-1.21.3",
-        ":owo-colors-4.2.0",
+        ":owo-colors-4.2.1",
         ":tracing-error-0.2.1",
     ],
 )
@@ -3654,7 +3728,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":once_cell-1.21.3",
-        ":owo-colors-4.2.0",
+        ":owo-colors-4.2.1",
         ":tracing-core-0.1.33",
         ":tracing-error-0.2.1",
     ],
@@ -4214,6 +4288,7 @@ cargo.rust_library(
     crate_root = "crossbeam-epoch-0.9.18.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "crossbeam_epoch",
         "CARGO_MANIFEST_DIR": "crossbeam-epoch-0.9.18.crate",
         "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Epoch-based garbage collection",
@@ -4223,6 +4298,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "9",
         "CARGO_PKG_VERSION_PATCH": "18",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "alloc",
@@ -4276,6 +4352,7 @@ cargo.rust_library(
     crate_root = "crossbeam-utils-0.8.21.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "crossbeam_utils",
         "CARGO_MANIFEST_DIR": "crossbeam-utils-0.8.21.crate",
         "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Utilities for concurrent programming",
@@ -4285,6 +4362,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "8",
         "CARGO_PKG_VERSION_PATCH": "21",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "default",
@@ -4314,6 +4392,7 @@ cargo.rust_library(
         "default",
         "limit_128",
     ],
+    rustc_flags = ["@$(location :crunchy-0.2.3-build-script-run[rustc_flags])"],
     visibility = [],
 )
 
@@ -4426,6 +4505,9 @@ cargo.rust_library(
     crate = "curve25519_dalek",
     crate_root = "curve25519-dalek-4.1.3.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :curve25519-dalek-4.1.3-build-script-run[out_dir])",
+    },
     features = ["digest"],
     platform = {
         "linux-x86_64": dict(
@@ -5065,6 +5147,7 @@ cargo.rust_library(
     crate_root = "devicemapper-0.34.1.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "devicemapper",
         "CARGO_MANIFEST_DIR": "devicemapper-0.34.1.crate",
         "CARGO_PKG_AUTHORS": "Stratis Developers <stratis-devel@lists.fedorahosted.org>",
         "CARGO_PKG_DESCRIPTION": "A library for using Linux device mapper",
@@ -5074,12 +5157,13 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "34",
         "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
         "OUT_DIR": "$(location :devicemapper-0.34.1-build-script-run[out_dir])",
     },
     rustc_flags = ["@$(location :devicemapper-0.34.1-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
-        ":bitflags-2.9.0",
+        ":bitflags-2.9.1",
         ":devicemapper-sys-0.2.0",
         ":env_logger-0.10.2",
         ":lazy_static-1.5.0",
@@ -5099,6 +5183,7 @@ cargo.rust_binary(
     crate_root = "devicemapper-0.34.1.crate/build.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "build_script_build",
         "CARGO_MANIFEST_DIR": "devicemapper-0.34.1.crate",
         "CARGO_PKG_AUTHORS": "Stratis Developers <stratis-devel@lists.fedorahosted.org>",
         "CARGO_PKG_DESCRIPTION": "A library for using Linux device mapper",
@@ -5108,6 +5193,7 @@ cargo.rust_binary(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "34",
         "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     visibility = [],
     deps = [
@@ -5120,6 +5206,15 @@ buildscript_run(
     name = "devicemapper-0.34.1-build-script-run",
     package_name = "devicemapper",
     buildscript_rule = ":devicemapper-0.34.1-build-script-build",
+    env = {
+        "CARGO_PKG_AUTHORS": "Stratis Developers <stratis-devel@lists.fedorahosted.org>",
+        "CARGO_PKG_DESCRIPTION": "A library for using Linux device mapper",
+        "CARGO_PKG_REPOSITORY": "https://github.com/stratis-storage/devicemapper-rs",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "34",
+        "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     version = "0.34.1",
 )
 
@@ -5138,6 +5233,7 @@ cargo.rust_library(
     crate_root = "devicemapper-sys-0.2.0.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "devicemapper_sys",
         "CARGO_MANIFEST_DIR": "devicemapper-sys-0.2.0.crate",
         "CARGO_PKG_AUTHORS": "Stratis Developers <stratis-devel@lists.fedorahosted.org>",
         "CARGO_PKG_DESCRIPTION": "Low level bindings for devicemapper",
@@ -5147,6 +5243,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "2",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
         "OUT_DIR": "$(location :devicemapper-sys-0.2.0-build-script-run[out_dir])",
     },
     rustc_flags = ["@$(location :devicemapper-sys-0.2.0-build-script-run[rustc_flags])"],
@@ -5160,6 +5257,7 @@ cargo.rust_binary(
     crate_root = "devicemapper-sys-0.2.0.crate/build.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "build_script_build",
         "CARGO_MANIFEST_DIR": "devicemapper-sys-0.2.0.crate",
         "CARGO_PKG_AUTHORS": "Stratis Developers <stratis-devel@lists.fedorahosted.org>",
         "CARGO_PKG_DESCRIPTION": "Low level bindings for devicemapper",
@@ -5169,6 +5267,7 @@ cargo.rust_binary(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "2",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     visibility = [],
     deps = [":bindgen-0.68.1"],
@@ -5178,6 +5277,15 @@ buildscript_run(
     name = "devicemapper-sys-0.2.0-build-script-run",
     package_name = "devicemapper-sys",
     buildscript_rule = ":devicemapper-sys-0.2.0-build-script-build",
+    env = {
+        "CARGO_PKG_AUTHORS": "Stratis Developers <stratis-devel@lists.fedorahosted.org>",
+        "CARGO_PKG_DESCRIPTION": "Low level bindings for devicemapper",
+        "CARGO_PKG_REPOSITORY": "https://github.com/stratis-storage/devicemapper-rs",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "2",
+        "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     version = "0.2.0",
 )
 
@@ -5879,18 +5987,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "errno-0.3.11.crate",
-    sha256 = "976dd42dc7e85965fe702eb8164f21f450704bdde31faefd6471dba214cb594e",
-    strip_prefix = "errno-0.3.11",
-    urls = ["https://static.crates.io/crates/errno/0.3.11/download"],
+    name = "errno-0.3.12.crate",
+    sha256 = "cea14ef9355e3beab063703aa9dab15afd25f0667c341310c1e5274bb1d0da18",
+    strip_prefix = "errno-0.3.12",
+    urls = ["https://static.crates.io/crates/errno/0.3.12/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "errno-0.3.11",
-    srcs = [":errno-0.3.11.crate"],
+    name = "errno-0.3.12",
+    srcs = [":errno-0.3.12.crate"],
     crate = "errno",
-    crate_root = "errno-0.3.11.crate/src/lib.rs",
+    crate_root = "errno-0.3.12.crate/src/lib.rs",
     edition = "2018",
     features = ["std"],
     platform = {
@@ -6579,7 +6687,7 @@ cargo.rust_library(
     deps = [
         ":ahash-0.8.12",
         ":arc-swap-1.7.1",
-        ":bitflags-2.9.0",
+        ":bitflags-2.9.1",
         ":cmsketch-0.2.2",
         ":equivalent-1.0.2",
         ":fastrace-0.7.9",
@@ -6735,6 +6843,9 @@ cargo.rust_library(
     crate = "fuser",
     crate_root = "fuser-0.15.1.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :fuser-0.15.1-build-script-run[out_dir])",
+    },
     rustc_flags = ["@$(location :fuser-0.15.1-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
@@ -6819,6 +6930,7 @@ cargo.rust_library(
     crate_root = "futures-channel-0.3.31.crate/src/lib.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "futures_channel",
         "CARGO_MANIFEST_DIR": "futures-channel-0.3.31.crate",
         "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Channels for asynchronous communication using futures-rs.\n",
@@ -6828,6 +6940,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "3",
         "CARGO_PKG_VERSION_PATCH": "31",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "alloc",
@@ -6858,6 +6971,7 @@ cargo.rust_library(
     crate_root = "futures-core-0.3.31.crate/src/lib.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "futures_core",
         "CARGO_MANIFEST_DIR": "futures-core-0.3.31.crate",
         "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "The core traits and types in for the `futures` library.\n",
@@ -6867,6 +6981,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "3",
         "CARGO_PKG_VERSION_PATCH": "31",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "alloc",
@@ -7050,6 +7165,7 @@ cargo.rust_library(
     crate_root = "futures-task-0.3.31.crate/src/lib.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "futures_task",
         "CARGO_MANIFEST_DIR": "futures-task-0.3.31.crate",
         "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Tools for working with tasks.\n",
@@ -7059,6 +7175,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "3",
         "CARGO_PKG_VERSION_PATCH": "31",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "alloc",
@@ -7099,6 +7216,7 @@ cargo.rust_library(
     crate_root = "futures-util-0.3.31.crate/src/lib.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "futures_util",
         "CARGO_MANIFEST_DIR": "futures-util-0.3.31.crate",
         "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Common utilities and extension traits for the futures-rs library.\n",
@@ -7108,6 +7226,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "3",
         "CARGO_PKG_VERSION_PATCH": "31",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "alloc",
@@ -7473,6 +7592,7 @@ cargo.rust_library(
     crate_root = "handlebars-6.3.2.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "handlebars",
         "CARGO_MANIFEST_DIR": "handlebars-6.3.2.crate",
         "CARGO_PKG_AUTHORS": "Ning Sun <sunng@pm.me>",
         "CARGO_PKG_DESCRIPTION": "Handlebars templating implemented in Rust.",
@@ -7482,6 +7602,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "6",
         "CARGO_PKG_VERSION_MINOR": "3",
         "CARGO_PKG_VERSION_PATCH": "2",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = ["default"],
     visibility = [],
@@ -8454,10 +8575,10 @@ cargo.rust_library(
             deps = [":core-foundation-sys-0.8.7"],
         ),
         "windows-gnu": dict(
-            deps = [":windows-core-0.61.0"],
+            deps = [":windows-core-0.61.1"],
         ),
         "windows-msvc": dict(
-            deps = [":windows-core-0.61.0"],
+            deps = [":windows-core-0.61.1"],
         ),
     },
     visibility = [],
@@ -8553,6 +8674,9 @@ cargo.rust_library(
     crate = "icu_normalizer_data",
     crate_root = "icu_normalizer_data-2.0.0.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :icu_normalizer_data-2.0.0-build-script-run[out_dir])",
+    },
     rustc_flags = ["@$(location :icu_normalizer_data-2.0.0-build-script-run[rustc_flags])"],
     visibility = [],
 )
@@ -8615,6 +8739,9 @@ cargo.rust_library(
     crate = "icu_properties_data",
     crate_root = "icu_properties_data-2.0.0.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :icu_properties_data-2.0.0-build-script-run[out_dir])",
+    },
     rustc_flags = ["@$(location :icu_properties_data-2.0.0-build-script-run[rustc_flags])"],
     visibility = [],
 )
@@ -9279,6 +9406,7 @@ cargo.rust_library(
     crate_root = "jsonptr-0.7.1.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "jsonptr",
         "CARGO_MANIFEST_DIR": "jsonptr-0.7.1.crate",
         "CARGO_PKG_AUTHORS": "chance dinkins:André Sá de Mello <codasm@pm.me>:Oliver Wangler <oliver@wngr.de>",
         "CARGO_PKG_DESCRIPTION": "Data structures and logic for resolving, assigning, and deleting by JSON Pointers (RFC 6901)",
@@ -9288,6 +9416,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "7",
         "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "assign",
@@ -9352,7 +9481,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":anyhow-1.0.98",
-        ":binstring-0.1.6",
+        ":binstring-0.1.7",
         ":blake2b_simd-1.0.3",
         ":coarsetime-0.1.36",
         ":ct-codecs-1.1.5",
@@ -9498,6 +9627,9 @@ cargo.rust_library(
     crate = "libc",
     crate_root = "libc-0.2.172.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :libc-0.2.172-build-script-run[out_dir])",
+    },
     features = [
         "default",
         "extra_traits",
@@ -10180,6 +10312,9 @@ cargo.rust_library(
     crate = "lock_api",
     crate_root = "lock_api-0.4.12.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :lock_api-0.4.12-build-script-run[out_dir])",
+    },
     features = [
         "atomic_usize",
         "default",
@@ -10294,11 +10429,32 @@ cargo.rust_library(
     crate = "lz4_sys",
     crate_root = "lz4-sys-1.11.1+lz4-1.10.0.crate/src/lib.rs",
     edition = "2015",
+    env = {
+        "OUT_DIR": "$(location :lz4-sys-1.11.1+lz4-1.10.0-build-script-run[out_dir])",
+    },
+    rustc_flags = ["@$(location :lz4-sys-1.11.1+lz4-1.10.0-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
         ":libc-0.2.172",
         ":lz4-sys-1.11.1+lz4-1.10.0-lz4-sys",
     ],
+)
+
+cargo.rust_binary(
+    name = "lz4-sys-1.11.1+lz4-1.10.0-build-script-build",
+    srcs = [":lz4-sys-1.11.1+lz4-1.10.0.crate"],
+    crate = "build_script_build",
+    crate_root = "lz4-sys-1.11.1+lz4-1.10.0.crate/build.rs",
+    edition = "2015",
+    visibility = [],
+    deps = [":cc-1.2.23"],
+)
+
+buildscript_run(
+    name = "lz4-sys-1.11.1+lz4-1.10.0-build-script-run",
+    package_name = "lz4-sys",
+    buildscript_rule = ":lz4-sys-1.11.1+lz4-1.10.0-build-script-build",
+    version = "1.11.1+lz4-1.10.0",
 )
 
 cxx_library(
@@ -10577,6 +10733,7 @@ cargo.rust_library(
         "default",
         "rev-mappings",
     ],
+    rustc_flags = ["@$(location :mime_guess-2.0.4-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
         ":mime-0.3.17",
@@ -10836,6 +10993,7 @@ cargo.rust_library(
     crate_root = "names-0.14.0.crate/src/lib.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "names",
         "CARGO_MANIFEST_DIR": "names-0.14.0.crate",
         "CARGO_PKG_AUTHORS": "Fletcher Nichol <fnichol@nichol.ca>",
         "CARGO_PKG_DESCRIPTION": "A random name generator with names suitable for use in container\ninstances, project names, application instances, etc.\n",
@@ -10845,6 +11003,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "14",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
         "OUT_DIR": "$(location :names-0.14.0-build-script-run[out_dir])",
     },
     rustc_flags = ["@$(location :names-0.14.0-build-script-run[rustc_flags])"],
@@ -10859,6 +11018,7 @@ cargo.rust_binary(
     crate_root = "names-0.14.0.crate/build.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "build_script_build",
         "CARGO_MANIFEST_DIR": "names-0.14.0.crate",
         "CARGO_PKG_AUTHORS": "Fletcher Nichol <fnichol@nichol.ca>",
         "CARGO_PKG_DESCRIPTION": "A random name generator with names suitable for use in container\ninstances, project names, application instances, etc.\n",
@@ -10868,6 +11028,7 @@ cargo.rust_binary(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "14",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     visibility = [],
 )
@@ -10876,6 +11037,15 @@ buildscript_run(
     name = "names-0.14.0-build-script-run",
     package_name = "names",
     buildscript_rule = ":names-0.14.0-build-script-build",
+    env = {
+        "CARGO_PKG_AUTHORS": "Fletcher Nichol <fnichol@nichol.ca>",
+        "CARGO_PKG_DESCRIPTION": "A random name generator with names suitable for use in container\ninstances, project names, application instances, etc.\n",
+        "CARGO_PKG_REPOSITORY": "https://github.com/fnichol/names",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "14",
+        "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     version = "0.14.0",
 )
 
@@ -10930,7 +11100,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":bitflags-2.9.0",
+        ":bitflags-2.9.1",
         ":cfg-if-1.0.0",
         ":libc-0.2.172",
     ],
@@ -10956,6 +11126,9 @@ cargo.rust_library(
     crate = "nix",
     crate_root = "nix-0.29.0.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :nix-0.29.0-build-script-run[out_dir])",
+    },
     features = [
         "default",
         "feature",
@@ -10973,7 +11146,7 @@ cargo.rust_library(
     rustc_flags = ["@$(location :nix-0.29.0-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
-        ":bitflags-2.9.0",
+        ":bitflags-2.9.1",
         ":cfg-if-1.0.0",
         ":libc-0.2.172",
         ":memoffset-0.9.1",
@@ -11097,6 +11270,7 @@ cargo.rust_library(
     crate_root = "ntapi-0.4.1.crate/src/lib.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "ntapi",
         "CARGO_MANIFEST_DIR": "ntapi-0.4.1.crate",
         "CARGO_PKG_AUTHORS": "MSxDOS <melcodos@gmail.com>",
         "CARGO_PKG_DESCRIPTION": "FFI bindings for Native API",
@@ -11106,6 +11280,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "4",
         "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
         "OUT_DIR": "$(location :ntapi-0.4.1-build-script-run[out_dir])",
     },
     features = [
@@ -11124,6 +11299,7 @@ cargo.rust_binary(
     crate_root = "ntapi-0.4.1.crate/build.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "build_script_build",
         "CARGO_MANIFEST_DIR": "ntapi-0.4.1.crate",
         "CARGO_PKG_AUTHORS": "MSxDOS <melcodos@gmail.com>",
         "CARGO_PKG_DESCRIPTION": "FFI bindings for Native API",
@@ -11133,6 +11309,7 @@ cargo.rust_binary(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "4",
         "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "default",
@@ -11145,6 +11322,15 @@ buildscript_run(
     name = "ntapi-0.4.1-build-script-run",
     package_name = "ntapi",
     buildscript_rule = ":ntapi-0.4.1-build-script-build",
+    env = {
+        "CARGO_PKG_AUTHORS": "MSxDOS <melcodos@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "FFI bindings for Native API",
+        "CARGO_PKG_REPOSITORY": "https://github.com/MSxDOS/ntapi",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "4",
+        "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     features = [
         "default",
         "user",
@@ -11235,6 +11421,9 @@ cargo.rust_library(
     crate = "num_bigint_dig",
     crate_root = "num-bigint-dig-0.8.4.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :num-bigint-dig-0.8.4-build-script-run[out_dir])",
+    },
     features = [
         "i128",
         "prime",
@@ -11398,6 +11587,9 @@ cargo.rust_library(
     crate = "num_traits",
     crate_root = "num-traits-0.2.19.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :num-traits-0.2.19-build-script-run[out_dir])",
+    },
     features = [
         "default",
         "i128",
@@ -11539,6 +11731,7 @@ cargo.rust_library(
     crate_root = "oid-registry-0.8.1.crate/src/lib.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "oid_registry",
         "CARGO_MANIFEST_DIR": "oid-registry-0.8.1.crate",
         "CARGO_PKG_AUTHORS": "Pierre Chifflier <chifflier@wzdftpd.net>",
         "CARGO_PKG_DESCRIPTION": "Object Identifier (OID) database",
@@ -11548,6 +11741,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "8",
         "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
         "OUT_DIR": "$(location :oid-registry-0.8.1-build-script-run[out_dir])",
     },
     features = [
@@ -11575,6 +11769,7 @@ cargo.rust_binary(
     crate_root = "oid-registry-0.8.1.crate/build.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "build_script_build",
         "CARGO_MANIFEST_DIR": "oid-registry-0.8.1.crate",
         "CARGO_PKG_AUTHORS": "Pierre Chifflier <chifflier@wzdftpd.net>",
         "CARGO_PKG_DESCRIPTION": "Object Identifier (OID) database",
@@ -11584,6 +11779,7 @@ cargo.rust_binary(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "8",
         "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "crypto",
@@ -11605,6 +11801,15 @@ buildscript_run(
     name = "oid-registry-0.8.1-build-script-run",
     package_name = "oid-registry",
     buildscript_rule = ":oid-registry-0.8.1-build-script-build",
+    env = {
+        "CARGO_PKG_AUTHORS": "Pierre Chifflier <chifflier@wzdftpd.net>",
+        "CARGO_PKG_DESCRIPTION": "Object Identifier (OID) database",
+        "CARGO_PKG_REPOSITORY": "https://github.com/rusticata/oid-registry.git",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "8",
+        "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     features = [
         "crypto",
         "default",
@@ -11688,6 +11893,7 @@ cargo.rust_library(
     crate_root = "opentelemetry-0.26.0.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "opentelemetry",
         "CARGO_MANIFEST_DIR": "opentelemetry-0.26.0.crate",
         "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "OpenTelemetry API for Rust",
@@ -11697,6 +11903,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "26",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "default",
@@ -11736,6 +11943,7 @@ cargo.rust_library(
     crate_root = "opentelemetry-otlp-0.26.0.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "opentelemetry_otlp",
         "CARGO_MANIFEST_DIR": "opentelemetry-otlp-0.26.0.crate",
         "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Exporter for the OpenTelemetry Collector",
@@ -11745,6 +11953,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "26",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "default",
@@ -11848,6 +12057,7 @@ cargo.rust_library(
     crate_root = "opentelemetry_sdk-0.26.0.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "opentelemetry_sdk",
         "CARGO_MANIFEST_DIR": "opentelemetry_sdk-0.26.0.crate",
         "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "The SDK for the OpenTelemetry metrics collection and distributed tracing framework",
@@ -11857,6 +12067,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "26",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "async-trait",
@@ -12098,18 +12309,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "owo-colors-4.2.0.crate",
-    sha256 = "1036865bb9422d3300cf723f657c2851d0e9ab12567854b1f4eba3d77decf564",
-    strip_prefix = "owo-colors-4.2.0",
-    urls = ["https://static.crates.io/crates/owo-colors/4.2.0/download"],
+    name = "owo-colors-4.2.1.crate",
+    sha256 = "26995317201fa17f3656c36716aed4a7c81743a9634ac4c99c0eeda495db0cec",
+    strip_prefix = "owo-colors-4.2.1",
+    urls = ["https://static.crates.io/crates/owo-colors/4.2.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "owo-colors-4.2.0",
-    srcs = [":owo-colors-4.2.0.crate"],
+    name = "owo-colors-4.2.1",
+    srcs = [":owo-colors-4.2.1.crate"],
     crate = "owo_colors",
-    crate_root = "owo-colors-4.2.0.crate/src/lib.rs",
+    crate_root = "owo-colors-4.2.1.crate/src/lib.rs",
     edition = "2021",
     visibility = [],
 )
@@ -12287,6 +12498,9 @@ cargo.rust_library(
     crate = "parking_lot_core",
     crate_root = "parking_lot_core-0.9.10.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :parking_lot_core-0.9.10-build-script-run[out_dir])",
+    },
     platform = {
         "linux-arm64": dict(
             deps = [":libc-0.2.172"],
@@ -12827,6 +13041,7 @@ cargo.rust_library(
     crate_root = "portable-atomic-1.11.0.crate/src/lib.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "portable_atomic",
         "CARGO_MANIFEST_DIR": "portable-atomic-1.11.0.crate",
         "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Portable atomic types including support for 128-bit atomics, atomic float, etc.\n",
@@ -12836,6 +13051,8 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "11",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
+        "OUT_DIR": "$(location :portable-atomic-1.11.0-build-script-run[out_dir])",
     },
     features = [
         "default",
@@ -12853,6 +13070,7 @@ cargo.rust_binary(
     crate_root = "portable-atomic-1.11.0.crate/build.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "build_script_build",
         "CARGO_MANIFEST_DIR": "portable-atomic-1.11.0.crate",
         "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "Portable atomic types including support for 128-bit atomics, atomic float, etc.\n",
@@ -12862,6 +13080,7 @@ cargo.rust_binary(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "11",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "default",
@@ -12875,6 +13094,15 @@ buildscript_run(
     name = "portable-atomic-1.11.0-build-script-run",
     package_name = "portable-atomic",
     buildscript_rule = ":portable-atomic-1.11.0-build-script-build",
+    env = {
+        "CARGO_PKG_AUTHORS": "",
+        "CARGO_PKG_DESCRIPTION": "Portable atomic types including support for 128-bit atomics, atomic float, etc.\n",
+        "CARGO_PKG_REPOSITORY": "https://github.com/taiki-e/portable-atomic",
+        "CARGO_PKG_VERSION_MAJOR": "1",
+        "CARGO_PKG_VERSION_MINOR": "11",
+        "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     features = [
         "default",
         "fallback",
@@ -13246,6 +13474,9 @@ cargo.rust_library(
     crate = "proc_macro2",
     crate_root = "proc-macro2-1.0.95.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :proc-macro2-1.0.95-build-script-run[out_dir])",
+    },
     features = [
         "default",
         "proc-macro",
@@ -13335,9 +13566,10 @@ cargo.rust_library(
         "default",
         "flate2",
     ],
+    rustc_flags = ["@$(location :procfs-0.17.0-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
-        ":bitflags-2.9.0",
+        ":bitflags-2.9.1",
         ":chrono-0.4.41",
         ":flate2-1.1.1",
         ":hex-0.4.3",
@@ -13392,7 +13624,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":bitflags-2.9.0",
+        ":bitflags-2.9.1",
         ":chrono-0.4.41",
         ":hex-0.4.3",
     ],
@@ -13512,6 +13744,9 @@ cargo.rust_library(
     crate = "quinn",
     crate_root = "quinn-0.11.8.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :quinn-0.11.8-build-script-run[out_dir])",
+    },
     features = [
         "ring",
         "runtime-tokio",
@@ -13631,6 +13866,9 @@ cargo.rust_library(
     crate = "quinn_udp",
     crate_root = "quinn-udp-0.5.12.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :quinn-udp-0.5.12-build-script-run[out_dir])",
+    },
     features = ["tracing"],
     platform = {
         "linux-arm64": dict(
@@ -14036,6 +14274,7 @@ cargo.rust_library(
     crate_root = "rayon-core-1.12.1.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "rayon_core",
         "CARGO_MANIFEST_DIR": "rayon-core-1.12.1.crate",
         "CARGO_PKG_AUTHORS": "Niko Matsakis <niko@alum.mit.edu>:Josh Stone <cuviper@gmail.com>",
         "CARGO_PKG_DESCRIPTION": "Core APIs for Rayon",
@@ -14045,8 +14284,10 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "12",
         "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
         "OUT_DIR": "$(location :rayon-core-1.12.1-build-script-run[out_dir])",
     },
+    rustc_flags = ["@$(location :rayon-core-1.12.1-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
         ":crossbeam-deque-0.8.6",
@@ -14061,6 +14302,7 @@ cargo.rust_binary(
     crate_root = "rayon-core-1.12.1.crate/build.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "build_script_build",
         "CARGO_MANIFEST_DIR": "rayon-core-1.12.1.crate",
         "CARGO_PKG_AUTHORS": "Niko Matsakis <niko@alum.mit.edu>:Josh Stone <cuviper@gmail.com>",
         "CARGO_PKG_DESCRIPTION": "Core APIs for Rayon",
@@ -14070,6 +14312,7 @@ cargo.rust_binary(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "12",
         "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     visibility = [],
 )
@@ -14078,6 +14321,16 @@ buildscript_run(
     name = "rayon-core-1.12.1-build-script-run",
     package_name = "rayon-core",
     buildscript_rule = ":rayon-core-1.12.1-build-script-build",
+    env = {
+        "CARGO_MANIFEST_LINKS": "rayon-core",
+        "CARGO_PKG_AUTHORS": "Niko Matsakis <niko@alum.mit.edu>:Josh Stone <cuviper@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "Core APIs for Rayon",
+        "CARGO_PKG_REPOSITORY": "https://github.com/rayon-rs/rayon",
+        "CARGO_PKG_VERSION_MAJOR": "1",
+        "CARGO_PKG_VERSION_MINOR": "12",
+        "CARGO_PKG_VERSION_PATCH": "1",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     version = "1.12.1",
 )
 
@@ -14838,6 +15091,7 @@ cargo.rust_library(
     crate_root = "ring-0.17.5.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "ring",
         "CARGO_MANIFEST_DIR": "ring-0.17.5.crate",
         "CARGO_PKG_AUTHORS": "Brian Smith <brian@briansmith.org>",
         "CARGO_PKG_DESCRIPTION": "Safe, fast, small crypto using Rust.",
@@ -14847,6 +15101,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "17",
         "CARGO_PKG_VERSION_PATCH": "5",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "alloc",
@@ -15602,6 +15857,7 @@ cargo.rust_library(
         "serde",
         "std",
     ],
+    rustc_flags = ["@$(location :rust_decimal-1.37.1-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
         ":arrayvec-0.7.6",
@@ -15745,6 +16001,9 @@ cargo.rust_library(
     crate = "rustix",
     crate_root = "rustix-0.38.44.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :rustix-0.38.44-build-script-run[out_dir])",
+    },
     features = [
         "alloc",
         "default",
@@ -15760,7 +16019,7 @@ cargo.rust_library(
     platform = {
         "linux-arm64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.11",
+                "libc_errno": ":errno-0.3.12",
             },
             deps = [
                 ":libc-0.2.172",
@@ -15769,7 +16028,7 @@ cargo.rust_library(
         ),
         "linux-x86_64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.11",
+                "libc_errno": ":errno-0.3.12",
             },
             deps = [
                 ":libc-0.2.172",
@@ -15778,32 +16037,32 @@ cargo.rust_library(
         ),
         "macos-arm64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.11",
+                "libc_errno": ":errno-0.3.12",
             },
             deps = [":libc-0.2.172"],
         ),
         "macos-x86_64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.11",
+                "libc_errno": ":errno-0.3.12",
             },
             deps = [":libc-0.2.172"],
         ),
         "windows-gnu": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.11",
+                "libc_errno": ":errno-0.3.12",
             },
             deps = [":windows-sys-0.59.0"],
         ),
         "windows-msvc": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.11",
+                "libc_errno": ":errno-0.3.12",
             },
             deps = [":windows-sys-0.59.0"],
         ),
     },
     rustc_flags = ["@$(location :rustix-0.38.44-build-script-run[rustc_flags])"],
     visibility = [],
-    deps = [":bitflags-2.9.0"],
+    deps = [":bitflags-2.9.1"],
 )
 
 cargo.rust_binary(
@@ -15860,6 +16119,9 @@ cargo.rust_library(
     crate = "rustix",
     crate_root = "rustix-1.0.7.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :rustix-1.0.7-build-script-run[out_dir])",
+    },
     features = [
         "alloc",
         "default",
@@ -15870,7 +16132,7 @@ cargo.rust_library(
     platform = {
         "linux-arm64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.11",
+                "libc_errno": ":errno-0.3.12",
             },
             deps = [
                 ":libc-0.2.172",
@@ -15879,7 +16141,7 @@ cargo.rust_library(
         ),
         "linux-x86_64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.11",
+                "libc_errno": ":errno-0.3.12",
             },
             deps = [
                 ":libc-0.2.172",
@@ -15888,32 +16150,32 @@ cargo.rust_library(
         ),
         "macos-arm64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.11",
+                "libc_errno": ":errno-0.3.12",
             },
             deps = [":libc-0.2.172"],
         ),
         "macos-x86_64": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.11",
+                "libc_errno": ":errno-0.3.12",
             },
             deps = [":libc-0.2.172"],
         ),
         "windows-gnu": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.11",
+                "libc_errno": ":errno-0.3.12",
             },
             deps = [":windows-sys-0.59.0"],
         ),
         "windows-msvc": dict(
             named_deps = {
-                "libc_errno": ":errno-0.3.11",
+                "libc_errno": ":errno-0.3.12",
             },
             deps = [":windows-sys-0.59.0"],
         ),
     },
     rustc_flags = ["@$(location :rustix-1.0.7-build-script-run[rustc_flags])"],
     visibility = [],
-    deps = [":bitflags-2.9.0"],
+    deps = [":bitflags-2.9.1"],
 )
 
 cargo.rust_binary(
@@ -16309,6 +16571,7 @@ cargo.rust_library(
         "OUT_DIR": "$(location :rustversion-1.0.20-build-script-run[out_dir])",
     },
     proc_macro = True,
+    rustc_flags = ["@$(location :rustversion-1.0.20-build-script-run[rustc_flags])"],
     visibility = [],
 )
 
@@ -16732,7 +16995,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":bitflags-2.9.0",
+        ":bitflags-2.9.1",
         ":core-foundation-0.9.4",
         ":core-foundation-sys-0.8.7",
         ":libc-0.2.172",
@@ -16760,7 +17023,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":bitflags-2.9.0",
+        ":bitflags-2.9.1",
         ":core-foundation-0.10.0",
         ":core-foundation-sys-0.8.7",
         ":libc-0.2.172",
@@ -16810,6 +17073,7 @@ cargo.rust_library(
     crate_root = "semver-1.0.26.crate/src/lib.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "semver",
         "CARGO_MANIFEST_DIR": "semver-1.0.26.crate",
         "CARGO_PKG_AUTHORS": "David Tolnay <dtolnay@gmail.com>",
         "CARGO_PKG_DESCRIPTION": "Parser and evaluator for Cargo's flavor of Semantic Versioning",
@@ -16819,6 +17083,8 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "0",
         "CARGO_PKG_VERSION_PATCH": "26",
+        "CARGO_PKG_VERSION_PRE": "",
+        "OUT_DIR": "$(location :semver-1.0.26-build-script-run[out_dir])",
     },
     features = [
         "default",
@@ -16835,6 +17101,7 @@ cargo.rust_binary(
     crate_root = "semver-1.0.26.crate/build.rs",
     edition = "2018",
     env = {
+        "CARGO_CRATE_NAME": "build_script_build",
         "CARGO_MANIFEST_DIR": "semver-1.0.26.crate",
         "CARGO_PKG_AUTHORS": "David Tolnay <dtolnay@gmail.com>",
         "CARGO_PKG_DESCRIPTION": "Parser and evaluator for Cargo's flavor of Semantic Versioning",
@@ -16844,6 +17111,7 @@ cargo.rust_binary(
         "CARGO_PKG_VERSION_MAJOR": "1",
         "CARGO_PKG_VERSION_MINOR": "0",
         "CARGO_PKG_VERSION_PATCH": "26",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "default",
@@ -16856,6 +17124,15 @@ buildscript_run(
     name = "semver-1.0.26-build-script-run",
     package_name = "semver",
     buildscript_rule = ":semver-1.0.26-build-script-build",
+    env = {
+        "CARGO_PKG_AUTHORS": "David Tolnay <dtolnay@gmail.com>",
+        "CARGO_PKG_DESCRIPTION": "Parser and evaluator for Cargo's flavor of Semantic Versioning",
+        "CARGO_PKG_REPOSITORY": "https://github.com/dtolnay/semver",
+        "CARGO_PKG_VERSION_MAJOR": "1",
+        "CARGO_PKG_VERSION_MINOR": "0",
+        "CARGO_PKG_VERSION_PATCH": "26",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     features = [
         "default",
         "std",
@@ -16993,6 +17270,9 @@ cargo.rust_library(
     crate = "serde_json",
     crate_root = "serde_json-1.0.140.crate/src/lib.rs",
     edition = "2021",
+    env = {
+        "OUT_DIR": "$(location :serde_json-1.0.140-build-script-run[out_dir])",
+    },
     features = [
         "alloc",
         "default",
@@ -17938,7 +18218,7 @@ cargo.rust_library(
         ":atoi-2.0.0",
         ":base64-0.22.1",
         ":bigdecimal-0.4.8",
-        ":bitflags-2.9.0",
+        ":bitflags-2.9.1",
         ":byteorder-1.5.0",
         ":chrono-0.4.41",
         ":crc-3.3.0",
@@ -18583,165 +18863,6 @@ cargo.rust_library(
     ],
 )
 
-cargo.rust_binary(
-    name = "third-party-0.0.0-top",
-    srcs = ["top/main.rs"],
-    crate = "top",
-    crate_root = "top/main.rs",
-    edition = "2021",
-    visibility = [],
-    deps = [
-        ":async-nats-0.39.0",
-        ":async-openai-0.26.0",
-        ":async-recursion-1.1.1",
-        ":async-trait-0.1.88",
-        ":aws-config-1.5.18",
-        ":aws-sdk-acmpca-1.72.0",
-        ":aws-sdk-firehose-1.68.0",
-        ":aws-sdk-ssm-1.75.0",
-        ":aws-sdk-sts-1.68.0",
-        ":aws-smithy-http-client-1.0.2",
-        ":aws-smithy-runtime-1.8.3",
-        ":axum-0.6.20",
-        ":backtrace-0.3.75",
-        ":base64-0.22.1",
-        ":blake3-1.8.2",
-        ":bollard-0.18.1",
-        ":bytes-1.10.1",
-        ":chrono-0.4.41",
-        ":ciborium-0.2.2",
-        ":clap-4.5.38",
-        ":color-eyre-0.6.4",
-        ":config-0.14.1",
-        ":console-subscriber-0.4.1",
-        ":convert_case-0.6.0",
-        ":core_affinity-0.8.3",
-        ":crossbeam-queue-0.3.12",
-        ":darling-0.20.11",
-        ":dashmap-6.1.0",
-        ":deadpool-0.12.2",
-        ":deadpool-postgres-0.14.1",
-        ":derive_builder-0.20.2",
-        ":derive_more-0.99.20",
-        ":devicemapper-0.34.1",
-        ":diff-0.1.13",
-        ":directories-5.0.1",
-        ":dyn-clone-1.0.19",
-        ":env_logger-0.11.8",
-        ":fastrace-0.7.9",
-        ":flate2-1.1.1",
-        ":foyer-0.14.1",
-        ":fs4-0.12.0",
-        ":fuser-0.15.1",
-        ":futures-0.3.31",
-        ":futures-lite-2.6.0",
-        ":glob-0.3.2",
-        ":handlebars-6.3.2",
-        ":hex-0.4.3",
-        ":http-0.2.12",
-        ":hyper-0.14.32",
-        ":hyperlocal-0.8.0",
-        ":iftree-1.0.6",
-        ":indexmap-2.9.0",
-        ":indicatif-0.17.11",
-        ":indoc-2.0.6",
-        ":insta-1.43.1",
-        ":itertools-0.13.0",
-        ":json-patch-4.0.0",
-        ":jsonptr-0.7.1",
-        ":jwt-simple-0.12.12",
-        ":krata-loopdev-0.0.21",
-        ":lazy_static-1.5.0",
-        ":log-0.4.27",
-        ":manyhow-0.11.4",
-        ":mime_guess-2.0.4",
-        ":miniz_oxide-0.8.8",
-        ":mixtrics-0.0.3",
-        ":monostate-0.1.14",
-        ":names-0.14.0",
-        ":nix-0.29.0",
-        ":nkeys-0.4.4",
-        ":num_cpus-1.16.0",
-        ":once_cell-1.21.3",
-        ":opentelemetry-0.26.0",
-        ":opentelemetry-otlp-0.26.0",
-        ":opentelemetry-semantic-conventions-0.14.0",
-        ":opentelemetry_sdk-0.26.0",
-        ":ordered-float-4.6.0",
-        ":ouroboros-0.18.5",
-        ":parking_lot-0.12.3",
-        ":paste-1.0.15",
-        ":pathdiff-0.2.3",
-        ":petgraph-0.6.5",
-        ":pin-project-lite-0.2.16",
-        ":postcard-1.1.1",
-        ":postgres-types-0.2.9",
-        ":pretty_assertions_sorted-1.2.3",
-        ":proc-macro2-1.0.95",
-        ":procfs-0.17.0",
-        ":quote-1.0.40",
-        ":rand-0.8.5",
-        ":rcgen-0.13.2",
-        ":refinery-0.8.16",
-        ":regex-1.11.1",
-        ":remain-0.2.15",
-        ":reqwest-0.12.15",
-        ":ring-0.17.5",
-        ":rust-s3-0.34.0-rc4",
-        ":rustls-0.23.27",
-        ":rustls-native-certs-0.8.1",
-        ":rustls-pemfile-2.2.0",
-        ":sea-orm-1.1.11",
-        ":serde-1.0.219",
-        ":serde-aux-4.7.0",
-        ":serde_json-1.0.140",
-        ":serde_path_to_error-0.1.17",
-        ":serde_with-3.12.0",
-        ":serde_yaml-0.9.34+deprecated",
-        ":sodiumoxide-0.2.7",
-        ":spicedb-client-0.1.1",
-        ":spicedb-grpc-0.1.1",
-        ":strum-0.26.3",
-        ":syn-2.0.101",
-        ":sysinfo-0.33.1",
-        ":tar-0.4.44",
-        ":tempfile-3.20.0",
-        ":test-log-0.2.17",
-        ":thiserror-2.0.12",
-        ":thread-priority-1.2.0",
-        ":time-0.3.41",
-        ":tokio-1.45.0",
-        ":tokio-postgres-0.7.13",
-        ":tokio-postgres-rustls-0.13.0",
-        ":tokio-rustls-0.26.2",
-        ":tokio-serde-0.9.0",
-        ":tokio-stream-0.1.17",
-        ":tokio-tungstenite-0.20.1",
-        ":tokio-util-0.7.15",
-        ":tokio-vsock-0.7.1",
-        ":toml-0.8.22",
-        ":tonic-0.12.3",
-        ":tower-0.4.13",
-        ":tower-http-0.4.4",
-        ":tracing-0.1.41",
-        ":tracing-opentelemetry-0.27.0",
-        ":tracing-subscriber-0.3.19",
-        ":tracing-tunnel-0.1.0",
-        ":trybuild-1.0.105",
-        ":tryhard-0.5.1",
-        ":ulid-1.2.1",
-        ":url-2.5.4",
-        ":utoipa-5.3.1",
-        ":uuid-1.16.0",
-        ":version_check-0.9.5",
-        ":webpki-roots-0.25.4",
-        ":x509-parser-0.17.0",
-        ":xxhash-rust-0.8.15",
-        ":y-sync-0.4.0",
-        ":yrs-0.17.4",
-    ],
-)
-
 http_archive(
     name = "thiserror-1.0.69.crate",
     sha256 = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52",
@@ -18882,7 +19003,7 @@ cargo.rust_library(
     },
     visibility = [],
     deps = [
-        ":bitflags-2.9.0",
+        ":bitflags-2.9.1",
         ":cfg-if-1.0.0",
         ":log-0.4.27",
         ":rustversion-1.0.20",
@@ -19785,6 +19906,7 @@ cargo.rust_library(
     crate_root = "tonic-0.12.3.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "tonic",
         "CARGO_MANIFEST_DIR": "tonic-0.12.3.crate",
         "CARGO_PKG_AUTHORS": "Lucio Franco <luciofranco14@gmail.com>",
         "CARGO_PKG_DESCRIPTION": "A gRPC over HTTP/2 implementation focused on high performance, interoperability, and flexibility.\n",
@@ -19794,6 +19916,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "12",
         "CARGO_PKG_VERSION_PATCH": "3",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "channel",
@@ -19978,7 +20101,7 @@ cargo.rust_library(
     visibility = [],
     deps = [
         ":async-compression-0.4.23",
-        ":bitflags-2.9.0",
+        ":bitflags-2.9.1",
         ":bytes-1.10.1",
         ":futures-core-0.3.31",
         ":futures-util-0.3.31",
@@ -20182,6 +20305,7 @@ cargo.rust_library(
     crate_root = "tracing-opentelemetry-0.27.0.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "tracing_opentelemetry",
         "CARGO_MANIFEST_DIR": "tracing-opentelemetry-0.27.0.crate",
         "CARGO_PKG_AUTHORS": "",
         "CARGO_PKG_DESCRIPTION": "OpenTelemetry integration for tracing",
@@ -20191,6 +20315,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "27",
         "CARGO_PKG_VERSION_PATCH": "0",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "default",
@@ -20486,6 +20611,7 @@ cargo.rust_library(
         "OUT_DIR": "$(location :typenum-1.18.0-build-script-run[out_dir])",
     },
     features = ["force_unix_path_separator"],
+    rustc_flags = ["@$(location :typenum-1.18.0-build-script-run[rustc_flags])"],
     visibility = [],
 )
 
@@ -21230,10 +21356,16 @@ cargo.rust_library(
     ],
     platform = {
         "windows-gnu": dict(
+            env = {
+                "OUT_DIR": "$(location :winapi-0.3.9-build-script-run[out_dir])",
+            },
             rustc_flags = ["@$(location :winapi-0.3.9-build-script-run[rustc_flags])"],
             deps = [":winapi-x86_64-pc-windows-gnu-0.4.0"],
         ),
         "windows-msvc": dict(
+            env = {
+                "OUT_DIR": "$(location :winapi-0.3.9-build-script-run[out_dir])",
+            },
             rustc_flags = ["@$(location :winapi-0.3.9-build-script-run[rustc_flags])"],
         ),
     },
@@ -21343,12 +21475,20 @@ cargo.rust_library(
     edition = "2015",
     platform = {
         "windows-gnu": dict(
+            env = {
+                "OUT_DIR": "$(location :winapi-x86_64-pc-windows-gnu-0.4.0-build-script-run[out_dir])",
+            },
+            rustc_flags = ["@$(location :winapi-x86_64-pc-windows-gnu-0.4.0-build-script-run[rustc_flags])"],
             deps = [
                 ":winapi-x86_64-pc-windows-gnu-0.4.0-extra_libraries-libwinapi_ole32.a",
                 ":winapi-x86_64-pc-windows-gnu-0.4.0-extra_libraries-libwinapi_shell32.a",
             ],
         ),
         "windows-msvc": dict(
+            env = {
+                "OUT_DIR": "$(location :winapi-x86_64-pc-windows-gnu-0.4.0-build-script-run[out_dir])",
+            },
+            rustc_flags = ["@$(location :winapi-x86_64-pc-windows-gnu-0.4.0-build-script-run[rustc_flags])"],
             deps = [
                 ":winapi-x86_64-pc-windows-gnu-0.4.0-extra_libraries-libwinapi_ole32.a",
                 ":winapi-x86_64-pc-windows-gnu-0.4.0-extra_libraries-libwinapi_shell32.a",
@@ -21356,6 +21496,22 @@ cargo.rust_library(
         ),
     },
     visibility = [],
+)
+
+cargo.rust_binary(
+    name = "winapi-x86_64-pc-windows-gnu-0.4.0-build-script-build",
+    srcs = [":winapi-x86_64-pc-windows-gnu-0.4.0.crate"],
+    crate = "build_script_build",
+    crate_root = "winapi-x86_64-pc-windows-gnu-0.4.0.crate/build.rs",
+    edition = "2015",
+    visibility = [],
+)
+
+buildscript_run(
+    name = "winapi-x86_64-pc-windows-gnu-0.4.0-build-script-run",
+    package_name = "winapi-x86_64-pc-windows-gnu",
+    buildscript_rule = ":winapi-x86_64-pc-windows-gnu-0.4.0-build-script-build",
+    version = "0.4.0",
 )
 
 third_party_rust_prebuilt_cxx_library(
@@ -21464,18 +21620,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "windows-core-0.61.0.crate",
-    sha256 = "4763c1de310c86d75a878046489e2e5ba02c649d185f21c67d4cf8a56d098980",
-    strip_prefix = "windows-core-0.61.0",
-    urls = ["https://static.crates.io/crates/windows-core/0.61.0/download"],
+    name = "windows-core-0.61.1.crate",
+    sha256 = "46ec44dc15085cea82cf9c78f85a9114c463a369786585ad2882d1ff0b0acf40",
+    strip_prefix = "windows-core-0.61.1",
+    urls = ["https://static.crates.io/crates/windows-core/0.61.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "windows-core-0.61.0",
-    srcs = [":windows-core-0.61.0.crate"],
+    name = "windows-core-0.61.1",
+    srcs = [":windows-core-0.61.1.crate"],
     crate = "windows_core",
-    crate_root = "windows-core-0.61.0.crate/src/lib.rs",
+    crate_root = "windows-core-0.61.1.crate/src/lib.rs",
     edition = "2021",
     features = [
         "default",
@@ -21486,8 +21642,8 @@ cargo.rust_library(
         ":windows-implement-0.60.0",
         ":windows-interface-0.59.1",
         ":windows-link-0.1.1",
-        ":windows-result-0.3.2",
-        ":windows-strings-0.4.0",
+        ":windows-result-0.3.3",
+        ":windows-strings-0.4.1",
     ],
 )
 
@@ -21620,7 +21776,7 @@ cargo.rust_library(
     ],
     visibility = [],
     deps = [
-        ":windows-result-0.3.2",
+        ":windows-result-0.3.3",
         ":windows-strings-0.3.1",
         ":windows-targets-0.53.0",
     ],
@@ -21649,18 +21805,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "windows-result-0.3.2.crate",
-    sha256 = "c64fd11a4fd95df68efcfee5f44a294fe71b8bc6a91993e2791938abcc712252",
-    strip_prefix = "windows-result-0.3.2",
-    urls = ["https://static.crates.io/crates/windows-result/0.3.2/download"],
+    name = "windows-result-0.3.3.crate",
+    sha256 = "4b895b5356fc36103d0f64dd1e94dfa7ac5633f1c9dd6e80fe9ec4adef69e09d",
+    strip_prefix = "windows-result-0.3.3",
+    urls = ["https://static.crates.io/crates/windows-result/0.3.3/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "windows-result-0.3.2",
-    srcs = [":windows-result-0.3.2.crate"],
+    name = "windows-result-0.3.3",
+    srcs = [":windows-result-0.3.3.crate"],
     crate = "windows_result",
-    crate_root = "windows-result-0.3.2.crate/src/lib.rs",
+    crate_root = "windows-result-0.3.3.crate/src/lib.rs",
     edition = "2021",
     features = ["std"],
     visibility = [],
@@ -21687,18 +21843,18 @@ cargo.rust_library(
 )
 
 http_archive(
-    name = "windows-strings-0.4.0.crate",
-    sha256 = "7a2ba9642430ee452d5a7aa78d72907ebe8cfda358e8cb7918a2050581322f97",
-    strip_prefix = "windows-strings-0.4.0",
-    urls = ["https://static.crates.io/crates/windows-strings/0.4.0/download"],
+    name = "windows-strings-0.4.1.crate",
+    sha256 = "2a7ab927b2637c19b3dbe0965e75d8f2d30bdd697a1516191cad2ec4df8fb28a",
+    strip_prefix = "windows-strings-0.4.1",
+    urls = ["https://static.crates.io/crates/windows-strings/0.4.1/download"],
     visibility = [],
 )
 
 cargo.rust_library(
-    name = "windows-strings-0.4.0",
-    srcs = [":windows-strings-0.4.0.crate"],
+    name = "windows-strings-0.4.1",
+    srcs = [":windows-strings-0.4.1.crate"],
     crate = "windows_strings",
-    crate_root = "windows-strings-0.4.0.crate/src/lib.rs",
+    crate_root = "windows-strings-0.4.1.crate/src/lib.rs",
     edition = "2021",
     features = ["std"],
     visibility = [],
@@ -22365,6 +22521,7 @@ cargo.rust_library(
     crate_root = "zerocopy-0.8.25.crate/src/lib.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "zerocopy",
         "CARGO_MANIFEST_DIR": "zerocopy-0.8.25.crate",
         "CARGO_PKG_AUTHORS": "Joshua Liebow-Feeser <joshlf@google.com>:Jack Wrenn <jswrenn@amazon.com>",
         "CARGO_PKG_DESCRIPTION": "Zerocopy makes zero-cost memory manipulation effortless. We write \"unsafe\" so you don't have to.",
@@ -22374,6 +22531,7 @@ cargo.rust_library(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "8",
         "CARGO_PKG_VERSION_PATCH": "25",
+        "CARGO_PKG_VERSION_PRE": "",
         "OUT_DIR": "$(location :zerocopy-0.8.25-build-script-run[out_dir])",
     },
     features = [
@@ -22393,6 +22551,7 @@ cargo.rust_binary(
     crate_root = "zerocopy-0.8.25.crate/build.rs",
     edition = "2021",
     env = {
+        "CARGO_CRATE_NAME": "build_script_build",
         "CARGO_MANIFEST_DIR": "zerocopy-0.8.25.crate",
         "CARGO_PKG_AUTHORS": "Joshua Liebow-Feeser <joshlf@google.com>:Jack Wrenn <jswrenn@amazon.com>",
         "CARGO_PKG_DESCRIPTION": "Zerocopy makes zero-cost memory manipulation effortless. We write \"unsafe\" so you don't have to.",
@@ -22402,6 +22561,7 @@ cargo.rust_binary(
         "CARGO_PKG_VERSION_MAJOR": "0",
         "CARGO_PKG_VERSION_MINOR": "8",
         "CARGO_PKG_VERSION_PATCH": "25",
+        "CARGO_PKG_VERSION_PRE": "",
     },
     features = [
         "derive",
@@ -22415,6 +22575,15 @@ buildscript_run(
     name = "zerocopy-0.8.25-build-script-run",
     package_name = "zerocopy",
     buildscript_rule = ":zerocopy-0.8.25-build-script-build",
+    env = {
+        "CARGO_PKG_AUTHORS": "Joshua Liebow-Feeser <joshlf@google.com>:Jack Wrenn <jswrenn@amazon.com>",
+        "CARGO_PKG_DESCRIPTION": "Zerocopy makes zero-cost memory manipulation effortless. We write \"unsafe\" so you don't have to.",
+        "CARGO_PKG_REPOSITORY": "https://github.com/google/zerocopy",
+        "CARGO_PKG_VERSION_MAJOR": "0",
+        "CARGO_PKG_VERSION_MINOR": "8",
+        "CARGO_PKG_VERSION_PATCH": "25",
+        "CARGO_PKG_VERSION_PRE": "",
+    },
     features = [
         "derive",
         "simd",

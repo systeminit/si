@@ -1,1 +1,1 @@
-buildscript = []
+buildscript.run = false
