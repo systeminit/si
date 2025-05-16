@@ -159,7 +159,8 @@ pub async fn build_all_mv_for_change_set(
     )
     .await?;
 
-    let index_entries = frontend_objects.into_iter().map(Into::into).collect();
+    let mut index_entries: Vec<_> = frontend_objects.into_iter().map(Into::into).collect();
+    index_entries.sort();
     info!("index_entries {:?}", index_entries);
     let mv_index = MvIndex::new(ctx.change_set_id(), index_entries);
     let mv_index_frontend_object = FrontendObject::try_from(mv_index)?;
@@ -410,14 +411,14 @@ async fn build_mv_inner(
                     }
                 }
             }
-        }
 
-        // Now that these MV kinds have had their build tasks kicked off, we want to prevent kicking them off again
-        // as MV build tasks finish, and we also don't want to free up the things that depend on them until _all_
-        // of the started tasks for that MV kind have finished. Once the build tasks have finished, we'll remove the
-        // MV kind from the graph, which will let the downstream MVs start.
-        for &running_mv_kind in &ready_to_start_mv_kinds {
-            mv_dependency_graph.cycle_on_self(running_mv_kind);
+            // Now that these MV kinds have had their build tasks kicked off, we want to prevent kicking them off again
+            // as MV build tasks finish, and we also don't want to free up the things that depend on them until _all_
+            // of the started tasks for that MV kind have finished. Once the build tasks have finished, we'll remove the
+            // MV kind from the graph, which will let the downstream MVs start.
+            for &running_mv_kind in &ready_to_start_mv_kinds {
+                mv_dependency_graph.cycle_on_self(running_mv_kind);
+            }
         }
 
         if let Some(join_result) = build_tasks.join_next().await {
@@ -438,7 +439,6 @@ async fn build_mv_inner(
             // If there are no more running tasks for this MV kind, then we can remove it from the dependency
             // graph to free up the next batch of MVs to run.
             if mv_kind_task_ids.get().is_empty() {
-                info!(kind = %kind, "All MV build tasks finished for MV kind.");
                 mv_dependency_graph.remove_id(kind);
             }
 
@@ -568,7 +568,7 @@ where
         };
 
         if from_checksum == to_checksum {
-            Ok((None, None))
+            Ok((None, Some(frontend_object)))
         } else {
             Ok((
                 Some(ObjectPatch {
@@ -604,17 +604,17 @@ fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedV
     // fields... too easy to shoot yourself in the foot.
     //
     // All `MaterializedView` types must be covered here for them to be built.
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewListMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewComponentListMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantCategoriesMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionPrototypeViewListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, IncomingConnectionsMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, IncomingConnectionsListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, IncomingConnectionsMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantCategoriesMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewComponentListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewMv);
 
     // The MvIndex depends on everything else, but doesn't define any
     // `MaterializedView::reference_dependencies()` directly.
