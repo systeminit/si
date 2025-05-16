@@ -12,7 +12,8 @@ use telemetry::prelude::*;
 )]
 pub async fn assemble(ctx: DalContext) -> super::Result<ComponentListMv> {
     let ctx = &ctx;
-    let component_ids = Component::list_ids(ctx).await?;
+    let mut component_ids = Component::list_ids(ctx).await?;
+    component_ids.sort();
     let mut components = Vec::with_capacity(component_ids.len());
 
     for component_id in component_ids {

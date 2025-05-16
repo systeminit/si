@@ -93,7 +93,7 @@ pub async fn assemble(ctx: DalContext) -> super::Result<SchemaVariantCategoriesM
     let mut categories: Vec<SchemaVariantsByCategory> = vec![];
     for (name, variants) in variant_by_category.iter() {
         let mut variants = variants.to_vec();
-        variants.sort_by_key(|v| match v.variant.to_owned() {
+        variants.sort_by_cached_key(|v| match v.variant.to_owned() {
             Variant::SchemaVariant(schema_variant) => schema_variant.display_name,
             Variant::UninstalledVariant(uninstalled_variant) => uninstalled_variant
                 .display_name
@@ -104,7 +104,7 @@ pub async fn assemble(ctx: DalContext) -> super::Result<SchemaVariantCategoriesM
             schema_variants: variants,
         });
     }
-    categories.sort_by_key(|c| c.display_name.to_owned());
+    categories.sort_by_cached_key(|c| c.display_name.to_owned());
 
     Ok(SchemaVariantCategoriesMv {
         id: ctx.change_set_id(),

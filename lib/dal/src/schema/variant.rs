@@ -316,7 +316,10 @@ impl SchemaVariant {
             .asset_func_id
             .ok_or(SchemaVariantError::MissingAssetFuncId(self.id()))?;
 
-        let (output_sockets, input_sockets) = Self::list_all_sockets(ctx, self.id()).await?;
+        let (mut output_sockets, mut input_sockets) =
+            Self::list_all_sockets(ctx, self.id()).await?;
+        output_sockets.sort_by_cached_key(|os| os.id());
+        input_sockets.sort_by_cached_key(|is| is.id());
         let func_ids: Vec<_> = Self::all_func_ids(ctx, self.id())
             .await?
             .into_iter()
@@ -325,7 +328,8 @@ impl SchemaVariant {
         let schema = Schema::get_by_id(ctx, schema_id).await?;
 
         let is_default = Schema::default_variant_id_opt(ctx, schema_id).await? == Some(self.id());
-        let props = Self::all_props(ctx, self.id()).await?;
+        let mut props = Self::all_props(ctx, self.id()).await?;
+        props.sort_by_cached_key(|p| p.id());
         let mut front_end_props = Vec::with_capacity(props.len());
         for prop in props {
             let new_prop = prop.into_frontend_type(ctx).await?;
