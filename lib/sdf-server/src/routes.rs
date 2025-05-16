@@ -113,12 +113,10 @@ pub fn routes(state: AppState) -> Router {
 fn v1_routes() -> Router<AppState> {
     Router::new()
         .nest("/action", sdf_v1_routes_actions::routes())
-        .nest("/node_debug", sdf_v1_routes_node_debug::routes())
         .nest("/attribute", sdf_v1_routes_attribute::routes())
         .nest("/change_set", sdf_v1_routes_change_sets::routes())
         .nest("/component", sdf_v1_routes_component::routes())
         .nest("/diagram", sdf_v1_routes_diagram::routes())
-        .nest("/graphviz", sdf_v1_routes_graphviz::routes())
         .nest("/qualification", sdf_v1_routes_qualification::routes())
         .nest("/secret", sdf_v1_routes_secret::routes())
         .nest("/session", sdf_v1_routes_session::routes())
