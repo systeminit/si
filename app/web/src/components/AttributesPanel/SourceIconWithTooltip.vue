@@ -1,10 +1,11 @@
 <template>
   <SourceTooltip
-    :tooltipText="tooltipText"
-    :overridden="overridden"
     :icon="icon"
+    :justMessage="justMessage"
+    :overridden="overridden"
+    :tooltipText="tooltipText"
   >
-    <SourceIcon :icon="icon" :overridden="overridden" :header="header" />
+    <SourceIcon :header="header" :icon="icon" :overridden="overridden" />
   </SourceTooltip>
 </template>
 
@@ -19,5 +20,6 @@ defineProps({
   overridden: { type: Boolean },
   icon: { type: String as PropType<IconNames>, required: true },
   header: { type: Boolean },
+  justMessage: { type: Boolean },
 });
 </script>

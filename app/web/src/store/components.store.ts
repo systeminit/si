@@ -216,6 +216,8 @@ export type ConnectionMenuStateEntry = {
 export type ConnectionDirection = "output" | "input";
 
 export type ConnectionMenuData = {
+  // If true, add a connection without replacing existing ones
+  appendConnection?: boolean;
   aDirection: ConnectionDirection | undefined;
   A: Partial<ConnectionMenuStateEntry>;
   B: Partial<ConnectionMenuStateEntry>;
@@ -1394,14 +1396,15 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                     this.rawEdgesById[newEdge.id] = newEdge;
                     this.processRawEdge(newEdge.id);
 
-                    const edgesBeingReplaced = Object.values(
-                      this.rawEdgesById,
-                    ).filter(
-                      (e) =>
-                        isSubscriptionEdge(e) &&
-                        e.toAttributePath === toPath &&
-                        e.toComponentId === componentId,
-                    );
+                    const edgesBeingReplaced = update.$source
+                      .keepExistingSubscriptions
+                      ? []
+                      : Object.values(this.rawEdgesById).filter(
+                          (e) =>
+                            isSubscriptionEdge(e) &&
+                            e.toAttributePath === toPath &&
+                            e.toComponentId === componentId,
+                        );
 
                     // TODO Bring back the edges that were deleted by the optimistic call on the callback
                     // Or don't, this won't live much anyway

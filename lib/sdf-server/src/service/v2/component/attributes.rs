@@ -297,7 +297,7 @@ enum Source {
     Value(serde_json::Value),
 
     // { component: "ComponentNameOrId", path: "/domain/Foo/Bar/0/Baz" } - subscribe this value to a path from a component
-    #[serde(untagged)]
+    #[serde(untagged, rename_all = "camelCase")]
     Subscription {
         component: ComponentIdent,
         path: String,

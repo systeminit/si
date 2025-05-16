@@ -122,7 +122,7 @@ export function isSocketEdge(edge: Edge | undefined): edge is SocketEdge {
 export function isSubscriptionEdge(
   edge: Edge | undefined,
 ): edge is SubscriptionEdge {
-  return edge ? "fromSocketId" in edge : false;
+  return edge ? "fromAttributePath" in edge : false;
 }
 
 export interface PotentialConnection {

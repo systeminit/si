@@ -942,6 +942,7 @@ const processHighlighted = () => {
         $source: {
           component: from.componentId,
           path: from.attributePath,
+          keepExistingSubscriptions: appendConnection.value,
         },
       },
     });
@@ -952,6 +953,8 @@ const processHighlighted = () => {
   focusOnInput();
 };
 
+const appendConnection = ref(false);
+
 // Modal Mgmt
 function open(initialState: ConnectionMenuData) {
   highlightedIndex.value = 0;
@@ -959,6 +962,7 @@ function open(initialState: ConnectionMenuData) {
   activeSide.value = "a";
   connectionData.A = {};
   connectionData.B = {};
+  appendConnection.value = initialState.appendConnection ?? false;
 
   if (inputBRef.value) {
     inputBRef.value.searchString = "";
@@ -967,7 +971,6 @@ function open(initialState: ConnectionMenuData) {
   let initialBSearch = "";
 
   let aSocketSelected = false;
-  let bSocketSelected = false;
   const initialComponentA =
     componentsStore.allComponentsById[initialState.A.componentId || ""];
   const initialComponentB =
@@ -1032,12 +1035,10 @@ function open(initialState: ConnectionMenuData) {
         ? filteredSockets[0]
         : filteredSockets.find((s) => s.def.id === initialState.B.socketId);
     if (initialSocket) {
-      bSocketSelected = true;
       initialBSearch += `${initialSocket.def.label}`;
     }
     if (initialState.B.attributePath) {
       const strippedPath = initialState.B.attributePath.replace(/\//, "");
-      bSocketSelected = true;
       initialBSearch += strippedPath;
     }
   }
@@ -1069,7 +1070,7 @@ function open(initialState: ConnectionMenuData) {
     inputBRef.value.searchString = initialBSearch;
 
     if (aSocketSelected) {
-      // This make sure we selected the right item from the list before selecting it
+      // This makes sure we selected the right item from the list before selecting it
       for (const i in fullASideList.value) {
         const item = fullASideList.value[i];
         if (item && item.label === initialASearch) {
