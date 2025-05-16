@@ -1465,6 +1465,7 @@ impl FuncRunner {
         self.func_run.id()
     }
 
+    #[allow(clippy::async_yields_async)]
     #[instrument(name = "func_runner.execute", level = "info", skip_all)]
     pub async fn execute(
         self,
@@ -1508,7 +1509,7 @@ impl FuncRunner {
 
     /// This _private_ method collects all [`BeforeFunctions`](BeforeFunction) for a given
     /// [`ComponentId`](Component).
-    #[instrument(name = "func_runner.before_funcs", level = "debug", skip_all)]
+    #[instrument(name = "func_runner.before_funcs", level = "info", skip_all)]
     async fn before_funcs(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -1569,7 +1570,7 @@ impl FuncRunner {
     /// [`keys`](EncryptedSecretKey).
     #[instrument(
         name = "func_runner.before_funcs.ordered_before_funcs_with_secret_keys",
-        level = "debug",
+        level = "info",
         skip_all
     )]
     async fn ordered_before_funcs_with_secret_keys(
@@ -1705,7 +1706,7 @@ impl FuncRunner {
     /// underneath "/root/secrets" (e.g. "/root/secret/MySecretDefinitionName").
     #[instrument(
         name = "func_runner.before_funcs.auth_funcs_for_secret_prop_id",
-        level = "debug",
+        level = "info",
         skip_all
     )]
     async fn auth_funcs_for_secret_child_prop_id(
