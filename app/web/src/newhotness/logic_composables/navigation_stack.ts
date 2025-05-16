@@ -20,17 +20,21 @@ export const push = (
   params: params,
   query: query,
 ) => {
-  const prev = prevPage();
-  if (!prev) breadcrumbs.push({ url, name, params, query });
+  const prev = breadcrumbs[breadcrumbs.length - 1];
+  const data = { url, name, params, query };
+  if (!prev) breadcrumbs.push(data);
   else if (
-    prev.name !== name &&
-    prev.url !== url &&
-    !_.isEqual(prev.params, params) &&
+    // dont push dupe navs onto the stack
+    prev.name !== name ||
+    prev.url !== url ||
+    !_.isEqual(prev.params, params) ||
     !_.isEqual(prev.query, query)
   )
-    breadcrumbs.push({ url, name, params, query });
+    breadcrumbs.push(data);
   if (breadcrumbs.length > LIMIT) breadcrumbs.shift();
 };
 
-// 0 is always the current page
-export const prevPage = () => breadcrumbs[1];
+export const prevPage = () => {
+  if (breadcrumbs.length === 1) return undefined; // current page is only page on the stack
+  return breadcrumbs[breadcrumbs.length - 2];
+};
