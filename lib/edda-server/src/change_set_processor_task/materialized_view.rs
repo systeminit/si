@@ -439,7 +439,6 @@ async fn build_mv_inner(
             // If there are no more running tasks for this MV kind, then we can remove it from the dependency
             // graph to free up the next batch of MVs to run.
             if mv_kind_task_ids.get().is_empty() {
-                info!(kind = %kind, "All MV build tasks finished for MV kind.");
                 mv_dependency_graph.remove_id(kind);
             }
 
