@@ -5,6 +5,7 @@ use dal::{
     AttributeValue,
     Component,
     Schema,
+    SchemaVariant,
     Secret,
     cached_module::CachedModule,
     diagram::view::View,
@@ -65,20 +66,25 @@ pub async fn create_component(
     payload: Result<Json<CreateComponentV1Request>, axum::extract::rejection::JsonRejection>,
 ) -> Result<Json<CreateComponentV1Response>, ComponentsError> {
     let Json(payload) = payload?;
-    let module = CachedModule::find_latest_for_schema_name(ctx, payload.schema_name.as_str())
-        .await?
-        .ok_or(ComponentsError::SchemaNameNotFound(payload.schema_name))?;
-    let variant_id = Schema::get_or_install_default_variant(ctx, module.schema_id).await?;
+
+    let schema_id =
+        match CachedModule::find_latest_for_schema_name(ctx, payload.schema_name.as_str()).await? {
+            Some(module) => module.schema_id,
+            None => match Schema::get_by_name_opt(ctx, payload.schema_name.as_str()).await? {
+                Some(schema) => schema.id(),
+                None => return Err(ComponentsError::SchemaNameNotFound(payload.schema_name)),
+            },
+        };
+    let variant_id = Schema::get_or_install_default_variant(ctx, schema_id).await?;
+    let variant = SchemaVariant::get_by_id(ctx, variant_id).await?;
 
     let view_id: ViewId;
     if let Some(view_name) = payload.view_name {
         if let Some(view) = View::find_by_name(ctx, view_name.as_str()).await? {
             view_id = view.id();
         } else {
-            return Err(ComponentsError::ViewNotFound(format!(
-                "View '{}' not found",
-                view_name
-            )));
+            let view = View::new(ctx, view_name.as_str()).await?;
+            view_id = view.id()
         }
     } else {
         let default_view = View::get_id_for_default(ctx).await?;
@@ -105,8 +111,8 @@ pub async fn create_component(
         json!({
             "component_id": component.id(),
             "schema_variant_id": variant_id,
-            "schema_variant_name": module.display_name.clone().unwrap_or("unknown".to_string()),
-            "category": module.category.unwrap_or("unknown".to_string()),
+            "schema_variant_name": variant.display_name().to_string(),
+            "category": variant.category(),
         }),
     );
     ctx.write_audit_log(
@@ -114,7 +120,7 @@ pub async fn create_component(
             name: comp_name.clone(),
             component_id: component.id(),
             schema_variant_id: variant_id,
-            schema_variant_name: module.display_name.clone().unwrap_or("unknown".to_string()),
+            schema_variant_name: variant.display_name().to_string(),
         },
         comp_name.clone(),
     )
