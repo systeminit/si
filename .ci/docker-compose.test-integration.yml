@@ -76,9 +76,6 @@ services:
 
   localstack:
     image: localstack/localstack:3
-    ports:
-      - "4566:4566"
-      - "4510-4559:4510-4559"
 
   spicedb:
     build: ../component/spicedb
