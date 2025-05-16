@@ -8,23 +8,19 @@ Run all tests (with auth api running locally):
 export SDF_API_URL="http://localhost:8080"
 export AUTH_API_URL="http://localhost:9001"
 
-deno task run --workspace-id $WORKSPACE_ID \
-              --userId $EMAIL \
-              --password $PASSWORD \
-              --profile '{"maxDuration": "5", "rate": "1", "useJitter": false}'
-              --tests create_and_use_variant,get_head_changeset
+export BEARER_TOKEN="<your-bearer-token>"
+export WORKSPACE_ID="<your-workspace-id>"
+export CHANGE_SET_ID="<your-change-set-id>"
 
-Usage: deno run main.ts [options]
-
-Options:
-  --workspaceId, -w   Workspace ID (required)
-  --userId, -u        User ID (optional, if token is provided)
-  --password, -p      User password (optional, if token is provided)
-  --token, -t         User token (optional, if userId and password are provided)
-  --tests, -t         Test names to run (comma-separated, optional)
-  --profile, -l       Test profile in JSON format (optional)
-  --help              Show this help message
+deno task run \
+  -w $WORKSPACE_ID \ # required
+  -c $CHANGE_SET_ID \ # optional depending on the test
+  -k $BEARER_TOKEN \ # can replace with user and password
+  -t 8-check_mjolnir # comma separated list (runs all if nothing is provied)
 ```
+
+> [!TIP]
+> Run `deno task run --help` for help options.
 
 Alternately, you can skip the password argument, pass in a userId in place of
 the email and set a jwt private key, such as
@@ -32,9 +28,16 @@ the email and set a jwt private key, such as
 in our config/keys folder, to the JWT_PRIVATE_KEY env variable. This is good for
 local development, but not how we'll do it in GitHub actions.
 
+> [!TIP]
+> You can pass in a profile as well to customize test execution setup.
+>
+> ```shell
+> --profile '{"maxDuration": "5", "rate": "1", "useJitter": false}'
+> ```
+
 ## Adding new tests
 
-Add a new file into ./tests/<something>.ts and then invoke it using the --tests
+Add a new file into `./tests/<something>.ts` and then invoke it using the --tests
 param in the binary execution
 
 ## Benchmarking
