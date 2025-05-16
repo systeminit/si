@@ -11,8 +11,10 @@
       <ComponentAttribute
         v-for="child in filtered.tree.children"
         :key="child.id"
+        :component="component"
         :attributeTree="child"
         @save="save"
+        @delete="remove"
       />
     </ul>
     <div v-else>Oh no, no attributes!</div>
@@ -20,10 +22,8 @@
 </template>
 
 <script lang="ts" setup>
-import { useQuery } from "@tanstack/vue-query";
 import { computed, reactive, ref, watch } from "vue";
 import { Fzf } from "fzf";
-import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   AttributeTree,
   BifrostComponent,
@@ -43,43 +43,36 @@ const props = defineProps<{
   component: BifrostComponent;
 }>();
 
-const componentId = computed(() => props.component.id);
-
-const attributeTreeMakeKey = useMakeKey();
-const attributeTreeMakeArgs = useMakeArgs();
-const attributeTreeQuery = useQuery<AttributeTree | null>({
-  queryKey: attributeTreeMakeKey("AttributeTree", componentId),
-  queryFn: async () => {
-    const args = attributeTreeMakeArgs("AttributeTree", componentId.value);
-    return await bifrost<AttributeTree>(args);
-  },
-});
-
 export interface AttrTree {
   id: string;
   children: AttrTree[];
   parent?: string;
   prop?: Prop;
   attributeValue: AttributeValue;
+  isBuildable: boolean; // is my parent an array or map?
 }
 
 const makeAvTree = (
   data: AttributeTree,
   avId: string,
+  isBuildable: boolean,
   parent?: string,
 ): AttrTree => {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const childrenIds = data.treeInfo[avId]!.children;
-  const children = childrenIds.map((id) => makeAvTree(data, id, avId));
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const av = data.attributeValues[avId]!;
   const prop = av.propId ? data.props[av.propId] : undefined;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const childrenIds = data.treeInfo[avId]!.children;
+  const children = childrenIds.map((id) =>
+    makeAvTree(data, id, ["array", "map"].includes(prop?.kind ?? ""), avId),
+  );
   const tree: AttrTree = {
     id: avId,
     children,
     parent,
     attributeValue: av,
     prop,
+    isBuildable,
   };
   return tree;
 };
@@ -89,8 +82,9 @@ const root = computed<AttrTree>(() => {
     id: "",
     children: [] as AttrTree[],
     attributeValue: {} as AttributeValue,
+    isBuildable: false,
   };
-  const raw = attributeTreeQuery.data.value;
+  const raw = props.component.attributeTree;
   if (!raw) return empty;
 
   // find the root node in the tree, the only one with parent null
@@ -102,7 +96,7 @@ const root = computed<AttrTree>(() => {
   });
   if (!rootId) return empty;
 
-  const tree = makeAvTree(raw, rootId);
+  const tree = makeAvTree(raw, rootId, false);
   return tree;
 });
 
@@ -207,6 +201,17 @@ const save = async (path: string, _id: string, value: string) => {
   const payload: UpdateComponentAttributesArgs = {};
   path = path.replace("root", ""); // endpoint doesn't want it
   payload[path] = value;
+  await call.put<UpdateComponentAttributesArgs>(payload);
+};
+
+const remove = async (path: string, _id: string) => {
+  const call = api.endpoint<{ success: boolean }>(
+    routes.UpdateComponentAttributes,
+    { id: props.component.id },
+  );
+  const payload: UpdateComponentAttributesArgs = {};
+  path = path.replace("root", ""); // endpoint doesn't want it
+  payload[path] = { $source: null };
   await call.put<UpdateComponentAttributesArgs>(payload);
 };
 

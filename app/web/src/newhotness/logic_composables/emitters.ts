@@ -30,7 +30,7 @@ export const startKeyEmitter = (document: Document) => {
 
 type AttributeDetails = {
   selectedPath: string;
-  selectedDocs: { docs: string; link: string; name: string } | null;
+  selectedDocs: { docs: string; link: string } | null;
 };
 
 export const attributeEmitter: Emitter<AttributeDetails> =

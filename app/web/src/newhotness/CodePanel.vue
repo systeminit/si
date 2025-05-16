@@ -1,6 +1,6 @@
 <template>
   <ul class="p-xs flex flex-col gap-xs">
-    <template v-if="componentId && codes">
+    <template v-if="component.id && codes">
       <CodeViewer
         v-for="(item, index) in codes"
         :key="item.name ?? index"
@@ -20,32 +20,21 @@
 </template>
 
 <script lang="ts" setup>
-import { useQuery } from "@tanstack/vue-query";
 import { computed } from "vue";
-import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
-import { AttributeTree } from "@/workers/types/dbinterface";
+import { BifrostComponent } from "@/workers/types/dbinterface";
 import CodeViewer from "@/components/CodeViewer.vue";
 import EmptyStateCard from "@/components/EmptyStateCard.vue";
 import { findAvsAtPropPath } from "./util";
 
 const props = defineProps<{
-  componentId: string;
+  component: BifrostComponent;
 }>();
-
-const attributeTreeMakeKey = makeKey("AttributeTree", props.componentId);
-const attributeTreeMakeArgs = makeArgs("AttributeTree", props.componentId);
-const attributeTreeQuery = useQuery<AttributeTree | null>({
-  queryKey: attributeTreeMakeKey,
-  queryFn: async () => await bifrost<AttributeTree>(attributeTreeMakeArgs),
-});
-
-const root = computed(() => attributeTreeQuery.data.value);
 
 const codes = computed(() => {
   const codes: { code: string; name: string | undefined }[] = [];
-  if (!root.value) return codes;
+  if (!props.component.attributeTree) return codes;
 
-  const data = findAvsAtPropPath(root.value, [
+  const data = findAvsAtPropPath(props.component.attributeTree, [
     "root",
     "code",
     "codeItem",
@@ -56,7 +45,7 @@ const codes = computed(() => {
 
   attributeValues.forEach((av) => {
     codes.push({
-      code: av.value,
+      code: av.value ?? "",
       name: av.path?.split("/")[2], // "/code/<name>/code"
     });
   });
