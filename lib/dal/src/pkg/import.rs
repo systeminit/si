@@ -1656,23 +1656,13 @@ async fn create_attr_proto_arg(
         SiPkgAttrFuncInputView::Prop { prop_path, .. } => {
             let prop_id =
                 Prop::find_prop_id_by_path(ctx, schema_variant_id, &prop_path.into()).await?;
-            let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg.id).await?;
-            let apa_id = apa.id();
-
-            apa.set_value_from_prop_id(ctx, prop_id).await?;
-
-            apa_id
+            AttributePrototypeArgument::new(ctx, prototype_id, arg.id, prop_id).await?
         }
         SiPkgAttrFuncInputView::InputSocket { socket_name, .. } => {
             let input_socket = InputSocket::find_with_name(ctx, socket_name, schema_variant_id)
                 .await?
                 .ok_or(PkgError::MissingInputSocketName(socket_name.to_owned()))?;
-            let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg.id).await?;
-            let apa_id = apa.id();
-
-            apa.set_value_from_input_socket_id(ctx, input_socket.id())
-                .await?;
-            apa_id
+            AttributePrototypeArgument::new(ctx, prototype_id, arg.id, input_socket.id()).await?
         }
         SiPkgAttrFuncInputView::OutputSocket {
             name, socket_name, ..
@@ -1682,7 +1672,8 @@ async fn create_attr_proto_arg(
                 socket_name.to_owned(),
             ));
         }
-    })
+    }
+    .id())
 }
 
 #[derive(Debug, Clone)]
@@ -1971,8 +1962,8 @@ pub async fn attach_resource_payload_to_value(
             }
         }
         None => {
-            let apa = AttributePrototypeArgument::new(ctx, target_id, func_argument_id).await?;
-            apa.set_value_from_prop_id(ctx, source_prop_id).await?;
+            AttributePrototypeArgument::new(ctx, target_id, func_argument_id, source_prop_id)
+                .await?;
         }
     }
 

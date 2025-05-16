@@ -1105,9 +1105,8 @@ impl Component {
         // All inputs are valid, create the component specific override
         let new_prototype = AttributePrototype::new(ctx, component_prototype_func.id).await?;
         for (func_arg_id, value_source) in new_value_sources {
-            let new_apa =
-                AttributePrototypeArgument::new(ctx, new_prototype.id, func_arg_id).await?;
-            AttributePrototypeArgument::set_value_source(ctx, new_apa.id(), value_source).await?;
+            AttributePrototypeArgument::new(ctx, new_prototype.id, func_arg_id, value_source)
+                .await?;
         }
 
         AttributeValue::set_component_prototype_id(
@@ -3600,10 +3599,10 @@ impl Component {
     #[instrument(level = "debug", skip(ctx))]
     pub async fn upgrade_to_new_variant(
         ctx: &DalContext,
-        component_id: ComponentId,
+        original_component_id: ComponentId,
         schema_variant_id: SchemaVariantId,
     ) -> ComponentResult<Component> {
-        let original_component = Self::get_by_id(ctx, component_id).await?;
+        let original_component = Self::get_by_id(ctx, original_component_id).await?;
 
         // ================================================================================
         // Cache original component data
@@ -3612,8 +3611,7 @@ impl Component {
 
         let original_component_node_weight = snap.get_node_weight(original_component.id).await?;
 
-        let original_component_name = Self::name_by_id(ctx, component_id).await?;
-        let original_component_id = component_id;
+        let original_component_name = Self::name_by_id(ctx, original_component_id).await?;
         let original_component_lineage_id = original_component_node_weight.lineage_id();
 
         let original_managed = original_component.get_managed(ctx).await?;
@@ -3624,7 +3622,7 @@ impl Component {
         let original_parent = original_component.parent(ctx).await?;
         let original_children = Component::get_children_for_id(ctx, original_component_id).await?;
 
-        let geometry_ids = Geometry::list_ids_by_component(ctx, component_id).await?;
+        let geometry_ids = Geometry::list_ids_by_component(ctx, original_component_id).await?;
 
         // ================================================================================
         // Create new component and run changes that depend on the old one still existing
@@ -3641,7 +3639,7 @@ impl Component {
         for geometry_id in geometry_ids {
             snap.remove_edge(
                 geometry_id,
-                component_id,
+                original_component_id,
                 EdgeWeightKindDiscriminants::Represents,
             )
             .await?;

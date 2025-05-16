@@ -2030,10 +2030,13 @@ impl AttributeValue {
                         .to_owned()
                 };
 
-                AttributePrototypeArgument::new(ctx, prototype.id(), func_arg_id)
-                    .await?
-                    .set_value_from_static_value(ctx, value.to_owned())
-                    .await?;
+                AttributePrototypeArgument::new_static_value(
+                    ctx,
+                    prototype.id(),
+                    func_arg_id,
+                    value.to_owned(),
+                )
+                .await?;
 
                 serde_json::json!({ func_arg_name: value } )
             }
@@ -2198,11 +2201,13 @@ impl AttributeValue {
                 let from_value_source =
                     AttributePrototypeArgument::value_source(ctx, from_apa_id).await?;
 
-                let dest_apa =
-                    AttributePrototypeArgument::new(ctx, dest_prototype.id(), from_func_arg_id)
-                        .await?;
-                AttributePrototypeArgument::set_value_source(ctx, dest_apa.id(), from_value_source)
-                    .await?;
+                AttributePrototypeArgument::new(
+                    ctx,
+                    dest_prototype.id(),
+                    from_func_arg_id,
+                    from_value_source,
+                )
+                .await?;
             }
 
             AttributeValue::set_component_prototype_id(ctx, dest_av_id, dest_prototype.id, None)
@@ -2294,10 +2299,10 @@ impl AttributeValue {
         // Add the subscriptions as the argument
         let arg_id = FuncArgument::single_arg_for_intrinsic(ctx, func_id).await?;
         for subscription in subscriptions {
-            let apa = AttributePrototypeArgument::new(ctx, prototype_id, arg_id).await?;
-            AttributePrototypeArgument::set_value_source(
+            AttributePrototypeArgument::new(
                 ctx,
-                apa.id(),
+                prototype_id,
+                arg_id,
                 ValueSource::ValueSubscription(subscription),
             )
             .await?;
@@ -2310,8 +2315,8 @@ impl AttributeValue {
         Ok(())
     }
 
-    // Subscriptions from this attribute value to others. If this attribute value is unset or
-    // is not set solely to subscriptions, this returns None.
+    /// Subscriptions from this attribute value to others. If this attribute value is unset or
+    /// is not set solely to subscriptions, this returns None.
     pub async fn subscriptions(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
@@ -2332,6 +2337,7 @@ impl AttributeValue {
         Ok(Some(subscriptions))
     }
 
+    /// Subscriptions to attributes under this AV.
     pub async fn subscribers(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,

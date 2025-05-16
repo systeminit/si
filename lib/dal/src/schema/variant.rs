@@ -1724,13 +1724,13 @@ impl SchemaVariant {
                     %input_prop_id, ?input.location, "adding root child attribute prototype argument",
                 );
 
-                let new_apa = AttributePrototypeArgument::new(
+                AttributePrototypeArgument::new(
                     ctx,
                     attribute_prototype_id,
                     input.func_argument_id,
+                    input_prop_id,
                 )
                 .await?;
-                new_apa.set_value_from_prop_id(ctx, input_prop_id).await?;
             }
         }
 
