@@ -21,7 +21,6 @@ use crate::{
     activities::{
         Activity,
         ActivityId,
-        ActivityRebaseRequest,
     },
     event::LayeredEvent,
     persister::{
@@ -37,10 +36,6 @@ pub enum LayerDbError {
     ActionIdNotFound(ActionId),
     #[error("Activity is not an activity rebase, and should be to be on the work queue")]
     ActivityRebase,
-    #[error("Rebase work queue event failed to send error: {0}")]
-    ActivityRebaseRequestSend(
-        #[from] Box<tokio::sync::mpsc::error::SendError<ActivityRebaseRequest>>,
-    ),
     #[error("Activity Event Server send error: {0}")]
     ActivitySend(#[from] Box<tokio::sync::mpsc::error::SendError<Activity>>),
     #[error(

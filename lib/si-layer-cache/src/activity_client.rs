@@ -8,10 +8,7 @@ use si_data_nats::{
     jetstream::Context,
 };
 use telemetry::prelude::*;
-use tokio::{
-    pin,
-    sync::mpsc::UnboundedReceiver,
-};
+use tokio::pin;
 use tokio_stream::{
     StreamExt,
     wrappers::BroadcastStream,
@@ -26,9 +23,6 @@ use crate::{
         ActivityMultiplexer,
         ActivityPayloadDiscriminants,
         ActivityPublisher,
-        ActivityRebaseRequest,
-        RebaserRequestWorkQueue,
-        rebase::ActivityRebase,
         test::ActivityIntegrationTest,
     },
     error::{
@@ -83,19 +77,6 @@ impl ActivityClient {
 
     pub fn activity_multiplexer(&self) -> &ActivityMultiplexer {
         &self.activity_multiplexer
-    }
-
-    pub async fn rebaser_request_work_queue(
-        &self,
-    ) -> LayerDbResult<UnboundedReceiver<ActivityRebaseRequest>> {
-        let (mut worker, rx) = RebaserRequestWorkQueue::create(
-            self.context.clone(),
-            self.subject_prefix.clone(),
-            self.shutdown_token.clone(),
-        )
-        .await?;
-        tokio::spawn(async move { worker.run().await });
-        Ok(rx)
     }
 
     // Publish an activity
@@ -164,10 +145,6 @@ impl ActivityClient {
         Err(LayerDbError::ActivityWaitClosed(
             wait_for_parent_activity_id,
         ))
-    }
-
-    pub fn rebase(&self) -> ActivityRebase {
-        ActivityRebase::new(self)
     }
 
     pub fn test(&self) -> ActivityIntegrationTest {
