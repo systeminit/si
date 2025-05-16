@@ -449,7 +449,7 @@ watch(selectedComponent, () => {
       .querySelector(`#map > svg rect.node.id-${selectedComponent.value.id}`)
       ?.classList.add("selected");
   }
-  router.replace({ query });
+  router.push({ query });
 });
 
 const searchString = inject<ComputedRef<string>>("SEARCH");
@@ -538,6 +538,9 @@ watch(
         )
         .on("click", (_e: Event, d: layoutNode) => {
           clickedNode(d);
+        })
+        .on("dblclick", (_e: Event, d: layoutNode) => {
+          componentNavigate(d.component.id);
         });
 
       groups

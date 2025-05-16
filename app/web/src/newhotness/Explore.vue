@@ -201,7 +201,7 @@ watch(showGrid, () => {
   delete query.grid;
   if (showGrid.value) query.grid = "1";
   else query.map = "1";
-  router.replace({ query });
+  router.push({ query });
 });
 
 const actions = ref<typeof CollapsingGridItem>();
