@@ -27,20 +27,23 @@ export enum ComponentType {
   ConfigurationFrameUp = "configurationFrameUp",
   AggregationFrame = "aggregationFrame",
 }
+interface Socket {
+  name: string;
+  annotations: Array<{ tokens: [] }>;
+  arity: "many" | "one";
+}
 
 export type OutputSocketId = string;
 
-export interface OutputSocket {
+export interface OutputSocket extends Socket {
   id: OutputSocketId;
-  name: string;
   eligibleToReceiveData: boolean;
 }
 
 export type InputSocketId = string;
 
-export interface InputSocket {
+export interface InputSocket extends Socket {
   id: InputSocketId;
-  name: string;
   eligibleToSendData: boolean;
 }
 

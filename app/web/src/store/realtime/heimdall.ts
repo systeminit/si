@@ -108,6 +108,23 @@ export const bifrost = async <T>(args: {
   return reactive(maybeAtomDoc);
 };
 
+export const getPossibleConnections = async (args: {
+  workspaceId: string;
+  changeSetId: ChangeSetId;
+  annotation: string;
+  _direction?: "output" | "input";
+}) => {
+  // If we end up looking for sockets... we need direction
+  // But sockets are gonna die... so... ???
+  return reactive(
+    await db.getConnectionByAnnotation(
+      args.workspaceId,
+      args.changeSetId,
+      args.annotation,
+    ),
+  );
+};
+
 export const getOutgoingConnections = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;

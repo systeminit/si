@@ -66,6 +66,7 @@
         :attributeValueId="props.attributeTree.attributeValue.id"
         :path="props.attributeTree.attributeValue.path ?? ''"
         :kind="props.attributeTree.prop?.widgetKind"
+        :prop="props.attributeTree.prop"
         :value="props.attributeTree.attributeValue.value?.toString() ?? ''"
         :canDelete="props.attributeTree.isBuildable"
         @save="(path, id, value) => emit('save', path, id, value)"

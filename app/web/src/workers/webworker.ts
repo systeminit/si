@@ -60,6 +60,7 @@ import {
   EddaConnection,
   BifrostComponent,
   SchemaVariant,
+  PossibleConnection,
 } from "./types/dbinterface";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
@@ -320,6 +321,11 @@ const createAtomFromPatch = async (atom: Atom, span?: Span) => {
 
 const createAtom = async (atom: Atom, doc: object, span?: Span) => {
   debug("createAtom", atom, doc);
+
+  if (COMPUTED_KINDS.includes(atom.kind))
+    updateComputed(atom.workspaceId, atom.changeSetId, atom.kind, doc);
+
+  const encodedDoc = await encodeDocumentForDB(doc);
   try {
     await db.exec({
       sql: `insert into atoms
@@ -328,12 +334,7 @@ const createAtom = async (atom: Atom, doc: object, span?: Span) => {
         (?, ?, ?, ?)
       ON CONFLICT DO NOTHING;
       `,
-      bind: [
-        atom.kind,
-        atom.toChecksum,
-        atom.id,
-        await encodeDocumentForDB(doc),
-      ],
+      bind: [atom.kind, atom.toChecksum, atom.id, encodedDoc],
     });
   } catch (err) {
     if (err instanceof Error) {
@@ -364,12 +365,12 @@ const kindAndArgsFromKey = (key: QueryKey): { kind: string; id: Id } => {
   return { kind, id };
 };
 
-const dirtyConnections: Record<string, boolean> = {};
+const dirtyConnections: Set<string> = new Set();
 const areConnectionsDirty = (workspaceId: string, changeSetId: string) => {
-  return dirtyConnections[`${workspaceId}-${changeSetId}`];
+  return dirtyConnections.has(`${workspaceId}-${changeSetId}`);
 };
 const markConnectionDirty = (workspaceId: string, changeSetId: string) => {
-  dirtyConnections[`${workspaceId}-${changeSetId}`] = true;
+  dirtyConnections.add(`${workspaceId}-${changeSetId}`);
 };
 const bustCacheAndReferences: BustCacheFn = async (
   workspaceId: string,
@@ -401,6 +402,113 @@ const bustCacheAndReferences: BustCacheFn = async (
   });
 };
 
+const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
+  const data = (await get(
+    workspaceId,
+    changeSetId,
+    "ComponentList",
+    changeSetId,
+  )) as BifrostComponentList;
+  await Promise.all(
+    data.components.map((c) =>
+      updateComputed(workspaceId, changeSetId, "Component", c, false),
+    ),
+  );
+  // bust everything all at once on cold start
+  bustCacheAndReferences(
+    workspaceId,
+    changeSetId,
+    "PossibleConnections",
+    changeSetId,
+  );
+};
+
+const COMPUTED_KINDS = ["Component"];
+
+const updateComputed = (
+  workspaceId: string,
+  changeSetId: string,
+  kind: string,
+  doc: AtomDocument,
+  bust = true,
+) => {
+  if (!COMPUTED_KINDS.includes(kind)) return;
+
+  const conns: Record<string, PossibleConnection> = {};
+
+  if (kind === "Component") {
+    // NOTE: coldstart this is a BifrostComponent
+    // on "update from patch" this is an EddaComponent
+    const component = doc as EddaComponent;
+    Object.values(component.attributeTree.attributeValues).forEach((av) => {
+      const prop = component.attributeTree.props[av.propId ?? ""];
+      if (av.value && av.path && prop) {
+        const conn: PossibleConnection = {
+          attributeValueId: av.id,
+          value: av.value,
+          path: av.path,
+          name: prop.name,
+          componentId: component.id,
+          componentName: component.name,
+          schemaName: component.schemaName,
+          annotation: prop.kind,
+        };
+        conns[av.id] = conn;
+      }
+    });
+  }
+
+  const existing = allConns.get(changeSetId);
+  allConns.set(changeSetId, { ...existing, ...conns });
+  if (bust)
+    // dont bust individually on cold start
+    bustCacheFn(workspaceId, changeSetId, "PossibleConnections", changeSetId);
+};
+
+const allConns = new DefaultMap<string, Record<string, PossibleConnection>>(
+  () => ({}),
+);
+
+const getConnectionByAnnotation = (
+  _workspaceId: string,
+  changeSetId: string,
+  annotation: string,
+) => sortByAnnotation(Object.values(allConns.get(changeSetId)), annotation);
+
+const sortByAnnotation = (
+  possible: Array<PossibleConnection>,
+  annotation: string,
+) => {
+  const exactMatches: Array<PossibleConnection> = [];
+  const typeMatches: Array<PossibleConnection> = [];
+  const nonMatches: Array<PossibleConnection> = [];
+
+  possible.forEach((conn) => {
+    const kind = conn.annotation;
+    // if we've got something like "VPC id" e.g. not one of the basic types
+    if (
+      !["string", "boolean", "object", "map", "integer"].includes(annotation)
+    ) {
+      // look for exact matches
+      if (kind === annotation) exactMatches.push(conn);
+      // otherwise, all string types match "exact" types
+      else if (annotation === "string") typeMatches.push(conn);
+      else nonMatches.push(conn);
+    } else {
+      if (kind === annotation) typeMatches.push(conn);
+      else nonMatches.push(conn);
+    }
+  });
+
+  const cmp = (a: PossibleConnection, b: PossibleConnection) =>
+    `${a.name} ${a.path}`.localeCompare(`${b.name} ${b.path}`);
+  exactMatches.sort(cmp);
+  typeMatches.sort(cmp);
+  nonMatches.sort(cmp);
+
+  return { exactMatches, typeMatches, nonMatches };
+};
+
 const cachedConnections: Record<
   ChangeSetId,
   DefaultMap<ComponentId, BifrostConnection[]>
@@ -423,7 +531,7 @@ const cleanConnections = async (workspaceId: string, changeSetId: string) => {
     );
     cachedConnections[changeSetId] = connectionsById;
 
-    delete dirtyConnections[`${workspaceId}-${changeSetId}`];
+    dirtyConnections.delete(`${workspaceId}-${changeSetId}`);
 
     // whenever these change, the outgoing connections must bust as well
     bustCacheFn(workspaceId, changeSetId, "OutgoingConnections", changeSetId);
@@ -719,6 +827,9 @@ const patchAtom = async (atom: Required<Atom>) => {
     afterDoc = applied.newDocument;
   }
 
+  if (COMPUTED_KINDS.includes(atom.kind))
+    updateComputed(atom.workspaceId, atom.changeSetId, atom.kind, afterDoc);
+
   await db.exec({
     sql: `
     insert into atoms
@@ -867,6 +978,7 @@ const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
     // build connections list based on data we have in the DB
     // connections list will rebuild as data comes in
     const cleanPromise = cleanConnections(workspaceId, changeSetId);
+    const computedPromise = coldStartComputed(workspaceId, changeSetId);
 
     // clear out references, no queries have been performed yet
     clearAllWeakReferences(changeSetId);
@@ -887,7 +999,11 @@ const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
       method: "get",
       url,
     });
-    const [req, _] = await Promise.all([reqPromise, cleanPromise]);
+    const [req, _c, _p] = await Promise.all([
+      reqPromise,
+      cleanPromise,
+      computedPromise,
+    ]);
     const atoms = req.data.frontEndObject.data.mvList;
     frigg.setAttribute("numEntries", atoms.length);
     frigg.end();
@@ -1567,6 +1683,7 @@ const dbInterface: DBInterface = {
 
   get,
   getOutgoingConnectionsByComponentId,
+  getConnectionByAnnotation,
   partialKeyFromKindAndId: partialKeyFromKindAndArgs,
   kindAndIdFromKey: kindAndArgsFromKey,
   mjolnir,

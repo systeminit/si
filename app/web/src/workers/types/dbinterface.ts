@@ -71,6 +71,15 @@ export interface DBInterface {
   initBifrost(): void;
   bifrostClose(): void;
   bifrostReconnect(): void;
+  getConnectionByAnnotation(
+    workspaceId: string,
+    changeSetId: string,
+    annotation: string,
+  ): {
+    exactMatches: Array<PossibleConnection>;
+    typeMatches: Array<PossibleConnection>;
+    nonMatches: Array<PossibleConnection>;
+  };
   getOutgoingConnectionsByComponentId(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -254,6 +263,17 @@ interface WeakReference {
  *    (e.g. perform the full translation from Edda to Bifrost)
  * 7. `getReferences` SHALL set default/warning data that `getComputed` will write over
  */
+export type PossibleConnection = {
+  attributeValueId: string;
+  name: string;
+  path: string;
+  value: string;
+  componentName: string;
+  schemaName: string;
+  componentId: string;
+  annotation: string;
+};
+
 export interface View {
   id: string;
   name: string;
