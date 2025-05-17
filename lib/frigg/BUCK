@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "frigg",
     deps = [
+        "//lib/nats-std:nats-std",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-events-rs:si-events",
         "//lib/si-frontend-mv-types-rs:si-frontend-mv-types",

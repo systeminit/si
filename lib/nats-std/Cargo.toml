@@ -1,5 +1,5 @@
 [package]
-name = "pinga-core"
+name = "nats-std"
 version.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -9,5 +9,4 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-nats-std = { path = "../../lib/nats-std" }
 si-data-nats = { path = "../../lib/si-data-nats" }

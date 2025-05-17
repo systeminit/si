@@ -2602,6 +2602,7 @@ name = "edda-core"
 version = "0.1.0"
 dependencies = [
  "insta",
+ "nats-std",
  "naxum-api-types",
  "remain",
  "serde",
@@ -3136,6 +3137,7 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "futures",
+ "nats-std",
  "remain",
  "serde_json",
  "si-data-nats",
@@ -5021,6 +5023,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "nats-std"
+version = "0.1.0"
+dependencies = [
+ "si-data-nats",
+]
+
+[[package]]
 name = "nats-subscriber"
 version = "0.1.0"
 dependencies = [
@@ -5727,6 +5736,7 @@ dependencies = [
 name = "pinga-core"
 version = "0.1.0"
 dependencies = [
+ "nats-std",
  "si-data-nats",
 ]
 
@@ -6318,6 +6328,7 @@ dependencies = [
 name = "rebaser-core"
 version = "0.1.0"
 dependencies = [
+ "nats-std",
  "naxum-api-types",
  "remain",
  "serde",
@@ -8040,6 +8051,7 @@ dependencies = [
  "futures",
  "miniz_oxide",
  "mixtrics",
+ "nats-std",
  "postcard",
  "rand 0.8.5",
  "refinery",
@@ -9752,6 +9764,7 @@ name = "veritech-core"
 version = "0.1.0"
 dependencies = [
  "cyclone-core",
+ "nats-std",
  "serde_json",
  "si-crypto",
  "si-data-nats",

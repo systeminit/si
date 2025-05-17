@@ -32,7 +32,7 @@ use naxum::{
         Response,
     },
 };
-use pinga_core::REPLY_INBOX_HEADER_NAME;
+use pinga_core::nats::REPLY_INBOX_HEADER_NAME;
 use si_data_nats::Subject;
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
