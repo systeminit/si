@@ -400,6 +400,15 @@
       "allExcept"
     ]
   },
+  "Determines whether any HTTP headers are included in requests that CloudFront sends to the origin. Valid values are:\n  +  ``none`` – No HTTP headers in viewer requests are included in requests that CloudFront sends to the origin. Even when this field is set to ``none``, any headers that are listed in a ``CachePolicy``*are* included in origin requests.\n  +  ``whitelist`` – Only the HTTP headers that are listed in the ``Headers`` type are included in requests that CloudFront sends to the origin.\n  +  ``allViewer`` – All HTTP headers in viewer requests are included in requests that CloudFront sends to the origin.\n  +  ``allViewerAndWhitelistCloudFront`` – All HTTP headers in viewer requests and the additional CloudFront headers that are listed in the ``Headers`` type are included in requests that CloudFront sends to the origin. The additional headers are added by CloudFront.\n  +  ``allExcept`` – All HTTP headers in viewer requests are included in requests that CloudFront sends to the origin, *except* for those listed in the ``Headers`` type, which are not included.": {
+    "enum": [
+      "none",
+      "whitelist",
+      "allViewer",
+      "allViewerAndWhitelistCloudFront",
+      "allExcept"
+    ]
+  },
   "The storage type to associate with the DB instance.\n If you specify ``io1``, ``io2``, or ``gp3``, you must also include a value for the ``Iops`` parameter.\n This setting doesn't apply to Amazon Aurora DB instances. Storage is managed by the DB cluster.\n Valid Values: ``gp2 | gp3 | io1 | io2 | standard``\n Default: ``io1``, if the ``Iops`` parameter is specified. Otherwise, ``gp3``.": {
     "enum": [
       "gp2",
@@ -506,7 +515,23 @@
       "allExcept"
     ]
   },
+  "Determines whether any URL query strings in viewer requests are included in requests that CloudFront sends to the origin. Valid values are:\n  +  ``none`` – No query strings in viewer requests are included in requests that CloudFront sends to the origin. Even when this field is set to ``none``, any query strings that are listed in a ``CachePolicy``*are* included in origin requests.\n  +  ``whitelist`` – Only the query strings in viewer requests that are listed in the ``QueryStringNames`` type are included in requests that CloudFront sends to the origin.\n  +  ``all`` – All query strings in viewer requests are included in requests that CloudFront sends to the origin.\n  +  ``allExcept`` – All query strings in viewer requests are included in requests that CloudFront sends to the origin, *except* for those listed in the ``QueryStringNames`` type, which are not included.": {
+    "enum": [
+      "none",
+      "whitelist",
+      "all",
+      "allExcept"
+    ]
+  },
   "Determines whether any URL query strings in viewer requests are included in the cache key and in requests that CloudFront sends to the origin. Valid values are:\n  +   ``none`` – No query strings in viewer requests are included in the cache key or in requests that CloudFront sends to the origin. Even when this field is set to ``none``, any query strings that are listed in an ``OriginRequestPolicy`` *are* included in origin requests.\n  +   ``whitelist`` – Only the query strings in viewer requests that are listed in the ``QueryStringNames`` type are included in the cache key and in requests that CloudFront sends to the origin.\n  +   ``allExcept`` – All query strings in viewer requests are included in the cache key and in requests that CloudFront sends to the origin, *except* those that are listed in the ``QueryStringNames`` type, which are not included.\n  +   ``all`` – All query strings in viewer requests are included in the cache key and in requests that CloudFront sends to the origin.": {
+    "enum": [
+      "none",
+      "whitelist",
+      "allExcept",
+      "all"
+    ]
+  },
+  "Determines whether any URL query strings in viewer requests are included in the cache key and in requests that CloudFront sends to the origin. Valid values are:\n  +  ``none`` – No query strings in viewer requests are included in the cache key or in requests that CloudFront sends to the origin. Even when this field is set to ``none``, any query strings that are listed in an ``OriginRequestPolicy``*are* included in origin requests.\n  +  ``whitelist`` – Only the query strings in viewer requests that are listed in the ``QueryStringNames`` type are included in the cache key and in requests that CloudFront sends to the origin.\n  +  ``allExcept`` – All query strings in viewer requests are included in the cache key and in requests that CloudFront sends to the origin, *except* those that are listed in the ``QueryStringNames`` type, which are not included.\n  +  ``all`` – All query strings in viewer requests are included in the cache key and in requests that CloudFront sends to the origin.": {
     "enum": [
       "none",
       "whitelist",
@@ -522,7 +547,23 @@
       "all"
     ]
   },
+  "Determines whether any cookies in viewer requests are included in the cache key and in requests that CloudFront sends to the origin. Valid values are:\n  +  ``none`` – No cookies in viewer requests are included in the cache key or in requests that CloudFront sends to the origin. Even when this field is set to ``none``, any cookies that are listed in an ``OriginRequestPolicy``*are* included in origin requests.\n  +  ``whitelist`` – Only the cookies in viewer requests that are listed in the ``CookieNames`` type are included in the cache key and in requests that CloudFront sends to the origin.\n  +  ``allExcept`` – All cookies in viewer requests are included in the cache key and in requests that CloudFront sends to the origin, *except* for those that are listed in the ``CookieNames`` type, which are not included.\n  +  ``all`` – All cookies in viewer requests are included in the cache key and in requests that CloudFront sends to the origin.": {
+    "enum": [
+      "none",
+      "whitelist",
+      "allExcept",
+      "all"
+    ]
+  },
   "Determines whether cookies in viewer requests are included in requests that CloudFront sends to the origin. Valid values are:\n  +   ``none`` – No cookies in viewer requests are included in requests that CloudFront sends to the origin. Even when this field is set to ``none``, any cookies that are listed in a ``CachePolicy`` *are* included in origin requests.\n  +   ``whitelist`` – Only the cookies in viewer requests that are listed in the ``CookieNames`` type are included in requests that CloudFront sends to the origin.\n  +   ``all`` – All cookies in viewer requests are included in requests that CloudFront sends to the origin.\n  +   ``allExcept`` – All cookies in viewer requests are included in requests that CloudFront sends to the origin, *except* for those listed in the ``CookieNames`` type, which are not included.": {
+    "enum": [
+      "none",
+      "whitelist",
+      "all",
+      "allExcept"
+    ]
+  },
+  "Determines whether cookies in viewer requests are included in requests that CloudFront sends to the origin. Valid values are:\n  +  ``none`` – No cookies in viewer requests are included in requests that CloudFront sends to the origin. Even when this field is set to ``none``, any cookies that are listed in a ``CachePolicy``*are* included in origin requests.\n  +  ``whitelist`` – Only the cookies in viewer requests that are listed in the ``CookieNames`` type are included in requests that CloudFront sends to the origin.\n  +  ``all`` – All cookies in viewer requests are included in requests that CloudFront sends to the origin.\n  +  ``allExcept`` – All cookies in viewer requests are included in requests that CloudFront sends to the origin, *except* for those listed in the ``CookieNames`` type, which are not included.": {
     "enum": [
       "none",
       "whitelist",
@@ -712,6 +753,13 @@
       "static-ip"
     ]
   },
+  "In CloudFormation, this field name is ``SslSupportMethod``. Note the different capitalization.\n  If the distribution uses ``Aliases`` (alternate domain names or CNAMEs), specify which viewers the distribution accepts HTTPS connections from.\n  +  ``sni-only`` – The distribution accepts HTTPS connections from only viewers that support [server name indication (SNI)](https://docs.aws.amazon.com/https://en.wikipedia.org/wiki/Server_Name_Indication). This is recommended. Most browsers and clients support SNI.\n  +  ``vip`` – The distribution accepts HTTPS connections from all viewers including those that don't support SNI. This is not recommended, and results in additional monthly charges from CloudFront.\n  +  ``static-ip`` - Do not specify this value unless your distribution has been enabled for this feature by the CloudFront team. If you have a use case that requires static IP addresses for a distribution, contact CloudFront through the [Center](https://docs.aws.amazon.com/support/home).\n  \n If the distribution uses the CloudFront domain name such as ``d111111abcdef8.cloudfront.net``, don't set a value for this field.": {
+    "enum": [
+      "sni-only",
+      "vip",
+      "static-ip"
+    ]
+  },
   "The Redshift operation to be performed. Resource Action supports pause-cluster, resume-cluster, failover-primary-compute APIs": {
     "enum": [
       "pause-cluster",
@@ -727,6 +775,20 @@
     ]
   },
   "The method that you want to use to restrict distribution of your content by country:\n  +   ``none``: No geo restriction is enabled, meaning access to content is not restricted by client geo location.\n  +   ``blacklist``: The ``Location`` elements specify the countries in which you don't want CloudFront to distribute your content.\n  +   ``whitelist``: The ``Location`` elements specify the countries in which you want CloudFront to distribute your content.": {
+    "enum": [
+      "none",
+      "blacklist",
+      "whitelist"
+    ]
+  },
+  "The method that you want to use to restrict distribution of your content by country:\n  +  ``none``: No geo restriction is enabled, meaning access to content is not restricted by client geo location.\n  +  ``blacklist``: The ``Location`` elements specify the countries in which you don't want CloudFront to distribute your content.\n  +  ``whitelist``: The ``Location`` elements specify the countries in which you want CloudFront to distribute your content.": {
+    "enum": [
+      "none",
+      "blacklist",
+      "whitelist"
+    ]
+  },
+  "The method that you want to use to restrict distribution of your content by country:\n  +  ``none``: No geographic restriction is enabled, meaning access to content is not restricted by client geo location.\n  +  ``blacklist``: The ``Location`` elements specify the countries in which you don't want CloudFront to distribute your content.\n  +  ``whitelist``: The ``Location`` elements specify the countries in which you want CloudFront to distribute your content.": {
     "enum": [
       "none",
       "blacklist",
@@ -839,6 +901,13 @@
     ]
   },
   "The protocol that viewers can use to access the files in the origin specified by ``TargetOriginId`` when a request matches the path pattern in ``PathPattern``. You can specify the following options:\n  +   ``allow-all``: Viewers can use HTTP or HTTPS.\n  +   ``redirect-to-https``: If a viewer submits an HTTP request, CloudFront returns an HTTP status code of 301 (Moved Permanently) to the viewer along with the HTTPS URL. The viewer then resubmits the request using the new URL.\n  +   ``https-only``: If a viewer sends an HTTP request, CloudFront returns an HTTP status code of 403 (Forbidden).\n  \n For more information about requiring the HTTPS protocol, see [Requiring HTTPS Between Viewers and CloudFront](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-https-viewers-to-cloudfront.html) in the *Amazon CloudFront Developer Guide*.\n  The only way to guarantee that viewers retrieve an object that was fetched from the origin using HTTPS is never to use any other protocol to fetch the object. If you have recently changed from HTTP to HTTPS, we recommend that you clear your objects' cache because cached objects are protocol agnostic. That means that an edge location will return an object from the cache regardless of whether the current request protocol matches the protocol used previously. For more information, see [Managing Cache Expiration](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html) in the *Amazon CloudFront Developer Guide*.": {
+    "enum": [
+      "allow-all",
+      "redirect-to-https",
+      "https-only"
+    ]
+  },
+  "The protocol that viewers can use to access the files in the origin specified by ``TargetOriginId`` when a request matches the path pattern in ``PathPattern``. You can specify the following options:\n  +  ``allow-all``: Viewers can use HTTP or HTTPS.\n  +  ``redirect-to-https``: If a viewer submits an HTTP request, CloudFront returns an HTTP status code of 301 (Moved Permanently) to the viewer along with the HTTPS URL. The viewer then resubmits the request using the new URL.\n  +  ``https-only``: If a viewer sends an HTTP request, CloudFront returns an HTTP status code of 403 (Forbidden).\n  \n For more information about requiring the HTTPS protocol, see [Requiring HTTPS Between Viewers and CloudFront](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-https-viewers-to-cloudfront.html) in the *Amazon CloudFront Developer Guide*.\n  The only way to guarantee that viewers retrieve an object that was fetched from the origin using HTTPS is never to use any other protocol to fetch the object. If you have recently changed from HTTP to HTTPS, we recommend that you clear your objects' cache because cached objects are protocol agnostic. That means that an edge location will return an object from the cache regardless of whether the current request protocol matches the protocol used previously. For more information, see [Managing Cache Expiration](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html) in the *Amazon CloudFront Developer Guide*.": {
     "enum": [
       "allow-all",
       "redirect-to-https",
@@ -1215,6 +1284,12 @@
       "merge"
     ]
   },
+  "The action for the WAF web ACL customization. You can specify ``override`` to specify a separate WAF web ACL for the distribution tenant. If you specify ``disable``, the distribution tenant won't have WAF web ACL protections and won't inherit from the multi-tenant distribution.": {
+    "enum": [
+      "override",
+      "disable"
+    ]
+  },
   "Indicates whether IMDSv2 is required.\n  +   ``optional`` - IMDSv2 is optional. You can choose whether to send a session token in your instance metadata retrieval requests. If you retrieve IAM role credentials without a session token, you receive the IMDSv1 role credentials. If you retrieve IAM role credentials using a valid session token, you receive the IMDSv2 role credentials.\n  +   ``required`` - IMDSv2 is required. You must send a session token in your instance metadata retrieval requests. With this option, retrieving the IAM role credentials always returns IMDSv2 credentials; IMDSv1 credentials are not available.\n  \n Default: If the value of ``ImdsSupport`` for the Amazon Machine Image (AMI) for your instance is ``v2.0``, the default is ``required``.": {
     "enum": [
       "optional",
@@ -1294,6 +1369,12 @@
     ]
   },
   "Determines whether any HTTP headers are included in the cache key and in requests that CloudFront sends to the origin. Valid values are:\n  +   ``none`` – No HTTP headers are included in the cache key or in requests that CloudFront sends to the origin. Even when this field is set to ``none``, any headers that are listed in an ``OriginRequestPolicy`` *are* included in origin requests.\n  +   ``whitelist`` – Only the HTTP headers that are listed in the ``Headers`` type are included in the cache key and in requests that CloudFront sends to the origin.": {
+    "enum": [
+      "none",
+      "whitelist"
+    ]
+  },
+  "Determines whether any HTTP headers are included in the cache key and in requests that CloudFront sends to the origin. Valid values are:\n  +  ``none`` – No HTTP headers are included in the cache key or in requests that CloudFront sends to the origin. Even when this field is set to ``none``, any headers that are listed in an ``OriginRequestPolicy``*are* included in origin requests.\n  +  ``whitelist`` – Only the HTTP headers that are listed in the ``Headers`` type are included in the cache key and in requests that CloudFront sends to the origin.": {
     "enum": [
       "none",
       "whitelist"
@@ -1467,6 +1548,12 @@
       "disable"
     ]
   },
+  "You can opt out of certificate transparency logging by specifying the ``disabled`` option. Opt in by specifying ``enabled``. For more information, see [Certificate Transparency Logging](https://docs.aws.amazon.com/acm/latest/userguide/acm-concepts.html#concept-transparency) in the *User Guide*.": {
+    "enum": [
+      "disabled",
+      "enabled"
+    ]
+  },
   "The allowed tenancy of instances launched into the VPC.\n  +   ``default``: An instance launched into the VPC runs on shared hardware by default, unless you explicitly specify a different tenancy during instance launch.\n  +   ``dedicated``: An instance launched into the VPC runs on dedicated hardware by default, unless you explicitly specify a tenancy of ``host`` during instance launch. You cannot specify a tenancy of ``default`` during instance launch.\n  \n Updating ``InstanceTenancy`` requires no replacement only if you are updating its value from ``dedicated`` to ``default``. Updating ``InstanceTenancy`` from ``default`` to ``dedicated`` requires replacement.": {
     "enum": [
       "default",
@@ -1489,6 +1576,12 @@
     "enum": [
       "custom-oracle-ee",
       "custom-oracle-ee-cdb"
+    ]
+  },
+  "Specify how the HTTP validation token will be served when requesting the CloudFront managed ACM certificate.\n  +  For ``cloudfront``, CloudFront will automatically serve the validation token. Choose this mode if you can point the domain's DNS to CloudFront immediately.\n  +  For ``self-hosted``, you serve the validation token from your existing infrastructure. Choose this mode when you need to maintain current traffic flow while your certificate is being issued. You can place the validation token at the well-known path on your existing web server, wait for ACM to validate and issue the certificate, and then update your DNS to point to CloudFront.": {
+    "enum": [
+      "cloudfront",
+      "self-hosted"
     ]
   },
   "Specifies the type of destination to which the flow log data is to be published. Flow log data can be published to CloudWatch Logs or Amazon S3.": {
@@ -3632,6 +3725,9 @@
     "enum": null
   },
   "A unique identifier that specifies the WAF web ACL, if any, to associate with this distribution. To specify a web ACL created using the latest version of WAF, use the ACL ARN, for example ``arn:aws:wafv2:us-east-1:123456789012:global/webacl/ExampleWebACL/a1b2c3d4-5678-90ab-cdef-EXAMPLE11111``. To specify a web ACL created using WAF Classic, use the ACL ID, for example ``a1b2c3d4-5678-90ab-cdef-EXAMPLE11111``.\n  WAF is a web application firewall that lets you monitor the HTTP and HTTPS requests that are forwarded to CloudFront, and lets you control access to your content. Based on conditions that you specify, such as the IP addresses that requests originate from or the values of query strings, CloudFront responds to requests either with the requested content or with an HTTP 403 status code (Forbidden). You can also configure CloudFront to return a custom error page when a request is blocked. For more information about WAF, see the [Developer Guide](https://docs.aws.amazon.com/waf/latest/developerguide/what-is-aws-waf.html).": {
+    "enum": null
+  },
+  "A unique identifier that specifies the WAF web ACL, if any, to associate with this distribution. To specify a web ACL created using the latest version of WAF, use the ACL ARN, for example ``arn:aws:wafv2:us-east-1:123456789012:global/webacl/ExampleWebACL/a1b2c3d4-5678-90ab-cdef-EXAMPLE11111``. To specify a web ACL created using WAF Classic, use the ACL ID, for example ``a1b2c3d4-5678-90ab-cdef-EXAMPLE11111``.\n WAF is a web application firewall that lets you monitor the HTTP and HTTPS requests that are forwarded to CloudFront, and lets you control access to your content. Based on conditions that you specify, such as the IP addresses that requests originate from or the values of query strings, CloudFront responds to requests either with the requested content or with an HTTP 403 status code (Forbidden). You can also configure CloudFront to return a custom error page when a request is blocked. For more information about WAF, see the [Developer Guide](https://docs.aws.amazon.com/waf/latest/developerguide/what-is-aws-waf.html).": {
     "enum": null
   },
   "A unique name for the CIDR collection.": {
@@ -7855,6 +7951,9 @@
   "The Amazon Resource Name (ARN) of the ACM certificate with which to associate the IAM role.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the ACM certificate.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the AWS IAM role that the DataSync will assume when mounting the EFS file system.": {
     "enum": null
   },
@@ -7982,6 +8081,9 @@
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the VPC peer role for the peering connection in another AWS account.": {
+    "enum": null
+  },
+  "The Amazon Resource Name (ARN) of the WAF web ACL.": {
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the accelerator.": {
@@ -8866,6 +8968,9 @@
   "The ID of the component type.": {
     "enum": null
   },
+  "The ID of the connection group for the distribution tenant. If you don't specify a connection group, CloudFront uses the default connection group.": {
+    "enum": null
+  },
   "The ID of the container cluster": {
     "enum": null
   },
@@ -8990,6 +9095,9 @@
     "enum": null
   },
   "The ID of the management account that accepts or rejects the environment account connection. You create an manage the AWS Proton environment in this account. If the management account accepts the environment account connection, AWS Proton can use the associated IAM role to provision environment infrastructure resources in the associated environment account.": {
+    "enum": null
+  },
+  "The ID of the multi-tenant distribution.": {
     "enum": null
   },
   "The ID of the multiplex that the program belongs to.": {
@@ -10028,6 +10136,9 @@
     "enum": null
   },
   "The configuration version to deploy. If deploying an AWS AppConfig hosted configuration version, you can specify either the version number or version label. For all other configurations, you must specify the version number.": {
+    "enum": null
+  },
+  "The connection mode to filter distributions by.": {
     "enum": null
   },
   "The contact info of the package group.": {
@@ -12604,6 +12715,9 @@
   "The name of the configuration.": {
     "enum": null
   },
+  "The name of the connection group.": {
+    "enum": null
+  },
   "The name of the connection to the external metastore.": {
     "enum": null
   },
@@ -12731,6 +12845,9 @@
     "enum": null
   },
   "The name of the distribution configuration.": {
+    "enum": null
+  },
+  "The name of the distribution tenant.": {
     "enum": null
   },
   "The name of the domain that contains the package group.": {
@@ -14177,6 +14294,9 @@
     "enum": null
   },
   "The prefix use to match the repository name and apply the template.": {
+    "enum": null
+  },
+  "The primary domain name associated with the CloudFront managed ACM certificate.": {
     "enum": null
   },
   "The primary or secondary private IP address to associate with the Elastic IP address. If no private IP address is specified, the Elastic IP address is associated with the primary private IP address.": {
