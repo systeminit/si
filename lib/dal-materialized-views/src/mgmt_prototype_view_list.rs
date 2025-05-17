@@ -4,7 +4,10 @@ use dal::{
     SchemaVariantId,
     management::prototype::ManagementPrototype,
 };
-use si_frontend_mv_types::management::MgmtPrototypeView;
+use si_frontend_mv_types::management::{
+    ManagementFuncKind,
+    MgmtPrototypeView,
+};
 use telemetry::prelude::*;
 
 #[instrument(
@@ -22,6 +25,16 @@ pub async fn assemble(
     for p in ManagementPrototype::list_for_variant_id(ctx, schema_variant_id).await? {
         let func_id = ManagementPrototype::func_id(ctx, p.id).await?;
         let func = Func::get_by_id(ctx, func_id).await?;
+        // TODO: Make Management Func Kinds a real thing
+        let kind = {
+            if func.name == *"Import from AWS" {
+                ManagementFuncKind::Import
+            } else if func.name == *"Discover on AWS" {
+                ManagementFuncKind::Discover
+            } else {
+                ManagementFuncKind::Other
+            }
+        };
 
         views.push(MgmtPrototypeView {
             id: p.id,
@@ -29,6 +42,7 @@ pub async fn assemble(
             description: p.description,
             prototype_name: p.name,
             name: func.name,
+            kind,
         });
     }
 

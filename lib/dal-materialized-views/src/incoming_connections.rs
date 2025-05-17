@@ -63,8 +63,10 @@ async fn socket_to_socket(ctx: &DalContext, component_id: ComponentId) -> Result
             continue;
         }
 
-        let (_, input_socket_attribute_value_path) =
-            AttributeValue::path_from_root(ctx, input_socket_attribute_value_id).await?;
+        let input_socket_attribute_value_path =
+            AttributeValue::get_path_for_id(ctx, input_socket_attribute_value_id)
+                .await?
+                .unwrap_or_default();
 
         for attribute_prototype_argument_id in attribute_prototype_argument_ids {
             let attribute_prototype_argument =
@@ -93,8 +95,10 @@ async fn socket_to_socket(ctx: &DalContext, component_id: ComponentId) -> Result
                 source_component_id,
             )
             .await?;
-            let (_, output_socket_attribute_value_path) =
-                AttributeValue::path_from_root(ctx, output_socket_attribute_value_id).await?;
+            let output_socket_attribute_value_path =
+                AttributeValue::get_path_for_id(ctx, output_socket_attribute_value_id)
+                    .await?
+                    .unwrap_or_default();
 
             connections.push(Connection::Socket {
                 from_component_id: source_component_id.into(),

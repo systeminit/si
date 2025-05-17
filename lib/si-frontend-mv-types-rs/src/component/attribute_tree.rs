@@ -4,18 +4,13 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_events::workspace_snapshot::EntityKind;
 use si_id::{
     AttributeValueId,
-    ComponentId,
     PropId,
 };
 use strum::Display;
 
-use crate::{
-    PropKind,
-    reference::ReferenceKind,
-};
+use crate::schema_variant::prop_tree::Prop;
 
 // This type goes into the content store so cannot be re-ordered, only extended
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Display)]
@@ -24,64 +19,6 @@ pub enum ValidationStatus {
     Error,
     Failure,
     Success,
-}
-
-#[derive(
-    Clone,
-    Debug,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Serialize,
-    si_frontend_mv_types_macros::FrontendChecksum,
-)]
-pub struct WidgetOption {
-    pub label: String,
-    pub value: String,
-}
-
-pub type WidgetOptions = Vec<WidgetOption>;
-
-#[remain::sorted]
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Display)]
-#[serde(rename_all = "camelCase")]
-pub enum PropWidgetKind {
-    Array,
-    Checkbox,
-    CodeEditor,
-    Color,
-    ComboBox { options: Option<WidgetOptions> },
-    Header,
-    Map,
-    Password,
-    Secret { options: Option<WidgetOptions> },
-    Select { options: Option<WidgetOptions> },
-    Text,
-    TextArea,
-}
-
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    si_frontend_mv_types_macros::FrontendChecksum,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct Prop {
-    pub id: PropId,
-    pub path: String,
-    pub name: String,
-    pub kind: PropKind,
-    pub widget_kind: PropWidgetKind,
-    pub doc_link: Option<String>,
-    pub documentation: Option<String>,
-    pub validation_format: Option<String>,
-    pub default_can_be_set_by_socket: bool,
-    pub is_origin_secret: bool,
-    pub create_only: bool,
 }
 
 #[derive(
@@ -130,17 +67,9 @@ pub struct AttributeValue {
     Eq,
     Clone,
     si_frontend_mv_types_macros::FrontendChecksum,
-    si_frontend_mv_types_macros::FrontendObject,
-    si_frontend_mv_types_macros::Refer,
-    si_frontend_mv_types_macros::MV,
 )]
 #[serde(rename_all = "camelCase")]
-#[mv(
-    trigger_entity = EntityKind::Component,
-    reference_kind = ReferenceKind::AttributeTree,
-)]
 pub struct AttributeTree {
-    pub id: ComponentId,
     pub attribute_values: HashMap<AttributeValueId, AttributeValue>,
     pub props: HashMap<PropId, Prop>,
     pub tree_info: HashMap<AttributeValueId, AvTreeInfo>,

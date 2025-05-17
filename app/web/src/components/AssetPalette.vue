@@ -135,7 +135,6 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { windowListenerManager } from "@si/vue-lib";
-import { useQuery } from "@tanstack/vue-query";
 import {
   useComponentsStore,
   getAssetIcon,
@@ -148,9 +147,6 @@ import NodeSkeleton from "@/components/NodeSkeleton.vue";
 import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import EditingPill from "@/components/EditingPill.vue";
 import { useViewsStore } from "@/store/views.store";
-import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
-import { BifrostSchemaVariantCategories } from "@/workers/types/dbinterface";
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 
@@ -165,12 +161,7 @@ const schemasReqStatus = assetStore.getRequestStatus(
 const collapsibleRefs = ref<InstanceType<typeof TreeNode>[]>([]);
 
 const useCorrectId = (schemaVariant: CategoryVariant) => {
-  if (!ffStore.FRONTEND_ARCH_VIEWS) return schemaVariant.id;
-  else {
-    if (schemaVariant.type === "uninstalled")
-      return `${schemaVariant.type}-${schemaVariant.variant.schemaId}`;
-    return `${schemaVariant.type}-${schemaVariant.id}`;
-  }
+  return schemaVariant.id;
 };
 
 const searchString = ref("");
@@ -188,22 +179,8 @@ function onSearchUpdated(newFilterString: string) {
   });
 }
 
-const ffStore = useFeatureFlagsStore();
-
-const queryKey = makeKey("SchemaVariantCategories");
-const schemaVariantCategoriesOverBifrost =
-  useQuery<BifrostSchemaVariantCategories | null>({
-    queryKey,
-    queryFn: async () =>
-      await bifrost<BifrostSchemaVariantCategories>(
-        makeArgs("SchemaVariantCategories"),
-      ),
-  });
-
 const categories = computed(() => {
-  if (ffStore.FRONTEND_ARCH_VIEWS) {
-    return schemaVariantCategoriesOverBifrost.data.value?.categories ?? [];
-  } else return componentsStore.categories;
+  return componentsStore.categories;
 });
 
 const filteredCategoriesBySearchString = (

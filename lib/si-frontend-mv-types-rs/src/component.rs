@@ -1,16 +1,14 @@
+use attribute_tree::AttributeTree;
 use serde::{
     Deserialize,
     Serialize,
 };
 use si_events::{
+    ChangeSetId,
     ComponentId,
     SchemaId,
     SchemaVariantId,
     workspace_snapshot::EntityKind,
-};
-use si_id::{
-    AttributeValueId,
-    ChangeSetId,
 };
 
 use crate::reference::{
@@ -86,11 +84,7 @@ pub struct Component {
     pub qualification_totals: ComponentQualificationStats,
     pub input_count: usize,
     pub diff_count: usize,
-    pub root_attribute_value_id: AttributeValueId,
-    pub domain_attribute_value_id: AttributeValueId,
-    pub secrets_attribute_value_id: AttributeValueId,
-    pub si_attribute_value_id: AttributeValueId,
-    pub resource_value_attribute_value_id: AttributeValueId,
+    pub attribute_tree: AttributeTree,
     pub resource_diff: ComponentDiff,
 }
 

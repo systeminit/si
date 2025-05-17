@@ -54,16 +54,6 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
     let diff_count = Component::get_diff_count(ctx, component_id).await?;
     let color = Component::color_by_id(ctx, component_id).await?;
 
-    let root_attribute_value_id = Component::root_attribute_value_id(ctx, component_id).await?;
-    let domain_attribute_value_id =
-        Component::attribute_value_for_prop(ctx, component_id, &["root", "domain"]).await?;
-    let secrets_attribute_value_id =
-        Component::attribute_value_for_prop(ctx, component_id, &["root", "secrets"]).await?;
-    let si_attribute_value_id =
-        Component::attribute_value_for_prop(ctx, component_id, &["root", "si"]).await?;
-    let resource_value_attribute_value_id =
-        Component::attribute_value_for_prop(ctx, component_id, &["root", "resource_value"]).await?;
-
     let dal_component_diff = Component::get_diff(ctx, component_id).await?;
     let diff = match dal_component_diff.diff {
         Some(code_view) => code_view.code,
@@ -75,6 +65,8 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
     };
 
     let sv = schema_variant::assemble(ctx.to_owned(), schema_variant.id).await?;
+
+    let attribute_tree = attribute_tree::assemble(ctx.to_owned(), component_id).await?;
 
     Ok(ComponentMv {
         id: component_id,
@@ -91,11 +83,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         qualification_totals: stats,
         input_count,
         diff_count,
-        root_attribute_value_id,
-        domain_attribute_value_id,
-        secrets_attribute_value_id,
-        si_attribute_value_id,
-        resource_value_attribute_value_id,
+        attribute_tree,
         resource_diff,
     })
 }

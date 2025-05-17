@@ -42,8 +42,6 @@ pub use crate::{
         ComponentType,
         InputSocket,
         OutputSocket,
-        Prop,
-        PropKind,
         SchemaVariant,
         UninstalledVariant,
     },

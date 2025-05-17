@@ -11,26 +11,16 @@ use dal::{
     DalContext,
     Func,
     Prop,
-    SchemaVariant,
     Secret,
     component::ControllingFuncData,
-    prop::PropPath,
-    property_editor::schema::WidgetKind,
     validation::ValidationOutputNode,
 };
-use si_frontend_mv_types::{
-    PropKind,
-    component::attribute_tree::{
-        self,
-        AttributeTree,
-        AttributeValue as AttributeValueMv,
-        AvTreeInfo,
-        Prop as PropMv,
-        PropWidgetKind,
-        ValidationOutput,
-        WidgetOption,
-        WidgetOptions,
-    },
+use si_frontend_mv_types::component::attribute_tree::{
+    self,
+    AttributeTree,
+    AttributeValue as AttributeValueMv,
+    AvTreeInfo,
+    ValidationOutput,
 };
 use si_id::{
     AttributeValueId,
@@ -38,6 +28,8 @@ use si_id::{
     InputSocketId,
 };
 use telemetry::prelude::*;
+
+use crate::schema_variant::prop_tree;
 
 /// Generates an [`AttributeTree`] MV.
 pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Result<AttributeTree> {
@@ -196,99 +188,14 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         if let Some(prop) = maybe_prop {
             // If si_frontend_mv_types::Prop is not already in props HashMap, build & add.
             if let std::collections::hash_map::Entry::Vacant(e) = props.entry(prop.id) {
-                let mut is_create_only = false;
-                let filtered_widget_options = prop.widget_options.clone().map(|options| {
-                    options
-                        .into_iter()
-                        .filter(|option| {
-                            if option.label() == "si_create_only_prop" {
-                                is_create_only = true;
-                                false
-                            } else {
-                                true
-                            }
-                        })
-                        .map(|option| WidgetOption {
-                            label: option.label,
-                            value: option.value,
-                        })
-                        .collect::<WidgetOptions>()
-                });
-                let default_can_be_set_by_socket =
-                    !prop.input_socket_sources(ctx).await?.is_empty();
-                let origin_secret_prop_id =
-                    if SchemaVariant::is_secret_defining(ctx, schema_variant_id).await? {
-                        let output_socket =
-                            SchemaVariant::find_output_socket_for_secret_defining_id(
-                                ctx,
-                                schema_variant_id,
-                            )
-                            .await?;
-                        Some(
-                            Prop::find_prop_id_by_path(
-                                ctx,
-                                schema_variant_id,
-                                &PropPath::new(["root", "secrets", output_socket.name()]),
-                            )
-                            .await?,
-                        )
-                    } else {
-                        None
-                    };
-                let maybe_resource = Component::resource_by_id(ctx, component_id).await?;
-                let has_resource = maybe_resource.is_some();
-
-                let prop_mv = PropMv {
-                    id: prop.id,
-                    path: prop.path(ctx).await?.as_str().to_string(),
-                    name: prop.name,
-                    kind: match prop.kind {
-                        dal::PropKind::Array => PropKind::Array,
-                        dal::PropKind::Boolean => PropKind::Boolean,
-                        dal::PropKind::Integer => PropKind::Integer,
-                        dal::PropKind::Json => PropKind::Json,
-                        dal::PropKind::Map => PropKind::Map,
-                        dal::PropKind::Object => PropKind::Object,
-                        dal::PropKind::String => PropKind::String,
-                        dal::PropKind::Float => PropKind::Float,
-                    },
-                    widget_kind: match prop.widget_kind {
-                        WidgetKind::Array => PropWidgetKind::Array,
-                        WidgetKind::Checkbox => PropWidgetKind::Checkbox,
-                        WidgetKind::CodeEditor => PropWidgetKind::CodeEditor,
-                        WidgetKind::Header => PropWidgetKind::Header,
-                        WidgetKind::Map => PropWidgetKind::Map,
-                        WidgetKind::Password => PropWidgetKind::Password,
-                        WidgetKind::Select => PropWidgetKind::Select {
-                            options: filtered_widget_options,
-                        },
-                        WidgetKind::Color => PropWidgetKind::Color,
-                        WidgetKind::Secret => PropWidgetKind::Secret {
-                            options: filtered_widget_options,
-                        },
-                        WidgetKind::Text => PropWidgetKind::Text,
-                        WidgetKind::TextArea => PropWidgetKind::TextArea,
-                        WidgetKind::ComboBox => PropWidgetKind::ComboBox {
-                            options: filtered_widget_options,
-                        },
-                    },
-                    doc_link: prop.doc_link,
-                    documentation: prop.documentation,
-                    validation_format: prop.validation_format,
-                    default_can_be_set_by_socket,
-                    is_origin_secret: match origin_secret_prop_id {
-                        Some(prop_id) => prop_id == prop.id,
-                        None => false,
-                    },
-                    create_only: is_create_only && has_resource,
-                };
+                let prop_mv =
+                    prop_tree::assemble_prop(ctx.clone(), prop.id(), schema_variant_id).await?;
                 e.insert(prop_mv);
             }
         }
     }
 
     Ok(AttributeTree {
-        id: component_id,
         attribute_values,
         props,
         tree_info,

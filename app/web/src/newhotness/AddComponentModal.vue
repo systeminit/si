@@ -152,13 +152,15 @@
           <p>{{ selectedAsset.variant.description }}</p>
         </div>
         <div class="props scrollable border p-xs">
-          <template v-if="'props' in selectedAsset.variant">
-            <ol>
+          <template v-if="'propTree' in selectedAsset.variant">
+            <ol v-if="selectedAssetProps.length > 0">
               <li v-for="prop in selectedAssetProps" :key="prop.id">
                 {{ prop.name }}
               </li>
             </ol>
+            <h3 v-else>Prop data not found</h3>
           </template>
+          <h3 v-else>HI PAUL, WE ARE LOOKING FOR THIS DATA</h3>
         </div>
       </template>
     </div>
@@ -185,10 +187,10 @@ import { useRoute, useRouter } from "vue-router";
 import TextPill from "@/components/TextPill.vue";
 import {
   BifrostSchemaVariantCategories,
-  PropOnVariant,
+  CategoryVariant,
+  Prop,
 } from "@/workers/types/dbinterface";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
-import { CategoryVariant } from "@/store/components.store";
 import FilterTile from "./layout_components/FilterTile.vue";
 import { assertIsDefined, Context } from "./types";
 import { keyEmitter } from "./logic_composables/emitters";
@@ -211,14 +213,16 @@ const selectAsset = (asset: UIAsset) => {
   else selectedAsset.value = asset;
 };
 
-const selectedAssetProps = computed<PropOnVariant[]>(() => {
-  if (!selectedAsset.value) return [] as PropOnVariant[];
-  if (!("props" in selectedAsset.value.variant)) return [] as PropOnVariant[];
-  return selectedAsset.value.variant.props
+const selectedAssetProps = computed<Prop[]>(() => {
+  if (!selectedAsset.value) return [] as Prop[];
+  if (!("propTree" in selectedAsset.value.variant)) return [] as Prop[];
+  return Object.values(selectedAsset.value.variant.propTree.props)
     .filter((p) => !p.hidden)
-    .filter(
-      (p) => p.path.startsWith("/root/domain") && p.path !== "/root/domain",
-    );
+    .filter((p) => {
+      // MV still needs a fix!
+      const path = p.path.replaceAll("\u000b", "/");
+      return path.startsWith("root/domain") && path !== "root/domain";
+    });
 });
 
 const props = defineProps<{
@@ -314,7 +318,7 @@ const categories = computed(() => {
     };
     rawCategory.schemaVariants.forEach((sv) => {
       const asset = {
-        ...sv,
+        ...(sv as CategoryVariant), // unsure why typing can't figure this out and needs it
         name: sv.variant.displayName ?? sv.variant.schemaName,
         category: categoryInfo,
       };

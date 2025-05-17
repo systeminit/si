@@ -92,7 +92,7 @@
             class="rounded border border-neutral-600 p-xs h-12 flex flex-row items-center"
           >
             <IconButton disabled size="md" icon="play" iconTone="action" />
-            {{ func.prototypeName }}
+            {{ func.prototypeName }} {{ func }}
           </li>
         </ul>
       </CollapsingFlexItem>
