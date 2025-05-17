@@ -41,6 +41,8 @@ pub struct Profile {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Parameters {
     pub variant: String,
+    pub workspaceId: String,
+    pub changeSetId: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

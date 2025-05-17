@@ -5,6 +5,7 @@ use bedrock_core::{
     TestProfile,
     TestResult,
 };
+use std::path::PathBuf;
 use serde_json::json;
 use si_data_nats::NatsClient;
 pub struct MeasureRebase;
@@ -14,6 +15,8 @@ use si_data_nats::jetstream;
 use si_data_nats::HeaderValue;
 use std::collections::HashMap;
 use serde::Deserialize;
+use tokio::time::{sleep, Duration};
+use std::fs;
 
 #[derive(Debug, Deserialize)]
 struct JsonMessage {
@@ -21,10 +24,57 @@ struct JsonMessage {
     headers: HashMap<String, String>,
     payload_hex: String,
 }
+fn load_message_sequence(variant: &str) -> Vec<JsonMessage> {
+    let current_file = PathBuf::from(file!());
+    let base_dir = current_file
+        .parent().unwrap() // i.e. measure_rebase.rs
+        .join("datasources")
+        .join(variant)
+        .join("nats_sequences")
+        .join("measure_rebase")
+        .join("sequence.json");
 
-fn load_message_sequence() -> Vec<JsonMessage> {
-    let file_content = include_str!("datasources/nats_sequences/measure_rebase/sequence.json");
-    serde_json::from_str(file_content).expect("Failed to parse sequence JSON")
+    println!("🔍 Loading sequence from: {}", base_dir.display());
+
+    let file_content = fs::read_to_string(&base_dir)
+        .unwrap_or_else(|e| panic!("Failed to read {}: {}", base_dir.display(), e));
+
+    serde_json::from_str(&file_content)
+        .expect("Failed to parse sequence JSON")
+}
+
+pub async fn send_rebaser_tracker_message(
+    nats: &NatsClient,
+    workspace_id: &str,
+    changeset_id: &str,
+) -> Result<(), String> {
+    let subject = format!(
+        "rebaser.tasks.{}.{}.process",
+        workspace_id, changeset_id
+    );
+
+    let js = jetstream::new(nats.clone());
+    let headers = HeaderMap::new(); 
+    let payload: Vec<u8> = Vec::new();
+
+    match js.publish_with_headers(subject.clone(), headers, payload.into()).await {
+        Ok(ack_future) => {
+            match ack_future.await {
+                Ok(ack) => {
+                    println!("📨 Sent tracker message to {}, ack: {:?}", subject, ack);
+                    Ok(())
+                }
+                Err(e) => {
+                    println!("❌ Ack error sending tracker message to {}: {:?}", subject, e);
+                    Err(format!("Ack error sending tracker message to {}: {:?}", subject, e))
+                }
+            }
+        }
+        Err(e) => {
+            println!("❌ Publish failed for {}: {:?}", subject, e);
+            Err(format!("Publish error for {}: {:?}", subject, e))
+        }
+    }
 }
 
 #[async_trait]
@@ -35,6 +85,8 @@ impl TestProfile for MeasureRebase {
             test: "measure_rebase".into(),
             parameters: Parameters {
                 variant: "linear".into(),
+                workspaceId: "01JVAP8SZGPT4K937KNXMAJXQN".into(),
+                changeSetId: "01JVEP2JRS4KC0P5W9F66XSVHC".into(),
             },
             executionParameters: ExecutionParameters {
                 iterations: 5,
@@ -49,16 +101,40 @@ impl TestProfile for MeasureRebase {
         _exec: &ExecutionParameters,
         nats: &NatsClient,
     ) -> TestResult {
-        println!("Running measure_rebase test...");
+
+        println!("Running measure_rebase variant {} for Workspace: {} / Change Set: {}", &_parameters.variant.to_string(), &_parameters.workspaceId.to_string(), &_parameters.changeSetId.to_string());
 
         let js = jetstream::new(nats.clone());
         let mut success_count = 0;
 
-        for json_msg in load_message_sequence() {
+        dbg!("Sending message to start the rebaser off on it's work (REBASER_TASKS");
+
+        if let Err(e) = send_rebaser_tracker_message(
+            nats,
+            &_parameters.workspaceId.to_string(),
+            &_parameters.changeSetId.to_string()
+        ).await {
+            println!("Failed to send tracker message: {:?}", e);
+        }
+
+        for json_msg in load_message_sequence(&_parameters.variant) {
+
+            // I broke the rebaser when I didn't do this, naughty John
+            // Need to figure out why, it got in such a tangle
+            sleep(Duration::from_millis(50)).await;
+            
             let mut headers = HeaderMap::new();
 
             for (k, v) in json_msg.headers.iter() {
-                headers.insert(k.as_str(), HeaderValue::from(v.as_str()));
+                if k != "Nats-Stream-Source" {
+                    if k != "Nats-Stream-Source" {
+                        headers.insert(k.as_str(), HeaderValue::from(v.as_str()));
+                    } else if k == "X-Reply-Inbox" {
+                        headers.insert(k.as_str(), HeaderValue::from("_INBOX.INCOMING_RESPONSES"));
+                    } else {
+                        headers.insert(k.as_str(), HeaderValue::from(v.as_str()));
+                    }
+                }
             }
 
             let payload = match hex::decode(&json_msg.payload_hex) {
@@ -89,7 +165,3 @@ impl TestProfile for MeasureRebase {
         }
     }
 }
-
-// Need something that'll send the tracker in REBASER_TASKS again, like this
-// nats --server 0.0.0.0 pub "rebaser.tasks.01JVAP8SZGPT4K937KNXMAJXQN.01JVAP9B4C1KHXXKY6Q1PP7C24.process" ""
-// which will trigger the "watch" again

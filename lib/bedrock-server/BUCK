@@ -39,9 +39,6 @@ rust_library(
     ],
     srcs = glob([
         "src/**/*.rs",
-        "src/profiles/rebaser/datasources/nats_sequences/measure_rebase/sequence.json", 
+        "src/profiles/rebaser/datasources/**/*",
     ]),
-    resources = {
-        "datasources/nats_sequences/measure_rebase/sequence.json": "src/profiles/rebaser/datasources/nats_sequences/measure_rebase/sequence.json",
-    }
 )
