@@ -284,7 +284,14 @@ impl FuncRunner {
                 ctx.events_tenancy(),
                 ctx.events_actor(),
             )?;
-            let before = FuncRunner::before_funcs(ctx, component_id).await?;
+            let before = if func.is_intrinsic() {
+                // Intrinsic functions can't have before functions as they're never dispatched
+                // to Veritech, so don't bother doing the expensive lookup to see what before
+                // functions exist.
+                vec![]
+            } else {
+                FuncRunner::before_funcs(ctx, component_id).await?
+            };
 
             let func_run_create_time = Utc::now();
             let func_run_inner = FuncRunBuilder::default()
@@ -702,7 +709,7 @@ impl FuncRunner {
         // and in order to time the function's preparation vs. execution timings.
         #[instrument(
             name = "func_runner.run_attribute_value.prepare",
-            level = "debug",
+            level = "info",
             skip_all,
             fields()
         )]
@@ -1416,6 +1423,7 @@ impl FuncRunner {
         }
     }
 
+    #[instrument(name = "func_runner.update_run", level = "info", skip_all)]
     // Update the given func run in LayerDB, setting tenancy/actor to ctx.events_tenancy()/events_actor()).
     pub async fn update_run(
         ctx: &DalContext,
@@ -1464,6 +1472,8 @@ impl FuncRunner {
         self.func_run.id()
     }
 
+    #[allow(clippy::async_yields_async)]
+    #[instrument(name = "func_runner.execute", level = "info", skip_all)]
     pub async fn execute(
         self,
         ctx: DalContext,
@@ -1506,7 +1516,7 @@ impl FuncRunner {
 
     /// This _private_ method collects all [`BeforeFunctions`](BeforeFunction) for a given
     /// [`ComponentId`](Component).
-    #[instrument(name = "func_runner.before_funcs", level = "debug", skip_all)]
+    #[instrument(name = "func_runner.before_funcs", level = "info", skip_all)]
     async fn before_funcs(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -1559,7 +1569,7 @@ impl FuncRunner {
     /// [`keys`](EncryptedSecretKey).
     #[instrument(
         name = "func_runner.before_funcs.ordered_before_funcs_with_secret_keys",
-        level = "debug",
+        level = "info",
         skip_all
     )]
     async fn ordered_before_funcs_with_secret_keys(
@@ -1695,7 +1705,7 @@ impl FuncRunner {
     /// underneath "/root/secrets" (e.g. "/root/secret/MySecretDefinitionName").
     #[instrument(
         name = "func_runner.before_funcs.auth_funcs_for_secret_prop_id",
-        level = "debug",
+        level = "info",
         skip_all
     )]
     async fn auth_funcs_for_secret_child_prop_id(
@@ -1836,7 +1846,7 @@ impl FuncRunnerExecutionTask {
 
     #[instrument(
         name = "func_runner.execution_task.run",
-        level = "debug",
+        level = "info",
         parent = &self.parent_span,
         skip_all,
         fields()
@@ -1866,6 +1876,7 @@ impl FuncRunnerExecutionTask {
         }
     }
 
+    #[instrument(name = "func_runner.execution_task.try_run", level = "info", skip_all)]
     async fn try_run(self) -> FuncRunnerResult<()> {
         if !self.func.is_intrinsic() {
             FuncRunner::update_run(&self.ctx, self.func_run.id(), |func_run| {
