@@ -13,9 +13,9 @@ audit-database           = { path = "../../lib/audit-database" }
 audit-logs-stream        = { path = "../../lib/audit-logs-stream" }
 billing-events           = { path = "../../lib/billing-events" }
 dal-macros               = { path = "../../lib/dal-macros" }
-si-db                  = { path = "../../lib/si-db" }
 joi-validator            = { path = "../../lib/joi-validator" }
 module-index-client      = { path = "../../lib/module-index-client" }
+nats-std                 = { path = "../../lib/nats-std" }
 object-tree              = { path = "../../lib/object-tree" }
 pending-events           = { path = "../../lib/pending-events" }
 pinga-core               = { path = "../../lib/pinga-core" }
@@ -24,6 +24,7 @@ shuttle-server           = { path = "../../lib/shuttle-server" }
 si-crypto                = { path = "../../lib/si-crypto" }
 si-data-nats             = { path = "../../lib/si-data-nats" }
 si-data-pg               = { path = "../../lib/si-data-pg" }
+si-db                    = { path = "../../lib/si-db" }
 si-events                = { path = "../../lib/si-events-rs" }
 si-frontend-types        = { path = "../../lib/si-frontend-types-rs" }
 si-hash                  = { path = "../../lib/si-hash" }

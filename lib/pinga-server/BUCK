@@ -5,6 +5,7 @@ rust_library(
     deps = [
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
+        "//lib/nats-std:nats-std",
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/naxum:naxum",
         "//lib/pinga-core:pinga-core",

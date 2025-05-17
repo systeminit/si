@@ -15,6 +15,7 @@ dal-materialized-views = { path = "../../lib/dal-materialized-views" }
 dal-materialized-views-macros = { path = "../../lib/dal-materialized-views-macros" }
 edda-core = { path = "../../lib/edda-core" }
 frigg = { path = "../../lib/frigg" }
+nats-std = { path = "../../lib/nats-std" }
 naxum = { path = "../../lib/naxum" }
 rebaser-client = { path = "../../lib/rebaser-client" }
 si-crypto = { path = "../../lib/si-crypto" }

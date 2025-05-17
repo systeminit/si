@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
 dal = { path = "../../lib/dal" }
+nats-std = { path = "../../lib/nats-std" }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
 naxum = { path = "../../lib/naxum" }
 pinga-core = { path = "../../lib/pinga-core" }

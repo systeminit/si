@@ -8,6 +8,7 @@ rust_library(
         "//lib/dal:dal",
         "//lib/edda-client:edda-client",
         "//lib/nats-dead-letter-queue:nats-dead-letter-queue",
+        "//lib/nats-std:nats-std",
         "//lib/naxum:naxum",
         "//lib/pending-events:pending-events",
         "//lib/rebaser-client:rebaser-client",

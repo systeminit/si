@@ -8,8 +8,6 @@ const NATS_REQUESTS_STREAM_SUBJECTS: &[&str] = &["edda.requests.>"];
 const NATS_TASKS_STREAM_NAME: &str = "EDDA_TASKS";
 const NATS_TASKS_STREAM_SUBJECTS: &[&str] = &["edda.tasks.>"];
 
-pub const NATS_HEADER_REPLY_INBOX_NAME: &str = "X-Reply-Inbox";
-
 pub async fn edda_tasks_jetstream_stream(
     context: &jetstream::Context,
 ) -> Result<async_nats::jetstream::stream::Stream, async_nats::jetstream::context::CreateStreamError>

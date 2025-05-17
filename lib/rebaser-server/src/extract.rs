@@ -4,6 +4,7 @@
 //! These should not be extracted into Naxum itself as the extractors related to custom ways we are
 //! using headers.
 
+use nats_std::headers;
 use naxum::{
     Head,
     Message,
@@ -16,12 +17,9 @@ use naxum::{
         FromMessageHead,
     },
 };
-use rebaser_core::{
-    api_types::{
-        ApiVersionsWrapper,
-        ApiWrapper,
-    },
-    nats,
+use rebaser_core::api_types::{
+    ApiVersionsWrapper,
+    ApiWrapper,
 };
 use si_data_nats::Subject;
 use telemetry::prelude::*;
@@ -48,7 +46,7 @@ impl<S> FromMessageHead<S> for HeaderReply {
     async fn from_message_head(head: &mut Head, _state: &S) -> Result<Self, Self::Rejection> {
         let maybe_value = head.headers.as_ref().and_then(|headers| {
             headers
-                .get(nats::NATS_HEADER_REPLY_INBOX_NAME)
+                .get(headers::REPLY_INBOX)
                 .map(|value| value.to_string())
         });
 

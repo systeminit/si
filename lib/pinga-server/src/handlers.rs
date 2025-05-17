@@ -21,6 +21,7 @@ use dal::{
         producer::BlockingJobError,
     },
 };
+use nats_std::headers;
 use naxum::{
     Json,
     extract::{
@@ -32,7 +33,6 @@ use naxum::{
         Response,
     },
 };
-use pinga_core::nats::REPLY_INBOX_HEADER_NAME;
 use si_data_nats::Subject;
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
@@ -80,7 +80,7 @@ pub async fn process_request(
     span.record("si.change_set.id", change_set_id.to_string());
 
     let reply_subject = match maybe_headers
-        .and_then(|headers| headers.get(REPLY_INBOX_HEADER_NAME).map(|v| v.to_string()))
+        .and_then(|headers| headers.get(headers::REPLY_INBOX).map(|v| v.to_string()))
     {
         Some(header_value) => Some(Subject::from_utf8(header_value).map_err(HandlerError::Utf8)?),
         None => None,

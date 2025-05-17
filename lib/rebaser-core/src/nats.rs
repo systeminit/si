@@ -8,8 +8,6 @@ const NATS_REBASER_REQUESTS_STREAM_SUBJECTS: &[&str] = &["rebaser.requests.>"];
 const NATS_REBASER_TASKS_STREAM_NAME: &str = "REBASER_TASKS";
 const NATS_REBASER_TASKS_STREAM_SUBJECTS: &[&str] = &["rebaser.tasks.>"];
 
-pub const NATS_HEADER_REPLY_INBOX_NAME: &str = "X-Reply-Inbox";
-
 pub async fn rebaser_tasks_jetstream_stream(
     context: &jetstream::Context,
 ) -> Result<async_nats::jetstream::stream::Stream, async_nats::jetstream::context::CreateStreamError>
