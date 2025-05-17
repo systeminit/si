@@ -170,6 +170,7 @@ pub struct Workspace {
     component_concurrency_limit: Option<i32>,
     snapshot_kind: WorkspaceSnapshotSelectorDiscriminants,
     subgraph_version: Option<SubGraphVersionDiscriminants>,
+    approvals_enabled: bool,
 }
 
 impl TryFrom<PgRow> for Workspace {
@@ -215,6 +216,7 @@ impl TryFrom<PgRow> for Workspace {
             component_concurrency_limit: row.try_get("component_concurrency_limit")?,
             snapshot_kind,
             subgraph_version,
+            approvals_enabled: row.try_get("approvals_enabled")?,
         })
     }
 }
@@ -246,6 +248,10 @@ impl Workspace {
 
     pub fn subgraph_version(&self) -> Option<SubGraphVersionDiscriminants> {
         self.subgraph_version
+    }
+
+    pub fn approvals_enabled(&self) -> bool {
+        self.approvals_enabled
     }
 
     pub fn is_current_version_and_kind(&self) -> bool {
@@ -294,6 +300,25 @@ impl Workspace {
             .await?;
 
         self.default_change_set_id = change_set_id;
+
+        Ok(())
+    }
+
+    pub async fn update_approvals_enabled(
+        &mut self,
+        ctx: &DalContext,
+        approvals_enabled: bool,
+    ) -> WorkspaceResult<()> {
+        ctx.txns()
+            .await?
+            .pg()
+            .query_none(
+                "UPDATE workspaces SET approvals_enabled = $2 WHERE pk = $1",
+                &[&self.pk, &approvals_enabled],
+            )
+            .await?;
+
+        self.approvals_enabled = approvals_enabled;
 
         Ok(())
     }

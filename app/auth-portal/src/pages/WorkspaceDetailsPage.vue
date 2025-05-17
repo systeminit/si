@@ -39,7 +39,7 @@
             )
           "
         >
-          Approvals are {{ approvalStatus }}
+          Approvals {{ approvalStatus }}
         </div>
 
         <IconButton
