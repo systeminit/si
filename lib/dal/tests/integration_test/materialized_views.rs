@@ -8,6 +8,7 @@ use dal::{
     InputSocket,
     OutputSocket,
     Prop,
+    SchemaVariant,
     action::{
         Action,
         prototype::ActionPrototype,
@@ -136,6 +137,17 @@ async fn attribute_tree(ctx: &DalContext) -> Result<()> {
 }
 
 #[test]
+async fn schema_variant(ctx: &DalContext) -> Result<()> {
+    let schema_variant_id = SchemaVariant::default_id_for_schema_name(ctx, "swifty").await?;
+
+    // NOTE(brit): right now, this test basically just makes sure this does not regress and
+    // provides a psuedo-benchmark for generating MVs for a schema.
+    dal_materialized_views::schema_variant::assemble(ctx.clone(), schema_variant_id).await?;
+
+    Ok(())
+}
+
+#[test]
 async fn component(ctx: &DalContext) -> Result<()> {
     let components = dal_materialized_views::component_list::assemble(ctx.clone()).await?;
     assert_eq!(
@@ -174,23 +186,6 @@ async fn component(ctx: &DalContext) -> Result<()> {
         .await?
         .into();
 
-    let root_attribute_value_id =
-        Component::root_attribute_value_id(ctx, created_component.id()).await?;
-    let domain_attribute_value_id =
-        Component::attribute_value_for_prop(ctx, created_component.id(), &["root", "domain"])
-            .await?;
-    let secrets_attribute_value_id =
-        Component::attribute_value_for_prop(ctx, created_component.id(), &["root", "secrets"])
-            .await?;
-    let si_attribute_value_id =
-        Component::attribute_value_for_prop(ctx, created_component.id(), &["root", "si"]).await?;
-    let resource_value_attribute_value_id = Component::attribute_value_for_prop(
-        ctx,
-        created_component.id(),
-        &["root", "resource_value"],
-    )
-    .await?;
-
     let resource_diff = ComponentDiff {
         current: Some(String::from(
             "{\n  \"si\": {\n    \"name\": \"starfield\",\n    \"type\": \"component\",\n    \"color\": \"#ffffff\"\n  }\n}",
@@ -203,7 +198,11 @@ async fn component(ctx: &DalContext) -> Result<()> {
     let sv_id = created_component.schema_variant(ctx).await?.id();
     let schema_variant_mv =
         dal_materialized_views::schema_variant::assemble(ctx.clone(), sv_id).await?;
-
+    let attribute_tree = dal_materialized_views::component::attribute_tree::assemble(
+        ctx.clone(),
+        created_component.id(),
+    )
+    .await?;
     assert_eq!(
         ComponentMv {
             id: created_component.id(),
@@ -220,12 +219,8 @@ async fn component(ctx: &DalContext) -> Result<()> {
             qualification_totals: stats,
             input_count: 0,
             diff_count: 0,
-            root_attribute_value_id,
-            domain_attribute_value_id,
-            secrets_attribute_value_id,
-            si_attribute_value_id,
-            resource_value_attribute_value_id,
             resource_diff,
+            attribute_tree
         }, // expected
         component // actual
     );
@@ -350,14 +345,22 @@ async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
         InputSocket::component_attribute_value_id(ctx, charlie_input_socket.id(), charlie.id())
             .await?;
 
-    let (_, alpha_output_socket_attribute_value_path) =
-        AttributeValue::path_from_root(ctx, alpha_output_socket_attribute_value_id).await?;
-    let (_, beta_input_socket_attribute_value_path) =
-        AttributeValue::path_from_root(ctx, beta_input_socket_attribute_value_id).await?;
-    let (_, beta_output_socket_attribute_value_path) =
-        AttributeValue::path_from_root(ctx, beta_output_socket_attribute_value_id).await?;
-    let (_, charlie_input_socket_attribute_value_path) =
-        AttributeValue::path_from_root(ctx, charlie_input_socket_attribute_value_id).await?;
+    let alpha_output_socket_attribute_value_path =
+        AttributeValue::get_path_for_id(ctx, alpha_output_socket_attribute_value_id)
+            .await?
+            .expect("has input socket name");
+    let beta_input_socket_attribute_value_path =
+        AttributeValue::get_path_for_id(ctx, beta_input_socket_attribute_value_id)
+            .await?
+            .expect("has input socket name");
+    let beta_output_socket_attribute_value_path =
+        AttributeValue::get_path_for_id(ctx, beta_output_socket_attribute_value_id)
+            .await?
+            .expect("has input socket name");
+    let charlie_input_socket_attribute_value_path =
+        AttributeValue::get_path_for_id(ctx, charlie_input_socket_attribute_value_id)
+            .await?
+            .expect("has input socket name");
 
     // Check the alpha MV.
     {

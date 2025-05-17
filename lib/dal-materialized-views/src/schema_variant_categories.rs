@@ -38,8 +38,11 @@ pub async fn assemble(ctx: DalContext) -> super::Result<SchemaVariantCategoriesM
         let variants = variant_by_category
             .entry(category.to_owned())
             .or_insert(vec![]);
+        let variant =
+            crate::schema_variant::assemble(ctx.clone(), installed_variant.schema_variant_id)
+                .await?;
         variants.push(DisambiguateVariant {
-            variant: Variant::SchemaVariant(installed_variant.to_owned().into()),
+            variant: Variant::SchemaVariant(variant),
             variant_type: VariantType::Installed,
             id: installed_variant.schema_variant_id.to_string(),
         });

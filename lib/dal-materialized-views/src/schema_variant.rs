@@ -8,7 +8,6 @@ use dal::{
 use si_frontend_mv_types::{
     InputSocket as InputSocketMv,
     OutputSocket as OutputSocketMv,
-    Prop,
     schema_variant::{
         ConnectionAnnotation,
         SchemaVariant as SchemaVariantMv,
@@ -17,6 +16,7 @@ use si_frontend_mv_types::{
 use telemetry::prelude::*;
 
 use crate::mgmt_prototype_view_list;
+pub mod prop_tree;
 
 #[instrument(
     name = "dal_materialized_views.schema_variant",
@@ -68,9 +68,8 @@ pub async fn assemble(ctx: DalContext, id: SchemaVariantId) -> super::Result<Sch
     }
     output_sockets.sort_by_key(|s| s.id);
 
-    let mut props: Vec<Prop> = sv.props.into_iter().map(Into::into).collect();
-    props.sort_by_key(|p| p.id);
     let mgmt_functions = mgmt_prototype_view_list::assemble(&ctx, id).await?;
+    let prop_tree = prop_tree::assemble(ctx, id).await?;
     Ok(SchemaVariantMv {
         id: sv.schema_variant_id,
         schema_variant_id: sv.schema_variant_id,
@@ -84,11 +83,11 @@ pub async fn assemble(ctx: DalContext, id: SchemaVariantId) -> super::Result<Sch
         color: sv.color,
         input_sockets,
         output_sockets,
-        props,
         is_locked: sv.is_locked,
         timestamp: sv.timestamp,
         can_create_new_components: sv.can_create_new_components,
         can_contribute: sv.can_contribute,
         mgmt_functions,
+        prop_tree,
     })
 }

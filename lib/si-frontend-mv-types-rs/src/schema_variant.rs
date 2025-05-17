@@ -1,3 +1,4 @@
+use prop_tree::PropTree;
 use serde::{
     Deserialize,
     Serialize,
@@ -5,7 +6,6 @@ use serde::{
 use si_events::{
     InputSocketId,
     OutputSocketId,
-    PropId,
     SchemaId,
     SchemaVariantId,
     Timestamp,
@@ -23,6 +23,8 @@ use crate::{
     management::MgmtPrototypeView,
     reference::ReferenceKind,
 };
+
+pub mod prop_tree;
 
 #[derive(
     Clone,
@@ -54,13 +56,13 @@ pub struct SchemaVariant {
     pub color: String,
     pub input_sockets: Vec<InputSocket>,
     pub output_sockets: Vec<OutputSocket>,
-    pub props: Vec<Prop>,
     pub is_locked: bool, // if unlocked, show in both places
     #[serde(flatten)]
     pub timestamp: Timestamp,
     pub can_create_new_components: bool, // if yes, show in modeling screen, if not, only show in customize
     pub can_contribute: bool,
     pub mgmt_functions: Vec<MgmtPrototypeView>,
+    pub prop_tree: PropTree,
 }
 
 #[derive(
@@ -135,33 +137,6 @@ pub struct OutputSocket {
     pub arity: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct Prop {
-    pub id: PropId,
-    pub kind: PropKind,
-    pub name: String,
-    pub path: String,
-    pub hidden: bool,
-    pub eligible_to_receive_data: bool,
-    pub eligible_to_send_data: bool,
-}
-
-#[remain::sorted]
-#[derive(Clone, Debug, Deserialize, Display, Eq, Serialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub enum PropKind {
-    Any,
-    Array,
-    Boolean,
-    Float,
-    Integer,
-    Json,
-    Map,
-    Object,
-    String,
-}
-
 #[derive(
     Clone,
     Debug,
@@ -173,6 +148,7 @@ pub enum PropKind {
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(untagged, rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant)]
 pub enum Variant {
     SchemaVariant(SchemaVariant),
     UninstalledVariant(UninstalledVariant),

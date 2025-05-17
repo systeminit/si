@@ -10,7 +10,6 @@ import { Operation } from "fast-json-patch";
 import { Span } from "@opentelemetry/api";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
-import { Categories } from "@/store/components.store";
 import { ActionProposedView } from "@/store/actions.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
@@ -315,6 +314,37 @@ export interface EddaComponent {
   };
 }
 
+export interface UninstalledVariant {
+  schemaId: string;
+  schemaName: string;
+  displayName: string | null;
+  category: string;
+  color: string;
+  link: string | null;
+  description: string | null;
+}
+
+export interface CategoryInstalledVariant {
+  type: "installed";
+  id: string;
+  variant: SchemaVariant;
+}
+
+export interface CategoryUninstalledVariant {
+  type: "uninstalled";
+  id: string;
+  variant: UninstalledVariant;
+}
+
+export type CategoryVariant =
+  | CategoryInstalledVariant
+  | CategoryUninstalledVariant;
+
+export type Categories = {
+  displayName: string;
+  schemaVariants: CategoryVariant[];
+}[];
+
 export interface SchemaVariant {
   id: string;
   schemaVariantId: string;
@@ -336,7 +366,10 @@ export interface SchemaVariant {
 
   inputSockets: InputSocket[];
   outputSockets: OutputSocket[];
-  props: PropOnComponent[];
+  propTree: {
+    props: Record<PropId, Prop>;
+    tree_info: Record<PropId, { parent?: PropId; children: PropId[] }>;
+  };
   canCreateNewComponents: boolean;
 
   canContribute: boolean;
@@ -346,6 +379,7 @@ export interface SchemaVariant {
     description?: string;
     prototypeName: string;
     name: string;
+    kind: string;
   }[];
 }
 
@@ -405,8 +439,7 @@ export interface ActionPrototypeViewList {
   actionPrototypes: ActionPrototypeView[];
 }
 
-// this matches what comes over the wire from Jacob's attribute tree MV
-export interface PropOnComponent {
+export interface Prop {
   id: PropId;
   path: string;
   name: string;
@@ -418,15 +451,6 @@ export interface PropOnComponent {
   defaultCanBeSetBySocket: boolean;
   isOriginSecret: boolean;
   createOnly: boolean;
-}
-
-// this matches what comes over the wire from both SDF
-// and `SchemaVariantCategories` MV
-export interface PropOnVariant {
-  id: PropId;
-  path: string;
-  name: string;
-  kind: PropKind;
   // this is for output sources
   eligibleToReceiveData: boolean;
   // this is for input sources
@@ -456,7 +480,7 @@ export interface AVTree {
 export interface AttributeTree {
   id: ComponentId;
   attributeValues: Record<AttributeValueId, AttributeValue>;
-  props: Record<PropId, PropOnComponent>;
+  props: Record<PropId, Prop>;
   treeInfo: Record<AttributeValueId, AVTree>;
 }
 

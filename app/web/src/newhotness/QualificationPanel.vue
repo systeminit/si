@@ -16,7 +16,7 @@ import {
   AttributeValue,
   AttributeTree,
   BifrostComponent,
-  PropOnComponent,
+  Prop,
 } from "@/workers/types/dbinterface";
 import QualificationView from "@/newhotness/QualificationView.vue";
 import { AttributeValueId } from "@/store/status.store";
@@ -80,7 +80,7 @@ const qualItems = computed<QualItem[]>(() => {
 
 const validations = computed(() => {
   const avsWithValidation: {
-    prop?: PropOnComponent;
+    prop?: Prop;
     attributeValue: AttributeValue;
   }[] = [];
   if (!root.value) return avsWithValidation;

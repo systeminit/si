@@ -6,6 +6,7 @@ use si_id::{
     FuncId,
     ManagementPrototypeId,
 };
+use strum::Display;
 
 #[derive(
     Debug,
@@ -23,4 +24,23 @@ pub struct MgmtPrototypeView {
     pub description: Option<String>,
     pub prototype_name: String,
     pub name: String,
+    pub kind: ManagementFuncKind,
+}
+
+#[remain::sorted]
+#[derive(
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    Display,
+    si_frontend_mv_types_macros::FrontendChecksum,
+)]
+#[serde(rename_all = "camelCase")]
+pub enum ManagementFuncKind {
+    Discover,
+    Import,
+    Other,
 }
