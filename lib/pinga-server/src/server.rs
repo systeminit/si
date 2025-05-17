@@ -37,7 +37,7 @@ use naxum::{
         Response,
     },
 };
-use pinga_core::{
+use pinga_core::nats::{
     pinga_work_queue,
     subject,
 };
@@ -190,7 +190,7 @@ impl Server {
 
         let context = jetstream::new(services_context.nats_conn().clone());
 
-        let incoming = pinga_work_queue(&context, prefix.as_deref())
+        let incoming = pinga_work_queue(&context)
             .await?
             .create_consumer(Self::incoming_consumer_config(
                 prefix.as_deref(),

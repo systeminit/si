@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use futures::StreamExt;
-use pinga_core::{
+use pinga_core::nats::{
     REPLY_INBOX_HEADER_NAME,
     pinga_work_queue,
     subject::pinga_job,
@@ -58,7 +58,7 @@ impl NatsProcessor {
     )]
     async fn push_all_jobs(&self, queue: JobQueue) -> JobQueueProcessorResult<()> {
         // Ensure the Jetstream `Stream` is created before publishing to it
-        let _stream = pinga_work_queue(&self.context, self.prefix.as_deref()).await?;
+        let _stream = pinga_work_queue(&self.context).await?;
 
         let headers = propagation::empty_injected_headers();
 
@@ -99,7 +99,7 @@ impl NatsProcessor {
 impl JobQueueProcessor for NatsProcessor {
     async fn block_on_job(&self, job: Box<dyn JobProducer + Send + Sync>) -> BlockingJobResult {
         // Ensure the Jetstream `Stream` is created before publishing to it
-        let _stream = pinga_work_queue(&self.context, self.prefix.as_deref())
+        let _stream = pinga_work_queue(&self.context)
             .await
             .map_err(|err| BlockingJobError::JsCreateStreamError(err.to_string()))?;
 

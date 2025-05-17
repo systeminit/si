@@ -1,12 +1,9 @@
 load("@prelude-si//:macros.bzl", "rust_library")
 
 rust_library(
-    name = "pinga-core",
+    name = "nats-std",
     deps = [
-        "//lib/nats-std:nats-std",
         "//lib/si-data-nats:si-data-nats",
     ],
-    srcs = glob([
-        "src/**/*.rs",
-    ]),
+    srcs = glob(["src/**/*.rs"]),
 )

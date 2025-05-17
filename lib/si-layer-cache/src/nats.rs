@@ -29,12 +29,12 @@ pub async fn layerdb_events_stream(
 ) -> Result<jetstream::stream::Stream, jetstream::context::CreateStreamError> {
     let subjects: Vec<_> = NATS_EVENT_STREAM_SUBJECTS
         .iter()
-        .map(|suffix| subject::nats_subject(prefix, suffix).to_string())
+        .map(|suffix| nats_std::subject::prefixed(prefix, suffix).to_string())
         .collect();
 
     let stream = context
         .get_or_create_stream(jetstream::stream::Config {
-            name: nats_stream_name(prefix, NATS_EVENTS_STREAM_NAME),
+            name: nats_std::jetstream::prefixed(prefix, NATS_EVENTS_STREAM_NAME),
             description: Some("Layerdb events".to_owned()),
             subjects,
             retention: jetstream::stream::RetentionPolicy::Limits,
@@ -54,12 +54,12 @@ pub async fn layerdb_activities_stream(
 ) -> Result<jetstream::stream::Stream, jetstream::context::CreateStreamError> {
     let subjects: Vec<_> = NATS_ACTIVITIES_STREAM_SUBJECTS
         .iter()
-        .map(|suffix| subject::nats_subject(prefix, suffix).to_string())
+        .map(|suffix| nats_std::subject::prefixed(prefix, suffix).to_string())
         .collect();
 
     let stream = context
         .get_or_create_stream(jetstream::stream::Config {
-            name: nats_stream_name(prefix, NATS_ACTIVITIES_STREAM_NAME),
+            name: nats_std::jetstream::prefixed(prefix, NATS_ACTIVITIES_STREAM_NAME),
             description: Some("Layerdb activities".to_owned()),
             subjects,
             retention: jetstream::stream::RetentionPolicy::Limits,
@@ -72,21 +72,6 @@ pub async fn layerdb_activities_stream(
         .await?;
 
     Ok(stream)
-}
-
-fn nats_stream_name(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
-    let suffix = suffix.as_ref();
-
-    match prefix {
-        Some(prefix) => {
-            let mut s = String::with_capacity(prefix.len() + 1 + suffix.len());
-            s.push_str(prefix);
-            s.push('_');
-            s.push_str(suffix);
-            s
-        }
-        None => suffix.to_owned(),
-    }
 }
 
 pub mod subject {
@@ -121,7 +106,7 @@ pub mod subject {
         suffix.push('.');
         suffix.push_str(event.event_kind.as_ref());
 
-        nats_subject(prefix, suffix)
+        nats_std::subject::prefixed(prefix, suffix)
     }
 
     pub fn for_activity(prefix: Option<&str>, activity: &Activity) -> Subject {
@@ -155,7 +140,7 @@ pub mod subject {
         suffix.push('.');
         suffix.push_str(&activity.payload.to_subject());
 
-        nats_subject(prefix, suffix)
+        nats_std::subject::prefixed(prefix, suffix)
     }
 
     pub fn for_activity_discriminate(
@@ -177,22 +162,6 @@ pub mod subject {
         suffix.push('.');
         suffix.push_str(&activity_payload_discriminate.to_subject());
 
-        nats_subject(prefix, suffix)
-    }
-
-    pub(crate) fn nats_subject(prefix: Option<&str>, suffix: impl AsRef<str>) -> Subject {
-        let suffix = suffix.as_ref();
-
-        match prefix {
-            Some(prefix) => {
-                let mut s = String::with_capacity(prefix.len() + 1 + suffix.len());
-                s.push_str(prefix);
-                s.push('.');
-                s.push_str(suffix);
-
-                Subject::from(s)
-            }
-            None => Subject::from(suffix),
-        }
+        nats_std::subject::prefixed(prefix, suffix)
     }
 }
