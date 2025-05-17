@@ -312,6 +312,7 @@ export interface EddaComponent {
     current?: string;
     diff?: string;
   };
+  attributeTree: AttributeTree;
 }
 
 export interface UninstalledVariant {
@@ -368,7 +369,7 @@ export interface SchemaVariant {
   outputSockets: OutputSocket[];
   propTree: {
     props: Record<PropId, Prop>;
-    tree_info: Record<PropId, { parent?: PropId; children: PropId[] }>;
+    treeInfo: Record<PropId, { parent?: PropId; children: PropId[] }>;
   };
   canCreateNewComponents: boolean;
 
@@ -409,6 +410,7 @@ export interface BifrostComponent {
     current?: string;
     diff?: string;
   };
+  attributeTree: AttributeTree;
 }
 
 export interface BifrostComponentList {
@@ -463,7 +465,7 @@ export interface AttributeValue {
   key?: string;
   path?: string;
   propId?: string;
-  value: string;
+  value: string | null;
   canBeSetBySocket: boolean;
   isFromExternalSource: boolean;
   isControlledByAncestor: boolean;
@@ -478,7 +480,6 @@ export interface AVTree {
 }
 
 export interface AttributeTree {
-  id: ComponentId;
   attributeValues: Record<AttributeValueId, AttributeValue>;
   props: Record<PropId, Prop>;
   treeInfo: Record<AttributeValueId, AVTree>;

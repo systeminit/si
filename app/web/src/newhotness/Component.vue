@@ -161,14 +161,14 @@
           <Icon v-else name="refresh-hex-outline" size="sm" tone="shade" />
           Resource
         </template>
-        <ResourcePanel :componentId="component.id" />
+        <ResourcePanel :component="component" />
       </CollapsingFlexItem>
       <CollapsingFlexItem>
         <template #header>
           <Icon name="brackets-curly" size="sm" />
           Generated Code
         </template>
-        <CodePanel :componentId="component.id" />
+        <CodePanel :component="component" />
       </CollapsingFlexItem>
       <CollapsingFlexItem>
         <template #header>

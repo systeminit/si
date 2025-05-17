@@ -132,6 +132,10 @@ app.config.errorHandler = (
       (mappedStack) => {
         const stack = mappedStack.join("\n");
         observeError(err.message.toString(), stack, componentPath);
+        if (import.meta.env.VITE_SI_ENV === "local") {
+          // eslint-disable-next-line no-console
+          console.error(err);
+        }
       },
       { cacheGlobally: true },
     );

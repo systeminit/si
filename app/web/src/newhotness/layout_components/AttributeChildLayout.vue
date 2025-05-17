@@ -2,7 +2,10 @@
   <!-- This represents the header & container for component attributes page -->
   <dl class="ml-xs border-l-2 my-xs">
     <!-- this is the left indent & line -->
-    <dt class="bg-neutral-800 p-xs" @click="() => (open = !open)">
+    <dt
+      class="bg-neutral-800 p-xs flex flex-row items-center"
+      @click="() => (open = !open)"
+    >
       <slot name="header" />
     </dt>
     <dd v-if="open">

@@ -243,7 +243,7 @@ export class APICall<Response> {
   }
 
   async put<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
-    if (this.ctx.onHead) throw new Error("Can't make changes on head");
+    if (this.ctx.onHead.value) throw new Error("Can't make changes on head");
 
     const req = await sdf<Response>({
       method: "PUT",
@@ -255,7 +255,7 @@ export class APICall<Response> {
   }
 
   async post<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
-    if (this.ctx.onHead) throw new Error("Can't make changes on head");
+    if (this.ctx.onHead.value) throw new Error("Can't make changes on head");
 
     const req = await sdf<Response>({
       method: "POST",
