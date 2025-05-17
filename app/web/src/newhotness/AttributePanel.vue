@@ -189,6 +189,7 @@ watch(
     const newDomain = matchesAsTree[domain.value.id];
     filtered.tree = newDomain ?? {};
   },
+  { immediate: true },
 );
 
 const api = useApi();

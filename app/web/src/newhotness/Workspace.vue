@@ -181,6 +181,9 @@ onBeforeMount(async () => {
 
   // Initial setup with resolved change set ID
   heimdall.niflheim(props.workspacePk, props.changeSetId, true);
+  // NOTE: onBeforeMount doesn't wait on promises, so I could
+  // throw an await here, but it has no effect...
+  // leaving it off to communicate that the page will load before execution finishes
 });
 
 watch(

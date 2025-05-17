@@ -117,7 +117,11 @@ export interface DBInterface {
       },
   ): SqlValue[][];
   bobby(): Promise<void>;
-  ragnarok(workspaceId: string, changeSetId: string): Promise<void>;
+  ragnarok(
+    workspaceId: string,
+    changeSetId: string,
+    noColdStart?: boolean,
+  ): Promise<void>;
   // show me everything
   odin(changeSetId: ChangeSetId): object;
 }

@@ -14,7 +14,7 @@
         </template>
         <ul v-if="attributeTree.children.length > 0 && !bifrostingTrash">
           <ComponentAttribute
-            v-for="child in attributeTree.children.filter(filterMissingAtom)"
+            v-for="child in attributeTree.children"
             :key="child.id"
             :component="component"
             :attributeTree="child"
@@ -79,7 +79,6 @@
 import { computed, ref, watch } from "vue";
 import { VButton, IconButton, Icon } from "@si/vue-lib/design-system";
 import { BifrostComponent } from "@/workers/types/dbinterface";
-import { filterMissingAtom } from "../util";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
 import { AttrTree } from "../AttributePanel.vue";
@@ -141,8 +140,7 @@ const add = async () => {
   const propTree = props.component.schemaVariant.propTree;
   const childProp =
     propTree.props[
-      propTree.treeInfo[props.attributeTree.prop?.id ?? ""]?.children.pop() ??
-        ""
+      propTree.treeInfo[props.attributeTree.prop?.id ?? ""]?.children[0] ?? ""
     ];
   if (childProp?.kind === "object") payload[`${path}/-`] = {};
   else payload[`${path}/-`] = "";

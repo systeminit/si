@@ -416,6 +416,7 @@ const getOutgoingConnectionsByComponentId = (
 const cleanConnections = async (workspaceId: string, changeSetId: string) => {
   await tracer.startActiveSpan("cleanConnections", async (span: Span) => {
     debug("🧹 connections start...");
+    const start = Date.now();
     const connectionsById = await _getOutgoingConnectionsByComponentId(
       workspaceId,
       changeSetId,
@@ -447,7 +448,8 @@ const cleanConnections = async (workspaceId: string, changeSetId: string) => {
     span.setAttribute("numBusts", refs.length);
     span.setAttribute("busts", JSON.stringify(refs));
     span.end();
-    debug("...connections end 🧹");
+    const end = Date.now();
+    debug(`...connections end [${end - start}ms] 🧹`);
   });
 };
 
@@ -495,10 +497,12 @@ const insertAtomMTM = async (atom: Atom, toSnapshotAddress: Checksum) => {
         (snapshot_address, kind, args, checksum)
           VALUES
         (?, ?, ?, ?)
-        ;`,
+      ;`,
       bind: [toSnapshotAddress, atom.kind, atom.id, atom.toChecksum],
     });
   } catch (err) {
+    // seeing conflict uniqueness errors, even though the
+    // table declaration has ON CONFLICT REPLACE
     error("createMTM failed", atom);
     throw err;
   }
@@ -772,8 +776,7 @@ const mjolnir = async (
       span.end();
     }
   });
-  if (!req) throw new Error("Impossible...");
-  // TODO listen to the reply on the websocket
+  if (!req) return; // 404
 
   const msg: AtomMessage = {
     kind: MessageKind.MJOLNIR,
@@ -860,7 +863,14 @@ const atomChecksumsFor = async (
 };
 
 const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
-  tracer.startActiveSpan("niflheim", async (span: Span) => {
+  await tracer.startActiveSpan("niflheim", async (span: Span) => {
+    // build connections list based on data we have in the DB
+    // connections list will rebuild as data comes in
+    const cleanPromise = cleanConnections(workspaceId, changeSetId);
+
+    // clear out references, no queries have been performed yet
+    clearAllWeakReferences(changeSetId);
+
     const pattern = [
       "v2",
       "workspaces",
@@ -873,10 +883,11 @@ const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
     const [url, desc] = describePattern(pattern);
     const frigg = tracer.startSpan(`GET ${desc}`);
     frigg.setAttributes({ workspaceId, changeSetId });
-    const req = await sdf<IndexObjectMeta>({
+    const reqPromise = sdf<IndexObjectMeta>({
       method: "get",
       url,
     });
+    const [req, _] = await Promise.all([reqPromise, cleanPromise]);
     const atoms = req.data.frontEndObject.data.mvList;
     frigg.setAttribute("numEntries", atoms.length);
     frigg.end();
@@ -900,12 +911,15 @@ const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
     compare.setAttribute("numHammers", numHammers);
     compare.end();
 
-    await cleanConnections(workspaceId, changeSetId);
     span.end();
   });
 };
 
-const ragnarok = async (workspaceId: string, changeSetId: string) => {
+const ragnarok = async (
+  workspaceId: string,
+  changeSetId: string,
+  noColdStart = false,
+) => {
   // get rid of the snapshots we have for this changeset
   await db.exec({
     sql: `delete from snapshots where address IN (select snapshot_address from changesets where workspace_id = ? and change_set_id = ? );`,
@@ -913,11 +927,25 @@ const ragnarok = async (workspaceId: string, changeSetId: string) => {
   });
   // remove the atoms we have for this change set
   await pruneAtomsForClosedChangeSet(workspaceId, changeSetId);
-  // call for a cold start to re-populate
-  await niflheim(workspaceId, changeSetId);
+  if (!noColdStart) {
+    // call for a cold start to re-populate
+    await niflheim(workspaceId, changeSetId);
+  }
 };
 
-const clear_weak_references = async (
+const clearAllWeakReferences = async (changeSetId: string) => {
+  const sql = `
+    delete from weak_references
+    where change_set_id = ?
+  ;`;
+  const bind = [changeSetId];
+  await db.exec({
+    sql,
+    bind,
+  });
+};
+
+const clearWeakReferences = async (
   changeSetId: string,
   referrer: { kind: string; args: string },
 ) => {
@@ -932,18 +960,11 @@ const clear_weak_references = async (
   });
 };
 
-const weak_reference = async (
+const weakReference = async (
   changeSetId: string,
   target: { kind: string; args: string },
   referrer: { kind: string; args: string },
 ) => {
-  const sql = `
-    insert into weak_references
-      (change_set_id, target_kind, target_args, referrer_kind, referrer_args)
-    values
-      (?, ?, ?, ?, ?)
-    on conflict do nothing
-  ;`;
   const bind = [
     changeSetId,
     target.kind,
@@ -951,10 +972,22 @@ const weak_reference = async (
     referrer.kind,
     referrer.args,
   ];
-  await db.exec({
-    sql,
-    bind,
-  });
+  try {
+    const sql = `
+      insert into weak_references
+        (change_set_id, target_kind, target_args, referrer_kind, referrer_args)
+      values
+        (?, ?, ?, ?, ?)
+      on conflict do nothing
+    ;`;
+    await db.exec({
+      sql,
+      bind,
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(bind, err);
+  }
 };
 
 const flip = (i: BifrostConnection): BifrostConnection => {
@@ -995,6 +1028,10 @@ const _getOutgoingConnectionsByComponentId = async (
     false, // don't compute
   )) as BifrostIncomingConnectionsList;
 
+  if (!list || !list.componentConnections) {
+    debug("...missing connections list...");
+    return new DefaultMap<string, BifrostConnection[]>(() => []);
+  }
   const all = list.componentConnections.flatMap((conn) => conn.incoming);
 
   return all.reduce((obj, conn) => {
@@ -1043,7 +1080,7 @@ const getComputed = async (
   if (!connectionsById) {
     debug("~ missing connections ~");
     // making this, so when connections populate, we re-query
-    weak_reference(
+    weakReference(
       changeSetId,
       { kind: "OutgoingConnections", args: changeSetId },
       { kind, args: id },
@@ -1058,8 +1095,8 @@ const getComputed = async (
     data.components.forEach((c) => {
       c.outputCount = connectionsById.get(c.id).length;
     });
-    clear_weak_references(changeSetId, { kind, args: id });
-    weak_reference(
+    clearWeakReferences(changeSetId, { kind, args: id });
+    weakReference(
       changeSetId,
       { kind: "OutgoingConnections", args: changeSetId },
       { kind, args: id },
@@ -1068,8 +1105,8 @@ const getComputed = async (
   } else if (kind === "Component") {
     const data = atomDoc as BifrostComponent;
     data.outputCount = connectionsById.get(id).length;
-    clear_weak_references(changeSetId, { kind, args: id });
-    weak_reference(
+    clearWeakReferences(changeSetId, { kind, args: id });
+    weakReference(
       changeSetId,
       { kind: "OutgoingConnections", args: changeSetId },
       { kind, args: id },
@@ -1078,6 +1115,17 @@ const getComputed = async (
   } else return atomDoc;
 };
 
+/**
+ * RULES FOR REFERENCES
+ * When you look up a reference with a `get` call
+ * you must check for missing data (-1)
+ *
+ * If you are looking up a `WeakReference`
+ * THOU SHALT make a `weakReference` entry for it in all cases
+ *
+ * If you are looking up a `Reference`
+ * THOU SHALT make a `weakReference` on a miss (-1)
+ */
 const getReferences = async (
   atomDoc: AtomDocument,
   workspaceId: string,
@@ -1096,65 +1144,104 @@ const getReferences = async (
       "IncomingConnectionsList",
     ].includes(kind)
   )
-    return atomDoc;
+    return [atomDoc, false];
 
   debug("🔗 reference query", kind, id);
 
+  let hasReferenceError = false;
+
   if (kind === "Component") {
     const data = atomDoc as EddaComponent;
-    const sv = await get(
+    const sv = (await get(
       workspaceId,
       changeSetId,
       data.schemaVariantId.kind,
       data.schemaVariantId.id,
       data.schemaVariantId.checksum,
       followComputed,
-    );
-    const schemaVariant = sv !== -1 ? (sv as SchemaVariant) : undefined;
-    if (!schemaVariant) throw new Error("Schema Variant not found");
+    )) as SchemaVariant | -1;
+
+    if (sv === -1) {
+      hasReferenceError = true;
+      mjolnir(
+        workspaceId,
+        changeSetId,
+        data.schemaVariantId.kind,
+        data.schemaVariantId.id,
+      );
+      // add a weak reference in the case of a miss
+      // because if we throw a hammer for what we missed
+      // this referencing data doesn't change and needs to bust
+      weakReference(
+        changeSetId,
+        { kind: data.schemaVariantId.kind, args: data.schemaVariantId.id },
+        { kind, args: data.id },
+      );
+    }
     const component: BifrostComponent = {
       ...data,
-      schemaVariant,
+      schemaVariant: sv !== -1 ? sv : ({} as SchemaVariant),
     };
-    return component;
+    return [component, hasReferenceError];
   } else if (kind === "ViewList") {
     const rawList = atomDoc as RawViewList;
     const maybeViews = await Promise.all(
       rawList.views.map(async (v) => {
-        return await get(
+        const maybeDoc = (await get(
           workspaceId,
           changeSetId,
           v.kind,
           v.id,
-          undefined,
+          v.checksum,
           followComputed,
-        );
+        )) as View | -1;
+        if (maybeDoc === -1) {
+          hasReferenceError = true;
+          mjolnir(workspaceId, changeSetId, v.kind, v.id);
+          weakReference(
+            changeSetId,
+            { kind: v.kind, args: v.id },
+            { kind, args: rawList.id },
+          );
+        }
+        return maybeDoc;
       }),
     );
     const views = maybeViews.filter(
-      (v): v is View => v !== -1 && Object.keys(v).length > 0,
+      (v): v is View => v !== -1 && v && "id" in v,
     );
     const list: BifrostViewList = {
       id: rawList.id,
       views,
     };
-    return list;
+    return [list, hasReferenceError];
   } else if (kind === "ComponentList" || kind === "ViewComponentList") {
     const rawList = atomDoc as EddaComponentList;
     const maybeComponents = await Promise.all(
       rawList.components.map(async (c) => {
-        return await get(
+        const maybeDoc = (await get(
           workspaceId,
           changeSetId,
           c.kind,
           c.id,
-          undefined,
+          c.checksum,
           followComputed,
-        );
+        )) as BifrostComponent | -1;
+
+        if (maybeDoc === -1) {
+          hasReferenceError = true;
+          mjolnir(workspaceId, changeSetId, c.kind, c.id);
+          weakReference(
+            changeSetId,
+            { kind: c.kind, args: c.id },
+            { kind, args: rawList.id },
+          );
+        }
+        return maybeDoc;
       }),
     );
     const components = maybeComponents.filter(
-      (c): c is BifrostComponent => c !== -1 && Object.keys(c).length > 0,
+      (c): c is BifrostComponent => c !== -1 && c && "id" in c,
     );
     // NOTE: this is either a bifrost component list or a view component list
     // FUTURE: improve this with some typing magic
@@ -1162,7 +1249,7 @@ const getReferences = async (
       id: rawList.id,
       components,
     };
-    return list;
+    return [list, hasReferenceError];
   } else if (kind === "IncomingConnections") {
     const raw = atomDoc as EddaIncomingConnections;
     const component = (await get(
@@ -1172,16 +1259,24 @@ const getReferences = async (
       raw.id,
       undefined,
       false,
-    )) as BifrostComponent;
-    clear_weak_references(changeSetId, {
+    )) as BifrostComponent | -1;
+
+    clearWeakReferences(changeSetId, {
       kind: "IncomingConnections",
       args: raw.id,
     });
-    weak_reference(
+
+    weakReference(
       changeSetId,
-      { kind: "Component", args: component.id },
+      { kind: "Component", args: raw.id },
       { kind: "IncomingConnections", args: raw.id },
     );
+
+    if (component === -1) {
+      mjolnir(workspaceId, changeSetId, "Component", raw.id);
+      debug(`Connection ${raw.id} missing own component`);
+      hasReferenceError = true;
+    }
 
     const connections = await Promise.all(
       raw.connections.map(async (c: EddaConnection) => {
@@ -1197,12 +1292,24 @@ const getReferences = async (
           false,
         );
 
-        if (fromComponent === -1) throw new Error("Missing component");
-        weak_reference(
+        weakReference(
           changeSetId,
           { kind: c.fromComponentId.kind, args: c.fromComponentId.id },
           { kind: "IncomingConnections", args: raw.id },
         );
+
+        if (fromComponent === -1) {
+          mjolnir(
+            workspaceId,
+            changeSetId,
+            c.fromComponentId.kind,
+            c.fromComponentId.id,
+          );
+          debug(
+            `Connection ${raw.id} missing weak component ${c.fromComponentId}`,
+          );
+          hasReferenceError = true;
+        }
 
         const conn: BifrostConnection = {
           ...c,
@@ -1216,30 +1323,43 @@ const getReferences = async (
       }),
     );
 
-    return {
-      id: raw.id,
-      component,
-      incoming: connections,
-      outgoing: [] as BifrostConnection[],
-    } as BifrostComponentConnections;
+    return [
+      {
+        id: raw.id,
+        component,
+        incoming: connections,
+        outgoing: [] as BifrostConnection[],
+      } as BifrostComponentConnections,
+      hasReferenceError,
+    ];
   } else if (kind === "IncomingConnectionsList") {
     const rawList = atomDoc as EddaIncomingConnectionsList;
     const maybeIncomingConnections = await Promise.all(
       rawList.componentConnections.map(async (c) => {
-        return (await get(workspaceId, changeSetId, c.kind, c.id)) as
+        const maybeDoc = (await get(workspaceId, changeSetId, c.kind, c.id)) as
           | BifrostComponentConnections
           | -1;
+        if (maybeDoc === -1) {
+          hasReferenceError = true;
+          mjolnir(workspaceId, changeSetId, c.kind, c.id);
+          weakReference(
+            changeSetId,
+            { kind: c.kind, args: c.id },
+            { kind, args: rawList.id },
+          );
+        }
+        return maybeDoc;
       }),
     );
     const componentConnections = maybeIncomingConnections.filter(
-      (c) => c !== -1 && c && "id" in c,
-    ) as BifrostComponentConnections[];
+      (c): c is BifrostComponentConnections => c !== -1 && c && "id" in c,
+    );
     const list: BifrostIncomingConnectionsList = {
       id: rawList.id,
       componentConnections,
     };
-    return list;
-  } else return atomDoc;
+    return [list, hasReferenceError];
+  } else return [atomDoc, hasReferenceError];
 };
 
 const get = async (
@@ -1291,21 +1411,32 @@ const get = async (
   // THIS GETS REPLACED WITH AUTO-GEN CODE
   if (!followReferences) return atomDoc;
 
-  const docAndRefs = await getReferences(
-    atomDoc,
-    workspaceId,
-    changeSetId,
-    kind,
-    id,
-    followComputed,
-  );
-  // NOTE: Whenever we ask for the full list of connections
-  // This implementation will not compute the outgoing connections (infinite recursion)
-  // You will only get incoming—which is all we need when we ask for the whole list
-  if (followComputed && !["IncomingConnectionsList"].includes(kind)) {
-    return await getComputed(docAndRefs, workspaceId, changeSetId, kind, id);
+  try {
+    const [docAndRefs, hasReferenceError] = await getReferences(
+      atomDoc,
+      workspaceId,
+      changeSetId,
+      kind,
+      id,
+      followComputed,
+    );
+    // this is a choice, we could send through objects that don't match the types
+    // and potentially have something drawn on the screen—but that seems worse
+    // for the possible side-effects
+    if (hasReferenceError) return -1;
+
+    // NOTE: Whenever we ask for the full list of connections
+    // This implementation will not compute the outgoing connections (infinite recursion)
+    // You will only get incoming—which is all we need when we ask for the whole list
+    if (followComputed && !["IncomingConnectionsList"].includes(kind)) {
+      return await getComputed(docAndRefs, workspaceId, changeSetId, kind, id);
+    }
+    return docAndRefs;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
+    return -1;
   }
-  return docAndRefs;
 };
 
 let socket: ReconnectingWebSocket;
