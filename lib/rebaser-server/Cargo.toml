@@ -14,6 +14,7 @@ buck2-resources          = { path = "../../lib/buck2-resources" }
 dal                      = { path = "../../lib/dal" }
 edda-client              = { path = "../../lib/edda-client" }
 nats-dead-letter-queue   = { path = "../../lib/nats-dead-letter-queue" }
+nats-std                 = { path = "../../lib/nats-std" }
 naxum                    = { path = "../../lib/naxum" }
 pending-events           = { path = "../../lib/pending-events" }
 rebaser-client           = { path = "../../lib/rebaser-client" }

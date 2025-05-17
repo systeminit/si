@@ -10,6 +10,7 @@ publish.workspace = true
 
 [dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
+nats-std = { path = "../../lib/nats-std" }
 naxum = { path = "../../lib/naxum" }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }

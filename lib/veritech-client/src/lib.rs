@@ -29,6 +29,7 @@ use futures::{
     StreamExt,
     TryStreamExt,
 };
+use nats_std::headers;
 use nats_subscriber::{
     Subscriber,
     SubscriberError,
@@ -50,7 +51,6 @@ use tokio_util::sync::CancellationToken;
 use veritech_core::{
     FINAL_MESSAGE_HEADER_KEY,
     GetNatsSubjectFor,
-    REPLY_INBOX_HEADER_NAME,
     reply_mailbox_for_output,
     reply_mailbox_for_result,
 };
@@ -349,7 +349,7 @@ impl Client {
             }
             RequestMode::Jetstream => {
                 let mut headers = propagation::empty_injected_headers();
-                headers.insert(REPLY_INBOX_HEADER_NAME, reply_mailbox_root);
+                headers::insert_reply_inbox(&mut headers, &reply_mailbox_root);
 
                 self.context
                     .publish_with_headers(subject, headers, msg.into())

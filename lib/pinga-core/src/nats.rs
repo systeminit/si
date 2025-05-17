@@ -6,8 +6,6 @@ use si_data_nats::{
 const NATS_WORK_QUEUE_STREAM_NAME: &str = "PINGA_JOBS";
 const NATS_WORK_QUEUE_STREAM_SUBJECTS: &[&str] = &["pinga.jobs.>"];
 
-pub const REPLY_INBOX_HEADER_NAME: &str = "X-Reply-Inbox";
-
 pub async fn pinga_work_queue(
     context: &jetstream::Context,
 ) -> Result<async_nats::jetstream::stream::Stream, async_nats::jetstream::context::CreateStreamError>

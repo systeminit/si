@@ -48,7 +48,6 @@ const NATS_KILL_EXECUTION_DEFAULT_SUBJECT: &str = "veritech.meta.killexecution";
 const INCOMING_SUBJECT: &str = "veritech.requests.*.*.*";
 const SUBJECT_PREFIX: &str = "veritech.requests";
 
-pub const REPLY_INBOX_HEADER_NAME: &str = "X-Reply-Inbox";
 pub const FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
 
 // NOTE(nick,fletcher): we can probably take this type formalization a step further, but this is

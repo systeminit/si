@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use futures::StreamExt;
+use nats_std::headers;
 use pinga_core::nats::{
-    REPLY_INBOX_HEADER_NAME,
     pinga_work_queue,
     subject::pinga_job,
 };
@@ -109,7 +109,7 @@ impl JobQueueProcessor for NatsProcessor {
         let reply_inbox = Subject::from(self.client.new_inbox());
 
         let mut headers = propagation::empty_injected_headers();
-        headers.insert(REPLY_INBOX_HEADER_NAME, reply_inbox.to_string());
+        headers::insert_reply_inbox(&mut headers, reply_inbox.as_str());
 
         let mut reply_subscriber = self
             .client

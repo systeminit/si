@@ -8,10 +8,11 @@ rust_library(
     name = "veritech-client",
     deps = [
         "//lib/cyclone-core:cyclone-core",
+        "//lib/nats-std:nats-std",
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/si-data-nats:si-data-nats",
-        "//lib/telemetry-rs:telemetry",
         "//lib/telemetry-nats-rs:telemetry-nats",
+        "//lib/telemetry-rs:telemetry",
         "//lib/veritech-core:veritech-core",
         "//third-party/rust:futures",
         "//third-party/rust:remain",
