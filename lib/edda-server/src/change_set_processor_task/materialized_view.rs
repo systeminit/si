@@ -473,15 +473,6 @@ type BuildMvTaskResult = (
     Result<(Option<ObjectPatch>, Option<FrontendObject>), MaterializedViewError>,
 );
 
-#[instrument(
-    name = "materialized_view.build_mv_task",
-    level = "info",
-    skip_all,
-    fields(
-        si.mv.kind = %mv_kind,
-        si.mv.id = %mv_id,
-    )
-)]
 async fn build_mv_task<F, T, E>(
     task_id: Ulid,
     ctx: DalContext,
