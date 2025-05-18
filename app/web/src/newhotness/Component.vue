@@ -190,7 +190,7 @@ import {
   IconButton,
 } from "@si/vue-lib/design-system";
 import { computed, ref, nextTick } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostComponent,
@@ -291,6 +291,8 @@ const nameFormData = computed<NameFormData>(() => {
 
 const wForm = useWatchedForm<NameFormData>();
 
+const route = useRoute();
+
 const nameForm = wForm.newForm(nameFormData, async ({ value }) => {
   const name = value.name;
   // i wish the validator narrowed this type to always be a string
@@ -298,7 +300,19 @@ const nameForm = wForm.newForm(nameFormData, async ({ value }) => {
     const id = component.value?.id;
     if (!id) throw new Error("Missing id");
     const call = api.endpoint(routes.UpdateComponentName, { id });
-    await call.put<UpdateComponentNameArgs>({ name });
+    const { req, newChangeSetId } = await call.put<UpdateComponentNameArgs>({
+      name,
+    });
+    if (newChangeSetId && api.ok(req)) {
+      router.push({
+        name: "new-hotness-component",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+          componentId: props.componentId,
+        },
+      });
+    }
   }
 });
 

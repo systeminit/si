@@ -90,7 +90,10 @@ export type WsEventPayloadMap = {
     changeSetId: string | null;
     viewId: string | null;
   };
-  ChangeSetCreated: string;
+  ChangeSetCreated: {
+    changeSetId: string;
+    workspaceSnapshotAddress: string;
+  };
   ChangeSetWritten: string;
   ChangeSetCancelled: string;
   Conflict: string;

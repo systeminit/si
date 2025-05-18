@@ -24,6 +24,7 @@
 <script lang="ts" setup>
 import { computed, reactive, ref, watch } from "vue";
 import { Fzf } from "fzf";
+import { useRoute, useRouter } from "vue-router";
 import {
   AttributeTree,
   BifrostComponent,
@@ -205,6 +206,8 @@ const save = async (path: string, _id: string, value: string) => {
   await call.put<UpdateComponentAttributesArgs>(payload);
 };
 
+const router = useRouter();
+const route = useRoute();
 const remove = async (path: string, _id: string) => {
   const call = api.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
@@ -213,7 +216,19 @@ const remove = async (path: string, _id: string) => {
   const payload: UpdateComponentAttributesArgs = {};
   path = path.replace("root", ""); // endpoint doesn't want it
   payload[path] = { $source: null };
-  await call.put<UpdateComponentAttributesArgs>(payload);
+  const { req, newChangeSetId } = await call.put<UpdateComponentAttributesArgs>(
+    payload,
+  );
+  if (newChangeSetId && api.ok(req)) {
+    router.push({
+      name: "new-hotness-component",
+      params: {
+        workspacePk: route.params.workspacePk,
+        changeSetId: newChangeSetId,
+        componentId: props.component.id,
+      },
+    });
+  }
 };
 
 // attributeValue is not "value" for maps.. look at children! i suspect the same for arrays, etc

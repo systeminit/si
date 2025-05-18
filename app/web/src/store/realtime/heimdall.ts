@@ -125,6 +125,21 @@ export const getPossibleConnections = async (args: {
   );
 };
 
+export const linkNewChangeset = async (
+  workspaceId: string,
+  changeSetId: string,
+  workspaceSnapshotAddress: string,
+) => {
+  const changeSetsStore = useChangeSetsStore();
+  if (!changeSetsStore.headChangeSetId) throw new Error("Don't have HEAD");
+  await db.linkNewChangeset(
+    workspaceId,
+    changeSetsStore.headChangeSetId,
+    changeSetId,
+    workspaceSnapshotAddress,
+  );
+};
+
 export const getOutgoingConnections = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;

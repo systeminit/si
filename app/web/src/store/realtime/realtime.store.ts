@@ -336,7 +336,7 @@ export const useRealtimeStore = defineStore("realtime", () => {
         eventMetadata.actor !== "System" &&
         eventMetadata.actor.User === authStore.userPk
       ) {
-        bufferWatchList.push(eventData);
+        bufferWatchList.push(eventData.changeSetId);
       }
     }
     if (eventKind === "ChangeSetApplied") {

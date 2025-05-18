@@ -1005,22 +1005,23 @@ impl ChangeSet {
     /// Returns a new [`ChangeSetId`](ChangeSet) if a new [`ChangeSet`] was created.
     /// Also writes an audit log event to head (so we don't have to handle this in every route handler)
     pub async fn force_new(ctx: &mut DalContext) -> ChangeSetResult<Option<ChangeSetId>> {
-        let maybe_fake_pk =
-            if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
-                let change_set = Self::fork_head(ctx, Self::generate_name()).await?;
-                ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
-                    .await?;
-                ctx.write_audit_log_to_head(AuditLogKind::CreateChangeSet, change_set.name)
-                    .await?;
-                WsEvent::change_set_created(ctx, change_set.id)
-                    .await?
-                    .publish_on_commit(ctx)
-                    .await?;
+        let maybe_fake_pk = if ctx.change_set_id()
+            == ctx.get_workspace_default_change_set_id().await?
+        {
+            let change_set = Self::fork_head(ctx, Self::generate_name()).await?;
+            ctx.update_visibility_and_snapshot_to_visibility(change_set.id)
+                .await?;
+            ctx.write_audit_log_to_head(AuditLogKind::CreateChangeSet, change_set.name)
+                .await?;
+            WsEvent::change_set_created(ctx, change_set.id, change_set.workspace_snapshot_address)
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
 
-                Some(change_set.id)
-            } else {
-                None
-            };
+            Some(change_set.id)
+        } else {
+            None
+        };
         Ok(maybe_fake_pk)
     }
 

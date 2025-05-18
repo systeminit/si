@@ -71,6 +71,12 @@ export interface DBInterface {
   initBifrost(): void;
   bifrostClose(): void;
   bifrostReconnect(): void;
+  linkNewChangeset(
+    workspaceId: string,
+    headChangeSetId: string,
+    changeSetId: string,
+    workspaceSnapshotAddress: string,
+  ): Promise<void>;
   getConnectionByAnnotation(
     workspaceId: string,
     changeSetId: string,

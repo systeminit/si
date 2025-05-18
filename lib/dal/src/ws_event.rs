@@ -30,6 +30,7 @@ use crate::{
     change_set::event::{
         ChangeSetActorPayload,
         ChangeSetAppliedPayload,
+        ChangeSetCreatedPayload,
         ChangeSetMergeVotePayload,
         ChangeSetRenamePayload,
         ChangeSetStateChangePayload,
@@ -134,7 +135,7 @@ pub enum WsPayload {
     ChangeSetCancelAbandonProcess(ChangeSetActorPayload),
     ChangeSetCancelApprovalProcess(ChangeSetActorPayload),
     ChangeSetCanceled(ChangeSetId),
-    ChangeSetCreated(ChangeSetId),
+    ChangeSetCreated(ChangeSetCreatedPayload),
     ChangeSetMergeVote(ChangeSetMergeVotePayload),
     ChangeSetRename(ChangeSetRenamePayload),
     ChangeSetStatusChanged(ChangeSetStateChangePayload),
