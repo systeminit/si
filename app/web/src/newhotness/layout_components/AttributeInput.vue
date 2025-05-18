@@ -80,6 +80,7 @@ import { computed, reactive, ref, watch } from "vue";
 import clsx from "clsx";
 import { Icon, IconButton } from "@si/vue-lib/design-system";
 import { Fzf } from "fzf";
+import { useQuery } from "@tanstack/vue-query";
 import {
   PropertyEditorPropWidgetKind,
   PropertyEditorPropWidgetKindComboBox,
@@ -87,8 +88,31 @@ import {
 } from "@/api/sdf/dal/property_editor";
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
 import { Prop } from "@/workers/types/dbinterface";
+import {
+  getPossibleConnections,
+  useMakeArgs,
+  useMakeKey,
+} from "@/store/realtime/heimdall";
 import { attributeEmitter } from "../logic_composables/emitters";
 import { useWatchedForm } from "../logic_composables/watched_form";
+
+const annotation = ref<string | null>(null);
+const makeKey = useMakeKey();
+const makeArgs = useMakeArgs();
+const enabled = computed(() => !!annotation.value);
+const _potentialConnQuery = useQuery({
+  queryKey: makeKey("PossibleConnections"),
+  enabled,
+  queryFn: async () => {
+    if (annotation.value) {
+      const conns = await getPossibleConnections({
+        ...makeArgs("PossibleConnections"),
+        annotation: annotation.value,
+      });
+      return conns;
+    }
+  },
+});
 
 const props = defineProps<{
   attributeValueId: string;
@@ -212,6 +236,7 @@ const focus = () => {
     docs: props.prop?.documentation ?? "",
   });
   showOptions.value = true;
+  annotation.value = props.prop?.kind ?? null;
 };
 
 const select = (option: LabelEntry<AttrOption>) => {
