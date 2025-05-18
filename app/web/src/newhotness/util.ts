@@ -50,12 +50,6 @@ export const collapsingGridStyles = (
   };
 };
 
-// TODO
-export const filterMissingAtom = (obj: unknown) => {
-  if (obj === -1) return {};
-  return obj;
-};
-
 // Used in the component page vue components
 export const findAvsAtPropPath = (data: AttributeTree, parts: string[]) => {
   const path = parts.join("\u000b");

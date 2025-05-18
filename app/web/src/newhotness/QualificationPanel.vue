@@ -9,12 +9,9 @@
 </template>
 
 <script lang="ts" setup>
-import { useQuery } from "@tanstack/vue-query";
 import { computed } from "vue";
-import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   AttributeValue,
-  AttributeTree,
   BifrostComponent,
   Prop,
 } from "@/workers/types/dbinterface";
@@ -34,17 +31,7 @@ const props = defineProps<{
   component: BifrostComponent;
 }>();
 
-const componentId = computed(() => props.component.id);
-
-const key = useMakeKey();
-const args = useMakeArgs();
-const attributeTreeQuery = useQuery<AttributeTree | null>({
-  queryKey: key("AttributeTree", componentId),
-  queryFn: async () =>
-    await bifrost<AttributeTree>(args("AttributeTree", componentId.value)),
-});
-
-const root = computed(() => attributeTreeQuery.data.value);
+const root = computed(() => props.component.attributeTree);
 
 const qualItems = computed<QualItem[]>(() => {
   const items: QualItem[] = [];

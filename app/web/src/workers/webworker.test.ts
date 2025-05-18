@@ -474,7 +474,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
   log("~~ MJOLNIR COMPLETED ~~");
 
   try {
-    await db.ragnarok("W", "empty_list");
+    await db.ragnarok("W", "empty_list", true);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     assert(!err, err.toString());
