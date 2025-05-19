@@ -51,12 +51,20 @@ pub async fn get_front_end_object(
         obj = frigg
             .get_object(workspace_pk, &request.kind, &request.id, &checksum)
             .await?
-            .ok_or(IndexError::IndexNotFound(workspace_pk, change_set_id))?;
+            .ok_or(IndexError::ItemWithChecksumNotFound(
+                workspace_pk,
+                change_set_id,
+                request.kind,
+            ))?;
     } else {
         obj = frigg
             .get_current_object(workspace_pk, change_set_id, &request.kind, &request.id)
             .await?
-            .ok_or(IndexError::IndexNotFound(workspace_pk, change_set_id))?;
+            .ok_or(IndexError::LatestItemNotFound(
+                workspace_pk,
+                change_set_id,
+                request.kind,
+            ))?;
     }
 
     Ok(Json(FrontEndObjectMeta {
