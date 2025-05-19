@@ -6,6 +6,7 @@
         :displayAsComponentCard="selectedViewComponent"
       />
       <div
+        v-if="workspacesStore.workspaceApprovalsEnabled"
         :class="
           clsx(
             'flex flex-row p-xs',
@@ -24,7 +25,13 @@
       </div>
     </template>
 
-    <template v-if="listReq.isSuccess && listReq.completed">
+    <template
+      v-if="
+        listReq.isSuccess &&
+        listReq.completed &&
+        workspacesStore.workspaceApprovalsEnabled
+      "
+    >
       <TreeForm v-if="requirementsCount > 0" :trees="requirementTrees" />
       <div v-else class="flex flex-col gap-xs items-center">
         <EmptyStateCard
@@ -57,6 +64,7 @@ import { PropertyEditorPropKind } from "@/api/sdf/dal/property_editor";
 import { useViewsStore } from "@/store/views.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import ViewCard from "./ViewCard.vue";
 import { DiagramViewData } from "./ModelingDiagram/diagram_types";
 import TreeForm from "./AttributesPanel/TreeForm.vue";
@@ -67,6 +75,7 @@ import UserSelectMenu from "./UserSelectMenu.vue";
 const authStore = useAuthStore();
 const changeSetsStore = useChangeSetsStore();
 const viewsStore = useViewsStore();
+const workspacesStore = useWorkspacesStore();
 
 const listReq = viewsStore.getRequestStatus("LIST_VIEW_APPROVAL_REQUIREMENTS");
 

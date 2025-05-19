@@ -67,6 +67,8 @@ pub enum DalWrapperError {
     UlidDecode(#[from] ulid::DecodeError),
     #[error("unsupported permission lookup: {0}")]
     UnsupportedPermissionLookup(String, String, String),
+    #[error("workspace error: {0}")]
+    Workspace(#[from] dal::WorkspaceError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
 }

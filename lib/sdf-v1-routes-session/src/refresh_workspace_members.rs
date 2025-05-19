@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use axum::{
     Json,
     extract::{
@@ -7,7 +9,11 @@ use axum::{
     },
     http::uri::Uri,
 };
-use dal::DalContext;
+use dal::{
+    DalContext,
+    Workspace,
+    WorkspacePk,
+};
 use permissions::{
     ObjectType,
     Relation,
@@ -137,7 +143,47 @@ pub async fn refresh_workspace_members(
         User::delete_user_from_workspace(&ctx, remove.pk(), request.workspace_id.clone()).await?;
     }
 
+    set_workspace_approvals_status(raw_access_token, state, request, client, ctx).await?;
+
     Ok(Json(RefreshWorkspaceMembersResponse { success: true }))
+}
+
+async fn set_workspace_approvals_status(
+    raw_access_token: String,
+    state: AppState,
+    request: RefreshWorkspaceMembersRequest,
+    client: reqwest::Client,
+    ctx: DalContext,
+) -> Result<(), SessionError> {
+    let workspace_res = client
+        .get(format!(
+            "{}/workspace/{}",
+            state.auth_api_url(),
+            request.workspace_id.clone()
+        ))
+        .bearer_auth(&raw_access_token)
+        .send()
+        .await?;
+    if workspace_res.status() != reqwest::StatusCode::OK {
+        let res_err_body = workspace_res
+            .json::<AuthApiErrBody>()
+            .await
+            .map_err(|err| SessionError::AuthApiError(err.to_string()))?;
+        println!("code exchange failed = {:?}", res_err_body.message);
+        return Err(SessionError::AuthApiError(res_err_body.message));
+    }
+    let approvals_enabled_value: serde_json::Value = workspace_res.json().await?;
+    let approvals_enabled = approvals_enabled_value["approvalsEnabled"]
+        .as_bool()
+        .unwrap_or(false);
+    let mut workspace =
+        Workspace::get_by_pk(&ctx, WorkspacePk::from_str(request.workspace_id.as_str())?).await?;
+    if workspace.approvals_enabled() != approvals_enabled {
+        workspace
+            .update_approvals_enabled(&ctx, approvals_enabled)
+            .await?;
+    }
+    Ok(())
 }
 
 async fn sync_workspace_approvers(

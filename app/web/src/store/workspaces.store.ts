@@ -32,6 +32,7 @@ type AuthApiWorkspace = {
   role: "OWNER" | "EDITOR";
   token: string;
   isHidden: boolean;
+  approvalsEnabled: boolean;
 };
 
 export type WorkspaceImportSummary = {
@@ -89,6 +90,11 @@ export const useWorkspacesStore = () => {
             this.urlSelectedWorkspaceId || "",
             null,
           );
+        },
+        workspaceApprovalsEnabled(): boolean {
+          const thisWorkspace = this.selectedWorkspace || null;
+          if (!thisWorkspace) return false;
+          return thisWorkspace.approvalsEnabled;
         },
         getIntegrations(): WorkspaceIntegration | null {
           return this.integrations || null;
