@@ -17,6 +17,12 @@ use std::collections::HashMap;
 use serde::Deserialize;
 use tokio::time::{sleep, Duration};
 use std::fs;
+use ulid::Ulid;
+
+// For debugging
+use ciborium::de::from_reader;
+use serde_json::Value as JsonValue;
+use std::io::Cursor;
 
 #[derive(Debug, Deserialize)]
 struct JsonMessage {
@@ -107,30 +113,20 @@ impl TestProfile for MeasureRebase {
         let js = jetstream::new(nats.clone());
         let mut success_count = 0;
 
-        dbg!("Sending message to start the rebaser off on it's work (REBASER_TASKS");
-
-        if let Err(e) = send_rebaser_tracker_message(
-            nats,
-            &_parameters.workspaceId.to_string(),
-            &_parameters.changeSetId.to_string()
-        ).await {
-            println!("Failed to send tracker message: {:?}", e);
-        }
-
         for json_msg in load_message_sequence(&_parameters.variant) {
 
-            // I broke the rebaser when I didn't do this, naughty John
-            // Need to figure out why, it got in such a tangle
-            sleep(Duration::from_millis(50)).await;
+            // Don't run too fast
+            sleep(Duration::from_millis(500));
             
             let mut headers = HeaderMap::new();
+            let new_ulid = Ulid::new().to_string();
 
             for (k, v) in json_msg.headers.iter() {
                 if k != "Nats-Stream-Source" {
-                    if k != "Nats-Stream-Source" {
-                        headers.insert(k.as_str(), HeaderValue::from(v.as_str()));
-                    } else if k == "X-Reply-Inbox" {
+                    if k == "X-Reply-Inbox" {
                         headers.insert(k.as_str(), HeaderValue::from("_INBOX.INCOMING_RESPONSES"));
+                    } else if k == "Nats-Msg-Id" {
+                        headers.insert(k.as_str(), HeaderValue::from(new_ulid.as_str()));
                     } else {
                         headers.insert(k.as_str(), HeaderValue::from(v.as_str()));
                     }
@@ -138,7 +134,19 @@ impl TestProfile for MeasureRebase {
             }
 
             let payload = match hex::decode(&json_msg.payload_hex) {
-                Ok(bytes) => bytes,
+                Ok(bytes) => {
+                    // Try to decode CBOR using ciborium
+                    let mut cursor = Cursor::new(&bytes);
+                    //dbg!(&headers);
+                    match from_reader::<JsonValue, _>(&mut cursor) {
+                        Ok(val) => match serde_json::to_string_pretty(&val) {
+                            Ok(json_str) => println!("Decoded CBOR JSON:\n{}", json_str),
+                            Err(e) => println!("⚠️ Failed to format JSON: {:?}", e),
+                        },
+                        Err(e) => println!("⚠️ Failed to parse CBOR with ciborium: {:?}", e),
+                    }
+                    bytes
+                },
                 Err(e) => {
                     println!("Payload decode error for {}: {:?}", json_msg.subject, e);
                     continue;
@@ -155,6 +163,16 @@ impl TestProfile for MeasureRebase {
                 },
                 Err(e) => println!("❌ Publish failed for {}: {:?}", json_msg.subject, e),
             }
+        }
+
+        dbg!("Sending message to start the rebaser off on it's work (REBASER_TASKS");
+        
+        if let Err(e) = send_rebaser_tracker_message(
+            nats,
+            &_parameters.workspaceId.to_string(),
+            &_parameters.changeSetId.to_string()
+        ).await {
+            println!("Failed to send tracker message: {:?}", e);
         }
 
         TestResult {

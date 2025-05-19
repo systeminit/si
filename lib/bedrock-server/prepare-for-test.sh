@@ -4,21 +4,22 @@ set -eo pipefail
 
 RESTORE_POINT=$1 # e.g. 2025-05-17T08-40-38Z
 
-echo "This script is brutal to your local nats and postgres stack, cancel in 5s if you aren't sure you want to do this"
-#sleep 5
+echo "This script is brutal to your local NATS and Postgres stack, cancel in 5s if you aren't sure you want to do this"
+docker restart dev-postgres-1
+sleep 5
 
 echo "Purging NATS Rebaser Streams"
 nats --server 0.0.0.0 stream purge REBASER_REQUESTS --force
 nats --server 0.0.0.0 stream purge REBASER_TASKS --force
-nats --server 0.0.0.0 stream purge REBASER_REQUESTS_AUDIT --force
+nats --server 0.0.0.0 stream purge VERITECH_REQUESTS --force
+nats --server 0.0.0.0 stream purge PINGA_JOBS --force
+nats --server 0.0.0.0 stream purge LAYERDB_EVENTS --force
+nats --server 0.0.0.0 stream purge AUDIT_LOGS --force
+nats --server 0.0.0.0 stream purge DEAD_LETTER_QUEUES --force
+nats --server 0.0.0.0 stream purge PENDING_EVENTS --force
+nats --server 0.0.0.0 stream purge REBASER_REQUESTS_AUDIT --force || echo "hasn't been configured"
 
-echo "Restoring to a Snapshot of PG DB in preparation for a test"
-
-echo "Restarting Docker Container for Postgres"
-docker stop dev-db-1
-docker start dev-db-1
-
-sleep 5
+echo "Restoring to a snapshot of PG DB in preparation for a test"
 
 BASE_DIR='src/profiles/rebaser/datasources/'
 DATABASE_SNAPSHOT_SUBDIR='database_restore_points/measure_rebase'
@@ -27,24 +28,35 @@ NATS_SEQUENECE_SUBDIR='nats_sequences/measure_rebase'
 SNAPSHOT_DIR="$BASE_DIR/$RESTORE_POINT/$DATABASE_SNAPSHOT_SUBDIR"
 SEQUENCE_DIR="$BASE_DIR/$RESTORE_POINT/$NATS_SEQUENECE_SUBDIR"
 
-# For si_layer_db database
+# Enable nullglob to avoid errors on unmatched globs
+shopt -s nullglob
 
-PGPASSWORD=bugbear psql -h 0.0.0.0 -p 7432 -U si -d postgres <<EOF
-SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'si_layer_db' AND pid <> pg_backend_pid();
-DROP DATABASE IF EXISTS si_layer_db;
-CREATE DATABASE si_layer_db;
+# Step 1: Restore cluster-wide globals (roles, extensions, etc.)
+echo "Restoring global PostgreSQL objects (roles, extensions, etc.)"
+PGPASSWORD=bugbear psql -h 0.0.0.0 -p 5432 -U si -d postgres -f "$SNAPSHOT_DIR/globals.sql"
+
+# Step 2: Drop and recreate the public schema for each DB
+reset_schema() {
+  local DB=$1
+  echo "Resetting 'public' schema in $DB..."
+  PGPASSWORD=bugbear psql -h 0.0.0.0 -p 5432 -U si -d "$DB" <<EOF
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO si;
+GRANT ALL ON SCHEMA public TO public;
 EOF
+}
 
-PGPASSWORD=bugbear psql -h 0.0.0.0 -p 7432 -U si -d si_layer_db -f $SNAPSHOT_DIR/si_layer_db_backup.sql
+reset_schema "si_layer_db"
+reset_schema "si"
 
-# For si database
+echo "Restoring full schema for si_layer_db..."
+PGPASSWORD=bugbear psql -h 0.0.0.0 -p 5432 -U si -d si_layer_db -f "$SNAPSHOT_DIR/si_layer_db_public_schema.sql"
 
-PGPASSWORD=bugbear psql -h 0.0.0.0 -p 7432 -U si -d postgres <<EOF
-SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'si' AND pid <> pg_backend_pid();
-DROP DATABASE IF EXISTS si;
-CREATE DATABASE si;
-EOF
+echo "Restoring full schema for si..."
+PGPASSWORD=bugbear psql -h 0.0.0.0 -p 5432 -U si -d si -f "$SNAPSHOT_DIR/si_public_schema.sql"
 
-PGPASSWORD=bugbear psql -h 0.0.0.0 -p 7432 -U si -d si -f $SNAPSHOT_DIR/si_db_backup.sql
+PGPASSWORD=bugbear psql -h 0.0.0.0 -p 5432 -U si -d si_layer_db -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+PGPASSWORD=bugbear psql -h 0.0.0.0 -p 5432 -U si -d si -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
 
 echo "Stack is ready to receive a test"

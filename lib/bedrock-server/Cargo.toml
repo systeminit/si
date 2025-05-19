@@ -19,6 +19,8 @@ si-tls = { path = "../../lib/si-tls" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 telemetry = { path = "../../lib/telemetry-rs" }
 
+uuid = { workspace = true }
+ciborium = { workspace = true }
 anyhow = { workspace = true }
 hex = { workspace = true }
 ulid = { workspace = true }
