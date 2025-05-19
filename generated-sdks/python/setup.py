@@ -41,7 +41,7 @@ setup(
     packages=find_packages(exclude=["test", "tests"]),
     include_package_data=True,
     python_requires=PYTHON_REQUIRES,
-    license="Apache License 2.0",
+    license="Apache-2.0",
     long_description="""Python SDK for the System Initiative Public API""",
     long_description_content_type='text/markdown',
     classifiers=[
