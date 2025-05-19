@@ -34,6 +34,7 @@ mod apply;
 mod approval_status;
 mod approve;
 mod cancel_approval_request;
+mod create;
 mod force_apply;
 mod list;
 mod rename;
@@ -151,7 +152,9 @@ pub async fn post_to_webhook(
 }
 
 pub fn change_sets_routes() -> Router<AppState> {
-    Router::new().route("/", get(list::list_actionable))
+    Router::new()
+        .route("/", get(list::list_actionable))
+        .route("/create_change_set", post(create::create_change_set))
 }
 
 pub fn change_set_routes(state: AppState) -> Router<AppState> {

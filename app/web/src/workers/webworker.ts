@@ -408,7 +408,10 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     changeSetId,
     "ComponentList",
     changeSetId,
-  )) as BifrostComponentList;
+  )) as BifrostComponentList | -1;
+
+  if (data === -1) return;
+
   await Promise.all(
     data.components.map((c) =>
       updateComputed(workspaceId, changeSetId, "Component", c, false),
@@ -612,7 +615,6 @@ const insertAtomMTM = async (atom: Atom, toSnapshotAddress: Checksum) => {
     // seeing conflict uniqueness errors, even though the
     // table declaration has ON CONFLICT REPLACE
     error("createMTM failed", atom);
-    throw err;
   }
 };
 
@@ -1142,9 +1144,9 @@ const _getOutgoingConnectionsByComponentId = async (
     changeSetId,
     undefined,
     false, // don't compute
-  )) as BifrostIncomingConnectionsList;
+  )) as BifrostIncomingConnectionsList | -1;
 
-  if (!list || !list.componentConnections) {
+  if (list === -1) {
     debug("...missing connections list...");
     return new DefaultMap<string, BifrostConnection[]>(() => []);
   }
@@ -1393,6 +1395,8 @@ const getReferences = async (
       debug(`Connection ${raw.id} missing own component`);
       hasReferenceError = true;
     }
+    // explicitly setting this as a warning that these fields are not to be used
+    else (component as BifrostComponent).outputCount = -1;
 
     const connections = await Promise.all(
       raw.connections.map(async (c: EddaConnection) => {
@@ -1426,15 +1430,14 @@ const getReferences = async (
           );
           hasReferenceError = true;
         }
+        // explicitly setting this as a warning that these fields are not to be used
+        else (fromComponent as BifrostComponent).outputCount = -1;
 
         const conn: BifrostConnection = {
           ...c,
           fromComponent: fromComponent as BifrostComponent,
           toComponent: component as BifrostComponent,
         };
-        // explicitly setting this as a warning that these fields are not to be used
-        conn.fromComponent.outputCount = -1;
-        conn.toComponent.outputCount = -1;
         return conn;
       }),
     );
@@ -1747,6 +1750,72 @@ const dbInterface: DBInterface = {
     });
     const [changesets, snapshots, atoms, mtm] = await Promise.all([c, s, a, m]);
     return { changesets, snapshots, atoms, mtm };
+  },
+  async linkNewChangeset(
+    workspaceId,
+    headChangeSet,
+    changeSetId,
+    workspaceSnapshotAddress,
+  ): Promise<void> {
+    try {
+      const headRows = db.exec({
+        sql: "select snapshot_address from changesets where workspace_id = ? and change_set_id = ? ;",
+        bind: [workspaceId, headChangeSet],
+        returnValue: "resultRows",
+      });
+      const headRow = oneInOne(headRows);
+      if (headRow === NOROW) throw new Error("HEAD is missing");
+      const currentSnapshotAddress = headRow;
+
+      if (currentSnapshotAddress === workspaceSnapshotAddress) {
+        debug("~ new change set, no-op");
+        return; // NO-OP
+      }
+
+      await db.exec({
+        sql: `INSERT INTO snapshots (address) VALUES (?) ON CONFLICT DO NOTHING;`,
+        bind: [workspaceSnapshotAddress],
+      });
+
+      await db.exec({
+        sql: `INSERT INTO snapshots_mtm_atoms
+        SELECT
+          ?, kind, args, checksum
+        FROM snapshots_mtm_atoms
+        WHERE
+          snapshot_address = ?
+        ON CONFLICT DO NOTHING`,
+        bind: [workspaceSnapshotAddress, currentSnapshotAddress],
+      });
+
+      await db.exec({
+        sql: "insert into changesets (change_set_id, workspace_id, snapshot_address) VALUES (?, ?, ?) ON CONFLICT DO NOTHING;",
+        bind: [changeSetId, workspaceId, workspaceSnapshotAddress],
+      });
+    } catch (err) {
+      // NOTE: all the `on conflict do nothing` can be removed
+      // once a new change set only returns after its index has been created
+      // this runs *clean* "in the background" (e.g. on a second client that didn't make the change set)
+      // eslint-disable-next-line no-console
+      console.error("linkNewChangeset", err);
+    }
+
+    // hit the index to populate it
+    // also shouldn't need this
+    const pattern = [
+      "v2",
+      "workspaces",
+      { workspaceId },
+      "change-sets",
+      { changeSetId },
+      "index",
+    ] as URLPattern;
+
+    const [url, _desc] = describePattern(pattern);
+    await sdf<IndexObjectMeta>({
+      method: "get",
+      url,
+    });
   },
 };
 

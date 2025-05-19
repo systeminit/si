@@ -6,6 +6,7 @@ export interface Context {
   changeSetId: ComputedRef<string>;
   user: User | null;
   onHead: ComputedRef<boolean>;
+  headChangeSetId: ComputedRef<string>;
 }
 
 export function assertIsDefined<T>(value: T | undefined): asserts value is T {

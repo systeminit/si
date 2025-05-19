@@ -246,7 +246,7 @@ keyEmitter.on("Enter", async () => {
   else
     params = {
       schemaType,
-      schemaVariantId: selectedAsset.value.variant.schemaId,
+      schemaId: selectedAsset.value.variant.schemaId,
     };
 
   // TODO "force changeset"
@@ -254,11 +254,14 @@ keyEmitter.on("Enter", async () => {
   const call = api.endpoint<{ componentId: string }>(routes.CreateComponent, {
     viewId: viewId.value,
   });
-  const resp = await call.post<CreateComponentPayload>(payload);
-  if (api.ok(resp)) {
+  const { req, newChangeSetId } = await call.post<CreateComponentPayload>(
+    payload,
+  );
+  if (api.ok(req)) {
     const params = {
-      ...route.params,
-      componentId: resp.data.componentId,
+      workspacePk: route.params.workspacePk,
+      changeSetId: newChangeSetId || route.params.changeSetId,
+      componentId: req.data.componentId,
     };
     router.push({
       name: "new-hotness-component",

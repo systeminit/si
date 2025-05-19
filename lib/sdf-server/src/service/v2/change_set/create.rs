@@ -3,39 +3,50 @@ use axum::{
     extract::{
         Host,
         OriginalUri,
+        Path,
     },
 };
 use dal::{
+    ChangeSet,
+    WorkspacePk,
     WsEvent,
-    change_set::ChangeSet,
 };
-use sdf_core::tracking::track;
-use sdf_extract::{
-    HandlerContext,
-    PosthogClient,
-    v1::AccessBuilder,
+use serde::{
+    Deserialize,
+    Serialize,
 };
 use si_events::audit_log::AuditLogKind;
-use si_frontend_types::{
-    CreateChangeSetRequest,
-    CreateChangeSetResponse,
+
+use super::Result;
+use crate::{
+    extract::{
+        HandlerContext,
+        PosthogClient,
+    },
+    service::v2::AccessBuilder,
+    track,
 };
 
-use super::ChangeSetResult;
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Request {
+    pub name: String,
+}
 
 pub async fn create_change_set(
     HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
+    AccessBuilder(request_ctx): AccessBuilder,
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
-    Json(request): Json<CreateChangeSetRequest>,
-) -> ChangeSetResult<Json<CreateChangeSetResponse>> {
-    let ctx = builder.build_head(access_builder).await?;
+    Path(_workspace_pk): Path<WorkspacePk>,
+    Json(Request { name }): Json<Request>,
+) -> Result<Json<si_frontend_types::ChangeSet>> {
+    let ctx = builder.build_head(request_ctx).await?;
 
-    let change_set_name = &request.change_set_name;
+    let change_set_name = name.to_owned();
 
-    let change_set = ChangeSet::fork_head(&ctx, change_set_name).await?;
+    let change_set = ChangeSet::fork_head(&ctx, change_set_name.clone()).await?;
 
     track(
         &posthog_client,
@@ -59,5 +70,5 @@ pub async fn create_change_set(
     let change_set = change_set.into_frontend_type(&ctx).await?;
     ctx.commit_no_rebase().await?;
 
-    Ok(Json(CreateChangeSetResponse { change_set }))
+    Ok(Json(change_set))
 }

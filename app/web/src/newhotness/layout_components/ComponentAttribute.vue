@@ -79,6 +79,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { VButton, IconButton, Icon } from "@si/vue-lib/design-system";
+import { useRoute, useRouter } from "vue-router";
 import { BifrostComponent } from "@/workers/types/dbinterface";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
@@ -157,6 +158,8 @@ const add = async () => {
   );
 };
 
+const router = useRouter();
+const route = useRoute();
 const showKey = ref(false);
 const wForm = useWatchedForm<{ key: string }>();
 const keyData = ref({ key: "" });
@@ -171,7 +174,19 @@ const keyForm = wForm.newForm(keyData, async ({ value }) => {
       .replace("root", "")
       .replaceAll("\u000b", "/") ?? ""; // endpoint doesn't want it
   payload[`${path}/${value.key}`] = "";
-  await call.put<UpdateComponentAttributesArgs>(payload);
+  const { req, newChangeSetId } = await call.put<UpdateComponentAttributesArgs>(
+    payload,
+  );
+  if (newChangeSetId && api.ok(req)) {
+    router.push({
+      name: "new-hotness-component",
+      params: {
+        workspacePk: route.params.workspacePk,
+        changeSetId: newChangeSetId,
+        componentId: props.component.id,
+      },
+    });
+  }
 });
 
 const saveKey = async () => {

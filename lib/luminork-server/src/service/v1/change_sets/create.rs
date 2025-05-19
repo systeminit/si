@@ -58,7 +58,7 @@ pub async fn create_change_set(
     ctx.write_audit_log(AuditLogKind::CreateChangeSet, payload.change_set_name)
         .await?;
 
-    WsEvent::change_set_created(ctx, change_set.id)
+    WsEvent::change_set_created(ctx, change_set.id, change_set.workspace_snapshot_address)
         .await?
         .publish_on_commit(ctx)
         .await?;

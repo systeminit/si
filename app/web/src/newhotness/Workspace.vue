@@ -90,6 +90,7 @@ import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import * as heimdall from "@/store/realtime/heimdall";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import Explore from "./Explore.vue";
 import ComponentDetail from "./Component.vue";
 import FuncRunDetails from "./FuncRunDetails.vue";
@@ -110,6 +111,7 @@ const props = defineProps<{
 const authStore = useAuthStore();
 const featureFlagsStore = useFeatureFlagsStore();
 const changeSetsStore = useChangeSetsStore();
+const realtimeStore = useRealtimeStore();
 
 const workspacePk = computed(() => props.workspacePk);
 const changeSetId = computed(() => props.changeSetId);
@@ -120,6 +122,7 @@ const context = computed<Context>(() => {
     changeSetId,
     user: authStore.user,
     onHead: computed(() => changeSetsStore.headSelected),
+    headChangeSetId: computed(() => changeSetsStore.headChangeSetId ?? ""),
   };
 });
 
@@ -191,6 +194,22 @@ watch(
   () => {
     heimdall.niflheim(props.workspacePk, props.changeSetId, true);
   },
+);
+realtimeStore.subscribe(
+  "TOP_LEVEL_WORKSPACE",
+  `workspace/${props.workspacePk}`,
+  [
+    {
+      eventType: "ChangeSetCreated",
+      callback: async (data) => {
+        await heimdall.linkNewChangeset(
+          props.workspacePk,
+          data.changeSetId,
+          data.workspaceSnapshotAddress,
+        );
+      },
+    },
+  ],
 );
 
 const connectionShouldBeEnabled = computed(() => {

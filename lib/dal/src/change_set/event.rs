@@ -2,6 +2,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_events::WorkspaceSnapshotAddress;
 
 use crate::{
     ChangeSetId,
@@ -24,8 +25,16 @@ impl WsEvent {
     pub async fn change_set_created(
         ctx: &DalContext,
         change_set_id: ChangeSetId,
+        workspace_snapshot_address: WorkspaceSnapshotAddress,
     ) -> WsEventResult<Self> {
-        WsEvent::new(ctx, WsPayload::ChangeSetCreated(change_set_id)).await
+        WsEvent::new(
+            ctx,
+            WsPayload::ChangeSetCreated(ChangeSetCreatedPayload {
+                change_set_id,
+                workspace_snapshot_address,
+            }),
+        )
+        .await
     }
 
     pub async fn change_set_approval_status_changed(
@@ -190,4 +199,11 @@ pub struct ChangeSetMergeVotePayload {
 pub struct ChangeSetRenamePayload {
     change_set_id: ChangeSetId,
     new_name: String,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSetCreatedPayload {
+    change_set_id: ChangeSetId,
+    workspace_snapshot_address: WorkspaceSnapshotAddress,
 }
