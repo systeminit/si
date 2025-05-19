@@ -33,6 +33,7 @@ pub mod materialized_view;
 pub mod object;
 pub mod reference;
 pub mod schema_variant;
+pub mod secret;
 pub mod temporary_conversion_impls;
 pub mod view;
 

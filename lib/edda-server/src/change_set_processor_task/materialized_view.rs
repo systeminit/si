@@ -7,6 +7,8 @@ use std::collections::{
 use dal::{
     ComponentError,
     DalContext,
+    Prop,
+    PropId,
     SchemaVariantError,
     TransactionsError,
     Ulid,
@@ -17,6 +19,10 @@ use dal::{
     },
     dependency_graph::DependencyGraph,
     diagram::DiagramError,
+    prop::{
+        PropError,
+        PropPath,
+    },
     workspace_snapshot::WorkspaceSnapshotSelector,
 };
 use frigg::{
@@ -62,6 +68,12 @@ use si_frontend_mv_types::{
     schema_variant::{
         SchemaVariant as SchemaVariantMv,
         SchemaVariantCategories as SchemaVariantCategoriesMv,
+    },
+    secret::{
+        Secret as SecretMv,
+        SecretDefinition as SecretDefinitionMv,
+        SecretDefinitionList as SecretDefinitionListMv,
+        SecretList as SecretListMv,
     },
     view::{
         View as ViewMv,
@@ -114,6 +126,8 @@ pub enum MaterializedViewError {
         workspace_pk: WorkspacePk,
         change_set_id: ChangeSetId,
     },
+    #[error("Prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("SchemaVariant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serde_json error: {0}")]
@@ -605,6 +619,10 @@ fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedV
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewComponentListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewListMv);
     add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, SecretListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, SecretDefinitionListMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, SecretMv);
+    add_reference_dependencies_to_dependency_graph!(dependency_graph, SecretDefinitionMv);
 
     // The MvIndex depends on everything else, but doesn't define any
     // `MaterializedView::reference_dependencies()` directly.
@@ -830,6 +848,113 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     change_set_mv_id,
                     SchemaVariantCategoriesMv,
                     dal_materialized_views::schema_variant_categories::assemble(ctx.clone()),
+                );
+            } else {
+                return Ok(Some(QueuedBuildMvTask { change, mv_kind }));
+            }
+        }
+        ReferenceKind::Secret => {
+            let entity_mv_id = change.entity_id.to_string();
+
+            let trigger_entity = <SecretMv as MaterializedView>::trigger_entity();
+            if change.entity_kind != trigger_entity {
+                return Ok(None);
+            }
+
+            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+                spawn_build_mv_task!(
+                    build_tasks,
+                    mv_task_ids,
+                    ctx,
+                    frigg,
+                    change,
+                    entity_mv_id,
+                    SecretMv,
+                    dal_materialized_views::secret::assemble(
+                        ctx.clone(),
+                        si_events::ulid::Ulid::from(change.entity_id).into()
+                    )
+                );
+            } else {
+                return Ok(Some(QueuedBuildMvTask { change, mv_kind }));
+            }
+        }
+        ReferenceKind::SecretList => {
+            let change_set_mv_id = change_set_id.to_string();
+
+            let trigger_entity = <SecretListMv as MaterializedView>::trigger_entity();
+            if change.entity_kind != trigger_entity {
+                return Ok(None);
+            }
+
+            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+                spawn_build_mv_task!(
+                    build_tasks,
+                    mv_task_ids,
+                    ctx,
+                    frigg,
+                    change,
+                    change_set_mv_id,
+                    SecretListMv,
+                    dal_materialized_views::secret::secret_list::assemble(ctx.clone()),
+                );
+            } else {
+                return Ok(Some(QueuedBuildMvTask { change, mv_kind }));
+            }
+        }
+        ReferenceKind::SecretDefinition => {
+            let entity_mv_id = change.entity_id.to_string();
+
+            let trigger_entity = <SecretDefinitionMv as MaterializedView>::trigger_entity();
+            if change.entity_kind != trigger_entity {
+                return Ok(None);
+            } else {
+                // Secret Definitions are triggered by Props, but not
+                // all Props contain secret definitions.
+                // Let's short circuit and only spawn a task if we know this prop contains a secret definition!
+                let prop_id: PropId = si_events::ulid::Ulid::from(change.entity_id).into();
+                let prop = Prop::get_by_id(ctx, prop_id).await?;
+                if prop.path(ctx).await? != PropPath::new(["root", "secret_definition"]) {
+                    return Ok(None);
+                }
+            }
+
+            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+                spawn_build_mv_task!(
+                    build_tasks,
+                    mv_task_ids,
+                    ctx,
+                    frigg,
+                    change,
+                    entity_mv_id,
+                    SecretDefinitionMv,
+                    dal_materialized_views::secret::secret_definition::assemble(
+                        ctx.clone(),
+                        si_events::ulid::Ulid::from(change.entity_id).into()
+                    )
+                );
+            } else {
+                return Ok(Some(QueuedBuildMvTask { change, mv_kind }));
+            }
+        }
+        ReferenceKind::SecretDefinitionList => {
+            let change_set_mv_id = change_set_id.to_string();
+
+            let trigger_entity = <SecretDefinitionListMv as MaterializedView>::trigger_entity();
+            if change.entity_kind != trigger_entity {
+                return Ok(None);
+            }
+
+            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+                spawn_build_mv_task!(
+                    build_tasks,
+                    mv_task_ids,
+                    ctx,
+                    frigg,
+                    change,
+                    change_set_mv_id,
+                    SecretDefinitionListMv,
+                    dal_materialized_views::secret::secret_definition_list::assemble(ctx.clone()),
                 );
             } else {
                 return Ok(Some(QueuedBuildMvTask { change, mv_kind }));
