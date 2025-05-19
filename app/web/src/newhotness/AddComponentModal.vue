@@ -149,16 +149,16 @@
         <div class="docs scrollable border p-xs">
           <h3>{{ selectedAsset.name }}</h3>
           <p>{{ selectedAsset.variant.link }}</p>
-          <p>{{ selectedAsset.variant.description }}</p>
+          <p><VueMarkdown :source="selectedAsset.variant.description" /></p>
         </div>
         <div class="props scrollable border p-xs">
           <template v-if="'propTree' in selectedAsset.variant">
-            <ol v-if="selectedAssetProps.length > 0">
-              <li v-for="prop in selectedAssetProps" :key="prop.id">
-                {{ prop.name }}
-              </li>
-            </ol>
-            <h3 v-else>Prop data not found</h3>
+            <PropTreeComponent
+              v-for="tree in selectedAssetProps.children"
+              :key="tree.id"
+              :tree="tree"
+            />
+            <h3 v-if="!selectedAssetProps.children">Prop data not found</h3>
           </template>
           <h3 v-else>HI PAUL, WE ARE LOOKING FOR THIS DATA</h3>
         </div>
@@ -184,11 +184,13 @@ import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import { Fzf } from "fzf";
 import { useRoute, useRouter } from "vue-router";
+import VueMarkdown from "vue-markdown-render";
 import TextPill from "@/components/TextPill.vue";
 import {
   BifrostSchemaVariantCategories,
   CategoryVariant,
   Prop,
+  PropTree,
 } from "@/workers/types/dbinterface";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import FilterTile from "./layout_components/FilterTile.vue";
@@ -201,6 +203,9 @@ import {
   routes,
   useApi,
 } from "./api_composables";
+import PropTreeComponent, {
+  PropsAsTree,
+} from "./layout_components/PropsAsTree.vue";
 
 const ctx: Context | undefined = inject("CONTEXT");
 assertIsDefined(ctx);
@@ -213,17 +218,55 @@ const selectAsset = (asset: UIAsset) => {
   else selectedAsset.value = asset;
 };
 
-const selectedAssetProps = computed<Prop[]>(() => {
-  if (!selectedAsset.value) return [] as Prop[];
-  if (!("propTree" in selectedAsset.value.variant)) return [] as Prop[];
-  return Object.values(selectedAsset.value.variant.propTree.props)
-    .filter((p) => !p.hidden)
-    .filter((p) => {
-      // MV still needs a fix!
-      const path = p.path.replaceAll("\u000b", "/");
-      return path.startsWith("root/domain") && path !== "root/domain";
-    });
+const selectedAssetProps = computed<PropsAsTree>(() => {
+  const empty = {
+    id: "",
+    children: [] as PropsAsTree[],
+    prop: {} as Prop,
+  };
+  if (!selectedAsset.value) return empty;
+  if (!("propTree" in selectedAsset.value.variant)) return empty;
+  const propTree = selectedAsset.value.variant.propTree;
+  const rootId = Object.keys(propTree.treeInfo).find((id) => {
+    const prop = propTree.treeInfo[id];
+    if (prop && !prop.parent) return true;
+    return false;
+  });
+  if (!rootId) return empty;
+
+  const tree = makePropTree(selectedAsset.value.variant.propTree, rootId);
+  // root always has 1 child, domain
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return tree.children.pop()!;
 });
+
+const makePropTree = (
+  data: PropTree,
+  propId: string,
+  parent?: string,
+): PropsAsTree => {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const prop = { ...data.props[propId]! };
+  prop.path = prop.path.replaceAll("\u000b", "/");
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const childrenIds = data.treeInfo[propId]!.children;
+  const children = childrenIds
+    .filter((id) => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const prop = data.props[id]!;
+      let path = prop.path;
+      path = prop.path.replaceAll("\u000b", "/");
+      return path.startsWith("root/domain");
+    })
+    .map((id) => makePropTree(data, id, propId));
+  const tree: PropsAsTree = {
+    id: propId,
+    children,
+    parent,
+    prop,
+  };
+  return tree;
+};
 
 const props = defineProps<{
   viewId: string;

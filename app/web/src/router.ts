@@ -46,12 +46,6 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/newhotness/Workspace.vue"),
     children: [
       {
-        name: "new-hotness-view-list",
-        path: "views",
-        props: true,
-        component: () => import("@/newhotness/Workspace.vue"),
-      },
-      {
         name: "new-hotness-view",
         path: ":viewId/v/edit",
         props: true,

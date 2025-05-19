@@ -202,6 +202,7 @@ export enum routes {
   UpdateComponentAttributes = "UpdateComponentAttributes",
   UpdateComponentName = "UpdateComponentName",
   CreateComponent = "CreateComponent",
+  CreateView = "CreateView",
 }
 
 /**
@@ -218,6 +219,7 @@ const _routes: Record<routes, string> = {
   UpdateComponentAttributes: "/components/<id>/attributes",
   UpdateComponentName: "/components/<id>/name",
   CreateComponent: "/views/<viewId>/component",
+  CreateView: "/views",
 } as const;
 
 // the mechanics

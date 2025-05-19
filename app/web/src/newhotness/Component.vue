@@ -107,7 +107,7 @@
               component.schemaVariantName
             }}</a>
           </p>
-          <p>{{ component.schemaVariantDescription }}</p>
+          <p><VueMarkdown :source="component.schemaVariantDescription" /></p>
         </template>
         <template v-else>
           <VButton
@@ -191,6 +191,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { computed, ref, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import VueMarkdown from "vue-markdown-render";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostComponent,

@@ -32,7 +32,15 @@
           :modelValue="selectedView"
           placeholder="All Views"
           @update:modelValue="(val) => (selectedView = val)"
-        />
+        >
+          <template #afterOptions>
+            <DropdownMenuItem
+              label="Add a View"
+              icon="plus"
+              @select="openViewModal"
+            />
+          </template>
+        </DropdownMenuButton>
         <InstructiveVormInput
           class="rounded grow"
           :activeClasses="
@@ -138,6 +146,10 @@
       ref="addComponentModalRef"
       :viewId="selectedViewOrDefaultId"
     />
+    <AddViewModal
+      ref="addViewModalRef"
+      :views="viewListQuery.data.value?.views"
+    />
   </section>
 </template>
 
@@ -149,6 +161,7 @@ import {
   VormInput,
   VButton,
   DropdownMenuButton,
+  DropdownMenuItem,
   Icon,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
@@ -178,6 +191,7 @@ import { keyEmitter } from "./logic_composables/emitters";
 import TabGroupToggle from "./layout_components/TabGroupToggle.vue";
 import { SelectionsInQueryString } from "./Workspace.vue";
 import AddComponentModal from "./AddComponentModal.vue";
+import AddViewModal from "./AddViewModal.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -402,6 +416,12 @@ const addComponentModalRef = ref<InstanceType<typeof AddComponentModal>>();
 
 const openAddComponentModal = () => {
   addComponentModalRef.value?.open();
+};
+
+const addViewModalRef = ref<InstanceType<typeof AddViewModal>>();
+
+const openViewModal = () => {
+  addViewModalRef.value?.open();
 };
 </script>
 
