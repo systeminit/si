@@ -8,7 +8,10 @@ use dal_test::{
     Result,
     helpers::{
         ChangeSetTestHelpers,
-        attribute::value,
+        attribute::{
+            value,
+            value::AttributeValueKey,
+        },
         change_set,
         component,
         schema::variant,
@@ -514,6 +517,67 @@ async fn subscription_count_errors(ctx: &mut DalContext) -> Result<()> {
         .await
         .is_err()
     );
+
+    Ok(())
+}
+
+#[test]
+async fn delete_subscribed_to_array_item(ctx: &mut DalContext) -> Result<()> {
+    create_testy_variant(ctx).await?;
+
+    // Create a component with a Value prop
+    component::create(ctx, "testy", "subscriber").await?;
+    change_set::commit(ctx).await?;
+
+    // Create another component and subscribe to its values
+    component::create(ctx, "testy", "input").await?;
+
+    // Subscribe value props to first and second array items
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Value"),
+        [("input", "/domain/Values/0")],
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Value2"),
+        [("input", "/domain/Values/1")],
+    )
+    .await?;
+
+    // Create 3 array items on input
+    value::set(ctx, ("input", "/domain/Values/0"), "test_value_0").await?;
+    value::set(ctx, ("input", "/domain/Values/1"), "test_value_1").await?;
+
+    change_set::commit(ctx).await?;
+
+    // Make sure subscriptions worked!
+    assert_eq!(
+        json!("test_value_0"),
+        value::get(ctx, ("subscriber", "/domain/Value")).await?
+    );
+    assert_eq!(
+        json!("test_value_1"),
+        value::get(ctx, ("subscriber", "/domain/Value2")).await?
+    );
+
+    // Delete source array item and validated that the null value has been propagated
+    AttributeValue::remove_by_id(
+        ctx,
+        ("input", "/domain/Values/0")
+            .lookup_attribute_value(ctx)
+            .await?,
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+
+    // Make sure that the DVU set the right new values to the subscriber props
+    assert_eq!(
+        json!("test_value_1"),
+        value::get(ctx, ("subscriber", "/domain/Value")).await?
+    );
+    assert!(!value::has_value(ctx, ("subscriber", "/domain/Value2")).await?);
 
     Ok(())
 }
