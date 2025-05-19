@@ -174,6 +174,76 @@ pub enum NodeWeight {
     ApprovalRequirementDefinition(ApprovalRequirementDefinitionNodeWeight),
 }
 
+#[test]
+fn node_weight_size_has_not_increased() {
+    // If this fails, it means you've made the biggest variants of NodeWeight even bigger.
+    // Make sure this is intentional: any increase in NodeWeight size translates directly to
+    // an increase in in-memory graph size, even if most of the variants don't use the extra
+    // space!
+    assert_eq!(std::mem::size_of::<NodeWeight>(), 128);
+}
+
+#[test]
+fn node_weight_variant_sizes_have_not_increased() {
+    use std::mem::size_of;
+
+    // If this fails, you've changed one of the variants of NodeWeight in a way that affects its
+    // size. This is OK as long as you haven't increased the size of NodeWeight itself! Just modify
+    // the number below to match the new value, and please keep it sorted so we can see what's up :)
+    pretty_assertions_sorted::assert_eq!(
+        serde_json::json!({
+            "AttributePrototypeArgumentNodeWeight": 128,
+
+            "ActionPrototypeNodeWeight": 112,
+
+            "AttributeValueNodeWeight": 96,
+            "FuncNodeWeight": 96,
+            "FuncArgumentNodeWeight": 96,
+            "PropNodeWeight": 96,
+            "SecretNodeWeight": 96,
+            "InputSocketNodeWeight": 96,
+            "SchemaVariantNodeWeight": 96,
+            "ManagementPrototypeNodeWeight": 96,
+            "GeometryNodeWeight": 96,
+            "ViewNodeWeight": 96,
+            "ApprovalRequirementDefinitionNodeWeight": 96,
+
+            "ActionNodeWeight": 80,
+            "ComponentNodeWeight": 80,
+            "ContentNodeWeight": 80,
+            "OrderingNodeWeight": 80,
+
+            "CategoryNodeWeight": 64,
+            "DependentValueRootNodeWeight": 64,
+            "FinishedDependentValueRootNodeWeight": 64,
+            "DiagramObjectNodeWeight": 64,
+        }),
+        serde_json::json!({
+            "ActionNodeWeight": size_of::<ActionNodeWeight>(),
+            "ActionPrototypeNodeWeight": size_of::<ActionPrototypeNodeWeight>(),
+            "AttributePrototypeArgumentNodeWeight": size_of::<AttributePrototypeArgumentNodeWeight>(),
+            "AttributeValueNodeWeight": size_of::<AttributeValueNodeWeight>(),
+            "CategoryNodeWeight": size_of::<CategoryNodeWeight>(),
+            "ComponentNodeWeight": size_of::<ComponentNodeWeight>(),
+            "ContentNodeWeight": size_of::<ContentNodeWeight>(),
+            "DependentValueRootNodeWeight": size_of::<DependentValueRootNodeWeight>(),
+            "FuncNodeWeight": size_of::<FuncNodeWeight>(),
+            "FuncArgumentNodeWeight": size_of::<FuncArgumentNodeWeight>(),
+            "OrderingNodeWeight": size_of::<OrderingNodeWeight>(),
+            "PropNodeWeight": size_of::<PropNodeWeight>(),
+            "SecretNodeWeight": size_of::<SecretNodeWeight>(),
+            "FinishedDependentValueRootNodeWeight": size_of::<FinishedDependentValueRootNodeWeight>(),
+            "InputSocketNodeWeight": size_of::<InputSocketNodeWeight>(),
+            "SchemaVariantNodeWeight": size_of::<SchemaVariantNodeWeight>(),
+            "ManagementPrototypeNodeWeight": size_of::<ManagementPrototypeNodeWeight>(),
+            "GeometryNodeWeight": size_of::<GeometryNodeWeight>(),
+            "ViewNodeWeight": size_of::<ViewNodeWeight>(),
+            "DiagramObjectNodeWeight": size_of::<DiagramObjectNodeWeight>(),
+            "ApprovalRequirementDefinitionNodeWeight": size_of::<ApprovalRequirementDefinitionNodeWeight>()
+        })
+    );
+}
+
 impl NodeWeight {
     pub fn content_hash(&self) -> ContentHash {
         match self {
