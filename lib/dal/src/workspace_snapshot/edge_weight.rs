@@ -102,6 +102,11 @@ pub struct EdgeWeight {
     pub kind: EdgeWeightKind,
 }
 
+#[test]
+fn edge_weight_size_has_not_increased() {
+    assert_eq!(32, std::mem::size_of::<EdgeWeight>());
+}
+
 impl EdgeWeight {
     pub fn kind(&self) -> &EdgeWeightKind {
         &self.kind
