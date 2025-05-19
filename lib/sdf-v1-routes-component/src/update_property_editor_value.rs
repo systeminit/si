@@ -34,6 +34,10 @@ use serde::{
 };
 use si_db::Visibility;
 use si_events::audit_log::AuditLogKind;
+use telemetry::{
+    prelude::*,
+    tracing::info_span,
+};
 
 use super::{
     ComponentError,
@@ -88,13 +92,17 @@ pub async fn update_property_editor_value(
         if request.value != before_value {
             // If the values have changed then we should enqueue an update action
             // if the values haven't changed then we can skip this update action as it is usually a no-op
-            Component::enqueue_relevant_update_actions(&ctx, request.attribute_value_id).await?;
+            Component::enqueue_relevant_update_actions(&ctx, request.attribute_value_id)
+                .instrument(info_span!(
+                    "update_property_editor_value.component.enqueue_relevant_update_actions"
+                ))
+                .await?;
         }
     }
 
     let component = Component::get_by_id(&ctx, request.component_id).await?;
 
-    {
+    let audit = async {
         let component_schema = component.schema(&ctx).await?;
         let component_schema_variant = component.schema_variant(&ctx).await?;
         let prop = Prop::get_by_id(&ctx, request.prop_id).await?;
@@ -181,7 +189,12 @@ pub async fn update_property_editor_value(
                 "change_set_id": ctx.change_set_id(),
             }),
         );
-    }
+
+        ComponentResult::<()>::Ok(())
+    };
+    audit
+        .instrument(info_span!("update_property_editor_value.audit"))
+        .await?;
 
     let mut socket_map = HashMap::new();
     let payload = component
@@ -191,6 +204,9 @@ pub async fn update_property_editor_value(
             component.change_status(&ctx).await?,
             &mut socket_map,
         )
+        .instrument(info_span!(
+            "update_property_editor_value.component.into_frontend_type"
+        ))
         .await?;
     WsEvent::component_updated(&ctx, payload)
         .await?
