@@ -52,6 +52,7 @@ EOL
   AUTHOR_EMAIL=$(grep -o '"authorEmail": "[^"]*' config.json | cut -d'"' -f4)
   ARTIFACT_DESCRIPTION=$(grep -o '"artifactDescription": "[^"]*' config.json | cut -d'"' -f4)
   LICENSE_NAME=$(grep -o '"licenseName": "[^"]*' config.json | cut -d'"' -f4)
+  LICENSE_ID=$(grep -o '"licenseId": "[^"]*' config.json | cut -d'"' -f4)
   LICENSE_URL=$(grep -o '"licenseUrl": "[^"]*' config.json | cut -d'"' -f4)
   DEVELOPER_NAME=$(grep -o '"developerName": "[^"]*' config.json | cut -d'"' -f4)
   DEVELOPER_EMAIL=$(grep -o '"developerEmail": "[^"]*' config.json | cut -d'"' -f4)
@@ -128,7 +129,7 @@ setup(
     packages=find_packages(exclude=["test", "tests"]),
     include_package_data=True,
     python_requires=PYTHON_REQUIRES,
-    license="$LICENSE_NAME",
+    license="$LICENSE_ID",
     long_description="""$ARTIFACT_DESCRIPTION""",
     long_description_content_type='text/markdown',
     classifiers=[
@@ -172,8 +173,8 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.8"
-license = "${LICENSE_NAME}"
-licenseFile = "LICENSE"
+license = "${LICENSE_ID}"
+license-files = ["LICENSE"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
@@ -184,7 +185,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Operating System :: OS Independent",
 ]
-requires = [
+dependencies = [
   "urllib3 >= 2.1.0, < 3.0.0",
   "python-dateutil >= 2.8.2",
   "pydantic >= 2",
