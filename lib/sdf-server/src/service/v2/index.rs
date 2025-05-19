@@ -50,6 +50,14 @@ pub enum IndexError {
     Frigg(#[from] frigg::FriggError),
     #[error("index not found; workspace_pk={0}, change_set_id={1}")]
     IndexNotFound(WorkspacePk, ChangeSetId),
+    #[error("index not found after rebuild; workspace_pk={0}, change_set_id={1}")]
+    IndexNotFoundAfterFreshBuild(WorkspacePk, ChangeSetId),
+    #[error("index not found after rebuild; workspace_pk={0}, change_set_id={1}")]
+    IndexNotFoundAfterRebuild(WorkspacePk, ChangeSetId),
+    #[error("item with checksum not found; workspace_pk={0}, change_set_id={1}, kind={2}")]
+    ItemWithChecksumNotFound(WorkspacePk, ChangeSetId, String),
+    #[error("latest item not found; workspace_pk={0}, change_set_id={1}, kind={2}")]
+    LatestItemNotFound(WorkspacePk, ChangeSetId, String),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("timed out when watching index with duration: {0:?}")]
@@ -61,7 +69,10 @@ pub type IndexResult<T> = Result<T, IndexError>;
 impl IntoResponse for IndexError {
     fn into_response(self) -> Response {
         let status_code = match &self {
-            IndexError::IndexNotFound(_, _) => StatusCode::NOT_FOUND,
+            IndexError::IndexNotFound(_, _)
+            | IndexError::IndexNotFoundAfterFreshBuild(_, _)
+            | IndexError::IndexNotFoundAfterRebuild(_, _)
+            | IndexError::ItemWithChecksumNotFound(_, _, _) => StatusCode::NOT_FOUND,
             _ => ApiError::DEFAULT_ERROR_STATUS_CODE,
         };
 

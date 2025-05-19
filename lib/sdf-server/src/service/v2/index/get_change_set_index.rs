@@ -95,7 +95,10 @@ pub async fn get_change_set_index(
                     .get_index(workspace_pk, change_set_id)
                     .await?
                     .map(|i| i.0)
-                    .ok_or(IndexError::IndexNotFound(workspace_pk, change_set_id))?
+                    .ok_or(IndexError::IndexNotFoundAfterRebuild(
+                        workspace_pk,
+                        change_set_id,
+                    ))?
             }
         }
         None => {
@@ -108,7 +111,10 @@ pub async fn get_change_set_index(
                 .get_index(workspace_pk, change_set_id)
                 .await?
                 .map(|i| i.0)
-                .ok_or(IndexError::IndexNotFound(workspace_pk, change_set_id))?
+                .ok_or(IndexError::IndexNotFoundAfterFreshBuild(
+                    workspace_pk,
+                    change_set_id,
+                ))?
         }
     };
 
