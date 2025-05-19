@@ -124,7 +124,6 @@ setup(
     author="$AUTHOR",
     author_email="$AUTHOR_EMAIL",
     url="$PACKAGE_URL",
-    keywords=["OpenAPI", "OpenAPI-Generator", "System Initiative API"],
     install_requires=REQUIRES,
     packages=find_packages(exclude=["test", "tests"]),
     include_package_data=True,
@@ -135,7 +134,6 @@ setup(
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
@@ -145,7 +143,7 @@ setup(
     ],
     project_urls={
         "Source": "$PACKAGE_URL",
-        "Documentation": "$PACKAGE_URL",
+        "Documentation": "https://docs.systeminit.com/reference/public-api",
         "Bug Tracker": "$PACKAGE_URL/issues",
     },
     package_data={"$PACKAGE_NAME": ["py.typed"]},
@@ -174,11 +172,11 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "${LICENSE_NAME}"}
+license = "${LICENSE_NAME}"
+licenseFile = "LICENSE"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -186,11 +184,17 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Operating System :: OS Independent",
 ]
+requires = [
+  "urllib3 >= 2.1.0, < 3.0.0",
+  "python-dateutil >= 2.8.2",
+  "pydantic >= 2",
+  "typing-extensions >= 4.7.1",
+]
 
 [project.urls]
 "Homepage" = "${PACKAGE_URL}"
 "Bug Tracker" = "${PACKAGE_URL}/issues"
-"Documentation" = "${PACKAGE_URL}"
+"Documentation" = "https://docs.systeminit.com/reference/public-api"
 "Source Code" = "${PACKAGE_URL}"
 
 [tool.setuptools]
