@@ -11,11 +11,11 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "Apache License 2.0"}
+license = "Apache License 2.0"
+licenseFile = "LICENSE"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -23,11 +23,17 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Operating System :: OS Independent",
 ]
+requires = [
+  "urllib3 >= 2.1.0, < 3.0.0",
+  "python-dateutil >= 2.8.2",
+  "pydantic >= 2",
+  "typing-extensions >= 4.7.1",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/systeminit/si"
 "Bug Tracker" = "https://github.com/systeminit/si/issues"
-"Documentation" = "https://github.com/systeminit/si"
+"Documentation" = "https://docs.systeminit.com/reference/public-api"
 "Source Code" = "https://github.com/systeminit/si"
 
 [tool.setuptools]

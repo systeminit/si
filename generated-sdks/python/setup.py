@@ -37,7 +37,6 @@ setup(
     author="System Initiative",
     author_email="technical-operations@systeminit.com",
     url="https://github.com/systeminit/si",
-    keywords=["OpenAPI", "OpenAPI-Generator", "System Initiative API"],
     install_requires=REQUIRES,
     packages=find_packages(exclude=["test", "tests"]),
     include_package_data=True,
@@ -48,7 +47,6 @@ setup(
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
@@ -58,7 +56,7 @@ setup(
     ],
     project_urls={
         "Source": "https://github.com/systeminit/si",
-        "Documentation": "https://github.com/systeminit/si",
+        "Documentation": "https://docs.systeminit.com/reference/public-api",
         "Bug Tracker": "https://github.com/systeminit/si/issues",
     },
     package_data={"system_initiative_api_client": ["py.typed"]},
