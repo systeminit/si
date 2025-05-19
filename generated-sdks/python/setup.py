@@ -24,7 +24,7 @@ NAME = "system_initiative_api_client"
 VERSION = "1.0.0"
 PYTHON_REQUIRES = ">= 3.8"
 REQUIRES = [
-    "urllib3 >= 1.25.3, < 3.0.0",
+    "urllib3 >= 2.1.0, < 3.0.0",
     "python-dateutil >= 2.8.2",
     "pydantic >= 2",
     "typing-extensions >= 4.7.1",
@@ -33,17 +33,33 @@ REQUIRES = [
 setup(
     name=NAME,
     version=VERSION,
-    description="System Initiative API",
-    author="OpenAPI Generator community",
-    author_email="team@openapitools.org",
-    url="",
+    description="Python SDK for the System Initiative Public API",
+    author="System Initiative",
+    author_email="technical-operations@systeminit.com",
+    url="https://github.com/systeminit/si",
     keywords=["OpenAPI", "OpenAPI-Generator", "System Initiative API"],
     install_requires=REQUIRES,
     packages=find_packages(exclude=["test", "tests"]),
     include_package_data=True,
+    python_requires=PYTHON_REQUIRES,
+    license="Apache License 2.0",
+    long_description="""Python SDK for the System Initiative Public API""",
     long_description_content_type='text/markdown',
-    long_description="""\
-    The API Server for interacting with a System Initiative workspace
-    """,  # noqa: E501
+    classifiers=[
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+    ],
+    project_urls={
+        "Source": "https://github.com/systeminit/si",
+        "Documentation": "https://github.com/systeminit/si",
+        "Bug Tracker": "https://github.com/systeminit/si/issues",
+    },
     package_data={"system_initiative_api_client": ["py.typed"]},
 )
