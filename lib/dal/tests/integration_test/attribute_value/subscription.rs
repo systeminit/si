@@ -83,35 +83,34 @@ async fn subscribe_to_string(ctx: &mut DalContext) -> Result<()> {
     let value_av_id =
         Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value"])
             .await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    change_set::commit(ctx).await?;
     assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
 
     // Create another component
     let other_component_id = component::create(ctx, "testy", "other").await?;
-    let other_value_av_id =
-        Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value"])
-            .await?;
-    AttributeValue::update(ctx, other_value_av_id, Some(json!("value"))).await?;
+
+    Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value"]).await?;
+    value::set(ctx, ("other", "/domain/Value"), "value").await?;
 
     // Subscribe to the value and see if it flows through!
     value::subscribe(ctx, value_av_id, [(other_component_id, "/domain/Value")]).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    change_set::commit(ctx).await?;
     assert_eq!(
         Some(json!("value")),
         AttributeValue::view_by_id(ctx, value_av_id).await?
     );
 
     // Update the value and watch the new value flow through!
-    AttributeValue::update(ctx, other_value_av_id, Some(json!("value_2"))).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    value::set(ctx, ("other", "/domain/Value"), "value_2").await?;
+    change_set::commit(ctx).await?;
     assert_eq!(
         Some(json!("value_2")),
         AttributeValue::view_by_id(ctx, value_av_id).await?
     );
 
     // Unset the value and watch it flow through!
-    AttributeValue::update(ctx, other_value_av_id, None).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    value::unset(ctx, ("other", "/domain/Value")).await?;
+    change_set::commit(ctx).await?;
     assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
 
     Ok(())
@@ -225,25 +224,19 @@ async fn subscribe_to_two_values(ctx: &mut DalContext) -> Result<()> {
     let value2_av_id =
         Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value2"])
             .await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    change_set::commit(ctx).await?;
     assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
     assert_eq!(None, AttributeValue::view_by_id(ctx, value2_av_id).await?);
 
     // Create another component
     let other_component_id = component::create(ctx, "testy", "other").await?;
-    let other_value_av_id =
-        Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value"])
-            .await?;
-    let other_value2_av_id =
-        Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value2"])
-            .await?;
-    AttributeValue::update(ctx, other_value_av_id, Some(json!("value"))).await?;
-    AttributeValue::update(ctx, other_value2_av_id, Some(json!("value2"))).await?;
+    value::set(ctx, ("other", "/domain/Value"), "value").await?;
+    value::set(ctx, ("other", "/domain/Value2"), "value2").await?;
 
     // Subscribe to the values and see if it flows through!
     value::subscribe(ctx, value_av_id, [(other_component_id, "/domain/Value")]).await?;
     value::subscribe(ctx, value2_av_id, [(other_component_id, "/domain/Value2")]).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    change_set::commit(ctx).await?;
     assert_eq!(
         Some(json!("value")),
         AttributeValue::view_by_id(ctx, value_av_id).await?
@@ -254,9 +247,9 @@ async fn subscribe_to_two_values(ctx: &mut DalContext) -> Result<()> {
     );
 
     // Update the values and watch them flow through!
-    AttributeValue::update(ctx, other_value_av_id, Some(json!("value_2"))).await?;
-    AttributeValue::update(ctx, other_value2_av_id, Some(json!("value2_2"))).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    value::set(ctx, ("other", "/domain/Value"), "value_2").await?;
+    value::set(ctx, ("other", "/domain/Value2"), "value2_2").await?;
+    change_set::commit(ctx).await?;
     assert_eq!(
         Some(json!("value_2")),
         AttributeValue::view_by_id(ctx, value_av_id).await?
@@ -267,9 +260,9 @@ async fn subscribe_to_two_values(ctx: &mut DalContext) -> Result<()> {
     );
 
     // Unset the values and watch them flow through!
-    AttributeValue::update(ctx, other_value_av_id, None).await?;
-    AttributeValue::update(ctx, other_value2_av_id, None).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    value::unset(ctx, ("other", "/domain/Value")).await?;
+    value::unset(ctx, ("other", "/domain/Value2")).await?;
+    change_set::commit(ctx).await?;
     assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
     assert_eq!(None, AttributeValue::view_by_id(ctx, value2_av_id).await?);
 

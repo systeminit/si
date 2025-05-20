@@ -188,3 +188,10 @@ pub async fn set(
     AttributeValue::update(ctx, av_id, Some(value.into())).await?;
     Ok(())
 }
+
+/// Unset a value (creates it if it doesn't exist)
+pub async fn unset(ctx: &DalContext, av: impl AttributeValueKey) -> Result<()> {
+    let av_id = av.vivify_attribute_value(ctx).await?;
+    AttributeValue::update(ctx, av_id, None).await?;
+    Ok(())
+}
