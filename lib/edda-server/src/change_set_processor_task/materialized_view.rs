@@ -263,6 +263,9 @@ pub async fn build_mv_for_changes_in_change_set(
             }
         })
         .collect();
+    if !removed_items.is_empty() {
+        dbg!("REMOVED ITEMS", &removed_items);
+    }
 
     let mut index_entries: Vec<IndexReference> =
         frontend_objects.into_iter().map(Into::into).collect();
@@ -540,6 +543,7 @@ where
         .node_exists(change.entity_id)
         .await
     {
+        dbg!("REMOVED");
         // Object was removed
         Ok((
             Some(ObjectPatch {
@@ -561,12 +565,18 @@ where
         let frontend_object: FrontendObject = mv.try_into()?;
 
         let kind = mv_kind;
+        if kind == "Component".to_string() {
+            dbg!("PROCESSING COMPONENT");
+        }
         let (from_checksum, previous_data) = if let Some(previous_version) = frigg
             .get_current_object(ctx.workspace_pk()?, ctx.change_set_id(), &kind, &mv_id)
             .await?
         {
             (previous_version.checksum, previous_version.data)
         } else {
+            if kind == "Component".to_string() {
+                dbg!("COMPONENT OBJECT IS NEW", &mv_id);
+            }
             // Object is new
             ("0".to_string(), serde_json::Value::Null)
         };

@@ -157,83 +157,145 @@ async fn secret_definition_list(ctx: &DalContext) -> Result<()> {
 }
 
 #[test]
-async fn component(ctx: &DalContext) -> Result<()> {
-    let components = dal_materialized_views::component_list::assemble(ctx.clone()).await?;
-    assert_eq!(
-        ComponentList {
-            id: ctx.change_set_id(),
-            components: Vec::new()
-        }, // expected
-        components // actual
-    );
-
+async fn component(ctx: &mut DalContext) -> Result<()> {
     let schema_name = "starfield";
-    let component_name = schema_name;
-    let created_component =
-        create_component_for_default_schema_name_in_default_view(ctx, schema_name, component_name)
-            .await?;
+    let component_one_name = "one";
+    let component_two_name = "two";
 
-    let components = dal_materialized_views::component_list::assemble(ctx.clone()).await?;
-    let reference = components
-        .components
-        .first()
-        .ok_or_eyre("no components found")?;
-    assert_eq!(
-        ReferenceKind::Component, // expected
-        reference.kind,           // actual
-    );
-    assert_eq!(
-        created_component.id(), // expected
-        reference.id.0          // actual
-    );
+    {
+        let components = dal_materialized_views::component_list::assemble(ctx.clone()).await?;
+        assert_eq!(
+            ComponentList {
+                id: ctx.change_set_id(),
+                components: Vec::new()
+            }, // expected
+            components // actual
+        );
+    }
 
-    let component =
-        dal_materialized_views::component::assemble(ctx.clone(), created_component.id()).await?;
-    let schema = created_component.schema(ctx).await?;
-    let schema_variant = created_component.schema_variant(ctx).await?;
-    let stats = QualificationSummary::individual_stats(ctx, created_component.id())
-        .await?
-        .into();
+    let component_one = {
+        let component_one = create_component_for_default_schema_name_in_default_view(
+            ctx,
+            schema_name,
+            component_one_name,
+        )
+        .await?;
 
-    let resource_diff = ComponentDiff {
-        current: Some(String::from(
-            "{\n  \"si\": {\n    \"name\": \"starfield\",\n    \"type\": \"component\",\n    \"color\": \"#ffffff\"\n  }\n}",
-        )),
-        diff: Some(String::from(
-            "+{\n+  \"si\": {\n+    \"name\": \"starfield\",\n+    \"type\": \"component\",\n+    \"color\": \"#ffffff\"\n+  }\n+}",
-        )),
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+        // dbg!("============");
+        // dbg!("GO TIME");
+        // dbg!("============");
+        // dbg!(">> PRE-SLEEP");
+        // tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+        // dbg!(">> POST-SLEEP");
+
+        let components = dal_materialized_views::component_list::assemble(ctx.clone()).await?;
+        dbg!(&components);
+        let reference = components
+            .components
+            .first()
+            .ok_or_eyre("no components found")?;
+        assert_eq!(
+            ReferenceKind::Component, // expected
+            reference.kind,           // actual
+        );
+        assert_eq!(
+            component_one.id(), // expected
+            reference.id.0      // actual
+        );
+
+        component_one
     };
 
-    let sv_id = created_component.schema_variant(ctx).await?.id();
-    let schema_variant_mv =
-        dal_materialized_views::schema_variant::assemble(ctx.clone(), sv_id).await?;
-    let attribute_tree = dal_materialized_views::component::attribute_tree::assemble(
-        ctx.clone(),
-        created_component.id(),
-    )
-    .await?;
-    assert_eq!(
-        ComponentMv {
-            id: created_component.id(),
-            name: component_name.to_owned(),
-            color: created_component.color(ctx).await?.to_owned(),
-            schema_name: schema_name.to_owned(),
-            schema_id: schema.id(),
-            schema_variant_id: (&schema_variant_mv).into(),
-            schema_variant_name: schema_variant.display_name().to_owned(),
-            schema_category: schema_variant.category().to_owned(),
-            schema_variant_description: schema_variant.description().to_owned(),
-            schema_variant_doc_link: schema_variant.link().to_owned(),
-            has_resource: false,
-            qualification_totals: stats,
-            input_count: 0,
-            diff_count: 0,
-            resource_diff,
-            attribute_tree
-        }, // expected
-        component // actual
-    );
+    {
+        let component =
+            dal_materialized_views::component::assemble(ctx.clone(), component_one.id()).await?;
+        let schema = component_one.schema(ctx).await?;
+        let schema_variant = component_one.schema_variant(ctx).await?;
+        // let stats = QualificationSummary::individual_stats(ctx, component_one.id())
+        //     .await?
+        //     .into();
 
+        let resource_diff = ComponentDiff {
+            current: Some(String::from(
+                "{\n  \"si\": {\n    \"name\": \"one\",\n    \"type\": \"component\",\n    \"color\": \"#ffffff\"\n  }\n}",
+            )),
+            diff: Some(String::from(
+                "+{\n+  \"si\": {\n+    \"name\": \"one\",\n+    \"type\": \"component\",\n+    \"color\": \"#ffffff\"\n+  }\n+}",
+            )),
+        };
+
+        let sv_id = component_one.schema_variant(ctx).await?.id();
+        let schema_variant_mv =
+            dal_materialized_views::schema_variant::assemble(ctx.clone(), sv_id).await?;
+        let attribute_tree = dal_materialized_views::component::attribute_tree::assemble(
+            ctx.clone(),
+            component_one.id(),
+        )
+        .await?;
+        // assert_eq!(
+        //     ComponentMv {
+        //         id: component_one.id(),
+        //         name: component_one_name.to_owned(),
+        //         color: component_one.color(ctx).await?.to_owned(),
+        //         schema_name: schema_name.to_owned(),
+        //         schema_id: schema.id(),
+        //         schema_variant_id: (&schema_variant_mv).into(),
+        //         schema_variant_name: schema_variant.display_name().to_owned(),
+        //         schema_category: schema_variant.category().to_owned(),
+        //         schema_variant_description: schema_variant.description().to_owned(),
+        //         schema_variant_doc_link: schema_variant.link().to_owned(),
+        //         has_resource: false,
+        //         qualification_totals: stats,
+        //         input_count: 0,
+        //         diff_count: 0,
+        //         resource_diff,
+        //         attribute_tree
+        //     }, // expected
+        //     component // actual
+        // );
+    }
+
+    let component_two = {
+        let component_two = create_component_for_default_schema_name_in_default_view(
+            ctx,
+            schema_name,
+            component_two_name,
+        )
+        .await?;
+
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+        // dbg!("============");
+        // dbg!("GO TIME");
+        // dbg!("============");
+        // dbg!(">> PRE-SLEEP");
+        // tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+        // dbg!(">> POST-SLEEP");
+
+        let components = dal_materialized_views::component_list::assemble(ctx.clone()).await?;
+        assert_eq!(
+            2,                           // expected
+            components.components.len()  // actual
+        );
+        dbg!(&components);
+        for reference in components.components {
+            assert_eq!(
+                ReferenceKind::Component, // expected
+                reference.kind,           // actual
+            );
+            if reference.id.0 != component_one.id() && reference.id.0 != component_two.id() {
+                panic!("FUCK");
+            }
+            assert_ne!(
+                "0",                // expected
+                reference.checksum  // actual
+            );
+        }
+
+        component_two
+    };
+
+    assert!(false);
     Ok(())
 }
 

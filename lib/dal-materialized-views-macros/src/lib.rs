@@ -66,6 +66,7 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                     .node_exists(change.entity_id)
                     .await
                 {
+                    dbg!("REMOVED");
                     // Object was removed
                     Some((
                         si_frontend_types::object::patch::ObjectPatch {
@@ -90,6 +91,8 @@ pub fn build_mv(input: proc_macro2::TokenStream) -> syn::Result<proc_macro2::Tok
                     let (from_checksum, previous_data) = if let Some(previous_version) = frigg.get_current_object(ctx.workspace_pk()?, ctx.change_set_id(), &kind, &mv_id).await? {
                         (previous_version.checksum, previous_version.data)
                     } else {
+                        dbg!("REMOVED");
+
                         // Object is new
                         ("0".to_string(), serde_json::Value::Null)
                     };
