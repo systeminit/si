@@ -127,9 +127,14 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         };
         let sockets_for_av = AttributeValue::list_input_socket_sources_for_id(ctx, av_id).await?;
         let can_be_set_by_socket = !sockets_for_av.is_empty();
-        let is_from_external_source = sockets_for_av
-            .iter()
-            .any(|s| sockets_on_component.contains(s));
+
+        let subscriptions = AttributeValue::subscriptions(ctx, av_id).await?;
+        let is_from_sub_external_source = subscriptions.is_some_and(|subs| !subs.is_empty());
+
+        let is_from_external_source = is_from_sub_external_source
+            || sockets_for_av
+                .iter()
+                .any(|s| sockets_on_component.contains(s));
         let prototype_id = AttributeValue::prototype_id(ctx, av_id).await?;
         let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
         let func = Func::get_by_id(ctx, func_id).await?;
