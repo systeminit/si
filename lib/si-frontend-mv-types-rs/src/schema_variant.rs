@@ -56,6 +56,7 @@ pub struct SchemaVariant {
     #[serde(flatten)]
     pub timestamp: Timestamp,
     pub can_create_new_components: bool, // if yes, show in modeling screen, if not, only show in customize
+    pub is_secret_defining: bool,
     pub can_contribute: bool,
     pub mgmt_functions: Vec<MgmtPrototypeView>,
     pub prop_tree: PropTree,

@@ -86,6 +86,7 @@ pub struct Component {
     pub diff_count: usize,
     pub attribute_tree: AttributeTree,
     pub resource_diff: ComponentDiff,
+    pub is_secret_defining: bool,
 }
 
 #[derive(

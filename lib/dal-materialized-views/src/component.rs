@@ -1,11 +1,8 @@
 use dal::{
-    AttributePrototype,
-    AttributeValue,
     Component,
     ComponentId,
     DalContext,
-    InputSocket,
-    attribute::prototype::argument::AttributePrototypeArgument,
+    SchemaVariant,
     qualification::QualificationSummary,
 };
 use si_frontend_mv_types::component::{
@@ -30,27 +27,6 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         .await?
         .into();
 
-    // TODO(Wendy) - There is probably a better way to do this
-    let input_socket_ids =
-        InputSocket::list_ids_for_schema_variant(ctx, schema_variant.id()).await?;
-    let mut input_count = 0;
-    for input_socket_id in input_socket_ids {
-        let attribute_value_id =
-            InputSocket::component_attribute_value_id(ctx, input_socket_id, component_id).await?;
-        let attribute_prototype_id = AttributeValue::prototype_id(ctx, attribute_value_id).await?;
-        let attribute_prototype_argument_ids =
-            AttributePrototype::list_arguments(ctx, attribute_prototype_id).await?;
-        for attribute_prototype_argument_id in attribute_prototype_argument_ids {
-            let attribute_prototype_argument =
-                AttributePrototypeArgument::get_by_id(ctx, attribute_prototype_argument_id).await?;
-            if let Some(targets) = attribute_prototype_argument.targets() {
-                if targets.destination_component_id == component_id {
-                    input_count += 1;
-                }
-            }
-        }
-    }
-
     let diff_count = Component::get_diff_count(ctx, component_id).await?;
     let color = Component::color_by_id(ctx, component_id).await?;
 
@@ -65,9 +41,13 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
     };
 
     let sv = schema_variant::assemble(ctx.to_owned(), schema_variant.id).await?;
-
+    let is_secret_defining = SchemaVariant::is_secret_defining(ctx, schema_variant.id).await?;
     let attribute_tree = attribute_tree::assemble(ctx.to_owned(), component_id).await?;
-
+    let input_count = attribute_tree
+        .attribute_values
+        .values()
+        .filter(|value| value.is_from_external_source)
+        .count();
     Ok(ComponentMv {
         id: component_id,
         name: Component::name_by_id(ctx, component_id).await?,
@@ -85,5 +65,6 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         diff_count,
         attribute_tree,
         resource_diff,
+        is_secret_defining,
     })
 }
