@@ -583,6 +583,11 @@ impl Schema {
     /// *if* this schema is installed. If this schema is not installed, it looks
     /// for it in the local module cache, and if it exists there, it installs it, then
     /// returns the newly installed default [`SchemaVariantId`].
+    #[instrument(
+        name = "schema.get_or_install_default_variant",
+        level = "info",
+        skip_all
+    )]
     pub async fn get_or_install_default_variant(
         ctx: &DalContext,
         schema_id: SchemaId,
@@ -603,6 +608,7 @@ impl Schema {
         Ok(())
     }
 
+    #[instrument(name = "schema.install_from_module", level = "info", skip_all)]
     async fn install_from_module(
         ctx: &DalContext,
         mut module: CachedModule,

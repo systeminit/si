@@ -212,6 +212,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
         created_component.id(),
     )
     .await?;
+    let is_secret_defining = SchemaVariant::is_secret_defining(ctx, sv_id).await?;
     assert_eq!(
         ComponentMv {
             id: created_component.id(),
@@ -229,7 +230,8 @@ async fn component(ctx: &DalContext) -> Result<()> {
             input_count: 0,
             diff_count: 0,
             resource_diff,
-            attribute_tree
+            attribute_tree,
+            is_secret_defining,
         }, // expected
         component // actual
     );

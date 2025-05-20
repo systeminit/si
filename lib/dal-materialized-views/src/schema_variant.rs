@@ -18,7 +18,7 @@ pub async fn assemble(ctx: DalContext, id: SchemaVariantId) -> super::Result<Sch
     let schema_variant = SchemaVariant::get_by_id(&ctx, id).await?;
     let schema_id = schema_variant.schema(&ctx).await?.id();
     let sv = schema_variant.into_frontend_type(&ctx, schema_id).await?;
-
+    let is_secret_defining = SchemaVariant::is_secret_defining(&ctx, id).await?;
     let mgmt_functions = mgmt_prototype_view_list::assemble(&ctx, id).await?;
     let prop_tree = prop_tree::assemble(ctx, id).await?;
     Ok(SchemaVariantMv {
@@ -38,5 +38,6 @@ pub async fn assemble(ctx: DalContext, id: SchemaVariantId) -> super::Result<Sch
         can_contribute: sv.can_contribute,
         mgmt_functions,
         prop_tree,
+        is_secret_defining,
     })
 }
