@@ -196,6 +196,7 @@ import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostComponent,
   BifrostComponentConnections,
+  EntityKind,
 } from "@/workers/types/dbinterface";
 import AttributePanel from "./AttributePanel.vue";
 import { attributeEmitter } from "./logic_composables/emitters";
@@ -222,10 +223,10 @@ const key = useMakeKey();
 const args = useMakeArgs();
 
 const componentQuery = useQuery<BifrostComponent | null>({
-  queryKey: key("Component", componentId),
+  queryKey: key(EntityKind.Component, componentId),
   queryFn: async () => {
     const component = await bifrost<BifrostComponent>(
-      args("Component", componentId.value),
+      args(EntityKind.Component, componentId.value),
     );
     return component;
   },
@@ -237,10 +238,10 @@ const mgmtFuncs = computed(
 );
 
 const componentConnectionsQuery = useQuery<BifrostComponentConnections | null>({
-  queryKey: key("IncomingConnections", componentId),
+  queryKey: key(EntityKind.IncomingConnections, componentId),
   queryFn: async () => {
     const incomingConnections = await bifrost<BifrostComponentConnections>(
-      args("IncomingConnections", componentId.value),
+      args(EntityKind.IncomingConnections, componentId.value),
     );
     return incomingConnections;
   },

@@ -30,35 +30,13 @@ import {
 } from "@/api/sdf/dal/property_editor";
 import { ViewId } from "@/api/sdf/dal/views";
 import { DefaultMap } from "@/utils/defaultmap";
-import { WorkspaceMetadata } from "../../api/sdf/dal/workspace";
-
-export interface QueryMeta {
-  kind: string;
-  workspaceId: string;
-  changeSetId: ChangeSetId;
-}
-
-export interface Query extends QueryMeta {
-  id: Id;
-}
-
-export type ENUM_TYPESCRIPT_BINDING = WorkspaceMetadata | null;
-
-export interface QueryResult extends QueryMeta {
-  status: "result";
-  data: ENUM_TYPESCRIPT_BINDING;
-}
-
-export interface QueryMiss extends QueryMeta {
-  status: "does_not_exist";
-}
 
 export type Column = string;
 export type Columns = Column[];
 export type BustCacheFn = (
   workspaceId: string,
   changeSetId: string,
-  kind: string,
+  kind: EntityKind,
   id: string,
 ) => void;
 
@@ -93,18 +71,18 @@ export interface DBInterface {
   get(
     workspaceId: string,
     changeSetId: ChangeSetId,
-    kind: string,
+    kind: EntityKind,
     id: Id,
   ): Promise<typeof NOROW | AtomDocument>;
   mjolnir(
     workspaceId: string,
     changeSetId: ChangeSetId,
-    kind: string,
+    kind: EntityKind,
     id: Id,
     checksum?: Checksum,
   ): void;
-  partialKeyFromKindAndId(kind: string, id: Id): QueryKey;
-  kindAndIdFromKey(key: QueryKey): { kind: string; id: Id };
+  partialKeyFromKindAndId(kind: EntityKind, id: Id): QueryKey;
+  kindAndIdFromKey(key: QueryKey): { kind: EntityKind; id: Id };
   addListenerBustCache(fn: BustCacheFn): void;
   atomChecksumsFor(
     changeSetId: ChangeSetId,
@@ -178,9 +156,51 @@ export type Id = string;
 export type ROWID = number;
 export const NOROW = Symbol("NOROW");
 
+export enum EntityKind {
+  Component = "Component",
+  ViewList = "ViewList",
+  ComponentList = "ComponentList",
+  ViewComponentList = "ViewComponentList",
+  IncomingConnections = "IncomingConnections",
+  IncomingConnectionsList = "IncomingConnectionsList",
+  SchemaVariantCategories = "SchemaVariantCategories",
+  ActionViewList = "ActionViewList",
+  ActionPrototypeViewList = "ActionPrototypeViewList",
+  SecretsList = "SecretsList",
+  SecretDefinitionList = "SecretDefinitionList",
+  Secret = "Secret",
+  SecretDefinition = "SecretDefinitionList",
+  OutgoingConnections = "OutgoingConnections",
+  PossibleConnections = "PossibleConnections",
+}
+/**
+ * NOTE, if you want to narrow the type of a variable
+ * that maybe an entity kind, use this fn
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const isEntityKind = (maybeEntityKind: any): EntityKind | null => {
+  const k = maybeEntityKind as string; // first cast to string, since enum values are strings
+  // if the string-y value is in the enum
+  if (k in EntityKind)
+    // you can safely cast this
+    return k as EntityKind;
+  return null;
+};
+
+interface Reference {
+  id: string;
+  checksum: string;
+  kind: EntityKind;
+}
+
+interface WeakReference {
+  id: string;
+  kind: EntityKind;
+}
+
 interface AbstractAtom {
   id: Id;
-  kind: string;
+  kind: EntityKind;
   fromChecksum?: Checksum;
   toChecksum: Checksum;
 }
@@ -216,7 +236,7 @@ export interface Atom extends AbstractAtom, AtomMeta {
   operations?: Operation[];
 }
 interface Common {
-  kind: string;
+  kind: EntityKind;
   id: Id;
   checksum: string;
 }
@@ -232,25 +252,8 @@ export interface IndexObjectMeta {
   frontEndObject: IndexObject;
 }
 
-// TODO
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AtomDocument = any;
-
-// ==========================================================================
-// CORE TYPES
-interface Reference {
-  id: string;
-  checksum: string;
-  kind: string;
-}
-
-interface WeakReference {
-  id: string;
-  kind: string;
-}
-
-// ==========================================================================
-//  EVERYTHING ELSE
 
 /**
  * NAMING RULES

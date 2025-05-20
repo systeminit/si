@@ -191,8 +191,9 @@ import {
   CategoryVariant,
   Prop,
   PropTree,
+  EntityKind,
 } from "@/workers/types/dbinterface";
-import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
+import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import FilterTile from "./layout_components/FilterTile.vue";
 import { assertIsDefined, Context } from "./types";
 import { keyEmitter } from "./logic_composables/emitters";
@@ -336,13 +337,16 @@ type UIAsset = CategoryVariant & {
   category: UICategoryInfo;
 };
 
-const queryKey = makeKey("SchemaVariantCategories");
+const makeKey = useMakeKey();
+const makeArgs = useMakeArgs();
+
+const queryKey = makeKey(EntityKind.SchemaVariantCategories);
 const schemaVariantCategoriesOverBifrost =
   useQuery<BifrostSchemaVariantCategories | null>({
     queryKey,
     queryFn: async () =>
       await bifrost<BifrostSchemaVariantCategories>(
-        makeArgs("SchemaVariantCategories"),
+        makeArgs(EntityKind.SchemaVariantCategories),
       ),
   });
 

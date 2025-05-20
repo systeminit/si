@@ -24,11 +24,12 @@
 <script lang="ts" setup>
 import { useQuery } from "@tanstack/vue-query";
 import { computed } from "vue";
-import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
+import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   ActionPrototypeViewList,
   BifrostActionViewList,
   BifrostComponent,
+  EntityKind,
 } from "@/workers/types/dbinterface";
 import EmptyStateCard from "@/components/EmptyStateCard.vue";
 import { ActionId, ActionPrototypeId } from "@/api/sdf/dal/action";
@@ -42,15 +43,21 @@ const props = defineProps<{
 
 // This is the core materialized view for this component. We need it to know what action prototypes
 // are available for the given component.
+const makeKey = useMakeKey();
+const makeArgs = useMakeArgs();
+
 const queryKeyForActionPrototypeViews = makeKey(
-  "ActionPrototypeViewList",
+  EntityKind.ActionPrototypeViewList,
   props.component.schemaVariant.id,
 );
 const actionPrototypeViewsRaw = useQuery<ActionPrototypeViewList | null>({
   queryKey: queryKeyForActionPrototypeViews,
   queryFn: async () =>
     await bifrost<ActionPrototypeViewList>(
-      makeArgs("ActionPrototypeViewList", props.component.schemaVariant.id),
+      makeArgs(
+        EntityKind.ActionPrototypeViewList,
+        props.component.schemaVariant.id,
+      ),
     ),
 });
 const actionPrototypeViews = computed(
@@ -59,11 +66,11 @@ const actionPrototypeViews = computed(
 
 // Use the materialized view for actions to know what actions exist for a given prototype and the
 // selected component.
-const queryKeyForActionViewList = makeKey("ActionViewList");
+const queryKeyForActionViewList = makeKey(EntityKind.ActionViewList);
 const actionViewList = useQuery<BifrostActionViewList | null>({
   queryKey: queryKeyForActionViewList,
   queryFn: async () =>
-    await bifrost<BifrostActionViewList>(makeArgs("ActionViewList")),
+    await bifrost<BifrostActionViewList>(makeArgs(EntityKind.ActionViewList)),
 });
 const actionByPrototype = computed(() => {
   if (!actionViewList.data.value?.actions) return {};
