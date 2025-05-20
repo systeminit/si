@@ -72,6 +72,16 @@ impl AttributePath {
             }
         }
     }
+
+    /// Returns true if the `possible_parent_path` is included but doesn't completely match this path
+    pub fn is_under(&self, possible_parent_path: &Self) -> bool {
+        match (self, possible_parent_path) {
+            (Self::JsonPointer(self_path), Self::JsonPointer(parent_path)) => {
+                self_path.starts_with(parent_path)
+                    && self_path.as_bytes().get(parent_path.len()) == Some(&b'/')
+            }
+        }
+    }
 }
 
 // Gets the attribute value at the JSON pointer, or None if it cannot be found.

@@ -757,7 +757,8 @@ impl AttributeValue {
                             }
                             None => None,
                         };
-                        value.into_iter().collect()
+
+                        vec![value.unwrap_or(Value::Null)]
                     }
                     ValueSource::StaticArgumentValue(static_argument_value_id) => {
                         vec![
@@ -2682,7 +2683,29 @@ impl AttributeValue {
             .ok_or(AttributeValueError::RemovingWhenNotChildOrMapOrArray(id))?;
 
         ctx.workspace_snapshot()?.remove_node_by_id(id).await?;
-        ctx.add_dependent_values_and_enqueue(vec![parent_av_id])
+
+        let (root_av_id, parent_path) = Self::path_from_root(ctx, parent_av_id).await?;
+        let parent_path = AttributePath::JsonPointer(parent_path);
+
+        let mut dependent_value_ids = vec![parent_av_id];
+
+        for (subscription_path, apa_id) in Self::subscribers(ctx, root_av_id).await? {
+            // If the subscription path IS the parent path, or the path to the parent's child, it's gonna be affected by the deletion of the arg.
+            // We need to enqueue all the siblings of the removed too item since ordering changes on an array can affect multiple subscriptions
+            if subscription_path.is_under(&parent_path) {
+                let prototype_id = AttributePrototypeArgument::prototype_id(ctx, apa_id).await?;
+
+                let Some(subscriber_av_id) =
+                    AttributePrototype::attribute_value_id(ctx, prototype_id).await?
+                else {
+                    continue;
+                };
+
+                dependent_value_ids.push(subscriber_av_id);
+            }
+        }
+
+        ctx.add_dependent_values_and_enqueue(dependent_value_ids)
             .await?;
         Ok(())
     }

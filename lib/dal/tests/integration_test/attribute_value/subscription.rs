@@ -8,7 +8,10 @@ use dal_test::{
     Result,
     helpers::{
         ChangeSetTestHelpers,
-        attribute::value,
+        attribute::{
+            value,
+            value::AttributeValueKey,
+        },
         change_set,
         component,
         schema::variant,
@@ -80,35 +83,34 @@ async fn subscribe_to_string(ctx: &mut DalContext) -> Result<()> {
     let value_av_id =
         Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value"])
             .await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    change_set::commit(ctx).await?;
     assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
 
     // Create another component
     let other_component_id = component::create(ctx, "testy", "other").await?;
-    let other_value_av_id =
-        Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value"])
-            .await?;
-    AttributeValue::update(ctx, other_value_av_id, Some(json!("value"))).await?;
+
+    Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value"]).await?;
+    value::set(ctx, ("other", "/domain/Value"), "value").await?;
 
     // Subscribe to the value and see if it flows through!
     value::subscribe(ctx, value_av_id, [(other_component_id, "/domain/Value")]).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    change_set::commit(ctx).await?;
     assert_eq!(
         Some(json!("value")),
         AttributeValue::view_by_id(ctx, value_av_id).await?
     );
 
     // Update the value and watch the new value flow through!
-    AttributeValue::update(ctx, other_value_av_id, Some(json!("value_2"))).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    value::set(ctx, ("other", "/domain/Value"), "value_2").await?;
+    change_set::commit(ctx).await?;
     assert_eq!(
         Some(json!("value_2")),
         AttributeValue::view_by_id(ctx, value_av_id).await?
     );
 
     // Unset the value and watch it flow through!
-    AttributeValue::update(ctx, other_value_av_id, None).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    value::unset(ctx, ("other", "/domain/Value")).await?;
+    change_set::commit(ctx).await?;
     assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
 
     Ok(())
@@ -222,25 +224,19 @@ async fn subscribe_to_two_values(ctx: &mut DalContext) -> Result<()> {
     let value2_av_id =
         Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value2"])
             .await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    change_set::commit(ctx).await?;
     assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
     assert_eq!(None, AttributeValue::view_by_id(ctx, value2_av_id).await?);
 
     // Create another component
     let other_component_id = component::create(ctx, "testy", "other").await?;
-    let other_value_av_id =
-        Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value"])
-            .await?;
-    let other_value2_av_id =
-        Component::attribute_value_for_prop(ctx, component_id, &["root", "domain", "Value2"])
-            .await?;
-    AttributeValue::update(ctx, other_value_av_id, Some(json!("value"))).await?;
-    AttributeValue::update(ctx, other_value2_av_id, Some(json!("value2"))).await?;
+    value::set(ctx, ("other", "/domain/Value"), "value").await?;
+    value::set(ctx, ("other", "/domain/Value2"), "value2").await?;
 
     // Subscribe to the values and see if it flows through!
     value::subscribe(ctx, value_av_id, [(other_component_id, "/domain/Value")]).await?;
     value::subscribe(ctx, value2_av_id, [(other_component_id, "/domain/Value2")]).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    change_set::commit(ctx).await?;
     assert_eq!(
         Some(json!("value")),
         AttributeValue::view_by_id(ctx, value_av_id).await?
@@ -251,9 +247,9 @@ async fn subscribe_to_two_values(ctx: &mut DalContext) -> Result<()> {
     );
 
     // Update the values and watch them flow through!
-    AttributeValue::update(ctx, other_value_av_id, Some(json!("value_2"))).await?;
-    AttributeValue::update(ctx, other_value2_av_id, Some(json!("value2_2"))).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    value::set(ctx, ("other", "/domain/Value"), "value_2").await?;
+    value::set(ctx, ("other", "/domain/Value2"), "value2_2").await?;
+    change_set::commit(ctx).await?;
     assert_eq!(
         Some(json!("value_2")),
         AttributeValue::view_by_id(ctx, value_av_id).await?
@@ -264,9 +260,9 @@ async fn subscribe_to_two_values(ctx: &mut DalContext) -> Result<()> {
     );
 
     // Unset the values and watch them flow through!
-    AttributeValue::update(ctx, other_value_av_id, None).await?;
-    AttributeValue::update(ctx, other_value2_av_id, None).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    value::unset(ctx, ("other", "/domain/Value")).await?;
+    value::unset(ctx, ("other", "/domain/Value2")).await?;
+    change_set::commit(ctx).await?;
     assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
     assert_eq!(None, AttributeValue::view_by_id(ctx, value2_av_id).await?);
 
@@ -514,6 +510,67 @@ async fn subscription_count_errors(ctx: &mut DalContext) -> Result<()> {
         .await
         .is_err()
     );
+
+    Ok(())
+}
+
+#[test]
+async fn delete_subscribed_to_array_item(ctx: &mut DalContext) -> Result<()> {
+    create_testy_variant(ctx).await?;
+
+    // Create a component with a Value prop
+    component::create(ctx, "testy", "subscriber").await?;
+    change_set::commit(ctx).await?;
+
+    // Create another component and subscribe to its values
+    component::create(ctx, "testy", "input").await?;
+
+    // Subscribe value props to first and second array items
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Value"),
+        [("input", "/domain/Values/0")],
+    )
+    .await?;
+    value::subscribe(
+        ctx,
+        ("subscriber", "/domain/Value2"),
+        [("input", "/domain/Values/1")],
+    )
+    .await?;
+
+    // Create 3 array items on input
+    value::set(ctx, ("input", "/domain/Values/0"), "test_value_0").await?;
+    value::set(ctx, ("input", "/domain/Values/1"), "test_value_1").await?;
+
+    change_set::commit(ctx).await?;
+
+    // Make sure subscriptions worked!
+    assert_eq!(
+        json!("test_value_0"),
+        value::get(ctx, ("subscriber", "/domain/Value")).await?
+    );
+    assert_eq!(
+        json!("test_value_1"),
+        value::get(ctx, ("subscriber", "/domain/Value2")).await?
+    );
+
+    // Delete source array item and validated that the null value has been propagated
+    AttributeValue::remove_by_id(
+        ctx,
+        ("input", "/domain/Values/0")
+            .lookup_attribute_value(ctx)
+            .await?,
+    )
+    .await?;
+    change_set::commit(ctx).await?;
+
+    // Make sure that the DVU set the right new values to the subscriber props
+    assert_eq!(
+        json!("test_value_1"),
+        value::get(ctx, ("subscriber", "/domain/Value")).await?
+    );
+    assert!(!value::has_value(ctx, ("subscriber", "/domain/Value2")).await?);
 
     Ok(())
 }
