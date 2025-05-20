@@ -4,8 +4,6 @@ use serde::{
     Serialize,
 };
 use si_events::{
-    InputSocketId,
-    OutputSocketId,
     SchemaId,
     SchemaVariantId,
     Timestamp,
@@ -54,8 +52,6 @@ pub struct SchemaVariant {
     pub description: Option<String>,
     pub link: Option<String>,
     pub color: String,
-    pub input_sockets: Vec<InputSocket>,
-    pub output_sockets: Vec<OutputSocket>,
     pub is_locked: bool, // if unlocked, show in both places
     #[serde(flatten)]
     pub timestamp: Timestamp,
@@ -109,32 +105,6 @@ pub enum ComponentType {
     Component,
     ConfigurationFrameDown,
     ConfigurationFrameUp,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ConnectionAnnotation {
-    pub tokens: Vec<String>,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct InputSocket {
-    pub id: InputSocketId,
-    pub name: String,
-    pub eligible_to_send_data: bool,
-    pub annotations: Vec<ConnectionAnnotation>,
-    pub arity: String,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct OutputSocket {
-    pub id: OutputSocketId,
-    pub name: String,
-    pub eligible_to_receive_data: bool,
-    pub annotations: Vec<ConnectionAnnotation>,
-    pub arity: String,
 }
 
 #[derive(
