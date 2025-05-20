@@ -145,9 +145,13 @@ const attrData = computed<AttrData>(() => {
   return { value: props.value };
 });
 
-const valueForm = wForm.newForm(attrData, async ({ value }) => {
-  emit("save", path.value, props.attributeValueId, value.value);
-});
+const valueForm = wForm.newForm(
+  "component.av.prop",
+  attrData,
+  async ({ value }) => {
+    emit("save", path.value, props.attributeValueId, value.value);
+  },
+);
 
 // i assume more things than comboboxes have a list of options
 type AttrOption = string | number;

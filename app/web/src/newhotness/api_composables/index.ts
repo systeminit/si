@@ -1,5 +1,6 @@
-import { unref, inject, ref, Ref } from "vue";
+import { unref, inject, ref, Ref, watch } from "vue";
 import { AxiosResponse } from "axios";
+import { trace, Span } from "@opentelemetry/api";
 import { sdfApiInstance as sdf } from "@/store/apis.web";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -10,6 +11,8 @@ import {
   ActionResultState,
 } from "@/api/sdf/dal/action";
 import { assertIsDefined, Context } from "../types";
+
+const tracer = trace.getTracer("bifrost");
 
 export type FuncRunId = string;
 export type FuncRunLogId = string;
@@ -223,6 +226,22 @@ const _routes: Record<routes, string> = {
 } as const;
 
 // the mechanics
+type Obs = {
+  inFlight: Ref<boolean>;
+  bifrosting: Ref<boolean>;
+  isWatched: boolean;
+  span?: Span;
+  label?: string;
+};
+
+type LabeledObs = Obs & Required<Pick<Obs, "label">>;
+
+const setLabel = (obs: Obs, label: string): LabeledObs => {
+  return {
+    ...obs,
+    label,
+  };
+};
 export class APICall<Response> {
   workspaceId: string;
   changeSetId: string;
@@ -230,14 +249,14 @@ export class APICall<Response> {
   ctx: Context;
   canMutateHead: boolean;
   description: string;
-  inFlight: Ref<boolean>;
+  obs: Obs;
 
   constructor(
     ctx: Context,
     path: string,
     canMutateHead: boolean,
     description: string,
-    inFlight: Ref<boolean>,
+    obs: LabeledObs,
   ) {
     this.ctx = ctx;
     const workspaceId = unref(ctx.workspacePk);
@@ -247,7 +266,7 @@ export class APICall<Response> {
     this.path = path;
     this.canMutateHead = canMutateHead;
     this.description = description;
-    this.inFlight = inFlight;
+    this.obs = obs;
   }
 
   url(): string {
@@ -256,13 +275,13 @@ export class APICall<Response> {
   }
 
   async get(params?: URLSearchParams) {
-    this.inFlight.value = true;
+    this.obs.inFlight.value = true;
     const req = await sdf<Response>({
       method: "GET",
       url: this.url(),
       params,
     });
-    this.inFlight.value = false;
+    this.obs.inFlight.value = false;
     return req;
   }
 
@@ -281,7 +300,9 @@ export class APICall<Response> {
   }
 
   async put<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
-    this.inFlight.value = true;
+    this.obs.inFlight.value = true;
+    this.obs.bifrosting.value = true;
+    if (this.obs.isWatched) this.obs.span = tracer.startSpan("watchedApi");
     let newChangeSetId;
     if (!this.canMutateHead && this.ctx.onHead.value) {
       newChangeSetId = await this.makeChangeSet();
@@ -293,12 +314,14 @@ export class APICall<Response> {
       params,
       data,
     });
-    this.inFlight.value = false;
+    this.obs.inFlight.value = false;
     return { req, newChangeSetId };
   }
 
   async post<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
-    this.inFlight.value = true;
+    this.obs.inFlight.value = true;
+    this.obs.bifrosting.value = true;
+    if (this.obs.isWatched) this.obs.span = tracer.startSpan("watchedApi");
     let newChangeSetId;
     if (!this.canMutateHead && this.ctx.onHead.value) {
       newChangeSetId = await this.makeChangeSet();
@@ -310,7 +333,7 @@ export class APICall<Response> {
       params,
       data,
     });
-    this.inFlight.value = false;
+    this.obs.inFlight.value = false;
     return { req, newChangeSetId };
   }
 
@@ -333,7 +356,11 @@ export const useApi = () => {
     }
   };
 
-  const inFlight = ref(false);
+  const obs: Obs | LabeledObs = {
+    inFlight: ref(false),
+    bifrosting: ref(false),
+    isWatched: false,
+  };
   const endpoint = <Response>(key: routes, args?: Record<string, string>) => {
     let path = _routes[key];
     if (args)
@@ -341,11 +368,37 @@ export const useApi = () => {
         path = path.replace(`<${k}>`, v);
       });
     const canMutateHead = CAN_MUTATE_ON_HEAD.includes(key);
-    const desc = `${key} ${
-      args ? [...Object.entries(args)].flatMap((m) => m).join(": ") : ""
-    } by ${ctx.user?.name} on ${new Date().toLocaleDateString()}`;
-    return new APICall<Response>(ctx, path, canMutateHead, desc, inFlight);
+    const argList = args ? [...Object.entries(args)].flatMap((m) => m) : [];
+    const desc = `${key} ${argList.join(": ")} by ${
+      ctx.user?.name
+    } on ${new Date().toLocaleDateString()}`;
+    return new APICall<Response>(
+      ctx,
+      path,
+      canMutateHead,
+      desc,
+      setLabel(obs, `${key}.${argList.join(".")}`),
+    );
   };
 
-  return { ok, endpoint, inFlight };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const setWatchFn = (fn: () => any) => {
+    obs.isWatched = true;
+    watch(
+      fn,
+      () => {
+        obs.bifrosting.value = false;
+        if (obs.span) obs.span.end();
+      },
+      { once: true },
+    );
+  };
+
+  return {
+    ok,
+    endpoint,
+    inFlight: obs.inFlight,
+    bifrosting: obs.bifrosting,
+    setWatchFn,
+  };
 };

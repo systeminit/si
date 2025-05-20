@@ -1274,6 +1274,14 @@ const getReferences = async (
   )
     return [atomDoc, false];
 
+  const span = tracer.startSpan("getReferences");
+  span.setAttributes({
+    workspaceId,
+    changeSetId,
+    kind,
+    id,
+  });
+
   debug("🔗 reference query", kind, id);
 
   let hasReferenceError = false;
@@ -1310,6 +1318,7 @@ const getReferences = async (
       ...data,
       schemaVariant: sv !== -1 ? sv : ({} as SchemaVariant),
     };
+    span.end();
     return [component, hasReferenceError];
   } else if (kind === "ViewList") {
     const rawList = atomDoc as RawViewList;
@@ -1342,6 +1351,7 @@ const getReferences = async (
       id: rawList.id,
       views,
     };
+    span.end();
     return [list, hasReferenceError];
   } else if (kind === "ComponentList" || kind === "ViewComponentList") {
     const rawList = atomDoc as EddaComponentList;
@@ -1377,6 +1387,7 @@ const getReferences = async (
       id: rawList.id,
       components,
     };
+    span.end();
     return [list, hasReferenceError];
   } else if (kind === "IncomingConnections") {
     const raw = atomDoc as EddaIncomingConnections;
@@ -1452,6 +1463,7 @@ const getReferences = async (
       }),
     );
 
+    span.end();
     return [
       {
         id: raw.id,
@@ -1487,6 +1499,7 @@ const getReferences = async (
       id: rawList.id,
       componentConnections,
     };
+    span.end();
     return [list, hasReferenceError];
   } else return [atomDoc, hasReferenceError];
 };

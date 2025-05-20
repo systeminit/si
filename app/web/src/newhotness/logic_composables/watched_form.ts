@@ -1,5 +1,9 @@
-import { ref, unref, watch, Ref, ComputedRef } from "vue";
+import { ref, unref, watch, Ref, ComputedRef, inject } from "vue";
 import { useForm, formOptions } from "@tanstack/vue-form";
+import { Span, trace } from "@opentelemetry/api";
+import { assertIsDefined, Context } from "../types";
+
+const tracer = trace.getTracer("bifrost");
 
 /**
  * WHEN? You want to use this form when the data that displays initially
@@ -42,7 +46,11 @@ export const useWatchedForm = <Data>() => {
    */
   const bifrosting = ref(false);
 
+  const ctx = inject<Context>("CONTEXT");
+  assertIsDefined(ctx);
+
   const newForm = (
+    label: string,
     formData: Ref<Data> | ComputedRef<Data>,
     // NOTE: props also contains `formApi`, but I can't realistically type it here
     onSubmit: (props: { value: Data }) => void,
@@ -50,12 +58,22 @@ export const useWatchedForm = <Data>() => {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
     watchFn?: () => any,
   ) => {
+    let start: number;
+    let span: Span;
+
     const opts = formOptions({
       defaultValues: unref(formData),
     });
     const wForm = useForm({
       ...opts,
       onSubmit: (props) => {
+        span = tracer.startSpan("watchedForm");
+        span.setAttributes({
+          workspaceId: ctx.workspacePk.value,
+          changeSetId: ctx.changeSetId.value,
+          form: label,
+        });
+        start = Date.now();
         onSubmit(props);
         bifrosting.value = true;
       },
@@ -69,14 +87,26 @@ export const useWatchedForm = <Data>() => {
       },
     });
 
+    let observed = false;
+    const observe = (time: number) => {
+      if (observed) return;
+      observed = true;
+      span.setAttribute("measured_time", time);
+      span.end();
+    };
+
     if (watchFn) {
       watch(watchFn, () => {
         bifrosting.value = false;
+        const end = Date.now();
+        observe(end - start);
         wForm.reset(unref(formData));
       });
     } else {
       watch(formData, () => {
         bifrosting.value = false;
+        const end = Date.now();
+        observe(end - start);
         wForm.reset(unref(formData));
       });
     }

@@ -50,8 +50,8 @@
               tone="shade"
               variant="ghost"
               size="sm"
-              :loading="bifrostingAdd"
-              :disabled="bifrostingAdd"
+              :loading="addApi.bifrosting.value"
+              :disabled="addApi.bifrosting.value"
               loadingIcon="loader"
               @click="add"
               >+ add {{ displayName }}</VButton
@@ -118,16 +118,20 @@ const displayName = computed(() => {
   else return props.attributeTree.prop?.name || "XXX";
 });
 
-const api = useApi();
+const addApi = useApi();
 
-const bifrostingAdd = ref(false);
 const add = async () => {
   if (props.attributeTree.prop?.kind === "map") {
     showKey.value = true;
     return;
   }
 
-  const call = api.endpoint<{ success: boolean }>(
+  addApi.setWatchFn(
+    // once the children count updates, we can stop spinning
+    () => props.attributeTree.children.length,
+  );
+
+  const call = addApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
@@ -146,38 +150,10 @@ const add = async () => {
     ];
   if (childProp?.kind === "object") payload[`${path}/-`] = {};
   else payload[`${path}/-`] = "";
-  bifrostingAdd.value = true;
-  await call.put<UpdateComponentAttributesArgs>(payload);
-  watch(
-    () => props.attributeTree.children.length,
-    () => {
-      // once the children count updates, we can stop spinning
-      bifrostingAdd.value = false;
-    },
-    { once: true },
-  );
-};
-
-const router = useRouter();
-const route = useRoute();
-const showKey = ref(false);
-const wForm = useWatchedForm<{ key: string }>();
-const keyData = ref({ key: "" });
-const keyForm = wForm.newForm(keyData, async ({ value }) => {
-  const call = api.endpoint<{ success: boolean }>(
-    routes.UpdateComponentAttributes,
-    { id: props.component.id },
-  );
-  const payload: UpdateComponentAttributesArgs = {};
-  const path =
-    props.attributeTree.prop?.path
-      .replace("root", "")
-      .replaceAll("\u000b", "/") ?? ""; // endpoint doesn't want it
-  payload[`${path}/${value.key}`] = "";
   const { req, newChangeSetId } = await call.put<UpdateComponentAttributesArgs>(
     payload,
   );
-  if (newChangeSetId && api.ok(req)) {
+  if (addApi.ok(req) && newChangeSetId) {
     router.push({
       name: "new-hotness-component",
       params: {
@@ -187,7 +163,42 @@ const keyForm = wForm.newForm(keyData, async ({ value }) => {
       },
     });
   }
-});
+};
+
+const router = useRouter();
+const route = useRoute();
+const showKey = ref(false);
+const wForm = useWatchedForm<{ key: string }>();
+const keyData = ref({ key: "" });
+const keyApi = useApi();
+const keyForm = wForm.newForm(
+  "component.av.key",
+  keyData,
+  async ({ value }) => {
+    const call = keyApi.endpoint<{ success: boolean }>(
+      routes.UpdateComponentAttributes,
+      { id: props.component.id },
+    );
+    const payload: UpdateComponentAttributesArgs = {};
+    const path =
+      props.attributeTree.prop?.path
+        .replace("root", "")
+        .replaceAll("\u000b", "/") ?? ""; // endpoint doesn't want it
+    payload[`${path}/${value.key}`] = "";
+    const { req, newChangeSetId } =
+      await call.put<UpdateComponentAttributesArgs>(payload);
+    if (newChangeSetId && keyApi.ok(req)) {
+      router.push({
+        name: "new-hotness-component",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+          componentId: props.component.id,
+        },
+      });
+    }
+  },
+);
 
 const saveKey = async () => {
   if (keyForm.fieldInfo.key.instance?.state.meta.isDirty) {
