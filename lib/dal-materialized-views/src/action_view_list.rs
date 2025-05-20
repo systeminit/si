@@ -48,7 +48,13 @@ pub async fn assemble(ctx: DalContext) -> super::Result<ActionViewListMv> {
             }
             None => (None, None),
         };
-
+        let mut my_dependencies = action_graph.get_all_dependencies(action_id);
+        my_dependencies.sort();
+        let mut dependent_on = action_graph.direct_dependencies_of(action_id);
+        dependent_on.sort();
+        let mut hold_status_influenced_by =
+            Action::get_hold_status_influenced_by(ctx, &action_graph, action_id).await?;
+        hold_status_influenced_by.sort();
         views.push(ActionView {
             id: action_id,
             prototype_id: prototype.id(),
@@ -61,17 +67,11 @@ pub async fn assemble(ctx: DalContext) -> super::Result<ActionViewListMv> {
             state: action.state(),
             func_run_id,
             originating_change_set_id: action.originating_changeset_id(),
-            my_dependencies: action_graph.get_all_dependencies(action_id),
-            dependent_on: action_graph.direct_dependencies_of(action_id),
-            hold_status_influenced_by: Action::get_hold_status_influenced_by(
-                ctx,
-                &action_graph,
-                action_id,
-            )
-            .await?,
+            my_dependencies,
+            dependent_on,
+            hold_status_influenced_by,
         })
     }
-
     Ok(ActionViewListMv {
         id: ctx.change_set_id(),
         actions: views,

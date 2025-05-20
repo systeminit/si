@@ -195,7 +195,6 @@ pub async fn build_all_mv_for_change_set(
     frigg
         .put_index(ctx.workspace_pk()?, &mv_index_frontend_object)
         .await?;
-
     DataCache::publish_patch_batch(ctx, patch_batch).await?;
 
     Ok(())
@@ -305,7 +304,6 @@ pub async fn build_mv_for_changes_in_change_set(
             index_kv_revision,
         )
         .await?;
-
     DataCache::publish_patch_batch(ctx, patch_batch).await?;
 
     Ok(())
@@ -362,7 +360,6 @@ async fn build_mv_inner(
         mv_dependency_graph.independent_ids().into_iter().collect();
     let mut mv_task_ids: HashMap<ReferenceKind, HashSet<Ulid>> = HashMap::new();
     let mut queued_mv_builds = VecDeque::new();
-
     loop {
         // If there aren't any ready to start MV kinds, there aren't any builds queued waiting
         // for the concurrency limit, and there aren't any currently running MV build tasks,
@@ -429,8 +426,25 @@ async fn build_mv_inner(
             // as MV build tasks finish, and we also don't want to free up the things that depend on them until _all_
             // of the started tasks for that MV kind have finished. Once the build tasks have finished, we'll remove the
             // MV kind from the graph, which will let the downstream MVs start.
+
+            // We need to track which MV kinds actually started, as if an MV kind was ready, but no changes came in that
+            // the MV kind cares about, we should remove it from the graph now.
             for &running_mv_kind in &ready_to_start_mv_kinds {
-                mv_dependency_graph.cycle_on_self(running_mv_kind);
+                // if the task has been kicked off, or it's queued, let's cycle on self.
+                if mv_task_ids
+                    .clone()
+                    .into_keys()
+                    .any(|build| build == running_mv_kind)
+                    || queued_mv_builds
+                        .iter()
+                        .any(|build| build.mv_kind == running_mv_kind)
+                {
+                    mv_dependency_graph.cycle_on_self(running_mv_kind);
+                }
+                // otherwise, no work to do here, let's remove it and free up the downstream MV kinds
+                else {
+                    mv_dependency_graph.remove_id(running_mv_kind);
+                }
             }
         }
 
@@ -454,7 +468,6 @@ async fn build_mv_inner(
             if mv_kind_task_ids.get().is_empty() {
                 mv_dependency_graph.remove_id(kind);
             }
-
             match execution_result {
                 Ok((maybe_patch, maybe_frontend_object)) => {
                     if let Some(patch) = maybe_patch {
@@ -469,7 +482,6 @@ async fn build_mv_inner(
                 }
             }
         }
-
         ready_to_start_mv_kinds = mv_dependency_graph.independent_ids().into_iter().collect();
     }
 

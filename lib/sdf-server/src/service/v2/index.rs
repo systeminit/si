@@ -72,7 +72,8 @@ impl IntoResponse for IndexError {
             IndexError::IndexNotFound(_, _)
             | IndexError::IndexNotFoundAfterFreshBuild(_, _)
             | IndexError::IndexNotFoundAfterRebuild(_, _)
-            | IndexError::ItemWithChecksumNotFound(_, _, _) => StatusCode::NOT_FOUND,
+            | IndexError::ItemWithChecksumNotFound(_, _, _)
+            | IndexError::LatestItemNotFound(_, _, _) => StatusCode::NOT_FOUND,
             _ => ApiError::DEFAULT_ERROR_STATUS_CODE,
         };
 
