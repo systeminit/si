@@ -11,6 +11,7 @@ use std::{
 
 use async_trait::async_trait;
 use corrections::correct_transforms;
+use itertools::Itertools as _;
 use petgraph::Direction::{
     self,
     Incoming,
@@ -1138,12 +1139,31 @@ impl SplitSnapshot {
     ) -> WorkspaceSnapshotResult<()> {
         let target_id = target_id.into();
         let mut working_copy = self.working_copy_mut().await;
-        let sources: Vec<_> = working_copy
+        let sources = working_copy
             .edges_directed_for_edge_weight_kind(target_id, Incoming, kind)?
             .map(|edge_ref| edge_ref.source())
-            .collect();
+            .collect_vec();
 
         for source_id in sources {
+            working_copy.remove_edge(source_id, kind, target_id)?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn remove_outgoing_edges_of_kind(
+        &self,
+        source_id: impl Into<Ulid>,
+        kind: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotResult<()> {
+        let source_id = source_id.into();
+        let mut working_copy = self.working_copy_mut().await;
+        let targets = working_copy
+            .edges_directed_for_edge_weight_kind(source_id, Incoming, kind)?
+            .map(|edge_ref| edge_ref.target())
+            .collect_vec();
+
+        for target_id in targets {
             working_copy.remove_edge(source_id, kind, target_id)?;
         }
 

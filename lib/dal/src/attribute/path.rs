@@ -27,6 +27,14 @@ pub enum AttributePath {
     JsonPointer(String),
 }
 
+impl std::fmt::Display for AttributePath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AttributePath::JsonPointer(path) => write!(f, "{}", path),
+        }
+    }
+}
+
 impl AttributePath {
     pub fn from_json_pointer(path: impl Into<String>) -> Self {
         AttributePath::JsonPointer(path.into())

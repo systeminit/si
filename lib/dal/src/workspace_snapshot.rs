@@ -1231,6 +1231,23 @@ impl WorkspaceSnapshot {
         Ok(())
     }
 
+    pub async fn remove_outgoing_edges_of_kind(
+        &self,
+        source_id: impl Into<Ulid>,
+        kind: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotResult<()> {
+        let source_id = source_id.into();
+
+        let targets = self
+            .outgoing_targets_for_edge_weight_kind(source_id, kind)
+            .await?;
+        for target_id in targets {
+            self.remove_edge(source_id, target_id, kind).await?;
+        }
+
+        Ok(())
+    }
+
     pub async fn get_edges_between_nodes(
         &self,
         from_node_id: Ulid,

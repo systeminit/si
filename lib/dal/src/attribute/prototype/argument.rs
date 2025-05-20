@@ -19,10 +19,7 @@ use si_id::{
     AttributeValueId,
     ComponentId,
     FuncArgumentId,
-    InputSocketId,
     OutputSocketId,
-    PropId,
-    SecretId,
     StaticArgumentValueId,
 };
 use static_value::StaticArgumentValue;
@@ -234,7 +231,7 @@ impl AttributePrototypeArgument {
         value_source: impl Into<ValueSource>,
     ) -> AttributePrototypeArgumentResult<Self> {
         let argument = Self::new_without_source(ctx, prototype_id, arg_id).await?;
-        Self::set_value_source(ctx, argument.id, value_source).await?;
+        Self::attach_value_source(ctx, argument.id, value_source).await?;
         Ok(argument)
     }
 
@@ -344,9 +341,9 @@ impl AttributePrototypeArgument {
             prototype_arg
         };
 
-        prototype_arg
-            .set_value_from_output_socket_id(ctx, source_output_socket_id)
-            .await
+        Self::attach_value_source(ctx, prototype_arg.id, source_output_socket_id).await?;
+
+        Ok(prototype_arg)
     }
 
     pub async fn func_argument(
@@ -478,29 +475,39 @@ impl AttributePrototypeArgument {
         Ok(None)
     }
 
+    /// This sets the value source on an APA.
+    /// If the APA already has a value source, it will be replaced.
     pub async fn set_value_source(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,
         value_source: impl Into<ValueSource>,
     ) -> AttributePrototypeArgumentResult<()> {
+        // First remove any existing sources.
         let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        for existing_value_source in workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(
+        workspace_snapshot
+            .remove_outgoing_edges_of_kind(
                 apa_id,
                 EdgeWeightKindDiscriminants::PrototypeArgumentValue,
             )
-            .await?
-        {
-            workspace_snapshot
-                .remove_edge(
-                    apa_id,
-                    existing_value_source,
-                    EdgeWeightKindDiscriminants::PrototypeArgumentValue,
-                )
-                .await?;
-        }
+            .await?;
+        workspace_snapshot
+            .remove_outgoing_edges_of_kind(apa_id, EdgeWeightKindDiscriminants::ValueSubscription)
+            .await?;
 
+        // Then attach the new one.
+        Self::attach_value_source(ctx, apa_id, value_source).await
+    }
+
+    /// This will attach a value source to an APA.
+    ///
+    /// The APA *must not* already have a value source.
+    ///
+    /// This should only be used in conjunction with new_without_source().
+    async fn attach_value_source(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+        value_source: impl Into<ValueSource>,
+    ) -> AttributePrototypeArgumentResult<()> {
         let value_source = value_source.into();
         match value_source {
             ValueSource::InputSocket(_)
@@ -514,7 +521,7 @@ impl AttributePrototypeArgument {
                     value_source.into_inner_id(),
                     EdgeWeightKind::PrototypeArgumentValue,
                 )
-                .await?
+                .await
             }
             ValueSource::ValueSubscription(ValueSubscription {
                 attribute_value_id,
@@ -526,11 +533,9 @@ impl AttributePrototypeArgument {
                     attribute_value_id,
                     EdgeWeightKind::ValueSubscription(path),
                 )
-                .await?
+                .await
             }
         }
-
-        Ok(())
     }
 
     pub async fn prototype_id(
@@ -565,68 +570,13 @@ impl AttributePrototypeArgument {
         Ok(prototype_node_weight.id().into())
     }
 
-    pub async fn set_value_from_input_socket_id(
-        self,
-        ctx: &DalContext,
-        input_socket_id: InputSocketId,
-    ) -> AttributePrototypeArgumentResult<Self> {
-        Self::set_value_source(ctx, self.id, input_socket_id)
-            .await
-            .and(Ok(self))
-    }
-
-    pub async fn set_value_from_output_socket_id(
-        self,
-        ctx: &DalContext,
-        output_socket_id: OutputSocketId,
-    ) -> AttributePrototypeArgumentResult<Self> {
-        Self::set_value_source(ctx, self.id, output_socket_id).await?;
-        Ok(self)
-    }
-
-    pub async fn set_value_from_prop_id(
-        self,
-        ctx: &DalContext,
-        prop_id: PropId,
-    ) -> AttributePrototypeArgumentResult<Self> {
-        Self::set_value_source(ctx, self.id, prop_id).await?;
-        Ok(self)
-    }
-
-    pub async fn set_value_from_secret_id(
-        self,
-        ctx: &DalContext,
-        secret_id: SecretId,
-    ) -> AttributePrototypeArgumentResult<Self> {
-        Self::set_value_source(ctx, self.id, secret_id).await?;
-        Ok(self)
-    }
-
-    pub async fn set_value_from_static_value_id(
-        self,
-        ctx: &DalContext,
-        value_id: StaticArgumentValueId,
-    ) -> AttributePrototypeArgumentResult<Self> {
-        Self::set_value_source(ctx, self.id, value_id).await?;
-        Ok(self)
-    }
-
-    pub async fn set_value_from_static_value(
-        self,
-        ctx: &DalContext,
-        value: serde_json::Value,
-    ) -> AttributePrototypeArgumentResult<Self> {
-        Self::set_static_value_source(ctx, self.id, value).await?;
-        Ok(self)
-    }
-
     pub async fn set_static_value_source(
         ctx: &DalContext,
         apa_id: AttributePrototypeArgumentId,
         value: serde_json::Value,
     ) -> AttributePrototypeArgumentResult<StaticArgumentValue> {
         let static_value = StaticArgumentValue::new(ctx, value).await?;
-        Self::set_value_source(ctx, apa_id, static_value.id()).await?;
+        Self::attach_value_source(ctx, apa_id, static_value.id()).await?;
         Ok(static_value)
     }
 
