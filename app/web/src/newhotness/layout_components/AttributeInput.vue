@@ -25,7 +25,12 @@
         <input
           class="block w-72 ml-auto text-white bg-black border-2 border-neutral-300 disabled:bg-neutral-900"
           type="text"
-          :value="field.state.value"
+          :value="
+            maybeOptions.hasOptions
+              ? maybeOptions.options.find((o) => o.value === field.state.value)
+                  ?.label
+              : field.state.value
+          "
           :disabled="wForm.bifrosting.value || bifrostingTrash"
           @input="(e) => field.handleChange((e.target as HTMLInputElement).value)"
           @blur="blur"
@@ -240,7 +245,7 @@ const focus = () => {
 };
 
 const select = (option: LabelEntry<AttrOption>) => {
-  valueForm.fieldInfo.value.instance?.handleChange(option.label);
+  valueForm.fieldInfo.value.instance?.handleChange(option.value);
   valueForm.handleSubmit();
   showOptions.value = false;
 };
