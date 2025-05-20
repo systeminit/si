@@ -2847,26 +2847,30 @@ impl Component {
             ctx,
             vec![DependentValueRoot::Unfinished(attribute_value_id.into())],
         )
+        .instrument(info_span!(
+            "enqueue_relevant_update_actions.dependent_value_graph"
+        ))
         .await?;
-        for impacted_attribute_value_id in dependency_graph.all_value_ids() {
+
+        let all_affected_av_ids = dependency_graph.all_value_ids();
+        let mut distinct_component_ids = HashSet::new();
+        for av_id in all_affected_av_ids {
             // check if the attribute value is in the domain tree for the component first
-            if let Some(prop_for_value) =
-                AttributeValue::prop_opt(ctx, impacted_attribute_value_id).await?
-            {
+            if let Some(prop_for_value) = AttributeValue::prop_opt(ctx, av_id).await? {
                 if prop_for_value
                     .path(ctx)
                     .await?
                     .is_descendant_of(&PropPath::new(["root", "domain"]))
                 {
-                    // first get the component for this attribute value
-                    let component_id =
-                        AttributeValue::component_id(ctx, impacted_attribute_value_id).await?;
-                    let actions =
-                        Self::enqueue_update_action_if_applicable(ctx, component_id).await?;
-                    enqueued_actions.extend(actions);
+                    distinct_component_ids.insert(AttributeValue::component_id(ctx, av_id).await?);
                 }
             }
         }
+        for component_id in distinct_component_ids {
+            let actions = Self::enqueue_update_action_if_applicable(ctx, component_id).await?;
+            enqueued_actions.extend(actions);
+        }
+
         Ok(enqueued_actions)
     }
 
