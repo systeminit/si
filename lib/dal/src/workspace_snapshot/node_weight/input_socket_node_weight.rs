@@ -41,7 +41,7 @@ pub enum InputSocketNodeWeightError {
 pub type InputSocketNodeWeightResult<T> = Result<T, InputSocketNodeWeightError>;
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiVersionedNodeWeight,
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiVersionedNodeWeight, Hash,
 )]
 pub enum InputSocketNodeWeight {
     #[si_versioned_node_weight(current)]

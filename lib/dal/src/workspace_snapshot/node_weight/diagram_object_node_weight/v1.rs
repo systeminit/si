@@ -30,7 +30,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, SiNodeWeight)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, SiNodeWeight, Hash)]
 #[si_node_weight(discriminant = NodeWeightDiscriminants::Geometry)]
 pub struct DiagramObjectNodeWeightV1 {
     pub id: Ulid,

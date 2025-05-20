@@ -26,7 +26,7 @@ use crate::{
 /// the given context). Note that a race to create the category will result in a broken graph(since
 /// having two of the same category would leave the graph in an inconsistent state), so you should
 /// implement the ability to merge your category nodes together.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Display, EnumIter)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Display, EnumIter, Hash)]
 pub enum CategoryNodeKind {
     Action,
     Component,
@@ -40,7 +40,7 @@ pub enum CategoryNodeKind {
     DiagramObject,
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct CategoryNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,

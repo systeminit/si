@@ -44,7 +44,7 @@ pub enum SchemaVariantNodeWeightError {
 pub type SchemaVariantNodeWeightResult<T> = Result<T, SchemaVariantNodeWeightError>;
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiVersionedNodeWeight,
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiVersionedNodeWeight, Hash,
 )]
 pub enum SchemaVariantNodeWeight {
     #[si_versioned_node_weight(current)]

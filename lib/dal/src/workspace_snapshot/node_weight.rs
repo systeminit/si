@@ -148,7 +148,7 @@ pub type NodeWeightResult<T> = Result<T, NodeWeightError>;
 
 /// **WARNING**: the order of this enum is important! Do not re-order elements.
 /// New variants must go at the end, even if it's not in lexical order!
-#[derive(Debug, Serialize, Deserialize, Clone, EnumDiscriminants, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, EnumDiscriminants, PartialEq, Eq, Hash)]
 #[strum_discriminants(derive(strum::Display, Hash, Serialize, Deserialize, EnumIter))]
 pub enum NodeWeight {
     Action(ActionNodeWeight),
@@ -1299,7 +1299,15 @@ impl CorrectExclusiveOutgoingEdge for NodeWeight {
     }
 }
 
+impl si_split_graph::NodeKind for NodeWeightDiscriminants {}
+
 impl si_split_graph::CustomNodeWeight for NodeWeight {
+    type Kind = NodeWeightDiscriminants;
+
+    fn kind(&self) -> Self::Kind {
+        self.into()
+    }
+
     fn id(&self) -> si_split_graph::SplitGraphNodeId {
         self.id()
     }

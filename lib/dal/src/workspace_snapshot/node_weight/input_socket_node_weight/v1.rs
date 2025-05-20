@@ -26,7 +26,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiNodeWeight)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiNodeWeight, Hash)]
 #[si_node_weight(discriminant = NodeWeightDiscriminants::InputSocket)]
 pub struct InputSocketNodeWeightV1 {
     pub id: Ulid,

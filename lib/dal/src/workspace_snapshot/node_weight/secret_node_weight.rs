@@ -38,7 +38,7 @@ use crate::{
     },
 };
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct SecretNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,

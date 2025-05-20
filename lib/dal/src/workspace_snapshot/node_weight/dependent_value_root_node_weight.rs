@@ -13,7 +13,7 @@ use crate::{
     workspace_snapshot::node_weight::traits::CorrectTransforms,
 };
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct DependentValueRootNodeWeight {
     pub id: Ulid,
     pub lineage_id: Ulid,

@@ -29,7 +29,9 @@ pub enum ActionKind {
     Update,
 }
 
-#[derive(Debug, Copy, Clone, Deserialize, Serialize, EnumDiscriminants, PartialEq, Eq, Display)]
+#[derive(
+    Debug, Copy, Clone, Deserialize, Serialize, EnumDiscriminants, PartialEq, Eq, Display, Hash,
+)]
 #[strum_discriminants(derive(strum::Display, Serialize, Deserialize))]
 pub enum ActionState {
     /// Action has been determined to be eligible to run, and has had its job sent to the job

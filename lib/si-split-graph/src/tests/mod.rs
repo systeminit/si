@@ -14,7 +14,7 @@ use updates::subgraph_as_updates;
 
 use super::*;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 struct TestNodeWeight {
     id: SplitGraphNodeId,
     lineage_id: SplitGraphNodeId,
@@ -34,7 +34,13 @@ impl std::fmt::Debug for TestNodeWeight {
     }
 }
 
+impl NodeKind for () {}
+
 impl CustomNodeWeight for TestNodeWeight {
+    type Kind = ();
+
+    fn kind(&self) -> Self::Kind {}
+
     fn id(&self) -> SplitGraphNodeId {
         self.id
     }
@@ -1389,14 +1395,14 @@ fn detect_updates_simple() -> SplitGraphResult<()> {
     assert!(matches!(
         update_1,
         Update::NewNode {
-            subgraph_index: 0,
-            node_weight: SplitGraphNodeWeight::Custom(TestNodeWeight { .. })
+            node_weight: SplitGraphNodeWeight::Custom(TestNodeWeight { .. }),
+            ..
         }
     ));
 
     let Update::NewNode {
-        subgraph_index: 0,
         node_weight: SplitGraphNodeWeight::Custom(custom_node),
+        ..
     } = update_1
     else {
         unreachable!("we already asserted this!")
@@ -1407,7 +1413,6 @@ fn detect_updates_simple() -> SplitGraphResult<()> {
     assert!(matches!(
         update_2,
         Update::NewEdge {
-            subgraph_index: 0,
             edge_weight: SplitGraphEdgeWeight::Custom(TestEdgeWeight::EdgeA),
             ..
         }
@@ -1422,8 +1427,8 @@ fn detect_updates_simple() -> SplitGraphResult<()> {
         unreachable!("bridge over the river kwai");
     };
 
-    assert_eq!(updated_graph.root_id()?, *source);
-    assert_eq!(new_node.id(), *destination);
+    assert_eq!(updated_graph.root_id()?, source.id);
+    assert_eq!(new_node.id(), destination.id);
 
     let inverse_updates = updated_graph.detect_updates(&base_graph);
     assert_eq!(2, inverse_updates.len());
@@ -1446,9 +1451,9 @@ fn detect_updates_simple() -> SplitGraphResult<()> {
     assert!(matches!(
         replace_node_update.first().unwrap(),
         Update::ReplaceNode {
-            subgraph_index: 0,
             node_weight: SplitGraphNodeWeight::Custom(TestNodeWeight { .. }),
             base_graph_node_id: None,
+            ..
         }
     ));
 
@@ -1502,7 +1507,7 @@ fn single_subgraph_as_updates() -> SplitGraphResult<()> {
     subgraph.remove_externals();
     subgraph.cleanup_maps();
 
-    let root_id = subgraph
+    let subgraph_root_id = subgraph
         .graph
         .node_weight(subgraph.root_index)
         .unwrap()
@@ -1512,21 +1517,24 @@ fn single_subgraph_as_updates() -> SplitGraphResult<()> {
         edges
             .into_iter()
             .map(|(source, target)| {
-                let source = source
+                let source_id = source
                     .map(|source| node_id_map.get(&source).copied().unwrap())
-                    .unwrap_or(root_id);
-                let destination = node_id_map.get(&target).copied().unwrap();
+                    .unwrap_or(subgraph_root_id);
+                let destination_id = node_id_map.get(&target).copied().unwrap();
+
+                let source = subgraph.node_weight(source_id).unwrap();
+                let destination = subgraph.node_weight(destination_id).unwrap();
 
                 Update::NewEdge {
-                    source,
-                    destination,
+                    source: source.into(),
+                    destination: destination.into(),
                     edge_weight: SplitGraphEdgeWeight::Custom(TestEdgeWeight::EdgeA),
-                    subgraph_index: 0,
+                    subgraph_root_id,
                 }
             })
             .collect();
 
-    let updates = subgraph_as_updates(&subgraph, 0);
+    let updates = subgraph_as_updates(&subgraph, subgraph_root_id);
     assert!(!updates.is_empty());
     let mut new_edge_count = 0;
     let mut new_node_count = 0;

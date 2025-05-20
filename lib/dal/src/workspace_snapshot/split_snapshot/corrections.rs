@@ -4,9 +4,12 @@
 /// since it depends on the specific node weight types. For example, the ordering node
 /// corrections need to know about AttributeValue container objects, and so on. But it
 /// also has to be implemented for the custom node weight types.
-use std::collections::{
-    BTreeMap,
-    BTreeSet,
+use std::{
+    collections::{
+        BTreeMap,
+        BTreeSet,
+    },
+    marker::PhantomData,
 };
 
 use petgraph::Direction::{
@@ -32,7 +35,10 @@ use crate::{
     EdgeWeight,
     EdgeWeightKind,
     EdgeWeightKindDiscriminants,
-    workspace_snapshot::node_weight::NodeWeight,
+    workspace_snapshot::node_weight::{
+        NodeWeight,
+        traits::SiVersionedNodeWeight,
+    },
 };
 
 #[derive(Debug, Error)]
@@ -74,6 +80,7 @@ impl CorrectTransforms<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>
             SplitGraphNodeWeight::ExternalTarget { .. } => Ok(updates),
             SplitGraphNodeWeight::Ordering { id, order, .. } => correct_transforms_ordering_node(
                 *id,
+                self,
                 order.as_slice(),
                 graph,
                 updates,
@@ -88,12 +95,37 @@ impl CorrectTransforms<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>
 impl CorrectTransforms<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants> for &NodeWeight {
     fn correct_transforms(
         &self,
-        _graph: &SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+        graph: &SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
         updates: Vec<Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
-        _from_different_change_set: bool,
+        from_different_change_set: bool,
     ) -> CorrectTransformsResult<Vec<Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>>
     {
-        Ok(updates)
+        match self {
+            NodeWeight::Geometry(geometry_node_weight) => {
+                geometry_node_weight.correct_transforms(graph, updates, from_different_change_set)
+            }
+            NodeWeight::View(view_node_weight) => {
+                view_node_weight.correct_transforms(graph, updates, from_different_change_set)
+            }
+            _ => Ok(updates),
+        }
+    }
+}
+
+impl<T> CorrectTransforms<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants> for T
+where
+    T: SiVersionedNodeWeight,
+    T::Inner: CorrectTransforms<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+{
+    fn correct_transforms(
+        &self,
+        graph: &SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+        updates: Vec<Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+        from_different_change_set: bool,
+    ) -> CorrectTransformsResult<Vec<Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>>
+    {
+        self.inner()
+            .correct_transforms(graph, updates, from_different_change_set)
     }
 }
 
@@ -113,8 +145,8 @@ pub fn correct_transforms(
                 edge_weight,
                 ..
             } => {
-                nodes_to_interrogate.insert(*source);
-                nodes_to_interrogate.insert(*destination);
+                nodes_to_interrogate.insert(source.id);
+                nodes_to_interrogate.insert(destination.id);
                 if let Some(external_source_id) = edge_weight
                     .external_source_data()
                     .map(|data| data.source_id())
@@ -128,9 +160,10 @@ pub fn correct_transforms(
                 external_source_data,
                 ..
             } => {
-                nodes_to_interrogate.insert(*source);
-                nodes_to_interrogate.insert(*destination);
-                if let Some(external_source_id) = external_source_data.map(|data| data.source_id())
+                nodes_to_interrogate.insert(source.id);
+                nodes_to_interrogate.insert(destination.id);
+                if let Some(external_source_id) =
+                    external_source_data.as_ref().map(|data| data.source_id())
                 {
                     nodes_to_interrogate.insert(external_source_id);
                 }
@@ -151,7 +184,7 @@ pub fn correct_transforms(
             Update::NewNode { node_weight, .. } => {
                 new_nodes.insert(node_weight.id(), node_weight.clone());
             }
-            Update::NewSubGraph => {}
+            Update::NewSubGraph { .. } => {}
         }
     }
 
@@ -173,6 +206,7 @@ pub fn correct_transforms(
 
 pub fn correct_transforms_ordering_node(
     id: SplitGraphNodeId,
+    this_ordering_node: &SplitGraphNodeWeight<NodeWeight>,
     order: &[SplitGraphNodeId],
     graph: &SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
     mut updates: Vec<Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
@@ -210,10 +244,10 @@ pub fn correct_transforms_ordering_node(
                 edge_weight,
                 ..
             } => {
-                if *source == id && matches!(edge_weight, SplitGraphEdgeWeight::Ordinal) {
-                    final_children.insert(*destination);
+                if source.id == id && matches!(edge_weight, SplitGraphEdgeWeight::Ordinal) {
+                    final_children.insert(destination.id);
                 } else if let Some(av_container_id) = maybe_attribute_value_container_id {
-                    if *source == av_container_id {
+                    if source.id == av_container_id {
                         if let Some(EdgeWeightKind::Contain(Some(new_key))) =
                             edge_weight.custom().map(|e| e.kind())
                         {
@@ -227,8 +261,8 @@ pub fn correct_transforms_ordering_node(
                 destination,
                 edge_kind: SplitGraphEdgeWeightKind::Ordinal,
                 ..
-            } if *source == id => {
-                final_children.remove(destination);
+            } if source.id == id => {
+                final_children.remove(&destination.id);
             }
             Update::ReplaceNode { node_weight, .. } if node_weight.id() == id => {
                 replace_node_update_index = Some(update_index);
@@ -243,65 +277,82 @@ pub fn correct_transforms_ordering_node(
 
     if let Some(av_container_id) = maybe_attribute_value_container_id {
         if let Some(split_node_index) = graph.node_id_to_index(av_container_id) {
-            for duplicate_contain_edge_target in graph
-                .edges_directed(av_container_id, Outgoing)?
-                .filter(|edge_ref| match edge_ref.weight().kind() {
-                    EdgeWeightKind::Contain(Some(key)) => new_av_contains.contains(key),
-                    _ => false,
-                })
-                .filter_map(|edge_ref| graph.raw_node_weight(edge_ref.target()))
-            {
-                // We need to produce a remove edge update for each duplicate here.
-                // *And*, if the target is an ExternalTarget then we need to find the corresponding
-                // ExternalSource edge and produce a remove edge update for it as well.
-                duplicate_contain_edge_target_updates.push(Update::RemoveEdge {
-                    subgraph_index: split_node_index.subgraph(),
-                    source: id,
-                    destination: duplicate_contain_edge_target.id(),
-                    edge_kind: SplitGraphEdgeWeightKind::Custom(
-                        EdgeWeightKindDiscriminants::Contain,
-                    ),
-                    external_source_data: None,
-                });
+            if let Some(subgraph_root_id) = graph.subgraph_root_id(split_node_index.subgraph()) {
+                for duplicate_contain_edge_target in graph
+                    .edges_directed(av_container_id, Outgoing)?
+                    .filter(|edge_ref| match edge_ref.weight().kind() {
+                        EdgeWeightKind::Contain(Some(key)) => new_av_contains.contains(key),
+                        _ => false,
+                    })
+                    .filter_map(|edge_ref| graph.raw_node_weight(edge_ref.target()))
+                {
+                    // We need to produce a remove edge update for each duplicate here.
+                    // *And*, if the target is an ExternalTarget then we need to find the corresponding
+                    // ExternalSource edge and produce a remove edge update for it as well.
+                    duplicate_contain_edge_target_updates.push(Update::RemoveEdge {
+                        subgraph_root_id,
+                        source: this_ordering_node.into(),
+                        destination: duplicate_contain_edge_target.into(),
+                        edge_kind: SplitGraphEdgeWeightKind::Custom(
+                            EdgeWeightKindDiscriminants::Contain,
+                        ),
+                        external_source_data: None,
+                    });
 
-                match duplicate_contain_edge_target {
-                    SplitGraphNodeWeight::ExternalTarget { target, .. } => {
-                        if let Some(target_node_index) = graph.node_id_to_index(*target) {
-                            let external_source_source_id = graph
-                                .raw_edges_directed(*target, Incoming)?
-                                .find(|edge_ref| match edge_ref.weight() {
-                                    SplitGraphEdgeWeight::ExternalSource {
-                                        source_id,
-                                        edge_kind,
-                                        ..
-                                    } => {
-                                        *source_id == id
-                                            && *edge_kind == EdgeWeightKindDiscriminants::Contain
+                    match duplicate_contain_edge_target {
+                        SplitGraphNodeWeight::ExternalTarget { target, .. } => {
+                            if let Some(target_node_index) = graph.node_id_to_index(*target) {
+                                if let Some(target_subgraph_root_id) =
+                                    graph.subgraph_root_id(target_node_index.subgraph())
+                                {
+                                    let source_and_target = graph
+                                        .raw_edges_directed(*target, Incoming)?
+                                        .find(|edge_ref| match edge_ref.weight() {
+                                            SplitGraphEdgeWeight::ExternalSource {
+                                                source_id,
+                                                edge_kind,
+                                                ..
+                                            } => {
+                                                *source_id == id
+                                                    && *edge_kind
+                                                        == EdgeWeightKindDiscriminants::Contain
+                                            }
+                                            _ => false,
+                                        })
+                                        .and_then(|edge_ref| {
+                                            graph
+                                                .raw_node_weight(edge_ref.source())
+                                                .zip(graph.raw_node_weight(*target))
+                                        });
+
+                                    if let Some((source, target)) = source_and_target {
+                                        duplicate_contain_edge_target_updates.push(
+                                            Update::RemoveEdge {
+                                                subgraph_root_id: target_subgraph_root_id,
+                                                source: source.into(),
+                                                destination: target.into(),
+                                                edge_kind: SplitGraphEdgeWeightKind::ExternalSource,
+                                                external_source_data: Some(ExternalSourceData {
+                                                    source_id: id,
+                                                    edge_kind: EdgeWeightKindDiscriminants::Contain,
+                                                    // We're an ordering node, so we don't have a custom kind
+                                                    source_node_kind: None,
+
+                                                    phantom_n: PhantomData,
+                                                }),
+                                            },
+                                        );
                                     }
-                                    _ => false,
-                                })
-                                .map(|edge_ref| edge_ref.source());
-
-                            if let Some(external_source_source_id) = external_source_source_id {
-                                duplicate_contain_edge_target_updates.push(Update::RemoveEdge {
-                                    subgraph_index: target_node_index.subgraph(),
-                                    source: external_source_source_id,
-                                    destination: *target,
-                                    edge_kind: SplitGraphEdgeWeightKind::ExternalSource,
-                                    external_source_data: Some(ExternalSourceData {
-                                        source_id: id,
-                                        kind: EdgeWeightKindDiscriminants::Contain,
-                                    }),
-                                });
+                                }
                             }
-                        }
 
-                        final_children.remove(target);
+                            final_children.remove(target);
+                        }
+                        SplitGraphNodeWeight::Custom(c) => {
+                            final_children.remove(&c.id());
+                        }
+                        _ => {}
                     }
-                    SplitGraphNodeWeight::Custom(c) => {
-                        final_children.remove(&c.id());
-                    }
-                    _ => {}
                 }
             }
         }

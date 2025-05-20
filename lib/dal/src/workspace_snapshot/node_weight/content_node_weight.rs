@@ -41,7 +41,7 @@ use crate::{
     },
 };
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct ContentNodeWeight {
     /// The stable local ID of the object in question. Mainly used by external things like
     /// the UI to be able to say "do X to _this_ thing" since the `NodeIndex` is an

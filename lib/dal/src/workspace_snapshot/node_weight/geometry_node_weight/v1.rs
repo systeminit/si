@@ -21,6 +21,7 @@ use super::{
     NodeWeightDiscriminants,
 };
 use crate::{
+    EdgeWeight,
     EdgeWeightKindDiscriminants,
     WorkspaceSnapshotGraphVCurrent,
     workspace_snapshot::{
@@ -40,10 +41,11 @@ use crate::{
                 SiNodeWeight,
             },
         },
+        split_snapshot,
     },
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, SiNodeWeight)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, SiNodeWeight, Hash)]
 #[si_node_weight(discriminant = NodeWeightDiscriminants::Geometry)]
 pub struct GeometryNodeWeightV1 {
     pub id: Ulid,
@@ -88,6 +90,14 @@ impl CorrectTransforms for GeometryNodeWeightV1 {
         let mut maybe_container_view_for_self = None;
 
         let mut view_id_for_diagram_object = HashMap::new();
+
+        // If the geometry node is already there, there's nothing to do
+        if workspace_snapshot_graph
+            .get_node_index_by_id_opt(self.id)
+            .is_some()
+        {
+            return Ok(updates);
+        }
 
         for (update_idx, update) in updates.iter().enumerate() {
             match update {
@@ -266,5 +276,32 @@ impl CorrectTransforms for GeometryNodeWeightV1 {
 impl CorrectExclusiveOutgoingEdge for GeometryNodeWeightV1 {
     fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[EdgeWeightKindDiscriminants::Represents]
+    }
+}
+
+impl
+    split_snapshot::corrections::CorrectTransforms<
+        NodeWeight,
+        EdgeWeight,
+        EdgeWeightKindDiscriminants,
+    > for GeometryNodeWeightV1
+{
+    fn correct_transforms(
+        &self,
+        _graph: &si_split_graph::SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+        updates: Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+        _from_different_change_set: bool,
+    ) -> split_snapshot::corrections::CorrectTransformsResult<
+        Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+    > {
+        // find the new geometry node in the list of updates (or a matching external target)
+        //
+        // find the new diagram object (if any)
+        //
+        // find the edge from the view to the diagram object
+        //
+        // find all new edge updates to or from the diagram object (or its external target)
+        //
+        Ok(updates)
     }
 }

@@ -30,7 +30,7 @@ use crate::{
     },
 };
 
-#[derive(Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[derive(Clone, Serialize, Deserialize, Default, PartialEq, Eq, Hash)]
 pub struct OrderingNodeWeight {
     pub id: Ulid,
     pub lineage_id: Ulid,

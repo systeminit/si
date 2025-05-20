@@ -59,7 +59,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiNodeWeight)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiNodeWeight, Hash)]
 #[si_node_weight(discriminant = NodeWeightDiscriminants::SchemaVariant)]
 pub struct SchemaVariantNodeWeightV1 {
     pub id: Ulid,

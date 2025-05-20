@@ -15,7 +15,7 @@ use crate::workspace_snapshot::node_weight::{
 };
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiVersionedNodeWeight,
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, dal_macros::SiVersionedNodeWeight, Hash,
 )]
 pub enum ViewNodeWeight {
     #[si_versioned_node_weight(current)]

@@ -73,7 +73,8 @@ where
 {
     pub(super) this_subgraph: &'a SubGraph<N, E, K>,
     pub(super) subgraphs: &'a [SubGraph<N, E, K>],
-    pub(super) edges: stable_graph::Edges<'a, SplitGraphEdgeWeight<E, K>, Directed, SubGraphIndex>,
+    pub(super) edges:
+        stable_graph::Edges<'a, SplitGraphEdgeWeight<E, K, N>, Directed, SubGraphIndex>,
     pub(super) from_id: SplitGraphNodeId,
     pub(super) direction: Direction,
     pub(super) debug: bool,
@@ -86,26 +87,29 @@ where
     K: EdgeKind,
 {
     pub(super) this_subgraph: &'a SubGraph<N, E, K>,
-    pub(super) edges: stable_graph::Edges<'a, SplitGraphEdgeWeight<E, K>, Directed, SubGraphIndex>,
+    pub(super) edges:
+        stable_graph::Edges<'a, SplitGraphEdgeWeight<E, K, N>, Directed, SubGraphIndex>,
 }
 
 #[derive(Debug)]
-pub struct RawSplitGraphEdgeReference<'a, E, K>
+pub struct RawSplitGraphEdgeReference<'a, E, K, N>
 where
     E: 'a + CustomEdgeWeight<K>,
+    N: CustomNodeWeight,
     K: EdgeKind,
 {
     source_id: SplitGraphNodeId,
     target_id: SplitGraphNodeId,
-    weight: &'a SplitGraphEdgeWeight<E, K>,
+    weight: &'a SplitGraphEdgeWeight<E, K, N>,
 }
 
-impl<'a, E, K> RawSplitGraphEdgeReference<'a, E, K>
+impl<'a, E, K, N> RawSplitGraphEdgeReference<'a, E, K, N>
 where
     E: 'a + CustomEdgeWeight<K>,
+    N: CustomNodeWeight,
     K: EdgeKind,
 {
-    pub fn weight(&self) -> &'a SplitGraphEdgeWeight<E, K> {
+    pub fn weight(&self) -> &'a SplitGraphEdgeWeight<E, K, N> {
         self.weight
     }
 
@@ -127,9 +131,9 @@ where
     pub(super) subgraph: Option<&'a SubGraph<N, E, K>>,
     pub(super) direction: Direction,
     pub(super) incoming_edges:
-        Option<stable_graph::Edges<'a, SplitGraphEdgeWeight<E, K>, Directed, SubGraphIndex>>,
+        Option<stable_graph::Edges<'a, SplitGraphEdgeWeight<E, K, N>, Directed, SubGraphIndex>>,
     pub(super) outgoing_neighbors:
-        Option<stable_graph::Neighbors<'a, SplitGraphEdgeWeight<E, K>, usize>>,
+        Option<stable_graph::Neighbors<'a, SplitGraphEdgeWeight<E, K, N>, usize>>,
 }
 
 impl<N, E, K> Iterator for SplitGraphNeighbors<'_, N, E, K>
@@ -289,7 +293,7 @@ where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
 {
-    type Item = RawSplitGraphEdgeReference<'a, E, K>;
+    type Item = RawSplitGraphEdgeReference<'a, E, K, N>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.edges.next().and_then(|edge_ref| {
@@ -445,5 +449,5 @@ where
     K: EdgeKind,
 {
     type NodeWeight = SplitGraphNodeWeight<N>;
-    type EdgeWeight = SplitGraphEdgeWeight<E, K>;
+    type EdgeWeight = SplitGraphEdgeWeight<E, K, N>;
 }
