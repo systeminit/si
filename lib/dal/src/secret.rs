@@ -52,7 +52,10 @@ use si_events::{
     ulid::Ulid,
 };
 use si_hash::Hash;
-use si_id::PropId;
+use si_id::{
+    PropId,
+    SchemaVariantId,
+};
 use si_layer_cache::LayerDbError;
 use sodiumoxide::crypto::{
     box_::{
@@ -199,8 +202,12 @@ pub enum SecretError {
     Pg(#[from] PgError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("not an error! prop id is not for a secret during MV build: {0}")]
+    PropIdNotForSecret(PropId),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("schema variant not secret defining: {0}")]
+    SchemaVariantNotSecretDefining(SchemaVariantId),
     #[error("secret not found: {0}")]
     SecretNotFound(SecretId),
     #[error("serde json error: {0}")]
@@ -724,6 +731,18 @@ impl Secret {
         }
 
         Ok(result)
+    }
+
+    /// Finds all secret prop ids for all schema variants
+    #[instrument(name = "find_secret_prop_ids", level = "debug", skip_all)]
+    pub async fn list_all_secret_prop_ids_for_variant(
+        ctx: &DalContext,
+        schema_variant_id: SchemaVariantId,
+    ) -> SecretResult<Vec<PropId>> {
+        let secrets_prop =
+            Prop::find_prop_by_path(ctx, schema_variant_id, &RootPropChild::Secrets.prop_path())
+                .await?;
+        Ok(Prop::direct_child_prop_ids_ordered(ctx, secrets_prop.id).await?)
     }
 
     /// Finds all the connected component Ids for the [`Secret`]

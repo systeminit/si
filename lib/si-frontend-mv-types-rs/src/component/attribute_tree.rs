@@ -7,10 +7,14 @@ use serde::{
 use si_id::{
     AttributeValueId,
     PropId,
+    SecretId,
 };
 use strum::Display;
 
-use crate::schema_variant::prop_tree::Prop;
+use crate::{
+    schema_variant::prop_tree::Prop,
+    secret::Secret,
+};
 
 // This type goes into the content store so cannot be re-ordered, only extended
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, Display)]
@@ -57,6 +61,7 @@ pub struct AttributeValue {
     pub is_controlled_by_dynamic_func: bool, // props driven by non-dynamic funcs have a statically set value
     pub overridden: bool, // true if this prop has a different controlling func id than the default for this asset
     pub validation: Option<ValidationOutput>,
+    pub secret_id: Option<SecretId>,
 }
 
 #[derive(
@@ -73,6 +78,7 @@ pub struct AttributeTree {
     pub attribute_values: HashMap<AttributeValueId, AttributeValue>,
     pub props: HashMap<PropId, Prop>,
     pub tree_info: HashMap<AttributeValueId, AvTreeInfo>,
+    pub secrets: HashMap<SecretId, Secret>,
 }
 
 #[derive(

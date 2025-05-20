@@ -28,6 +28,7 @@ use si_id::{
     PropId,
     SchemaId,
     SchemaVariantId,
+    SecretId,
     ViewId,
     WorkspaceId,
 };
@@ -103,6 +104,12 @@ impl FrontendChecksum for FuncId {
 }
 
 impl FrontendChecksum for InputSocketId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for SecretId {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_string())
     }

@@ -48,6 +48,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
     let secret_ids_by_key = Secret::list_ids_by_key(ctx).await?;
 
     let mut attribute_values = HashMap::new();
+    let mut secrets = HashMap::new();
     let mut props = HashMap::new();
     let mut tree_info = HashMap::new();
 
@@ -74,7 +75,8 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
 
         // Build si_frontend_mv_types::AttributeValue & add to attribute_values HashMap.
         let key = AttributeValue::key_for_id(ctx, av_id).await?;
-        let value = {
+        let (value, maybe_secret_id) = {
+            let mut default_none_secret_id = None;
             let mut value = match AttributeValue::get_by_id(ctx, av_id)
                 .await?
                 .value(ctx)
@@ -94,7 +96,10 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
             {
                 let secret_key = Secret::key_from_value_in_attribute_value(value)?;
                 value = match secret_ids_by_key.get(&secret_key) {
-                    Some(secret_id) => serde_json::to_value(secret_id)?,
+                    Some(secret_id) => {
+                        default_none_secret_id = Some(*secret_id);
+                        serde_json::to_value(secret_id)?
+                    }
 
                     None => {
                         // NOTE(nick): I ported this comment.
@@ -113,13 +118,12 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
                             av_id = %av_id,
                             "Secret key in dependent value does not match any secret key; assuming that dependent values are not up to date and treating the property temporarily as missing",
                         );
-
                         serde_json::Value::Null
                     }
                 }
             }
 
-            value
+            (value, default_none_secret_id)
         };
         let sockets_for_av = AttributeValue::list_input_socket_sources_for_id(ctx, av_id).await?;
         let can_be_set_by_socket = !sockets_for_av.is_empty();
@@ -170,6 +174,10 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
             });
 
         let (_, av_path) = AttributeValue::path_from_root(ctx, av_id).await?;
+        if let Some(secret_id) = maybe_secret_id {
+            let secret = crate::secret::assemble(ctx.clone(), secret_id).await?;
+            secrets.insert(secret_id, secret);
+        }
         let av_mv = AttributeValueMv {
             id: av_id,
             prop_id: maybe_prop.as_ref().map(|p| p.id),
@@ -182,6 +190,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
             is_controlled_by_dynamic_func: controlling_func.is_dynamic_func,
             overridden,
             validation,
+            secret_id: maybe_secret_id,
         };
         attribute_values.insert(av_id, av_mv);
 
@@ -199,5 +208,6 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         attribute_values,
         props,
         tree_info,
+        secrets,
     })
 }
