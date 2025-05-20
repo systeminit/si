@@ -284,7 +284,7 @@ impl FuncRunner {
                 ctx.events_tenancy(),
                 ctx.events_actor(),
             )?;
-            let before = FuncRunner::before_funcs(ctx, component_id).await?;
+            let before = FuncRunner::before_funcs(ctx, component_id, &func).await?;
 
             let func_run_create_time = Utc::now();
             let func_run_inner = FuncRunBuilder::default()
@@ -719,7 +719,7 @@ impl FuncRunner {
             let function_args: CasValue = args.clone().into();
 
             let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-            let before = FuncRunner::before_funcs(ctx, component_id).await?;
+            let before = FuncRunner::before_funcs(ctx, component_id, &func).await?;
 
             let func_run_create_time = Utc::now();
             let mut func_run_builder = FuncRunBuilder::default();
@@ -908,7 +908,7 @@ impl FuncRunner {
                 ContentHash::new("".as_bytes())
             };
 
-            let before = FuncRunner::before_funcs(ctx, manager_component_id).await?;
+            let before = FuncRunner::before_funcs(ctx, manager_component_id, &func).await?;
             let manager_component = Component::get_by_id(ctx, manager_component_id).await?;
             let component_name = manager_component.name(ctx).await?;
             let schema_name = manager_component.schema(ctx).await?.name;
@@ -1061,7 +1061,7 @@ impl FuncRunner {
                 ContentHash::new("".as_bytes())
             };
 
-            let before = FuncRunner::before_funcs(ctx, manager_component_id).await?;
+            let before = FuncRunner::before_funcs(ctx, manager_component_id, &func).await?;
             let manager_component = Component::get_by_id(ctx, manager_component_id).await?;
             let component_name = manager_component.name(ctx).await?;
             let schema_name = manager_component.schema(ctx).await?.name;
@@ -1267,7 +1267,7 @@ impl FuncRunner {
                 ContentHash::new("".as_bytes())
             };
 
-            let before = FuncRunner::before_funcs(ctx, component_id).await?;
+            let before = FuncRunner::before_funcs(ctx, component_id, &func).await?;
             let component = Component::get_by_id(ctx, component_id).await?;
             let component_name = component.name(ctx).await?;
             let schema_name = component.schema(ctx).await?.name;
@@ -1510,7 +1510,15 @@ impl FuncRunner {
     async fn before_funcs(
         ctx: &DalContext,
         component_id: ComponentId,
+        func: &Func,
     ) -> FuncRunnerResult<Vec<BeforeFunction>> {
+        if func.is_intrinsic() {
+            // Intrinsic functions can't have before functions as they're never dispatched
+            // to Veritech, so don't bother doing the expensive lookup to see what before
+            // functions exist.
+            return Ok(Vec::new());
+        }
+
         let ordered_before_funcs_with_secret_keys =
             Self::ordered_before_funcs_with_secret_keys(ctx, component_id).await?;
 
