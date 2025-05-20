@@ -3365,21 +3365,6 @@ impl Component {
 
             // Copy incoming socket connections
             for connection in Component::incoming_connections_for_id(ctx, component_id).await? {
-                println!(
-                    "Connecting {}.{} <- {}.{} (was from {}.{})",
-                    Component::name_by_id(ctx, pasted_component_id).await?,
-                    InputSocket::get_by_id(ctx, connection.to_input_socket_id)
-                        .await?
-                        .name(),
-                    Component::name_by_id(ctx, maybe_pasted(connection.from_component_id)).await?,
-                    OutputSocket::get_by_id(ctx, connection.from_output_socket_id)
-                        .await?
-                        .name(),
-                    Component::name_by_id(ctx, connection.from_component_id).await?,
-                    OutputSocket::get_by_id(ctx, connection.from_output_socket_id)
-                        .await?
-                        .name(),
-                );
                 Component::connect(
                     ctx,
                     maybe_pasted(connection.from_component_id),
@@ -3388,6 +3373,32 @@ impl Component {
                     connection.to_input_socket_id,
                 )
                 .await?;
+            }
+
+            // Find pasted components that subscribe to copied components, and
+            // resubscribe them to the pasted component
+            for (path, subscriber_apa_id) in Component::subscribers(ctx, component_id).await? {
+                let subscriber_ap_id =
+                    AttributePrototypeArgument::prototype_id(ctx, subscriber_apa_id).await?;
+                let Some(subscriber_av_id) =
+                    AttributePrototype::attribute_value_id(ctx, subscriber_ap_id).await?
+                else {
+                    continue;
+                };
+                let subscriber_id = AttributeValue::component_id(ctx, subscriber_av_id).await?;
+                if pasted_component_ids.contains(&subscriber_id) {
+                    let pasted_root_id =
+                        Component::root_attribute_value_id(ctx, pasted_component_id).await?;
+                    AttributePrototypeArgument::set_value_source(
+                        ctx,
+                        subscriber_apa_id,
+                        ValueSource::ValueSubscription(ValueSubscription {
+                            attribute_value_id: pasted_root_id,
+                            path,
+                        }),
+                    )
+                    .await?;
+                }
             }
         }
 

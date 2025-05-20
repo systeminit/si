@@ -1,21 +1,51 @@
 use std::collections::HashSet;
+
 use telemetry::prelude::*;
 
-use crate::action::prototype::{ActionKind, ActionPrototype};
-use crate::attribute::prototype::argument::{
-    AttributePrototypeArgument, AttributePrototypeArgumentId,
-};
-use crate::func::argument::{FuncArgument, FuncArgumentError};
-use crate::func::associations::FuncAssociations;
-use crate::func::authoring::{FuncAuthoringError, FuncAuthoringResult};
-use crate::func::intrinsics::IntrinsicFunc;
-use crate::func::{AttributePrototypeArgumentBag, AttributePrototypeBag, FuncKind};
-use crate::schema::variant::leaves::{LeafInputLocation, LeafKind};
-use crate::workspace_snapshot::graph::WorkspaceSnapshotGraphError;
 use crate::{
-    AttributePrototype, AttributePrototypeId, AttributeValue, Component, ComponentId, DalContext,
-    EdgeWeightKind, Func, FuncBackendResponseType, FuncId, OutputSocket, Prop, SchemaVariant,
-    SchemaVariantId, WorkspaceSnapshotError,
+    AttributePrototype,
+    AttributePrototypeId,
+    AttributeValue,
+    Component,
+    ComponentId,
+    DalContext,
+    EdgeWeightKind,
+    Func,
+    FuncBackendResponseType,
+    FuncId,
+    OutputSocket,
+    Prop,
+    SchemaVariant,
+    SchemaVariantId,
+    WorkspaceSnapshotError,
+    action::prototype::{
+        ActionKind,
+        ActionPrototype,
+    },
+    attribute::prototype::argument::{
+        AttributePrototypeArgument,
+        AttributePrototypeArgumentId,
+    },
+    func::{
+        AttributePrototypeArgumentBag,
+        AttributePrototypeBag,
+        FuncKind,
+        argument::{
+            FuncArgument,
+            FuncArgumentError,
+        },
+        associations::FuncAssociations,
+        authoring::{
+            FuncAuthoringError,
+            FuncAuthoringResult,
+        },
+        intrinsics::IntrinsicFunc,
+    },
+    schema::variant::leaves::{
+        LeafInputLocation,
+        LeafKind,
+    },
+    workspace_snapshot::graph::WorkspaceSnapshotGraphError,
 };
 
 #[instrument(
@@ -37,7 +67,7 @@ pub(crate) async fn update_associations(
             invalid => {
                 return Err(FuncAuthoringError::InvalidFuncAssociationsForFunc(
                     invalid, func.id, func.kind,
-                ))
+                ));
             }
         },
         // NOTE(nick): I'm re-reading the below comment and thinking we need to just destroy
@@ -54,7 +84,7 @@ pub(crate) async fn update_associations(
             invalid => {
                 return Err(FuncAuthoringError::InvalidFuncAssociationsForFunc(
                     invalid, func.id, func.kind,
-                ))
+                ));
             }
         },
         FuncKind::CodeGeneration => match associations {
@@ -411,27 +441,25 @@ pub(crate) async fn save_attr_func_proto_arguments(
             AttributePrototypeArgument::remove_or_no_op(ctx, arg.id).await?;
         }
 
-        let attribute_prototype_argument =
-            AttributePrototypeArgument::new(ctx, attribute_prototype_id, arg.func_argument_id)
-                .await?;
-        let attribute_prototype_argument_id = attribute_prototype_argument.id();
-
-        if let Some(input_socket_id) = arg.input_socket_id {
-            attribute_prototype_argument
-                .set_value_from_input_socket_id(ctx, input_socket_id)
-                .await?;
+        let value_source: ValueSource = if let Some(input_socket_id) = arg.input_socket_id {
+            input_socket_id.into()
         } else if let Some(prop_id) = arg.prop_id {
-            attribute_prototype_argument
-                .set_value_from_prop_id(ctx, prop_id)
-                .await?;
+            prop_id.into()
         } else {
             return Err(FuncAuthoringError::NoInputLocationGiven(
                 attribute_prototype_id,
                 arg.func_argument_id,
             ));
-        }
+        };
 
-        id_set.insert(attribute_prototype_argument_id);
+        let attribute_prototype_argument = AttributePrototypeArgument::new(
+            ctx,
+            attribute_prototype_id,
+            arg.func_argument_id,
+            value_source,
+        )
+        .await?;
+        id_set.insert(attribute_prototype_argument.id);
     }
 
     for attribute_prototype_argument_id in

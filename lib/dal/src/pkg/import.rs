@@ -1957,8 +1957,7 @@ pub async fn attach_resource_payload_to_value(
                     false
                 }
             } {
-                let apa = AttributePrototypeArgument::get_by_id(ctx, apa_id).await?;
-                apa.set_value_from_prop_id(ctx, source_prop_id).await?;
+                AttributePrototypeArgument::set_value_source(ctx, apa_id, source_prop_id).await?;
             }
         }
         None => {

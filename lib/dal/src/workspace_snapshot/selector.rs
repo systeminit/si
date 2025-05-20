@@ -477,6 +477,25 @@ impl WorkspaceSnapshotSelector {
         }
     }
 
+    pub async fn remove_outgoing_edges_of_kind(
+        &self,
+        source_id: impl Into<Ulid>,
+        kind: EdgeWeightKindDiscriminants,
+    ) -> WorkspaceSnapshotResult<()> {
+        match self {
+            Self::LegacySnapshot(snapshot) => {
+                snapshot
+                    .remove_outgoing_edges_of_kind(source_id, kind)
+                    .await
+            }
+            Self::SplitSnapshot(snapshot) => {
+                snapshot
+                    .remove_outgoing_edges_of_kind(source_id, kind)
+                    .await
+            }
+        }
+    }
+
     pub async fn get_edges_between_nodes(
         &self,
         from_node_id: Ulid,
