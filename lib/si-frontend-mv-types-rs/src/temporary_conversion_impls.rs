@@ -7,15 +7,11 @@
 use si_frontend_types::{
     ComponentQualificationStats as DeprecatedComponentQualificationStats,
     ComponentType as DeprecatedComponentType,
-    InputSocket as DeprecatedInputSocket,
-    OutputSocket as DeprecatedOutputSocket,
     PropKind as DeprecatedPropKind,
 };
 
 use crate::{
     ComponentType,
-    InputSocket,
-    OutputSocket,
     component::ComponentQualificationStats,
     schema_variant::prop_tree::PropKind,
 };
@@ -42,30 +38,6 @@ impl From<DeprecatedComponentType> for ComponentType {
             DeprecatedComponentType::Component => Self::Component,
             DeprecatedComponentType::ConfigurationFrameDown => Self::ConfigurationFrameDown,
             DeprecatedComponentType::ConfigurationFrameUp => Self::ConfigurationFrameUp,
-        }
-    }
-}
-
-impl From<DeprecatedInputSocket> for InputSocket {
-    fn from(value: DeprecatedInputSocket) -> Self {
-        Self {
-            id: value.id,
-            name: value.name,
-            eligible_to_send_data: value.eligible_to_send_data,
-            annotations: Vec::new(),
-            arity: String::new(),
-        }
-    }
-}
-
-impl From<DeprecatedOutputSocket> for OutputSocket {
-    fn from(value: DeprecatedOutputSocket) -> Self {
-        Self {
-            id: value.id,
-            name: value.name,
-            eligible_to_receive_data: value.eligible_to_receive_data,
-            annotations: Vec::new(),
-            arity: String::new(),
         }
     }
 }

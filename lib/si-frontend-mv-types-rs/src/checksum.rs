@@ -34,8 +34,6 @@ use si_id::{
 };
 
 use crate::{
-    InputSocket,
-    OutputSocket,
     component::attribute_tree::ValidationStatus,
     schema_variant::{
         SchemaVariantsByCategory,
@@ -149,26 +147,6 @@ impl FrontendChecksum for Prop {
         hasher.update(FrontendChecksum::checksum(&self.default_can_be_set_by_socket).as_bytes());
         hasher.update(FrontendChecksum::checksum(&self.is_origin_secret).as_bytes());
         hasher.update(FrontendChecksum::checksum(&self.widget_kind).as_bytes());
-        hasher.finalize()
-    }
-}
-
-impl FrontendChecksum for InputSocket {
-    fn checksum(&self) -> Checksum {
-        let mut hasher = ChecksumHasher::new();
-        hasher.update(FrontendChecksum::checksum(&self.id).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.name).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.eligible_to_send_data).as_bytes());
-        hasher.finalize()
-    }
-}
-
-impl FrontendChecksum for OutputSocket {
-    fn checksum(&self) -> Checksum {
-        let mut hasher = ChecksumHasher::new();
-        hasher.update(FrontendChecksum::checksum(&self.id).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.name).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.eligible_to_receive_data).as_bytes());
         hasher.finalize()
     }
 }
