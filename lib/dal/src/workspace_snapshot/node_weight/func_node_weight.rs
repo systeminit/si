@@ -25,7 +25,7 @@ use crate::{
     },
 };
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct FuncNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,

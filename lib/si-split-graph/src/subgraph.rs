@@ -39,7 +39,7 @@ where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
 {
-    pub(crate) graph: StableDiGraph<SplitGraphNodeWeight<N>, SplitGraphEdgeWeight<E, K>, usize>,
+    pub(crate) graph: StableDiGraph<SplitGraphNodeWeight<N>, SplitGraphEdgeWeight<E, K, N>, usize>,
     pub(crate) node_index_by_id: BTreeMap<SplitGraphNodeId, SubGraphNodeIndex>,
     pub(crate) node_indexes_by_lineage_id: HashMap<SplitGraphNodeId, HashSet<SubGraphNodeIndex>>,
     pub(crate) root_index: SubGraphNodeIndex,
@@ -78,8 +78,14 @@ where
 
     pub fn graph(
         &self,
-    ) -> &StableDiGraph<SplitGraphNodeWeight<N>, SplitGraphEdgeWeight<E, K>, usize> {
+    ) -> &StableDiGraph<SplitGraphNodeWeight<N>, SplitGraphEdgeWeight<E, K, N>, usize> {
         &self.graph
+    }
+
+    pub fn root_id(&self) -> Option<SplitGraphNodeId> {
+        self.graph
+            .node_weight(self.root_index)
+            .map(|node| node.id())
     }
 
     pub(crate) fn new_with_root() -> Self {
@@ -128,6 +134,11 @@ where
         }
 
         removed_ids
+    }
+
+    pub fn node_weight(&self, node_id: SplitGraphNodeId) -> Option<&SplitGraphNodeWeight<N>> {
+        self.node_id_to_index(node_id)
+            .and_then(|index| self.graph.node_weight(index))
     }
 
     pub fn cleanup_maps(&mut self) {
@@ -214,7 +225,7 @@ where
     fn edge_exists(
         &self,
         from_index: SubGraphNodeIndex,
-        edge_weight: &SplitGraphEdgeWeight<E, K>,
+        edge_weight: &SplitGraphEdgeWeight<E, K, N>,
         to_index: SubGraphNodeIndex,
     ) -> bool {
         self.graph
@@ -380,7 +391,7 @@ where
     pub(crate) fn all_outgoing_stably_ordered(
         &self,
         node_index: SubGraphNodeIndex,
-    ) -> Vec<(&SplitGraphEdgeWeight<E, K>, SubGraphNodeIndex)> {
+    ) -> Vec<(&SplitGraphEdgeWeight<E, K, N>, SubGraphNodeIndex)> {
         let ordered_children = self.ordered_children(node_index).unwrap_or_default();
         let ordered_children_edges: Vec<(_, _)> = ordered_children
             .iter()
@@ -458,7 +469,7 @@ where
     pub(crate) fn add_edge_raw(
         &mut self,
         from_index: SubGraphNodeIndex,
-        edge_weight: SplitGraphEdgeWeight<E, K>,
+        edge_weight: SplitGraphEdgeWeight<E, K, N>,
         to_index: SubGraphNodeIndex,
     ) -> Option<SubGraphEdgeIndex> {
         if !self.edge_exists(from_index, &edge_weight, to_index) {
@@ -525,7 +536,7 @@ where
     pub(crate) fn add_ordered_edge(
         &mut self,
         from_index: SubGraphNodeIndex,
-        edge_weight: SplitGraphEdgeWeight<E, K>,
+        edge_weight: SplitGraphEdgeWeight<E, K, N>,
         to_index: SubGraphNodeIndex,
     ) -> SplitGraphResult<(Option<SubGraphEdgeIndex>, Option<SubGraphEdgeIndex>)> {
         let target_id = self
@@ -557,7 +568,7 @@ where
     pub(crate) fn add_edge(
         &mut self,
         from_index: SubGraphNodeIndex,
-        edge_weight: SplitGraphEdgeWeight<E, K>,
+        edge_weight: SplitGraphEdgeWeight<E, K, N>,
         to_index: SubGraphNodeIndex,
     ) -> Option<SubGraphEdgeIndex> {
         self.add_edge_raw(from_index, edge_weight, to_index)
@@ -599,14 +610,14 @@ where
         &mut self,
         from_index: SubGraphNodeIndex,
         to_index: SubGraphNodeIndex,
-        external_source_data: ExternalSourceData<K>,
+        external_source_data: ExternalSourceData<K, N>,
     ) {
         self.touch_node(from_index);
         let edge_indexes: Vec<_> = self
             .graph
             .edges_connecting(from_index, to_index)
             .filter(|edge_ref| {
-                edge_ref.weight().external_source_data() == Some(external_source_data)
+                edge_ref.weight().external_source_data().as_ref() == Some(&external_source_data)
             })
             .map(|edge_ref| edge_ref.id())
             .collect();
@@ -692,7 +703,7 @@ where
         &self,
     ) -> impl Iterator<
         Item = (
-            &SplitGraphEdgeWeight<E, K>,
+            &SplitGraphEdgeWeight<E, K, N>,
             SplitGraphNodeId,
             SplitGraphNodeId,
         ),

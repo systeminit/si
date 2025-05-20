@@ -323,6 +323,7 @@ impl From<String> for PropPath {
     Eq,
     PartialEq,
     Serialize,
+    Hash,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]

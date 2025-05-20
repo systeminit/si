@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct ActionPrototypeNodeWeight {
     pub id: Ulid,
     kind: ActionKind,

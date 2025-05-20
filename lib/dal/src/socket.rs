@@ -51,6 +51,7 @@ pub enum SocketKind {
     Eq,
     PartialEq,
     Serialize,
+    Hash,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]

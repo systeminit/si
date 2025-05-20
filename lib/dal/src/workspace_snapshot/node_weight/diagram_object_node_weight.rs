@@ -14,7 +14,7 @@ use crate::{
 pub mod v1;
 use v1::DiagramObjectNodeWeightV1;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, SiVersionedNodeWeight)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, SiVersionedNodeWeight, Hash)]
 pub enum DiagramObjectNodeWeight {
     #[si_versioned_node_weight(current)]
     V1(DiagramObjectNodeWeightV1),

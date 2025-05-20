@@ -1,9 +1,11 @@
 use std::{
     collections::{
         BTreeMap,
+        BTreeSet,
         HashSet,
         VecDeque,
     },
+    marker::PhantomData,
     time::Instant,
 };
 
@@ -19,6 +21,7 @@ use petgraph_traits::{
 use serde::{
     Deserialize,
     Serialize,
+    de::DeserializeOwned,
 };
 use si_events::{
     ContentHash,
@@ -29,6 +32,7 @@ use si_events::{
     },
 };
 use si_id::ulid::Ulid;
+use strum::EnumDiscriminants;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -76,7 +80,8 @@ pub type SplitGraphResult<T> = Result<T, SplitGraphError>;
 pub type SplitGraphNodeId = Ulid;
 pub type SubGraphIndex = usize;
 
-#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize, EnumDiscriminants)]
+#[strum_discriminants(derive(Hash, Serialize, Deserialize))]
 pub enum SplitGraphNodeWeight<N>
 where
     N: CustomNodeWeight,
@@ -88,6 +93,8 @@ where
         id: SplitGraphNodeId,
         target: SplitGraphNodeId,
         merkle_tree_hash: MerkleTreeHash,
+        target_kind: SplitGraphNodeWeightDiscriminants,
+        target_custom_kind: Option<N::Kind>,
     },
     /// The ordering node for an ordered container
     Ordering {
@@ -227,25 +234,45 @@ where
         }
     }
 
+    pub fn custom_kind(&self) -> Option<N::Kind> {
+        match self {
+            SplitGraphNodeWeight::Custom(inner) => Some(inner.kind()),
+            _ => None,
+        }
+    }
+
     pub fn external_target_id(&self) -> Option<SplitGraphNodeId> {
         match self {
             SplitGraphNodeWeight::ExternalTarget { target, .. } => Some(*target),
             _ => None,
         }
     }
+
+    pub fn external_target_custom_kind(&self) -> Option<N::Kind> {
+        match self {
+            SplitGraphNodeWeight::ExternalTarget {
+                target_custom_kind, ..
+            } => *target_custom_kind,
+            _ => None,
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
-pub enum SplitGraphEdgeWeight<E, K>
+pub enum SplitGraphEdgeWeight<E, K, N>
 where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
+    N: CustomNodeWeight,
 {
     Custom(E),
     ExternalSource {
         source_id: SplitGraphNodeId,
         is_default: bool,
         edge_kind: K,
+        source_node_kind: Option<N::Kind>,
+        #[serde(skip)]
+        phantom_n: PhantomData<N>,
     },
     Ordering,
     Ordinal,
@@ -262,12 +289,13 @@ where
     Ordinal,
 }
 
-impl<E, K> From<SplitGraphEdgeWeight<E, K>> for SplitGraphEdgeWeightKind<K>
+impl<E, K, N> From<SplitGraphEdgeWeight<E, K, N>> for SplitGraphEdgeWeightKind<K>
 where
     E: CustomEdgeWeight<K>,
+    N: CustomNodeWeight,
     K: EdgeKind,
 {
-    fn from(value: SplitGraphEdgeWeight<E, K>) -> Self {
+    fn from(value: SplitGraphEdgeWeight<E, K, N>) -> Self {
         match value {
             SplitGraphEdgeWeight::Custom(c) => SplitGraphEdgeWeightKind::Custom(c.kind()),
             SplitGraphEdgeWeight::ExternalSource { .. } => SplitGraphEdgeWeightKind::ExternalSource,
@@ -277,12 +305,13 @@ where
     }
 }
 
-impl<E, K> From<&SplitGraphEdgeWeight<E, K>> for SplitGraphEdgeWeightKind<K>
+impl<E, K, N> From<&SplitGraphEdgeWeight<E, K, N>> for SplitGraphEdgeWeightKind<K>
 where
     E: CustomEdgeWeight<K>,
+    N: CustomNodeWeight,
     K: EdgeKind,
 {
-    fn from(value: &SplitGraphEdgeWeight<E, K>) -> Self {
+    fn from(value: &SplitGraphEdgeWeight<E, K, N>) -> Self {
         match value {
             SplitGraphEdgeWeight::Custom(c) => SplitGraphEdgeWeightKind::Custom(c.kind()),
             SplitGraphEdgeWeight::ExternalSource { .. } => SplitGraphEdgeWeightKind::ExternalSource,
@@ -292,9 +321,10 @@ where
     }
 }
 
-impl<E, K> SplitGraphEdgeWeight<E, K>
+impl<E, K, N> SplitGraphEdgeWeight<E, K, N>
 where
     E: CustomEdgeWeight<K>,
+    N: CustomNodeWeight,
     K: EdgeKind,
 {
     pub fn custom(&self) -> Option<&E> {
@@ -321,26 +351,34 @@ where
             SplitGraphEdgeWeight::ExternalSource {
                 source_id,
                 edge_kind,
+                source_node_kind,
                 ..
             } => SplitGraphEdgeWeight::ExternalSource {
                 source_id: *source_id,
                 is_default: false,
                 edge_kind: *edge_kind,
+                source_node_kind: *source_node_kind,
+
+                phantom_n: PhantomData,
             },
             SplitGraphEdgeWeight::Ordering => SplitGraphEdgeWeight::Ordering,
             SplitGraphEdgeWeight::Ordinal => SplitGraphEdgeWeight::Ordinal,
         }
     }
 
-    pub fn external_source_data(&self) -> Option<ExternalSourceData<K>> {
+    pub fn external_source_data(&self) -> Option<ExternalSourceData<K, N>> {
         match self {
             SplitGraphEdgeWeight::ExternalSource {
                 source_id,
                 edge_kind,
+                source_node_kind,
                 ..
             } => Some(ExternalSourceData {
                 source_id: *source_id,
-                kind: *edge_kind,
+                edge_kind: *edge_kind,
+                source_node_kind: *source_node_kind,
+
+                phantom_n: PhantomData,
             }),
             SplitGraphEdgeWeight::Custom(_)
             | SplitGraphEdgeWeight::Ordering
@@ -373,8 +411,16 @@ where
 }
 
 pub trait EdgeKind: std::hash::Hash + PartialEq + Eq + Copy + Clone + std::fmt::Debug {}
+pub trait NodeKind:
+    std::hash::Hash + PartialEq + Eq + Copy + Clone + std::fmt::Debug + Serialize + DeserializeOwned
+{
+}
 
-pub trait CustomNodeWeight: PartialEq + Eq + Clone + std::fmt::Debug {
+pub trait CustomNodeWeight: PartialEq + Eq + Clone + std::fmt::Debug + std::hash::Hash {
+    type Kind: NodeKind;
+
+    fn kind(&self) -> Self::Kind;
+
     fn id(&self) -> SplitGraphNodeId;
     fn set_id(&mut self, id: SplitGraphNodeId);
 
@@ -556,7 +602,7 @@ where
     pub fn brute_search_external_source_edges(
         &self,
         id: SplitGraphNodeId,
-    ) -> Vec<SplitGraphEdgeWeight<E, K>> {
+    ) -> Vec<SplitGraphEdgeWeight<E, K, N>> {
         self.subgraphs()
             .iter()
             .flat_map(|subgraph| {
@@ -757,8 +803,7 @@ where
     pub fn subgraph_root_id(&self, subgraph_index: usize) -> Option<SplitGraphNodeId> {
         self.subgraphs
             .get(subgraph_index)
-            .and_then(|sub| sub.graph.node_weight(sub.root_index))
-            .map(|n| n.id())
+            .and_then(|sub| sub.root_id())
     }
 
     pub fn raw_node_weight(&self, node_id: SplitGraphNodeId) -> Option<&SplitGraphNodeWeight<N>> {
@@ -1239,7 +1284,6 @@ where
         let to_index = self
             .node_id_to_index(to_id)
             .ok_or(SplitGraphError::NodeNotFound(to_id))?;
-
         let custom_edge_weight = SplitGraphEdgeWeight::Custom(edge.clone());
 
         let subgraph_edge_index;
@@ -1258,6 +1302,15 @@ where
                     from_subgraph.add_edge(from_index.index, custom_edge_weight, to_index.index);
             }
         } else {
+            let (kind, custom_kind) = {
+                let to_subgraph = self.get_subgraph(to_subgraph_idx)?;
+                let to_node = to_subgraph
+                    .node_weight(to_id)
+                    .ok_or(SplitGraphError::NodeNotFound(to_id))?;
+
+                (to_node.into(), to_node.custom().map(|node| node.kind()))
+            };
+
             let ext_target_id = SplitGraphNodeId::new();
             let ext_target_idx = self.add_node_to_subgraph(
                 from_subgraph_idx,
@@ -1265,10 +1318,17 @@ where
                     id: ext_target_id,
                     target: to_id,
                     merkle_tree_hash: MerkleTreeHash::nil(),
+                    target_kind: kind,
+                    target_custom_kind: custom_kind,
                 },
             )?;
 
             let from_subgraph = self.get_subgraph_mut(from_subgraph_idx)?;
+            let from_node_custom_kind = from_subgraph
+                .node_weight(from_id)
+                .ok_or(SplitGraphError::NodeNotFound(from_id))?
+                .custom_kind();
+
             if ordered {
                 (subgraph_edge_index, subgraph_ordinal_edge_index) = from_subgraph
                     .add_ordered_edge(from_index.index, custom_edge_weight, ext_target_idx.index)?;
@@ -1287,6 +1347,9 @@ where
                     source_id: from_id,
                     is_default: edge.is_default(),
                     edge_kind: edge.kind(),
+                    source_node_kind: from_node_custom_kind,
+
+                    phantom_n: PhantomData,
                 },
                 to_index.index,
             );
@@ -1627,25 +1690,25 @@ where
     pub fn detect_updates(&self, updated_graph: &SplitGraph<N, E, K>) -> Vec<Update<N, E, K>> {
         let mut updates = vec![];
 
-        let mut subgraph_iter = OptZip::new(
-            updated_graph.subgraphs.iter().enumerate(),
-            self.subgraphs.iter(),
-        );
+        let mut subgraph_iter = OptZip::new(updated_graph.subgraphs.iter(), self.subgraphs.iter());
 
-        while let Some((Some((updated_subgraph_index, updated_subgraph)), maybe_base_subgraph)) =
-            subgraph_iter.next()
-        {
+        while let Some((Some(updated_subgraph), maybe_base_subgraph)) = subgraph_iter.next() {
+            let Some(root_node_id) = updated_subgraph.root_id() else {
+                continue;
+            };
+
             match maybe_base_subgraph {
                 Some(base_subgraph) => updates.extend(
-                    updates::Detector::new(base_subgraph, updated_subgraph, updated_subgraph_index)
+                    updates::Detector::new(base_subgraph, updated_subgraph, root_node_id)
                         .detect_updates()
                         .into_iter(),
                 ),
                 None => {
-                    updates.push(Update::NewSubGraph);
+                    updates.push(Update::NewSubGraph {
+                        subgraph_root_id: root_node_id,
+                    });
                     updates.extend(
-                        updates::subgraph_as_updates(updated_subgraph, updated_subgraph_index)
-                            .into_iter(),
+                        updates::subgraph_as_updates(updated_subgraph, root_node_id).into_iter(),
                     )
                 }
             }
@@ -1660,22 +1723,21 @@ where
     ) -> SplitGraphResult<Vec<Change>> {
         let mut changes = vec![];
 
-        let mut subgraph_iter = OptZip::new(
-            updated_graph.subgraphs.iter().enumerate(),
-            self.subgraphs.iter(),
-        );
+        let mut subgraph_iter = OptZip::new(updated_graph.subgraphs.iter(), self.subgraphs.iter());
 
         let mut detected_ids = HashSet::new();
 
-        while let Some((Some((updated_subgraph_index, updated_subgraph)), maybe_base_subgraph)) =
-            subgraph_iter.next()
-        {
+        while let Some((Some(updated_subgraph), maybe_base_subgraph)) = subgraph_iter.next() {
+            let Some(updated_subgraph_root_id) = updated_subgraph.root_id() else {
+                continue;
+            };
+
             match maybe_base_subgraph {
                 Some(base_subgraph) => {
                     let mut subgraph_changes = updates::Detector::new(
                         base_subgraph,
                         updated_subgraph,
-                        updated_subgraph_index,
+                        updated_subgraph_root_id,
                     )
                     .detect_changes();
 
@@ -1797,21 +1859,32 @@ where
     }
 
     pub fn perform_updates(&mut self, updates: &[Update<N, E, K>]) {
-        let mut removed_node_ids = HashSet::new();
+        let mut removed_node_ids = BTreeSet::new();
+        let mut subgraph_id_to_index = BTreeMap::new();
+
+        for (subgraph_idx, subgraph) in self.subgraphs.iter().enumerate() {
+            if let Some(root_id) = subgraph.root_id() {
+                subgraph_id_to_index.insert(root_id, subgraph_idx);
+            }
+        }
+
         for update in updates {
             match update {
                 Update::NewEdge {
-                    subgraph_index,
+                    subgraph_root_id,
                     source,
                     destination,
                     edge_weight,
                 } => {
+                    let Some(subgraph_index) = subgraph_id_to_index.get(subgraph_root_id) else {
+                        continue;
+                    };
                     let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index) else {
                         continue;
                     };
                     let Some((from_index, to_index)) = subgraph
-                        .node_id_to_index(*source)
-                        .zip(subgraph.node_id_to_index(*destination))
+                        .node_id_to_index(source.id)
+                        .zip(subgraph.node_id_to_index(destination.id))
                     else {
                         continue;
                     };
@@ -1828,18 +1901,22 @@ where
                     subgraph.add_edge_raw(from_index, edge_weight.clone(), to_index);
                 }
                 Update::RemoveEdge {
-                    subgraph_index,
+                    subgraph_root_id,
                     source,
                     destination,
                     edge_kind,
                     external_source_data,
                 } => {
+                    let Some(subgraph_index) = subgraph_id_to_index.get(subgraph_root_id) else {
+                        continue;
+                    };
                     let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index) else {
                         continue;
                     };
+
                     let Some((from_index, to_index)) = subgraph
-                        .node_id_to_index(*source)
-                        .zip(subgraph.node_id_to_index(*destination))
+                        .node_id_to_index(source.id)
+                        .zip(subgraph.node_id_to_index(destination.id))
                     else {
                         continue;
                     };
@@ -1849,13 +1926,19 @@ where
                             subgraph.remove_external_source_edge(
                                 from_index,
                                 to_index,
-                                *external_source_data,
+                                external_source_data.clone(),
                             );
                         }
                         None => subgraph.remove_edge_raw(from_index, *edge_kind, to_index),
                     }
                 }
-                Update::RemoveNode { subgraph_index, id } => {
+                Update::RemoveNode {
+                    subgraph_root_id,
+                    id,
+                } => {
+                    let Some(subgraph_index) = subgraph_id_to_index.get(subgraph_root_id) else {
+                        continue;
+                    };
                     let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index) else {
                         continue;
                     };
@@ -1864,20 +1947,20 @@ where
                     };
 
                     removed_node_ids.insert((*subgraph_index, node_index));
-                    // println!(
-                    //     "calling remove node for index {}, node_id: {:?}",
-                    //     *subgraph_index, id
-                    // );
                     subgraph.remove_node(node_index);
                 }
                 Update::ReplaceNode {
-                    subgraph_index,
+                    subgraph_root_id,
                     node_weight,
                     base_graph_node_id,
                 } => {
+                    let Some(subgraph_index) = subgraph_id_to_index.get(subgraph_root_id) else {
+                        continue;
+                    };
                     let Some(subgraph) = self.subgraphs.get_mut(*subgraph_index) else {
                         continue;
                     };
+
                     let node_id_in_base_graph = base_graph_node_id.unwrap_or(node_weight.id());
                     match subgraph.node_id_to_index(node_id_in_base_graph) {
                         Some(node_index) => {
@@ -1905,11 +1988,15 @@ where
                     }
                 }
                 Update::NewNode {
-                    subgraph_index,
+                    subgraph_root_id,
                     node_weight,
                 } => {
                     let node_id = node_weight.id();
                     let maybe_existing_node_index = self.node_id_to_index(node_id);
+
+                    let Some(subgraph_index) = subgraph_id_to_index.get(subgraph_root_id) else {
+                        continue;
+                    };
 
                     if let Some(split_graph_index) = maybe_existing_node_index {
                         // NOTE: the main reason we might see a new node update for an
@@ -1933,8 +2020,9 @@ where
                         SplitGraphNodeIndex::new(*subgraph_index, index),
                     );
                 }
-                Update::NewSubGraph => {
-                    self.new_empty_subgraph();
+                Update::NewSubGraph { subgraph_root_id } => {
+                    let new_subgraph_index = self.new_empty_subgraph();
+                    subgraph_id_to_index.insert(*subgraph_root_id, new_subgraph_index);
                 }
             }
         }
@@ -1969,7 +2057,7 @@ fn ensure_only_one_default_edge<N, E, K>(
     graph: &mut SubGraph<N, E, K>,
     source_idx: SubGraphNodeIndex,
     destination_idx: SubGraphNodeIndex,
-    edge_weight: SplitGraphEdgeWeight<E, K>,
+    edge_weight: SplitGraphEdgeWeight<E, K, N>,
 ) where
     N: CustomNodeWeight,
     E: CustomEdgeWeight<K>,

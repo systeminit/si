@@ -39,7 +39,7 @@ pub enum ManagementPrototypeNodeWeightError {
 
 pub type ManagementPrototypeNodeWeightResult<T> = Result<T, ManagementPrototypeNodeWeightError>;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum ManagementPrototypeNodeWeight {
     V1(ManagementPrototypeNodeWeightV1),
 }

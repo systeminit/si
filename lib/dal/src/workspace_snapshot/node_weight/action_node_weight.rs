@@ -32,7 +32,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct ActionNodeWeight {
     pub id: Ulid,
     state: ActionState,

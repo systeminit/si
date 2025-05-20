@@ -7,7 +7,7 @@ use serde::{
     Serialize,
 };
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, PartialOrd, Ord, Serialize, Hash)]
 pub struct Timestamp {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

@@ -20,13 +20,13 @@ use crate::{
 
 /// When this `AttributePrototypeArgument` represents a connection between two
 /// components, we need to know which components are being connected.
-#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
 pub struct ArgumentTargets {
     pub source_component_id: ComponentId,
     pub destination_component_id: ComponentId,
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct AttributePrototypeArgumentNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,

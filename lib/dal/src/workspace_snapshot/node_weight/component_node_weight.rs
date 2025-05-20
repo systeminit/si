@@ -63,7 +63,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct ComponentNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,
