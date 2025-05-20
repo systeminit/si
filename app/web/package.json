@@ -111,6 +111,7 @@
     "vanilla-picker": "^2.12.1",
     "vue": "^3.5.12",
     "vue-konva": "^3.0.1",
+    "vue-markdown-render": "^2.2.1",
     "vue-router": "^4.4.5",
     "vue-safe-teleport": "^0.1.2",
     "vue-toastification": "2.0.0-rc.5",

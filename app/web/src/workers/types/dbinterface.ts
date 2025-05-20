@@ -376,6 +376,10 @@ export type Categories = {
   schemaVariants: CategoryVariant[];
 }[];
 
+export interface PropTree {
+  props: Record<PropId, Prop>;
+  treeInfo: Record<PropId, { parent?: PropId; children: PropId[] }>;
+}
 export interface SchemaVariant {
   id: string;
   schemaVariantId: string;
@@ -397,10 +401,7 @@ export interface SchemaVariant {
 
   inputSockets: InputSocket[];
   outputSockets: OutputSocket[];
-  propTree: {
-    props: Record<PropId, Prop>;
-    treeInfo: Record<PropId, { parent?: PropId; children: PropId[] }>;
-  };
+  propTree: PropTree;
   canCreateNewComponents: boolean;
 
   canContribute: boolean;

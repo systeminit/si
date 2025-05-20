@@ -33,6 +33,12 @@ export const useWatchedForm = <Data>() => {
    * TRUE: after the form submission
    * FALSE: after mutated data has been returned over the bifrost
    *        and is recomputed within `formData`
+   *
+   * You can pass `watchFn` if you want your `bifrosting` value
+   * to be set by something other than the original formData.
+   * This is useful when you have a blank create form with no data
+   * And you want the spinner to stop when the data comes back out the
+   * other side of the bifrost
    */
   const bifrosting = ref(false);
 
@@ -40,6 +46,9 @@ export const useWatchedForm = <Data>() => {
     formData: Ref<Data> | ComputedRef<Data>,
     // NOTE: props also contains `formApi`, but I can't realistically type it here
     onSubmit: (props: { value: Data }) => void,
+    submitValidation?: (props: { value: Data }) => string | undefined,
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    watchFn?: () => any,
   ) => {
     const opts = formOptions({
       defaultValues: unref(formData),
@@ -50,12 +59,27 @@ export const useWatchedForm = <Data>() => {
         onSubmit(props);
         bifrosting.value = true;
       },
+      validators: {
+        onSubmit: (props) => {
+          if (submitValidation) {
+            return submitValidation(props);
+          }
+          return undefined;
+        },
+      },
     });
 
-    watch(formData, () => {
-      bifrosting.value = false;
-      wForm.reset(unref(formData));
-    });
+    if (watchFn) {
+      watch(watchFn, () => {
+        bifrosting.value = false;
+        wForm.reset(unref(formData));
+      });
+    } else {
+      watch(formData, () => {
+        bifrosting.value = false;
+        wForm.reset(unref(formData));
+      });
+    }
 
     return wForm;
   };
