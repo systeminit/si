@@ -134,6 +134,7 @@ import * as heimdall from "@/store/realtime/heimdall";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { sdfApiInstance } from "@/store/apis.web";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import { EntityKind } from "@/workers/types/dbinterface";
 import NavbarButton from "./NavbarButton.vue";
 import Collaborators from "./Collaborators.vue";
 import Notifications from "./Notifications.vue";
@@ -231,7 +232,7 @@ const hammer = () => {
     heimdall.mjolnir(
       changeSetsStore.selectedWorkspacePk,
       changeSetsStore.selectedChangeSetId,
-      entityKind.value,
+      entityKind.value as EntityKind,
       entityId.value,
     );
     modalRef.value.close();

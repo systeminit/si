@@ -61,6 +61,7 @@ import {
   BifrostComponent,
   SchemaVariant,
   PossibleConnection,
+  EntityKind,
 } from "./types/dbinterface";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
@@ -351,16 +352,16 @@ const createAtom = async (atom: Atom, doc: object, span?: Span) => {
   }
 };
 
-const partialKeyFromKindAndArgs = (kind: string, id: Id): QueryKey => {
+const partialKeyFromKindAndArgs = (kind: EntityKind, id: Id): QueryKey => {
   return `${kind}|${id}`;
 };
 
-const kindAndArgsFromKey = (key: QueryKey): { kind: string; id: Id } => {
+const kindAndArgsFromKey = (key: QueryKey): { kind: EntityKind; id: Id } => {
   const pieces = key.split("|", 2);
   if (pieces.length !== 2) throw new Error(`Bad key ${key} -> ${pieces}`);
   if (!pieces[0] || !pieces[1])
     throw new Error(`Missing key ${key} -> ${pieces}`);
-  const kind = pieces[0];
+  const kind = pieces[0] as EntityKind;
   const id = pieces[1];
   return { kind, id };
 };
@@ -375,7 +376,7 @@ const markConnectionDirty = (workspaceId: string, changeSetId: string) => {
 const bustCacheAndReferences: BustCacheFn = async (
   workspaceId: string,
   changeSetId: string,
-  kind: string,
+  kind: EntityKind,
   id: string,
 ) => {
   // bust me
@@ -396,7 +397,7 @@ const bustCacheAndReferences: BustCacheFn = async (
       bustCacheFn(
         workspaceId,
         changeSetId,
-        ref_kind as string,
+        ref_kind as EntityKind,
         ref_id as string,
       );
   });
@@ -421,7 +422,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
   bustCacheAndReferences(
     workspaceId,
     changeSetId,
-    "PossibleConnections",
+    EntityKind.PossibleConnections,
     changeSetId,
   );
 };
@@ -465,7 +466,12 @@ const updateComputed = (
   allConns.set(changeSetId, { ...existing, ...conns });
   if (bust)
     // dont bust individually on cold start
-    bustCacheFn(workspaceId, changeSetId, "PossibleConnections", changeSetId);
+    bustCacheFn(
+      workspaceId,
+      changeSetId,
+      EntityKind.PossibleConnections,
+      changeSetId,
+    );
 };
 
 const allConns = new DefaultMap<string, Record<string, PossibleConnection>>(
@@ -537,7 +543,12 @@ const cleanConnections = async (workspaceId: string, changeSetId: string) => {
     dirtyConnections.delete(`${workspaceId}-${changeSetId}`);
 
     // whenever these change, the outgoing connections must bust as well
-    bustCacheFn(workspaceId, changeSetId, "OutgoingConnections", changeSetId);
+    bustCacheFn(
+      workspaceId,
+      changeSetId,
+      EntityKind.OutgoingConnections,
+      changeSetId,
+    );
     const sql = `
       select referrer_kind, referrer_args from weak_references where target_kind = ? and target_args = ? and change_set_id = ?;
     `;
@@ -548,13 +559,12 @@ const cleanConnections = async (workspaceId: string, changeSetId: string) => {
       returnValue: "resultRows",
     });
     refs.forEach(([ref_kind, ref_id]) => {
-      if (ref_kind && ref_id)
-        bustCacheFn(
-          workspaceId,
-          changeSetId,
-          ref_kind as string,
-          ref_id as string,
-        );
+      bustCacheFn(
+        workspaceId,
+        changeSetId,
+        ref_kind as EntityKind,
+        ref_id as string,
+      );
     });
     span.setAttribute("numBusts", refs.length);
     span.setAttribute("busts", JSON.stringify(refs));

@@ -6,6 +6,7 @@ import {
   Id,
   BustCacheFn,
   BifrostConnection,
+  EntityKind,
 } from "@/workers/types/dbinterface";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Context } from "@/newhotness/types";
@@ -89,7 +90,7 @@ export const bifrostClose = async () => {
 export const bifrost = async <T>(args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
-  kind: string;
+  kind: EntityKind;
   id: Id;
 }): Promise<Reactive<T> | null> => {
   if (!initCompleted.value) throw new Error("bifrost not initiated");
@@ -182,19 +183,26 @@ const workspaceId = computed(() => {
   return workspaceStore.selectedWorkspacePk!;
 });
 
+// this is for the old world!
 export const makeKey = (kind: string, id?: string) => {
-  return [workspaceId.value, changeSetId.value, kind, id ?? changeSetId.value];
+  return [
+    workspaceId.value,
+    changeSetId.value,
+    kind as EntityKind,
+    id ?? changeSetId.value,
+  ];
 };
 
 export const prune = async (workspaceId: string, changeSetId: string) => {
   await db.pruneAtomsForClosedChangeSet(workspaceId, changeSetId);
 };
 
+// this is for the old world!
 export const makeArgs = (kind: string, id?: string) => {
   return {
     workspaceId: workspaceId.value,
     changeSetId: changeSetId.value,
-    kind,
+    kind: kind as EntityKind,
     id: id ?? changeSetId.value,
   };
 };
@@ -202,7 +210,7 @@ export const makeArgs = (kind: string, id?: string) => {
 export const useMakeArgs = () => {
   const ctx: Context | undefined = inject("CONTEXT");
 
-  return (kind: string, id?: string) => {
+  return (kind: EntityKind, id?: string) => {
     return {
       workspaceId: ctx?.workspacePk.value ?? "",
       changeSetId: ctx?.changeSetId.value ?? "",
@@ -216,7 +224,7 @@ export const useMakeKey = () => {
   const ctx: Context | undefined = inject("CONTEXT");
 
   return (
-    kind: ComputedRef<string> | string,
+    kind: ComputedRef<EntityKind> | EntityKind,
     id?: ComputedRef<string> | string,
   ) =>
     computed(() => {
@@ -251,7 +259,7 @@ export const ragnarok = async (workspaceId: string, changeSetId: string) => {
 export const mjolnir = async (
   workspaceId: string,
   changeSetId: string,
-  kind: string,
+  kind: EntityKind,
   id: string,
 ) => {
   await db.mjolnir(workspaceId, changeSetId, kind, id);

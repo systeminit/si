@@ -6,6 +6,7 @@ import {
   MessageKind,
   AtomMessage,
   NOROW,
+  EntityKind,
 } from "@/workers/types/dbinterface";
 
 // setup a few things
@@ -73,7 +74,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
     bind: [head, workspace, checksum],
   });
 
-  const testRecord = "testRecord";
+  const testRecord = "testRecord" as EntityKind;
   await db.exec({
     sql: `
         INSERT INTO atoms (kind, args, checksum, data)
@@ -116,7 +117,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
     bind: [checksum, testRecord, "testId2", "tr2"],
   });
 
-  const testList = "testList";
+  const testList = "testList" as EntityKind;
   await db.exec({
     sql: `
         INSERT INTO atoms (kind, args, checksum, data)
@@ -430,7 +431,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
     kind: MessageKind.MJOLNIR,
     atom: {
       id: "fb1",
-      kind: "foobar",
+      kind: "foobar" as EntityKind,
       toChecksum: "fb1",
       workspaceId: "W",
       changeSetId: "add_remove",

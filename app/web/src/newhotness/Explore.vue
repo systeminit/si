@@ -175,6 +175,7 @@ import {
   BifrostComponentList,
   BifrostViewList,
   ViewComponentList,
+  EntityKind,
 } from "@/workers/types/dbinterface";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -225,8 +226,9 @@ const key = useMakeKey();
 const args = useMakeArgs();
 
 const viewListQuery = useQuery<BifrostViewList | null>({
-  queryKey: key("ViewList"),
-  queryFn: async () => await bifrost<BifrostViewList>(args("ViewList")),
+  queryKey: key(EntityKind.ViewList),
+  queryFn: async () =>
+    await bifrost<BifrostViewList>(args(EntityKind.ViewList)),
 });
 const viewListOptions = computed(() => {
   const list = viewListQuery.data.value?.views || [];
@@ -247,9 +249,9 @@ const selectedViewOrDefaultId = computed(() => {
 });
 
 const actionViewListRaw = useQuery<BifrostActionViewList | null>({
-  queryKey: key("ActionViewList"),
+  queryKey: key(EntityKind.ActionViewList),
   queryFn: async () =>
-    await bifrost<BifrostActionViewList>(args("ActionViewList")),
+    await bifrost<BifrostActionViewList>(args(EntityKind.ActionViewList)),
 });
 const actionViewList = computed(
   () => actionViewListRaw.data.value?.actions ?? [],
@@ -258,7 +260,7 @@ const actionViewList = computed(
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
 const kind = computed(() =>
-  selectedView.value ? "ViewComponentList" : "ComponentList",
+  selectedView.value ? EntityKind.ViewComponentList : EntityKind.ComponentList,
 );
 const id = computed(() =>
   selectedView.value ? selectedView.value : ctx.changeSetId.value,
@@ -271,8 +273,8 @@ const componentListRaw = useQuery<
   queryKey: componentQueryKey,
   queryFn: async () => {
     const arg = selectedView.value
-      ? args("ViewComponentList", selectedView.value)
-      : args("ComponentList");
+      ? args(EntityKind.ViewComponentList, selectedView.value)
+      : args(EntityKind.ComponentList);
     return await bifrost<BifrostComponentList | ViewComponentList>(arg);
   },
 });

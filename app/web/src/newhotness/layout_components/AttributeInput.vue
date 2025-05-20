@@ -92,7 +92,7 @@ import {
   PropertyEditorPropWidgetKindSelect,
 } from "@/api/sdf/dal/property_editor";
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
-import { Prop } from "@/workers/types/dbinterface";
+import { EntityKind, Prop } from "@/workers/types/dbinterface";
 import {
   getPossibleConnections,
   useMakeArgs,
@@ -106,12 +106,12 @@ const makeKey = useMakeKey();
 const makeArgs = useMakeArgs();
 const enabled = computed(() => !!annotation.value);
 const _potentialConnQuery = useQuery({
-  queryKey: makeKey("PossibleConnections"),
+  queryKey: makeKey(EntityKind.PossibleConnections),
   enabled,
   queryFn: async () => {
     if (annotation.value) {
       const conns = await getPossibleConnections({
-        ...makeArgs("PossibleConnections"),
+        ...makeArgs(EntityKind.PossibleConnections),
         annotation: annotation.value,
       });
       return conns;

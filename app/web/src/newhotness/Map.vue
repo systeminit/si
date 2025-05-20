@@ -111,6 +111,7 @@ import {
   BifrostComponent,
   BifrostComponentConnections,
   BifrostIncomingConnectionsList,
+  EntityKind,
 } from "@/workers/types/dbinterface";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { SelectionsInQueryString } from "./Workspace.vue";
@@ -288,7 +289,7 @@ const mousemove = (event: MouseEvent) => {
 const key = useMakeKey();
 const args = useMakeArgs();
 
-const queryKey = key("IncomingConnectionsList");
+const queryKey = key(EntityKind.IncomingConnectionsList);
 
 const logos = reactive<IconNames[]>(Object.keys(LOGO_ICONS) as IconNames[]);
 
@@ -303,7 +304,7 @@ const connections = useQuery<BifrostIncomingConnectionsList>({
   queryKey,
   queryFn: async () => {
     const d = await bifrost<BifrostIncomingConnectionsList | null>(
-      args("IncomingConnectionsList"),
+      args(EntityKind.IncomingConnectionsList),
     );
 
     if (d) {

@@ -20,6 +20,7 @@ import {
   BifrostComponentConnections,
   BifrostConnection,
   OutgoingConnections,
+  EntityKind,
 } from "@/workers/types/dbinterface";
 import {
   bifrost,
@@ -46,19 +47,19 @@ const enableLookup = computed(
 
 const componentConnectionsQuery = useQuery<BifrostComponentConnections | null>({
   enabled: enableLookup,
-  queryKey: key("IncomingConnections", componentId),
+  queryKey: key(EntityKind.IncomingConnections, componentId),
   queryFn: async () => {
     const componentConnections = await bifrost<BifrostComponentConnections>(
-      args("IncomingConnections", componentId.value),
+      args(EntityKind.IncomingConnections, componentId.value),
     );
     return componentConnections;
   },
 });
 
 const outgoingQuery = useQuery<Reactive<OutgoingConnections>>({
-  queryKey: key("OutgoingConnections"),
+  queryKey: key(EntityKind.OutgoingConnections),
   queryFn: async () => {
-    return await getOutgoingConnections(args("OutgoingConnections"));
+    return await getOutgoingConnections(args(EntityKind.OutgoingConnections));
   },
 });
 
