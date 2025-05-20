@@ -121,6 +121,7 @@
         flyctl
         azure-cli
         govc
+        curl
         (pkgs.python3.withPackages (p:
           with p; [
             cfn-lint
