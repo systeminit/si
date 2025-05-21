@@ -15,15 +15,14 @@ export default async function check_mjolnir(
   sdfApiClient: SdfApiClient,
   changeSetId: string,
 ) {
-  console.log("test temporarily disabled");
-  // if (changeSetId) {
-  //   return await check_mjolnir_inner(sdfApiClient, changeSetId);
-  // } else {
-  //   return runWithTemporaryChangeset(
-  //     sdfApiClient,
-  //     check_mjolnir_inner,
-  //   );
-  // }
+  if (changeSetId) {
+    return await check_mjolnir_inner(sdfApiClient, changeSetId);
+  } else {
+    return runWithTemporaryChangeset(
+      sdfApiClient,
+      check_mjolnir_inner,
+    );
+  }
 }
 
 async function check_mjolnir_inner(
