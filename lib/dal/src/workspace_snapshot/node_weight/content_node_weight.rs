@@ -54,15 +54,15 @@ pub struct ContentNodeWeight {
     pub lineage_id: LineageId,
     /// What type of thing is this node representing, and what is the content hash used to
     /// retrieve the data for this specific node.
-    content_address: ContentAddress,
+    pub content_address: ContentAddress,
     /// [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree) hash for the graph
     /// starting with this node as the root. Mainly useful in quickly determining "has
     /// something changed anywhere in this (sub)graph".
-    merkle_tree_hash: MerkleTreeHash,
+    pub merkle_tree_hash: MerkleTreeHash,
     /// The first time a [`ChangeSet`] has "seen" this content. This is useful for determining
     /// whether the absence of this content on one side or the other of a rebase/merge is because
     /// the content is new, or because one side deleted it.
-    to_delete: bool,
+    pub to_delete: bool,
 }
 
 impl ContentNodeWeight {

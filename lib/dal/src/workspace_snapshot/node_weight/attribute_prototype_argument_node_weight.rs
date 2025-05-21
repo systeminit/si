@@ -30,9 +30,9 @@ pub struct ArgumentTargets {
 pub struct AttributePrototypeArgumentNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,
-    merkle_tree_hash: MerkleTreeHash,
-    targets: Option<ArgumentTargets>,
-    timestamp: Timestamp,
+    pub merkle_tree_hash: MerkleTreeHash,
+    pub targets: Option<ArgumentTargets>,
+    pub timestamp: Timestamp,
 }
 
 impl AttributePrototypeArgumentNodeWeight {
