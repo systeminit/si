@@ -209,6 +209,7 @@
               done
           '';
           configurePhase = ''
+            echo "fake"
             export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
             export BINDGEN_EXTRA_CLANG_ARGS="\
               $(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
