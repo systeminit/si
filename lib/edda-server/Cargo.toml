@@ -36,6 +36,7 @@ bytes = { workspace = true }
 derive_builder = { workspace = true }
 futures = { workspace = true }
 json-patch = { workspace = true }
+pin-project-lite = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

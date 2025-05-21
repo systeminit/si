@@ -38,6 +38,13 @@ pub trait FromMessageHead<S>: Sized {
 }
 
 #[async_trait]
+pub trait FromMessageHeadRaw: Sized {
+    type Rejection: IntoResponse;
+
+    fn from_message_head_raw(head: &mut Head) -> Result<Self, Self::Rejection>;
+}
+
+#[async_trait]
 pub trait FromMessage<S, R, M = private::ViaMessage>: Sized
 where
     R: MessageHead,
@@ -45,6 +52,16 @@ where
     type Rejection: IntoResponse;
 
     async fn from_message(req: Message<R>, state: &S) -> Result<Self, Self::Rejection>;
+}
+
+#[async_trait]
+pub trait FromMessageRaw<R, M = private::ViaMessage>: Sized
+where
+    R: MessageHead,
+{
+    type Rejection: IntoResponse;
+
+    fn from_message_raw(req: Message<R>) -> Result<Self, Self::Rejection>;
 }
 
 #[async_trait]

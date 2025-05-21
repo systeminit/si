@@ -15,6 +15,9 @@ pub mod response;
 pub mod serve;
 mod service_ext;
 
+// FIXME(nick): experimentation in not requiring "R: MessageHead" and "Message<R>".
+mod generic;
+
 pub use async_nats::StatusCode;
 pub use async_trait::async_trait;
 pub use tower::{

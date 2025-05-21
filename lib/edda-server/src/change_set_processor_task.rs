@@ -42,7 +42,6 @@ use si_data_nats::{
     NatsClient,
     async_nats::jetstream::{
         self,
-        consumer::push,
     },
 };
 use si_events::{
@@ -60,7 +59,10 @@ use tokio_util::{
 };
 
 use self::app_state::AppState;
-use crate::ServerMetadata;
+use crate::{
+    ServerMetadata,
+    compressor::Compressor,
+};
 
 mod materialized_view;
 
@@ -91,7 +93,7 @@ impl ChangeSetProcessorTask {
         metadata: Arc<ServerMetadata>,
         nats: NatsClient,
         stream: jetstream::stream::Stream,
-        incoming: push::Ordered,
+        incoming: Compressor,
         frigg: FriggStore,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
@@ -148,22 +150,6 @@ impl ChangeSetProcessorTask {
             .filter_map(|maybe_elapsed_item| maybe_elapsed_item.ok());
 
         let app = ServiceBuilder::new()
-            .layer(
-                MatchedSubjectLayer::new()
-                    .for_subject(EddaRequestsForSubject::with_prefix(prefix.as_deref())),
-            )
-            .layer(
-                TraceLayer::new()
-                    .make_span_with(
-                        telemetry_nats::NatsMakeSpan::builder(connection_metadata).build(),
-                    )
-                    .on_response(telemetry_nats::NatsOnResponse::new()),
-            )
-            .layer(
-                PostProcessLayer::new()
-                    .on_success(DeleteMessageOnSuccess::new(stream.clone()))
-                    .on_failure(DeleteMessageOnFailure::new(stream)),
-            )
             .service(handlers::default.with_state(state))
             .map_response(Response::into_response);
 
@@ -354,7 +340,10 @@ mod handlers {
             Response,
         },
     };
-    use si_events::change_batch::ChangeBatchAddress;
+    use si_events::{
+        change_batch::ChangeBatchAddress,
+        workspace_snapshot::Change,
+    };
     use telemetry::prelude::*;
     use telemetry_utils::metric;
     use thiserror::Error;
@@ -421,16 +410,16 @@ mod handlers {
             ctx_builder,
             server_tracker: _,
         } = state;
-        let ctx = ctx_builder
-            .build_for_change_set_as_system(workspace_id, change_set_id, None)
-            .await?;
-
         let span = current_span_for_instrument_at!("info");
 
         if !span.is_disabled() {
             span.record("si.workspace.id", workspace_id.to_string());
             span.record("si.change_set.id", change_set_id.to_string());
         }
+
+        let ctx = ctx_builder
+            .build_for_change_set_as_system(workspace_id, change_set_id, None)
+            .await?;
 
         handle_request(&ctx, &frigg, workspace_id, change_set_id, request).await
     }
@@ -455,6 +444,59 @@ mod handlers {
         let span = current_span_for_instrument_at!("info");
 
         match request {
+            EddaRequestKind::CompressorUpdate(request)
+                if frigg
+                    .get_index(workspace_id, change_set_id)
+                    .await?
+                    .is_some()
+                    && ctx.workspace_snapshot()?.id().await == request.to_snapshot_address =>
+            {
+                if !span.is_disabled() {
+                    span.record("si.edda_request.id", request.id.to_string());
+                }
+
+                let changes: Vec<Change> = request
+                    .changes
+                    .clone()
+                    .into_iter()
+                    .map(|(_, change)| change)
+                    .collect();
+                materialized_view::build_mv_for_changes_in_change_set(
+                    ctx,
+                    frigg,
+                    change_set_id,
+                    request.from_snapshot_address,
+                    request.to_snapshot_address,
+                    changes.as_slice(),
+                )
+                .instrument(tracing::info_span!(
+                    "edda.change_set_processor_task.build_mv_for_compressed_changes_in_change_set"
+                ))
+                .await
+                .map_err(Into::into)
+            }
+            EddaRequestKind::CompressorUpdate(request) => {
+                if !span.is_disabled() {
+                    span.record("si.edda_request.id", request.id.to_string());
+                }
+                materialized_view::build_all_mv_for_change_set(ctx, frigg)
+                    .instrument(tracing::info_span!(
+                        "edda.change_set_processor_task.build_all_mv_for_change_set.compressor_update"
+                    ))
+                    .await
+                    .map_err(Into::into)
+            }
+            EddaRequestKind::CompressorRebuild(request) => {
+                if !span.is_disabled() {
+                    span.record("si.edda_request.id", request.id.to_string());
+                }
+                materialized_view::build_all_mv_for_change_set(ctx, frigg)
+                    .instrument(tracing::info_span!(
+                        "edda.change_set_processor_task.build_all_mv_for_change_set.compressor_rebuild"
+                    ))
+                    .await
+                    .map_err(Into::into)
+            }
             EddaRequestKind::Update(update_request)
                 if frigg
                     .get_index(workspace_id, change_set_id)

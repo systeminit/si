@@ -4,6 +4,7 @@ use thiserror::Error;
 
 mod app_state;
 mod change_set_processor_task;
+mod compressor;
 mod config;
 pub mod extract;
 mod handlers;

@@ -41,6 +41,10 @@ use crate::{
         ChangeSetProcessorTask,
         ChangeSetProcessorTaskError,
     },
+    compressor::{
+        Compressor,
+        CompressorError,
+    },
 };
 
 #[remain::sorted]
@@ -52,6 +56,8 @@ pub(crate) enum HandlerError {
     ChangeSetProcessorCompleted,
     #[error("change set processor error on tokio join")]
     ChangeSetProcessorJoin,
+    #[error("compressor error: {0}")]
+    Compressor(#[from] CompressorError),
     #[error("error creating per-change set consumer: {0}")]
     ConsumerCreate(#[source] ConsumerError),
     #[error("failed to parse subject: subject={0}, reason={1}")]
@@ -116,16 +122,14 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
     let quiesced_token = CancellationToken::new();
     let quiesced_notify = Arc::new(Notify::new());
 
-    let incoming = requests_stream
-        .create_consumer(edda_requests_per_change_set_consumer_config(
-            &nats,
-            &requests_stream_filter_subject,
-        ))
-        .await
-        .map_err(HandlerError::ConsumerCreate)?
-        .messages()
-        .await
-        .map_err(HandlerError::Subscribe)?;
+    let incoming = Compressor::new(
+        &requests_stream,
+        edda_requests_per_change_set_consumer_config(&nats, &requests_stream_filter_subject),
+        ctx_builder.clone(),
+        change_set.id,
+        workspace.id,
+    )
+    .await?;
 
     let processor_task = ChangeSetProcessorTask::create(
         metadata.clone(),

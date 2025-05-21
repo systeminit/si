@@ -12,7 +12,7 @@ use crate::{
 
 create_xxhash_type!(Checksum);
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Change {
     pub entity_id: EntityId,
     pub entity_kind: EntityKind,

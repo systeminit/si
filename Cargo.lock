@@ -2608,6 +2608,7 @@ dependencies = [
  "serde_json",
  "si-data-nats",
  "si-events",
+ "si-id",
  "strum",
 ]
 
@@ -2626,6 +2627,7 @@ dependencies = [
  "futures",
  "json-patch",
  "naxum",
+ "pin-project-lite",
  "rebaser-client",
  "remain",
  "serde",

@@ -9,6 +9,8 @@ use edda_core::{
     api_types::{
         ApiVersionsWrapper,
         ApiWrapper,
+        compressor_rebuild_request::CompressorRebuildRequest,
+        compressor_update_request::CompressorUpdateRequest,
         rebuild_request::RebuildRequest,
         update_request::UpdateRequest,
     },
@@ -24,6 +26,8 @@ use naxum::{
     extract::{
         FromMessage,
         FromMessageHead,
+        FromMessageHeadRaw,
+        FromMessageRaw,
     },
 };
 use si_data_nats::Subject;
@@ -172,6 +176,8 @@ composite_rejection! {
 pub enum EddaRequestKind {
     Update(UpdateRequest),
     Rebuild(RebuildRequest),
+    CompressorUpdate(CompressorUpdateRequest),
+    CompressorRebuild(CompressorRebuildRequest),
 }
 
 /// An extractor which determines the type, versioning, and serialization of a API message for edda.
@@ -193,10 +199,10 @@ where
 
         let api_type = match content_info.message_type.as_str() {
             <UpdateRequest as ApiWrapper>::MESSAGE_TYPE => {
-                EddaRequestKind::Update(negotiate(content_info, &payload).await?)
+                EddaRequestKind::Update(negotiate(content_info, &payload)?)
             }
             <RebuildRequest as ApiWrapper>::MESSAGE_TYPE => {
-                EddaRequestKind::Rebuild(negotiate(content_info, &payload).await?)
+                EddaRequestKind::Rebuild(negotiate(content_info, &payload)?)
             }
             _ => return Err(UnsupportedContentTypeError.into()),
         };
@@ -205,7 +211,7 @@ where
     }
 }
 
-async fn negotiate<T>(
+fn negotiate<T>(
     content_info: edda_core::api_types::ContentInfo<'_>,
     payload: &Bytes,
 ) -> Result<T, ApiTypesNegotiateRejection>
@@ -229,4 +235,41 @@ where
         .map_err(MessageUpgradeError::from_err)?;
 
     Ok(current_version)
+}
+
+impl<R> FromMessageRaw<R> for ApiTypesNegotiate
+where
+    R: MessageHead + Send + 'static,
+{
+    type Rejection = ApiTypesNegotiateRejection;
+
+    fn from_message_raw(req: Message<R>) -> Result<Self, Self::Rejection> {
+        let (mut head, payload) = req.into_parts();
+        let ContentInfo(content_info) = ContentInfo::from_message_head_raw(&mut head)?;
+
+        let api_type = match content_info.message_type.as_str() {
+            <UpdateRequest as ApiWrapper>::MESSAGE_TYPE => {
+                EddaRequestKind::Update(negotiate(content_info, &payload)?)
+            }
+            <RebuildRequest as ApiWrapper>::MESSAGE_TYPE => {
+                EddaRequestKind::Rebuild(negotiate(content_info, &payload)?)
+            }
+            _ => return Err(UnsupportedContentTypeError.into()),
+        };
+
+        Ok(Self(api_type))
+    }
+}
+
+#[async_trait]
+impl FromMessageHeadRaw for ContentInfo {
+    type Rejection = ContentInfoRejection;
+
+    fn from_message_head_raw(head: &mut Head) -> Result<Self, Self::Rejection> {
+        let headers = head.headers.as_ref().ok_or(HeadersMissing)?;
+        let content_info = edda_core::api_types::ContentInfo::try_from(headers)
+            .map_err(HeadersParseError::from_err)?;
+
+        Ok(Self(content_info))
+    }
 }
