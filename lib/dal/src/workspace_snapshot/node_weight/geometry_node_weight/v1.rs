@@ -1,5 +1,8 @@
 use std::{
-    collections::HashMap,
+    collections::{
+        BTreeMap,
+        HashMap,
+    },
     mem,
 };
 
@@ -8,13 +11,18 @@ use jwt_simple::prelude::{
     Deserialize,
     Serialize,
 };
-use petgraph::Direction;
+use petgraph::Direction::{
+    self,
+    Incoming,
+    Outgoing,
+};
 use si_events::{
     ContentHash,
     Timestamp,
     merkle_tree_hash::MerkleTreeHash,
     ulid::Ulid,
 };
+use si_split_graph::SplitGraphNodeWeight;
 
 use super::{
     GeometryNodeWeight,
@@ -288,20 +296,185 @@ impl
 {
     fn correct_transforms(
         &self,
-        _graph: &si_split_graph::SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
-        updates: Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+        graph: &si_split_graph::SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+        mut updates: Vec<
+            si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+        >,
         _from_different_change_set: bool,
     ) -> split_snapshot::corrections::CorrectTransformsResult<
         Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
     > {
-        // find the new geometry node in the list of updates (or a matching external target)
-        //
-        // find the new diagram object (if any)
-        //
-        // find the edge from the view to the diagram object
-        //
-        // find all new edge updates to or from the diagram object (or its external target)
-        //
+        // This correction only applies to new geometry nodes, so if this node alread
+        // exists in the graph, we can skip it
+        if graph.node_exists(self.id) {
+            return Ok(updates);
+        }
+
+        let mut self_update_idxs = vec![];
+        let mut view_id_for_diagram_object = BTreeMap::new();
+        let mut maybe_diagram_object_id_for_self = None;
+        let mut maybe_container_view_id_for_self = None;
+
+        for (update_idx, update) in updates.iter().enumerate() {
+            match update {
+                si_split_graph::Update::NewNode { node_weight, .. } => {
+                    if node_weight.id() == self.id
+                        || node_weight.external_target_id() == Some(self.id)
+                    {
+                        self_update_idxs.push(update_idx);
+                    } else if let Some(NodeWeight::DiagramObject(dobj)) = node_weight.custom() {
+                        match dobj.object_kind() {
+                            DiagramObjectKind::View(view_id) => {
+                                view_id_for_diagram_object.insert(node_weight.id(), view_id);
+                            }
+                        }
+                    }
+                }
+                // Geometry --Represents--> DiagramObject
+                si_split_graph::Update::NewEdge { destination, .. }
+                    if update.is_edge_of_sort(
+                        NodeWeightDiscriminants::Geometry,
+                        EdgeWeightKindDiscriminants::Represents,
+                        NodeWeightDiscriminants::DiagramObject,
+                    ) && update.source_has_id(self.id) =>
+                {
+                    self_update_idxs.push(update_idx);
+
+                    // We know this is an edge from a geometry to a diagram object,
+                    // but we want to store just the id of the real diagram object, not
+                    // any possible external target node. If custom_kind is some, then
+                    // it can't be an external target node, thus it must be a diagram object.
+                    if destination.custom_kind.is_some() {
+                        maybe_diagram_object_id_for_self = Some(destination.id);
+                    }
+                }
+                // View --Use--> Geometry
+                si_split_graph::Update::NewEdge { source, .. }
+                    if update.is_edge_of_sort(
+                        NodeWeightDiscriminants::View,
+                        EdgeWeightKindDiscriminants::Use,
+                        NodeWeightDiscriminants::Geometry,
+                    ) && update.destination_has_id(self.id) =>
+                {
+                    self_update_idxs.push(update_idx);
+                    if source.custom_kind.is_some() {
+                        maybe_container_view_id_for_self = Some(source.id);
+                    }
+                }
+                si_split_graph::Update::NewEdge { .. }
+                    if update.source_has_id(self.id) || update.destination_has_id(self.id) =>
+                {
+                    self_update_idxs.push(update_idx);
+                }
+                _ => {}
+            }
+        }
+
+        if self_update_idxs.is_empty() {
+            return Ok(updates);
+        }
+
+        let Some(container_view_for_self) = maybe_container_view_id_for_self else {
+            return Ok(updates);
+        };
+
+        let Some(diagram_object_id_for_self) = maybe_diagram_object_id_for_self else {
+            return Ok(updates);
+        };
+
+        let view_id_for_self = match view_id_for_diagram_object.get(&diagram_object_id_for_self) {
+            Some(view_id) => *view_id,
+            None => {
+                let Some(NodeWeight::DiagramObject(dobj_inner)) =
+                    graph.node_weight(diagram_object_id_for_self)
+                else {
+                    return Ok(updates);
+                };
+
+                match dobj_inner.object_kind() {
+                    DiagramObjectKind::View(view_id) => view_id,
+                }
+            }
+        };
+
+        // If the view is not already on the graph, there's nothing to do
+        if !graph.node_exists(view_id_for_self.into()) {
+            return Ok(updates);
+        }
+
+        let Some(existing_dobj_id) = graph
+            .edges_directed_for_edge_weight_kind(
+                view_id_for_self.into(),
+                Outgoing,
+                EdgeWeightKindDiscriminants::DiagramObject,
+            )?
+            .last()
+            .map(|edge_ref| edge_ref.target())
+        else {
+            return Ok(updates);
+        };
+
+        let mut maybe_geometry_node_to_replace_content = None;
+
+        for incoming_represents_edge_ref in graph.edges_directed_for_edge_weight_kind(
+            existing_dobj_id,
+            Incoming,
+            EdgeWeightKindDiscriminants::Represents,
+        )? {
+            let geometry_id = incoming_represents_edge_ref.source();
+            let Some(container_view_id) = graph
+                .edges_directed_for_edge_weight_kind(
+                    geometry_id,
+                    Incoming,
+                    EdgeWeightKindDiscriminants::Use,
+                )?
+                .last()
+                .map(|edge_ref| edge_ref.source())
+            else {
+                continue;
+            };
+
+            if container_view_id == container_view_for_self {
+                if let Some(NodeWeight::Geometry(geo_inner)) = graph.node_weight(geometry_id) {
+                    maybe_geometry_node_to_replace_content = Some(geo_inner);
+                    break;
+                }
+            }
+        }
+
+        // If we found a conflicting geometry node, then do two things:
+        // 1. Remove all the updates related to *this* node (including its creation)
+        // 2. Add a ReplaceNode update that swaps the content of this node in for the
+        //    existing content, so that the existing geometry node is moved to where
+        //    this node was.
+        if let Some(geometry_node_to_replace_content) = maybe_geometry_node_to_replace_content {
+            // Remove all the updates
+            self_update_idxs.reverse();
+            for idx in self_update_idxs {
+                updates.remove(idx);
+            }
+
+            // Append the replacenode update to the end of the update list
+            if let Some(subgraph_root_id) =
+                graph.subgraph_root_id_for_node(geometry_node_to_replace_content.id())
+            {
+                let content_hash = self.content_address.content_hash();
+                let replacement = SplitGraphNodeWeight::Custom(NodeWeight::Geometry(
+                    GeometryNodeWeight::V1(GeometryNodeWeightV1::new(
+                        geometry_node_to_replace_content.id(),
+                        geometry_node_to_replace_content.lineage_id(),
+                        content_hash,
+                    )),
+                ));
+
+                updates.push(si_split_graph::Update::ReplaceNode {
+                    subgraph_root_id,
+                    base_graph_node_id: None,
+                    node_weight: replacement,
+                });
+            }
+        }
+
         Ok(updates)
     }
 }

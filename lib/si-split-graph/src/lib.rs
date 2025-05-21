@@ -334,6 +334,13 @@ where
         }
     }
 
+    pub fn custom_kind(&self) -> Option<K> {
+        match self {
+            SplitGraphEdgeWeight::Custom(weight) => Some(weight.kind()),
+            _ => None,
+        }
+    }
+
     pub fn is_default(&self) -> bool {
         match self {
             SplitGraphEdgeWeight::Custom(c) => c.is_default(),
@@ -707,6 +714,11 @@ where
             .find(|subgraph| subgraph.node_id_to_index(node_id).is_some())
     }
 
+    pub fn subgraph_root_id_for_node(&self, node_id: SplitGraphNodeId) -> Option<SplitGraphNodeId> {
+        self.subgraph_for_node(node_id)
+            .and_then(|subgraph| subgraph.root_id())
+    }
+
     pub fn subgraph_mut_for_node(
         &mut self,
         node_id: SplitGraphNodeId,
@@ -816,6 +828,10 @@ where
 
     pub fn node_weight(&self, node_id: SplitGraphNodeId) -> Option<&N> {
         self.raw_node_weight(node_id).and_then(|node| node.custom())
+    }
+
+    pub fn node_exists(&self, node_id: SplitGraphNodeId) -> bool {
+        self.node_weight(node_id).is_some()
     }
 
     pub fn raw_node_weight_mut(

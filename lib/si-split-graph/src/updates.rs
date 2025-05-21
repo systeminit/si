@@ -18,7 +18,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_events::workspace_snapshot::Change;
+use si_events::{
+    merkle_tree_hash::MerkleTreeHash,
+    workspace_snapshot::Change,
+};
 use strum::EnumDiscriminants;
 
 use crate::{
@@ -161,6 +164,111 @@ where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
 {
+    /// Produce a new edge update between two nodes. If the nodes are in different subgraphs,
+    /// produce an edge from the source to an external target, and an external source edge
+    /// from the target's subgraph root to the target.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_edge_between_nodes_updates(
+        source_id: SplitGraphNodeId,
+        source_subgraph_root_id: SplitGraphNodeId,
+        source_kind: N::Kind,
+        target_id: SplitGraphNodeId,
+        target_subgraph_root_id: SplitGraphNodeId,
+        target_kind: N::Kind,
+        edge_weight: E,
+        graph_root_id: SplitGraphNodeId,
+    ) -> Vec<Self> {
+        if source_subgraph_root_id == target_subgraph_root_id {
+            vec![Update::NewEdge {
+                subgraph_root_id: source_subgraph_root_id,
+                source: UpdateNodeInfo {
+                    id: source_id,
+                    external_target_id: None,
+                    external_target_custom_kind: None,
+                    kind: SplitGraphNodeWeightDiscriminants::Custom,
+                    custom_kind: Some(source_kind),
+                    phantom_n: PhantomData,
+                },
+                destination: UpdateNodeInfo {
+                    id: target_id,
+                    external_target_id: None,
+                    external_target_custom_kind: None,
+                    kind: SplitGraphNodeWeightDiscriminants::Custom,
+                    custom_kind: Some(target_kind),
+                    phantom_n: PhantomData,
+                },
+                edge_weight: SplitGraphEdgeWeight::Custom(edge_weight),
+            }]
+        } else {
+            let external_target_node_id = SplitGraphNodeId::new();
+            let is_default = edge_weight.is_default();
+            let edge_kind = edge_weight.kind();
+
+            vec![
+                Update::NewNode {
+                    subgraph_root_id: source_subgraph_root_id,
+                    node_weight: SplitGraphNodeWeight::ExternalTarget {
+                        id: external_target_node_id,
+                        target: target_id,
+                        merkle_tree_hash: MerkleTreeHash::nil(),
+                        target_kind: SplitGraphNodeWeightDiscriminants::Custom,
+                        target_custom_kind: Some(target_kind),
+                    },
+                },
+                Update::NewEdge {
+                    subgraph_root_id: source_subgraph_root_id,
+                    source: UpdateNodeInfo {
+                        id: source_id,
+                        external_target_id: None,
+                        external_target_custom_kind: None,
+                        kind: SplitGraphNodeWeightDiscriminants::Custom,
+                        custom_kind: Some(source_kind),
+                        phantom_n: PhantomData,
+                    },
+                    destination: UpdateNodeInfo {
+                        id: external_target_node_id,
+                        external_target_id: Some(target_id),
+                        external_target_custom_kind: Some(target_kind),
+                        kind: SplitGraphNodeWeightDiscriminants::ExternalTarget,
+                        custom_kind: None,
+                        phantom_n: PhantomData,
+                    },
+                    edge_weight: SplitGraphEdgeWeight::Custom(edge_weight),
+                },
+                Update::NewEdge {
+                    subgraph_root_id: target_subgraph_root_id,
+                    source: UpdateNodeInfo {
+                        id: target_subgraph_root_id,
+                        external_target_id: None,
+                        external_target_custom_kind: None,
+                        kind: if target_subgraph_root_id == graph_root_id {
+                            SplitGraphNodeWeightDiscriminants::GraphRoot
+                        } else {
+                            SplitGraphNodeWeightDiscriminants::SubGraphRoot
+                        },
+                        custom_kind: None,
+                        phantom_n: PhantomData,
+                    },
+                    destination: UpdateNodeInfo {
+                        id: target_id,
+                        external_target_id: None,
+                        external_target_custom_kind: None,
+                        kind: SplitGraphNodeWeightDiscriminants::Custom,
+                        custom_kind: Some(target_kind),
+                        phantom_n: PhantomData,
+                    },
+                    edge_weight: SplitGraphEdgeWeight::ExternalSource {
+                        source_id,
+                        is_default,
+                        edge_kind,
+                        source_node_kind: Some(source_kind),
+                        phantom_n: PhantomData,
+                    },
+                },
+            ]
+        }
+    }
+
     pub fn is_of_custom_edge_kind(&self, target_kind: K) -> bool {
         match self {
             Update::NewEdge { edge_weight, .. } => match edge_weight {

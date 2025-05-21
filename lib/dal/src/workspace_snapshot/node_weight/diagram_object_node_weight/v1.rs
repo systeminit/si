@@ -1,4 +1,7 @@
+use std::collections::BTreeMap;
+
 use dal_macros::SiNodeWeight;
+use petgraph::Direction::Outgoing;
 use serde::{
     Deserialize,
     Serialize,
@@ -10,6 +13,7 @@ use si_events::{
 };
 
 use crate::{
+    EdgeWeight,
     EdgeWeightKindDiscriminants,
     workspace_snapshot::{
         graph::{
@@ -17,6 +21,7 @@ use crate::{
             detector::Update,
         },
         node_weight::{
+            NodeWeight,
             NodeWeightDiscriminants,
             diagram_object_node_weight::DiagramObjectKind,
             traits::{
@@ -27,6 +32,7 @@ use crate::{
                 SiNodeWeight,
             },
         },
+        split_snapshot,
     },
 };
 
@@ -67,6 +73,15 @@ impl CorrectTransforms for DiagramObjectNodeWeightV1 {
         let mut maybe_diagram_object_view_id: Option<Ulid> = None;
         let mut maybe_diagram_object_incoming_category_edge_idx = None;
         let mut maybe_diagram_object_incoming_geometry_edge_idx = None;
+
+        // We're searching for a new node update, so if the node is already
+        // in the graph, there is nothing to correct
+        if workspace_snapshot_graph
+            .get_node_index_by_id_opt(self.id)
+            .is_some()
+        {
+            return Ok(updates);
+        }
 
         for (update_idx, update) in updates.iter().enumerate() {
             match update {
@@ -192,5 +207,170 @@ impl CorrectTransforms for DiagramObjectNodeWeightV1 {
 impl CorrectExclusiveOutgoingEdge for DiagramObjectNodeWeightV1 {
     fn exclusive_outgoing_edges(&self) -> &[EdgeWeightKindDiscriminants] {
         &[]
+    }
+}
+
+impl
+    split_snapshot::corrections::CorrectTransforms<
+        NodeWeight,
+        EdgeWeight,
+        EdgeWeightKindDiscriminants,
+    > for DiagramObjectNodeWeightV1
+{
+    fn correct_transforms(
+        &self,
+        graph: &si_split_graph::SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+        mut updates: Vec<
+            si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+        >,
+        _from_different_change_set: bool,
+    ) -> split_snapshot::corrections::CorrectTransformsResult<
+        Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+    > {
+        // These are corrections that apply to *new* diagram objects,
+        // so we can short circuit if the dobj is on the graph already
+        if graph.node_exists(self.id) {
+            return Ok(updates);
+        }
+
+        let mut update_idxs_to_remove = vec![];
+        let mut maybe_diagram_object_containing_view_id = None;
+        let mut maybe_diagram_object_subgraph_root_id = None;
+        let mut maybe_geometry_source_id = None;
+        let mut maybe_edge_from_geometry_to_diagram_object = None;
+        let mut geometry_id_to_subgraph_root_id = BTreeMap::new();
+
+        for (update_idx, update) in updates.iter().enumerate() {
+            match update {
+                // View --DiagramObject--> DiagramObject
+                si_split_graph::Update::NewEdge { source, .. }
+                    if update.destination_has_id(self.id)
+                        && update.is_edge_of_sort(
+                            NodeWeightDiscriminants::View,
+                            EdgeWeightKindDiscriminants::DiagramObject,
+                            NodeWeightDiscriminants::DiagramObject,
+                        ) =>
+                {
+                    update_idxs_to_remove.push(update_idx);
+                    if source.custom_kind.is_some() {
+                        // If this is a net new view, we do not need to correct,
+                        // *SHORT CIRCUIT* here before continuing to process updates
+                        if !graph.node_exists(source.id) {
+                            return Ok(updates);
+                        }
+                        maybe_diagram_object_containing_view_id = Some(source.id);
+                    }
+                }
+                // Category --Use--> DiagramObject
+                si_split_graph::Update::NewEdge { .. }
+                    if update.destination_has_id(self.id)
+                        && update.is_edge_of_sort(
+                            NodeWeightDiscriminants::Category,
+                            EdgeWeightKindDiscriminants::Use,
+                            NodeWeightDiscriminants::DiagramObject,
+                        ) =>
+                {
+                    update_idxs_to_remove.push(update_idx);
+                }
+                // Geometry --Represents--> DiagramObject
+                si_split_graph::Update::NewEdge {
+                    source,
+                    edge_weight,
+                    ..
+                } if update.destination_has_id(self.id)
+                    && update.is_edge_of_sort(
+                        NodeWeightDiscriminants::Geometry,
+                        EdgeWeightKindDiscriminants::Represents,
+                        NodeWeightDiscriminants::DiagramObject,
+                    ) =>
+                {
+                    update_idxs_to_remove.push(update_idx);
+                    if let Some(edge_weight) = edge_weight.custom() {
+                        maybe_edge_from_geometry_to_diagram_object = Some(edge_weight.clone());
+                    }
+                    if source.custom_kind.is_some() {
+                        maybe_geometry_source_id = Some(source.id);
+                    }
+                }
+                // We need to know the subgraph of the geometry node so we can produce the correct
+                // cross graph new-edge updates for it
+                si_split_graph::Update::NewNode {
+                    subgraph_root_id,
+                    node_weight,
+                } if node_weight.custom_kind() == Some(NodeWeightDiscriminants::Geometry) => {
+                    geometry_id_to_subgraph_root_id.insert(node_weight.id(), *subgraph_root_id);
+                }
+                si_split_graph::Update::NewNode {
+                    subgraph_root_id,
+                    node_weight,
+                } if node_weight.id() == self.id => {
+                    update_idxs_to_remove.push(update_idx);
+                    maybe_diagram_object_subgraph_root_id = Some(*subgraph_root_id);
+                }
+                _ => {}
+            }
+        }
+
+        let (
+            Some(diagram_object_containing_view_id),
+            Some(diagram_object_subgraph_root_id),
+            Some(geometry_source_id),
+            Some(edge_from_geometry_to_diagram_object),
+        ) = (
+            maybe_diagram_object_containing_view_id,
+            maybe_diagram_object_subgraph_root_id,
+            maybe_geometry_source_id,
+            maybe_edge_from_geometry_to_diagram_object,
+        )
+        else {
+            return Ok(updates);
+        };
+
+        let geometry_subgraph_root_id = match geometry_id_to_subgraph_root_id
+            .get(&geometry_source_id)
+        {
+            Some(subgraph_root_id) => *subgraph_root_id,
+            None => {
+                // If there wasn't a new node update, then maybe somehow the node is already in the graph?
+                // unlikely, but possible
+                let Some(subgraph_root_id) = graph.subgraph_root_id_for_node(geometry_source_id)
+                else {
+                    return Ok(updates);
+                };
+
+                subgraph_root_id
+            }
+        };
+
+        let Some(existing_diagram_object_for_view) = graph
+            .edges_directed_for_edge_weight_kind(
+                diagram_object_containing_view_id,
+                Outgoing,
+                EdgeWeightKindDiscriminants::DiagramObject,
+            )?
+            .last()
+            .and_then(|edge_ref| graph.node_weight(edge_ref.target()))
+        else {
+            return Ok(updates);
+        };
+
+        for idx_to_remove in update_idxs_to_remove {
+            updates.remove(idx_to_remove);
+        }
+
+        let graph_root_id = graph.root_id()?;
+
+        updates.extend(si_split_graph::Update::new_edge_between_nodes_updates(
+            geometry_source_id,
+            geometry_subgraph_root_id,
+            NodeWeightDiscriminants::Geometry,
+            existing_diagram_object_for_view.id(),
+            diagram_object_subgraph_root_id,
+            NodeWeightDiscriminants::DiagramObject,
+            edge_from_geometry_to_diagram_object,
+            graph_root_id,
+        ));
+
+        Ok(updates)
     }
 }

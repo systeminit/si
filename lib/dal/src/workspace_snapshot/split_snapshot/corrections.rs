@@ -101,6 +101,8 @@ impl CorrectTransforms<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants> for 
     ) -> CorrectTransformsResult<Vec<Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>>
     {
         match self {
+            NodeWeight::DiagramObject(diagram_object_node_weight) => diagram_object_node_weight
+                .correct_transforms(graph, updates, from_different_change_set),
             NodeWeight::Geometry(geometry_node_weight) => {
                 geometry_node_weight.correct_transforms(graph, updates, from_different_change_set)
             }
