@@ -110,7 +110,7 @@ pub async fn perform_rebase(
 
     // if the change set has been abandoned, do not do this work
     if to_rebase_change_set.status == ChangeSetStatus::Abandoned {
-        warn!("Attempted to rebase for abandoned change set. Early returning");
+        debug!("Attempted to rebase for abandoned change set. Early returning");
         return Ok(RebaseStatus::Error {
             message: "Attempted to rebase for an abandoned change set.".to_string(),
         });
