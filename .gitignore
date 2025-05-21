@@ -24,6 +24,8 @@ bin/si-luminork-api-tests/.env
 app/docs/src/.vitepress/cache/
 app/docs/dist/
 
+generated-sdks/typescript/dist/
+
 bin/lang-js/docs/
 
 .turbo

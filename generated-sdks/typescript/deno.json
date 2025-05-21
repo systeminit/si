@@ -1,0 +1,19 @@
+{
+  "name": "@systeminit/api-client",
+  "version": "0.0.1",
+  "exports": {
+    ".": "./dist/esm/index.js"
+  },
+  "publish": {
+    "include": ["dist/esm/**/*", "LICENSE", "README.md"]
+  },
+  "tasks": {
+    "build": "npm run build"
+  },
+  "fmt": {
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "singleQuote": true,
+    "semiColons": true
+  }
+}

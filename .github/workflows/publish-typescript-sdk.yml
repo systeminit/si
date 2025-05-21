@@ -1,0 +1,80 @@
+name: Publish TypeScript SDK to NPM and JSR
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g., 1.0.0)"
+        required: true
+        type: string
+
+jobs:
+  build-and-publish-npm:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: generated-sdks/typescript
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Update version in package.json
+        run: |
+          sed -i "s/\"version\": \".*\"/\"version\": \"${{ github.event.inputs.version }}\"/g" package.json
+
+      - name: Build package
+        run: npm run build
+
+      - name: Publish to NPM
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
+
+  build-and-publish-jsr:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: generated-sdks/typescript
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Set up Node.js (for build)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Update version in deno.json
+        run: |
+          sed -i "s/\"version\": \".*\"/\"version\": \"${{ github.event.inputs.version }}\"/g" deno.json
+
+      - name: Build package
+        run: npm run build
+
+      - name: Publish to JSR
+        env:
+          JSR_TOKEN: ${{ secrets.JSR_TOKEN }}
+        run: |
+          deno login --token "${JSR_TOKEN}" jsr.io
+          deno publish
