@@ -12,12 +12,7 @@ use axum::{
     },
 };
 use dal::{
-    ChangeSetError,
-    SchemaVariantId,
-    UserPk,
-    WsEventError,
-    cached_module::CachedModuleError,
-    module::ModuleError,
+    cached_module::CachedModuleError, func::binding::FuncBindingError, module::ModuleError, ChangeSetError, FuncError, SchemaVariantId, UserPk, WsEventError
 };
 use sdf_core::api_error::ApiError;
 use telemetry::prelude::*;
@@ -28,6 +23,7 @@ use crate::AppState;
 pub mod create_unlocked_copy;
 mod delete_unlocked_variant;
 mod get_variant;
+mod list_funcs;
 mod list_variants;
 
 #[remain::sorted]
@@ -41,6 +37,10 @@ pub enum SchemaVariantsAPIError {
     CannotDeleteVariantWithComponents,
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
+    #[error("func binding error: {0}")]
+    FuncBinding(#[from] FuncBindingError),
     #[error("hyper error: {0}")]
     Http(#[from] axum::http::Error),
     #[error("invalid user: {0}")]
@@ -90,5 +90,9 @@ pub fn v2_routes() -> Router<AppState> {
         .route(
             "/:schema_variant_id",
             delete(delete_unlocked_variant::delete_unlocked_variant),
+        )
+        .route(
+            "/:schema_variant_id/funcs",
+            get(list_funcs::list_funcs),
         )
 }

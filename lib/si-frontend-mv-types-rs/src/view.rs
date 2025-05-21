@@ -19,8 +19,7 @@ use si_id::{
 };
 
 use crate::reference::{
-    Reference,
-    ReferenceKind,
+    weak, ReferenceKind, WeakReference
 };
 
 #[derive(
@@ -46,8 +45,8 @@ pub struct View {
 )]
 pub struct ViewList {
     pub id: ChangeSetId,
-    #[mv(reference_kind = ReferenceKind::View)]
-    pub views: Vec<Reference<ViewId>>,
+    // #[mv(reference_kind = ReferenceKind::View)]
+    pub views: Vec<WeakReference<ViewId, weak::markers::View>>,
 }
 
 #[derive(
@@ -67,6 +66,5 @@ pub struct ViewList {
 )]
 pub struct ViewComponentList {
     pub id: ViewId,
-    #[mv(reference_kind = ReferenceKind::Component)]
-    pub components: Vec<Reference<ComponentId>>,
+    pub components: Vec<WeakReference<ComponentId, weak::markers::Component>>,
 }

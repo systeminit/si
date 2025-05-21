@@ -88,12 +88,27 @@ pub mod markers {
     use super::ReferenceKindMarker;
     use crate::reference::ReferenceKind;
 
+     /// A weak reference marker for [`ReferenceKind::SchemaVariant`].
+    #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
+    pub struct SchemaVariant;
+
+    impl ReferenceKindMarker for SchemaVariant {
+        const REFERENCE_KIND: ReferenceKind = ReferenceKind::SchemaVariant;
+    }
     /// A weak reference marker for [`ReferenceKind::Component`].
     #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
     pub struct Component;
 
     impl ReferenceKindMarker for Component {
         const REFERENCE_KIND: ReferenceKind = ReferenceKind::Component;
+    }
+
+     /// A weak reference marker for [`ReferenceKind::IncomingConnections`].
+    #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
+    pub struct IncomingConnections;
+
+    impl ReferenceKindMarker for IncomingConnections {
+        const REFERENCE_KIND: ReferenceKind = ReferenceKind::IncomingConnections;
     }
 
     /// A weak reference marker for [`ReferenceKind::SecretDefinition`].
@@ -107,5 +122,11 @@ pub mod markers {
     pub struct Secret;
     impl ReferenceKindMarker for Secret {
         const REFERENCE_KIND: ReferenceKind = ReferenceKind::Secret;
+    }
+    /// A weak reference marker for [`ReferenceKind::View`].
+    #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
+    pub struct View;
+    impl ReferenceKindMarker for View {
+        const REFERENCE_KIND: ReferenceKind = ReferenceKind::View;
     }
 }

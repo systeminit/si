@@ -235,7 +235,7 @@ pub async fn build_mv_for_changes_in_change_set(
     changes: &[Change],
 ) -> Result<(), MaterializedViewError> {
     let workspace_pk = ctx.workspace_pk()?;
-
+    info!("reacting to changes: {:?}", changes);
     let span = current_span_for_instrument_at!("info");
     span.record("si.workspace.id", workspace_pk.to_string());
 
@@ -249,7 +249,7 @@ pub async fn build_mv_for_changes_in_change_set(
 
     let (frontend_objects, patches) =
         build_mv_inner(ctx, frigg, workspace_pk, change_set_id, changes).await?;
-
+    info!("frontend patches: {:?}", patches);
     let mv_index: MvIndex = serde_json::from_value(index_frontend_object.data)?;
     let removal_checksum = "0".to_string();
     let removed_items: HashSet<(String, String)> = patches
@@ -468,6 +468,7 @@ async fn build_mv_inner(
             if mv_kind_task_ids.get().is_empty() {
                 mv_dependency_graph.remove_id(kind);
             }
+            info!("execution result: {:?}", execution_result);
             match execution_result {
                 Ok((maybe_patch, maybe_frontend_object)) => {
                     if let Some(patch) = maybe_patch {

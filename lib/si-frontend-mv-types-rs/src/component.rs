@@ -12,8 +12,7 @@ use si_events::{
 };
 
 use crate::reference::{
-    Reference,
-    ReferenceKind,
+    weak, ReferenceKind, WeakReference
 };
 
 pub mod attribute_tree;
@@ -74,8 +73,7 @@ pub struct Component {
     pub color: Option<String>,
     pub schema_name: String,
     pub schema_id: SchemaId,
-    #[mv(reference_kind = ReferenceKind::SchemaVariant)]
-    pub schema_variant_id: Reference<SchemaVariantId>,
+    pub schema_variant_id: WeakReference<SchemaVariantId, weak::markers::SchemaVariant>,
     pub schema_variant_name: String,
     pub schema_variant_description: Option<String>,
     pub schema_variant_doc_link: Option<String>,
@@ -107,6 +105,5 @@ pub struct Component {
 )]
 pub struct ComponentList {
     pub id: ChangeSetId,
-    #[mv(reference_kind = ReferenceKind::Component)]
-    pub components: Vec<Reference<ComponentId>>,
+    pub components: Vec<WeakReference<ComponentId, weak::markers::Component>>,
 }

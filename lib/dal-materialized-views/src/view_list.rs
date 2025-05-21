@@ -11,13 +11,10 @@ pub async fn assemble(ctx: DalContext) -> super::Result<ViewListMv> {
     let mut view_ids = View::list_ids(ctx).await?;
     view_ids.sort();
 
-    let mut views = Vec::with_capacity(view_ids.len());
-    for view_id in view_ids {
-        views.push(super::view::assemble(ctx.clone(), view_id).await?);
-    }
+    
 
     Ok(ViewListMv {
         id: ctx.change_set_id(),
-        views: views.iter().map(Into::into).collect(),
+        views: view_ids.iter().map(|&id| id.into()).collect(),
     })
 }
