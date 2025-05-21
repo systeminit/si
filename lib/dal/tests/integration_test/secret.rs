@@ -23,6 +23,8 @@ use dal_test::{
     },
     helpers::{
         ChangeSetTestHelpers,
+        attribute::value,
+        connect_components_with_socket_names,
         create_component_for_default_schema_name_in_default_view,
         encrypt_message,
         generate_fake_name,
@@ -812,4 +814,267 @@ fn prepare_decrypted_secret_for_assertions(decrypted_secret: &DecryptedSecret) -
     let decrypted_value =
         serde_json::to_value(decrypted_secret).expect("failed to serialize decrypted contents");
     decrypted_value["message"].to_owned()
+}
+
+#[test]
+async fn secret_definition_daisy_chain_subscriptions(ctx: &mut DalContext, nw: &WorkspaceSignup) {
+    // Create secret that secret defining component uses and commit.
+    let dummy = ExpectComponent::create(ctx, "dummy-secret").await;
+    let dummy_secret_name = "dummy";
+    let dummy_output_socket = dummy.output_socket(ctx, dummy_secret_name).await;
+    let dummy_secret_prop = dummy
+        .prop(ctx, ["root", "secrets", dummy_secret_name])
+        .await;
+    // Create double secret defining component (which uses the daisy chain)
+    let double = ExpectComponent::create(ctx, "dummy-double-secret").await;
+    let double_secret_name = "dummyDouble";
+    let double_output_socket = double.output_socket(ctx, double_secret_name).await;
+    let double_secret_prop = double
+        .prop(ctx, ["root", "secrets", double_secret_name])
+        .await;
+    let double_dummy_secret_prop = double
+        .prop(ctx, ["root", "secrets", dummy_secret_name])
+        .await;
+    let double_input_socket = double.input_socket(ctx, dummy_secret_name).await;
+
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    // first create a socket connection between the two components
+    connect_components_with_socket_names(ctx, dummy.id(), "dummy", double.id(), "dummy")
+        .await
+        .expect("couldn't connect components");
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    // First scenario: create and use secrets that will fail the qualification.
+    {
+        // Create secrets with a value that will fail the qualification and commit.
+        let encrypted_message_that_will_fail_the_qualification_dummy = encrypt_message(
+            ctx,
+            nw.key_pair.pk(),
+            &serde_json::json![{"value": "howard"}],
+        )
+        .await
+        .expect("could not encrypt message");
+        let dummy_secret_that_will_fail_the_qualification = Secret::new(
+            ctx,
+            "secret that will fail the qualification",
+            dummy_secret_name.to_string(),
+            None,
+            &encrypted_message_that_will_fail_the_qualification_dummy,
+            nw.key_pair.pk(),
+            Default::default(),
+            Default::default(),
+        )
+        .await
+        .expect("cannot create secret");
+
+        let encrypted_message_that_will_fail_the_qualification_double = encrypt_message(
+            ctx,
+            nw.key_pair.pk(),
+            &serde_json::json![{"value": "howard"}],
+        )
+        .await
+        .expect("could not encrypt message");
+        let double_secret_that_will_fail_the_qualification = Secret::new(
+            ctx,
+            "secret that will fail the qualification",
+            double_secret_name.to_string(),
+            None,
+            &encrypted_message_that_will_fail_the_qualification_double,
+            nw.key_pair.pk(),
+            Default::default(),
+            Default::default(),
+        )
+        .await
+        .expect("cannot create secret");
+        expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+        // Update the reference to secret prop for both components
+        // with the secret it that will fail the qualification
+        Secret::attach_for_attribute_value(
+            ctx,
+            dummy_secret_prop.attribute_value(ctx).await.id(),
+            Some(dummy_secret_that_will_fail_the_qualification.id()),
+        )
+        .await
+        .expect("could not attach secret");
+        Secret::attach_for_attribute_value(
+            ctx,
+            double_secret_prop.attribute_value(ctx).await.id(),
+            Some(double_secret_that_will_fail_the_qualification.id()),
+        )
+        .await
+        .expect("could not attach secret");
+        expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+        // Check that the output socket values looks correct.
+        assert_eq!(
+            Secret::payload_for_prototype_execution(
+                ctx,
+                dummy_secret_that_will_fail_the_qualification.id()
+            )
+            .await
+            .expect("could not get payload"), // expected
+            dummy_output_socket.get(ctx).await // actual
+        );
+        assert_eq!(
+            Secret::payload_for_prototype_execution(
+                ctx,
+                double_secret_that_will_fail_the_qualification.id()
+            )
+            .await
+            .expect("could not get payload"), // expected
+            double_output_socket.get(ctx).await // actual
+        );
+
+        // Check that the qualification fails.
+        let qualifications = Component::list_qualifications(ctx, double.id())
+            .await
+            .expect("could not list qualifications");
+        let qualification = qualifications
+            .into_iter()
+            .find(|q| q.qualification_name == "test:qualificationDummyDoubleSecretStringIsTodd")
+            .expect("could not find qualification");
+        assert_eq!(
+            QualificationSubCheckStatus::Failure, // expected
+            qualification.result.expect("no result found").status  // actual
+        );
+    }
+
+    // Second scenario: create and use secrets that will pass the qualification.
+    {
+        // Create a secret with a value that will pass the qualification and commit.
+        let dummy_encrypted_message_that_will_pass_the_qualification =
+            encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}])
+                .await
+                .expect("could not encrypt message");
+        let dummy_secret_that_will_pass_the_qualification = Secret::new(
+            ctx,
+            "secret that will pass the qualification",
+            dummy_secret_name.to_string(),
+            None,
+            &dummy_encrypted_message_that_will_pass_the_qualification,
+            nw.key_pair.pk(),
+            Default::default(),
+            Default::default(),
+        )
+        .await
+        .expect("cannot create secret");
+        let double_encrypted_message_that_will_pass_the_qualification =
+            encrypt_message(ctx, nw.key_pair.pk(), &serde_json::json![{"value": "todd"}])
+                .await
+                .expect("could not encrypt message");
+        let double_secret_that_will_pass_the_qualification = Secret::new(
+            ctx,
+            "secret that will pass the qualification",
+            double_secret_name.to_string(),
+            None,
+            &double_encrypted_message_that_will_pass_the_qualification,
+            nw.key_pair.pk(),
+            Default::default(),
+            Default::default(),
+        )
+        .await
+        .expect("cannot create secret");
+        expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+        // Update the reference to secret props with the secret it that will pass the qualification
+        // and commit.
+        Secret::attach_for_attribute_value(
+            ctx,
+            dummy_secret_prop.attribute_value(ctx).await.id(),
+            Some(dummy_secret_that_will_pass_the_qualification.id()),
+        )
+        .await
+        .expect("could not attach secret");
+        Secret::attach_for_attribute_value(
+            ctx,
+            double_secret_prop.attribute_value(ctx).await.id(),
+            Some(double_secret_that_will_pass_the_qualification.id()),
+        )
+        .await
+        .expect("could not attach secret");
+        expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+        // Check that the output socket value looks correct.
+        assert_eq!(
+            Secret::payload_for_prototype_execution(
+                ctx,
+                dummy_secret_that_will_pass_the_qualification.id()
+            )
+            .await
+            .expect("could not get payload"), // expected
+            dummy_output_socket.get(ctx).await // actual
+        );
+        assert_eq!(
+            Secret::payload_for_prototype_execution(
+                ctx,
+                double_secret_that_will_pass_the_qualification.id()
+            )
+            .await
+            .expect("could not get payload"), // expected
+            double_output_socket.get(ctx).await // actual
+        );
+
+        // Check that the qualification passes.
+        let qualifications = Component::list_qualifications(ctx, double.id())
+            .await
+            .expect("could not list qualifications");
+        let qualification = qualifications
+            .into_iter()
+            .find(|q| q.qualification_name == "test:qualificationDummyDoubleSecretStringIsTodd")
+            .expect("could not find qualification");
+        assert_eq!(
+            QualificationSubCheckStatus::Success, // expected
+            qualification.result.expect("no result found").status  // actual
+        );
+    }
+    // Third scenario: remove the socket connection and create an AV subscription, all should work as it does!
+    {
+        Component::remove_connection(
+            ctx,
+            dummy.id(),
+            dummy_output_socket.output_socket().id(),
+            double.id(),
+            double_input_socket.input_socket().id(),
+        )
+        .await
+        .expect("able to remove connection");
+        expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+        // Check that the qualification fails now.
+        let qualifications = Component::list_qualifications(ctx, double.id())
+            .await
+            .expect("could not list qualifications");
+        let qualification = qualifications
+            .into_iter()
+            .find(|q| q.qualification_name == "test:qualificationDummyDoubleSecretStringIsTodd")
+            .expect("could not find qualification");
+        assert_eq!(
+            QualificationSubCheckStatus::Failure, // expected
+            qualification.result.expect("no result found").status  // actual
+        );
+
+        // Subscribe to the dummy secret from the double component
+        value::subscribe(
+            ctx,
+            double_dummy_secret_prop.attribute_value(ctx).await.id(),
+            [(dummy.id(), "/secrets/dummy")],
+        )
+        .await
+        .expect("could not subscribe");
+        expected::commit_and_update_snapshot_to_visibility(ctx).await;
+        // Check that the qualification passes.
+        let qualifications = Component::list_qualifications(ctx, double.id())
+            .await
+            .expect("could not list qualifications");
+        let qualification = qualifications
+            .into_iter()
+            .find(|q| q.qualification_name == "test:qualificationDummyDoubleSecretStringIsTodd")
+            .expect("could not find qualification");
+        assert_eq!(
+            QualificationSubCheckStatus::Success, // expected
+            qualification.result.expect("no result found").status  // actual
+        );
+    }
 }
