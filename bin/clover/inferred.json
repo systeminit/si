@@ -2332,6 +2332,11 @@
       "sigv4"
     ]
   },
+  "The project profile version to which the project should be updated. You can only specify the following string for this parameter: latest.": {
+    "enum": [
+      "latest"
+    ]
+  },
   "The type of VPN connection that this customer gateway supports (``ipsec.1``).": {
     "enum": [
       "ipsec.1"
@@ -8995,6 +9000,9 @@
   "The ID of the domain in which you want to add the entity owner.": {
     "enum": null
   },
+  "The ID of the domain unit.": {
+    "enum": null
+  },
   "The ID of the domain where you want to create a domain unit.": {
     "enum": null
   },
@@ -14323,6 +14331,9 @@
   "The project ID metadata.": {
     "enum": null
   },
+  "The project profile ID.": {
+    "enum": null
+  },
   "The property describes Amazon Resource Name (ARN) of the service access role.": {
     "enum": null
   },
@@ -16457,6 +16468,9 @@
     "enum": null
   },
   "intended use cases.": {
+    "enum": null
+  },
+  "maximum times the canary will be retried upon the scheduled run failure": {
     "enum": null
   },
   "sidewalk role": {
