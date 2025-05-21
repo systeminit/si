@@ -342,7 +342,9 @@ mod handlers {
     use std::result;
 
     use dal::{
+        ChangeSet,
         ChangeSetId,
+        ChangeSetStatus,
         DalContext,
         WorkspacePk,
     };
@@ -430,6 +432,19 @@ mod handlers {
         if !span.is_disabled() {
             span.record("si.workspace.id", workspace_id.to_string());
             span.record("si.change_set.id", change_set_id.to_string());
+        }
+
+        let to_process_change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
+
+        // Note: JW: I believe this enum should be flipped to != Open or similar
+        // as it's much more likely to be accurate. This will do as an initial
+        // pass. Once we are more sure what should be skipped we can fix both the
+        // logic here & in the rebaser or more centrally prevent dispatch of work.
+
+        // If the associated change set has been abandoned, do not do this work.
+        if to_process_change_set.status == ChangeSetStatus::Abandoned {
+            debug!("Attempted to process an abandoned change set. Skipping");
+            return Ok(());
         }
 
         handle_request(&ctx, &frigg, workspace_id, change_set_id, request).await
