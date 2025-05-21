@@ -57,6 +57,7 @@ const formData = computed<{ name: string }>(() => {
 });
 
 const nameForm = wForm.newForm(
+  "view.add",
   formData,
   async ({ value }) => {
     const call = api.endpoint<{ id: string }>(routes.CreateView);

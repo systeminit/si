@@ -32,12 +32,13 @@ const routes: RouteRecordRaw[] = [
     beforeEnter: async (loc) => {
       const resp = await sdf<WorkspaceMetadata>({
         method: "GET",
-        url: `/v2/workspaces/${loc.params.workspacePk}/change-sets/`,
+        url: `v2/workspaces/${loc.params.workspacePk}/change-sets`,
       });
       const changeSetId = resp.data.defaultChangeSetId;
-      return `/n/${loc.params.workspacePk}/${changeSetId}/h`;
+      const newloc = `/n/${loc.params.workspacePk}/${changeSetId}/h`;
+      return newloc;
     },
-    redirect: () => "/", // ignored, here just to make the typing happy
+    component: () => import("@/newhotness/Workspace.vue"),
   },
   {
     name: "new-hotness",
