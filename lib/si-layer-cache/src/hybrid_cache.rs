@@ -96,44 +96,12 @@ where
             computed_memory_cache_capacity_bytes.try_into()?
         };
 
-        fs::create_dir_all(config.disk_path.as_path()).await?;
-        // Compute total disk which is in use for `disk_path`
-        let total_disk_bytes = fs4::total_space(config.disk_path.as_path())?;
+        let cache_meter_name: &'static str = config.name.clone().leak();
 
-        let disk_cache_capacity_bytes = {
-            // Subtract reserved disk percentage to determine total usable cache disk
-            let total_usable_disk_bytes = (total_disk_bytes as f64
-                * (1.0 - (config.disk_reserved_percent as f64 / 100.0)))
-                .floor() as u64;
-            // Compute final usable disk as a percentage of the maximum usable disk
-            let computed_disk_cache_capacity_bytes = (total_usable_disk_bytes as f64
-                * (config.disk_usable_max_percent as f64 / 100.0))
-                .floor() as u64;
-
-            // Ensure that the computed value is at least as big as the Foyer minimum
-            max(computed_disk_cache_capacity_bytes, FOYER_DISK_CACHE_MINUMUM).try_into()?
-        };
-
-        info!(
-            cache.name = &config.name,
-            cache.disk.total_bytes = total_disk_bytes,
-            cache.disk.size_bytes = disk_cache_capacity_bytes,
-            cache.disk.reserved_percent = config.disk_reserved_percent,
-            cache.disk.usable_max_percent = config.disk_usable_max_percent,
-            cache.disk.rate_limit = config.disk_admission_rate_limit,
-            cache.memory.total_bytes = total_memory_bytes,
-            cache.memory.size_bytes = memory_cache_capacity_bytes,
-            cache.memory.reserved_percent = config.memory_reserved_percent,
-            cache.memory.usable_max_percent = config.memory_usable_max_percent,
-            "creating cache",
-        );
-
-        let cache_name: &'static str = config.name.leak();
-
-        let cache: HybridCache<Arc<str>, MaybeDeserialized<V>> = HybridCacheBuilder::new()
-            .with_name(cache_name)
+        let builder = HybridCacheBuilder::new()
+            .with_name(config.name.clone())
             .with_metrics_registry(Box::new(OpenTelemetryMetricsRegistry::new(global::meter(
-                cache_name,
+                cache_meter_name,
             ))))
             .memory(memory_cache_capacity_bytes)
             .with_weighter(
@@ -150,10 +118,6 @@ where
             .with_admission_picker(Arc::new(RateLimitPicker::new(
                 config.disk_admission_rate_limit,
             )))
-            .with_device_options(
-                DirectFsDeviceOptions::new(config.disk_path)
-                    .with_capacity(disk_cache_capacity_bytes),
-            )
             .with_large_object_disk_cache_options(
                 LargeEngineOptions::new()
                     .with_buffer_pool_size(config.disk_buffer_size)
@@ -163,7 +127,65 @@ where
                     .with_indexer_shards(config.disk_indexer_shards)
                     .with_reclaimers(config.disk_reclaimers),
             )
-            .with_recover_mode(RecoverMode::Quiet)
+            .with_recover_mode(RecoverMode::Quiet);
+
+        let builder = if config.disk_layer {
+            fs::create_dir_all(config.disk_path.as_path()).await?;
+
+            // Compute total disk which is in use for `disk_path`
+            let total_disk_bytes = fs4::total_space(config.disk_path.as_path())?;
+
+            let disk_cache_capacity_bytes = {
+                // Subtract reserved disk percentage to determine total usable cache disk
+                let total_usable_disk_bytes = (total_disk_bytes as f64
+                    * (1.0 - (config.disk_reserved_percent as f64 / 100.0)))
+                    .floor() as u64;
+                // Compute final usable disk as a percentage of the maximum usable disk
+                let computed_disk_cache_capacity_bytes = (total_usable_disk_bytes as f64
+                    * (config.disk_usable_max_percent as f64 / 100.0))
+                    .floor() as u64;
+
+                // Ensure that the computed value is at least as big as the Foyer minimum
+                max(computed_disk_cache_capacity_bytes, FOYER_DISK_CACHE_MINUMUM).try_into()?
+            };
+
+            info!(
+                cache.name = &config.name,
+                cache.disk.layer = config.disk_layer,
+                cache.disk.total_bytes = total_disk_bytes,
+                cache.disk.size_bytes = disk_cache_capacity_bytes,
+                cache.disk.reserved_percent = config.disk_reserved_percent,
+                cache.disk.usable_max_percent = config.disk_usable_max_percent,
+                cache.disk.rate_limit = config.disk_admission_rate_limit,
+                cache.memory.total_bytes = total_memory_bytes,
+                cache.memory.size_bytes = memory_cache_capacity_bytes,
+                cache.memory.reserved_percent = config.memory_reserved_percent,
+                cache.memory.usable_max_percent = config.memory_usable_max_percent,
+                "creating cache",
+            );
+
+            builder.with_device_options(
+                DirectFsDeviceOptions::new(config.disk_path)
+                    .with_capacity(disk_cache_capacity_bytes),
+            )
+        } else {
+            info!(
+                cache.name = &config.name,
+                cache.disk.layer = config.disk_layer,
+                cache.disk.reserved_percent = config.disk_reserved_percent,
+                cache.disk.usable_max_percent = config.disk_usable_max_percent,
+                cache.disk.rate_limit = config.disk_admission_rate_limit,
+                cache.memory.total_bytes = total_memory_bytes,
+                cache.memory.size_bytes = memory_cache_capacity_bytes,
+                cache.memory.reserved_percent = config.memory_reserved_percent,
+                cache.memory.usable_max_percent = config.memory_usable_max_percent,
+                "creating cache",
+            );
+
+            builder
+        };
+
+        let cache: HybridCache<Arc<str>, MaybeDeserialized<V>> = builder
             .build()
             .await
             .map_err(|e| LayerDbError::Foyer(e.into()))?;
@@ -243,6 +265,7 @@ pub struct CacheConfig {
     name: String,
     memory_reserved_percent: u8,
     memory_usable_max_percent: u8,
+    disk_layer: bool,
     disk_reserved_percent: u8,
     disk_usable_max_percent: u8,
     disk_admission_rate_limit: usize,
@@ -256,7 +279,7 @@ pub struct CacheConfig {
 
 impl Default for CacheConfig {
     fn default() -> Self {
-        let disk_path = tempfile::TempDir::with_prefix_in("default-cache-", "/tmp")
+        let disk_path = tempfile::TempDir::with_prefix("default-cache-")
             .expect("unable to create tmp dir for layerdb")
             .path()
             .to_path_buf();
@@ -265,6 +288,7 @@ impl Default for CacheConfig {
             name: "default".to_string(),
             memory_reserved_percent: DEFAULT_MEMORY_RESERVED_PERCENT,
             memory_usable_max_percent: DEFAULT_MEMORY_USABLE_MAX_PERCENT,
+            disk_layer: true,
             disk_reserved_percent: DEFAULT_DISK_RESERVED_PERCENT,
             disk_usable_max_percent: DEFAULT_DISK_USAGE_MAX_PERCENT,
             disk_admission_rate_limit: DEFAULT_DISK_CACHE_RATE_LIMIT,
@@ -283,6 +307,12 @@ impl CacheConfig {
     #[inline]
     pub fn total_system_memory_bytes() -> u64 {
         *TOTAL_SYSTEM_MEMORY_BYTES
+    }
+
+    /// Updates the disk layer strategy (i.e. whether to use a disk cache layer or not).
+    pub fn disk_layer(mut self, value: bool) -> Self {
+        self.disk_layer = value;
+        self
     }
 
     // Updates the name for the cache (only used in logs for now).

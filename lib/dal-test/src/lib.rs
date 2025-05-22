@@ -489,7 +489,7 @@ impl TestContext {
             self.layer_db_pg_pool.clone(),
             self.nats_conn.clone(),
             self.compute_executor.clone(),
-            CacheConfig::default(),
+            CacheConfig::default().disk_layer(false),
             token,
         )
         .await
