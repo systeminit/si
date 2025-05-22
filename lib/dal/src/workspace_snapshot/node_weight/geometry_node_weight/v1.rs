@@ -1,52 +1,25 @@
 use std::{
-    collections::{
-        BTreeMap,
-        HashMap,
-    },
+    collections::{BTreeMap, HashMap},
     mem,
 };
 
 use dal_macros::SiNodeWeight;
-use jwt_simple::prelude::{
-    Deserialize,
-    Serialize,
-};
-use petgraph::Direction::{
-    self,
-    Incoming,
-    Outgoing,
-};
-use si_events::{
-    ContentHash,
-    Timestamp,
-    merkle_tree_hash::MerkleTreeHash,
-    ulid::Ulid,
-};
-use si_split_graph::SplitGraphNodeWeight;
+use jwt_simple::prelude::{Deserialize, Serialize};
+use petgraph::Direction::{self, Incoming, Outgoing};
+use si_events::{ContentHash, Timestamp, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 
-use super::{
-    GeometryNodeWeight,
-    NodeWeightDiscriminants,
-};
+use super::{GeometryNodeWeight, NodeWeightDiscriminants};
 use crate::{
-    EdgeWeight,
-    EdgeWeightKindDiscriminants,
-    WorkspaceSnapshotGraphVCurrent,
+    EdgeWeight, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent,
     workspace_snapshot::{
         content_address::ContentAddress,
-        graph::{
-            LineageId,
-            detector::Update,
-        },
+        graph::{LineageId, detector::Update},
         node_weight::{
             NodeWeight,
             diagram_object_node_weight::DiagramObjectKind,
             traits::{
-                CorrectExclusiveOutgoingEdge,
-                CorrectTransforms,
-                CorrectTransformsError,
-                CorrectTransformsResult,
-                SiNodeWeight,
+                CorrectExclusiveOutgoingEdge, CorrectTransforms, CorrectTransformsError,
+                CorrectTransformsResult, SiNodeWeight,
             },
         },
         split_snapshot,
@@ -304,25 +277,20 @@ impl
     ) -> split_snapshot::corrections::CorrectTransformsResult<
         Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
     > {
-        // This correction only applies to new geometry nodes, so if this node alread
+        // This correction only applies to new geometry nodes, so if this node already
         // exists in the graph, we can skip it
         if graph.node_exists(self.id) {
             return Ok(updates);
         }
 
-        let mut self_update_idxs = vec![];
         let mut view_id_for_diagram_object = BTreeMap::new();
         let mut maybe_diagram_object_id_for_self = None;
         let mut maybe_container_view_id_for_self = None;
 
-        for (update_idx, update) in updates.iter().enumerate() {
+        for update in &updates {
             match update {
                 si_split_graph::Update::NewNode { node_weight, .. } => {
-                    if node_weight.id() == self.id
-                        || node_weight.external_target_id() == Some(self.id)
-                    {
-                        self_update_idxs.push(update_idx);
-                    } else if let Some(NodeWeight::DiagramObject(dobj)) = node_weight.custom() {
+                    if let Some(NodeWeight::DiagramObject(dobj)) = node_weight.custom() {
                         match dobj.object_kind() {
                             DiagramObjectKind::View(view_id) => {
                                 view_id_for_diagram_object.insert(node_weight.id(), view_id);
@@ -336,17 +304,14 @@ impl
                         NodeWeightDiscriminants::Geometry,
                         EdgeWeightKindDiscriminants::Represents,
                         NodeWeightDiscriminants::DiagramObject,
-                    ) && update.source_has_id(self.id) =>
+                    ) && update.source_has_id(self.id)
+                        && destination.custom_kind.is_some() =>
                 {
-                    self_update_idxs.push(update_idx);
-
                     // We know this is an edge from a geometry to a diagram object,
                     // but we want to store just the id of the real diagram object, not
                     // any possible external target node. If custom_kind is some, then
                     // it can't be an external target node, thus it must be a diagram object.
-                    if destination.custom_kind.is_some() {
-                        maybe_diagram_object_id_for_self = Some(destination.id);
-                    }
+                    maybe_diagram_object_id_for_self = Some(destination.id);
                 }
                 // View --Use--> Geometry
                 si_split_graph::Update::NewEdge { source, .. }
@@ -354,24 +319,13 @@ impl
                         NodeWeightDiscriminants::View,
                         EdgeWeightKindDiscriminants::Use,
                         NodeWeightDiscriminants::Geometry,
-                    ) && update.destination_has_id(self.id) =>
+                    ) && update.destination_has_id(self.id)
+                        && source.custom_kind.is_some() =>
                 {
-                    self_update_idxs.push(update_idx);
-                    if source.custom_kind.is_some() {
-                        maybe_container_view_id_for_self = Some(source.id);
-                    }
-                }
-                si_split_graph::Update::NewEdge { .. }
-                    if update.source_has_id(self.id) || update.destination_has_id(self.id) =>
-                {
-                    self_update_idxs.push(update_idx);
+                    maybe_container_view_id_for_self = Some(source.id);
                 }
                 _ => {}
             }
-        }
-
-        if self_update_idxs.is_empty() {
-            return Ok(updates);
         }
 
         let Some(container_view_for_self) = maybe_container_view_id_for_self else {
@@ -414,7 +368,7 @@ impl
             return Ok(updates);
         };
 
-        let mut maybe_geometry_node_to_replace_content = None;
+        let mut maybe_existing_geometry_node = None;
 
         for incoming_represents_edge_ref in graph.edges_directed_for_edge_weight_kind(
             existing_dobj_id,
@@ -436,41 +390,22 @@ impl
 
             if container_view_id == container_view_for_self {
                 if let Some(NodeWeight::Geometry(geo_inner)) = graph.node_weight(geometry_id) {
-                    maybe_geometry_node_to_replace_content = Some(geo_inner);
+                    maybe_existing_geometry_node = Some(geo_inner);
                     break;
                 }
             }
         }
 
-        // If we found a conflicting geometry node, then do two things:
-        // 1. Remove all the updates related to *this* node (including its creation)
-        // 2. Add a ReplaceNode update that swaps the content of this node in for the
-        //    existing content, so that the existing geometry node is moved to where
-        //    this node was.
-        if let Some(geometry_node_to_replace_content) = maybe_geometry_node_to_replace_content {
-            // Remove all the updates
-            self_update_idxs.reverse();
-            for idx in self_update_idxs {
-                updates.remove(idx);
-            }
-
+        // If we found a conflicting geometry node, then just add a remove node update to remove it.
+        // The "newest" geometry node should win.
+        if let Some(existing_geometry_node) = maybe_existing_geometry_node {
             // Append the replacenode update to the end of the update list
             if let Some(subgraph_root_id) =
-                graph.subgraph_root_id_for_node(geometry_node_to_replace_content.id())
+                graph.subgraph_root_id_for_node(existing_geometry_node.id())
             {
-                let content_hash = self.content_address.content_hash();
-                let replacement = SplitGraphNodeWeight::Custom(NodeWeight::Geometry(
-                    GeometryNodeWeight::V1(GeometryNodeWeightV1::new(
-                        geometry_node_to_replace_content.id(),
-                        geometry_node_to_replace_content.lineage_id(),
-                        content_hash,
-                    )),
-                ));
-
-                updates.push(si_split_graph::Update::ReplaceNode {
+                updates.push(si_split_graph::Update::RemoveNode {
                     subgraph_root_id,
-                    base_graph_node_id: None,
-                    node_weight: replacement,
+                    id: existing_geometry_node.id(),
                 });
             }
         }

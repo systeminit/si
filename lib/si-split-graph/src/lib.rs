@@ -1,10 +1,5 @@
 use std::{
-    collections::{
-        BTreeMap,
-        BTreeSet,
-        HashSet,
-        VecDeque,
-    },
+    collections::{BTreeMap, HashSet, VecDeque},
     marker::PhantomData,
     time::Instant,
 };
@@ -13,23 +8,13 @@ use dashmap::DashMap;
 use opt_zip::OptZip;
 use petgraph::prelude::*;
 use petgraph_traits::{
-    RawSplitGraphEdges,
-    SplitGraphEdgeReference,
-    SplitGraphEdges,
-    SplitGraphNeighbors,
+    RawSplitGraphEdges, SplitGraphEdgeReference, SplitGraphEdges, SplitGraphNeighbors,
 };
-use serde::{
-    Deserialize,
-    Serialize,
-    de::DeserializeOwned,
-};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use si_events::{
     ContentHash,
     merkle_tree_hash::MerkleTreeHash,
-    workspace_snapshot::{
-        Change,
-        EntityKind,
-    },
+    workspace_snapshot::{Change, EntityKind},
 };
 use si_id::ulid::Ulid;
 use strum::EnumDiscriminants;
@@ -42,11 +27,7 @@ pub mod subgraph;
 pub mod subgraph_address;
 pub mod updates;
 
-pub use subgraph::{
-    SubGraph,
-    SubGraphEdgeIndex,
-    SubGraphNodeIndex,
-};
+pub use subgraph::{SubGraph, SubGraphEdgeIndex, SubGraphNodeIndex};
 pub use subgraph_address::SubGraphAddress;
 use updates::ExternalSourceData;
 pub use updates::Update;
@@ -1810,9 +1791,9 @@ where
 
         let mut final_changes = vec![];
 
-        // Now that we've detected all the changed nodes in every subgraph, we need to detect all the
-        // parents of these changed nodes, *across* subgraphs, since these will have also changed.
-        // reversed so that parents come before children in the finalized list
+        // Now that we've detected all the changed nodes in every subgraph, we need to detect all
+        // the parents of these changed nodes, *across* subgraphs, since these will have also
+        // changed. reversed so that parents come before children in the finalized list
         for change in &changes {
             // We want to prefer nodes in the updated graph, since those will be the
             // updated version of these nodes, but when the change is a removal,
@@ -1847,12 +1828,11 @@ where
                     | weight @ SplitGraphNodeWeight::Custom(_),
                 ) = graph_to_search.raw_node_weight(parent_id)
                 {
-                    // If we find this node now, that means its merkle tree hash
-                    // hasn't changed since it was in different subgraph than the
-                    // child node which *did* change. This just adds a bit of entropy
-                    // to the changes so that the checksum generated is different.
-                    // May not be necessary since there *will* be at least one
-                    // other changed node?
+                    // If we find this node now, that means its merkle tree hash hasn't changed
+                    // since it was in different subgraph than the child node which *did* change.
+                    // This just adds a bit of entropy to the changes so that the checksum
+                    // generated is different. May not be necessary since there *will* be at least
+                    // one other changed node?
                     let mut hasher = MerkleTreeHash::hasher();
                     hasher.update(change.merkle_tree_hash.as_bytes());
                     hasher.update(weight.merkle_tree_hash().as_bytes());
@@ -1875,7 +1855,6 @@ where
     }
 
     pub fn perform_updates(&mut self, updates: &[Update<N, E, K>]) {
-        let mut removed_node_ids = BTreeSet::new();
         let mut subgraph_id_to_index = BTreeMap::new();
 
         for (subgraph_idx, subgraph) in self.subgraphs.iter().enumerate() {
@@ -1962,7 +1941,6 @@ where
                         continue;
                     };
 
-                    removed_node_ids.insert((*subgraph_index, node_index));
                     subgraph.remove_node(node_index);
                 }
                 Update::ReplaceNode {

@@ -1,22 +1,9 @@
-use std::collections::{
-    BTreeMap,
-    BTreeSet,
-    HashMap,
-    HashSet,
-};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use dal_macros::SiNodeWeight;
-use jwt_simple::prelude::{
-    Deserialize,
-    Serialize,
-};
+use jwt_simple::prelude::{Deserialize, Serialize};
 use petgraph::prelude::*;
-use si_events::{
-    ContentHash,
-    Timestamp,
-    merkle_tree_hash::MerkleTreeHash,
-    ulid::Ulid,
-};
+use si_events::{ContentHash, Timestamp, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
 use si_id::ViewId;
 use si_split_graph::SplitGraphNodeId;
 
@@ -25,19 +12,10 @@ use crate::{
     workspace_snapshot::{
         EdgeWeightKindDiscriminants,
         content_address::ContentAddress,
-        graph::{
-            LineageId,
-            WorkspaceSnapshotGraphError,
-            detector::Update,
-        },
+        graph::{LineageId, WorkspaceSnapshotGraphError, detector::Update},
         node_weight::{
-            NodeWeight,
-            NodeWeightDiscriminants,
-            traits::{
-                CorrectExclusiveOutgoingEdge,
-                CorrectTransforms,
-                SiNodeWeight,
-            },
+            NodeWeight, NodeWeightDiscriminants,
+            traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
         },
         split_snapshot,
     },
@@ -217,7 +195,6 @@ impl CorrectTransforms for ViewNodeWeightV1 {
                             // The Component needs to both be getting new Geometry from the set of Update,
                             // _and_ at least one of those Geometry need to be for a View other than the
                             // one being removed.
-                            dbg!(&components_with_new_geometry, &new_geometry_for_other_views);
                             if let Some(component_new_geometry_ids) =
                                 components_with_new_geometry.get(&component.id())
                             {
@@ -289,20 +266,24 @@ impl
             match update {
                 si_split_graph::Update::RemoveEdge { destination, .. }
                     if update.destination_has_id(self.id)
-                        && update.is_of_custom_edge_kind(EdgeWeightKindDiscriminants::Use)
-                        && update
-                            .source_is_of_custom_node_kind(NodeWeightDiscriminants::Category) =>
+                        && update.is_edge_of_sort(
+                            NodeWeightDiscriminants::Category,
+                            EdgeWeightKindDiscriminants::Use,
+                            NodeWeightDiscriminants::View,
+                        ) =>
                 {
                     view_removal_ids.insert(destination.id);
                     view_removal_idxs.push(update_idx);
                 }
-                si_split_graph::Update::RemoveEdge { .. }
+                si_split_graph::Update::RemoveEdge { destination, .. }
                     if update.source_has_id(self.id)
-                        && update.is_of_custom_edge_kind(EdgeWeightKindDiscriminants::Use)
-                        && update.destination_is_of_custom_node_kind(
+                        && update.is_edge_of_sort(
+                            NodeWeightDiscriminants::View,
+                            EdgeWeightKindDiscriminants::Use,
                             NodeWeightDiscriminants::Geometry,
                         ) =>
                 {
+                    view_removal_ids.insert(destination.id);
                     if let Some(destination_id) = update.destination_id() {
                         removed_geometries.insert(destination_id);
                     }
@@ -343,11 +324,6 @@ impl
                 {
                     if let Some(destination_id) = update.destination_id() {
                         new_geometry_for_other_views.insert(destination_id);
-                    }
-                }
-                si_split_graph::Update::RemoveNode { id, .. } => {
-                    if view_removal_ids.contains(id) {
-                        view_removal_idxs.push(update_idx);
                     }
                 }
                 _ => {}

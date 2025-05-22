@@ -1,123 +1,56 @@
 use std::{
-    collections::{
-        HashMap,
-        HashSet,
-    },
-    sync::{
-        Arc,
-        atomic::AtomicBool,
-    },
+    collections::{HashMap, HashSet},
+    sync::{Arc, atomic::AtomicBool},
 };
 
 use async_trait::async_trait;
 use corrections::correct_transforms;
 use itertools::Itertools as _;
-use petgraph::Direction::{
-    self,
-    Incoming,
-    Outgoing,
-};
-use serde::{
-    Deserialize,
-    Serialize,
-};
+use petgraph::Direction::{self, Incoming, Outgoing};
+use serde::{Deserialize, Serialize};
 use si_events::{
-    ContentHash,
-    Timestamp,
-    WorkspaceSnapshotAddress,
+    ContentHash, Timestamp, WorkspaceSnapshotAddress,
     merkle_tree_hash::MerkleTreeHash,
-    workspace_snapshot::{
-        Change,
-        EntityKind,
-    },
+    workspace_snapshot::{Change, EntityKind},
 };
 use si_id::{
-    ApprovalRequirementDefinitionId,
-    AttributeValueId,
-    ChangeSetId,
-    ComponentId,
-    EntityId,
-    InputSocketId,
-    PropId,
-    SchemaId,
-    SchemaVariantId,
-    UserPk,
-    ViewId,
-    ulid::Ulid,
+    ApprovalRequirementDefinitionId, AttributeValueId, ChangeSetId, ComponentId, EntityId,
+    InputSocketId, PropId, SchemaId, SchemaVariantId, UserPk, ViewId, ulid::Ulid,
 };
 use si_layer_cache::LayerDbError;
 use si_split_graph::{
-    SplitGraph,
-    SplitGraphNodeIndex,
-    SplitGraphNodeWeight,
-    SubGraph,
-    SuperGraph,
+    CustomNodeWeight, SplitGraph, SplitGraphNodeIndex, SplitGraphNodeWeight, SubGraph, SuperGraph,
     opt_zip::OptZip,
 };
-use strum::{
-    EnumDiscriminants,
-    EnumIter,
-    EnumString,
-    IntoEnumIterator,
-};
+use strum::{EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
 use telemetry::prelude::*;
 use tokio::{
-    sync::{
-        Mutex,
-        RwLock,
-        RwLockReadGuard,
-        RwLockWriteGuard,
-    },
+    sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard},
     task::JoinSet,
     time::Instant,
 };
 
 use super::{
-    CycleCheckGuard,
-    DependentValueRoot,
-    EntityKindExt,
-    InferredConnectionsWriteGuard,
-    InputSocketExt,
-    SchemaVariantExt,
-    WorkspaceSnapshotError,
-    WorkspaceSnapshotResult,
+    CycleCheckGuard, DependentValueRoot, EntityKindExt, InferredConnectionsWriteGuard,
+    InputSocketExt, SchemaVariantExt, WorkspaceSnapshotError, WorkspaceSnapshotResult,
     content_address::ContentAddressDiscriminants,
     graph::LineageId,
     node_weight::{
-        CategoryNodeWeight,
-        NodeWeight,
-        NodeWeightError,
-        category_node_weight::CategoryNodeKind,
+        CategoryNodeWeight, NodeWeight, NodeWeightError, category_node_weight::CategoryNodeKind,
     },
     traits::{
-        approval_requirement::ApprovalRequirementExt,
-        diagram::view::ViewExt,
-        prop::PropExt,
+        approval_requirement::ApprovalRequirementExt, diagram::view::ViewExt, prop::PropExt,
         socket::input::input_socket_from_node_weight,
     },
 };
 use crate::{
-    ComponentError,
-    DalContext,
-    EdgeWeight,
-    EdgeWeightKind,
-    EdgeWeightKindDiscriminants,
-    InputSocket,
-    NodeWeightDiscriminants,
-    SchemaVariantError,
+    ComponentError, DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    InputSocket, NodeWeightDiscriminants, SchemaVariantError,
     approval_requirement::{
-        ApprovalRequirement,
-        ApprovalRequirementApprover,
-        ApprovalRequirementDefinition,
+        ApprovalRequirement, ApprovalRequirementApprover, ApprovalRequirementDefinition,
     },
-    component::{
-        ComponentResult,
-        inferred_connection_graph::InferredConnectionGraph,
-    },
-    layer_db_types::{
-        ViewContent,
-        ViewContentV1,
-    },
+    component::{ComponentResult, inferred_connection_graph::InferredConnectionGraph},
+    layer_db_types::{ViewContent, ViewContentV1},
     prop::PropResult,
     slow_rt,
     socket::input::InputSocketError,
@@ -1684,11 +1617,11 @@ impl ViewExt for SplitSnapshot {
         // View (on canvas) --DiagramObject--> DiagramObject <--Represents-- Geometry <--Use-- View
 
         let mut working_copy = self.working_copy_mut().await;
-
         let mut would_be_orphaned_component_ids = Vec::new();
 
         let view_id: Ulid = view_id.into();
 
+        // Find all geometries used by this view
         for view_use_edge_ref in working_copy.edges_directed_for_edge_weight_kind(
             view_id,
             Outgoing,
@@ -1714,7 +1647,7 @@ impl ViewExt for SplitSnapshot {
                 continue;
             };
 
-            if NodeWeightDiscriminants::Component != represented_thing_node_weight.into() {
+            if represented_thing_node_weight.kind() != NodeWeightDiscriminants::Component {
                 // Components _MUST_ be in another View for this View to be able to be removed.
                 // Things with DiagramObjects (currently only Views) do not have to be part of
                 // another View for this View to be able to be removed.
@@ -1763,9 +1696,14 @@ impl ViewExt for SplitSnapshot {
             Outgoing,
             EdgeWeightKindDiscriminants::DiagramObject,
         )? {
+            // Find all geometry objects for this diagram object
             nodes_to_delete.extend(
                 working_copy
-                    .edges_directed(diagram_object_id, Incoming)?
+                    .edges_directed_for_edge_weight_kind(
+                        diagram_object_id,
+                        Incoming,
+                        EdgeWeightKindDiscriminants::Represents,
+                    )?
                     .map(|edge_ref| edge_ref.source()),
             );
         }

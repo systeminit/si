@@ -140,6 +140,8 @@ where
         edge_kind: SplitGraphEdgeWeightKind<K>,
         external_source_data: Option<ExternalSourceData<K, N>>,
     },
+    // Remove node updates *SHOULD* only be produced by corrections,
+    // to simplify removing nodes (versus producing remove edge updates for all incoming edges to a node)
     RemoveNode {
         subgraph_root_id: SplitGraphNodeId,
         id: SplitGraphNodeId,
@@ -475,17 +477,45 @@ where
             |event| self.calculate_updates_dfs_event(event, &mut updates, &mut difference_cache),
         );
 
-        // If a node is in base graph but not in updated_graph, it has been removed
-        updates.extend(
-            self.base_graph
-                .node_index_by_id
-                .keys()
-                .filter(|id| !self.updated_graph.node_index_by_id.contains_key(id))
-                .map(|id| Update::RemoveNode {
-                    subgraph_root_id: self.graph_root_id,
-                    id: *id,
-                }),
-        );
+        // Before, I believed: If a node is in base graph but not in updated_graph, it has been
+        // removed
+        //
+        // But this is not true.
+        //
+        // Suppose there is a node A that exists on HEAD. You've deleted node A in change set 1.
+        // But, in another change set (2), a child B has been added under node A. Now, when change
+        // set 2 is applied to HEAD, there will be no specific Update to bring A back into change
+        // set 1. So, when the NewEdge update that adds the child B under A lands on Change Set 1
+        // during replay, it becomes a no-op, since node A does not exist in Chnage Set 1. (since
+        // A, the source for the edge, does not exist). Normally this is fine, since when we Apply
+        // Change Set 1, it will remove A, and thus implicitly remove everything under A.
+        //
+        // But suppose we want to *prevent* the removal of A, since removing it would "orphan" B
+        // (say A is a view and B is a component which is not contained in any other view). The
+        // removal of A in change set 1 was done without knowledge of B, which is now on HEAD. And
+        // B is something we want to prevent being deleted. We can solve this with a correction.
+        // But If we produce a RemoveNode update as we were, it becomes much more difficult to
+        // prevent the removal of A while preserving B, since we will report B as "removed" when
+        // calculating updates, since B is on HEAD but not in Change Set 1. Normally we would just
+        // have to ignore the RemoveEdge update, but now we have to detect the RemoveNode update
+        // and determine that it should also be removed.
+        //
+        // A better solution here would be keep a list the nodes that were in fact removed from the
+        // change set in cleanup, and only produce remove node updates for those nodes.
+        //
+        // However, it makes more sense to me to no longer produce RemoveNode updates, since
+        // we have gotten good results from just RemoveEdge updates so far.
+        //
+        // updates.extend(
+        //     self.base_graph
+        //         .node_index_by_id
+        //         .keys()
+        //         .filter(|id| !self.updated_graph.node_index_by_id.contains_key(id))
+        //         .map(|id| Update::RemoveNode {
+        //             subgraph_root_id: self.graph_root_id,
+        //             id: *id,
+        //         }),
+        // );
 
         updates
     }
