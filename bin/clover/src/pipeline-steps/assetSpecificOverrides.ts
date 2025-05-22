@@ -254,14 +254,26 @@ const overrides = new Map<string, OverrideFn>([
   ["AWS::EC2::Route", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
 
+    removeInputSockets(variant, ["Gateway Id"]);
+
     const prop = propForOverride(variant.domain, "GatewayId");
     if (!prop) return;
     const socket = createInputSocketFromProp(prop);
 
     setAnnotationOnSocket(socket, { tokens: ["InternetGatewayId"] });
     setAnnotationOnSocket(socket, { tokens: ["VPNGatewayId"] });
+    setAnnotationOnSocket(socket, { tokens: ["Gateway Id"] });
 
     variant.sockets.push(socket);
+
+    const egressOnlyIgwProp = propForOverride(variant.domain, "EgressOnlyInternetGatewayId")
+    if (!egressOnlyIgwProp) return;
+    const egressOnlyIgwInputSocket = createInputSocketFromProp(egressOnlyIgwProp);
+
+    setAnnotationOnSocket(egressOnlyIgwInputSocket, { tokens: ["Id"] });
+    setAnnotationOnSocket(egressOnlyIgwInputSocket, { tokens: ["Id<string<scalar>>"] });
+
+    variant.sockets.push(egressOnlyIgwInputSocket);
   }],
   ["AWS::EC2::VPCEndpoint", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
