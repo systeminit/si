@@ -28,4 +28,5 @@ ignore = \
   node_modules, \
   target, \
   third-party/rust/.cargo/**/BUCK, \
-  third-party/rust/vendor/**/BUCK
+  third-party/rust/vendor/**/BUCK, \
+  tmp
