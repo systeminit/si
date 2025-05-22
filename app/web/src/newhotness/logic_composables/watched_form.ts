@@ -29,7 +29,7 @@ const tracer = trace.getTracer("bifrost");
  * So the user know their form submission worked and we're waiting
  * for updated data
  */
-export const useWatchedForm = <Data>() => {
+export const useWatchedForm = <Data>(label: string) => {
   /**
    * Lifecycle of `bifrosting`
    *
@@ -49,22 +49,35 @@ export const useWatchedForm = <Data>() => {
   const ctx = inject<Context>("CONTEXT");
   assertIsDefined(ctx);
 
-  const newForm = (
-    label: string,
-    formData: Ref<Data> | ComputedRef<Data>,
+  type ValidationFn = (props: {
+    value: Data;
+  }) => (string | undefined) | { fields: Record<string, string | undefined> };
+  type Validators = Partial<{
+    onSubmit: ValidationFn;
+    onChanged: ValidationFn;
+    onBlur: ValidationFn;
+    onSubmitAsync: ValidationFn;
+    onChangedAsync: ValidationFn;
+    onBlurAsync: ValidationFn;
+  }>;
+  const newForm = ({
+    data,
+    onSubmit,
+    watchFn,
+    validators,
+  }: {
+    data: Ref<Data> | ComputedRef<Data>;
     // NOTE: props also contains `formApi`, but I can't realistically type it here
-    onSubmit: (props: { value: Data }) => void,
-    submitValidation?: (props: {
-      value: Data;
-    }) => (string | undefined) | { fields: Record<string, string | undefined> },
+    onSubmit: (props: { value: Data }) => void;
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-    watchFn?: () => any,
-  ) => {
+    watchFn?: () => any;
+    validators?: Validators;
+  }) => {
     let start: number;
     let span: Span;
 
     const opts = formOptions({
-      defaultValues: unref(formData),
+      defaultValues: unref(data),
     });
     const wForm = useForm({
       ...opts,
@@ -79,14 +92,7 @@ export const useWatchedForm = <Data>() => {
         onSubmit(props);
         bifrosting.value = true;
       },
-      validators: {
-        onSubmit: (props) => {
-          if (submitValidation) {
-            return submitValidation(props);
-          }
-          return undefined;
-        },
-      },
+      validators,
     });
 
     let observed = false;
@@ -104,14 +110,14 @@ export const useWatchedForm = <Data>() => {
         bifrosting.value = false;
         const end = Date.now();
         observe(end - start);
-        wForm.reset(unref(formData));
+        wForm.reset(unref(data));
       });
     } else {
-      watch(formData, () => {
+      watch(data, () => {
         bifrosting.value = false;
         const end = Date.now();
         observe(end - start);
-        wForm.reset(unref(formData));
+        wForm.reset(unref(data));
       });
     }
 

@@ -165,13 +165,12 @@ const add = async () => {
 const router = useRouter();
 const route = useRoute();
 const showKey = ref(false);
-const wForm = useWatchedForm<{ key: string }>();
+const wForm = useWatchedForm<{ key: string }>("component.av.key");
 const keyData = ref({ key: "" });
 const keyApi = useApi();
-const keyForm = wForm.newForm(
-  "component.av.key",
-  keyData,
-  async ({ value }) => {
+const keyForm = wForm.newForm({
+  data: keyData,
+  onSubmit: async ({ value }) => {
     const call = keyApi.endpoint<{ success: boolean }>(
       routes.UpdateComponentAttributes,
       { id: props.component.id },
@@ -195,7 +194,7 @@ const keyForm = wForm.newForm(
       });
     }
   },
-);
+});
 
 const saveKey = async () => {
   if (keyForm.fieldInfo.key.instance?.state.meta.isDirty) {
