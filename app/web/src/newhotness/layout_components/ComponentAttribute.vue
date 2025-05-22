@@ -1,5 +1,5 @@
 <template>
-  <li class="flex flex-col">
+  <li :class="clsx('flex flex-col', !hasChildren && 'mb-[-1px]')">
     <template v-if="hasChildren">
       <AttributeChildLayout>
         <template #header>
@@ -33,7 +33,7 @@
             <keyForm.Field name="key">
               <template #default="{ field }">
                 <input
-                  class="block w-72 text-white bg-black border-2 border-neutral-300 disabled:bg-neutral-900"
+                  class="block w-72 text-white bg-black border border-neutral-300 disabled:bg-neutral-900"
                   type="text"
                   :value="field.state.value"
                   :disabled="wForm.bifrosting.value"
@@ -54,8 +54,9 @@
               :disabled="addApi.bifrosting.value"
               loadingIcon="loader"
               @click="add"
-              >+ add {{ displayName }}</VButton
             >
+              + add {{ displayName }}
+            </VButton>
           </div>
         </template>
       </AttributeChildLayout>
@@ -80,6 +81,7 @@
 import { computed, ref, watch } from "vue";
 import { VButton, IconButton, Icon } from "@si/vue-lib/design-system";
 import { useRoute, useRouter } from "vue-router";
+import clsx from "clsx";
 import { BifrostComponent } from "@/workers/types/dbinterface";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";

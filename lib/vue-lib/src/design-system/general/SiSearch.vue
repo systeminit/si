@@ -35,7 +35,9 @@
           )
         "
         data-1p-ignore
+        @input="onChange"
         @keydown="onKeyDown"
+        @blur="onBlur"
       />
       <Icon
         name="search"
@@ -49,6 +51,7 @@
       <div
         class="absolute right-0 top-0 h-[34px] flex flex-row items-center px-2xs"
       >
+        <slot name="right" />
         <Icon
           v-if="searchString"
           name="x-circle"
@@ -61,7 +64,6 @@
           :selected="showFilters"
           @click="toggleShowFilters"
         />
-        <slot name="right" />
       </div>
     </label>
 
@@ -147,6 +149,8 @@ const emit = defineEmits<{
   (e: "clearSearch"): void;
   (e: "update:modelValue", newValue: string): void;
   (e: "enterPressed"): void;
+  (e: "blur", event: FocusEvent): void;
+  (e: "input", event: Event): void;
 }>();
 
 const props = defineProps({
@@ -236,5 +240,25 @@ const focusSearch = () => {
   }
 };
 
-defineExpose({ filteringActive, activeFilters, clearSearch, focusSearch });
+const blurSearch = () => {
+  if (searchInputRef.value) {
+    searchInputRef.value.blur();
+  }
+};
+
+const onBlur = (e: FocusEvent) => {
+  emit("blur", e);
+};
+
+const onChange = (e: Event) => {
+  emit("input", e);
+};
+
+defineExpose({
+  filteringActive,
+  activeFilters,
+  clearSearch,
+  focusSearch,
+  blurSearch,
+});
 </script>

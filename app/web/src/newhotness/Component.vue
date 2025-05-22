@@ -15,7 +15,14 @@
     />
   </section>
   <section v-else class="grid gap-md h-full p-md pb-0">
-    <div class="name items-center flex flex-row gap-xs bg-gray-800 p-xs">
+    <div
+      :class="
+        clsx(
+          'name items-center flex flex-row gap-xs p-xs',
+          themeClasses('bg-neutral-100', 'bg-neutral-900'),
+        )
+      "
+    >
       <VButton
         class="border-0 mr-2em"
         icon="arrow--left"
@@ -55,7 +62,7 @@
                 <input
                   ref="nameRef"
                   :value="field.state.value"
-                  class="block w-full text-white bg-black border-2 border-neutral-300 disabled:bg-neutral-900"
+                  class="block w-full text-white bg-black border border-neutral-300 disabled:bg-neutral-900"
                   type="text"
                   @blur="blur"
                   @input="
@@ -188,10 +195,12 @@ import {
   PillCounter,
   Icon,
   IconButton,
+  themeClasses,
 } from "@si/vue-lib/design-system";
 import { computed, ref, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import VueMarkdown from "vue-markdown-render";
+import clsx from "clsx";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostComponent,

@@ -27,7 +27,7 @@
           </template>
         </TabGroupToggle>
         <DropdownMenuButton
-          class="rounded"
+          class="rounded min-w-[128px]"
           :options="viewListOptions"
           :modelValue="selectedView"
           placeholder="All Views"

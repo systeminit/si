@@ -3,7 +3,8 @@
   <div
     :class="
       clsx(
-        'border-2 border-neutral-900 basis-0', // basis-0 makes items take equal size when multiple are open
+        'border-2 basis-0', // basis-0 makes items take equal size when multiple are open
+        themeClasses('border-neutral-200', 'border-neutral-900'),
         openState.open.value ? 'scrollable grow' : 'shrink',
       )
     "

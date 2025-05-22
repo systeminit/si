@@ -1,168 +1,176 @@
 <template>
   <!-- NOTE: the Modal CSS for height in "max" doesn't work as we might expect -->
   <Modal ref="modalRef" noWrapper hideExitButton size="max">
-    <div
-      :class="
-        clsx(
-          'grid createcomponent gap-xs [&>*]:border h-[45svh]',
-          selectedAsset && 'grid grid-cols-2',
-          themeClasses(
-            '[&>*]:bg-shade-0 border-neutral-400 [&_*]:border-neutral-400',
-            '[&>*]:bg-neutral-900 border-neutral-600 [&_*]:border-neutral-600',
-          ),
-        )
-      "
-    >
-      <!-- Left side - search, filters, asset list -->
-      <div class="assets flex flex-col gap-xs">
-        <header class="text-md border-b p-xs flex-none">
-          Create a component
-        </header>
+    <div class="h-[45svh]">
+      <div
+        :class="
+          clsx(
+            'grid createcomponent gap-xs [&>*]:border',
+            selectedAsset && 'grid grid-cols-2',
+            themeClasses(
+              '[&>*]:bg-shade-0 border-neutral-400 [&_*]:border-neutral-400',
+              '[&>*]:bg-neutral-900 border-neutral-600 [&_*]:border-neutral-600',
+            ),
+          )
+        "
+      >
+        <!-- Left side - search, filters, asset list -->
+        <div class="assets flex flex-col gap-xs">
+          <header class="text-md border-b p-xs flex-none">
+            Create a component
+          </header>
 
-        <!-- I don't like that we have tos specify a height here it should
-         contain within its parent, and its possible, just dont want to spend more time on it -->
-        <div class="flex flex-col gap-xs grow p-xs max-h-[41svh]">
-          <!-- warning header for when user is on HEAD -->
-          <div
-            v-if="onHead && !bannerClosed"
-            :class="
-              clsx(
-                'flex flex-row items-center gap-xs p-2xs',
-                themeClasses('bg-action-100', 'bg-action-900'),
-              )
-            "
-          >
-            <Icon name="info-circle" />
-            <div class="grow">
-              Because you are currently on Head, when you create a component a
-              new change set will be created.
-            </div>
+          <!-- I don't like that we have tos specify a height here it should
+          contain within its parent, and its possible, just dont want to spend more time on it -->
+          <div class="flex flex-col gap-xs grow p-xs max-h-[41svh]">
+            <!-- warning header for when user is on HEAD -->
             <div
+              v-if="onHead && !bannerClosed"
               :class="
                 clsx(
-                  'underline cursor-pointer',
-                  themeClasses(
-                    'hover:text-action-500',
-                    'hover:text-action-300',
-                  ),
+                  'flex flex-row items-center gap-xs p-2xs',
+                  themeClasses('bg-action-100', 'bg-action-900'),
                 )
               "
             >
-              Learn More
-            </div>
-            <IconButton
-              iconTone="shade"
-              icon="x"
-              tooltip="Close"
-              tooltipPlacement="top"
-              @click="bannerClosed = true"
-            />
-          </div>
-          <!-- Fuzzy search input, is focused when the Modal is opened-->
-          <SiSearch
-            ref="searchRef"
-            v-model="fuzzySearchString"
-            placeholder="Start typing to find components"
-            :borderBottom="false"
-            class="flex-none border"
-          >
-            <template #right>
+              <Icon name="info-circle" />
+              <div class="grow">
+                Because you are currently on Head, when you create a component a
+                new change set will be created.
+              </div>
               <div
                 :class="
                   clsx(
-                    'flex flex-row flex-none gap-3xs items-center text-2xs pr-2xs',
-                    themeClasses('text-shade-100', 'text-shade-0'),
-                  )
-                "
-              >
-                <TextPill tighter>Up</TextPill>
-                <TextPill tighter>Down</TextPill>
-                <div class="leading-snug">to navigate</div>
-              </div>
-            </template>
-          </SiSearch>
-          <!-- Fuzzy search category filters -->
-          <HorizontalScrollArea
-            hideScrollbar
-            class="flex flex-row gap-xs flex-none"
-          >
-            <FilterTile
-              v-for="filter in componentFilters"
-              :key="filter.name"
-              :label="filter.name"
-              :count="filter.count"
-              :color="filter.color"
-              :icon="filter.icon"
-              :selected="!!(selectedFilter && selectedFilter === filter.name)"
-              @click="toggleFilterTile(filter.name)"
-            />
-          </HorizontalScrollArea>
-          <!-- Fuzzy search results list -->
-          <div class="grow min-h-0 scrollable">
-            <TreeNode
-              v-for="category in filteredCategories"
-              :key="category.name"
-              :class="themeClasses('bg-neutral-200', 'bg-neutral-700')"
-              indentationSize="none"
-              defaultOpen
-              :label="category.name"
-              alwaysShowArrow
-              clickLabelToToggle
-              enableGroupToggle
-              :primaryIcon="category.icon"
-              :color="category.color"
-            >
-              <TreeNode
-                v-for="asset in category.assets"
-                :key="asset.id"
-                :class="
-                  clsx(
-                    'hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
+                    'underline cursor-pointer',
                     themeClasses(
-                      'bg-shade-0 hover:outline-action-500',
-                      'bg-neutral-800 hover:outline-action-300',
+                      'hover:text-action-500',
+                      'hover:text-action-300',
                     ),
-                    selectedAsset?.id === asset.id &&
-                      themeClasses(
-                        'outline-action-500 bg-action-300',
-                        'outline-action-300 bg-action-600',
-                      ),
                   )
                 "
-                :color="asset.variant.color"
-                @click="() => selectAsset(asset)"
               >
-                <template #label>
-                  <!-- TODO(Wendy) - style this text based on the fuzzy search! -->
-                  {{ asset.name }}
-                </template>
-                <template v-if="selectedAsset?.id === asset.id" #icons>
-                  <TextPill tighter class="text-xs">Enter to add</TextPill>
-                </template>
+                Learn More
+              </div>
+              <IconButton
+                iconTone="shade"
+                icon="x"
+                tooltip="Close"
+                tooltipPlacement="top"
+                @click="bannerClosed = true"
+              />
+            </div>
+            <!-- Fuzzy search input, is focused when the Modal is opened-->
+            <SiSearch
+              ref="searchRef"
+              v-model="fuzzySearchString"
+              placeholder="Start typing to find components"
+              :borderBottom="false"
+              class="flex-none border"
+              @blur="searchRef?.focusSearch()"
+              @input="clearSelection"
+              @keydown.enter.prevent="onEnter"
+              @keydown.up.prevent="onUp"
+              @keydown.down.prevent="onDown"
+            >
+              <template #right>
+                <div
+                  v-if="showResults"
+                  :class="
+                    clsx(
+                      'flex flex-row flex-none gap-3xs items-center text-2xs pr-2xs',
+                      themeClasses('text-shade-100', 'text-shade-0'),
+                    )
+                  "
+                >
+                  <TextPill tighter>Up</TextPill>
+                  <TextPill tighter>Down</TextPill>
+                  <div class="leading-snug">to navigate</div>
+                </div>
+              </template>
+            </SiSearch>
+            <!-- Fuzzy search category filters -->
+            <HorizontalScrollArea
+              hideScrollbar
+              class="flex flex-row gap-xs flex-none"
+            >
+              <FilterTile
+                v-for="filter in componentFilters"
+                :key="filter.name"
+                :label="filter.name"
+                :count="filter.count"
+                :color="filter.color"
+                :icon="filter.icon"
+                :selected="!!(selectedFilter && selectedFilter === filter.name)"
+                @click="toggleFilterTile(filter.name)"
+              />
+            </HorizontalScrollArea>
+            <!-- Fuzzy search results list -->
+            <div v-if="showResults" class="grow min-h-0 scrollable">
+              <TreeNode
+                v-for="category in filteredCategories"
+                :key="category.name"
+                :class="themeClasses('bg-neutral-200', 'bg-neutral-700')"
+                indentationSize="none"
+                defaultOpen
+                :label="category.name"
+                alwaysShowArrow
+                clickLabelToToggle
+                enableGroupToggle
+                :primaryIcon="category.icon"
+                :color="category.color"
+              >
+                <TreeNode
+                  v-for="asset in category.assets"
+                  :key="asset.id"
+                  :class="
+                    clsx(
+                      'hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
+                      themeClasses(
+                        'bg-shade-0 hover:outline-action-500',
+                        'bg-neutral-800 hover:outline-action-300',
+                      ),
+                      selectedAsset?.id === asset.id &&
+                        themeClasses(
+                          'outline-action-500 bg-action-300',
+                          'outline-action-300 bg-action-600',
+                        ),
+                    )
+                  "
+                  :color="asset.variant.color"
+                  @click="() => selectAsset(asset)"
+                >
+                  <template #label>
+                    <!-- TODO(Wendy) - style this text based on the fuzzy search! -->
+                    {{ asset.name }}
+                  </template>
+                  <template v-if="selectedAsset?.id === asset.id" #icons>
+                    <TextPill tighter class="text-xs">Enter to add</TextPill>
+                  </template>
+                </TreeNode>
               </TreeNode>
-            </TreeNode>
+            </div>
           </div>
         </div>
+        <!-- Right side - documentation and attributes -->
+        <template v-if="selectedAsset">
+          <div class="docs scrollable border p-xs">
+            <h3>{{ selectedAsset.name }}</h3>
+            <p>{{ selectedAsset.variant.link }}</p>
+            <p><VueMarkdown :source="selectedAsset.variant.description" /></p>
+          </div>
+          <div class="props scrollable border p-xs">
+            <template v-if="'propTree' in selectedAsset.variant">
+              <PropTreeComponent
+                v-for="tree in selectedAssetProps.children"
+                :key="tree.id"
+                :tree="tree"
+              />
+              <h3 v-if="!selectedAssetProps.children">Prop data not found</h3>
+            </template>
+            <h3 v-else>HI PAUL, WE ARE LOOKING FOR THIS DATA</h3>
+          </div>
+        </template>
       </div>
-      <!-- Right side - documentation and attributes -->
-      <template v-if="selectedAsset">
-        <div class="docs scrollable border p-xs">
-          <h3>{{ selectedAsset.name }}</h3>
-          <p>{{ selectedAsset.variant.link }}</p>
-          <p><VueMarkdown :source="selectedAsset.variant.description" /></p>
-        </div>
-        <div class="props scrollable border p-xs">
-          <template v-if="'propTree' in selectedAsset.variant">
-            <PropTreeComponent
-              v-for="tree in selectedAssetProps.children"
-              :key="tree.id"
-              :tree="tree"
-            />
-            <h3 v-if="!selectedAssetProps.children">Prop data not found</h3>
-          </template>
-          <h3 v-else>HI PAUL, WE ARE LOOKING FOR THIS DATA</h3>
-        </div>
-      </template>
     </div>
   </Modal>
 </template>
@@ -196,7 +204,6 @@ import {
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import FilterTile from "./layout_components/FilterTile.vue";
 import { assertIsDefined, Context } from "./types";
-import { keyEmitter } from "./logic_composables/emitters";
 import {
   ComponentIdType,
   CreateComponentPayload,
@@ -217,6 +224,11 @@ const selectedAsset = ref<UIAsset | undefined>(undefined);
 const selectAsset = (asset: UIAsset) => {
   if (selectedAsset.value?.id === asset.id) selectedAsset.value = undefined;
   else selectedAsset.value = asset;
+  // TODO(Wendy) - scroll the selected asset's TreeNode element on screen!
+};
+const clearSelection = () => {
+  selectedAsset.value = undefined;
+  selectionIndex.value = undefined;
 };
 
 const selectedAssetProps = computed<PropsAsTree>(() => {
@@ -274,11 +286,13 @@ const props = defineProps<{
 }>();
 
 const viewId = computed(() => props.viewId);
+const selectionIndex = ref<number | undefined>();
 
 const route = useRoute();
 const router = useRouter();
 const api = useApi();
-keyEmitter.on("Enter", async () => {
+
+const onEnter = async () => {
   if (!selectedAsset.value) return;
   const schemaType = selectedAsset.value.type;
   let params: ComponentIdType;
@@ -313,7 +327,41 @@ keyEmitter.on("Enter", async () => {
       // TODO querystring for "was i on head?"
     });
   }
-});
+};
+const onUp = () => {
+  if (!showResults.value) return;
+
+  if (selectionIndex.value === undefined) {
+    selectionIndex.value = filteredAssetsFlat.value.length - 1;
+  } else {
+    selectionIndex.value--;
+    if (selectionIndex.value < 0) {
+      selectionIndex.value = filteredAssetsFlat.value.length - 1;
+    }
+  }
+  selectAssetByIndex();
+};
+const onDown = () => {
+  if (!showResults.value) return;
+
+  if (selectionIndex.value === undefined) {
+    selectionIndex.value = 0;
+  } else {
+    selectionIndex.value++;
+    if (selectionIndex.value > filteredAssetsFlat.value.length - 1) {
+      selectionIndex.value = 0;
+    }
+  }
+  selectAssetByIndex();
+};
+const selectAssetByIndex = () => {
+  if (
+    selectionIndex.value !== undefined &&
+    filteredAssetsFlat.value[selectionIndex.value]
+  ) {
+    selectAsset(filteredAssetsFlat.value[selectionIndex.value] as UIAsset);
+  }
+};
 
 export type AssetFilter = {
   name: string;
@@ -421,6 +469,22 @@ const filteredCategories = computed(() => {
   return filteredResults;
 });
 
+const filteredAssetsFlat = computed(() => {
+  const assets: UIAsset[] = [];
+
+  filteredCategories.value.forEach((category) => {
+    category.assets.forEach((asset) => {
+      assets.push(asset);
+    });
+  });
+
+  return assets;
+});
+
+const showResults = computed(
+  () => !!(fuzzySearchString.value !== "" || selectedFilter.value),
+);
+
 const modalRef = ref<InstanceType<typeof Modal>>();
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 
@@ -428,6 +492,7 @@ const fuzzySearchString = ref<string>("");
 const selectedFilter = ref<string | undefined>(undefined);
 
 const toggleFilterTile = (name: string) => {
+  clearSelection();
   if (selectedFilter.value === name) selectedFilter.value = undefined;
   else selectedFilter.value = name;
 };
@@ -439,6 +504,7 @@ const open = () => {
   bannerClosed.value = false;
   selectedAsset.value = undefined;
   selectedFilter.value = undefined;
+  selectionIndex.value = undefined;
 };
 
 const close = () => {

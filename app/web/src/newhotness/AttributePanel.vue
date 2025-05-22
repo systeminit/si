@@ -1,11 +1,18 @@
 <template>
   <div v-if="root">
-    <input
-      v-model="q"
-      class="block w-full border-neutral-300 border-2 my-sm p-xs"
-      placeholder="filter attributes..."
-    />
-    <h3 class="bg-neutral-800 p-xs border-l-2">domain</h3>
+    <div class="py-xs">
+      <SiSearch v-model="q" placeholder="filter attributes..." />
+    </div>
+    <h3
+      :class="
+        clsx(
+          'p-xs border-l-2',
+          themeClasses('bg-neutral-200', 'bg-neutral-800'),
+        )
+      "
+    >
+      domain
+    </h3>
     <!-- this is _really_ a type guard for "i am not an empty object" -->
     <ul v-if="'children' in filtered.tree" class="border-l-2">
       <ComponentAttribute
@@ -25,6 +32,8 @@
 import { computed, reactive, ref, watch } from "vue";
 import { Fzf } from "fzf";
 import { useRoute, useRouter } from "vue-router";
+import { SiSearch, themeClasses } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import {
   AttributeTree,
   BifrostComponent,
