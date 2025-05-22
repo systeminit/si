@@ -18,6 +18,7 @@ module-index-client      = { path = "../../lib/module-index-client" }
 nats-std                 = { path = "../../lib/nats-std" }
 object-tree              = { path = "../../lib/object-tree" }
 pending-events           = { path = "../../lib/pending-events" }
+pinga-client             = { path = "../../lib/pinga-client" }
 pinga-core               = { path = "../../lib/pinga-core" }
 rebaser-client           = { path = "../../lib/rebaser-client" }
 shuttle-server           = { path = "../../lib/shuttle-server" }
@@ -69,6 +70,7 @@ rand            = { workspace = true }
 refinery        = { workspace = true }
 regex           = { workspace = true }
 remain          = { workspace = true }
+ringmap         = { workspace = true }
 serde           = { workspace = true }
 serde-aux       = { workspace = true }
 serde_json      = { workspace = true }

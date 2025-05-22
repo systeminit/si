@@ -44,6 +44,9 @@ pub enum ServerError {
     /// When we fail to get or create inner NATS Jetstream streams
     #[error("dal jetstream streams error: {0}")]
     DalJetstreamStreams(#[from] dal::JetstreamStreamsError),
+    /// When a job queue processor fails to be created
+    #[error("job queue processor error: {0}")]
+    DalJobQueueProcessor(#[from] dal::job::processor::JobQueueProcessorError),
     /// When a database pool error occurs
     #[error("dal pg pool error: {0}")]
     DalPgPool(#[source] Box<si_data_pg::PgPoolError>),

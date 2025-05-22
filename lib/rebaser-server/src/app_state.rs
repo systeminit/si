@@ -6,6 +6,7 @@ use std::{
 use dal::DalContextBuilder;
 use edda_client::EddaClient;
 use nats_dead_letter_queue::DeadLetterQueue;
+use pinga_client::PingaClient;
 use si_data_nats::{
     NatsClient,
     async_nats::jetstream,
@@ -25,6 +26,7 @@ use crate::{
 pub(crate) struct AppState {
     pub(crate) metadata: Arc<ServerMetadata>,
     pub(crate) nats: NatsClient,
+    pub(crate) pinga: PingaClient,
     pub(crate) edda: EddaClient,
     pub(crate) requests_stream: jetstream::stream::Stream,
     pub(crate) dead_letter_queue: DeadLetterQueue,
@@ -41,6 +43,7 @@ impl AppState {
     pub(crate) fn new(
         metadata: Arc<ServerMetadata>,
         nats: NatsClient,
+        pinga: PingaClient,
         edda: EddaClient,
         requests_stream: jetstream::stream::Stream,
         dead_letter_queue: DeadLetterQueue,
@@ -53,6 +56,7 @@ impl AppState {
         Self {
             metadata,
             nats,
+            pinga,
             edda,
             requests_stream,
             dead_letter_queue,

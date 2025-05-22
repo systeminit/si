@@ -4,11 +4,10 @@ use si_data_nats::async_nats;
 use thiserror::Error;
 
 use crate::job::{
+    consumer::DalJob,
     producer::{
         BlockingJobError,
         BlockingJobResult,
-        JobProducer,
-        JobProducerError,
     },
     queue::JobQueue,
 };
@@ -21,12 +20,12 @@ pub use nats_processor::NatsProcessor;
 pub enum JobQueueProcessorError {
     #[error("Error processing blocking job: {0}")]
     BlockingJob(#[from] BlockingJobError),
-    #[error(transparent)]
-    JobProducer(#[from] JobProducerError),
     #[error("stream create error: {0}")]
     JsCreateStreamError(#[from] async_nats::jetstream::context::CreateStreamError),
     #[error("missing required workspace_pk")]
     MissingWorkspacePk,
+    #[error("pinga client error: {0}")]
+    PingaClient(#[from] pinga_client::ClientError),
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
     #[error(transparent)]
@@ -37,11 +36,8 @@ pub type JobQueueProcessorResult<T> = Result<T, JobQueueProcessorError>;
 
 #[async_trait]
 pub trait JobQueueProcessor: std::fmt::Debug + DynClone {
-    async fn block_on_job(&self, job: Box<dyn JobProducer + Send + Sync>) -> BlockingJobResult;
-    async fn block_on_jobs(
-        &self,
-        jobs: Vec<Box<dyn JobProducer + Send + Sync>>,
-    ) -> BlockingJobResult;
+    async fn block_on_job(&self, job: Box<dyn DalJob>) -> BlockingJobResult;
+    async fn block_on_jobs(&self, jobs: Vec<Box<dyn DalJob>>) -> BlockingJobResult;
     async fn process_queue(&self, queue: JobQueue) -> JobQueueProcessorResult<()>;
     async fn blocking_process_queue(&self, queue: JobQueue) -> JobQueueProcessorResult<()>;
 }

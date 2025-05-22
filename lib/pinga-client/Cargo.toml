@@ -1,5 +1,5 @@
 [package]
-name = "rebaser-client"
+name = "pinga-client"
 version.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -9,16 +9,12 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+futures = { workspace = true }
+pinga-core = { path = "../../lib/pinga-core" }
 nats-std = { path = "../../lib/nats-std" }
-pending-events = { path = "../../lib/pending-events" }
-rebaser-core = { path = "../../lib/rebaser-core" }
+remain = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
-
-futures = { workspace = true }
-remain = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 thiserror = { workspace = true }

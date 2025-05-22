@@ -64,6 +64,7 @@ use si_events::{
     split_snapshot_rebase_batch_address::SplitSnapshotRebaseBatchAddress,
     workspace_snapshot::Change,
 };
+use si_id::ActionId;
 use si_layer_cache::{
     LayerDbError,
     activities::ActivityPayloadDiscriminants,
@@ -104,10 +105,7 @@ use crate::{
     feature_flags::FeatureFlagService,
     jetstream_streams::JetstreamStreams,
     job::{
-        definition::{
-            ActionJob,
-            AttributeValueBasedJobIdentifier,
-        },
+        consumer::DalJob,
         processor::{
             JobQueueProcessor,
             JobQueueProcessorError,
@@ -115,7 +113,6 @@ use crate::{
         producer::{
             BlockingJobError,
             BlockingJobResult,
-            JobProducer,
         },
         queue::JobQueue,
     },
@@ -1025,8 +1022,17 @@ impl DalContext {
         Ok(new)
     }
 
-    pub async fn enqueue_action(&self, job: Box<ActionJob>) -> TransactionsResult<()> {
-        self.txns().await?.job_queue.enqueue_job(job).await;
+    pub async fn enqueue_action_job(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        action_id: ActionId,
+    ) -> TransactionsResult<()> {
+        self.txns()
+            .await?
+            .job_queue
+            .enqueue_action_job(workspace_id, change_set_id, action_id)
+            .await;
         Ok(())
     }
 
@@ -1054,18 +1060,11 @@ impl DalContext {
     /// Adds a dependent values update job to the queue. Most users will instead want to use
     /// [`Self::add_dependent_values_and_enqueue`] which will add the values that need to be
     /// processed to the graph, and enqueue the job.
-    pub async fn enqueue_dependent_values_update(&self) -> TransactionsResult<()> {
-        // The values that the DVU job will process are part of the snapshot now
-        let empty_vec: Vec<ulid::Ulid> = vec![];
+    async fn enqueue_dependent_values_update(&self) -> TransactionsResult<()> {
         self.txns()
             .await?
             .job_queue
-            .enqueue_attribute_value_job(
-                self.change_set_id(),
-                self.access_builder(),
-                AttributeValueBasedJobIdentifier::DependentValuesUpdate,
-                empty_vec,
-            )
+            .enqueue_dependent_values_update_job(self.workspace_pk()?, self.change_set_id())
             .await;
 
         Ok(())
@@ -1092,11 +1091,10 @@ impl DalContext {
         self.txns()
             .await?
             .job_queue
-            .enqueue_attribute_value_job(
+            .enqueue_validation_job(
+                self.workspace_pk()?,
                 self.change_set_id(),
-                self.access_builder(),
-                AttributeValueBasedJobIdentifier::ComputeValidation,
-                vec![attribute_value_id],
+                attribute_value_id,
             )
             .await;
 
@@ -1107,7 +1105,7 @@ impl DalContext {
     /// the processing system on `commit`, the job is immediately flushed, and the
     /// processor is expected to not return until the job has finished. Returns the
     /// result of executing the job.
-    pub async fn block_on_job(&self, job: Box<dyn JobProducer + Send + Sync>) -> BlockingJobResult {
+    pub async fn block_on_job(&self, job: Box<dyn DalJob>) -> BlockingJobResult {
         self.txns()
             .await
             .map_err(|err| BlockingJobError::Transactions(err.to_string()))?
@@ -1735,7 +1733,7 @@ impl Transactions {
             pg_txn,
             nats_txn,
             job_processor,
-            job_queue: JobQueue::new(),
+            job_queue: JobQueue::default(),
         }
     }
 
@@ -1771,7 +1769,7 @@ impl Transactions {
         } = maybe_rebase
         {
             // remove the dependent value job since it will be handled by the rebaser
-            self.job_queue.remove_dependent_values_jobs().await;
+            self.job_queue.clear_dependent_values_jobs().await;
             rebase_with_reply(
                 rebaser,
                 workspace_pk,

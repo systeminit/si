@@ -1,6 +1,5 @@
 use std::{
     result,
-    str::Utf8Error,
     sync::Arc,
 };
 
@@ -11,29 +10,39 @@ use dal::{
         consumer::{
             JobConsumer,
             JobConsumerError,
-            JobInfo,
         },
         definition::{
             ActionJob,
             DependentValuesUpdate,
             compute_validation::ComputeValidation,
         },
-        producer::BlockingJobError,
     },
 };
-use nats_std::headers;
 use naxum::{
-    Json,
-    extract::{
-        State,
-        message_parts::Headers,
-    },
+    extract::State,
     response::{
         IntoResponse,
         Response,
     },
 };
-use si_data_nats::Subject;
+use pinga_core::api_types::{
+    ApiWrapper,
+    ContentInfo,
+    job_execution_request::{
+        JobArgsVCurrent,
+        JobExecutionRequest,
+    },
+    job_execution_response::{
+        JobExecutionResponse,
+        JobExecutionResponseVCurrent,
+        JobExecutionResultVCurrent,
+    },
+};
+use si_data_nats::{
+    HeaderMap,
+    NatsClient,
+    Subject,
+};
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
 use telemetry_utils::metric;
@@ -41,6 +50,10 @@ use thiserror::Error;
 
 use crate::{
     app_state::AppState,
+    extract::{
+        ApiTypesNegotiate,
+        HeaderReply,
+    },
     server::ServerMetadata,
 };
 
@@ -51,10 +64,6 @@ pub enum HandlerError {
     JobConsumer(#[from] JobConsumerError),
     #[error("si db error: {0}")]
     SiDb(#[from] si_db::Error),
-    #[error("unknown job kind: {0}")]
-    UnknownJobKind(String),
-    #[error("utf8 error when creating subject")]
-    Utf8(#[source] Utf8Error),
 }
 
 type Result<T> = result::Result<T, HandlerError>;
@@ -69,38 +78,40 @@ impl IntoResponse for HandlerError {
 pub async fn process_request(
     State(state): State<AppState>,
     subject: Subject,
-    Headers(maybe_headers): Headers,
-    Json(job_info): Json<JobInfo>,
+    HeaderReply(maybe_reply): HeaderReply,
+    ApiTypesNegotiate(request): ApiTypesNegotiate<JobExecutionRequest>,
 ) -> Result<()> {
-    let workspace_id = job_info.access_builder.tenancy().workspace_pk()?;
-    let change_set_id = job_info.visibility.change_set_id;
+    let AppState {
+        metadata,
+        concurrency_limit,
+        nats,
+        ctx_builder,
+    } = state;
+
+    let workspace_id = request.workspace_id;
+    let change_set_id = request.change_set_id;
 
     let span = Span::current();
     span.record("si.workspace.id", workspace_id.to_string());
     span.record("si.change_set.id", change_set_id.to_string());
 
-    let reply_subject = match maybe_headers
-        .and_then(|headers| headers.get(headers::REPLY_INBOX).map(|v| v.to_string()))
-    {
-        Some(header_value) => Some(Subject::from_utf8(header_value).map_err(HandlerError::Utf8)?),
-        None => None,
-    };
-
     execute_job(
-        state.metadata,
-        state.concurrency_limit,
-        state.ctx_builder,
+        metadata,
+        concurrency_limit,
+        nats,
+        ctx_builder,
         workspace_id,
         subject,
-        reply_subject,
-        job_info,
+        maybe_reply,
+        request,
     )
     .await;
+
     Ok(())
 }
 
 #[instrument(
-    name = "execute_job",
+    name = "execute_job", // will be `pinga jobs.:workspace_id.:change_set_id.$kind process`
     level = "info",
     skip_all,
     fields(
@@ -108,10 +119,10 @@ pub async fn process_request(
         // concurrency.at_capacity = concurrency_limit == concurrency_count,
         // concurrency.count = concurrency_count,
         concurrency.limit = concurrency_limit,
-        job.id = job_info.id,
+        job.id = %request.id,
         job.instance = metadata.instance_id(),
         job.invoked_args = Empty,
-        job.invoked_name = job_info.kind,
+        job.invoked_name = request.args.as_ref(),
         job.invoked_provider = metadata.job_invoked_provider(),
         job.trigger = "pubsub",
         messaging.destination = Empty,
@@ -121,25 +132,26 @@ pub async fn process_request(
         otel.name = Empty,
         otel.status_code = Empty,
         otel.status_message = Empty,
-        si.change_set.id = %job_info.visibility.change_set_id,
-        si.job.blocking = job_info.blocking,
-        si.workspace.id = Empty,
+        si.change_set.id = %request.change_set_id,
+        si.job.blocking = request.is_job_blocking,
+        si.workspace.id = %request.workspace_id,
     )
 )]
+#[allow(clippy::too_many_arguments)]
 async fn execute_job(
     metadata: Arc<ServerMetadata>,
     concurrency_limit: usize,
+    nats: NatsClient,
     ctx_builder: DalContextBuilder,
     workspace_id: WorkspacePk,
     subject: Subject,
-    maybe_reply_subject: Option<Subject>,
-    job_info: JobInfo,
+    maybe_reply: Option<Subject>,
+    request: JobExecutionRequest,
 ) {
     let span = current_span_for_instrument_at!("info");
-    let id = job_info.id.clone();
+    let id = request.id;
+    let job_kind: &'static str = (&request.args).into();
 
-    let arg_str = serde_json::to_string(&job_info.arg)
-        .unwrap_or_else(|_| "arg failed to serialize".to_string());
     let otel_name = {
         let mut parts = subject.as_str().split('.');
         match (
@@ -156,13 +168,13 @@ async fn execute_job(
         }
     };
 
-    span.record("job.invoked_arg", arg_str);
     span.record("messaging.destination", subject.as_str());
     span.record("otel.name", otel_name.as_str());
     span.record("si.workspace.id", workspace_id.to_string());
-    let job_kind = job_info.kind.clone();
-    metric!(counter.pinga_job_in_progress = 1, label = job_kind);
-    let reply_message = match execute_job_inner(ctx_builder.clone(), job_info).await {
+
+    metric!(counter.pinga_jobs_in_progress = 1, label = job_kind);
+
+    let execution_result = match try_execute_job(ctx_builder, request.clone()).await {
         Ok(_) => {
             span.record_ok();
             Ok(())
@@ -174,53 +186,81 @@ async fn execute_job(
                 job.instance = metadata.instance_id(),
                 "job execution failed"
             );
-            let new_err = Err(BlockingJobError::JobExecution(err.to_string()));
-            span.record_err(err);
-
-            new_err
+            Err(span.record_err(err))
         }
     };
 
-    // If a reply subject is set then the caller has requested we publish a reply
-    if let Some(reply_subject) = maybe_reply_subject {
-        if let Ok(message) = serde_json::to_vec(&reply_message) {
-            if let Err(err) = ctx_builder
-                .nats_conn()
-                .publish_with_headers(
-                    reply_subject,
-                    propagation::empty_injected_headers(),
-                    message.into(),
-                )
-                .await
-            {
-                error!(error = ?err, "Unable to notify spawning job of blocking job completion");
-            };
-        }
+    // If a reply was requested, send it
+    if let Some(reply) = maybe_reply {
+        let response = JobExecutionResponse::new_current(JobExecutionResponseVCurrent {
+            id: request.id,
+            workspace_id: request.workspace_id,
+            change_set_id: request.change_set_id,
+            result: match execution_result {
+                Ok(_) => JobExecutionResultVCurrent::Ok,
+                Err(err) => JobExecutionResultVCurrent::Err {
+                    message: err.to_string(),
+                },
+            },
+        });
+
+        let info = ContentInfo::from(&response);
+
+        let mut headers = HeaderMap::new();
+        propagation::inject_headers(&mut headers);
+        info.inject_into_headers(&mut headers);
+
+        let payload = match response.to_vec() {
+            Ok(p) => p,
+            Err(err) => {
+                error!(si.error.message = ?err, "failed to serialize response body");
+                return;
+            }
+        };
+
+        if let Err(err) = nats
+            .publish_with_headers(reply, headers, payload.into())
+            .await
+        {
+            error!(
+                si.error.message = ?err,
+                "unable to publish response of blocking job completion",
+            );
+        };
     }
-    metric!(counter.pinga_job_in_progress = -1, label = job_kind);
+
+    metric!(counter.pinga_jobs_in_progress = -1, label = job_kind);
 }
 
-async fn execute_job_inner(mut ctx_builder: DalContextBuilder, job_info: JobInfo) -> Result<()> {
-    if job_info.blocking {
+async fn try_execute_job(
+    mut ctx_builder: DalContextBuilder,
+    request: JobExecutionRequest,
+) -> Result<()> {
+    if request.is_job_blocking {
         ctx_builder.set_blocking();
     }
 
-    let job = match job_info.kind.as_str() {
-        stringify!(DependentValuesUpdate) => {
-            Box::new(DependentValuesUpdate::try_from(job_info.clone())?)
+    let job = match &request.args {
+        JobArgsVCurrent::Action { action_id } => {
+            ActionJob::new(request.workspace_id, request.change_set_id, *action_id)
                 as Box<dyn JobConsumer + Send + Sync>
         }
-        stringify!(ActionJob) => {
-            Box::new(ActionJob::try_from(job_info.clone())?) as Box<dyn JobConsumer + Send + Sync>
+        JobArgsVCurrent::DependentValuesUpdate => {
+            DependentValuesUpdate::new(request.workspace_id, request.change_set_id)
+                as Box<dyn JobConsumer + Send + Sync>
         }
-        stringify!(ComputeValidation) => Box::new(ComputeValidation::try_from(job_info.clone())?)
-            as Box<dyn JobConsumer + Send + Sync>,
-        kind => return Err(HandlerError::UnknownJobKind(kind.to_owned())),
+        JobArgsVCurrent::Validation {
+            attribute_value_ids,
+        } => ComputeValidation::new(
+            request.workspace_id,
+            request.change_set_id,
+            attribute_value_ids.clone(),
+        ) as Box<dyn JobConsumer + Send + Sync>,
     };
 
     info!("Processing job");
 
-    job.run_job(ctx_builder.clone()).await?;
+    job.run_job(ctx_builder).await?;
 
     info!("Finished processing job");
 

@@ -127,7 +127,7 @@ impl Server {
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
         let rebaser = Self::create_rebaser_client(nats.clone()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
-        let job_processor = Self::create_job_processor(nats.clone());
+        let job_processor = Self::create_job_processor(nats.clone()).await?;
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
         let compute_executor = Self::create_compute_executor()?;
@@ -318,8 +318,10 @@ impl Server {
     }
 
     #[instrument(name = "edda.init.create_job_processor", level = "info", skip_all)]
-    fn create_job_processor(nats: NatsClient) -> Box<dyn JobQueueProcessor + Send + Sync> {
-        Box::new(NatsProcessor::new(nats)) as Box<dyn JobQueueProcessor + Send + Sync>
+    async fn create_job_processor(
+        nats: NatsClient,
+    ) -> Result<Box<dyn JobQueueProcessor + Send + Sync>> {
+        Ok(Box::new(NatsProcessor::new(nats).await?) as Box<dyn JobQueueProcessor + Send + Sync>)
     }
 
     #[instrument(

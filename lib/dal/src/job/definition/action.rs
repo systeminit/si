@@ -1,21 +1,22 @@
-use std::{
-    collections::{
-        HashMap,
-        VecDeque,
-    },
-    convert::TryFrom,
+use std::collections::{
+    HashMap,
+    VecDeque,
 };
 
 use async_trait::async_trait;
+use pinga_core::api_types::job_execution_request::JobArgsVCurrent;
 use serde::{
     Deserialize,
     Serialize,
 };
-use si_db::Visibility;
 use si_events::{
     ActionResultState,
     FuncRunId,
     audit_log::AuditLogKind,
+};
+use si_id::{
+    ChangeSetId,
+    WorkspacePk,
 };
 use telemetry::prelude::*;
 use telemetry_utils::metric;
@@ -25,7 +26,6 @@ use veritech_client::{
 };
 
 use crate::{
-    AccessBuilder,
     ActionPrototypeId,
     Component,
     ComponentId,
@@ -45,19 +45,11 @@ use crate::{
     billing_publish,
     change_status::ChangeStatus,
     func::runner::FuncRunner,
-    job::{
-        consumer::{
-            JobCompletionState,
-            JobConsumer,
-            JobConsumerError,
-            JobConsumerMetadata,
-            JobConsumerResult,
-            JobInfo,
-        },
-        producer::{
-            JobProducer,
-            JobProducerResult,
-        },
+    job::consumer::{
+        DalJob,
+        JobCompletionState,
+        JobConsumer,
+        JobConsumerResult,
     },
 };
 
@@ -68,49 +60,46 @@ struct ActionJobArgs {
 
 impl From<ActionJob> for ActionJobArgs {
     fn from(value: ActionJob) -> Self {
-        Self { id: value.id }
+        Self {
+            id: value.action_id,
+        }
     }
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct ActionJob {
-    id: ActionId,
-    access_builder: AccessBuilder,
-    visibility: Visibility,
-    job: Option<JobInfo>,
+    workspace_id: WorkspacePk,
+    change_set_id: ChangeSetId,
+    action_id: ActionId,
 }
 
 impl ActionJob {
-    pub fn new(ctx: &DalContext, id: ActionId) -> Box<Self> {
-        let access_builder = ctx.access_builder();
-        let visibility = *ctx.visibility();
-
+    pub fn new(
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        action_id: ActionId,
+    ) -> Box<Self> {
         Box::new(Self {
-            id,
-            access_builder,
-            visibility,
-            job: None,
+            workspace_id,
+            change_set_id,
+            action_id,
         })
     }
 }
 
-impl JobProducer for ActionJob {
-    fn arg(&self) -> JobProducerResult<serde_json::Value> {
-        Ok(serde_json::to_value(ActionJobArgs::from(self.clone()))?)
-    }
-}
-
-impl JobConsumerMetadata for ActionJob {
-    fn type_name(&self) -> String {
-        "ActionJob".to_string()
+impl DalJob for ActionJob {
+    fn args(&self) -> JobArgsVCurrent {
+        JobArgsVCurrent::Action {
+            action_id: self.action_id,
+        }
     }
 
-    fn access_builder(&self) -> AccessBuilder {
-        self.access_builder
+    fn workspace_id(&self) -> WorkspacePk {
+        self.workspace_id
     }
 
-    fn visibility(&self) -> Visibility {
-        self.visibility
+    fn change_set_id(&self) -> ChangeSetId {
+        self.change_set_id
     }
 }
 
@@ -121,8 +110,7 @@ impl JobConsumer for ActionJob {
         skip_all,
         level = "info",
         fields(
-            id=?self.id,
-            job=?self.job,
+            si.action.id = ?self.action_id,
             // TODO: determine what this field is called for retries
             si.poopadoop.retries = Empty,
         )
@@ -130,29 +118,14 @@ impl JobConsumer for ActionJob {
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
         metric!(counter.action_concurrency_count = 1);
 
-        if let Err(err) = inner_run(ctx, self.id).await {
-            error!(si.error.message = ?err, si.action.id = %self.id, "unable to finish action");
-            if let Err(err) = process_failed_action(ctx, self.id).await {
+        if let Err(err) = inner_run(ctx, self.action_id).await {
+            error!(si.error.message = ?err, si.action.id = %self.action_id, "unable to finish action");
+            if let Err(err) = process_failed_action(ctx, self.action_id).await {
                 error!(si.error.message = ?err, "failed to process action failure");
             }
         }
         metric!(counter.action_concurrency_count = -1);
         Ok(JobCompletionState::Done)
-    }
-}
-
-impl TryFrom<JobInfo> for ActionJob {
-    type Error = JobConsumerError;
-
-    fn try_from(job: JobInfo) -> Result<Self, Self::Error> {
-        let args = ActionJobArgs::deserialize(&job.arg)?;
-
-        Ok(Self {
-            id: args.id,
-            access_builder: job.access_builder,
-            visibility: job.visibility,
-            job: Some(job),
-        })
     }
 }
 
@@ -235,9 +208,14 @@ async fn prepare_for_execution(
     Ok((prototype_id, component_id))
 }
 
-#[instrument(name = "action_job.process_execution",
-skip_all, level = "info", fields(
-    si.action.id = ?action_id))]
+#[instrument(
+    name = "action_job.process_execution",
+    level = "info",
+    skip_all,
+    fields(
+        si.action.id = ?action_id
+    ),
+)]
 async fn process_execution(
     ctx: &mut DalContext,
     action_run_result: Option<&ActionRunResultSuccess>,
@@ -359,9 +337,12 @@ async fn process_execution(
 
 #[instrument(
     name = "action_job.process_failed_action",
-    skip_all,
     level = "info",
-    fields(si.action.id = ?action_id))]
+    skip_all,
+    fields(
+        si.action.id = ?action_id,
+    ),
+)]
 async fn process_failed_action(ctx: &DalContext, action_id: ActionId) -> JobConsumerResult<()> {
     info!(%action_id, "processing action failed");
 

@@ -157,6 +157,7 @@ reqwest = { version = "0.12.9", default-features = false, features = [
     "multipart",
 ] }
 ring = "=0.17.5" # Upgrading this is possible, but a pain, so we don't want to pick up every new minor version (see: https://github.com/facebook/buck2/commit/91af40b66960d003067c3d241595fb53d1e636c8)
+ringmap = "0.1.3"
 rust-s3 = { version = "0.34.0-rc4", default-features = false, features = [
     "tokio-rustls-tls",
     "fail-on-err",

@@ -17,6 +17,7 @@ nats-dead-letter-queue   = { path = "../../lib/nats-dead-letter-queue" }
 nats-std                 = { path = "../../lib/nats-std" }
 naxum                    = { path = "../../lib/naxum" }
 pending-events           = { path = "../../lib/pending-events" }
+pinga-client             = { path = "../../lib/pinga-client" }
 rebaser-client           = { path = "../../lib/rebaser-client" }
 rebaser-core             = { path = "../../lib/rebaser-core" }
 shuttle-server           = { path = "../../lib/shuttle-server" }

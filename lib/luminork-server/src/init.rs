@@ -59,6 +59,8 @@ pub enum InitError {
     DalInitialization(#[from] dal::InitializationError),
     #[error("failed to initialize a dal jetstream streams: {0}")]
     DalJetstreamStreams(#[source] dal::JetstreamStreamsError),
+    #[error("job queue processor error: {0}")]
+    DalJobQueueProcessor(#[from] dal::job::processor::JobQueueProcessorError),
     #[error("jwt key error")]
     JwtKey(#[from] JwtPublicSigningKeyError),
     #[error("layer cache error: {0}")]
@@ -96,7 +98,7 @@ pub(crate) async fn services_context_from_config(
     let pg_pool = create_pg_pool(config.pg_pool()).await?;
     let rebaser = create_rebaser_client(nats.clone()).await?;
     let veritech = create_veritech_client(nats.clone());
-    let job_processor = create_job_processor(nats.clone());
+    let job_processor = create_job_processor(nats.clone()).await?;
     let symmetric_crypto_service =
         create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
 
@@ -193,8 +195,10 @@ pub(crate) fn create_compute_executor() -> InitResult<DedicatedExecutor> {
 }
 
 #[instrument(name = "luminork.init.create_job_processor", level = "info", skip_all)]
-pub(crate) fn create_job_processor(nats: NatsClient) -> Box<dyn JobQueueProcessor + Send + Sync> {
-    Box::new(NatsProcessor::new(nats)) as Box<dyn JobQueueProcessor + Send + Sync>
+pub(crate) async fn create_job_processor(
+    nats: NatsClient,
+) -> InitResult<Box<dyn JobQueueProcessor + Send + Sync>> {
+    Ok(Box::new(NatsProcessor::new(nats).await?) as Box<dyn JobQueueProcessor + Send + Sync>)
 }
 
 #[instrument(

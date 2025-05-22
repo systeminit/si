@@ -1,145 +1,114 @@
-use std::{
-    collections::{
-        HashMap,
-        HashSet,
-        VecDeque,
-    },
-    sync::Arc,
+use std::sync::Arc;
+
+use ringmap::{
+    RingMap,
+    RingSet,
 };
-
-use si_db::Visibility;
-use tokio::sync::Mutex;
-use ulid::Ulid;
-
-use super::producer::JobProducer;
-use crate::{
-    AccessBuilder,
+use si_id::{
+    ActionId,
+    AttributeValueId,
     ChangeSetId,
-    job::definition::{
-        AttributeValueBasedJobIdentifier,
+    WorkspacePk,
+};
+use tokio::sync::Mutex;
+
+use super::definition::ActionJob;
+use crate::job::{
+    consumer::DalJob,
+    definition::{
         DependentValuesUpdate,
         compute_validation::ComputeValidation,
     },
 };
 
-type AttributeValueBasedJobs = Arc<
-    Mutex<
-        HashMap<
-            AttributeValueBasedJobIdentifier,
-            HashMap<ChangeSetId, (HashSet<Ulid>, AccessBuilder)>,
-        >,
-    >,
->;
+type ActionChangeSets = Arc<Mutex<RingSet<(WorkspacePk, ChangeSetId, ActionId)>>>;
+type DependentValuesUpdateChangeSets = Arc<Mutex<RingSet<(WorkspacePk, ChangeSetId)>>>;
+type ValidationChangeSets = Arc<Mutex<RingMap<(WorkspacePk, ChangeSetId), Vec<AttributeValueId>>>>;
 
 #[derive(Debug, Clone, Default)]
 pub struct JobQueue {
-    queue: Arc<Mutex<VecDeque<Box<dyn JobProducer + Send + Sync>>>>,
-    attribute_value_based_jobs: AttributeValueBasedJobs,
+    action_change_sets: ActionChangeSets,
+    dependent_value_update_change_sets: DependentValuesUpdateChangeSets,
+    validation_change_sets: ValidationChangeSets,
 }
 
 impl JobQueue {
-    pub fn new() -> Self {
-        Self {
-            queue: Default::default(),
-            attribute_value_based_jobs: Default::default(),
-        }
-    }
-
-    pub async fn enqueue_attribute_value_job(
+    pub async fn enqueue_action_job(
         &self,
+        workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
-        access_builder: AccessBuilder,
-        job_kind: AttributeValueBasedJobIdentifier,
-        ids: Vec<impl Into<Ulid>>,
+        action_id: ActionId,
     ) {
-        let mut lock = self.attribute_value_based_jobs.lock().await;
-        let ids: Vec<Ulid> = ids.into_iter().map(|id| id.into()).collect();
-        lock.entry(job_kind)
+        self.action_change_sets
+            .lock()
+            .await
+            .insert((workspace_id, change_set_id, action_id));
+    }
+
+    pub async fn enqueue_dependent_values_update_job(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+    ) {
+        self.dependent_value_update_change_sets
+            .lock()
+            .await
+            .insert((workspace_id, change_set_id));
+    }
+
+    pub async fn enqueue_validation_job(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        attribute_value_id: AttributeValueId,
+    ) {
+        self.validation_change_sets
+            .lock()
+            .await
+            .entry((workspace_id, change_set_id))
             .or_default()
-            .entry(change_set_id)
-            .and_modify(|entry| entry.0.extend(ids.clone()))
-            .or_insert((HashSet::from_iter(ids.clone().into_iter()), access_builder));
+            .push(attribute_value_id);
     }
 
-    pub async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
-        let mut lock = self.queue.lock().await;
-
-        lock.push_back(job);
-    }
-
-    pub async fn fetch_job(&self) -> Option<Box<dyn JobProducer + Send + Sync>> {
-        match self.queue.lock().await.pop_front() {
-            Some(job) => Some(job),
-            None => self
-                .fetch_attribute_value_based_job()
-                .await
-                .map(|job| job as Box<dyn JobProducer + Send + Sync>),
+    /// Pop jobs off queue in a prioritized, FIFO manner.
+    pub async fn pop_job(&self) -> Option<Box<dyn DalJob>> {
+        if let Some((workspace_id, change_set_id)) = self
+            .dependent_value_update_change_sets
+            .lock()
+            .await
+            .pop_front()
+        {
+            Some(DependentValuesUpdate::new(workspace_id, change_set_id))
+        } else if let Some(((workspace_id, change_set_id), attribute_value_ids)) =
+            self.validation_change_sets.lock().await.pop_front()
+        {
+            Some(ComputeValidation::new(
+                workspace_id,
+                change_set_id,
+                attribute_value_ids,
+            ))
+        } else if let Some((workspace_id, change_set_id, action_id)) =
+            self.action_change_sets.lock().await.pop_front()
+        {
+            Some(ActionJob::new(workspace_id, change_set_id, action_id))
+        } else {
+            None
         }
     }
 
     /// Grab the dependent value update set for a change set and remove it from
     /// the queue (for sending via a rebase request)
-    pub async fn remove_dependent_values_jobs(&self) -> bool {
-        let mut job_queue = self.attribute_value_based_jobs.lock().await;
+    pub async fn clear_dependent_values_jobs(&self) -> bool {
+        let mut set = self.dependent_value_update_change_sets.lock().await;
+        let was_populated = !set.is_empty();
+        set.clear();
 
-        if job_queue.contains_key(&AttributeValueBasedJobIdentifier::DependentValuesUpdate) {
-            if let Some(dvu_jobs) =
-                job_queue.get_mut(&AttributeValueBasedJobIdentifier::DependentValuesUpdate)
-            {
-                dvu_jobs.clear();
-                return true;
-            }
-        }
-
-        false
-    }
-
-    pub async fn fetch_attribute_value_based_job(
-        &self,
-    ) -> Option<Box<dyn JobProducer + Send + Sync>> {
-        for job_kind in AttributeValueBasedJobIdentifier::in_priority_order() {
-            let mut jobs_for_kind = self.attribute_value_based_jobs.lock().await;
-
-            let Some(jobs_for_changeset) = jobs_for_kind.get_mut(&job_kind) else {
-                continue;
-            };
-
-            let Some(change_set_id) = jobs_for_changeset.keys().next().copied() else {
-                continue;
-            };
-
-            let Some((ids, access_builder)) = jobs_for_changeset.remove(&change_set_id) else {
-                continue;
-            };
-
-            // The logic of mapping AttributeValueBasedJobIdentifier into a job box would be better
-            // in the job definitions module, but this works.
-            return Some(match job_kind {
-                AttributeValueBasedJobIdentifier::DependentValuesUpdate => {
-                    DependentValuesUpdate::new(access_builder, Visibility::new(change_set_id))
-                }
-                AttributeValueBasedJobIdentifier::ComputeValidation => ComputeValidation::new(
-                    access_builder,
-                    Visibility::new(change_set_id),
-                    // NOTE(nick): despite dependent values update accepting ids for any node, we
-                    // know that validations must take in attribute values ids. This conversion is
-                    // safe given that the enqueue methods require an explicit list of attribute
-                    // value ids.
-                    ids.iter().map(|id| (*id).into()).collect(),
-                ),
-            });
-        }
-
-        None
-    }
-
-    pub async fn is_empty(&self) -> bool {
-        self.queue.lock().await.is_empty()
-            && self.attribute_value_based_jobs.lock().await.is_empty()
+        was_populated
     }
 
     pub async fn size(&self) -> usize {
-        self.queue.lock().await.len()
-            + (!self.attribute_value_based_jobs.lock().await.is_empty() as usize)
+        self.action_change_sets.lock().await.len()
+            + self.dependent_value_update_change_sets.lock().await.len()
+            + self.validation_change_sets.lock().await.len()
     }
 }

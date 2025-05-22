@@ -48,13 +48,13 @@ pub mod subject {
         prefix: Option<&str>,
         workspace_id: &str,
         change_set_id: &str,
-        kind: &str,
+        args: &str,
     ) -> Subject {
         nats_std::subject::prefixed(
             prefix,
             format!(
                 "{SUBJECT_PREFIX}.{}.{}.{}",
-                workspace_id, change_set_id, kind,
+                workspace_id, change_set_id, args,
             ),
         )
     }

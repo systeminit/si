@@ -11,6 +11,7 @@ rust_library(
         "//lib/nats-std:nats-std",
         "//lib/naxum:naxum",
         "//lib/pending-events:pending-events",
+        "//lib/pinga-client:pinga-client",
         "//lib/rebaser-client:rebaser-client",
         "//lib/rebaser-core:rebaser-core",
         "//lib/shuttle-server:shuttle-server",

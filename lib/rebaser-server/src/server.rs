@@ -45,6 +45,7 @@ use naxum::{
         Response,
     },
 };
+use pinga_client::PingaClient;
 use rebaser_client::RebaserClient;
 use rebaser_core::nats;
 use si_crypto::{
@@ -135,7 +136,7 @@ impl Server {
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
         let rebaser = Self::create_rebaser_client(nats.clone()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
-        let job_processor = Self::create_job_processor(nats.clone());
+        let job_processor = Self::create_job_processor(nats.clone()).await?;
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
         let compute_executor = Self::create_compute_executor()?;
@@ -207,6 +208,8 @@ impl Server {
 
         let dead_letter_queue = DeadLetterQueue::create_stream(context.clone()).await?;
 
+        let pinga = PingaClient::new(nats.clone()).await?;
+
         let edda = EddaClient::new(nats.clone()).await?;
 
         let ctx_builder = DalContext::builder(services_context, false);
@@ -215,6 +218,7 @@ impl Server {
         let state = AppState::new(
             metadata.clone(),
             nats,
+            pinga,
             edda,
             requests_stream,
             dead_letter_queue,
@@ -332,8 +336,10 @@ impl Server {
     }
 
     #[instrument(name = "rebaser.init.create_job_processor", level = "info", skip_all)]
-    fn create_job_processor(nats: NatsClient) -> Box<dyn JobQueueProcessor + Send + Sync> {
-        Box::new(NatsProcessor::new(nats)) as Box<dyn JobQueueProcessor + Send + Sync>
+    async fn create_job_processor(
+        nats: NatsClient,
+    ) -> Result<Box<dyn JobQueueProcessor + Send + Sync>> {
+        Ok(Box::new(NatsProcessor::new(nats).await?) as Box<dyn JobQueueProcessor + Send + Sync>)
     }
 
     #[instrument(

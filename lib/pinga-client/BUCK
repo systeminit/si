@@ -1,19 +1,16 @@
 load("@prelude-si//:macros.bzl", "rust_library")
 
 rust_library(
-    name = "rebaser-client",
+    name = "pinga-client",
     deps = [
         "//lib/nats-std:nats-std",
-        "//lib/pending-events:pending-events",
-        "//lib/rebaser-core:rebaser-core",
+        "//lib/pinga-core:pinga-core",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-events-rs:si-events",
         "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:futures",
         "//third-party/rust:remain",
-        "//third-party/rust:serde",
-        "//third-party/rust:serde_json",
         "//third-party/rust:thiserror",
     ],
     srcs = glob([

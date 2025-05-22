@@ -10,4 +10,17 @@ publish.workspace = true
 
 [dependencies]
 nats-std = { path = "../../lib/nats-std" }
+naxum-api-types = { path = "../../lib/naxum-api-types" }
+rand = { workspace = true }
+remain = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
+si-id = { path = "../../lib/si-id" }
+strum = { workspace = true }
+thiserror = { workspace = true }
+ulid = { workspace = true }
+
+[dev-dependencies]
+insta = { workspace = true }
+serde_json = { workspace = true }

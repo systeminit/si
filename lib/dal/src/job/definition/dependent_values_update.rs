@@ -4,20 +4,22 @@ use std::{
         HashSet,
         hash_map::Entry,
     },
-    convert::TryFrom,
     sync::Arc,
 };
 
 use async_trait::async_trait;
 use audit_log::DependentValueUpdateAuditLogError;
+use pinga_core::api_types::job_execution_request::JobArgsVCurrent;
 use serde::{
     Deserialize,
     Serialize,
 };
-use si_db::Visibility;
 use si_events::FuncRunValue;
 use si_frontend_types::DiagramSocket;
-use si_id::SchemaVariantId;
+use si_id::{
+    ChangeSetId,
+    SchemaVariantId,
+};
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use thiserror::Error;
@@ -31,7 +33,6 @@ use tokio::{
 use ulid::Ulid;
 
 use crate::{
-    AccessBuilder,
     AttributeValue,
     AttributeValueId,
     ChangeSet,
@@ -51,19 +52,11 @@ use crate::{
         AttributeValueError,
         dependent_value_graph::DependentValueGraph,
     },
-    job::{
-        consumer::{
-            JobCompletionState,
-            JobConsumer,
-            JobConsumerError,
-            JobConsumerMetadata,
-            JobConsumerResult,
-            JobInfo,
-        },
-        producer::{
-            JobProducer,
-            JobProducerResult,
-        },
+    job::consumer::{
+        DalJob,
+        JobCompletionState,
+        JobConsumer,
+        JobConsumerResult,
     },
     prop::PropError,
     status::{
@@ -117,43 +110,33 @@ impl From<DependentValuesUpdate> for DependentValuesUpdateArgs {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct DependentValuesUpdate {
-    access_builder: AccessBuilder,
-    visibility: Visibility,
-    job: Option<JobInfo>,
+    workspace_id: WorkspacePk,
+    change_set_id: ChangeSetId,
     #[serde(skip)]
     set_value_lock: Arc<RwLock<()>>,
 }
 
 impl DependentValuesUpdate {
-    pub fn new(access_builder: AccessBuilder, visibility: Visibility) -> Box<Self> {
+    pub fn new(workspace_id: WorkspacePk, change_set_id: ChangeSetId) -> Box<Self> {
         Box::new(Self {
-            access_builder,
-            visibility,
-            job: None,
+            workspace_id,
+            change_set_id,
             set_value_lock: Arc::new(RwLock::new(())),
         })
     }
 }
 
-impl JobProducer for DependentValuesUpdate {
-    fn arg(&self) -> JobProducerResult<serde_json::Value> {
-        Ok(serde_json::to_value(DependentValuesUpdateArgs::from(
-            self.clone(),
-        ))?)
-    }
-}
-
-impl JobConsumerMetadata for DependentValuesUpdate {
-    fn type_name(&self) -> String {
-        "DependentValuesUpdate".to_string()
+impl DalJob for DependentValuesUpdate {
+    fn args(&self) -> JobArgsVCurrent {
+        JobArgsVCurrent::DependentValuesUpdate
     }
 
-    fn access_builder(&self) -> AccessBuilder {
-        self.access_builder
+    fn workspace_id(&self) -> WorkspacePk {
+        self.workspace_id
     }
 
-    fn visibility(&self) -> Visibility {
-        self.visibility
+    fn change_set_id(&self) -> ChangeSetId {
+        self.change_set_id
     }
 }
 
@@ -639,19 +622,6 @@ async fn send_status_update(
         }
     }
     Ok(())
-}
-
-impl TryFrom<JobInfo> for DependentValuesUpdate {
-    type Error = JobConsumerError;
-
-    fn try_from(job: JobInfo) -> Result<Self, Self::Error> {
-        Ok(Self {
-            access_builder: job.access_builder,
-            visibility: job.visibility,
-            job: Some(job),
-            set_value_lock: Arc::new(RwLock::new(())),
-        })
-    }
 }
 
 pub mod audit_log {
