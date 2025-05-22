@@ -158,7 +158,7 @@ pub(crate) async fn create_attribute_func(
     ctx: &DalContext,
     name: Option<String>,
     eventual_parent: Option<EventualParent>,
-    output_location: AttributeFuncDestination,
+    output_location: Option<AttributeFuncDestination>,
     argument_bindings: Vec<AttributeArgumentBinding>,
 ) -> FuncAuthoringResult<Func> {
     let (code, handler, backend_kind, backend_response_type) = (
@@ -178,14 +178,16 @@ pub(crate) async fn create_attribute_func(
     )
     .await?;
 
-    AttributeBinding::upsert_attribute_binding(
-        ctx,
-        func.id,
-        eventual_parent,
-        output_location,
-        argument_bindings,
-    )
-    .await?;
+    if let Some(output_location) = output_location {
+        AttributeBinding::upsert_attribute_binding(
+            ctx,
+            func.id,
+            eventual_parent,
+            output_location,
+            argument_bindings,
+        )
+        .await?;
+    }
 
     Ok(func)
 }

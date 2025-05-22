@@ -329,7 +329,20 @@ type EventBusEvents = {
 //         }
 //       }
 //
-//   You may also APPEND a subscription by adding `keepExistingSubscriptions: true` to the
+//
+//      You may specify a function ID to be used in subscription, to transform the value before setting
+//      it to the destination AV.
+//
+//      If no func argument is passed, the func will be si:Identity.
+//
+//       {
+//         "/domain/SubnetId": {
+//           "$source": { "component": "ComponentNameOrId", "path": "/resource/SubnetId", "func": "01JWBMRZAANBHKD2G2S5PZQTMA" }
+//         }
+//       }
+//
+//
+//   SOON TO BE DEPRECATED: You may also APPEND a subscription by adding `keepExistingSubscriptions: true` to the
 //   subscription:
 //
 //       {
@@ -369,6 +382,7 @@ type AttributeSourceSetSubscription = {
     component: ComponentId | ComponentName;
     path: AttributePath;
     keepExistingSubscriptions?: boolean;
+    func?: string;
   };
 };
 const isAttributeSourceSetSubscription = (

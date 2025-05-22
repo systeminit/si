@@ -68,9 +68,8 @@ async fn main() -> Result<()> {
     for issue in validate_graph(&graph)? {
         println!("{}", issue.report(&graph)?);
         // Only fix ConnectionToUnknownSocket issues for now
-        match issue {
-            issue @ ValidationIssue::ConnectionToUnknownSocket { .. } => issue.fix(&mut graph)?,
-            _ => {}
+        if let issue @ ValidationIssue::ConnectionToUnknownSocket { .. } = issue {
+            issue.fix(&mut graph)?
         }
     }
 
@@ -87,8 +86,7 @@ async fn main() -> Result<()> {
 fn validate_graph(graph: &WorkspaceSnapshotGraph) -> Result<Vec<ValidationIssue>> {
     Ok(graph
         .nodes()
-        .map(|(node, node_index)| validate_node(&graph, node, node_index).unwrap())
-        .flatten()
+        .flat_map(|(node, node_index)| validate_node(graph, node, node_index).unwrap())
         .collect())
 }
 
@@ -158,7 +156,7 @@ impl ValidationIssue {
                     .name(),
                 object,
                 missing_children
-                    .into_iter()
+                    .iter()
                     .map(|&child_prop| format!(
                         "{} ({})",
                         graph
@@ -239,51 +237,48 @@ fn validate_node(
             let Some(prop) = graph.target_opt(attr, EdgeWeightKind::Prop)? else {
                 return Ok(issues);
             };
-            match graph.get_node_weight(prop)?.as_prop_node_weight()?.kind() {
-                PropKind::Object => {
-                    // Check our the children we *do* have against the child props we *should* have
-                    let child_props: HashSet<_> = graph
-                        .targets(prop, EdgeWeightKindDiscriminants::Use)
-                        .collect();
+            if graph.get_node_weight(prop)?.as_prop_node_weight()?.kind() == PropKind::Object {
+                // Check our the children we *do* have against the child props we *should* have
+                let child_props: HashSet<_> = graph
+                    .targets(prop, EdgeWeightKindDiscriminants::Use)
+                    .collect();
 
-                    // Step through child avs, and record the ones we see (maybe report duplicates)
-                    let mut attr_content = HashMap::new();
-                    for child_attr in graph.targets(attr, EdgeWeightKindDiscriminants::Contain) {
-                        let child_attr_prop = graph.target(child_attr, EdgeWeightKind::Prop)?;
-                        if !child_props.contains(&child_attr_prop) {
-                            issues.push(ValidationIssue::UnknownChildAttributeValue {
-                                child: graph.node_index_to_id(child_attr).unwrap().into(),
-                            });
-                            continue;
-                        }
-                        let content = graph
-                            .get_node_weight(child_attr)?
-                            .get_attribute_value_node_weight()
-                            .unwrap()
-                            .value();
-                        if let Some(orig_content) = attr_content.insert(child_attr_prop, content) {
-                            issues.push(ValidationIssue::DuplicateAttributeValue {
-                                original: graph.node_index_to_id(child_attr).unwrap().into(),
-                                duplicate: graph.node_index_to_id(child_attr).unwrap().into(),
-                                content_matches: content == orig_content,
-                            });
-                        }
+                // Step through child avs, and record the ones we see (maybe report duplicates)
+                let mut attr_content = HashMap::new();
+                for child_attr in graph.targets(attr, EdgeWeightKindDiscriminants::Contain) {
+                    let child_attr_prop = graph.target(child_attr, EdgeWeightKind::Prop)?;
+                    if !child_props.contains(&child_attr_prop) {
+                        issues.push(ValidationIssue::UnknownChildAttributeValue {
+                            child: graph.node_index_to_id(child_attr).unwrap().into(),
+                        });
+                        continue;
                     }
-
-                    // If any child attributes are *not* associated with child props, report those
-                    let missing_children: HashSet<_> = child_props
-                        .into_iter()
-                        .filter(|child_prop| !attr_content.contains_key(&child_prop))
-                        .map(|child_prop| graph.node_index_to_id(child_prop).unwrap().into())
-                        .collect();
-                    if !missing_children.is_empty() {
-                        issues.push(ValidationIssue::MissingChildAttributeValues {
-                            object: graph.node_index_to_id(attr).unwrap().into(),
-                            missing_children,
+                    let content = graph
+                        .get_node_weight(child_attr)?
+                        .get_attribute_value_node_weight()
+                        .unwrap()
+                        .value();
+                    if let Some(orig_content) = attr_content.insert(child_attr_prop, content) {
+                        issues.push(ValidationIssue::DuplicateAttributeValue {
+                            original: graph.node_index_to_id(child_attr).unwrap().into(),
+                            duplicate: graph.node_index_to_id(child_attr).unwrap().into(),
+                            content_matches: content == orig_content,
                         });
                     }
                 }
-                _ => {}
+
+                // If any child attributes are *not* associated with child props, report those
+                let missing_children: HashSet<_> = child_props
+                    .into_iter()
+                    .filter(|child_prop| !attr_content.contains_key(child_prop))
+                    .map(|child_prop| graph.node_index_to_id(child_prop).unwrap().into())
+                    .collect();
+                if !missing_children.is_empty() {
+                    issues.push(ValidationIssue::MissingChildAttributeValues {
+                        object: graph.node_index_to_id(attr).unwrap().into(),
+                        missing_children,
+                    });
+                }
             }
         }
         NodeWeight::AttributePrototypeArgument(AttributePrototypeArgumentNodeWeight {
