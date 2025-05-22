@@ -200,17 +200,11 @@ import {
   Prop,
   PropTree,
   EntityKind,
-} from "@/workers/types/dbinterface";
+} from "@/workers/types/entity_kind_types";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import FilterTile from "./layout_components/FilterTile.vue";
 import { assertIsDefined, Context } from "./types";
-import {
-  ComponentIdType,
-  CreateComponentPayload,
-  createComponentPayload,
-  routes,
-  useApi,
-} from "./api_composables";
+import { componentTypes, routes, useApi } from "./api_composables";
 import PropTreeComponent, {
   PropsAsTree,
 } from "./layout_components/PropsAsTree.vue";
@@ -295,7 +289,7 @@ const api = useApi();
 const onEnter = async () => {
   if (!selectedAsset.value) return;
   const schemaType = selectedAsset.value.type;
-  let params: ComponentIdType;
+  let params: componentTypes.ComponentIdType;
   if (schemaType === "installed")
     params = {
       schemaType,
@@ -308,13 +302,12 @@ const onEnter = async () => {
     };
 
   // TODO "force changeset"
-  const payload = createComponentPayload(params);
+  const payload = componentTypes.createComponentPayload(params);
   const call = api.endpoint<{ componentId: string }>(routes.CreateComponent, {
     viewId: viewId.value,
   });
-  const { req, newChangeSetId } = await call.post<CreateComponentPayload>(
-    payload,
-  );
+  const { req, newChangeSetId } =
+    await call.post<componentTypes.CreateComponentPayload>(payload);
   if (api.ok(req)) {
     const params = {
       workspacePk: route.params.workspacePk,

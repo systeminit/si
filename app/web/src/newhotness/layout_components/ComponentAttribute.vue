@@ -82,15 +82,11 @@ import { computed, ref, watch } from "vue";
 import { VButton, IconButton, Icon } from "@si/vue-lib/design-system";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
-import { BifrostComponent } from "@/workers/types/dbinterface";
+import { BifrostComponent } from "@/workers/types/entity_kind_types";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
 import { AttrTree } from "../AttributePanel.vue";
-import {
-  useApi,
-  routes,
-  UpdateComponentAttributesArgs,
-} from "../api_composables";
+import { useApi, routes, componentTypes } from "../api_composables";
 import { useWatchedForm } from "../logic_composables/watched_form";
 
 const props = defineProps<{
@@ -137,7 +133,7 @@ const add = async () => {
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
-  const payload: UpdateComponentAttributesArgs = {};
+  const payload: componentTypes.UpdateComponentAttributesArgs = {};
   const path =
     props.attributeTree.prop?.path
       .replace("root", "")
@@ -152,9 +148,8 @@ const add = async () => {
     ];
   if (childProp?.kind === "object") payload[`${path}/-`] = {};
   else payload[`${path}/-`] = "";
-  const { req, newChangeSetId } = await call.put<UpdateComponentAttributesArgs>(
-    payload,
-  );
+  const { req, newChangeSetId } =
+    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
   if (addApi.ok(req) && newChangeSetId) {
     router.push({
       name: "new-hotness-component",
@@ -181,14 +176,14 @@ const keyForm = wForm.newForm(
       routes.UpdateComponentAttributes,
       { id: props.component.id },
     );
-    const payload: UpdateComponentAttributesArgs = {};
+    const payload: componentTypes.UpdateComponentAttributesArgs = {};
     const path =
       props.attributeTree.prop?.path
         .replace("root", "")
         .replaceAll("\u000b", "/") ?? ""; // endpoint doesn't want it
     payload[`${path}/${value.key}`] = "";
     const { req, newChangeSetId } =
-      await call.put<UpdateComponentAttributesArgs>(payload);
+      await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
     if (newChangeSetId && keyApi.ok(req)) {
       router.push({
         name: "new-hotness-component",

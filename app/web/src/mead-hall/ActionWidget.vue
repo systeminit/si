@@ -60,7 +60,7 @@ import { ActionId } from "@/api/sdf/dal/action";
 import {
   ActionPrototypeView,
   BifrostComponent,
-} from "@/workers/types/dbinterface";
+} from "@/workers/types/entity_kind_types";
 
 const props = defineProps<{
   component: DiagramGroupData | DiagramNodeData | BifrostComponent;

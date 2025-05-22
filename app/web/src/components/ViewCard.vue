@@ -182,7 +182,7 @@ import { ViewDescription } from "@/api/sdf/dal/views";
 import { useViewsStore } from "@/store/views.store";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import NodeSkeleton from "@/components/NodeSkeleton.vue";
-import { View } from "@/workers/types/dbinterface";
+import { View } from "@/workers/types/entity_kind_types";
 import DetailsPanelMenuIcon from "./DetailsPanelMenuIcon.vue";
 import ComponentCard from "./ComponentCard.vue";
 import { DiagramViewData } from "./ModelingDiagram/diagram_types";

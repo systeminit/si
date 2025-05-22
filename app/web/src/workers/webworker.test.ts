@@ -6,8 +6,8 @@ import {
   MessageKind,
   AtomMessage,
   NOROW,
-  EntityKind,
 } from "@/workers/types/dbinterface";
+import { EntityKind } from "@/workers/types/entity_kind_types";
 
 // setup a few things
 const workerUrl =

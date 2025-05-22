@@ -206,13 +206,13 @@ import {
   BifrostComponent,
   BifrostComponentConnections,
   EntityKind,
-} from "@/workers/types/dbinterface";
+} from "@/workers/types/entity_kind_types";
 import AttributePanel from "./AttributePanel.vue";
 import { attributeEmitter } from "./logic_composables/emitters";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
 import DelayedLoader from "./layout_components/DelayedLoader.vue";
 import EditInPlace from "./layout_components/EditInPlace.vue";
-import { useApi, routes, UpdateComponentNameArgs } from "./api_composables";
+import { useApi, routes, componentTypes } from "./api_composables";
 import { useWatchedForm } from "./logic_composables/watched_form";
 import QualificationPanel from "./QualificationPanel.vue";
 import ResourcePanel from "./ResourcePanel.vue";
@@ -314,9 +314,10 @@ const nameForm = wForm.newForm(
       const id = component.value?.id;
       if (!id) throw new Error("Missing id");
       const call = api.endpoint(routes.UpdateComponentName, { id });
-      const { req, newChangeSetId } = await call.put<UpdateComponentNameArgs>({
-        name,
-      });
+      const { req, newChangeSetId } =
+        await call.put<componentTypes.UpdateComponentNameArgs>({
+          name,
+        });
       if (newChangeSetId && api.ok(req)) {
         router.push({
           name: "new-hotness-component",

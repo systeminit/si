@@ -182,7 +182,7 @@ import {
   PropertyEditorPropWidgetKindSelect,
 } from "@/api/sdf/dal/property_editor";
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
-import { EntityKind, Prop } from "@/workers/types/dbinterface";
+import { EntityKind, Prop } from "@/workers/types/entity_kind_types";
 import {
   getPossibleConnections,
   useMakeArgs,
@@ -218,6 +218,7 @@ const props = defineProps<{
   prop?: Prop;
   displayName: string;
   canDelete?: boolean;
+  disabled?: boolean;
 }>();
 
 const anchorRef = ref<InstanceType<typeof HTMLElement>>();

@@ -21,7 +21,7 @@ import {
   BifrostConnection,
   OutgoingConnections,
   EntityKind,
-} from "@/workers/types/dbinterface";
+} from "@/workers/types/entity_kind_types";
 import {
   bifrost,
   getOutgoingConnections,

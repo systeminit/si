@@ -49,11 +49,7 @@ import { LoadingMessage } from "@si/vue-lib/design-system";
 import StatusMessageBox from "@/components/StatusMessageBox.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { QualItem } from "@/newhotness/QualificationPanel.vue";
-import {
-  FuncRunLogsResponse,
-  routes,
-  useApi,
-} from "@/newhotness/api_composables";
+import { routes, useApi, funcRunTypes } from "@/newhotness/api_composables";
 
 const api = useApi();
 
@@ -73,9 +69,12 @@ const qualificationStatus = computed(() => {
 const toggleHidden = async () => {
   showDetails.value = !showDetails.value;
   if (showDetails.value && props.qualification.avId) {
-    const call = api.endpoint<FuncRunLogsResponse>(routes.FuncRunByAv, {
-      id: props.qualification.avId,
-    });
+    const call = api.endpoint<funcRunTypes.FuncRunLogsResponse>(
+      routes.FuncRunByAv,
+      {
+        id: props.qualification.avId,
+      },
+    );
     const result = await call.get();
     if (api.ok(result)) {
       output.value = result.data.logs.logs.map((l) => l.message);

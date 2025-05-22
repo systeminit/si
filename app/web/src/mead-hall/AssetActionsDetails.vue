@@ -55,7 +55,7 @@ import { ActionPrototypeId, ActionId } from "@/api/sdf/dal/action";
 import {
   ActionPrototypeViewList,
   BifrostActionViewList,
-} from "@/workers/types/dbinterface";
+} from "@/workers/types/entity_kind_types";
 import ActionWidget from "./ActionWidget.vue";
 
 const props = defineProps<{

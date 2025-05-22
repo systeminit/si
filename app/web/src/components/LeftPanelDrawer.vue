@@ -94,7 +94,7 @@ import SidebarSubpanelTitle from "@/components/SidebarSubpanelTitle.vue";
 import { bifrost, makeKey, makeArgs } from "@/store/realtime/heimdall";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import { ViewDescription } from "@/api/sdf/dal/views";
-import { View, BifrostViewList } from "@/workers/types/dbinterface";
+import { View, BifrostViewList } from "@/workers/types/entity_kind_types";
 import ViewCard from "./ViewCard.vue";
 
 const props = defineProps<{ changeSetId: ChangeSetId | undefined }>();

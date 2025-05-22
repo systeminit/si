@@ -14,7 +14,7 @@
 import { computed } from "vue";
 import CodeViewer from "@/components/CodeViewer.vue";
 import EmptyStateCard from "@/components/EmptyStateCard.vue";
-import { BifrostComponent } from "@/workers/types/dbinterface";
+import { BifrostComponent } from "@/workers/types/entity_kind_types";
 
 const component = defineProps<{
   component: BifrostComponent;

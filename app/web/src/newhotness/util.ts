@@ -1,6 +1,6 @@
 import { Ref, unref } from "vue";
 import { IconNames } from "@si/vue-lib/design-system";
-import { AttributeTree } from "@/workers/types/dbinterface";
+import { AttributeTree } from "@/workers/types/entity_kind_types";
 import { Toggle } from "./logic_composables/toggle_containers";
 
 export const getAssetIcon = (name: string) => {

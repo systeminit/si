@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { Prop } from "@/workers/types/dbinterface";
+import { Prop } from "@/workers/types/entity_kind_types";
 
 const open = ref(true);
 

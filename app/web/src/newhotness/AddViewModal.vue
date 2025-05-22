@@ -36,7 +36,7 @@
 import { Modal, Icon } from "@si/vue-lib/design-system";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { View } from "@/workers/types/dbinterface";
+import { View } from "@/workers/types/entity_kind_types";
 import { useApi, routes } from "./api_composables";
 import { useWatchedForm } from "./logic_composables/watched_form";
 

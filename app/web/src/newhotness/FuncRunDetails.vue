@@ -46,12 +46,7 @@ import { funcRunStatus, FuncRun } from "@/store/func_runs.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import FuncRunDetailsLayout from "./layout_components/FuncRunDetailsLayout.vue";
 import { assertIsDefined, Context } from "./types";
-import {
-  useApi,
-  routes,
-  FuncRunLogsResponse,
-  FuncRunResponse,
-} from "./api_composables";
+import { useApi, routes, funcRunTypes } from "./api_composables";
 
 export interface OutputLine {
   stream: string;
@@ -111,7 +106,7 @@ const pollInterval = ref<number | false>(0); // initial calls
 const { data: funcRunQuery } = useQuery<Omit<FuncRun, "logs"> | undefined>({
   queryKey: ["funcRun", props.funcRunId],
   queryFn: async () => {
-    const call = api.endpoint<FuncRunResponse>(routes.FuncRun, {
+    const call = api.endpoint<funcRunTypes.FuncRunResponse>(routes.FuncRun, {
       id: props.funcRunId,
     });
     const req = await call.get();
@@ -132,9 +127,12 @@ const funcRun = computed(() => funcRunQuery.value);
 const { data: funcRunLogsQuery } = useQuery<FuncRunLog | undefined>({
   queryKey: ["funcRunLogs", props.funcRunId],
   queryFn: async () => {
-    const call = api.endpoint<FuncRunLogsResponse>(routes.FuncRunLogs, {
-      id: props.funcRunId,
-    });
+    const call = api.endpoint<funcRunTypes.FuncRunLogsResponse>(
+      routes.FuncRunLogs,
+      {
+        id: props.funcRunId,
+      },
+    );
     const req = await call.get();
     if (api.ok(req)) {
       return req.data.logs;

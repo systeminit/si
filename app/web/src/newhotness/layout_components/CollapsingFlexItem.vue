@@ -46,7 +46,7 @@
 <script lang="ts" setup>
 import { themeClasses, IconButton, Modal } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { onMounted, ref, withDefaults } from "vue";
+import { onMounted, ref } from "vue";
 import { tw } from "@si/vue-lib";
 import { useToggle } from "../logic_composables/toggle_containers";
 
