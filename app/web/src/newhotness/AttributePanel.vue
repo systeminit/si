@@ -222,11 +222,10 @@ const secret = computed(
 const keyApi = useApi();
 const secretApi = useApi();
 
-const wForm = useWatchedForm<Record<string, string>>();
-const secretForm = wForm.newForm(
-  "component.secret",
-  secretFormData,
-  async ({ value }) => {
+const wForm = useWatchedForm<Record<string, string>>("component.secret");
+const secretForm = wForm.newForm({
+  data: secretFormData,
+  onSubmit: async ({ value }) => {
     const definition = secretQuery.data.value?.label;
     if (!definition) throw new Error("Secret Definition Required");
     if (!secret.value) throw new Error("Secret AV Required");
@@ -269,15 +268,17 @@ const secretForm = wForm.newForm(
       });
     }
   },
-  ({ value }) => {
-    return {
-      fields: {
-        Name: !value.Name ? "Name required" : undefined,
-      },
-    };
+  validators: {
+    onSubmit: ({ value }) => {
+      return {
+        fields: {
+          Name: !value.Name ? "Name required" : undefined,
+        },
+      };
+    },
   },
-  () => secret.value?.secret,
-);
+  watchFn: () => secret.value?.secret,
+});
 
 const filtered = reactive<{ tree: AttrTree | object }>({
   tree: {},

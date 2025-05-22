@@ -51,15 +51,14 @@ const api = useApi();
 const route = useRoute();
 const router = useRouter();
 
-const wForm = useWatchedForm<{ name: string }>();
+const wForm = useWatchedForm<{ name: string }>("view.add");
 const formData = computed<{ name: string }>(() => {
   return { name: "" };
 });
 
-const nameForm = wForm.newForm(
-  "view.add",
-  formData,
-  async ({ value }) => {
+const nameForm = wForm.newForm({
+  data: formData,
+  onSubmit: async ({ value }) => {
     const call = api.endpoint<{ id: string }>(routes.CreateView);
     const { req, newChangeSetId } = await call.post<{ name: string }>({
       name: value.name,
@@ -85,9 +84,12 @@ const nameForm = wForm.newForm(
       );
     }
   },
-  ({ value }) => (value.name.length === 0 ? "Name is required" : undefined),
-  () => props.views?.length ?? 0,
-);
+  validators: {
+    onSubmit: ({ value }) =>
+      value.name.length === 0 ? "Name is required" : undefined,
+  },
+  watchFn: () => props.views?.length ?? 0,
+});
 
 const open = () => {
   modalRef.value?.open();

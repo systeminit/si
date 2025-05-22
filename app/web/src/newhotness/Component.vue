@@ -300,14 +300,13 @@ const nameFormData = computed<NameFormData>(() => {
   return { name: component.value?.name ?? "" };
 });
 
-const wForm = useWatchedForm<NameFormData>();
+const wForm = useWatchedForm<NameFormData>("component.name");
 
 const route = useRoute();
 
-const nameForm = wForm.newForm(
-  "component.name",
-  nameFormData,
-  async ({ value }) => {
+const nameForm = wForm.newForm({
+  data: nameFormData,
+  onSubmit: async ({ value }) => {
     const name = value.name;
     // i wish the validator narrowed this type to always be a string
     if (name) {
@@ -330,7 +329,7 @@ const nameForm = wForm.newForm(
       }
     }
   },
-);
+});
 
 const required = ({ value }: { value: string | undefined }) => {
   const len = value?.trim().length ?? 0;
