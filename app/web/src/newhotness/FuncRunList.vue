@@ -65,11 +65,7 @@ import clsx from "clsx";
 import { FuncRun } from "@/store/func_runs.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import FuncRunCard from "./FuncRunCard.vue";
-import {
-  GetFuncRunsPaginatedResponse,
-  useApi,
-  routes,
-} from "./api_composables";
+import { funcRunTypes, useApi, routes } from "./api_composables";
 import { assertIsDefined, Context } from "./types";
 
 // Component props
@@ -109,8 +105,8 @@ const {
   queryKey: ["paginatedFuncRuns"],
   queryFn: async ({
     pageParam = undefined,
-  }): Promise<GetFuncRunsPaginatedResponse> => {
-    const call = api.endpoint<GetFuncRunsPaginatedResponse>(
+  }): Promise<funcRunTypes.GetFuncRunsPaginatedResponse> => {
+    const call = api.endpoint<funcRunTypes.GetFuncRunsPaginatedResponse>(
       routes.GetFuncRunsPaginated,
     );
     const params = new URLSearchParams();
@@ -128,7 +124,7 @@ const {
     };
   },
   initialPageParam: undefined,
-  getNextPageParam: (lastPage: GetFuncRunsPaginatedResponse) => {
+  getNextPageParam: (lastPage: funcRunTypes.GetFuncRunsPaginatedResponse) => {
     return lastPage.nextCursor ?? undefined;
   },
 });

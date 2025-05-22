@@ -23,7 +23,7 @@
 <script setup lang="ts">
 import { themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { ref, withDefaults } from "vue";
+import { ref } from "vue";
 
 const props = withDefaults(
   defineProps<{

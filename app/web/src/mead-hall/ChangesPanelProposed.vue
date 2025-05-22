@@ -118,7 +118,7 @@ import ConfirmHoldModal from "@/components/Actions/ConfirmHoldModal.vue";
 import EmptyStateCard from "@/components/EmptyStateCard.vue";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import { ActionProposedView, useActionsStore } from "@/store/actions.store";
-import { BifrostActionViewList } from "@/workers/types/dbinterface";
+import { BifrostActionViewList } from "@/workers/types/entity_kind_types";
 import ActionsList from "./ActionsList.vue";
 
 export interface ActionProposedViewWithHydratedChildren

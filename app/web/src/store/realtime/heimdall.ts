@@ -1,13 +1,11 @@
 import * as Comlink from "comlink";
 import { computed, reactive, Reactive, inject, ComputedRef, unref } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
+import { DBInterface, Id, BustCacheFn } from "@/workers/types/dbinterface";
 import {
-  DBInterface,
-  Id,
-  BustCacheFn,
   BifrostConnection,
   EntityKind,
-} from "@/workers/types/dbinterface";
+} from "@/workers/types/entity_kind_types";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Context } from "@/newhotness/types";
 import { DefaultMap } from "@/utils/defaultmap";

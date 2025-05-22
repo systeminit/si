@@ -14,7 +14,7 @@ import {
   AttributeValue,
   BifrostComponent,
   Prop,
-} from "@/workers/types/dbinterface";
+} from "@/workers/types/entity_kind_types";
 import QualificationView from "@/newhotness/QualificationView.vue";
 import { AttributeValueId } from "@/store/status.store";
 import { QualificationStatus } from "@/store/qualifications.store";

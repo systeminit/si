@@ -176,7 +176,7 @@ import {
   BifrostViewList,
   ViewComponentList,
   EntityKind,
-} from "@/workers/types/dbinterface";
+} from "@/workers/types/entity_kind_types";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
 import Map from "./Map.vue";

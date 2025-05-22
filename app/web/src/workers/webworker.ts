@@ -45,10 +45,12 @@ import {
   MessageKind,
   IndexObjectMeta,
   BustCacheFn,
+  Ragnarok,
+} from "./types/dbinterface";
+import {
   BifrostViewList,
   RawViewList,
   View,
-  Ragnarok,
   EddaComponentList,
   EddaComponent,
   BifrostComponentList,
@@ -62,7 +64,14 @@ import {
   SchemaVariant,
   PossibleConnection,
   EntityKind,
-} from "./types/dbinterface";
+  EddaSecret,
+  SecretDefinition,
+  BifrostSecret,
+  EddaSecretDefinitionList,
+  BifrostSecretDefinitionList,
+  EddaSecretList,
+  BifrostSecretList,
+} from "./types/entity_kind_types";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
 if (!otelEndpoint) otelEndpoint = "http://localhost:8080";
@@ -407,7 +416,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
   const data = (await get(
     workspaceId,
     changeSetId,
-    "ComponentList",
+    EntityKind.ComponentList,
     changeSetId,
   )) as BifrostComponentList | -1;
 
@@ -1150,7 +1159,7 @@ const _getOutgoingConnectionsByComponentId = async (
   const list = (await get(
     workspaceId,
     changeSetId,
-    "IncomingConnectionsList",
+    EntityKind.IncomingConnectionsList,
     changeSetId,
     undefined,
     false, // don't compute
@@ -1193,12 +1202,18 @@ const getComputed = async (
   atomDoc: AtomDocument,
   workspaceId: string,
   changeSetId: string,
-  kind: string,
+  kind: EntityKind,
   id: string,
 ) => {
   // PSA: in general, any `get` you do in here, you're going to want to pass `followComputed=false`
   // otherwise you're liable to run into an infinite recursion lookup
-  if (!["Component", "ViewComponentList", "ComponentList"].includes(kind))
+  if (
+    ![
+      EntityKind.Component,
+      EntityKind.ViewComponentList,
+      EntityKind.ComponentList,
+    ].includes(kind)
+  )
     return atomDoc;
 
   const connectionsById = getOutgoingConnectionsByComponentId(
@@ -1218,7 +1233,10 @@ const getComputed = async (
 
   debug("🔗 computed operation", kind, id);
 
-  if (kind === "ViewComponentList" || kind === "ComponentList") {
+  if (
+    kind === EntityKind.ViewComponentList ||
+    kind === EntityKind.ComponentList
+  ) {
     const data = atomDoc as BifrostComponentList;
     data.components.forEach((c) => {
       c.outputCount = connectionsById.get(c.id).length;
@@ -1230,7 +1248,7 @@ const getComputed = async (
       { kind, args: id },
     );
     return data;
-  } else if (kind === "Component") {
+  } else if (kind === EntityKind.Component) {
     const data = atomDoc as BifrostComponent;
     data.outputCount = connectionsById.get(id).length;
     clearWeakReferences(changeSetId, { kind, args: id });
@@ -1258,18 +1276,21 @@ const getReferences = async (
   atomDoc: AtomDocument,
   workspaceId: string,
   changeSetId: ChangeSetId,
-  kind: string,
+  kind: EntityKind,
   id: Id,
   followComputed?: boolean,
 ) => {
   if (
     ![
-      "Component",
-      "ViewList",
-      "ComponentList",
-      "ViewComponentList",
-      "IncomingConnections",
-      "IncomingConnectionsList",
+      EntityKind.Component,
+      EntityKind.ViewList,
+      EntityKind.ComponentList,
+      EntityKind.ViewComponentList,
+      EntityKind.IncomingConnections,
+      EntityKind.IncomingConnectionsList,
+      EntityKind.SecretDefinitionList,
+      EntityKind.SecretList,
+      EntityKind.Secret,
     ].includes(kind)
   )
     return [atomDoc, false];
@@ -1286,7 +1307,104 @@ const getReferences = async (
 
   let hasReferenceError = false;
 
-  if (kind === "Component") {
+  if (kind === EntityKind.Secret) {
+    const data = atomDoc as EddaSecret;
+    const sd = (await get(
+      workspaceId,
+      changeSetId,
+      data.definitionId.kind,
+      data.definitionId.id,
+      undefined,
+      followComputed,
+    )) as SecretDefinition | -1;
+
+    if (sd === -1) {
+      hasReferenceError = true;
+      mjolnir(
+        workspaceId,
+        changeSetId,
+        data.definitionId.kind,
+        data.definitionId.id,
+      );
+    }
+    weakReference(
+      changeSetId,
+      { kind: data.definitionId.kind, args: data.definitionId.id },
+      { kind, args: data.id },
+    );
+    const secret: BifrostSecret = {
+      ...data,
+      definition: sd !== -1 ? sd : ({} as SecretDefinition),
+    };
+    span.end();
+    return [secret, hasReferenceError];
+  } else if (kind === EntityKind.SecretDefinitionList) {
+    const data = atomDoc as EddaSecretDefinitionList;
+    const maybeSDs = await Promise.all(
+      data.secretDefinitions.map(async (d) => {
+        const maybeDoc = (await get(
+          workspaceId,
+          changeSetId,
+          d.kind,
+          d.id,
+          undefined,
+          followComputed,
+        )) as SecretDefinition | -1;
+        if (maybeDoc === -1) {
+          hasReferenceError = true;
+          mjolnir(workspaceId, changeSetId, d.kind, d.id);
+        }
+        weakReference(
+          changeSetId,
+          { kind: d.kind, args: d.id },
+          { kind, args: data.id },
+        );
+        return maybeDoc;
+      }),
+    );
+    const secretDefinitions = maybeSDs.filter(
+      (v): v is SecretDefinition => v !== -1 && v && "id" in v,
+    );
+    const list: BifrostSecretDefinitionList = {
+      id: data.id,
+      secretDefinitions,
+    };
+    span.end();
+    return [list, hasReferenceError];
+  } else if (kind === EntityKind.SecretList) {
+    const data = atomDoc as EddaSecretList;
+    const maybeS = await Promise.all(
+      data.secrets.map(async (d) => {
+        const maybeDoc = (await get(
+          workspaceId,
+          changeSetId,
+          d.kind,
+          d.id,
+          undefined,
+          followComputed,
+        )) as BifrostSecret | -1;
+        if (maybeDoc === -1) {
+          hasReferenceError = true;
+          mjolnir(workspaceId, changeSetId, d.kind, d.id);
+        }
+        weakReference(
+          changeSetId,
+          { kind: d.kind, args: d.id },
+          { kind, args: data.id },
+        );
+        return maybeDoc;
+      }),
+    );
+    const secrets = maybeS.filter(
+      (v): v is BifrostSecret => v !== -1 && v && "id" in v,
+    );
+    const list: BifrostSecretList = {
+      id: data.id,
+      secrets,
+    };
+    span.end();
+    return [list, hasReferenceError];
+  } else if (kind === EntityKind.Component) {
     const data = atomDoc as EddaComponent;
     const sv = (await get(
       workspaceId,
@@ -1320,7 +1438,7 @@ const getReferences = async (
     };
     span.end();
     return [component, hasReferenceError];
-  } else if (kind === "ViewList") {
+  } else if (kind === EntityKind.ViewList) {
     const rawList = atomDoc as RawViewList;
     const maybeViews = await Promise.all(
       rawList.views.map(async (v) => {
@@ -1353,7 +1471,10 @@ const getReferences = async (
     };
     span.end();
     return [list, hasReferenceError];
-  } else if (kind === "ComponentList" || kind === "ViewComponentList") {
+  } else if (
+    kind === EntityKind.ComponentList ||
+    kind === EntityKind.ViewComponentList
+  ) {
     const rawList = atomDoc as EddaComponentList;
     const maybeComponents = await Promise.all(
       rawList.components.map(async (c) => {
@@ -1389,12 +1510,12 @@ const getReferences = async (
     };
     span.end();
     return [list, hasReferenceError];
-  } else if (kind === "IncomingConnections") {
+  } else if (kind === EntityKind.IncomingConnections) {
     const raw = atomDoc as EddaIncomingConnections;
     const component = (await get(
       workspaceId,
       changeSetId,
-      "Component",
+      EntityKind.Component,
       raw.id,
       undefined,
       false,
@@ -1473,7 +1594,7 @@ const getReferences = async (
       } as BifrostComponentConnections,
       hasReferenceError,
     ];
-  } else if (kind === "IncomingConnectionsList") {
+  } else if (kind === EntityKind.IncomingConnectionsList) {
     const rawList = atomDoc as EddaIncomingConnectionsList;
     const maybeIncomingConnections = await Promise.all(
       rawList.componentConnections.map(async (c) => {
@@ -1501,13 +1622,16 @@ const getReferences = async (
     };
     span.end();
     return [list, hasReferenceError];
-  } else return [atomDoc, hasReferenceError];
+  } else {
+    span.end();
+    return [atomDoc, hasReferenceError];
+  }
 };
 
 const get = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
-  kind: string,
+  kind: EntityKind,
   id: Id,
   checksum?: string, // intentionally not used in sql, putting it on the wire for consistency & observability purposes
   followComputed = true,

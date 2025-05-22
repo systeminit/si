@@ -112,7 +112,7 @@ import {
   BifrostComponentConnections,
   BifrostIncomingConnectionsList,
   EntityKind,
-} from "@/workers/types/dbinterface";
+} from "@/workers/types/entity_kind_types";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { SelectionsInQueryString } from "./Workspace.vue";
 import { keyEmitter } from "./logic_composables/emitters";

@@ -235,7 +235,7 @@ import { ChangeSetStatus, ChangeSet } from "@/api/sdf/dal/change_set";
 import { useViewsStore } from "@/store/views.store";
 import { bifrost, makeArgs, makeKey } from "@/store/realtime/heimdall";
 import { ActionProposedView } from "@/store/actions.store";
-import { BifrostActionViewList } from "@/workers/types/dbinterface";
+import { BifrostActionViewList } from "@/workers/types/entity_kind_types";
 import ActionsList from "./ActionsList.vue";
 import { ActionProposedViewWithHydratedChildren } from "./ChangesPanelProposed.vue";
 

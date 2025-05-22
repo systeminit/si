@@ -134,7 +134,7 @@ import * as heimdall from "@/store/realtime/heimdall";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { sdfApiInstance } from "@/store/apis.web";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
-import { EntityKind } from "@/workers/types/dbinterface";
+import { EntityKind } from "@/workers/types/entity_kind_types";
 import NavbarButton from "./NavbarButton.vue";
 import Collaborators from "./Collaborators.vue";
 import Notifications from "./Notifications.vue";

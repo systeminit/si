@@ -54,7 +54,9 @@ export const useWatchedForm = <Data>() => {
     formData: Ref<Data> | ComputedRef<Data>,
     // NOTE: props also contains `formApi`, but I can't realistically type it here
     onSubmit: (props: { value: Data }) => void,
-    submitValidation?: (props: { value: Data }) => string | undefined,
+    submitValidation?: (props: {
+      value: Data;
+    }) => (string | undefined) | { fields: Record<string, string | undefined> },
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
     watchFn?: () => any,
   ) => {
@@ -91,8 +93,10 @@ export const useWatchedForm = <Data>() => {
     const observe = (time: number) => {
       if (observed) return;
       observed = true;
-      span.setAttribute("measured_time", time);
-      span.end();
+      if (span) {
+        span.setAttribute("measured_time", time);
+        span.end();
+      }
     };
 
     if (watchFn) {

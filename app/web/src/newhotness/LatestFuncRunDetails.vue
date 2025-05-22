@@ -17,7 +17,10 @@ import { Icon } from "@si/vue-lib/design-system";
 import { useQuery } from "@tanstack/vue-query";
 import { ActionProposedView } from "@/store/actions.store";
 import { useMakeKey, bifrost, useMakeArgs } from "@/store/realtime/heimdall";
-import { BifrostActionViewList, EntityKind } from "@/workers/types/dbinterface";
+import {
+  BifrostActionViewList,
+  EntityKind,
+} from "@/workers/types/entity_kind_types";
 import FuncRunDetails from "./FuncRunDetails.vue";
 import { FunctionKind } from "./types";
 

@@ -6,7 +6,11 @@ use axum::{
         Response,
     },
 };
-use dal::AttributeValueId;
+use dal::{
+    AttributeValueId,
+    KeyPairError,
+    prop::PropError,
+};
 use sdf_core::api_error::ApiError;
 use serde::Deserialize;
 use si_id::ComponentId;
@@ -15,6 +19,7 @@ use crate::app_state::AppState;
 
 pub mod attributes;
 pub mod name;
+pub mod secrets;
 
 #[remain::sorted]
 #[derive(Debug, thiserror::Error)]
@@ -31,10 +36,16 @@ pub enum Error {
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] dal::ComponentError),
+    #[error("dal secret error: {0}")]
+    DalSecret(#[from] dal::SecretError),
     #[error("json pointer parse error: {0}")]
     JsonptrParseError(#[from] jsonptr::ParseError),
+    #[error("key pair error: {0}")]
+    KeyPair(#[from] KeyPairError),
     #[error("no value to set at path {0}")]
     NoValueToSet(String),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("serde json error: {0}")]
     SerdeJsonError(#[from] serde_json::Error),
     #[error("source component not found: {0}")]
@@ -69,7 +80,8 @@ pub fn v2_routes() -> Router<AppState> {
         "/:componentId",
         Router::new()
             .nest("/attributes", attributes::v2_routes())
-            .nest("/name", name::v2_routes()),
+            .nest("/name", name::v2_routes())
+            .nest("/secret", secrets::v2_routes()),
     )
 }
 
