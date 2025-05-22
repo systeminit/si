@@ -2,43 +2,40 @@
   <!-- eslint-disable vue/no-multiple-template-root -->
   <label
     ref="anchorRef"
-    :class="
-      clsx(
-        showOptions && 'bg-neutral-500',
-        'pl-xs flex flex-row items-center relative',
-      )
-    "
+    class="pl-xs flex flex-row items-center relative text-sm font-normal"
   >
-    <div class="flex flex-row items-center">
+    <div class="flex flex-row items-center gap-2xs">
       <span>{{ displayName }}</span>
       <IconButton
         v-if="canDelete"
         icon="trash"
+        iconTone="destructive"
+        iconIdleTone="shade"
+        size="sm"
         class="ml-auto"
         loadingIcon="loader"
         :loading="bifrostingTrash"
         @click="remove"
       />
     </div>
-    <valueForm.Field name="value">
-      <template #default="{ field }">
-        <input
-          class="block w-72 ml-auto text-white bg-black border-2 border-neutral-300 disabled:bg-neutral-900"
-          type="text"
-          :value="
-            maybeOptions.hasOptions
-              ? maybeOptions.options.find((o) => o.value === field.state.value)
-                  ?.label
-              : field.state.value
-          "
-          :disabled="wForm.bifrosting.value || bifrostingTrash"
-          @input="(e) => field.handleChange((e.target as HTMLInputElement).value)"
-          @blur="blur"
-          @focus="focus"
-          @keydown.esc.stop.prevent="hideOptions"
-        />
-      </template>
-    </valueForm.Field>
+    <div
+      :class="
+        clsx(
+          'block w-80 h-lg p-xs ml-auto text-sm border cursor-text',
+          themeClasses(
+            'text-shade-100 bg-shade-0 border-neutral-400',
+            'text-shade-0 bg-shade-100 border-neutral-600',
+          ),
+        )
+      "
+      @click="openInput"
+    >
+      {{
+        maybeOptions.hasOptions
+          ? maybeOptions.options.find((o) => o.value === attrData.value)?.label
+          : attrData.value
+      }}
+    </div>
     <!-- `relative` on label just to "float" this loader above the form input -->
     <Icon
       v-if="wForm.bifrosting.value"
@@ -49,41 +46,134 @@
     />
   </label>
 
-  <div
-    v-show="maybeOptions.hasOptions && showOptions"
-    ref="optionRef"
-    class="h-[12rem] bg-neutral-500"
-  >
-    <ol class="scrollable h-full">
-      <li class="p-xs">
-        <input
-          v-model="filterStr"
-          type="text"
-          class="text-white bg-black border-2 border-neutral-300 w-full block"
-          placeholder="filter..."
-          @focus="() => (filterFocus = true)"
-          @blur="blurFilter"
-        />
-      </li>
-      <li
-        v-for="option in filteredOptions"
-        :key="option.value"
-        class="cursor-pointer p-xs hover:bg-black"
-        @mousedown="select(option)"
-      >
-        {{ option.label }}
-      </li>
-      <li v-if="filteredOptions.length === 0" class="p-xs">
-        <em>No options found</em>
-      </li>
-    </ol>
-  </div>
+  <Teleport v-if="inputOpen" to="body">
+    <valueForm.Field name="value">
+      <template #default="{ field }">
+        <div
+          ref="inputWindowRef"
+          :class="
+            clsx(
+              'absolute flex flex-col gap-xs text-sm font-normal border z-100',
+              themeClasses(
+                'bg-shade-0 border-neutral-200',
+                'bg-neutral-800 border-neutral-600',
+              ),
+            )
+          "
+          :style="inputWindowStyles"
+        >
+          <div class="flex flex-row pl-xs">
+            <div class="flex flex-row items-center gap-2xs">
+              <span>{{ displayName }}</span>
+              <IconButton
+                v-if="canDelete"
+                icon="trash"
+                iconTone="destructive"
+                iconIdleTone="shade"
+                size="sm"
+                class="ml-auto"
+                loadingIcon="loader"
+                :loading="bifrostingTrash"
+                @click="remove"
+              />
+            </div>
+            <input
+              ref="inputRef"
+              class="block w-80 ml-auto text-white bg-black border border-neutral-600 disabled:bg-neutral-900 text-sm"
+              type="text"
+              :value="field.state.value"
+              :disabled="wForm.bifrosting.value || bifrostingTrash"
+              @input="(e) => onInputChange(e, field)"
+              @blur="blur"
+              @focus="focus"
+              @keydown.esc.stop.prevent="closeInput"
+              @keydown.up.prevent="onUp"
+              @keydown.down.prevent="onDown"
+            />
+            <TextPill class="absolute text-xs right-xs top-xs">Tab</TextPill>
+          </div>
+
+          <div
+            :class="
+              clsx(
+                'flex flex-row px-xs justify-between',
+                themeClasses('text-neutral-600', 'text-neutral-400'),
+              )
+            "
+          >
+            <div>Enter value</div>
+            <div>
+              Navigate
+              <span
+                :class="
+                  clsx(
+                    'text-xs',
+                    themeClasses('text-neutral-900', 'text-neutral-200'),
+                  )
+                "
+                ><TextPill>Up</TextPill> <TextPill>Down</TextPill></span
+              >
+            </div>
+          </div>
+          <div class="p-xs">
+            {{
+              field.state.value ? `"${field.state.value}"` : "No current value"
+            }}
+          </div>
+
+          <div
+            v-if="maybeOptions.hasOptions"
+            ref="optionRef"
+            class="max-h-[10rem] scrollable"
+          >
+            <div
+              :class="
+                clsx(
+                  'flex flex-row px-xs justify-between',
+                  themeClasses('text-neutral-600', 'text-neutral-400'),
+                )
+              "
+            >
+              Select Value
+            </div>
+            <ol>
+              <li
+                v-for="option in filteredOptions"
+                :key="option.value"
+                class="cursor-pointer p-xs hover:bg-black"
+                @mousedown="select(option)"
+              >
+                {{ option.label }}
+              </li>
+              <li v-if="filteredOptions.length === 0" class="p-xs">
+                <em>No options found</em>
+              </li>
+            </ol>
+          </div>
+
+          <!-- <div
+            :class="
+              clsx(
+                'px-xs',
+                themeClasses('text-neutral-600', 'text-neutral-400'),
+              )
+            "
+          >
+            Or connect to an existing prop
+          </div>
+          <div class="px-xs">
+            LIST OF PROP CONNECTIONS GOES HERE
+          </div> -->
+        </div>
+      </template>
+    </valueForm.Field>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from "vue";
+import { computed, nextTick, reactive, ref, watch } from "vue";
 import clsx from "clsx";
-import { Icon, IconButton } from "@si/vue-lib/design-system";
+import { Icon, IconButton, themeClasses } from "@si/vue-lib/design-system";
 import { Fzf } from "fzf";
 import { useQuery } from "@tanstack/vue-query";
 import {
@@ -100,6 +190,7 @@ import {
 } from "@/store/realtime/heimdall";
 import { attributeEmitter } from "../logic_composables/emitters";
 import { useWatchedForm } from "../logic_composables/watched_form";
+import TextPill from "./TextPill.vue";
 
 const annotation = ref<string | null>(null);
 const makeKey = useMakeKey();
@@ -130,7 +221,7 @@ const props = defineProps<{
 }>();
 
 const anchorRef = ref<InstanceType<typeof HTMLElement>>();
-const optionRef = ref<InstanceType<typeof HTMLDivElement>>();
+// const optionRef = ref<InstanceType<typeof HTMLDivElement>>();
 
 const path = computed(() => {
   // fix the MV! for arrays path": "root\u000bdomain\u000btags\u000btag"
@@ -185,9 +276,6 @@ const maybeOptions = computed<{
   return { hasOptions: false, options: [] };
 });
 
-const showOptions = ref(false);
-const filterFocus = ref(false);
-
 const filterStr = ref("");
 const filteredOptions = reactive<LabelList<AttrOption>>([]);
 
@@ -213,26 +301,9 @@ watch(
 
 attributeEmitter.on("selectedPath", (selectedPath) => {
   if (selectedPath !== path.value) {
-    hideOptions();
+    closeInput();
   }
 });
-
-const hideOptions = () => {
-  showOptions.value = false;
-};
-
-const triggerCloseCheck = () => {
-  // blur fires before focus
-  // wait to see if the filter is focused
-  setTimeout(() => {
-    if (filterFocus.value === false) showOptions.value = false;
-  }, 100);
-};
-
-const blurFilter = () => {
-  filterFocus.value = false;
-  triggerCloseCheck();
-};
 
 const focus = () => {
   attributeEmitter.emit("selectedPath", path.value);
@@ -240,27 +311,31 @@ const focus = () => {
     link: props.prop?.docLink ?? "",
     docs: props.prop?.documentation ?? "",
   });
-  showOptions.value = true;
+  inputOpen.value = true;
   annotation.value = props.prop?.kind ?? null;
 };
 
 const select = (option: LabelEntry<AttrOption>) => {
   valueForm.fieldInfo.value.instance?.handleChange(option.value);
   valueForm.handleSubmit();
-  showOptions.value = false;
+  closeInput();
 };
 
 const blur = () => {
-  // This make the link/interacting with the docs impossible
-  // attributeEmitter.emit("selectedDocs", null)
-  if (valueForm.fieldInfo.value.instance?.state.meta.isDirty) {
-    // don't double submit if you were `select()'d'`
-    if (!valueForm.baseStore.state.isSubmitted) valueForm.handleSubmit();
-    showOptions.value = false;
-  } else {
-    triggerCloseCheck();
-  }
+  inputRef.value?.focus();
 };
+
+// const submit = () => {
+//   // This make the link/interacting with the docs impossible
+//   // attributeEmitter.emit("selectedDocs", null)
+//   if (valueForm.fieldInfo.value.instance?.state.meta.isDirty) {
+//     // don't double submit if you were `select()'d'`
+//     if (!valueForm.baseStore.state.isSubmitted) valueForm.handleSubmit();
+//     inputOpen.value = false;
+//   } else {
+//     inputOpen.value = false;
+//   }
+// };
 
 const bifrostingTrash = ref(false);
 const remove = () => {
@@ -273,4 +348,47 @@ const emit = defineEmits<{
   (e: "save", path: string, id: string, value: string): void;
   (e: "delete", path: string, id: string): void;
 }>();
+
+const inputRef = ref<InstanceType<typeof HTMLInputElement>>();
+const inputWindowRef = ref<InstanceType<typeof HTMLDivElement>>();
+const inputOpen = ref(false);
+const labelRect = ref<undefined | DOMRect>(undefined);
+const openInput = () => {
+  labelRect.value = anchorRef.value?.getClientRects()[0];
+  if (!labelRect.value) return;
+  inputOpen.value = true;
+  nextTick(() => {
+    inputRef.value?.focus();
+    document.addEventListener("mousedown", onClick);
+  });
+};
+const inputWindowStyles = computed(
+  () =>
+    `width: ${labelRect.value?.width || 0}px; top: ${
+      labelRect.value?.top
+    }px; left: ${labelRect.value?.left}px`,
+);
+const closeInput = () => {
+  inputOpen.value = false;
+  document.removeEventListener("mousedown", onClick);
+};
+
+// TODO(Wendy) - fix this type!
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const onInputChange = (e: Event, field: any) => {
+  const v = (e.target as HTMLInputElement).value;
+  field.handleChange(v);
+  filterStr.value = v;
+};
+const onClick = (e: MouseEvent) => {
+  const target = e.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+  if (!inputWindowRef.value?.contains(target)) {
+    closeInput();
+  }
+};
+const onUp = () => {};
+const onDown = () => {};
 </script>

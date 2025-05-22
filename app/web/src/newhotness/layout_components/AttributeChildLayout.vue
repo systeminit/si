@@ -3,7 +3,12 @@
   <dl class="ml-xs border-l-2 my-xs">
     <!-- this is the left indent & line -->
     <dt
-      class="bg-neutral-800 p-xs flex flex-row items-center"
+      :class="
+        clsx(
+          'p-xs flex flex-row items-center cursor-pointer',
+          themeClasses('bg-neutral-200', 'bg-neutral-800'),
+        )
+      "
       @click="() => (open = !open)"
     >
       <slot name="header" />
@@ -16,6 +21,8 @@
 </template>
 
 <script setup lang="ts">
+import { themeClasses } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { ref, withDefaults } from "vue";
 
 const props = withDefaults(
