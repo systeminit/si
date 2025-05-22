@@ -1,6 +1,5 @@
 use audit_logs_stream::AuditLogsStreamError;
 use dal::{
-    ChangeSetStatus,
     DalContext,
     TransactionsError,
     Workspace,
@@ -108,8 +107,8 @@ pub async fn perform_rebase(
     // Gather everything we need to detect conflicts and updates from the inbound message.
     let mut to_rebase_change_set = ChangeSet::get_by_id(ctx, request.change_set_id).await?;
 
-    // if the change set has been abandoned, do not do this work
-    if to_rebase_change_set.status == ChangeSetStatus::Abandoned {
+    // if the change set isn't active, do not do this work
+    if !to_rebase_change_set.status.is_active() {
         debug!("Attempted to rebase for abandoned change set. Early returning");
         return Ok(RebaseStatus::Error {
             message: "Attempted to rebase for an abandoned change set.".to_string(),

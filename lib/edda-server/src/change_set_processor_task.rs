@@ -344,7 +344,6 @@ mod handlers {
     use dal::{
         ChangeSet,
         ChangeSetId,
-        ChangeSetStatus,
         DalContext,
         WorkspacePk,
     };
@@ -436,14 +435,10 @@ mod handlers {
 
         let to_process_change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
 
-        // Note: JW: I believe this enum should be flipped to != Open or similar
-        // as it's much more likely to be accurate. This will do as an initial
-        // pass. Once we are more sure what should be skipped we can fix both the
-        // logic here & in the rebaser or more centrally prevent dispatch of work.
-
-        // If the associated change set has been abandoned, do not do this work.
-        if to_process_change_set.status == ChangeSetStatus::Abandoned {
-            debug!("Attempted to process an abandoned change set. Skipping");
+        // We should skip any change sets that are not active
+        // Active in this case is open, needs approval status, approved or rejected
+        if !to_process_change_set.status.is_active() {
+            debug!("Attempted to process a non-active change set. Skipping");
             return Ok(());
         }
 
