@@ -38,6 +38,8 @@
         nodejs = pkgs.nodejs_20;
       };
 
+      SI_RBE_TOKEN = builtins.getEnv "SI_RBE_TOKEN";
+
       buck2NativeBuildInputs = with pkgs;
         [
           b3sum
@@ -139,6 +141,7 @@
           src = ./.;
           buildInputs = [fromPkg];
           installPhase = ''
+            export SI_RBE_TOKEN=${SI_RBE_TOKEN}
             install -Dv "${fromPkg}/bin/${bin}" "$out/bin/${bin}"
           '';
           postFixup =
@@ -221,6 +224,7 @@
           '';
           buildPhase =
             ''
+              export SI_RBE_TOKEN=${SI_RBE_TOKEN}
               export HOME="$(dirname $(pwd))/home"
               mkdir -p build
             ''

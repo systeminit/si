@@ -22,13 +22,16 @@ rust_binary(
         "dev.postgres.root.crt": "//config/keys:dev.postgres.root.crt",
         "dev.donkey.key": "//lib/dal:dev.donkey.key",
         "pkgs_path": "//pkgs:pkgs",
-    }, 
+    },
 )
 
 docker_image(
     name = "image",
     image_name = "luminork",
     flake_lock = "//:flake.lock",
+    build_args = {
+        "SI_RBE_TOKEN": ""
+    },
     build_deps = [
         "//bin/luminork:luminork",
         "//pkgs:pkgs",

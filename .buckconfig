@@ -30,3 +30,16 @@ ignore = \
   third-party/rust/.cargo/**/BUCK, \
   third-party/rust/vendor/**/BUCK, \
   tmp
+
+[buck2]
+digest_algorithms = SHA256
+restarter = true
+
+[buck2_re_client]
+action_cache_address = remote.buildbuddy.io:443
+cas_address =  remote.buildbuddy.io:443
+engine_address =  remote.buildbuddy.io:443
+http_headers = x-buildbuddy-api-key:$SI_RBE_TOKEN
+
+[build]
+execution_platforms = prelude-si//platforms:default

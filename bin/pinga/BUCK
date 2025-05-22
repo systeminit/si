@@ -26,6 +26,9 @@ docker_image(
     name = "image",
     image_name = "pinga",
     flake_lock = "//:flake.lock",
+    build_args = {
+        "SI_RBE_TOKEN": ""
+    },
     build_deps = ["//bin/pinga:pinga"],
 )
 

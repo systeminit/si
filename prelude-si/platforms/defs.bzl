@@ -18,7 +18,19 @@ def _execution_platform_impl(ctx: AnalysisContext) -> list[Provider]:
         configuration = cfg,
         executor_config = CommandExecutorConfig(
             local_enabled = True,
+            allow_hybrid_fallbacks_on_failure = True,
+            allow_limited_hybrid_fallbacks = True,
+            allow_cache_uploads = True,
             remote_enabled = False,
+            remote_cache_enabled = True,
+            remote_output_paths = "output_paths",
+            remote_execution_properties = {
+                "OSFamily": "linux",
+                "container-image": "docker://syteminit/ci-base:stable",
+
+            },
+            remote_execution_use_case = "buck2-default",
+            use_limited_hybrid = True,
             use_windows_path_separators = ctx.attrs.use_windows_path_separators,
         ),
     )

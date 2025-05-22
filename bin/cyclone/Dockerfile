@@ -4,6 +4,7 @@
 # hadolint ignore=DL3007
 FROM nixos/nix:2.28.2 AS builder-cyclone
 ARG BIN=cyclone
+ARG SI_RBE_TOKEN
 
 COPY . /workdir
 WORKDIR /workdir
@@ -13,6 +14,7 @@ RUN set -eux; \
         --extra-experimental-features "nix-command flakes impure-derivations ca-derivations" \
         --option filter-syscalls false \
         build \
+        --impure \
         ".#$BIN";
 
 RUN mkdir -p /tmp/nix-store-closure /tmp/local-bin

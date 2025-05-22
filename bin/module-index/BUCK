@@ -30,6 +30,9 @@ docker_image(
     image_name = "module-index",
     flake_lock = "//:flake.lock",
     build_deps = ["//bin/module-index:module-index"],
+    build_args = {
+        "SI_RBE_TOKEN": ""
+    },
     # TODO(fnichol): revisit post 2025-02-01
     promote_multi_arches = [
         "amd64",

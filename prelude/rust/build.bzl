@@ -430,7 +430,7 @@ def rust_compile(
         extra_link_args: list[typing.Any] = [],
         predeclared_output: Artifact | None = None,
         extra_flags: list[[str, ResolvedStringWithMacros]] = [],
-        allow_cache_upload: bool = False,
+        allow_cache_upload: bool = True,
         # Setting this to true causes the diagnostic outputs that are generated
         # from this action to always be successfully generated, even if
         # compilation fails. This should not generally be used if the "real"

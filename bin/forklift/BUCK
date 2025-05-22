@@ -23,6 +23,9 @@ rust_binary(
 docker_image(
     name = "image",
     image_name = "forklift",
+    build_args = {
+        "SI_RBE_TOKEN": ""
+    },
     build_deps = ["//bin/forklift:forklift"],
 )
 
