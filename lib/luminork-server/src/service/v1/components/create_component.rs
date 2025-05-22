@@ -4,11 +4,13 @@ use axum::response::Json;
 use dal::{
     AttributeValue,
     Component,
+    Prop,
     Schema,
     SchemaVariant,
     Secret,
     cached_module::CachedModule,
     diagram::view::View,
+    prop::PropPath,
 };
 use serde::{
     Deserialize,
@@ -126,6 +128,22 @@ pub async fn create_component(
     )
     .await?;
 
+    if let Some(resource_id) = payload.resource_id {
+        let resource_prop_path = ["root", "si", "resourceId"];
+        let resource_prop_id =
+            Prop::find_prop_id_by_path(ctx, variant_id, &PropPath::new(resource_prop_path)).await?;
+
+        let av_for_resource_id =
+            Component::attribute_value_for_prop_id(ctx, component.id(), resource_prop_id).await?;
+
+        AttributeValue::update(
+            ctx,
+            av_for_resource_id,
+            Some(serde_json::to_value(resource_id)?),
+        )
+        .await?;
+    }
+
     for (key, value) in payload.domain.clone().into_iter() {
         let prop_id = key.prop_id(ctx, variant_id).await?;
         let attribute_value_id =
@@ -209,6 +227,9 @@ pub struct CreateComponentV1Request {
     #[schema(example = json!({"propId1": "value1", "path/to/prop": "value2"}))]
     #[serde(default)]
     pub domain: HashMap<ComponentPropKey, serde_json::Value>,
+
+    #[schema(example = "i-12345678")]
+    pub resource_id: Option<String>,
 
     #[schema(example = json!({"secretDefinitionName": "secretId", "secretDefinitionName": "secretName"}))]
     #[serde(default)]
