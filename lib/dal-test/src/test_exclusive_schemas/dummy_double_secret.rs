@@ -30,18 +30,21 @@ use si_pkg::{
 };
 
 use crate::{
-    helpers::secret::assemble_secret_definition_dummy,
+    helpers::secret::{
+        assemble_dummy_secret_socket_and_prop,
+        assemble_secret_definition_dummy,
+    },
     test_exclusive_schemas::{
         PKG_CREATED_BY,
         PKG_VERSION,
     },
 };
 
-pub(crate) async fn migrate_test_exclusive_schema_dummy_secret(
+pub(crate) async fn migrate_test_exclusive_schema_dummy_double_secret(
     ctx: &DalContext,
     schema_id: SchemaId,
 ) -> BuiltinsResult<()> {
-    let spec = build_dummy_secret_spec()?;
+    let spec = build_dummy_double_secret_spec()?;
 
     let pkg = SiPkg::load_from_spec(spec)?;
     import_pkg_from_pkg(
@@ -57,8 +60,8 @@ pub(crate) async fn migrate_test_exclusive_schema_dummy_secret(
     Ok(())
 }
 
-fn build_dummy_secret_spec() -> BuiltinsResult<PkgSpec> {
-    let name = "dummy-secret";
+fn build_dummy_double_secret_spec() -> BuiltinsResult<PkgSpec> {
+    let name = "dummy-double-secret";
 
     let mut builder = PkgSpec::builder();
 
@@ -72,7 +75,7 @@ fn build_dummy_secret_spec() -> BuiltinsResult<PkgSpec> {
     let scaffold_func = "function createAsset() {\
         return new AssetBuilder().build()
     }";
-    let fn_name = "test:scaffoldDummySecretAsset";
+    let fn_name = "test:scaffoldDummyDoubleSecretAsset";
     let authoring_schema_func = FuncSpec::builder()
         .name(fn_name)
         .unique_id(fn_name)
@@ -87,8 +90,8 @@ fn build_dummy_secret_spec() -> BuiltinsResult<PkgSpec> {
         )
         .build()?;
 
-    let auth_func_code = "async function auth(secret: Input): Promise<Output> { requestStorage.setItem('dummySecretString', secret.value); requestStorage.setItem('workspaceToken', secret.WorkspaceToken);}";
-    let fn_name = "test:setDummySecretString";
+    let auth_func_code = "async function auth(secret: Input): Promise<Output> { requestStorage.setItem('dummyDoubleSecretString', secret.value); requestStorage.setItem('workspaceToken', secret.WorkspaceToken);}";
+    let fn_name = "test:setDummyDoubleSecretString";
     let auth_func = FuncSpec::builder()
         .name(fn_name)
         .unique_id(fn_name)
@@ -108,11 +111,18 @@ fn build_dummy_secret_spec() -> BuiltinsResult<PkgSpec> {
                 .build()?,
         )
         .build()?;
+    let secret_definition_name = "dummyDouble";
+
+    let (
+        dummy_double_secret_definition_prop,
+        dummy_double_secret_prop,
+        dummy_double_secret_output_socket,
+    ) = assemble_secret_definition_dummy(&identity_func_spec, secret_definition_name)?;
+
     let secret_definition_name = "dummy";
 
-    let (dummy_secret_definition_prop, dummy_secret_prop, dummy_secret_output_socket) =
-        assemble_secret_definition_dummy(&identity_func_spec, secret_definition_name)?;
-
+    let (dummy_secret_input_scoket, dummy_secret_prop) =
+        assemble_dummy_secret_socket_and_prop(&identity_func_spec, secret_definition_name)?;
     let (
         qualification_dummy_secret_value_is_todd_func,
         qualification_dummy_secret_value_is_todd_leaf,
@@ -144,8 +154,10 @@ fn build_dummy_secret_spec() -> BuiltinsResult<PkgSpec> {
                         .build()?,
                 )
                 .secret_prop(dummy_secret_prop)
-                .secret_definition_prop(dummy_secret_definition_prop)
-                .socket(dummy_secret_output_socket)
+                .secret_prop(dummy_double_secret_prop)
+                .secret_definition_prop(dummy_double_secret_definition_prop)
+                .socket(dummy_secret_input_scoket)
+                .socket(dummy_double_secret_output_socket)
                 .leaf_function(qualification_dummy_secret_value_is_todd_leaf)
                 .build()?,
         )
@@ -166,25 +178,34 @@ fn assemble_qualification_dummy_secret_value_is_todd()
 -> BuiltinsResult<(FuncSpec, LeafFunctionSpec)> {
     let fn_code = "async function qualification(_component: Input): Promise<Output> {\
         const authCheck = requestStorage.getItem('dummySecretString');
-        if (authCheck) {
-            if (authCheck === 'todd') {
+        const authCheck2 = requestStorage.getItem('dummyDoubleSecretString');
+        if (authCheck && authCheck2) {
+            if (authCheck === 'todd' && authCheck2 === 'todd') {
                 return {
                     result: 'success',
-                    message: 'dummy secret string matches expected value'
+                    message: 'both dummy secrets string matches expected value'
                 };
             }
-            return {
-                result: 'failure',
-                message: 'dummy secret string does not match expected value'
-            };
+            else if (authCheck === 'todd' && authCheck2 !== 'todd') {
+                return {
+                    result: 'warning',
+                    message: 'dummy double secret string does not match expected value'
+                };
+            }
+            else if (authCheck !== 'todd' && authCheck2 === 'todd') {
+                return {
+                    result: 'warning',
+                    message: 'dummy secret string does not match expected value'
+                };
+            }
         } else {
             return {
                 result: 'failure',
-                message: 'dummy secret string is empty'
+                message: 'dummy secret or dummy double secret string is empty'
             };
         }
     }";
-    let fn_name = "test:qualificationDummySecretStringIsTodd";
+    let fn_name = "test:qualificationDummyDoubleSecretStringIsTodd";
     let qualification_dummy_secret_value_is_todd_func = FuncSpec::builder()
         .name(fn_name)
         .unique_id(fn_name)

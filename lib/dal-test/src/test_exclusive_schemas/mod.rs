@@ -17,6 +17,7 @@ use dal::{
         intrinsics::IntrinsicFunc,
     },
 };
+use dummy_double_secret::migrate_test_exclusive_schema_dummy_double_secret;
 use dummy_secret::migrate_test_exclusive_schema_dummy_secret;
 use fake_butane::migrate_test_exclusive_schema_fake_butane;
 use fake_docker_image::migrate_test_exclusive_schema_fake_docker_image;
@@ -47,6 +48,7 @@ use swifty::migrate_test_exclusive_schema_swifty;
 
 mod category_pirate;
 mod category_validated;
+mod dummy_double_secret;
 mod dummy_secret;
 mod fake_butane;
 mod fake_docker_image;
@@ -59,6 +61,8 @@ mod swifty;
 const PKG_VERSION: &str = "2019-06-03";
 const PKG_CREATED_BY: &str = "System Initiative";
 
+/// Schema id for the `dummy double secret` schema variant
+pub const SCHEMA_ID_DUMMY_DOUBLE_SECRET: &str = "01JARFRNN5VV1NMM0H5M63K3QX";
 /// Schema id for the `starfield` schema variant
 pub const SCHEMA_ID_STARFIELD: &str = "01JARFRNN5VV1NMM0H5M63K3PY";
 /// Schema id for the `private language` schema varitn
@@ -144,6 +148,13 @@ pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     migrate_test_exclusive_schema_dummy_secret(
         ctx,
         ulid::Ulid::from_str(SCHEMA_ID_DUMMY_SECRET)
+            .expect("should convert")
+            .into(),
+    )
+    .await?;
+    migrate_test_exclusive_schema_dummy_double_secret(
+        ctx,
+        ulid::Ulid::from_str(SCHEMA_ID_DUMMY_DOUBLE_SECRET)
             .expect("should convert")
             .into(),
     )

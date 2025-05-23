@@ -51,6 +51,8 @@ pub mod change_set;
 pub mod component;
 /// Test helpers for schemas
 pub mod schema;
+/// Test helpers for secrets
+pub mod secret;
 
 pub use change_set::ChangeSetTestHelpers;
 use dal::diagram::view::ViewId;

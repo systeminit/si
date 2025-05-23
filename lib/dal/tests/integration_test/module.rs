@@ -26,6 +26,7 @@ async fn list_modules(ctx: &DalContext) {
         "Docker Image".to_string(),
         "ValidatedInput".to_string(),
         "ValidatedOutput".to_string(),
+        "dummy-double-secret".to_string(),
         "dummy-secret".to_string(),
         "etoiles".to_string(),
         "fallout".to_string(),

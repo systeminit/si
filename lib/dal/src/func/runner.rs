@@ -1640,6 +1640,7 @@ impl FuncRunner {
                 match AttributePrototypeArgument::value_source(ctx, attribute_prototype_argument_id)
                     .await?
                 {
+                    // I am not the secret defining component, so find where it comes from
                     ValueSource::InputSocket(input_socket_id) => {
                         let component_input_socket = ComponentInputSocket::get_by_ids_or_error(
                             ctx,
@@ -1654,6 +1655,14 @@ impl FuncRunner {
                             work_queue.push_back(source_component_id);
                         }
                     }
+                    // I am not the secret defining component, but have a subscription, so let's find where it comes from
+                    ValueSource::ValueSubscription(input) => {
+                        // get the component for this av:
+                        let component_id =
+                            AttributeValue::component_id(ctx, input.attribute_value_id).await?;
+                        work_queue.push_back(component_id);
+                    }
+                    // I found the secret defining component, let's grab the before funcs!
                     ValueSource::Secret(_) => {
                         let auth_funcs =
                             Self::auth_funcs_for_secret_child_prop_id(ctx, secret_child_prop_id)

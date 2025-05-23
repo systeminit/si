@@ -8,10 +8,7 @@ use dal::{
         ImportOptions,
         import_pkg_from_pkg,
     },
-    prop::{
-        PropPath,
-        SECRET_KIND_WIDGET_OPTION_LABEL,
-    },
+    prop::PropPath,
 };
 use si_pkg::{
     ActionFuncSpec,
@@ -23,24 +20,24 @@ use si_pkg::{
     FuncSpecData,
     PkgSpec,
     PropSpec,
-    PropSpecKind,
-    PropSpecWidgetKind,
     SchemaSpec,
     SchemaSpecData,
     SchemaVariantSpec,
     SchemaVariantSpecData,
     SiPkg,
     SocketSpec,
-    SocketSpecArity,
     SocketSpecData,
     SocketSpecKind,
 };
 
-use crate::test_exclusive_schemas::{
-    PKG_CREATED_BY,
-    PKG_VERSION,
-    build_action_func,
-    create_identity_func,
+use crate::{
+    helpers::secret::assemble_dummy_secret_socket_and_prop,
+    test_exclusive_schemas::{
+        PKG_CREATED_BY,
+        PKG_VERSION,
+        build_action_func,
+        create_identity_func,
+    },
 };
 
 pub(crate) async fn migrate_test_exclusive_schema_fallout(
@@ -78,8 +75,10 @@ pub(crate) async fn migrate_test_exclusive_schema_fallout(
         )
         .build()?;
 
+    let secret_definition_name = "dummy";
+
     let (dummy_secret_input_scoket, dummy_secret_prop) =
-        assemble_dummy_secret_socket_and_prop(&identity_func_spec)?;
+        assemble_dummy_secret_socket_and_prop(&identity_func_spec, secret_definition_name)?;
 
     let fallout_schema = SchemaSpec::builder()
         .name(schema_name)
@@ -214,54 +213,6 @@ pub(crate) async fn migrate_test_exclusive_schema_fallout(
     .await?;
 
     Ok(())
-}
-
-// Mimics functionality from "asset_builder.ts".
-fn assemble_dummy_secret_socket_and_prop(
-    identity_func_spec: &FuncSpec,
-) -> BuiltinsResult<(SocketSpec, PropSpec)> {
-    let secret_definition_name = "dummy";
-
-    // Create the input socket for the secret.
-    let secret_input_socket = SocketSpec::builder()
-        .name(secret_definition_name)
-        .data(
-            SocketSpecData::builder()
-                .name(secret_definition_name)
-                .connection_annotations(serde_json::to_string(&vec![
-                    secret_definition_name.to_lowercase(),
-                ])?)
-                .kind(SocketSpecKind::Input)
-                .arity(SocketSpecArity::One)
-                .func_unique_id(&identity_func_spec.unique_id)
-                .build()?,
-        )
-        .build()?;
-
-    // Create the secret prop for the secret.
-    let secret_prop = PropSpec::builder()
-        .name(secret_definition_name)
-        .kind(PropSpecKind::String)
-        .widget_kind(PropSpecWidgetKind::Secret)
-        .func_unique_id(&identity_func_spec.unique_id)
-        .widget_options(serde_json::json![
-            [
-                {
-                    "label": SECRET_KIND_WIDGET_OPTION_LABEL,
-                    "value": secret_definition_name
-                }
-            ]
-        ])
-        .input(
-            AttrFuncInputSpec::builder()
-                .name("identity")
-                .kind(AttrFuncInputSpecKind::InputSocket)
-                .socket_name(secret_definition_name)
-                .build()?,
-        )
-        .build()?;
-
-    Ok((secret_input_socket, secret_prop))
 }
 
 fn action_funcs() -> BuiltinsResult<(FuncSpec, FuncSpec)> {
