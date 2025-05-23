@@ -5,7 +5,7 @@
       <div
         :class="
           clsx(
-            'grid createcomponent gap-xs [&>*]:border',
+            'grid createcomponent gap-xs [&>*]:border max-h-full',
             selectedAsset && 'grid grid-cols-2',
             themeClasses(
               '[&>*]:bg-shade-0 border-neutral-400 [&_*]:border-neutral-400',
@@ -41,7 +41,7 @@
               <div
                 :class="
                   clsx(
-                    'underline cursor-pointer',
+                    'underline cursor-pointer flex-none',
                     themeClasses(
                       'hover:text-action-500',
                       'hover:text-action-300',
@@ -105,7 +105,7 @@
               />
             </HorizontalScrollArea>
             <!-- Fuzzy search results list -->
-            <div v-if="showResults" class="grow min-h-0 scrollable">
+            <div v-if="showResults" class="grow min-h-0 scrollable mb-xs">
               <TreeNode
                 v-for="category in filteredCategories"
                 :key="category.name"
@@ -129,11 +129,13 @@
                         'bg-shade-0 hover:outline-action-500',
                         'bg-neutral-800 hover:outline-action-300',
                       ),
-                      selectedAsset?.id === asset.id &&
+                      selectedAsset?.id === asset.id && [
+                        'add-component-selected-item',
                         themeClasses(
-                          'outline-action-500 bg-action-300',
-                          'outline-action-300 bg-action-600',
+                          'outline-action-500 bg-action-200',
+                          'outline-action-300 bg-action-900',
                         ),
+                      ],
                     )
                   "
                   :color="asset.variant.color"
@@ -144,7 +146,16 @@
                     {{ asset.name }}
                   </template>
                   <template v-if="selectedAsset?.id === asset.id" #icons>
-                    <TextPill tighter class="text-xs">Enter to add</TextPill>
+                    <div
+                      :class="
+                        clsx(
+                          'text-xs',
+                          themeClasses('text-neutral-900', 'text-neutral-200'),
+                        )
+                      "
+                    >
+                      <TextPill tighter>Enter</TextPill> to add
+                    </div>
                   </template>
                 </TreeNode>
               </TreeNode>
@@ -153,12 +164,12 @@
         </div>
         <!-- Right side - documentation and attributes -->
         <template v-if="selectedAsset">
-          <div class="docs scrollable border p-xs">
+          <div class="docs scrollable border p-xs max-h-[22svh]">
             <h3>{{ selectedAsset.name }}</h3>
             <p>{{ selectedAsset.variant.link }}</p>
             <p><VueMarkdown :source="selectedAsset.variant.description" /></p>
           </div>
-          <div class="props scrollable border p-xs">
+          <div class="props scrollable border p-xs max-h-[22svh]">
             <template v-if="'propTree' in selectedAsset.variant">
               <PropTreeComponent
                 v-for="tree in selectedAssetProps.children"
@@ -187,7 +198,7 @@ import {
   themeClasses,
   TreeNode,
 } from "@si/vue-lib/design-system";
-import { computed, inject, ref } from "vue";
+import { computed, inject, nextTick, ref } from "vue";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import { Fzf } from "fzf";
@@ -216,9 +227,21 @@ const bannerClosed = ref(false);
 
 const selectedAsset = ref<UIAsset | undefined>(undefined);
 const selectAsset = (asset: UIAsset) => {
-  if (selectedAsset.value?.id === asset.id) selectedAsset.value = undefined;
+  if (selectedAsset.value?.id === asset.id) onEnter();
   else selectedAsset.value = asset;
-  // TODO(Wendy) - scroll the selected asset's TreeNode element on screen!
+  selectionIndex.value = filteredAssetsFlat.value.findIndex(
+    (a) => a.id === asset.id,
+  );
+
+  // scroll selected item into view
+  nextTick(() => {
+    const el = document.getElementsByClassName(
+      "add-component-selected-item",
+    )[0];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  });
 };
 const clearSelection = () => {
   selectedAsset.value = undefined;

@@ -4,6 +4,7 @@
     v-bind="dynamicAttrs"
     ref="component"
     class="vbutton"
+    :tabindex="tabIndex"
     :class="computedClasses"
     @click="clickHandler($event)"
   >
@@ -109,6 +110,7 @@ const props = defineProps({
   pill: { type: String, required: false },
 
   hoverGlow: Boolean,
+  tabIndex: Number,
 });
 
 const emit = defineEmits(["click"]);

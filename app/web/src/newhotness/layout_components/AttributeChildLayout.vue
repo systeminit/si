@@ -1,6 +1,6 @@
 <template>
   <!-- This represents the header & container for component attributes page -->
-  <dl class="ml-xs border-l-2 my-xs">
+  <dl class="ml-xs border-l my-xs">
     <!-- this is the left indent & line -->
     <dt
       :class="

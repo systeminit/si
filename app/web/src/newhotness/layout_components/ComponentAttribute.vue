@@ -3,14 +3,19 @@
     <template v-if="hasChildren">
       <AttributeChildLayout>
         <template #header>
-          {{ displayName }}
-          <IconButton
-            v-if="props.attributeTree.isBuildable"
-            icon="trash"
-            loadingIcon="loader"
-            :loading="bifrostingTrash"
-            @click="remove"
-          />
+          <div class="flex flex-row items-center gap-2xs">
+            <div>{{ displayName }}</div>
+            <IconButton
+              v-if="props.attributeTree.isBuildable"
+              icon="trash"
+              size="sm"
+              iconTone="destructive"
+              iconIdleTone="shade"
+              loadingIcon="loader"
+              :loading="bifrostingTrash"
+              @click="remove"
+            />
+          </div>
         </template>
         <ul v-if="attributeTree.children.length > 0 && !bifrostingTrash">
           <ComponentAttribute
@@ -18,7 +23,10 @@
             :key="child.id"
             :component="component"
             :attributeTree="child"
-            @save="(path, id, value) => emit('save', path, id, value)"
+            @save="
+              (path, id, value, connectingComponentId) =>
+                emit('save', path, id, value, connectingComponentId)
+            "
             @delete="(path, id) => emit('delete', path, id)"
           />
         </ul>
@@ -45,6 +53,7 @@
             </keyForm.Field>
           </template>
           <div class="p-xs">
+            <!-- TODO(Wendy) - could not figure out how to get Tab to work for these buttons! -->
             <VButton
               class="font-normal"
               tone="shade"
@@ -53,9 +62,10 @@
               :loading="addApi.bifrosting.value"
               :disabled="addApi.bifrosting.value"
               loadingIcon="loader"
+              :tabindex="-1"
               @click="add"
             >
-              + add {{ displayName }}
+              + add
             </VButton>
           </div>
         </template>
@@ -70,7 +80,10 @@
         :prop="props.attributeTree.prop"
         :value="props.attributeTree.attributeValue.value?.toString() ?? ''"
         :canDelete="props.attributeTree.isBuildable"
-        @save="(path, id, value) => emit('save', path, id, value)"
+        @save="
+          (path, id, value, connectingComponentId) =>
+            emit('save', path, id, value, connectingComponentId)
+        "
         @delete="(path, id) => emit('delete', path, id)"
       />
     </template>
@@ -229,7 +242,13 @@ const remove = () => {
 };
 
 const emit = defineEmits<{
-  (e: "save", path: string, id: string, value: string): void;
+  (
+    e: "save",
+    path: string,
+    id: string,
+    value: string,
+    connectingComponentId?: string,
+  ): void;
   (e: "delete", path: string, id: string): void;
 }>();
 </script>
