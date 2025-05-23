@@ -72,6 +72,7 @@ import {
   EddaSecretList,
   BifrostSecretList,
 } from "./types/entity_kind_types";
+import { mjolnirQueue } from "./mjolnir_queue";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
 if (!otelEndpoint) otelEndpoint = "http://localhost:8080";
@@ -875,6 +876,29 @@ const mjolnir = async (
   id: Id,
   checksum?: Checksum,
 ) => {
+  const job = mjolnirQueue.add(() =>
+    mjolnirJob(workspaceId, changeSetId, kind, id, checksum),
+  );
+  job.catch((e) => {
+    // eslint-disable-next-line no-console
+    console.log(`mjolnir job failed: ${e}`, {
+      workspaceId,
+      changeSetId,
+      kind,
+      id,
+      checksum,
+      e,
+    });
+  });
+};
+
+const mjolnirJob = async (
+  workspaceId: string,
+  changeSetId: ChangeSetId,
+  kind: string,
+  id: Id,
+  checksum?: Checksum,
+) => {
   debug("🔨 mjolnir", kind, id, checksum);
   // TODO this is probably a WsEvent, so SDF knows who to reply to
   const pattern = [
@@ -1186,7 +1210,7 @@ const _getOutgoingConnectionsByComponentId = async (
  * - `getComputed`
 
  * Looking at `get` where `kind="ComponentList"
- * 
+ *
  * 1. get the atom, edda generates references for us
  * 2. That type is the `EddaComponentList`
  * 3. Call `getReferences`
