@@ -60,6 +60,29 @@ async function main(component: Input): Promise<Output> {
   let patch;
   try {
     patch = jsonpatch.compare(currentState, desiredState, true);
+
+    // Special handling for AWS::AutoScaling::AutoScalingGroup LaunchTemplate updates
+    if (component.properties.domain.extra.AwsResourceType === 'AWS::AutoScaling::AutoScalingGroup') {
+      const hasLaunchTemplateVersionPatch = patch.some(op =>
+        op.path === '/LaunchTemplate/Version' && (op.op === 'replace' || op.op === 'add')
+      );
+
+      if (hasLaunchTemplateVersionPatch && currentState.LaunchTemplate && desiredState.LaunchTemplate) {
+        console.log("Detected LaunchTemplate version update for AutoScalingGroup - applying fix");
+
+        patch = patch.filter(op => !op.path.startsWith('/LaunchTemplate'));
+
+        // Only include LaunchTemplateId and Version for the update
+        patch.push({
+          op: 'replace',
+          path: '/LaunchTemplate',
+          value: {
+            LaunchTemplateId: desiredState.LaunchTemplate.LaunchTemplateId,
+            Version: desiredState.LaunchTemplate.Version
+          }
+        });
+      }
+    }
   } catch (e) {
     return {
       status: "error",
@@ -121,7 +144,7 @@ async function main(component: Input): Promise<Output> {
       return {
         status: "error",
         message:
-          `Unable to create; AWS CLI 2 exited with non zero code: ${child.exitCode}`,
+          `Unable to update; AWS CLI 2 exited with non zero code: ${child.exitCode}`,
       };
     }
     const currentProgressEvent = JSON.parse(child.stdout);
