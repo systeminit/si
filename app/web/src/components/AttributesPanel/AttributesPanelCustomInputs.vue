@@ -32,63 +32,14 @@
       @blur="updateSiProp('name')"
       @keyup.enter="updateSiProp('name')"
     />
-    <IconButton
-      class="flex-none"
-      iconTone="action"
-      :icon="COMPONENT_TYPE_ICONS[siValues.type]"
-      :tooltip="
-        {
-          component: 'Component',
-          configurationFrameUp: 'Up Frame',
-          configurationFrameDown: 'Down Frame',
-          aggregationFrame: 'Frame',
-          view: 'View',
-        }[siValues.type]
-      "
-      size="lg"
-      tooltipPlacement="top"
-      :selected="typeMenuRef?.isOpen"
-      @click="openTypeMenu"
-    >
-      <DropdownMenu ref="typeMenuRef" forceAlignRight>
-        <DropdownMenuItem
-          icon="component"
-          label="Component"
-          checkable
-          :checked="siValues.type === 'component'"
-          @select="updateComponentType(ComponentType.Component)"
-        />
-        <DropdownMenuItem
-          icon="frame-up"
-          label="Up Frame"
-          checkable
-          :checked="siValues.type === 'configurationFrameUp'"
-          @select="updateComponentType(ComponentType.ConfigurationFrameUp)"
-        />
-        <DropdownMenuItem
-          icon="frame-down"
-          label="Down Frame"
-          checkable
-          :checked="siValues.type === 'configurationFrameDown'"
-          @select="updateComponentType(ComponentType.ConfigurationFrameDown)"
-        />
-      </DropdownMenu>
-    </IconButton>
   </div>
 </template>
 
 <script setup lang="ts">
 import clsx from "clsx";
-import { computed, reactive, ref, watch } from "vue";
+import { computed, reactive, watch } from "vue";
 import * as _ from "lodash-es";
-import {
-  COMPONENT_TYPE_ICONS,
-  DropdownMenu,
-  DropdownMenuItem,
-  IconButton,
-  themeClasses,
-  ColorPicker,
-} from "@si/vue-lib/design-system";
+import { themeClasses, ColorPicker } from "@si/vue-lib/design-system";
 import { useComponentsStore } from "@/store/components.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
@@ -160,20 +111,6 @@ function updateSiProp(key: keyof typeof siValues) {
     componentsStore.setComponentDisplayName(component, newVal);
   }
 }
-
-function updateComponentType(type = siValues.type) {
-  siValues.type = type;
-  attributesStore.SET_COMPONENT_TYPE({
-    componentId: component.def.id,
-    componentType: siValues.type,
-  });
-}
-
-const typeMenuRef = ref<InstanceType<typeof DropdownMenu>>();
-
-const openTypeMenu = (e: MouseEvent) => {
-  typeMenuRef.value?.open(e);
-};
 
 const updateColor = (hexColor: string) => {
   siValues.color = hexColor;

@@ -74,7 +74,6 @@ pub mod refresh;
 pub mod restore_default_function;
 pub mod set_name;
 pub mod set_resource_id;
-pub mod set_type;
 mod unmanage;
 pub mod update_property_editor_value;
 mod upgrade;
@@ -225,7 +224,6 @@ pub fn routes() -> Router<AppState> {
             "/restore_default_function",
             post(restore_default_function::restore_default_function),
         )
-        .route("/set_type", post(set_type::set_type))
         .route("/set_name", post(set_name::set_name))
         .route("/set_resource_id", post(set_resource_id::set_resource_id))
         .route("/refresh", post(refresh::refresh))

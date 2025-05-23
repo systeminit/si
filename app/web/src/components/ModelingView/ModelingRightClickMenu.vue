@@ -53,7 +53,6 @@ import {
   MgmtPrototype,
 } from "@/store/func/funcs.store";
 import { useActionsStore } from "@/store/actions.store";
-import { useComponentAttributesStore } from "@/store/component_attributes.store";
 import { useViewsStore } from "@/store/views.store";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { ViewId } from "@/api/sdf/dal/views";
@@ -87,12 +86,6 @@ const {
   erasableSelectedComponents,
   selectedEdge,
 } = storeToRefs(viewsStore);
-
-const attributesStore = computed(() =>
-  selectedComponentId.value
-    ? useComponentAttributesStore(selectedComponentId.value)
-    : undefined,
-);
 
 function typeDisplayName() {
   if (selectedComponentId.value && selectedComponent.value) {
@@ -344,56 +337,6 @@ const rightClickMenuItems = computed(() => {
         onSelect: autoConnectComponent,
       });
     }
-
-    // set component type
-    const updateComponentType = (componentType: ComponentType) => {
-      if (selectedComponentId.value && attributesStore.value) {
-        attributesStore.value.SET_COMPONENT_TYPE({
-          componentId: selectedComponentId.value,
-          componentType,
-        });
-      }
-    };
-
-    const submenuItems: DropdownMenuItemObjectDef[] = [];
-    submenuItems.push({
-      label: "Component",
-      icon: "component",
-      checkable: true,
-      checked:
-        selectedComponent.value.def.componentType === ComponentType.Component,
-      onSelect: () => {
-        updateComponentType(ComponentType.Component);
-      },
-    });
-    submenuItems.push({
-      label: "Up Frame",
-      icon: "frame-up",
-      checkable: true,
-      checked:
-        selectedComponent.value.def.componentType ===
-        ComponentType.ConfigurationFrameUp,
-      onSelect: () => {
-        updateComponentType(ComponentType.ConfigurationFrameUp);
-      },
-    });
-    submenuItems.push({
-      label: "Down Frame",
-      icon: "frame-down",
-      checkable: true,
-      checked:
-        selectedComponent.value.def.componentType ===
-        ComponentType.ConfigurationFrameDown,
-      onSelect: () => {
-        updateComponentType(ComponentType.ConfigurationFrameDown);
-      },
-    });
-
-    items.push({
-      label: "Set Type",
-      icon: "component",
-      submenuItems,
-    });
   }
 
   // management funcs for a single selected component
