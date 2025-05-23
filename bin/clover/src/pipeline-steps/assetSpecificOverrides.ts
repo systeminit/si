@@ -136,6 +136,23 @@ const overrides = new Map<string, OverrideFn>([
     );
     variant.sockets.push(launchTemplateNameSocket);
 
+    const launchTemplateIdProp = propForOverride(
+      launchTemplateProp,
+      "LaunchTemplateId"
+    );
+    if (!launchTemplateIdProp) return;
+
+    const launchTemplateIdSocket = createInputSocketFromProp(
+      launchTemplateIdProp,
+      [
+        { tokens: ["LaunchTemplateId"] },
+        { tokens: ["LaunchTemplateId<string<scalar>>"] },
+        { tokens: ["Launch Template Id"] },
+      ],
+      "Launch Template Id"
+    );
+    variant.sockets.push(launchTemplateIdSocket);
+
     const iamInstanceProfileProp = propForOverride(variant.domain, "IamInstanceProfile");
     if (!iamInstanceProfileProp) return;
 
