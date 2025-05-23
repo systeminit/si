@@ -13,13 +13,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, Reactive } from "vue";
+import { computed } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import {
   BifrostComponent,
   BifrostComponentConnections,
   BifrostConnection,
-  OutgoingConnections,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
 import {
@@ -56,10 +55,15 @@ const componentConnectionsQuery = useQuery<BifrostComponentConnections | null>({
   },
 });
 
-const outgoingQuery = useQuery<Reactive<OutgoingConnections>>({
+const outgoingQuery = useQuery<BifrostConnection[]>({
   queryKey: key(EntityKind.OutgoingConnections),
   queryFn: async () => {
-    return await getOutgoingConnections(args(EntityKind.OutgoingConnections));
+    const byComponents = await getOutgoingConnections(
+      args(EntityKind.OutgoingConnections),
+    );
+    const mine = byComponents.get(props.component.id);
+    if (!mine) return [];
+    return Object.values(mine);
   },
 });
 
@@ -92,7 +96,7 @@ const incoming = computed(
 );
 
 const outgoing = computed<SimpleConnection[]>(() => {
-  const outgoing = outgoingQuery.data?.value?.get(componentId.value) ?? [];
+  const outgoing = outgoingQuery.data?.value ?? [];
   return outgoing.map((conn) => {
     return {
       key: `${conn.toAttributeValueId}-${conn.toComponent.id}-${conn.fromComponent.id}-${conn.fromAttributeValueId}`,
