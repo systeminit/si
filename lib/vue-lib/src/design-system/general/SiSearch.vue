@@ -35,6 +35,7 @@
           )
         "
         data-1p-ignore
+        :tabindex="tabIndex"
         @input="onChange"
         @keydown="onKeyDown"
         @blur="onBlur"
@@ -161,6 +162,7 @@ const props = defineProps({
   dropdownMenuSearch: { type: Boolean },
   borderBottom: { type: Boolean, default: true },
   allFilter: { type: Object as PropType<Filter> },
+  tabIndex: { type: Number },
 });
 
 const filtersEnabled = computed(() => props.filters && !props.disableFilters);

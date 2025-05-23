@@ -110,9 +110,12 @@
         <template #header> Documentation </template>
         <template v-if="!docs">
           <p v-if="component.schemaVariantDocLink">
-            <a :href="component.schemaVariantDocLink" target="_blank">{{
-              component.schemaVariantName
-            }}</a>
+            <a
+              :href="component.schemaVariantDocLink"
+              target="_blank"
+              tabindex="-1"
+              >{{ component.schemaVariantName }}</a
+            >
           </p>
           <p><VueMarkdown :source="component.schemaVariantDescription" /></p>
         </template>

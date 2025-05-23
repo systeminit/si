@@ -11,6 +11,7 @@ export interface KeyDetails {
     | "code"
     | "keyCode"
     | "metaKey"
+    | "preventDefault"
   >;
 }
 

@@ -1,20 +1,23 @@
 <template>
   <div v-if="root">
     <div class="py-xs">
-      <SiSearch v-model="q" placeholder="filter attributes..." />
+      <SiSearch
+        ref="searchRef"
+        v-model="q"
+        placeholder="filter attributes..."
+        :tabIndex="0"
+        @keydown.tab="onTab"
+      />
     </div>
     <h3
       :class="
-        clsx(
-          'p-xs border-l-2',
-          themeClasses('bg-neutral-200', 'bg-neutral-800'),
-        )
+        clsx('p-xs border-l', themeClasses('bg-neutral-200', 'bg-neutral-800'))
       "
     >
       domain
     </h3>
     <!-- this is _really_ a type guard for "i am not an empty object" -->
-    <ul v-if="'children' in filtered.tree" class="border-l-2">
+    <ul v-if="'children' in filtered.tree" class="border-l">
       <ComponentAttribute
         v-for="child in filtered.tree.children"
         :key="child.id"
@@ -104,6 +107,7 @@ import { encryptMessage } from "@/utils/messageEncryption";
 import { useApi, routes, componentTypes } from "./api_composables";
 import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
 import { useWatchedForm } from "./logic_composables/watched_form";
+import { keyEmitter } from "./logic_composables/emitters";
 
 const q = ref("");
 
@@ -370,7 +374,12 @@ watch(
 
 const api = useApi();
 
-const save = async (path: string, _id: string, value: string) => {
+const save = async (
+  path: string,
+  _id: string,
+  value: string,
+  connectingComponentId?: string,
+) => {
   const call = api.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
@@ -378,6 +387,11 @@ const save = async (path: string, _id: string, value: string) => {
   const payload: componentTypes.UpdateComponentAttributesArgs = {};
   path = path.replace("root", ""); // endpoint doesn't want it
   payload[path] = value;
+  if (connectingComponentId) {
+    payload[path] = {
+      $source: { component: connectingComponentId, path: value },
+    };
+  }
   await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
 };
 
@@ -402,6 +416,26 @@ const remove = async (path: string, _id: string) => {
         componentId: props.component.id,
       },
     });
+  }
+};
+
+const searchRef = ref<InstanceType<typeof SiSearch>>();
+
+keyEmitter.on("Tab", (e) => {
+  e.preventDefault();
+  searchRef.value?.focusSearch();
+});
+
+const onTab = (e: KeyboardEvent) => {
+  // This allows the user to Shift+Tab backwards to the last attribute from the fuzzy search bar
+  if (e.shiftKey) {
+    e.preventDefault();
+    const focusable = Array.from(
+      document.querySelectorAll('[tabindex="0"]'),
+    ) as HTMLElement[];
+    if (focusable) {
+      focusable[focusable.length - 1]?.focus();
+    }
   }
 };
 </script>
