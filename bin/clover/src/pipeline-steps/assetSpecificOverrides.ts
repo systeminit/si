@@ -515,6 +515,16 @@ const overrides = new Map<string, OverrideFn>([
     setAnnotationOnSocket(launchTemplateVersionSocket, {
       tokens: ["LaunchTemplateVersion<string<scalar>>"],
     });
+
+    const { func, actionFuncSpec } = attachExtraActionFunction(
+      "./src/cloud-control-funcs/overrides/AWS::AutoScaling::AutoScalingGroup/actions/awsCloudControlUpdate.ts",
+      "Update Asset",
+      "update",
+      "c7e6bf82e9d7fa438f6a9151a1b1f3c6f4b18ae50eacf462bc81d2b31278e1c5",
+    );
+
+    spec.funcs.push(func);
+    variant.actionFuncs.push(actionFuncSpec);
   }],
   ["TargetGroup Targets", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
