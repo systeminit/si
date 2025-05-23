@@ -50,7 +50,7 @@ async fn update_and_insert_and_update(ctx: &mut DalContext) -> Result<()> {
     let component = create_component_for_default_schema_name_in_default_view(
         ctx,
         "Docker Image",
-        "a tulip in a cup",
+        "a tulip in a cuppa",
     )
     .await?;
     let variant_id = Component::schema_variant_id(ctx, component.id()).await?;
