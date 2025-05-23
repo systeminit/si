@@ -30,10 +30,11 @@ class CreateComponentV1Request(BaseModel):
     connections: Optional[List[Connection]] = None
     domain: Optional[Dict[str, Any]] = None
     name: StrictStr
+    resource_id: Optional[StrictStr] = Field(default=None, alias="resourceId")
     schema_name: StrictStr = Field(alias="schemaName")
     secrets: Optional[Dict[str, Any]] = None
     view_name: Optional[StrictStr] = Field(default=None, alias="viewName")
-    __properties: ClassVar[List[str]] = ["connections", "domain", "name", "schemaName", "secrets", "viewName"]
+    __properties: ClassVar[List[str]] = ["connections", "domain", "name", "resourceId", "schemaName", "secrets", "viewName"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -81,6 +82,11 @@ class CreateComponentV1Request(BaseModel):
                 if _item_connections:
                     _items.append(_item_connections.to_dict())
             _dict['connections'] = _items
+        # set to None if resource_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.resource_id is None and "resource_id" in self.model_fields_set:
+            _dict['resourceId'] = None
+
         # set to None if view_name (nullable) is None
         # and model_fields_set contains the field
         if self.view_name is None and "view_name" in self.model_fields_set:
@@ -101,6 +107,7 @@ class CreateComponentV1Request(BaseModel):
             "connections": [Connection.from_dict(_item) for _item in obj["connections"]] if obj.get("connections") is not None else None,
             "domain": obj.get("domain"),
             "name": obj.get("name"),
+            "resourceId": obj.get("resourceId"),
             "schemaName": obj.get("schemaName"),
             "secrets": obj.get("secrets"),
             "viewName": obj.get("viewName")

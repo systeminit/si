@@ -30,9 +30,10 @@ class UpdateComponentV1Request(BaseModel):
     connection_changes: Optional[ConnectionDetails] = Field(default=None, alias="connectionChanges")
     domain: Optional[Dict[str, Any]] = None
     name: Optional[StrictStr] = None
+    resource_id: Optional[StrictStr] = Field(default=None, alias="resourceId")
     secrets: Optional[Dict[str, Any]] = None
     unset: Optional[List[StrictStr]] = None
-    __properties: ClassVar[List[str]] = ["connectionChanges", "domain", "name", "secrets", "unset"]
+    __properties: ClassVar[List[str]] = ["connectionChanges", "domain", "name", "resourceId", "secrets", "unset"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -81,6 +82,11 @@ class UpdateComponentV1Request(BaseModel):
         if self.name is None and "name" in self.model_fields_set:
             _dict['name'] = None
 
+        # set to None if resource_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.resource_id is None and "resource_id" in self.model_fields_set:
+            _dict['resourceId'] = None
+
         return _dict
 
     @classmethod
@@ -96,6 +102,7 @@ class UpdateComponentV1Request(BaseModel):
             "connectionChanges": ConnectionDetails.from_dict(obj["connectionChanges"]) if obj.get("connectionChanges") is not None else None,
             "domain": obj.get("domain"),
             "name": obj.get("name"),
+            "resourceId": obj.get("resourceId"),
             "secrets": obj.get("secrets"),
             "unset": obj.get("unset")
         })

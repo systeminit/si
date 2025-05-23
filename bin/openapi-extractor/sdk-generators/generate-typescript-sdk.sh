@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 set -e
 
-if ! command -v openapi-generator-cli &> /dev/null; then
-    echo "Error: openapi-generator-cli not found."
-    exit 1
+if ! command -v openapi-generator-cli &>/dev/null; then
+  echo "Error: openapi-generator-cli not found."
+  exit 1
 fi
 
 SPEC_PATH=$1
 OUTPUT_DIR=$2
 
 if [ ! -f "$SPEC_PATH" ]; then
-    echo "Error: OpenAPI specification file not found at $SPEC_PATH"
-    exit 1
+  echo "Error: OpenAPI specification file not found at $SPEC_PATH"
+  exit 1
 fi
 
 generate_sdk() {
@@ -20,9 +20,9 @@ generate_sdk() {
 
   # Download LICENSE file from System Initiative repo
   echo "Downloading LICENSE file..."
-  curl -s "https://raw.githubusercontent.com/systeminit/si/main/LICENSE" > "$OUTPUT_DIR/LICENSE"
+  curl -s "https://raw.githubusercontent.com/systeminit/si/main/LICENSE" >"$OUTPUT_DIR/LICENSE"
 
-  cat > config.json << EOL
+  cat >config.json <<EOL
 {
   "npmName": "system-initiative-api-client",
   "npmVersion": "1.0.0",
@@ -38,7 +38,7 @@ generate_sdk() {
   "packageVersion": "1.0.0",
   "packageUrl": "https://github.com/systeminit/si",
   "author": "System Initiative",
-  "authorEmail": "technical-operations@systeminit.com",
+  "authorEmail": "support@systeminit.com",
   "developerName": "System Initiative",
   "developerEmail": "info@systeminit.com",
   "developerOrganization": "System Initiative",
@@ -68,11 +68,11 @@ EOL
   DEVELOPER_ORG_URL=$(grep -o '"developerOrganizationUrl": "[^"]*' config.json | cut -d'"' -f4)
 
   openapi-generator-cli generate \
-      -i "$SPEC_PATH" \
-      -g typescript-axios \
-      -o "$OUTPUT_DIR" \
-      -c config.json \
-      --skip-validate-spec
+    -i "$SPEC_PATH" \
+    -g typescript-axios \
+    -o "$OUTPUT_DIR" \
+    -c config.json \
+    --skip-validate-spec
 
   rm config.json
 
@@ -92,7 +92,7 @@ EOL
 
     TMP_PACKAGE_JSON="$OUTPUT_DIR/package.json.new"
 
-    cat > "$TMP_PACKAGE_JSON" << EOF
+    cat >"$TMP_PACKAGE_JSON" <<EOF
 {
   "name": "${NPM_NAME}",
   "version": "${PACKAGE_VERSION}",
@@ -157,7 +157,7 @@ EOF
   DENO_JSON="$OUTPUT_DIR/deno.json"
   echo "Creating deno.json for JSR publishing..."
 
-  cat > "$DENO_JSON" << EOF
+  cat >"$DENO_JSON" <<EOF
 {
   "name": "@systeminit/api-client",
   "version": "${PACKAGE_VERSION}",
@@ -187,7 +187,7 @@ EOF
 
     TMP_TSCONFIG_JSON="$OUTPUT_DIR/tsconfig.json.new"
 
-    cat > "$TMP_TSCONFIG_JSON" << EOF
+    cat >"$TMP_TSCONFIG_JSON" <<EOF
 {
   "compilerOptions": {
     "target": "ES2020",
@@ -220,7 +220,7 @@ EOF
 
     TMP_TSCONFIG_ESM_JSON="$OUTPUT_DIR/tsconfig.esm.json.new"
 
-    cat > "$TMP_TSCONFIG_ESM_JSON" << EOF
+    cat >"$TMP_TSCONFIG_ESM_JSON" <<EOF
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
@@ -239,7 +239,7 @@ EOF
   README_MD="$OUTPUT_DIR/README.md"
   if [ -f "$README_MD" ]; then
     echo "Updating README.md with improved content..."
-    cat > "$README_MD" << EOF
+    cat >"$README_MD" <<EOF
 # ${NPM_NAME}
 
 ${ARTIFACT_DESCRIPTION}

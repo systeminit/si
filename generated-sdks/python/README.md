@@ -51,7 +51,7 @@ print_response(list_response, "List Change Sets Response")
 
 ## Author Information
 
-- **System Initiative** - technical-operations@systeminit.com
+- **System Initiative** - support@systeminit.com
 - **System Initiative** - info@systeminit.com
 - **Organization**: System Initiative - https://systeminit.com
 

@@ -600,6 +600,12 @@ export interface CreateComponentV1Request {
      * @type {string}
      * @memberof CreateComponentV1Request
      */
+    'resourceId'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof CreateComponentV1Request
+     */
     'schemaName': string;
     /**
      * 
@@ -1966,6 +1972,12 @@ export interface UpdateComponentV1Request {
      * @memberof UpdateComponentV1Request
      */
     'name'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof UpdateComponentV1Request
+     */
+    'resourceId'?: string | null;
     /**
      * 
      * @type {{ [key: string]: any; }}

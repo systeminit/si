@@ -1,8 +1,8 @@
 {
   "name": "system-initiative-api-client",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "TypeScript/JavaScript SDK for the System Initiative Public API",
-  "author": "System Initiative <technical-operations@systeminit.com>",
+  "author": "System Initiative <support@systeminit.com>",
   "repository": {
     "type": "git",
     "url": "https://github.com/systeminit/si"

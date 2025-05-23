@@ -30,7 +30,7 @@ generate_sdk() {
     "packageVersion": "1.0.0",
     "packageUrl": "https://github.com/systeminit/si",
     "author": "System Initiative",
-    "authorEmail": "technical-operations@systeminit.com",
+    "authorEmail": "support@systeminit.com",
     "developerName": "System Initiative",
     "developerEmail": "info@systeminit.com",
     "developerOrganization": "System Initiative",
