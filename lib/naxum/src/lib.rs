@@ -29,6 +29,7 @@ pub use self::{
     make_service::IntoMakeService,
     message::{
         Extensions,
+        FromPartsError,
         Head,
         HeadRef,
         Message,
