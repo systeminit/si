@@ -1,33 +1,53 @@
 {
   "name": "system-initiative-api-client",
-  "version": "1.0.0",
-  "description": "OpenAPI client for system-initiative-api-client",
-  "author": "OpenAPI-Generator Contributors",
+  "version": "0.0.1",
+  "description": "TypeScript/JavaScript SDK for the System Initiative Public API",
+  "author": "System Initiative <technical-operations@systeminit.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/GIT_USER_ID/GIT_REPO_ID.git"
+    "url": "https://github.com/systeminit/si"
+  },
+  "homepage": "https://systeminit.com",
+  "bugs": {
+    "url": "https://github.com/systeminit/si/issues"
   },
   "keywords": [
     "axios",
     "typescript",
-    "openapi-client",
-    "openapi-generator",
-    "system-initiative-api-client"
+    "javascript",
+    "openapi",
+    "api-client",
+    "system-initiative",
+    "infrastructure-as-code"
   ],
-  "license": "Unlicense",
+  "license": "Apache-2.0",
   "main": "./dist/index.js",
-  "typings": "./dist/index.d.ts",
+  "types": "./dist/index.d.ts",
   "module": "./dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "sideEffects": false,
   "scripts": {
     "build": "tsc && tsc -p tsconfig.esm.json",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "test": "echo \"No tests yet\""
   },
   "dependencies": {
     "axios": "^1.6.1"
   },
   "devDependencies": {
-    "@types/node": "12.11.5 - 12.20.42",
-    "typescript": "^4.0 || ^5.0"
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

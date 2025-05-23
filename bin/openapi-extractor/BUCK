@@ -33,7 +33,7 @@ genrule(
 genrule(
   name = "generate_typescript_sdk",
   cmd = "./sdk-generators/generate-typescript-sdk.sh $(location :generate_api_spec) $OUT",
-  out = "generated-python-sdk",
+  out = "generated-typescript-sdk",
   srcs = ["sdk-generators/generate-typescript-sdk.sh"],
   visibility = ["PUBLIC"],
 )
