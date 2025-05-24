@@ -1,6 +1,6 @@
 # Bug Bounty at System Initiative
 
-**Launch Date:** 27th November, 2024 | **Last updated:** 27th November, 2024  
+**Launch Date:** 27th November, 2024 | **Last updated:** 24th May, 2025  
 
 Welcome to the **System Initiative Bug Bounty** guidelines. This document serves as a comprehensive reference for security researchers and stakeholders participating in our bug bounty program. It outlines our commitment to security, the rules of engagement, reward structures, and the scope of eligible and ineligible vulnerabilities.
 
