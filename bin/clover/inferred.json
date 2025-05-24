@@ -5439,6 +5439,9 @@
   "Indicates whether to evaluate inbound security group rules for traffic sent to a Network Load Balancer through privatelink. The default is ``on``.": {
     "enum": null
   },
+  "Indicates whether to evaluate inbound security group rules for traffic sent to a Network Load Balancer through privatelink. The default is ``on``.\n You can't configure this property on a Network Load Balancer unless you associated a security group with the load balancer when you created it.": {
+    "enum": null
+  },
   "Indicates whether to use Availability Zone rebalancing for the service.\n For more information, see [Balancing an Amazon ECS service across Availability Zones](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-rebalancing.html) in the *Amazon Elastic Container Service Developer Guide*.": {
     "enum": null
   },
@@ -6115,6 +6118,9 @@
     "enum": null
   },
   "Number of hours": {
+    "enum": null
+  },
+  "Number of nodes executed concurrently at a time": {
     "enum": null
   },
   "Number of workers for a connector.": {
@@ -7089,6 +7095,9 @@
   "Specifies whether your task report includes the new version of each object transferred into an S3 bucket, this only applies if you enable versioning on your bucket.": {
     "enum": null
   },
+  "Specify a KMSlong key ID to encrypt Amazon ECS managed storage.\n  When you specify a ``kmsKeyId``, Amazon ECS uses the key to encrypt data volumes managed by Amazon ECS that are attached to tasks in the cluster. The following data volumes are managed by Amazon ECS: Amazon EBS. For more information about encryption of Amazon EBS volumes attached to Amazon ECS tasks, see [Encrypt data stored in Amazon EBS volumes for Amazon ECS](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ebs-kms-encryption.html) in the *Amazon Elastic Container Service Developer Guide*.\n The key must be a single Region key.": {
+    "enum": null
+  },
   "Specify a KMSlong key ID to encrypt the managed storage.": {
     "enum": null
   },
@@ -7105,6 +7114,9 @@
     "enum": null
   },
   "Specify the Instance type of the machines that should be used to create your cluster.": {
+    "enum": null
+  },
+  "Specify the KMSlong key ID for Fargate ephemeral storage.\n When you specify a ``fargateEphemeralStorageKmsKeyId``, AWS Fargate uses the key to encrypt data at rest in ephemeral storage. For more information about Fargate ephemeral storage encryption, see [Customer managed keys for Fargate ephemeral storage for Amazon ECS](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-storage-encryption.html) in the *Amazon Elastic Container Service Developer Guide*.\n The key must be a single Region key.": {
     "enum": null
   },
   "Specify the KMSlong key ID for the Fargate ephemeral storage.": {
@@ -8881,6 +8893,9 @@
     "enum": null
   },
   "The ID of the IPv4 IPAM pool to Associate a CIDR from to a VPC.": {
+    "enum": null
+  },
+  "The ID of the IPv4 IPAM pool.": {
     "enum": null
   },
   "The ID of the IPv6 IPAM pool to Associate a CIDR from to a VPC.": {
@@ -16462,6 +16477,9 @@
     "enum": null
   },
   "[HTTPS and TLS listeners] The security policy that defines which protocols and ciphers are supported.\n Updating the security policy can result in interruptions if the load balancer is handling a high volume of traffic.\n For more information, see [Security policies](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/create-https-listener.html#describe-ssl-policies) in the *Application Load Balancers Guide* and [Security policies](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/create-tls-listener.html#describe-ssl-policies) in the *Network Load Balancers Guide*.": {
+    "enum": null
+  },
+  "[HTTPS and TLS listeners] The security policy that defines which protocols and ciphers are supported. For more information, see [Security policies](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/describe-ssl-policies.html) in the *Application Load Balancers Guide* and [Security policies](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/describe-ssl-policies.html) in the *Network Load Balancers Guide*.\n Updating the security policy can result in interruptions if the load balancer is handling a high volume of traffic. To decrease the possibility of an interruption if your load balancer is handling a high volume of traffic, create an additional load balancer or request an LCU reservation.": {
     "enum": null
   },
   "[IPv4 traffic only] The ID of a NAT gateway.": {
