@@ -31,6 +31,33 @@ pub async fn commit(ctx: &mut DalContext) -> Result<()> {
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await
 }
 
+/// Creates a new fork from head and returns the new `DalContext`. The original context
+pub async fn fork(ctx: &DalContext) -> Result<DalContext> {
+    let mut ctx = ctx.clone();
+    ChangeSetTestHelpers::fork_from_head_change_set(&mut ctx).await?;
+    Ok(ctx)
+}
+
+/// Applies a forked context to head and re-forks so it can be worked on again.
+pub async fn apply_and_refork(ctx: &mut DalContext) -> Result<()> {
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
+    Ok(())
+}
+
+/// Applies a forked context to head, consuming it.
+pub async fn apply(mut ctx: DalContext) -> Result<()> {
+    ChangeSetTestHelpers::apply_change_set_to_base(&mut ctx).await?;
+    Ok(())
+}
+
+/// Waits for DVU to finish and updates the snapshot
+pub async fn wait_for_dvu(ctx: &mut DalContext) -> Result<()> {
+    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
+    ctx.update_snapshot_to_visibility().await?;
+    Ok(())
+}
+
 /// This unit struct providers helper functions for working with [`ChangeSets`](ChangeSet). It is
 /// designed to centralize logic for test authors wishing to commit changes, fork, apply, abandon,
 /// etc.

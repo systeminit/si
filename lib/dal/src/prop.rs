@@ -819,6 +819,14 @@ impl Prop {
         Ok(Self::assemble(node_weight, inner))
     }
 
+    pub async fn node_weight(ctx: &DalContext, id: PropId) -> PropResult<PropNodeWeight> {
+        Ok(ctx
+            .workspace_snapshot()?
+            .get_node_weight(id)
+            .await?
+            .get_prop_node_weight()?)
+    }
+
     pub async fn element_prop_id(ctx: &DalContext, prop_id: PropId) -> PropResult<PropId> {
         Self::direct_child_prop_ids_unordered(ctx, prop_id)
             .await?
