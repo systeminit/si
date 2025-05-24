@@ -516,15 +516,11 @@ const overrides = new Map<string, OverrideFn>([
       tokens: ["LaunchTemplateVersion<string<scalar>>"],
     });
 
-    const { func, actionFuncSpec } = attachExtraActionFunction(
-      "./src/cloud-control-funcs/overrides/AWS::AutoScaling::AutoScalingGroup/actions/awsCloudControlUpdate.ts",
-      "Update Asset",
-      "update",
-      "c7e6bf82e9d7fa438f6a9151a1b1f3c6f4b18ae50eacf462bc81d2b31278e1c5",
-    );
-
-    spec.funcs.push(func);
-    variant.actionFuncs.push(actionFuncSpec);
+    // Modify the existing update function instead of replacing it
+    const updateTargetId = ACTION_FUNC_SPECS["Update Asset"].id;
+    const newUpdateId = "c7e6bf82e9d7fa438f6a9151a1b1f4c6f4b18ae50eacf462bc81d2b31278e1c5";
+    const updatePath = "./src/cloud-control-funcs/overrides/AWS::AutoScaling::AutoScalingGroup/actions/awsCloudControlUpdate.ts";
+    modifyFunc(spec, updateTargetId, newUpdateId, updatePath);
   }],
   ["TargetGroup Targets", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
