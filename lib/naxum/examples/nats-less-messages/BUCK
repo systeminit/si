@@ -1,0 +1,23 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "nats-less-messages",
+    srcs = ["main.rs"],
+    crate_root = "main.rs",
+    deps = [
+        "//lib/naxum:naxum",
+        "//third-party/rust:async-nats",
+        "//third-party/rust:bytes",
+        "//third-party/rust:futures",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:tokio",
+        "//third-party/rust:tokio-util",
+        "//third-party/rust:tower",
+        "//third-party/rust:tracing",
+        "//third-party/rust:tracing-subscriber",
+    ],
+)
