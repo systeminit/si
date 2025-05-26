@@ -108,7 +108,7 @@ For more details on the available endpoints and models, see the [System Initiati
 
 ## Author Information
 
-- **System Initiative** - technical-operations@systeminit.com
+- **System Initiative** - support@systeminit.com
 - **System Initiative** - info@systeminit.com
 - **Organization**: System Initiative - https://systeminit.com
 

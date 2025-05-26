@@ -35,7 +35,7 @@ setup(
     version=VERSION,
     description="Python SDK for the System Initiative Public API",
     author="System Initiative",
-    author_email="technical-operations@systeminit.com",
+    author_email="support@systeminit.com",
     url="https://github.com/systeminit/si",
     install_requires=REQUIRES,
     packages=find_packages(exclude=["test", "tests"]),

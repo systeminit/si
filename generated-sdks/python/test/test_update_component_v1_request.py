@@ -40,6 +40,7 @@ class TestUpdateComponentV1Request(unittest.TestCase):
                     remove = [{from={componentId=01H9ZQD35JPMBGHH69BT0Q79VY, socketName=output}, to=ThisComponentInputSocketName}, {from=ThisComponentOutputSocketName, to={component=OtherComponentName, socketName=InputSocketName}}], ),
                 domain = {propId1=value1, path/to/prop=value2},
                 name = 'MyUpdatedComponentName',
+                resource_id = 'i-12345678',
                 secrets = {secretDefinitionName=secretName},
                 unset = [propId1, path/to/prop]
             )

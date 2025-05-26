@@ -38,6 +38,7 @@ class TestCreateComponentV1Request(unittest.TestCase):
                 connections = [{from={component=OtherComponentName, socketName=SocketName}, to=ThisComponentInputSocketName}, {from={componentId=01H9ZQD35JPMBGHH69BT0Q79VY, socketName=SocketName}, to=ThisComponentInputSocketName}, {from=ThisComponentOutputSocketName, to={component=OtherComponentName, socketName=InputSocketName}}, {from=ThisComponentOutputSocketName, to={componentId=01H9ZQD35JPMBGHH69BT0Q79VY, socketName=InputSocketName}}],
                 domain = {propId1=value1, path/to/prop=value2},
                 name = 'MyComponentName',
+                resource_id = 'i-12345678',
                 schema_name = 'AWS::EC2::Instance',
                 secrets = {secretDefinitionName=secretName},
                 view_name = 'MyView'

@@ -473,6 +473,7 @@ Components management endpoints
     "path/to/prop": "value2"
   },
   "name": "MyComponentName",
+  "resourceId": "i-12345678",
   "schemaName": "AWS::EC2::Instance",
   "secrets": {
     "secretDefinitionName": "secretName"
@@ -806,6 +807,7 @@ Components management endpoints
     "path/to/prop": "value2"
   },
   "name": "MyUpdatedComponentName",
+  "resourceId": "i-12345678",
   "secrets": {
     "secretDefinitionName": "secretName"
   },
@@ -2526,6 +2528,7 @@ xor
     "path/to/prop": "value2"
   },
   "name": "MyComponentName",
+  "resourceId": "i-12345678",
   "schemaName": "AWS::EC2::Instance",
   "secrets": {
     "secretDefinitionName": "secretName"
@@ -2543,6 +2546,7 @@ xor
 |domain|object|false|none|none|
 |» **additionalProperties**|any|false|none|none|
 |name|string|true|none|none|
+|resourceId|string,null|false|none|none|
 |schemaName|string|true|none|none|
 |secrets|object|false|none|none|
 |» **additionalProperties**|any|false|none|none|
@@ -4290,6 +4294,7 @@ xor
     "path/to/prop": "value2"
   },
   "name": "MyUpdatedComponentName",
+  "resourceId": "i-12345678",
   "secrets": {
     "secretDefinitionName": "secretName"
   },
@@ -4309,6 +4314,7 @@ xor
 |domain|object|false|none|none|
 |» **additionalProperties**|any|false|none|none|
 |name|string,null|false|none|none|
+|resourceId|string,null|false|none|none|
 |secrets|object|false|none|none|
 |» **additionalProperties**|any|false|none|none|
 |unset|[string]|false|none|none|
