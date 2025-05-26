@@ -196,6 +196,8 @@ import AddViewModal from "./AddViewModal.vue";
 
 const router = useRouter();
 const route = useRoute();
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined(ctx);
 
 const selectedView = ref("");
 const group = ref<InstanceType<typeof TabGroupToggle>>();
@@ -257,8 +259,6 @@ const actionViewList = computed(
   () => actionViewListRaw.data.value?.actions ?? [],
 );
 
-const ctx = inject<Context>("CONTEXT");
-assertIsDefined(ctx);
 const kind = computed(() =>
   selectedView.value ? EntityKind.ViewComponentList : EntityKind.ComponentList,
 );

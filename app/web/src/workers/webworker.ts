@@ -12,7 +12,10 @@ import sqlite3InitModule, {
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { trace, Span } from "@opentelemetry/api";
 import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
-import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
+import {
+  BatchSpanProcessor,
+  // ConsoleSpanExporter,
+} from "@opentelemetry/sdk-trace-base";
 import { FetchInstrumentation } from "@opentelemetry/instrumentation-fetch";
 import { registerInstrumentations } from "@opentelemetry/instrumentation";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
@@ -72,14 +75,14 @@ import {
   EddaSecretList,
   BifrostSecretList,
 } from "./types/entity_kind_types";
-import { mjolnirQueue } from "./mjolnir_queue";
+import { hasReturned, maybeMjolnir } from "./mjolnir_queue";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
 if (!otelEndpoint) otelEndpoint = "http://localhost:8080";
 const exporter = new OTLPTraceExporter({
   url: `${otelEndpoint}/v1/traces`,
 });
-
+// const consoleExporter = new ConsoleSpanExporter();
 const processor = new BatchSpanProcessor(exporter);
 
 const provider = new WebTracerProvider({
@@ -109,6 +112,11 @@ function debug(...args: any | any[]) {
   if (_DEBUG) console.debug(args);
 }
 
+/**
+ *
+ *  INITIALIZATION FNS
+ *
+ */
 let db: Database;
 let sdf: AxiosInstance;
 
@@ -250,6 +258,9 @@ const exec = (
     },
 ): SqlValue[][] => db.exec(opts);
 
+/**
+ * A few small utilities
+ */
 const encodeDocumentForDB = async (doc: object) => {
   return await new Blob([JSON.stringify(doc)]).arrayBuffer();
 };
@@ -260,6 +271,7 @@ const decodeDocumentFromDB = (doc: ArrayBuffer): AtomDocument => {
   return j;
 };
 
+// When you just expect one column and one row
 const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
   const first = rows[0];
   if (first) {
@@ -269,9 +281,15 @@ const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
   return NOROW;
 };
 
+/**
+ *
+ * SNAPSHOT LOGIC
+ *
+ */
+
 const atomExistsOnSnapshots = async (
   atom: Atom,
-  kindChecksum: Checksum,
+  checksum: Checksum,
 ): Promise<Checksum[]> => {
   const rows = await db.exec({
     sql: `
@@ -284,7 +302,7 @@ const atomExistsOnSnapshots = async (
       checksum = ?
     ;
     `,
-    bind: [atom.kind, atom.id, kindChecksum],
+    bind: [atom.kind, atom.id, checksum],
     returnValue: "resultRows",
   });
   return rows.flat().filter(nonNullable) as Checksum[];
@@ -327,14 +345,12 @@ const createAtomFromPatch = async (atom: Atom, span?: Span) => {
     const applied = applyOperations(doc, atom.operations);
     afterDoc = applied.newDocument;
   }
-  return await createAtom(atom, afterDoc, span);
+  await createAtom(atom, afterDoc, span);
+  return afterDoc;
 };
 
-const createAtom = async (atom: Atom, doc: object, span?: Span) => {
+const createAtom = async (atom: Atom, doc: object, _span?: Span) => {
   debug("createAtom", atom, doc);
-
-  if (COMPUTED_KINDS.includes(atom.kind))
-    updateComputed(atom.workspaceId, atom.changeSetId, atom.kind, doc);
 
   const encodedDoc = await encodeDocumentForDB(doc);
   try {
@@ -343,22 +359,13 @@ const createAtom = async (atom: Atom, doc: object, span?: Span) => {
         (kind, checksum, args, data)
           VALUES
         (?, ?, ?, ?)
-      ON CONFLICT DO NOTHING;
-      `,
+        ON CONFLICT (kind, checksum, args)
+        DO UPDATE SET data=excluded.data
+      ;`,
       bind: [atom.kind, atom.toChecksum, atom.id, encodedDoc],
     });
   } catch (err) {
-    if (err instanceof Error) {
-      if (
-        err.name === "SQLite3Error" &&
-        err.message.includes("UNIQUE constraint failed")
-      )
-        span?.setAttribute("unique_failed", true);
-      else {
-        error("createAtom failed", atom, doc);
-        throw err;
-      }
-    }
+    error("createAtom failed", atom, doc, err);
   }
 };
 
@@ -376,13 +383,6 @@ const kindAndArgsFromKey = (key: QueryKey): { kind: EntityKind; id: Id } => {
   return { kind, id };
 };
 
-const dirtyConnections: Set<string> = new Set();
-const areConnectionsDirty = (workspaceId: string, changeSetId: string) => {
-  return dirtyConnections.has(`${workspaceId}-${changeSetId}`);
-};
-const markConnectionDirty = (workspaceId: string, changeSetId: string) => {
-  dirtyConnections.add(`${workspaceId}-${changeSetId}`);
-};
 const bustCacheAndReferences: BustCacheFn = async (
   workspaceId: string,
   changeSetId: string,
@@ -413,177 +413,6 @@ const bustCacheAndReferences: BustCacheFn = async (
   });
 };
 
-const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
-  const data = (await get(
-    workspaceId,
-    changeSetId,
-    EntityKind.ComponentList,
-    changeSetId,
-  )) as BifrostComponentList | -1;
-
-  if (data === -1) return;
-
-  await Promise.all(
-    data.components.map((c) =>
-      updateComputed(workspaceId, changeSetId, "Component", c, false),
-    ),
-  );
-  // bust everything all at once on cold start
-  bustCacheAndReferences(
-    workspaceId,
-    changeSetId,
-    EntityKind.PossibleConnections,
-    changeSetId,
-  );
-};
-
-const COMPUTED_KINDS = ["Component"];
-
-const updateComputed = (
-  workspaceId: string,
-  changeSetId: string,
-  kind: string,
-  doc: AtomDocument,
-  bust = true,
-) => {
-  if (!COMPUTED_KINDS.includes(kind)) return;
-
-  const conns: Record<string, PossibleConnection> = {};
-
-  if (kind === "Component") {
-    // NOTE: coldstart this is a BifrostComponent
-    // on "update from patch" this is an EddaComponent
-    const component = doc as EddaComponent;
-    Object.values(component.attributeTree.attributeValues).forEach((av) => {
-      const prop = component.attributeTree.props[av.propId ?? ""];
-      if (av.value && av.path && prop) {
-        const conn: PossibleConnection = {
-          attributeValueId: av.id,
-          value: av.value,
-          path: av.path,
-          name: prop.name,
-          componentId: component.id,
-          componentName: component.name,
-          schemaName: component.schemaName,
-          annotation: prop.kind,
-        };
-        conns[av.id] = conn;
-      }
-    });
-  }
-
-  const existing = allConns.get(changeSetId);
-  allConns.set(changeSetId, { ...existing, ...conns });
-  if (bust)
-    // dont bust individually on cold start
-    bustCacheFn(
-      workspaceId,
-      changeSetId,
-      EntityKind.PossibleConnections,
-      changeSetId,
-    );
-};
-
-const allConns = new DefaultMap<string, Record<string, PossibleConnection>>(
-  () => ({}),
-);
-
-const getConnectionByAnnotation = (
-  _workspaceId: string,
-  changeSetId: string,
-  annotation: string,
-) => sortByAnnotation(Object.values(allConns.get(changeSetId)), annotation);
-
-const sortByAnnotation = (
-  possible: Array<PossibleConnection>,
-  annotation: string,
-) => {
-  const exactMatches: Array<PossibleConnection> = [];
-  const typeMatches: Array<PossibleConnection> = [];
-  const nonMatches: Array<PossibleConnection> = [];
-
-  possible.forEach((conn) => {
-    const kind = conn.annotation;
-    // if we've got something like "VPC id" e.g. not one of the basic types
-    if (
-      !["string", "boolean", "object", "map", "integer"].includes(annotation)
-    ) {
-      // look for exact matches
-      if (kind === annotation) exactMatches.push(conn);
-      // otherwise, all string types match "exact" types
-      else if (annotation === "string") typeMatches.push(conn);
-      else nonMatches.push(conn);
-    } else {
-      if (kind === annotation) typeMatches.push(conn);
-      else nonMatches.push(conn);
-    }
-  });
-
-  const cmp = (a: PossibleConnection, b: PossibleConnection) =>
-    `${a.name} ${a.path}`.localeCompare(`${b.name} ${b.path}`);
-  exactMatches.sort(cmp);
-  typeMatches.sort(cmp);
-  nonMatches.sort(cmp);
-
-  return { exactMatches, typeMatches, nonMatches };
-};
-
-const cachedConnections: Record<
-  ChangeSetId,
-  DefaultMap<ComponentId, BifrostConnection[]>
-> = {};
-
-const getOutgoingConnectionsByComponentId = (
-  _workspaceId: string,
-  changeSetId: string,
-) => {
-  return cachedConnections[changeSetId];
-};
-
-const cleanConnections = async (workspaceId: string, changeSetId: string) => {
-  await tracer.startActiveSpan("cleanConnections", async (span: Span) => {
-    debug("🧹 connections start...");
-    const start = Date.now();
-    const connectionsById = await _getOutgoingConnectionsByComponentId(
-      workspaceId,
-      changeSetId,
-    );
-    cachedConnections[changeSetId] = connectionsById;
-
-    dirtyConnections.delete(`${workspaceId}-${changeSetId}`);
-
-    // whenever these change, the outgoing connections must bust as well
-    bustCacheFn(
-      workspaceId,
-      changeSetId,
-      EntityKind.OutgoingConnections,
-      changeSetId,
-    );
-    const sql = `
-      select referrer_kind, referrer_args from weak_references where target_kind = ? and target_args = ? and change_set_id = ?;
-    `;
-    const bind = ["OutgoingConnections", changeSetId, changeSetId];
-    const refs = await db.exec({
-      sql,
-      bind,
-      returnValue: "resultRows",
-    });
-    refs.forEach(([ref_kind, ref_id]) => {
-      bustCacheFn(
-        workspaceId,
-        changeSetId,
-        ref_kind as EntityKind,
-        ref_id as string,
-      );
-    });
-    span.setAttribute("numBusts", refs.length);
-    span.setAttribute("busts", JSON.stringify(refs));
-    span.end();
-    const end = Date.now();
-    debug(`...connections end [${end - start}ms] 🧹`);
-  });
-};
-
 const handleHammer = async (msg: AtomMessage, span?: Span) => {
   // in between throwing a hammer and receiving it, i might already have written the atom
   const snapshots = await atomExistsOnSnapshots(msg.atom, msg.atom.toChecksum);
@@ -602,40 +431,54 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     );
   await insertAtomMTM(msg.atom, toSnapshotAddress);
 
-  if (
-    ["IncomingConnections", "IncomingConnectionsList"].includes(msg.atom.kind)
-  )
-    markConnectionDirty(msg.atom.workspaceId, msg.atom.changeSetId);
+  await updateChangeSetWithNewSnapshot(msg.atom);
+  await removeOldSnapshot();
 
-  updateChangeSetWithNewSnapshot(msg.atom);
-  removeOldSnapshot();
-
-  if (areConnectionsDirty(msg.atom.workspaceId, msg.atom.changeSetId))
-    cleanConnections(msg.atom.workspaceId, msg.atom.changeSetId);
-
-  bustCacheAndReferences(
+  await bustCacheAndReferences(
     msg.atom.workspaceId,
     msg.atom.changeSetId,
     msg.atom.kind,
     msg.atom.id,
   );
+
+  if (COMPUTED_KINDS.includes(msg.atom.kind))
+    await updateComputed(
+      msg.atom.workspaceId,
+      msg.atom.changeSetId,
+      msg.atom.kind,
+      msg.data,
+    );
 };
 
 const insertAtomMTM = async (atom: Atom, toSnapshotAddress: Checksum) => {
   try {
+    const bind = [toSnapshotAddress, atom.kind, atom.id, atom.toChecksum];
+    const exists = await db.exec({
+      sql: `select snapshot_address, kind, args, checksum from snapshots_mtm_atoms
+        where snapshot_address = ? and kind = ? and args = ? and checksum = ?
+      ;`,
+      bind,
+      returnValue: "resultRows",
+    });
+    if (exists.length > 0) {
+      return false; // no-op
+    }
+
     await db.exec({
       sql: `insert into snapshots_mtm_atoms
         (snapshot_address, kind, args, checksum)
           VALUES
         (?, ?, ?, ?)
       ;`,
-      bind: [toSnapshotAddress, atom.kind, atom.id, atom.toChecksum],
+      bind,
     });
   } catch (err) {
-    // seeing conflict uniqueness errors, even though the
-    // table declaration has ON CONFLICT REPLACE
+    // should be resolved with the previous SELECT
+    // even with the unique constraint ON CONFLICT REPLACE
+    // if the checksum is identical, it will error
     error("createMTM failed", atom);
   }
+  return true;
 };
 
 const snapshotLogic = async (meta: AtomMeta, span?: Span) => {
@@ -676,9 +519,17 @@ const snapshotLogic = async (meta: AtomMeta, span?: Span) => {
     meta.snapshotFromAddress &&
     fromSnapshotAddress !== snapshotFromAddress
   )
-    throw new Ragnarok("From Snapshot Doesn't Exist", workspaceId, changeSetId);
+    throw new Ragnarok(
+      "From Snapshot Doesn't Exist",
+      workspaceId,
+      changeSetId,
+      fromSnapshotAddress,
+      snapshotFromAddress,
+    );
 
-  if (snapshotExists === NOROW) await newSnapshot(meta, snapshotFromAddress);
+  if (snapshotExists === NOROW)
+    // contains INSERT INTO SELECT FROM snapshot_address_mtm
+    await newSnapshot(meta, snapshotFromAddress);
 
   if (!changeSetExists) {
     await db.exec({
@@ -703,7 +554,11 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
     toSnapshotAddress = await snapshotLogic(data.meta, span);
   } catch (err) {
     if (err instanceof Ragnarok) {
-      span?.addEvent("ragnarok");
+      span?.addEvent("ragnarok", {
+        patchBatch: JSON.stringify(data),
+        fromSnapAddress: err.fromSnapshotAddress,
+        snapshotFromAddress: err.snapshotFromAddress,
+      });
       await ragnarok(err.workspaceId, err.changeSetId);
       return;
     } else {
@@ -711,6 +566,17 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
     }
   }
 
+  /**
+   * Patches are not coming over the wire in any meaningful
+   * order, which means they can be inter-dependent e.g. an item in
+   * a list can be _after_ the list that wants it.
+   * This causes an unnecessary hammer by the list when it doesn't have
+   * the item.
+   *
+   * We can at least do anything with "list" *after* everything else
+   * Its the 20% that gets us 80% until patches can be ordered by
+   * graph dependency.
+   */
   const atoms = data.patches
     .map((rawAtom) => {
       const atom: Atom = {
@@ -726,19 +592,18 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
   if (!toSnapshotAddress)
     throw new Error(`Expected snapshot for ${data.meta.snapshotToAddress}`);
 
-  atoms.forEach((atom) => {
-    if (["IncomingConnections", "IncomingConnectionsList"].includes(atom.kind))
-      markConnectionDirty(atom.workspaceId, atom.changeSetId);
-  });
-
+  // non-list atoms
+  // non-connections (e.g. components need to go before connections)
   const atomsToBust = await Promise.all(
-    atoms.map(async (atom) => {
-      return await applyPatch(atom, toSnapshotAddress);
-    }),
+    atoms
+      .filter(
+        (a) =>
+          !a.kind.includes("List") && !a.kind.includes("IncomingConnection"),
+      )
+      .map(async (atom) => {
+        return applyPatch(atom, toSnapshotAddress);
+      }),
   );
-
-  if (areConnectionsDirty(data.meta.workspaceId, data.meta.changeSetId))
-    cleanConnections(data.meta.workspaceId, data.meta.changeSetId);
 
   atomsToBust.forEach((atom) => {
     if (atom)
@@ -750,8 +615,45 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
       );
   });
 
-  updateChangeSetWithNewSnapshot(data.meta);
-  removeOldSnapshot();
+  // connections
+  const connAtomsToBust = await Promise.all(
+    atoms
+      .filter((a) => a.kind.includes("IncomingConnection"))
+      .map(async (atom) => {
+        return await applyPatch(atom, toSnapshotAddress);
+      }),
+  );
+  connAtomsToBust.forEach((atom) => {
+    if (atom)
+      bustCacheAndReferences(
+        atom.workspaceId,
+        atom.changeSetId,
+        atom.kind,
+        atom.id,
+      );
+  });
+
+  // list items
+  const listAtomsToBust = await Promise.all(
+    atoms
+      .filter((a) => a.kind.includes("List"))
+      .map(async (atom) => {
+        return applyPatch(atom, toSnapshotAddress);
+      }),
+  );
+
+  listAtomsToBust.forEach((atom) => {
+    if (atom)
+      bustCacheAndReferences(
+        atom.workspaceId,
+        atom.changeSetId,
+        atom.kind,
+        atom.id,
+      );
+  });
+
+  await updateChangeSetWithNewSnapshot(data.meta);
+  await removeOldSnapshot();
 };
 
 const applyPatch = async (
@@ -763,28 +665,30 @@ const applyPatch = async (
 
     // if we have the change already don't do anything
     const snapshots = await atomExistsOnSnapshots(atom, atom.toChecksum);
+    span.setAttribute("toChecksumSnapshots", JSON.stringify(snapshots));
     if (snapshots.includes(atom.snapshotToAddress)) {
       span.addEvent("noop");
       span.end();
       return;
     }
 
-    // otherwise, find the old record
+    // do we have a snapshot with the fromChecksum (without we cannot patch)
     const previousSnapshots = await atomExistsOnSnapshots(
       atom,
       atom.fromChecksum,
     );
     span.setAttribute("previousSnapshots", JSON.stringify(previousSnapshots));
-    const exists = previousSnapshots.includes(atom.snapshotFromAddress);
+    const exists = previousSnapshots.length > 0;
     span.setAttribute("exists", exists);
 
     let needToInsertMTM = false;
     let bustCache = false;
+    let doc;
     if (atom.fromChecksum === "0") {
       if (!exists) {
         // if i already have it, this is a NOOP
         span.setAttribute("createAtomFromPatch", true);
-        await createAtomFromPatch(atom, span);
+        doc = await createAtomFromPatch(atom, span);
         needToInsertMTM = true;
         bustCache = true;
       }
@@ -799,13 +703,18 @@ const applyPatch = async (
       // patch it if I can
       if (exists) {
         span.setAttribute("patchAtom", true);
-        await patchAtom(atom);
+        doc = await patchAtom(atom);
         needToInsertMTM = true;
         bustCache = true;
       }
       // otherwise, fire the small hammer to get the full object
       else {
-        span.addEvent("mjolnir", { atom: JSON.stringify(atom) });
+        span.addEvent("mjolnir", {
+          atom: JSON.stringify(atom),
+          previousSnapshots: JSON.stringify(previousSnapshots),
+          toChecksumSnapshots: JSON.stringify(snapshots),
+          source: "applyPatch",
+        });
         mjolnir(
           atom.workspaceId,
           atom.changeSetId,
@@ -818,8 +727,16 @@ const applyPatch = async (
 
     // this insert potentially replaces the MTM row that exists for the current snapshot
     // based on the table constraint
-    if (needToInsertMTM) await insertAtomMTM(atom, toSnapshotAddress);
+    span.setAttribute("needToInsertMTM", needToInsertMTM);
+    if (needToInsertMTM) {
+      const inserted = await insertAtomMTM(atom, toSnapshotAddress);
+      span.setAttribute("insertedMTM", inserted);
+    }
     span.end();
+
+    if (doc && COMPUTED_KINDS.includes(atom.kind))
+      await updateComputed(atom.workspaceId, atom.changeSetId, atom.kind, doc);
+
     if (bustCache) return atom;
     return undefined;
   });
@@ -849,9 +766,6 @@ const patchAtom = async (atom: Required<Atom>) => {
     afterDoc = applied.newDocument;
   }
 
-  if (COMPUTED_KINDS.includes(atom.kind))
-    updateComputed(atom.workspaceId, atom.changeSetId, atom.kind, afterDoc);
-
   await db.exec({
     sql: `
     insert into atoms
@@ -867,6 +781,7 @@ const patchAtom = async (atom: Required<Atom>) => {
       await encodeDocumentForDB(afterDoc),
     ],
   });
+  return afterDoc;
 };
 
 const mjolnir = async (
@@ -876,20 +791,9 @@ const mjolnir = async (
   id: Id,
   checksum?: Checksum,
 ) => {
-  const job = mjolnirQueue.add(() =>
+  maybeMjolnir({ workspaceId, changeSetId, kind, id }, () =>
     mjolnirJob(workspaceId, changeSetId, kind, id, checksum),
   );
-  job.catch((e) => {
-    // eslint-disable-next-line no-console
-    console.log(`mjolnir job failed: ${e}`, {
-      workspaceId,
-      changeSetId,
-      kind,
-      id,
-      checksum,
-      e,
-    });
-  });
 };
 
 const mjolnirJob = async (
@@ -932,6 +836,14 @@ const mjolnirJob = async (
       span.end();
     }
   });
+
+  hasReturned({
+    workspaceId,
+    changeSetId,
+    kind,
+    id,
+  });
+
   if (!req) return; // 404
 
   const msg: AtomMessage = {
@@ -957,19 +869,28 @@ const updateChangeSetWithNewSnapshot = async (meta: AtomMeta) => {
 };
 
 const removeOldSnapshot = async () => {
-  await tracer.startActiveSpan("pruneFromSnapshot", async (span) => {
-    await db.exec({
+  await tracer.startActiveSpan("removeOldSnapshot", async (span) => {
+    const deleteSnapshots = await db.exec({
       sql: `
-        DELETE FROM snapshots WHERE address NOT IN (SELECT snapshot_address FROM changesets);
+        DELETE FROM snapshots
+        WHERE address NOT IN (
+          SELECT snapshot_address FROM changesets
+        ) RETURNING *;
       `,
+      returnValue: "resultRows",
     });
-    await db.exec({
+    const deleteAtoms = await db.exec({
       sql: `
         DELETE FROM atoms
         WHERE (kind, args, checksum) NOT IN (
           SELECT  kind, args, checksum  FROM snapshots_mtm_atoms
         ) returning atoms.kind, atoms.args, atoms.checksum;
       `,
+      returnValue: "resultRows",
+    });
+    span.setAttributes({
+      snapshots: JSON.stringify(deleteSnapshots),
+      atoms: JSON.stringify(deleteAtoms),
     });
     span.end();
   });
@@ -1018,11 +939,16 @@ const atomChecksumsFor = async (
   return mapping;
 };
 
+/**
+ *
+ * LIFECYCLE EVENTS
+ *
+ */
+
 const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
   await tracer.startActiveSpan("niflheim", async (span: Span) => {
     // build connections list based on data we have in the DB
     // connections list will rebuild as data comes in
-    const cleanPromise = cleanConnections(workspaceId, changeSetId);
     const computedPromise = coldStartComputed(workspaceId, changeSetId);
 
     // clear out references, no queries have been performed yet
@@ -1044,11 +970,7 @@ const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
       method: "get",
       url,
     });
-    const [req, _c, _p] = await Promise.all([
-      reqPromise,
-      cleanPromise,
-      computedPromise,
-    ]);
+    const [req, _p] = await Promise.all([reqPromise, computedPromise]);
     const atoms = req.data.frontEndObject.data.mvList;
     frigg.setAttribute("numEntries", atoms.length);
     frigg.end();
@@ -1065,6 +987,14 @@ const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
       const local = localChecksums[key];
       if (!local || local !== checksum) {
         const { kind, id } = kindAndArgsFromKey(key);
+        span.addEvent("mjolnir", {
+          workspaceId,
+          changeSetId,
+          kind,
+          id,
+          checksum,
+          source: "niflheim",
+        });
         mjolnir(workspaceId, changeSetId, kind, id, checksum);
         numHammers++;
       }
@@ -1083,7 +1013,12 @@ const ragnarok = async (
 ) => {
   // get rid of the snapshots we have for this changeset
   await db.exec({
-    sql: `delete from snapshots where address IN (select snapshot_address from changesets where workspace_id = ? and change_set_id = ? );`,
+    sql: `delete from snapshots
+          where address IN (
+            select snapshot_address
+            from changesets
+            where workspace_id = ? and change_set_id = ?
+          );`,
     bind: [workspaceId, changeSetId],
   });
   // remove the atoms we have for this change set
@@ -1093,6 +1028,12 @@ const ragnarok = async (
     await niflheim(workspaceId, changeSetId);
   }
 };
+
+/**
+ *
+ * WEAK REFERENCE TRACKING
+ *
+ */
 
 const clearAllWeakReferences = async (changeSetId: string) => {
   const sql = `
@@ -1151,6 +1092,200 @@ const weakReference = async (
   }
 };
 
+/**
+ *
+ * COMPUTED IMPLEMENTATIONS
+ *
+ */
+const COMPUTED_KINDS: EntityKind[] = [
+  EntityKind.Component,
+  EntityKind.IncomingConnections,
+];
+
+const allPossibleConns = new DefaultMap<
+  string,
+  Record<string, PossibleConnection>
+>(() => ({}));
+
+// the `string` is `${toAttributeValueId}-${fromAttributeValueId}`
+const allOutgoingConns = new DefaultMap<
+  ChangeSetId,
+  DefaultMap<ComponentId, Record<string, BifrostConnection>>
+>(() => new DefaultMap(() => ({})));
+
+const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
+  const data = (await get(
+    workspaceId,
+    changeSetId,
+    EntityKind.ComponentList,
+    changeSetId,
+  )) as BifrostComponentList | -1;
+
+  if (data === -1) return;
+
+  await Promise.all(
+    data.components.map((c) =>
+      updateComputed(workspaceId, changeSetId, EntityKind.Component, c, false),
+    ),
+  );
+  // bust everything all at once on cold start
+  await bustCacheAndReferences(
+    workspaceId,
+    changeSetId,
+    EntityKind.PossibleConnections,
+    changeSetId,
+  );
+
+  const list = (await get(
+    workspaceId,
+    changeSetId,
+    EntityKind.IncomingConnectionsList,
+    changeSetId,
+    undefined,
+    false, // don't compute
+  )) as BifrostIncomingConnectionsList | -1;
+
+  if (list === -1) return;
+
+  await Promise.all(
+    list.componentConnections.map((c) =>
+      updateComputed(
+        workspaceId,
+        changeSetId,
+        EntityKind.IncomingConnections,
+        c,
+        false,
+        false,
+      ),
+    ),
+  );
+  // bust everything all at once on cold start
+  await bustCacheAndReferences(
+    workspaceId,
+    changeSetId,
+    EntityKind.OutgoingConnections,
+    changeSetId,
+  );
+};
+
+const updateComputed = async (
+  workspaceId: string,
+  changeSetId: string,
+  kind: EntityKind,
+  doc: AtomDocument,
+  bust = true,
+  followReferences = true,
+) => {
+  if (!COMPUTED_KINDS.includes(kind)) return;
+
+  if (followReferences) {
+    const result = await getReferences(
+      doc,
+      workspaceId,
+      changeSetId,
+      kind,
+      doc.id,
+      false,
+    );
+    doc = result[0];
+  }
+
+  if (kind === EntityKind.IncomingConnections) {
+    const data = doc as BifrostComponentConnections;
+    data.incoming.forEach((incoming) => {
+      const id = `${incoming.toAttributeValueId}-${incoming.fromAttributeValueId}`;
+      const outgoing = flip(incoming);
+      const conns = allOutgoingConns
+        .get(changeSetId)
+        .get(incoming.fromComponent.id);
+      conns[id] = outgoing;
+    });
+  } else if (kind === EntityKind.Component) {
+    const conns: Record<string, PossibleConnection> = {};
+
+    const component = doc as BifrostComponent;
+    Object.values(component.attributeTree.attributeValues).forEach((av) => {
+      const prop = component.attributeTree.props[av.propId ?? ""];
+      if (av.value && av.path && prop) {
+        const conn: PossibleConnection = {
+          attributeValueId: av.id,
+          value: av.value,
+          path: av.path,
+          name: prop.name,
+          componentId: component.id,
+          componentName: component.name,
+          schemaName: component.schemaName,
+          annotation: prop.kind,
+        };
+        conns[av.id] = conn;
+      }
+    });
+
+    const existing = allPossibleConns.get(changeSetId);
+    allPossibleConns.set(changeSetId, { ...existing, ...conns });
+
+    // dont bust individually on cold start
+    if (bust)
+      bustCacheFn(
+        workspaceId,
+        changeSetId,
+        EntityKind.PossibleConnections,
+        changeSetId,
+      );
+  }
+};
+
+const getConnectionByAnnotation = (
+  _workspaceId: string,
+  changeSetId: string,
+  annotation: string,
+) =>
+  sortByAnnotation(
+    Object.values(allPossibleConns.get(changeSetId)),
+    annotation,
+  );
+
+const sortByAnnotation = (
+  possible: Array<PossibleConnection>,
+  annotation: string,
+) => {
+  const exactMatches: Array<PossibleConnection> = [];
+  const typeMatches: Array<PossibleConnection> = [];
+  const nonMatches: Array<PossibleConnection> = [];
+
+  possible.forEach((conn) => {
+    const kind = conn.annotation;
+    // if we've got something like "VPC id" e.g. not one of the basic types
+    if (
+      !["string", "boolean", "object", "map", "integer"].includes(annotation)
+    ) {
+      // look for exact matches
+      if (kind === annotation) exactMatches.push(conn);
+      // otherwise, all string types match "exact" types
+      else if (annotation === "string") typeMatches.push(conn);
+      else nonMatches.push(conn);
+    } else {
+      if (kind === annotation) typeMatches.push(conn);
+      else nonMatches.push(conn);
+    }
+  });
+
+  const cmp = (a: PossibleConnection, b: PossibleConnection) =>
+    `${a.name} ${a.path}`.localeCompare(`${b.name} ${b.path}`);
+  exactMatches.sort(cmp);
+  typeMatches.sort(cmp);
+  nonMatches.sort(cmp);
+
+  return { exactMatches, typeMatches, nonMatches };
+};
+
+const getOutgoingConnectionsByComponentId = (
+  _workspaceId: string,
+  changeSetId: string,
+) => {
+  return allOutgoingConns.get(changeSetId);
+};
+
 const flip = (i: BifrostConnection): BifrostConnection => {
   const o: BifrostConnection = {
     ...i,
@@ -1176,34 +1311,10 @@ const flip = (i: BifrostConnection): BifrostConnection => {
   return o;
 };
 
-const _getOutgoingConnectionsByComponentId = async (
-  workspaceId: string,
-  changeSetId: string,
-) => {
-  const list = (await get(
-    workspaceId,
-    changeSetId,
-    EntityKind.IncomingConnectionsList,
-    changeSetId,
-    undefined,
-    false, // don't compute
-  )) as BifrostIncomingConnectionsList | -1;
-
-  if (list === -1) {
-    debug("...missing connections list...");
-    return new DefaultMap<string, BifrostConnection[]>(() => []);
-  }
-  const all = list.componentConnections.flatMap((conn) => conn.incoming);
-
-  return all.reduce((obj, conn) => {
-    const m = obj.get(conn.fromComponent.id);
-    m.push(flip(conn));
-    obj.set(conn.fromComponent.id, m);
-    return obj;
-  }, new DefaultMap<string, BifrostConnection[]>(() => [] as BifrostConnection[]));
-};
-
 /**
+ * 
+ * FETCHING LOGIC
+ * 
  * EXAMPLE OF HOW WE MOVE FROM
  * - `get` (aka `bifrost`)
  * - `getReferences`
@@ -1249,7 +1360,7 @@ const getComputed = async (
     // making this, so when connections populate, we re-query
     weakReference(
       changeSetId,
-      { kind: "OutgoingConnections", args: changeSetId },
+      { kind: EntityKind.OutgoingConnections, args: changeSetId },
       { kind, args: id },
     );
     return atomDoc;
@@ -1263,7 +1374,7 @@ const getComputed = async (
   ) {
     const data = atomDoc as BifrostComponentList;
     data.components.forEach((c) => {
-      c.outputCount = connectionsById.get(c.id).length;
+      c.outputCount = Object.values(connectionsById.get(c.id)).length;
     });
     clearWeakReferences(changeSetId, { kind, args: id });
     weakReference(
@@ -1274,7 +1385,7 @@ const getComputed = async (
     return data;
   } else if (kind === EntityKind.Component) {
     const data = atomDoc as BifrostComponent;
-    data.outputCount = connectionsById.get(id).length;
+    data.outputCount = Object.values(connectionsById.get(id)).length;
     clearWeakReferences(changeSetId, { kind, args: id });
     weakReference(
       changeSetId,
@@ -1344,6 +1455,14 @@ const getReferences = async (
 
     if (sd === -1) {
       hasReferenceError = true;
+      span.addEvent("mjolnir", {
+        workspaceId,
+        changeSetId,
+        kind: data.definitionId.kind,
+        id: data.definitionId.id,
+        source: "getReferences",
+        sourceKind: kind,
+      });
       mjolnir(
         workspaceId,
         changeSetId,
@@ -1376,6 +1495,14 @@ const getReferences = async (
         )) as SecretDefinition | -1;
         if (maybeDoc === -1) {
           hasReferenceError = true;
+          span.addEvent("mjolnir", {
+            workspaceId,
+            changeSetId,
+            kind: d.kind,
+            id: d.id,
+            source: "getReferences",
+            sourceKind: kind,
+          });
           mjolnir(workspaceId, changeSetId, d.kind, d.id);
         }
         weakReference(
@@ -1409,6 +1536,14 @@ const getReferences = async (
         )) as BifrostSecret | -1;
         if (maybeDoc === -1) {
           hasReferenceError = true;
+          span.addEvent("mjolnir", {
+            workspaceId,
+            changeSetId,
+            kind: d.kind,
+            id: d.id,
+            source: "getReferences",
+            sourceKind: kind,
+          });
           mjolnir(workspaceId, changeSetId, d.kind, d.id);
         }
         weakReference(
@@ -1441,6 +1576,14 @@ const getReferences = async (
 
     if (sv === -1) {
       hasReferenceError = true;
+      span.addEvent("mjolnir", {
+        workspaceId,
+        changeSetId,
+        kind: data.schemaVariantId.kind,
+        id: data.schemaVariantId.id,
+        source: "getReferences",
+        sourceKind: kind,
+      });
       mjolnir(
         workspaceId,
         changeSetId,
@@ -1476,6 +1619,14 @@ const getReferences = async (
         )) as View | -1;
         if (maybeDoc === -1) {
           hasReferenceError = true;
+          span.addEvent("mjolnir", {
+            workspaceId,
+            changeSetId,
+            kind: v.kind,
+            id: v.id,
+            source: "getReferences",
+            sourceKind: kind,
+          });
           mjolnir(workspaceId, changeSetId, v.kind, v.id);
           weakReference(
             changeSetId,
@@ -1513,6 +1664,14 @@ const getReferences = async (
 
         if (maybeDoc === -1) {
           hasReferenceError = true;
+          span.addEvent("mjolnir", {
+            workspaceId,
+            changeSetId,
+            kind: c.kind,
+            id: c.id,
+            source: "getReferences",
+            sourceKind: kind,
+          });
           mjolnir(workspaceId, changeSetId, c.kind, c.id);
           weakReference(
             changeSetId,
@@ -1546,18 +1705,26 @@ const getReferences = async (
     )) as BifrostComponent | -1;
 
     clearWeakReferences(changeSetId, {
-      kind: "IncomingConnections",
+      kind: EntityKind.IncomingConnections,
       args: raw.id,
     });
 
     weakReference(
       changeSetId,
-      { kind: "Component", args: raw.id },
-      { kind: "IncomingConnections", args: raw.id },
+      { kind: EntityKind.Component, args: raw.id },
+      { kind: EntityKind.IncomingConnections, args: raw.id },
     );
 
     if (component === -1) {
-      mjolnir(workspaceId, changeSetId, "Component", raw.id);
+      span.addEvent("mjolnir", {
+        workspaceId,
+        changeSetId,
+        kind: EntityKind.Component,
+        id: raw.id,
+        source: "getReferences",
+        sourceKind: kind,
+      });
+      mjolnir(workspaceId, changeSetId, EntityKind.Component, raw.id);
       debug(`Connection ${raw.id} missing own component`);
       hasReferenceError = true;
     }
@@ -1581,18 +1748,23 @@ const getReferences = async (
         weakReference(
           changeSetId,
           { kind: c.fromComponentId.kind, args: c.fromComponentId.id },
-          { kind: "IncomingConnections", args: raw.id },
+          { kind: EntityKind.IncomingConnections, args: raw.id },
         );
 
         if (fromComponent === -1) {
+          span.addEvent("mjolnir", {
+            workspaceId,
+            changeSetId,
+            kind: c.fromComponentId.kind,
+            id: c.fromComponentId.id,
+            source: "getReferences",
+            sourceKind: kind,
+          });
           mjolnir(
             workspaceId,
             changeSetId,
             c.fromComponentId.kind,
             c.fromComponentId.id,
-          );
-          debug(
-            `Connection ${raw.id} missing weak component ${c.fromComponentId}`,
           );
           hasReferenceError = true;
         }
@@ -1627,6 +1799,14 @@ const getReferences = async (
           | -1;
         if (maybeDoc === -1) {
           hasReferenceError = true;
+          span.addEvent("mjolnir", {
+            workspaceId,
+            changeSetId,
+            kind: c.kind,
+            id: c.id,
+            source: "getReferences",
+            sourceKind: kind,
+          });
           mjolnir(workspaceId, changeSetId, c.kind, c.id);
           weakReference(
             changeSetId,
@@ -1729,6 +1909,12 @@ const get = async (
   }
 };
 
+/**
+ *
+ * INTERFACE DEFINITION
+ *
+ */
+
 let socket: ReconnectingWebSocket;
 let bustCacheFn: BustCacheFn;
 let bearerToken: string;
@@ -1804,10 +1990,23 @@ const dbInterface: DBInterface = {
           if (!("kind" in data)) span.setAttribute("kindMissing", "no kind");
           else {
             span.setAttribute("messageKind", data.kind);
-            if (data.kind === MessageKind.PATCH)
+            if (data.kind === MessageKind.PATCH) {
+              if (!data.meta.snapshotFromAddress)
+                // eslint-disable-next-line no-console
+                console.error(
+                  "ATTEMPTING TO PATCH BUT FROM SNAPSHOT IS MISSING",
+                  data.meta,
+                );
               await handlePatchMessage(data, span);
-            else if (data.kind === MessageKind.MJOLNIR)
+            } else if (data.kind === MessageKind.MJOLNIR) {
+              hasReturned({
+                workspaceId: data.atom.workspaceId,
+                changeSetId: data.atom.changeSetId,
+                kind: data.atom.kind,
+                id: data.atom.id,
+              });
               await handleHammer(data, span);
+            }
           }
         } catch (err: unknown) {
           error(err);

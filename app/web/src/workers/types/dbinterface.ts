@@ -26,7 +26,10 @@ export type BustCacheFn = (
   id: string,
 ) => void;
 
-export type OutgoingConnections = DefaultMap<string, BifrostConnection[]>;
+export type OutgoingConnections = DefaultMap<
+  string,
+  Record<string, BifrostConnection>
+>;
 export interface DBInterface {
   initDB: (testing: boolean) => Promise<void>;
   migrate: (testing: boolean) => void;
@@ -108,11 +111,21 @@ export interface DBInterface {
 export class Ragnarok extends Error {
   workspaceId: string;
   changeSetId: string;
+  fromSnapshotAddress: string | undefined;
+  snapshotFromAddress: string | undefined;
 
-  constructor(message: string, workspaceId: string, changeSetId: string) {
+  constructor(
+    message: string,
+    workspaceId: string,
+    changeSetId: string,
+    fromSnapshotAddress: string | undefined,
+    snapshotFromAddress: string | undefined,
+  ) {
     super(message);
     this.workspaceId = workspaceId;
     this.changeSetId = changeSetId;
+    this.fromSnapshotAddress = fromSnapshotAddress;
+    this.snapshotFromAddress = snapshotFromAddress;
   }
 }
 

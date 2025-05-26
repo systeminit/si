@@ -20,12 +20,14 @@ import { DefaultMap } from "@/utils/defaultmap";
 
 export enum EntityKind {
   Component = "Component",
+  View = "View",
   ViewList = "ViewList",
   ComponentList = "ComponentList",
   ViewComponentList = "ViewComponentList",
   IncomingConnections = "IncomingConnections",
   IncomingConnectionsList = "IncomingConnectionsList",
   SchemaVariantCategories = "SchemaVariantCategories",
+  SchemaVariant = "SchemaVariant",
   ActionViewList = "ActionViewList",
   ActionPrototypeViewList = "ActionPrototypeViewList",
   SecretList = "SecretList",
@@ -48,10 +50,10 @@ export const isEntityKind = (maybeEntityKind: any): EntityKind | null => {
     return k as EntityKind;
   return null;
 };
-interface Reference {
+interface Reference<T extends EntityKind> {
   id: string;
   checksum: string;
-  kind: EntityKind;
+  kind: T;
 }
 
 interface WeakReference<T extends EntityKind> {
@@ -104,7 +106,7 @@ export interface BifrostViewList {
 
 export interface RawViewList {
   id: string;
-  views: Reference[];
+  views: Reference<EntityKind.View>[];
 }
 
 export interface BifrostSchemaVariantCategories {
@@ -131,7 +133,7 @@ export interface EddaComponent {
   color?: string;
   schemaName: string;
   schemaId: SchemaId;
-  schemaVariantId: Reference;
+  schemaVariantId: Reference<EntityKind.SchemaVariant>;
   schemaVariantName: string;
   schemaVariantDescription?: string;
   schemaVariantDocLink?: string;
@@ -266,7 +268,7 @@ export interface ViewComponentList {
 
 export interface EddaComponentList {
   id: ChangeSetId;
-  components: Reference[];
+  components: Reference<EntityKind.Component>[];
 }
 
 export interface ActionPrototypeView {
@@ -328,21 +330,25 @@ export interface AttributeTree {
   secrets: Record<string, EddaSecret>; // we dont need the weakref data when its assigned
 }
 
+// EntityKind.IncomingConnectionsList
 export interface EddaIncomingConnectionsList {
   id: ChangeSetId;
-  componentConnections: Reference[];
+  componentConnections: Reference<EntityKind.IncomingConnections>[];
 }
 
-export interface BifrostIncomingConnectionsList {
-  id: ChangeSetId;
-  componentConnections: BifrostComponentConnections[];
-}
-
+// EntityKind.IncomingConnections
 export interface EddaIncomingConnections {
   id: ComponentId;
   connections: EddaConnection[];
 }
 
+// EntityKind.IncomingConnectionsList
+export interface BifrostIncomingConnectionsList {
+  id: ChangeSetId;
+  componentConnections: BifrostComponentConnections[];
+}
+
+// EntityKind.IncomingConnections
 export interface BifrostComponentConnections {
   id: ComponentId;
   component: BifrostComponent;

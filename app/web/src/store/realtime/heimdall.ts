@@ -39,22 +39,8 @@ const bustTanStackCache: BustCacheFn = (
 ) => {
   const queryKey = [workspaceId, changeSetId, kind, id];
   // eslint-disable-next-line no-console
-  console.log("💥 bust cache for", queryKey);
+  console.log("💥 bust tanstack cache for", queryKey);
   queryClient.invalidateQueries({ queryKey });
-
-  // TODO: order matters, or code gen has to re-bust sources of references
-  if (kind === "View") {
-    queryClient.invalidateQueries({
-      queryKey: [workspaceId, changeSetId, "ViewList", changeSetId],
-    });
-    // eslint-disable-next-line no-console
-    console.log("💥 bust cache for", [
-      workspaceId,
-      changeSetId,
-      "ViewList",
-      changeSetId,
-    ]);
-  }
 };
 
 const workerUrl =
@@ -100,10 +86,7 @@ export const bifrost = async <T>(args: {
     args.kind,
     args.id,
   );
-  if (maybeAtomDoc === -1) {
-    db.mjolnir(args.workspaceId, args.changeSetId, args.kind, args.id);
-    return null;
-  }
+  if (maybeAtomDoc === -1) return null;
   return reactive(maybeAtomDoc);
 };
 
@@ -150,7 +133,7 @@ export const getOutgoingConnections = async (args: {
     args.changeSetId,
   );
   if (connectionsById) return reactive(connectionsById);
-  return new DefaultMap<string, BifrostConnection[]>(() => []);
+  return new DefaultMap<string, Record<string, BifrostConnection>>(() => ({}));
 };
 
 // cold start
