@@ -303,7 +303,9 @@ const nameFormData = computed<NameFormData>(() => {
   return { name: component.value?.name ?? "" };
 });
 
-const wForm = useWatchedForm<NameFormData>("component.name");
+const wForm = useWatchedForm<NameFormData>(
+  `component.name.${props.componentId}`,
+);
 
 const route = useRoute();
 

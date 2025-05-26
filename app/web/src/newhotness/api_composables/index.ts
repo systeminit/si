@@ -3,6 +3,7 @@ import { AxiosResponse } from "axios";
 import { trace, Span } from "@opentelemetry/api";
 import { sdfApiInstance as sdf } from "@/store/apis.web";
 import { assertIsDefined, Context } from "../types";
+import * as rainbow from "../logic_composables/rainbow_counter";
 
 export * as componentTypes from "./component";
 export * as funcRunTypes from "./func_run";
@@ -77,7 +78,7 @@ export class APICall<Response> {
   ctx: Context;
   canMutateHead: boolean;
   description: string;
-  obs: Obs;
+  obs: LabeledObs;
 
   constructor(
     ctx: Context,
@@ -130,6 +131,7 @@ export class APICall<Response> {
   async put<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
     this.obs.inFlight.value = true;
     this.obs.bifrosting.value = true;
+    rainbow.add(this.obs.label);
     if (this.obs.isWatched) this.obs.span = tracer.startSpan("watchedApi");
     let newChangeSetId;
     if (!this.canMutateHead && this.ctx.onHead.value) {
@@ -149,6 +151,7 @@ export class APICall<Response> {
   async post<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
     this.obs.inFlight.value = true;
     this.obs.bifrosting.value = true;
+    rainbow.add(this.obs.label);
     if (this.obs.isWatched) this.obs.span = tracer.startSpan("watchedApi");
     let newChangeSetId;
     if (!this.canMutateHead && this.ctx.onHead.value) {
@@ -184,11 +187,12 @@ export const useApi = () => {
     }
   };
 
-  const obs: Obs | LabeledObs = {
+  const obs: Obs = {
     inFlight: ref(false),
     bifrosting: ref(false),
     isWatched: false,
   };
+  let labeledObs: LabeledObs;
   const endpoint = <Response>(key: routes, args?: Record<string, string>) => {
     let path = _routes[key];
     const needsArgs = path.includes("<") && path.includes(">");
@@ -204,23 +208,19 @@ export const useApi = () => {
     const desc = `${key} ${argList.join(": ")} by ${
       ctx.user?.name
     } on ${new Date().toLocaleDateString()}`;
-    return new APICall<Response>(
-      ctx,
-      path,
-      canMutateHead,
-      desc,
-      setLabel(obs, `${key}.${argList.join(".")}`),
-    );
+    labeledObs = setLabel(obs, `${key}.${argList.join(".")}`);
+    return new APICall<Response>(ctx, path, canMutateHead, desc, labeledObs);
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const setWatchFn = (fn: () => any) => {
-    obs.isWatched = true;
+    labeledObs.isWatched = true;
     watch(
       fn,
       () => {
-        obs.bifrosting.value = false;
-        if (obs.span) obs.span.end();
+        labeledObs.bifrosting.value = false;
+        rainbow.remove(labeledObs.label);
+        if (labeledObs.span) labeledObs.span.end();
       },
       { once: true },
     );

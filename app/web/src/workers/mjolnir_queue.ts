@@ -46,6 +46,8 @@ export const maybeMjolnir = async (desc: Description, fn: () => void) => {
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(`mjolnir job failed: ${e}`, desc, e);
+      const d = descToString(desc);
+      inflight.delete(d);
     }
   }
 };

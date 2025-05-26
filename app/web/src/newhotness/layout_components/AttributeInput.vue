@@ -375,7 +375,9 @@ const path = computed(() => {
 });
 
 type AttrData = { value: string };
-const wForm = useWatchedForm<AttrData>("component.av.prop");
+const wForm = useWatchedForm<AttrData>(
+  `component.av.prop.${props.attributeValueId}`,
+);
 const attrData = computed<AttrData>(() => {
   return { value: props.value };
 });

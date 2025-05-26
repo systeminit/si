@@ -49,6 +49,7 @@ import {
   IndexObjectMeta,
   BustCacheFn,
   Ragnarok,
+  RainbowFn,
 } from "./types/dbinterface";
 import {
   BifrostViewList,
@@ -791,9 +792,10 @@ const mjolnir = async (
   id: Id,
   checksum?: Checksum,
 ) => {
-  maybeMjolnir({ workspaceId, changeSetId, kind, id }, () =>
-    mjolnirJob(workspaceId, changeSetId, kind, id, checksum),
-  );
+  maybeMjolnir({ workspaceId, changeSetId, kind, id }, () => {
+    inFlight(changeSetId, `${kind}.${id}`);
+    return mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
+  });
 };
 
 const mjolnirJob = async (
@@ -837,6 +839,7 @@ const mjolnirJob = async (
     }
   });
 
+  returned(changeSetId, `${kind}.${id}`);
   hasReturned({
     workspaceId,
     changeSetId,
@@ -1918,6 +1921,10 @@ const get = async (
 let socket: ReconnectingWebSocket;
 let bustCacheFn: BustCacheFn;
 let bearerToken: string;
+
+let inFlight: RainbowFn;
+let returned: RainbowFn;
+
 const dbInterface: DBInterface = {
   setBearer(token) {
     bearerToken = token;
@@ -1999,6 +2006,10 @@ const dbInterface: DBInterface = {
                 );
               await handlePatchMessage(data, span);
             } else if (data.kind === MessageKind.MJOLNIR) {
+              returned(
+                data.atom.changeSetId,
+                `${data.atom.kind}.${data.atom.id}`,
+              );
               hasReturned({
                 workspaceId: data.atom.workspaceId,
                 changeSetId: data.atom.changeSetId,
@@ -2052,6 +2063,13 @@ const dbInterface: DBInterface = {
 
   async addListenerBustCache(cb: BustCacheFn) {
     bustCacheFn = cb;
+  },
+
+  async addListenerInFlight(cb: RainbowFn) {
+    inFlight = cb;
+  },
+  async addListenerReturned(cb: RainbowFn) {
+    returned = cb;
   },
 
   get,

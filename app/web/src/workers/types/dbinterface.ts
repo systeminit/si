@@ -30,6 +30,8 @@ export type OutgoingConnections = DefaultMap<
   string,
   Record<string, BifrostConnection>
 >;
+
+export type RainbowFn = (changeSetId: ChangeSetId, label: string) => void;
 export interface DBInterface {
   initDB: (testing: boolean) => Promise<void>;
   migrate: (testing: boolean) => void;
@@ -73,6 +75,8 @@ export interface DBInterface {
   partialKeyFromKindAndId(kind: EntityKind, id: Id): QueryKey;
   kindAndIdFromKey(key: QueryKey): { kind: EntityKind; id: Id };
   addListenerBustCache(fn: BustCacheFn): void;
+  addListenerInFlight(fn: RainbowFn): void;
+  addListenerReturned(fn: RainbowFn): void;
   atomChecksumsFor(
     changeSetId: ChangeSetId,
   ): Promise<Record<QueryKey, Checksum>>;

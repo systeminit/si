@@ -178,7 +178,9 @@ const add = async () => {
 const router = useRouter();
 const route = useRoute();
 const showKey = ref(false);
-const wForm = useWatchedForm<{ key: string }>("component.av.key");
+const wForm = useWatchedForm<{ key: string }>(
+  `component.av.key.${props.attributeTree.prop?.id}`,
+);
 const keyData = ref({ key: "" });
 const keyApi = useApi();
 const keyForm = wForm.newForm({
