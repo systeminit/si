@@ -9,50 +9,50 @@ on:
         type: string
 
 jobs:
-  build-and-publish-npm:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: generated-sdks/typescript
+  # build-and-publish-npm:
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
+  #     - name: Set up Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "20"
+  #         registry-url: https://registry.npmjs.org
 
-      - name: Install dependencies
-        run: npm install
+  #     - name: Install dependencies
+  #       working-directory: generated-sdks/typescript
+  #       run: npm install
 
-      - name: Update version in package.json
-        run: |
-          sed -i "s/\"version\": \".*\"/\"version\": \"${{ github.event.inputs.version }}\"/g" package.json
+  #     - name: Update version in package.json
+  #       working-directory: generated-sdks/typescript
+  #       run: |
+  #         sed -i "s/\"version\": \".*\"/\"version\": \"${{ github.event.inputs.version }}\"/g" package.json
+  #         cat package.json
 
-      - name: Build package
-        run: npm run build
+  #     - name: Build package
+  #       run: npm run build
+  #       working-directory: generated-sdks/typescript
 
-      - name: Publish to NPM
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public
+  #     - name: Publish to NPM
+  #       working-directory: generated-sdks/typescript
+  #       run: npm publish --access public
+  #       env:
+  #         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   build-and-publish-jsr:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: generated-sdks/typescript
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Deno
-        uses: denoland/setup-deno@v1
+        uses: denoland/setup-deno@v2
         with:
-          deno-version: v1.x
+          deno-version: v2.x
 
       - name: Set up Node.js (for build)
         uses: actions/setup-node@v4
@@ -60,18 +60,23 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
+        working-directory: generated-sdks/typescript
         run: npm install
 
       - name: Update version in deno.json
+        working-directory: generated-sdks/typescript
         run: |
           sed -i "s/\"version\": \".*\"/\"version\": \"${{ github.event.inputs.version }}\"/g" deno.json
+          cat deno.json
 
       - name: Build package
+        working-directory: generated-sdks/typescript
         run: npm run build
 
       - name: Publish to JSR
+        working-directory: generated-sdks/typescript
         env:
           JSR_TOKEN: ${{ secrets.JSR_TOKEN }}
-        run: |
-          deno login --token "${JSR_TOKEN}" jsr.io
-          deno publish
+        run:
+          deno publish --token="$JSR_TOKEN" --allow-slow-types
+          --unstable-sloppy-imports --allow-dirty

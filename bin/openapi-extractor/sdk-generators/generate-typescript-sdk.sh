@@ -186,17 +186,35 @@ EOF
   "name": "@systeminit/api-client",
   "version": "${PACKAGE_VERSION}",
   "exports": {
-    ".": "./dist/esm/index.js"
+    ".": "./index.ts"
   },
-  "tasks": {
-    "build": "npm run build"
+  "lint": {
+    "rules": {
+      "exclude": [
+        "missing-explicit-return-type",
+        "no-explicit-any",
+        "camelcase"
+      ]
+    }
+  },
+  "publish": {
+    "exclude": [
+      ".git",
+      "node_modules",
+      "dist",
+      ".openapi-generator*",
+      "package*.json",
+      "tsconfig.json",
+      ".npmignore"
+    ]
   },
   "fmt": {
     "lineWidth": 100,
     "indentWidth": 2,
     "singleQuote": true,
     "semiColons": true
-  }
+  },
+  "workspace": []
 }
 EOF
   echo "Created deno.json for JSR publishing"
