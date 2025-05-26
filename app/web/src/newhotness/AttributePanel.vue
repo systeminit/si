@@ -226,7 +226,9 @@ const secret = computed(
 const keyApi = useApi();
 const secretApi = useApi();
 
-const wForm = useWatchedForm<Record<string, string>>("component.secret");
+const wForm = useWatchedForm<Record<string, string>>(
+  `component.secret.${props.component.id}`,
+);
 const secretForm = wForm.newForm({
   data: secretFormData,
   onSubmit: async ({ value }) => {

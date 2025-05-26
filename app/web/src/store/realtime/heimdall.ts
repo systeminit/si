@@ -9,6 +9,7 @@ import {
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Context } from "@/newhotness/types";
 import { DefaultMap } from "@/utils/defaultmap";
+import * as rainbow from "@/newhotness/logic_composables/rainbow_counter";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useWorkspacesStore } from "../workspaces.store";
 
@@ -57,6 +58,18 @@ const db: Comlink.Remote<DBInterface> = Comlink.wrap(worker);
 // but stuff happens in here we do need to wait for
 // figure that out :sweat:
 db.addListenerBustCache(Comlink.proxy(bustTanStackCache));
+
+const inFlight = (changeSetId: ChangeSetId, label: string) => {
+  const ctx: Context | undefined = inject("CONTEXT");
+  if (ctx?.changeSetId.value === changeSetId) rainbow.add(label);
+};
+db.addListenerInFlight(Comlink.proxy(inFlight));
+
+const returned = (changeSetId: ChangeSetId, label: string) => {
+  const ctx: Context | undefined = inject("CONTEXT");
+  if (ctx?.changeSetId.value === changeSetId) rainbow.remove(label);
+};
+db.addListenerReturned(Comlink.proxy(returned));
 
 export const bifrostReconnect = async () => {
   await db.bifrostReconnect();

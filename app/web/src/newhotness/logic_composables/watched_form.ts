@@ -2,6 +2,7 @@ import { ref, unref, watch, Ref, ComputedRef, inject } from "vue";
 import { useForm, formOptions } from "@tanstack/vue-form";
 import { Span, trace } from "@opentelemetry/api";
 import { assertIsDefined, Context } from "../types";
+import * as rainbow from "./rainbow_counter";
 
 const tracer = trace.getTracer("bifrost");
 
@@ -91,6 +92,7 @@ export const useWatchedForm = <Data>(label: string) => {
         start = Date.now();
         onSubmit(props);
         bifrosting.value = true;
+        rainbow.add(label);
       },
       validators,
     });
@@ -108,6 +110,7 @@ export const useWatchedForm = <Data>(label: string) => {
     if (watchFn) {
       watch(watchFn, () => {
         bifrosting.value = false;
+        rainbow.remove(label);
         const end = Date.now();
         observe(end - start);
         wForm.reset(unref(data));
@@ -115,6 +118,7 @@ export const useWatchedForm = <Data>(label: string) => {
     } else {
       watch(data, () => {
         bifrosting.value = false;
+        rainbow.remove(label);
         const end = Date.now();
         observe(end - start);
         wForm.reset(unref(data));

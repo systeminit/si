@@ -38,6 +38,14 @@
     />
 
     <ChangeSetPanel />
+
+    <div v-if="rainbowCount > 0" class="mt-xs ml-xs relative">
+      <span
+        class="text-action-400 text-xs font-bold absolute w-[32px] top-[9px] text-center"
+        >{{ rainbowCount }}</span
+      >
+      <Icon size="lg" name="loader" tone="action" />
+    </div>
   </div>
 </template>
 
@@ -52,6 +60,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { computed, ref, watch } from "vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
+import { rainbowCount } from "@/newhotness/logic_composables/rainbow_counter";
 import ChangeSetPanel from "./ChangeSetPanel.vue";
 
 const workspacesStore = useWorkspacesStore();
