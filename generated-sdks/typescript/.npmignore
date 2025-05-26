@@ -1,1 +1,11 @@
-# empty npmignore to ensure all required files (e.g., in the dist folder) are published by npm
+
+# Ignore TypeScript config files
+tsconfig.json
+tsconfig.esm.json
+
+# Ignore environment configuration files
+*.env
+
+# Ignore git and other version control files
+.git/
+.gitignore

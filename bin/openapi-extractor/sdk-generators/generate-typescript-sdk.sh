@@ -116,19 +116,19 @@ EOL
     "infrastructure-as-code"
   ],
   "license": "${LICENSE_ID}",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/cjs/index.d.ts",
   "module": "./dist/esm/index.js",
   "exports": {
     ".": {
       "import": "./dist/esm/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/cjs/index.js",
+      types": "./dist/cjs/index.d.ts"
     }
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsc && tsc -p tsconfig.esm.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json",
     "prepare": "npm run build",
     "test": "echo \"No tests yet\""
   },
@@ -144,7 +144,13 @@ EOL
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "files": [
+    "dist/cjs",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ]
 }
 EOF
 
@@ -152,6 +158,24 @@ EOF
     mv "$TMP_PACKAGE_JSON" "$PACKAGE_JSON"
     echo "package.json updated with all metadata"
   fi
+
+  NPMIGNORE="$OUTPUT_DIR/.npmignore"
+  echo "Creating .npmignore file for NPM publishing ..."
+
+  cat >"$NPMIGNORE" <<EOF
+
+# Ignore TypeScript config files
+tsconfig.json
+tsconfig.esm.json
+
+# Ignore environment configuration files
+*.env
+
+# Ignore git and other version control files
+.git/
+.gitignore
+EOF
+  echo "Created .npmignore file for NPM publishing"
 
   # Create deno.json for JSR publishing
   DENO_JSON="$OUTPUT_DIR/deno.json"
@@ -163,9 +187,6 @@ EOF
   "version": "${PACKAGE_VERSION}",
   "exports": {
     ".": "./dist/esm/index.js"
-  },
-  "publish": {
-    "include": ["dist/esm/**/*", "LICENSE", "README.md"]
   },
   "tasks": {
     "build": "npm run build"
@@ -198,7 +219,7 @@ EOF
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "dist",
+    "outDir": "dist/cjs",
     "rootDir": ".",
     "lib": ["ES2020", "DOM"],
     "typeRoots": ["node_modules/@types"]
@@ -226,7 +247,8 @@ EOF
   "compilerOptions": {
     "module": "ESNext",
     "outDir": "dist/esm"
-  }
+  },
+  "include": ["*.ts"]
 }
 EOF
 

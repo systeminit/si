@@ -4,9 +4,6 @@
   "exports": {
     ".": "./dist/esm/index.js"
   },
-  "publish": {
-    "include": ["dist/esm/**/*", "LICENSE", "README.md"]
-  },
   "tasks": {
     "build": "npm run build"
   },
