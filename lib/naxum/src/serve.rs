@@ -22,6 +22,7 @@ use futures::{
 use telemetry_utils::metric;
 use tokio::{
     sync::{
+        Notify,
         OwnedSemaphorePermit,
         Semaphore,
     },
@@ -175,11 +176,20 @@ where
         let tracker = TaskTracker::new();
         let graceful_token = CancellationToken::new();
 
+        let notify_graceful_shutdown = Arc::new(Notify::new());
+        let terminate_graceful_shutdown = notify_graceful_shutdown.clone();
+
         let token = graceful_token.clone();
         tracker.spawn(async move {
-            signal.await;
-            debug!("received graceful shutdown signal, telling tasks to shutdown");
-            token.cancel();
+            tokio::select! {
+                _ = signal => {
+                    debug!("received graceful shutdown signal, telling tasks to shutdown");
+                    token.cancel();
+                }
+                _ = terminate_graceful_shutdown.notified() => {
+                    trace!("graceful shutdown task terminating");
+                }
+            }
         });
 
         let semaphore = limit.map(|limit| Arc::new(Semaphore::new(limit)));
@@ -239,6 +249,8 @@ where
                     drop(permit);
                 });
             }
+
+            notify_graceful_shutdown.notify_one();
 
             trace!("waiting for {} task(s) to finish", tracker.len());
             let mut progress_interval = time::interval_at(
