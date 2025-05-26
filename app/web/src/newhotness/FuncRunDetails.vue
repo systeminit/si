@@ -38,10 +38,11 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, onBeforeUnmount, ref, inject } from "vue";
+import { computed, onMounted, onBeforeUnmount, ref, inject, unref } from "vue";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { VButton } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
+import { useRouter } from "vue-router";
 import { funcRunStatus, FuncRun } from "@/store/func_runs.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import FuncRunDetailsLayout from "./layout_components/FuncRunDetailsLayout.vue";
@@ -73,30 +74,36 @@ const props = defineProps<{
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
 
-// const router = useRouter();
+const router = useRouter();
 const queryClient = useQueryClient();
 const realtimeStore = useRealtimeStore();
 const isLive = ref(false);
 
 // Action handlers
-const removeAction = () => {
+const removeApi = useApi();
+const removeAction = async () => {
   if (funcRun.value?.actionId) {
-    // THOU SHALT NOT USE ANY MORE STORES
-    // actionsStore.CANCEL([funcRun.value.actionId]);
-    /* router.push({
+    const call = removeApi.endpoint(routes.ActionCancel, {
+      id: funcRun.value.actionId,
+    });
+    await call.put({});
+    router.push({
       name: "new-hotness",
       params: {
         workspacePk: unref(ctx.workspacePk),
         changeSetId: unref(ctx.changeSetId),
       },
-    }); */
+    });
   }
 };
 
-const retryAction = () => {
+const retryApi = useApi();
+const retryAction = async () => {
   if (funcRun.value?.actionId) {
-    // actionsStore.RETRY([funcRun.value.actionId]);
-    // Stay on the page to monitor the retried run
+    const call = retryApi.endpoint(routes.ActionRetry, {
+      id: funcRun.value.actionId,
+    });
+    await call.put({});
   }
 };
 

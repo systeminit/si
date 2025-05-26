@@ -19,6 +19,7 @@ use crate::{
     },
 };
 
+pub mod action;
 pub mod admin;
 pub mod approval_requirement_definition;
 pub mod audit_log;
@@ -54,6 +55,7 @@ fn workspace_routes(state: AppState) -> Router<AppState> {
                 .nest("/schema-variants", variant::v2_routes())
                 .nest("/management", management::v2_routes())
                 .nest("/views", view::v2_routes())
+                .nest("/action", action::v2_routes())
                 .nest(
                     "/approval-requirement-definitions",
                     approval_requirement_definition::v2_routes(),
