@@ -11,15 +11,14 @@ use si_frontend_mv_types::component::{
 };
 use telemetry::prelude::*;
 
-use crate::schema_variant;
-
 pub mod attribute_tree;
 
 #[instrument(name = "dal_materialized_views.component", level = "debug", skip_all)]
 pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Result<ComponentMv> {
     let ctx = &ctx;
-    let schema_variant = Component::schema_variant_for_component_id(ctx, component_id).await?;
-    let schema = schema_variant.schema(ctx).await?;
+    let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
+    let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
+    let schema = SchemaVariant::schema_for_schema_variant_id(ctx, schema_variant_id).await?;
     let has_resource = Component::resource_by_id(ctx, component_id)
         .await?
         .is_some();
@@ -40,8 +39,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         diff,
     };
 
-    let sv = schema_variant::assemble(ctx.to_owned(), schema_variant.id).await?;
-    let is_secret_defining = SchemaVariant::is_secret_defining(ctx, schema_variant.id).await?;
+    let is_secret_defining = SchemaVariant::is_secret_defining(ctx, schema_variant_id).await?;
     let attribute_tree = attribute_tree::assemble(ctx.to_owned(), component_id).await?;
     let input_count = attribute_tree
         .attribute_values
@@ -54,7 +52,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         color,
         schema_name: schema.name.to_owned(),
         schema_id: schema.id(),
-        schema_variant_id: (&sv).into(),
+        schema_variant_id: schema_variant_id.into(),
         schema_variant_name: schema_variant.display_name().to_owned(),
         schema_category: schema_variant.category().to_owned(),
         schema_variant_description: schema_variant.description().to_owned(),

@@ -40,7 +40,6 @@ pub mod view;
 pub use crate::{
     materialized_view::MaterializedView,
     schema_variant::{
-        ComponentType,
         SchemaVariant,
         UninstalledVariant,
     },

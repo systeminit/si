@@ -121,7 +121,7 @@
               >
                 <TreeNode
                   v-for="asset in category.assets"
-                  :key="asset.id"
+                  :key="asset.variant.schemaId"
                   :class="
                     clsx(
                       'hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
@@ -129,7 +129,8 @@
                         'bg-shade-0 hover:outline-action-500',
                         'bg-neutral-800 hover:outline-action-300',
                       ),
-                      selectedAsset?.id === asset.id && [
+                      selectedAsset?.variant.schemaId ===
+                        asset.variant.schemaId && [
                         'add-component-selected-item',
                         themeClasses(
                           'outline-action-500 bg-action-200',
@@ -145,7 +146,12 @@
                     <!-- TODO(Wendy) - style this text based on the fuzzy search! -->
                     {{ asset.name }}
                   </template>
-                  <template v-if="selectedAsset?.id === asset.id" #icons>
+                  <template
+                    v-if="
+                      selectedAsset?.variant.schemaId === asset.variant.schemaId
+                    "
+                    #icons
+                  >
                     <div
                       :class="
                         clsx(
@@ -170,7 +176,7 @@
             <p><VueMarkdown :source="selectedAsset.variant.description" /></p>
           </div>
           <div class="props scrollable border p-xs max-h-[22svh]">
-            <template v-if="'propTree' in selectedAsset.variant">
+            <template v-if="'propTree' in selectedAsset">
               <PropTreeComponent
                 v-for="tree in selectedAssetProps.children"
                 :key="tree.id"
@@ -211,6 +217,8 @@ import {
   Prop,
   PropTree,
   EntityKind,
+  SchemaVariant,
+  UninstalledVariant,
 } from "@/workers/types/entity_kind_types";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import FilterTile from "./layout_components/FilterTile.vue";
@@ -227,10 +235,12 @@ const bannerClosed = ref(false);
 
 const selectedAsset = ref<UIAsset | undefined>(undefined);
 const selectAsset = (asset: UIAsset) => {
-  if (selectedAsset.value?.id === asset.id) onEnter();
+  // TODO - needs to account for schema variant as well
+  if (selectedAsset.value?.variant.schemaId === asset.variant.schemaId)
+    onEnter();
   else selectedAsset.value = asset;
   selectionIndex.value = filteredAssetsFlat.value.findIndex(
-    (a) => a.id === asset.id,
+    (a) => a.variant.schemaId === asset.variant.schemaId,
   );
 
   // scroll selected item into view
@@ -311,20 +321,22 @@ const api = useApi();
 
 const onEnter = async () => {
   if (!selectedAsset.value) return;
-  const schemaType = selectedAsset.value.type;
+  const variant =
+    "uninstalled" in selectedAsset.value.variant
+      ? (selectedAsset.value.variant as UninstalledVariant)
+      : (selectedAsset.value.variant as SchemaVariant);
   let params: componentTypes.ComponentIdType;
-  if (schemaType === "installed")
+  if ("schemaVariantId" in variant)
     params = {
-      schemaType,
-      schemaVariantId: selectedAsset.value.variant.schemaVariantId,
+      schemaType: "installed",
+      schemaVariantId: variant.schemaVariantId,
     };
   else
     params = {
-      schemaType,
-      schemaId: selectedAsset.value.variant.schemaId,
+      schemaType: "uninstalled",
+      schemaId: variant.schemaId,
     };
 
-  // TODO "force changeset"
   const payload = componentTypes.createComponentPayload(params);
   const call = api.endpoint<{ componentId: string }>(routes.CreateComponent, {
     viewId: viewId.value,
@@ -396,9 +408,10 @@ type UICategory = UICategoryInfo & {
   assets: UIAsset[];
 };
 
-type UIAsset = CategoryVariant & {
+type UIAsset = {
   name: string;
-  category: UICategoryInfo;
+  variant: CategoryVariant;
+  uiCategory: UICategoryInfo;
 };
 
 const makeKey = useMakeKey();
@@ -423,7 +436,7 @@ const categories = computed(() => {
     const firstSV = rawCategory.schemaVariants[0]!;
     const categoryInfo: UICategoryInfo = {
       name: rawCategory.displayName,
-      color: firstSV.variant.color,
+      color: firstSV.color,
       icon: pickIcon(rawCategory.displayName),
     };
     const category: UICategory = {
@@ -431,10 +444,10 @@ const categories = computed(() => {
       assets: [],
     };
     rawCategory.schemaVariants.forEach((sv) => {
-      const asset = {
-        ...(sv as CategoryVariant), // unsure why typing can't figure this out and needs it
-        name: sv.variant.displayName ?? sv.variant.schemaName,
-        category: categoryInfo,
+      const asset: UIAsset = {
+        variant: sv,
+        name: sv.displayName ?? sv.schemaName,
+        uiCategory: categoryInfo,
       };
       category.assets.push(asset);
     });
@@ -460,7 +473,7 @@ const filteredCategories = computed(() => {
   if (fuzzySearchString.value !== "") {
     const fzf = new Fzf(assets, {
       casing: "case-insensitive",
-      selector: (a: UIAsset) => `${a.name} ${a.category.name}`,
+      selector: (a: UIAsset) => `${a.name} ${a.uiCategory.name}`,
     });
 
     const results = fzf.find(fuzzySearchString.value);
@@ -469,13 +482,13 @@ const filteredCategories = computed(() => {
     // reconstruct categories from the results (this is why asset.category exists)
     const categories: Record<string, UICategory> = {};
     items.forEach((item) => {
-      let cat: UICategory | undefined = categories[item.category.name];
+      let cat: UICategory | undefined = categories[item.uiCategory.name];
       if (!cat) {
         cat = {
-          ...item.category,
+          ...item.uiCategory,
           assets: [],
         };
-        categories[item.category.name] = cat;
+        categories[item.uiCategory.name] = cat;
       }
       cat.assets.push(item);
     });

@@ -113,6 +113,17 @@ export interface BifrostSchemaVariantCategories {
   id: string; // change set id
   categories: Categories;
 }
+export interface EddaSchemaVariantCategories {
+  id: string; // change set id
+  categories: Array<{
+    displayName: string;
+    schemaVariants: Array<{
+      type: "uninstalled" | "installed";
+      id: string;
+    }>;
+  }>;
+  uninstalled: Record<string, UninstalledVariant>;
+}
 
 export interface BifrostActionViewList {
   id: ChangeSetId;
@@ -133,7 +144,7 @@ export interface EddaComponent {
   color?: string;
   schemaName: string;
   schemaId: SchemaId;
-  schemaVariantId: Reference<EntityKind.SchemaVariant>;
+  schemaVariantId: WeakReference<EntityKind.SchemaVariant>;
   schemaVariantName: string;
   schemaVariantDescription?: string;
   schemaVariantDocLink?: string;
@@ -165,23 +176,10 @@ export interface UninstalledVariant {
   color: string;
   link: string | null;
   description: string | null;
+  uninstalled: "uninstalled";
 }
 
-export interface CategoryInstalledVariant {
-  type: "installed";
-  id: string;
-  variant: SchemaVariant;
-}
-
-export interface CategoryUninstalledVariant {
-  type: "uninstalled";
-  id: string;
-  variant: UninstalledVariant;
-}
-
-export type CategoryVariant =
-  | CategoryInstalledVariant
-  | CategoryUninstalledVariant;
+export type CategoryVariant = SchemaVariant | UninstalledVariant;
 
 export type Categories = {
   displayName: string;

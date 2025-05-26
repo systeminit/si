@@ -205,8 +205,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
     };
 
     let sv_id = created_component.schema_variant(ctx).await?.id();
-    let schema_variant_mv =
-        dal_materialized_views::schema_variant::assemble(ctx.clone(), sv_id).await?;
+   
     let attribute_tree = dal_materialized_views::component::attribute_tree::assemble(
         ctx.clone(),
         created_component.id(),
@@ -220,7 +219,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
             color: created_component.color(ctx).await?.to_owned(),
             schema_name: schema_name.to_owned(),
             schema_id: schema.id(),
-            schema_variant_id: (&schema_variant_mv).into(),
+            schema_variant_id: sv_id.into(),
             schema_variant_name: schema_variant.display_name().to_owned(),
             schema_category: schema_variant.category().to_owned(),
             schema_variant_description: schema_variant.description().to_owned(),
