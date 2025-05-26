@@ -123,7 +123,7 @@ EOL
     ".": {
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js",
-      types": "./dist/cjs/index.d.ts"
+      "types": "./dist/cjs/index.d.ts"
     }
   },
   "sideEffects": false,
