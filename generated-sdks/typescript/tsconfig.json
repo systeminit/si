@@ -8,7 +8,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "dist",
+    "outDir": "dist/cjs",
     "rootDir": ".",
     "lib": ["ES2020", "DOM"],
     "typeRoots": ["node_modules/@types"]

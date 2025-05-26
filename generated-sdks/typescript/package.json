@@ -21,19 +21,19 @@
     "infrastructure-as-code"
   ],
   "license": "Apache-2.0",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/cjs/index.d.ts",
   "module": "./dist/esm/index.js",
   "exports": {
     ".": {
       "import": "./dist/esm/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/cjs/index.js",
+      types": "./dist/cjs/index.d.ts"
     }
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsc && tsc -p tsconfig.esm.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.esm.json",
     "prepare": "npm run build",
     "test": "echo \"No tests yet\""
   },
@@ -49,5 +49,11 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "files": [
+    "dist/cjs",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ]
 }
