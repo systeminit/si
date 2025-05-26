@@ -20,13 +20,21 @@ export enum routes {
   CreateView = "CreateView",
   CreateSecret = "CreateSecret",
   GetPublicKey = "GetPublicKey",
+  ActionAdd = "ActionAdd",
+  ActionCancel = "ActionCancel",
+  ActionHold = "ActionHold",
+  ActionRetry = "ActionRetry",
 }
 
 /**
  * Once we implement the action API calls in here
  * Those routes would also exist in here
  */
-const CAN_MUTATE_ON_HEAD: readonly routes[] = [] as const;
+const CAN_MUTATE_ON_HEAD: readonly routes[] = [
+  routes.ActionCancel,
+  routes.ActionHold,
+  routes.ActionRetry,
+] as const;
 
 const _routes: Record<routes, string> = {
   GetFuncRunsPaginated: "/funcs/runs/paginated",
@@ -39,6 +47,10 @@ const _routes: Record<routes, string> = {
   CreateView: "/views",
   CreateSecret: "/components/<id>/secret",
   GetPublicKey: "/components/<id>/secret/public_key",
+  ActionAdd: "/action/add",
+  ActionCancel: "/action/<id>/cancel",
+  ActionHold: "/action/<id>/put_on_hold",
+  ActionRetry: "/action/<id>/retry",
 } as const;
 
 // the mechanics

@@ -33,7 +33,7 @@ import {
 } from "@/workers/types/entity_kind_types";
 import EmptyStateCard from "@/components/EmptyStateCard.vue";
 import { ActionId, ActionPrototypeId } from "@/api/sdf/dal/action";
-import ActionWidget from "@/mead-hall/ActionWidget.vue";
+import ActionWidget from "./ActionWidget.vue";
 
 const props = defineProps<{
   component: BifrostComponent;

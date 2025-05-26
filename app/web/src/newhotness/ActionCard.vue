@@ -137,6 +137,7 @@ import {
 import ConfirmHoldModal from "@/components/Actions/ConfirmHoldModal.vue";
 import DetailsPanelMenuIcon from "@/newhotness/layout_components/DetailsPanelMenuIcon.vue";
 import ActionCardLayout from "@/mead-hall/ActionCardLayout.vue";
+import { routes, useApi } from "./api_composables";
 
 const props = defineProps<{
   action: ActionProposedView;
@@ -220,16 +221,22 @@ const hold = () => {
   }
 };
 
-const finishHold = () => {
-  // actionsStore.PUT_ACTION_ON_HOLD([props.action.id]);
+const holdApi = useApi();
+const finishHold = async () => {
+  const call = holdApi.endpoint(routes.ActionHold, { id: props.action.id });
+  await call.put({});
   confirmRef.value?.close();
 };
 
-const retry = () => {
-  // actionsStore.RETRY([props.action.id]);
+const retryApi = useApi();
+const retry = async () => {
+  const call = retryApi.endpoint(routes.ActionRetry, { id: props.action.id });
+  await call.put({});
 };
 
-const remove = () => {
-  // actionsStore.CANCEL([props.action.id]);
+const removeApi = useApi();
+const remove = async () => {
+  const call = removeApi.endpoint(routes.ActionCancel, { id: props.action.id });
+  await call.put({});
 };
 </script>
