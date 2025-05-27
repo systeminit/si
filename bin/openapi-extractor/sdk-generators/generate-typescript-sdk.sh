@@ -185,6 +185,7 @@ EOF
 {
   "name": "@systeminit/api-client",
   "version": "${PACKAGE_VERSION}",
+  "description": "${ARTIFACT_DESCRIPTION}",
   "exports": {
     ".": "./index.ts"
   },
@@ -214,6 +215,8 @@ EOF
     "singleQuote": true,
     "semiColons": true
   },
+  "homepage": "${DEVELOPER_ORG_URL}",
+  "license": "${LICENSE_ID}",
   "workspace": []
 }
 EOF
