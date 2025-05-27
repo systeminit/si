@@ -9,41 +9,44 @@ on:
         type: string
 
 jobs:
-  # build-and-publish-npm:
-  #   runs-on: ubuntu-latest
+  build-and-publish-npm:
+    runs-on: ubuntu-latest
 
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  #     - name: Set up Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: "20"
-  #         registry-url: https://registry.npmjs.org
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: https://registry.npmjs.org
 
-  #     - name: Install dependencies
-  #       working-directory: generated-sdks/typescript
-  #       run: npm install
+      - name: Install dependencies
+        working-directory: generated-sdks/typescript
+        run: npm install
 
-  #     - name: Update version in package.json
-  #       working-directory: generated-sdks/typescript
-  #       run: |
-  #         sed -i "s/\"version\": \".*\"/\"version\": \"${{ github.event.inputs.version }}\"/g" package.json
-  #         cat package.json
+      - name: Update version in package.json
+        working-directory: generated-sdks/typescript
+        run: |
+          sed -i "s/\"version\": \".*\"/\"version\": \"${{ github.event.inputs.version }}\"/g" package.json
+          cat package.json
 
-  #     - name: Build package
-  #       run: npm run build
-  #       working-directory: generated-sdks/typescript
+      - name: Build package
+        run: npm run build
+        working-directory: generated-sdks/typescript
 
-  #     - name: Publish to NPM
-  #       working-directory: generated-sdks/typescript
-  #       run: npm publish --access public
-  #       env:
-  #         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish to NPM
+        working-directory: generated-sdks/typescript
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   build-and-publish-jsr:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout code
@@ -75,8 +78,5 @@ jobs:
 
       - name: Publish to JSR
         working-directory: generated-sdks/typescript
-        env:
-          JSR_TOKEN: ${{ secrets.JSR_TOKEN }}
         run:
-          deno publish --token="$JSR_TOKEN" --allow-slow-types
-          --unstable-sloppy-imports --allow-dirty
+          deno publish --allow-slow-types --unstable-sloppy-imports --allow-dirty
