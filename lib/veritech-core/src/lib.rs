@@ -48,7 +48,6 @@ const NATS_KILL_EXECUTION_DEFAULT_SUBJECT: &str = "veritech.meta.killexecution";
 const INCOMING_SUBJECT: &str = "veritech.requests.*.*.*";
 const SUBJECT_PREFIX: &str = "veritech.requests";
 
-pub const REPLY_INBOX_HEADER_NAME: &str = "X-Reply-Inbox";
 pub const FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
 
 // NOTE(nick,fletcher): we can probably take this type formalization a step further, but this is
@@ -62,12 +61,12 @@ pub async fn veritech_work_queue(
 {
     let subjects: Vec<_> = NATS_WORK_QUEUE_STREAM_SUBJECTS
         .iter()
-        .map(|suffix| nats_subject(prefix, suffix).to_string())
+        .map(|suffix| nats_std::subject::prefixed(prefix, suffix).to_string())
         .collect();
 
     let stream = context
         .get_or_create_stream(async_nats::jetstream::stream::Config {
-            name: nats_stream_name(prefix, NATS_WORK_QUEUE_STREAM_NAME),
+            name: nats_std::jetstream::prefixed(prefix, NATS_WORK_QUEUE_STREAM_NAME),
             description: Some("Veritech work queue of requests".to_owned()),
             retention: async_nats::jetstream::stream::RetentionPolicy::WorkQueue,
             discard: async_nats::jetstream::stream::DiscardPolicy::New,
@@ -78,15 +77,6 @@ pub async fn veritech_work_queue(
         .await?;
 
     Ok(stream)
-}
-
-fn nats_stream_name(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
-    let suffix = suffix.as_ref();
-
-    match prefix {
-        Some(prefix) => format!("{prefix}_{suffix}"),
-        None => suffix.to_owned(),
-    }
 }
 
 pub fn reply_mailbox_for_output(reply_mailbox: &str) -> String {
@@ -111,7 +101,7 @@ pub trait GetNatsSubjectFor {
             change_set_id.unwrap_or("NONE"),
             self.subject_suffix()
         );
-        nats_subject(prefix, subject_with_workspace_and_change_set)
+        nats_std::subject::prefixed(prefix, subject_with_workspace_and_change_set)
     }
 }
 
@@ -132,7 +122,7 @@ impl GetNatsSubjectFor for KillExecutionRequest {
         _workspace_id: Option<&str>,
         _change_set_id: Option<&str>,
     ) -> Subject {
-        nats_subject(prefix, self.subject_suffix())
+        nats_std::subject::prefixed(prefix, self.subject_suffix())
     }
 }
 
@@ -247,13 +237,5 @@ impl VeritechRequest {
 
 #[inline]
 pub fn incoming_subject(prefix: Option<&str>) -> Subject {
-    nats_subject(prefix, INCOMING_SUBJECT)
-}
-
-fn nats_subject(prefix: Option<&str>, suffix: impl AsRef<str>) -> Subject {
-    let suffix = suffix.as_ref();
-    match prefix {
-        Some(prefix) => Subject::from(format!("{prefix}.{suffix}")),
-        None => Subject::from(suffix),
-    }
+    nats_std::subject::prefixed(prefix, INCOMING_SUBJECT)
 }

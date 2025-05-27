@@ -4,6 +4,7 @@ use futures::{
     StreamExt as _,
     future::BoxFuture,
 };
+use nats_std::headers;
 use pending_events::{
     PendingEventsError,
     PendingEventsStream,
@@ -27,10 +28,7 @@ use rebaser_core::{
         },
         enqueue_updates_response::EnqueueUpdatesResponse,
     },
-    nats::{
-        self,
-        NATS_HEADER_REPLY_INBOX_NAME,
-    },
+    nats,
 };
 use si_data_nats::{
     HeaderMap,
@@ -278,9 +276,7 @@ impl Client {
         propagation::inject_headers(&mut headers);
         info.inject_into_headers(&mut headers);
         headers.insert(header::NATS_MESSAGE_ID, id.to_string());
-        if let Some(reply_inbox) = maybe_reply_inbox {
-            headers.insert(NATS_HEADER_REPLY_INBOX_NAME, reply_inbox.as_str());
-        }
+        headers::insert_maybe_reply_inbox(&mut headers, maybe_reply_inbox);
 
         self.context
             .publish_with_headers(requests_subject, headers, request.to_vec()?.into())

@@ -261,7 +261,7 @@ impl ChangeSetTestHelpers {
             .txns()
             .await?
             .job_queue()
-            .remove_dependent_values_jobs()
+            .clear_dependent_values_jobs()
             .await;
         ctx.blocking_commit().await?;
 

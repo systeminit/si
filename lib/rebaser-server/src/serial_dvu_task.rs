@@ -3,11 +3,10 @@ use std::{
     sync::Arc,
 };
 
-use dal::{
-    ChangeSet,
-    ChangeSetError,
-    ChangeSetStatus,
-    DalContextBuilder,
+use dal::ChangeSetError;
+use pinga_client::{
+    PingaClient,
+    api_types::job_execution_response::JobExecutionResultVCurrent,
 };
 use si_events::{
     ChangeSetId,
@@ -29,9 +28,9 @@ use crate::{
 pub(crate) enum SerialDvuTaskError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
-    /// Error when using a DAL context
-    #[error("dal context transaction error: {0}")]
-    DalContext(#[from] dal::TransactionsError),
+    /// Error when using a Pinga client
+    #[error("pinga client error: {0}")]
+    PingaClient(#[from] pinga_client::ClientError),
     /// When failing to do an operation using the [`WorkspaceSnapshot`]
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
@@ -43,7 +42,7 @@ pub(crate) struct SerialDvuTask {
     metadata: Arc<ServerMetadata>,
     workspace_id: WorkspacePk,
     change_set_id: ChangeSetId,
-    ctx_builder: DalContextBuilder,
+    pinga: PingaClient,
     run_notify: Arc<Notify>,
     quiesced_notify: Arc<Notify>,
     quiesced_token: CancellationToken,
@@ -58,7 +57,7 @@ impl SerialDvuTask {
         metadata: Arc<ServerMetadata>,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
-        ctx_builder: DalContextBuilder,
+        pinga: PingaClient,
         run_notify: Arc<Notify>,
         quiesced_notify: Arc<Notify>,
         quiesced_token: CancellationToken,
@@ -68,7 +67,7 @@ impl SerialDvuTask {
             metadata,
             workspace_id,
             change_set_id,
-            ctx_builder,
+            pinga,
             run_notify,
             quiesced_notify,
             quiesced_token,
@@ -162,32 +161,31 @@ impl SerialDvuTask {
 
     #[inline]
     async fn try_run_dvu(&self) -> Result<()> {
-        let builder = self.ctx_builder.clone();
-        let ctx = builder
-            .build_for_change_set_as_system(self.workspace_id, self.change_set_id, None)
+        let (_request_id, response_fut) = self
+            .pinga
+            .await_dependent_values_update_job(self.workspace_id, self.change_set_id, false)
             .await?;
-        let change_set = ChangeSet::get_by_id(&ctx, ctx.change_set_id()).await?;
-        if change_set.status == ChangeSetStatus::Abandoned {
-            warn!("Trying to enqueue DVU for abandoned change set. Returning early.");
-            return Ok(());
+
+        // TODO(fnichol): here's another spot to consider a timeout, otherwise this task will wait
+        // indefinitely for the Pinga DVU job to complete.
+        //
+        // Future work may change this response future idea an instead check the job state from a
+        // KV store which is being actively updated by a Pinga task. Something like that to avoid
+        // the sender terminating and this receiver never getting a reply either way.
+        match response_fut.await {
+            Ok(response) => match &response.result {
+                JobExecutionResultVCurrent::Ok => {
+                    trace!("pinga job reported a successful job execution");
+                }
+                JobExecutionResultVCurrent::Err { message } => {
+                    warn!(
+                        job_execution_error_report = message,
+                        "pinga job reported an error during execution; continuing",
+                    );
+                }
+            },
+            Err(client_error) => return Err(client_error.into()),
         }
-
-        ctx.enqueue_dependent_values_update().await?;
-
-        match ctx.blocking_commit_no_rebase().await {
-            Ok(_) => {}
-            Err(dal::TransactionsError::JobQueueProcessor(
-                dal::job::processor::JobQueueProcessorError::BlockingJob(
-                    dal::job::producer::BlockingJobError::JobExecution(job_execution_error_report),
-                ),
-            )) => {
-                warn!(
-                    job_execution_error_report,
-                    "pinga job(s) reported an error during execution; continuing",
-                );
-            }
-            Err(other_err) => return Err(other_err.into()),
-        };
 
         Ok(())
     }

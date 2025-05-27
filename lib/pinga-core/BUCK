@@ -3,9 +3,32 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "pinga-core",
     deps = [
+        "//lib/nats-std:nats-std",
+        "//lib/naxum-api-types:naxum-api-types",
         "//lib/si-data-nats:si-data-nats",
+        "//lib/si-id:si-id",
+        "//third-party/rust:rand",
+        "//third-party/rust:remain",
+        "//third-party/rust:serde",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:strum",
+        "//third-party/rust:thiserror",
+        "//third-party/rust:ulid",
     ],
     srcs = glob([
         "src/**/*.rs",
     ]),
+    test_unit_deps = [
+        "//third-party/rust:insta",
+        "//third-party/rust:serde_json",
+    ],
+    test_unit_env = {
+        # https://insta.rs/docs/quickstart/#continuous-integration
+        "CI": "true",
+        # https://insta.rs/docs/advanced/#controlling-snapshot-updating
+        "INSTA_UPDATE": "no",
+        # https://insta.rs/docs/advanced/#workspace-root
+        "CARGO_MANIFEST_DIR": "",
+        "INSTA_WORKSPACE_ROOT": "",
+    },
 )

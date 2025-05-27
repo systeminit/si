@@ -1,32 +1,25 @@
-use std::convert::TryFrom;
-
 use async_trait::async_trait;
+use pinga_core::api_types::job_execution_request::JobArgsVCurrent;
 use serde::{
     Deserialize,
     Serialize,
 };
-use si_db::Visibility;
+use si_id::{
+    ChangeSetId,
+    WorkspacePk,
+};
 use telemetry::prelude::*;
 
 use crate::{
-    AccessBuilder,
     AttributeValueId,
     ChangeSet,
     ChangeSetStatus,
     DalContext,
-    job::{
-        consumer::{
-            JobCompletionState,
-            JobConsumer,
-            JobConsumerError,
-            JobConsumerMetadata,
-            JobConsumerResult,
-            JobInfo,
-        },
-        producer::{
-            JobProducer,
-            JobProducerResult,
-        },
+    job::consumer::{
+        DalJob,
+        JobCompletionState,
+        JobConsumer,
+        JobConsumerResult,
     },
     validation::{
         ValidationOutput,
@@ -42,53 +35,45 @@ struct ComputeValidationArgs {
 impl From<ComputeValidation> for ComputeValidationArgs {
     fn from(value: ComputeValidation) -> Self {
         Self {
-            attribute_values: value.attribute_values,
+            attribute_values: value.attribute_value_ids,
         }
     }
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct ComputeValidation {
-    attribute_values: Vec<AttributeValueId>,
-    access_builder: AccessBuilder,
-    visibility: Visibility,
-    job: Option<JobInfo>,
+    workspace_id: WorkspacePk,
+    change_set_id: ChangeSetId,
+    attribute_value_ids: Vec<AttributeValueId>,
 }
 
 impl ComputeValidation {
     pub fn new(
-        access_builder: AccessBuilder,
-        visibility: Visibility,
-        attribute_values: Vec<AttributeValueId>,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        attribute_value_ids: Vec<AttributeValueId>,
     ) -> Box<Self> {
         Box::new(Self {
-            attribute_values,
-            access_builder,
-            visibility,
-            job: None,
+            workspace_id,
+            change_set_id,
+            attribute_value_ids,
         })
     }
 }
 
-impl JobProducer for ComputeValidation {
-    fn arg(&self) -> JobProducerResult<serde_json::Value> {
-        Ok(serde_json::to_value(ComputeValidationArgs::from(
-            self.clone(),
-        ))?)
-    }
-}
-
-impl JobConsumerMetadata for ComputeValidation {
-    fn type_name(&self) -> String {
-        "ComputeValidation".to_string()
+impl DalJob for ComputeValidation {
+    fn args(&self) -> JobArgsVCurrent {
+        JobArgsVCurrent::Validation {
+            attribute_value_ids: self.attribute_value_ids.clone(),
+        }
     }
 
-    fn access_builder(&self) -> AccessBuilder {
-        self.access_builder
+    fn workspace_id(&self) -> WorkspacePk {
+        self.workspace_id
     }
 
-    fn visibility(&self) -> Visibility {
-        self.visibility
+    fn change_set_id(&self) -> ChangeSetId {
+        self.change_set_id
     }
 }
 
@@ -99,7 +84,7 @@ impl JobConsumer for ComputeValidation {
         skip_all,
         level = "info",
         fields(
-            attribute_values = ?self.attribute_values,
+            attribute_values = ?self.attribute_value_ids,
         )
     )]
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState> {
@@ -111,7 +96,7 @@ impl JobConsumer for ComputeValidation {
         }
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
-        for &av_id in &self.attribute_values {
+        for &av_id in &self.attribute_value_ids {
             // It's possible that one or more of the initial AttributeValueIds provided by the enqueued ComputeValidation
             // may have been removed from the snapshot between when the CV job was created and when we're processing
             // things now. This could happen if there are other modifications to the snapshot before the CV job starts
@@ -135,19 +120,5 @@ impl JobConsumer for ComputeValidation {
 
         ctx.commit().await?;
         Ok(JobCompletionState::Done)
-    }
-}
-
-impl TryFrom<JobInfo> for ComputeValidation {
-    type Error = JobConsumerError;
-
-    fn try_from(job: JobInfo) -> Result<Self, Self::Error> {
-        let args = ComputeValidationArgs::deserialize(&job.arg)?;
-        Ok(Self {
-            attribute_values: args.attribute_values,
-            access_builder: job.access_builder,
-            visibility: job.visibility,
-            job: Some(job),
-        })
     }
 }

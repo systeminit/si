@@ -1,5 +1,6 @@
 mod app_state;
 mod config;
+pub mod extract;
 mod handlers;
 pub mod server;
 
@@ -39,6 +40,8 @@ pub use crate::{
 pub enum ServerError {
     #[error("dal jetstream streams error: {0}")]
     DalJetstreamStreams(#[from] dal::JetstreamStreamsError),
+    #[error("job queue processor error: {0}")]
+    DalJobQueueProcessor(#[from] dal::job::processor::JobQueueProcessorError),
     #[error("compute executor initialization error: {0}")]
     DedicatedExecutorInitialize(#[from] DedicatedExecutorInitializeError),
     #[error("initialization error: {0}")]

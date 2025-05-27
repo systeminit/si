@@ -609,8 +609,11 @@ impl TestContextBuilder {
         let nats_streams = JetstreamStreams::new(nats_conn.clone())
             .await
             .wrap_err("failed to create NatsStreams")?;
-        let job_processor = Box::new(NatsProcessor::new(nats_conn.clone()))
-            as Box<dyn JobQueueProcessor + Send + Sync>;
+        let job_processor = Box::new(
+            NatsProcessor::new(nats_conn.clone())
+                .await
+                .wrap_err("failed to create NatsProcessor")?,
+        ) as Box<dyn JobQueueProcessor + Send + Sync>;
 
         let symmetric_crypto_service =
             SymmetricCryptoService::from_config(&self.config.symmetric_crypto_service_config)

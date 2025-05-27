@@ -37,7 +37,7 @@ use naxum::{
         Response,
     },
 };
-use pinga_core::{
+use pinga_core::nats::{
     pinga_work_queue,
     subject,
 };
@@ -127,7 +127,7 @@ impl Server {
         let pg_pool = Self::create_pg_pool(config.pg_pool()).await?;
         let rebaser = Self::create_rebaser_client(nats.clone()).await?;
         let veritech = Self::create_veritech_client(nats.clone());
-        let job_processor = Self::create_job_processor(nats.clone());
+        let job_processor = Self::create_job_processor(nats.clone()).await?;
         let symmetric_crypto_service =
             Self::create_symmetric_crypto_service(config.symmetric_crypto_service()).await?;
         let compute_executor = Self::create_compute_executor()?;
@@ -188,9 +188,10 @@ impl Server {
             .subject_prefix()
             .map(|s| s.to_owned());
 
-        let context = jetstream::new(services_context.nats_conn().clone());
+        let nats = services_context.nats_conn().clone();
+        let context = jetstream::new(nats.clone());
 
-        let incoming = pinga_work_queue(&context, prefix.as_deref())
+        let incoming = pinga_work_queue(&context)
             .await?
             .create_consumer(Self::incoming_consumer_config(
                 prefix.as_deref(),
@@ -202,7 +203,7 @@ impl Server {
 
         let ctx_builder = DalContext::builder(services_context, false);
 
-        let state = AppState::new(metadata.clone(), concurrency_limit, ctx_builder);
+        let state = AppState::new(metadata.clone(), concurrency_limit, nats, ctx_builder);
 
         let app = ServiceBuilder::new()
             .layer(
@@ -283,8 +284,10 @@ impl Server {
     }
 
     #[instrument(name = "pinga.init.create_job_processor", level = "info", skip_all)]
-    fn create_job_processor(nats: NatsClient) -> Box<dyn JobQueueProcessor + Send + Sync> {
-        Box::new(NatsProcessor::new(nats)) as Box<dyn JobQueueProcessor + Send + Sync>
+    async fn create_job_processor(
+        nats: NatsClient,
+    ) -> ServerResult<Box<dyn JobQueueProcessor + Send + Sync>> {
+        Ok(Box::new(NatsProcessor::new(nats).await?) as Box<dyn JobQueueProcessor + Send + Sync>)
     }
 
     #[instrument(

@@ -1,5 +1,3 @@
-mod rebase;
-
 use std::sync::Arc;
 
 use futures::StreamExt;

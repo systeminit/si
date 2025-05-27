@@ -8,8 +8,6 @@ const NATS_REBASER_REQUESTS_STREAM_SUBJECTS: &[&str] = &["rebaser.requests.>"];
 const NATS_REBASER_TASKS_STREAM_NAME: &str = "REBASER_TASKS";
 const NATS_REBASER_TASKS_STREAM_SUBJECTS: &[&str] = &["rebaser.tasks.>"];
 
-pub const NATS_HEADER_REPLY_INBOX_NAME: &str = "X-Reply-Inbox";
-
 pub async fn rebaser_tasks_jetstream_stream(
     context: &jetstream::Context,
 ) -> Result<async_nats::jetstream::stream::Stream, async_nats::jetstream::context::CreateStreamError>
@@ -18,12 +16,12 @@ pub async fn rebaser_tasks_jetstream_stream(
 
     let subjects: Vec<_> = NATS_REBASER_TASKS_STREAM_SUBJECTS
         .iter()
-        .map(|suffix| subject::nats_subject(prefix, suffix).to_string())
+        .map(|suffix| nats_std::subject::prefixed(prefix, suffix).to_string())
         .collect();
 
     let stream = context
         .get_or_create_stream(async_nats::jetstream::stream::Config {
-            name: nats_stream_name(prefix, NATS_REBASER_TASKS_STREAM_NAME),
+            name: nats_std::jetstream::prefixed(prefix, NATS_REBASER_TASKS_STREAM_NAME),
             description: Some("Rebaser tasks".to_owned()),
             retention: async_nats::jetstream::stream::RetentionPolicy::WorkQueue,
             discard: async_nats::jetstream::stream::DiscardPolicy::New,
@@ -46,12 +44,12 @@ pub async fn rebaser_requests_jetstream_stream(
 
     let subjects: Vec<_> = NATS_REBASER_REQUESTS_STREAM_SUBJECTS
         .iter()
-        .map(|suffix| subject::nats_subject(prefix, suffix).to_string())
+        .map(|suffix| nats_std::subject::prefixed(prefix, suffix).to_string())
         .collect();
 
     let stream = context
         .get_or_create_stream(async_nats::jetstream::stream::Config {
-            name: nats_stream_name(prefix, NATS_REBASER_REQUESTS_STREAM_NAME),
+            name: nats_std::jetstream::prefixed(prefix, NATS_REBASER_REQUESTS_STREAM_NAME),
             description: Some("Rebaser requests".to_owned()),
             retention: async_nats::jetstream::stream::RetentionPolicy::Limits,
             discard: async_nats::jetstream::stream::DiscardPolicy::New,
@@ -62,15 +60,6 @@ pub async fn rebaser_requests_jetstream_stream(
         .await?;
 
     Ok(stream)
-}
-
-fn nats_stream_name(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
-    let suffix = suffix.as_ref();
-
-    match prefix {
-        Some(prefix) => format!("{prefix}_{suffix}"),
-        None => suffix.to_owned(),
-    }
 }
 
 pub mod subject {
@@ -89,7 +78,7 @@ pub mod subject {
 
     #[inline]
     pub fn tasks_incoming(prefix: Option<&str>) -> Subject {
-        nats_subject(prefix, TASKS_INCOMING_SUBJECT)
+        nats_std::subject::prefixed(prefix, TASKS_INCOMING_SUBJECT)
     }
 
     #[inline]
@@ -98,7 +87,7 @@ pub mod subject {
         workspace_id: &str,
         change_set_id: &str,
     ) -> Subject {
-        nats_subject(
+        nats_std::subject::prefixed(
             prefix,
             format!(
                 "{REQUESTS_SUBJECT_PREFIX}.{}.{}",
@@ -113,20 +102,12 @@ pub mod subject {
         workspace_id: &str,
         change_set_id: &str,
     ) -> Subject {
-        nats_subject(
+        nats_std::subject::prefixed(
             prefix,
             format!(
                 "{TASKS_SUBJECT_PREFIX}.{}.{}.process",
                 workspace_id, change_set_id,
             ),
         )
-    }
-
-    pub(crate) fn nats_subject(prefix: Option<&str>, suffix: impl AsRef<str>) -> Subject {
-        let suffix = suffix.as_ref();
-        match prefix {
-            Some(prefix) => Subject::from(format!("{prefix}.{suffix}")),
-            None => Subject::from(suffix),
-        }
     }
 }

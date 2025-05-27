@@ -5,6 +5,7 @@ rust_library(
     deps = [
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
+        "//lib/nats-std:nats-std",
         "//lib/nats-subscriber:nats-subscriber",
         "//lib/naxum:naxum",
         "//lib/pinga-core:pinga-core",
@@ -13,6 +14,7 @@ rust_library(
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-data-pg:si-data-pg",
         "//lib/si-db:si-db",
+        "//lib/si-events-rs:si-events",
         "//lib/si-layer-cache:si-layer-cache",
         "//lib/si-settings:si-settings",
         "//lib/si-std:si-std",

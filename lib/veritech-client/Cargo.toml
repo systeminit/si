@@ -10,6 +10,7 @@ publish.workspace = true
 
 [dependencies]
 cyclone-core = { path = "../../lib/cyclone-core" }
+nats-std = { path = "../../lib/nats-std" }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 telemetry = { path = "../../lib/telemetry-rs" }

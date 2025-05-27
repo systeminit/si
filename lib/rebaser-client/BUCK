@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "rebaser-client",
     deps = [
+        "//lib/nats-std:nats-std",
         "//lib/pending-events:pending-events",
         "//lib/rebaser-core:rebaser-core",
         "//lib/si-data-nats:si-data-nats",
@@ -10,7 +11,6 @@ rust_library(
         "//lib/telemetry-nats-rs:telemetry-nats",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:futures",
-        "//third-party/rust:pin-project-lite",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",

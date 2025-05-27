@@ -9,6 +9,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+nats-std = { path = "../../lib/nats-std" }
 naxum-api-types = { path = "../../lib/naxum-api-types" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }

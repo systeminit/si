@@ -77,6 +77,9 @@ pub enum ServerError {
     /// When we fail to get or create inner NATS Jetstream streams
     #[error("dal jetstream streams error: {0}")]
     DalJetstreamStreams(#[from] dal::JetstreamStreamsError),
+    /// When a job queue processor fails to be created
+    #[error("job queue processor error: {0}")]
+    DalJobQueueProcessor(#[from] dal::job::processor::JobQueueProcessorError),
     /// When a database pool error occurs
     #[error("dal pg pool error: {0}")]
     DalPgPool(#[source] Box<si_data_pg::PgPoolError>),
@@ -107,6 +110,9 @@ pub enum ServerError {
     /// When a naxum-based service encounters an I/O error
     #[error("naxum error: {0}")]
     Naxum(#[source] std::io::Error),
+    /// When an error is returned from the pinga client
+    #[error("pinga client error: {0}")]
+    PingaClient(#[from] pinga_client::ClientError),
     /// When a rebaser client error occurs
     #[error("rebaser client error: {0}")]
     Rebaser(#[from] rebaser_client::ClientError),

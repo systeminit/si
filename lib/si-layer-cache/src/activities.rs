@@ -37,18 +37,11 @@ use tokio_util::{
 };
 use ulid::Ulid;
 
-use self::{
-    rebase::{
-        RebaseFinished,
-        RebaseRequest,
-    },
-    test::{
-        IntegrationTest,
-        IntegrationTestAlt,
-    },
+use self::test::{
+    IntegrationTest,
+    IntegrationTestAlt,
 };
 use crate::{
-    LayerDbError,
     db::serialize,
     error::LayerDbResult,
     event::LayeredEventMetadata,
@@ -58,7 +51,6 @@ use crate::{
     },
 };
 
-pub mod rebase;
 pub mod test;
 
 // Should you have to troubleshoot this code - these are very helpful to have
@@ -92,28 +84,10 @@ impl Activity {
             parent_activity_id,
         }
     }
-
-    pub fn rebase(request: RebaseRequest, metadata: LayeredEventMetadata) -> Activity {
-        Activity::new(ActivityPayload::RebaseRequest(request), metadata, None)
-    }
-
-    pub fn rebase_finished(
-        request: RebaseFinished,
-        metadata: LayeredEventMetadata,
-        from_rebase_activity_id: ActivityId,
-    ) -> Activity {
-        Activity::new(
-            ActivityPayload::RebaseFinished(request),
-            metadata,
-            Some(from_rebase_activity_id),
-        )
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, EnumDiscriminants, PartialEq, Eq)]
 pub enum ActivityPayload {
-    RebaseRequest(RebaseRequest),
-    RebaseFinished(RebaseFinished),
     IntegrationTest(IntegrationTest),
     IntegrationTestAlt(IntegrationTestAlt),
 }
@@ -128,8 +102,6 @@ impl ActivityPayload {
 impl ActivityPayloadDiscriminants {
     pub fn to_subject(&self) -> String {
         match self {
-            ActivityPayloadDiscriminants::RebaseRequest => "rebase.request".to_string(),
-            ActivityPayloadDiscriminants::RebaseFinished => "rebase.finished".to_string(),
             ActivityPayloadDiscriminants::IntegrationTest => "integration_test.test".to_string(),
             ActivityPayloadDiscriminants::IntegrationTestAlt => "integration_test.alt".to_string(),
         }
@@ -366,129 +338,5 @@ impl ActivityStream {
         }
 
         config
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct ActivityRebaseRequest {
-    pub id: ActivityId,
-    pub payload: RebaseRequest,
-    pub metadata: LayeredEventMetadata,
-    pub parent_activity_id: Option<ActivityId>,
-}
-
-impl TryFrom<Activity> for ActivityRebaseRequest {
-    type Error = LayerDbError;
-
-    fn try_from(activity: Activity) -> LayerDbResult<Self> {
-        let payload = match activity.payload {
-            ActivityPayload::RebaseRequest(payload) => payload,
-            _ => return Err(LayerDbError::ActivityRebase),
-        };
-        Ok(ActivityRebaseRequest {
-            id: activity.id,
-            payload,
-            metadata: activity.metadata,
-            parent_activity_id: activity.parent_activity_id,
-        })
-    }
-}
-
-pub struct RebaserRequestWorkQueue {
-    tracker: TaskTracker,
-    shutdown_token: CancellationToken,
-    stream: Stream,
-    tx: tokio::sync::mpsc::UnboundedSender<ActivityRebaseRequest>,
-}
-
-impl RebaserRequestWorkQueue {
-    const NAME: &'static str = "LayerDB::RebaserRequestWorkQueue";
-    const CONSUMER_NAME: &'static str = "rebaser-requests";
-
-    pub async fn create(
-        context: Context,
-        subject_prefix: Option<Arc<str>>,
-        shutdown_token: CancellationToken,
-    ) -> LayerDbResult<(Self, UnboundedReceiver<ActivityRebaseRequest>)> {
-        let tracker = TaskTracker::new();
-
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-
-        // Ensure the sourced stream is created
-        let _activities =
-            nats::layerdb_activities_stream(&context, subject_prefix.as_deref()).await?;
-
-        let stream = nats::rebaser_requests_work_queue_stream(&context, subject_prefix.as_deref())
-            .await?
-            .create_consumer(Self::consumer_config())
-            .await?
-            .messages()
-            .await?;
-
-        Ok((
-            Self {
-                tracker,
-                shutdown_token,
-                stream,
-                tx,
-            },
-            rx,
-        ))
-    }
-
-    pub async fn run(&mut self) {
-        let shutdown_token = self.shutdown_token.clone();
-        tokio::select! {
-            _ = self.process_messages() => {
-            }
-            _ = shutdown_token.cancelled() => {
-                debug!(task = Self::NAME, "received cancellation");
-            }
-        }
-
-        // All remaining work has been dispatched (i.e. spawned) so no more tasks will be spawned
-        self.tracker.close();
-        // Wait for all in-flight writes work to complete
-        self.tracker.wait().await;
-
-        debug!(task = Self::NAME, "shutdown complete");
-    }
-
-    pub async fn process_messages(&mut self) {
-        while let Some(msg_result) = self.stream.next().await {
-            match msg_result {
-                Ok(msg) => {
-                    if let Err(error) = msg.ack().await {
-                        warn!(?error, "rebaser request work queue message ack error");
-                    }
-                    if let Err(error) = self.process_message(msg).await {
-                        error!(?error, "rebaser request has failed to process message");
-                    }
-                }
-                Err(error) => {
-                    warn!(
-                        ?error,
-                        "rebaser request work queue has failed to get a message from the nats stream"
-                    );
-                }
-            }
-        }
-    }
-
-    pub async fn process_message(&self, msg: Message) -> LayerDbResult<()> {
-        let activity = serialize::from_bytes::<Activity>(&msg.payload)?;
-        let rebase_activity = activity.try_into()?;
-        self.tx.send(rebase_activity).map_err(Box::new)?;
-        Ok(())
-    }
-
-    #[inline]
-    fn consumer_config() -> jetstream::consumer::pull::Config {
-        jetstream::consumer::pull::Config {
-            durable_name: Some(Self::CONSUMER_NAME.to_string()),
-            description: Some("rebaser requests consumer".to_string()),
-            max_bytes: MAX_BYTES,
-            ..Default::default()
-        }
     }
 }

@@ -1,0 +1,19 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "pinga-client",
+    deps = [
+        "//lib/nats-std:nats-std",
+        "//lib/pinga-core:pinga-core",
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-events-rs:si-events",
+        "//lib/telemetry-nats-rs:telemetry-nats",
+        "//lib/telemetry-rs:telemetry",
+        "//third-party/rust:futures",
+        "//third-party/rust:remain",
+        "//third-party/rust:thiserror",
+    ],
+    srcs = glob([
+        "src/**/*.rs",
+    ]),
+)

@@ -460,13 +460,13 @@ impl FriggStore {
 }
 
 pub async fn frigg_kv(context: &jetstream::Context, prefix: Option<&str>) -> Result<kv::Store> {
-    let bucket = nats_stream_name(prefix, NATS_KV_BUCKET_NAME);
+    let bucket = nats_std::jetstream::prefixed(prefix, NATS_KV_BUCKET_NAME);
 
-    let kv = match context.get_key_value(bucket).await {
+    let kv = match context.get_key_value(bucket.clone()).await {
         Ok(kv) => kv,
         Err(err) => match err.kind() {
             KeyValueErrorKind::GetBucket | KeyValueErrorKind::JetStream => {
-                frigg_create_kv(context, context.metadata().subject_prefix()).await?
+                create_kv(context, bucket).await?
             }
             _ => return Err(err.into()),
         },
@@ -475,30 +475,15 @@ pub async fn frigg_kv(context: &jetstream::Context, prefix: Option<&str>) -> Res
     Ok(kv)
 }
 
-pub async fn frigg_create_kv(
-    context: &jetstream::Context,
-    prefix: Option<&str>,
-) -> Result<kv::Store> {
-    let bucket = nats_stream_name(prefix, NATS_KV_BUCKET_NAME);
-
-    let kv = context
+async fn create_kv(context: &jetstream::Context, bucket: String) -> Result<kv::Store> {
+    context
         .create_key_value(kv::Config {
             bucket,
             description: "Frigg store data".to_owned(),
             ..Default::default()
         })
-        .await?;
-
-    Ok(kv)
-}
-
-fn nats_stream_name(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
-    let suffix = suffix.as_ref();
-
-    match prefix {
-        Some(prefix) => format!("{prefix}_{suffix}"),
-        None => suffix.to_owned(),
-    }
+        .await
+        .map_err(Into::into)
 }
 
 // Internal impl of a `Watch` type vendored from the `async-nats` crate.

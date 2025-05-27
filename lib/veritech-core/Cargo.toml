@@ -10,6 +10,7 @@ publish.workspace = true
 
 [dependencies]
 cyclone-core = { path = "../../lib/cyclone-core" }
+nats-std = { path = "../../lib/nats-std" }
 serde_json = { workspace = true }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }

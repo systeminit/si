@@ -1,19 +1,17 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use chrono::{
-    DateTime,
-    Utc,
-};
+use pinga_core::api_types::job_execution_request::JobArgsVCurrent;
 use rand::Rng;
-use serde::{
-    Deserialize,
-    Serialize,
-};
 use serde_json::Value;
 use si_data_nats::NatsError;
 use si_data_pg::PgPoolError;
-use si_db::Visibility;
+use si_db::HistoryActor;
+use si_events::authentication_method::AuthenticationMethodV1;
+use si_id::{
+    ChangeSetId,
+    WorkspacePk,
+};
 use thiserror::Error;
 use tokio::task::JoinError;
 
@@ -39,10 +37,7 @@ use crate::{
     func::runner::FuncRunnerError,
     job::{
         definition::dependent_values_update::DependentValueUpdateError,
-        producer::{
-            BlockingJobError,
-            JobProducerError,
-        },
+        producer::BlockingJobError,
     },
     prop::PropError,
     validation::ValidationError,
@@ -58,8 +53,6 @@ pub enum JobConsumerError {
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("ActionProtoype {0} not found")]
     ActionPrototypeNotFound(ActionPrototypeId),
-    #[error("arg {0:?} not found at index {1}")]
-    ArgNotFound(JobInfo, usize),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("billing publish error: {0}")]
@@ -84,8 +77,6 @@ pub enum JobConsumerError {
     InvalidArguments(String, Vec<Value>),
     #[error("std io error: {0}")]
     Io(#[from] ::std::io::Error),
-    #[error("job producer error: {0}")]
-    JobProducer(#[from] JobProducerError),
     #[error("nats error: {0}")]
     Nats(#[from] NatsError),
     #[error("nats is unavailable")]
@@ -95,7 +86,7 @@ pub enum JobConsumerError {
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("execution of job {0} failed after {1} retry attempts")]
-    RetriesFailed(String, u32),
+    RetriesFailed(JobArgsVCurrent, u32),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("tokio task error: {0}")]
@@ -120,17 +111,6 @@ impl From<JobConsumerError> for std::io::Error {
 
 pub type JobConsumerResult<T> = Result<T, JobConsumerError>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JobInfo {
-    pub id: String,
-    pub kind: String,
-    pub created_at: DateTime<Utc>,
-    pub arg: Value,
-    pub access_builder: AccessBuilder,
-    pub visibility: Visibility,
-    pub blocking: bool,
-}
-
 pub enum RetryBackoff {
     Exponential,
     None,
@@ -144,15 +124,15 @@ pub enum JobCompletionState {
 }
 
 #[async_trait]
-pub trait JobConsumerMetadata: std::fmt::Debug + Sync {
-    fn type_name(&self) -> String;
-    fn access_builder(&self) -> AccessBuilder;
-    fn visibility(&self) -> Visibility;
+pub trait DalJob: std::fmt::Debug + Sync + Send {
+    fn args(&self) -> JobArgsVCurrent;
+    fn workspace_id(&self) -> WorkspacePk;
+    fn change_set_id(&self) -> ChangeSetId;
 }
 
 #[async_trait]
 // Having Sync as a supertrait gets around triggering https://github.com/rust-lang/rust/issues/51443
-pub trait JobConsumer: std::fmt::Debug + Sync + JobConsumerMetadata {
+pub trait JobConsumer: std::fmt::Debug + Sync + DalJob {
     /// Intended to be defined by implementations of this trait.
     async fn run(&self, ctx: &mut DalContext) -> JobConsumerResult<JobCompletionState>;
 
@@ -161,16 +141,22 @@ pub trait JobConsumer: std::fmt::Debug + Sync + JobConsumerMetadata {
     /// of the trait if you need more control over how the `DalContext` is managed
     /// during the lifetime of the job.
     async fn run_job(&self, ctx_builder: DalContextBuilder) -> JobConsumerResult<()> {
+        let request_context = AccessBuilder::new(
+            self.workspace_id().into(),
+            HistoryActor::SystemInit,
+            None,
+            AuthenticationMethodV1::System,
+        )
+        .build(self.change_set_id().into());
+
         let mut retries = 0;
         loop {
-            let mut ctx = ctx_builder
-                .build(self.access_builder().build(self.visibility()))
-                .await?;
+            let mut ctx = ctx_builder.build(request_context.clone()).await?;
 
             match self.run(&mut ctx).await? {
                 JobCompletionState::Retry { limit, backoff } => {
                     if retries >= limit {
-                        return Err(JobConsumerError::RetriesFailed(self.type_name(), retries));
+                        return Err(JobConsumerError::RetriesFailed(self.args(), retries));
                     }
 
                     if let RetryBackoff::Exponential = backoff {

@@ -103,6 +103,7 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
     let AppState {
         metadata,
         nats,
+        pinga,
         edda,
         requests_stream,
         dead_letter_queue,
@@ -147,7 +148,7 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         metadata.clone(),
         workspace.id(),
         change_set.id(),
-        ctx_builder.clone(),
+        pinga.clone(),
         run_dvu_notify.clone(),
         quiesced_notify.clone(),
         quiesced_token.clone(),

@@ -57,7 +57,6 @@ use crate::{
     component::inferred_connection_graph::InferredConnectionGraphError,
     func::FuncExecutionPk,
     implement_add_edge_to,
-    job::definition::ActionJob,
     workspace_snapshot::{
         DependentValueRoot,
         dependent_value_root::DependentValueRootError,
@@ -660,7 +659,8 @@ impl Action {
     pub async fn dispatch_action(ctx: &DalContext, action_id: ActionId) -> ActionResult<()> {
         Action::set_state(ctx, action_id, ActionState::Dispatched).await?;
 
-        ctx.enqueue_action(ActionJob::new(ctx, action_id)).await?;
+        ctx.enqueue_action_job(ctx.workspace_pk()?, ctx.change_set_id(), action_id)
+            .await?;
 
         Ok(())
     }

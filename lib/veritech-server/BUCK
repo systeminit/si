@@ -4,6 +4,7 @@ rust_library(
     name = "veritech-server",
     deps = [
         "//lib/buck2-resources:buck2-resources",
+        "//lib/nats-std:nats-std",
         "//lib/naxum:naxum",
         "//lib/si-crypto:si-crypto",
         "//lib/si-data-nats:si-data-nats",

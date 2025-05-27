@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
 dal = { path = "../../lib/dal" }
+nats-std = { path = "../../lib/nats-std" }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
 naxum = { path = "../../lib/naxum" }
 pinga-core = { path = "../../lib/pinga-core" }
@@ -19,6 +20,7 @@ si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-db = { path = "../../lib/si-db" }
+si-events = { path = "../../lib/si-events-rs" }
 si-layer-cache = { path = "../../lib/si-layer-cache" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
