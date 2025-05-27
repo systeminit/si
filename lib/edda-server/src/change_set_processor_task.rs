@@ -11,10 +11,7 @@ use std::{
 
 use dal::DalContextBuilder;
 use frigg::FriggStore;
-use futures::{
-    TryStreamExt,
-    future::BoxFuture,
-};
+use futures::TryStreamExt;
 use naxum::{
     MessageHead,
     ServiceBuilder,
@@ -23,14 +20,11 @@ use naxum::{
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
-        jetstream_post_process::{
-            self,
-            JetstreamPostProcessLayer,
-        },
         matched_subject::{
             ForSubject,
             MatchedSubjectLayer,
         },
+        post_process::PostProcessLayer,
         trace::TraceLayer,
     },
     response::{
@@ -40,10 +34,7 @@ use naxum::{
 };
 use si_data_nats::{
     NatsClient,
-    async_nats::jetstream::{
-        self,
-        consumer::push,
-    },
+    async_nats::jetstream::consumer::push,
 };
 use si_events::{
     ChangeSetId,
@@ -60,7 +51,10 @@ use tokio_util::{
 };
 
 use self::app_state::AppState;
-use crate::ServerMetadata;
+use crate::{
+    ServerMetadata,
+    compresing_stream::CompressingStream,
+};
 
 mod materialized_view;
 
@@ -90,8 +84,7 @@ impl ChangeSetProcessorTask {
     pub(crate) fn create(
         metadata: Arc<ServerMetadata>,
         nats: NatsClient,
-        stream: jetstream::stream::Stream,
-        incoming: push::Ordered,
+        incoming: CompressingStream<push::Ordered>,
         frigg: FriggStore,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
@@ -159,11 +152,7 @@ impl ChangeSetProcessorTask {
                     )
                     .on_response(telemetry_nats::NatsOnResponse::new()),
             )
-            .layer(
-                JetstreamPostProcessLayer::new()
-                    .on_success(DeleteMessageOnSuccess::new(stream.clone()))
-                    .on_failure(DeleteMessageOnFailure::new(stream)),
-            )
+            .layer(PostProcessLayer::new())
             .service(handlers::default.with_state(state))
             .map_response(Response::into_response);
 
@@ -200,74 +189,6 @@ struct QuiescedCaptured {
     workspace_id: WorkspacePk,
     change_set_id: ChangeSetId,
     quiesced_notify: Arc<Notify>,
-}
-
-#[derive(Clone, Debug)]
-struct DeleteMessageOnSuccess {
-    stream: jetstream::stream::Stream,
-}
-
-impl DeleteMessageOnSuccess {
-    fn new(stream: jetstream::stream::Stream) -> Self {
-        Self { stream }
-    }
-}
-
-impl jetstream_post_process::OnSuccess for DeleteMessageOnSuccess {
-    fn call(
-        &mut self,
-        head: Arc<naxum::Head>,
-        info: Arc<jetstream_post_process::Info>,
-    ) -> BoxFuture<'static, ()> {
-        let stream = self.stream.clone();
-
-        Box::pin(async move {
-            debug!("deleting message on success");
-            if let Err(err) = stream.delete_message(info.stream_sequence).await {
-                warn!(
-                    si.error.message = ?err,
-                    subject = head.subject.as_str(),
-                    "failed to delete the message",
-                );
-            }
-        })
-    }
-}
-
-#[derive(Clone, Debug)]
-struct DeleteMessageOnFailure {
-    stream: jetstream::stream::Stream,
-}
-
-impl DeleteMessageOnFailure {
-    fn new(stream: jetstream::stream::Stream) -> Self {
-        Self { stream }
-    }
-}
-
-impl jetstream_post_process::OnFailure for DeleteMessageOnFailure {
-    fn call(
-        &mut self,
-        head: Arc<naxum::Head>,
-        info: Arc<jetstream_post_process::Info>,
-    ) -> BoxFuture<'static, ()> {
-        let stream = self.stream.clone();
-
-        Box::pin(async move {
-            error!(
-                stream_sequence = info.stream_sequence,
-                subject = head.subject.as_str(),
-                "deleting message on FAILURE"
-            );
-            if let Err(err) = stream.delete_message(info.stream_sequence).await {
-                error!(
-                    si.error.message = ?err,
-                    subject = head.subject.as_str(),
-                    "failed to delete the message",
-                );
-            }
-        })
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -346,16 +267,22 @@ mod handlers {
         ChangeSetId,
         DalContext,
         WorkspacePk,
+        WorkspaceSnapshotAddress,
     };
     use frigg::FriggStore;
     use naxum::{
+        Json,
         extract::State,
         response::{
             IntoResponse,
             Response,
         },
     };
-    use si_events::change_batch::ChangeBatchAddress;
+    use ringmap::RingMap;
+    use si_events::{
+        change_batch::ChangeBatchAddress,
+        workspace_snapshot::Change,
+    };
     use telemetry::prelude::*;
     use telemetry_utils::metric;
     use thiserror::Error;
@@ -364,10 +291,7 @@ mod handlers {
         app_state::AppState,
         materialized_view,
     };
-    use crate::extract::{
-        ApiTypesNegotiate,
-        EddaRequestKind,
-    };
+    use crate::compressed_request::CompressedRequest;
 
     #[remain::sorted]
     #[derive(Debug, Error)]
@@ -412,7 +336,7 @@ mod handlers {
 
     pub(crate) async fn default(
         State(state): State<AppState>,
-        ApiTypesNegotiate(request): ApiTypesNegotiate,
+        Json(request): Json<CompressedRequest>,
     ) -> Result<()> {
         let AppState {
             workspace_id,
@@ -452,7 +376,7 @@ mod handlers {
         fields(
             si.workspace.id = %workspace_id,
             si.change_set.id = %change_set_id,
-            si.edda_request.id = Empty
+            si.edda.compressed_request.kind = request.as_ref(),
         )
     )]
     async fn handle_request(
@@ -460,100 +384,169 @@ mod handlers {
         frigg: &FriggStore,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
-        request: EddaRequestKind,
+        request: CompressedRequest,
     ) -> Result<()> {
-        let span = current_span_for_instrument_at!("info");
-
         match request {
-            EddaRequestKind::Update(update_request)
-                if frigg
-                    .get_index(workspace_id, change_set_id)
-                    .await?
-                    .is_some()
-                    && ctx.workspace_snapshot()?.id().await
-                        == update_request.to_snapshot_address =>
-            {
-                if !span.is_disabled() {
-                    span.record("si.edda_request.id", update_request.id.to_string());
-                }
-                let change_batch = ctx
-                    .layer_db()
-                    .change_batch()
-                    .read_wait_for_memory(&update_request.change_batch_address)
-                    .await?
-                    .ok_or(HandlerError::ChangeBatchNotFound(
-                        update_request.change_batch_address,
-                    ))?;
+            CompressedRequest::NewChangeSet {
+                base_change_set_id: _,
+                new_change_set_id: _,
+                to_snapshot_address,
+                change_batch_addresses,
+            } => {
+                let index_was_copied = materialized_view::try_reuse_mv_index_for_new_change_set(
+                    ctx,
+                    frigg,
+                    to_snapshot_address,
+                )
+                .instrument(tracing::info_span!(
+                    "edda.change_set_processor_task.new_change_set"
+                ))
+                .await?;
 
-                materialized_view::build_mv_for_changes_in_change_set(
-                    ctx,
-                    frigg,
-                    change_set_id,
-                    update_request.from_snapshot_address,
-                    update_request.to_snapshot_address,
-                    change_batch.changes(),
-                )
-                .instrument(tracing::info_span!(
-                    "edda.change_set_processor_task.build_mv_for_changes_in_change_set"
-                ))
-                .await
-                .map_err(Into::into)
-            }
-            EddaRequestKind::Update(update_request)
-                if ctx.workspace_snapshot()?.id().await != update_request.to_snapshot_address =>
-            {
-                if !span.is_disabled() {
-                    span.record("si.edda_request.id", update_request.id.to_string());
-                }
-                materialized_view::build_all_mv_for_change_set(
-                    ctx,
-                    frigg,
-                    Some(update_request.from_snapshot_address),
-                )
-                .instrument(tracing::info_span!(
-                    "edda.change_set_processor_task.build_all_mv_for_change_set.snapshot_moved"
-                ))
-                .await
-                .map_err(Into::into)
-            }
-            EddaRequestKind::Update(update_request) => {
-                if !span.is_disabled() {
-                    span.record("si.edda_request.id", update_request.id.to_string());
-                }
-                materialized_view::build_all_mv_for_change_set(ctx, frigg, None)
-                    .instrument(tracing::info_span!(
-                        "edda.change_set_processor_task.build_all_mv_for_change_set.initial_build"
-                    ))
+                if index_was_copied {
+                    process_incremental_updates(
+                        ctx,
+                        frigg,
+                        change_set_id,
+                        to_snapshot_address, // both snapshot addrs will use `to`
+                        to_snapshot_address, // both snapshot addrs will use `to`
+                        change_batch_addresses,
+                    )
                     .await
-                    .map_err(Into::into)
-            }
-            EddaRequestKind::Rebuild(rebuild_request) => {
-                if !span.is_disabled() {
-                    span.record("si.edda_request.id", rebuild_request.id.to_string());
                 }
-                materialized_view::build_all_mv_for_change_set(ctx, frigg, None)
+                // If we couldn't copy the index successfully, fall back to rebuild
+                else {
+                    materialized_view::build_all_mv_for_change_set(
+                        ctx,
+                        frigg,
+                        Some(to_snapshot_address),
+                    )
                     .instrument(tracing::info_span!(
                         "edda.change_set_processor_task.build_all_mv_for_change_set.explicit_rebuild"
                     ))
                     .await
                     .map_err(Into::into)
-            }
-            EddaRequestKind::NewChangeSet(new_change_set_request) => {
-                if !span.is_disabled() {
-                    span.record("si.edda_request.id", new_change_set_request.id.to_string());
                 }
-                materialized_view::reuse_or_rebuild_index_for_new_change_set(
+            }
+            CompressedRequest::Rebuild => {
+                // Rebuild
+                materialized_view::build_all_mv_for_change_set(
                     ctx,
                     frigg,
-                    new_change_set_request.to_snapshot_address,
+                    None,
                 )
                 .instrument(tracing::info_span!(
-                    "edda.change_set_processor_task.new_change_set"
+                    "edda.change_set_processor_task.build_all_mv_for_change_set.explicit_rebuild"
                 ))
                 .await
                 .map_err(Into::into)
             }
+            CompressedRequest::Update {
+                from_snapshot_address,
+                to_snapshot_address,
+                change_batch_addresses,
+            } => {
+                // Index exists and current snapshot address is currently `to_snapshot_address`
+                if frigg
+                    .get_index(workspace_id, change_set_id)
+                    .await?
+                    .is_some()
+                    && ctx.workspace_snapshot()?.id().await == to_snapshot_address
+                {
+                    process_incremental_updates(
+                        ctx,
+                        frigg,
+                        change_set_id,
+                        from_snapshot_address,
+                        to_snapshot_address,
+                        change_batch_addresses,
+                    )
+                    .await
+                }
+                // Current snapshot address is *not* currently `to_snapshot_address`
+                else if ctx.workspace_snapshot()?.id().await != to_snapshot_address {
+                    materialized_view::build_all_mv_for_change_set(
+                        ctx,
+                        frigg,
+                        Some(from_snapshot_address),
+                    )
+                    .instrument(tracing::info_span!(
+                        "edda.change_set_processor_task.build_all_mv_for_change_set.snapshot_moved"
+                    ))
+                    .await
+                    .map_err(Into::into)
+                }
+                // Index does not exist???
+                else {
+                    // todo: this is where we'd handle reusing an index from another change set if
+                    // the snapshots match!
+                    materialized_view::build_all_mv_for_change_set(ctx, frigg, None)
+                    .instrument(tracing::info_span!(
+                        "edda.change_set_processor_task.build_all_mv_for_change_set.initial_build"
+                    ))
+                    .await
+                    .map_err(Into::into)
+                }
+            }
         }
+    }
+
+    async fn process_incremental_updates(
+        ctx: &DalContext,
+        frigg: &FriggStore,
+        change_set_id: ChangeSetId,
+        from_snapshot_address: WorkspaceSnapshotAddress,
+        to_snapshot_address: WorkspaceSnapshotAddress,
+        change_batch_addresses: Vec<ChangeBatchAddress>,
+    ) -> Result<()> {
+        let mut changes = Vec::new();
+
+        // Load all change batches and concatenate all changes from all batches
+        for change_batch_address in change_batch_addresses {
+            let change_batch = ctx
+                .layer_db()
+                .change_batch()
+                .read_wait_for_memory(&change_batch_address)
+                .await?
+                .ok_or(HandlerError::ChangeBatchNotFound(change_batch_address))?;
+            changes.extend_from_slice(change_batch.changes());
+        }
+
+        changes = deduplicate_changes(changes);
+
+        materialized_view::build_mv_for_changes_in_change_set(
+            ctx,
+            frigg,
+            change_set_id,
+            from_snapshot_address,
+            to_snapshot_address,
+            &changes,
+        )
+        .instrument(tracing::info_span!(
+            "edda.change_set_processor_task.build_mv_for_changes_in_change_set"
+        ))
+        .await
+        .map_err(Into::into)
+    }
+
+    fn deduplicate_changes(changes: Vec<Change>) -> Vec<Change> {
+        let map: RingMap<_, _> = changes
+            .into_iter()
+            .map(|change| {
+                (
+                    (change.entity_kind, change.entity_id),
+                    change.merkle_tree_hash,
+                )
+            })
+            .collect();
+
+        map.into_iter()
+            .map(|((entity_kind, entity_id), merkle_tree_hash)| Change {
+                entity_id,
+                entity_kind,
+                merkle_tree_hash,
+            })
+            .collect()
     }
 }
 
