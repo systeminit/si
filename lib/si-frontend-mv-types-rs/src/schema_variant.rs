@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use prop_tree::PropTree;
 use serde::{
     Deserialize,
@@ -19,7 +21,11 @@ use strum::{
 
 use crate::{
     management::MgmtPrototypeView,
-    reference::ReferenceKind,
+    reference::{
+        ReferenceKind,
+        WeakReference,
+        weak,
+    },
 };
 
 pub mod prop_tree;
@@ -72,6 +78,21 @@ pub struct SchemaVariant {
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
 #[serde(rename_all = "camelCase")]
+pub struct InstalledVariant {
+    pub id: SchemaVariantId,
+    pub schema_variant: WeakReference<SchemaVariantId, weak::markers::SchemaVariant>,
+}
+
+#[derive(
+    Clone,
+    Debug,
+    Deserialize,
+    Eq,
+    Serialize,
+    PartialEq,
+    si_frontend_mv_types_macros::FrontendChecksum,
+)]
+#[serde(rename_all = "camelCase")]
 pub struct UninstalledVariant {
     pub schema_id: SchemaId,
     pub schema_name: String,
@@ -80,32 +101,6 @@ pub struct UninstalledVariant {
     pub link: Option<String>,
     pub color: Option<String>,
     pub description: Option<String>,
-    pub component_type: ComponentType,
-}
-
-#[remain::sorted]
-#[derive(
-    AsRefStr,
-    Clone,
-    Copy,
-    Debug,
-    Deserialize,
-    EnumString,
-    Eq,
-    Serialize,
-    Display,
-    EnumIter,
-    Ord,
-    PartialEq,
-    PartialOrd,
-    si_frontend_mv_types_macros::FrontendChecksum,
-)]
-#[serde(rename_all = "camelCase")]
-pub enum ComponentType {
-    AggregationFrame,
-    Component,
-    ConfigurationFrameDown,
-    ConfigurationFrameUp,
 }
 
 #[derive(
@@ -121,7 +116,7 @@ pub enum ComponentType {
 #[serde(untagged, rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum Variant {
-    SchemaVariant(SchemaVariant),
+    InstalledSchemaVariant(InstalledVariant),
     UninstalledVariant(UninstalledVariant),
 }
 
@@ -159,7 +154,6 @@ pub struct DisambiguateVariant {
     #[serde(rename = "type")]
     pub variant_type: VariantType,
     pub id: String,
-    pub variant: Variant,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -188,4 +182,5 @@ pub struct SchemaVariantsByCategory {
 pub struct SchemaVariantCategories {
     pub id: ChangeSetId,
     pub categories: Vec<SchemaVariantsByCategory>,
+    pub uninstalled: HashMap<SchemaId, UninstalledVariant>,
 }

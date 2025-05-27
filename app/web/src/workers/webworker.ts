@@ -75,6 +75,9 @@ import {
   BifrostSecretDefinitionList,
   EddaSecretList,
   BifrostSecretList,
+  EddaSchemaVariantCategories,
+  BifrostSchemaVariantCategories,
+  CategoryVariant,
 } from "./types/entity_kind_types";
 import { hasReturned, maybeMjolnir } from "./mjolnir_queue";
 
@@ -1426,6 +1429,7 @@ const getReferences = async (
       EntityKind.ViewComponentList,
       EntityKind.IncomingConnections,
       EntityKind.IncomingConnectionsList,
+      EntityKind.SchemaVariantCategories,
       EntityKind.SecretDefinitionList,
       EntityKind.SecretList,
       EntityKind.Secret,
@@ -1445,7 +1449,61 @@ const getReferences = async (
 
   let hasReferenceError = false;
 
-  if (kind === EntityKind.Secret) {
+  if (kind === EntityKind.SchemaVariantCategories) {
+    const data = atomDoc as EddaSchemaVariantCategories;
+    const bifrost: BifrostSchemaVariantCategories = {
+      id: data.id,
+      categories: [],
+    };
+    await Promise.all(
+      data.categories.map(async (category) => {
+        const variants = await Promise.all(
+          category.schemaVariants.map(async (schemaVariant) => {
+            if (schemaVariant.type === "uninstalled") {
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              const variant = data.uninstalled[schemaVariant.id]!;
+              variant.uninstalled = "uninstalled";
+              return variant;
+            } else {
+              const sd = (await get(
+                workspaceId,
+                changeSetId,
+                EntityKind.SchemaVariant,
+                schemaVariant.id,
+                undefined,
+                followComputed,
+              )) as SchemaVariant | -1;
+
+              if (sd === -1) {
+                hasReferenceError = true;
+                mjolnir(
+                  workspaceId,
+                  changeSetId,
+                  EntityKind.SchemaVariant,
+                  schemaVariant.id,
+                );
+              }
+              weakReference(
+                changeSetId,
+                { kind: EntityKind.SchemaVariant, args: schemaVariant.id },
+                { kind, args: data.id },
+              );
+              return sd;
+            }
+          }),
+        );
+        const schemaVariants = variants.filter(
+          (v): v is CategoryVariant => v !== -1 && v && "schemaId" in v,
+        );
+        bifrost.categories.push({
+          displayName: category.displayName,
+          schemaVariants,
+        });
+      }),
+    );
+    span.end();
+    return [bifrost, hasReferenceError];
+  } else if (kind === EntityKind.Secret) {
     const data = atomDoc as EddaSecret;
     const sd = (await get(
       workspaceId,
@@ -1573,7 +1631,7 @@ const getReferences = async (
       changeSetId,
       data.schemaVariantId.kind,
       data.schemaVariantId.id,
-      data.schemaVariantId.checksum,
+      undefined,
       followComputed,
     )) as SchemaVariant | -1;
 

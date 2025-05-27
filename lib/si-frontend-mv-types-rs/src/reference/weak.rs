@@ -96,6 +96,14 @@ pub mod markers {
         const REFERENCE_KIND: ReferenceKind = ReferenceKind::Component;
     }
 
+    /// A weak reference marker for [`ReferenceKind::SchemaVariant`].
+    #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
+    pub struct SchemaVariant;
+
+    impl ReferenceKindMarker for SchemaVariant {
+        const REFERENCE_KIND: ReferenceKind = ReferenceKind::SchemaVariant;
+    }
+
     /// A weak reference marker for [`ReferenceKind::SecretDefinition`].
     #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
     pub struct SecretDefinition;

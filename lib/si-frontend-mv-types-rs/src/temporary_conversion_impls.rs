@@ -6,12 +6,10 @@
 
 use si_frontend_types::{
     ComponentQualificationStats as DeprecatedComponentQualificationStats,
-    ComponentType as DeprecatedComponentType,
     PropKind as DeprecatedPropKind,
 };
 
 use crate::{
-    ComponentType,
     component::ComponentQualificationStats,
     schema_variant::prop_tree::PropKind,
 };
@@ -24,20 +22,6 @@ impl From<DeprecatedComponentQualificationStats> for ComponentQualificationStats
             succeeded: value.succeeded,
             failed: value.failed,
             running: value.running,
-        }
-    }
-}
-
-// NOTE(nick): why are we converting component type if it is dead in the new UI? Baggage from the
-// old type in the new MV. For now, let's convert it but the concept of "component type" will also
-// die alongside this module.
-impl From<DeprecatedComponentType> for ComponentType {
-    fn from(value: DeprecatedComponentType) -> Self {
-        match value {
-            DeprecatedComponentType::AggregationFrame => Self::AggregationFrame,
-            DeprecatedComponentType::Component => Self::Component,
-            DeprecatedComponentType::ConfigurationFrameDown => Self::ConfigurationFrameDown,
-            DeprecatedComponentType::ConfigurationFrameUp => Self::ConfigurationFrameUp,
         }
     }
 }

@@ -224,6 +224,7 @@ pub async fn map_all_nodes_to_change_objects(
         si.change_set.id = %change_set_id,
         si.snapshot_from_address = %from_snapshot_address,
         si.snapshot_to_address = %to_snapshot_address,
+        si.edda_request.changes = Empty,
     )
 )]
 pub async fn build_mv_for_changes_in_change_set(
@@ -235,10 +236,10 @@ pub async fn build_mv_for_changes_in_change_set(
     changes: &[Change],
 ) -> Result<(), MaterializedViewError> {
     let workspace_pk = ctx.workspace_pk()?;
-
+    debug!("building for changes: {:?}", changes);
     let span = current_span_for_instrument_at!("info");
     span.record("si.workspace.id", workspace_pk.to_string());
-
+    span.record("si.edda_request.changes", format!("{:?}", changes));
     let (index_frontend_object, index_kv_revision) = frigg
         .get_index(ctx.workspace_pk()?, change_set_id)
         .await?
@@ -249,7 +250,6 @@ pub async fn build_mv_for_changes_in_change_set(
 
     let (frontend_objects, patches) =
         build_mv_inner(ctx, frigg, workspace_pk, change_set_id, changes).await?;
-
     let mv_index: MvIndex = serde_json::from_value(index_frontend_object.data)?;
     let removal_checksum = "0".to_string();
     let removed_items: HashSet<(String, String)> = patches
@@ -468,9 +468,11 @@ async fn build_mv_inner(
             if mv_kind_task_ids.get().is_empty() {
                 mv_dependency_graph.remove_id(kind);
             }
+
             match execution_result {
                 Ok((maybe_patch, maybe_frontend_object)) => {
                     if let Some(patch) = maybe_patch {
+                        debug!("Patch!: {:?}", patch);
                         patches.push(patch);
                     }
                     if let Some(frontend_object) = maybe_frontend_object {
