@@ -86,9 +86,13 @@ impl DependentValueGraph {
             values_that_need_to_execute_from_prototype_function: HashSet::new(),
         };
 
-        let values = dependent_value_graph.parse_initial_ids(ctx, roots).await?;
+        let values = dependent_value_graph
+            .parse_initial_ids(ctx, roots)
+            .instrument(info_span!("dependent_value_graph.new.parse_initial_ids"))
+            .await?;
         dependent_value_graph
             .populate_for_values(ctx, values)
+            .instrument(info_span!("dependent_value_graph.new.populate_for_values"))
             .await?;
         Ok(dependent_value_graph)
     }
