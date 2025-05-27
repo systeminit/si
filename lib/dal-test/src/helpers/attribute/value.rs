@@ -167,7 +167,7 @@ pub async fn get(ctx: &DalContext, av: impl AttributeValueKey) -> Result<serde_j
     let av_id = av.lookup_attribute_value(ctx).await?;
     AttributeValue::view_by_id(ctx, av_id)
         .await?
-        .ok_or(eyre!("Attribute value not found"))
+        .ok_or(eyre!("Attribute missing value"))
 }
 
 /// Check whether the value exists and is set

@@ -8,6 +8,11 @@ use dal_test::{
     expected::ExpectComponent,
     helpers::{
         ChangeSetTestHelpers,
+        attribute::value::{
+            self,
+            AttributeValueKey,
+        },
+        change_set,
         component,
         schema::variant,
     },
@@ -119,6 +124,87 @@ async fn attribute_value_path(ctx: &mut DalContext) -> Result<()> {
                 .await?
                 .1,
             "/domain/ValueMap/a"
+        );
+    }
+
+    Ok(())
+}
+
+#[test]
+async fn update_object_multiplayer(ctx: &mut DalContext) -> Result<()> {
+    // Create a variant that will be in all three change sets
+    variant::create(
+        ctx,
+        "test",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        { name: "ObjectValue", kind: "object", children: [
+                            { name: "a", kind: "string" },
+                            { name: "b", kind: "string" },
+                            { name: "both", kind: "string" },
+                            { name: "neither", kind: "string" },
+                        ] },
+                        { name: "ArrayOfObjectValues", kind: "array",
+                            entry: { name: "ArrayOfObjectValuesItem", kind: "object", children: [
+                                { name: "a", kind: "string" },
+                                { name: "b", kind: "string" },
+                                { name: "both", kind: "string" },
+                                { name: "neither", kind: "string" },
+                            ] },
+                        },
+                        { name: "MapOfObjectValues", kind: "map",
+                            entry: { name: "MapOfObjectValuesItem", kind: "object", children: [
+                                { name: "a", kind: "string" },
+                                { name: "b", kind: "string" },
+                                { name: "both", kind: "string" },
+                                { name: "neither", kind: "string" },
+                            ] },
+                        },
+                    ]
+                };
+            }
+        "#,
+    )
+    .await?;
+    component::create(ctx, "test", "test").await?;
+    // Give them all initial values (testing the case where the value is already set, and changesets update)
+    let attrs = [
+        ("test", "/domain/ObjectValue"),
+        ("test", "/domain/ArrayOfObjectValues/0"),
+        ("test", "/domain/MapOfObjectValues/val"),
+    ];
+    for &attr in &attrs {
+        value::set(ctx, attr, json!({})).await?;
+    }
+    change_set::commit(ctx).await?;
+
+    // Two players update the object in parallel.
+    let (player1, player2) = (ctx.clone(), ctx.clone());
+    {
+        for &attr in &attrs {
+            value::set(&player1, attr, json!({ "a": "a", "both": "a"})).await?;
+        }
+        player1.commit().await?;
+    }
+    {
+        for &attr in &attrs {
+            value::set(&player2, attr, json!({ "b": "b", "both": "b"})).await?;
+        }
+        player2.commit().await?;
+    }
+
+    // Check its effect on the merged changeset
+    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
+    ctx.update_snapshot_to_visibility().await?;
+    for &attr in &attrs {
+        // The object must have exactly 4 child AVs and the value should be the merged value
+        let av_id = attr.lookup_attribute_value(ctx).await?;
+        assert_eq!(4, AttributeValue::child_av_ids(ctx, av_id).await?.len(),);
+        assert_eq!(
+            json!({ "b": "b", "both": "b", "a": "a" }),
+            value::get(ctx, attr).await?,
         );
     }
 

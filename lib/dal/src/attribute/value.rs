@@ -16,7 +16,10 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use serde_json::Value;
+use serde_json::{
+    Value,
+    json,
+};
 use si_events::{
     FuncRunValue,
     ulid::Ulid,
@@ -493,6 +496,9 @@ impl AttributeValue {
         Ok(av)
     }
 
+    /// Update the value.
+    ///
+    /// If this is an object, map or array value, update() will also update child values.
     #[instrument(
         name = "attribute_value.update",
         level = "info",
@@ -639,11 +645,9 @@ impl AttributeValue {
                     let prop = Prop::get_by_id(ctx, prop_id).await?;
                     match prop.kind {
                         PropKind::Object | PropKind::Map => {
-                            func_values.set_processed_value(Some(serde_json::json!({})))
+                            func_values.set_processed_value(Some(json!({})))
                         }
-                        PropKind::Array => {
-                            func_values.set_processed_value(Some(serde_json::json!([])))
-                        }
+                        PropKind::Array => func_values.set_processed_value(Some(json!([]))),
                         _ => func_values.set_processed_value(Some(unprocessed_value.to_owned())),
                     }
                 }
@@ -1106,6 +1110,7 @@ impl AttributeValue {
             .into())
     }
 
+    /// Add a new element to an array.
     pub async fn insert(
         ctx: &DalContext,
         parent_attribute_value_id: AttributeValueId,
@@ -1179,152 +1184,76 @@ impl AttributeValue {
         Ok(())
     }
 
-    async fn create_nested_value(
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-        value: Option<serde_json::Value>,
-        func_id: FuncId,
-        prop_id: PropId,
-        key: Option<String>,
-    ) -> AttributeValueResult<AttributeValueId> {
-        let prop_kind = {
-            let workspace_snapshot = ctx.workspace_snapshot()?;
-
-            if let NodeWeight::Prop(prop_inner) =
-                workspace_snapshot.get_node_weight(prop_id).await?
-            {
-                prop_inner.kind()
-            } else {
-                return Err(AttributeValueError::NodeWeightMismatch(
-                    prop_id.into(),
-                    NodeWeightDiscriminants::Prop,
-                ));
-            }
-        };
-
-        let new_attribute_value =
-            Self::new(ctx, prop_id, None, Some(attribute_value_id), key).await?;
-
-        AttributePrototype::new(ctx, func_id).await?;
-
-        match prop_kind {
-            PropKind::Object | PropKind::Map => {
-                Self::set_value(
-                    ctx,
-                    new_attribute_value.id,
-                    if value.is_some() {
-                        Some(serde_json::json!({}))
-                    } else {
-                        None
-                    },
-                )
-                .await?;
-            }
-            PropKind::Array => {
-                Self::set_value(
-                    ctx,
-                    new_attribute_value.id,
-                    if value.is_some() {
-                        Some(serde_json::json!([]))
-                    } else {
-                        None
-                    },
-                )
-                .await?;
-            }
-            _ => {
-                Self::set_value(ctx, new_attribute_value.id, value).await?;
-            }
-        }
-
-        Ok(new_attribute_value.id)
-    }
-
+    /// Set child values of descendant AVs (maps, arrays and objects) to the corresponding JSON values.
+    ///
+    /// NOTE: this does not set the top-level value, only children, children's children, etc.
+    /// The caller is responsible for setting the top-level value--for example, using set_value().
     async fn populate_nested_values(
         ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-        value: Option<serde_json::Value>,
+        root_id: AttributeValueId,
+        root_value: Option<serde_json::Value>,
     ) -> AttributeValueResult<()> {
-        // Cache the unset func id before getting the workspace snapshot.
-        let unset_func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Unset).await?;
-
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        // Remove child attribute value edges
-        for attribute_value_target in workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(
-                attribute_value_id,
-                EdgeWeightKindDiscriminants::Contain,
-            )
-            .await?
-        {
-            let current_target_id = workspace_snapshot
-                .get_node_weight(attribute_value_target)
-                .await?
-                .id();
-
-            workspace_snapshot
-                .remove_node_by_id(current_target_id)
-                .await?;
-        }
-
-        let mut work_queue = VecDeque::from([(attribute_value_id, value)]);
-
+        let mut work_queue = VecDeque::from([(root_id, root_value)]);
         let mut view_stack = Vec::new();
 
-        while let Some((attribute_value_id, maybe_value)) = work_queue.pop_front() {
-            let (prop_kind, prop_id) = {
-                let prop_id = Self::is_for(ctx, attribute_value_id)
-                    .await?
-                    .prop_id()
-                    .ok_or(
-                        AttributeValueError::CannotCreateNestedValuesForNonPropValues(
-                            attribute_value_id,
-                        ),
-                    )?;
-                let prop = Prop::get_by_id(ctx, prop_id).await?;
+        while let Some((av_id, value)) = work_queue.pop_front() {
+            view_stack.push(av_id);
 
-                (prop.kind, prop_id)
-            };
-
-            view_stack.push(attribute_value_id);
-
-            let (work_queue_extension, view_stack_extension) = match prop_kind {
+            let prop_id = Self::prop_id(ctx, av_id).await?;
+            let child_values = match Prop::node_weight(ctx, prop_id).await?.kind() {
                 PropKind::Object => {
-                    Self::process_populate_nested_values_for_object(
-                        ctx,
-                        prop_id,
-                        attribute_value_id,
-                        unset_func_id,
-                        maybe_value,
-                    )
-                    .await?
+                    Self::vivify_children_for_object_value(ctx, av_id, prop_id, value).await?
                 }
                 PropKind::Array => {
-                    Self::process_populate_nested_values_for_array(
-                        ctx,
-                        prop_id,
-                        attribute_value_id,
-                        unset_func_id,
-                        maybe_value,
-                    )
-                    .await?
+                    Self::vivify_children_for_array_value(ctx, av_id, prop_id, value).await?
                 }
                 PropKind::Map => {
-                    Self::process_populate_nested_values_for_map(
-                        ctx,
-                        prop_id,
-                        attribute_value_id,
-                        unset_func_id,
-                        maybe_value,
-                    )
-                    .await?
+                    Self::vivify_children_for_map_value(ctx, av_id, prop_id, value).await?
                 }
-                _ => continue,
+                _ => {
+                    vec![] // no children
+                }
             };
 
-            // Extend the work queue by what was found when processing the container, if applicable.
-            work_queue.extend(work_queue_extension);
-            view_stack.extend(view_stack_extension);
+            // Process children (add to the work queue or view stack)
+            //
+            // NOTE This could probably be more elegant! But probably not without turning the
+            // whole loop inside out first, which I don't have time for right now. This centralizes
+            // the logic for setting child values, at least.
+            for (child_av_id, child_value) in child_values {
+                // Push onto the right queue, and get the value that we will set
+                let child_prop_id = Self::prop_id(ctx, child_av_id).await?;
+                let child_prop_kind = Prop::node_weight(ctx, child_prop_id).await?.kind();
+                let (child_value, nested_values) = match child_prop_kind {
+                    // Unset objects are set to None but still enqueued so that children are created
+                    PropKind::Object if child_value.is_none() => (None, Some(child_value)),
+
+                    // Unset maps and arrays are set to None and not enqueued. They are also
+                    // *not* placed on the view stack, because they will not be rendered if unset.
+                    PropKind::Map | PropKind::Array if child_value.is_none() => (None, None),
+
+                    // Objects, maps and arrays set a top-level value and break apart their child_value to
+                    // give to their children.
+                    PropKind::Object | PropKind::Map => (Some(json!({})), Some(child_value)),
+                    PropKind::Array => (Some(json!([])), Some(child_value)),
+
+                    // Scalar types are set directly to their value and put directly on the view stack,
+                    // even if they have no value (because they will be rendered as null).
+                    PropKind::Boolean
+                    | PropKind::Float
+                    | PropKind::Integer
+                    | PropKind::Json
+                    | PropKind::String => {
+                        view_stack.push(child_av_id);
+                        (child_value, None)
+                    }
+                };
+
+                if let Some(nested_values) = nested_values {
+                    work_queue.push_back((child_av_id, nested_values));
+                }
+                Self::set_value(ctx, child_av_id, child_value).await?;
+            }
         }
 
         Ok(())
@@ -1502,174 +1431,223 @@ impl AttributeValue {
         attribute_value.view(ctx).await
     }
 
-    async fn process_populate_nested_values_for_object(
+    /// Create the immediate child AVs for an object if they don't exist, and remove any other
+    /// AVs.
+    ///
+    /// New child AVs will be vivified in the order defined by the schema. This will not correct
+    /// mis-ordered AVs.
+    async fn vivify_children_for_object(
         ctx: &DalContext,
-        prop_id: PropId,
-        attribute_value_id: AttributeValueId,
-        unset_func_id: FuncId,
-        maybe_value: Option<Value>,
-    ) -> AttributeValueResult<(
-        VecDeque<(AttributeValueId, Option<Value>)>,
-        Vec<AttributeValueId>,
-    )> {
-        let maybe_object_map = match maybe_value {
-            Some(Value::Object(map)) => Some(map),
+        parent_av_id: AttributeValueId,
+        parent_prop_id: PropId,
+    ) -> AttributeValueResult<()> {
+        // Get a map of existing child_av_ids by prop
+        let child_av_ids = Self::child_av_ids(ctx, parent_av_id).await?;
+        let mut existing_children = HashMap::with_capacity(child_av_ids.len());
+        for child_av_id in child_av_ids {
+            let Some(child_prop_id) = Self::prop_id_opt(ctx, child_av_id).await? else {
+                warn!(
+                    "Removing child AV {child_av_id} (no prop) parent object AV {parent_av_id} (parent prop {parent_prop_id})"
+                );
+                AttributeValue::remove_by_id(ctx, child_av_id).await?;
+                continue;
+            };
+            if let Some(duplicate_av_id) = existing_children.insert(child_prop_id, child_av_id) {
+                warn!(
+                    "Removing duplicate child AV {duplicate_av_id} (prop {child_prop_id}) from parent object AV {parent_av_id} (parent prop {parent_prop_id})"
+                );
+                AttributeValue::remove_by_id(ctx, duplicate_av_id).await?;
+                continue;
+            }
+        }
+
+        // Create child AVs that do not exist, in prop order
+        for child_prop_id in Prop::direct_child_prop_ids_ordered(ctx, parent_prop_id).await? {
+            if existing_children.remove(&child_prop_id).is_none() {
+                Self::new(ctx, child_prop_id, None, Some(parent_av_id), None).await?;
+            }
+        }
+
+        // Remove any extra child AVs that are not in the JSON object (i.e. any we didn't use).
+        // (should not happen, graph fixup)
+        for (child_prop_id, child_av_id) in existing_children {
+            warn!(
+                "Removing extra child AV {child_av_id} with (prop {child_prop_id}) from parent object AV {parent_av_id} (prop {parent_prop_id})"
+            );
+            Self::remove_by_id(ctx, child_av_id).await?;
+        }
+
+        Ok(())
+    }
+
+    /// Create the immediate child AVs for an object if they don't exist, and associate them
+    /// with the associated value from the map. Does *not* set the values.
+    ///
+    /// Returns a list of all child AVs and child values that should be put in them. If the JSON
+    /// does not have a value for a child prop, the AV is still created, and the value is None
+    /// (unset).
+    ///
+    /// Creates child attribute values for all props in the object, whether there is a value
+    /// present or not. Reuses any existing child attribute values.
+    ///
+    /// The value is treated as a complete spec: any missing fields are treated as undefined
+    /// (None), and return to their default value. Extra fields in the value are ignored and
+    /// thrown away. Stray AVs in the prop are removed, as well.
+    async fn vivify_children_for_object_value(
+        ctx: &DalContext,
+        parent_av_id: AttributeValueId,
+        parent_prop_id: PropId,
+        value: Option<serde_json::Value>,
+    ) -> AttributeValueResult<Vec<(AttributeValueId, Option<serde_json::Value>)>> {
+        // vivify child AVs for each prop in the object
+        Self::vivify_children_for_object(ctx, parent_av_id, parent_prop_id).await?;
+
+        // Get the map of field names to values
+        let mut field_values = match value {
+            Some(Value::Object(values)) => values,
+            None => Default::default(), // empty object (unsets all children on unset)
             Some(value) => {
                 return Err(AttributeValueError::TypeMismatch(
                     PropKind::Object,
                     serde_value_to_string_type(&value),
                 ));
             }
-            None => None,
         };
 
-        let prop_map = {
-            let child_prop_indexes = ctx
-                .workspace_snapshot()?
-                .outgoing_targets_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Use)
-                .await?;
-
-            let mut prop_map = HashMap::new();
-            for node_index in child_prop_indexes {
-                if let NodeWeight::Prop(prop_inner) = ctx
-                    .workspace_snapshot()?
-                    .get_node_weight(node_index)
-                    .await?
-                {
-                    prop_map.insert(
-                        prop_inner.name().to_string(),
-                        (prop_inner.id(), prop_inner.kind()),
-                    );
-                }
-            }
-            prop_map
-        };
-
-        // Remove keys from our value if there is no corresponding child prop
-        let maybe_object_map = maybe_object_map.map(|mut map| {
-            map.retain(|k, _| prop_map.contains_key(k));
-            map
-        });
-
-        let mut view_stack_extension = vec![];
-        let mut work_queue_extension = VecDeque::new();
-        for (key, (prop_id, prop_kind)) in prop_map.into_iter() {
-            let field_value = maybe_object_map
-                .as_ref()
-                .and_then(|map| map.get(&key).cloned());
-
-            let new_attribute_value_id = Self::create_nested_value(
-                ctx,
-                attribute_value_id,
-                field_value.clone(),
-                unset_func_id,
-                PropId::from(prop_id),
-                None,
-            )
-            .await?;
-
-            match prop_kind {
-                PropKind::Array | PropKind::Map => {
-                    if field_value.is_some() {
-                        work_queue_extension.push_back((new_attribute_value_id, field_value));
-                    }
-                }
-                PropKind::Object => {
-                    work_queue_extension.push_back((new_attribute_value_id, field_value));
-                }
-                _ => view_stack_extension.push(new_attribute_value_id),
-            }
+        // Associate each child AV with the corresponding JSON value from the map
+        let field_av_ids = Self::child_av_ids(ctx, parent_av_id).await?;
+        let mut new_children = Vec::with_capacity(field_av_ids.len());
+        for field_av_id in field_av_ids {
+            let field_prop_id = Self::prop_id(ctx, field_av_id).await?;
+            let field_value =
+                field_values.remove(Prop::node_weight(ctx, field_prop_id).await?.name());
+            new_children.push((field_av_id, field_value));
         }
-        Ok((work_queue_extension, view_stack_extension))
+
+        Ok(new_children)
     }
 
-    async fn process_populate_nested_values_for_array(
+    /// Set one level of children of an array to the values in a JSON array, then enqueues any
+    /// nested children (i.e. array of objects or array of arrays) for further processing.
+    ///
+    /// This reuses existing child attribute values where possible, and creates new ones when needed.
+    /// Existing child attribute values are removed if they are not in the JSON array.
+    ///
+    /// This only sets the first level of the values, and enqueues the children for further
+    /// processing if they are arrays, maps or objects.
+    async fn vivify_children_for_array_value(
         ctx: &DalContext,
-        prop_id: PropId,
-        attribute_value_id: AttributeValueId,
-        unset_func_id: FuncId,
+        parent_av_id: AttributeValueId,
+        parent_prop_id: PropId,
         maybe_value: Option<Value>,
-    ) -> AttributeValueResult<(
-        VecDeque<(AttributeValueId, Option<Value>)>,
-        Vec<AttributeValueId>,
-    )> {
-        let mut work_queue_extension = VecDeque::new();
-        let mut view_stack_extension = vec![];
+    ) -> AttributeValueResult<Vec<(AttributeValueId, Option<serde_json::Value>)>> {
+        let element_prop_id = Prop::element_prop_id(ctx, parent_prop_id).await?;
 
-        let array_items = match maybe_value {
-            Some(serde_json::Value::Array(array)) => {
-                if array.is_empty() {
-                    return Ok((work_queue_extension, view_stack_extension));
-                }
-                array
-            }
+        let element_values = match maybe_value {
+            Some(serde_json::Value::Array(array)) => array,
+            None => Default::default(), // empty array (removes all children on unset)
+
             Some(value) => {
                 return Err(AttributeValueError::TypeMismatch(
                     PropKind::Array,
                     serde_value_to_string_type(&value),
                 ));
             }
-            None => return Ok((work_queue_extension, view_stack_extension)),
         };
 
-        let (element_prop_id, element_prop_kind) = {
-            let workspace_snapshot = ctx.workspace_snapshot()?;
+        // Get an iterator of existing elements in the array so we can reuse them.
+        // Any that are not reused will be removed at the end.
+        let mut existing_elements = Self::get_child_av_ids_in_order(ctx, parent_av_id)
+            .await?
+            .into_iter();
 
-            // find the child element prop
-            let child_props = workspace_snapshot
-                .outgoing_targets_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Use)
-                .await?;
-
-            if child_props.len() > 1 {
-                return Err(AttributeValueError::PropMoreThanOneChild(prop_id));
-            }
-
-            let element_prop_index = child_props
-                .first()
-                .ok_or(AttributeValueError::PropMissingElementProp(prop_id))?
-                .to_owned();
-
-            match workspace_snapshot
-                .get_node_weight(element_prop_index)
-                .await?
-            {
-                NodeWeight::Prop(prop_inner) => (prop_inner.id(), prop_inner.kind()),
-                _ => {
-                    return Err(AttributeValueError::NodeWeightMismatch(
-                        element_prop_index,
-                        NodeWeightDiscriminants::Prop,
-                    ));
-                }
-            }
-        };
-
-        for array_item in array_items {
-            // TODO: should we type check the values here against the element prop?
-            let array_item_value = Some(array_item);
-            let new_attribute_value_id = Self::create_nested_value(
-                ctx,
-                attribute_value_id,
-                array_item_value.clone(),
-                unset_func_id,
-                PropId::from(element_prop_id),
-                None,
-            )
-            .await?;
-
-            match element_prop_kind {
-                PropKind::Array | PropKind::Map => {
-                    if array_item_value.is_some() {
-                        work_queue_extension.push_back((new_attribute_value_id, array_item_value));
-                    }
-                }
-                PropKind::Object => {
-                    work_queue_extension.push_back((new_attribute_value_id, array_item_value));
-                }
-                _ => view_stack_extension.push(new_attribute_value_id),
-            }
+        // Associate each child element AV with the corresponding JSON value
+        let mut new_children = Vec::with_capacity(element_values.len());
+        for element_value in element_values {
+            // Create the AV if it doesn't exist
+            let element_av_id = match existing_elements.next() {
+                Some(element_av_id) => element_av_id,
+                None => Self::new(ctx, element_prop_id, None, Some(parent_av_id), None)
+                    .await?
+                    .id(),
+            };
+            new_children.push((element_av_id, Some(element_value)));
         }
 
-        Ok((work_queue_extension, view_stack_extension))
+        // Remove unused child AVs that are not in the JSON array
+        for extra_element in existing_elements {
+            AttributeValue::remove_by_id(ctx, extra_element).await?;
+        }
+
+        Ok(new_children)
+    }
+
+    /// Set one level of children in a map from a JSON object, then enqueues nested children
+    /// for further processing.
+    ///
+    /// New child attributes values are inserted in the order they appear in the JSON object.
+    ///
+    /// Child entry attribute values are reused where possible, and created when needed. Existing
+    /// child entries are removed if they are not in the map.
+    async fn vivify_children_for_map_value(
+        ctx: &DalContext,
+        parent_av_id: AttributeValueId,
+        prop_id: PropId,
+        maybe_value: Option<Value>,
+    ) -> AttributeValueResult<Vec<(AttributeValueId, Option<serde_json::Value>)>> {
+        let snapshot = ctx.workspace_snapshot()?;
+
+        let entry_values = match maybe_value {
+            Some(Value::Object(entries)) => entries,
+            None => Default::default(), // empty map (removes all children on unset)
+            Some(value) => {
+                return Err(AttributeValueError::TypeMismatch(
+                    PropKind::Map,
+                    serde_value_to_string_type(&value),
+                ));
+            }
+        };
+
+        // Get existing map entries, removing duplicates
+        let mut existing_entries = HashMap::new();
+        for (edge_weight, _, target_id) in snapshot.edges_directed(parent_av_id, Outgoing).await? {
+            let EdgeWeightKind::Contain(key) = edge_weight.kind else {
+                continue;
+            };
+            let child_av_id = AttributeValueId::from(target_id);
+            let Some(key) = key else {
+                warn!("Removing non-map edge {child_av_id} from parent map AV {parent_av_id}");
+                Self::remove_by_id(ctx, child_av_id).await?;
+                continue;
+            };
+            if let Some(duplicate_av_id) = existing_entries.insert(key, child_av_id) {
+                warn!(
+                    "Removing duplicate map entry AV {duplicate_av_id} for parent map AV {parent_av_id}"
+                );
+                Self::remove_by_id(ctx, duplicate_av_id).await?;
+                continue;
+            }
+        }
+        let entry_prop_id = Prop::element_prop_id(ctx, prop_id).await?;
+
+        let mut new_children = Vec::with_capacity(entry_values.len());
+        for (key, entry_value) in entry_values.into_iter() {
+            // Reuse the entry if it exists; add one if not
+            let entry_av_id = match existing_entries.remove(&key) {
+                Some(entry_av_id) => entry_av_id,
+                None => Self::new(ctx, entry_prop_id, None, Some(parent_av_id), Some(key))
+                    .await?
+                    .id(),
+            };
+            new_children.push((entry_av_id, Some(entry_value)));
+        }
+
+        // Remove leftover map nodes entirely
+        for av_id in existing_entries.into_values() {
+            ctx.workspace_snapshot()?.remove_node_by_id(av_id).await?;
+        }
+
+        Ok(new_children)
     }
 
     pub async fn parent_id(
@@ -1828,93 +1806,6 @@ impl AttributeValue {
         }
     }
 
-    async fn process_populate_nested_values_for_map(
-        ctx: &DalContext,
-        prop_id: PropId,
-        attribute_value_id: AttributeValueId,
-        unset_func_id: FuncId,
-        maybe_value: Option<Value>,
-    ) -> AttributeValueResult<(
-        VecDeque<(AttributeValueId, Option<Value>)>,
-        Vec<AttributeValueId>,
-    )> {
-        let mut work_queue_extension = VecDeque::new();
-        let mut view_stack_extension = vec![];
-
-        let map_map = match maybe_value {
-            Some(Value::Object(map)) => {
-                if map.is_empty() {
-                    return Ok((work_queue_extension, view_stack_extension));
-                }
-                map
-            }
-            Some(value) => {
-                return Err(AttributeValueError::TypeMismatch(
-                    PropKind::Map,
-                    serde_value_to_string_type(&value),
-                ));
-            }
-            None => return Ok((work_queue_extension, view_stack_extension)),
-        };
-
-        let (element_prop_id, element_prop_kind) = {
-            let workspace_snapshot = ctx.workspace_snapshot()?;
-
-            // find the child element prop
-            let child_props = workspace_snapshot
-                .outgoing_targets_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Use)
-                .await?;
-
-            if child_props.len() > 1 {
-                return Err(AttributeValueError::PropMoreThanOneChild(prop_id));
-            }
-
-            let element_prop_index = child_props
-                .first()
-                .ok_or(AttributeValueError::PropMissingElementProp(prop_id))?
-                .to_owned();
-
-            match workspace_snapshot
-                .get_node_weight(element_prop_index)
-                .await?
-            {
-                NodeWeight::Prop(prop_inner) => (prop_inner.id(), prop_inner.kind()),
-                _ => {
-                    return Err(AttributeValueError::NodeWeightMismatch(
-                        element_prop_index,
-                        NodeWeightDiscriminants::Prop,
-                    ));
-                }
-            }
-        };
-
-        for (key, value) in map_map.into_iter() {
-            let value = Some(value);
-            let new_attribute_value_id = Self::create_nested_value(
-                ctx,
-                attribute_value_id,
-                value.clone(),
-                unset_func_id,
-                PropId::from(element_prop_id),
-                Some(key.to_owned()),
-            )
-            .await?;
-
-            match element_prop_kind {
-                PropKind::Array | PropKind::Map => {
-                    if value.is_some() {
-                        work_queue_extension.push_back((new_attribute_value_id, value));
-                    }
-                }
-                PropKind::Object => {
-                    work_queue_extension.push_back((new_attribute_value_id, value));
-                }
-                _ => view_stack_extension.push(new_attribute_value_id),
-            }
-        }
-        Ok((work_queue_extension, view_stack_extension))
-    }
-
     /// Set's the component specific prototype id for this attribute value.
     /// Removes the existing component specific prototype if it exists.
     #[instrument(level = "debug", skip(ctx))]
@@ -1969,6 +1860,7 @@ impl AttributeValue {
         Ok(())
     }
 
+    /// Set the top-level value for this AV.
     #[instrument(name = "attribute_value.set_value", level = "debug", skip_all)]
     pub async fn set_value(
         ctx: &DalContext,
@@ -1989,11 +1881,7 @@ impl AttributeValue {
         };
 
         let intrinsic_func = {
-            let prop_node = ctx
-                .workspace_snapshot()?
-                .get_node_weight(prop_id)
-                .await?
-                .get_prop_node_weight()?;
+            let prop_node = Prop::node_weight(ctx, prop_id).await?;
 
             if let Some(inner_value) = &value {
                 // Unfortunately, there isn't a good way to consistently track "there is no value", and "the
@@ -2039,7 +1927,7 @@ impl AttributeValue {
                 )
                 .await?;
 
-                serde_json::json!({ func_arg_name: value } )
+                json!({ func_arg_name: value } )
             }
             None => serde_json::Value::Null,
         };
@@ -2395,31 +2283,30 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Option<PropId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        let mut maybe_prop_id = None;
-        for target in workspace_snapshot
+        let mut props = ctx
+            .workspace_snapshot()?
             .outgoing_targets_for_edge_weight_kind(
                 attribute_value_id,
                 EdgeWeightKindDiscriminants::Prop,
             )
             .await?
-        {
-            let target_node_weight = workspace_snapshot.get_node_weight(target).await?;
-            if let NodeWeight::Prop(prop_node_weight) = &target_node_weight {
-                if let Some(already_found_prop_id) = maybe_prop_id {
-                    return Err(AttributeValueError::MultiplePropsFound(
-                        prop_node_weight.id().into(),
-                        already_found_prop_id,
-                        attribute_value_id,
-                    ));
-                }
+            .into_iter()
+            .map(PropId::from);
 
-                maybe_prop_id = Some(target_node_weight.id().into());
+        let prop_id_opt = props.next();
+
+        // Check for multiple props
+        if let Some(prop_id) = prop_id_opt {
+            if let Some(other_prop_id) = props.next() {
+                return Err(AttributeValueError::MultiplePropsFound(
+                    other_prop_id,
+                    prop_id,
+                    attribute_value_id,
+                ));
             }
         }
 
-        Ok(maybe_prop_id)
+        Ok(prop_id_opt)
     }
 
     async fn fetch_value_from_store(
@@ -2481,16 +2368,16 @@ impl AttributeValue {
         Self::fetch_value_from_store(ctx, self.unprocessed_value).await
     }
 
-    async fn get_child_av_ids_from_ordering_node(
+    // Child AV IDs, ordered as they are in the graph, without reordering.
+    pub async fn child_av_ids(
         ctx: &DalContext,
         id: AttributeValueId,
     ) -> AttributeValueResult<Vec<AttributeValueId>> {
-        let ordered_ulids = ctx
-            .workspace_snapshot()?
-            .ordered_children_for_node(id)
-            .await?
-            .ok_or(AttributeValueError::NoOrderingNodeForAttributeValue(id))?;
-        Ok(ordered_ulids.iter().map(|&id| id.into()).collect())
+        let snapshot = ctx.workspace_snapshot()?;
+        Ok(match snapshot.ordered_children_for_node(id).await? {
+            Some(children) => children.into_iter().map(Into::into).collect(),
+            None => vec![],
+        })
     }
 
     /// Get the child attribute values for this attribute value, if any exist.
@@ -2508,9 +2395,7 @@ impl AttributeValue {
             | PropKind::Float
             | PropKind::Json
             | PropKind::String => Ok(vec![]),
-            PropKind::Array | PropKind::Map => {
-                Self::get_child_av_ids_from_ordering_node(ctx, id).await
-            }
+            PropKind::Array | PropKind::Map => Self::child_av_ids(ctx, id).await,
             // Unlike maps or arrays, we want to walk object
             // attribute values in prop order, not attribute
             // value order, so that we always return them in the
@@ -2524,7 +2409,7 @@ impl AttributeValue {
             // AttributeValue object-type props altogether.
             PropKind::Object => {
                 // NOTE probably can get the unordered ones if it comes down to it.
-                let child_ids = Self::get_child_av_ids_from_ordering_node(ctx, id).await?;
+                let child_ids = Self::child_av_ids(ctx, id).await?;
                 let child_prop_ids = Prop::direct_child_prop_ids_ordered(ctx, prop.id).await?;
 
                 // Get the mapping from PropId -> AttributeValueId
