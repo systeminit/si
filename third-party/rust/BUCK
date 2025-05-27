@@ -6846,6 +6846,10 @@ cargo.rust_library(
     env = {
         "OUT_DIR": "$(location :fuser-0.15.1-build-script-run[out_dir])",
     },
+    features = [
+        "libfuse",
+        "pkg-config",
+    ],
     rustc_flags = ["@$(location :fuser-0.15.1-build-script-run[rustc_flags])"],
     visibility = [],
     deps = [
@@ -6865,13 +6869,22 @@ cargo.rust_binary(
     crate = "build_script_build",
     crate_root = "fuser-0.15.1.crate/build.rs",
     edition = "2021",
+    features = [
+        "libfuse",
+        "pkg-config",
+    ],
     visibility = [],
+    deps = [":pkg-config-0.3.32"],
 )
 
 buildscript_run(
     name = "fuser-0.15.1-build-script-run",
     package_name = "fuser",
     buildscript_rule = ":fuser-0.15.1-build-script-build",
+    features = [
+        "libfuse",
+        "pkg-config",
+    ],
     version = "0.15.1",
 )
 
