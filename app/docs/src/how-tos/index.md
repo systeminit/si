@@ -5,6 +5,9 @@ They assume knowledge of both System Initiative and the task they are teaching.
 They help you solve problems quickly by showing you relevant examples, and
 relying on your pre-existing knowledge.
 
+- [Using the Public API](./use-public-api) - learn how to manage infrastructure
+  with our Public API
+
 - [AWS Cloudfront Static Website](./aws-static-cloudfront) - learn how to deploy
   a static website with S3 and Cloudfront
 - [AWS ECS](./aws-ecs) - learn how to model and deploy an application to AWS ECS

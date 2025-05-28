@@ -101,6 +101,10 @@ export default defineConfig({
         collapsed: false,
         items: [
           {
+            text: "Use the Public API",
+            link: "/how-tos/use-public-api",
+          },
+          {
             text: "AWS IAM Policy",
             link: "/how-tos/aws-iam",
           },
