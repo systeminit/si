@@ -20,7 +20,8 @@ use thiserror::Error;
 use crate::{
     EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
     workspace_snapshot::node_weight::{
-        NodeWeight, category_node_weight::CategoryNodeKind, traits::SiVersionedNodeWeight,
+        NodeWeight, action_node_weight, category_node_weight::CategoryNodeKind,
+        content_node_weight, traits::SiVersionedNodeWeight,
     },
 };
 
@@ -84,6 +85,15 @@ impl CorrectTransforms<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants> for 
     ) -> CorrectTransformsResult<Vec<Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>>
     {
         match self {
+            NodeWeight::Action(action_node_weight) => {
+                action_node_weight.correct_transforms(graph, updates, from_different_change_set)
+            }
+            NodeWeight::AttributeValue(av_node_weight) => {
+                av_node_weight.correct_transforms(graph, updates, from_different_change_set)
+            }
+            NodeWeight::Content(content_node_weight) => {
+                content_node_weight.correct_transforms(graph, updates, from_different_change_set)
+            }
             NodeWeight::Component(component_node_weight) => {
                 component_node_weight.correct_transforms(graph, updates, from_different_change_set)
             }

@@ -1488,7 +1488,7 @@ where
     ) -> SplitGraphResult<impl Iterator<Item = SplitGraphNodeId> + '_> {
         Ok(self
             .incoming_edges(to_id, kind)?
-            .map(|edge_ref| edge_ref.target()))
+            .map(|edge_ref| edge_ref.source()))
     }
 
     pub fn outgoing_edges(
