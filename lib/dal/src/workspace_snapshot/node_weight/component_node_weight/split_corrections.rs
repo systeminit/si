@@ -5,11 +5,14 @@ use si_id::{ComponentId, InputSocketId, OutputSocketId};
 use si_split_graph::{SplitGraph, SplitGraphNodeId, Update};
 
 use crate::{
-    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
+    EdgeWeight, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
-        node_weight::{ArgumentTargets, NodeWeight, category_node_weight::CategoryNodeKind},
-        split_snapshot::{self, corrections::CorrectTransformsResult},
+        node_weight::{ArgumentTargets, NodeWeight},
+        split_snapshot::{
+            self,
+            corrections::{CorrectTransformsResult, add_dependent_value_root_updates},
+        },
     },
 };
 
@@ -266,77 +269,6 @@ fn remove_hanging_socket_connections(
     Ok(new_updates)
 }
 
-fn choose_subgraph_root_for_node(
-    graph: &Graph,
-    node_in_subgraph: Option<SplitGraphNodeId>,
-    category_node_id: SplitGraphNodeId,
-) -> CorrectTransformsResult<SplitGraphNodeId> {
-    Ok(node_in_subgraph
-        .and_then(|node_in_subgraph| graph.subgraph_root_id_for_node(node_in_subgraph))
-        .or_else(|| graph.subgraph_root_id_for_node(category_node_id))
-        .unwrap_or(graph.root_id()?))
-}
-
-/// Produce the NewNode and NewEdge updates required for adding a dependent value root to the graph
-pub fn add_dependent_value_root_updates(
-    graph: &Graph,
-    value_ids: &BTreeSet<SplitGraphNodeId>,
-) -> CorrectTransformsResult<Vec<Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>> {
-    let mut updates = vec![];
-
-    if let Some(category_node_id) =
-        get_category_node_id(graph, CategoryNodeKind::DependentValueRoots)?
-    {
-        let existing_dvu_nodes: BTreeSet<_> = graph
-            .edges_directed(category_node_id, Outgoing)?
-            .filter_map(|edge_ref| {
-                graph
-                    .node_weight(edge_ref.target())
-                    .and_then(|weight| match weight {
-                        NodeWeight::DependentValueRoot(inner) => Some(inner.value_id()),
-                        _ => None,
-                    })
-            })
-            .collect();
-
-        for value_id in value_ids {
-            if existing_dvu_nodes.contains(value_id) {
-                continue;
-            }
-
-            let id = SplitGraphNodeId::new();
-            let lineage_id = SplitGraphNodeId::new();
-            let new_dvu_node = si_split_graph::SplitGraphNodeWeight::Custom(
-                NodeWeight::new_dependent_value_root(id, lineage_id, *value_id),
-            );
-
-            let new_node_subgraph_root_id = choose_subgraph_root_for_node(
-                graph,
-                existing_dvu_nodes.last().copied(),
-                category_node_id,
-            )?;
-
-            updates.push(Update::NewNode {
-                subgraph_root_id: new_node_subgraph_root_id,
-                node_weight: new_dvu_node,
-            });
-
-            updates.extend(Update::new_edge_between_nodes_updates(
-                category_node_id,
-                choose_subgraph_root_for_node(graph, Some(category_node_id), category_node_id)?,
-                NodeWeightDiscriminants::Category,
-                id,
-                new_node_subgraph_root_id,
-                NodeWeightDiscriminants::DependentValueRoot,
-                EdgeWeight::new(EdgeWeightKind::new_use()),
-                graph.root_id()?,
-            ));
-        }
-    }
-
-    Ok(updates)
-}
-
 fn socket_attribute_value_belongs_to_component(
     graph: &Graph,
     destination_component_id: ComponentId,
@@ -421,25 +353,4 @@ fn argument_targets(graph: &Graph, argument: SplitGraphNodeId) -> Option<Argumen
         Some(NodeWeight::AttributePrototypeArgument(argument)) => argument.targets(),
         _ => None,
     }
-}
-
-fn get_category_node_id(
-    graph: &Graph,
-    kind: CategoryNodeKind,
-) -> CorrectTransformsResult<Option<SplitGraphNodeId>> {
-    let root_id = graph.root_id()?;
-
-    for maybe_category_node_id in
-        graph.outgoing_targets(root_id, EdgeWeightKindDiscriminants::Use)?
-    {
-        let Some(NodeWeight::Category(inner)) = graph.node_weight(maybe_category_node_id) else {
-            continue;
-        };
-
-        if inner.kind() == kind {
-            return Ok(Some(maybe_category_node_id));
-        }
-    }
-
-    Ok(None)
 }
