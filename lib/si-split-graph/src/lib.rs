@@ -1473,6 +1473,42 @@ where
         }))
     }
 
+    pub fn incoming_edges(
+        &self,
+        to_id: SplitGraphNodeId,
+        kind: K,
+    ) -> SplitGraphResult<impl Iterator<Item = SplitGraphEdgeReference<'_, E, K>> + '_> {
+        self.edges_directed_for_edge_weight_kind(to_id, Incoming, kind)
+    }
+
+    pub fn incoming_sources(
+        &self,
+        to_id: SplitGraphNodeId,
+        kind: K,
+    ) -> SplitGraphResult<impl Iterator<Item = SplitGraphNodeId> + '_> {
+        Ok(self
+            .incoming_edges(to_id, kind)?
+            .map(|edge_ref| edge_ref.target()))
+    }
+
+    pub fn outgoing_edges(
+        &self,
+        from_id: SplitGraphNodeId,
+        kind: K,
+    ) -> SplitGraphResult<impl Iterator<Item = SplitGraphEdgeReference<'_, E, K>> + '_> {
+        self.edges_directed_for_edge_weight_kind(from_id, Outgoing, kind)
+    }
+
+    pub fn outgoing_targets(
+        &self,
+        from_id: SplitGraphNodeId,
+        kind: K,
+    ) -> SplitGraphResult<impl Iterator<Item = SplitGraphNodeId> + '_> {
+        Ok(self
+            .outgoing_edges(from_id, kind)?
+            .map(|edge_ref| edge_ref.target()))
+    }
+
     pub fn edges_directed_for_edge_weight_kind(
         &self,
         from_id: SplitGraphNodeId,

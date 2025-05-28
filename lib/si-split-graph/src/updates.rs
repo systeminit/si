@@ -1,42 +1,21 @@
 use std::{
-    collections::{
-        BTreeMap,
-        HashMap,
-        HashSet,
-    },
+    collections::{BTreeMap, HashMap, HashSet},
     marker::PhantomData,
 };
 
 use petgraph::{
     prelude::*,
-    visit::{
-        Control,
-        DfsEvent,
-    },
+    visit::{Control, DfsEvent},
 };
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use si_events::{
-    merkle_tree_hash::MerkleTreeHash,
-    workspace_snapshot::Change,
-};
+use serde::{Deserialize, Serialize};
+use si_events::{merkle_tree_hash::MerkleTreeHash, workspace_snapshot::Change};
 use strum::EnumDiscriminants;
 
 use crate::{
-    CustomEdgeWeight,
-    CustomNodeWeight,
-    EdgeKind,
-    SplitGraphEdgeWeight,
-    SplitGraphEdgeWeightKind,
-    SplitGraphNodeId,
-    SplitGraphNodeWeight,
-    SplitGraphNodeWeightDiscriminants,
-    subgraph::{
-        SubGraph,
-        SubGraphNodeIndex,
-    },
+    CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraph, SplitGraphEdgeWeight,
+    SplitGraphEdgeWeightKind, SplitGraphNodeId, SplitGraphNodeWeight,
+    SplitGraphNodeWeightDiscriminants, SplitGraphResult,
+    subgraph::{SubGraph, SubGraphNodeIndex},
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Deserialize, Serialize, Hash)]
@@ -271,11 +250,92 @@ where
         }
     }
 
-    pub fn is_of_custom_edge_kind(&self, target_kind: K) -> bool {
+    /// Produce a set of updates that will remove an edge between `source_id` and `target_id` of kind `K`.
+    /// Both nodes must be on the graph.
+    pub fn remove_edge_updates(
+        graph: &SplitGraph<N, E, K>,
+        source_id: SplitGraphNodeId,
+        kind: K,
+        target_id: SplitGraphNodeId,
+    ) -> SplitGraphResult<Vec<Update<N, E, K>>> {
+        let mut updates = vec![];
+
+        let Some((source_subgraph_root, target_subgraph_root)) = graph
+            .subgraph_root_id_for_node(source_id)
+            .and_then(|source_root_id| graph.raw_node_weight(source_root_id))
+            .zip(
+                graph
+                    .subgraph_root_id_for_node(target_id)
+                    .and_then(|target_root_id| graph.raw_node_weight(target_root_id)),
+            )
+        else {
+            return Ok(updates);
+        };
+
+        let Some((source_node_weight, target_node_weight)) = graph
+            .raw_node_weight(source_id)
+            .zip(graph.raw_node_weight(target_id))
+        else {
+            return Ok(updates);
+        };
+
+        if source_subgraph_root.id() != target_subgraph_root.id() {
+            let Some(external_target_node_weight) = graph
+                .raw_edges_directed(source_id, Outgoing)?
+                .find(|edge_ref| {
+                    if let Some(SplitGraphNodeWeight::ExternalTarget { target, .. }) =
+                        graph.raw_node_weight(edge_ref.target())
+                    {
+                        target_id == *target
+                    } else {
+                        false
+                    }
+                })
+                .and_then(|edge_ref| graph.raw_node_weight(edge_ref.target()))
+            else {
+                return Ok(updates);
+            };
+
+            updates.push(Update::RemoveEdge {
+                subgraph_root_id: source_subgraph_root.id(),
+                source: source_node_weight.into(),
+                destination: external_target_node_weight.into(),
+                edge_kind: SplitGraphEdgeWeightKind::Custom(kind),
+                external_source_data: None,
+            });
+
+            updates.push(Update::RemoveEdge {
+                subgraph_root_id: target_subgraph_root.id(),
+                source: target_subgraph_root.into(),
+                destination: target_node_weight.into(),
+                edge_kind: SplitGraphEdgeWeightKind::ExternalSource,
+                external_source_data: Some(ExternalSourceData {
+                    source_id,
+                    edge_kind: kind,
+                    source_node_kind: source_node_weight.custom_kind(),
+                    phantom_n: PhantomData,
+                }),
+            });
+        } else {
+            updates.push(Update::RemoveEdge {
+                subgraph_root_id: target_subgraph_root.id(),
+                source: source_node_weight.into(),
+                destination: target_node_weight.into(),
+                edge_kind: SplitGraphEdgeWeightKind::Custom(kind),
+                external_source_data: None,
+            });
+        }
+
+        Ok(updates)
+    }
+
+    pub fn is_of_custom_edge_kind(&self, custom_edge_kind: K) -> bool {
         match self {
             Update::NewEdge { edge_weight, .. } => match edge_weight {
-                SplitGraphEdgeWeight::Custom(c) => c.kind() == target_kind,
-                SplitGraphEdgeWeight::ExternalSource { edge_kind, .. } => edge_kind == &target_kind,
+                SplitGraphEdgeWeight::Custom(c) => c.kind() == custom_edge_kind,
+                SplitGraphEdgeWeight::ExternalSource { edge_kind, .. } => {
+                    edge_kind == &custom_edge_kind
+                }
                 _ => false,
             },
             Update::RemoveEdge {
@@ -283,10 +343,10 @@ where
                 external_source_data,
                 ..
             } => match edge_kind {
-                SplitGraphEdgeWeightKind::Custom(custom_kind) => custom_kind == &target_kind,
+                SplitGraphEdgeWeightKind::Custom(custom_kind) => custom_kind == &custom_edge_kind,
                 SplitGraphEdgeWeightKind::ExternalSource => external_source_data
                     .as_ref()
-                    .is_some_and(|esd| esd.edge_kind == target_kind),
+                    .is_some_and(|esd| esd.edge_kind == custom_edge_kind),
                 _ => false,
             },
             _ => false,
@@ -402,6 +462,40 @@ where
 
     pub fn edge_endpoints(&self) -> Option<(SplitGraphNodeId, SplitGraphNodeId)> {
         self.source_id().zip(self.destination_id())
+    }
+
+    pub fn edge_weight_kind(&self) -> Option<K> {
+        match self {
+            Update::NewEdge { edge_weight, .. } => match edge_weight {
+                SplitGraphEdgeWeight::Custom(c) => Some(c.kind()),
+                SplitGraphEdgeWeight::ExternalSource { edge_kind, .. } => Some(*edge_kind),
+                SplitGraphEdgeWeight::Ordering | SplitGraphEdgeWeight::Ordinal => None,
+            },
+            Update::RemoveEdge {
+                edge_kind,
+                external_source_data,
+                ..
+            } => match edge_kind {
+                SplitGraphEdgeWeightKind::Custom(custom_kind) => Some(*custom_kind),
+                SplitGraphEdgeWeightKind::ExternalSource => {
+                    external_source_data.as_ref().map(|esd| esd.edge_kind)
+                }
+                SplitGraphEdgeWeightKind::Ordering | SplitGraphEdgeWeightKind::Ordinal => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// A triplet made of the source id, the edge weight kind, and the destination id
+    pub fn custom_edge_triplet(&self) -> Option<(SplitGraphNodeId, K, SplitGraphNodeId)> {
+        match (
+            self.source_id(),
+            self.edge_weight_kind(),
+            self.destination_id(),
+        ) {
+            (Some(source), Some(kind), Some(destination)) => Some((source, kind, destination)),
+            _ => None,
+        }
     }
 
     /// Checks if the destination node of an edge update (RemoveEdge/NewEdge) has the given id, across subgraphs
@@ -587,7 +681,6 @@ where
             .graph
             .node_weight(updated_graph_node_index)
             .and_then(|updated_graph_node_weight| {
-                // dbg!(updated_graph_node_weight);
                 let mut base_graph_node_indexes = HashSet::new();
                 if updated_graph_node_index == self.updated_graph.root_index {
                     // There can only be one (valid/current) `ContentAddress::Root` at any

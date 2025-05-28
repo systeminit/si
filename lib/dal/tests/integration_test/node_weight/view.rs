@@ -512,8 +512,6 @@ async fn correct_transforms_no_duplicate_diagram_object_geometries(ctx: &mut Dal
         "Expected only one geometry in test view"
     );
 
-    let geo_id_on_change_set = geometries.first().expect("No geometry found").id();
-
     ctx.workspace_snapshot()
         .expect("hello")
         .cleanup_and_merkle_tree_hash()

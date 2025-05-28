@@ -1,28 +1,14 @@
 use std::{
-    collections::{
-        HashSet,
-        btree_map,
-    },
+    collections::{HashSet, btree_map},
     marker::PhantomData,
 };
 
-use petgraph::{
-    prelude::*,
-    stable_graph,
-};
+use petgraph::{prelude::*, stable_graph};
 use telemetry::prelude::*;
 
 use crate::{
-    CustomEdgeWeight,
-    CustomNodeWeight,
-    EdgeKind,
-    SplitGraph,
-    SplitGraphEdgeIndex,
-    SplitGraphEdgeWeight,
-    SplitGraphNodeId,
-    SplitGraphNodeWeight,
-    SubGraph,
-    SubGraphIndex,
+    CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraph, SplitGraphEdgeIndex,
+    SplitGraphEdgeWeight, SplitGraphNodeId, SplitGraphNodeWeight, SubGraph, SubGraphIndex,
     SubGraphNodeIndex,
 };
 
@@ -62,6 +48,10 @@ where
 
     pub fn weight(&self) -> &'a E {
         self.weight
+    }
+
+    pub fn triplet(&self) -> (SplitGraphNodeId, K, SplitGraphNodeId) {
+        (self.source(), self.weight().kind(), self.target())
     }
 }
 

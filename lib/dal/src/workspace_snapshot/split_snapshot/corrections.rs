@@ -5,40 +5,21 @@
 /// corrections need to know about AttributeValue container objects, and so on. But it
 /// also has to be implemented for the custom node weight types.
 use std::{
-    collections::{
-        BTreeMap,
-        BTreeSet,
-    },
+    collections::{BTreeMap, BTreeSet},
     marker::PhantomData,
 };
 
-use petgraph::Direction::{
-    Incoming,
-    Outgoing,
-};
+use petgraph::Direction::{Incoming, Outgoing};
 use si_split_graph::{
-    CustomEdgeWeight,
-    CustomNodeWeight,
-    EdgeKind,
-    SplitGraph,
-    SplitGraphEdgeWeight,
-    SplitGraphEdgeWeightKind,
-    SplitGraphError,
-    SplitGraphNodeId,
-    SplitGraphNodeWeight,
-    Update,
+    CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraph, SplitGraphEdgeWeight,
+    SplitGraphEdgeWeightKind, SplitGraphError, SplitGraphNodeId, SplitGraphNodeWeight, Update,
     updates::ExternalSourceData,
 };
 use thiserror::Error;
 
 use crate::{
-    EdgeWeight,
-    EdgeWeightKind,
-    EdgeWeightKindDiscriminants,
-    workspace_snapshot::node_weight::{
-        NodeWeight,
-        traits::SiVersionedNodeWeight,
-    },
+    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    workspace_snapshot::node_weight::{NodeWeight, traits::SiVersionedNodeWeight},
 };
 
 #[derive(Debug, Error)]
@@ -101,6 +82,9 @@ impl CorrectTransforms<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants> for 
     ) -> CorrectTransformsResult<Vec<Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>>
     {
         match self {
+            NodeWeight::Component(component_node_weight) => {
+                component_node_weight.correct_transforms(graph, updates, from_different_change_set)
+            }
             NodeWeight::DiagramObject(diagram_object_node_weight) => diagram_object_node_weight
                 .correct_transforms(graph, updates, from_different_change_set),
             NodeWeight::Geometry(geometry_node_weight) => {
