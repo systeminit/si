@@ -24,13 +24,13 @@ use naxum::{
     extract::MatchedSubject,
     handler::Handler as _,
     middleware::{
+        jetstream_post_process::{
+            self,
+            JetstreamPostProcessLayer,
+        },
         matched_subject::{
             ForSubject,
             MatchedSubjectLayer,
-        },
-        post_process::{
-            self,
-            PostProcessLayer,
         },
         trace::TraceLayer,
     },
@@ -167,7 +167,7 @@ impl ChangeSetProcessorTask {
                     .on_response(telemetry_nats::NatsOnResponse::new()),
             )
             .layer(
-                PostProcessLayer::new()
+                JetstreamPostProcessLayer::new()
                     .on_success(DeleteMessageOnSuccess::new(stream.clone()))
                     .on_failure(MoveMessageOnFailure::new(stream, dead_letter_queue)),
             )
@@ -220,11 +220,11 @@ impl DeleteMessageOnSuccess {
     }
 }
 
-impl post_process::OnSuccess for DeleteMessageOnSuccess {
+impl jetstream_post_process::OnSuccess for DeleteMessageOnSuccess {
     fn call(
         &mut self,
         head: Arc<naxum::Head>,
-        info: Arc<post_process::Info>,
+        info: Arc<jetstream_post_process::Info>,
     ) -> BoxFuture<'static, ()> {
         let stream = self.stream.clone();
 
@@ -256,11 +256,11 @@ impl MoveMessageOnFailure {
     }
 }
 
-impl post_process::OnFailure for MoveMessageOnFailure {
+impl jetstream_post_process::OnFailure for MoveMessageOnFailure {
     fn call(
         &mut self,
         head: Arc<naxum::Head>,
-        info: Arc<post_process::Info>,
+        info: Arc<jetstream_post_process::Info>,
     ) -> BoxFuture<'static, ()> {
         let stream = self.stream.clone();
         let dead_letter_queue = self.dead_letter_queue.clone();

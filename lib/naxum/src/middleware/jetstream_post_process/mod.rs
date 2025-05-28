@@ -7,7 +7,7 @@ mod service;
 
 pub use self::{
     info::Info,
-    layer::PostProcessLayer,
+    layer::JetstreamPostProcessLayer,
     on_failure::{
         DefaultOnFailure,
         OnFailure,
@@ -16,5 +16,5 @@ pub use self::{
         DefaultOnSuccess,
         OnSuccess,
     },
-    service::PostProcess,
+    service::JetstreamPostProcess,
 };

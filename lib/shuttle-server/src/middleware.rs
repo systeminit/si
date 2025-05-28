@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use naxum::middleware::post_process;
+use naxum::middleware::jetstream_post_process;
 use si_data_nats::async_nats;
 use telemetry::prelude::*;
 
@@ -16,11 +16,11 @@ impl DeleteMessageOnSuccess {
     }
 }
 
-impl post_process::OnSuccess for DeleteMessageOnSuccess {
+impl jetstream_post_process::OnSuccess for DeleteMessageOnSuccess {
     fn call(
         &mut self,
         head: Arc<naxum::Head>,
-        info: Arc<post_process::Info>,
+        info: Arc<jetstream_post_process::Info>,
     ) -> BoxFuture<'static, ()> {
         let stream = self.stream.clone();
 

@@ -13,9 +13,9 @@ use super::{
     DefaultOnFailure,
     DefaultOnSuccess,
     Info,
+    JetstreamPostProcessLayer,
     OnFailure,
     OnSuccess,
-    PostProcessLayer,
     future::ResponseFuture,
 };
 use crate::{
@@ -27,13 +27,13 @@ use crate::{
 };
 
 #[derive(Clone, Copy, Debug)]
-pub struct PostProcess<S, OnSuccess = DefaultOnSuccess, OnFailure = DefaultOnFailure> {
+pub struct JetstreamPostProcess<S, OnSuccess = DefaultOnSuccess, OnFailure = DefaultOnFailure> {
     pub(crate) inner: S,
     pub(crate) on_success: OnSuccess,
     pub(crate) on_failure: OnFailure,
 }
 
-impl<S> PostProcess<S> {
+impl<S> JetstreamPostProcess<S> {
     pub fn new(inner: S) -> Self {
         Self {
             inner,
@@ -42,13 +42,13 @@ impl<S> PostProcess<S> {
         }
     }
 
-    pub fn layer() -> PostProcessLayer {
-        PostProcessLayer::new()
+    pub fn layer() -> JetstreamPostProcessLayer {
+        JetstreamPostProcessLayer::new()
     }
 }
 
 impl<S, OnSuccessT, OnFailureT> Service<Message<jetstream::Message>>
-    for PostProcess<S, OnSuccessT, OnFailureT>
+    for JetstreamPostProcess<S, OnSuccessT, OnFailureT>
 where
     S: Service<Message<jetstream::Message>, Response = Response>,
     OnSuccessT: OnSuccess,

@@ -40,7 +40,7 @@ use naxum::{
     TowerServiceExt,
     handler::Handler,
     middleware::{
-        post_process::PostProcessLayer,
+        jetstream_post_process::JetstreamPostProcessLayer,
         trace::TraceLayer,
     },
     response::{
@@ -154,7 +154,7 @@ impl Shuttle {
                     .on_response(telemetry_nats::NatsOnResponse::new()),
             )
             .layer(
-                PostProcessLayer::new()
+                JetstreamPostProcessLayer::new()
                     .on_success(DeleteMessageOnSuccess::new(limits_based_source_stream)),
             )
             .service(crate::handlers::default.with_state(state))
