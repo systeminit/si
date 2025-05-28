@@ -140,6 +140,9 @@ pub enum MaterializedViewError {
 
 /// This function builds all Materialized Views (MVs) for the change set in the [`DalContext`].
 /// It assumes there is no existing [`MvIndex`] for the change set.
+/// If we're rebuilding due to a moved snapshot (Edda got behind), then we pass in the [`from_snapshot_address`]
+/// so that patches can be successfully processed.
+/// If we're rebuilding on demand, pass [`None`] for [`from_snapshot_address`]
 #[instrument(
     name = "materialized_view.build_all_mv_for_change_set",
     level = "info",
@@ -152,6 +155,7 @@ pub enum MaterializedViewError {
 pub async fn build_all_mv_for_change_set(
     ctx: &DalContext,
     frigg: &FriggStore,
+    from_snapshot_address: Option<WorkspaceSnapshotAddress>,
 ) -> Result<(), MaterializedViewError> {
     let span = current_span_for_instrument_at!("info");
     span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
@@ -181,12 +185,13 @@ pub async fn build_all_mv_for_change_set(
         .insert_object(ctx.workspace_pk()?, &mv_index_frontend_object)
         .await?;
 
+    let snapshot_to_address = Some(ctx.workspace_snapshot()?.address().await);
     let patch_batch = PatchBatch {
         meta: PatchBatchMeta {
             workspace_id: ctx.workspace_pk()?,
             change_set_id: Some(ctx.change_set_id()),
-            snapshot_from_address: None,
-            snapshot_to_address: Some(ctx.workspace_snapshot()?.address().await),
+            snapshot_from_address: from_snapshot_address.or(snapshot_to_address),
+            snapshot_to_address,
         },
         kind: PATCH_BATCH_KIND,
         patches,

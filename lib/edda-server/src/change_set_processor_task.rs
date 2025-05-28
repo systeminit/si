@@ -505,18 +505,23 @@ mod handlers {
                 if !span.is_disabled() {
                     span.record("si.edda_request.id", update_request.id.to_string());
                 }
-                materialized_view::build_all_mv_for_change_set(ctx, frigg)
-                    .instrument(tracing::info_span!(
-                        "edda.change_set_processor_task.build_all_mv_for_change_set.snapshot_moved"
-                    ))
-                    .await
-                    .map_err(Into::into)
+                materialized_view::build_all_mv_for_change_set(
+                    ctx,
+                    frigg,
+                    Some(update_request.from_snapshot_address),
+                )
+                .instrument(tracing::info_span!(
+                    "edda.change_set_processor_task.build_all_mv_for_change_set.snapshot_moved"
+                ))
+                .await
+                .map_err(Into::into)
             }
             EddaRequestKind::Update(update_request) => {
                 if !span.is_disabled() {
                     span.record("si.edda_request.id", update_request.id.to_string());
                 }
-                materialized_view::build_all_mv_for_change_set(ctx, frigg)
+                // todo: this is where we'd handle reusing an index from another change set if the snapshots match!
+                materialized_view::build_all_mv_for_change_set(ctx, frigg, None)
                     .instrument(tracing::info_span!(
                         "edda.change_set_processor_task.build_all_mv_for_change_set.initial_build"
                     ))
@@ -527,7 +532,7 @@ mod handlers {
                 if !span.is_disabled() {
                     span.record("si.edda_request.id", rebuild_request.id.to_string());
                 }
-                materialized_view::build_all_mv_for_change_set(ctx, frigg)
+                materialized_view::build_all_mv_for_change_set(ctx, frigg, None)
                     .instrument(tracing::info_span!(
                         "edda.change_set_processor_task.build_all_mv_for_change_set.explicit_rebuild"
                     ))
