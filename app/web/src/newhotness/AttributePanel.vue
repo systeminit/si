@@ -30,20 +30,21 @@
     <div v-else>Oh no, no attributes!</div>
     <template v-if="secret">
       <h3 class="bg-neutral-800 p-xs border-l-2">secrets</h3>
-      <ul>
-        <li class="flex flex-col">
-          <label class="pl-xs flex flex-row items-center relative">
-            <span>{{ secret.prop?.name }}</span>
-            <input
-              class="block w-72 ml-auto text-white bg-black border-2 border-neutral-300 disabled:bg-neutral-900"
-              type="text"
-              disabled
-              :value="secret.secret ? `${secret.secret.name}` : ''"
-            />
-          </label>
-        </li>
-      </ul>
       <template v-if="component.isSecretDefining">
+        <!-- display the current value, and the form to overwrite the secret on this component -->
+        <ul>
+          <li class="flex flex-col">
+            <label class="pl-xs flex flex-row items-center relative">
+              <span>{{ secret.prop?.name }}</span>
+              <input
+                class="block w-72 ml-auto text-white bg-black border-2 border-neutral-300 disabled:bg-neutral-900"
+                type="text"
+                disabled
+                :value="secret.secret ? `${secret.secret.name}` : ''"
+              />
+            </label>
+          </li>
+        </ul>
         <div class="m-xs p-xs border-2">
           <ul class="flex flex-col">
             <template
@@ -81,6 +82,22 @@
           </ul>
         </div>
       </template>
+      <template v-else>
+        <!-- i have a prop for secrets, but i dont define them, i make a connection instead -->
+        <AttributeInput
+          :displayName="secret.prop?.name ?? 'Secret Value'"
+          :attributeValueId="secret.attributeValue.id"
+          :path="secret.attributeValue.path ?? ''"
+          :kind="secret.prop?.widgetKind"
+          :prop="secret.prop"
+          :value="secret.attributeValue.value?.toString() ?? ''"
+          :canDelete="false"
+          @save="
+            (path, id, value, connectingComponentId) =>
+              save(path, id, value, connectingComponentId)
+          "
+        />
+      </template>
     </template>
   </div>
 </template>
@@ -108,6 +125,7 @@ import { useApi, routes, componentTypes } from "./api_composables";
 import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
 import { useWatchedForm } from "./logic_composables/watched_form";
 import { keyEmitter } from "./logic_composables/emitters";
+import AttributeInput from "./layout_components/AttributeInput.vue";
 
 const q = ref("");
 
