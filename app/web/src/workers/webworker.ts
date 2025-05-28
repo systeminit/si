@@ -609,16 +609,6 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
       }),
   );
 
-  atomsToBust.forEach((atom) => {
-    if (atom)
-      bustCacheAndReferences(
-        atom.workspaceId,
-        atom.changeSetId,
-        atom.kind,
-        atom.id,
-      );
-  });
-
   // connections
   const connAtomsToBust = await Promise.all(
     atoms
@@ -627,15 +617,6 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
         return await applyPatch(atom, toSnapshotAddress);
       }),
   );
-  connAtomsToBust.forEach((atom) => {
-    if (atom)
-      bustCacheAndReferences(
-        atom.workspaceId,
-        atom.changeSetId,
-        atom.kind,
-        atom.id,
-      );
-  });
 
   // list items
   const listAtomsToBust = await Promise.all(
@@ -646,6 +627,27 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
       }),
   );
 
+  await updateChangeSetWithNewSnapshot(data.meta);
+  await removeOldSnapshot();
+
+  atomsToBust.forEach((atom) => {
+    if (atom)
+      bustCacheAndReferences(
+        atom.workspaceId,
+        atom.changeSetId,
+        atom.kind,
+        atom.id,
+      );
+  });
+  connAtomsToBust.forEach((atom) => {
+    if (atom)
+      bustCacheAndReferences(
+        atom.workspaceId,
+        atom.changeSetId,
+        atom.kind,
+        atom.id,
+      );
+  });
   listAtomsToBust.forEach((atom) => {
     if (atom)
       bustCacheAndReferences(
@@ -655,9 +657,6 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
         atom.id,
       );
   });
-
-  await updateChangeSetWithNewSnapshot(data.meta);
-  await removeOldSnapshot();
 };
 
 const applyPatch = async (
