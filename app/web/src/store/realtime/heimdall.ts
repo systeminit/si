@@ -60,14 +60,12 @@ const db: Comlink.Remote<DBInterface> = Comlink.wrap(worker);
 db.addListenerBustCache(Comlink.proxy(bustTanStackCache));
 
 const inFlight = (changeSetId: ChangeSetId, label: string) => {
-  const ctx: Context | undefined = inject("CONTEXT");
-  if (ctx?.changeSetId.value === changeSetId) rainbow.add(label);
+  rainbow.add(changeSetId, label);
 };
 db.addListenerInFlight(Comlink.proxy(inFlight));
 
 const returned = (changeSetId: ChangeSetId, label: string) => {
-  const ctx: Context | undefined = inject("CONTEXT");
-  if (ctx?.changeSetId.value === changeSetId) rainbow.remove(label);
+  rainbow.remove(changeSetId, label);
 };
 db.addListenerReturned(Comlink.proxy(returned));
 

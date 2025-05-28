@@ -131,7 +131,7 @@ export class APICall<Response> {
   async put<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
     this.obs.inFlight.value = true;
     this.obs.bifrosting.value = true;
-    rainbow.add(this.obs.label);
+    rainbow.add(this.ctx.changeSetId.value, this.obs.label);
     if (this.obs.isWatched) this.obs.span = tracer.startSpan("watchedApi");
     let newChangeSetId;
     if (!this.canMutateHead && this.ctx.onHead.value) {
@@ -151,7 +151,7 @@ export class APICall<Response> {
   async post<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
     this.obs.inFlight.value = true;
     this.obs.bifrosting.value = true;
-    rainbow.add(this.obs.label);
+    rainbow.add(this.ctx.changeSetId.value, this.obs.label);
     if (this.obs.isWatched) this.obs.span = tracer.startSpan("watchedApi");
     let newChangeSetId;
     if (!this.canMutateHead && this.ctx.onHead.value) {
@@ -219,7 +219,7 @@ export const useApi = () => {
       fn,
       () => {
         labeledObs.bifrosting.value = false;
-        rainbow.remove(labeledObs.label);
+        rainbow.remove(ctx.changeSetId.value, labeledObs.label);
         if (labeledObs.span) labeledObs.span.end();
       },
       { once: true },

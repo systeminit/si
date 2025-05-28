@@ -92,7 +92,7 @@ export const useWatchedForm = <Data>(label: string) => {
         start = Date.now();
         onSubmit(props);
         bifrosting.value = true;
-        rainbow.add(label);
+        rainbow.add(ctx.changeSetId.value, label);
       },
       validators,
     });
@@ -110,7 +110,7 @@ export const useWatchedForm = <Data>(label: string) => {
     if (watchFn) {
       watch(watchFn, () => {
         bifrosting.value = false;
-        rainbow.remove(label);
+        rainbow.remove(ctx.changeSetId.value, label);
         const end = Date.now();
         observe(end - start);
         wForm.reset(unref(data));
@@ -118,7 +118,7 @@ export const useWatchedForm = <Data>(label: string) => {
     } else {
       watch(data, () => {
         bifrosting.value = false;
-        rainbow.remove(label);
+        rainbow.remove(ctx.changeSetId.value, label);
         const end = Date.now();
         observe(end - start);
         wForm.reset(unref(data));

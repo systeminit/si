@@ -60,7 +60,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { computed, ref, watch } from "vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { rainbowCount } from "@/newhotness/logic_composables/rainbow_counter";
+import { useRainbow } from "@/newhotness/logic_composables/rainbow_counter";
 import ChangeSetPanel from "./ChangeSetPanel.vue";
 
 const workspacesStore = useWorkspacesStore();
@@ -75,6 +75,8 @@ watch(
   },
   { immediate: true },
 );
+
+const { rainbowCount } = useRainbow();
 
 const updateRoute = (newWorkspacePk: string) => {
   if (selectedWorkspacePk.value === newWorkspacePk) return;
