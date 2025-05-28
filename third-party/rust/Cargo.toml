@@ -81,7 +81,7 @@ fastrace = "0.7.4"
 flate2 = "1.0.35"
 foyer = { version = "0.14.1", features = ["tracing"] }
 fs4 = "0.12.0"
-fuser = { version = "0.15.1", default-features = false, features = ["libfuse"] }
+fuser = { version = "0.15.1", default-features = false }
 futures = "0.3.31"
 futures-lite = "2.5.0"
 glob = "0.3.1"
@@ -252,3 +252,6 @@ spicedb-grpc = { git = "https://github.com/systeminit/spicedb-client.git", branc
 tokio-postgres-rustls = { git = "https://github.com/jbg/tokio-postgres-rustls.git", branch = "master" }
 
 # END: DEPENDENCIES
+
+[target.'cfg(target_os = "macos")'.dependencies]
+fuser = { version = "0.15.1", default-features = false }
