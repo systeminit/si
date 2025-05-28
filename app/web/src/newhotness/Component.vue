@@ -323,14 +323,17 @@ const nameForm = wForm.newForm({
           name,
         });
       if (newChangeSetId && api.ok(req)) {
-        router.push({
-          name: "new-hotness-component",
-          params: {
-            workspacePk: route.params.workspacePk,
-            changeSetId: newChangeSetId,
-            componentId: props.componentId,
+        api.navigateToNewChangeSet(
+          {
+            name: "new-hotness-component",
+            params: {
+              workspacePk: route.params.workspacePk,
+              changeSetId: newChangeSetId,
+              componentId: props.componentId,
+            },
           },
-        });
+          newChangeSetId,
+        );
       }
     }
   },

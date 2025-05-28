@@ -344,16 +344,16 @@ const onEnter = async () => {
   const { req, newChangeSetId } =
     await call.post<componentTypes.CreateComponentPayload>(payload);
   if (api.ok(req)) {
-    const params = {
-      workspacePk: route.params.workspacePk,
-      changeSetId: newChangeSetId || route.params.changeSetId,
-      componentId: req.data.componentId,
-    };
-    router.push({
+    const to = {
       name: "new-hotness-component",
-      params,
-      // TODO querystring for "was i on head?"
-    });
+      params: {
+        workspacePk: route.params.workspacePk,
+        changeSetId: newChangeSetId || route.params.changeSetId,
+        componentId: req.data.componentId,
+      },
+    };
+    if (newChangeSetId) api.navigateToNewChangeSet(to, newChangeSetId);
+    else router.push(to);
   }
 };
 const onUp = () => {

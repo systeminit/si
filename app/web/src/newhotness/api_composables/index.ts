@@ -1,7 +1,10 @@
 import { unref, inject, ref, Ref, watch } from "vue";
 import { AxiosResponse } from "axios";
 import { trace, Span } from "@opentelemetry/api";
+import { RouteLocationRaw } from "vue-router";
 import { sdfApiInstance as sdf } from "@/store/apis.web";
+import { changeSetExists } from "@/store/realtime/heimdall";
+import router from "@/router";
 import { assertIsDefined, Context } from "../types";
 import * as rainbow from "../logic_composables/rainbow_counter";
 
@@ -226,11 +229,40 @@ export const useApi = () => {
     );
   };
 
+  const INTERVAL = 50; // 50ms
+  const MAX_WAIT_IN_SEC = 10;
+  const MAX_RETRY = (MAX_WAIT_IN_SEC * 1000) / INTERVAL; // "how many attempts to reach N seconds?"
+  const navigateToNewChangeSet = async (
+    to: RouteLocationRaw,
+    newChangeSetId: string,
+  ) => {
+    await new Promise<void>((resolve, reject) => {
+      let retry = 0;
+      const interval = setInterval(async () => {
+        if (retry >= MAX_RETRY) {
+          clearInterval(interval);
+          reject();
+        }
+        const exists = await changeSetExists(
+          ctx.workspacePk.value,
+          newChangeSetId,
+        );
+        if (exists) {
+          clearInterval(interval);
+          resolve();
+        }
+        retry += 1;
+      }, INTERVAL);
+    });
+    router.push(to);
+  };
+
   return {
     ok,
     endpoint,
     inFlight: obs.inFlight,
     bifrosting: obs.bifrosting,
     setWatchFn,
+    navigateToNewChangeSet,
   };
 };

@@ -212,6 +212,11 @@ export const useMakeArgs = () => {
   };
 };
 
+export const changeSetExists = async (
+  workspaceId: string,
+  changeSetId: string,
+) => await db.changeSetExists(workspaceId, changeSetId);
+
 export const useMakeKey = () => {
   const ctx: Context | undefined = inject("CONTEXT");
 

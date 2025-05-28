@@ -88,7 +88,7 @@
 <script lang="ts" setup>
 import { computed, reactive, ref, watch } from "vue";
 import { Fzf } from "fzf";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import { SiSearch, themeClasses, VButton } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
@@ -264,14 +264,17 @@ const secretForm = wForm.newForm({
     const { req, newChangeSetId } =
       await newSecret.post<componentTypes.CreateSecret>(payload);
     if (secretApi.ok(req) && newChangeSetId) {
-      router.push({
-        name: "new-hotness-component",
-        params: {
-          workspacePk: route.params.workspacePk,
-          changeSetId: newChangeSetId,
-          componentId: props.component.id,
+      secretApi.navigateToNewChangeSet(
+        {
+          name: "new-hotness-component",
+          params: {
+            workspacePk: route.params.workspacePk,
+            changeSetId: newChangeSetId,
+            componentId: props.component.id,
+          },
         },
-      });
+        newChangeSetId,
+      );
     }
   },
   validators: {
@@ -397,7 +400,6 @@ const save = async (
   await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
 };
 
-const router = useRouter();
 const route = useRoute();
 const remove = async (path: string, _id: string) => {
   const call = api.endpoint<{ success: boolean }>(
@@ -410,14 +412,17 @@ const remove = async (path: string, _id: string) => {
   const { req, newChangeSetId } =
     await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
   if (newChangeSetId && api.ok(req)) {
-    router.push({
-      name: "new-hotness-component",
-      params: {
-        workspacePk: route.params.workspacePk,
-        changeSetId: newChangeSetId,
-        componentId: props.component.id,
+    api.navigateToNewChangeSet(
+      {
+        name: "new-hotness-component",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+          componentId: props.component.id,
+        },
       },
-    });
+      newChangeSetId,
+    );
   }
 };
 

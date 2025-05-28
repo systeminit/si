@@ -35,7 +35,7 @@
 <script setup lang="ts">
 import { Modal, Icon } from "@si/vue-lib/design-system";
 import { computed, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import { View } from "@/workers/types/entity_kind_types";
 import { useApi, routes } from "./api_composables";
 import { useWatchedForm } from "./logic_composables/watched_form";
@@ -49,7 +49,6 @@ const modalRef = ref<InstanceType<typeof Modal>>();
 const api = useApi();
 
 const route = useRoute();
-const router = useRouter();
 
 const wForm = useWatchedForm<{ name: string }>("view.add");
 const formData = computed<{ name: string }>(() => {
@@ -67,13 +66,16 @@ const nameForm = wForm.newForm({
       // right now, we don't want to push people to the new view
       // because they won't see components, and won't be able to add any to the view
       if (newChangeSetId) {
-        router.push({
-          name: "new-hotness-view",
-          params: {
-            workspacePk: route.params.workspacePk,
-            changeSetId: newChangeSetId,
+        api.navigateToNewChangeSet(
+          {
+            name: "new-hotness-view",
+            params: {
+              workspacePk: route.params.workspacePk,
+              changeSetId: newChangeSetId,
+            },
           },
-        });
+          newChangeSetId,
+        );
       }
       watch(
         () => wForm.bifrosting,
