@@ -102,7 +102,7 @@ const {
   isFetching,
   isLoading,
 } = useInfiniteQuery({
-  queryKey: ["paginatedFuncRuns"],
+  queryKey: [ctx.changeSetId.value, "paginatedFuncRuns"],
   queryFn: async ({
     pageParam = undefined,
   }): Promise<funcRunTypes.GetFuncRunsPaginatedResponse> => {
@@ -171,7 +171,7 @@ onMounted(async () => {
       callback: async (payload) => {
         if (payload.funcRunId) {
           queryClient.invalidateQueries({
-            queryKey: ["paginatedFuncRuns"],
+            queryKey: [ctx.changeSetId.value, "paginatedFuncRuns"],
           });
         }
       },
