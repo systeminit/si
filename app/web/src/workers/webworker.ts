@@ -2205,7 +2205,7 @@ const dbInterface: DBInterface = {
   ): Promise<void> {
     try {
       const headRows = db.exec({
-        sql: "select snapshot_address from changesets where workspace_id = ? and change_set_id = ? ;",
+        sql: "select snapshot_address from changesets where workspace_id = ? and change_set_id = ?;",
         bind: [workspaceId, headChangeSet],
         returnValue: "resultRows",
       });
@@ -2219,7 +2219,7 @@ const dbInterface: DBInterface = {
       }
 
       await db.exec({
-        sql: `INSERT INTO snapshots (address) VALUES (?) ON CONFLICT DO NOTHING;`,
+        sql: `INSERT INTO snapshots (address) VALUES (?);`,
         bind: [workspaceSnapshotAddress],
       });
 
@@ -2230,38 +2230,18 @@ const dbInterface: DBInterface = {
         FROM snapshots_mtm_atoms
         WHERE
           snapshot_address = ?
-        ON CONFLICT DO NOTHING`,
+        ;`,
         bind: [workspaceSnapshotAddress, currentSnapshotAddress],
       });
 
       await db.exec({
-        sql: "insert into changesets (change_set_id, workspace_id, snapshot_address) VALUES (?, ?, ?) ON CONFLICT DO NOTHING;",
+        sql: "insert into changesets (change_set_id, workspace_id, snapshot_address) VALUES (?, ?, ?);",
         bind: [changeSetId, workspaceId, workspaceSnapshotAddress],
       });
     } catch (err) {
-      // NOTE: all the `on conflict do nothing` can be removed
-      // once a new change set only returns after its index has been created
-      // this runs *clean* "in the background" (e.g. on a second client that didn't make the change set)
       // eslint-disable-next-line no-console
       console.error("linkNewChangeset", err);
     }
-
-    // hit the index to populate it
-    // also shouldn't need this
-    const pattern = [
-      "v2",
-      "workspaces",
-      { workspaceId },
-      "change-sets",
-      { changeSetId },
-      "index",
-    ] as URLPattern;
-
-    const [url, _desc] = describePattern(pattern);
-    await sdf<IndexObjectMeta>({
-      method: "get",
-      url,
-    });
   },
 };
 

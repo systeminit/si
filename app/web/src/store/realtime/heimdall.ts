@@ -123,13 +123,12 @@ export const getPossibleConnections = async (args: {
 export const linkNewChangeset = async (
   workspaceId: string,
   changeSetId: string,
+  headChangeSetId: string,
   workspaceSnapshotAddress: string,
 ) => {
-  const changeSetsStore = useChangeSetsStore();
-  if (!changeSetsStore.headChangeSetId) throw new Error("Don't have HEAD");
   await db.linkNewChangeset(
     workspaceId,
-    changeSetsStore.headChangeSetId,
+    headChangeSetId,
     changeSetId,
     workspaceSnapshotAddress,
   );

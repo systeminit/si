@@ -205,6 +205,7 @@ realtimeStore.subscribe(
         await heimdall.linkNewChangeset(
           props.workspacePk,
           data.changeSetId,
+          context.value.headChangeSetId.value,
           data.workspaceSnapshotAddress,
         );
       },
