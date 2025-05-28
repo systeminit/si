@@ -93,7 +93,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { VButton, IconButton, Icon } from "@si/vue-lib/design-system";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import clsx from "clsx";
 import { BifrostComponent } from "@/workers/types/entity_kind_types";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
@@ -164,18 +164,20 @@ const add = async () => {
   const { req, newChangeSetId } =
     await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
   if (addApi.ok(req) && newChangeSetId) {
-    router.push({
-      name: "new-hotness-component",
-      params: {
-        workspacePk: route.params.workspacePk,
-        changeSetId: newChangeSetId,
-        componentId: props.component.id,
+    addApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness-component",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+          componentId: props.component.id,
+        },
       },
-    });
+      newChangeSetId,
+    );
   }
 };
 
-const router = useRouter();
 const route = useRoute();
 const showKey = ref(false);
 const wForm = useWatchedForm<{ key: string }>(
@@ -199,14 +201,17 @@ const keyForm = wForm.newForm({
     const { req, newChangeSetId } =
       await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
     if (newChangeSetId && keyApi.ok(req)) {
-      router.push({
-        name: "new-hotness-component",
-        params: {
-          workspacePk: route.params.workspacePk,
-          changeSetId: newChangeSetId,
-          componentId: props.component.id,
+      keyApi.navigateToNewChangeSet(
+        {
+          name: "new-hotness-component",
+          params: {
+            workspacePk: route.params.workspacePk,
+            changeSetId: newChangeSetId,
+            componentId: props.component.id,
+          },
         },
-      });
+        newChangeSetId,
+      );
     }
   },
 });

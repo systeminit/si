@@ -1,7 +1,10 @@
 import { unref, inject, ref, Ref, watch } from "vue";
 import { AxiosResponse } from "axios";
 import { trace, Span } from "@opentelemetry/api";
+import { RouteLocationRaw } from "vue-router";
 import { sdfApiInstance as sdf } from "@/store/apis.web";
+import { changeSetExists } from "@/store/realtime/heimdall";
+import router from "@/router";
 import { assertIsDefined, Context } from "../types";
 import * as rainbow from "../logic_composables/rainbow_counter";
 
@@ -131,7 +134,7 @@ export class APICall<Response> {
   async put<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
     this.obs.inFlight.value = true;
     this.obs.bifrosting.value = true;
-    rainbow.add(this.obs.label);
+    rainbow.add(this.ctx.changeSetId.value, this.obs.label);
     if (this.obs.isWatched) this.obs.span = tracer.startSpan("watchedApi");
     let newChangeSetId;
     if (!this.canMutateHead && this.ctx.onHead.value) {
@@ -151,7 +154,7 @@ export class APICall<Response> {
   async post<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
     this.obs.inFlight.value = true;
     this.obs.bifrosting.value = true;
-    rainbow.add(this.obs.label);
+    rainbow.add(this.ctx.changeSetId.value, this.obs.label);
     if (this.obs.isWatched) this.obs.span = tracer.startSpan("watchedApi");
     let newChangeSetId;
     if (!this.canMutateHead && this.ctx.onHead.value) {
@@ -219,11 +222,39 @@ export const useApi = () => {
       fn,
       () => {
         labeledObs.bifrosting.value = false;
-        rainbow.remove(labeledObs.label);
+        rainbow.remove(ctx.changeSetId.value, labeledObs.label);
         if (labeledObs.span) labeledObs.span.end();
       },
       { once: true },
     );
+  };
+
+  const INTERVAL = 50; // 50ms
+  const MAX_WAIT_IN_SEC = 10;
+  const MAX_RETRY = (MAX_WAIT_IN_SEC * 1000) / INTERVAL; // "how many attempts to reach N seconds?"
+  const navigateToNewChangeSet = async (
+    to: RouteLocationRaw,
+    newChangeSetId: string,
+  ) => {
+    await new Promise<void>((resolve, reject) => {
+      let retry = 0;
+      const interval = setInterval(async () => {
+        if (retry >= MAX_RETRY) {
+          clearInterval(interval);
+          reject();
+        }
+        const exists = await changeSetExists(
+          ctx.workspacePk.value,
+          newChangeSetId,
+        );
+        if (exists) {
+          clearInterval(interval);
+          resolve();
+        }
+        retry += 1;
+      }, INTERVAL);
+    });
+    router.push(to);
   };
 
   return {
@@ -232,5 +263,6 @@ export const useApi = () => {
     inFlight: obs.inFlight,
     bifrosting: obs.bifrosting,
     setWatchFn,
+    navigateToNewChangeSet,
   };
 };

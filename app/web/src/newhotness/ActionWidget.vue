@@ -33,7 +33,7 @@
 import * as _ from "lodash-es";
 import clsx from "clsx";
 import { Icon, themeClasses, Toggle } from "@si/vue-lib/design-system";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { ActionId } from "@/api/sdf/dal/action";
 import {
@@ -48,7 +48,6 @@ const props = defineProps<{
   actionId?: ActionId;
 }>();
 
-const router = useRouter();
 const route = useRoute();
 const removeApi = useApi();
 const addApi = useApi();
@@ -70,14 +69,17 @@ const clickHandler = async () => {
       prototypeId: props.actionPrototypeView.id,
     });
     if (newChangeSetId && addApi.ok(req)) {
-      router.push({
-        name: "new-hotness-component",
-        params: {
-          workspacePk: route.params.workspacePk,
-          changeSetId: newChangeSetId,
-          componentId: props.component.id,
+      addApi.navigateToNewChangeSet(
+        {
+          name: "new-hotness-component",
+          params: {
+            workspacePk: route.params.workspacePk,
+            changeSetId: newChangeSetId,
+            componentId: props.component.id,
+          },
         },
-      });
+        newChangeSetId,
+      );
     }
   }
 };
