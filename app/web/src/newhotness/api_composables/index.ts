@@ -7,6 +7,7 @@ import { changeSetExists } from "@/store/realtime/heimdall";
 import router from "@/router";
 import { assertIsDefined, Context } from "../types";
 import * as rainbow from "../logic_composables/rainbow_counter";
+import { reset } from "../logic_composables/navigation_stack";
 
 export * as componentTypes from "./component";
 export * as funcRunTypes from "./func_run";
@@ -254,7 +255,8 @@ export const useApi = () => {
         retry += 1;
       }, INTERVAL);
     });
-    router.push(to);
+    await router.push(to);
+    reset();
   };
 
   return {
