@@ -1,8 +1,10 @@
 <template>
   <!-- requires that its parent container is flex (either direction) -->
   <div
+    ref="scrollableDivRef"
     :class="
       clsx(
+        'collapsing-flex-item', // identifying class
         'border-2 basis-0', // basis-0 makes items take equal size when multiple are open
         themeClasses('border-neutral-200', 'border-neutral-900'),
         openState.open.value ? 'scrollable grow' : 'shrink',

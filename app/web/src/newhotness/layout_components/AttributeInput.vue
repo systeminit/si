@@ -2,30 +2,49 @@
   <!-- eslint-disable vue/no-multiple-template-root -->
   <label
     ref="anchorRef"
-    class="grid grid-cols-2 items-center gap-xs relative text-sm font-normal"
+    :class="
+      clsx(
+        'grid grid-cols-2 items-center gap-xs relative text-sm font-normal',
+        inputOpen && 'hidden',
+      )
+    "
   >
     <div class="flex flex-row items-center gap-2xs pl-xs">
       <TruncateWithTooltip>{{ displayName }}</TruncateWithTooltip>
-      <IconButton
-        v-if="canDelete"
-        icon="trash"
-        iconTone="destructive"
-        iconIdleTone="shade"
-        size="sm"
-        class="ml-auto"
-        loadingIcon="loader"
-        :loading="bifrostingTrash"
-        @click.left="remove"
-      />
+      <div class="flex flex-row items-cetner ml-auto gap-2xs">
+        <IconButton
+          v-if="canDelete"
+          icon="trash"
+          iconTone="destructive"
+          iconIdleTone="shade"
+          size="sm"
+          loadingIcon="loader"
+          :loading="bifrostingTrash"
+          @click.left="remove"
+        />
+        <div v-if="isSetByConnection" class="p-3xs cursor-pointer">
+          <Icon
+            v-tooltip="'Value set by connection'"
+            name="input-connection"
+            size="sm"
+          />
+        </div>
+      </div>
     </div>
     <div
       ref="inputFocusDivRef"
       :class="
         clsx(
-          'block w-full h-lg p-xs ml-auto text-sm border cursor-text',
+          isArray || isMap
+            ? [
+                'flex flex-row items-center',
+                themeClasses('text-neutral-600', 'text-neutral-400'),
+              ]
+            : themeClasses('text-shade-100', 'text-shade-0'),
+          'block w-full h-lg p-xs ml-auto text-sm border font-mono cursor-text',
           themeClasses(
-            'text-shade-100 bg-shade-0 border-neutral-400',
-            'text-shade-0 bg-shade-100 border-neutral-600',
+            'bg-shade-0 border-neutral-400',
+            'bg-shade-100 border-neutral-600',
           ),
         )
       "
@@ -34,11 +53,16 @@
       @click.left="openInput"
     >
       <TruncateWithTooltip>
-        {{
-          maybeOptions.options?.find((o) => o.value === attrData.value)
-            ?.label ?? attrData.value
-        }}
+        <template v-if="isArray"> Set manually or connect to a prop </template>
+        <template v-if="isMap"> Enter a key </template>
+        <template v-else>
+          {{
+            maybeOptions.options?.find((o) => o.value === attrData.value)
+              ?.label ?? attrData.value
+          }}
+        </template>
       </TruncateWithTooltip>
+      <Icon v-if="isArray" name="chevron--down" class="ml-auto" />
     </div>
     <!-- `relative` on label just to "float" this loader above the form input -->
     <Icon
@@ -58,7 +82,8 @@
           ref="inputWindowRef"
           :class="
             clsx(
-              'absolute flex flex-col gap-xs text-sm font-normal border z-100 p-xs',
+              // TODO(Wendy) - for floating version, use absolute!
+              'flex flex-col gap-xs text-sm font-normal border z-100 p-xs',
               themeClasses(
                 'bg-shade-0 border-neutral-400',
                 'bg-neutral-800 border-neutral-600',
@@ -87,7 +112,7 @@
               ref="inputRef"
               :class="
                 clsx(
-                  'block w-full h-lg p-xs ml-auto text-sm border',
+                  'block w-full h-lg p-xs ml-auto text-sm border font-mono',
                   themeClasses(
                     'text-shade-100 bg-shade-0 border-neutral-400',
                     'text-shade-0 bg-shade-100 border-neutral-600',
@@ -95,7 +120,7 @@
                 )
               "
               type="text"
-              :value="field.state.value"
+              :value="isMap ? mapKey : field.state.value"
               :disabled="wForm.bifrosting.value || bifrostingTrash"
               @input="(e) => onInputChange(e)"
               @blur="blur"
@@ -113,13 +138,18 @@
           <div
             :class="
               clsx(
-                'flex flex-row px-xs justify-between',
+                'flex flex-row px-xs justify-between font-bold',
                 themeClasses('text-neutral-600', 'text-neutral-400'),
               )
             "
           >
-            <div>Enter value</div>
+            <div>
+              <template v-if="isArray"> Add an array item </template>
+              <template v-else-if="isMap"> Enter a key </template>
+              <template v-else> Enter a value </template>
+            </div>
             <div
+              v-if="!isMap"
               :class="
                 clsx(
                   'text-xs',
@@ -140,8 +170,11 @@
                   'hover:border-action-500',
                   'hover:border-action-300',
                 ),
-                selectedIndex === 0 &&
-                  themeClasses('bg-action-200', 'bg-action-900'),
+                selectedIndex === 0 && [
+                  mapKeyError
+                    ? themeClasses('bg-destructive-200', 'bg-destructive-900')
+                    : themeClasses('bg-action-200', 'bg-action-900'),
+                ],
               )
             "
             @click.left="selectDefault"
@@ -150,17 +183,23 @@
               :class="
                 clsx(
                   'grow',
-                  !field.state.value && [
-                    'italic',
-                    themeClasses('text-neutral-600', 'text-neutral-400'),
-                  ],
+                  !field.state.value &&
+                    !isArray && [
+                      'italic',
+                      themeClasses('text-neutral-600', 'text-neutral-400'),
+                    ],
                 )
               "
             >
-              <template v-if="field.state.value">
+              <template v-if="isArray"> + Set an array item manually </template>
+              <template v-else-if="isMap && !mapKey">
+                You must enter a key
+              </template>
+              <template v-else-if="isMap && mapKey"> "{{ mapKey }}" </template>
+              <template v-else-if="field.state.value">
                 "{{ field.state.value }}"
               </template>
-              <template v-else> No value </template>
+              <template v-else> Set to no value</template>
             </TruncateWithTooltip>
             <div
               v-if="selectedIndex === 0"
@@ -179,19 +218,27 @@
           <!-- select value from options area -->
           <div
             v-if="maybeOptions.hasOptions"
-            ref="optionRef"
-            class="max-h-[10rem] scrollable"
+            :class="
+              clsx(
+                'flex flex-row px-xs justify-between font-bold',
+                themeClasses('text-neutral-600', 'text-neutral-400'),
+              )
+            "
           >
-            <div
-              :class="
-                clsx(
-                  'flex flex-row p-xs justify-between',
-                  themeClasses('text-neutral-600', 'text-neutral-400'),
-                )
-              "
-            >
-              Select Value
-            </div>
+            Or select a value
+          </div>
+          <div
+            v-if="maybeOptions.hasOptions"
+            ref="optionRef"
+            :class="
+              clsx(
+                'scrollable',
+                selectedIndex < filteredOptions.length + 1
+                  ? 'max-h-[10rem]'
+                  : 'hidden',
+              )
+            "
+          >
             <ol>
               <li
                 v-for="(option, index) in filteredOptions"
@@ -235,82 +282,105 @@
           </div>
 
           <!-- select potential connection area -->
-          <div
-            :class="
-              clsx(
-                'px-xs',
-                themeClasses('text-neutral-600', 'text-neutral-400'),
-              )
-            "
-          >
-            Or connect to an existing prop
-          </div>
-          <div class="max-h-[10rem] scrollable">
+          <template v-if="!isMap">
             <div
-              v-for="(connection, index) in filteredConnections"
-              :key="connection.attributeValueId"
               :class="
                 clsx(
-                  'possible-connections grid gap-xs cursor-pointer border border-transparent',
-                  'px-xs py-2xs h-[30px]',
-                  isConnectionSelected(index) && [
-                    'input-selected-item',
-                    themeClasses('bg-action-200', 'bg-action-900'),
-                  ],
-                  themeClasses(
-                    'hover:border-action-500',
-                    'hover:border-action-300',
-                  ),
-                  false && themeClasses('bg-action-200', 'bg-action-900'),
+                  'px-xs font-bold',
+                  themeClasses('text-neutral-600', 'text-neutral-400'),
                 )
               "
-              @click.left="selectConnection(index)"
             >
-              <TruncateWithTooltip>
-                {{ connection.componentName }}
-              </TruncateWithTooltip>
-              <div class="flex flex-row gap-2xs items-center">
-                <template
-                  v-for="(item, itemIndex) in connection.pathArray"
-                  :key="item"
-                >
-                  <TruncateWithTooltip
-                    class="flex-1 max-w-fit"
-                    :style="`flex-basis: ${100 / connection.pathArray.length}%`"
-                  >
-                    {{ item }}
-                  </TruncateWithTooltip>
-                  <div v-if="itemIndex !== connection.pathArray.length - 1">
-                    /
-                  </div>
-                </template>
-              </div>
+              Or connect to an existing prop
+            </div>
+            <div
+              :class="
+                clsx(
+                  'scrollable',
+                  selectedIndex > filteredOptions.length || selectedIndex === 0
+                    ? 'max-h-[10rem]'
+                    : 'hidden',
+                )
+              "
+            >
               <div
-                v-if="isConnectionSelected(index)"
+                v-for="(connection, index) in filteredConnections"
+                :key="connection.attributeValueId"
                 :class="
                   clsx(
-                    'text-xs pt-3xs ml-auto',
-                    themeClasses('text-neutral-900', 'text-neutral-200'),
+                    'possible-connections grid gap-xs cursor-pointer border border-transparent',
+                    'px-xs py-2xs h-[30px]',
+                    isConnectionSelected(index) && [
+                      'input-selected-item',
+                      themeClasses('bg-action-200', 'bg-action-900'),
+                    ],
+                    themeClasses(
+                      'hover:border-action-500',
+                      'hover:border-action-300',
+                    ),
+                    false && themeClasses('bg-action-200', 'bg-action-900'),
                   )
                 "
+                @click.left="selectConnection(index)"
               >
-                <TextPill>Enter</TextPill>
-                to select
-              </div>
-              <TruncateWithTooltip v-else>
-                <template
-                  v-if="
-                    connection.annotation === 'array' ||
-                    connection.annotation === 'map' ||
-                    connection.annotation === 'object' ||
-                    connection.annotation === 'json'
+                <TruncateWithTooltip>
+                  {{ connection.componentName }}
+                </TruncateWithTooltip>
+                <div class="flex flex-row gap-2xs items-center">
+                  <template
+                    v-for="(item, itemIndex) in connection.pathArray"
+                    :key="item"
+                  >
+                    <TruncateWithTooltip
+                      class="flex-1 max-w-fit"
+                      :style="`flex-basis: ${
+                        100 / connection.pathArray.length
+                      }%`"
+                    >
+                      {{ item }}
+                    </TruncateWithTooltip>
+                    <div v-if="itemIndex !== connection.pathArray.length - 1">
+                      /
+                    </div>
+                  </template>
+                </div>
+                <div
+                  v-if="isConnectionSelected(index)"
+                  :class="
+                    clsx(
+                      'text-xs pt-3xs ml-auto',
+                      themeClasses('text-neutral-900', 'text-neutral-200'),
+                    )
                   "
                 >
-                  {{ connection.annotation }}
-                </template>
-                <template v-else> {{ connection.value }} </template>
-              </TruncateWithTooltip>
+                  <TextPill>Enter</TextPill>
+                  to select
+                </div>
+                <TruncateWithTooltip v-else>
+                  <template
+                    v-if="
+                      connection.annotation === 'array' ||
+                      connection.annotation === 'map' ||
+                      connection.annotation === 'object' ||
+                      connection.annotation === 'json'
+                    "
+                  >
+                    {{ connection.annotation }}
+                  </template>
+                  <template v-else> {{ connection.value }} </template>
+                </TruncateWithTooltip>
+              </div>
             </div>
+          </template>
+
+          <!-- display potential connection value area -->
+          <div v-if="selectedConnection?.value" class="relative">
+            <!--- TODO(Wendy) - this doesn't look right? -->
+            <CodeViewer
+              :code="JSON.stringify(selectedConnection?.value)"
+              showTitle
+              :title="selectedConnection.path"
+            />
           </div>
         </div>
       </template>
@@ -345,6 +415,7 @@ import {
   useMakeArgs,
   useMakeKey,
 } from "@/store/realtime/heimdall";
+import CodeViewer from "@/components/CodeViewer.vue";
 import { attributeEmitter } from "../logic_composables/emitters";
 import { useWatchedForm } from "../logic_composables/watched_form";
 import TextPill from "./TextPill.vue";
@@ -362,7 +433,25 @@ const props = defineProps<{
   displayName: string;
   canDelete?: boolean;
   disabled?: boolean;
+  isSetByConnection?: boolean;
+  isArray?: boolean;
+  isMap?: boolean;
 }>();
+
+// TODO(Wendy) - come back to this code when we wanna make the input float again
+// const context = inject<ComponentPageContext>("ComponentPageContext");
+
+// const closeOnResizeOrScroll = (e: Event) => {
+//   if (inputWindowRef.value && e.target instanceof Node && inputWindowRef.value.contains(e.target)) {
+//     // ignore events on descendants
+//     return;
+//   }
+//   if (scrollingToFixPosition.value) {
+//     scrollingToFixPosition.value = false;
+//   } else if (inputOpen.value) {
+//     closeInput();
+//   }
+// };
 
 const anchorRef = ref<InstanceType<typeof HTMLElement>>();
 // const optionRef = ref<InstanceType<typeof HTMLDivElement>>();
@@ -512,7 +601,16 @@ const selectDefault = () => {
   if (selectedIndex.value === 0) {
     const newValue = valueForm.state.values.value;
     connectingComponentId.value = undefined;
-    if (newValue !== attrData.value.value) {
+
+    if (props.isArray) {
+      emit("add");
+    } else if (props.isMap) {
+      if (!mapKey.value) {
+        mapKeyError.value = true;
+        return;
+      }
+      emit("add", mapKey.value);
+    } else if (newValue !== attrData.value.value) {
       valueForm.handleSubmit();
     }
     closeInput();
@@ -541,10 +639,13 @@ const emit = defineEmits<{
     connectingComponentId?: string,
   ): void;
   (e: "delete", path: string, id: string): void;
+  (e: "add", key?: string): void;
 }>();
 
 // INPUT WINDOW LOGIC
 
+const mapKey = ref("");
+const mapKeyError = ref(false);
 const selectedIndex = ref(0);
 const inputRef = ref<InstanceType<typeof HTMLInputElement>>();
 const inputWindowRef = ref<InstanceType<typeof HTMLDivElement>>();
@@ -555,37 +656,91 @@ const openInput = () => {
   resetFilteredOptions();
   valueForm.reset();
   labelRect.value = anchorRef.value?.getClientRects()[0];
+  inputWindowYPositionOffset.value = 0;
+  mapKey.value = "";
+  mapKeyError.value = false;
   if (!labelRect.value) return;
   inputOpen.value = true;
   selectedIndex.value = 0;
   connectingComponentId.value = undefined;
   nextTick(() => {
     inputRef.value?.focus();
-    document.addEventListener("mousedown", onClick);
+    addListeners();
+    // fixWindowPosition();
   });
 };
+// const scrollingToFixPosition = ref(false);
+const inputWindowYPositionOffset = ref(0);
+// TODO(Wendy) - come back to this code when we wanna make the input float again
+// const fixWindowPosition = () => {
+//   // This function fixes the input floating window position if it is off the bottom of the screen
+
+//   // This number determines the minimum distance between the bottom of the input window and the bottom of the screen
+//   const WINDOW_EDGE_PADDING = 10;
+
+//   if (inputWindowRef.value) {
+//     const rect = inputWindowRef.value.getBoundingClientRect();
+//     const edge = window.innerHeight - WINDOW_EDGE_PADDING;
+//     if (rect.bottom > edge) {
+//       scrollingToFixPosition.value = true; // don't close on scroll for this!
+//       // inputWindowYPositionOffset.value = (rect.bottom - window.innerHeight) + WINDOW_EDGE_PADDING;
+//       // console.log(`(${rect.bottom} - ${window.innerHeight}) + 5 = ${inputWindowYPositionOffset.value}`);
+//       if (context && anchorRef.value) {
+//         const anchorTop = anchorRef.value.getBoundingClientRect().top;
+//         const inputWindowHeight = rect.height;
+//         const scroll = (anchorTop + inputWindowHeight) - edge;
+//         console.log(scroll);
+//         context.scrollAttributePanel(context.attributePanelScrollY.value + scroll);
+//         // context.scrollAttributePanel();
+//         // context.attributePanelScrollY
+//       }
+//       nextTick(() => {
+//         labelRect.value = anchorRef.value?.getClientRects()[0];
+//       });
+//     }
+//   }
+// };
 const inputWindowStyles = computed(() => {
   // These values account for the padding to get the position right
-  const PADDING_AND_BORDER_OFFSET = 10;
-  const WIDTH_OFFSET = 16;
+  // const PADDING_AND_BORDER_OFFSET = 10;
+  // const WIDTH_OFFSET = 16;
 
-  return `width: ${
-    (labelRect.value?.width ?? -WIDTH_OFFSET) + WIDTH_OFFSET
-  }px; top: ${
-    (labelRect.value?.top ?? PADDING_AND_BORDER_OFFSET) -
-    PADDING_AND_BORDER_OFFSET
-  }px; left: ${
-    (labelRect.value?.left ?? PADDING_AND_BORDER_OFFSET) -
-    PADDING_AND_BORDER_OFFSET
-  }px`;
+  // return `width: ${
+  //   (labelRect.value?.width ?? -WIDTH_OFFSET) + WIDTH_OFFSET
+  // }px; top: ${
+  //   (labelRect.value?.top ?? PADDING_AND_BORDER_OFFSET) -
+  //   PADDING_AND_BORDER_OFFSET // - inputWindowYPositionOffset.value
+  // }px; left: ${
+  //   (labelRect.value?.left ?? PADDING_AND_BORDER_OFFSET) -
+  //   PADDING_AND_BORDER_OFFSET
+  // }px`;
+  return {};
 });
 const closeInput = () => {
   inputOpen.value = false;
-  document.removeEventListener("mousedown", onClick);
+  removeListeners();
+};
+
+const addListeners = () => {
+  window.addEventListener("mousedown", onClick);
+  // TODO(Wendy) - come back to this code when we wanna make the input float again
+  // window.addEventListener("resize", closeOnResizeOrScroll);
+  // window.addEventListener("scroll", closeOnResizeOrScroll, true);
+};
+const removeListeners = () => {
+  window.removeEventListener("mousedown", onClick);
+  // TODO(Wendy) - come back to this code when we wanna make the input float again
+  // window.removeEventListener("resize", closeOnResizeOrScroll);
+  // window.addEventListener("scroll", closeOnResizeOrScroll, true);
 };
 
 const onInputChange = (e: Event) => {
   const v = (e.target as HTMLInputElement).value;
+  if (props.isMap) {
+    mapKey.value = v;
+    return;
+  }
+
   valueForm.setFieldValue("value", v);
   filterStr.value = v;
   selectedIndex.value = 0;
@@ -600,6 +755,8 @@ const onClick = (e: MouseEvent) => {
   }
 };
 const onUp = () => {
+  if (props.isMap) return;
+
   selectedIndex.value--;
   if (selectedIndex.value < 0) {
     selectedIndex.value =
@@ -607,6 +764,8 @@ const onUp = () => {
   }
 };
 const onDown = () => {
+  if (props.isMap) return;
+
   selectedIndex.value++;
   if (
     selectedIndex.value >
@@ -735,6 +894,23 @@ const isOptionSelected = (index: number) =>
 const isConnectionSelected = (index: number) =>
   selectedIndex.value > filteredOptions.length - 1 &&
   selectedIndex.value - filteredOptions.length - 1 === index;
+
+const selectedConnection = computed(
+  () =>
+    filteredConnections.value[selectedIndex.value - 1 - filteredOptions.length],
+);
+// TODO(Wendy) - come back to this code when we wanna make the input float again
+// watch(() => inputWindowRef.value?.getBoundingClientRect().height, () => {
+//   // This watcher fixes the window position if the height of the input window div changes
+//   nextTick(() => {
+//     fixWindowPosition();
+//   });
+// });
+// watch(() => filteredConnections.value, () => {
+//   nextTick(() => {
+//     fixWindowPosition();
+//   });
+// });
 </script>
 
 <style lang="css" scoped>

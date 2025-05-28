@@ -1,6 +1,6 @@
 <template>
-  <li :class="clsx('flex flex-col', !hasChildren && 'mb-[-1px]')">
-    <template v-if="hasChildren">
+  <li :class="clsx('flex flex-col', !showingChildren && 'mb-[-1px]')">
+    <template v-if="showingChildren">
       <AttributeChildLayout>
         <template #header>
           <div class="flex flex-row items-center gap-2xs">
@@ -17,7 +17,7 @@
             />
           </div>
         </template>
-        <ul v-if="attributeTree.children.length > 0 && !bifrostingTrash">
+        <ul v-if="!bifrostingTrash">
           <ComponentAttribute
             v-for="child in attributeTree.children"
             :key="child.id"
@@ -30,30 +30,11 @@
             @delete="(path, id) => emit('delete', path, id)"
           />
         </ul>
-        <template v-if="isBuildable">
-          <Icon
-            v-if="wForm.bifrosting.value"
-            name="loader"
-            size="sm"
-            tone="action"
-          />
-          <template v-if="showKey">
-            <keyForm.Field name="key">
-              <template #default="{ field }">
-                <input
-                  class="block w-72 text-white bg-black border border-neutral-300 disabled:bg-neutral-900"
-                  type="text"
-                  :value="field.state.value"
-                  :disabled="wForm.bifrosting.value"
-                  @input="(e) => field.handleChange((e.target as HTMLInputElement).value)"
-                  @blur="saveKey"
-                  @keypress.enter.stop.prevent="saveKey"
-                />
-              </template>
-            </keyForm.Field>
-          </template>
+        <div
+          v-if="isBuildable"
+          class="grid grid-cols-2 items-center gap-xs relative"
+        >
           <div class="p-xs">
-            <!-- TODO(Wendy) - could not figure out how to get Tab to work for these buttons! -->
             <VButton
               class="font-normal"
               tone="shade"
@@ -63,12 +44,35 @@
               :disabled="addApi.bifrosting.value"
               loadingIcon="loader"
               :tabindex="-1"
-              @click="add"
+              @click="() => add()"
             >
               + add
             </VButton>
           </div>
-        </template>
+          <template v-if="props.attributeTree.prop?.kind === 'map'">
+            <keyForm.Field name="key">
+              <template #default="{ field }">
+                <input
+                  :class="
+                    clsx(
+                      'block ml-auto border w-full h-lg font-mono text-sm',
+                      themeClasses(
+                        'text-black bg-white border-neutral-400 disabled:bg-neutral-200',
+                        'text-white bg-black border-neutral-600 disabled:bg-neutral-900',
+                      ),
+                    )
+                  "
+                  type="text"
+                  placeholder="Enter a key"
+                  :value="field.state.value"
+                  :disabled="wForm.bifrosting.value"
+                  @input="(e) => field.handleChange((e.target as HTMLInputElement).value)"
+                  @keypress.enter.stop.prevent="saveKeyIfFormValid"
+                />
+              </template>
+            </keyForm.Field>
+          </template>
+        </div>
       </AttributeChildLayout>
     </template>
     <template v-else>
@@ -80,19 +84,25 @@
         :prop="props.attributeTree.prop"
         :value="props.attributeTree.attributeValue.value?.toString() ?? ''"
         :canDelete="props.attributeTree.isBuildable"
+        :isSetByConnection="
+          props.attributeTree.attributeValue.isFromExternalSource
+        "
+        :isArray="props.attributeTree.prop?.kind === 'array'"
+        :isMap="props.attributeTree.prop?.kind === 'map'"
         @save="
           (path, id, value, connectingComponentId) =>
             emit('save', path, id, value, connectingComponentId)
         "
         @delete="(path, id) => emit('delete', path, id)"
+        @add="add"
       />
     </template>
   </li>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-import { VButton, IconButton, Icon } from "@si/vue-lib/design-system";
+import { computed, nextTick, ref, watch } from "vue";
+import { VButton, IconButton, themeClasses } from "@si/vue-lib/design-system";
 import { useRoute } from "vue-router";
 import clsx from "clsx";
 import { BifrostComponent } from "@/workers/types/entity_kind_types";
@@ -131,20 +141,25 @@ const displayName = computed(() => {
 
 const addApi = useApi();
 
-const add = async () => {
+const add = async (key?: string) => {
   if (props.attributeTree.prop?.kind === "map") {
-    showKey.value = true;
-    return;
+    if (!key) {
+      saveKeyIfFormValid();
+      return;
+    } else {
+      keyForm.setFieldValue("key", key, {});
+      await saveKey();
+      return;
+    }
   }
-
-  addApi.setWatchFn(
-    // once the children count updates, we can stop spinning
-    () => props.attributeTree.children.length,
-  );
 
   const call = addApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
+  );
+  addApi.setWatchFn(
+    // once the children count updates, we can stop spinning
+    () => props.attributeTree.children.length,
   );
   const payload: componentTypes.UpdateComponentAttributesArgs = {};
   const path =
@@ -179,7 +194,6 @@ const add = async () => {
 };
 
 const route = useRoute();
-const showKey = ref(false);
 const wForm = useWatchedForm<{ key: string }>(
   `component.av.key.${props.attributeTree.prop?.id}`,
 );
@@ -216,22 +230,28 @@ const keyForm = wForm.newForm({
   },
 });
 
-const saveKey = async () => {
+const saveKeyIfFormValid = async () => {
   if (keyForm.fieldInfo.key.instance?.state.meta.isDirty) {
     if (!keyForm.baseStore.state.isSubmitted) {
-      await keyForm.handleSubmit();
-      showKey.value = false;
-      // this gets us the bifrosting spinner
-      watch(
-        () => props.attributeTree.children.length,
-        () => {
-          keyData.value = { key: "" };
-          keyForm.reset(keyData.value);
-        },
-        { once: true },
-      );
+      await saveKey();
     }
   }
+};
+
+const saveKey = async () => {
+  await keyForm.handleSubmit();
+
+  // this gets us the bifrosting spinner
+  watch(
+    () => props.attributeTree.children.length,
+    () => {
+      // we need nextTick here because otherwise the reset doesn't work
+      // not 100% sure why, but probably has something to do with the Vue template
+      // rerendering between the if/else main sections - only one has the form displaying!
+      nextTick(() => keyForm.reset(keyData.value));
+    },
+    { once: true },
+  );
 };
 
 // NOTE: we never need to unset this, because this whole node will
@@ -258,4 +278,8 @@ const emit = defineEmits<{
   ): void;
   (e: "delete", path: string, id: string): void;
 }>();
+
+const showingChildren = computed(
+  () => hasChildren.value && props.attributeTree.children.length > 0,
+);
 </script>

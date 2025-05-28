@@ -117,7 +117,9 @@
               >{{ component.schemaVariantName }}</a
             >
           </p>
-          <p><VueMarkdown :source="component.schemaVariantDescription" /></p>
+          <p>
+            <VueMarkdown :source="component.schemaVariantDescription ?? ''" />
+          </p>
         </template>
         <template v-else>
           <VButton
@@ -191,6 +193,7 @@
   </section>
 </template>
 
+<!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
 import { useQuery } from "@tanstack/vue-query";
 import {
@@ -279,6 +282,13 @@ const mgmtRef = ref<typeof CollapsingFlexItem>();
 const nameRef = ref<HTMLInputElement>();
 const editInPlaceRef = ref<typeof EditInPlace>();
 
+// TODO(Wendy) - this code is for if we want the AttributeInput to float again
+// const scrollAttributePanel = (value: number) => {
+//   if (attrRef.value) {
+//     attrRef.value.setScroll(value);
+//   }
+// };
+
 const router = useRouter();
 
 const back = () => {
@@ -365,6 +375,30 @@ const blur = () => {
 
   if (editInPlaceRef.value) editInPlaceRef.value.hide();
 };
+
+// TODO(Wendy) - this code is for if we want the AttributeInput to float again
+// type ScrollFunc = (value: number) => void;
+
+// export type ComponentPageContext = {
+//   scrollAttributePanel: ScrollFunc;
+//   attributePanelScrollY: Ref<number>;
+// };
+
+// const context = reactive<ComponentPageContext>({
+//   scrollAttributePanel,
+//   attributePanelScrollY: ref(0),
+// });
+
+// watch(
+//   () => attrRef.value?.scrollY,
+//   () => {
+//     if (attrRef.value) {
+//       context.attributePanelScrollY = attrRef.value.scrollY;
+//     }
+//   },
+// );
+
+// provide("ComponentPageContext", context);
 </script>
 
 <style lang="less" scoped>
