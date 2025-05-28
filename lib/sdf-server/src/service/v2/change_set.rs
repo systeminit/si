@@ -1,4 +1,7 @@
-use std::result;
+use std::{
+    result,
+    time::Duration,
+};
 
 use axum::{
     Router,
@@ -28,6 +31,7 @@ use si_data_spicedb::SpiceDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use super::index::IndexError;
 use crate::middleware::WorkspacePermissionLayer;
 
 mod apply;
@@ -54,8 +58,26 @@ pub enum Error {
     DalWrapper(#[from] sdf_core::dal_wrapper::DalWrapperError),
     #[error("dependent value root error: {0}")]
     DependentValueRoot(#[from] DependentValueRootError),
+    #[error("deserializing mv index data error: {0}")]
+    DeserializingMvIndexData(#[source] serde_json::Error),
     #[error("dvu roots are not empty for change set: {0}")]
     DvuRootsNotEmpty(ChangeSetId),
+    #[error("edda client error: {0}")]
+    EddaClient(#[from] edda_client::ClientError),
+    #[error("frigg error: {0}")]
+    Frigg(#[from] frigg::FriggError),
+    #[error("index error: {0}")]
+    Index(#[from] IndexError),
+    #[error("index not found; workspace_pk={0}, change_set_id={1}")]
+    IndexNotFound(WorkspacePk, ChangeSetId),
+    #[error("index not found after rebuild; workspace_pk={0}, change_set_id={1}")]
+    IndexNotFoundAfterFreshBuild(WorkspacePk, ChangeSetId),
+    #[error("index not found after rebuild; workspace_pk={0}, change_set_id={1}")]
+    IndexNotFoundAfterRebuild(WorkspacePk, ChangeSetId),
+    #[error("item with checksum not found; workspace_pk={0}, change_set_id={1}, kind={2}")]
+    ItemWithChecksumNotFound(WorkspacePk, ChangeSetId, String),
+    #[error("latest item not found; workspace_pk={0}, change_set_id={1}, kind={2}")]
+    LatestItemNotFound(WorkspacePk, ChangeSetId, String),
     #[error("http error: {0}")]
     Request(#[from] reqwest::Error),
     #[error("si db error: {0}")]
@@ -70,6 +92,8 @@ pub enum Error {
         "found an unexpected number of open change sets matching default change set (should be one, found {0:?})"
     )]
     UnexpectedNumberOfOpenChangeSetsMatchingDefaultChangeSet(Vec<ChangeSetId>),
+    #[error("timed out when watching index with duration: {0:?}")]
+    WatchIndexTimeout(Duration),
     #[error("workspace integration error: {0}")]
     WorkspaceIntegrations(#[from] dal::workspace_integrations::WorkspaceIntegrationsError),
     #[error("workspace snapshot error: {0}")]

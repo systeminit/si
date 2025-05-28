@@ -131,7 +131,7 @@ async fn request_rebuild(
         si.edda_request.id = Empty
     )
 )]
-async fn request_rebuild_and_watch(
+pub async fn request_rebuild_and_watch(
     frigg: &frigg::FriggStore,
     edda_client: &edda_client::EddaClient,
     workspace_pk: WorkspacePk,
