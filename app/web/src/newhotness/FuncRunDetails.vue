@@ -111,7 +111,7 @@ const api = useApi();
 const pollInterval = ref<number | false>(0); // initial calls
 
 const { data: funcRunQuery } = useQuery<Omit<FuncRun, "logs"> | undefined>({
-  queryKey: ["funcRun", props.funcRunId],
+  queryKey: [ctx.changeSetId.value, "funcRun", props.funcRunId],
   queryFn: async () => {
     const call = api.endpoint<funcRunTypes.FuncRunResponse>(routes.FuncRun, {
       id: props.funcRunId,
@@ -132,7 +132,7 @@ const { data: funcRunQuery } = useQuery<Omit<FuncRun, "logs"> | undefined>({
 const funcRun = computed(() => funcRunQuery.value);
 
 const { data: funcRunLogsQuery } = useQuery<FuncRunLog | undefined>({
-  queryKey: ["funcRunLogs", props.funcRunId],
+  queryKey: [ctx.changeSetId.value, "funcRunLogs", props.funcRunId],
   queryFn: async () => {
     const call = api.endpoint<funcRunTypes.FuncRunLogsResponse>(
       routes.FuncRunLogs,
@@ -216,7 +216,7 @@ const setupFuncRunSubscription = () => {
           // Only fetch the logs instead of the entire function run
           // This is more efficient than re-fetching the entire function run
           queryClient.invalidateQueries({
-            queryKey: ["funcRunLogs", props.funcRunId],
+            queryKey: [ctx.changeSetId.value, "funcRunLogs", props.funcRunId],
           });
 
           // Reset the live indicator after a brief delay if the function run is complete
