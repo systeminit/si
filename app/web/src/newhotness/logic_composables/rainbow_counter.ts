@@ -16,14 +16,18 @@ export const remove = (changeSetId: string, desc: string) => {
 };
 
 export const useRainbow = () => {
-  const ctx = inject<Context>("CONTEXT");
-  assertIsDefined(ctx);
+  try {
+    const ctx = inject<Context>("CONTEXT");
+    assertIsDefined(ctx);
 
-  const queue = queueByChangeSet.get(ctx.changeSetId.value);
+    const queue = queueByChangeSet.get(ctx.changeSetId.value);
 
-  /**
-   * This is a global "stuff is happening" counter
-   * When its > 0 the system is waiting for data
-   */
-  return { rainbowCount: computed(() => queue?.size ?? 0) };
+    /**
+     * This is a global "stuff is happening" counter
+     * When its > 0 the system is waiting for data
+     */
+    return { rainbowCount: computed(() => queue?.size ?? 0) };
+  } catch (err) {
+    return { rainbowCount: 0 };
+  }
 };
