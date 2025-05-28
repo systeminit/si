@@ -3,6 +3,7 @@ use dal::{
     Component,
     DalContext,
     attribute::value::subscription::ValueSubscription,
+    func::authoring::FuncAuthoringClient,
 };
 use dal_test::{
     Result,
@@ -571,6 +572,64 @@ async fn delete_subscribed_to_array_item(ctx: &mut DalContext) -> Result<()> {
         value::get(ctx, ("subscriber", "/domain/Value")).await?
     );
     assert!(!value::has_value(ctx, ("subscriber", "/domain/Value2")).await?);
+
+    Ok(())
+}
+
+#[test]
+async fn subscribe_with_custom_function(ctx: &mut DalContext) -> Result<()> {
+    create_testy_variant(ctx).await?;
+    let func = FuncAuthoringClient::create_new_transformation_func(
+        ctx,
+        Some("make_it_better".to_string()),
+    )
+    .await?;
+
+    FuncAuthoringClient::save_code(
+        ctx,
+        func.id,
+        "function main({input}) {return `${ input }, but better`;}",
+    )
+    .await?;
+
+    // Create a component with a Value prop
+    component::create(ctx, "testy", "subscriber").await?;
+
+    // Create another component and subscribe to its values
+    component::create(ctx, "testy", "source").await?;
+
+    // Subscribe Value
+    value::subscribe_with_custom_function(
+        ctx,
+        ("subscriber", "/domain/Value"),
+        [("source", "/domain/Value")],
+        Some(func.id),
+    )
+    .await?;
+
+    change_set::commit(ctx).await?;
+
+    // Make sure transformation works with initial unset value as source
+    assert_eq!(
+        json!("null, but better"),
+        value::get(ctx, ("subscriber", "/domain/Value")).await?
+    );
+
+    // now set a value on source
+    value::set(ctx, ("source", "/domain/Value"), "test value").await?;
+
+    change_set::commit(ctx).await?;
+
+    // Make sure value setting and subscription worked!
+    assert_eq!(
+        json!("test value"),
+        value::get(ctx, ("source", "/domain/Value")).await?
+    );
+
+    assert_eq!(
+        json!("test value, but better"),
+        value::get(ctx, ("subscriber", "/domain/Value")).await?
+    );
 
     Ok(())
 }

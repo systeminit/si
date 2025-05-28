@@ -2159,29 +2159,35 @@ impl AttributeValue {
         ctx: &DalContext,
         subscriber_av_id: AttributeValueId,
         subscriptions: Vec<ValueSubscription>,
+        func_id: Option<FuncId>,
     ) -> AttributeValueResult<()> {
-        // Pick the prototype for the function based on prop type: if it's Array, use
-        // si:normalizeToArray, otherwise use si:identity
-        let func = match Self::prop(ctx, subscriber_av_id).await?.kind {
-            PropKind::Array => IntrinsicFunc::NormalizeToArray,
-            kind @ PropKind::Boolean
-            | kind @ PropKind::Integer
-            | kind @ PropKind::Json
-            | kind @ PropKind::Map
-            | kind @ PropKind::Object
-            | kind @ PropKind::String
-            | kind @ PropKind::Float => {
-                if subscriptions.len() != 1 {
-                    return Err(AttributeValueError::SingleValueMustHaveOneSubscription(
-                        subscriber_av_id,
-                        kind,
-                        subscriptions.len(),
-                    ));
+        let func_id = if let Some(id) = func_id {
+            id
+        } else {
+            // Pick the prototype for the function based on prop type: if it's Array, use
+            // si:normalizeToArray, otherwise use si:identity
+            let intrinsic_func = match Self::prop(ctx, subscriber_av_id).await?.kind {
+                PropKind::Array => IntrinsicFunc::NormalizeToArray,
+                kind @ PropKind::Boolean
+                | kind @ PropKind::Integer
+                | kind @ PropKind::Json
+                | kind @ PropKind::Map
+                | kind @ PropKind::Object
+                | kind @ PropKind::String
+                | kind @ PropKind::Float => {
+                    if subscriptions.len() != 1 {
+                        return Err(AttributeValueError::SingleValueMustHaveOneSubscription(
+                            subscriber_av_id,
+                            kind,
+                            subscriptions.len(),
+                        ));
+                    }
+                    IntrinsicFunc::Identity
                 }
-                IntrinsicFunc::Identity
-            }
+            };
+            Func::find_intrinsic(ctx, intrinsic_func).await?
         };
-        let func_id = Func::find_intrinsic(ctx, func).await?;
+
         let prototype_id = AttributePrototype::new(ctx, func_id).await?.id();
         Self::set_component_prototype_id(ctx, subscriber_av_id, prototype_id, None).await?;
 

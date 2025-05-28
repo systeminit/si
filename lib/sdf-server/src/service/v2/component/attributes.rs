@@ -12,12 +12,19 @@ use dal::{
     ChangeSet,
     Component,
     DalContext,
+    Func,
     PropKind,
     WsEvent,
     attribute::{
         path::AttributePath,
         value::subscription::ValueSubscription,
     },
+    func::{
+        FuncKind,
+        authoring::FuncAuthoringClient,
+        intrinsics::IntrinsicFunc,
+    },
+    workspace_snapshot::node_weight::NodeWeight,
 };
 use sdf_core::force_change_set_response::ForceChangeSetResponse;
 use sdf_extract::{
@@ -26,7 +33,10 @@ use sdf_extract::{
 };
 use serde::Deserialize;
 use serde_json::json;
-use si_id::ComponentId;
+use si_id::{
+    ComponentId,
+    FuncId,
+};
 
 use super::{
     ComponentIdFromPath,
@@ -120,7 +130,20 @@ pub fn v2_routes() -> Router<AppState> {
 //         }
 //       }
 //
-//   You may also APPEND a subscription by adding `keepExistingSubscriptions: true` to the
+//
+//      You may specify a function ID to be used in subscription, to transform the value before setting
+//      it to the destination AV.
+//
+//      If no func argument is passed, the func will be si:Identity.
+//
+//       {
+//         "/domain/SubnetId": {
+//           "$source": { "component": "ComponentNameOrId", "path": "/resource/SubnetId", "func": "01JWBMRZAANBHKD2G2S5PZQTMA" }
+//         }
+//       }
+//
+//
+//   SOON TO BE DEPRECATED: You may also APPEND a subscription by adding `keepExistingSubscriptions: true` to the
 //   subscription:
 //
 //       {
@@ -175,6 +198,7 @@ async fn update_attributes(
                         component: source_component,
                         path: source_path,
                         keep_existing_subscriptions,
+                        func,
                     } => {
                         subscription_count += 1;
 
@@ -198,6 +222,7 @@ async fn update_attributes(
                         // exists--correct prop names, numeric indices for arrays, etc.)
                         subscription.validate(ctx).await?;
 
+                        // TODO remove keep_existing_subscriptions so we can only have an av subscribe to single source
                         // Add our subscription unless the subscription is already there
                         let existing_subscriptions = match keep_existing_subscriptions {
                             Some(true) => AttributeValue::subscriptions(ctx, target_av_id).await?,
@@ -208,9 +233,51 @@ async fn update_attributes(
                             subscriptions.push(subscription);
                         }
 
+                        let maybe_func_id = if let Some(_func) = func {
+                            // NOTE(victor): The hardcoded func is temporary, only so we can show prop to prop funcs working on the old ui
+
+                            // TODO go back to this after we can set custom funcs via ui
+                            // func.resolve(ctx).await?
+
+                            let hardcoded_transformation_function =
+                                "make_it_better_01JWA4WGMK00EM4257DAN4MGAX";
+
+                            if let id @ Some(_) = Func::find_id_by_name_and_kind(
+                                ctx,
+                                hardcoded_transformation_function,
+                                FuncKind::Attribute,
+                            )
+                            .await?
+                            {
+                                id
+                            } else {
+                                let func = FuncAuthoringClient::create_new_transformation_func(
+                                    ctx,
+                                    Some(hardcoded_transformation_function.to_string()),
+                                )
+                                .await?;
+
+                                FuncAuthoringClient::save_code(
+                                    ctx,
+                                    func.id,
+                                    "function main({input}) {return `${ input }, but better`;}",
+                                )
+                                .await?;
+
+                                Some(func.id)
+                            }
+                        } else {
+                            None
+                        };
+
                         // Subscribe!
-                        AttributeValue::set_to_subscriptions(ctx, target_av_id, subscriptions)
-                            .await?;
+                        AttributeValue::set_to_subscriptions(
+                            ctx,
+                            target_av_id,
+                            subscriptions,
+                            maybe_func_id,
+                        )
+                        .await?;
                     }
                 }
             }
@@ -266,17 +333,6 @@ async fn update_attributes(
             "subscription_count": subscription_count,
         }),
     );
-    println!(
-        "{}",
-        json!({
-            "how": "/component/attributes",
-            "component_id": component_id,
-            "change_set_id": ctx.change_set_id(),
-            "set_count": set_count,
-            "unset_count": unset_count,
-            "subscription_count": subscription_count,
-        })
-    );
 
     Ok(ForceChangeSetResponse::new(force_change_set_id, ()))
 }
@@ -303,6 +359,8 @@ enum Source {
         path: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         keep_existing_subscriptions: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        func: Option<FuncIdent>,
     },
 }
 
@@ -390,10 +448,46 @@ impl ComponentIdent {
         let Ok(id) = self.0.parse() else {
             return Ok(None);
         };
-        // If it doesn't exist, we'll try the alternative
-        if !ctx.workspace_snapshot()?.node_exists(id).await {
+
+        let Some(NodeWeight::Component(_)) =
+            ctx.workspace_snapshot()?.get_node_weight_opt(id).await
+        else {
             return Ok(None);
+        };
+
+        Ok(Some(id))
+    }
+}
+
+#[derive(Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
+#[serde(rename_all = "camelCase")]
+struct FuncIdent(String);
+
+impl FuncIdent {
+    #[allow(unused)]
+    async fn resolve(&self, ctx: &DalContext) -> Result<Option<FuncId>> {
+        if let Some(id) = self.resolve_as_id(ctx).await? {
+            return Ok(Some(id));
         }
+
+        if let Some(func) = IntrinsicFunc::maybe_from_str(&self.0) {
+            return Ok(Some(Func::find_intrinsic(ctx, func).await?));
+        }
+
+        // Otherwise, try to find it by name
+        Ok(None)
+    }
+
+    async fn resolve_as_id(&self, ctx: &DalContext) -> Result<Option<FuncId>> {
+        let Ok(id) = self.0.parse() else {
+            return Ok(None);
+        };
+
+        let Some(NodeWeight::Func(_)) = ctx.workspace_snapshot()?.get_node_weight_opt(id).await
+        else {
+            return Ok(None);
+        };
+
         Ok(Some(id))
     }
 }

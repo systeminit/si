@@ -11,6 +11,7 @@ use dal::{
 use si_id::{
     AttributeValueId,
     ComponentId,
+    FuncId,
 };
 
 use crate::{
@@ -153,14 +154,26 @@ pub async fn subscribe<S: AttributeValueKey>(
     subscriber: impl AttributeValueKey,
     subscriptions: impl IntoIterator<Item = S>,
 ) -> Result<()> {
+    subscribe_with_custom_function(ctx, subscriber, subscriptions, None).await
+}
+
+/// Set the subscriptions on a value
+pub async fn subscribe_with_custom_function<S: AttributeValueKey>(
+    ctx: &DalContext,
+    subscriber: impl AttributeValueKey,
+    subscriptions: impl IntoIterator<Item = S>,
+    func_id: Option<FuncId>,
+) -> Result<()> {
     let subscriber = subscriber.vivify_attribute_value(ctx).await?;
     let mut converted_subscriptions = vec![];
     for subscription in subscriptions {
         converted_subscriptions.push(subscription.to_subscription(ctx).await?);
     }
-    AttributeValue::set_to_subscriptions(ctx, subscriber, converted_subscriptions).await?;
+    AttributeValue::set_to_subscriptions(ctx, subscriber, converted_subscriptions, func_id).await?;
     Ok(())
 }
+
+// TODO add a helper to change subscription funcs easily
 
 /// Get the value
 pub async fn get(ctx: &DalContext, av: impl AttributeValueKey) -> Result<serde_json::Value> {

@@ -211,10 +211,29 @@ impl FuncAuthoringClient {
             ctx,
             name,
             eventual_parent,
-            output_location,
+            Some(output_location),
             argument_bindings,
         )
         .await?;
+
+        Ok(func)
+    }
+
+    /// Creates a transformation func and returns it.
+    /// A transformation func is an attribute func with a single argument,
+    /// meant to be used for prop to prop connections.
+    #[instrument(
+        name = "func.authoring.create_new_transformation_func",
+        level = "info",
+        skip(ctx)
+    )]
+    pub async fn create_new_transformation_func(
+        ctx: &DalContext,
+        name: Option<String>,
+    ) -> FuncAuthoringResult<Func> {
+        let func = create::create_attribute_func(ctx, name, None, None, vec![]).await?;
+
+        Self::create_func_argument(ctx, func.id, "input", FuncArgumentKind::Any, None).await?;
 
         Ok(func)
     }

@@ -9,6 +9,7 @@ use axum::{
 use dal::{
     AttributeValueId,
     KeyPairError,
+    func::authoring::FuncAuthoringError,
     prop::PropError,
 };
 use sdf_core::api_error::ApiError;
@@ -38,6 +39,10 @@ pub enum Error {
     Component(#[from] dal::ComponentError),
     #[error("dal secret error: {0}")]
     DalSecret(#[from] dal::SecretError),
+    #[error("func error: {0}")]
+    Func(#[from] dal::FuncError),
+    #[error("func authoring error: {0}")]
+    FuncAuthoring(#[from] FuncAuthoringError),
     #[error("json pointer parse error: {0}")]
     JsonptrParseError(#[from] jsonptr::ParseError),
     #[error("key pair error: {0}")]
