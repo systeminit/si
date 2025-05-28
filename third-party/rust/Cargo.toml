@@ -107,6 +107,7 @@ indicatif = "0.17.11"
 indoc = "2.0.5"
 insta = { version = "1.42.2", features = ["glob", "json"] }
 itertools = "0.13.0"
+inventory = "0.3.20"
 json-patch = "4.0.0"
 jsonptr = "0.7.1"
 jwt-simple = { version = "0.12.11", default-features = false, features = [

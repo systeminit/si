@@ -32,7 +32,6 @@ use crate::AppState;
 
 mod get_change_set_index;
 mod get_front_end_object;
-mod get_workspace_index;
 mod rebuild_change_set_index;
 
 const WATCH_INDEX_TIMEOUT: Duration = Duration::from_secs(4);
@@ -79,10 +78,6 @@ impl IntoResponse for IndexError {
 
         ApiError::new(status_code, self).into_response()
     }
-}
-
-pub fn v2_workspace_routes() -> Router<AppState> {
-    Router::new().route("/", get(get_workspace_index::get_workspace_index))
 }
 
 pub fn v2_change_set_routes() -> Router<AppState> {

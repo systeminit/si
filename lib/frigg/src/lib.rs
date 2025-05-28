@@ -36,6 +36,7 @@ use si_frontend_mv_types::{
         IndexPointerValue,
         MvIndex,
     },
+    materialized_view::materialized_view_definitions_checksum,
     object::FrontendObject,
     reference::ReferenceKind,
 };
@@ -275,6 +276,7 @@ impl FriggStore {
         let index_pointer_value = IndexPointerValue {
             index_object_key: index_object_key.into_string(),
             snapshot_address: object.id.to_owned(),
+            definition_checksum: materialized_view_definitions_checksum(),
         };
         let value = serde_json::to_vec(&index_pointer_value).map_err(Error::Serialize)?;
         let new_revision = self.store.create(index_pointer_key, value.into()).await?;
@@ -336,6 +338,7 @@ impl FriggStore {
         let index_pointer_value = IndexPointerValue {
             index_object_key: index_object_key.into_string(),
             snapshot_address: object.id.to_owned(),
+            definition_checksum: materialized_view_definitions_checksum(),
         };
         let value = serde_json::to_vec(&index_pointer_value).map_err(Error::Serialize)?;
 
@@ -374,6 +377,7 @@ impl FriggStore {
         let index_pointer_value = IndexPointerValue {
             index_object_key: index_object_key.into_string(),
             snapshot_address: object.id.to_owned(),
+            definition_checksum: materialized_view_definitions_checksum(),
         };
         let value = serde_json::to_vec(&index_pointer_value).map_err(Error::Serialize)?;
 
@@ -403,6 +407,17 @@ impl FriggStore {
         };
         let index_pointer_value: IndexPointerValue =
             serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize)?;
+        // If the definition checksum for the current set of MVs is not the same as the one the MvIndex was built for,
+        // then the MvIndex is out of date and should not be used at all.
+        if index_pointer_value.definition_checksum != materialized_view_definitions_checksum() {
+            warn!(
+                "Index pointer is out of date: index checksum: {}, expected checksum: {}",
+                index_pointer_value.definition_checksum,
+                materialized_view_definitions_checksum()
+            );
+            return Ok(None);
+        }
+
         let object_key = index_pointer_value.index_object_key;
         let bytes = self
             .store

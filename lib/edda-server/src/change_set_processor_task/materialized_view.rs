@@ -49,6 +49,7 @@ use si_frontend_mv_types::{
         IncomingConnectionsList as IncomingConnectionsListMv,
     },
     index::MvIndex,
+    materialized_view::MaterializedViewInventoryItem,
     object::{
         FrontendObject,
         patch::{
@@ -735,14 +736,6 @@ where
     }
 }
 
-macro_rules! add_reference_dependencies_to_dependency_graph {
-    ($dependency_graph:expr_2021, $mv:ident $(,)?) => {
-        for reference_kind in <$mv as MaterializedView>::reference_dependencies() {
-            $dependency_graph.id_depends_on(<$mv as MaterializedView>::kind(), *reference_kind);
-        }
-    };
-}
-
 #[instrument(
     name = "materialized_view.mv_dependency_graph",
     level = "debug",
@@ -751,21 +744,11 @@ macro_rules! add_reference_dependencies_to_dependency_graph {
 fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedViewError> {
     let mut dependency_graph = DependencyGraph::new();
 
-    // TODO(nick): we should really look into making this automatic from "ReferenceKind::revision_sensitive()"
-    // fields... too easy to shoot yourself in the foot.
-    //
-    // All `MaterializedView` types must be covered here for them to be built.
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionPrototypeViewListMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ActionViewListMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentListMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ComponentMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, IncomingConnectionsListMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, IncomingConnectionsMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantCategoriesMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, SchemaVariantMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewComponentListMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewListMv);
-    add_reference_dependencies_to_dependency_graph!(dependency_graph, ViewMv);
+    for mv in ::inventory::iter::<MaterializedViewInventoryItem>() {
+        for reference_kind in mv.reference_dependencies() {
+            dependency_graph.id_depends_on(mv.kind(), *reference_kind);
+        }
+    }
 
     // The MvIndex depends on everything else, but doesn't define any
     // `MaterializedView::reference_dependencies()` directly.

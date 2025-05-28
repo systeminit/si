@@ -14,6 +14,7 @@ rust_library(
         "//lib/si-frontend-types-rs:si-frontend-types", # FIXME(nick): this dep needs to be removed from this crate
         "//lib/si-id:si-id",
         "//third-party/rust:chrono",
+        "//third-party/rust:inventory",
         "//third-party/rust:json-patch",
         "//third-party/rust:remain",
         "//third-party/rust:serde",

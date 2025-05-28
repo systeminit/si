@@ -1,48 +1,49 @@
 [package]
-name = "edda-server"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-edition.workspace = true
+name                   = "edda-server"
+version.workspace      = true
+authors.workspace      = true
+license.workspace      = true
+repository.workspace   = true
+edition.workspace      = true
 rust-version.workspace = true
-publish.workspace = true
+publish.workspace      = true
 
 [dependencies]
-buck2-resources = { path = "../../lib/buck2-resources" }
-dal = { path = "../../lib/dal" }
-dal-materialized-views = { path = "../../lib/dal-materialized-views" }
+buck2-resources               = { path = "../../lib/buck2-resources" }
+dal                           = { path = "../../lib/dal" }
+dal-materialized-views        = { path = "../../lib/dal-materialized-views" }
 dal-materialized-views-macros = { path = "../../lib/dal-materialized-views-macros" }
-edda-core = { path = "../../lib/edda-core" }
-frigg = { path = "../../lib/frigg" }
-nats-std = { path = "../../lib/nats-std" }
-naxum = { path = "../../lib/naxum" }
-rebaser-client = { path = "../../lib/rebaser-client" }
-si-crypto = { path = "../../lib/si-crypto" }
-si-data-nats = { path = "../../lib/si-data-nats" }
-si-data-pg = { path = "../../lib/si-data-pg" }
-si-events = { path = "../../lib/si-events-rs" }
-si-frontend-mv-types = { path = "../../lib/si-frontend-mv-types-rs" }
-si-id = { path = "../../lib/si-id" }
-si-layer-cache = { path = "../../lib/si-layer-cache" }
-si-settings = { path = "../../lib/si-settings" }
-si-std = { path = "../../lib/si-std" }
-si-tls = { path = "../../lib/si-tls" }
-telemetry = { path = "../../lib/telemetry-rs" }
-telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
-telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
-veritech-client = { path = "../../lib/veritech-client" }
+edda-core                     = { path = "../../lib/edda-core" }
+frigg                         = { path = "../../lib/frigg" }
+nats-std                      = { path = "../../lib/nats-std" }
+naxum                         = { path = "../../lib/naxum" }
+rebaser-client                = { path = "../../lib/rebaser-client" }
+si-crypto                     = { path = "../../lib/si-crypto" }
+si-data-nats                  = { path = "../../lib/si-data-nats" }
+si-data-pg                    = { path = "../../lib/si-data-pg" }
+si-events                     = { path = "../../lib/si-events-rs" }
+si-frontend-mv-types          = { path = "../../lib/si-frontend-mv-types-rs" }
+si-id                         = { path = "../../lib/si-id" }
+si-layer-cache                = { path = "../../lib/si-layer-cache" }
+si-settings                   = { path = "../../lib/si-settings" }
+si-std                        = { path = "../../lib/si-std" }
+si-tls                        = { path = "../../lib/si-tls" }
+telemetry                     = { path = "../../lib/telemetry-rs" }
+telemetry-nats                = { path = "../../lib/telemetry-nats-rs" }
+telemetry-utils               = { path = "../../lib/telemetry-utils-rs" }
+veritech-client               = { path = "../../lib/veritech-client" }
 
-bytes = { workspace = true }
+bytes          = { workspace = true }
 derive_builder = { workspace = true }
-futures = { workspace = true }
-json-patch = { workspace = true }
-remain = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-strum = { workspace = true }
-thiserror = { workspace = true }
-tokio = { workspace = true }
-tokio-stream = { workspace = true }
-tokio-util = { workspace = true }
-ulid = { workspace = true }
+futures        = { workspace = true }
+inventory      = { workspace = true }
+json-patch     = { workspace = true }
+remain         = { workspace = true }
+serde          = { workspace = true }
+serde_json     = { workspace = true }
+strum          = { workspace = true }
+thiserror      = { workspace = true }
+tokio          = { workspace = true }
+tokio-stream   = { workspace = true }
+tokio-util     = { workspace = true }
+ulid           = { workspace = true }

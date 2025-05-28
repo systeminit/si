@@ -63,7 +63,6 @@ fn workspace_routes(state: AppState) -> Router<AppState> {
                 .route_layer(middleware::from_extractor::<TargetChangeSetIdFromPath>()),
         )
         .nest("/fs", fs::fs_routes(state.clone()))
-        .nest("/index", index::v2_workspace_routes())
         .nest("/integrations", integrations::v2_routes())
         .route_layer(middleware::from_extractor::<TargetWorkspaceIdFromPath>())
 }

@@ -29,6 +29,7 @@ rust_library(
         "//third-party/rust:bytes",
         "//third-party/rust:derive_builder",
         "//third-party/rust:futures",
+        "//third-party/rust:inventory",
         "//third-party/rust:json-patch",
         "//third-party/rust:remain",
         "//third-party/rust:serde",
