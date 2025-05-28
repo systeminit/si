@@ -196,6 +196,8 @@ export const useApi = () => {
     bifrosting: ref(false),
     isWatched: false,
   };
+
+  // You have to run endpoint BEFORE you call setWatchFn or it will break
   let labeledObs: LabeledObs;
   const endpoint = <Response>(key: routes, args?: Record<string, string>) => {
     let path = _routes[key];
