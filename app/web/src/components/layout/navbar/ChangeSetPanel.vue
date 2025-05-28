@@ -127,6 +127,7 @@ import {
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import AbandonChangeSetModal from "@/components/AbandonChangeSetModal.vue";
+import { reset } from "@/newhotness/logic_composables/navigation_stack";
 
 const CHANGE_SET_NAME_REGEX = /^(?!head).*$/i;
 
@@ -198,7 +199,7 @@ const createChangeSetName = ref(changeSetsStore.getGeneratedChangesetName());
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
-function onSelectChangeSet(newVal: string) {
+async function onSelectChangeSet(newVal: string) {
   if (newVal === "NEW") {
     createModalRef.value?.open();
     return;
@@ -208,7 +209,7 @@ function onSelectChangeSet(newVal: string) {
     // keep everything in the current route except the change set id
     // note - we use push here, so there is a new browser history entry
     const name = route.name;
-    router.push({
+    await router.push({
       name,
       params: {
         ...route.params,
@@ -216,6 +217,7 @@ function onSelectChangeSet(newVal: string) {
       },
       query: route.query,
     });
+    reset();
   }
 }
 

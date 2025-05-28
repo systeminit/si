@@ -38,3 +38,7 @@ export const prevPage = () => {
   if (breadcrumbs.length === 1) return undefined; // current page is only page on the stack
   return breadcrumbs[breadcrumbs.length - 2];
 };
+
+export const reset = () => {
+  breadcrumbs.splice(0, Infinity);
+};
