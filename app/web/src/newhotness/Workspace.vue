@@ -50,8 +50,13 @@
     <!-- grow the main body to fit all the space in between the nav and the bottom of the browser window
      min-h-0 prevents the main container from being *larger* than the max it can grow, no matter its contents -->
     <main class="grow min-h-0">
-      <!-- more v-ifs for "am i looking at viewId? secretId? or the list of views or list of secrets?"-->
-      <template v-if="componentId">
+      <div v-if="lobby" class="w-[50svh] mx-auto mt-[15svh]">
+        <h1 class="text-center text-2xl">Welcome!</h1>
+        <h2 class="text-center text-xl">Have a seat in our lobby</h2>
+        <h3 class="text-center text-lg">We are loading your workspace now</h3>
+        <Icon class="mx-auto" name="loader" size="full" />
+      </div>
+      <template v-else-if="componentId">
         <ComponentDetail :componentId="componentId" />
       </template>
       <template v-else-if="funcRunId">
@@ -82,6 +87,7 @@ import {
   provide,
   watch,
 } from "vue";
+import { Icon } from "@si/vue-lib/design-system";
 import { useQueryClient } from "@tanstack/vue-query";
 import NavbarPanelLeft from "@/components/layout/navbar/NavbarPanelLeft.vue";
 import NavbarPanelRight from "@/components/layout/navbar/NavbarPanelRight.vue";
@@ -107,6 +113,8 @@ const props = defineProps<{
   funcRunId?: string;
   actionId?: string;
 }>();
+
+const lobby = computed(() => route.name === "new-hotness-lobby");
 
 const authStore = useAuthStore();
 const featureFlagsStore = useFeatureFlagsStore();

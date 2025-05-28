@@ -51,6 +51,7 @@ import {
   Ragnarok,
   RainbowFn,
   IndexUpdate,
+  LobbyExitFn,
 } from "./types/dbinterface";
 import {
   BifrostViewList,
@@ -951,8 +952,11 @@ const atomChecksumsFor = async (
  *
  */
 
-const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
-  await tracer.startActiveSpan("niflheim", async (span: Span) => {
+const niflheim = async (
+  workspaceId: string,
+  changeSetId: ChangeSetId,
+): Promise<boolean> => {
+  return await tracer.startActiveSpan("niflheim", async (span: Span) => {
     // build connections list based on data we have in the DB
     // connections list will rebuild as data comes in
     const computedPromise = coldStartComputed(workspaceId, changeSetId);
@@ -977,6 +981,16 @@ const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
       url,
     });
     const [req, _p] = await Promise.all([reqPromise, computedPromise]);
+
+    // Check for 202 status - user needs to go to lobby
+    if (req.status === 202) {
+      frigg.setAttribute("status", 202);
+      frigg.setAttribute("shouldNavigateToLobby", true);
+      frigg.end();
+      span.end();
+      return false;
+    }
+
     const atoms = req.data.frontEndObject.data.mvList;
     frigg.setAttribute("numEntries", atoms.length);
     frigg.end();
@@ -1009,6 +1023,7 @@ const niflheim = async (workspaceId: string, changeSetId: ChangeSetId) => {
     compare.end();
 
     span.end();
+    return true;
   });
 };
 
@@ -1982,6 +1997,7 @@ let bearerToken: string;
 
 let inFlight: RainbowFn;
 let returned: RainbowFn;
+let lobbyExitFn: LobbyExitFn;
 
 const dbInterface: DBInterface = {
   setBearer(token) {
@@ -2076,6 +2092,11 @@ const dbInterface: DBInterface = {
                 id: data.atom.id,
               });
               await handleHammer(data, span);
+            } else if (data.kind === MessageKind.INDEXUPDATE) {
+              // Index has been updated - signal lobby exit
+              if (lobbyExitFn) {
+                lobbyExitFn();
+              }
             }
           }
         } catch (err: unknown) {
@@ -2129,6 +2150,10 @@ const dbInterface: DBInterface = {
   },
   async addListenerReturned(cb: RainbowFn) {
     returned = cb;
+  },
+
+  async addListenerLobbyExit(cb: LobbyExitFn) {
+    lobbyExitFn = cb;
   },
 
   get,

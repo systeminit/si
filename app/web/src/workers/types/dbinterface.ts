@@ -32,6 +32,7 @@ export type OutgoingConnections = DefaultMap<
 >;
 
 export type RainbowFn = (changeSetId: ChangeSetId, label: string) => void;
+export type LobbyExitFn = () => void;
 export interface DBInterface {
   initDB: (testing: boolean) => Promise<void>;
   migrate: (testing: boolean) => void;
@@ -77,6 +78,7 @@ export interface DBInterface {
   addListenerBustCache(fn: BustCacheFn): void;
   addListenerInFlight(fn: RainbowFn): void;
   addListenerReturned(fn: RainbowFn): void;
+  addListenerLobbyExit(fn: LobbyExitFn): void;
   atomChecksumsFor(
     changeSetId: ChangeSetId,
   ): Promise<Record<QueryKey, Checksum>>;
@@ -84,7 +86,7 @@ export interface DBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): Promise<boolean>;
-  niflheim(workspaceId: string, changeSetId: ChangeSetId): void;
+  niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<boolean>;
   pruneAtomsForClosedChangeSet(
     workspaceId: WorkspacePk,
     changeSetId: ChangeSetId,

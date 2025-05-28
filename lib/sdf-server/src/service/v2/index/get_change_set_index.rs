@@ -3,6 +3,8 @@ use std::collections::HashSet;
 use axum::{
     Json,
     extract::Path,
+    http::StatusCode,
+    response::IntoResponse,
 };
 use dal::{
     ChangeSet,
@@ -34,7 +36,7 @@ pub async fn get_change_set_index(
     FriggStore(frigg): FriggStore,
     EddaClient(edda_client): EddaClient,
     Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
-) -> IndexResult<Json<FrontEndObjectMeta>> {
+) -> IndexResult<impl IntoResponse> {
     let ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
@@ -89,8 +91,13 @@ pub async fn get_change_set_index(
                     "Index out of date for change_set {}; attempting full build",
                     change_set_id,
                 );
-                request_rebuild_and_watch(&frigg, &edda_client, workspace_pk, change_set_id)
-                    .await?;
+                if !request_rebuild_and_watch(&frigg, &edda_client, workspace_pk, change_set_id)
+                    .await?
+                {
+                    // Return 202 Accepted with the same response body if the build didn't succeed in time
+                    // to let the caller know the create succeeded, we're just waiting on downstream work
+                    return Ok((StatusCode::ACCEPTED, Json(None)));
+                }
                 frigg
                     .get_index(workspace_pk, change_set_id)
                     .await?
@@ -106,7 +113,12 @@ pub async fn get_change_set_index(
                 "Index not found for change_set {}; attempting full build",
                 change_set_id,
             );
-            request_rebuild_and_watch(&frigg, &edda_client, workspace_pk, change_set_id).await?;
+            if !request_rebuild_and_watch(&frigg, &edda_client, workspace_pk, change_set_id).await?
+            {
+                // Return 202 Accepted with the same response body if the build didn't succeed in time
+                // to let the caller know the create succeeded, we're just waiting on downstream work
+                return Ok((StatusCode::ACCEPTED, Json(None)));
+            }
             frigg
                 .get_index(workspace_pk, change_set_id)
                 .await?
@@ -118,8 +130,11 @@ pub async fn get_change_set_index(
         }
     };
 
-    Ok(Json(FrontEndObjectMeta {
-        workspace_snapshot_address: change_set.workspace_snapshot_address,
-        front_end_object: index,
-    }))
+    Ok((
+        StatusCode::OK,
+        Json(Some(FrontEndObjectMeta {
+            workspace_snapshot_address: change_set.workspace_snapshot_address,
+            front_end_object: index,
+        })),
+    ))
 }
