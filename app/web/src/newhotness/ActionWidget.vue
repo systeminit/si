@@ -51,16 +51,16 @@ const props = defineProps<{
 const route = useRoute();
 const removeApi = useApi();
 const addApi = useApi();
-removeApi.setWatchFn(() => props.actionId);
-addApi.setWatchFn(() => props.actionId);
 const clickHandler = async () => {
   if (props.actionId) {
     const call = removeApi.endpoint(routes.ActionCancel, {
       id: props.actionId,
     });
+    removeApi.setWatchFn(() => props.actionId);
     await call.put({});
   } else {
     const call = addApi.endpoint(routes.ActionAdd);
+    addApi.setWatchFn(() => props.actionId);
     const { req, newChangeSetId } = await call.post<{
       componentId: string;
       prototypeId: string;
