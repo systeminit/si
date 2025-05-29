@@ -179,6 +179,7 @@ export interface AtomMeta {
 export enum MessageKind {
   PATCH = "PatchMessage",
   MJOLNIR = "MjolnirAtom",
+  INDEXUPDATE = "IndexUpdate",
 }
 
 export interface PatchBatch {
@@ -191,6 +192,11 @@ export interface AtomMessage {
   kind: MessageKind.MJOLNIR;
   atom: Atom;
   data: object;
+}
+
+export interface IndexUpdate {
+  kind: MessageKind.INDEXUPDATE;
+  meta: AtomMeta;
 }
 
 export interface Atom extends AbstractAtom, AtomMeta {

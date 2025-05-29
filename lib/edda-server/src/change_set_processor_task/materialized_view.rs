@@ -5,6 +5,8 @@ use std::collections::{
 };
 
 use dal::{
+    ChangeSet,
+    ChangeSetError,
     ComponentError,
     DalContext,
     Prop,
@@ -55,10 +57,12 @@ use si_frontend_mv_types::{
     object::{
         FrontendObject,
         patch::{
+            INDEX_UPDATE_KIND,
+            IndexUpdate,
             ObjectPatch,
             PATCH_BATCH_KIND,
             PatchBatch,
-            PatchBatchMeta,
+            UpdateMeta,
         },
     },
     reference::{
@@ -85,6 +89,7 @@ use si_id::{
     ChangeSetId,
     WorkspacePk,
 };
+use si_layer_cache::LayerDbError;
 use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use telemetry_utils::metric;
@@ -107,6 +112,8 @@ pub enum MaterializedViewError {
     Action(#[from] ActionError),
     #[error("ActionPrototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
+    #[error("Change Set error: {0}")]
+    ChangeSet(#[from] ChangeSetError),
     #[error("Component error: {0}")]
     Component(#[from] ComponentError),
     #[error("DataCache error: {0}")]
@@ -117,6 +124,8 @@ pub enum MaterializedViewError {
     Frigg(#[from] FriggError),
     #[error("Join error: {0}")]
     JoinError(#[from] tokio::task::JoinError),
+    #[error("Layer DB error: {0}")]
+    LayerDb(#[from] LayerDbError),
     #[error("materialized views error: {0}")]
     MaterializedViews(#[from] dal_materialized_views::Error),
     #[error(
@@ -138,6 +147,122 @@ pub enum MaterializedViewError {
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
 
+/// This function iterates active change sets that share the same snapshot address,
+/// and looks for an [`MvIndex`] it can use. If it finds one, create a new index pointer to
+/// the found [`MvIndex`] and return true. If none can be used, return false.
+/// NOTE: The copy will fail if we try to reuse an index for a change set that already has an index pointer
+#[instrument(
+    name = "materialized_view.try_reuse_index_for_snapshot",
+    level = "info",
+    skip_all,
+    fields(
+        si.workspace.id = Empty,
+        si.change_set.id = %ctx.change_set_id(),
+        si.from_change_set.id = Empty,
+    ),
+)]
+pub async fn try_reuse_mv_index_for_new_change_set(
+    ctx: &DalContext,
+    frigg: &FriggStore,
+    snapshot_address: WorkspaceSnapshotAddress,
+) -> Result<bool, MaterializedViewError> {
+    let span = current_span_for_instrument_at!("info");
+    let workspace_id = ctx.workspace_pk()?;
+    let change_set_id = ctx.change_set_id();
+    span.record("si.workspace.id", workspace_id.to_string());
+    // first find a change set Id in my workspace that has the same snapshot address that I do
+    // do we care which change set we use? Assuming there's more than one, we could choose Head...
+    let change_sets_using_snapshot = ChangeSet::list_active(ctx).await?;
+
+    for change_set in change_sets_using_snapshot {
+        // found a match, so let's retrieve that MvIndex and put the same object as ours
+        let Some((pointer, _revision)) = frigg
+            .get_index_pointer_value(workspace_id, change_set.id)
+            .await?
+        else {
+            // try the next one
+            // no need error if this index was never built, it would get rebuilt when necessary
+            continue;
+        };
+
+        if pointer.snapshot_address == snapshot_address.to_string() {
+            // found one, create a new index pointer to it!
+            // Note: we might want to consider validting the index here before we use it
+            let change_set_mv_id = change_set_id.to_string();
+            frigg
+                .insert_index_key_for_existing_index(workspace_id, &change_set_mv_id, pointer)
+                .await?;
+            span.record("si.from_change_set.id", change_set_mv_id);
+            let meta = UpdateMeta {
+                workspace_id,
+                change_set_id: Some(change_set_id),
+                snapshot_from_address: None,
+                snapshot_to_address: Some(snapshot_address),
+            };
+            let index_update = IndexUpdate {
+                meta,
+                kind: INDEX_UPDATE_KIND,
+            };
+            DataCache::publish_index_update(ctx, index_update).await?;
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+/// This function first tries to copy and existing [`MvIndex`] if we find a valid one with the same snapshot address
+/// If it cannot copy one, it builds all Materialized Views (MVs) for the change set in the [`DalContext`].
+/// It assumes there is no existing [`MvIndex`] for the change set.
+#[instrument(
+    name = "materialized_view.new_change_set",
+    level = "info",
+    skip_all,
+    fields(
+        si.workspace.id = Empty,
+        si.change_set.id = %ctx.change_set_id(),
+    ),
+)]
+pub async fn reuse_or_rebuild_index_for_new_change_set(
+    ctx: &DalContext,
+    frigg: &FriggStore,
+    to_snapshot_address: WorkspaceSnapshotAddress,
+) -> Result<(), MaterializedViewError> {
+    let span = current_span_for_instrument_at!("info");
+    span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
+    let did_copy_result =
+        self::try_reuse_mv_index_for_new_change_set(ctx, frigg, to_snapshot_address)
+            .instrument(tracing::info_span!(
+                "edda.change_set_processor_task.try_clone_index_from_snapshot"
+            ))
+            .await;
+
+    match did_copy_result {
+        // If we returned successfully, evaluate the response,
+        Ok(did_copy) => {
+            if did_copy {
+                return Ok(());
+            } else {
+                // we did not copy anything, so we must rebuild from scratch (no from_snapshot_address this time)
+                self::build_all_mv_for_change_set(ctx, frigg, None)
+                    .instrument(tracing::info_span!(
+                        "edda.change_set_processor_task.build_all_mv_for_change_set.initial_build"
+                    ))
+                    .await?
+            }
+        }
+        Err(err) => {
+            error!(si.error.message = ?err, "error copying existing index");
+            // we did not copy anything, so we must rebuild from scratch (no from_snapshot_address this time)
+            self::build_all_mv_for_change_set(ctx, frigg, None)
+                .instrument(tracing::info_span!(
+                    "edda.change_set_processor_task.build_all_mv_for_change_set.initial_build"
+                ))
+                .await?
+        }
+    }
+    Ok(())
+}
+
 /// This function builds all Materialized Views (MVs) for the change set in the [`DalContext`].
 /// It assumes there is no existing [`MvIndex`] for the change set.
 /// If we're rebuilding due to a moved snapshot (Edda got behind), then we pass in the [`from_snapshot_address`]
@@ -155,7 +280,7 @@ pub enum MaterializedViewError {
 pub async fn build_all_mv_for_change_set(
     ctx: &DalContext,
     frigg: &FriggStore,
-    from_snapshot_address: Option<WorkspaceSnapshotAddress>,
+    snapshot_from_address: Option<WorkspaceSnapshotAddress>,
 ) -> Result<(), MaterializedViewError> {
     let span = current_span_for_instrument_at!("info");
     span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
@@ -178,28 +303,37 @@ pub async fn build_all_mv_for_change_set(
 
     let mut index_entries: Vec<_> = frontend_objects.into_iter().map(Into::into).collect();
     index_entries.sort();
+    let snapshot_to_address = ctx.workspace_snapshot()?.address().await;
+    let workspace_id = ctx.workspace_pk()?;
+    let change_set_id = ctx.change_set_id();
     debug!("index_entries {:?}", index_entries);
-    let mv_index = MvIndex::new(ctx.change_set_id(), index_entries);
+    let mv_index = MvIndex::new(snapshot_to_address.to_string(), index_entries);
     let mv_index_frontend_object = FrontendObject::try_from(mv_index)?;
-    frigg
-        .insert_object(ctx.workspace_pk()?, &mv_index_frontend_object)
-        .await?;
-
-    let snapshot_to_address = Some(ctx.workspace_snapshot()?.address().await);
+    let meta = UpdateMeta {
+        workspace_id,
+        change_set_id: Some(change_set_id),
+        snapshot_from_address,
+        snapshot_to_address: Some(snapshot_to_address),
+    };
     let patch_batch = PatchBatch {
-        meta: PatchBatchMeta {
-            workspace_id: ctx.workspace_pk()?,
-            change_set_id: Some(ctx.change_set_id()),
-            snapshot_from_address: from_snapshot_address.or(snapshot_to_address),
-            snapshot_to_address,
-        },
+        meta,
         kind: PATCH_BATCH_KIND,
         patches,
     };
+    let change_set_mv_id = change_set_id.to_string();
+    let index_update = IndexUpdate {
+        meta,
+        kind: INDEX_UPDATE_KIND,
+    };
 
     frigg
-        .put_index(ctx.workspace_pk()?, &mv_index_frontend_object)
+        .put_index(
+            ctx.workspace_pk()?,
+            &change_set_mv_id,
+            &mv_index_frontend_object,
+        )
         .await?;
+    DataCache::publish_index_update(ctx, index_update).await?;
     DataCache::publish_patch_batch(ctx, patch_batch).await?;
 
     Ok(())
@@ -240,21 +374,21 @@ pub async fn build_mv_for_changes_in_change_set(
     to_snapshot_address: WorkspaceSnapshotAddress,
     changes: &[Change],
 ) -> Result<(), MaterializedViewError> {
-    let workspace_pk = ctx.workspace_pk()?;
+    let workspace_id = ctx.workspace_pk()?;
     debug!("building for changes: {:?}", changes);
     let span = current_span_for_instrument_at!("info");
-    span.record("si.workspace.id", workspace_pk.to_string());
+    span.record("si.workspace.id", workspace_id.to_string());
     span.record("si.edda_request.changes", format!("{:?}", changes));
     let (index_frontend_object, index_kv_revision) = frigg
         .get_index(ctx.workspace_pk()?, change_set_id)
         .await?
         .ok_or_else(|| MaterializedViewError::NoIndexForIncrementalBuild {
-            workspace_pk,
+            workspace_pk: workspace_id,
             change_set_id,
         })?;
 
     let (frontend_objects, patches) =
-        build_mv_inner(ctx, frigg, workspace_pk, change_set_id, changes).await?;
+        build_mv_inner(ctx, frigg, workspace_id, change_set_id, changes).await?;
     let mv_index: MvIndex = serde_json::from_value(index_frontend_object.data)?;
     let removal_checksum = "0".to_string();
     let removed_items: HashSet<(String, String)> = patches
@@ -284,31 +418,36 @@ pub async fn build_mv_for_changes_in_change_set(
     }
     index_entries.sort();
 
-    let new_mv_index = MvIndex::new(change_set_id, index_entries);
+    let new_mv_index = MvIndex::new(to_snapshot_address.to_string(), index_entries);
 
     let new_mv_index_frontend_object = FrontendObject::try_from(new_mv_index)?;
-    frigg
-        .insert_object(workspace_pk, &new_mv_index_frontend_object)
-        .await?;
-
+    let meta = UpdateMeta {
+        workspace_id,
+        change_set_id: Some(change_set_id),
+        snapshot_from_address: Some(from_snapshot_address),
+        snapshot_to_address: Some(to_snapshot_address),
+    };
     let patch_batch = PatchBatch {
-        meta: PatchBatchMeta {
-            workspace_id: workspace_pk,
-            change_set_id: Some(change_set_id),
-            snapshot_from_address: Some(from_snapshot_address),
-            snapshot_to_address: Some(to_snapshot_address),
-        },
+        meta,
         kind: PATCH_BATCH_KIND,
         patches,
     };
+    let index_update = IndexUpdate {
+        meta,
+        kind: INDEX_UPDATE_KIND,
+    };
+    let change_set_mv_id = change_set_id.to_string();
 
     frigg
         .update_index(
-            workspace_pk,
+            workspace_id,
+            &change_set_mv_id,
             &new_mv_index_frontend_object,
             index_kv_revision,
         )
         .await?;
+    DataCache::publish_index_update(ctx, index_update).await?;
+
     DataCache::publish_patch_batch(ctx, patch_batch).await?;
 
     Ok(())

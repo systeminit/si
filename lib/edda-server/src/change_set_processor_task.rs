@@ -520,7 +520,6 @@ mod handlers {
                 if !span.is_disabled() {
                     span.record("si.edda_request.id", update_request.id.to_string());
                 }
-                // todo: this is where we'd handle reusing an index from another change set if the snapshots match!
                 materialized_view::build_all_mv_for_change_set(ctx, frigg, None)
                     .instrument(tracing::info_span!(
                         "edda.change_set_processor_task.build_all_mv_for_change_set.initial_build"
@@ -538,6 +537,21 @@ mod handlers {
                     ))
                     .await
                     .map_err(Into::into)
+            }
+            EddaRequestKind::NewChangeSet(new_change_set_request) => {
+                if !span.is_disabled() {
+                    span.record("si.edda_request.id", new_change_set_request.id.to_string());
+                }
+                materialized_view::reuse_or_rebuild_index_for_new_change_set(
+                    ctx,
+                    frigg,
+                    new_change_set_request.to_snapshot_address,
+                )
+                .instrument(tracing::info_span!(
+                    "edda.change_set_processor_task.new_change_set"
+                ))
+                .await
+                .map_err(Into::into)
             }
         }
     }

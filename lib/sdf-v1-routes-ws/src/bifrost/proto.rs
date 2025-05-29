@@ -69,8 +69,10 @@ impl Bifrost {
         self,
         bifrost_multiplexer_client: Arc<Mutex<MultiplexerClient>>,
     ) -> Result<BifrostStarted> {
+        // subject is wildcarded, but as of this moment could be either patch_message or index_update
+        // for now, just pass everything right along
         let subject = Subject::from(format!(
-            "{}.workspace_id.{}.patch_batch",
+            "{}.workspace_id.{}.*",
             DATA_CACHE_SUBJECT_PREFIX, self.workspace_pk
         ));
         let receiver = bifrost_multiplexer_client

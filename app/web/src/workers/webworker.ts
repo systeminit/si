@@ -50,6 +50,7 @@ import {
   BustCacheFn,
   Ragnarok,
   RainbowFn,
+  IndexUpdate,
 } from "./types/dbinterface";
 import {
   BifrostViewList,
@@ -2042,15 +2043,16 @@ const dbInterface: DBInterface = {
         // we'll either be getting AtomMessages as patches to the data
         // OR we'll be getting mjolnir responses with the Atom as a whole
         // TODO we also need "changeset closed" messages
+        // TODO: handle Index Updates!
         try {
           const data = JSON.parse(messageEvent.data) as
             | PatchBatch
-            | AtomMessage;
+            | AtomMessage
+            | IndexUpdate;
 
           if (import.meta.env.VITE_LOG_WS) {
             log("🌈 bifrost incoming", data);
           }
-
           if (!("kind" in data)) span.setAttribute("kindMissing", "no kind");
           else {
             span.setAttribute("messageKind", data.kind);

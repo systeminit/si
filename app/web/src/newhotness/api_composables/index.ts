@@ -129,6 +129,11 @@ export class APICall<Response> {
       // following API calls will use the new changeSetId
       this.changeSetId = newChangeSetId;
       return newChangeSetId;
+    } else if (req.status === 202) {
+      // todo: handle 202 correctly. Fortunately we shouldn't hit this often
+      const newChangeSetId = req.data.id;
+      this.changeSetId = newChangeSetId;
+      return newChangeSetId;
     } else throw new Error("Unable to make change set");
   }
 
