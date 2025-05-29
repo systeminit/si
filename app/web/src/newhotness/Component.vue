@@ -117,9 +117,7 @@
               >{{ component.schemaVariantName }}</a
             >
           </p>
-          <p>
-            <VueMarkdown :source="component.schemaVariantDescription ?? ''" />
-          </p>
+          <MarkdownRender :source="component.schemaVariantDescription ?? ''" />
         </template>
         <template v-else>
           <VButton
@@ -136,7 +134,7 @@
               component.schemaVariantName
             }}</a>
           </p>
-          <p>{{ docs }}</p>
+          <MarkdownRender :source="docs" />
         </template>
       </CollapsingFlexItem>
     </div>
@@ -205,7 +203,6 @@ import {
 } from "@si/vue-lib/design-system";
 import { computed, ref, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import VueMarkdown from "vue-markdown-render";
 import clsx from "clsx";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
@@ -227,6 +224,7 @@ import CodePanel from "./CodePanel.vue";
 import DiffPanel from "./DiffPanel.vue";
 import ActionsPanel from "./ActionsPanel.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
+import MarkdownRender from "./MarkdownRender.vue";
 
 const props = defineProps<{
   componentId: string;
