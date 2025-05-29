@@ -93,6 +93,7 @@ import {
   ComputedRef,
   inject,
   nextTick,
+  onBeforeUnmount,
   onMounted,
   reactive,
   ref,
@@ -245,31 +246,43 @@ const mouseup = () => {
 const active = computed(() => props.active);
 
 const KEYSTEP = 10;
-keyEmitter.on("ArrowDown", () => {
+const onArrowDown = () => {
   if (!active.value) return;
   pan(0, KEYSTEP);
-});
-keyEmitter.on("ArrowUp", () => {
+};
+const onArrowUp = () => {
   if (!active.value) return;
   pan(0, -KEYSTEP);
-});
-keyEmitter.on("ArrowLeft", () => {
+};
+const onArrowLeft = () => {
   if (!active.value) return;
   pan(-KEYSTEP, 0);
-});
-keyEmitter.on("ArrowRight", () => {
+};
+const onArrowRight = () => {
   if (!active.value) return;
   pan(KEYSTEP, 0);
-});
-keyEmitter.on("Esc", () => {
+};
+const onEscape = () => {
   if (!active.value) return;
   selectedComponent.value = null;
-});
-
+};
 onMounted(() => {
   // if we need to adjust zoom level on load dynamically
   // change it here
   applyZoom();
+
+  keyEmitter.on("ArrowDown", onArrowDown);
+  keyEmitter.on("ArrowUp", onArrowUp);
+  keyEmitter.on("ArrowLeft", onArrowLeft);
+  keyEmitter.on("ArrowRight", onArrowRight);
+  keyEmitter.on("Escape", onEscape);
+});
+onBeforeUnmount(() => {
+  keyEmitter.off("ArrowDown", onArrowDown);
+  keyEmitter.off("ArrowUp", onArrowUp);
+  keyEmitter.off("ArrowLeft", onArrowLeft);
+  keyEmitter.off("ArrowRight", onArrowRight);
+  keyEmitter.off("Escape", onEscape);
 });
 
 const mousemove = (event: MouseEvent) => {

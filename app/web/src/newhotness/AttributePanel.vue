@@ -1,33 +1,41 @@
 <template>
   <div v-if="root">
-    <div class="py-xs">
-      <SiSearch
-        ref="searchRef"
-        v-model="q"
-        placeholder="filter attributes..."
-        :tabIndex="0"
-        @keydown.tab="onTab"
-      />
-    </div>
-    <h3
-      :class="
-        clsx('p-xs border-l', themeClasses('bg-neutral-200', 'bg-neutral-800'))
-      "
+    <template
+      v-if="'children' in filtered.tree && filtered.tree.children.length > 0"
     >
-      domain
-    </h3>
-    <!-- this is _really_ a type guard for "i am not an empty object" -->
-    <ul v-if="'children' in filtered.tree" class="border-l">
-      <ComponentAttribute
-        v-for="child in filtered.tree.children"
-        :key="child.id"
-        :component="component"
-        :attributeTree="child"
-        @save="save"
-        @delete="remove"
-      />
-    </ul>
-    <div v-else>Oh no, no attributes!</div>
+      <!-- TODO(Wendy) - this search should be moved outside of this template once it works on the secret tree -->
+      <div class="py-xs">
+        <SiSearch
+          ref="searchRef"
+          v-model="q"
+          placeholder="filter attributes..."
+          :tabIndex="0"
+          @keydown.tab="onTab"
+        />
+      </div>
+
+      <h3
+        :class="
+          clsx(
+            'p-xs border-l',
+            themeClasses('bg-neutral-200', 'bg-neutral-800'),
+          )
+        "
+      >
+        domain
+      </h3>
+      <!-- this is _really_ a type guard for "i am not an empty object" -->
+      <ul class="border-l">
+        <ComponentAttribute
+          v-for="child in filtered.tree.children"
+          :key="child.id"
+          :component="component"
+          :attributeTree="child"
+          @save="save"
+          @delete="remove"
+        />
+      </ul>
+    </template>
     <template v-if="secret">
       <h3 class="bg-neutral-800 p-xs border-l-2">secrets</h3>
       <ul>
@@ -86,7 +94,14 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, reactive, ref, watch } from "vue";
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from "vue";
 import { Fzf } from "fzf";
 import { useRoute } from "vue-router";
 import { SiSearch, themeClasses, VButton } from "@si/vue-lib/design-system";
@@ -428,9 +443,15 @@ const remove = async (path: string, _id: string) => {
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 
-keyEmitter.on("Tab", (e) => {
-  e.preventDefault();
-  searchRef.value?.focusSearch();
+onMounted(() => {
+  keyEmitter.on("Tab", (e) => {
+    e.preventDefault();
+    searchRef.value?.focusSearch();
+  });
+});
+
+onBeforeUnmount(() => {
+  keyEmitter.off("Tab");
 });
 
 const onTab = (e: KeyboardEvent) => {

@@ -870,6 +870,15 @@ function focus() {
   }
 }
 
+function blur() {
+  if (["multi-checkbox", "radio"].includes(props.type)) {
+    const inputEls = wrapperRef?.value?.getElementsByTagName("input");
+    inputEls?.item(0)?.blur();
+  } else {
+    if (inputRef.value?.blur) inputRef.value.blur();
+  }
+}
+
 const error_set = ref<string | null>(null);
 function setError(msg: string) {
   error_set.value = msg;
@@ -877,6 +886,8 @@ function setError(msg: string) {
 
 defineExpose({
   focus,
+  blur,
+  isFocus,
 
   // expose some props for child `VormInputOption` instances to use
   // as these components are tightly coupled and meant to be used together
