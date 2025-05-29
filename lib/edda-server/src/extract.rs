@@ -8,6 +8,7 @@ use bytes::Bytes;
 use edda_core::api_types::{
     ApiVersionsWrapper,
     ApiWrapper,
+    new_change_set_request::NewChangeSetRequest,
     rebuild_request::RebuildRequest,
     update_request::UpdateRequest,
 };
@@ -168,6 +169,7 @@ composite_rejection! {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum EddaRequestKind {
+    NewChangeSet(NewChangeSetRequest),
     Update(UpdateRequest),
     Rebuild(RebuildRequest),
 }
@@ -195,6 +197,9 @@ where
             }
             <RebuildRequest as ApiWrapper>::MESSAGE_TYPE => {
                 EddaRequestKind::Rebuild(negotiate(content_info, &payload).await?)
+            }
+            <NewChangeSetRequest as ApiWrapper>::MESSAGE_TYPE => {
+                EddaRequestKind::NewChangeSet(negotiate(content_info, &payload).await?)
             }
             _ => return Err(UnsupportedContentTypeError.into()),
         };

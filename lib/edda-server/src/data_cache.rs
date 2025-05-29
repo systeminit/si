@@ -1,5 +1,8 @@
 use dal::DalContext;
-use si_frontend_mv_types::object::patch::PatchBatch;
+use si_frontend_mv_types::object::patch::{
+    IndexUpdate,
+    PatchBatch,
+};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -27,6 +30,16 @@ impl DataCache {
             .await?
             .nats()
             .publish_immediately(patch_batch.publish_subject(), &patch_batch)
+            .await?;
+
+        Ok(())
+    }
+    #[instrument(name = "data_cache.publish_index_update", level = "debug", skip_all)]
+    pub async fn publish_index_update(ctx: &DalContext, index_update: IndexUpdate) -> Result<()> {
+        ctx.txns()
+            .await?
+            .nats()
+            .publish_immediately(index_update.publish_subject(), &index_update)
             .await?;
 
         Ok(())

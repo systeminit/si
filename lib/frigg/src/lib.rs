@@ -32,7 +32,10 @@ use si_data_nats::{
     jetstream,
 };
 use si_frontend_mv_types::{
-    index::MvIndex,
+    index::{
+        IndexPointerValue,
+        MvIndex,
+    },
     object::FrontendObject,
     reference::ReferenceKind,
 };
@@ -231,6 +234,7 @@ impl FriggStore {
     async fn insert_or_update_index_preamble(
         &self,
         workspace_id: WorkspacePk,
+        change_set_id: &str,
         object: &FrontendObject,
     ) -> Result<(Subject, Subject)> {
         let mv_index_kind_string = ReferenceKind::MvIndex.to_string();
@@ -239,7 +243,7 @@ impl FriggStore {
         }
 
         let index_object_key = self.insert_object(workspace_id, object).await?;
-        let index_pointer_key = Self::index_key(workspace_id, &object.id);
+        let index_pointer_key = Self::index_key(workspace_id, change_set_id);
 
         Ok((index_object_key, index_pointer_key))
     }
@@ -262,16 +266,44 @@ impl FriggStore {
     pub async fn insert_index(
         &self,
         workspace_id: WorkspacePk,
+        change_set_id: &str,
         object: &FrontendObject,
     ) -> Result<KvRevision> {
         let (index_object_key, index_pointer_key) = self
-            .insert_or_update_index_preamble(workspace_id, object)
+            .insert_or_update_index_preamble(workspace_id, change_set_id, object)
             .await?;
+        let index_pointer_value = IndexPointerValue {
+            index_object_key: index_object_key.into_string(),
+            snapshot_address: object.id.to_owned(),
+        };
+        let value = serde_json::to_vec(&index_pointer_value).map_err(Error::Serialize)?;
+        let new_revision = self.store.create(index_pointer_key, value.into()).await?;
 
-        let new_revision = self
-            .store
-            .create(index_pointer_key, index_object_key.into_string().into())
-            .await?;
+        Ok(new_revision.into())
+    }
+
+    /// Creates a new index pointer to for the provided [`IndexPointerValue`], allowing a new change set
+    /// to reuse the index of another change set and avoid rebuilding the world unnecessarily.
+    ///
+    /// Will fail if the index pointer already exists.
+    #[instrument(
+        name = "frigg.insert_index_key_for_existing",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace.id = %workspace_id,
+        )
+    )]
+    pub async fn insert_index_key_for_existing_index(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: &str,
+        index_pointer_value: IndexPointerValue,
+    ) -> Result<KvRevision> {
+        let index_pointer_key = Self::index_key(workspace_id, change_set_id);
+
+        let value = serde_json::to_vec(&index_pointer_value).map_err(Error::Serialize)?;
+        let new_revision = self.store.create(index_pointer_key, value.into()).await?;
 
         Ok(new_revision.into())
     }
@@ -294,20 +326,22 @@ impl FriggStore {
     pub async fn update_index(
         &self,
         workspace_id: WorkspacePk,
+        change_set_id: &str,
         object: &FrontendObject,
         revision: KvRevision,
     ) -> Result<KvRevision> {
         let (index_object_key, index_pointer_key) = self
-            .insert_or_update_index_preamble(workspace_id, object)
+            .insert_or_update_index_preamble(workspace_id, change_set_id, object)
             .await?;
+        let index_pointer_value = IndexPointerValue {
+            index_object_key: index_object_key.into_string(),
+            snapshot_address: object.id.to_owned(),
+        };
+        let value = serde_json::to_vec(&index_pointer_value).map_err(Error::Serialize)?;
 
         let new_revision = self
             .store
-            .update(
-                index_pointer_key,
-                index_object_key.into_string().into(),
-                revision.0,
-            )
+            .update(index_pointer_key, value.into(), revision.0)
             .await?;
 
         Ok(new_revision.into())
@@ -331,16 +365,19 @@ impl FriggStore {
     pub async fn put_index(
         &self,
         workspace_id: WorkspacePk,
+        change_set_id: &str,
         object: &FrontendObject,
     ) -> Result<KvRevision> {
         let (index_object_key, index_pointer_key) = self
-            .insert_or_update_index_preamble(workspace_id, object)
+            .insert_or_update_index_preamble(workspace_id, change_set_id, object)
             .await?;
+        let index_pointer_value = IndexPointerValue {
+            index_object_key: index_object_key.into_string(),
+            snapshot_address: object.id.to_owned(),
+        };
+        let value = serde_json::to_vec(&index_pointer_value).map_err(Error::Serialize)?;
 
-        let new_revision = self
-            .store
-            .put(index_pointer_key, index_object_key.into_string().into())
-            .await?;
+        let new_revision = self.store.put(index_pointer_key, value.into()).await?;
 
         Ok(new_revision.into())
     }
@@ -364,16 +401,42 @@ impl FriggStore {
         let Some((bytes, revision)) = self.get_object_raw_bytes(&index_pointer_key).await? else {
             return Ok(None);
         };
-
-        let object_key = Subject::from_utf8(bytes)?;
+        let index_pointer_value: IndexPointerValue =
+            serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize)?;
+        let object_key = index_pointer_value.index_object_key;
         let bytes = self
             .store
             .get(object_key.to_string())
             .await?
-            .ok_or(Error::IndexObjectNotFound(object_key))?;
+            .ok_or(Error::IndexObjectNotFound(object_key.into()))?;
         let object = serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize)?;
 
         Ok(Some((object, revision)))
+    }
+
+    #[instrument(
+        name = "frigg.get_index_pointer_value",
+        level = "debug",
+        skip_all,
+        fields(
+            si.workspace.id = %workspace_id,
+            si.change_set.id = %change_set_id,
+        )
+    )]
+    pub async fn get_index_pointer_value(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+    ) -> Result<Option<(IndexPointerValue, KvRevision)>> {
+        let index_pointer_key = Self::index_key(workspace_id, &change_set_id.to_string());
+
+        let Some((bytes, revision)) = self.get_object_raw_bytes(&index_pointer_key).await? else {
+            return Ok(None);
+        };
+
+        let index_pointer_value: IndexPointerValue =
+            serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize)?;
+        Ok(Some((index_pointer_value, revision)))
     }
 
     #[instrument(

@@ -10,6 +10,10 @@ use edda_core::{
         RequestId,
         SerializeError,
         UpgradeError,
+        new_change_set_request::{
+            NewChangeSetRequest,
+            NewChangeSetRequestVCurrent,
+        },
         rebuild_request::{
             RebuildRequest,
             RebuildRequestVCurrent,
@@ -159,6 +163,41 @@ impl Client {
         self.publish_inner(
             workspace_id,
             change_set_id,
+            id,
+            request.to_vec()?.into(),
+            info,
+        )
+        .await
+    }
+
+    #[instrument(
+        name = "edda.client.new_change_set"
+        level = "info",
+        skip_all,
+        fields (
+            si.workspace.id = %workspace_id,
+            si.change_set.id = %new_change_set_id,
+        )
+    )]
+    pub async fn new_change_set(
+        &self,
+        workspace_id: WorkspacePk,
+        new_change_set_id: ChangeSetId,
+        base_change_set_id: ChangeSetId,
+        to_snapshot_address: WorkspaceSnapshotAddress,
+    ) -> Result<RequestId> {
+        let id = RequestId::new();
+        let request = NewChangeSetRequest::new_current(NewChangeSetRequestVCurrent {
+            id,
+            base_change_set_id,
+            new_change_set_id,
+            to_snapshot_address,
+        });
+        let info = ContentInfo::from(&request);
+
+        self.publish_inner(
+            workspace_id,
+            new_change_set_id,
             id,
             request.to_vec()?.into(),
             info,

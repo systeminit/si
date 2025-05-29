@@ -2,7 +2,6 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_id::ChangeSetId;
 
 use crate::{
     checksum::FrontendChecksum,
@@ -24,14 +23,14 @@ use crate::{
 )]
 #[serde(rename_all = "camelCase")]
 pub struct MvIndex {
-    pub change_set_id: ChangeSetId,
+    pub snapshot_address: String,
     pub mv_list: Vec<IndexReference>,
 }
 
 impl MvIndex {
-    pub fn new(change_set_id: ChangeSetId, mv_list: Vec<IndexReference>) -> Self {
+    pub fn new(snapshot_address: String, mv_list: Vec<IndexReference>) -> Self {
         MvIndex {
-            change_set_id,
+            snapshot_address,
             mv_list,
         }
     }
@@ -43,9 +42,16 @@ impl TryFrom<MvIndex> for FrontendObject {
     fn try_from(value: MvIndex) -> Result<Self, Self::Error> {
         Ok(Self {
             kind: ReferenceKind::MvIndex.to_string(),
-            id: value.change_set_id.to_string(),
+            id: value.snapshot_address.to_string(),
             checksum: FrontendChecksum::checksum(&value).to_string(),
             data: serde_json::to_value(&value)?,
         })
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IndexPointerValue {
+    pub index_object_key: String,
+    pub snapshot_address: String,
 }

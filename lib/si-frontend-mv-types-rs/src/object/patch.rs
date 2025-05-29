@@ -22,11 +22,14 @@ pub struct ObjectPatch {
 }
 
 pub const PATCH_BATCH_KIND: &str = "PatchMessage";
+pub const PATCH_BATCH_POST_FIX: &str = "patch_batch";
+pub const INDEX_UPDATE_KIND: &str = "IndexUpdate";
+pub const INDEX_UPDATE_POST_FIX: &str = "index_update";
 pub const DATA_CACHE_SUBJECT_PREFIX: &str = "data_cache";
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Copy)]
 #[serde(rename_all = "camelCase")]
-pub struct PatchBatchMeta {
+pub struct UpdateMeta {
     /// The workspace this patch batch is targeting.
     pub workspace_id: WorkspacePk,
     /// The change set this patch batch is targeting.
@@ -37,11 +40,11 @@ pub struct PatchBatchMeta {
     pub snapshot_to_address: Option<WorkspaceSnapshotAddress>,
 }
 
-impl PatchBatchMeta {
-    pub fn publish_subject(&self) -> String {
+impl UpdateMeta {
+    pub fn publish_subject(&self, post_fix: &'static str) -> String {
         format!(
-            "{}.workspace_id.{}.patch_batch",
-            DATA_CACHE_SUBJECT_PREFIX, self.workspace_id
+            "{}.workspace_id.{}.{}",
+            DATA_CACHE_SUBJECT_PREFIX, self.workspace_id, post_fix
         )
     }
 }
@@ -50,7 +53,7 @@ impl PatchBatchMeta {
 #[serde(rename_all = "camelCase")]
 pub struct PatchBatch {
     /// Metadata about the patch batch.
-    pub meta: PatchBatchMeta,
+    pub meta: UpdateMeta,
     /// The message kind for the front end.
     pub kind: &'static str,
     /// The list of patches to apply.
@@ -59,6 +62,21 @@ pub struct PatchBatch {
 
 impl PatchBatch {
     pub fn publish_subject(&self) -> String {
-        self.meta.publish_subject()
+        self.meta.publish_subject(PATCH_BATCH_POST_FIX)
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IndexUpdate {
+    /// Metadata about the patch batch.
+    pub meta: UpdateMeta,
+    /// The message kind for the front end.
+    pub kind: &'static str,
+}
+
+impl IndexUpdate {
+    pub fn publish_subject(&self) -> String {
+        self.meta.publish_subject(INDEX_UPDATE_POST_FIX)
     }
 }
