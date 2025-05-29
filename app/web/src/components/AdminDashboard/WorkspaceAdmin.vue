@@ -130,6 +130,20 @@
             @click="uploadCasData(selectedWorkspaceId, selectedChangeSetId)"
             >Upload cas data to service</VButton
           >
+
+          <VButton
+            :requestStatus="validateSnapshotRequestStatus"
+            @click="validateSnapshot(selectedWorkspaceId, selectedChangeSetId)"
+            >Validate snapshot</VButton
+          >
+
+          <VButton
+            :requestStatus="migrateConnectionsRequestStatus"
+            @click="
+              migrateConnections(selectedWorkspaceId, selectedChangeSetId)
+            "
+            >Migrate connections</VButton
+          >
         </Stack>
       </Stack>
     </Stack>
@@ -167,6 +181,8 @@ import {
   AdminChangeSet,
   useAdminStore,
 } from "@/store/admin.store";
+import { WorkspacePk } from "@/store/workspaces.store";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
 
 const adminStore = useAdminStore();
 
@@ -414,4 +430,20 @@ const setConcurrencyLimit = async () => {
     }
   }
 };
+
+const migrateConnectionsRequestStatus = adminStore.getRequestStatus(
+  "MIGRATE_CONNECTIONS",
+);
+function migrateConnections(
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
+) {
+  adminStore.MIGRATE_CONNECTIONS(workspaceId, changeSetId);
+}
+
+const validateSnapshotRequestStatus =
+  adminStore.getRequestStatus("VALIDATE_SNAPSHOT");
+function validateSnapshot(workspaceId: WorkspacePk, changeSetId: ChangeSetId) {
+  adminStore.VALIDATE_SNAPSHOT(workspaceId, changeSetId);
+}
 </script>

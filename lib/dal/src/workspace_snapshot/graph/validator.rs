@@ -13,12 +13,16 @@ use si_id::{
     AttributePrototypeArgumentId,
     AttributeValueId,
     ComponentId,
+    FuncId,
+    InputSocketId,
     OutputSocketId,
     PropId,
     SchemaVariantId,
 };
 
+use super::WorkspaceSnapshotGraphError;
 use crate::{
+    func::FuncKind,
     prop::PropKind,
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
@@ -28,19 +32,36 @@ use crate::{
             EdgeWeightKindDiscriminants,
         },
         graph::{
-            WorkspaceSnapshotGraph,
             WorkspaceSnapshotGraphResult,
+            WorkspaceSnapshotGraphVCurrent,
         },
         node_weight::{
             ArgumentTargets,
             AttributePrototypeArgumentNodeWeight,
             NodeWeight,
+            traits::SiNodeWeight as _,
         },
     },
 };
 
+pub mod connections;
+
+/// Validate the entire graph, returning a list of validation issues found.
+pub fn validate_graph_with_text(
+    graph: &impl std::ops::Deref<Target = WorkspaceSnapshotGraphVCurrent>,
+) -> WorkspaceSnapshotGraphResult<Vec<(ValidationIssue, String)>> {
+    Ok(validate_graph(graph)?
+        .into_iter()
+        .map(|issue| {
+            let text = format!("{}", WithGraph(graph.deref(), &issue));
+            (issue, text)
+        })
+        .collect())
+}
+
+/// Validate the entire graph, returning a list of validation issues found.
 pub fn validate_graph(
-    graph: &WorkspaceSnapshotGraph,
+    graph: &impl std::ops::Deref<Target = WorkspaceSnapshotGraphVCurrent>,
 ) -> WorkspaceSnapshotGraphResult<Vec<ValidationIssue>> {
     let mut issues = vec![];
     for (node_weight, node_index) in graph.nodes() {
@@ -49,8 +70,9 @@ pub fn validate_graph(
     Ok(issues)
 }
 
+/// Validate a single node in the graph, returning a list of validation issues found.
 pub fn validate_node(
-    graph: &WorkspaceSnapshotGraph,
+    graph: &WorkspaceSnapshotGraphVCurrent,
     node: &NodeWeight,
     node_index: NodeIndex,
 ) -> WorkspaceSnapshotGraphResult<Vec<ValidationIssue>> {
@@ -124,13 +146,13 @@ pub fn validate_node(
                 }),
             ..
         }) => {
-            let destination_apa = node_index;
+            let dest_apa = node_index;
             let source_component = graph.get_node_index_by_id(source_component_id)?;
 
             // If this is a connection to a socket or prop, make sure the component on the other
             // end has an AV for it
             let Some(source_socket) =
-                graph.target_opt(destination_apa, EdgeWeightKind::PrototypeArgumentValue)?
+                graph.target_opt(dest_apa, EdgeWeightKind::PrototypeArgumentValue)?
             else {
                 return Ok(issues);
             };
@@ -148,7 +170,7 @@ pub fn validate_node(
                 .filter_map(|socket_value| graph.target(socket_value, EdgeWeightKind::Socket).ok());
             if !component_sockets.contains(&source_socket) {
                 issues.push(ValidationIssue::ConnectionToUnknownSocket {
-                    destination_apa: graph.get_node_weight(destination_apa)?.id().into(),
+                    dest_apa: graph.get_node_weight(dest_apa)?.id().into(),
                     source_component: graph.get_node_weight(source_component)?.id().into(),
                     source_socket: graph.get_node_weight(source_socket)?.id().into(),
                 })
@@ -167,7 +189,7 @@ pub fn validate_node(
 pub enum ValidationIssue {
     /// APA is connected to a socket that does not exist on the source component
     ConnectionToUnknownSocket {
-        destination_apa: AttributePrototypeArgumentId,
+        dest_apa: AttributePrototypeArgumentId,
         source_component: ComponentId,
         source_socket: OutputSocketId,
     },
@@ -192,11 +214,10 @@ pub enum ValidationIssue {
 }
 
 impl ValidationIssue {
-    pub fn display(&self, graph: &WorkspaceSnapshotGraph) -> impl std::fmt::Display {
-        DisplayWith(self, graph)
-    }
-
-    pub fn fix(&self, graph: &mut WorkspaceSnapshotGraph) -> WorkspaceSnapshotGraphResult<()> {
+    pub fn fix(
+        &self,
+        graph: &mut WorkspaceSnapshotGraphVCurrent,
+    ) -> WorkspaceSnapshotGraphResult<()> {
         match self {
             &ValidationIssue::DuplicateAttributeValue { duplicate, .. }
             | &ValidationIssue::DuplicateAttributeValueWithDifferentValues { duplicate, .. } => {
@@ -204,23 +225,18 @@ impl ValidationIssue {
                 let node_index = graph.get_node_index_by_id(duplicate)?;
                 graph.remove_node(node_index);
             }
-            ValidationIssue::ConnectionToUnknownSocket {
-                destination_apa, ..
-            } => {
-                println!("Removing APA {destination_apa}");
+            ValidationIssue::ConnectionToUnknownSocket { dest_apa, .. } => {
+                println!("Removing APA {dest_apa}");
                 // Remove the APA node (as long as it leads back to an input socket)
-                let destination_apa = graph.get_node_index_by_id(destination_apa)?;
-                let destination_prototype =
-                    graph.source(destination_apa, EdgeWeightKind::PrototypeArgument)?;
-                let destination_socket = graph.source(
-                    destination_prototype,
-                    EdgeWeightKindDiscriminants::Prototype,
-                )?;
-                let NodeWeight::InputSocket(_) = graph.get_node_weight(destination_socket)? else {
+                let dest_apa = graph.get_node_index_by_id(dest_apa)?;
+                let dest_prototype = graph.source(dest_apa, EdgeWeightKind::PrototypeArgument)?;
+                let dest_socket =
+                    graph.source(dest_prototype, EdgeWeightKindDiscriminants::Prototype)?;
+                let NodeWeight::InputSocket(_) = graph.get_node_weight(dest_socket)? else {
                     // If it's not an input socket, we can't be sure we're fixing what we want to fix
                     return Ok(());
                 };
-                graph.remove_node(destination_apa);
+                graph.remove_node(dest_apa);
             }
             ValidationIssue::MissingChildAttributeValues { .. }
             | ValidationIssue::UnknownChildAttributeValue { .. } => {}
@@ -232,40 +248,74 @@ impl ValidationIssue {
 
 /// Helper to format values that need extra context when being displayed (such as graphs, lookup tables,
 /// etc).
-struct DisplayWith<T, With>(T, With);
+pub struct WithGraph<'a, T>(pub &'a WorkspaceSnapshotGraphVCurrent, pub T);
 
-impl std::fmt::Display for DisplayWith<AttributeValueId, &'_ WorkspaceSnapshotGraph> {
+impl std::fmt::Display for WithGraph<'_, AttributeValueId> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let &DisplayWith(id, graph) = self;
-        match av_path(id, graph) {
+        let &WithGraph(graph, id) = self;
+        match av_path_from_root(graph, id) {
             Ok((_, path)) => write!(f, "{path} ({id})"),
             Err(err) => write!(f, "{err} ({id})"),
         }
     }
 }
 
-impl std::fmt::Display for DisplayWith<PropId, &'_ WorkspaceSnapshotGraph> {
+impl std::fmt::Display for WithGraph<'_, ComponentId> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let &DisplayWith(id, graph) = self;
-        match prop_path(id, graph) {
+        let &WithGraph(_, id) = self;
+        write!(f, "{id}")
+    }
+}
+
+impl std::fmt::Display for WithGraph<'_, FuncId> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let &WithGraph(graph, id) = self;
+        match graph
+            .get_node_weight_by_id(id)
+            .and_then(|node| node.get_func_node_weight().map_err(Into::into))
+        {
+            Ok(node) => write!(f, "{} ({id})", node.name()),
+            Err(err) => write!(f, "{err} ({id})"),
+        }
+    }
+}
+
+impl std::fmt::Display for WithGraph<'_, PropId> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let &WithGraph(graph, id) = self;
+        match prop_path_from_root(graph, id) {
             Ok((_, path)) => write!(f, "{path} ({id})"),
             Err(err) => write!(f, "{err} ({id})"),
         }
     }
 }
 
-impl std::fmt::Display for DisplayWith<&'_ ValidationIssue, &'_ WorkspaceSnapshotGraph> {
+impl std::fmt::Display for WithGraph<'_, InputSocketId> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let &DisplayWith(issue, graph) = self;
+        let &WithGraph(_, id) = self;
+        write!(f, "{id}")
+    }
+}
+
+impl std::fmt::Display for WithGraph<'_, OutputSocketId> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let &WithGraph(_, id) = self;
+        write!(f, "{id}")
+    }
+}
+
+impl std::fmt::Display for WithGraph<'_, &'_ ValidationIssue> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let &WithGraph(graph, issue) = self;
         match *issue {
             ValidationIssue::ConnectionToUnknownSocket {
-                destination_apa,
+                dest_apa,
                 source_component,
                 source_socket,
             } => {
                 write!(
                     f,
-                    "Connection from APA {destination_apa} to unknown socket {source_socket} on component {source_component}"
+                    "Connection from APA {dest_apa} to unknown socket {source_socket} on component {source_component}"
                 )
             }
             ValidationIssue::DuplicateAttributeValue {
@@ -275,8 +325,8 @@ impl std::fmt::Display for DisplayWith<&'_ ValidationIssue, &'_ WorkspaceSnapsho
                 write!(
                     f,
                     "Duplicate attribute value: {} and {}",
-                    DisplayWith(original, graph),
-                    DisplayWith(duplicate, graph)
+                    WithGraph(graph, original),
+                    WithGraph(graph, duplicate)
                 )
             }
             ValidationIssue::DuplicateAttributeValueWithDifferentValues {
@@ -286,8 +336,8 @@ impl std::fmt::Display for DisplayWith<&'_ ValidationIssue, &'_ WorkspaceSnapsho
                 write!(
                     f,
                     "Duplicate attribute value (with different value!): {} and {}",
-                    DisplayWith(original, graph),
-                    DisplayWith(duplicate, graph)
+                    WithGraph(graph, original),
+                    WithGraph(graph, duplicate)
                 )
             }
             ValidationIssue::MissingChildAttributeValues {
@@ -297,10 +347,10 @@ impl std::fmt::Display for DisplayWith<&'_ ValidationIssue, &'_ WorkspaceSnapsho
                 write!(
                     f,
                     "Missing child attribute values for object {}: missing {}",
-                    DisplayWith(object, graph),
+                    WithGraph(graph, object),
                     missing_children
                         .iter()
-                        .map(|&child_prop| format!("{}", DisplayWith(child_prop, graph)))
+                        .map(|&child_prop| format!("{}", WithGraph(graph, child_prop)))
                         .join(", ")
                 )
             }
@@ -308,16 +358,82 @@ impl std::fmt::Display for DisplayWith<&'_ ValidationIssue, &'_ WorkspaceSnapsho
                 write!(
                     f,
                     "Child attribute value has unknown (non-child) prop: {}",
-                    DisplayWith(child, graph)
+                    WithGraph(graph, child)
                 )
             }
         }
     }
 }
 
-fn av_path_from_root(
+pub fn is_identity_func(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    func_id: FuncId,
+) -> WorkspaceSnapshotGraphResult<bool> {
+    let func_node = graph
+        .get_node_weight_by_id(func_id)?
+        .get_func_node_weight()?;
+    Ok(func_node.func_kind() == FuncKind::Intrinsic && func_node.name() == "si:identity")
+}
+
+pub fn av_for_path(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    root_av_id: AttributeValueId,
+    path: impl AsRef<jsonptr::Pointer>,
+) -> WorkspaceSnapshotGraphResult<Option<AttributeValueId>> {
+    let mut av = graph.get_node_index_by_id(root_av_id)?;
+    for segment in path.as_ref() {
+        let prop = graph.target(av, EdgeWeightKind::Prop)?;
+        let child_av =
+            match graph.get_node_weight(prop)?.get_prop_node_weight()?.kind() {
+                PropKind::Object => graph
+                    .targets(av, EdgeWeightKindDiscriminants::Contain)
+                    .find(|&child_av| {
+                        graph
+                            .target(child_av, EdgeWeightKind::Prop)
+                            .and_then(|child_prop| graph.get_node_weight(child_prop))
+                            .and_then(|child_prop| {
+                                child_prop.get_prop_node_weight().map_err(Into::into)
+                            })
+                            .is_ok_and(|child_prop| child_prop.name() == segment.decoded())
+                    }),
+                PropKind::Map => graph
+                    .edges_directed(av, Direction::Outgoing)
+                    .find_map(|edge| match edge.weight().kind() {
+                        EdgeWeightKind::Contain(Some(key)) if key.as_str() == segment.decoded() => {
+                            Some(edge.target())
+                        }
+                        _ => None,
+                    }),
+                PropKind::Array => graph.ordered_children_for_node(av)?.and_then(|children| {
+                    match segment.to_index() {
+                        Ok(jsonptr::index::Index::Num(index)) => children.get(index).copied(),
+                        _ => None,
+                    }
+                }),
+                PropKind::Boolean
+                | PropKind::Float
+                | PropKind::Integer
+                | PropKind::Json
+                | PropKind::String => None,
+            };
+        let Some(child_av) = child_av else {
+            return Ok(None);
+        };
+        av = child_av;
+    }
+
+    Ok(Some(
+        graph
+            .get_node_weight(av)?
+            .get_attribute_value_node_weight()?
+            .id()
+            .into(),
+    ))
+}
+
+pub fn av_path_from_root(
+    graph: &WorkspaceSnapshotGraphVCurrent,
     id: AttributeValueId,
-    graph: &WorkspaceSnapshotGraph,
 ) -> WorkspaceSnapshotGraphResult<(AttributeValueId, jsonptr::PointerBuf)> {
     let mut index = graph.get_node_index_by_id(id)?;
     let mut path = jsonptr::PointerBuf::new();
@@ -374,44 +490,47 @@ fn av_path_from_root(
     Ok((root_id, path))
 }
 
-fn av_path(
-    id: AttributeValueId,
-    graph: &WorkspaceSnapshotGraph,
-) -> WorkspaceSnapshotGraphResult<(ComponentId, jsonptr::PointerBuf)> {
-    // index is now either the root of the graph, or a socket node. Just grab its prop or socket name
-    let (root_id, mut path) = av_path_from_root(id, graph)?;
-    let root_index = graph.get_node_index_by_id(root_id)?;
-    let component_index = match graph.source_opt(root_index, EdgeWeightKind::Root)? {
-        Some(component_index) => {
-            path.push_front("root");
-            component_index
-        }
-        None => {
-            let socket_index = graph.target(root_index, EdgeWeightKind::Socket)?;
-            let socket_id = graph.get_node_weight(socket_index)?.id();
-            // TODO get name (which we don't presently have, because it's in content)
-            path.push_front(format!("{}", socket_id));
-            match graph.get_node_weight(socket_index)? {
-                NodeWeight::InputSocket(_) => path.push_front("inputSockets"),
-                _ => path.push_front("outputSockets"),
-            }
-            graph.source(root_index, EdgeWeightKind::SocketValue)?
-        }
-    };
-    let component_id = graph.get_node_weight(component_index)?.id().into();
-    Ok((component_id, path))
+pub fn prop_path_from_root(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    id: PropId,
+) -> WorkspaceSnapshotGraphResult<(PropId, jsonptr::PointerBuf)> {
+    let mut path = jsonptr::PointerBuf::new();
+
+    let mut prop = graph.get_node_index_by_id(id)?;
+    let mut prop_node = graph.get_node_weight(prop)?.get_prop_node_weight()?;
+    loop {
+        // If the parent is a prop, push the current node onto the path and ascend to the parent
+        let parent = graph.source(prop, EdgeWeightKindDiscriminants::Use)?;
+        let NodeWeight::Prop(parent_prop_node) = graph.get_node_weight(parent)? else {
+            break;
+        };
+        path.push_front(prop_node.name());
+        prop = parent;
+        prop_node = parent_prop_node.clone();
+    }
+
+    let prop_id = prop_node.id().into();
+    Ok((prop_id, path))
 }
 
-fn prop_path(
+pub fn prop_path(
+    graph: &WorkspaceSnapshotGraphVCurrent,
     id: PropId,
-    graph: &WorkspaceSnapshotGraph,
 ) -> WorkspaceSnapshotGraphResult<(SchemaVariantId, jsonptr::PointerBuf)> {
-    let mut index = graph.get_node_index_by_id(id)?;
-    let mut path = jsonptr::PointerBuf::new();
-    while let NodeWeight::Prop(prop_node) = graph.get_node_weight(index)? {
-        path.push_front(prop_node.name());
-        index = graph.source(index, EdgeWeightKindDiscriminants::Use)?;
-    }
-    let schema_variant_id = graph.get_node_weight(index)?.id().into();
+    // Get the path up to (but not including) the root prop
+    let (root_prop_id, mut path) = prop_path_from_root(graph, id)?;
+
+    // Push the root node onto the path
+    let root_prop = graph.get_node_index_by_id(root_prop_id)?;
+    let root_prop_node = graph.get_node_weight(root_prop)?.get_prop_node_weight()?;
+    path.push_front(root_prop_node.name());
+
+    // Get the schema variant (the parent of the root prop)
+    let schema_variant = graph.source(root_prop, EdgeWeightKindDiscriminants::Use)?;
+    let schema_variant_id = graph
+        .get_node_weight(schema_variant)?
+        .get_schema_variant_node_weight()?
+        .id()
+        .into();
     Ok((schema_variant_id, path))
 }

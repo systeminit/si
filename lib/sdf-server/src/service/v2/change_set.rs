@@ -43,9 +43,11 @@ mod cancel_approval_request;
 mod create;
 mod force_apply;
 mod list;
+mod migrate_connections;
 mod rename;
 mod reopen;
 mod request_approval;
+mod validate_snapshot;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -201,12 +203,20 @@ pub fn change_set_routes(state: AppState) -> Router<AppState> {
                 permissions::Permission::Approve,
             )),
         )
+        .route(
+            "/migrate_connections",
+            get(migrate_connections::migrate_connections),
+        )
         .route("/rename", post(rename::rename))
         // Consider how we make it editable again after it's been rejected
         .route("/reopen", post(reopen::reopen))
         .route(
             "/request_approval",
             post(request_approval::request_approval),
+        )
+        .route(
+            "/validate_snapshot",
+            get(validate_snapshot::validate_snapshot),
         )
         .nest("/index", super::index::v2_change_set_routes())
 }
