@@ -31,7 +31,7 @@
         >
       </p>
       <p>
-        <VueMarkdown :source="component.schemaVariantDescription ?? ''" />
+        <MarkdownRender :source="component.schemaVariantDescription ?? ''" />
       </p>
     </template>
     <template v-else>
@@ -47,7 +47,7 @@
       <p v-if="docLink">
         <a :href="docLink" target="_blank">{{ component.schemaVariantName }}</a>
       </p>
-      <p>{{ docs }}</p>
+      <MarkdownRender :source="docs" />
     </template>
   </CollapsingFlexItem>
 </template>
@@ -56,9 +56,9 @@
 import { Icon, themeClasses, VButton } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { PropType } from "vue";
-import VueMarkdown from "vue-markdown-render";
 import { BifrostComponent } from "@/workers/types/entity_kind_types";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
+import MarkdownRender from "./MarkdownRender.vue";
 
 defineProps({
   component: { type: Object as PropType<BifrostComponent>, required: true },
