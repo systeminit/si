@@ -75,7 +75,7 @@
         </div>
       </AttributeChildLayout>
     </template>
-    <template v-else>
+    <template v-else-if="!props.attributeTree.prop?.hidden">
       <AttributeInput
         :displayName="displayName"
         :attributeValueId="props.attributeTree.attributeValue.id"
