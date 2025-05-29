@@ -1,11 +1,13 @@
 mod future;
+mod info;
 mod layer;
 mod on_failure;
 mod on_success;
 mod service;
 
 pub use self::{
-    layer::PostProcessLayer,
+    info::Info,
+    layer::JetstreamPostProcessLayer,
     on_failure::{
         DefaultOnFailure,
         OnFailure,
@@ -14,5 +16,5 @@ pub use self::{
         DefaultOnSuccess,
         OnSuccess,
     },
-    service::PostProcess,
+    service::JetstreamPostProcess,
 };

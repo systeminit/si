@@ -1,4 +1,5 @@
 use std::{
+    future::Future,
     pin::Pin,
     task::{
         Context,
@@ -6,23 +7,20 @@ use std::{
     },
 };
 
+use async_nats::jetstream;
 use futures::future::BoxFuture;
 use pin_project_lite::pin_project;
 use tower::Service;
 
 use crate::{
-    message::{
-        Message,
-        MessageHead,
-    },
+    message::Message,
     response::Response,
 };
 
 pin_project! {
-    pub struct ResponseFuture<S, R>
+    pub struct ResponseFuture<S>
     where
-        S: Service<Message<R>>,
-        R: MessageHead,
+        S: Service<Message<jetstream::Message>>,
     {
         #[pin]
         pub(crate) inner: S::Future,
@@ -43,10 +41,9 @@ pub(crate) enum State<T, E> {
     Err(Option<E>),
 }
 
-impl<S, R> Future for ResponseFuture<S, R>
+impl<S> Future for ResponseFuture<S>
 where
-    S: Service<Message<R>, Response = Response>,
-    R: MessageHead,
+    S: Service<Message<jetstream::Message>, Response = Response>,
 {
     type Output = Result<S::Response, S::Error>;
 
