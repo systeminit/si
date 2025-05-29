@@ -52,6 +52,7 @@ mod tests;
 pub mod traits;
 pub mod v3;
 pub mod v4;
+pub mod validator;
 
 pub use traits::{
     approval_requirement::ApprovalRequirementExt,
