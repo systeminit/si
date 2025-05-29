@@ -5,9 +5,9 @@
       This component does not exist on this change set
     </h3>
     <VButton
+      v-tooltip="'Back (Esc)'"
       class="border-0 mr-2em"
       icon="arrow--left"
-      label="Back"
       size="sm"
       tone="shade"
       variant="ghost"
@@ -24,9 +24,9 @@
       "
     >
       <VButton
+        v-tooltip="'Back (Esc)'"
         class="border-0 mr-2em"
         icon="arrow--left"
-        label="Back"
         size="sm"
         tone="shade"
         variant="ghost"
@@ -203,7 +203,7 @@ import {
   IconButton,
   themeClasses,
 } from "@si/vue-lib/design-system";
-import { computed, ref, nextTick } from "vue";
+import { computed, ref, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import VueMarkdown from "vue-markdown-render";
 import clsx from "clsx";
@@ -214,7 +214,7 @@ import {
   EntityKind,
 } from "@/workers/types/entity_kind_types";
 import AttributePanel from "./AttributePanel.vue";
-import { attributeEmitter } from "./logic_composables/emitters";
+import { attributeEmitter, keyEmitter } from "./logic_composables/emitters";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
 import DelayedLoader from "./layout_components/DelayedLoader.vue";
 import EditInPlace from "./layout_components/EditInPlace.vue";
@@ -222,7 +222,6 @@ import { useApi, routes, componentTypes } from "./api_composables";
 import { useWatchedForm } from "./logic_composables/watched_form";
 import QualificationPanel from "./QualificationPanel.vue";
 import ResourcePanel from "./ResourcePanel.vue";
-import { prevPage } from "./logic_composables/navigation_stack";
 import CodePanel from "./CodePanel.vue";
 import DiffPanel from "./DiffPanel.vue";
 import ActionsPanel from "./ActionsPanel.vue";
@@ -292,15 +291,11 @@ const editInPlaceRef = ref<typeof EditInPlace>();
 const router = useRouter();
 
 const back = () => {
-  const last = prevPage();
-  if (last) router.push(last);
-  else {
-    const params = router.currentRoute?.value.params ?? {};
-    router.push({
-      name: "new-hotness",
-      params,
-    });
-  }
+  const params = router.currentRoute?.value.params ?? {};
+  router.push({
+    name: "new-hotness",
+    params,
+  });
 };
 
 const api = useApi();
@@ -399,6 +394,15 @@ const blur = () => {
 // );
 
 // provide("ComponentPageContext", context);
+
+onMounted(() => {
+  keyEmitter.on("Escape", () => {
+    back();
+  });
+});
+onBeforeUnmount(() => {
+  keyEmitter.off("Escape");
+});
 </script>
 
 <style lang="less" scoped>

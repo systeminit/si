@@ -24,7 +24,7 @@
       </h3>
     </header>
     <ol
-      class="[&>li]:p-xs [&>li]:flex [&>li]:flex-row [&>li]:items-center [&>li]:gap-xs [&_.pillcounter]:w-5 [&_.pillcounter]:h-5"
+      class="[&>li]:p-xs [&>li]:flex [&>li]:flex-row [&>li]:items-center [&>li]:gap-xs [&>li]:h-9 [&_.pillcounter]:w-5 [&_.pillcounter]:h-5"
     >
       <li>
         <StatusIndicatorIcon
@@ -45,12 +45,10 @@
         <PillCounter :count="component.diffCount" size="sm" class="ml-auto" />
       </li>
       <li>
-        <StatusIndicatorIcon
-          type="resource"
-          size="sm"
-          :status="component.hasResource ? 'exists' : 'notexists'"
-        />
-        <div>Resource</div>
+        <template v-if="component.hasResource">
+          <StatusIndicatorIcon type="resource" size="sm" status="exists" />
+          <div>Resource</div>
+        </template>
       </li>
       <!-- NOTE: when coming from the Map page we don't have accurate outputCount, hiding this -->
       <template v-if="!props.hideConnections">

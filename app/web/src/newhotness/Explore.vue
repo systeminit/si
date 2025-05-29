@@ -55,7 +55,7 @@
           </template>
           <template #default="slotProps">
             <VormInput
-              ref="inputRef"
+              ref="searchRef"
               v-model="searchString"
               autocomplete="off"
               :class="slotProps.class"
@@ -63,6 +63,12 @@
               placeholder="Search components"
               @focus="slotProps.focus"
               @blur="slotProps.blur"
+              @keydown.tab="(e: KeyboardEvent) => onTab(e, true)"
+              @keydown.left="() => previousComponent()"
+              @keydown.right="() => nextComponent()"
+              @keydown.up="() => onArrowUp()"
+              @keydown.down="() => onArrowDown()"
+              @keydown.esc="onEscape"
             />
           </template>
         </InstructiveVormInput>
@@ -74,9 +80,7 @@
             :key="filteredComponents[component.index]!.id"
             :class="clsx(tileClasses(component.index))"
             :component="filteredComponents[component.index]!"
-            @dblclick="
-              componentNavigate(filteredComponents[component.index]!.id)
-            "
+            @click="componentNavigate(filteredComponents[component.index]!.id)"
           />
           <div
             v-if="
@@ -154,7 +158,16 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, inject, provide, reactive, ref, watch } from "vue";
+import {
+  computed,
+  inject,
+  onBeforeUnmount,
+  onMounted,
+  provide,
+  reactive,
+  ref,
+  watch,
+} from "vue";
 import { useRouter, useRoute } from "vue-router";
 import {
   themeClasses,
@@ -363,46 +376,105 @@ const tileClasses = (idx: number) => {
   else return "";
 };
 
-const inputRef = ref<HTMLInputElement>();
-keyEmitter.on("k", (e) => {
-  if (e.metaKey || e.ctrlKey) {
-    inputRef.value?.focus();
-  }
-});
-keyEmitter.on("a", (e) => {
-  if (e.metaKey || e.ctrlKey) {
-    openAddComponentModal();
-  }
-});
-
-keyEmitter.on("ArrowDown", () => {
+const searchRef = ref<InstanceType<typeof VormInput>>();
+const clearKeyEmitters = () => {
+  keyEmitter.off("k");
+  keyEmitter.off("a");
+  keyEmitter.off("ArrowDown");
+  keyEmitter.off("ArrowUp");
+  keyEmitter.off("ArrowLeft");
+  keyEmitter.off("ArrowRight");
+  keyEmitter.off("Enter");
+  keyEmitter.off("Tab");
+  keyEmitter.off("Escape");
+};
+const nextComponent = (wrap = false) => {
   if (!showGrid.value) return;
-  selectorGridPosition.value += lanes.value;
+  selectorGridPosition.value += 1;
+  if (wrap && selectorGridPosition.value > filteredComponents.length - 1) {
+    selectorGridPosition.value = -1;
+    searchRef.value?.focus();
+  }
   constrainPosition();
-});
-keyEmitter.on("ArrowUp", () => {
+};
+const previousComponent = (wrap = false) => {
+  if (!showGrid.value) return;
+  selectorGridPosition.value -= 1;
+  if (wrap) {
+    if (selectorGridPosition.value < -1) {
+      selectorGridPosition.value = filteredComponents.length - 1;
+    } else if (selectorGridPosition.value < 0) {
+      selectorGridPosition.value = -1;
+      searchRef.value?.focus();
+    }
+  }
+  constrainPosition();
+};
+const onArrowUp = () => {
   if (!showGrid.value) return;
   selectorGridPosition.value -= lanes.value;
   constrainPosition();
-});
-keyEmitter.on("ArrowLeft", () => {
+};
+const onArrowDown = () => {
   if (!showGrid.value) return;
-  selectorGridPosition.value -= 1;
+  selectorGridPosition.value += lanes.value;
   constrainPosition();
-});
-keyEmitter.on("ArrowRight", () => {
-  if (!showGrid.value) return;
-  selectorGridPosition.value += 1;
-  constrainPosition();
-});
-keyEmitter.on("Enter", () => {
-  if (selectorGridPosition.value !== -1) {
-    const componentId = filteredComponents[selectorGridPosition.value]?.id;
-    if (!componentId) return;
-    if (selectedComponentIds.has(componentId))
-      selectedComponentIds.delete(componentId);
-    else selectedComponentIds.add(componentId);
+};
+const onEscape = () => {
+  searchRef.value?.blur();
+  selectorGridPosition.value = -1;
+};
+const onTab = (
+  e: { preventDefault: () => void; shiftKey: boolean },
+  blurSearch = false,
+) => {
+  e.preventDefault();
+  const pageFunc = e.shiftKey ? previousComponent : nextComponent;
+  if (!searchRef.value) return;
+  else if (blurSearch) {
+    searchRef.value.blur();
+    pageFunc(true);
+  } else if (selectorGridPosition.value === -1 && !searchRef.value.isFocus) {
+    searchRef.value.focus();
+  } else {
+    pageFunc(true);
   }
+};
+onMounted(() => {
+  clearKeyEmitters();
+
+  keyEmitter.on("k", (e) => {
+    if (e.metaKey || e.ctrlKey) {
+      searchRef.value?.focus();
+    }
+  });
+  keyEmitter.on("a", (e) => {
+    if (e.metaKey || e.ctrlKey) {
+      openAddComponentModal();
+    }
+  });
+  keyEmitter.on("ArrowDown", onArrowDown);
+  keyEmitter.on("ArrowUp", onArrowUp);
+  keyEmitter.on("ArrowLeft", () => previousComponent());
+  keyEmitter.on("ArrowRight", () => nextComponent());
+  keyEmitter.on("Enter", () => {
+    if (selectorGridPosition.value !== -1) {
+      const componentId = filteredComponents[selectorGridPosition.value]?.id;
+      if (!componentId) return;
+      componentNavigate(componentId);
+
+      // TODO(Wendy) - this code is for multiselecting components
+      // We are not currently using it, but probably will need it in the future!
+      // if (selectedComponentIds.has(componentId))
+      //   selectedComponentIds.delete(componentId);
+      // else selectedComponentIds.add(componentId);
+    }
+  });
+  keyEmitter.on("Tab", onTab);
+  keyEmitter.on("Escape", onEscape);
+});
+onBeforeUnmount(() => {
+  clearKeyEmitters();
 });
 
 const componentNavigate = (componentId: ComponentId) => {
