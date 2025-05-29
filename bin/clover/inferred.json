@@ -1986,6 +1986,12 @@
       "VPC_LINK"
     ]
   },
+  "Indicates whether the Resolver endpoint allows inbound or outbound DNS queries:\n- INBOUND: allows DNS queries to your VPC from your network \n- OUTBOUND: allows DNS queries from your VPC to your network": {
+    "enum": [
+      "INBOUND",
+      "OUTBOUND"
+    ]
+  },
   "The frequency unit. Supported values are HOURS and DAYS.": {
     "enum": [
       "HOURS",
@@ -3295,6 +3301,9 @@
     "enum": null
   },
   "A friendly name for the project.": {
+    "enum": null
+  },
+  "A friendly name that lets you easily find a configuration in the Resolver dashboard in the Route 53 console.": {
     "enum": null
   },
   "A game session protection policy to apply to all game sessions hosted on instances in this fleet. When protected, active game sessions cannot be terminated during a scale-down event. If this parameter is not set, instances in this fleet default to no protection. You can change a fleet's protection policy to affect future game sessions on the fleet. You can also set protection for individual game sessions.": {
@@ -7245,6 +7254,9 @@
   "The APSYlong GraphQL API to which you want to attach this resolver.": {
     "enum": null
   },
+  "The ARN (Amazon Resource Name) for the Outpost.": {
+    "enum": null
+  },
   "The ARN (Amazon Resource Name) of the resource to be protected.": {
     "enum": null
   },
@@ -7864,6 +7876,9 @@
     "enum": null
   },
   "The Amazon CloudWatch log group to which CloudFormation sends error logging information when invoking the type's handlers.": {
+    "enum": null
+  },
+  "The Amazon EC2 instance type.": {
     "enum": null
   },
   "The Amazon ECR repository prefix associated with the pull through cache rule.": {
@@ -9580,6 +9595,9 @@
     "enum": null
   },
   "The Region code for the accepter VPC, if the accepter VPC is located in a Region other than the Region in which you make the request.": {
+    "enum": null
+  },
+  "The Resolver endpoint IP address type.": {
     "enum": null
   },
   "The RuleGroupsNamespace data.": {
