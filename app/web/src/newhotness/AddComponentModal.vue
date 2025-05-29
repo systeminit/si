@@ -204,11 +204,12 @@ import {
   themeClasses,
   TreeNode,
 } from "@si/vue-lib/design-system";
-import { computed, inject, nextTick, ref } from "vue";
+import { computed, inject, nextTick, ref, watch } from "vue";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import { Fzf } from "fzf";
 import { useRoute, useRouter } from "vue-router";
+import { debounce } from "lodash-es";
 import VueMarkdown from "vue-markdown-render";
 import TextPill from "@/components/TextPill.vue";
 import {
@@ -470,13 +471,13 @@ const filteredCategories = computed(() => {
   // i need the list of assets, not categories, to feed into the fuzzy search
   const assets = filteredResults.flatMap((c) => c.assets);
 
-  if (fuzzySearchString.value !== "") {
+  if (debouncedSearchString.value !== "") {
     const fzf = new Fzf(assets, {
       casing: "case-insensitive",
       selector: (a: UIAsset) => `${a.name} ${a.uiCategory.name}`,
     });
 
-    const results = fzf.find(fuzzySearchString.value);
+    const results = fzf.find(debouncedSearchString.value);
     const items: UIAsset[] = results.map((fz) => fz.item);
 
     // reconstruct categories from the results (this is why asset.category exists)
@@ -511,14 +512,29 @@ const filteredAssetsFlat = computed(() => {
 });
 
 const showResults = computed(
-  () => !!(fuzzySearchString.value !== "" || selectedFilter.value),
+  () => !!(debouncedSearchString.value !== "" || selectedFilter.value),
 );
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 
 const fuzzySearchString = ref<string>("");
+const debouncedSearchString = ref<string>("");
 const selectedFilter = ref<string | undefined>(undefined);
+
+// Debounce the search string updates to avoid expensive filtering on every keystroke
+const updateDebouncedSearch = debounce(
+  (value: string) => {
+    debouncedSearchString.value = value;
+  },
+  500,
+  { trailing: true, leading: false },
+);
+
+// Watch for changes to fuzzySearchString and update the debounced version
+watch(fuzzySearchString, (newValue) => {
+  updateDebouncedSearch(newValue);
+});
 
 const toggleFilterTile = (name: string) => {
   clearSelection();
@@ -530,6 +546,7 @@ const open = () => {
   modalRef.value?.open();
   searchRef.value?.focusSearch();
   fuzzySearchString.value = "";
+  debouncedSearchString.value = "";
   bannerClosed.value = false;
   selectedAsset.value = undefined;
   selectedFilter.value = undefined;
