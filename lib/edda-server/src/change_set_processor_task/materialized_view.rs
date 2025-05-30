@@ -49,7 +49,10 @@ use si_frontend_mv_types::{
         IncomingConnectionsList as IncomingConnectionsListMv,
     },
     index::MvIndex,
-    materialized_view::MaterializedViewInventoryItem,
+    materialized_view::{
+        MaterializedViewInventoryItem,
+        materialized_view_definitions_checksum,
+    },
     object::{
         FrontendObject,
         patch::{
@@ -164,6 +167,8 @@ pub async fn try_reuse_mv_index_for_new_change_set(
     // do we care which change set we use? Assuming there's more than one, we could choose Head...
     let change_sets_using_snapshot = ChangeSet::list_active(ctx).await?;
 
+    let definitions_checksum = materialized_view_definitions_checksum();
+
     for change_set in change_sets_using_snapshot {
         // found a match, so let's retrieve that MvIndex and put the same object as ours
         let Some((pointer, _revision)) = frigg
@@ -175,7 +180,9 @@ pub async fn try_reuse_mv_index_for_new_change_set(
             continue;
         };
 
-        if pointer.snapshot_address == snapshot_address.to_string() {
+        if pointer.snapshot_address == snapshot_address.to_string()
+            && pointer.definition_checksum == definitions_checksum
+        {
             // found one, create a new index pointer to it!
             // Note: we might want to consider validting the index here before we use it
             let change_set_mv_id = change_set_id.to_string();
