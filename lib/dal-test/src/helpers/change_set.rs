@@ -58,7 +58,7 @@ pub async fn wait_for_dvu(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
-/// This unit struct providers helper functions for working with [`ChangeSets`](ChangeSet). It is
+/// This unit struct provides helper functions for working with [`ChangeSets`](ChangeSet). It is
 /// designed to centralize logic for test authors wishing to commit changes, fork, apply, abandon,
 /// etc.
 #[derive(Debug)]
@@ -150,7 +150,8 @@ impl ChangeSetTestHelpers {
         )
     }
 
-    async fn apply_change_set_to_base_inner(ctx: &mut DalContext) -> Result<bool> {
+    /// Applies the current change set to the base change set, waiting for replays to land on any open change sets.
+    pub async fn apply_change_set_to_base_inner(ctx: &mut DalContext) -> Result<bool> {
         let mut open_change_sets = ChangeSet::list_active(ctx)
             .await?
             .iter()

@@ -1,56 +1,125 @@
 use std::{
-    collections::{HashMap, HashSet},
-    sync::{Arc, atomic::AtomicBool},
+    collections::{
+        HashMap,
+        HashSet,
+    },
+    sync::{
+        Arc,
+        atomic::AtomicBool,
+    },
 };
 
 use async_trait::async_trait;
 use corrections::correct_transforms;
 use itertools::Itertools as _;
-use petgraph::Direction::{self, Incoming, Outgoing};
-use serde::{Deserialize, Serialize};
+use petgraph::Direction::{
+    self,
+    Incoming,
+    Outgoing,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_events::{
-    ContentHash, Timestamp, WorkspaceSnapshotAddress,
+    ContentHash,
+    Timestamp,
+    WorkspaceSnapshotAddress,
     merkle_tree_hash::MerkleTreeHash,
-    workspace_snapshot::{Change, EntityKind},
+    workspace_snapshot::{
+        Change,
+        EntityKind,
+    },
 };
 use si_id::{
-    ApprovalRequirementDefinitionId, AttributeValueId, ChangeSetId, ComponentId, EntityId,
-    InputSocketId, PropId, SchemaId, SchemaVariantId, UserPk, ViewId, ulid::Ulid,
+    ApprovalRequirementDefinitionId,
+    AttributeValueId,
+    ChangeSetId,
+    ComponentId,
+    EntityId,
+    InputSocketId,
+    PropId,
+    SchemaId,
+    SchemaVariantId,
+    UserPk,
+    ViewId,
+    ulid::Ulid,
 };
 use si_layer_cache::LayerDbError;
 use si_split_graph::{
-    CustomNodeWeight, SplitGraph, SplitGraphNodeIndex, SplitGraphNodeWeight, SubGraph, SuperGraph,
+    CustomNodeWeight,
+    SplitGraph,
+    SplitGraphNodeIndex,
+    SplitGraphNodeWeight,
+    SplitGraphResult,
+    SubGraph,
+    SuperGraph,
     opt_zip::OptZip,
 };
-use strum::{EnumDiscriminants, EnumIter, EnumString, IntoEnumIterator};
+use strum::{
+    EnumDiscriminants,
+    EnumIter,
+    EnumString,
+    IntoEnumIterator,
+};
 use telemetry::prelude::*;
 use tokio::{
-    sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    sync::{
+        Mutex,
+        RwLock,
+        RwLockReadGuard,
+        RwLockWriteGuard,
+    },
     task::JoinSet,
     time::Instant,
 };
 
 use super::{
-    CycleCheckGuard, DependentValueRoot, EntityKindExt, InferredConnectionsWriteGuard,
-    InputSocketExt, SchemaVariantExt, WorkspaceSnapshotError, WorkspaceSnapshotResult,
+    CycleCheckGuard,
+    DependentValueRoot,
+    EntityKindExt,
+    InferredConnectionsWriteGuard,
+    InputSocketExt,
+    SchemaVariantExt,
+    WorkspaceSnapshotError,
+    WorkspaceSnapshotResult,
     content_address::ContentAddressDiscriminants,
     graph::LineageId,
     node_weight::{
-        CategoryNodeWeight, NodeWeight, NodeWeightError, category_node_weight::CategoryNodeKind,
+        CategoryNodeWeight,
+        NodeWeight,
+        NodeWeightError,
+        category_node_weight::CategoryNodeKind,
     },
     traits::{
-        approval_requirement::ApprovalRequirementExt, diagram::view::ViewExt, prop::PropExt,
+        approval_requirement::ApprovalRequirementExt,
+        diagram::view::ViewExt,
+        prop::PropExt,
         socket::input::input_socket_from_node_weight,
     },
 };
 use crate::{
-    ComponentError, DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
-    InputSocket, NodeWeightDiscriminants, SchemaVariantError,
+    ComponentError,
+    DalContext,
+    EdgeWeight,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    InputSocket,
+    NodeWeightDiscriminants,
+    SchemaVariantError,
     approval_requirement::{
-        ApprovalRequirement, ApprovalRequirementApprover, ApprovalRequirementDefinition,
+        ApprovalRequirement,
+        ApprovalRequirementApprover,
+        ApprovalRequirementDefinition,
     },
-    component::{ComponentResult, inferred_connection_graph::InferredConnectionGraph},
-    layer_db_types::{ViewContent, ViewContentV1},
+    component::{
+        ComponentResult,
+        inferred_connection_graph::InferredConnectionGraph,
+    },
+    layer_db_types::{
+        ViewContent,
+        ViewContentV1,
+    },
     prop::PropResult,
     slow_rt,
     socket::input::InputSocketError,
@@ -1531,6 +1600,26 @@ impl InputSocketExt for SplitSnapshot {
     }
 }
 
+pub fn schema_ids_for_schema_variant_id(
+    graph: &SplitSnapshotGraphVCurrent,
+    schema_variant_id: SchemaVariantId,
+) -> SplitGraphResult<Vec<SchemaId>> {
+    let sv_ulid = schema_variant_id.into();
+
+    Ok(graph
+        .edges_directed_for_edge_weight_kind(sv_ulid, Incoming, EdgeWeightKindDiscriminants::Use)?
+        .filter_map(|edge_ref| match graph.node_weight(edge_ref.source()) {
+            Some(NodeWeight::Content(content))
+                if content.content_address_discriminants()
+                    == ContentAddressDiscriminants::Schema =>
+            {
+                Some(edge_ref.source().into())
+            }
+            _ => None,
+        })
+        .collect())
+}
+
 #[async_trait]
 impl SchemaVariantExt for SplitSnapshot {
     async fn schema_id_for_schema_variant_id(
@@ -1539,31 +1628,12 @@ impl SchemaVariantExt for SplitSnapshot {
     ) -> WorkspaceSnapshotResult<SchemaId> {
         let working_copy = self.working_copy().await;
 
-        let sv_ulid = schema_variant_id.into();
-
-        let mut schemas = working_copy
-            .edges_directed_for_edge_weight_kind(
-                sv_ulid,
-                Incoming,
-                EdgeWeightKindDiscriminants::Use,
-            )?
-            .filter_map(
-                |edge_ref| match working_copy.node_weight(edge_ref.source()) {
-                    Some(NodeWeight::Content(content))
-                        if content.content_address_discriminants()
-                            == ContentAddressDiscriminants::Schema =>
-                    {
-                        Some(edge_ref.source())
-                    }
-                    _ => None,
-                },
-            );
-
+        let schemas = schema_ids_for_schema_variant_id(&working_copy, schema_variant_id)?;
         let schema_id = schemas
-            .next()
+            .first()
             .ok_or_else(|| Box::new(SchemaVariantError::SchemaNotFound(schema_variant_id)))?;
 
-        if schemas.next().is_some() {
+        if schemas.len() > 1 {
             return Err(Box::new(SchemaVariantError::MoreThanOneSchemaFound(
                 schema_variant_id,
             )))?;

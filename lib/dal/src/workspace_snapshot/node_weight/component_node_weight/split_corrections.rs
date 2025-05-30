@@ -1,22 +1,43 @@
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{
+    BTreeSet,
+    HashSet,
+};
 
-use petgraph::Direction::{Incoming, Outgoing};
-use si_id::{ComponentId, InputSocketId, OutputSocketId};
-use si_split_graph::{SplitGraph, SplitGraphNodeId, Update};
-
-use crate::{
-    EdgeWeight, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
-    workspace_snapshot::{
-        content_address::ContentAddressDiscriminants,
-        node_weight::{ArgumentTargets, NodeWeight},
-        split_snapshot::{
-            self,
-            corrections::{CorrectTransformsResult, add_dependent_value_root_updates},
-        },
-    },
+use petgraph::Direction::{
+    Incoming,
+    Outgoing,
+};
+use si_id::{
+    ComponentId,
+    InputSocketId,
+    OutputSocketId,
+};
+use si_split_graph::{
+    SplitGraph,
+    SplitGraphNodeId,
+    Update,
 };
 
 use super::ComponentNodeWeight;
+use crate::{
+    EdgeWeight,
+    EdgeWeightKindDiscriminants,
+    NodeWeightDiscriminants,
+    workspace_snapshot::{
+        content_address::ContentAddressDiscriminants,
+        node_weight::{
+            ArgumentTargets,
+            NodeWeight,
+        },
+        split_snapshot::{
+            self,
+            corrections::{
+                CorrectTransformsResult,
+                add_dependent_value_root_updates,
+            },
+        },
+    },
+};
 
 type Graph = SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>;
 

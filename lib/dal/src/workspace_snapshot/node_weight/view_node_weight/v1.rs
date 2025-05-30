@@ -1,9 +1,22 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{
+    BTreeMap,
+    BTreeSet,
+    HashMap,
+    HashSet,
+};
 
 use dal_macros::SiNodeWeight;
-use jwt_simple::prelude::{Deserialize, Serialize};
+use jwt_simple::prelude::{
+    Deserialize,
+    Serialize,
+};
 use petgraph::prelude::*;
-use si_events::{ContentHash, Timestamp, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use si_events::{
+    ContentHash,
+    Timestamp,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 use si_id::ViewId;
 use si_split_graph::SplitGraphNodeId;
 
@@ -12,10 +25,19 @@ use crate::{
     workspace_snapshot::{
         EdgeWeightKindDiscriminants,
         content_address::ContentAddress,
-        graph::{LineageId, WorkspaceSnapshotGraphError, detector::Update},
+        graph::{
+            LineageId,
+            WorkspaceSnapshotGraphError,
+            detector::Update,
+        },
         node_weight::{
-            NodeWeight, NodeWeightDiscriminants,
-            traits::{CorrectExclusiveOutgoingEdge, CorrectTransforms, SiNodeWeight},
+            NodeWeight,
+            NodeWeightDiscriminants,
+            traits::{
+                CorrectExclusiveOutgoingEdge,
+                CorrectTransforms,
+                SiNodeWeight,
+            },
         },
         split_snapshot,
     },

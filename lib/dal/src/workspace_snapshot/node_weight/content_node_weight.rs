@@ -1,22 +1,51 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{
+    BTreeMap,
+    HashMap,
+};
 
 use petgraph::prelude::*;
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
-use si_split_graph::{SplitGraphNodeId, SplitGraphNodeWeight};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
+use si_split_graph::{
+    SplitGraphNodeId,
+    SplitGraphNodeWeight,
+};
 
 use super::{
     NodeWeight,
-    traits::{CorrectTransformsResult, SiVersionedNodeWeight},
+    traits::{
+        CorrectTransformsResult,
+        SiVersionedNodeWeight,
+    },
 };
 use crate::{
-    ComponentId, EdgeWeight, EdgeWeightKindDiscriminants, SocketArity,
+    ComponentId,
+    EdgeWeight,
+    EdgeWeightKindDiscriminants,
+    SocketArity,
     WorkspaceSnapshotGraphVCurrent,
     workspace_snapshot::{
         NodeInformation,
-        content_address::{ContentAddress, ContentAddressDiscriminants},
-        graph::{LineageId, detector::Update},
-        node_weight::{NodeWeightError, NodeWeightResult, traits::CorrectTransforms},
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
+        graph::{
+            LineageId,
+            detector::Update,
+        },
+        node_weight::{
+            NodeWeightError,
+            NodeWeightResult,
+            traits::CorrectTransforms,
+        },
         split_snapshot,
     },
 };
@@ -424,7 +453,7 @@ fn protect_arity_for_input_socket_split(
                     && update
                         .is_of_custom_edge_kind(EdgeWeightKindDiscriminants::PrototypeArgument) =>
             {
-                if let Some(&new_apa) = new_node_map.get(&destination.id.into()) {
+                if let Some(&new_apa) = new_node_map.get(&destination.id) {
                     let targets = match new_apa.targets() {
                         Some(targets) => targets,
                         None => {

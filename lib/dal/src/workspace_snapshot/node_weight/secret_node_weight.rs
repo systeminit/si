@@ -1,18 +1,52 @@
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{
+    BTreeSet,
+    HashSet,
+};
 
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, EncryptedSecretKey, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
-use si_split_graph::{SplitGraph, SplitGraphNodeWeight};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    EncryptedSecretKey,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
+use si_split_graph::{
+    SplitGraph,
+    SplitGraphNodeWeight,
+};
 
-use super::{NodeWeight, category_node_weight::CategoryNodeKind, traits::CorrectTransformsResult};
+use super::{
+    NodeWeight,
+    category_node_weight::CategoryNodeKind,
+    traits::CorrectTransformsResult,
+};
 use crate::{
-    EdgeWeight, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent,
+    EdgeWeight,
+    EdgeWeightKindDiscriminants,
+    WorkspaceSnapshotGraphVCurrent,
     workspace_snapshot::{
         NodeId,
-        content_address::{ContentAddress, ContentAddressDiscriminants},
-        graph::{LineageId, correct_transforms, detector::Update},
-        node_weight::{NodeWeightError, NodeWeightResult, traits::CorrectTransforms},
-        split_snapshot::{self, corrections::get_category_node_id},
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
+        graph::{
+            LineageId,
+            correct_transforms,
+            detector::Update,
+        },
+        node_weight::{
+            NodeWeightError,
+            NodeWeightResult,
+            traits::CorrectTransforms,
+        },
+        split_snapshot::{
+            self,
+            corrections::get_category_node_id,
+        },
     },
 };
 

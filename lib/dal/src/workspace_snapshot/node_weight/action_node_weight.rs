@@ -1,19 +1,39 @@
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{
+    BTreeSet,
+    HashSet,
+};
 
 use petgraph::prelude::*;
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 use si_split_graph::SplitGraphNodeId;
 
 use super::traits::CorrectTransformsResult;
 use crate::{
-    ChangeSetId, EdgeWeight, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
+    ChangeSetId,
+    EdgeWeight,
+    EdgeWeightKindDiscriminants,
+    NodeWeightDiscriminants,
     WorkspaceSnapshotGraphVCurrent,
     action::ActionState,
     workspace_snapshot::{
-        NodeId, NodeInformation,
-        graph::{LineageId, detector::Update},
-        node_weight::{NodeWeight, traits::CorrectTransforms},
+        NodeId,
+        NodeInformation,
+        graph::{
+            LineageId,
+            detector::Update,
+        },
+        node_weight::{
+            NodeWeight,
+            traits::CorrectTransforms,
+        },
         split_snapshot,
     },
 };

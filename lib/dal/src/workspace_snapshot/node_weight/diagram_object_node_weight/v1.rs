@@ -1,20 +1,38 @@
 use std::collections::BTreeSet;
 
 use dal_macros::SiNodeWeight;
-use petgraph::Direction::{Incoming, Outgoing};
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use petgraph::Direction::{
+    Incoming,
+    Outgoing,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 
 use crate::{
-    EdgeWeight, EdgeWeightKindDiscriminants,
+    EdgeWeight,
+    EdgeWeightKindDiscriminants,
     workspace_snapshot::{
-        graph::{LineageId, detector::Update},
+        graph::{
+            LineageId,
+            detector::Update,
+        },
         node_weight::{
-            NodeWeight, NodeWeightDiscriminants,
+            NodeWeight,
+            NodeWeightDiscriminants,
             diagram_object_node_weight::DiagramObjectKind,
             traits::{
-                CorrectExclusiveOutgoingEdge, CorrectTransforms, CorrectTransformsError,
-                CorrectTransformsResult, SiNodeWeight,
+                CorrectExclusiveOutgoingEdge,
+                CorrectTransforms,
+                CorrectTransformsError,
+                CorrectTransformsResult,
+                SiNodeWeight,
             },
         },
         split_snapshot,

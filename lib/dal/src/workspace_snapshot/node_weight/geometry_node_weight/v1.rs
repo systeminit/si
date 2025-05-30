@@ -1,25 +1,51 @@
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{
+        BTreeMap,
+        HashMap,
+    },
     mem,
 };
 
 use dal_macros::SiNodeWeight;
-use jwt_simple::prelude::{Deserialize, Serialize};
-use petgraph::Direction::{self, Incoming, Outgoing};
-use si_events::{ContentHash, Timestamp, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
+use jwt_simple::prelude::{
+    Deserialize,
+    Serialize,
+};
+use petgraph::Direction::{
+    self,
+    Incoming,
+    Outgoing,
+};
+use si_events::{
+    ContentHash,
+    Timestamp,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
 
-use super::{GeometryNodeWeight, NodeWeightDiscriminants};
+use super::{
+    GeometryNodeWeight,
+    NodeWeightDiscriminants,
+};
 use crate::{
-    EdgeWeight, EdgeWeightKindDiscriminants, WorkspaceSnapshotGraphVCurrent,
+    EdgeWeight,
+    EdgeWeightKindDiscriminants,
+    WorkspaceSnapshotGraphVCurrent,
     workspace_snapshot::{
         content_address::ContentAddress,
-        graph::{LineageId, detector::Update},
+        graph::{
+            LineageId,
+            detector::Update,
+        },
         node_weight::{
             NodeWeight,
             diagram_object_node_weight::DiagramObjectKind,
             traits::{
-                CorrectExclusiveOutgoingEdge, CorrectTransforms, CorrectTransformsError,
-                CorrectTransformsResult, SiNodeWeight,
+                CorrectExclusiveOutgoingEdge,
+                CorrectTransforms,
+                CorrectTransformsError,
+                CorrectTransformsResult,
+                SiNodeWeight,
             },
         },
         split_snapshot,

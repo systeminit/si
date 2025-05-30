@@ -1,14 +1,28 @@
 use std::{
-    collections::{HashSet, btree_map},
+    collections::{
+        HashSet,
+        btree_map,
+    },
     marker::PhantomData,
 };
 
-use petgraph::{prelude::*, stable_graph};
+use petgraph::{
+    prelude::*,
+    stable_graph,
+};
 use telemetry::prelude::*;
 
 use crate::{
-    CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraph, SplitGraphEdgeIndex,
-    SplitGraphEdgeWeight, SplitGraphNodeId, SplitGraphNodeWeight, SubGraph, SubGraphIndex,
+    CustomEdgeWeight,
+    CustomNodeWeight,
+    EdgeKind,
+    SplitGraph,
+    SplitGraphEdgeIndex,
+    SplitGraphEdgeWeight,
+    SplitGraphNodeId,
+    SplitGraphNodeWeight,
+    SubGraph,
+    SubGraphIndex,
     SubGraphNodeIndex,
 };
 

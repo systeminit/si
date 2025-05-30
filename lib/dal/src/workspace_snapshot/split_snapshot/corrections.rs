@@ -5,23 +5,41 @@
 /// corrections need to know about AttributeValue container objects, and so on. But it
 /// also has to be implemented for the custom node weight types.
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{
+        BTreeMap,
+        BTreeSet,
+    },
     marker::PhantomData,
 };
 
-use petgraph::Direction::{Incoming, Outgoing};
+use petgraph::Direction::{
+    Incoming,
+    Outgoing,
+};
 use si_split_graph::{
-    CustomEdgeWeight, CustomNodeWeight, EdgeKind, SplitGraph, SplitGraphEdgeWeight,
-    SplitGraphEdgeWeightKind, SplitGraphError, SplitGraphNodeId, SplitGraphNodeWeight, Update,
+    CustomEdgeWeight,
+    CustomNodeWeight,
+    EdgeKind,
+    SplitGraph,
+    SplitGraphEdgeWeight,
+    SplitGraphEdgeWeightKind,
+    SplitGraphError,
+    SplitGraphNodeId,
+    SplitGraphNodeWeight,
+    Update,
     updates::ExternalSourceData,
 };
 use thiserror::Error;
 
 use crate::{
-    EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants, NodeWeightDiscriminants,
+    EdgeWeight,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
+    NodeWeightDiscriminants,
     workspace_snapshot::node_weight::{
-        NodeWeight, action_node_weight, category_node_weight::CategoryNodeKind,
-        content_node_weight, traits::SiVersionedNodeWeight,
+        NodeWeight,
+        category_node_weight::CategoryNodeKind,
+        traits::SiVersionedNodeWeight,
     },
 };
 
@@ -108,6 +126,8 @@ impl CorrectTransforms<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants> for 
             NodeWeight::Secret(secret_node_weight) => {
                 secret_node_weight.correct_transforms(graph, updates, from_different_change_set)
             }
+            NodeWeight::SchemaVariant(schema_variant_node_weight) => schema_variant_node_weight
+                .correct_transforms(graph, updates, from_different_change_set),
             _ => Ok(updates),
         }
     }

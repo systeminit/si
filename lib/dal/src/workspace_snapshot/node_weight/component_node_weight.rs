@@ -1,29 +1,63 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::HashSet,
+    sync::Arc,
+};
 
 use itertools::Itertools;
-use petgraph::{Direction::Incoming, prelude::*, stable_graph::EdgeReference};
-use serde::{Deserialize, Serialize};
-use si_events::{ContentHash, Timestamp, merkle_tree_hash::MerkleTreeHash, ulid::Ulid};
-use si_id::{AttributeValueId, ComponentId};
+use petgraph::{
+    Direction::Incoming,
+    prelude::*,
+    stable_graph::EdgeReference,
+};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ContentHash,
+    Timestamp,
+    merkle_tree_hash::MerkleTreeHash,
+    ulid::Ulid,
+};
+use si_id::{
+    AttributeValueId,
+    ComponentId,
+};
 
 use super::{
-    ArgumentTargets, NodeWeight, NodeWeightDiscriminants, NodeWeightDiscriminants::Component,
-    NodeWeightError, NodeWeightResult, category_node_weight::CategoryNodeKind,
+    ArgumentTargets,
+    NodeWeight,
+    NodeWeightDiscriminants,
+    NodeWeightDiscriminants::Component,
+    NodeWeightError,
+    NodeWeightResult,
+    category_node_weight::CategoryNodeKind,
     traits::CorrectTransformsResult,
 };
 use crate::{
-    DalContext, EdgeWeight, EdgeWeightKind, EdgeWeightKindDiscriminants,
+    DalContext,
+    EdgeWeight,
+    EdgeWeightKind,
+    EdgeWeightKindDiscriminants,
     WorkspaceSnapshotGraphVCurrent,
     layer_db_types::{
-        ComponentContent, ComponentContentDiscriminants, ComponentContentV2, GeometryContent,
+        ComponentContent,
+        ComponentContentDiscriminants,
+        ComponentContentV2,
+        GeometryContent,
         GeometryContentV1,
     },
     workspace_snapshot::{
         NodeInformation,
-        content_address::{ContentAddress, ContentAddressDiscriminants},
+        content_address::{
+            ContentAddress,
+            ContentAddressDiscriminants,
+        },
         graph::{
-            LineageId, WorkspaceSnapshotGraphV4,
-            correct_transforms::add_dependent_value_root_updates, detector::Update,
+            LineageId,
+            WorkspaceSnapshotGraphV4,
+            correct_transforms::add_dependent_value_root_updates,
+            detector::Update,
         },
         node_weight::traits::CorrectTransforms,
     },
