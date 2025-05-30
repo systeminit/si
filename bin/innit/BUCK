@@ -22,6 +22,9 @@ rust_binary(
 docker_image(
     name = "image",
     image_name = "innit",
+    build_args = {
+        "SI_RBE_TOKEN": ""
+    },
     build_deps = ["//bin/innit:innit"],
 )
 
