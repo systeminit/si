@@ -3327,6 +3327,9 @@
   "A message to be included in the email invitation sent to the invited account. Updating this field has no effect.": {
     "enum": null
   },
+  "A metered account is an account that is charged for active IP addresses managed in IPAM": {
+    "enum": null
+  },
   "A name for Redshift DataAPI statement which can be used as filter of ListStatement.": {
     "enum": null
   },
