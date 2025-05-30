@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use serde::{
     Deserialize,
     Serialize,
@@ -8,7 +6,6 @@ use si_events::workspace_snapshot::{
     Checksum,
     ChecksumHasher,
 };
-use strum::IntoEnumIterator;
 
 use crate::{
     checksum::FrontendChecksum,
@@ -51,29 +48,6 @@ pub enum ReferenceKind {
     View,
     ViewComponentList,
     ViewList,
-}
-
-impl ReferenceKind {
-    /// Returns all revision sensitive variants of [`ReferenceKind`]. A variant is revision
-    /// sensitive if its lack of existence in an index will trigger an index update.
-    pub fn revision_sensitive() -> HashSet<Self> {
-        let mut revision_sensitive_kinds = HashSet::new();
-        for kind in Self::iter() {
-            if kind.is_revision_sensitive() {
-                revision_sensitive_kinds.insert(kind);
-            }
-        }
-        revision_sensitive_kinds
-    }
-
-    /// Determines if the current [kind](ReferenceKind) is revision sensitive; meaning its lack of
-    /// existence in an index will trigger an index update.
-    pub fn is_revision_sensitive(&self) -> bool {
-        !matches!(
-            self,
-            Self::ChangeSetList | Self::ChangeSetRecord | Self::MvIndex
-        )
-    }
 }
 
 // Why the #[serde(bound...)] stuff? Well..
