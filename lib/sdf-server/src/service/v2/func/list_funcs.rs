@@ -2,47 +2,32 @@ use std::collections::HashMap;
 
 use axum::{
     Json,
-    extract::{
-        OriginalUri,
-        Path,
-    },
+    extract::OriginalUri,
 };
 use dal::{
-    ChangeSetId,
     DalContext,
     Func,
     SchemaId,
     SchemaVariant,
     SchemaVariantId,
-    WorkspacePk,
     func::binding::FuncBinding,
 };
+use sdf_extract::change_set::ChangeSetDalContext;
 use si_frontend_types as frontend_types;
 use telemetry::prelude::*;
 
 use super::FuncAPIResult;
-use crate::{
-    extract::{
-        HandlerContext,
-        PosthogClient,
-    },
-    service::v2::AccessBuilder,
-};
+use crate::extract::PosthogClient;
 
 pub async fn list_funcs(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
+    ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
     PosthogClient(_posthog_client): PosthogClient,
     OriginalUri(_original_uri): OriginalUri,
-    Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
 ) -> FuncAPIResult<Json<Vec<frontend_types::FuncSummary>>> {
-    let ctx = builder
-        .build(access_builder.build(change_set_id.into()))
-        .await?;
     let mut funcs = Vec::new();
 
-    for func in Func::list_all(&ctx).await? {
-        match treat_single_function(&ctx, &func).await {
+    for func in Func::list_all(ctx).await? {
+        match treat_single_function(ctx, &func).await {
             Ok(None) => {}
             Ok(Some(f)) => {
                 funcs.push(f);
@@ -69,11 +54,11 @@ async fn treat_single_function(
     let mut schema_default_map: HashMap<SchemaId, SchemaVariantId> = HashMap::new();
     let mut unlocked_map: HashMap<SchemaVariantId, bool> = HashMap::new();
 
-    // If func is unlocked or intrinsic, we always use it,
+    // If func is unlocked, intrinsic, or a transformation, we always use it,
     // otherwise we return funcs that are bound to default variants
     // OR not bound to anything, OR editing variants
     // OR bound to variants with components on the canvas
-    if func.is_locked && !func.is_intrinsic() && !bindings.is_empty() {
+    if func.is_locked && !func.is_transformation && !func.is_intrinsic() && !bindings.is_empty() {
         let mut should_hide = true;
         for binding in &bindings {
             let Some(schema_variant_id) = binding.get_schema_variant() else {

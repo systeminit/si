@@ -364,7 +364,7 @@ impl FuncArgument {
         Ok(func_args)
     }
 
-    pub async fn single_arg_for_intrinsic(
+    pub async fn single_arg_for_func(
         ctx: &DalContext,
         intrinsic_id: FuncId,
     ) -> FuncArgumentResult<FuncArgumentId> {

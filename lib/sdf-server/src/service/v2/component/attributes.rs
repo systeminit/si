@@ -19,11 +19,7 @@ use dal::{
         path::AttributePath,
         value::subscription::ValueSubscription,
     },
-    func::{
-        FuncKind,
-        authoring::FuncAuthoringClient,
-        intrinsics::IntrinsicFunc,
-    },
+    func::intrinsics::IntrinsicFunc,
     workspace_snapshot::node_weight::NodeWeight,
 };
 use sdf_core::force_change_set_response::ForceChangeSetResponse;
@@ -198,7 +194,7 @@ async fn update_attributes(
                         component: source_component,
                         path: source_path,
                         keep_existing_subscriptions,
-                        func,
+                        func: func_ident,
                     } => {
                         subscription_count += 1;
 
@@ -233,39 +229,8 @@ async fn update_attributes(
                             subscriptions.push(subscription);
                         }
 
-                        let maybe_func_id = if let Some(_func) = func {
-                            // NOTE(victor): The hardcoded func is temporary, only so we can show prop to prop funcs working on the old ui
-
-                            // TODO go back to this after we can set custom funcs via ui
-                            // func.resolve(ctx).await?
-
-                            let hardcoded_transformation_function =
-                                "make_it_better_01JWA4WGMK00EM4257DAN4MGAX";
-
-                            if let id @ Some(_) = Func::find_id_by_name_and_kind(
-                                ctx,
-                                hardcoded_transformation_function,
-                                FuncKind::Attribute,
-                            )
-                            .await?
-                            {
-                                id
-                            } else {
-                                let func = FuncAuthoringClient::create_new_transformation_func(
-                                    ctx,
-                                    Some(hardcoded_transformation_function.to_string()),
-                                )
-                                .await?;
-
-                                FuncAuthoringClient::save_code(
-                                    ctx,
-                                    func.id,
-                                    "function main({input}) {return `${ input }, but better`;}",
-                                )
-                                .await?;
-
-                                Some(func.id)
-                            }
+                        let maybe_func_id = if let Some(func) = func_ident {
+                            func.resolve(ctx).await?
                         } else {
                             None
                         };
