@@ -41,6 +41,7 @@ use crate::{
         ChangeSetProcessorTask,
         ChangeSetProcessorTaskError,
     },
+    compresing_stream::CompressingStream,
 };
 
 #[remain::sorted]
@@ -126,11 +127,11 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         .messages()
         .await
         .map_err(HandlerError::Subscribe)?;
+    let incoming = CompressingStream::new(incoming, requests_stream.clone());
 
     let processor_task = ChangeSetProcessorTask::create(
         metadata.clone(),
         nats,
-        requests_stream.clone(),
         incoming,
         frigg,
         workspace.id,

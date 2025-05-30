@@ -4,9 +4,12 @@ use thiserror::Error;
 
 mod app_state;
 mod change_set_processor_task;
+pub mod compresing_stream;
+pub mod compressed_request;
 mod config;
 pub mod extract;
 mod handlers;
+mod local_message;
 mod server;
 pub use si_settings::{
     ConfigMap,
