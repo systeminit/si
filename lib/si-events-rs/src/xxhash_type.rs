@@ -117,6 +117,29 @@ macro_rules! create_xxhash_type {
 
                     Ok($name(hash_bytes))
                 }
+
+                fn visit_seq<V>(self, mut seq: V) -> Result<Self::Value, V::Error>
+                where
+                    V: ::serde::de::SeqAccess<'de>,
+                {
+                    use ::serde::de::Error;
+
+                    if seq.size_hint().is_some() && seq.size_hint() != Some($crate::xxhash_type::XXH3_HASH_SIZE) {
+                        return Err(V::Error::custom(std::concat!("deserializer received wrong sized byte slice when attempting to deserialize a ", stringify!($name))));
+                    }
+                    let mut hash_bytes = Vec::with_capacity($crate::xxhash_type::XXH3_HASH_SIZE);
+                    while let Some(v) = seq.next_element()? {
+                        hash_bytes.push(v);
+                    }
+                    if hash_bytes.len() != $crate::xxhash_type::XXH3_HASH_SIZE {
+                        return Err(V::Error::custom(std::concat!("deserializer received wrong sized byte slice when attempting to deserialize a ", stringify!($name))));
+                    }
+
+                    let mut bytes_slice = [0u8; $crate::xxhash_type::XXH3_HASH_SIZE];
+                    bytes_slice.copy_from_slice(&hash_bytes);
+
+                    Ok($name(bytes_slice))
+                }
             }
 
             impl<'de> ::serde::Deserialize<'de> for $name {
