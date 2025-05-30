@@ -9,7 +9,6 @@ use dal::{
     PropId,
     SchemaVariant,
     SchemaVariantId,
-    prop::PropPath,
     property_editor::schema::WidgetKind,
 };
 use si_frontend_mv_types::schema_variant::prop_tree::{
@@ -96,22 +95,7 @@ pub async fn assemble_prop(
             .collect::<WidgetOptions>()
     });
     let default_can_be_set_by_socket = !prop.input_socket_sources(ctx).await?.is_empty();
-    let origin_secret_prop_id = if SchemaVariant::is_secret_defining(ctx, schema_variant_id).await?
-    {
-        let output_socket =
-            SchemaVariant::find_output_socket_for_secret_defining_id(ctx, schema_variant_id)
-                .await?;
-        Some(
-            Prop::find_prop_id_by_path(
-                ctx,
-                schema_variant_id,
-                &PropPath::new(["root", "secrets", output_socket.name()]),
-            )
-            .await?,
-        )
-    } else {
-        None
-    };
+    let secret_definition = crate::secret::find_definition(ctx, schema_variant_id, prop_id).await?;
 
     let path = prop.path(ctx).await?.to_string();
     let prop_mv = PropMv {
@@ -152,10 +136,8 @@ pub async fn assemble_prop(
         documentation: prop.documentation,
         validation_format: prop.validation_format,
         default_can_be_set_by_socket,
-        is_origin_secret: match origin_secret_prop_id {
-            Some(prop_id) => prop_id == prop.id,
-            None => false,
-        },
+        is_origin_secret: secret_definition.is_some(),
+        secret_definition,
         create_only: is_create_only,
         hidden: prop.hidden,
         eligible_to_receive_data: {

@@ -7,7 +7,6 @@ use serde::{
 use si_id::{
     AttributeValueId,
     PropId,
-    SecretId,
 };
 use strum::Display;
 
@@ -61,7 +60,7 @@ pub struct AttributeValue {
     pub is_controlled_by_dynamic_func: bool, // props driven by non-dynamic funcs have a statically set value
     pub overridden: bool, // true if this prop has a different controlling func id than the default for this asset
     pub validation: Option<ValidationOutput>,
-    pub secret_id: Option<SecretId>,
+    pub secret: Option<Secret>,
 }
 
 #[derive(
@@ -78,7 +77,6 @@ pub struct AttributeTree {
     pub attribute_values: HashMap<AttributeValueId, AttributeValue>,
     pub props: HashMap<PropId, Prop>,
     pub tree_info: HashMap<AttributeValueId, AvTreeInfo>,
-    pub secrets: HashMap<SecretId, Secret>,
 }
 
 #[derive(

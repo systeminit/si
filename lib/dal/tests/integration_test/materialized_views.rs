@@ -148,15 +148,6 @@ async fn schema_variant(ctx: &DalContext) -> Result<()> {
 }
 
 #[test]
-async fn secret_definition_list(ctx: &DalContext) -> Result<()> {
-    // NOTE(brit): right now, this test basically just makes sure this does not regress and
-    // provides a psuedo-benchmark for generating MVs for a schema.
-    dal_materialized_views::secret::secret_definition_list::assemble(ctx.clone()).await?;
-
-    Ok(())
-}
-
-#[test]
 async fn component(ctx: &DalContext) -> Result<()> {
     let components = dal_materialized_views::component_list::assemble(ctx.clone()).await?;
     assert_eq!(

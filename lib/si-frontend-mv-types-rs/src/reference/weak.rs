@@ -103,17 +103,4 @@ pub mod markers {
     impl ReferenceKindMarker for SchemaVariant {
         const REFERENCE_KIND: ReferenceKind = ReferenceKind::SchemaVariant;
     }
-
-    /// A weak reference marker for [`ReferenceKind::SecretDefinition`].
-    #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
-    pub struct SecretDefinition;
-    impl ReferenceKindMarker for SecretDefinition {
-        const REFERENCE_KIND: ReferenceKind = ReferenceKind::SecretDefinition;
-    }
-    /// A weak reference marker for [`ReferenceKind::Secret`].
-    #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
-    pub struct Secret;
-    impl ReferenceKindMarker for Secret {
-        const REFERENCE_KIND: ReferenceKind = ReferenceKind::Secret;
-    }
 }

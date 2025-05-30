@@ -293,6 +293,7 @@ export interface Prop {
   validationFormation?: string;
   defaultCanBeSetBySocket: boolean;
   isOriginSecret: boolean;
+  secretDefinition?: SecretDefinition;
   createOnly: boolean;
   // this is for output sources
   eligibleToReceiveData: boolean;
@@ -313,7 +314,7 @@ export interface AttributeValue {
   isControlledByDynamicFunc: boolean;
   overriden: boolean;
   validation?: ValidationOutput;
-  secretId: string | null;
+  secret: Secret | null;
 }
 
 export interface AVTree {
@@ -325,7 +326,6 @@ export interface AttributeTree {
   attributeValues: Record<AttributeValueId, AttributeValue>;
   props: Record<PropId, Prop>;
   treeInfo: Record<AttributeValueId, AVTree>;
-  secrets: Record<string, EddaSecret>; // we dont need the weakref data when its assigned
 }
 
 // EntityKind.IncomingConnectionsList
@@ -417,21 +417,11 @@ export interface SecretFormDataView {
 }
 
 export interface SecretDefinition {
-  id: PropId;
   label: string;
   formData: Array<SecretFormDataView>;
 }
 
-export interface EddaSecret {
-  id: string;
-  name: string;
-  label: string;
-  description?: string;
-  isUsable: boolean;
-  definitionId: WeakReference<EntityKind.SecretDefinition>;
-}
-
-export interface BifrostSecret {
+export interface Secret {
   // The [`id`](SecretId) of a [`Secret`].
   id: string;
   // The name of a [`Secret`] as provided by the user.
@@ -442,26 +432,4 @@ export interface BifrostSecret {
   description?: string;
   // If the secret can be used on this workspace
   isUsable: boolean;
-  // The prop that contains the secret definition
-  definition: SecretDefinition;
-}
-
-export interface EddaSecretDefinitionList {
-  id: string;
-  secretDefinitions: Array<WeakReference<EntityKind.SecretDefinition>>;
-}
-
-export interface EddaSecretList {
-  id: string;
-  secrets: Array<WeakReference<EntityKind.Secret>>;
-}
-
-export interface BifrostSecretList {
-  id: string;
-  secrets: Array<BifrostSecret>;
-}
-
-export interface BifrostSecretDefinitionList {
-  id: string;
-  secretDefinitions: Array<SecretDefinition>;
 }

@@ -146,6 +146,7 @@
             <div>
               <template v-if="isArray"> Add an array item </template>
               <template v-else-if="isMap"> Enter a key </template>
+              <template v-else-if="isSecret"> Select a secret </template>
               <template v-else> Enter a value </template>
             </div>
             <div
@@ -199,6 +200,7 @@
               <template v-else-if="field.state.value">
                 "{{ field.state.value }}"
               </template>
+              <template v-else-if="isSecret"> Select a Secret</template>
               <template v-else> Set to no value</template>
             </TruncateWithTooltip>
             <div
@@ -436,6 +438,7 @@ const props = defineProps<{
   isSetByConnection?: boolean;
   isArray?: boolean;
   isMap?: boolean;
+  isSecret?: boolean;
 }>();
 
 // TODO(Wendy) - come back to this code when we wanna make the input float again
@@ -494,7 +497,7 @@ const maybeOptions = computed<{
   hasOptions: boolean;
   options: LabelList<AttrOption>;
 }>(() => {
-  if (!props.kind) return { hasOptions: false, options: [] };
+  if (!props.kind || props.isSecret) return { hasOptions: false, options: [] };
 
   if (props.kind === "boolean") {
     return {
@@ -871,7 +874,11 @@ const filteredConnections = computed(() => {
 
     addToOutput(potentialConnQuery.data.value.exactMatches);
     addToOutput(potentialConnQuery.data.value.typeMatches);
-    addToOutput(potentialConnQuery.data.value.nonMatches);
+
+    // todo: rethink this for secrets
+    if (!props.isSecret) {
+      addToOutput(potentialConnQuery.data.value.nonMatches);
+    }
   }
 
   return output;
