@@ -49,59 +49,88 @@ impl CompressedRequest {
     // awaiting futures in this code and as it affects the `CompressingStream` we're going to leave
     // it this way with future compat in mind.
     pub async fn from_requests(requests: Vec<EddaRequestKind>) -> Result<Self> {
+        // If list is empty, return error--this is an invalid pre-condition for this function
         if requests.is_empty() {
             return Err(Error::NoRequests);
         }
 
+        // If all requests are updates, assert it's a contiguous series (i.e. last `to` is current
+        // `from`, etc.)
         if requests
             .iter()
-            .any(|request| matches!(request, EddaRequestKind::Rebuild(_)))
+            .all(|request| matches!(request, EddaRequestKind::Update(_)))
+        {
+            let mut final_from_snapshot_address = None;
+            let mut final_to_snapshot_address = None;
+
+            let mut prev_to_snapshot_address: Option<WorkspaceSnapshotAddress> = None;
+
+            let mut change_batch_addresses = Vec::new();
+
+            for request in requests {
+                match request {
+                    EddaRequestKind::Update(request) => {
+                        if final_from_snapshot_address.is_none() {
+                            // Set final `from` addr from first request
+                            final_from_snapshot_address = Some(request.from_snapshot_address);
+                        }
+                        // Last time through loop sets the final `to` addr
+                        final_to_snapshot_address = Some(request.to_snapshot_address);
+
+                        if let Some(prev_to_snapshot_address) = prev_to_snapshot_address {
+                            if prev_to_snapshot_address != request.from_snapshot_address {
+                                // If the previous `to` is not current `from` then there is a gap
+                                // in the updates and we revert to a rebuild
+                                return Ok(Self::Rebuild);
+                            }
+                        }
+
+                        // Update variable for next loop iteration
+                        prev_to_snapshot_address = Some(request.to_snapshot_address);
+
+                        change_batch_addresses.push(request.change_batch_address);
+                    }
+                    _ => unreachable!("vec only contains update requests"),
+                }
+            }
+
+            return Ok(Self::Update {
+                from_snapshot_address: final_from_snapshot_address
+                    .expect("option is populated in loop"),
+                to_snapshot_address: final_to_snapshot_address
+                    .expect("option is populated in loop"),
+                change_batch_addresses,
+            });
+        }
+
+        // If all requests are rebuilds, then return a single one
+        if requests
+            .iter()
+            .all(|request| matches!(request, EddaRequestKind::Rebuild(_)))
         {
             return Ok(Self::Rebuild);
         }
 
-        let mut from_snapshot_address = None;
-        let mut to_snapshot_address = None;
-        let mut change_batch_addresses = Vec::new();
-
-        for request in requests {
-            match request {
-                EddaRequestKind::NewChangeSet(_request) => {
-                    // Self::NewChangeSet {
-                    //     base_change_set_id: request.base_change_set_id,
-                    //     new_change_set_id: request.new_change_set_id,
-                    //     to_snapshot_address: request.to_snapshot_address,
-                    // };
-                    todo!("FIXME");
-                }
-                EddaRequestKind::Update(request) => {
-                    // Set from addr if not yet set (i.e. it's the first/oldest from addr)
-                    if from_snapshot_address.is_none() {
-                        from_snapshot_address = Some(request.from_snapshot_address);
-                    }
-                    // Set to addr (last element to set this is the last/newest to addr)
-                    to_snapshot_address = Some(request.to_snapshot_address);
-
-                    change_batch_addresses.push(request.change_batch_address);
-                }
-                EddaRequestKind::Rebuild(_) => {
-                    // We already scanned for rebuilds so this match arm should not fire
-                    continue;
-                }
-            }
-        }
-
-        let (to_snapshot_address, from_snapshot_address) =
-            match (to_snapshot_address, from_snapshot_address) {
-                (Some(to), Some(from)) => (to, from),
-                _ => return Err(Error::InternalError),
+        // If all requests are new change sets, then return the first one
+        if requests
+            .iter()
+            .all(|request| matches!(request, EddaRequestKind::NewChangeSet(_)))
+        {
+            let request = match requests.first() {
+                Some(EddaRequestKind::NewChangeSet(request)) => request,
+                _ => unreachable!("vec contains at least one new change set request"),
             };
 
-        Ok(Self::Update {
-            from_snapshot_address,
-            to_snapshot_address,
-            change_batch_addresses,
-        })
+            return Ok(Self::NewChangeSet {
+                base_change_set_id: request.base_change_set_id,
+                new_change_set_id: request.new_change_set_id,
+                to_snapshot_address: request.to_snapshot_address,
+                change_batch_addresses: Vec::new(),
+            });
+        }
+
+        // Option of last resort!
+        Ok(Self::Rebuild)
     }
 }
 
@@ -122,26 +151,25 @@ mod tests {
             .map(EddaRequestKind::NewChangeSet)
             .collect();
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        match compressed_request {
+        match compressed {
             CompressedRequest::NewChangeSet {
                 base_change_set_id,
                 new_change_set_id,
                 to_snapshot_address,
+                change_batch_addresses,
             } => {
-                let compressed = inputs.first().unwrap();
+                let input = inputs.first().unwrap();
 
-                assert_eq!(compressed.base_change_set_id, base_change_set_id);
-                assert_eq!(compressed.new_change_set_id, new_change_set_id);
-                assert_eq!(compressed.to_snapshot_address, to_snapshot_address);
+                assert_eq!(input.base_change_set_id, base_change_set_id);
+                assert_eq!(input.new_change_set_id, new_change_set_id);
+                assert_eq!(input.to_snapshot_address, to_snapshot_address);
+                assert!(change_batch_addresses.is_empty());
             }
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -155,26 +183,25 @@ mod tests {
             .map(EddaRequestKind::NewChangeSet)
             .collect();
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        match compressed_request {
+        match compressed {
             CompressedRequest::NewChangeSet {
                 base_change_set_id,
                 new_change_set_id,
                 to_snapshot_address,
+                change_batch_addresses,
             } => {
-                let compressed = inputs.first().unwrap();
+                let inputs = inputs.first().unwrap();
 
-                assert_eq!(compressed.base_change_set_id, base_change_set_id);
-                assert_eq!(compressed.new_change_set_id, new_change_set_id);
-                assert_eq!(compressed.to_snapshot_address, to_snapshot_address);
+                assert_eq!(inputs.base_change_set_id, base_change_set_id);
+                assert_eq!(inputs.new_change_set_id, new_change_set_id);
+                assert_eq!(inputs.to_snapshot_address, to_snapshot_address);
+                assert!(change_batch_addresses.is_empty());
             }
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -188,11 +215,11 @@ mod tests {
             .map(EddaRequestKind::Update)
             .collect();
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        match compressed_request {
+        match compressed {
             CompressedRequest::Update {
                 from_snapshot_address,
                 to_snapshot_address,
@@ -204,16 +231,13 @@ mod tests {
                 assert_eq!(update.to_snapshot_address, to_snapshot_address);
                 assert_eq!(vec![update.change_batch_address], change_batch_addresses);
             }
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
     #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
     #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
-    async fn multiple_updates() {
+    async fn multiple_contiguous_updates() {
         let inputs = contiguous_update_requests(3);
         let requests: Vec<_> = inputs
             .clone()
@@ -221,11 +245,11 @@ mod tests {
             .map(EddaRequestKind::Update)
             .collect();
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        match compressed_request {
+        match compressed {
             CompressedRequest::Update {
                 from_snapshot_address,
                 to_snapshot_address,
@@ -239,10 +263,31 @@ mod tests {
                 assert_eq!(last_to, to_snapshot_address);
                 assert_eq!(addresses, change_batch_addresses);
             }
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+        }
+    }
+
+    #[allow(clippy::disallowed_methods)] // `$RUST_LOG` is checked for in macro
+    #[test(tokio::test(flavor = "multi_thread", worker_threads = 1))]
+    async fn multiple_discontiguous_updates() {
+        let inputs = contiguous_update_requests(5);
+        let mut requests: Vec<_> = inputs
+            .clone()
+            .into_iter()
+            .map(EddaRequestKind::Update)
+            .collect();
+        requests.remove(2);
+
+        let compressed = CompressedRequest::from_requests(requests)
+            .await
+            .expect("failed to compress requests");
+
+        match compressed {
+            // gaps in updates should lead to a rebuild
+            CompressedRequest::Rebuild => {
+                // compressed request is a rebuild
+            }
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -256,18 +301,15 @@ mod tests {
             .map(EddaRequestKind::Rebuild)
             .collect();
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        match compressed_request {
+        match compressed {
             CompressedRequest::Rebuild => {
                 // compressed request is a rebuild
             }
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -281,18 +323,15 @@ mod tests {
             .map(EddaRequestKind::Rebuild)
             .collect();
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        match compressed_request {
+        match compressed {
             CompressedRequest::Rebuild => {
                 // compressed request is a rebuild
             }
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -320,23 +359,29 @@ mod tests {
             .map(EddaRequestKind::Update)
             .collect();
         // Insert a new change set into the start of stream of updates
-        requests.insert(
-            0,
-            EddaRequestKind::NewChangeSet(identical_new_change_set_requests(1).pop().unwrap()),
-        );
+        let ncsr = identical_new_change_set_requests(1).pop().unwrap();
+        requests.insert(0, EddaRequestKind::NewChangeSet(ncsr.clone()));
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        // new change set but with batch address populated
-        todo!("FIXME: what's the right message here?");
+        match compressed {
+            // new change set with batch addresses from updates
+            CompressedRequest::NewChangeSet {
+                base_change_set_id,
+                new_change_set_id,
+                to_snapshot_address,
+                change_batch_addresses,
+            } => {
+                let addresses: Vec<_> = inputs.iter().map(|r| r.change_batch_address).collect();
 
-        match compressed_request {
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+                assert_eq!(ncsr.base_change_set_id, base_change_set_id);
+                assert_eq!(ncsr.new_change_set_id, new_change_set_id);
+                assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
+                assert_eq!(addresses, change_batch_addresses);
+            }
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -355,19 +400,27 @@ mod tests {
         requests.insert(0, EddaRequestKind::NewChangeSet(ncsr.clone()));
         requests.insert(3, EddaRequestKind::NewChangeSet(ncsr.clone()));
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        // filter out the second new change set and return new change set with batch address
-        // populated
-        todo!("FIXME: what's the right message here?");
+        match compressed {
+            // new change set with batch address from updates
+            // (filter out the second identical new change set)
+            CompressedRequest::NewChangeSet {
+                base_change_set_id,
+                new_change_set_id,
+                to_snapshot_address,
+                change_batch_addresses,
+            } => {
+                let addresses: Vec<_> = inputs.iter().map(|r| r.change_batch_address).collect();
 
-        match compressed_request {
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+                assert_eq!(ncsr.base_change_set_id, base_change_set_id);
+                assert_eq!(ncsr.new_change_set_id, new_change_set_id);
+                assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
+                assert_eq!(addresses, change_batch_addresses);
+            }
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -377,22 +430,30 @@ mod tests {
         let ncsr = identical_new_change_set_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::NewChangeSet(ncsr),
+            EddaRequestKind::NewChangeSet(ncsr.clone()),
             EddaRequestKind::Rebuild(rr),
         ];
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        // try the copy & drop rebuild (the consumer would fall back to rebuild if the copy failed)
-        todo!("FIXME: what's the right message here?");
-
-        match compressed_request {
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+        match compressed {
+            // new change set
+            // (drop rebuild. remember: the consumer of this request will fall back to a rebuild if
+            // the index copy fails)
+            CompressedRequest::NewChangeSet {
+                base_change_set_id,
+                new_change_set_id,
+                to_snapshot_address,
+                change_batch_addresses,
+            } => {
+                assert_eq!(ncsr.base_change_set_id, base_change_set_id);
+                assert_eq!(ncsr.new_change_set_id, new_change_set_id);
+                assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
+                assert!(change_batch_addresses.is_empty());
+            }
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -403,22 +464,29 @@ mod tests {
         let rr = rebuild_request();
         let requests = vec![
             EddaRequestKind::Rebuild(rr),
-            EddaRequestKind::NewChangeSet(ncsr),
+            EddaRequestKind::NewChangeSet(ncsr.clone()),
         ];
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        // try the copy & drop rebuild (we'll assume this is a multi client requests coming in out
-        // of order)
-        todo!("FIXME: what's the right message here?");
-
-        match compressed_request {
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+        match compressed {
+            // new change set
+            // (drop rebuild. we'll assume this is a case with multiple clients with requests
+            // coming in out of order)
+            CompressedRequest::NewChangeSet {
+                base_change_set_id,
+                new_change_set_id,
+                to_snapshot_address,
+                change_batch_addresses,
+            } => {
+                assert_eq!(ncsr.base_change_set_id, base_change_set_id);
+                assert_eq!(ncsr.new_change_set_id, new_change_set_id);
+                assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
+                assert!(change_batch_addresses.is_empty());
+            }
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -429,23 +497,32 @@ mod tests {
         let ur = contiguous_update_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::NewChangeSet(ncsr),
-            EddaRequestKind::Update(ur),
+            EddaRequestKind::NewChangeSet(ncsr.clone()),
+            EddaRequestKind::Update(ur.clone()),
             EddaRequestKind::Rebuild(rr),
         ];
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        // new change set with updates and drop rebuild
-        todo!("FIXME: what's the right message here?");
+        match compressed {
+            // new change set with updates
+            // (drop rebuild)
+            CompressedRequest::NewChangeSet {
+                base_change_set_id,
+                new_change_set_id,
+                to_snapshot_address,
+                change_batch_addresses,
+            } => {
+                let addresses = vec![ur.change_batch_address];
 
-        match compressed_request {
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+                assert_eq!(ncsr.base_change_set_id, base_change_set_id);
+                assert_eq!(ncsr.new_change_set_id, new_change_set_id);
+                assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
+                assert_eq!(addresses, change_batch_addresses);
+            }
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -456,23 +533,32 @@ mod tests {
         let ur = contiguous_update_requests(1).pop().unwrap();
         let rr = rebuild_request();
         let requests = vec![
-            EddaRequestKind::NewChangeSet(ncsr),
+            EddaRequestKind::NewChangeSet(ncsr.clone()),
             EddaRequestKind::Rebuild(rr),
-            EddaRequestKind::Update(ur),
+            EddaRequestKind::Update(ur.clone()),
         ];
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        todo!("FIXME: what's the right message here?");
+        match compressed {
+            // new change set with updates
+            // (drop rebuild)
+            CompressedRequest::NewChangeSet {
+                base_change_set_id,
+                new_change_set_id,
+                to_snapshot_address,
+                change_batch_addresses,
+            } => {
+                let addresses = vec![ur.change_batch_address];
 
-        // new change set with updates and drop rebuild
-        match compressed_request {
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+                assert_eq!(ncsr.base_change_set_id, base_change_set_id);
+                assert_eq!(ncsr.new_change_set_id, new_change_set_id);
+                assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
+                assert_eq!(addresses, change_batch_addresses);
+            }
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -488,18 +574,16 @@ mod tests {
             EddaRequestKind::Rebuild(rr),
         ];
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        // this is a bit nonsense, so rebuild
-        todo!("FIXME: what's the right message here?");
-
-        match compressed_request {
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+        match compressed {
+            // this is a bit nonsense, so rebuild
+            CompressedRequest::Rebuild => {
+                // compressed request is a rebuild
+            }
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -515,18 +599,16 @@ mod tests {
             EddaRequestKind::NewChangeSet(ncsr),
         ];
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        // this is a bit nonsense, so rebuild
-        todo!("FIXME: what's the right message here?");
-
-        match compressed_request {
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+        match compressed {
+            // this is a bit nonsense, so rebuild
+            CompressedRequest::Rebuild => {
+                // compressed request is a rebuild
+            }
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -542,18 +624,16 @@ mod tests {
             EddaRequestKind::Update(ur),
         ];
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        // this is a bit nonsense, so rebuild
-        todo!("FIXME: what's the right message here?");
-
-        match compressed_request {
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+        match compressed {
+            // this is a bit nonsense, so rebuild
+            CompressedRequest::Rebuild => {
+                // compressed request is a rebuild
+            }
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -569,18 +649,16 @@ mod tests {
             EddaRequestKind::NewChangeSet(ncsr),
         ];
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        // this is a bit nonsense, so rebuild
-        todo!("FIXME: what's the right message here?");
-
-        match compressed_request {
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+        match compressed {
+            // this is a bit nonsense, so rebuild
+            CompressedRequest::Rebuild => {
+                // compressed request is a rebuild
+            }
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -596,18 +674,15 @@ mod tests {
         // Insert a rebuild into the stream of updates, mid-list
         requests.insert(4, EddaRequestKind::Rebuild(rebuild_request()));
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        match compressed_request {
+        match compressed {
             CompressedRequest::Rebuild => {
                 // compressed request is a rebuild
             }
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 
@@ -625,18 +700,15 @@ mod tests {
         requests.insert(2, EddaRequestKind::Rebuild(rebuild_request()));
         requests.insert(4, EddaRequestKind::Rebuild(rebuild_request()));
 
-        let compressed_request = CompressedRequest::from_requests(requests)
+        let compressed = CompressedRequest::from_requests(requests)
             .await
             .expect("failed to compress requests");
 
-        match compressed_request {
+        match compressed {
             CompressedRequest::Rebuild => {
                 // compressed request is a rebuild
             }
-            _ => panic!(
-                "wrong variant for compressed request: {:?}",
-                compressed_request
-            ),
+            _ => panic!("wrong variant for compressed request: {:?}", compressed),
         }
     }
 

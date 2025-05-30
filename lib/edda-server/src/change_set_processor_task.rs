@@ -390,7 +390,10 @@ mod handlers {
                 base_change_set_id: _,
                 new_change_set_id: _,
                 to_snapshot_address,
+                change_batch_addresses,
             } => {
+                todo!("FIXME: deal with change_batch_addresses");
+
                 //
                 materialized_view::reuse_or_rebuild_index_for_new_change_set(
                     ctx,
