@@ -63,6 +63,10 @@ where
     pub fn weight(&self) -> &'a E {
         self.weight
     }
+
+    pub fn triplet(&self) -> (SplitGraphNodeId, K, SplitGraphNodeId) {
+        (self.source(), self.weight().kind(), self.target())
+    }
 }
 
 pub struct SplitGraphEdges<'a, N, E, K>

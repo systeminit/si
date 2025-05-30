@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{
+    BTreeMap,
+    HashMap,
+};
 
 use petgraph::prelude::*;
 use serde::{
@@ -10,6 +13,10 @@ use si_events::{
     merkle_tree_hash::MerkleTreeHash,
     ulid::Ulid,
 };
+use si_split_graph::{
+    SplitGraphNodeId,
+    SplitGraphNodeWeight,
+};
 
 use super::{
     NodeWeight,
@@ -20,6 +27,7 @@ use super::{
 };
 use crate::{
     ComponentId,
+    EdgeWeight,
     EdgeWeightKindDiscriminants,
     SocketArity,
     WorkspaceSnapshotGraphVCurrent,
@@ -38,6 +46,7 @@ use crate::{
             NodeWeightResult,
             traits::CorrectTransforms,
         },
+        split_snapshot,
     },
 };
 
@@ -333,4 +342,140 @@ impl CorrectTransforms for ContentNodeWeight {
             _ => updates,
         })
     }
+}
+
+impl
+    split_snapshot::corrections::CorrectTransforms<
+        NodeWeight,
+        EdgeWeight,
+        EdgeWeightKindDiscriminants,
+    > for ContentNodeWeight
+{
+    fn correct_transforms(
+        &self,
+        graph: &si_split_graph::SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+        updates: Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+        _from_different_change_set: bool,
+    ) -> split_snapshot::corrections::CorrectTransformsResult<
+        Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+    > {
+        Ok(match self.content_address_discriminants() {
+            ContentAddressDiscriminants::AttributePrototype => {
+                protect_arity_for_input_socket_split(graph, updates, self)?
+            }
+            _ => updates,
+        })
+    }
+}
+
+fn remove_outgoing_prototype_argument_value_targets_to_dest_split(
+    graph: &si_split_graph::SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+    prototype_id: SplitGraphNodeId,
+    destination_component_id: ComponentId,
+) -> split_snapshot::corrections::CorrectTransformsResult<
+    Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+> {
+    let mut remove_updates = vec![];
+
+    let triplets: Vec<_> = graph
+        .edges_directed_for_edge_weight_kind(
+            prototype_id,
+            Outgoing,
+            EdgeWeightKindDiscriminants::PrototypeArgument,
+        )?
+        .filter(|edge_ref| {
+            graph
+                .node_weight(edge_ref.target())
+                .is_some_and(|weight| match weight {
+                    NodeWeight::AttributePrototypeArgument(apa_inner) => {
+                        apa_inner.targets().is_some_and(|targets| {
+                            targets.destination_component_id == destination_component_id
+                        })
+                    }
+                    _ => false,
+                })
+        })
+        .map(|edge_ref| edge_ref.triplet())
+        .collect();
+
+    for (source_id, kind, target_id) in triplets {
+        remove_updates.extend(si_split_graph::Update::remove_edge_updates(
+            graph, source_id, kind, target_id,
+        )?);
+    }
+
+    Ok(remove_updates)
+}
+
+fn protect_arity_for_input_socket_split(
+    graph: &si_split_graph::SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+    mut updates: Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+    self_node: &ContentNodeWeight,
+) -> split_snapshot::corrections::CorrectTransformsResult<
+    Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+> {
+    let mut new_updates = vec![];
+
+    if !graph.node_exists(self_node.id()) {
+        return Ok(updates);
+    }
+
+    let Some(input_socket_inner) = graph
+        .incoming_sources(self_node.id(), EdgeWeightKindDiscriminants::Prototype)?
+        .filter_map(|source_id| graph.node_weight(source_id))
+        .next()
+        .and_then(|node_weight| match node_weight {
+            NodeWeight::InputSocket(inner) => Some(inner.inner()),
+            _ => None,
+        })
+    else {
+        return Ok(updates);
+    };
+
+    if input_socket_inner.arity() != SocketArity::One {
+        return Ok(updates);
+    }
+
+    let mut new_node_map = BTreeMap::new();
+
+    for update in &updates {
+        match update {
+            si_split_graph::Update::NewNode { node_weight, .. } => {
+                if let SplitGraphNodeWeight::Custom(NodeWeight::AttributePrototypeArgument(
+                    apa_inner,
+                )) = node_weight
+                {
+                    new_node_map.insert(node_weight.id(), apa_inner);
+                }
+            }
+            si_split_graph::Update::NewEdge { destination, .. }
+                if update.source_has_id(self_node.id())
+                    && update
+                        .is_of_custom_edge_kind(EdgeWeightKindDiscriminants::PrototypeArgument) =>
+            {
+                if let Some(&new_apa) = new_node_map.get(&destination.id) {
+                    let targets = match new_apa.targets() {
+                        Some(targets) => targets,
+                        None => {
+                            // No targets, then we don't want you
+                            continue;
+                        }
+                    };
+
+                    new_updates.extend(
+                        remove_outgoing_prototype_argument_value_targets_to_dest_split(
+                            graph,
+                            self_node.id(),
+                            targets.destination_component_id,
+                        )?,
+                    );
+                }
+            }
+            _ => {}
+        }
+    }
+
+    updates.extend(new_updates);
+
+    Ok(updates)
 }

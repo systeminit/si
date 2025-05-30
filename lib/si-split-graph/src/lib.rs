@@ -1,7 +1,6 @@
 use std::{
     collections::{
         BTreeMap,
-        BTreeSet,
         HashSet,
         VecDeque,
     },
@@ -330,6 +329,13 @@ where
     pub fn custom(&self) -> Option<&E> {
         match self {
             SplitGraphEdgeWeight::Custom(weight) => Some(weight),
+            _ => None,
+        }
+    }
+
+    pub fn custom_kind(&self) -> Option<K> {
+        match self {
+            SplitGraphEdgeWeight::Custom(weight) => Some(weight.kind()),
             _ => None,
         }
     }
@@ -707,6 +713,11 @@ where
             .find(|subgraph| subgraph.node_id_to_index(node_id).is_some())
     }
 
+    pub fn subgraph_root_id_for_node(&self, node_id: SplitGraphNodeId) -> Option<SplitGraphNodeId> {
+        self.subgraph_for_node(node_id)
+            .and_then(|subgraph| subgraph.root_id())
+    }
+
     pub fn subgraph_mut_for_node(
         &mut self,
         node_id: SplitGraphNodeId,
@@ -816,6 +827,10 @@ where
 
     pub fn node_weight(&self, node_id: SplitGraphNodeId) -> Option<&N> {
         self.raw_node_weight(node_id).and_then(|node| node.custom())
+    }
+
+    pub fn node_exists(&self, node_id: SplitGraphNodeId) -> bool {
+        self.node_weight(node_id).is_some()
     }
 
     pub fn raw_node_weight_mut(
@@ -1476,6 +1491,42 @@ where
         }))
     }
 
+    pub fn incoming_edges(
+        &self,
+        to_id: SplitGraphNodeId,
+        kind: K,
+    ) -> SplitGraphResult<impl Iterator<Item = SplitGraphEdgeReference<'_, E, K>> + '_> {
+        self.edges_directed_for_edge_weight_kind(to_id, Incoming, kind)
+    }
+
+    pub fn incoming_sources(
+        &self,
+        to_id: SplitGraphNodeId,
+        kind: K,
+    ) -> SplitGraphResult<impl Iterator<Item = SplitGraphNodeId> + '_> {
+        Ok(self
+            .incoming_edges(to_id, kind)?
+            .map(|edge_ref| edge_ref.source()))
+    }
+
+    pub fn outgoing_edges(
+        &self,
+        from_id: SplitGraphNodeId,
+        kind: K,
+    ) -> SplitGraphResult<impl Iterator<Item = SplitGraphEdgeReference<'_, E, K>> + '_> {
+        self.edges_directed_for_edge_weight_kind(from_id, Outgoing, kind)
+    }
+
+    pub fn outgoing_targets(
+        &self,
+        from_id: SplitGraphNodeId,
+        kind: K,
+    ) -> SplitGraphResult<impl Iterator<Item = SplitGraphNodeId> + '_> {
+        Ok(self
+            .outgoing_edges(from_id, kind)?
+            .map(|edge_ref| edge_ref.target()))
+    }
+
     pub fn edges_directed_for_edge_weight_kind(
         &self,
         from_id: SplitGraphNodeId,
@@ -1794,9 +1845,9 @@ where
 
         let mut final_changes = vec![];
 
-        // Now that we've detected all the changed nodes in every subgraph, we need to detect all the
-        // parents of these changed nodes, *across* subgraphs, since these will have also changed.
-        // reversed so that parents come before children in the finalized list
+        // Now that we've detected all the changed nodes in every subgraph, we need to detect all
+        // the parents of these changed nodes, *across* subgraphs, since these will have also
+        // changed. reversed so that parents come before children in the finalized list
         for change in &changes {
             // We want to prefer nodes in the updated graph, since those will be the
             // updated version of these nodes, but when the change is a removal,
@@ -1831,12 +1882,11 @@ where
                     | weight @ SplitGraphNodeWeight::Custom(_),
                 ) = graph_to_search.raw_node_weight(parent_id)
                 {
-                    // If we find this node now, that means its merkle tree hash
-                    // hasn't changed since it was in different subgraph than the
-                    // child node which *did* change. This just adds a bit of entropy
-                    // to the changes so that the checksum generated is different.
-                    // May not be necessary since there *will* be at least one
-                    // other changed node?
+                    // If we find this node now, that means its merkle tree hash hasn't changed
+                    // since it was in different subgraph than the child node which *did* change.
+                    // This just adds a bit of entropy to the changes so that the checksum
+                    // generated is different. May not be necessary since there *will* be at least
+                    // one other changed node?
                     let mut hasher = MerkleTreeHash::hasher();
                     hasher.update(change.merkle_tree_hash.as_bytes());
                     hasher.update(weight.merkle_tree_hash().as_bytes());
@@ -1859,7 +1909,6 @@ where
     }
 
     pub fn perform_updates(&mut self, updates: &[Update<N, E, K>]) {
-        let mut removed_node_ids = BTreeSet::new();
         let mut subgraph_id_to_index = BTreeMap::new();
 
         for (subgraph_idx, subgraph) in self.subgraphs.iter().enumerate() {
@@ -1946,7 +1995,6 @@ where
                         continue;
                     };
 
-                    removed_node_ids.insert((*subgraph_index, node_index));
                     subgraph.remove_node(node_index);
                 }
                 Update::ReplaceNode {

@@ -47,9 +47,11 @@ use si_id::{
 };
 use si_layer_cache::LayerDbError;
 use si_split_graph::{
+    CustomNodeWeight,
     SplitGraph,
     SplitGraphNodeIndex,
     SplitGraphNodeWeight,
+    SplitGraphResult,
     SubGraph,
     SuperGraph,
     opt_zip::OptZip,
@@ -1598,6 +1600,26 @@ impl InputSocketExt for SplitSnapshot {
     }
 }
 
+pub fn schema_ids_for_schema_variant_id(
+    graph: &SplitSnapshotGraphVCurrent,
+    schema_variant_id: SchemaVariantId,
+) -> SplitGraphResult<Vec<SchemaId>> {
+    let sv_ulid = schema_variant_id.into();
+
+    Ok(graph
+        .edges_directed_for_edge_weight_kind(sv_ulid, Incoming, EdgeWeightKindDiscriminants::Use)?
+        .filter_map(|edge_ref| match graph.node_weight(edge_ref.source()) {
+            Some(NodeWeight::Content(content))
+                if content.content_address_discriminants()
+                    == ContentAddressDiscriminants::Schema =>
+            {
+                Some(edge_ref.source().into())
+            }
+            _ => None,
+        })
+        .collect())
+}
+
 #[async_trait]
 impl SchemaVariantExt for SplitSnapshot {
     async fn schema_id_for_schema_variant_id(
@@ -1606,31 +1628,12 @@ impl SchemaVariantExt for SplitSnapshot {
     ) -> WorkspaceSnapshotResult<SchemaId> {
         let working_copy = self.working_copy().await;
 
-        let sv_ulid = schema_variant_id.into();
-
-        let mut schemas = working_copy
-            .edges_directed_for_edge_weight_kind(
-                sv_ulid,
-                Incoming,
-                EdgeWeightKindDiscriminants::Use,
-            )?
-            .filter_map(
-                |edge_ref| match working_copy.node_weight(edge_ref.source()) {
-                    Some(NodeWeight::Content(content))
-                        if content.content_address_discriminants()
-                            == ContentAddressDiscriminants::Schema =>
-                    {
-                        Some(edge_ref.source())
-                    }
-                    _ => None,
-                },
-            );
-
+        let schemas = schema_ids_for_schema_variant_id(&working_copy, schema_variant_id)?;
         let schema_id = schemas
-            .next()
+            .first()
             .ok_or_else(|| Box::new(SchemaVariantError::SchemaNotFound(schema_variant_id)))?;
 
-        if schemas.next().is_some() {
+        if schemas.len() > 1 {
             return Err(Box::new(SchemaVariantError::MoreThanOneSchemaFound(
                 schema_variant_id,
             )))?;
@@ -1684,11 +1687,11 @@ impl ViewExt for SplitSnapshot {
         // View (on canvas) --DiagramObject--> DiagramObject <--Represents-- Geometry <--Use-- View
 
         let mut working_copy = self.working_copy_mut().await;
-
         let mut would_be_orphaned_component_ids = Vec::new();
 
         let view_id: Ulid = view_id.into();
 
+        // Find all geometries used by this view
         for view_use_edge_ref in working_copy.edges_directed_for_edge_weight_kind(
             view_id,
             Outgoing,
@@ -1714,7 +1717,7 @@ impl ViewExt for SplitSnapshot {
                 continue;
             };
 
-            if NodeWeightDiscriminants::Component != represented_thing_node_weight.into() {
+            if represented_thing_node_weight.kind() != NodeWeightDiscriminants::Component {
                 // Components _MUST_ be in another View for this View to be able to be removed.
                 // Things with DiagramObjects (currently only Views) do not have to be part of
                 // another View for this View to be able to be removed.
@@ -1763,9 +1766,14 @@ impl ViewExt for SplitSnapshot {
             Outgoing,
             EdgeWeightKindDiscriminants::DiagramObject,
         )? {
+            // Find all geometry objects for this diagram object
             nodes_to_delete.extend(
                 working_copy
-                    .edges_directed(diagram_object_id, Incoming)?
+                    .edges_directed_for_edge_weight_kind(
+                        diagram_object_id,
+                        Incoming,
+                        EdgeWeightKindDiscriminants::Represents,
+                    )?
                     .map(|edge_ref| edge_ref.source()),
             );
         }

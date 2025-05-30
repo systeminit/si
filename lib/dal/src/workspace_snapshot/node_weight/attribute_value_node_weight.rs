@@ -1,4 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{
+    BTreeSet,
+    HashSet,
+};
 
 use serde::{
     Deserialize,
@@ -9,6 +12,7 @@ use si_events::{
     merkle_tree_hash::MerkleTreeHash,
     ulid::Ulid,
 };
+use si_split_graph::SplitGraphNodeWeight;
 
 use super::{
     NodeWeight,
@@ -16,6 +20,7 @@ use super::{
     traits::CorrectTransformsResult,
 };
 use crate::{
+    EdgeWeight,
     EdgeWeightKindDiscriminants,
     WorkspaceSnapshotGraphVCurrent,
     workspace_snapshot::{
@@ -23,10 +28,11 @@ use crate::{
         content_address::ContentAddress,
         graph::{
             LineageId,
-            correct_transforms::add_dependent_value_root_updates,
+            correct_transforms,
             detector::Update,
         },
         node_weight::traits::CorrectTransforms,
+        split_snapshot,
     },
 };
 
@@ -198,10 +204,81 @@ impl CorrectTransforms for AttributeValueNodeWeight {
         }
 
         if should_add {
-            updates.extend(add_dependent_value_root_updates(
+            updates.extend(correct_transforms::add_dependent_value_root_updates(
                 graph,
                 &HashSet::from([self.id()]),
             )?);
+        }
+
+        Ok(updates)
+    }
+}
+
+impl
+    split_snapshot::corrections::CorrectTransforms<
+        NodeWeight,
+        EdgeWeight,
+        EdgeWeightKindDiscriminants,
+    > for AttributeValueNodeWeight
+{
+    fn correct_transforms(
+        &self,
+        graph: &si_split_graph::SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+        mut updates: Vec<
+            si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>,
+        >,
+        from_different_change_set: bool,
+    ) -> split_snapshot::corrections::CorrectTransformsResult<
+        Vec<si_split_graph::Update<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>>,
+    > {
+        if !from_different_change_set {
+            return Ok(updates);
+        }
+
+        let dvu_cat_id = split_snapshot::corrections::get_category_node_id(
+            graph,
+            CategoryNodeKind::DependentValueRoots,
+        )?;
+        let mut should_add = false;
+
+        for update in &updates {
+            match update {
+                si_split_graph::Update::NewEdge { .. }
+                    if update.source_has_id(self.id())
+                        && update
+                            .is_of_custom_edge_kind(EdgeWeightKindDiscriminants::Prototype) =>
+                {
+                    should_add = !graph.node_exists(self.id());
+                }
+                si_split_graph::Update::RemoveEdge { .. } if update.source_id() == dvu_cat_id => {
+                    return Ok(updates);
+                }
+                si_split_graph::Update::NewNode {
+                    node_weight:
+                        SplitGraphNodeWeight::Custom(NodeWeight::DependentValueRoot(dvu_root_inner)),
+                    ..
+                } if dvu_root_inner.value_id() == self.id() => {
+                    return Ok(updates);
+                }
+                si_split_graph::Update::ReplaceNode { node_weight, .. }
+                    if node_weight.id() == self.id() =>
+                {
+                    should_add = graph.node_weight(self.id()).is_some_and(|existing_av| {
+                        existing_av.node_hash() != node_weight.node_hash()
+                    });
+                }
+
+                _ => {}
+            }
+        }
+
+        if should_add {
+            updates.extend(
+                split_snapshot::corrections::add_dependent_value_root_updates(
+                    graph,
+                    &BTreeSet::from([self.id()]),
+                )?,
+            );
         }
 
         Ok(updates)

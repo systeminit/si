@@ -18,18 +18,23 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_events::workspace_snapshot::Change;
+use si_events::{
+    merkle_tree_hash::MerkleTreeHash,
+    workspace_snapshot::Change,
+};
 use strum::EnumDiscriminants;
 
 use crate::{
     CustomEdgeWeight,
     CustomNodeWeight,
     EdgeKind,
+    SplitGraph,
     SplitGraphEdgeWeight,
     SplitGraphEdgeWeightKind,
     SplitGraphNodeId,
     SplitGraphNodeWeight,
     SplitGraphNodeWeightDiscriminants,
+    SplitGraphResult,
     subgraph::{
         SubGraph,
         SubGraphNodeIndex,
@@ -137,6 +142,8 @@ where
         edge_kind: SplitGraphEdgeWeightKind<K>,
         external_source_data: Option<ExternalSourceData<K, N>>,
     },
+    // Remove node updates *SHOULD* only be produced by corrections,
+    // to simplify removing nodes (versus producing remove edge updates for all incoming edges to a node)
     RemoveNode {
         subgraph_root_id: SplitGraphNodeId,
         id: SplitGraphNodeId,
@@ -161,11 +168,197 @@ where
     E: CustomEdgeWeight<K>,
     K: EdgeKind,
 {
-    pub fn is_of_custom_edge_kind(&self, target_kind: K) -> bool {
+    /// Produce a new edge update between two nodes. If the nodes are in different subgraphs,
+    /// produce an edge from the source to an external target, and an external source edge
+    /// from the target's subgraph root to the target.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_edge_between_nodes_updates(
+        source_id: SplitGraphNodeId,
+        source_subgraph_root_id: SplitGraphNodeId,
+        source_kind: N::Kind,
+        target_id: SplitGraphNodeId,
+        target_subgraph_root_id: SplitGraphNodeId,
+        target_kind: N::Kind,
+        edge_weight: E,
+        graph_root_id: SplitGraphNodeId,
+    ) -> Vec<Self> {
+        if source_subgraph_root_id == target_subgraph_root_id {
+            vec![Update::NewEdge {
+                subgraph_root_id: source_subgraph_root_id,
+                source: UpdateNodeInfo {
+                    id: source_id,
+                    external_target_id: None,
+                    external_target_custom_kind: None,
+                    kind: SplitGraphNodeWeightDiscriminants::Custom,
+                    custom_kind: Some(source_kind),
+                    phantom_n: PhantomData,
+                },
+                destination: UpdateNodeInfo {
+                    id: target_id,
+                    external_target_id: None,
+                    external_target_custom_kind: None,
+                    kind: SplitGraphNodeWeightDiscriminants::Custom,
+                    custom_kind: Some(target_kind),
+                    phantom_n: PhantomData,
+                },
+                edge_weight: SplitGraphEdgeWeight::Custom(edge_weight),
+            }]
+        } else {
+            let external_target_node_id = SplitGraphNodeId::new();
+            let is_default = edge_weight.is_default();
+            let edge_kind = edge_weight.kind();
+
+            vec![
+                Update::NewNode {
+                    subgraph_root_id: source_subgraph_root_id,
+                    node_weight: SplitGraphNodeWeight::ExternalTarget {
+                        id: external_target_node_id,
+                        target: target_id,
+                        merkle_tree_hash: MerkleTreeHash::nil(),
+                        target_kind: SplitGraphNodeWeightDiscriminants::Custom,
+                        target_custom_kind: Some(target_kind),
+                    },
+                },
+                Update::NewEdge {
+                    subgraph_root_id: source_subgraph_root_id,
+                    source: UpdateNodeInfo {
+                        id: source_id,
+                        external_target_id: None,
+                        external_target_custom_kind: None,
+                        kind: SplitGraphNodeWeightDiscriminants::Custom,
+                        custom_kind: Some(source_kind),
+                        phantom_n: PhantomData,
+                    },
+                    destination: UpdateNodeInfo {
+                        id: external_target_node_id,
+                        external_target_id: Some(target_id),
+                        external_target_custom_kind: Some(target_kind),
+                        kind: SplitGraphNodeWeightDiscriminants::ExternalTarget,
+                        custom_kind: None,
+                        phantom_n: PhantomData,
+                    },
+                    edge_weight: SplitGraphEdgeWeight::Custom(edge_weight),
+                },
+                Update::NewEdge {
+                    subgraph_root_id: target_subgraph_root_id,
+                    source: UpdateNodeInfo {
+                        id: target_subgraph_root_id,
+                        external_target_id: None,
+                        external_target_custom_kind: None,
+                        kind: if target_subgraph_root_id == graph_root_id {
+                            SplitGraphNodeWeightDiscriminants::GraphRoot
+                        } else {
+                            SplitGraphNodeWeightDiscriminants::SubGraphRoot
+                        },
+                        custom_kind: None,
+                        phantom_n: PhantomData,
+                    },
+                    destination: UpdateNodeInfo {
+                        id: target_id,
+                        external_target_id: None,
+                        external_target_custom_kind: None,
+                        kind: SplitGraphNodeWeightDiscriminants::Custom,
+                        custom_kind: Some(target_kind),
+                        phantom_n: PhantomData,
+                    },
+                    edge_weight: SplitGraphEdgeWeight::ExternalSource {
+                        source_id,
+                        is_default,
+                        edge_kind,
+                        source_node_kind: Some(source_kind),
+                        phantom_n: PhantomData,
+                    },
+                },
+            ]
+        }
+    }
+
+    /// Produce a set of updates that will remove an edge between `source_id` and `target_id` of kind `K`.
+    /// Both nodes must be on the graph.
+    pub fn remove_edge_updates(
+        graph: &SplitGraph<N, E, K>,
+        source_id: SplitGraphNodeId,
+        kind: K,
+        target_id: SplitGraphNodeId,
+    ) -> SplitGraphResult<Vec<Update<N, E, K>>> {
+        let mut updates = vec![];
+
+        let Some((source_subgraph_root, target_subgraph_root)) = graph
+            .subgraph_root_id_for_node(source_id)
+            .and_then(|source_root_id| graph.raw_node_weight(source_root_id))
+            .zip(
+                graph
+                    .subgraph_root_id_for_node(target_id)
+                    .and_then(|target_root_id| graph.raw_node_weight(target_root_id)),
+            )
+        else {
+            return Ok(updates);
+        };
+
+        let Some((source_node_weight, target_node_weight)) = graph
+            .raw_node_weight(source_id)
+            .zip(graph.raw_node_weight(target_id))
+        else {
+            return Ok(updates);
+        };
+
+        if source_subgraph_root.id() != target_subgraph_root.id() {
+            let Some(external_target_node_weight) = graph
+                .raw_edges_directed(source_id, Outgoing)?
+                .find(|edge_ref| {
+                    if let Some(SplitGraphNodeWeight::ExternalTarget { target, .. }) =
+                        graph.raw_node_weight(edge_ref.target())
+                    {
+                        target_id == *target
+                    } else {
+                        false
+                    }
+                })
+                .and_then(|edge_ref| graph.raw_node_weight(edge_ref.target()))
+            else {
+                return Ok(updates);
+            };
+
+            updates.push(Update::RemoveEdge {
+                subgraph_root_id: source_subgraph_root.id(),
+                source: source_node_weight.into(),
+                destination: external_target_node_weight.into(),
+                edge_kind: SplitGraphEdgeWeightKind::Custom(kind),
+                external_source_data: None,
+            });
+
+            updates.push(Update::RemoveEdge {
+                subgraph_root_id: target_subgraph_root.id(),
+                source: target_subgraph_root.into(),
+                destination: target_node_weight.into(),
+                edge_kind: SplitGraphEdgeWeightKind::ExternalSource,
+                external_source_data: Some(ExternalSourceData {
+                    source_id,
+                    edge_kind: kind,
+                    source_node_kind: source_node_weight.custom_kind(),
+                    phantom_n: PhantomData,
+                }),
+            });
+        } else {
+            updates.push(Update::RemoveEdge {
+                subgraph_root_id: target_subgraph_root.id(),
+                source: source_node_weight.into(),
+                destination: target_node_weight.into(),
+                edge_kind: SplitGraphEdgeWeightKind::Custom(kind),
+                external_source_data: None,
+            });
+        }
+
+        Ok(updates)
+    }
+
+    pub fn is_of_custom_edge_kind(&self, custom_edge_kind: K) -> bool {
         match self {
             Update::NewEdge { edge_weight, .. } => match edge_weight {
-                SplitGraphEdgeWeight::Custom(c) => c.kind() == target_kind,
-                SplitGraphEdgeWeight::ExternalSource { edge_kind, .. } => edge_kind == &target_kind,
+                SplitGraphEdgeWeight::Custom(c) => c.kind() == custom_edge_kind,
+                SplitGraphEdgeWeight::ExternalSource { edge_kind, .. } => {
+                    edge_kind == &custom_edge_kind
+                }
                 _ => false,
             },
             Update::RemoveEdge {
@@ -173,10 +366,10 @@ where
                 external_source_data,
                 ..
             } => match edge_kind {
-                SplitGraphEdgeWeightKind::Custom(custom_kind) => custom_kind == &target_kind,
+                SplitGraphEdgeWeightKind::Custom(custom_kind) => custom_kind == &custom_edge_kind,
                 SplitGraphEdgeWeightKind::ExternalSource => external_source_data
                     .as_ref()
-                    .is_some_and(|esd| esd.edge_kind == target_kind),
+                    .is_some_and(|esd| esd.edge_kind == custom_edge_kind),
                 _ => false,
             },
             _ => false,
@@ -294,6 +487,40 @@ where
         self.source_id().zip(self.destination_id())
     }
 
+    pub fn edge_weight_kind(&self) -> Option<K> {
+        match self {
+            Update::NewEdge { edge_weight, .. } => match edge_weight {
+                SplitGraphEdgeWeight::Custom(c) => Some(c.kind()),
+                SplitGraphEdgeWeight::ExternalSource { edge_kind, .. } => Some(*edge_kind),
+                SplitGraphEdgeWeight::Ordering | SplitGraphEdgeWeight::Ordinal => None,
+            },
+            Update::RemoveEdge {
+                edge_kind,
+                external_source_data,
+                ..
+            } => match edge_kind {
+                SplitGraphEdgeWeightKind::Custom(custom_kind) => Some(*custom_kind),
+                SplitGraphEdgeWeightKind::ExternalSource => {
+                    external_source_data.as_ref().map(|esd| esd.edge_kind)
+                }
+                SplitGraphEdgeWeightKind::Ordering | SplitGraphEdgeWeightKind::Ordinal => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// A triplet made of the source id, the edge weight kind, and the destination id
+    pub fn custom_edge_triplet(&self) -> Option<(SplitGraphNodeId, K, SplitGraphNodeId)> {
+        match (
+            self.source_id(),
+            self.edge_weight_kind(),
+            self.destination_id(),
+        ) {
+            (Some(source), Some(kind), Some(destination)) => Some((source, kind, destination)),
+            _ => None,
+        }
+    }
+
     /// Checks if the destination node of an edge update (RemoveEdge/NewEdge) has the given id, across subgraphs
     pub fn destination_has_id(&self, id: SplitGraphNodeId) -> bool {
         match self {
@@ -367,17 +594,45 @@ where
             |event| self.calculate_updates_dfs_event(event, &mut updates, &mut difference_cache),
         );
 
-        // If a node is in base graph but not in updated_graph, it has been removed
-        updates.extend(
-            self.base_graph
-                .node_index_by_id
-                .keys()
-                .filter(|id| !self.updated_graph.node_index_by_id.contains_key(id))
-                .map(|id| Update::RemoveNode {
-                    subgraph_root_id: self.graph_root_id,
-                    id: *id,
-                }),
-        );
+        // Before, I believed: If a node is in base graph but not in updated_graph, it has been
+        // removed
+        //
+        // But this is not true.
+        //
+        // Suppose there is a node A that exists on HEAD. You've deleted node A in change set 1.
+        // But, in another change set (2), a child B has been added under node A. Now, when change
+        // set 2 is applied to HEAD, there will be no specific Update to bring A back into change
+        // set 1. So, when the NewEdge update that adds the child B under A lands on Change Set 1
+        // during replay, it becomes a no-op, since node A does not exist in Chnage Set 1. (since
+        // A, the source for the edge, does not exist). Normally this is fine, since when we Apply
+        // Change Set 1, it will remove A, and thus implicitly remove everything under A.
+        //
+        // But suppose we want to *prevent* the removal of A, since removing it would "orphan" B
+        // (say A is a view and B is a component which is not contained in any other view). The
+        // removal of A in change set 1 was done without knowledge of B, which is now on HEAD. And
+        // B is something we want to prevent being deleted. We can solve this with a correction.
+        // But If we produce a RemoveNode update as we were, it becomes much more difficult to
+        // prevent the removal of A while preserving B, since we will report B as "removed" when
+        // calculating updates, since B is on HEAD but not in Change Set 1. Normally we would just
+        // have to ignore the RemoveEdge update, but now we have to detect the RemoveNode update
+        // and determine that it should also be removed.
+        //
+        // A better solution here would be keep a list the nodes that were in fact removed from the
+        // change set in cleanup, and only produce remove node updates for those nodes.
+        //
+        // However, it makes more sense to me to no longer produce RemoveNode updates, since
+        // we have gotten good results from just RemoveEdge updates so far.
+        //
+        // updates.extend(
+        //     self.base_graph
+        //         .node_index_by_id
+        //         .keys()
+        //         .filter(|id| !self.updated_graph.node_index_by_id.contains_key(id))
+        //         .map(|id| Update::RemoveNode {
+        //             subgraph_root_id: self.graph_root_id,
+        //             id: *id,
+        //         }),
+        // );
 
         updates
     }
@@ -449,7 +704,6 @@ where
             .graph
             .node_weight(updated_graph_node_index)
             .and_then(|updated_graph_node_weight| {
-                // dbg!(updated_graph_node_weight);
                 let mut base_graph_node_indexes = HashSet::new();
                 if updated_graph_node_index == self.updated_graph.root_index {
                     // There can only be one (valid/current) `ContentAddress::Root` at any

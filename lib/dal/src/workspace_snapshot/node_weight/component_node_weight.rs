@@ -63,6 +63,8 @@ use crate::{
     },
 };
 
+mod split_corrections;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct ComponentNodeWeight {
     pub id: Ulid,
@@ -488,9 +490,7 @@ impl CorrectTransforms for ComponentNodeWeight {
                     destination,
                 } if EdgeWeightKindDiscriminants::Use == edge_weight.kind().into()
                     && is_self(source)
-                    && graph
-                        .get_node_weight_by_id_opt(destination.id)
-                        .is_some_and(|n| NodeWeightDiscriminants::SchemaVariant == n.into()) =>
+                    && destination.node_weight_kind == NodeWeightDiscriminants::SchemaVariant =>
                 {
                     // Root props and sockets get all new AttributeValues during upgrade, but
                     // the RemoveEdges for the old ones may be stale; RemoveEdge the real ones
