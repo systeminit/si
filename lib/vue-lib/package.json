@@ -73,6 +73,7 @@
     "@iconify/json": "^2.2.166",
     "@si/eslint-config": "workspace:*",
     "@si/tsconfig": "workspace:*",
+    "@tailwindcss/typography": "^0.5.16",
     "@types/lodash-es": "^4.17.12",
     "autoprefixer": "^10.4.8",
     "eslint": "^8.57.1",
