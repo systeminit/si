@@ -1,7 +1,12 @@
 import * as Comlink from "comlink";
 import { computed, reactive, Reactive, inject, ComputedRef, unref } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
-import { DBInterface, Id, BustCacheFn } from "@/workers/types/dbinterface";
+import {
+  DBInterface,
+  Id,
+  BustCacheFn,
+  LobbyExitFn,
+} from "@/workers/types/dbinterface";
 import {
   BifrostConnection,
   EntityKind,
@@ -10,6 +15,7 @@ import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Context } from "@/newhotness/types";
 import { DefaultMap } from "@/utils/defaultmap";
 import * as rainbow from "@/newhotness/logic_composables/rainbow_counter";
+import router from "@/router";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useWorkspacesStore } from "../workspaces.store";
 
@@ -68,6 +74,31 @@ const returned = (changeSetId: ChangeSetId, label: string) => {
   rainbow.remove(changeSetId, label);
 };
 db.addListenerReturned(Comlink.proxy(returned));
+
+const lobbyExit: LobbyExitFn = () => {
+  // Only navigate away from lobby if user is currently in the lobby
+  if (router.currentRoute.value.name !== "new-hotness-lobby") {
+    return;
+  }
+  const ctx: Context | undefined = inject("CONTEXT");
+  const workspacePk: string | undefined = ctx?.workspacePk.value;
+  const changeSetId: string | undefined = ctx?.changeSetId.value;
+
+  // Should we have a default behavior if we can't
+  // find the current workspace or change set?
+
+  if (workspacePk && changeSetId) {
+    router.push({
+      name: "new-hotness",
+      params: {
+        workspacePk,
+        changeSetId,
+      },
+    });
+  }
+};
+
+db.addListenerLobbyExit(Comlink.proxy(lobbyExit));
 
 export const bifrostReconnect = async () => {
   await db.bifrostReconnect();
@@ -157,9 +188,21 @@ export const niflheim = async (
   if (coldstart || force) {
     // eslint-disable-next-line no-console
     console.log("❄️ NIFLHEIM ❄️");
-    await db.niflheim(workspaceId, changeSetId);
+    const success = await db.niflheim(workspaceId, changeSetId);
     // eslint-disable-next-line no-console
     console.log("❄️ DONE ❄️");
+
+    // If niflheim returned false (202 response), navigate to lobby
+    // Index is being rebuilt and is not ready yet.
+    if (!success) {
+      router.push({
+        name: "new-hotness-lobby",
+        params: {
+          workspacePk: workspaceId,
+          changeSetId,
+        },
+      });
+    }
   }
 };
 

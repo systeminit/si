@@ -35,7 +35,7 @@ mod get_front_end_object;
 mod get_workspace_index;
 mod rebuild_change_set_index;
 
-const WATCH_INDEX_TIMEOUT: Duration = Duration::from_secs(30);
+const WATCH_INDEX_TIMEOUT: Duration = Duration::from_secs(4);
 
 #[remain::sorted]
 #[derive(Error, Debug)]
@@ -136,7 +136,7 @@ pub async fn request_rebuild_and_watch(
     edda_client: &edda_client::EddaClient,
     workspace_pk: WorkspacePk,
     change_set_id: ChangeSetId,
-) -> IndexResult<()> {
+) -> IndexResult<bool> {
     let span = Span::current();
     let mut watch = frigg.watch_index(workspace_pk, change_set_id).await?;
     let request_id = edda_client
@@ -146,7 +146,10 @@ pub async fn request_rebuild_and_watch(
 
     let timeout = WATCH_INDEX_TIMEOUT;
     tokio::select! {
-        _ = tokio::time::sleep(timeout) => Err(IndexError::WatchIndexTimeout(timeout)),
-        _ = watch.next() => Ok(())
+        _ = tokio::time::sleep(timeout) => {
+            info!("timed out waiting for new index to be rebuilt");
+            Ok(false)
+        },
+        _ = watch.next() => Ok(true)
     }
 }
