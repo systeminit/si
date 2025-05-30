@@ -406,7 +406,16 @@ impl FriggStore {
             return Ok(None);
         };
         let index_pointer_value: IndexPointerValue =
-            serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize)?;
+            match serde_json::from_slice(bytes.as_ref()).map_err(Error::Deserialize) {
+                Ok(value) => value,
+                Err(err) => {
+                    warn!(
+                        "Unable to deserialize index pointer value at {}: {}",
+                        index_pointer_key, err
+                    );
+                    return Ok(None);
+                }
+            };
         // If the definition checksum for the current set of MVs is not the same as the one the MvIndex was built for,
         // then the MvIndex is out of date and should not be used at all.
         if index_pointer_value.definition_checksum != materialized_view_definitions_checksum() {
