@@ -11,6 +11,7 @@ use dal::{
     WorkspaceSnapshotGraph,
     workspace_snapshot::graph::validator::{
         ValidationIssue,
+        WithGraph,
         validate_graph,
     },
 };
@@ -48,12 +49,20 @@ async fn main() -> Result<()> {
     // remove_node_by_id(&mut graph, node_id)?;
 
     for issue in validate_graph(&graph)? {
-        println!("{}", issue.display(&graph));
+        println!("{}", WithGraph(&graph, &issue));
         // Only fix ConnectionToUnknownSocket issues for now
         if let issue @ ValidationIssue::ConnectionToUnknownSocket { .. } = issue {
             issue.fix(&mut graph)?
         }
     }
+    // for issue in validate_graph(graph)? {
+    //     // println!("{}", issue.with_graph(&graph));
+    //     // Only fix ConnectionToUnknownSocket issues for now
+    //     match issue {
+    //         _issue @ ValidationIssue::ConnectionToUnknownSocket { .. } => {} // issue.fix(&mut graph)?,
+    //         _ => {}
+    //     }
+    // }
 
     // Cleanup and update merkle tree
     graph.cleanup_and_merkle_tree_hash()?;

@@ -29,11 +29,11 @@ use crate::{
 pub struct PropNodeWeight {
     pub id: Ulid,
     pub lineage_id: LineageId,
-    content_address: ContentAddress,
-    merkle_tree_hash: MerkleTreeHash,
-    kind: PropKind,
-    name: String,
-    can_be_used_as_prototype_arg: bool,
+    pub content_address: ContentAddress,
+    pub merkle_tree_hash: MerkleTreeHash,
+    pub kind: PropKind,
+    pub name: String,
+    pub can_be_used_as_prototype_arg: bool,
 }
 
 impl PropNodeWeight {

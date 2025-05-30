@@ -5,6 +5,15 @@ import { useWorkspacesStore } from "@/store/workspaces.store";
 import { FuncRunId } from "@/store/func_runs.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { WorkspaceUser } from "@/store/auth.store";
+import {
+  AttributePrototypeArgumentId,
+  FuncArgumentId,
+  FuncId,
+} from "@/api/sdf/dal/func";
+import { ComponentId } from "@/api/sdf/dal/component";
+import { PropId } from "@/api/sdf/dal/prop";
+import { InputSocketId, OutputSocketId } from "@/api/sdf/dal/schema";
+import { AttributeValueId } from "./status.store";
 
 export interface AdminWorkspace {
   id: string;
@@ -161,6 +170,22 @@ export const useAdminStore = () => {
             },
           });
         },
+        async VALIDATE_SNAPSHOT(workspaceId: string, changeSetId: string) {
+          return new ApiRequest<{
+            issues: ValidationIssue[];
+          }>({
+            method: "get",
+            url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/validate_snapshot`,
+          });
+        },
+        async MIGRATE_CONNECTIONS(workspaceId: string, changeSetId: string) {
+          return new ApiRequest<{
+            migrations: ConnectionMigration[];
+          }>({
+            method: "get",
+            url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/migrate_connections`,
+          });
+        },
       },
       onActivated() {
         realtimeStore.subscribe(this.$id, `workspace/${workspaceId}`, [
@@ -187,3 +212,87 @@ export const useAdminStore = () => {
     }),
   )();
 };
+
+export type ValidationIssue =
+  | {
+      type: "connectionToUnknownSocket";
+      dest_apa: AttributePrototypeArgumentId;
+      source_component: ComponentId;
+      source_socket: OutputSocketId;
+      message: string;
+    }
+  | {
+      type: "duplicateAttributeValue";
+      original: AttributeValueId;
+      duplicate: AttributeValueId;
+      message: string;
+    }
+  | {
+      type: "duplicateAttributeValueWithDifferentValues";
+      original: AttributeValueId;
+      duplicate: AttributeValueId;
+      message: string;
+    }
+  | {
+      type: "missingChildAttributeValues";
+      object: AttributeValueId;
+      missing_children: PropId[];
+      message: string;
+    }
+  | {
+      type: "unknownChildAttributeValue";
+      child: AttributeValueId;
+      message: string;
+    };
+
+export type ConnectionMigration =
+  // If there is no issue, both socket and prop connections are always defined.
+  // If socket and prop connections are defined, there *may* be an issue.
+  | {
+      apaId: AttributePrototypeArgumentId;
+      socketConnection: ConnectionMigrationSocketConnection;
+      propConnection: ConnectionMigrationPropConnection;
+      issue?: ConnectionUnmigrateableBecause;
+      message: string;
+    }
+  // If there is an issue, socket and prop connections may be undefined.
+  // If prop connection is undefined, there is definitely an issue.
+  | {
+      apaId: AttributePrototypeArgumentId;
+      socketConnection?: ConnectionMigrationSocketConnection;
+      propConnection?: undefined;
+      issue: ConnectionUnmigrateableBecause;
+      message: string;
+    };
+
+export interface ConnectionMigrationSocketConnection {
+  source: { componentId: ComponentId; socketId: OutputSocketId };
+  destination: { componentId: ComponentId; socketId: InputSocketId };
+}
+
+export interface ConnectionMigrationPropConnection {
+  destAvId: AttributeValueId;
+  sourceRootAvId: AttributeValueId;
+  sourcePath: string;
+  funcId: FuncId;
+  funcArgId: FuncArgumentId;
+}
+
+export type ConnectionUnmigrateableBecause =
+  | { type: "connectionPrototypeHasMultipleArgs" }
+  | { type: "destinationIsNotInputSocket" }
+  | { type: "destinationSocketArgumentNotBoundToProp" }
+  | { type: "destinationSocketBoundToPropWithNoValue"; destPropId: PropId }
+  | { type: "destinationSocketHasMultipleBindings" }
+  | { type: "destinationSocketHasNoBindings" }
+  | { type: "invalidGraph" }
+  | { type: "multipleConnectionsToSameSocket" }
+  | { type: "noArgumentTargets" }
+  | {
+      type: "sourceAndDestinationSocketBothHaveFuncs";
+      sourceFuncId: FuncId;
+      destFuncId: FuncId;
+    }
+  | { type: "sourceSocketPrototypeArgumentNotBoundToProp" }
+  | { type: "sourceSocketPrototypeHasMultipleArguments" }
+  | { type: "sourceSocketPrototypeHasNoArguments" };

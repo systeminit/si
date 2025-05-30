@@ -1424,4 +1424,25 @@ impl WorkspaceSnapshot {
         let mut inferred_connection_write_guard = self.inferred_connection_graph.write().await;
         *inferred_connection_write_guard = None;
     }
+
+    /// Validate the snapshot in the given DalContext
+    pub async fn validate(
+        &self,
+    ) -> WorkspaceSnapshotResult<Vec<(graph::validator::ValidationIssue, String)>> {
+        Ok(graph::validator::validate_graph_with_text(
+            &self.working_copy().await,
+        )?)
+    }
+
+    /// Get the connection migrations that are available for this snapshot.
+    pub async fn connection_migrations(
+        &self,
+    ) -> WorkspaceSnapshotResult<Vec<(graph::validator::connections::ConnectionMigration, String)>>
+    {
+        Ok(
+            graph::validator::connections::connection_migrations_with_text(
+                &self.working_copy().await,
+            ),
+        )
+    }
 }
