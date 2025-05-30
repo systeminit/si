@@ -36,59 +36,25 @@
         />
       </ul>
     </template>
-    <template v-if="secret">
-      <h3 class="bg-neutral-800 p-xs border-l-2">secrets</h3>
-      <ul>
-        <li class="flex flex-col">
-          <label class="pl-xs flex flex-row items-center relative">
-            <span>{{ secret.prop?.name }}</span>
-            <input
-              class="block w-72 ml-auto text-white bg-black border-2 border-neutral-300 disabled:bg-neutral-900"
-              type="text"
-              disabled
-              :value="secret.secret ? `${secret.secret.name}` : ''"
-            />
-          </label>
-        </li>
+    <template v-if="secrets && secrets.children.length > 0">
+      <h3
+        :class="
+          clsx(
+            'p-xs border-l',
+            themeClasses('bg-neutral-200', 'bg-neutral-800'),
+          )
+        "
+      >
+        secrets
+      </h3>
+      <ul v-if="'children' in secrets" class="border-l">
+        <ComponentSecretAttribute
+          v-for="secret in secrets.children"
+          :key="secret.id"
+          :component="component"
+          :attributeTree="secret"
+        />
       </ul>
-      <template v-if="component.isSecretDefining">
-        <div class="m-xs p-xs border-2">
-          <ul class="flex flex-col">
-            <template
-              v-for="fieldname in Object.keys(secretFormData)"
-              :key="fieldname"
-            >
-              <li class="mb-2xs flex flex-row items-center">
-                <span>{{ fieldname }}</span>
-                <secretForm.Field :name="fieldname">
-                  <template #default="{ field }">
-                    <input
-                      :class="
-                        clsx(
-                          'block w-64 ml-auto text-white bg-black border-2 border-neutral-300 disabled:bg-neutral-900',
-                          field.state.meta.errors.length > 0 &&
-                            'border-destructive-500',
-                        )
-                      "
-                      type="text"
-                      :value="field.state.value"
-                      @input="(e) => field.handleChange((e.target as HTMLInputElement).value)"
-                    />
-                  </template>
-                </secretForm.Field>
-              </li>
-            </template>
-            <VButton
-              :label="secret.secret ? 'Replace Secret' : 'Add Secret'"
-              :loading="wForm.bifrosting.value"
-              loadingText="Saving Secret"
-              tone="action"
-              :disabled="!secretForm.state.canSubmit"
-              @click="() => secretForm.handleSubmit()"
-            />
-          </ul>
-        </div>
-      </template>
     </template>
   </div>
 </template>
@@ -104,25 +70,19 @@ import {
 } from "vue";
 import { Fzf } from "fzf";
 import { useRoute } from "vue-router";
-import { SiSearch, themeClasses, VButton } from "@si/vue-lib/design-system";
+import { SiSearch, themeClasses } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { useQuery } from "@tanstack/vue-query";
 import {
   AttributeTree,
   BifrostComponent,
   Prop,
   AttributeValue,
-  EddaSecret,
-  BifrostSecretDefinitionList,
-  EntityKind,
+  Secret,
 } from "@/workers/types/entity_kind_types";
-import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
-import { PropertyEditorPropWidgetKindSecret } from "@/api/sdf/dal/property_editor";
-import { encryptMessage } from "@/utils/messageEncryption";
 import { useApi, routes, componentTypes } from "./api_composables";
 import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
-import { useWatchedForm } from "./logic_composables/watched_form";
 import { keyEmitter } from "./logic_composables/emitters";
+import ComponentSecretAttribute from "./layout_components/ComponentSecretAttribute.vue";
 
 const q = ref("");
 
@@ -135,49 +95,10 @@ export interface AttrTree {
   children: AttrTree[];
   parent?: string;
   prop?: Prop;
-  secret?: EddaSecret;
+  secret?: Secret;
   attributeValue: AttributeValue;
   isBuildable: boolean; // is my parent an array or map?
 }
-
-const makeArgs = useMakeArgs();
-const makeKey = useMakeKey();
-
-const secretFormData = ref<Record<string, string>>({});
-// NOTE: this is pretty tortured and will change
-const secretQuery = useQuery({
-  queryKey: makeKey(EntityKind.SecretDefinitionList),
-  enabled: props.component.isSecretDefining,
-  queryFn: async () => {
-    const data = (await bifrost(makeArgs(EntityKind.SecretDefinitionList))) as
-      | BifrostSecretDefinitionList
-      | -1;
-    if (data === -1) return undefined;
-    let label = "";
-    if (secret.value?.prop?.widgetKind) {
-      const kind = secret.value.prop.widgetKind;
-      if ("secret" in kind) {
-        const options = (kind.secret as PropertyEditorPropWidgetKindSecret)
-          .options;
-        const opt = options[0];
-        if (opt) label = opt.value;
-      }
-    }
-    const d = data.secretDefinitions.find((d) => d.label === label);
-    if (d) {
-      const form = d.formData
-        .flatMap((row) => row.name)
-        .reduce((obj, name) => {
-          obj[name] = "";
-          return obj;
-        }, {} as Record<string, string>);
-      secretFormData.value = { Name: "", ...form };
-    } else secretFormData.value = {};
-
-    secretForm.reset(secretFormData.value);
-    return d;
-  },
-});
 
 const makeAvTree = (
   data: AttributeTree,
@@ -188,7 +109,7 @@ const makeAvTree = (
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const av = data.attributeValues[avId]!;
   const prop = av.propId ? data.props[av.propId] : undefined;
-  const secret = av.secretId ? data.secrets[av.secretId] : undefined;
+  const secret = av.secret ?? undefined;
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const childrenIds = data.treeInfo[avId]!.children;
   const children = childrenIds.map((id) =>
@@ -233,76 +154,9 @@ const domain = computed(() =>
   root.value?.children.find((c) => c.prop?.name === "domain"),
 );
 
-const secret = computed(
-  () =>
-    root.value?.children.find((c) => c.prop?.name === "secrets")?.children[0],
+const secrets = computed(() =>
+  root.value?.children.find((c) => c.prop?.name === "secrets"),
 );
-
-const keyApi = useApi();
-const secretApi = useApi();
-
-const wForm = useWatchedForm<Record<string, string>>(
-  `component.secret.${props.component.id}`,
-);
-const secretForm = wForm.newForm({
-  data: secretFormData,
-  onSubmit: async ({ value }) => {
-    const definition = secretQuery.data.value?.label;
-    if (!definition) throw new Error("Secret Definition Required");
-    if (!secret.value) throw new Error("Secret AV Required");
-    if (!secret.value.prop) throw new Error("Secret Prop Required");
-    const callApi = keyApi.endpoint<componentTypes.PublicKey>(
-      routes.GetPublicKey,
-      { id: props.component.id },
-    );
-    const resp = await callApi.get();
-    const publicKey = resp.data;
-
-    const name = value.Name ?? "";
-    delete value.Name;
-    const crypted = await encryptMessage(value, publicKey);
-
-    const payload: componentTypes.CreateSecret = {
-      name,
-      attributeValueId: secret.value.attributeValue.id,
-      propId: secret.value.prop.id,
-      definition,
-      crypted,
-      keyPairPk: publicKey.pk,
-      version: componentTypes.SecretVersion.V1,
-      algorithm: componentTypes.SecretAlgorithm.Sealedbox,
-    };
-
-    const newSecret = secretApi.endpoint<{ id: string }>(routes.CreateSecret, {
-      id: props.component.id,
-    });
-    const { req, newChangeSetId } =
-      await newSecret.post<componentTypes.CreateSecret>(payload);
-    if (secretApi.ok(req) && newChangeSetId) {
-      secretApi.navigateToNewChangeSet(
-        {
-          name: "new-hotness-component",
-          params: {
-            workspacePk: route.params.workspacePk,
-            changeSetId: newChangeSetId,
-            componentId: props.component.id,
-          },
-        },
-        newChangeSetId,
-      );
-    }
-  },
-  validators: {
-    onSubmit: ({ value }) => {
-      return {
-        fields: {
-          Name: !value.Name ? "Name required" : undefined,
-        },
-      };
-    },
-  },
-  watchFn: () => secret.value?.secret,
-});
 
 const filtered = reactive<{ tree: AttrTree | object }>({
   tree: {},

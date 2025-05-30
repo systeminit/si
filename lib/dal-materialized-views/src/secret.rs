@@ -1,56 +1,96 @@
 use dal::{
     DalContext,
     Prop,
+    PropId,
     SchemaVariant,
+    SchemaVariantId,
     Secret,
     SecretId,
     prop::PropPath,
 };
-use si_frontend_mv_types::secret::Secret as SecretMv;
+use si_frontend_mv_types::{
+    schema_variant::prop_tree::{
+        PropWidgetKind,
+        WidgetOption,
+        WidgetOptions,
+    },
+    secret::{
+        Secret as SecretMv,
+        SecretDefinition,
+        SecretFormDataView,
+    },
+};
 use telemetry::prelude::*;
 
-use crate::Error;
-
-pub mod secret_definition;
-pub mod secret_definition_list;
-pub mod secret_list;
-
 #[instrument(name = "dal_materialized_views.secret", level = "debug", skip_all)]
-pub async fn assemble(ctx: DalContext, secret_id: SecretId) -> super::Result<SecretMv> {
-    let ctx = &ctx;
-    let secret_definition_path = PropPath::new(["root", "secret_definition"]);
-
+pub async fn assemble(ctx: &DalContext, secret_id: SecretId) -> super::Result<SecretMv> {
     let secret = Secret::get_by_id(ctx, secret_id).await?;
-    let mut maybe_secret_prop = None;
 
-    // find which prop this is for
-    let all_secret_svs = SchemaVariant::list_default_secret_defining_ids(ctx).await?;
-    for schema_variant_id in all_secret_svs {
-        let maybe_secret_definition_prop_id =
-            Prop::find_prop_id_by_path_opt(ctx, schema_variant_id, &secret_definition_path).await?;
-
-        // We have found a schema variant with a secret definition!
-        if maybe_secret_definition_prop_id.is_some() {
-            // Get the secret output socket corresponding to the definition. There should only be one
-            // output socket as secret defining schema variants are required to have one and only one.
-            let secret_output_socket =
-                SchemaVariant::find_output_socket_for_secret_defining_id(ctx, schema_variant_id)
-                    .await?;
-            if secret_output_socket.name() == secret.definition() {
-                maybe_secret_prop = maybe_secret_definition_prop_id;
-            }
-        }
-    }
-    let definition_id = match maybe_secret_prop {
-        Some(prop) => prop,
-        None => return Err(Error::Secret(dal::SecretError::SecretNotFound(secret_id))),
-    };
     Ok(SecretMv {
         id: secret_id,
         name: secret.name().to_owned(),
         label: secret.definition().to_owned(),
         description: secret.description().to_owned(),
         is_usable: secret.can_be_decrypted(ctx).await?,
-        definition_id: definition_id.into(),
     })
+}
+
+#[instrument(name = "dal_materialized_views.secret", level = "debug", skip_all)]
+pub async fn find_definition(
+    ctx: &DalContext,
+    schema_variant_id: SchemaVariantId,
+    prop_id: PropId,
+) -> super::Result<Option<SecretDefinition>> {
+    // First let's see if this schema variant is secret defining.
+    // If not, we need to go find the secret defining variant for any/all secrets this prop uses
+    if !SchemaVariant::is_secret_defining(ctx, schema_variant_id).await? {
+        return Ok(None);
+    } else {
+        let output_socket =
+            SchemaVariant::find_output_socket_for_secret_defining_id(ctx, schema_variant_id)
+                .await?;
+        let secrets_prop_id = Prop::find_prop_id_by_path(
+            ctx,
+            schema_variant_id,
+            &PropPath::new(["root", "secrets", output_socket.name()]),
+        )
+        .await?;
+        // this prop is for the secret that this variant is defining! Let's get the definition
+        if secrets_prop_id != prop_id {
+            return Ok(None);
+        } else {
+            let secret_definition_path = PropPath::new(["root", "secret_definition"]);
+            let secret_definition_prop_id =
+                Prop::find_prop_id_by_path(ctx, schema_variant_id, &secret_definition_path).await?;
+
+            // Now, find all the fields of the definition.
+            let field_props =
+                Prop::direct_child_props_ordered(ctx, secret_definition_prop_id).await?;
+
+            // Assemble the form data views.
+            let mut form_data_views = Vec::new();
+            for field_prop in field_props {
+                let widget_options = field_prop.widget_options.clone().map(|options| {
+                    options
+                        .into_iter()
+                        .map(|option| WidgetOption {
+                            label: option.label,
+                            value: option.value,
+                        })
+                        .collect::<WidgetOptions>()
+                });
+                form_data_views.push(SecretFormDataView {
+                    name: field_prop.name,
+                    kind: field_prop.kind.to_string(),
+                    widget_kind: PropWidgetKind::Secret {
+                        options: widget_options,
+                    },
+                });
+            }
+            Ok(Some(SecretDefinition {
+                label: output_socket.name().to_string(),
+                form_data: form_data_views,
+            }))
+        }
+    }
 }

@@ -70,13 +70,6 @@ import {
   SchemaVariant,
   PossibleConnection,
   EntityKind,
-  EddaSecret,
-  SecretDefinition,
-  BifrostSecret,
-  EddaSecretDefinitionList,
-  BifrostSecretDefinitionList,
-  EddaSecretList,
-  BifrostSecretList,
   EddaSchemaVariantCategories,
   BifrostSchemaVariantCategories,
   CategoryVariant,
@@ -1228,17 +1221,31 @@ const updateComputed = async (
     Object.values(component.attributeTree.attributeValues).forEach((av) => {
       const prop = component.attributeTree.props[av.propId ?? ""];
       if (av.value && av.path && prop) {
-        const conn: PossibleConnection = {
-          attributeValueId: av.id,
-          value: av.value,
-          path: av.path,
-          name: prop.name,
-          componentId: component.id,
-          componentName: component.name,
-          schemaName: component.schemaName,
-          annotation: prop.kind,
-        };
-        conns[av.id] = conn;
+        if (av.secret) {
+          const conn: PossibleConnection = {
+            attributeValueId: av.id,
+            value: av.secret.name,
+            path: av.path,
+            name: prop.name,
+            componentId: component.id,
+            componentName: component.name,
+            schemaName: component.schemaName,
+            annotation: prop.kind,
+          };
+          conns[av.id] = conn;
+        } else {
+          const conn: PossibleConnection = {
+            attributeValueId: av.id,
+            value: av.value,
+            path: av.path,
+            name: prop.name,
+            componentId: component.id,
+            componentName: component.name,
+            schemaName: component.schemaName,
+            annotation: prop.kind,
+          };
+          conns[av.id] = conn;
+        }
       }
     });
 
@@ -1518,127 +1525,6 @@ const getReferences = async (
     );
     span.end();
     return [bifrost, hasReferenceError];
-  } else if (kind === EntityKind.Secret) {
-    const data = atomDoc as EddaSecret;
-    const sd = (await get(
-      workspaceId,
-      changeSetId,
-      data.definitionId.kind,
-      data.definitionId.id,
-      undefined,
-      followComputed,
-    )) as SecretDefinition | -1;
-
-    if (sd === -1) {
-      hasReferenceError = true;
-      span.addEvent("mjolnir", {
-        workspaceId,
-        changeSetId,
-        kind: data.definitionId.kind,
-        id: data.definitionId.id,
-        source: "getReferences",
-        sourceKind: kind,
-      });
-      mjolnir(
-        workspaceId,
-        changeSetId,
-        data.definitionId.kind,
-        data.definitionId.id,
-      );
-    }
-    weakReference(
-      changeSetId,
-      { kind: data.definitionId.kind, args: data.definitionId.id },
-      { kind, args: data.id },
-    );
-    const secret: BifrostSecret = {
-      ...data,
-      definition: sd !== -1 ? sd : ({} as SecretDefinition),
-    };
-    span.end();
-    return [secret, hasReferenceError];
-  } else if (kind === EntityKind.SecretDefinitionList) {
-    const data = atomDoc as EddaSecretDefinitionList;
-    const maybeSDs = await Promise.all(
-      data.secretDefinitions.map(async (d) => {
-        const maybeDoc = (await get(
-          workspaceId,
-          changeSetId,
-          d.kind,
-          d.id,
-          undefined,
-          followComputed,
-        )) as SecretDefinition | -1;
-        if (maybeDoc === -1) {
-          hasReferenceError = true;
-          span.addEvent("mjolnir", {
-            workspaceId,
-            changeSetId,
-            kind: d.kind,
-            id: d.id,
-            source: "getReferences",
-            sourceKind: kind,
-          });
-          mjolnir(workspaceId, changeSetId, d.kind, d.id);
-        }
-        weakReference(
-          changeSetId,
-          { kind: d.kind, args: d.id },
-          { kind, args: data.id },
-        );
-        return maybeDoc;
-      }),
-    );
-    const secretDefinitions = maybeSDs.filter(
-      (v): v is SecretDefinition => v !== -1 && v && "id" in v,
-    );
-    const list: BifrostSecretDefinitionList = {
-      id: data.id,
-      secretDefinitions,
-    };
-    span.end();
-    return [list, hasReferenceError];
-  } else if (kind === EntityKind.SecretList) {
-    const data = atomDoc as EddaSecretList;
-    const maybeS = await Promise.all(
-      data.secrets.map(async (d) => {
-        const maybeDoc = (await get(
-          workspaceId,
-          changeSetId,
-          d.kind,
-          d.id,
-          undefined,
-          followComputed,
-        )) as BifrostSecret | -1;
-        if (maybeDoc === -1) {
-          hasReferenceError = true;
-          span.addEvent("mjolnir", {
-            workspaceId,
-            changeSetId,
-            kind: d.kind,
-            id: d.id,
-            source: "getReferences",
-            sourceKind: kind,
-          });
-          mjolnir(workspaceId, changeSetId, d.kind, d.id);
-        }
-        weakReference(
-          changeSetId,
-          { kind: d.kind, args: d.id },
-          { kind, args: data.id },
-        );
-        return maybeDoc;
-      }),
-    );
-    const secrets = maybeS.filter(
-      (v): v is BifrostSecret => v !== -1 && v && "id" in v,
-    );
-    const list: BifrostSecretList = {
-      id: data.id,
-      secrets,
-    };
-    span.end();
-    return [list, hasReferenceError];
   } else if (kind === EntityKind.Component) {
     const data = atomDoc as EddaComponent;
     const sv = (await get(
