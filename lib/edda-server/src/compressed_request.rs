@@ -34,8 +34,9 @@ pub enum CompressedRequest {
         base_change_set_id: ChangeSetId,
         new_change_set_id: ChangeSetId,
         to_snapshot_address: WorkspaceSnapshotAddress,
+        change_batch_addresses: Vec<ChangeBatchAddress>,
     },
-    Rebuild,
+    Rebuild, // use option<index checksum> as idempotency key?
     Update {
         from_snapshot_address: WorkspaceSnapshotAddress,
         to_snapshot_address: WorkspaceSnapshotAddress,
@@ -328,6 +329,7 @@ mod tests {
             .await
             .expect("failed to compress requests");
 
+        // new change set but with batch address populated
         todo!("FIXME: what's the right message here?");
 
         match compressed_request {
@@ -357,6 +359,8 @@ mod tests {
             .await
             .expect("failed to compress requests");
 
+        // filter out the second new change set and return new change set with batch address
+        // populated
         todo!("FIXME: what's the right message here?");
 
         match compressed_request {
@@ -381,6 +385,7 @@ mod tests {
             .await
             .expect("failed to compress requests");
 
+        // try the copy & drop rebuild (the consumer would fall back to rebuild if the copy failed)
         todo!("FIXME: what's the right message here?");
 
         match compressed_request {
@@ -405,6 +410,8 @@ mod tests {
             .await
             .expect("failed to compress requests");
 
+        // try the copy & drop rebuild (we'll assume this is a multi client requests coming in out
+        // of order)
         todo!("FIXME: what's the right message here?");
 
         match compressed_request {
@@ -431,6 +438,7 @@ mod tests {
             .await
             .expect("failed to compress requests");
 
+        // new change set with updates and drop rebuild
         todo!("FIXME: what's the right message here?");
 
         match compressed_request {
@@ -459,6 +467,7 @@ mod tests {
 
         todo!("FIXME: what's the right message here?");
 
+        // new change set with updates and drop rebuild
         match compressed_request {
             _ => panic!(
                 "wrong variant for compressed request: {:?}",
@@ -483,6 +492,7 @@ mod tests {
             .await
             .expect("failed to compress requests");
 
+        // this is a bit nonsense, so rebuild
         todo!("FIXME: what's the right message here?");
 
         match compressed_request {
@@ -509,6 +519,7 @@ mod tests {
             .await
             .expect("failed to compress requests");
 
+        // this is a bit nonsense, so rebuild
         todo!("FIXME: what's the right message here?");
 
         match compressed_request {
@@ -535,6 +546,7 @@ mod tests {
             .await
             .expect("failed to compress requests");
 
+        // this is a bit nonsense, so rebuild
         todo!("FIXME: what's the right message here?");
 
         match compressed_request {
@@ -561,6 +573,7 @@ mod tests {
             .await
             .expect("failed to compress requests");
 
+        // this is a bit nonsense, so rebuild
         todo!("FIXME: what's the right message here?");
 
         match compressed_request {
