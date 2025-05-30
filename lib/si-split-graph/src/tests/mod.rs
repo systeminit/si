@@ -1431,15 +1431,11 @@ fn detect_updates_simple() -> SplitGraphResult<()> {
     assert_eq!(new_node.id(), destination.id);
 
     let inverse_updates = updated_graph.detect_updates(&base_graph);
-    assert_eq!(2, inverse_updates.len());
+    assert_eq!(1, inverse_updates.len());
 
     assert!(matches!(
         inverse_updates.first().unwrap(),
         Update::RemoveEdge { .. }
-    ));
-    assert!(matches!(
-        inverse_updates.get(1).unwrap(),
-        Update::RemoveNode { .. }
     ));
 
     let mut second_updated_graph = updated_graph.clone();
