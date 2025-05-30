@@ -97,7 +97,7 @@ pub async fn assemble_prop(
     let default_can_be_set_by_socket = !prop.input_socket_sources(ctx).await?.is_empty();
     let secret_definition = crate::secret::find_definition(ctx, schema_variant_id, prop_id).await?;
 
-    let path = prop.path(ctx).await?.to_string();
+    let path = prop.path(ctx).await?.with_replaced_sep("/");
     let prop_mv = PropMv {
         id: prop_id,
         path: path.to_owned(),
@@ -140,16 +140,13 @@ pub async fn assemble_prop(
         secret_definition,
         create_only: is_create_only,
         hidden: prop.hidden,
-        eligible_to_receive_data: {
+        eligible_for_connection: {
             // props can receive data if they're on a certain part of the prop tree
-            // or if they're not a child of an array/map (for now?)
-            let eligible_by_path = path == "/root/resource_value"
-                || path == "/root/si/color"
-                || path.starts_with("/root/domain/")
-                || path.starts_with("/root/resource_value/");
-            eligible_by_path && prop.can_be_used_as_prototype_arg
+            path == ("root/si/name")
+                || path.starts_with("root/domain")
+                || path.starts_with("root/secrets")
+                || path.starts_with("root/resource_value")
         },
-        eligible_to_send_data: prop.can_be_used_as_prototype_arg,
     };
     Ok(prop_mv)
 }

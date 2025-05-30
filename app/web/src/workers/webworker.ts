@@ -1220,7 +1220,13 @@ const updateComputed = async (
     const component = doc as BifrostComponent;
     Object.values(component.attributeTree.attributeValues).forEach((av) => {
       const prop = component.attributeTree.props[av.propId ?? ""];
-      if (av.value && av.path && prop) {
+      if (
+        av.value &&
+        av.path &&
+        prop &&
+        prop.eligibleForConnection &&
+        !prop.hidden
+      ) {
         if (av.secret) {
           const conn: PossibleConnection = {
             attributeValueId: av.id,
@@ -1340,9 +1346,9 @@ const flip = (i: BifrostConnection): BifrostConnection => {
 };
 
 /**
- * 
+ *
  * FETCHING LOGIC
- * 
+ *
  * EXAMPLE OF HOW WE MOVE FROM
  * - `get` (aka `bifrost`)
  * - `getReferences`

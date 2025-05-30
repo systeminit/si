@@ -44,7 +44,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
     let input_count = attribute_tree
         .attribute_values
         .values()
-        .filter(|value| value.is_from_external_source)
+        .filter(|value| value.external_sources.is_some())
         .count();
     Ok(ComponentMv {
         id: component_id,

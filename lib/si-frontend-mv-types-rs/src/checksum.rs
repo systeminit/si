@@ -139,8 +139,7 @@ impl FrontendChecksum for Prop {
         hasher.update(FrontendChecksum::checksum(&self.kind).as_bytes());
         hasher.update(FrontendChecksum::checksum(&self.path).as_bytes());
         hasher.update(FrontendChecksum::checksum(&self.hidden).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.eligible_to_receive_data).as_bytes());
-        hasher.update(FrontendChecksum::checksum(&self.eligible_to_send_data).as_bytes());
+        hasher.update(FrontendChecksum::checksum(&self.eligible_for_connection).as_bytes());
         hasher.update(FrontendChecksum::checksum(&self.create_only).as_bytes());
         hasher.update(FrontendChecksum::checksum(&self.doc_link).as_bytes());
         hasher.update(FrontendChecksum::checksum(&self.documentation).as_bytes());

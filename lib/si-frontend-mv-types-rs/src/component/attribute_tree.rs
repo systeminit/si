@@ -39,6 +39,20 @@ pub struct ValidationOutput {
 }
 
 #[derive(
+    Deserialize,
+    Serialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    si_frontend_mv_types_macros::FrontendChecksum,
+)]
+pub struct ExternalSource {
+    pub component_name: String,
+    pub path: String,
+}
+
+#[derive(
     Clone,
     Debug,
     Serialize,
@@ -55,7 +69,7 @@ pub struct AttributeValue {
     pub prop_id: Option<PropId>,
     pub value: serde_json::Value,
     pub can_be_set_by_socket: bool, // true if this prop value is currently driven by a socket, even if the socket isn't in use
-    pub is_from_external_source: bool, // true if this prop has a value provided by a socket
+    pub external_sources: Option<Vec<ExternalSource>>, // this is the detail of where the subscriptions are from
     pub is_controlled_by_ancestor: bool, // if ancestor of prop is set by dynamic func, ID of ancestor that sets it
     pub is_controlled_by_dynamic_func: bool, // props driven by non-dynamic funcs have a statically set value
     pub overridden: bool, // true if this prop has a different controlling func id than the default for this asset

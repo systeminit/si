@@ -295,10 +295,7 @@ export interface Prop {
   isOriginSecret: boolean;
   secretDefinition?: SecretDefinition;
   createOnly: boolean;
-  // this is for output sources
-  eligibleToReceiveData: boolean;
-  // this is for input sources
-  eligibleToSendData: boolean;
+  eligibleForConnection: boolean;
   hidden: boolean;
 }
 
@@ -309,12 +306,17 @@ export interface AttributeValue {
   propId?: string;
   value: string | null;
   canBeSetBySocket: boolean;
-  isFromExternalSource: boolean;
+  externalSources?: ExternalSource[];
   isControlledByAncestor: boolean;
   isControlledByDynamicFunc: boolean;
   overriden: boolean;
   validation?: ValidationOutput;
   secret: Secret | null;
+}
+
+export interface ExternalSource {
+  path: string;
+  componentName: string;
 }
 
 export interface AVTree {
