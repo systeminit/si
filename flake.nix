@@ -330,6 +330,8 @@
             '';
           };
 
+          bedrock = binDerivation {pkgName = "bedrock";};
+
           edda = binDerivation {pkgName = "edda";};
 
           forklift = binDerivation {pkgName = "forklift";};
@@ -338,13 +340,13 @@
 
           innitctl = binDerivation {pkgName = "innitctl";};
 
+          luminork = binDerivation {pkgName = "luminork";};
+
           module-index = binDerivation {pkgName = "module-index";};
 
           pinga = binDerivation {pkgName = "pinga";};
 
           rebaser = binDerivation {pkgName = "rebaser";};
-
-          luminork = binDerivation {pkgName = "luminork";};
 
           sdf = binDerivation {pkgName = "sdf";};
 
