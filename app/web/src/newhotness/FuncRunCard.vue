@@ -56,13 +56,12 @@
             {{ funcRun.functionKind }}
           </span>
 
-          <!-- FIXME why is component name empty? -->
-          <span v-if="funcRun.componentId">
-            {{ funcRun.componentName || "Component" }}
+          <span v-if="funcRun.componentId && funcRun.componentName">
+            {{ funcRun.componentName }}
           </span>
 
           <span
-            v-if="funcRun.actionId || true"
+            v-if="funcRun.actionId"
             class="flex items-center text-action-400"
           >
             <Icon name="bolt" size="xs" />
