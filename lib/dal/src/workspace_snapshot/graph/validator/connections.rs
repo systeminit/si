@@ -59,7 +59,6 @@ pub fn connection_migrations(
     graph: &impl std::ops::Deref<Target = WorkspaceSnapshotGraphVCurrent>,
     inferred_connections: impl IntoIterator<Item = SocketConnection>,
 ) -> Vec<ConnectionMigration> {
-    let graph = graph.deref();
     let inferred_connection_migrations =
         inferred_connections.into_iter().map(|socket_connection| {
             match PropConnection::equivalent_to_socket_connection(graph, &socket_connection) {
@@ -87,6 +86,16 @@ pub fn connection_migrations(
         .chain(inferred_connection_migrations)
         .collect_vec();
 
+    // Check if any proposed prop connections already have values (which we don't want to overwrite)
+    for migration in &mut migrations {
+        if let Some(ref prop_connection) = migration.prop_connection {
+            if has_prototype(graph, prop_connection.dest_av_id) {
+                migration.issue =
+                    Some(ConnectionUnmigrateableBecause::DestinationPropAlreadyHasValue);
+            }
+        }
+    }
+
     // Look for multiple connections to the same destination socket
     let mut seen_destination_sockets = HashSet::new();
     let mut dup_destination_sockets = HashSet::new();
@@ -113,6 +122,17 @@ pub fn connection_migrations(
 
     // TODO what if one socket sets /domain/Foo, and another sets /domain/Foo/Bar?
     migrations
+}
+
+fn has_prototype(
+    graph: &impl std::ops::Deref<Target = WorkspaceSnapshotGraphVCurrent>,
+    av_id: AttributeValueId,
+) -> bool {
+    graph.get_node_index_by_id_opt(av_id).is_some_and(|av| {
+        graph
+            .target(av, EdgeWeightKindDiscriminants::Prototype)
+            .is_ok()
+    })
 }
 
 /// A migration from a socket connection to a prop connection (with possible status).
@@ -551,6 +571,8 @@ pub enum ConnectionUnmigrateableBecause {
     ConnectionPrototypeHasMultipleArgs,
     /// The connection APA is hanging off something other than an input socket
     DestinationIsNotInputSocket,
+    /// The destination prop already has a value
+    DestinationPropAlreadyHasValue,
     /// The destination socket is not bound to a prop
     DestinationSocketArgumentNotBoundToProp,
     /// The destination socket is bound to a prop, but we can't find the AV for it
@@ -654,6 +676,9 @@ impl std::fmt::Display for WithGraph<'_, &'_ ConnectionUnmigrateableBecause> {
             }
             ConnectionUnmigrateableBecause::DestinationIsNotInputSocket => {
                 write!(f, "Destination is not an input socket")
+            }
+            ConnectionUnmigrateableBecause::DestinationPropAlreadyHasValue => {
+                write!(f, "Destination prop already has a value")
             }
             ConnectionUnmigrateableBecause::DestinationSocketArgumentNotBoundToProp => {
                 write!(f, "Destination socket argument is not bound to a prop")

@@ -11,10 +11,12 @@
         </div>
       </template>
       <template #success>
-        <div class="flex flex-row gap-xs p-xs w-full">
-          <h2>Validation: {{ allIssues.length }} Issues Found</h2>
+        <div class="flex flex-row gap-xs p-xs w-full text-xs font-bold">
+          <div class="text-lg">
+            Validation: {{ allIssues.length }} Issues Found
+          </div>
           <div v-for="[issueType, issues] in issuesByType" :key="issueType">
-            <h3>{{ issueType }}: {{ issues.length }}</h3>
+            <div class="text-lg">{{ issueType }}: {{ issues.length }}</div>
             <div v-for="issue in issues" :key="issue.message">
               {{ issue.message }}
             </div>
