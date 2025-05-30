@@ -582,6 +582,7 @@ impl FuncRunner {
             };
 
             let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
+            let component_name = Component::name_by_id(ctx, component_id).await?;
 
             let func_run_create_time = Utc::now();
             let func_run_inner = FuncRunBuilder::default()
@@ -598,6 +599,7 @@ impl FuncRunner {
                 .function_code_cas_address(code_cas_hash)
                 .attribute_value_id(Some(attribute_value_id))
                 .component_id(Some(component_id))
+                .component_name(Some(component_name))
                 .created_at(func_run_create_time)
                 .updated_at(func_run_create_time)
                 .build()?;
@@ -719,6 +721,7 @@ impl FuncRunner {
             let function_args: CasValue = args.clone().into();
 
             let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
+            let component_name = Component::name_by_id(ctx, component_id).await?;
             let before = FuncRunner::before_funcs(ctx, component_id, &func).await?;
 
             let func_run_create_time = Utc::now();
@@ -736,6 +739,7 @@ impl FuncRunner {
                 .function_link(func.link.clone())
                 .attribute_value_id(Some(attribute_value_id))
                 .component_id(Some(component_id))
+                .component_name(Some(component_name))
                 .created_at(func_run_create_time)
                 .updated_at(func_run_create_time);
 
