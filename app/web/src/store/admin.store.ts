@@ -50,6 +50,12 @@ export const useAdminStore = () => {
         updatingModuleCacheOperationError: undefined as string | undefined,
         updatingModuleCacheOperationRunning: false as boolean,
         clearingInnitCacheOperationRunning: false as boolean,
+        validateSnapshotResponse: undefined as
+          | ValidateSnapshotResponse
+          | undefined,
+        migrateConnectionsResponse: undefined as
+          | MigrateConnectionsResponse
+          | undefined,
       }),
       getters: {},
       actions: {
@@ -171,19 +177,21 @@ export const useAdminStore = () => {
           });
         },
         async VALIDATE_SNAPSHOT(workspaceId: string, changeSetId: string) {
-          return new ApiRequest<{
-            issues: ValidationIssue[];
-          }>({
+          return new ApiRequest<ValidateSnapshotResponse>({
             method: "get",
             url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/validate_snapshot`,
+            onSuccess: (response) => {
+              this.validateSnapshotResponse = response;
+            },
           });
         },
         async MIGRATE_CONNECTIONS(workspaceId: string, changeSetId: string) {
-          return new ApiRequest<{
-            migrations: ConnectionMigration[];
-          }>({
+          return new ApiRequest<MigrateConnectionsResponse>({
             method: "get",
             url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/migrate_connections`,
+            onSuccess: (response) => {
+              this.migrateConnectionsResponse = response;
+            },
           });
         },
       },
@@ -212,6 +220,10 @@ export const useAdminStore = () => {
     }),
   )();
 };
+
+export interface ValidateSnapshotResponse {
+  issues: ValidationIssue[];
+}
 
 export type ValidationIssue =
   | {
@@ -245,23 +257,34 @@ export type ValidationIssue =
       message: string;
     };
 
+export interface MigrateConnectionsResponse {
+  migrations: ConnectionMigration[];
+}
+
 export type ConnectionMigration =
   // If there is no issue, both socket and prop connections are always defined.
-  // If socket and prop connections are defined, there *may* be an issue.
   | {
-      apaId: AttributePrototypeArgumentId;
+      issue?: undefined;
+      explicitConnectionId?: AttributePrototypeArgumentId;
       socketConnection: ConnectionMigrationSocketConnection;
       propConnection: ConnectionMigrationPropConnection;
-      issue?: ConnectionUnmigrateableBecause;
       message: string;
     }
-  // If there is an issue, socket and prop connections may be undefined.
-  // If prop connection is undefined, there is definitely an issue.
+  // If there is an issue with an explicit connection, socket and prop connections may be undefined
+  // (because we may have identified the connection but been unable to completely build them out).
   | {
-      apaId: AttributePrototypeArgumentId;
-      socketConnection?: ConnectionMigrationSocketConnection;
-      propConnection?: undefined;
       issue: ConnectionUnmigrateableBecause;
+      explicitConnectionId: AttributePrototypeArgumentId;
+      socketConnection?: ConnectionMigrationSocketConnection;
+      propConnection?: ConnectionMigrationPropConnection;
+      message: string;
+    }
+  // If there is an issue with an inferred connection, socketConnection is still always defined.
+  | {
+      issue: ConnectionUnmigrateableBecause;
+      explicitConnectionId?: undefined;
+      socketConnection: ConnectionMigrationSocketConnection;
+      propConnection?: ConnectionMigrationPropConnection;
       message: string;
     };
 
