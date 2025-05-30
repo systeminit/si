@@ -1,0 +1,16 @@
+[toolchains]
+  rust.rustc = /nix/store/g1qqazknp75y54axkrk6chxcvbjwm4p7-rust-minimal-1.86.0/bin/rustc
+  rust.cargo = /nix/store/g1qqazknp75y54axkrk6chxcvbjwm4p7-rust-minimal-1.86.0/bin/cargo
+  rust.clippy = /nix/store/g1qqazknp75y54axkrk6chxcvbjwm4p7-rust-minimal-1.86.0/bin/clippy-driver
+  rust.rustfmt = /nix/store/bggs91zjkxl6vb67cxzhbbj42k0lq3ak-rustfmt-preview-1.88.0-nightly-2025-04-17-x86_64-unknown-linux-gnu/bin/rustfmt
+  c.compiler = /nix/store/f16xdvddql4q386incjvxcys4g4dcavj-clang-wrapper-19.1.7/bin/clang
+  cxx.compiler = /nix/store/f16xdvddql4q386incjvxcys4g4dcavj-clang-wrapper-19.1.7/bin/clang++
+  cxx.linker = /nix/store/f16xdvddql4q386incjvxcys4g4dcavj-clang-wrapper-19.1.7/bin/clang
+  protoc = /nix/store/83m068npfi97jclcql4b0xy1220c4lh4-protobuf-30.2/bin/protoc
+  nodejs = /nix/store/rc520zzigf272ydkls8rh832zcq7drr0-nodejs-20.19.1/bin/node
+  python = /nix/store/kjvgj2n3yn70hmjifg6y0bk9m4rf7jba-python3-3.12.10/bin/python3
+  deno = /nix/store/7p52jyqbmnx3ckyjd88yd8nkfwg0g5cg-deno-2.2.12/bin/deno
+  pnpm = /nix/store/lcd4qfp13rgwhgffg7m0gr5m8lbvi6nb-pnpm-10.11.0/bin/pnpm
+  bash = /nix/store/41pi0jiyvlhxgpfhxzvb44w1skc8yp4z-bash-interactive-5.2p37/bin/bash
+  git = /nix/store/9xb38lwvp8nlkcdbh0kj9p95qmqh4k1h-git-minimal-2.49.0/bin/git
+

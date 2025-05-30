@@ -138,6 +138,7 @@ def build_nix_binary(name: str, build_context_dir: str) -> str:
     cmd = [
         "nix",
         "build",
+        "--impure",
         "--extra-experimental-features",
         "nix-command flakes impure-derivations ca-derivations",
         "--option",

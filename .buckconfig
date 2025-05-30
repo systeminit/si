@@ -30,3 +30,15 @@ ignore = \
   third-party/rust/.cargo/**/BUCK, \
   third-party/rust/vendor/**/BUCK, \
   tmp
+
+[buck2]
+digest_algorithms = SHA256
+
+[buck2_re_client]
+action_cache_address = cas-scott-systeminit.build-faster.nativelink.net:443
+cas_address =  cas-scott-systeminit.build-faster.nativelink.net:443
+engine_address =  scheduler-scott-systeminit.build-faster.nativelink.net:443
+http_headers = x-nativelink-api-key:35ce34b3643515a746a9d6f0070d5707de6329c1ceddea2474a1298aa2532088
+
+[build]
+execution_platforms = prelude-si//platforms:default

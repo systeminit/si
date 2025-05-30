@@ -22,6 +22,9 @@ docker_image(
     name = "image",
     image_name = "innitctl",
     build_deps = ["//bin/innitctl:innitctl"],
+    build_args = {
+        "SI_RBE_TOKEN": ""
+    },
     srcs = {
         "configs/": ".",
     },
