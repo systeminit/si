@@ -206,6 +206,7 @@ impl VariantAuthoringClient {
             FuncBackendResponseType::SchemaVariantDefinition,
             Some("main"),
             Some(code_base64),
+            false,
         )
         .await?;
 

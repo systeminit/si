@@ -39,6 +39,7 @@ async fn modify_func_node(ctx: &mut DalContext) {
         FuncBackendResponseType::Boolean,
         None::<String>,
         Some(code_base64.clone()),
+        false,
     )
     .await
     .expect("able to make a func");
@@ -123,6 +124,7 @@ async fn func_node_with_arguments(ctx: &mut DalContext) {
         FuncBackendResponseType::Boolean,
         None::<String>,
         Some(code_base64),
+        false,
     )
     .await
     .expect("able to make a func");
@@ -236,6 +238,7 @@ async fn delete_func_node(ctx: &mut DalContext) {
         FuncBackendResponseType::Boolean,
         None::<String>,
         Some(code_base64),
+        false,
     )
     .await
     .expect("able to make a func");

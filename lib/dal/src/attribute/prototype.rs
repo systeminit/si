@@ -481,7 +481,7 @@ impl AttributePrototype {
         value_source: impl Into<ValueSource>,
     ) -> AttributePrototypeResult<AttributePrototypeArgumentId> {
         let func_id = Self::func_id(ctx, attribute_prototype_id).await?;
-        let arg_id = FuncArgument::single_arg_for_intrinsic(ctx, func_id).await?;
+        let arg_id = FuncArgument::single_arg_for_func(ctx, func_id).await?;
         Ok(
             AttributePrototypeArgument::new(ctx, attribute_prototype_id, arg_id, value_source)
                 .await?

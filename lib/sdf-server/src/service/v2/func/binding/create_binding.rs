@@ -65,6 +65,10 @@ pub async fn create_binding(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
     let func = Func::get_by_id(&ctx, func_id).await?;
 
+    if func.is_transformation {
+        return Err(FuncAPIError::WrongFunctionKindForBinding);
+    }
+
     // add cycle check so we don't end up with a cycle as a result of creating this binding
     let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
     match func.kind {

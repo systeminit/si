@@ -154,6 +154,10 @@ pub enum FuncAuthoringError {
     InvalidFuncKindForCreation(FuncKind),
     #[error("layerdb error: {0}")]
     LayerDb(#[from] LayerDbError),
+    #[error(
+        "cannot edit arguments of transformation func {0}: It should always have single argument"
+    )]
+    ModifyingTransformationArguments(FuncId),
     #[error("no input location given for attribute prototype id ({0}) and func argument id ({1})")]
     NoInputLocationGiven(AttributePrototypeId, FuncArgumentId),
     #[error("no output location given for func: {0}")]
@@ -213,6 +217,7 @@ impl FuncAuthoringClient {
             eventual_parent,
             Some(output_location),
             argument_bindings,
+            false,
         )
         .await?;
 
@@ -231,9 +236,8 @@ impl FuncAuthoringClient {
         ctx: &DalContext,
         name: Option<String>,
     ) -> FuncAuthoringResult<Func> {
-        let func = create::create_attribute_func(ctx, name, None, None, vec![]).await?;
-
-        Self::create_func_argument(ctx, func.id, "input", FuncArgumentKind::Any, None).await?;
+        let func = create::create_attribute_func(ctx, name, None, None, vec![], true).await?;
+        FuncArgument::new(ctx, "input", FuncArgumentKind::Any, None, func.id).await?;
 
         Ok(func)
     }
@@ -421,6 +425,12 @@ impl FuncAuthoringClient {
             ));
         }
 
+        if func.is_transformation {
+            return Err(FuncAuthoringError::ModifyingTransformationArguments(
+                func.id,
+            ));
+        }
+
         let func_argument = FuncArgument::new(ctx, name, kind, element_kind, id).await?;
 
         Ok(func_argument)
@@ -436,6 +446,12 @@ impl FuncAuthoringClient {
         let func_id = FuncArgument::get_func_id_for_func_arg_id(ctx, id).await?;
         let func = Func::get_by_id(ctx, func_id).await?;
         func.error_if_locked()?;
+
+        if func.is_transformation {
+            return Err(FuncAuthoringError::ModifyingTransformationArguments(
+                func.id,
+            ));
+        }
 
         for attribute_prototype_argument_id in
             FuncArgument::list_attribute_prototype_argument_ids(ctx, id).await?

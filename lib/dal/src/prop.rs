@@ -1071,7 +1071,7 @@ impl Prop {
         let prototype_id = Self::prototype_id(ctx, prop_id).await?;
         let intrinsic: IntrinsicFunc = prop.kind.into();
         let intrinsic_id = Func::find_intrinsic(ctx, intrinsic).await?;
-        let func_arg_id = FuncArgument::single_arg_for_intrinsic(ctx, intrinsic_id).await?;
+        let func_arg_id = FuncArgument::single_arg_for_func(ctx, intrinsic_id).await?;
 
         AttributePrototype::update_func_by_id(ctx, prototype_id, intrinsic_id).await?;
 
