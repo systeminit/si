@@ -183,6 +183,11 @@ import {
 } from "@/store/admin.store";
 import { WorkspacePk } from "@/store/workspaces.store";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import { PanelKind } from "../Workspace/WorkspaceAdminDashboard.vue";
+
+const emit = defineEmits<{
+  showPanel: [PanelKind];
+}>();
 
 const adminStore = useAdminStore();
 
@@ -439,11 +444,14 @@ function migrateConnections(
   changeSetId: ChangeSetId,
 ) {
   adminStore.MIGRATE_CONNECTIONS(workspaceId, changeSetId);
+  emit("showPanel", "migrate-connections");
 }
 
 const validateSnapshotRequestStatus =
   adminStore.getRequestStatus("VALIDATE_SNAPSHOT");
+
 function validateSnapshot(workspaceId: WorkspacePk, changeSetId: ChangeSetId) {
   adminStore.VALIDATE_SNAPSHOT(workspaceId, changeSetId);
+  emit("showPanel", "validate-snapshot");
 }
 </script>

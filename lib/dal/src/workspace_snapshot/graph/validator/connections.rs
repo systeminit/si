@@ -44,8 +44,9 @@ use crate::workspace_snapshot::{
 
 pub fn connection_migrations_with_text(
     graph: &impl std::ops::Deref<Target = WorkspaceSnapshotGraphVCurrent>,
+    inferred_connections: impl IntoIterator<Item = SocketConnection>,
 ) -> Vec<(ConnectionMigration, String)> {
-    connection_migrations(graph)
+    connection_migrations(graph, inferred_connections)
         .into_iter()
         .map(|migration| {
             let text = format!("{}", WithGraph(graph.deref(), &migration));
@@ -56,14 +57,34 @@ pub fn connection_migrations_with_text(
 
 pub fn connection_migrations(
     graph: &impl std::ops::Deref<Target = WorkspaceSnapshotGraphVCurrent>,
+    inferred_connections: impl IntoIterator<Item = SocketConnection>,
 ) -> Vec<ConnectionMigration> {
     let graph = graph.deref();
-    let mut migrations = graph
+    let inferred_connection_migrations =
+        inferred_connections.into_iter().map(|socket_connection| {
+            match PropConnection::equivalent_to_socket_connection(graph, &socket_connection) {
+                Ok(prop_connection) => ConnectionMigration {
+                    explicit_connection_id: None,
+                    socket_connection: Some(socket_connection),
+                    prop_connection: Some(prop_connection),
+                    issue: None,
+                },
+                Err(issue) => ConnectionMigration {
+                    explicit_connection_id: None,
+                    socket_connection: Some(socket_connection),
+                    prop_connection: None,
+                    issue: Some(issue),
+                },
+            }
+        });
+    let explicit_connection_migrations = graph
         .edges()
         .filter_map(|edge| SocketConnection::socket_connection_edge_opt(graph, edge))
         .map(|(apa_id, source_socket_id)| {
             ConnectionMigration::from_socket_connection_edge(graph, apa_id, source_socket_id)
-        })
+        });
+    let mut migrations = explicit_connection_migrations
+        .chain(inferred_connection_migrations)
         .collect_vec();
 
     // Look for multiple connections to the same destination socket
@@ -98,8 +119,9 @@ pub fn connection_migrations(
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionMigration {
-    /// The APA for this connection
-    pub apa_id: AttributePrototypeArgumentId,
+    /// The APA for this connection (if it is explicit and not inferred)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub explicit_connection_id: Option<AttributePrototypeArgumentId>,
     /// The socket connection data
     #[serde(skip_serializing_if = "Option::is_none")]
     pub socket_connection: Option<SocketConnection>,
@@ -119,7 +141,7 @@ impl ConnectionMigration {
     ) -> Self {
         // Get the migration data
         let mut migration = ConnectionMigration {
-            apa_id,
+            explicit_connection_id: Some(apa_id),
             socket_connection: None,
             prop_connection: None,
             issue: None,
@@ -579,14 +601,17 @@ impl std::fmt::Display for WithGraph<'_, &'_ ConnectionMigration> {
         if let Some(ref issue) = migration.issue {
             write!(f, "ERROR {}: ", WithGraph(graph, issue))?;
         }
-        write!(f, "migrate ")?;
+        write!(f, "migrate")?;
+        if migration.explicit_connection_id.is_none() {
+            write!(f, " inferred connection")?;
+        }
         if let Some(ref socket_connection) = migration.socket_connection {
-            write!(f, "{}", WithGraph(graph, socket_connection))?;
+            write!(f, " {}", WithGraph(graph, socket_connection))?;
             if let Some(ref prop_connection) = migration.prop_connection {
                 write!(f, " to {}", WithGraph(graph, prop_connection))?;
             }
-        } else {
-            write!(f, "connection APA {}", migration.apa_id)?;
+        } else if let Some(explicit_connection_id) = migration.explicit_connection_id {
+            write!(f, " connection APA {}", explicit_connection_id)?;
         }
 
         Ok(())
