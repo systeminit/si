@@ -85,7 +85,8 @@
         :value="props.attributeTree.attributeValue.value?.toString() ?? ''"
         :canDelete="props.attributeTree.isBuildable"
         :isSetByConnection="
-          props.attributeTree.attributeValue.isFromExternalSource
+          props.attributeTree.attributeValue.externalSources &&
+          props.attributeTree.attributeValue.externalSources.length > 1
         "
         :isArray="props.attributeTree.prop?.kind === 'array'"
         :isMap="props.attributeTree.prop?.kind === 'map'"

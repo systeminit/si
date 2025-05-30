@@ -1,6 +1,5 @@
 use std::collections::{
     HashMap,
-    HashSet,
     VecDeque,
 };
 
@@ -20,12 +19,12 @@ use si_frontend_mv_types::component::attribute_tree::{
     AttributeTree,
     AttributeValue as AttributeValueMv,
     AvTreeInfo,
+    ExternalSource,
     ValidationOutput,
 };
 use si_id::{
     AttributeValueId,
     ComponentId,
-    InputSocketId,
 };
 use telemetry::prelude::*;
 
@@ -40,12 +39,6 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
 
     let root_av_id = Component::root_attribute_value_id(ctx, component_id).await?;
     let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
-    let sockets_on_component: HashSet<InputSocketId> =
-        Component::incoming_connections_for_id(ctx, component_id)
-            .await?
-            .iter()
-            .map(|c| c.to_input_socket_id)
-            .collect();
     let secrets_category_av_id =
         Component::attribute_value_for_prop(ctx, component_id, &["root", "secrets"]).await?;
     let secret_ids_by_key = Secret::list_ids_by_key(ctx).await?;
@@ -132,12 +125,23 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         let can_be_set_by_socket = !sockets_for_av.is_empty();
 
         let subscriptions = AttributeValue::subscriptions(ctx, av_id).await?;
-        let is_from_sub_external_source = subscriptions.is_some_and(|subs| !subs.is_empty());
 
-        let is_from_external_source = is_from_sub_external_source
-            || sockets_for_av
-                .iter()
-                .any(|s| sockets_on_component.contains(s));
+        let external_sources: Option<Vec<ExternalSource>> = if let Some(subs) = subscriptions {
+            let mut sources = vec![];
+            for sub in subs {
+                let comp_id = AttributeValue::component_id(ctx, sub.attribute_value_id).await?;
+                let comp_name = Component::name_by_id(ctx, comp_id).await?;
+                let source = ExternalSource {
+                    path: sub.path.to_string(),
+                    component_name: comp_name,
+                };
+                sources.push(source);
+            }
+            Some(sources)
+        } else {
+            None
+        };
+
         let prototype_id = AttributeValue::prototype_id(ctx, av_id).await?;
         let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
         let func = Func::get_by_id(ctx, func_id).await?;
@@ -190,7 +194,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
             path: Some(av_path),
             value,
             can_be_set_by_socket,
-            is_from_external_source,
+            external_sources,
             is_controlled_by_ancestor: controlling_func.av_id != av_id,
             is_controlled_by_dynamic_func: controlling_func.is_dynamic_func,
             overridden,
