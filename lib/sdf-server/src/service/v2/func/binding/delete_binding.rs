@@ -64,6 +64,10 @@ pub async fn delete_binding(
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
     let func = Func::get_by_id(&ctx, func_id).await?;
 
+    if func.is_transformation {
+        return Err(FuncAPIError::WrongFunctionKindForBinding);
+    }
+
     let mut modified_sv_ids = HashSet::new();
 
     // Note(victor): Matching inside the loop for a static variable may look weird, but

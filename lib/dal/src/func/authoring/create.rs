@@ -63,6 +63,7 @@ pub(crate) async fn create_management_func(
         FuncBackendResponseType::Management,
         DEFAULT_MGMT_CODE,
         DEFAULT_CODE_HANDLER,
+        false,
     )
     .await?;
 
@@ -102,6 +103,7 @@ pub(crate) async fn create_action_func(
         FuncBackendResponseType::Action,
         DEFAULT_ACTION_CODE,
         DEFAULT_CODE_HANDLER,
+        false,
     )
     .await?;
 
@@ -143,6 +145,7 @@ pub(crate) async fn create_leaf_func(
         backend_response_type,
         code,
         handler,
+        false,
     )
     .await?;
     LeafBinding::create_leaf_func_binding(ctx, func.id, eventual_parent, leaf_kind, inputs).await?;
@@ -160,6 +163,7 @@ pub(crate) async fn create_attribute_func(
     eventual_parent: Option<EventualParent>,
     output_location: Option<AttributeFuncDestination>,
     argument_bindings: Vec<AttributeArgumentBinding>,
+    is_transformation: bool,
 ) -> FuncAuthoringResult<Func> {
     let (code, handler, backend_kind, backend_response_type) = (
         DEFAULT_ATTRIBUTE_CODE,
@@ -175,6 +179,7 @@ pub(crate) async fn create_attribute_func(
         backend_response_type,
         code,
         handler,
+        is_transformation,
     )
     .await?;
 
@@ -209,6 +214,7 @@ pub(crate) async fn create_authentication_func(
         FuncBackendResponseType::Void,
         DEFAULT_AUTHENTICATION_CODE,
         DEFAULT_CODE_HANDLER,
+        false,
     )
     .await?;
 
@@ -223,6 +229,7 @@ async fn create_func_stub(
     backend_response_type: FuncBackendResponseType,
     code: &str,
     handler: &str,
+    is_transformation: bool,
 ) -> FuncAuthoringResult<Func> {
     let name = name.unwrap_or(generate_name());
     if Func::find_id_by_name(ctx, &name).await?.is_some() {
@@ -243,6 +250,7 @@ async fn create_func_stub(
         backend_response_type,
         Some(handler),
         Some(code_base64),
+        is_transformation,
     )
     .await?;
 

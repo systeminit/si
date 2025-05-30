@@ -54,6 +54,7 @@ pub struct FuncSummary {
     pub bindings: Vec<FuncBinding>,
     pub types: Option<String>,
     pub backend_kind: FuncBackendKind,
+    pub is_transformation: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, Serialize, PartialEq)]
