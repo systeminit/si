@@ -1,0 +1,53 @@
+[package]
+name = "bedrock-server"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+buck2-resources = { path = "../../lib/buck2-resources" }
+bedrock-core = { path = "../../lib/bedrock-core" }
+si-data-acmpca = { path = "../../lib/si-data-acmpca" }
+si-data-ssm = { path = "../../lib/si-data-ssm" }
+si-settings = { path = "../../lib/si-settings" }
+si-std = { path = "../../lib/si-std" }
+si-tls = { path = "../../lib/si-tls" }
+si-data-nats = { path = "../../lib/si-data-nats" }
+telemetry = { path = "../../lib/telemetry-rs" }
+
+axum = { workspace = true }
+async-nats = { workspace = true }
+async-trait = { workspace = true }
+aws-config = { workspace = true }
+aws-credential-types = { workspace = true }
+aws-sdk-s3 = { workspace = true }
+aws-smithy-runtime-api = { workspace = true }
+aws-smithy-types = { workspace = true }
+base64 = { workspace = true }
+ciborium = { workspace = true }
+dashmap = { workspace = true }
+derive_builder = { workspace = true }
+futures = { workspace = true }
+hex = { workspace = true }
+hyper = { workspace = true }
+remain = { workspace = true }
+rust-s3 = { workspace = true }
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-rustls = { workspace = true }
+tokio-stream = { workspace = true }
+tokio-util = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tracing-tunnel = { workspace = true }
+ulid = { workspace = true }
+uuid = { workspace = true }
+url = { workspace = true }

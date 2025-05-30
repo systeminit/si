@@ -1,0 +1,18 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "rust_binary",
+)
+
+rust_binary(
+    name = "bedrock",
+    deps = [
+        "//lib/bedrock-server:bedrock-server",
+        "//lib/si-service:si-service",
+        "//third-party/rust:clap",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+    env = {"CARGO_BIN_NAME": "bedrock"},
+    resources = {
+        "ca.dev.pem": "//dev:minica.pem",
+    }
+)

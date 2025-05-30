@@ -12,7 +12,7 @@ x-loki-logged-service: &loki-logged-service
       max-size: "10m"
 
 services:
-  db:
+  postgres:
     # uncomment below to get these logs in grafana
     #<<: *loki-logged-service
     image: systeminit/postgres:stable
@@ -23,7 +23,7 @@ services:
       - "POSTGRES_DB=si"
       - "POSTGRES_MULTIPLE_DBS=si_layer_db,si_auth,si_auth_prisma_shadow_db,si_module_index,si_audit"
     ports:
-      - "7432:5432"
+      - "5432:5432"
     healthcheck:
       test: [ "CMD-SHELL", "[ -f /tmp/ready ]" ]
       interval: 5s
@@ -70,26 +70,6 @@ services:
       interval: 5s
       timeout: 10s
       retries: 5
-
-  postgres:
-    #<<: *loki-logged-service
-    image: systeminit/pgbouncer:stable
-    environment:
-      - "DB_USER=si"
-      - "DB_PASSWORD=bugbear"
-      - "DB_HOST=db"
-      - "ADMIN_USERS=postgres,dbuser,si"
-      - "AUTH_TYPE=scram-sha-256"
-      - "MAX_CLIENT_CONN=100000"
-      - "MAX_PREPARED_STATEMENTS=10000"
-      - "DEFAULT_POOL_SIZE=250"
-      - "MIN_POOL_SIZE=200"
-      - "POOL_MODE=transaction"
-      - "IGNORE_STARTUP_PARAMETERS=extra_float_digits,search_path"
-    ports:
-      - "5432:5432"
-    depends_on:
-      - db
 
   postgres-test:
     #<<: *loki-logged-service
