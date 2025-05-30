@@ -36,7 +36,6 @@ nix_rust_toolchain(
     rustfmt_path = read_root_config("toolchains", "rust.rustfmt"),
     rustc_binary_flags = [
         "-C", "linker=" + read_root_config("toolchains", "cxx.linker"),
-        "-C", "link-arg=--wrapper=" + read_root_config("toolchains", "bash"),
     ],
     rustc_flags = [
         "-Copt-level=3",
@@ -46,7 +45,6 @@ nix_rust_toolchain(
         "-Coverflow-checks=false",
         "-Clto=false",
         "-Ccodegen-units=16",
-        "-Z", "linker-flavor=ld.lld",
     ],
 )
 
@@ -61,7 +59,6 @@ nix_rust_toolchain(
     rustfmt_path = read_root_config("toolchains", "rust.rustfmt"),
     rustc_binary_flags = [
         "-C", "linker=" + read_root_config("toolchains", "cxx.linker"),
-        "-C", "link-arg=--wrapper=" + read_root_config("toolchains", "bash"),
     ],
     rustc_flags = [
         "-Copt-level=0",
@@ -69,7 +66,6 @@ nix_rust_toolchain(
         "-Ccodegen-units=256",
         "-Cdebug-assertions=true",
         "-Coverflow-checks=true",
-        "-Z", "linker-flavor=ld.lld",
     ],
 )
 
