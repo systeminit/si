@@ -105,42 +105,6 @@
       </CollapsingFlexItem>
     </div>
 
-    <div class="docs flex flex-col">
-      <CollapsingFlexItem open>
-        <template #header> Documentation </template>
-        <template v-if="!docs">
-          <p v-if="component.schemaVariantDocLink">
-            <a
-              :href="component.schemaVariantDocLink"
-              target="_blank"
-              tabindex="-1"
-              >{{ component.schemaVariantName }}</a
-            >
-          </p>
-          <p>
-            <VueMarkdown :source="component.schemaVariantDescription ?? ''" />
-          </p>
-        </template>
-        <template v-else>
-          <VButton
-            class="border-0 mr-2em"
-            icon="arrow--left"
-            label="Back"
-            size="sm"
-            tone="shade"
-            variant="ghost"
-            @click="() => (docs = '')"
-          />
-          <p v-if="docLink">
-            <a :href="docLink" target="_blank">{{
-              component.schemaVariantName
-            }}</a>
-          </p>
-          <p>{{ docs }}</p>
-        </template>
-      </CollapsingFlexItem>
-    </div>
-
     <div class="right flex flex-col">
       <CollapsingFlexItem>
         <template #header>
@@ -189,6 +153,59 @@
         </template>
         <DiffPanel :component="component" />
       </CollapsingFlexItem>
+      <CollapsingFlexItem>
+        <template #header> Documentation </template>
+        <div
+          v-if="
+            !docs &&
+            !component.schemaVariantDocLink &&
+            !component.schemaVariantDescription
+          "
+          class="flex flex-col items-center p-sm gap-sm"
+        >
+          <div
+            :class="
+              clsx(
+                'p-sm rounded-full',
+                themeClasses('bg-neutral-100', 'bg-neutral-900'),
+              )
+            "
+          >
+            <Icon name="docs" />
+          </div>
+          <div>No documentation available</div>
+        </div>
+        <template v-if="!docs">
+          <p v-if="component.schemaVariantDocLink">
+            <a
+              :href="component.schemaVariantDocLink"
+              target="_blank"
+              tabindex="-1"
+              >{{ component.schemaVariantName }}</a
+            >
+          </p>
+          <p>
+            <VueMarkdown :source="component.schemaVariantDescription ?? ''" />
+          </p>
+        </template>
+        <template v-else>
+          <VButton
+            class="border-0 mr-2em"
+            icon="arrow--left"
+            label="Back"
+            size="sm"
+            tone="shade"
+            variant="ghost"
+            @click="() => (docs = '')"
+          />
+          <p v-if="docLink">
+            <a :href="docLink" target="_blank">{{
+              component.schemaVariantName
+            }}</a>
+          </p>
+          <p>{{ docs }}</p>
+        </template>
+      </CollapsingFlexItem>
     </div>
   </section>
 </template>
@@ -231,10 +248,10 @@ const props = defineProps<{
   componentId: string;
 }>();
 
-const componentId = computed(() => props.componentId);
-
 const key = useMakeKey();
 const args = useMakeArgs();
+
+const componentId = computed(() => props.componentId);
 
 const componentQuery = useQuery<BifrostComponent | null>({
   queryKey: key(EntityKind.Component, componentId),
@@ -407,14 +424,11 @@ onBeforeUnmount(() => {
 
 <style lang="less" scoped>
 section.grid {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 25%) minmax(0, 25%);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 33%);
   grid-template-rows: 3rem minmax(0, 1fr);
   grid-template-areas:
-    "name docs right"
-    "attrs docs right";
-}
-.docs {
-  grid-area: docs;
+    "name right"
+    "attrs right";
 }
 .right {
   grid-area: right;
