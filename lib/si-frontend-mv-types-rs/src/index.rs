@@ -2,9 +2,11 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_events::workspace_snapshot::Checksum;
 
 use crate::{
     checksum::FrontendChecksum,
+    materialized_view::materialized_view_definitions_checksum,
     object::FrontendObject,
     reference::{
         IndexReference,
@@ -25,6 +27,7 @@ use crate::{
 pub struct MvIndex {
     pub snapshot_address: String,
     pub mv_list: Vec<IndexReference>,
+    pub definition_checksum: Checksum,
 }
 
 impl MvIndex {
@@ -32,6 +35,7 @@ impl MvIndex {
         MvIndex {
             snapshot_address,
             mv_list,
+            definition_checksum: materialized_view_definitions_checksum(),
         }
     }
 }
@@ -54,4 +58,5 @@ impl TryFrom<MvIndex> for FrontendObject {
 pub struct IndexPointerValue {
     pub index_object_key: String,
     pub snapshot_address: String,
+    pub definition_checksum: Checksum,
 }

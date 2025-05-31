@@ -1,6 +1,3 @@
-use std::collections::HashSet;
-
-use darling::FromAttributes;
 use manyhow::{
     bail,
     emit,
@@ -11,8 +8,11 @@ use quote::quote;
 use syn::{
     Data,
     DeriveInput,
-    Path,
 };
+
+mod materialized_view;
+
+use crate::materialized_view::derive_materialized_view;
 
 #[manyhow]
 #[proc_macro_derive(FrontendChecksum, attributes(frontend_checksum))]
@@ -328,19 +328,6 @@ fn derive_refer(
     Ok(output.into())
 }
 
-#[derive(Debug, Default, FromAttributes)]
-#[darling(attributes(mv))]
-struct MaterializedViewOptions {
-    trigger_entity: Option<Path>,
-    reference_kind: Option<Path>,
-}
-
-#[derive(Debug, Default, FromAttributes)]
-#[darling(attributes(mv))]
-struct MaterializedViewReferenceOptions {
-    reference_kind: Option<Path>,
-}
-
 #[manyhow]
 #[proc_macro_derive(MV, attributes(mv))]
 pub fn materialized_view_derive(
@@ -348,67 +335,4 @@ pub fn materialized_view_derive(
     errors: &mut manyhow::Emitter,
 ) -> manyhow::Result<proc_macro::TokenStream> {
     derive_materialized_view(input, errors)
-}
-
-fn derive_materialized_view(
-    input: proc_macro::TokenStream,
-    _errors: &mut manyhow::Emitter,
-) -> manyhow::Result<proc_macro::TokenStream> {
-    let input = syn::parse::<DeriveInput>(input)?;
-    let DeriveInput {
-        ident,
-        data: type_data,
-        attrs,
-        ..
-    } = input.clone();
-    let struct_options = MaterializedViewOptions::from_attributes(&attrs)?;
-
-    let Data::Struct(struct_data) = &type_data else {
-        bail!("MV can only be derived for structs");
-    };
-
-    let mut reference_kinds: HashSet<Path> = HashSet::new();
-    for field in &struct_data.fields {
-        let field_attrs = MaterializedViewReferenceOptions::from_attributes(&field.attrs)?;
-        if let Some(reference_kind) = &field_attrs.reference_kind {
-            reference_kinds.insert(reference_kind.clone());
-        }
-    }
-
-    let Some(trigger_entity) = struct_options.trigger_entity else {
-        bail!(input, "MV must have a trigger_entity attribute");
-    };
-    let Some(self_reference_kind) = struct_options.reference_kind else {
-        bail!(input, "MV must have a reference_kind attribute");
-    };
-
-    let mut sorted_reference_kinds: Vec<Path> = reference_kinds.into_iter().collect();
-
-    sorted_reference_kinds.sort_by_cached_key(path_to_string);
-
-    let output = quote! {
-        impl crate::MaterializedView for #ident {
-            fn kind() -> crate::reference::ReferenceKind {
-                #self_reference_kind
-            }
-
-            fn reference_dependencies() -> &'static [crate::reference::ReferenceKind] {
-                &[#(#sorted_reference_kinds),*]
-            }
-
-            fn trigger_entity() -> ::si_events::workspace_snapshot::EntityKind {
-                #trigger_entity
-            }
-        }
-    };
-
-    Ok(output.into())
-}
-
-fn path_to_string(path: &syn::Path) -> String {
-    path.segments
-        .iter()
-        .map(|segment| segment.ident.to_string())
-        .collect::<Vec<_>>()
-        .join("::")
 }

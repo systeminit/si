@@ -71,6 +71,12 @@ impl FrontendChecksum for ChangeSetStatus {
     }
 }
 
+impl FrontendChecksum for Checksum {
+    fn checksum(&self) -> Checksum {
+        *self
+    }
+}
+
 impl FrontendChecksum for WorkspaceId {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_string())
