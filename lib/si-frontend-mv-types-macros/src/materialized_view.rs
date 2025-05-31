@@ -1,13 +1,15 @@
 use std::collections::HashSet;
 
-use darling::FromAttributes;
+use darling::{
+    FromAttributes,
+    util::path_to_string,
+};
 use manyhow::{
     bail,
     emit,
 };
 use proc_macro2::TokenStream;
 use quote::{
-    ToTokens,
     format_ident,
     quote,
 };
@@ -16,6 +18,8 @@ use syn::{
     DeriveInput,
     Path,
 };
+
+use crate::ty_to_string;
 
 #[derive(Debug, Default, FromAttributes)]
 #[darling(attributes(mv))]
@@ -135,21 +139,4 @@ pub fn derive_materialized_view(
     };
 
     Ok(output.into())
-}
-
-fn path_to_string(path: &syn::Path) -> String {
-    path.segments
-        .iter()
-        .map(|segment| segment.ident.to_string())
-        .collect::<Vec<_>>()
-        .join("::")
-}
-
-fn ty_to_string(ty: &syn::Type) -> String {
-    let mut result = String::new();
-    for token in ty.to_token_stream() {
-        result.push_str(&token.to_string());
-    }
-
-    result
 }
