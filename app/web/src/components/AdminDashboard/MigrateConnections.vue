@@ -11,29 +11,46 @@
         </div>
       </template>
       <template #success>
-        <div class="flex flex-row gap-xs p-xs w-full">
-          <div>
-            <h2>Migrateable Connections: {{ migrateable.length }}</h2>
+        <Stack class="flex flex-col gap-xs p-xs w-full font-bold text-xs">
+          <Stack>
+            <div class="text-lg">
+              Migrateable Connections: {{ migrateable.length }}
+            </div>
             <div v-for="migration of migrateable" :key="migration.message">
               {{ migration.message }}
             </div>
-          </div>
-          <div v-if="unmigrateableBecause.length > 0">
-            <h2>
+          </Stack>
+          <Stack v-if="unmigrateableBecause.length > 0">
+            <div class="text-lg">
               Unmigrateable Connections:
-              {{ unmigrateableBecause.map((migrations) => migrations.length) }}
-            </h2>
+              {{
+                unmigrateableBecause
+                  .map(([_, migrations]) => migrations.length)
+                  .reduce((a, b) => a + b, 0)
+              }}
+            </div>
             <div
               v-for="[because, migrations] in unmigrateableBecause"
               :key="because"
             >
-              <h3>{{ because }}: {{ migrations.length }}</h3>
+              <div class="text-lg">{{ because }}: {{ migrations.length }}</div>
               <div v-for="migration in migrations" :key="migration.message">
                 {{ migration.message }}
               </div>
             </div>
-          </div>
-        </div>
+          </Stack>
+          <Stack
+            v-if="alreadyMigrated.length > 0"
+            class="flex flex-row gap-xs p-xs w-full"
+          >
+            <div class="text-lg">
+              Already Migrated Connections: {{ alreadyMigrated.length }}
+            </div>
+            <div v-for="migration of alreadyMigrated" :key="migration.message">
+              {{ migration.message }}
+            </div>
+          </Stack>
+        </Stack>
       </template>
     </LoadStatus>
   </Stack>
@@ -43,25 +60,38 @@
 import * as _ from "lodash-es";
 import { computed } from "vue";
 import { Stack, LoadStatus } from "@si/vue-lib/design-system";
-import { useAdminStore } from "@/store/admin.store";
+import {
+  ConnectionMigration,
+  ConnectionUnmigrateableBecause,
+  useAdminStore,
+} from "@/store/admin.store";
 
 const adminStore = useAdminStore();
 const requestStatus = adminStore.getRequestStatus("MIGRATE_CONNECTIONS");
-const allMigrations = computed(
-  () => adminStore.migrateConnectionsResponse?.migrations ?? [],
+const migrationsByIssue = computed(
+  () =>
+    _.groupBy(
+      adminStore.migrateConnectionsResponse?.migrations ?? [],
+      (migration) => migration.issue?.type ?? "migrateable",
+    ) as Record<
+      ConnectionUnmigrateableBecause["type"] | "migrateable",
+      ConnectionMigration[]
+    >,
 );
-const migrateable = computed(() =>
-  allMigrations.value.filter((migration) => !migration.issue),
+const migrateable = computed(() => migrationsByIssue.value.migrateable ?? []);
+const alreadyMigrated = computed(
+  () => migrationsByIssue.value.destinationPropAlreadyHasValue ?? [],
 );
 const unmigrateableBecause = computed(() =>
   _.sortBy(
-    Object.entries(
-      _.groupBy(
-        allMigrations.value.filter((migration) => !!migration.issue),
-        (migration) => migration.issue?.type,
-      ),
-    ),
+    Object.entries(migrationsByIssue.value),
     ([_, migrations]) => migrations.length,
-  ).reverse(),
+  )
+    .reverse()
+    .filter(
+      ([because, _]) =>
+        because !== "migrateable" &&
+        because !== "destinationPropAlreadyHasValue",
+    ),
 );
 </script>

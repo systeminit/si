@@ -52,12 +52,20 @@ mod validate_snapshot;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum Error {
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(
+        #[from] dal::attribute::prototype::argument::AttributePrototypeArgumentError,
+    ),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] dal::attribute::value::AttributeValueError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("change set apply error: {0}")]
     ChangeSetApply(#[from] dal::ChangeSetApplyError),
     #[error("change set approval error: {0}")]
     ChangeSetApproval(#[from] dal::change_set::approval::ChangeSetApprovalError),
+    #[error("component error: {0}")]
+    Component(#[from] dal::component::ComponentError),
     #[error("dal wrapper error: {0}")]
     DalWrapper(#[from] sdf_core::dal_wrapper::DalWrapperError),
     #[error("dependent value root error: {0}")]
@@ -207,9 +215,10 @@ pub fn change_set_routes(state: AppState) -> Router<AppState> {
                 permissions::Permission::Approve,
             )),
         )
+        .route("/migrate_connections", get(migrate_connections::dry_run))
         .route(
             "/migrate_connections",
-            get(migrate_connections::migrate_connections),
+            post(migrate_connections::migrate_connections),
         )
         .route("/rename", post(rename::rename))
         // Consider how we make it editable again after it's been rejected
