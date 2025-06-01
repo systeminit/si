@@ -31,7 +31,9 @@ rust_library(
         "//third-party/rust:futures",
         "//third-party/rust:inventory",
         "//third-party/rust:json-patch",
+        "//third-party/rust:pin-project-lite",
         "//third-party/rust:remain",
+        "//third-party/rust:ringmap",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
         "//third-party/rust:strum",
@@ -44,4 +46,36 @@ rust_library(
     srcs = glob([
         "src/**/*.rs",
     ]),
+    test_unit_deps = [
+        "//third-party/rust:rand",
+        "//third-party/rust:test-log",
+    ],
+)
+
+rust_test(
+    name = "test-integration",
+    deps = [
+        "//lib/dal:dal",
+        "//lib/edda-core:edda-core",
+        "//lib/nats-std:nats-std",
+        "//lib/si-data-nats:si-data-nats",
+        "//lib/si-events-rs:si-events",
+        "//third-party/rust:bytes",
+        "//third-party/rust:futures",
+        "//third-party/rust:rand",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:test-log",
+        "//third-party/rust:tokio",
+        "//third-party/rust:uuid",
+        ":edda-server",
+    ],
+    crate_root = "tests/integration.rs",
+    srcs = glob([
+        "tests/**/*.rs",
+    ]),
+    env = {
+        "CARGO_PKG_NAME": "integration",
+        "RUSTC_BOOTSTRAP": "1",
+        "CI": "buildkite",
+    },
 )
