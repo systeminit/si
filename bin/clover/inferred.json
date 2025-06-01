@@ -7779,6 +7779,9 @@
   "The AWS Region name of the origin resource.": {
     "enum": null
   },
+  "The AWS Region name.": {
+    "enum": null
+  },
   "The AWS Region that the API Gateway proxy endpoint was created in. This parameter is required for SPEKE encryption and is not valid for static key encryption.": {
     "enum": null
   },
@@ -8518,6 +8521,9 @@
     "enum": null
   },
   "The Availability Zone that you want to create the flow in. These options are limited to the Availability Zones within the current AWS.": {
+    "enum": null
+  },
+  "The Availability Zone. Follows the format us-east-2a (case-sensitive).": {
     "enum": null
   },
   "The Base64 string representation of the Keytab file.": {
@@ -11547,6 +11553,9 @@
   "The inline json job document associated with a software package version": {
     "enum": null
   },
+  "The instance from which the snapshot was created.": {
+    "enum": null
+  },
   "The instance port where you're creating your load balancer.": {
     "enum": null
   },
@@ -13429,6 +13438,9 @@
     "enum": null
   },
   "The name of the snapshot from which to create the new cluster. This parameter isn't case sensitive.": {
+    "enum": null
+  },
+  "The name of the snapshot.": {
     "enum": null
   },
   "The name of the source email address display name": {
