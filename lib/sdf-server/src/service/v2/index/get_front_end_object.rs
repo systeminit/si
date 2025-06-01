@@ -6,7 +6,6 @@ use axum::{
     },
 };
 use dal::{
-    ChangeSet,
     ChangeSetId,
     WorkspacePk,
 };
@@ -41,11 +40,17 @@ pub async fn get_front_end_object(
     Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     Query(request): Query<FrontendObjectRequest>,
 ) -> IndexResult<Json<FrontEndObjectMeta>> {
-    let ctx = builder
+    let _ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
-    let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
 
+    let (checksum, address) = match frigg
+        .get_index_pointer_value(workspace_pk, change_set_id)
+        .await?
+    {
+        Some((index, _kv_revision)) => (index.index_checksum, index.snapshot_address),
+        None => ("".to_string(), "".to_string()),
+    };
     let obj;
     if let Some(checksum) = request.checksum {
         obj = frigg
@@ -68,7 +73,8 @@ pub async fn get_front_end_object(
     }
 
     Ok(Json(FrontEndObjectMeta {
-        workspace_snapshot_address: change_set.workspace_snapshot_address,
+        workspace_snapshot_address: address,
+        index_checksum: checksum,
         front_end_object: obj,
     }))
 }

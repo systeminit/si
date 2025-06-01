@@ -277,6 +277,7 @@ impl FriggStore {
             index_object_key: index_object_key.into_string(),
             snapshot_address: object.id.to_owned(),
             definition_checksum: materialized_view_definitions_checksum(),
+            index_checksum: object.checksum.to_owned(),
         };
         let value = serde_json::to_vec(&index_pointer_value).map_err(Error::Serialize)?;
         let new_revision = self.store.create(index_pointer_key, value.into()).await?;
@@ -339,6 +340,7 @@ impl FriggStore {
             index_object_key: index_object_key.into_string(),
             snapshot_address: object.id.to_owned(),
             definition_checksum: materialized_view_definitions_checksum(),
+            index_checksum: object.checksum.to_owned(),
         };
         let value = serde_json::to_vec(&index_pointer_value).map_err(Error::Serialize)?;
 
@@ -378,6 +380,7 @@ impl FriggStore {
             index_object_key: index_object_key.into_string(),
             snapshot_address: object.id.to_owned(),
             definition_checksum: materialized_view_definitions_checksum(),
+            index_checksum: object.checksum.to_owned(),
         };
         let value = serde_json::to_vec(&index_pointer_value).map_err(Error::Serialize)?;
 

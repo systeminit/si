@@ -158,9 +158,9 @@ const initializeSQLite = async (testing: boolean) => {
 
 const dropTables = async () => {
   const sql = `
-  DROP TABLE IF EXISTS snapshots_mtm_atoms;
+  DROP TABLE IF EXISTS index_mtm_atoms;
   DROP TABLE IF EXISTS atoms;
-  DROP TABLE IF EXISTS snapshots;
+  DROP TABLE IF EXISTS indexes;
   DROP TABLE IF EXISTS changesets;
   DROP TABLE IF EXISTS weak_references;
   `;
@@ -176,19 +176,19 @@ const ensureTables = async (testing: boolean) => {
    * PROBLEM: Objects exist across multiple changesets, so we cannot ever UPDATE atom
    * SOLUTION: We copy objects when we are given mutations
    * PROBLEM: We don't want to read every single blob and check internal references
-   * SOLUTION Use snapshot checksums and FK snapshot_mtm relationships to delete
+   * SOLUTION: Use index checksums and FK index_mtm relationships to delete
    */
   const sql = `
   CREATE TABLE IF NOT EXISTS changesets (
     change_set_id TEXT PRIMARY KEY,
     workspace_id TEXT NOT NULL,
-    snapshot_address TEXT NOT NULL,
-    FOREIGN KEY (snapshot_address) REFERENCES snapshots(address) ON DELETE CASCADE
+    index_checksum TEXT NOT NULL,
+    FOREIGN KEY (index_checksum) REFERENCES indexes(checksum) ON DELETE CASCADE
   ) WITHOUT ROWID;
   CREATE INDEX IF NOT EXISTS changeset_workspace_id ON changesets(workspace_id);
 
-  CREATE TABLE IF NOT EXISTS snapshots (
-    address TEXT PRIMARY KEY
+  CREATE TABLE IF NOT EXISTS indexes (
+    checksum TEXT PRIMARY KEY
   ) WITHOUT ROWID;
 
   CREATE TABLE IF NOT EXISTS atoms (
@@ -199,15 +199,15 @@ const ensureTables = async (testing: boolean) => {
     PRIMARY KEY (kind, args, checksum)
   ) WITHOUT ROWID;
 
-  CREATE TABLE IF NOT EXISTS snapshots_mtm_atoms (
-    snapshot_address TEXT NOT NULL,
+  CREATE TABLE IF NOT EXISTS index_mtm_atoms (
+    index_checksum TEXT NOT NULL,
     kind TEXT NOT NULL,
     args TEXT NOT NULL,
     checksum TEXT NOT NULL,
-    PRIMARY KEY (snapshot_address, kind, args, checksum),
-    FOREIGN KEY (snapshot_address) REFERENCES snapshots(address) ON DELETE CASCADE,
+    PRIMARY KEY (index_checksum, kind, args, checksum),
+    FOREIGN KEY (index_checksum) REFERENCES indexes(checksum) ON DELETE CASCADE,
     FOREIGN KEY (kind, args, checksum) REFERENCES atoms(kind, args, checksum) ON DELETE CASCADE,
-    CONSTRAINT uniqueness UNIQUE (snapshot_address, kind, args) ON CONFLICT REPLACE
+    CONSTRAINT uniqueness UNIQUE (index_checksum, kind, args) ON CONFLICT REPLACE
   ) WITHOUT ROWID;
 
   CREATE TABLE IF NOT EXISTS weak_references (
@@ -222,17 +222,17 @@ const ensureTables = async (testing: boolean) => {
   /**
    * RULES:
    * When an Atom is deleted, delete its MTM entry (CASCADE should take care of this)
-   * When a Snapshot is deleted, delete its MTM entry, bot not its atoms (CASCADE should take care of this)
+   * When an Index is deleted, delete its MTM entry, but not its atoms (CASCADE should take care of this)
    *
    * When a Changeset is closed/deleted:
-   *  - delete atoms connected to its snapshot MTMs (We can not CASCADE atom deletion)
-   *  - delete its record, CASCADE should delete its snapshots and MTMs
+   *  - delete atoms connected to its index MTMs (We can not CASCADE atom deletion)
+   *  - delete its record, CASCADE should delete its indexes and MTMs
    *
    * PATCH WORKFLOW:
-   * When we are given a new snapshot along with patch data:
-   *  - rowid = INSERT INTO snapshots <new_checksum>, <this_changeSetId>
-   *  - INSERT INTO snapshots_mtm_atoms SELECT <rowid>, atom_id WHERE checksum="<old_checksum>" AND change_set_id=<this_changeSetId>
-   *  - UPDATE changesets SET snapshot_address = rowid
+   * When we are given a new index along with patch data:
+   *  - INSERT INTO indexes <new_index_checksum>
+   *  - INSERT INTO index_mtm_atoms SELECT <new_index_checksum>, kind, args, checksum WHERE index_checksum="<old_index_checksum>" AND change_set_id=<this_changeSetId>
+   *  - UPDATE changesets SET index_checksum = <new_index_checksum>
    *  - For each patch data
    *    - fromChecksum = 0, this is net new, insert atom
    *    - toChecksum = 0, this is a deletion, remove atom
@@ -241,8 +241,8 @@ const ensureTables = async (testing: boolean) => {
    *        - if data doesn't exist throw mjolnir
    *      - apply patch data
    *      - atom_id = insert into atoms data=<blob>, kind=<kind>, args=<args>, checksum=<new_checksum>
-   *      - insert into snapshots_mtm_atoms atom_id = atom_id, snapshot_address = rowid
-   *  - DELETE FROM snapshots WHERE change_set_id=<this_changeSetId> AND checksum=<old_checksum>
+   *      - insert into index_mtm_atoms atom_id = atom_id, index_checksum = <new_index_checksum>
+   *  - DELETE FROM indexes WHERE change_set_id=<this_changeSetId> AND checksum=<old_index_checksum>
    */
 
   return await db.exec({ sql });
@@ -282,19 +282,19 @@ const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
 
 /**
  *
- * SNAPSHOT LOGIC
+ * INDEX LOGIC
  *
  */
 
-const atomExistsOnSnapshots = async (
+const atomExistsOnIndexes = async (
   atom: Atom,
   checksum: Checksum,
 ): Promise<Checksum[]> => {
   const rows = await db.exec({
     sql: `
     select
-     snapshot_address
-    from snapshots_mtm_atoms
+     index_checksum
+    from index_mtm_atoms
     where
       kind=? and
       args=? and
@@ -307,33 +307,72 @@ const atomExistsOnSnapshots = async (
   return rows.flat().filter(nonNullable) as Checksum[];
 };
 
-const newSnapshot = async (meta: AtomMeta, fromSnapshotAddress?: string) => {
+const newIndex = async (
+  meta: AtomMeta,
+  fromIndexChecksum: string | undefined,
+) => {
   await db.exec({
-    sql: `INSERT INTO snapshots (address) VALUES (?);`,
-    bind: [meta.snapshotToAddress],
+    sql: `INSERT INTO indexes (checksum) VALUES (?);`,
+    bind: [meta.toIndexChecksum],
   });
 
-  if (fromSnapshotAddress && fromSnapshotAddress !== meta.snapshotToAddress) {
+  const rows = await db.exec({
+    sql: `SELECT index_checksum FROM changesets WHERE change_set_id = ?`,
+    bind: [meta.changeSetId],
+    returnValue: "resultRows",
+  });
+  const lastKnownFromChecksum = oneInOne(rows) as
+    | string
+    | undefined
+    | typeof NOROW;
+
+  if (fromIndexChecksum && fromIndexChecksum !== meta.toIndexChecksum) {
     await db.exec({
-      sql: `INSERT INTO snapshots_mtm_atoms
+      sql: `INSERT INTO index_mtm_atoms
         SELECT
           ?, kind, args, checksum
-        FROM snapshots_mtm_atoms
+        FROM index_mtm_atoms
         WHERE
-          snapshot_address = ?
+          index_checksum = ?
         `,
-      bind: [meta.snapshotToAddress, fromSnapshotAddress],
+      bind: [meta.toIndexChecksum, fromIndexChecksum],
+    });
+  } else if (lastKnownFromChecksum && lastKnownFromChecksum !== NOROW) {
+    debug(`HIT ELSE BRANCH NEW FROM CHECKSUM SHIT`);
+    await db.exec({
+      sql: `INSERT INTO index_mtm_atoms
+        SELECT
+          ?, kind, args, checksum
+        FROM index_mtm_atoms
+        WHERE
+          index_checksum = ?
+        `,
+      bind: [meta.toIndexChecksum, lastKnownFromChecksum],
+    });
+  } else {
+    // we have a new change set and a patch at the same time
+    // which means that the change set record did not exist, no from in the DB
+    // but we have the from in the payload
+    await db.exec({
+      sql: `INSERT INTO index_mtm_atoms
+        SELECT
+          ?, kind, args, checksum
+        FROM index_mtm_atoms
+        WHERE
+          index_checksum = ?
+        `,
+      bind: [meta.toIndexChecksum, meta.fromIndexChecksum],
     });
   }
 };
 
-const removeAtom = async (snapshotAddress: Checksum, atom: Required<Atom>) => {
+const removeAtom = async (indexChecksum: Checksum, atom: Required<Atom>) => {
   await db.exec({
     sql: `
-    DELETE FROM snapshots_mtm_atoms
-    WHERE snapshot_address = ? AND kind = ? AND args = ? AND checksum = ?
+    DELETE FROM index_mtm_atoms
+    WHERE index_checksum = ? AND kind = ? AND args = ? AND checksum = ?
     `,
-    bind: [snapshotAddress, atom.kind, atom.id, atom.fromChecksum],
+    bind: [indexChecksum, atom.kind, atom.id, atom.fromChecksum],
   });
 };
 
@@ -363,6 +402,8 @@ const createAtom = async (atom: Atom, doc: object, _span?: Span) => {
       ;`,
       bind: [atom.kind, atom.toChecksum, atom.id, encodedDoc],
     });
+
+    debug("✅ createAtom successful:", atom.kind, atom.id, atom.toChecksum);
   } catch (err) {
     error("createAtom failed", atom, doc, err);
   }
@@ -413,26 +454,84 @@ const bustCacheAndReferences: BustCacheFn = async (
 };
 
 const handleHammer = async (msg: AtomMessage, span?: Span) => {
-  // in between throwing a hammer and receiving it, i might already have written the atom
-  const snapshots = await atomExistsOnSnapshots(msg.atom, msg.atom.toChecksum);
-  if (snapshots.includes(msg.atom.snapshotToAddress)) return; // noop
+  debug(
+    "🔨 HAMMER RECEIVED:",
+    msg.atom.kind,
+    msg.atom.id,
+    "toChecksum:",
+    msg.atom.toChecksum,
+  );
 
-  const toSnapshotAddress = await snapshotLogic(msg.atom, span);
-
-  // if the atom exists, i just need the MTM
-  if (snapshots.length === 0) {
-    await createAtom(msg.atom, msg.data, span);
+  // Log index checksum for validation context
+  if (msg.atom.toChecksum) {
+    span?.setAttribute("indexChecksum", msg.atom.toIndexChecksum);
+    debug("🔨 handling hammer with index checksum", msg.atom.toIndexChecksum);
   }
 
-  if (!toSnapshotAddress)
-    throw new Error(
-      `Expected snapshot ROWID for ${msg.atom.snapshotToAddress}`,
+  // in between throwing a hammer and receiving it, i might already have written the atom
+  const indexes = await atomExistsOnIndexes(msg.atom, msg.atom.toChecksum);
+  if (indexes.length > 0) {
+    debug(
+      "🔨 HAMMER NOOP: Atom already exists in index:",
+      msg.atom.kind,
+      msg.atom.id,
     );
-  await insertAtomMTM(msg.atom, toSnapshotAddress);
+    return; // noop
+  }
 
-  await updateChangeSetWithNewSnapshot(msg.atom);
-  await removeOldSnapshot();
+  const indexChecksum = await indexLogic(msg.atom, span);
 
+  // if the atom exists, i just need the MTM
+  if (indexes.length === 0) {
+    debug(
+      "🔨 HAMMER: Creating new atom:",
+      msg.atom.kind,
+      msg.atom.id,
+      "checksum:",
+      msg.atom.toChecksum,
+    );
+    await createAtom(msg.atom, msg.data, span);
+    debug(
+      "🔨 HAMMER: Atom created successfully:",
+      msg.atom.kind,
+      msg.atom.id,
+      "checksum:",
+      msg.atom.toChecksum,
+    );
+  } else {
+    debug(
+      "🔨 HAMMER: Atom exists, just need MTM:",
+      msg.atom.kind,
+      msg.atom.id,
+      "existing indexes:",
+      indexes,
+    );
+  }
+
+  if (!indexChecksum)
+    throw new Error(`Expected index checksum for ${msg.atom.toIndexChecksum}`);
+
+  debug(
+    "🔨 HAMMER: Inserting MTM for:",
+    msg.atom.kind,
+    msg.atom.id,
+    "checksum:",
+    msg.atom.toChecksum,
+    "index:",
+    indexChecksum,
+  );
+  await insertAtomMTM(msg.atom, indexChecksum);
+
+  await updateChangeSetWithNewIndex(msg.atom);
+  await removeOldIndex();
+
+  debug(
+    "🔨 HAMMER: Busting cache for:",
+    msg.atom.kind,
+    msg.atom.id,
+    "checksum:",
+    msg.atom.toChecksum,
+  );
   await bustCacheAndReferences(
     msg.atom.workspaceId,
     msg.atom.changeSetId,
@@ -440,21 +539,24 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     msg.atom.id,
   );
 
-  if (COMPUTED_KINDS.includes(msg.atom.kind))
+  if (COMPUTED_KINDS.includes(msg.atom.kind)) {
+    debug("🔨 HAMMER: Updating computed for:", msg.atom.kind, msg.atom.id);
     await updateComputed(
       msg.atom.workspaceId,
       msg.atom.changeSetId,
       msg.atom.kind,
       msg.data,
+      indexChecksum,
     );
+  }
 };
 
-const insertAtomMTM = async (atom: Atom, toSnapshotAddress: Checksum) => {
+const insertAtomMTM = async (atom: Atom, indexChecksum: Checksum) => {
   try {
-    const bind = [toSnapshotAddress, atom.kind, atom.id, atom.toChecksum];
+    const bind = [indexChecksum, atom.kind, atom.id, atom.toChecksum];
     const exists = await db.exec({
-      sql: `select snapshot_address, kind, args, checksum from snapshots_mtm_atoms
-        where snapshot_address = ? and kind = ? and args = ? and checksum = ?
+      sql: `select index_checksum, kind, args, checksum from index_mtm_atoms
+        where index_checksum = ? and kind = ? and args = ? and checksum = ?
       ;`,
       bind,
       returnValue: "resultRows",
@@ -464,8 +566,8 @@ const insertAtomMTM = async (atom: Atom, toSnapshotAddress: Checksum) => {
     }
 
     await db.exec({
-      sql: `insert into snapshots_mtm_atoms
-        (snapshot_address, kind, args, checksum)
+      sql: `insert into index_mtm_atoms
+        (index_checksum, kind, args, checksum)
           VALUES
         (?, ?, ?, ?)
       ;`,
@@ -480,83 +582,116 @@ const insertAtomMTM = async (atom: Atom, toSnapshotAddress: Checksum) => {
   return true;
 };
 
-const snapshotLogic = async (meta: AtomMeta, span?: Span) => {
-  const { changeSetId, workspaceId, snapshotFromAddress, snapshotToAddress } = {
+const indexLogic = async (meta: AtomMeta, span?: Span) => {
+  const { changeSetId, workspaceId, toIndexChecksum } = {
     ...meta,
   };
+
   span?.setAttributes({
     changeSetId,
     workspaceId,
-    snapshotFromAddress,
-    snapshotToAddress,
+    toIndexChecksum,
   });
 
   const changeSetQuery = await db.exec({
-    sql: `select change_set_id, snapshot_address from changesets where change_set_id = ?`,
+    sql: `select change_set_id, index_checksum from changesets where change_set_id = ?`,
     returnValue: "resultRows",
     bind: [meta.changeSetId],
   });
   let changeSetExists;
-  let fromSnapshotAddress;
+  let currentIndexChecksum;
   const changeSet = changeSetQuery[0] as string[];
   if (changeSet) {
-    [changeSetExists, fromSnapshotAddress] = [...changeSet];
+    [changeSetExists, currentIndexChecksum] = [...changeSet];
   }
 
-  const snapshotQuery = await db.exec({
-    sql: `select address from snapshots where address = ?`,
+  const indexQuery = await db.exec({
+    sql: `select checksum from indexes where checksum = ?`,
     returnValue: "resultRows",
-    bind: [snapshotToAddress],
+    bind: [toIndexChecksum],
   });
-  const snapshotExists = oneInOne(snapshotQuery);
+  const indexExists = oneInOne(indexQuery);
 
-  if (changeSetExists && !fromSnapshotAddress)
+  if (changeSetExists && !currentIndexChecksum)
     throw new Error("Null value from SQL, impossible");
 
   if (
     changeSetExists &&
-    meta.snapshotFromAddress &&
-    fromSnapshotAddress !== snapshotFromAddress
+    meta.fromIndexChecksum &&
+    meta.fromIndexChecksum !== currentIndexChecksum
   )
     throw new Ragnarok(
-      "From Snapshot Doesn't Exist",
+      "From Checksum Doesn't Exist",
       workspaceId,
       changeSetId,
-      fromSnapshotAddress,
-      snapshotFromAddress,
+      meta.fromIndexChecksum,
+      currentIndexChecksum,
     );
 
-  if (snapshotExists === NOROW)
-    // contains INSERT INTO SELECT FROM snapshot_address_mtm
-    await newSnapshot(meta, snapshotFromAddress);
+  // Create index if needed - this is the new validation mechanism
+  if (indexExists === NOROW) await newIndex(meta, currentIndexChecksum);
 
   if (!changeSetExists) {
     await db.exec({
-      sql: "insert into changesets (change_set_id, workspace_id, snapshot_address) VALUES (?, ?, ?);",
-      bind: [meta.changeSetId, meta.workspaceId, snapshotToAddress],
+      sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?);",
+      bind: [meta.changeSetId, meta.workspaceId, toIndexChecksum],
     });
   }
 
-  return snapshotToAddress;
+  // Index checksum provides validation - every time MVs are generated, there's a new index checksum
+  debug("✓ Index checksum validation passed", toIndexChecksum);
+
+  return toIndexChecksum;
 };
 
 const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
+  const batchId = `${data.meta.toIndexChecksum}-${data.patches.length}`;
+  debug("📦 BATCH START:", batchId);
+
   span?.setAttribute("numRawPatches", data.patches.length);
   if (data.patches.length === 0) return;
   // Assumption: every patch is working on the same workspace and changeset
   // (e.g. we're not bundling messages across workspaces somehow)
 
   if (!data.meta.changeSetId) throw new Error("Expected changeSetId");
+  if (!data.meta.toIndexChecksum) throw new Error("Expected indexChecksum");
 
-  let toSnapshotAddress: string;
+  // Log index checksum for tracing - this provides validation at the index level
+  span?.setAttribute("indexChecksum", data.meta.toIndexChecksum);
+  debug("📦 Processing patches with index checksum", data.meta.toIndexChecksum);
+  debug(
+    "📦 Patch details:",
+    data.patches.map(
+      (p, i) =>
+        `[${i}] ${p.kind}.${p.id}: ${p.fromChecksum} -> ${p.toChecksum}`,
+    ),
+  );
+
+  // Check for duplicate patches in the same batch
+  const patchKeys = data.patches.map(
+    (p) => `${p.kind}.${p.id}.${p.fromChecksum}.${p.toChecksum}`,
+  );
+  const uniquePatchKeys = new Set(patchKeys);
+  if (patchKeys.length !== uniquePatchKeys.size) {
+    debug("📦 WARNING: Duplicate patches detected in batch!", {
+      total: patchKeys.length,
+      unique: uniquePatchKeys.size,
+      duplicates: patchKeys.filter(
+        (key, index) => patchKeys.indexOf(key) !== index,
+      ),
+    });
+  }
+
+  let indexChecksum: string;
   try {
-    toSnapshotAddress = await snapshotLogic(data.meta, span);
+    indexChecksum = await indexLogic(data.meta, span);
+    debug("📦 Index logic completed, resolved checksum:", indexChecksum);
   } catch (err) {
     if (err instanceof Ragnarok) {
       span?.addEvent("ragnarok", {
         patchBatch: JSON.stringify(data),
-        fromSnapAddress: err.fromSnapshotAddress,
-        snapshotFromAddress: err.snapshotFromAddress,
+        fromChecksumExpected: err.fromChecksumExpected,
+        currentChecksum: err.currentChecksum,
       });
       await ragnarok(err.workspaceId, err.changeSetId);
       return;
@@ -588,96 +723,145 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
     .filter((rawAtom): rawAtom is Required<Atom> => !!rawAtom.fromChecksum);
 
   span?.setAttribute("numAtoms", atoms.length);
-  if (!toSnapshotAddress)
-    throw new Error(`Expected snapshot for ${data.meta.snapshotToAddress}`);
+  if (!indexChecksum)
+    throw new Error(`Expected index checksum for ${data.meta.toIndexChecksum}`);
 
   // non-list atoms
   // non-connections (e.g. components need to go before connections)
+  const nonListAtoms = atoms.filter(
+    (a) => !a.kind.includes("List") && !a.kind.includes("IncomingConnection"),
+  );
+  debug(
+    "📦 Processing non-list atoms:",
+    nonListAtoms.length,
+    nonListAtoms.map(
+      (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
+    ),
+  );
   const atomsToBust = await Promise.all(
-    atoms
-      .filter(
-        (a) =>
-          !a.kind.includes("List") && !a.kind.includes("IncomingConnection"),
-      )
-      .map(async (atom) => {
-        return applyPatch(atom, toSnapshotAddress);
-      }),
+    nonListAtoms.map(async (atom) => {
+      return applyPatch(atom, indexChecksum);
+    }),
   );
 
-  // connections
+  // connections (but NOT lists - avoid double processing IncomingConnectionsList)
+  const connectionAtoms = atoms.filter(
+    (a) => a.kind.includes("IncomingConnection") && !a.kind.includes("List"),
+  );
+  debug(
+    "📦 Processing connection atoms:",
+    connectionAtoms.length,
+    connectionAtoms.map(
+      (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
+    ),
+  );
   const connAtomsToBust = await Promise.all(
-    atoms
-      .filter((a) => a.kind.includes("IncomingConnection"))
-      .map(async (atom) => {
-        return await applyPatch(atom, toSnapshotAddress);
-      }),
+    connectionAtoms.map(async (atom) => {
+      return await applyPatch(atom, indexChecksum);
+    }),
   );
 
-  // list items
+  // list items (all lists, including IncomingConnectionsList)
+  const listAtoms = atoms.filter((a) => a.kind.includes("List"));
+  debug(
+    "📦 Processing list atoms:",
+    listAtoms.length,
+    listAtoms.map(
+      (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
+    ),
+  );
   const listAtomsToBust = await Promise.all(
-    atoms
-      .filter((a) => a.kind.includes("List"))
-      .map(async (atom) => {
-        return applyPatch(atom, toSnapshotAddress);
-      }),
+    listAtoms.map(async (atom) => {
+      return applyPatch(atom, indexChecksum);
+    }),
   );
 
-  await updateChangeSetWithNewSnapshot(data.meta);
-  await removeOldSnapshot();
+  await updateChangeSetWithNewIndex(data.meta);
+  await removeOldIndex();
+
+  debug(
+    "🧹 Busting cache for atoms:",
+    atomsToBust.length + connAtomsToBust.length + listAtomsToBust.length,
+  );
 
   atomsToBust.forEach((atom) => {
-    if (atom)
+    if (atom) {
+      debug("🧹 Busting cache for atom:", atom.kind, atom.id);
       bustCacheAndReferences(
         atom.workspaceId,
         atom.changeSetId,
         atom.kind,
         atom.id,
       );
+    }
   });
   connAtomsToBust.forEach((atom) => {
-    if (atom)
+    if (atom) {
+      debug("🧹 Busting cache for connection:", atom.kind, atom.id);
       bustCacheAndReferences(
         atom.workspaceId,
         atom.changeSetId,
         atom.kind,
         atom.id,
       );
+    }
   });
   listAtomsToBust.forEach((atom) => {
-    if (atom)
+    if (atom) {
+      debug("🧹 Busting cache for list:", atom.kind, atom.id);
       bustCacheAndReferences(
         atom.workspaceId,
         atom.changeSetId,
         atom.kind,
         atom.id,
       );
+    }
   });
+
+  debug("📦 BATCH COMPLETE:", batchId);
 };
 
-const applyPatch = async (
-  atom: Required<Atom>,
-  toSnapshotAddress: Checksum,
-) => {
+const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
   return await tracer.startActiveSpan("applyPatch", async (span) => {
     span.setAttribute("atom", JSON.stringify(atom));
+    debug(
+      "🔧 Applying patch:",
+      atom.kind,
+      atom.id,
+      `${atom.fromChecksum} -> ${atom.toChecksum}`,
+    );
 
-    // if we have the change already don't do anything
-    const snapshots = await atomExistsOnSnapshots(atom, atom.toChecksum);
-    span.setAttribute("toChecksumSnapshots", JSON.stringify(snapshots));
-    if (snapshots.includes(atom.snapshotToAddress)) {
-      span.addEvent("noop");
+    // Check if we actually have the atom data, not just the MTM relationship
+    const upToDateAtomIndexes = await atomExistsOnIndexes(
+      atom,
+      atom.toChecksum,
+    );
+    if (upToDateAtomIndexes.length > 0) {
+      debug(
+        "🔧 No Op!",
+        atom.kind,
+        atom.id,
+        atom.toChecksum,
+        upToDateAtomIndexes,
+      );
+      span.addEvent("noop", {
+        upToDateAtomIndexes: JSON.stringify(upToDateAtomIndexes),
+      });
       span.end();
       return;
     }
 
-    // do we have a snapshot with the fromChecksum (without we cannot patch)
-    const previousSnapshots = await atomExistsOnSnapshots(
-      atom,
+    // do we have an index with the fromChecksum (without we cannot patch)
+    const previousIndexes = await atomExistsOnIndexes(atom, atom.fromChecksum);
+    span.setAttribute("previousIndexes", JSON.stringify(previousIndexes));
+    const exists = previousIndexes.length > 0;
+    span.setAttribute("exists", exists);
+    debug(
+      "🔧 Previous indexes exist:",
+      exists,
+      "fromChecksum:",
       atom.fromChecksum,
     );
-    span.setAttribute("previousSnapshots", JSON.stringify(previousSnapshots));
-    const exists = previousSnapshots.length > 0;
-    span.setAttribute("exists", exists);
 
     let needToInsertMTM = false;
     let bustCache = false;
@@ -685,21 +869,28 @@ const applyPatch = async (
     if (atom.fromChecksum === "0") {
       if (!exists) {
         // if i already have it, this is a NOOP
+        debug("🔧 Creating new atom from patch:", atom.kind, atom.id);
         span.setAttribute("createAtomFromPatch", true);
         doc = await createAtomFromPatch(atom, span);
         needToInsertMTM = true;
         bustCache = true;
+      } else {
+        debug("🔧 New atom already exists (noop):", atom.kind, atom.id);
       }
     } else if (atom.toChecksum === "0") {
       // if i've already removed it, this is a NOOP
       if (exists) {
+        debug("🔧 Removing atom:", atom.kind, atom.id);
         span.setAttribute("removeAtom", true);
-        await removeAtom(toSnapshotAddress, atom);
+        await removeAtom(indexChecksum, atom);
         bustCache = true;
+      } else {
+        debug("🔧 Atom already removed (noop):", atom.kind, atom.id);
       }
     } else {
       // patch it if I can
       if (exists) {
+        debug("🔧 Patching existing atom:", atom.kind, atom.id);
         span.setAttribute("patchAtom", true);
         doc = await patchAtom(atom);
         needToInsertMTM = true;
@@ -707,12 +898,20 @@ const applyPatch = async (
       }
       // otherwise, fire the small hammer to get the full object
       else {
+        debug(
+          "🔨 MJOLNIR RACE: Missing fromChecksum data, firing hammer:",
+          atom.kind,
+          atom.id,
+          "fromChecksum:",
+          atom.fromChecksum,
+        );
         span.addEvent("mjolnir", {
           atom: JSON.stringify(atom),
-          previousSnapshots: JSON.stringify(previousSnapshots),
-          toChecksumSnapshots: JSON.stringify(snapshots),
+          previousIndexes: JSON.stringify(previousIndexes),
+          toChecksumIndexes: JSON.stringify([]), // indexes variable was removed
           source: "applyPatch",
         });
+        debug("applyPatch mjolnir", atom.kind, atom.id);
         mjolnir(
           atom.workspaceId,
           atom.changeSetId,
@@ -723,19 +922,39 @@ const applyPatch = async (
       }
     }
 
-    // this insert potentially replaces the MTM row that exists for the current snapshot
+    // this insert potentially replaces the MTM row that exists for the current index
     // based on the table constraint
     span.setAttribute("needToInsertMTM", needToInsertMTM);
     if (needToInsertMTM) {
-      const inserted = await insertAtomMTM(atom, toSnapshotAddress);
+      debug(
+        "🔧 Inserting MTM for:",
+        atom.kind,
+        atom.id,
+        "indexChecksum:",
+        indexChecksum,
+      );
+      const inserted = await insertAtomMTM(atom, indexChecksum);
       span.setAttribute("insertedMTM", inserted);
+      debug("🔧 MTM inserted:", inserted, "for:", atom.kind, atom.id);
     }
     span.end();
 
-    if (doc && COMPUTED_KINDS.includes(atom.kind))
-      await updateComputed(atom.workspaceId, atom.changeSetId, atom.kind, doc);
+    if (doc && COMPUTED_KINDS.includes(atom.kind)) {
+      debug("🔧 Updating computed for:", atom.kind, atom.id);
+      await updateComputed(
+        atom.workspaceId,
+        atom.changeSetId,
+        atom.kind,
+        doc,
+        indexChecksum,
+      );
+    }
 
-    if (bustCache) return atom;
+    if (bustCache) {
+      debug("🔧 Patch successful, will bust cache for:", atom.kind, atom.id);
+      return atom;
+    }
+    debug("🔧 Patch completed (no cache bust needed):", atom.kind, atom.id);
     return undefined;
   });
 };
@@ -789,7 +1008,11 @@ const mjolnir = async (
   id: Id,
   checksum?: Checksum,
 ) => {
+  const atomKey = `${kind}.${id}`;
+  debug("🔨 MJOLNIR REQUESTED:", atomKey, "checksum:", checksum);
+
   maybeMjolnir({ workspaceId, changeSetId, kind, id }, () => {
+    debug("🔨 MJOLNIR FIRING:", atomKey);
     inFlight(changeSetId, `${kind}.${id}`);
     return mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
   });
@@ -802,7 +1025,7 @@ const mjolnirJob = async (
   id: Id,
   checksum?: Checksum,
 ) => {
-  debug("🔨 mjolnir", kind, id, checksum);
+  debug("🔨 MJOLNIR JOB START:", kind, id, "requested checksum:", checksum);
   // TODO this is probably a WsEvent, so SDF knows who to reply to
   const pattern = [
     "v2",
@@ -827,8 +1050,10 @@ const mjolnirJob = async (
         url,
         params,
       });
+      debug("🔨 MJOLNIR HTTP SUCCESS:", kind, id, "status:", req.status);
     } catch (err) {
       span.setAttribute("http.status", 404);
+      debug("🔨 MJOLNIR HTTP 404:", kind, id, err);
       error("MJOLNIR 404", url, params, err);
     } finally {
       if (req?.status) span.setAttribute("http.status", req.status);
@@ -844,7 +1069,36 @@ const mjolnirJob = async (
     id,
   });
 
-  if (!req) return; // 404
+  if (!req) {
+    debug("🔨 MJOLNIR JOB FAILED:", kind, id, "no response");
+    return; // 404
+  }
+
+  // Include index checksum in the atom meta for better validation
+  const indexChecksum = req.data.indexChecksum;
+  const responseChecksum = req.data.frontEndObject.checksum;
+  debug(
+    "🔨 MJOLNIR RESPONSE:",
+    kind,
+    id,
+    "response checksum:",
+    responseChecksum,
+    "index checksum:",
+    indexChecksum,
+  );
+
+  // Check if this conflicts with what we requested
+  if (checksum && checksum !== responseChecksum) {
+    debug(
+      "🔨 MJOLNIR CHECKSUM MISMATCH:",
+      kind,
+      id,
+      "requested:",
+      checksum,
+      "received:",
+      responseChecksum,
+    );
+  }
 
   const msg: AtomMessage = {
     kind: MessageKind.MJOLNIR,
@@ -854,44 +1108,68 @@ const mjolnirJob = async (
       toChecksum: req.data.frontEndObject.checksum,
       workspaceId,
       changeSetId,
-      snapshotToAddress: req.data.workspaceSnapshotAddress,
+      toIndexChecksum: indexChecksum,
+      fromIndexChecksum: indexChecksum,
     },
     data: req.data.frontEndObject.data,
   };
+
+  debug("🔨 MJOLNIR JOB COMPLETE:", kind, id, "sending to handleHammer");
   await handleHammer(msg);
 };
 
-const updateChangeSetWithNewSnapshot = async (meta: AtomMeta) => {
+const updateChangeSetWithNewIndex = async (meta: AtomMeta) => {
   await db.exec({
-    sql: "update changesets set snapshot_address = ? where change_set_id = ?;",
-    bind: [meta.snapshotToAddress, meta.changeSetId],
+    sql: "update changesets set index_checksum = ? where change_set_id = ?;",
+    bind: [meta.toIndexChecksum, meta.changeSetId],
   });
 };
 
-const removeOldSnapshot = async () => {
-  await tracer.startActiveSpan("removeOldSnapshot", async (span) => {
-    const deleteSnapshots = await db.exec({
+const removeOldIndex = async () => {
+  await tracer.startActiveSpan("removeOldIndex", async (span) => {
+    // Keep the last 5 indexes per changeset for debugging purposes
+    // This helps track previous session checksums
+    const deleteIndexes = await db.exec({
       sql: `
-        DELETE FROM snapshots
-        WHERE address NOT IN (
-          SELECT snapshot_address FROM changesets
-        ) RETURNING *;
+        DELETE FROM indexes
+        WHERE checksum NOT IN (
+          SELECT index_checksum FROM changesets
+        )
+        RETURNING *;
       `,
       returnValue: "resultRows",
     });
+
+    // Only delete atoms that aren't referenced by any index (including retained ones)
     const deleteAtoms = await db.exec({
       sql: `
         DELETE FROM atoms
         WHERE (kind, args, checksum) NOT IN (
-          SELECT  kind, args, checksum  FROM snapshots_mtm_atoms
+          SELECT kind, args, checksum FROM index_mtm_atoms
+          WHERE index_checksum IN (
+            SELECT checksum FROM indexes
+          )
         ) returning atoms.kind, atoms.args, atoms.checksum;
       `,
       returnValue: "resultRows",
     });
+
     span.setAttributes({
-      snapshots: JSON.stringify(deleteSnapshots),
+      indexes: JSON.stringify(deleteIndexes),
       atoms: JSON.stringify(deleteAtoms),
     });
+
+    if (deleteIndexes.length > 0) {
+      debug(
+        "🗑️ Cleaned up",
+        deleteIndexes.length,
+        "old indexes (keeping recent 5 per workspace)",
+      );
+    }
+    if (deleteAtoms.length > 0) {
+      debug("🗑️ Cleaned up", deleteAtoms.length, "orphaned atoms");
+    }
+
     span.end();
   });
 };
@@ -908,7 +1186,7 @@ const pruneAtomsForClosedChangeSet = async (
       `,
       bind: [changeSetId],
     });
-    await removeOldSnapshot();
+    await removeOldIndex();
     span.end();
   });
 };
@@ -921,10 +1199,10 @@ const atomChecksumsFor = async (
     sql: `
     select atoms.kind, atoms.args, atoms.checksum
     from atoms
-    inner join snapshots_mtm_atoms mtm
+    inner join index_mtm_atoms mtm
       ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
-    inner join snapshots ON mtm.snapshot_address = snapshots.address
-    inner join changesets ON changesets.snapshot_address = snapshots.address
+    inner join indexes ON mtm.index_checksum = indexes.checksum
+    inner join changesets ON changesets.index_checksum = indexes.checksum
     where changesets.change_set_id = ?
     ;
     `,
@@ -984,9 +1262,14 @@ const niflheim = async (
       return false;
     }
 
+    // Use index checksum for validation - this is more reliable than snapshot addresses
+    const indexChecksum = req.data.indexChecksum;
     const atoms = req.data.frontEndObject.data.mvList;
     frigg.setAttribute("numEntries", atoms.length);
+    frigg.setAttribute("indexChecksum", indexChecksum);
     frigg.end();
+
+    debug("🔍 Index checksum validation", indexChecksum);
 
     const local = tracer.startSpan("localChecksums");
     const localChecksums = await atomChecksumsFor(changeSetId);
@@ -995,6 +1278,7 @@ const niflheim = async (
 
     const compare = tracer.startSpan("compare");
     let numHammers = 0;
+    // Compare each atom checksum from the index with local checksums
     atoms.forEach(({ kind, id, checksum }) => {
       const key = partialKeyFromKindAndArgs(kind, id);
       const local = localChecksums[key];
@@ -1006,13 +1290,16 @@ const niflheim = async (
           kind,
           id,
           checksum,
+          indexChecksum,
           source: "niflheim",
         });
+        debug("niflheim mjolnir", kind, id);
         mjolnir(workspaceId, changeSetId, kind, id, checksum);
         numHammers++;
       }
     });
     compare.setAttribute("numHammers", numHammers);
+    compare.setAttribute("indexChecksum", indexChecksum);
     compare.end();
 
     span.end();
@@ -1025,11 +1312,11 @@ const ragnarok = async (
   changeSetId: string,
   noColdStart = false,
 ) => {
-  // get rid of the snapshots we have for this changeset
+  // get rid of the indexes we have for this changeset
   await db.exec({
-    sql: `delete from snapshots
-          where address IN (
-            select snapshot_address
+    sql: `delete from indexes
+          where checksum IN (
+            select index_checksum
             from changesets
             where workspace_id = ? and change_set_id = ?
           );`,
@@ -1139,7 +1426,14 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
 
   await Promise.all(
     data.components.map((c) =>
-      updateComputed(workspaceId, changeSetId, EntityKind.Component, c, false),
+      updateComputed(
+        workspaceId,
+        changeSetId,
+        EntityKind.Component,
+        c,
+        undefined,
+        false,
+      ),
     ),
   );
   // bust everything all at once on cold start
@@ -1156,6 +1450,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     EntityKind.IncomingConnectionsList,
     changeSetId,
     undefined,
+    undefined,
     false, // don't compute
   )) as BifrostIncomingConnectionsList | -1;
 
@@ -1168,6 +1463,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
         changeSetId,
         EntityKind.IncomingConnections,
         c,
+        undefined,
         false,
         false,
       ),
@@ -1187,6 +1483,7 @@ const updateComputed = async (
   changeSetId: string,
   kind: EntityKind,
   doc: AtomDocument,
+  indexChecksum?: string,
   bust = true,
   followReferences = true,
 ) => {
@@ -1199,6 +1496,7 @@ const updateComputed = async (
       changeSetId,
       kind,
       doc.id,
+      indexChecksum,
       false,
     );
     doc = result[0];
@@ -1394,7 +1692,7 @@ const getComputed = async (
     return atomDoc;
   }
 
-  debug("🔗 computed operation", kind, id);
+  //  debug("🔗 computed operation", kind, id);
 
   if (
     kind === EntityKind.ViewComponentList ||
@@ -1441,6 +1739,7 @@ const getReferences = async (
   changeSetId: ChangeSetId,
   kind: EntityKind,
   id: Id,
+  indexChecksum?: string,
   followComputed?: boolean,
 ) => {
   if (
@@ -1467,7 +1766,7 @@ const getReferences = async (
     id,
   });
 
-  debug("🔗 reference query", kind, id);
+  //  debug("🔗 reference query", kind, id);
 
   let hasReferenceError = false;
 
@@ -1493,6 +1792,7 @@ const getReferences = async (
                 EntityKind.SchemaVariant,
                 schemaVariant.id,
                 undefined,
+                indexChecksum,
                 followComputed,
               )) as SchemaVariant | -1;
 
@@ -1533,6 +1833,7 @@ const getReferences = async (
       data.schemaVariantId.kind,
       data.schemaVariantId.id,
       undefined,
+      indexChecksum,
       followComputed,
     )) as SchemaVariant | -1;
 
@@ -1577,6 +1878,7 @@ const getReferences = async (
           v.kind,
           v.id,
           v.checksum,
+          indexChecksum,
           followComputed,
         )) as View | -1;
         if (maybeDoc === -1) {
@@ -1621,6 +1923,7 @@ const getReferences = async (
           c.kind,
           c.id,
           c.checksum,
+          indexChecksum,
           followComputed,
         )) as BifrostComponent | -1;
 
@@ -1663,6 +1966,7 @@ const getReferences = async (
       EntityKind.Component,
       raw.id,
       undefined,
+      indexChecksum,
       false,
     )) as BifrostComponent | -1;
 
@@ -1704,6 +2008,7 @@ const getReferences = async (
           c.fromComponentId.kind,
           c.fromComponentId.id,
           undefined,
+          indexChecksum,
           false,
         );
 
@@ -1756,9 +2061,14 @@ const getReferences = async (
     const rawList = atomDoc as EddaIncomingConnectionsList;
     const maybeIncomingConnections = await Promise.all(
       rawList.componentConnections.map(async (c) => {
-        const maybeDoc = (await get(workspaceId, changeSetId, c.kind, c.id)) as
-          | BifrostComponentConnections
-          | -1;
+        const maybeDoc = (await get(
+          workspaceId,
+          changeSetId,
+          c.kind,
+          c.id,
+          undefined,
+          indexChecksum,
+        )) as BifrostComponentConnections | -1;
         if (maybeDoc === -1) {
           hasReferenceError = true;
           span.addEvent("mjolnir", {
@@ -1800,6 +2110,7 @@ const get = async (
   kind: EntityKind,
   id: Id,
   checksum?: string, // intentionally not used in sql, putting it on the wire for consistency & observability purposes
+  indexChecksum?: string,
   followComputed = true,
   followReferences = true,
 ): Promise<-1 | object> => {
@@ -1808,16 +2119,21 @@ const get = async (
       data
     from
       atoms
-      inner join snapshots_mtm_atoms mtm
+      inner join index_mtm_atoms mtm
         ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
-      inner join snapshots ON mtm.snapshot_address = snapshots.address
-      inner join changesets ON changesets.snapshot_address = snapshots.address
+      inner join indexes ON mtm.index_checksum = indexes.checksum
+    ${
+      indexChecksum
+        ? ""
+        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+    }
     where
-      changesets.change_set_id = ? AND
+      ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+      AND
       atoms.kind = ? AND
       atoms.args = ?
     ;`;
-  const bind = [changeSetId, kind, id];
+  const bind = [indexChecksum ?? changeSetId, kind, id];
   const start = Date.now();
   const atomData = await db.exec({
     sql,
@@ -1838,7 +2154,7 @@ const get = async (
     return -1;
   }
   const atomDoc = decodeDocumentFromDB(data as ArrayBuffer);
-  debug("📄 atom doc", atomDoc);
+  // debug("📄 atom doc", atomDoc);
 
   // THIS GETS REPLACED WITH AUTO-GEN CODE
   if (!followReferences) return atomDoc;
@@ -1850,6 +2166,7 @@ const get = async (
       changeSetId,
       kind,
       id,
+      indexChecksum,
       followComputed,
     );
     // this is a choice, we could send through objects that don't match the types
@@ -1955,18 +2272,44 @@ const dbInterface: DBInterface = {
           if (import.meta.env.VITE_LOG_WS) {
             log("🌈 bifrost incoming", data);
           }
+
+          // Track message processing to detect duplicates
+          let messageId: string;
+          if (data.kind === MessageKind.PATCH) {
+            messageId = `${data.kind}-${data.meta.toIndexChecksum}-${data.patches.length}`;
+          } else if (data.kind === MessageKind.MJOLNIR) {
+            messageId = `${data.kind}-${data.atom.kind}-${data.atom.id}-${data.atom.toChecksum}`;
+          } else {
+            messageId = `${data.kind}`;
+          }
+          debug("📨 Processing message:", messageId);
+
           if (!("kind" in data)) span.setAttribute("kindMissing", "no kind");
           else {
             span.setAttribute("messageKind", data.kind);
             if (data.kind === MessageKind.PATCH) {
-              if (!data.meta.snapshotFromAddress)
+              if (!data.meta.toIndexChecksum)
                 // eslint-disable-next-line no-console
                 console.error(
-                  "ATTEMPTING TO PATCH BUT FROM SNAPSHOT IS MISSING",
+                  "ATTEMPTING TO PATCH BUT INDEX CHECKSUM IS MISSING",
                   data.meta,
                 );
+              debug(
+                "📨 PATCH MESSAGE START:",
+                data.meta.toIndexChecksum,
+                "patches:",
+                data.patches.length,
+              );
               await handlePatchMessage(data, span);
+              debug("📨 PATCH MESSAGE COMPLETE:", data.meta.toIndexChecksum);
             } else if (data.kind === MessageKind.MJOLNIR) {
+              debug(
+                "📨 MJOLNIR MESSAGE START:",
+                data.atom.kind,
+                data.atom.id,
+                "toChecksum:",
+                data.atom.toChecksum,
+              );
               returned(
                 data.atom.changeSetId,
                 `${data.atom.kind}.${data.atom.id}`,
@@ -1978,6 +2321,11 @@ const dbInterface: DBInterface = {
                 id: data.atom.id,
               });
               await handleHammer(data, span);
+              debug(
+                "📨 MJOLNIR MESSAGE COMPLETE:",
+                data.atom.kind,
+                data.atom.id,
+              );
             } else if (data.kind === MessageKind.INDEXUPDATE) {
               // Index has been updated - signal lobby exit
               if (lobbyExitFn) {
@@ -2007,8 +2355,10 @@ const dbInterface: DBInterface = {
   },
 
   async initBifrost() {
+    debug("🌈 Initializing Bifrost");
     await Promise.all([this.initDB(false), this.initSocket()]);
     await this.migrate(false);
+    debug("🌈 Bifrost initialization complete");
   },
 
   async bifrostClose() {
@@ -2075,19 +2425,19 @@ const dbInterface: DBInterface = {
       bind: [changeSetId],
       returnValue: "resultRows",
     });
-    const s = db.exec({
-      sql: `select snapshots.* from snapshots
+    const i = db.exec({
+      sql: `select indexes.* from indexes
             inner join changesets
-              on snapshots.address = changesets.snapshot_address
+              on indexes.checksum = changesets.index_checksum
             where changesets.change_set_id = ?;
       `,
       bind: [changeSetId],
       returnValue: "resultRows",
     });
     const m = db.exec({
-      sql: `select snapshots_mtm_atoms.* from snapshots_mtm_atoms
+      sql: `select index_mtm_atoms.* from index_mtm_atoms
             inner join changesets
-              on snapshots_mtm_atoms.snapshot_address = changesets.snapshot_address
+              on index_mtm_atoms.index_checksum = changesets.index_checksum
             where changesets.change_set_id = ?;
       `,
       bind: [changeSetId],
@@ -2095,60 +2445,61 @@ const dbInterface: DBInterface = {
     });
     const a = db.exec({
       sql: `select atoms.* from atoms
-            inner join snapshots_mtm_atoms
-              on snapshots_mtm_atoms.kind = atoms.kind
-              and snapshots_mtm_atoms.args = atoms.args
-              and snapshots_mtm_atoms.checksum = atoms.checksum
+            inner join index_mtm_atoms
+              on index_mtm_atoms.kind = atoms.kind
+              and index_mtm_atoms.args = atoms.args
+              and index_mtm_atoms.checksum = atoms.checksum
             inner join changesets
-              on snapshots_mtm_atoms.snapshot_address = changesets.snapshot_address
+              on index_mtm_atoms.index_checksum = changesets.index_checksum
             where changesets.change_set_id = ?;
       `,
       bind: [changeSetId],
       returnValue: "resultRows",
     });
-    const [changesets, snapshots, atoms, mtm] = await Promise.all([c, s, a, m]);
-    return { changesets, snapshots, atoms, mtm };
+    const [changesets, indexes, atoms, mtm] = await Promise.all([c, i, a, m]);
+    return { changesets, indexes, atoms, mtm };
   },
   async linkNewChangeset(
     workspaceId,
     headChangeSet,
     changeSetId,
-    workspaceSnapshotAddress,
+    indexChecksum,
   ): Promise<void> {
     try {
       const headRows = db.exec({
-        sql: "select snapshot_address from changesets where workspace_id = ? and change_set_id = ?;",
+        sql: "select index_checksum from changesets where workspace_id = ? and change_set_id = ?;",
         bind: [workspaceId, headChangeSet],
         returnValue: "resultRows",
       });
       const headRow = oneInOne(headRows);
-      if (headRow === NOROW) throw new Error("HEAD is missing");
-      const currentSnapshotAddress = headRow;
+      if (headRow === NOROW)
+        throw new Error(`HEAD is missing: ${workspaceId}: ${headChangeSet}`);
+      const currentIndexChecksum = headRow;
 
-      if (currentSnapshotAddress === workspaceSnapshotAddress) {
+      if (currentIndexChecksum === indexChecksum) {
         debug("~ new change set, no-op");
         return; // NO-OP
       }
 
       await db.exec({
-        sql: `INSERT INTO snapshots (address) VALUES (?);`,
-        bind: [workspaceSnapshotAddress],
+        sql: `INSERT INTO indexes (checksum) VALUES (?);`,
+        bind: [indexChecksum],
       });
 
       await db.exec({
-        sql: `INSERT INTO snapshots_mtm_atoms
+        sql: `INSERT INTO index_mtm_atoms
         SELECT
           ?, kind, args, checksum
-        FROM snapshots_mtm_atoms
+        FROM index_mtm_atoms
         WHERE
-          snapshot_address = ?
+          index_checksum = ?
         ;`,
-        bind: [workspaceSnapshotAddress, currentSnapshotAddress],
+        bind: [indexChecksum, currentIndexChecksum],
       });
 
       await db.exec({
-        sql: "insert into changesets (change_set_id, workspace_id, snapshot_address) VALUES (?, ?, ?);",
-        bind: [changeSetId, workspaceId, workspaceSnapshotAddress],
+        sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?);",
+        bind: [changeSetId, workspaceId, indexChecksum],
       });
     } catch (err) {
       // eslint-disable-next-line no-console

@@ -1,10 +1,8 @@
 use serde::Serialize;
-use si_events::WorkspaceSnapshotAddress;
 use si_id::{
     ChangeSetId,
     WorkspacePk,
 };
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectPatch {
@@ -27,17 +25,18 @@ pub const INDEX_UPDATE_KIND: &str = "IndexUpdate";
 pub const INDEX_UPDATE_POST_FIX: &str = "index_update";
 pub const DATA_CACHE_SUBJECT_PREFIX: &str = "data_cache";
 
-#[derive(Debug, Clone, Serialize, Copy)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateMeta {
     /// The workspace this patch batch is targeting.
     pub workspace_id: WorkspacePk,
     /// The change set this patch batch is targeting.
     pub change_set_id: Option<ChangeSetId>,
-    /// The snapshot address the patches are being applied to.
-    pub snapshot_from_address: Option<WorkspaceSnapshotAddress>,
-    /// The snapshot address the patches will result in data for.
-    pub snapshot_to_address: Option<WorkspaceSnapshotAddress>,
+    /// The index checksum the patches will result in data for.
+    pub to_index_checksum: String,
+    /// The index checksum the patches the patches are being applied to.
+    /// Or in the case of rebuild or a brand new change set, will match the [`to_index_checksum`]
+    pub from_index_checksum: String,
 }
 
 impl UpdateMeta {
@@ -73,6 +72,8 @@ pub struct IndexUpdate {
     pub meta: UpdateMeta,
     /// The message kind for the front end.
     pub kind: &'static str,
+    /// Checksum
+    pub index_checksum: String,
 }
 
 impl IndexUpdate {

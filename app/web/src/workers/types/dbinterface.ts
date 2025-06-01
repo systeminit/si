@@ -117,21 +117,21 @@ export interface DBInterface {
 export class Ragnarok extends Error {
   workspaceId: string;
   changeSetId: string;
-  fromSnapshotAddress: string | undefined;
-  snapshotFromAddress: string | undefined;
+  fromChecksumExpected: string | undefined;
+  currentChecksum: string | undefined;
 
   constructor(
     message: string,
     workspaceId: string,
     changeSetId: string,
-    fromSnapshotAddress: string | undefined,
-    snapshotFromAddress: string | undefined,
+    fromChecksumExpected: string | undefined,
+    currentChecksum: string | undefined,
   ) {
     super(message);
     this.workspaceId = workspaceId;
     this.changeSetId = changeSetId;
-    this.fromSnapshotAddress = fromSnapshotAddress;
-    this.snapshotFromAddress = snapshotFromAddress;
+    this.fromChecksumExpected = fromChecksumExpected;
+    this.currentChecksum = currentChecksum;
   }
 }
 
@@ -174,8 +174,8 @@ export interface AtomOperation extends AbstractAtom {
 export interface AtomMeta {
   workspaceId: WorkspacePk;
   changeSetId: ChangeSetId;
-  snapshotFromAddress?: Checksum;
-  snapshotToAddress: Checksum;
+  fromIndexChecksum: Checksum;
+  toIndexChecksum: Checksum;
 }
 
 export enum MessageKind {
@@ -199,6 +199,7 @@ export interface AtomMessage {
 export interface IndexUpdate {
   kind: MessageKind.INDEXUPDATE;
   meta: AtomMeta;
+  indexChecksum: string;
 }
 
 export interface Atom extends AbstractAtom, AtomMeta {
@@ -219,6 +220,7 @@ export interface IndexObject extends Common {
 export interface IndexObjectMeta {
   workspaceSnapshotAddress: string;
   frontEndObject: IndexObject;
+  indexChecksum: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

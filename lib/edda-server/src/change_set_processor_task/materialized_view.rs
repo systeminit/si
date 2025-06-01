@@ -28,10 +28,7 @@ use frigg::{
 };
 use si_events::{
     WorkspaceSnapshotAddress,
-    workspace_snapshot::{
-        Change,
-        Checksum,
-    },
+    workspace_snapshot::Change,
 };
 use si_frontend_mv_types::{
     MaterializedView,
@@ -184,21 +181,25 @@ pub async fn try_reuse_mv_index_for_new_change_set(
             && pointer.definition_checksum == definitions_checksum
         {
             // found one, create a new index pointer to it!
-            // Note: we might want to consider validting the index here before we use it
             let change_set_mv_id = change_set_id.to_string();
             frigg
-                .insert_index_key_for_existing_index(workspace_id, &change_set_mv_id, pointer)
+                .insert_index_key_for_existing_index(
+                    workspace_id,
+                    &change_set_mv_id,
+                    pointer.clone(),
+                )
                 .await?;
             span.record("si.from_change_set.id", change_set_mv_id);
             let meta = UpdateMeta {
                 workspace_id,
                 change_set_id: Some(change_set_id),
-                snapshot_from_address: None,
-                snapshot_to_address: Some(snapshot_address),
+                from_index_checksum: pointer.clone().index_checksum.to_owned(), // These are the same because we're starting from current for the new change set
+                to_index_checksum: pointer.clone().index_checksum,
             };
             let index_update = IndexUpdate {
                 meta,
                 kind: INDEX_UPDATE_KIND,
+                index_checksum: pointer.index_checksum,
             };
             DataCache::publish_index_update(ctx, index_update).await?;
             return Ok(true);
@@ -277,7 +278,7 @@ pub async fn reuse_or_rebuild_index_for_new_change_set(
 pub async fn build_all_mv_for_change_set(
     ctx: &DalContext,
     frigg: &FriggStore,
-    snapshot_from_address: Option<WorkspaceSnapshotAddress>,
+    from_index_checksum: Option<String>,
 ) -> Result<(), MaterializedViewError> {
     let span = current_span_for_instrument_at!("info");
     span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
@@ -309,11 +310,12 @@ pub async fn build_all_mv_for_change_set(
     let meta = UpdateMeta {
         workspace_id,
         change_set_id: Some(change_set_id),
-        snapshot_from_address,
-        snapshot_to_address: Some(snapshot_to_address),
+        from_index_checksum: from_index_checksum
+            .map_or(mv_index_frontend_object.checksum.to_owned(), |check| check),
+        to_index_checksum: mv_index_frontend_object.checksum.to_owned(),
     };
     let patch_batch = PatchBatch {
-        meta,
+        meta: meta.clone(),
         kind: PATCH_BATCH_KIND,
         patches,
     };
@@ -321,6 +323,7 @@ pub async fn build_all_mv_for_change_set(
     let index_update = IndexUpdate {
         meta,
         kind: INDEX_UPDATE_KIND,
+        index_checksum: mv_index_frontend_object.checksum.to_owned(),
     };
 
     frigg
@@ -383,7 +386,7 @@ pub async fn build_mv_for_changes_in_change_set(
             workspace_pk: workspace_id,
             change_set_id,
         })?;
-
+    let from_index_checksum = index_frontend_object.checksum;
     let (frontend_objects, patches) =
         build_mv_inner(ctx, frigg, workspace_id, change_set_id, changes).await?;
     let mv_index: MvIndex = serde_json::from_value(index_frontend_object.data)?;
@@ -421,17 +424,18 @@ pub async fn build_mv_for_changes_in_change_set(
     let meta = UpdateMeta {
         workspace_id,
         change_set_id: Some(change_set_id),
-        snapshot_from_address: Some(from_snapshot_address),
-        snapshot_to_address: Some(to_snapshot_address),
+        from_index_checksum,
+        to_index_checksum: new_mv_index_frontend_object.checksum.to_owned(),
     };
     let patch_batch = PatchBatch {
-        meta,
+        meta: meta.clone(),
         kind: PATCH_BATCH_KIND,
         patches,
     };
     let index_update = IndexUpdate {
         meta,
         kind: INDEX_UPDATE_KIND,
+        index_checksum: new_mv_index_frontend_object.checksum.to_owned(),
     };
     let change_set_mv_id = change_set_id.to_string();
 
@@ -689,7 +693,16 @@ where
     MaterializedViewError: From<E>,
     MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
 {
-    let mv_kind = mv_kind.to_string();
+    let mv_kind: String = mv_kind.to_string();
+    let (from_checksum, previous_data) = if let Some(previous_version) = frigg
+        .get_current_object(ctx.workspace_pk()?, ctx.change_set_id(), &mv_kind, &mv_id)
+        .await?
+    {
+        (previous_version.checksum, previous_version.data)
+    } else {
+        // Object doesn't exist in Frigg either
+        ("0".to_string(), serde_json::Value::Null)
+    };
     if !ctx
         .workspace_snapshot()?
         .node_exists(change.entity_id)
@@ -700,8 +713,7 @@ where
             Some(ObjectPatch {
                 kind: mv_kind,
                 id: mv_id,
-                // TODO: we need to get the prior version of this
-                from_checksum: Checksum::default().to_string(),
+                from_checksum,
                 to_checksum: "0".to_string(),
                 patch: json_patch::Patch(vec![json_patch::PatchOperation::Remove(
                     json_patch::RemoveOperation::default(),
@@ -714,18 +726,7 @@ where
         let mv_json = serde_json::to_value(&mv)?;
         let to_checksum = FrontendChecksum::checksum(&mv).to_string();
         let frontend_object: FrontendObject = mv.try_into()?;
-
         let kind = mv_kind;
-        let (from_checksum, previous_data) = if let Some(previous_version) = frigg
-            .get_current_object(ctx.workspace_pk()?, ctx.change_set_id(), &kind, &mv_id)
-            .await?
-        {
-            (previous_version.checksum, previous_version.data)
-        } else {
-            // Object is new
-            ("0".to_string(), serde_json::Value::Null)
-        };
-
         if from_checksum == to_checksum {
             Ok((None, Some(frontend_object)))
         } else {

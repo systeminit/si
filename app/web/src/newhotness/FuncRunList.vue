@@ -165,13 +165,14 @@ let executionKey: string | undefined;
 
 // Set up subscription on mount
 onMounted(async () => {
-  realtimeStore.subscribe("paginatedFuncRuns", `changeset/${ctx.changeSetId}`, [
+  executionKey = "paginatedFuncRuns";
+  realtimeStore.subscribe(executionKey, `changeset/${ctx.changeSetId.value}`, [
     {
       eventType: "FuncRunLogUpdated",
       callback: async (payload) => {
         if (payload.funcRunId) {
           queryClient.invalidateQueries({
-            queryKey: [ctx.changeSetId.value, "paginatedFuncRuns"],
+            queryKey: [ctx.changeSetId, "paginatedFuncRuns"],
           });
         }
       },
@@ -182,7 +183,7 @@ onMounted(async () => {
 // Clean up on unmount
 onBeforeUnmount(() => {
   if (executionKey) {
-    // realtimeStore.unsubscribe(executionKey);
+    realtimeStore.unsubscribe(executionKey);
     executionKey = undefined;
   }
 });

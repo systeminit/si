@@ -202,7 +202,7 @@ export const niflheim = async (
           changeSetId,
         },
       });
-    }
+    } else return true;
   }
 };
 
