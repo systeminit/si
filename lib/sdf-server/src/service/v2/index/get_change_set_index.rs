@@ -63,7 +63,7 @@ pub async fn get_change_set_index(
     Ok((
         StatusCode::OK,
         Json(Some(FrontEndObjectMeta {
-            workspace_snapshot_address: change_set.workspace_snapshot_address,
+            workspace_snapshot_address: index.clone().id,
             front_end_object: index,
         })),
     ))

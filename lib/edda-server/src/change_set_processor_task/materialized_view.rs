@@ -309,7 +309,7 @@ pub async fn build_all_mv_for_change_set(
     let meta = UpdateMeta {
         workspace_id,
         change_set_id: Some(change_set_id),
-        snapshot_from_address,
+        snapshot_from_address: snapshot_from_address.or(Some(snapshot_to_address)),
         snapshot_to_address: Some(snapshot_to_address),
     };
     let patch_batch = PatchBatch {
@@ -689,7 +689,16 @@ where
     MaterializedViewError: From<E>,
     MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
 {
-    let mv_kind = mv_kind.to_string();
+    let mv_kind:String = mv_kind.to_string();
+     let (from_checksum, _previous_data) = if let Some(previous_version) = frigg
+            .get_current_object(ctx.workspace_pk()?, ctx.change_set_id(), &mv_kind, &mv_id)
+            .await?
+        {
+            (previous_version.checksum, previous_version.data)
+        } else {
+            // Object doesn't exist in Frigg either
+            ("0".to_string(), serde_json::Value::Null)
+        };
     if !ctx
         .workspace_snapshot()?
         .node_exists(change.entity_id)
@@ -700,8 +709,7 @@ where
             Some(ObjectPatch {
                 kind: mv_kind,
                 id: mv_id,
-                // TODO: we need to get the prior version of this
-                from_checksum: Checksum::default().to_string(),
+                from_checksum,
                 to_checksum: "0".to_string(),
                 patch: json_patch::Patch(vec![json_patch::PatchOperation::Remove(
                     json_patch::RemoveOperation::default(),

@@ -93,7 +93,7 @@ pub fn v2_change_set_routes() -> Router<AppState> {
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct FrontEndObjectMeta {
-    workspace_snapshot_address: WorkspaceSnapshotAddress,
+    workspace_snapshot_address: String,
     front_end_object: FrontendObject,
 }
 

@@ -21,10 +21,10 @@ use super::{
     IndexError,
     IndexResult,
 };
-use crate::extract::{
+use crate::{extract::{
     FriggStore,
     HandlerContext,
-};
+}, service::v2::index::{request_rebuild, request_rebuild_and_watch}};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -46,6 +46,10 @@ pub async fn get_front_end_object(
         .await?;
     let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
 
+    let index = match frigg.get_index_pointer_value(workspace_pk, change_set_id).await? {
+        Some((index, _kv_revision)) => index.snapshot_address,
+        None => "".to_string(),
+    };
     let obj;
     if let Some(checksum) = request.checksum {
         obj = frigg
@@ -68,7 +72,7 @@ pub async fn get_front_end_object(
     }
 
     Ok(Json(FrontEndObjectMeta {
-        workspace_snapshot_address: change_set.workspace_snapshot_address,
+        workspace_snapshot_address: index,
         front_end_object: obj,
     }))
 }
