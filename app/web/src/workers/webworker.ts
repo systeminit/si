@@ -1220,13 +1220,7 @@ const updateComputed = async (
     const component = doc as BifrostComponent;
     Object.values(component.attributeTree.attributeValues).forEach((av) => {
       const prop = component.attributeTree.props[av.propId ?? ""];
-      if (
-        av.value &&
-        av.path &&
-        prop &&
-        prop.eligibleForConnection &&
-        !prop.hidden
-      ) {
+      if (av.path && prop && prop.eligibleForConnection && !prop.hidden) {
         if (av.secret) {
           const conn: PossibleConnection = {
             attributeValueId: av.id,
@@ -1242,7 +1236,7 @@ const updateComputed = async (
         } else {
           const conn: PossibleConnection = {
             attributeValueId: av.id,
-            value: av.value,
+            value: av.value || "<computed>",
             path: av.path,
             name: prop.name,
             componentId: component.id,
