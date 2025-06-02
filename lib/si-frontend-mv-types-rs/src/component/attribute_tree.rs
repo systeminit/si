@@ -47,6 +47,7 @@ pub struct ValidationOutput {
     Eq,
     si_frontend_mv_types_macros::FrontendChecksum,
 )]
+#[serde(rename_all = "camelCase")]
 pub struct ExternalSource {
     pub component_name: String,
     pub path: String,
