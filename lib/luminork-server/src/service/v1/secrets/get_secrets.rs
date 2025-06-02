@@ -32,9 +32,10 @@ use crate::{
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/secrets",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
     ),
     tag = "secrets",
+    summary = "List all secrets",
     responses(
         (status = 200, description = "Secrets retrieved successfully", body = GetSecretsV1Response,
           example = json!({

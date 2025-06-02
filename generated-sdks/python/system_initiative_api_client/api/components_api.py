@@ -53,7 +53,7 @@ class ComponentsApi:
     def add_action(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         add_action_v1_request: AddActionV1Request,
         _request_timeout: Union[
@@ -69,12 +69,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> AddActionV1Response:
-        """add_action
+        """Queue action for a component
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str
@@ -137,7 +137,7 @@ class ComponentsApi:
     def add_action_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         add_action_v1_request: AddActionV1Request,
         _request_timeout: Union[
@@ -153,12 +153,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[AddActionV1Response]:
-        """add_action
+        """Queue action for a component
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str
@@ -221,7 +221,7 @@ class ComponentsApi:
     def add_action_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         add_action_v1_request: AddActionV1Request,
         _request_timeout: Union[
@@ -237,12 +237,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """add_action
+        """Queue action for a component
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str
@@ -386,7 +386,7 @@ class ComponentsApi:
     def create_component(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         create_component_v1_request: CreateComponentV1Request,
         _request_timeout: Union[
             None,
@@ -401,12 +401,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> CreateComponentV1Response:
-        """create_component
+        """Create a component
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param create_component_v1_request: (required)
         :type create_component_v1_request: CreateComponentV1Request
@@ -465,7 +465,7 @@ class ComponentsApi:
     def create_component_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         create_component_v1_request: CreateComponentV1Request,
         _request_timeout: Union[
             None,
@@ -480,12 +480,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[CreateComponentV1Response]:
-        """create_component
+        """Create a component
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param create_component_v1_request: (required)
         :type create_component_v1_request: CreateComponentV1Request
@@ -544,7 +544,7 @@ class ComponentsApi:
     def create_component_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         create_component_v1_request: CreateComponentV1Request,
         _request_timeout: Union[
             None,
@@ -559,12 +559,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """create_component
+        """Create a component
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param create_component_v1_request: (required)
         :type create_component_v1_request: CreateComponentV1Request
@@ -701,7 +701,7 @@ class ComponentsApi:
     def delete_component(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         _request_timeout: Union[
             None,
@@ -716,12 +716,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> DeleteComponentV1Response:
-        """delete_component
+        """Delete a component
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str
@@ -778,7 +778,7 @@ class ComponentsApi:
     def delete_component_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         _request_timeout: Union[
             None,
@@ -793,12 +793,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[DeleteComponentV1Response]:
-        """delete_component
+        """Delete a component
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str
@@ -855,7 +855,7 @@ class ComponentsApi:
     def delete_component_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         _request_timeout: Union[
             None,
@@ -870,12 +870,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """delete_component
+        """Delete a component
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str
@@ -997,7 +997,7 @@ class ComponentsApi:
     def execute_management_function(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         execute_management_function_v1_request: ExecuteManagementFunctionV1Request,
         _request_timeout: Union[
@@ -1013,12 +1013,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ExecuteManagementFunctionV1Response:
-        """execute_management_function
+        """Execute a component's management function
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str
@@ -1080,7 +1080,7 @@ class ComponentsApi:
     def execute_management_function_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         execute_management_function_v1_request: ExecuteManagementFunctionV1Request,
         _request_timeout: Union[
@@ -1096,12 +1096,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[ExecuteManagementFunctionV1Response]:
-        """execute_management_function
+        """Execute a component's management function
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str
@@ -1163,7 +1163,7 @@ class ComponentsApi:
     def execute_management_function_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         execute_management_function_v1_request: ExecuteManagementFunctionV1Request,
         _request_timeout: Union[
@@ -1179,12 +1179,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """execute_management_function
+        """Execute a component's management function
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str
@@ -1327,7 +1327,7 @@ class ComponentsApi:
     def find_component(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component: Optional[StrictStr] = None,
         component_id: Optional[StrictStr] = None,
         _request_timeout: Union[
@@ -1343,12 +1343,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> GetComponentV1Response:
-        """find_component
+        """Find a component by name or component Id
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component:
         :type component: str
@@ -1408,7 +1408,7 @@ class ComponentsApi:
     def find_component_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component: Optional[StrictStr] = None,
         component_id: Optional[StrictStr] = None,
         _request_timeout: Union[
@@ -1424,12 +1424,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[GetComponentV1Response]:
-        """find_component
+        """Find a component by name or component Id
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component:
         :type component: str
@@ -1489,7 +1489,7 @@ class ComponentsApi:
     def find_component_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component: Optional[StrictStr] = None,
         component_id: Optional[StrictStr] = None,
         _request_timeout: Union[
@@ -1505,12 +1505,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """find_component
+        """Find a component by name or component Id
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component:
         :type component: str
@@ -1642,7 +1642,7 @@ class ComponentsApi:
     def get_component(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         _request_timeout: Union[
             None,
@@ -1657,12 +1657,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> GetComponentV1Response:
-        """get_component
+        """Get a component by component Id
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str
@@ -1719,7 +1719,7 @@ class ComponentsApi:
     def get_component_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         _request_timeout: Union[
             None,
@@ -1734,12 +1734,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[GetComponentV1Response]:
-        """get_component
+        """Get a component by component Id
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str
@@ -1796,7 +1796,7 @@ class ComponentsApi:
     def get_component_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         _request_timeout: Union[
             None,
@@ -1811,12 +1811,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """get_component
+        """Get a component by component Id
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str
@@ -1938,7 +1938,7 @@ class ComponentsApi:
     def list_components(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
         cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (ComponentId of the last item from previous page)")] = None,
         _request_timeout: Union[
@@ -1954,12 +1954,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ListComponentsV1Response:
-        """list_components
+        """List all components
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param limit: Maximum number of results to return (default: 50, max: 300)
         :type limit: str
@@ -2018,7 +2018,7 @@ class ComponentsApi:
     def list_components_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
         cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (ComponentId of the last item from previous page)")] = None,
         _request_timeout: Union[
@@ -2034,12 +2034,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[ListComponentsV1Response]:
-        """list_components
+        """List all components
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param limit: Maximum number of results to return (default: 50, max: 300)
         :type limit: str
@@ -2098,7 +2098,7 @@ class ComponentsApi:
     def list_components_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         limit: Annotated[Optional[StrictStr], Field(description="Maximum number of results to return (default: 50, max: 300)")] = None,
         cursor: Annotated[Optional[StrictStr], Field(description="Cursor for pagination (ComponentId of the last item from previous page)")] = None,
         _request_timeout: Union[
@@ -2114,12 +2114,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """list_components
+        """List all components
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param limit: Maximum number of results to return (default: 50, max: 300)
         :type limit: str
@@ -2250,7 +2250,7 @@ class ComponentsApi:
     def update_component(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         update_component_v1_request: UpdateComponentV1Request,
         _request_timeout: Union[
@@ -2266,12 +2266,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> UpdateComponentV1Response:
-        """update_component
+        """Update a component
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str
@@ -2333,7 +2333,7 @@ class ComponentsApi:
     def update_component_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         update_component_v1_request: UpdateComponentV1Request,
         _request_timeout: Union[
@@ -2349,12 +2349,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[UpdateComponentV1Response]:
-        """update_component
+        """Update a component
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str
@@ -2416,7 +2416,7 @@ class ComponentsApi:
     def update_component_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         component_id: Annotated[StrictStr, Field(description="Component identifier")],
         update_component_v1_request: UpdateComponentV1Request,
         _request_timeout: Union[
@@ -2432,12 +2432,12 @@ class ComponentsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """update_component
+        """Update a component
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param component_id: Component identifier (required)
         :type component_id: str

@@ -24,8 +24,9 @@ use crate::extract::{
         ("workspace_id" = String, Path, description = "Workspace identifier")
     ),
     tag = "change_sets",
+    summary = "Abandon all active Change Sets",
     responses(
-        (status = 200, description = "Change sets purged successfully", body = PurgeOpenChangeSetsV1Response),
+        (status = 200, description = "Change Sets purged successfully", body = PurgeOpenChangeSetsV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )

@@ -24,9 +24,10 @@ use crate::{
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/actions/",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
     ),
     tag = "actions",
+    summary = "List queued actions",
     responses(
         (status = 200, description = "Actions retrieved successfully", body = GetActionsV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),

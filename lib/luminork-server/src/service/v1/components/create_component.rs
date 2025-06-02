@@ -49,10 +49,11 @@ use crate::{
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/components",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
     ),
     tag = "components",
     request_body = CreateComponentV1Request,
+    summary = "Create a component",
     responses(
         (status = 200, description = "Component created successfully", body = CreateComponentV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),

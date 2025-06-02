@@ -43,7 +43,7 @@ class FuncsApi:
     def get_func(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         func_id: Annotated[StrictStr, Field(description="Func identifier")],
         _request_timeout: Union[
             None,
@@ -58,12 +58,12 @@ class FuncsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> GetFuncV1Response:
-        """get_func
+        """Get function details
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param func_id: Func identifier (required)
         :type func_id: str
@@ -120,7 +120,7 @@ class FuncsApi:
     def get_func_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         func_id: Annotated[StrictStr, Field(description="Func identifier")],
         _request_timeout: Union[
             None,
@@ -135,12 +135,12 @@ class FuncsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[GetFuncV1Response]:
-        """get_func
+        """Get function details
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param func_id: Func identifier (required)
         :type func_id: str
@@ -197,7 +197,7 @@ class FuncsApi:
     def get_func_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         func_id: Annotated[StrictStr, Field(description="Func identifier")],
         _request_timeout: Union[
             None,
@@ -212,12 +212,12 @@ class FuncsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """get_func
+        """Get function details
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param func_id: Func identifier (required)
         :type func_id: str
@@ -339,7 +339,7 @@ class FuncsApi:
     def get_func_run(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         func_run_id: Annotated[StrictStr, Field(description="Func run identifier")],
         _request_timeout: Union[
             None,
@@ -354,12 +354,12 @@ class FuncsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> GetFuncRunV1Response:
-        """get_func_run
+        """Get func execution run logs
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param func_run_id: Func run identifier (required)
         :type func_run_id: str
@@ -416,7 +416,7 @@ class FuncsApi:
     def get_func_run_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         func_run_id: Annotated[StrictStr, Field(description="Func run identifier")],
         _request_timeout: Union[
             None,
@@ -431,12 +431,12 @@ class FuncsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[GetFuncRunV1Response]:
-        """get_func_run
+        """Get func execution run logs
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param func_run_id: Func run identifier (required)
         :type func_run_id: str
@@ -493,7 +493,7 @@ class FuncsApi:
     def get_func_run_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         func_run_id: Annotated[StrictStr, Field(description="Func run identifier")],
         _request_timeout: Union[
             None,
@@ -508,12 +508,12 @@ class FuncsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """get_func_run
+        """Get func execution run logs
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param func_run_id: Func run identifier (required)
         :type func_run_id: str

@@ -1941,12 +1941,6 @@ export interface SystemStatusResponse {
      * @memberof SystemStatusResponse
      */
     'API Documentation': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof SystemStatusResponse
-     */
-    'What is this?': string;
 }
 /**
  * 
@@ -2113,8 +2107,9 @@ export const ActionsApiAxiosParamCreator = function (configuration?: Configurati
     return {
         /**
          * 
+         * @summary Remove queued action
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} actionId Action identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2154,8 +2149,9 @@ export const ActionsApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
+         * @summary List queued actions
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -2191,8 +2187,9 @@ export const ActionsApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
+         * @summary Put action on-hold
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} actionId Action identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2232,8 +2229,9 @@ export const ActionsApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
+         * @summary Retry action
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} actionId Action identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2283,8 +2281,9 @@ export const ActionsApiFp = function(configuration?: Configuration) {
     return {
         /**
          * 
+         * @summary Remove queued action
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} actionId Action identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2297,8 +2296,9 @@ export const ActionsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary List queued actions
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -2310,8 +2310,9 @@ export const ActionsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Put action on-hold
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} actionId Action identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2324,8 +2325,9 @@ export const ActionsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Retry action
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} actionId Action identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2348,6 +2350,7 @@ export const ActionsApiFactory = function (configuration?: Configuration, basePa
     return {
         /**
          * 
+         * @summary Remove queued action
          * @param {ActionsApiCancelActionRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2357,6 +2360,7 @@ export const ActionsApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
+         * @summary List queued actions
          * @param {ActionsApiGetActionsRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2366,6 +2370,7 @@ export const ActionsApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
+         * @summary Put action on-hold
          * @param {ActionsApiPutOnHoldRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2375,6 +2380,7 @@ export const ActionsApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
+         * @summary Retry action
          * @param {ActionsApiRetryActionRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2393,6 +2399,7 @@ export const ActionsApiFactory = function (configuration?: Configuration, basePa
 export interface ActionsApiInterface {
     /**
      * 
+     * @summary Remove queued action
      * @param {ActionsApiCancelActionRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2402,6 +2409,7 @@ export interface ActionsApiInterface {
 
     /**
      * 
+     * @summary List queued actions
      * @param {ActionsApiGetActionsRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2411,6 +2419,7 @@ export interface ActionsApiInterface {
 
     /**
      * 
+     * @summary Put action on-hold
      * @param {ActionsApiPutOnHoldRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2420,6 +2429,7 @@ export interface ActionsApiInterface {
 
     /**
      * 
+     * @summary Retry action
      * @param {ActionsApiRetryActionRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2443,7 +2453,7 @@ export interface ActionsApiCancelActionRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ActionsApiCancelAction
      */
@@ -2471,7 +2481,7 @@ export interface ActionsApiGetActionsRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ActionsApiGetActions
      */
@@ -2492,7 +2502,7 @@ export interface ActionsApiPutOnHoldRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ActionsApiPutOnHold
      */
@@ -2520,7 +2530,7 @@ export interface ActionsApiRetryActionRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ActionsApiRetryAction
      */
@@ -2543,6 +2553,7 @@ export interface ActionsApiRetryActionRequest {
 export class ActionsApi extends BaseAPI implements ActionsApiInterface {
     /**
      * 
+     * @summary Remove queued action
      * @param {ActionsApiCancelActionRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2554,6 +2565,7 @@ export class ActionsApi extends BaseAPI implements ActionsApiInterface {
 
     /**
      * 
+     * @summary List queued actions
      * @param {ActionsApiGetActionsRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2565,6 +2577,7 @@ export class ActionsApi extends BaseAPI implements ActionsApiInterface {
 
     /**
      * 
+     * @summary Put action on-hold
      * @param {ActionsApiPutOnHoldRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2576,6 +2589,7 @@ export class ActionsApi extends BaseAPI implements ActionsApiInterface {
 
     /**
      * 
+     * @summary Retry action
      * @param {ActionsApiRetryActionRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2596,8 +2610,9 @@ export const ChangeSetsApiAxiosParamCreator = function (configuration?: Configur
     return {
         /**
          * 
+         * @summary Delete a Change Set
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -2633,6 +2648,7 @@ export const ChangeSetsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Create a Change Set
          * @param {string} workspaceId Workspace identifier
          * @param {CreateChangeSetV1Request} createChangeSetV1Request 
          * @param {*} [options] Override http request option.
@@ -2672,8 +2688,9 @@ export const ChangeSetsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Merge Change Set without approval
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -2709,8 +2726,9 @@ export const ChangeSetsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Get a Change Set by Change Set Id
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -2746,6 +2764,7 @@ export const ChangeSetsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary List all active Change Sets
          * @param {string} workspaceId Workspace identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2779,8 +2798,9 @@ export const ChangeSetsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Get Change Set post merge status
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -2816,6 +2836,7 @@ export const ChangeSetsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Abandon all active Change Sets
          * @param {string} workspaceId Workspace identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2849,8 +2870,9 @@ export const ChangeSetsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Request Change Set merge approval
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -2896,8 +2918,9 @@ export const ChangeSetsApiFp = function(configuration?: Configuration) {
     return {
         /**
          * 
+         * @summary Delete a Change Set
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -2909,6 +2932,7 @@ export const ChangeSetsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Create a Change Set
          * @param {string} workspaceId Workspace identifier
          * @param {CreateChangeSetV1Request} createChangeSetV1Request 
          * @param {*} [options] Override http request option.
@@ -2922,8 +2946,9 @@ export const ChangeSetsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Merge Change Set without approval
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -2935,8 +2960,9 @@ export const ChangeSetsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Get a Change Set by Change Set Id
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -2948,6 +2974,7 @@ export const ChangeSetsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary List all active Change Sets
          * @param {string} workspaceId Workspace identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2960,8 +2987,9 @@ export const ChangeSetsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Get Change Set post merge status
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -2973,6 +3001,7 @@ export const ChangeSetsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Abandon all active Change Sets
          * @param {string} workspaceId Workspace identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2985,8 +3014,9 @@ export const ChangeSetsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Request Change Set merge approval
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -3008,6 +3038,7 @@ export const ChangeSetsApiFactory = function (configuration?: Configuration, bas
     return {
         /**
          * 
+         * @summary Delete a Change Set
          * @param {ChangeSetsApiAbandonChangeSetRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3017,6 +3048,7 @@ export const ChangeSetsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Create a Change Set
          * @param {ChangeSetsApiCreateChangeSetRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3026,6 +3058,7 @@ export const ChangeSetsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Merge Change Set without approval
          * @param {ChangeSetsApiForceApplyRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3035,6 +3068,7 @@ export const ChangeSetsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Get a Change Set by Change Set Id
          * @param {ChangeSetsApiGetChangeSetRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3044,6 +3078,7 @@ export const ChangeSetsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary List all active Change Sets
          * @param {ChangeSetsApiListChangeSetsRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3053,6 +3088,7 @@ export const ChangeSetsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Get Change Set post merge status
          * @param {ChangeSetsApiMergeStatusRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3062,6 +3098,7 @@ export const ChangeSetsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Abandon all active Change Sets
          * @param {ChangeSetsApiPurgeOpenRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3071,6 +3108,7 @@ export const ChangeSetsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Request Change Set merge approval
          * @param {ChangeSetsApiRequestApprovalRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3089,6 +3127,7 @@ export const ChangeSetsApiFactory = function (configuration?: Configuration, bas
 export interface ChangeSetsApiInterface {
     /**
      * 
+     * @summary Delete a Change Set
      * @param {ChangeSetsApiAbandonChangeSetRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3098,6 +3137,7 @@ export interface ChangeSetsApiInterface {
 
     /**
      * 
+     * @summary Create a Change Set
      * @param {ChangeSetsApiCreateChangeSetRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3107,6 +3147,7 @@ export interface ChangeSetsApiInterface {
 
     /**
      * 
+     * @summary Merge Change Set without approval
      * @param {ChangeSetsApiForceApplyRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3116,6 +3157,7 @@ export interface ChangeSetsApiInterface {
 
     /**
      * 
+     * @summary Get a Change Set by Change Set Id
      * @param {ChangeSetsApiGetChangeSetRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3125,6 +3167,7 @@ export interface ChangeSetsApiInterface {
 
     /**
      * 
+     * @summary List all active Change Sets
      * @param {ChangeSetsApiListChangeSetsRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3134,6 +3177,7 @@ export interface ChangeSetsApiInterface {
 
     /**
      * 
+     * @summary Get Change Set post merge status
      * @param {ChangeSetsApiMergeStatusRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3143,6 +3187,7 @@ export interface ChangeSetsApiInterface {
 
     /**
      * 
+     * @summary Abandon all active Change Sets
      * @param {ChangeSetsApiPurgeOpenRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3152,6 +3197,7 @@ export interface ChangeSetsApiInterface {
 
     /**
      * 
+     * @summary Request Change Set merge approval
      * @param {ChangeSetsApiRequestApprovalRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3175,7 +3221,7 @@ export interface ChangeSetsApiAbandonChangeSetRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ChangeSetsApiAbandonChangeSet
      */
@@ -3217,7 +3263,7 @@ export interface ChangeSetsApiForceApplyRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ChangeSetsApiForceApply
      */
@@ -3238,7 +3284,7 @@ export interface ChangeSetsApiGetChangeSetRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ChangeSetsApiGetChangeSet
      */
@@ -3273,7 +3319,7 @@ export interface ChangeSetsApiMergeStatusRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ChangeSetsApiMergeStatus
      */
@@ -3308,7 +3354,7 @@ export interface ChangeSetsApiRequestApprovalRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ChangeSetsApiRequestApproval
      */
@@ -3324,6 +3370,7 @@ export interface ChangeSetsApiRequestApprovalRequest {
 export class ChangeSetsApi extends BaseAPI implements ChangeSetsApiInterface {
     /**
      * 
+     * @summary Delete a Change Set
      * @param {ChangeSetsApiAbandonChangeSetRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3335,6 +3382,7 @@ export class ChangeSetsApi extends BaseAPI implements ChangeSetsApiInterface {
 
     /**
      * 
+     * @summary Create a Change Set
      * @param {ChangeSetsApiCreateChangeSetRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3346,6 +3394,7 @@ export class ChangeSetsApi extends BaseAPI implements ChangeSetsApiInterface {
 
     /**
      * 
+     * @summary Merge Change Set without approval
      * @param {ChangeSetsApiForceApplyRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3357,6 +3406,7 @@ export class ChangeSetsApi extends BaseAPI implements ChangeSetsApiInterface {
 
     /**
      * 
+     * @summary Get a Change Set by Change Set Id
      * @param {ChangeSetsApiGetChangeSetRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3368,6 +3418,7 @@ export class ChangeSetsApi extends BaseAPI implements ChangeSetsApiInterface {
 
     /**
      * 
+     * @summary List all active Change Sets
      * @param {ChangeSetsApiListChangeSetsRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3379,6 +3430,7 @@ export class ChangeSetsApi extends BaseAPI implements ChangeSetsApiInterface {
 
     /**
      * 
+     * @summary Get Change Set post merge status
      * @param {ChangeSetsApiMergeStatusRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3390,6 +3442,7 @@ export class ChangeSetsApi extends BaseAPI implements ChangeSetsApiInterface {
 
     /**
      * 
+     * @summary Abandon all active Change Sets
      * @param {ChangeSetsApiPurgeOpenRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3401,6 +3454,7 @@ export class ChangeSetsApi extends BaseAPI implements ChangeSetsApiInterface {
 
     /**
      * 
+     * @summary Request Change Set merge approval
      * @param {ChangeSetsApiRequestApprovalRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -3421,8 +3475,9 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
     return {
         /**
          * 
+         * @summary Queue action for a component
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} componentId Component identifier
          * @param {AddActionV1Request} addActionV1Request 
          * @param {*} [options] Override http request option.
@@ -3468,8 +3523,9 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Create a component
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {CreateComponentV1Request} createComponentV1Request 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3511,8 +3567,9 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Delete a component
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} componentId Component identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3552,8 +3609,9 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Execute a component\'s management function
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} componentId Component identifier
          * @param {ExecuteManagementFunctionV1Request} executeManagementFunctionV1Request 
          * @param {*} [options] Override http request option.
@@ -3599,8 +3657,9 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Find a component by name or component Id
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string | null} [component] 
          * @param {string | null} [componentId] 
          * @param {*} [options] Override http request option.
@@ -3646,8 +3705,9 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Get a component by component Id
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} componentId Component identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3687,8 +3747,9 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary List all components
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} [limit] Maximum number of results to return (default: 50, max: 300)
          * @param {string} [cursor] Cursor for pagination (ComponentId of the last item from previous page)
          * @param {*} [options] Override http request option.
@@ -3734,8 +3795,9 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Update a component
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} componentId Component identifier
          * @param {UpdateComponentV1Request} updateComponentV1Request 
          * @param {*} [options] Override http request option.
@@ -3791,8 +3853,9 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
     return {
         /**
          * 
+         * @summary Queue action for a component
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} componentId Component identifier
          * @param {AddActionV1Request} addActionV1Request 
          * @param {*} [options] Override http request option.
@@ -3806,8 +3869,9 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Create a component
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {CreateComponentV1Request} createComponentV1Request 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3820,8 +3884,9 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Delete a component
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} componentId Component identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3834,8 +3899,9 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Execute a component\'s management function
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} componentId Component identifier
          * @param {ExecuteManagementFunctionV1Request} executeManagementFunctionV1Request 
          * @param {*} [options] Override http request option.
@@ -3849,8 +3915,9 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Find a component by name or component Id
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string | null} [component] 
          * @param {string | null} [componentId] 
          * @param {*} [options] Override http request option.
@@ -3864,8 +3931,9 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Get a component by component Id
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} componentId Component identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3878,8 +3946,9 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary List all components
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} [limit] Maximum number of results to return (default: 50, max: 300)
          * @param {string} [cursor] Cursor for pagination (ComponentId of the last item from previous page)
          * @param {*} [options] Override http request option.
@@ -3893,8 +3962,9 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Update a component
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} componentId Component identifier
          * @param {UpdateComponentV1Request} updateComponentV1Request 
          * @param {*} [options] Override http request option.
@@ -3918,6 +3988,7 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
     return {
         /**
          * 
+         * @summary Queue action for a component
          * @param {ComponentsApiAddActionRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3927,6 +3998,7 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Create a component
          * @param {ComponentsApiCreateComponentRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3936,6 +4008,7 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Delete a component
          * @param {ComponentsApiDeleteComponentRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3945,6 +4018,7 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Execute a component\'s management function
          * @param {ComponentsApiExecuteManagementFunctionRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3954,6 +4028,7 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Find a component by name or component Id
          * @param {ComponentsApiFindComponentRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3963,6 +4038,7 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Get a component by component Id
          * @param {ComponentsApiGetComponentRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3972,6 +4048,7 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary List all components
          * @param {ComponentsApiListComponentsRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3981,6 +4058,7 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Update a component
          * @param {ComponentsApiUpdateComponentRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3999,6 +4077,7 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
 export interface ComponentsApiInterface {
     /**
      * 
+     * @summary Queue action for a component
      * @param {ComponentsApiAddActionRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4008,6 +4087,7 @@ export interface ComponentsApiInterface {
 
     /**
      * 
+     * @summary Create a component
      * @param {ComponentsApiCreateComponentRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4017,6 +4097,7 @@ export interface ComponentsApiInterface {
 
     /**
      * 
+     * @summary Delete a component
      * @param {ComponentsApiDeleteComponentRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4026,6 +4107,7 @@ export interface ComponentsApiInterface {
 
     /**
      * 
+     * @summary Execute a component\'s management function
      * @param {ComponentsApiExecuteManagementFunctionRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4035,6 +4117,7 @@ export interface ComponentsApiInterface {
 
     /**
      * 
+     * @summary Find a component by name or component Id
      * @param {ComponentsApiFindComponentRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4044,6 +4127,7 @@ export interface ComponentsApiInterface {
 
     /**
      * 
+     * @summary Get a component by component Id
      * @param {ComponentsApiGetComponentRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4053,6 +4137,7 @@ export interface ComponentsApiInterface {
 
     /**
      * 
+     * @summary List all components
      * @param {ComponentsApiListComponentsRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4062,6 +4147,7 @@ export interface ComponentsApiInterface {
 
     /**
      * 
+     * @summary Update a component
      * @param {ComponentsApiUpdateComponentRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4085,7 +4171,7 @@ export interface ComponentsApiAddActionRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ComponentsApiAddAction
      */
@@ -4120,7 +4206,7 @@ export interface ComponentsApiCreateComponentRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ComponentsApiCreateComponent
      */
@@ -4148,7 +4234,7 @@ export interface ComponentsApiDeleteComponentRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ComponentsApiDeleteComponent
      */
@@ -4176,7 +4262,7 @@ export interface ComponentsApiExecuteManagementFunctionRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ComponentsApiExecuteManagementFunction
      */
@@ -4211,7 +4297,7 @@ export interface ComponentsApiFindComponentRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ComponentsApiFindComponent
      */
@@ -4246,7 +4332,7 @@ export interface ComponentsApiGetComponentRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ComponentsApiGetComponent
      */
@@ -4274,7 +4360,7 @@ export interface ComponentsApiListComponentsRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ComponentsApiListComponents
      */
@@ -4309,7 +4395,7 @@ export interface ComponentsApiUpdateComponentRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof ComponentsApiUpdateComponent
      */
@@ -4339,6 +4425,7 @@ export interface ComponentsApiUpdateComponentRequest {
 export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
     /**
      * 
+     * @summary Queue action for a component
      * @param {ComponentsApiAddActionRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4350,6 +4437,7 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
 
     /**
      * 
+     * @summary Create a component
      * @param {ComponentsApiCreateComponentRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4361,6 +4449,7 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
 
     /**
      * 
+     * @summary Delete a component
      * @param {ComponentsApiDeleteComponentRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4372,6 +4461,7 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
 
     /**
      * 
+     * @summary Execute a component\'s management function
      * @param {ComponentsApiExecuteManagementFunctionRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4383,6 +4473,7 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
 
     /**
      * 
+     * @summary Find a component by name or component Id
      * @param {ComponentsApiFindComponentRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4394,6 +4485,7 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
 
     /**
      * 
+     * @summary Get a component by component Id
      * @param {ComponentsApiGetComponentRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4405,6 +4497,7 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
 
     /**
      * 
+     * @summary List all components
      * @param {ComponentsApiListComponentsRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4416,6 +4509,7 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
 
     /**
      * 
+     * @summary Update a component
      * @param {ComponentsApiUpdateComponentRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4436,8 +4530,9 @@ export const FuncsApiAxiosParamCreator = function (configuration?: Configuration
     return {
         /**
          * 
+         * @summary Get function details
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} funcId Func identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4477,8 +4572,9 @@ export const FuncsApiAxiosParamCreator = function (configuration?: Configuration
         },
         /**
          * 
+         * @summary Get func execution run logs
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} funcRunId Func run identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4528,8 +4624,9 @@ export const FuncsApiFp = function(configuration?: Configuration) {
     return {
         /**
          * 
+         * @summary Get function details
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} funcId Func identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4542,8 +4639,9 @@ export const FuncsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Get func execution run logs
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} funcRunId Func run identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4566,6 +4664,7 @@ export const FuncsApiFactory = function (configuration?: Configuration, basePath
     return {
         /**
          * 
+         * @summary Get function details
          * @param {FuncsApiGetFuncRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4575,6 +4674,7 @@ export const FuncsApiFactory = function (configuration?: Configuration, basePath
         },
         /**
          * 
+         * @summary Get func execution run logs
          * @param {FuncsApiGetFuncRunRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4593,6 +4693,7 @@ export const FuncsApiFactory = function (configuration?: Configuration, basePath
 export interface FuncsApiInterface {
     /**
      * 
+     * @summary Get function details
      * @param {FuncsApiGetFuncRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4602,6 +4703,7 @@ export interface FuncsApiInterface {
 
     /**
      * 
+     * @summary Get func execution run logs
      * @param {FuncsApiGetFuncRunRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4625,7 +4727,7 @@ export interface FuncsApiGetFuncRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof FuncsApiGetFunc
      */
@@ -4653,7 +4755,7 @@ export interface FuncsApiGetFuncRunRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof FuncsApiGetFuncRun
      */
@@ -4676,6 +4778,7 @@ export interface FuncsApiGetFuncRunRequest {
 export class FuncsApi extends BaseAPI implements FuncsApiInterface {
     /**
      * 
+     * @summary Get function details
      * @param {FuncsApiGetFuncRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4687,6 +4790,7 @@ export class FuncsApi extends BaseAPI implements FuncsApiInterface {
 
     /**
      * 
+     * @summary Get func execution run logs
      * @param {FuncsApiGetFuncRunRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4820,8 +4924,9 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
     return {
         /**
          * 
+         * @summary Find schema by name or schema id
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string | null} [schema] 
          * @param {string | null} [schemaId] 
          * @param {*} [options] Override http request option.
@@ -4867,27 +4972,24 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
+         * @summary Get the default variant for a schema id
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} schemaId Schema identifier
-         * @param {string} schemaVariantId Schema variant identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        getDefaultVariant: async (workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        getDefaultVariant: async (workspaceId: string, changeSetId: string, schemaId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'workspaceId' is not null or undefined
             assertParamExists('getDefaultVariant', 'workspaceId', workspaceId)
             // verify required parameter 'changeSetId' is not null or undefined
             assertParamExists('getDefaultVariant', 'changeSetId', changeSetId)
             // verify required parameter 'schemaId' is not null or undefined
             assertParamExists('getDefaultVariant', 'schemaId', schemaId)
-            // verify required parameter 'schemaVariantId' is not null or undefined
-            assertParamExists('getDefaultVariant', 'schemaVariantId', schemaVariantId)
             const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/default`
                 .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
                 .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
-                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)))
-                .replace(`{${"schema_variant_id"}}`, encodeURIComponent(String(schemaVariantId)));
+                .replace(`{${"schema_id"}}`, encodeURIComponent(String(schemaId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -4912,8 +5014,9 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
+         * @summary Get a schema by schema id
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} schemaId Schema identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4953,8 +5056,9 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
+         * @summary Get a schema variant by schema id and schema variant id
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} schemaId Schema identifier
          * @param {string} schemaVariantId Schema variant identifier
          * @param {*} [options] Override http request option.
@@ -4998,8 +5102,9 @@ export const SchemasApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
+         * @summary List all schemas (paginated endpoint)
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} [limit] Maximum number of results to return (default: 50, max: 300)
          * @param {string} [cursor] Cursor for pagination (SchemaId of the last item from previous page)
          * @param {*} [options] Override http request option.
@@ -5055,8 +5160,9 @@ export const SchemasApiFp = function(configuration?: Configuration) {
     return {
         /**
          * 
+         * @summary Find schema by name or schema id
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string | null} [schema] 
          * @param {string | null} [schemaId] 
          * @param {*} [options] Override http request option.
@@ -5070,23 +5176,24 @@ export const SchemasApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Get the default variant for a schema id
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} schemaId Schema identifier
-         * @param {string} schemaVariantId Schema variant identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async getDefaultVariant(workspaceId: string, changeSetId: string, schemaId: string, schemaVariantId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetSchemaVariantV1Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getDefaultVariant(workspaceId, changeSetId, schemaId, schemaVariantId, options);
+        async getDefaultVariant(workspaceId: string, changeSetId: string, schemaId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetSchemaVariantV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getDefaultVariant(workspaceId, changeSetId, schemaId, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['SchemasApi.getDefaultVariant']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
          * 
+         * @summary Get a schema by schema id
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} schemaId Schema identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5099,8 +5206,9 @@ export const SchemasApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Get a schema variant by schema id and schema variant id
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} schemaId Schema identifier
          * @param {string} schemaVariantId Schema variant identifier
          * @param {*} [options] Override http request option.
@@ -5114,8 +5222,9 @@ export const SchemasApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary List all schemas (paginated endpoint)
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} [limit] Maximum number of results to return (default: 50, max: 300)
          * @param {string} [cursor] Cursor for pagination (SchemaId of the last item from previous page)
          * @param {*} [options] Override http request option.
@@ -5139,6 +5248,7 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
     return {
         /**
          * 
+         * @summary Find schema by name or schema id
          * @param {SchemasApiFindSchemaRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5148,15 +5258,17 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
+         * @summary Get the default variant for a schema id
          * @param {SchemasApiGetDefaultVariantRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
         getDefaultVariant(requestParameters: SchemasApiGetDefaultVariantRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetSchemaVariantV1Response> {
-            return localVarFp.getDefaultVariant(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, options).then((request) => request(axios, basePath));
+            return localVarFp.getDefaultVariant(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, options).then((request) => request(axios, basePath));
         },
         /**
          * 
+         * @summary Get a schema by schema id
          * @param {SchemasApiGetSchemaRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5166,6 +5278,7 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
+         * @summary Get a schema variant by schema id and schema variant id
          * @param {SchemasApiGetVariantRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5175,6 +5288,7 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
+         * @summary List all schemas (paginated endpoint)
          * @param {SchemasApiListSchemasRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5193,6 +5307,7 @@ export const SchemasApiFactory = function (configuration?: Configuration, basePa
 export interface SchemasApiInterface {
     /**
      * 
+     * @summary Find schema by name or schema id
      * @param {SchemasApiFindSchemaRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5202,6 +5317,7 @@ export interface SchemasApiInterface {
 
     /**
      * 
+     * @summary Get the default variant for a schema id
      * @param {SchemasApiGetDefaultVariantRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5211,6 +5327,7 @@ export interface SchemasApiInterface {
 
     /**
      * 
+     * @summary Get a schema by schema id
      * @param {SchemasApiGetSchemaRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5220,6 +5337,7 @@ export interface SchemasApiInterface {
 
     /**
      * 
+     * @summary Get a schema variant by schema id and schema variant id
      * @param {SchemasApiGetVariantRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5229,6 +5347,7 @@ export interface SchemasApiInterface {
 
     /**
      * 
+     * @summary List all schemas (paginated endpoint)
      * @param {SchemasApiListSchemasRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5252,7 +5371,7 @@ export interface SchemasApiFindSchemaRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof SchemasApiFindSchema
      */
@@ -5287,7 +5406,7 @@ export interface SchemasApiGetDefaultVariantRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof SchemasApiGetDefaultVariant
      */
@@ -5299,13 +5418,6 @@ export interface SchemasApiGetDefaultVariantRequest {
      * @memberof SchemasApiGetDefaultVariant
      */
     readonly schemaId: string
-
-    /**
-     * Schema variant identifier
-     * @type {string}
-     * @memberof SchemasApiGetDefaultVariant
-     */
-    readonly schemaVariantId: string
 }
 
 /**
@@ -5322,7 +5434,7 @@ export interface SchemasApiGetSchemaRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof SchemasApiGetSchema
      */
@@ -5350,7 +5462,7 @@ export interface SchemasApiGetVariantRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof SchemasApiGetVariant
      */
@@ -5385,7 +5497,7 @@ export interface SchemasApiListSchemasRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof SchemasApiListSchemas
      */
@@ -5415,6 +5527,7 @@ export interface SchemasApiListSchemasRequest {
 export class SchemasApi extends BaseAPI implements SchemasApiInterface {
     /**
      * 
+     * @summary Find schema by name or schema id
      * @param {SchemasApiFindSchemaRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5426,17 +5539,19 @@ export class SchemasApi extends BaseAPI implements SchemasApiInterface {
 
     /**
      * 
+     * @summary Get the default variant for a schema id
      * @param {SchemasApiGetDefaultVariantRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof SchemasApi
      */
     public getDefaultVariant(requestParameters: SchemasApiGetDefaultVariantRequest, options?: RawAxiosRequestConfig) {
-        return SchemasApiFp(this.configuration).getDefaultVariant(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, requestParameters.schemaVariantId, options).then((request) => request(this.axios, this.basePath));
+        return SchemasApiFp(this.configuration).getDefaultVariant(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.schemaId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
+     * @summary Get a schema by schema id
      * @param {SchemasApiGetSchemaRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5448,6 +5563,7 @@ export class SchemasApi extends BaseAPI implements SchemasApiInterface {
 
     /**
      * 
+     * @summary Get a schema variant by schema id and schema variant id
      * @param {SchemasApiGetVariantRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5459,6 +5575,7 @@ export class SchemasApi extends BaseAPI implements SchemasApiInterface {
 
     /**
      * 
+     * @summary List all schemas (paginated endpoint)
      * @param {SchemasApiListSchemasRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5479,8 +5596,9 @@ export const SecretsApiAxiosParamCreator = function (configuration?: Configurati
     return {
         /**
          * 
+         * @summary Create a secret
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {CreateSecretV1Request} createSecretV1Request 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5522,8 +5640,9 @@ export const SecretsApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
+         * @summary Delete a secret
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} secretId Secret identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5563,8 +5682,9 @@ export const SecretsApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
+         * @summary List all secrets
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -5600,8 +5720,9 @@ export const SecretsApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
+         * @summary Update a secret
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} secretId Secret identifier
          * @param {UpdateSecretV1Request} updateSecretV1Request 
          * @param {*} [options] Override http request option.
@@ -5657,8 +5778,9 @@ export const SecretsApiFp = function(configuration?: Configuration) {
     return {
         /**
          * 
+         * @summary Create a secret
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {CreateSecretV1Request} createSecretV1Request 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5671,8 +5793,9 @@ export const SecretsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Delete a secret
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} secretId Secret identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5685,8 +5808,9 @@ export const SecretsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary List all secrets
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -5698,8 +5822,9 @@ export const SecretsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Update a secret
          * @param {string} workspaceId Workspace identifier
-         * @param {string} changeSetId Change set identifier
+         * @param {string} changeSetId Change Set identifier
          * @param {string} secretId Secret identifier
          * @param {UpdateSecretV1Request} updateSecretV1Request 
          * @param {*} [options] Override http request option.
@@ -5723,6 +5848,7 @@ export const SecretsApiFactory = function (configuration?: Configuration, basePa
     return {
         /**
          * 
+         * @summary Create a secret
          * @param {SecretsApiCreateSecretRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5732,6 +5858,7 @@ export const SecretsApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
+         * @summary Delete a secret
          * @param {SecretsApiDeleteSecretRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5741,6 +5868,7 @@ export const SecretsApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
+         * @summary List all secrets
          * @param {SecretsApiGetSecretsRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5750,6 +5878,7 @@ export const SecretsApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
+         * @summary Update a secret
          * @param {SecretsApiUpdateSecretRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5768,6 +5897,7 @@ export const SecretsApiFactory = function (configuration?: Configuration, basePa
 export interface SecretsApiInterface {
     /**
      * 
+     * @summary Create a secret
      * @param {SecretsApiCreateSecretRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5777,6 +5907,7 @@ export interface SecretsApiInterface {
 
     /**
      * 
+     * @summary Delete a secret
      * @param {SecretsApiDeleteSecretRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5786,6 +5917,7 @@ export interface SecretsApiInterface {
 
     /**
      * 
+     * @summary List all secrets
      * @param {SecretsApiGetSecretsRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5795,6 +5927,7 @@ export interface SecretsApiInterface {
 
     /**
      * 
+     * @summary Update a secret
      * @param {SecretsApiUpdateSecretRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5818,7 +5951,7 @@ export interface SecretsApiCreateSecretRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof SecretsApiCreateSecret
      */
@@ -5846,7 +5979,7 @@ export interface SecretsApiDeleteSecretRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof SecretsApiDeleteSecret
      */
@@ -5874,7 +6007,7 @@ export interface SecretsApiGetSecretsRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof SecretsApiGetSecrets
      */
@@ -5895,7 +6028,7 @@ export interface SecretsApiUpdateSecretRequest {
     readonly workspaceId: string
 
     /**
-     * Change set identifier
+     * Change Set identifier
      * @type {string}
      * @memberof SecretsApiUpdateSecret
      */
@@ -5925,6 +6058,7 @@ export interface SecretsApiUpdateSecretRequest {
 export class SecretsApi extends BaseAPI implements SecretsApiInterface {
     /**
      * 
+     * @summary Create a secret
      * @param {SecretsApiCreateSecretRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5936,6 +6070,7 @@ export class SecretsApi extends BaseAPI implements SecretsApiInterface {
 
     /**
      * 
+     * @summary Delete a secret
      * @param {SecretsApiDeleteSecretRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5947,6 +6082,7 @@ export class SecretsApi extends BaseAPI implements SecretsApiInterface {
 
     /**
      * 
+     * @summary List all secrets
      * @param {SecretsApiGetSecretsRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5958,6 +6094,7 @@ export class SecretsApi extends BaseAPI implements SecretsApiInterface {
 
     /**
      * 
+     * @summary Update a secret
      * @param {SecretsApiUpdateSecretRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}

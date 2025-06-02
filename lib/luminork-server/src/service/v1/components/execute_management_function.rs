@@ -38,11 +38,12 @@ use crate::{
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/execute-management-function",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
         ("component_id" = String, Path, description = "Component identifier")
     ),
     tag = "components",
     request_body = ExecuteManagementFunctionV1Request,
+    summary = "Execute a component's management function",
     responses(
         (status = 200, description = "Function successfully dispatched", body = ExecuteManagementFunctionV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),

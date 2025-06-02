@@ -29,48 +29,56 @@ class TestComponentsApi(unittest.TestCase):
     def test_add_action(self) -> None:
         """Test case for add_action
 
+        Queue action for a component
         """
         pass
 
     def test_create_component(self) -> None:
         """Test case for create_component
 
+        Create a component
         """
         pass
 
     def test_delete_component(self) -> None:
         """Test case for delete_component
 
+        Delete a component
         """
         pass
 
     def test_execute_management_function(self) -> None:
         """Test case for execute_management_function
 
+        Execute a component's management function
         """
         pass
 
     def test_find_component(self) -> None:
         """Test case for find_component
 
+        Find a component by name or component Id
         """
         pass
 
     def test_get_component(self) -> None:
         """Test case for get_component
 
+        Get a component by component Id
         """
         pass
 
     def test_list_components(self) -> None:
         """Test case for list_components
 
+        List all components
         """
         pass
 
     def test_update_component(self) -> None:
         """Test case for update_component
 
+        Update a component
         """
         pass
 

@@ -25,8 +25,7 @@ Root API endpoints
 
 ```json
 {
-  "API Documentation": "Available at /swagger-ui",
-  "What is this?": "I am luminork, the new System Initiative External API application"
+  "API Documentation": "Available at /swagger-ui"
 }
 ```
 
@@ -73,9 +72,9 @@ User identity endpoints
 
 # [change_sets](#system-initiative-api-change_sets)
 
-Change set management endpoints
+Change Set management endpoints
 
-## list_change_sets
+## List all active Change Sets
 
 <a id="opIdlist_change_sets"></a>
 
@@ -83,7 +82,7 @@ Change set management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets`
 
-<h3 id="list_change_sets-parameters">Parameters</h3>
+<h3 id="list-all-active-change-sets-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
@@ -99,15 +98,15 @@ Change set management endpoints
 }
 ```
 
-<h3 id="list_change_sets-responses">Responses</h3>
+<h3 id="list-all-active-change-sets-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change sets listed successfully|[ListChangeSetV1Response](#schemalistchangesetv1response)|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change Sets listed successfully|[ListChangeSetV1Response](#schemalistchangesetv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## create_change_set
+## Create a Change Set
 
 <a id="opIdcreate_change_set"></a>
 
@@ -123,7 +122,7 @@ Change set management endpoints
 }
 ```
 
-<h3 id="create_change_set-parameters">Parameters</h3>
+<h3 id="create-a-change-set-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
@@ -145,16 +144,16 @@ Change set management endpoints
 }
 ```
 
-<h3 id="create_change_set-responses">Responses</h3>
+<h3 id="create-a-change-set-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change set created successfully|[CreateChangeSetV1Response](#schemacreatechangesetv1response)|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change Set created successfully|[CreateChangeSetV1Response](#schemacreatechangesetv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## purge_open
+## Abandon all active Change Sets
 
 <a id="opIdpurge_open"></a>
 
@@ -162,7 +161,7 @@ Change set management endpoints
 
 `POST /v1/w/{workspace_id}/change-sets/purge_open`
 
-<h3 id="purge_open-parameters">Parameters</h3>
+<h3 id="abandon-all-active-change-sets-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
@@ -180,15 +179,15 @@ Change set management endpoints
 }
 ```
 
-<h3 id="purge_open-responses">Responses</h3>
+<h3 id="abandon-all-active-change-sets-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change sets purged successfully|[PurgeOpenChangeSetsV1Response](#schemapurgeopenchangesetsv1response)|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change Sets purged successfully|[PurgeOpenChangeSetsV1Response](#schemapurgeopenchangesetsv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## get_change_set
+## Get a Change Set by Change Set Id
 
 <a id="opIdget_change_set"></a>
 
@@ -196,12 +195,12 @@ Change set management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets/{change_set_id}`
 
-<h3 id="get_change_set-parameters">Parameters</h3>
+<h3 id="get-a-change-set-by-change-set-id-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 
 > Example responses
 
@@ -218,16 +217,16 @@ Change set management endpoints
 }
 ```
 
-<h3 id="get_change_set-responses">Responses</h3>
+<h3 id="get-a-change-set-by-change-set-id-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change details retrieved successfully|[GetChangeSetV1Response](#schemagetchangesetv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
-|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Change set not found|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Change Set not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## abandon_change_set
+## Delete a Change Set
 
 <a id="opIdabandon_change_set"></a>
 
@@ -235,12 +234,12 @@ Change set management endpoints
 
 `DELETE /v1/w/{workspace_id}/change-sets/{change_set_id}`
 
-<h3 id="abandon_change_set-parameters">Parameters</h3>
+<h3 id="delete-a-change-set-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 
 > Example responses
 
@@ -252,15 +251,15 @@ Change set management endpoints
 }
 ```
 
-<h3 id="abandon_change_set-responses">Responses</h3>
+<h3 id="delete-a-change-set-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change set deleted successfully|[DeleteChangeSetV1Response](#schemadeletechangesetv1response)|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change Set deleted successfully|[DeleteChangeSetV1Response](#schemadeletechangesetv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## force_apply
+## Merge Change Set without approval
 
 <a id="opIdforce_apply"></a>
 
@@ -268,12 +267,12 @@ Change set management endpoints
 
 `POST /v1/w/{workspace_id}/change-sets/{change_set_id}/force_apply`
 
-<h3 id="force_apply-parameters">Parameters</h3>
+<h3 id="merge-change-set-without-approval-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 
 > Example responses
 
@@ -285,15 +284,15 @@ Change set management endpoints
 }
 ```
 
-<h3 id="force_apply-responses">Responses</h3>
+<h3 id="merge-change-set-without-approval-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change set force applied successfully|[ForceApplyChangeSetV1Response](#schemaforceapplychangesetv1response)|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change Set force applied successfully|[ForceApplyChangeSetV1Response](#schemaforceapplychangesetv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## merge_status
+## Get Change Set post merge status
 
 <a id="opIdmerge_status"></a>
 
@@ -301,12 +300,12 @@ Change set management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets/{change_set_id}/merge_status`
 
-<h3 id="merge_status-parameters">Parameters</h3>
+<h3 id="get-change-set-post-merge-status-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 
 > Example responses
 
@@ -334,15 +333,15 @@ Change set management endpoints
 }
 ```
 
-<h3 id="merge_status-responses">Responses</h3>
+<h3 id="get-change-set-post-merge-status-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change set merge status retrieved successfully|[MergeStatusV1Response](#schemamergestatusv1response)|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change Set merge status retrieved successfully|[MergeStatusV1Response](#schemamergestatusv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## request_approval
+## Request Change Set merge approval
 
 <a id="opIdrequest_approval"></a>
 
@@ -350,12 +349,12 @@ Change set management endpoints
 
 `POST /v1/w/{workspace_id}/change-sets/{change_set_id}/request_approval`
 
-<h3 id="request_approval-parameters">Parameters</h3>
+<h3 id="request-change-set-merge-approval-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 
 > Example responses
 
@@ -367,11 +366,11 @@ Change set management endpoints
 }
 ```
 
-<h3 id="request_approval-responses">Responses</h3>
+<h3 id="request-change-set-merge-approval-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change set approval requested successfully|[RequestApprovalChangeSetV1Response](#schemarequestapprovalchangesetv1response)|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Change Set approval requested successfully|[RequestApprovalChangeSetV1Response](#schemarequestapprovalchangesetv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
@@ -379,7 +378,7 @@ Change set management endpoints
 
 Components management endpoints
 
-## list_components
+## List all components
 
 <a id="opIdlist_components"></a>
 
@@ -387,12 +386,12 @@ Components management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets/{change_set_id}/components`
 
-<h3 id="list_components-parameters">Parameters</h3>
+<h3 id="list-all-components-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |limit|query|string|false|Maximum number of results to return (default: 50, max: 300)|
 |cursor|query|string|false|Cursor for pagination (ComponentId of the last item from previous page)|
 
@@ -418,7 +417,7 @@ Components management endpoints
 }
 ```
 
-<h3 id="list_components-responses">Responses</h3>
+<h3 id="list-all-components-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -426,7 +425,7 @@ Components management endpoints
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## create_component
+## Create a component
 
 <a id="opIdcreate_component"></a>
 
@@ -482,12 +481,12 @@ Components management endpoints
 }
 ```
 
-<h3 id="create_component-parameters">Parameters</h3>
+<h3 id="create-a-component-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |body|body|[CreateComponentV1Request](#schemacreatecomponentv1request)|true|none|
 
 > Example responses
@@ -550,7 +549,7 @@ Components management endpoints
 }
 ```
 
-<h3 id="create_component-responses">Responses</h3>
+<h3 id="create-a-component-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -561,7 +560,7 @@ Components management endpoints
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## find_component
+## Find a component by name or component Id
 
 <a id="opIdfind_component"></a>
 
@@ -569,12 +568,12 @@ Components management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets/{change_set_id}/components/find`
 
-<h3 id="find_component-parameters">Parameters</h3>
+<h3 id="find-a-component-by-name-or-component-id-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |component|query|string,null|false|none|
 |componentId|query|string,null|false|none|
 
@@ -650,7 +649,7 @@ Components management endpoints
 }
 ```
 
-<h3 id="find_component-responses">Responses</h3>
+<h3 id="find-a-component-by-name-or-component-id-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -659,7 +658,7 @@ Components management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## get_component
+## Get a component by component Id
 
 <a id="opIdget_component"></a>
 
@@ -667,12 +666,12 @@ Components management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}`
 
-<h3 id="get_component-parameters">Parameters</h3>
+<h3 id="get-a-component-by-component-id-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |component_id|path|string|true|Component identifier|
 
 > Example responses
@@ -747,7 +746,7 @@ Components management endpoints
 }
 ```
 
-<h3 id="get_component-responses">Responses</h3>
+<h3 id="get-a-component-by-component-id-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -756,7 +755,7 @@ Components management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## update_component
+## Update a component
 
 <a id="opIdupdate_component"></a>
 
@@ -818,12 +817,12 @@ Components management endpoints
 }
 ```
 
-<h3 id="update_component-parameters">Parameters</h3>
+<h3 id="update-a-component-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |component_id|path|string|true|Component identifier|
 |body|body|[UpdateComponentV1Request](#schemaupdatecomponentv1request)|true|none|
 
@@ -887,7 +886,7 @@ Components management endpoints
 }
 ```
 
-<h3 id="update_component-responses">Responses</h3>
+<h3 id="update-a-component-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -898,7 +897,7 @@ Components management endpoints
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## delete_component
+## Delete a component
 
 <a id="opIddelete_component"></a>
 
@@ -906,12 +905,12 @@ Components management endpoints
 
 `DELETE /v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}`
 
-<h3 id="delete_component-parameters">Parameters</h3>
+<h3 id="delete-a-component-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |component_id|path|string|true|Component identifier|
 
 > Example responses
@@ -924,7 +923,7 @@ Components management endpoints
 }
 ```
 
-<h3 id="delete_component-responses">Responses</h3>
+<h3 id="delete-a-component-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -933,7 +932,7 @@ Components management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## add_action
+## Queue action for a component
 
 <a id="opIdadd_action"></a>
 
@@ -951,12 +950,12 @@ Components management endpoints
 }
 ```
 
-<h3 id="add_action-parameters">Parameters</h3>
+<h3 id="queue-action-for-a-component-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |component_id|path|string|true|Component identifier|
 |body|body|[AddActionV1Request](#schemaaddactionv1request)|true|none|
 
@@ -970,7 +969,7 @@ Components management endpoints
 }
 ```
 
-<h3 id="add_action-responses">Responses</h3>
+<h3 id="queue-action-for-a-component-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -982,7 +981,7 @@ Components management endpoints
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## execute_management_function
+## Execute a component's management function
 
 <a id="opIdexecute_management_function"></a>
 
@@ -1001,12 +1000,12 @@ Components management endpoints
 }
 ```
 
-<h3 id="execute_management_function-parameters">Parameters</h3>
+<h3 id="execute-a-component's-management-function-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |component_id|path|string|true|Component identifier|
 |body|body|[ExecuteManagementFunctionV1Request](#schemaexecutemanagementfunctionv1request)|true|none|
 
@@ -1020,7 +1019,7 @@ Components management endpoints
 }
 ```
 
-<h3 id="execute_management_function-responses">Responses</h3>
+<h3 id="execute-a-component's-management-function-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1035,7 +1034,7 @@ Components management endpoints
 
 Schemas management endpoints
 
-## list_schemas
+## List all schemas (paginated endpoint)
 
 <a id="opIdlist_schemas"></a>
 
@@ -1043,12 +1042,12 @@ Schemas management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas`
 
-<h3 id="list_schemas-parameters">Parameters</h3>
+<h3 id="list-all-schemas-(paginated-endpoint)-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |limit|query|string|false|Maximum number of results to return (default: 50, max: 300)|
 |cursor|query|string|false|Cursor for pagination (SchemaId of the last item from previous page)|
 
@@ -1070,7 +1069,7 @@ Schemas management endpoints
 }
 ```
 
-<h3 id="list_schemas-responses">Responses</h3>
+<h3 id="list-all-schemas-(paginated-endpoint)-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1078,7 +1077,7 @@ Schemas management endpoints
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## find_schema
+## Find schema by name or schema id
 
 <a id="opIdfind_schema"></a>
 
@@ -1086,12 +1085,12 @@ Schemas management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/find`
 
-<h3 id="find_schema-parameters">Parameters</h3>
+<h3 id="find-schema-by-name-or-schema-id-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |schema|query|string,null|false|none|
 |schemaId|query|string,null|false|none|
 
@@ -1108,7 +1107,7 @@ Schemas management endpoints
 }
 ```
 
-<h3 id="find_schema-responses">Responses</h3>
+<h3 id="find-schema-by-name-or-schema-id-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1117,7 +1116,7 @@ Schemas management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## get_schema
+## Get a schema by schema id
 
 <a id="opIdget_schema"></a>
 
@@ -1125,12 +1124,12 @@ Schemas management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}`
 
-<h3 id="get_schema-parameters">Parameters</h3>
+<h3 id="get-a-schema-by-schema-id-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |schema_id|path|string|true|Schema identifier|
 
 > Example responses
@@ -1148,7 +1147,7 @@ Schemas management endpoints
 }
 ```
 
-<h3 id="get_schema-responses">Responses</h3>
+<h3 id="get-a-schema-by-schema-id-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1157,7 +1156,7 @@ Schemas management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## get_default_variant
+## Get the default variant for a schema id
 
 <a id="opIdget_default_variant"></a>
 
@@ -1165,14 +1164,13 @@ Schemas management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/default`
 
-<h3 id="get_default_variant-parameters">Parameters</h3>
+<h3 id="get-the-default-variant-for-a-schema-id-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |schema_id|path|string|true|Schema identifier|
-|schema_variant_id|path|string|true|Schema variant identifier|
 
 > Example responses
 
@@ -1205,7 +1203,7 @@ Schemas management endpoints
 }
 ```
 
-<h3 id="get_default_variant-responses">Responses</h3>
+<h3 id="get-the-default-variant-for-a-schema-id-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1214,7 +1212,7 @@ Schemas management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Schema variant not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## get_variant
+## Get a schema variant by schema id and schema variant id
 
 <a id="opIdget_variant"></a>
 
@@ -1222,12 +1220,12 @@ Schemas management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}`
 
-<h3 id="get_variant-parameters">Parameters</h3>
+<h3 id="get-a-schema-variant-by-schema-id-and-schema-variant-id-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |schema_id|path|string|true|Schema identifier|
 |schema_variant_id|path|string|true|Schema variant identifier|
 
@@ -1262,7 +1260,7 @@ Schemas management endpoints
 }
 ```
 
-<h3 id="get_variant-responses">Responses</h3>
+<h3 id="get-a-schema-variant-by-schema-id-and-schema-variant-id-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1276,7 +1274,7 @@ Schemas management endpoints
 
 Actions management endpoints
 
-## get_actions
+## List queued actions
 
 <a id="opIdget_actions"></a>
 
@@ -1284,12 +1282,12 @@ Actions management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets/{change_set_id}/actions/`
 
-<h3 id="get_actions-parameters">Parameters</h3>
+<h3 id="list-queued-actions-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 
 > Example responses
 
@@ -1313,7 +1311,7 @@ Actions management endpoints
 }
 ```
 
-<h3 id="get_actions-responses">Responses</h3>
+<h3 id="list-queued-actions-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1321,7 +1319,7 @@ Actions management endpoints
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## cancel_action
+## Remove queued action
 
 <a id="opIdcancel_action"></a>
 
@@ -1329,12 +1327,12 @@ Actions management endpoints
 
 `POST /v1/w/{workspace_id}/change-sets/{change_set_id}/actions/{action_id}/cancel`
 
-<h3 id="cancel_action-parameters">Parameters</h3>
+<h3 id="remove-queued-action-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |action_id|path|string|true|Action identifier|
 
 > Example responses
@@ -1347,7 +1345,7 @@ Actions management endpoints
 }
 ```
 
-<h3 id="cancel_action-responses">Responses</h3>
+<h3 id="remove-queued-action-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1356,7 +1354,7 @@ Actions management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Action not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## put_on_hold
+## Put action on-hold
 
 <a id="opIdput_on_hold"></a>
 
@@ -1364,12 +1362,12 @@ Actions management endpoints
 
 `POST /v1/w/{workspace_id}/change-sets/{change_set_id}/actions/{action_id}/put_on_hold`
 
-<h3 id="put_on_hold-parameters">Parameters</h3>
+<h3 id="put-action-on-hold-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |action_id|path|string|true|Action identifier|
 
 > Example responses
@@ -1382,7 +1380,7 @@ Actions management endpoints
 }
 ```
 
-<h3 id="put_on_hold-responses">Responses</h3>
+<h3 id="put-action-on-hold-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1391,7 +1389,7 @@ Actions management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Action not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## retry_action
+## Retry action
 
 <a id="opIdretry_action"></a>
 
@@ -1399,12 +1397,12 @@ Actions management endpoints
 
 `POST /v1/w/{workspace_id}/change-sets/{change_set_id}/actions/{action_id}/retry`
 
-<h3 id="retry_action-parameters">Parameters</h3>
+<h3 id="retry-action-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |action_id|path|string|true|Action identifier|
 
 > Example responses
@@ -1417,7 +1415,7 @@ Actions management endpoints
 }
 ```
 
-<h3 id="retry_action-responses">Responses</h3>
+<h3 id="retry-action-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1430,7 +1428,7 @@ Actions management endpoints
 
 Secrets management endpoints
 
-## get_secrets
+## List all secrets
 
 <a id="opIdget_secrets"></a>
 
@@ -1438,12 +1436,12 @@ Secrets management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets/{change_set_id}/secrets`
 
-<h3 id="get_secrets-parameters">Parameters</h3>
+<h3 id="list-all-secrets-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 
 > Example responses
 
@@ -1528,7 +1526,7 @@ Secrets management endpoints
 }
 ```
 
-<h3 id="get_secrets-responses">Responses</h3>
+<h3 id="list-all-secrets-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1536,7 +1534,7 @@ Secrets management endpoints
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## create_secret
+## Create a secret
 
 <a id="opIdcreate_secret"></a>
 
@@ -1560,12 +1558,12 @@ Secrets management endpoints
 }
 ```
 
-<h3 id="create_secret-parameters">Parameters</h3>
+<h3 id="create-a-secret-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |body|body|[CreateSecretV1Request](#schemacreatesecretv1request)|true|none|
 
 > Example responses
@@ -1583,7 +1581,7 @@ Secrets management endpoints
 }
 ```
 
-<h3 id="create_secret-responses">Responses</h3>
+<h3 id="create-a-secret-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1592,7 +1590,7 @@ Secrets management endpoints
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## update_secret
+## Update a secret
 
 <a id="opIdupdate_secret"></a>
 
@@ -1616,12 +1614,12 @@ Secrets management endpoints
 }
 ```
 
-<h3 id="update_secret-parameters">Parameters</h3>
+<h3 id="update-a-secret-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |secret_id|path|string|true|Secret identifier|
 |body|body|[UpdateSecretV1Request](#schemaupdatesecretv1request)|true|none|
 
@@ -1640,7 +1638,7 @@ Secrets management endpoints
 }
 ```
 
-<h3 id="update_secret-responses">Responses</h3>
+<h3 id="update-a-secret-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1649,7 +1647,7 @@ Secrets management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Secret not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## delete_secret
+## Delete a secret
 
 <a id="opIddelete_secret"></a>
 
@@ -1657,12 +1655,12 @@ Secrets management endpoints
 
 `DELETE /v1/w/{workspace_id}/change-sets/{change_set_id}/secrets/{secret_id}`
 
-<h3 id="delete_secret-parameters">Parameters</h3>
+<h3 id="delete-a-secret-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |secret_id|path|string|true|Secret identifier|
 
 > Example responses
@@ -1675,7 +1673,7 @@ Secrets management endpoints
 }
 ```
 
-<h3 id="delete_secret-responses">Responses</h3>
+<h3 id="delete-a-secret-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1688,7 +1686,7 @@ Secrets management endpoints
 
 Functions management endpoints
 
-## get_func_run
+## Get func execution run logs
 
 <a id="opIdget_func_run"></a>
 
@@ -1696,12 +1694,12 @@ Functions management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/runs/{func_run_id}`
 
-<h3 id="get_func_run-parameters">Parameters</h3>
+<h3 id="get-func-execution-run-logs-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |func_run_id|path|string|true|Func run identifier|
 
 > Example responses
@@ -1800,7 +1798,7 @@ Functions management endpoints
 }
 ```
 
-<h3 id="get_func_run-responses">Responses</h3>
+<h3 id="get-func-execution-run-logs-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -1809,7 +1807,7 @@ Functions management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func run not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
-## get_func
+## Get function details
 
 <a id="opIdget_func"></a>
 
@@ -1817,12 +1815,12 @@ Functions management endpoints
 
 `GET /v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/{func_id}`
 
-<h3 id="get_func-parameters">Parameters</h3>
+<h3 id="get-function-details-parameters">Parameters</h3>
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |workspace_id|path|string|true|Workspace identifier|
-|change_set_id|path|string|true|Change set identifier|
+|change_set_id|path|string|true|Change Set identifier|
 |func_id|path|string|true|Func identifier|
 
 > Example responses
@@ -1854,7 +1852,7 @@ Functions management endpoints
 }
 ```
 
-<h3 id="get_func-responses">Responses</h3>
+<h3 id="get-function-details-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
@@ -4233,8 +4231,7 @@ xor
 
 ```json
 {
-  "API Documentation": "Available at /swagger-ui",
-  "What is this?": "I am luminork, the new System Initiative External API application"
+  "API Documentation": "Available at /swagger-ui"
 }
 
 ```
@@ -4244,7 +4241,6 @@ xor
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |API Documentation|string|true|none|none|
-|What is this?|string|true|none|none|
 
 ## [UpdateComponentV1Request](#tocS_UpdateComponentV1Request)
 

@@ -45,7 +45,7 @@ class ActionsApi:
     def cancel_action(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         action_id: Annotated[StrictStr, Field(description="Action identifier")],
         _request_timeout: Union[
             None,
@@ -60,12 +60,12 @@ class ActionsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> CancelActionV1Response:
-        """cancel_action
+        """Remove queued action
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param action_id: Action identifier (required)
         :type action_id: str
@@ -122,7 +122,7 @@ class ActionsApi:
     def cancel_action_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         action_id: Annotated[StrictStr, Field(description="Action identifier")],
         _request_timeout: Union[
             None,
@@ -137,12 +137,12 @@ class ActionsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[CancelActionV1Response]:
-        """cancel_action
+        """Remove queued action
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param action_id: Action identifier (required)
         :type action_id: str
@@ -199,7 +199,7 @@ class ActionsApi:
     def cancel_action_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         action_id: Annotated[StrictStr, Field(description="Action identifier")],
         _request_timeout: Union[
             None,
@@ -214,12 +214,12 @@ class ActionsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """cancel_action
+        """Remove queued action
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param action_id: Action identifier (required)
         :type action_id: str
@@ -341,7 +341,7 @@ class ActionsApi:
     def get_actions(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -355,12 +355,12 @@ class ActionsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> GetActionsV1Response:
-        """get_actions
+        """List queued actions
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -413,7 +413,7 @@ class ActionsApi:
     def get_actions_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -427,12 +427,12 @@ class ActionsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[GetActionsV1Response]:
-        """get_actions
+        """List queued actions
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -485,7 +485,7 @@ class ActionsApi:
     def get_actions_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -499,12 +499,12 @@ class ActionsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """get_actions
+        """List queued actions
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -619,7 +619,7 @@ class ActionsApi:
     def put_on_hold(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         action_id: Annotated[StrictStr, Field(description="Action identifier")],
         _request_timeout: Union[
             None,
@@ -634,12 +634,12 @@ class ActionsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> PutOnHoldActionV1Response:
-        """put_on_hold
+        """Put action on-hold
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param action_id: Action identifier (required)
         :type action_id: str
@@ -696,7 +696,7 @@ class ActionsApi:
     def put_on_hold_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         action_id: Annotated[StrictStr, Field(description="Action identifier")],
         _request_timeout: Union[
             None,
@@ -711,12 +711,12 @@ class ActionsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[PutOnHoldActionV1Response]:
-        """put_on_hold
+        """Put action on-hold
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param action_id: Action identifier (required)
         :type action_id: str
@@ -773,7 +773,7 @@ class ActionsApi:
     def put_on_hold_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         action_id: Annotated[StrictStr, Field(description="Action identifier")],
         _request_timeout: Union[
             None,
@@ -788,12 +788,12 @@ class ActionsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """put_on_hold
+        """Put action on-hold
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param action_id: Action identifier (required)
         :type action_id: str
@@ -915,7 +915,7 @@ class ActionsApi:
     def retry_action(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         action_id: Annotated[StrictStr, Field(description="Action identifier")],
         _request_timeout: Union[
             None,
@@ -930,12 +930,12 @@ class ActionsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RetryActionV1Response:
-        """retry_action
+        """Retry action
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param action_id: Action identifier (required)
         :type action_id: str
@@ -992,7 +992,7 @@ class ActionsApi:
     def retry_action_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         action_id: Annotated[StrictStr, Field(description="Action identifier")],
         _request_timeout: Union[
             None,
@@ -1007,12 +1007,12 @@ class ActionsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[RetryActionV1Response]:
-        """retry_action
+        """Retry action
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param action_id: Action identifier (required)
         :type action_id: str
@@ -1069,7 +1069,7 @@ class ActionsApi:
     def retry_action_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         action_id: Annotated[StrictStr, Field(description="Action identifier")],
         _request_timeout: Union[
             None,
@@ -1084,12 +1084,12 @@ class ActionsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """retry_action
+        """Retry action
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param action_id: Action identifier (required)
         :type action_id: str

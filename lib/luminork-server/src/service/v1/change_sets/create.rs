@@ -30,9 +30,10 @@ use crate::{
         ("workspace_id" = String, Path, description = "Workspace identifier")
     ),
     tag = "change_sets",
+    summary = "Create a Change Set",
     request_body = CreateChangeSetV1Request,
     responses(
-        (status = 200, description = "Change set created successfully", body = CreateChangeSetV1Response),
+        (status = 200, description = "Change Set created successfully", body = CreateChangeSetV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 422, description = "Validation error - Invalid request data", body = crate::service::v1::common::ApiError),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)

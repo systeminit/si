@@ -21,13 +21,14 @@ use crate::{
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier")
+        ("change_set_id" = String, Path, description = "Change Set identifier")
     ),
     tag = "change_sets",
+    summary = "Get a Change Set by Change Set Id",
     responses(
         (status = 200, description = "Change details retrieved successfully", body = GetChangeSetV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
-        (status = 404, description = "Change set not found"),
+        (status = 404, description = "Change Set not found"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]

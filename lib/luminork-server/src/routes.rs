@@ -90,7 +90,7 @@ async fn app_state_middeware<B>(
     tags(
         (name = "root", description = "Root API endpoints"),
         (name = "whoami", description = "User identity endpoints"),
-        (name = "change_sets", description = "Change set management endpoints"),
+        (name = "change_sets", description = "Change Set management endpoints"),
         (name = "components", description = "Components management endpoints"),
         (name = "schemas", description = "Schemas management endpoints"),
         (name = "actions", description = "Actions management endpoints"),
@@ -110,10 +110,6 @@ struct ApiDoc;
 
 #[derive(serde::Serialize, ToSchema)]
 struct SystemStatusResponse {
-    #[schema(example = "I am luminork, the new System Initiative External API application")]
-    #[serde(rename = "What is this?")]
-    what_is_this: String,
-
     #[schema(example = "Available at /swagger-ui")]
     #[serde(rename = "API Documentation")]
     api_documentation: String,
@@ -265,7 +261,6 @@ pub fn routes(state: AppState) -> Router {
 )]
 async fn system_status_route() -> Json<Value> {
     Json(json!({
-        "What is this?": "I am luminork, the new System Initiative External API application",
         "API Documentation": "Available at /swagger-ui"
     }))
 }

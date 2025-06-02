@@ -214,7 +214,7 @@ pub use crate::api_types::{
     ),
     tags(
         (name = "workspaces", description = "Workspace management endpoints"),
-        (name = "change_sets", description = "Change set management endpoints"),
+        (name = "change_sets", description = "Change Set management endpoints"),
         (name = "components", description = "Component management endpoints"),
         (name = "schemas", description = "Schema management endpoints"),
         (name = "actions", description = "Action management endpoints"),

@@ -35,13 +35,11 @@ class TestSystemStatusResponse(unittest.TestCase):
         model = SystemStatusResponse()
         if include_optional:
             return SystemStatusResponse(
-                api_documentation = 'Available at /swagger-ui',
-                what_is_this = 'I am luminork, the new System Initiative External API application'
+                api_documentation = 'Available at /swagger-ui'
             )
         else:
             return SystemStatusResponse(
                 api_documentation = 'Available at /swagger-ui',
-                what_is_this = 'I am luminork, the new System Initiative External API application',
         )
         """
 

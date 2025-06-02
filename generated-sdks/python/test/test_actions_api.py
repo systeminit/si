@@ -29,24 +29,28 @@ class TestActionsApi(unittest.TestCase):
     def test_cancel_action(self) -> None:
         """Test case for cancel_action
 
+        Remove queued action
         """
         pass
 
     def test_get_actions(self) -> None:
         """Test case for get_actions
 
+        List queued actions
         """
         pass
 
     def test_put_on_hold(self) -> None:
         """Test case for put_on_hold
 
+        Put action on-hold
         """
         pass
 
     def test_retry_action(self) -> None:
         """Test case for retry_action
 
+        Retry action
         """
         pass
 
