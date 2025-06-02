@@ -49,6 +49,33 @@ pub trait FrontendChecksum {
     fn checksum(&self) -> Checksum;
 }
 
+#[derive(Debug, Clone)]
+pub struct FrontendChecksumInventoryItem {
+    ident: &'static str,
+    definition_checksum: &'static ::std::sync::LazyLock<Checksum>,
+}
+
+impl FrontendChecksumInventoryItem {
+    pub const fn new(
+        ident: &'static str,
+        definition_checksum: &'static ::std::sync::LazyLock<Checksum>,
+    ) -> Self {
+        FrontendChecksumInventoryItem {
+            ident,
+            definition_checksum,
+        }
+    }
+
+    pub fn definition_checksum(&self) -> Checksum {
+        **self.definition_checksum
+    }
+
+    pub fn ident(&self) -> &'static str {
+        self.ident
+    }
+}
+::inventory::collect!(FrontendChecksumInventoryItem);
+
 // TODO(Wendy) - Would be nice to have a default checksum once specialization is enabled in Rust
 // impl<T: ToString> FrontendChecksum for T {
 //     fn checksum(&self) -> Checksum {

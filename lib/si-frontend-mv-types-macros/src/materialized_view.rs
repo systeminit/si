@@ -101,8 +101,10 @@ pub fn derive_materialized_view(
     let mut sorted_reference_kinds: Vec<Path> = reference_kinds.into_iter().collect();
     sorted_reference_kinds.sort_by_cached_key(path_to_string);
 
-    let checksum_static_ident =
-        format_ident!("{}_DEFINITION_CHECKSUM", ident.to_string().to_uppercase());
+    let checksum_static_ident = format_ident!(
+        "{}_MATERIALIZED_VIEW_DEFINITION_CHECKSUM",
+        ident.to_string().to_uppercase()
+    );
 
     let output = quote! {
         impl crate::MaterializedView for #ident {
@@ -135,7 +137,7 @@ pub fn derive_materialized_view(
                 #trigger_entity,
                 &#checksum_static_ident,
             )
-        }
+        };
     };
 
     Ok(output.into())
