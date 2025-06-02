@@ -26,10 +26,7 @@ use si_data_nats::{
     HeaderValue,
     jetstream,
 };
-use tokio::time::{
-    Duration,
-    sleep,
-};
+use tokio::time::Duration;
 use ulid::Ulid;
 
 #[derive(Debug, Deserialize)]
@@ -40,7 +37,6 @@ struct JsonMessage {
 }
 
 fn load_message_sequence(recording_id: &str) -> Vec<JsonMessage> {
-    // Construct path to: ./recordings/datasources/{recording_id}/nats_sequences/
     let base_dir = PathBuf::from("./recordings/datasources")
         .join(recording_id)
         .join("nats_sequences");
@@ -52,29 +48,49 @@ fn load_message_sequence(recording_id: &str) -> Vec<JsonMessage> {
     let entries = fs::read_dir(&base_dir)
         .unwrap_or_else(|e| panic!("Failed to read {}: {}", base_dir.display(), e));
 
+    let mut layerdb_messages = Vec::new();
+    let mut other_messages = Vec::new();
+
     for entry in entries {
         let entry = entry.unwrap_or_else(|e| panic!("Failed to read entry: {}", e));
         let path = entry.path();
 
         if path.is_file() {
             let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-            if extension == "json" || extension == "sequence" {
+            if extension == "sequence" {
+                let file_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+
                 println!("Loading NATS sequence from: {}", path.display());
 
                 let content = fs::read_to_string(&path)
                     .unwrap_or_else(|e| panic!("Failed to read {}: {}", path.display(), e));
 
-                return serde_json::from_str(&content).unwrap_or_else(|e| {
+                let parsed: Vec<JsonMessage> = serde_json::from_str(&content).unwrap_or_else(|e| {
                     panic!("Failed to parse JSON from {}: {}", path.display(), e)
                 });
+
+                if file_name.starts_with("LAYERDB_EVENTS") {
+                    layerdb_messages.extend(parsed);
+                } else {
+                    other_messages.extend(parsed);
+                }
             }
         }
     }
 
-    panic!(
-        "No NATS sequence .json or .sequence file found in {}",
-        base_dir.display()
-    );
+    if layerdb_messages.is_empty() && other_messages.is_empty() {
+        panic!(
+            "No NATS sequence .sequence file found in {}",
+            base_dir.display()
+        );
+    }
+
+    // PREPEND layerdb messages to other messages
+    // TODO(johnrwatson): this is poor show, I should have a sequence in the params which
+    // tells the system which order to play them back in, or I could do it by timestamp
+    // that's also an option. Forgive me, I'm only human.
+    layerdb_messages.extend(other_messages);
+    layerdb_messages
 }
 
 pub async fn reissue_rebaser_tracker_message(
@@ -83,64 +99,24 @@ pub async fn reissue_rebaser_tracker_message(
     changeset_id: &str,
 ) -> Result<(), String> {
     let subject = format!("rebaser.tasks.{}.{}.process", workspace_id, changeset_id);
-    let stream_name = "REBASER_TASKS";
 
     let js = jetstream::new(nats.clone());
     let headers = HeaderMap::new();
     let payload: Vec<u8> = Vec::new();
 
-    // Step 1: Load the stream
-    match js.get_stream(stream_name).await {
-        Ok(stream) => {
-            // Step 2: Try to get the last message on the subject
-            match stream.get_last_raw_message_by_subject(&subject).await {
-                Ok(msg) => {
-                    let seq = msg.sequence;
-                    println!(
-                        "Found existing message with seq={} on {}, deleting...",
-                        seq, subject
-                    );
-                    if let Err(e) = stream.delete_message(seq).await {
-                        println!(
-                            "Failed to delete message seq={} from {}: {:?}",
-                            seq, stream_name, e
-                        );
-                    }
-                }
-                Err(e) => {
-                    println!("ℹNo existing message found on {}: {:?}", subject, e);
-                    // OK to continue
-                }
-            }
-        }
-        Err(e) => {
-            println!("Could not load JetStream stream {}: {:?}", stream_name, e);
-            return Err(format!("Stream access error: {}", e));
-        }
-    }
-
-    // Step 3: Publish the new message
+    // Publish the new message and return mapped error
     match js
         .publish_with_headers(subject.clone(), headers, payload.into())
         .await
     {
-        Ok(ack_future) => match ack_future.await {
-            Ok(ack) => {
-                println!("Published tracker message to {}, ack: {:?}", subject, ack);
+        Ok(ack_future) => {
+            if let Err(e) = ack_future.await {
+                Err(format!("Ack error: {:?}", e.kind()))
+            } else {
                 Ok(())
             }
-            Err(e) => {
-                println!("Ack error: {:?}", e);
-                Err(format!(
-                    "Ack error sending tracker message to {}: {:?}",
-                    subject, e
-                ))
-            }
-        },
-        Err(e) => {
-            println!("Publish failed: {:?}", e);
-            Err(format!("Publish error for {}: {:?}", subject, e))
         }
+        Err(e) => Err(format!("Publish error: {:?}", e.kind())),
     }
 }
 
@@ -179,20 +155,6 @@ impl TestProfile for MeasureRebase {
         let mut success_count = 0;
 
         for (i, json_msg) in messages.into_iter().enumerate() {
-            sleep(Duration::from_millis(5000)).await;
-
-            // Always issue the tracker message for each rebase request + swallo
-            // if it already exists
-            if let Err(e) = reissue_rebaser_tracker_message(
-                nats,
-                &_parameters.workspace_id,
-                &_parameters.change_set_id,
-            )
-            .await
-            {
-                println!("Failed to send tracker message, swallowing {:?}", e);
-            }
-
             let reply_subject = format!("_INBOX.INCOMING_RESPONSES.{}", i);
             let mut headers = HeaderMap::new();
             let new_ulid = Ulid::new().to_string();
@@ -217,13 +179,21 @@ impl TestProfile for MeasureRebase {
                             "Decoded CBOR JSON:\n{}",
                             serde_json::to_string_pretty(&val).unwrap_or_default()
                         ),
-                        Err(e) => println!("Failed to parse CBOR payload: {:?}", e),
+                        Err(_) => {
+                            println!(
+                                "Failed to parse CBOR payload, logging raw hex:\n{}",
+                                json_msg.payload_hex
+                            );
+                        }
                     }
                     bytes
                 }
                 Err(e) => {
-                    println!("Payload decode error for {}: {:?}", json_msg.subject, e);
-                    continue;
+                    println!(
+                        "Payload decode error for {}: {:?}\nRaw payload (hex): {}",
+                        json_msg.subject, e, json_msg.payload_hex
+                    );
+                    json_msg.payload_hex.as_bytes().to_vec()
                 }
             };
 
@@ -242,6 +212,19 @@ impl TestProfile for MeasureRebase {
                     Ok(ack) => {
                         println!("Sent to {}, ack: {:?}", json_msg.subject, ack);
                         success_count += 1;
+
+                        // Skip waiting if this is an layerdb event message
+                        if json_msg.subject.starts_with("si.layerdb.events") {
+                            continue;
+                        } else {
+                            // Always issue the tracker message for each rebase request, swallow error silently
+                            let _ = reissue_rebaser_tracker_message(
+                                nats,
+                                &_parameters.workspace_id,
+                                &_parameters.change_set_id,
+                            )
+                            .await;
+                        }
 
                         // Await single response
                         let timeout = tokio::time::sleep(Duration::from_secs(15));
