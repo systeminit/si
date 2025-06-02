@@ -144,6 +144,16 @@
             "
             >Migrate connections</VButton
           >
+
+          <VButton
+            :requestStatus="migrateConnectionsRequestStatus"
+            @click="
+              migrateConnections(selectedWorkspaceId, selectedChangeSetId, {
+                dryRun: true,
+              })
+            "
+            >Migrate connections (dry run only)</VButton
+          >
         </Stack>
       </Stack>
     </Stack>
@@ -442,8 +452,9 @@ const migrateConnectionsRequestStatus = adminStore.getRequestStatus(
 function migrateConnections(
   workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
+  options?: { dryRun?: boolean },
 ) {
-  adminStore.MIGRATE_CONNECTIONS(workspaceId, changeSetId);
+  adminStore.MIGRATE_CONNECTIONS(workspaceId, changeSetId, options);
   emit("showPanel", "migrate-connections");
 }
 

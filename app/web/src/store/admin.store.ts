@@ -185,9 +185,13 @@ export const useAdminStore = () => {
             },
           });
         },
-        async MIGRATE_CONNECTIONS(workspaceId: string, changeSetId: string) {
+        async MIGRATE_CONNECTIONS(
+          workspaceId: string,
+          changeSetId: string,
+          options?: { dryRun?: boolean },
+        ) {
           return new ApiRequest<MigrateConnectionsResponse>({
-            method: "get",
+            method: options?.dryRun ? "get" : "post",
             url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/migrate_connections`,
             onSuccess: (response) => {
               this.migrateConnectionsResponse = response;
@@ -269,6 +273,7 @@ export type ConnectionMigration =
       socketConnection: ConnectionMigrationSocketConnection;
       propConnection: ConnectionMigrationPropConnection;
       message: string;
+      migrated: boolean;
     }
   // If there is an issue with an explicit connection, socket and prop connections may be undefined
   // (because we may have identified the connection but been unable to completely build them out).
@@ -278,6 +283,7 @@ export type ConnectionMigration =
       socketConnection?: ConnectionMigrationSocketConnection;
       propConnection?: ConnectionMigrationPropConnection;
       message: string;
+      migrated: boolean;
     }
   // If there is an issue with an inferred connection, socketConnection is still always defined.
   | {
@@ -286,6 +292,7 @@ export type ConnectionMigration =
       socketConnection: ConnectionMigrationSocketConnection;
       propConnection?: ConnectionMigrationPropConnection;
       message: string;
+      migrated: boolean;
     };
 
 export interface ConnectionMigrationSocketConnection {
@@ -304,6 +311,7 @@ export interface ConnectionMigrationPropConnection {
 export type ConnectionUnmigrateableBecause =
   | { type: "connectionPrototypeHasMultipleArgs" }
   | { type: "destinationIsNotInputSocket" }
+  | { type: "destinationPropAlreadyHasValue" }
   | { type: "destinationSocketArgumentNotBoundToProp" }
   | { type: "destinationSocketBoundToPropWithNoValue"; destPropId: PropId }
   | { type: "destinationSocketHasMultipleBindings" }
