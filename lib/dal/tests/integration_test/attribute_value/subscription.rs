@@ -191,6 +191,7 @@ async fn subscribe_to_map_element(ctx: &mut DalContext) -> Result<()> {
     );
 
     // Update the map value and watch the new value come through!
+    value::set(ctx, ("testy", "/domain/ValueMap/B"), "b_2").await?;
     AttributeValue::insert(
         ctx,
         value_map_av_id,

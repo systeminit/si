@@ -52,6 +52,8 @@ mod validate_snapshot;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum Error {
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] dal::attribute::prototype::AttributePrototypeError),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(
         #[from] dal::attribute::prototype::argument::AttributePrototypeArgumentError,

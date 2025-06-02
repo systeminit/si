@@ -46,6 +46,9 @@ impl AttributePath {
         }
     }
 
+    /// Resolves the attribute value at the JSON pointer, if one exists.
+    ///
+    /// Returns None if it cannot be found.
     pub async fn resolve(
         &self,
         ctx: &DalContext,
@@ -59,6 +62,11 @@ impl AttributePath {
         }
     }
 
+    /// Gets the attribute value at the JSON pointer. After this is complete, the AV can be
+    /// set to an explicit value.
+    ///
+    /// Any parents that do not exist will be created. Any parents that are currently set to
+    /// default values will become explicit values.
     pub async fn vivify(
         &self,
         ctx: &DalContext,
@@ -72,6 +80,9 @@ impl AttributePath {
         }
     }
 
+    /// Validate that the JSON pointer can refer to something real under the given prop.
+    ///
+    /// Errors if the JSON pointer refers to a missing field under an object.
     pub async fn validate(&self, ctx: &DalContext, prop_id: PropId) -> AttributeValueResult<()> {
         match self {
             AttributePath::JsonPointer(pointer) => {
@@ -96,18 +107,18 @@ impl AttributePath {
 // Returns None if the AV points at non-existent props.
 async fn resolve_json_pointer(
     ctx: &DalContext,
-    mut av_id: AttributeValueId,
+    mut parent_id: AttributeValueId,
     pointer: &jsonptr::Pointer,
 ) -> AttributeValueResult<Option<AttributeValueId>> {
     // Go through each segment of the JSON pointer (e.g. /foo/bar/0 = foo, bar, 0)
     // and look for its child
     for token in pointer {
-        let prop = AttributeValue::prop(ctx, av_id).await?;
+        let prop = AttributeValue::prop(ctx, parent_id).await?;
         let child_av_id = match prop.kind {
             // Look up array index in ordering node
             PropKind::Array => match token.to_index() {
                 Ok(jsonptr::index::Index::Num(index)) => {
-                    AttributeValue::get_child_av_ids_in_order(ctx, av_id)
+                    AttributeValue::get_child_av_ids_in_order(ctx, parent_id)
                         .await?
                         .get(index)
                         .copied()
@@ -117,12 +128,12 @@ async fn resolve_json_pointer(
 
             // Look at child Contains edges to find the one with the right name
             PropKind::Map => {
-                AttributeValue::map_child_opt(ctx, av_id, token.decoded().as_ref()).await?
+                AttributeValue::map_child_opt(ctx, parent_id, token.decoded().as_ref()).await?
             }
 
             // The object's children AVs will already have been vivified. Just grab the right one.
             PropKind::Object => {
-                AttributeValue::object_child_opt(ctx, av_id, token.decoded().as_ref()).await?
+                AttributeValue::object_child_opt(ctx, parent_id, token.decoded().as_ref()).await?
             }
 
             // These cannot have children
@@ -132,7 +143,7 @@ async fn resolve_json_pointer(
             | PropKind::Float
             | PropKind::String => {
                 return Err(AttributeValueError::NoChildWithName(
-                    av_id,
+                    parent_id,
                     token.decoded().into_owned(),
                 ))?;
             }
@@ -140,39 +151,49 @@ async fn resolve_json_pointer(
         let Some(child_av_id) = child_av_id else {
             return Ok(None);
         };
-        av_id = child_av_id;
+        parent_id = child_av_id;
     }
-    Ok(Some(av_id))
+    Ok(Some(parent_id))
 }
 
-// Gets the attribute value at the JSON pointer, or creates it if it doesn't exist.
-// Returns an error if an AV cannot be created.
+/// Gets the attribute value at the JSON pointer, or creates it if it doesn't exist.
+/// Returns an error if an AV cannot be created.
 async fn vivify_json_pointer(
     ctx: &DalContext,
-    mut av_id: AttributeValueId,
+    mut parent_id: AttributeValueId,
     pointer: &jsonptr::Pointer,
 ) -> AttributeValueResult<AttributeValueId> {
     // Go through each segment of the JSON pointer (e.g. /foo/bar/0 = foo, bar, 0)
     // and look for its child. If it doesn't exist, create it.
     for token in pointer {
-        let prop = AttributeValue::prop(ctx, av_id).await?;
-        av_id =
+        // If the parent is currently using its default value, make it explicit so it can
+        // host child values.
+        let prop = AttributeValue::prop(ctx, parent_id).await?;
+        if AttributeValue::component_prototype_id(ctx, parent_id)
+            .await?
+            .is_none()
+        {
+            AttributeValue::update(ctx, parent_id, prop.kind.empty_value()).await?;
+        }
+        // Find or create the child!
+        parent_id =
             match prop.kind {
                 PropKind::Array => {
                     // Make sure the user asked to append (can't insert at an index that doesn't exist)
-                    let elements = AttributeValue::get_child_av_ids_in_order(ctx, av_id).await?;
+                    let elements =
+                        AttributeValue::get_child_av_ids_in_order(ctx, parent_id).await?;
                     match token.to_index()? {
                         // If it's - or the next index (len+1), we can append!
                         jsonptr::index::Index::Next => {
-                            AttributeValue::insert(ctx, av_id, None, None).await?
+                            AttributeValue::insert(ctx, parent_id, None, None).await?
                         }
                         jsonptr::index::Index::Num(index) if index == elements.len() => {
-                            AttributeValue::insert(ctx, av_id, None, None).await?
+                            AttributeValue::insert(ctx, parent_id, None, None).await?
                         }
 
                         // If it's not the last index + 1, we retrieve the existing one
                         jsonptr::index::Index::Num(index) => elements.get(index).copied().ok_or(
-                            AttributeValueError::IndexOutOfRange(index, av_id, elements.len()),
+                            AttributeValueError::IndexOutOfRange(index, parent_id, elements.len()),
                         )?,
                     }
                 }
@@ -180,10 +201,10 @@ async fn vivify_json_pointer(
                 // Create empty map entry with given name
                 PropKind::Map => {
                     let name = token.decoded();
-                    match AttributeValue::map_child_opt(ctx, av_id, name.as_ref()).await? {
+                    match AttributeValue::map_child_opt(ctx, parent_id, name.as_ref()).await? {
                         Some(child_av_id) => child_av_id,
                         None => {
-                            AttributeValue::insert(ctx, av_id, None, Some(name.into_owned()))
+                            AttributeValue::insert(ctx, parent_id, None, Some(name.into_owned()))
                                 .await?
                         }
                     }
@@ -192,7 +213,7 @@ async fn vivify_json_pointer(
                 // Get the matching child AV (all possible child AVs must already exist)
                 PropKind::Object => {
                     let name = token.decoded();
-                    AttributeValue::object_child(ctx, av_id, name.as_ref()).await?
+                    AttributeValue::object_child(ctx, parent_id, name.as_ref()).await?
                 }
 
                 // These cannot have children
@@ -202,45 +223,45 @@ async fn vivify_json_pointer(
                 | PropKind::Float
                 | PropKind::String => {
                     return Err(AttributeValueError::NoChildWithName(
-                        av_id,
+                        parent_id,
                         token.decoded().into_owned(),
                     ))?;
                 }
             }
     }
-    Ok(av_id)
+    Ok(parent_id)
 }
 
 // Validate that a JSON pointer *could* be used to access a child of the given AV (that it
 // has valid prop names and indices).
 async fn validate_json_pointer(
     ctx: &DalContext,
-    mut prop_id: PropId,
+    mut parent_id: PropId,
     pointer: &jsonptr::Pointer,
 ) -> AttributeValueResult<()> {
     // Go through each segment of the JSON pointer (e.g. /foo/bar/0 = foo, bar, 0)
     // and validate that the child prop exists or that it is a valid index and not -
     for token in pointer {
-        let prop = Prop::get_by_id(ctx, prop_id).await?;
-        prop_id = match prop.kind {
+        let prop = Prop::get_by_id(ctx, parent_id).await?;
+        parent_id = match prop.kind {
             // Look up array index in ordering node
             PropKind::Array => match token.to_index()? {
-                jsonptr::index::Index::Num(_) => Prop::element_prop_id(ctx, prop_id).await?,
+                jsonptr::index::Index::Num(_) => Prop::element_prop_id(ctx, parent_id).await?,
 
                 jsonptr::index::Index::Next => {
                     return Err(PropError::CannotSubscribeToNextElement(
-                        prop_id,
+                        parent_id,
                         pointer.to_string(),
                     ))?;
                 }
             },
 
             // All strings are valid map keys
-            PropKind::Map => Prop::element_prop_id(ctx, prop_id).await?,
+            PropKind::Map => Prop::element_prop_id(ctx, parent_id).await?,
 
             // The key must be a valid child prop name
             PropKind::Object => {
-                Prop::child_prop_id(ctx, prop_id.into(), token.decoded().as_ref()).await?
+                Prop::child_prop_id(ctx, parent_id.into(), token.decoded().as_ref()).await?
             }
 
             // These cannot have children
@@ -250,7 +271,7 @@ async fn validate_json_pointer(
             | PropKind::Float
             | PropKind::String => {
                 return Err(PropError::ChildPropNotFoundByName(
-                    prop_id.into(),
+                    parent_id.into(),
                     token.decoded().into_owned(),
                 ))?;
             }

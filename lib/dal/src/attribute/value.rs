@@ -1165,6 +1165,11 @@ impl AttributeValue {
                         .get_prop_node_weight()?
                 };
 
+                println!(
+                    "  vivify {attribute_value_id} {} ({})",
+                    prop_node.name(),
+                    prop_node.kind()
+                );
                 prop_node.kind()
             };
 
@@ -1174,6 +1179,7 @@ impl AttributeValue {
             if !prop_kind.is_scalar() {
                 // if value of non-scalar is set, we're done, else set the empty value
                 if attribute_value.value.is_some() {
+                    println!("  has value!!");
                     return Ok(());
                 } else {
                     Self::set_value(ctx, attribute_value_id, prop_kind.empty_value()).await?;
@@ -2163,13 +2169,8 @@ impl AttributeValue {
         subscriptions: Vec<ValueSubscription>,
         func_id: Option<FuncId>,
     ) -> AttributeValueResult<()> {
-        let func_id = if let Some(id) = func_id {
-            let func = Func::get_by_id(ctx, id).await?;
-            if !func.is_transformation && !func.builtin {
-                return Err(AttributeValueError::SubscribingWithInvalidFunction);
-            }
-
-            id
+        let func_id = if let Some(func_id) = func_id {
+            func_id
         } else {
             // TODO(victor) remove this new ui comes around
             // Pick the prototype for the function based on prop type: if it's Array, use
