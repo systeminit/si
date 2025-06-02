@@ -20,7 +20,7 @@
           h3class,
         )
       "
-      @click="openState.toggle"
+      @click="toggleOpen"
     >
       <slot name="header" />
       <template v-if="expandable">
@@ -75,6 +75,15 @@ const props = withDefaults(
 onMounted(() => {
   openState.open.value = props.open;
 });
+
+const emit = defineEmits<{
+  (e: "toggle"): void;
+}>();
+
+const toggleOpen = () => {
+  emit("toggle");
+  openState.toggle();
+};
 
 defineExpose({
   openState,
