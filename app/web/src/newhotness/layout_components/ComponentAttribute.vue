@@ -66,7 +66,10 @@
                   placeholder="Enter a key"
                   :value="field.state.value"
                   :disabled="wForm.bifrosting.value"
-                  @input="(e) => field.handleChange((e.target as HTMLInputElement).value)"
+                  @input="
+                    (e) =>
+                      field.handleChange((e.target as HTMLInputElement).value)
+                  "
                   @keypress.enter.stop.prevent="saveKeyIfFormValid"
                 />
               </template>
@@ -84,10 +87,7 @@
         :prop="props.attributeTree.prop"
         :value="props.attributeTree.attributeValue.value?.toString() ?? ''"
         :canDelete="props.attributeTree.isBuildable"
-        :isSetByConnection="
-          props.attributeTree.attributeValue.externalSources &&
-          props.attributeTree.attributeValue.externalSources.length > 1
-        "
+        :externalSources="props.attributeTree.attributeValue.externalSources"
         :isArray="props.attributeTree.prop?.kind === 'array'"
         :isMap="props.attributeTree.prop?.kind === 'map'"
         @save="

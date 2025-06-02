@@ -52,6 +52,7 @@
         :path="props.attributeTree.attributeValue.path ?? ''"
         :kind="props.attributeTree.prop?.widgetKind"
         :prop="props.attributeTree.prop"
+        :externalSources="props.attributeTree.attributeValue.externalSources"
         :value="props.attributeTree.secret?.name?.toString() ?? ''"
         :canDelete="false"
         isSecret

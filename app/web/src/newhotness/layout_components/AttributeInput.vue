@@ -22,13 +22,6 @@
           :loading="bifrostingTrash"
           @click.left="remove"
         />
-        <div v-if="isSetByConnection" class="p-3xs cursor-pointer">
-          <Icon
-            v-tooltip="'Value set by connection'"
-            name="input-connection"
-            size="sm"
-          />
-        </div>
       </div>
     </div>
     <div
@@ -41,7 +34,7 @@
                 themeClasses('text-neutral-600', 'text-neutral-400'),
               ]
             : themeClasses('text-shade-100', 'text-shade-0'),
-          'block w-full h-lg p-xs ml-auto text-sm border font-mono cursor-text',
+          'w-full h-lg p-xs ml-auto text-sm border font-mono cursor-text flex flex-row items-center',
           themeClasses(
             'bg-shade-0 border-neutral-400',
             'bg-shade-100 border-neutral-600',
@@ -54,7 +47,36 @@
     >
       <TruncateWithTooltip>
         <template v-if="isArray"> Set manually or connect to a prop </template>
-        <template v-if="isMap"> Enter a key </template>
+        <template v-else-if="isMap"> Enter a key </template>
+        <div
+          v-else-if="isSetByConnection && props.externalSources"
+          :class="
+            clsx(
+              'flex flex-row items-center gap-xs border w-fit px-3xs rounded-sm',
+              themeClasses(
+                'text-neutral-600 border-neutral-400 bg-neutral-100',
+                'text-neutral-400 border-neutral-600 bg-neutral-900',
+              ),
+            )
+          "
+        >
+          <template v-if="isSecret">
+            <!-- TODO: Paul make this an actual tailwind color! -->
+            <div class="text-[#B2DFB9]">
+              {{ props.externalSources[0]?.componentName }} /
+              {{ attrData.value }}
+            </div>
+          </template>
+          <template v-else>
+            <!-- TODO: Paul make this an actual tailwind color! -->
+            <div class="text-[#D4B4FE]">
+              {{ props.externalSources[0]?.componentName }}
+            </div>
+            <div :class="themeClasses('text-neutral-600', 'text-neutral-400')">
+              {{ attrData.value }}
+            </div>
+          </template>
+        </div>
         <template v-else>
           {{
             maybeOptions.options?.find((o) => o.value === attrData.value)
@@ -409,6 +431,7 @@ import {
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
 import {
   EntityKind,
+  ExternalSource,
   PossibleConnection,
   Prop,
 } from "@/workers/types/entity_kind_types";
@@ -435,11 +458,15 @@ const props = defineProps<{
   displayName: string;
   canDelete?: boolean;
   disabled?: boolean;
-  isSetByConnection?: boolean;
+  externalSources?: ExternalSource[];
   isArray?: boolean;
   isMap?: boolean;
   isSecret?: boolean;
 }>();
+
+const isSetByConnection = computed(
+  () => props.externalSources && props.externalSources.length > 0,
+);
 
 // TODO(Wendy) - come back to this code when we wanna make the input float again
 // const context = inject<ComponentPageContext>("ComponentPageContext");
