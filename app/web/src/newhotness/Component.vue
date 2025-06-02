@@ -14,7 +14,15 @@
       @click="back"
     />
   </section>
-  <section v-else class="grid gap-md h-full p-md pb-0">
+  <section
+    v-else
+    :class="
+      clsx(
+        'grid gap-md h-full p-md pb-0',
+        docsOpen ? 'docs-open' : 'docs-closed',
+      )
+    "
+  >
     <div
       :class="
         clsx(
@@ -78,6 +86,7 @@
         </EditInPlace>
       </span>
     </div>
+
     <div class="attrs flex flex-col">
       <CollapsingFlexItem ref="attrRef" :expandable="false" open>
         <template #header>Attributes</template>
@@ -105,40 +114,15 @@
       </CollapsingFlexItem>
     </div>
 
-    <div class="docs flex flex-col">
-      <CollapsingFlexItem open>
-        <template #header> Documentation </template>
-        <template v-if="!docs">
-          <p v-if="component.schemaVariantDocLink">
-            <a
-              :href="component.schemaVariantDocLink"
-              target="_blank"
-              tabindex="-1"
-              >{{ component.schemaVariantName }}</a
-            >
-          </p>
-          <p>
-            <VueMarkdown :source="component.schemaVariantDescription ?? ''" />
-          </p>
-        </template>
-        <template v-else>
-          <VButton
-            class="border-0 mr-2em"
-            icon="arrow--left"
-            label="Back"
-            size="sm"
-            tone="shade"
-            variant="ghost"
-            @click="() => (docs = '')"
-          />
-          <p v-if="docLink">
-            <a :href="docLink" target="_blank">{{
-              component.schemaVariantName
-            }}</a>
-          </p>
-          <p>{{ docs }}</p>
-        </template>
-      </CollapsingFlexItem>
+    <div v-if="docsOpen" class="docs flex flex-col">
+      <DocumentationPanel
+        :component="component"
+        :docs="docs"
+        :docLink="docLink"
+        open
+        @toggle="() => (docsOpen = false)"
+        @cleardocs="() => (docs = '')"
+      />
     </div>
 
     <div class="right flex flex-col">
@@ -189,6 +173,13 @@
         </template>
         <DiffPanel :component="component" />
       </CollapsingFlexItem>
+      <DocumentationPanel
+        v-if="!docsOpen"
+        :component="component"
+        :docs="docs"
+        :docLink="docLink"
+        @toggle="() => (docsOpen = true)"
+      />
     </div>
   </section>
 </template>
@@ -205,7 +196,6 @@ import {
 } from "@si/vue-lib/design-system";
 import { computed, ref, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import VueMarkdown from "vue-markdown-render";
 import clsx from "clsx";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
@@ -226,15 +216,18 @@ import CodePanel from "./CodePanel.vue";
 import DiffPanel from "./DiffPanel.vue";
 import ActionsPanel from "./ActionsPanel.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
+import DocumentationPanel from "./DocumentationPanel.vue";
 
 const props = defineProps<{
   componentId: string;
 }>();
 
-const componentId = computed(() => props.componentId);
+const docsOpen = ref(true);
 
 const key = useMakeKey();
 const args = useMakeArgs();
+
+const componentId = computed(() => props.componentId);
 
 const componentQuery = useQuery<BifrostComponent | null>({
   queryKey: key(EntityKind.Component, componentId),
@@ -407,11 +400,19 @@ onBeforeUnmount(() => {
 
 <style lang="less" scoped>
 section.grid {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 25%) minmax(0, 25%);
   grid-template-rows: 3rem minmax(0, 1fr);
+}
+section.grid.docs-open {
   grid-template-areas:
     "name docs right"
     "attrs docs right";
+  grid-template-columns: minmax(0, 1fr) minmax(0, 25%) minmax(0, 25%);
+}
+section.grid.docs-closed {
+  grid-template-areas:
+    "name right"
+    "attrs right";
+  grid-template-columns: minmax(0, 1fr) minmax(0, 33%);
 }
 .docs {
   grid-area: docs;

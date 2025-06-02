@@ -174,6 +174,7 @@ export function useChangeSetsStore() {
 
           const params = { ...route.params };
           let name = route.name;
+
           // if abandoning changeset and you were looking at view, it may not exist in HEAD
           if (!stayOnView && name === "workspace-compose-view") {
             name = "workspace-compose";
@@ -495,6 +496,24 @@ export function useChangeSetsStore() {
               if (data.changeSetId === this.selectedChangeSetId) {
                 if (this.headChangeSetId) {
                   await this.setActiveChangeset(this.headChangeSetId, false);
+
+                  // TODO(Wendy) - move this logic out of the store when we can
+                  // START REDIRECT FOR ABANDONED CHANGE SET IN NEWHOTNESS
+                  const route = router.currentRoute.value;
+                  const name = route.name;
+                  if (name?.toString().startsWith("new-hotness")) {
+                    const params = { ...route.params };
+                    delete params.componentId;
+                    await router.push({
+                      name: "new-hotness-head",
+                      params: {
+                        ...params,
+                        changeSetId: this.headChangeSetId,
+                      },
+                    });
+                  }
+                  // END REDIRECT FOR ABANDONED CHANGE SET IN NEWHOTNESS
+
                   toast({
                     component: MovedToHead,
                     props: {
