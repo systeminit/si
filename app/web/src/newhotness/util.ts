@@ -52,7 +52,7 @@ export const collapsingGridStyles = (
 
 // Used in the component page vue components
 export const findAvsAtPropPath = (data: AttributeTree, parts: string[]) => {
-  const path = parts.join("\u000b");
+  const path = parts.join("/");
   const propId = Object.keys(data.props).find((pId) => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const p = data.props[pId]!;
