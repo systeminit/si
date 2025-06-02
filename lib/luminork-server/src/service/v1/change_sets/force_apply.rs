@@ -22,11 +22,12 @@ use crate::extract::{
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/force_apply",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier")
+        ("change_set_id" = String, Path, description = "Change Set identifier")
     ),
     tag = "change_sets",
+    summary = "Merge Change Set without approval",
     responses(
-        (status = 200, description = "Change set force applied successfully", body = ForceApplyChangeSetV1Response),
+        (status = 200, description = "Change Set force applied successfully", body = ForceApplyChangeSetV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )

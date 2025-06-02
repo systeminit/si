@@ -29,48 +29,56 @@ class TestChangeSetsApi(unittest.TestCase):
     def test_abandon_change_set(self) -> None:
         """Test case for abandon_change_set
 
+        Delete a Change Set
         """
         pass
 
     def test_create_change_set(self) -> None:
         """Test case for create_change_set
 
+        Create a Change Set
         """
         pass
 
     def test_force_apply(self) -> None:
         """Test case for force_apply
 
+        Merge Change Set without approval
         """
         pass
 
     def test_get_change_set(self) -> None:
         """Test case for get_change_set
 
+        Get a Change Set by Change Set Id
         """
         pass
 
     def test_list_change_sets(self) -> None:
         """Test case for list_change_sets
 
+        List all active Change Sets
         """
         pass
 
     def test_merge_status(self) -> None:
         """Test case for merge_status
 
+        Get Change Set post merge status
         """
         pass
 
     def test_purge_open(self) -> None:
         """Test case for purge_open
 
+        Abandon all active Change Sets
         """
         pass
 
     def test_request_approval(self) -> None:
         """Test case for request_approval
 
+        Request Change Set merge approval
         """
         pass
 

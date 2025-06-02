@@ -20,8 +20,9 @@ use crate::{
         ("workspace_id" = String, Path, description = "Workspace identifier")
     ),
     tag = "change_sets",
+    summary = "List all active Change Sets",
     responses(
-        (status = 200, description = "Change sets listed successfully", body = ListChangeSetV1Response),
+        (status = 200, description = "Change Sets listed successfully", body = ListChangeSetV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )

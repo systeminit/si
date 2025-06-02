@@ -30,10 +30,11 @@ use crate::extract::{
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/actions/{action_id}/cancel",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
         ("action_id" = String, Path, description = "Action identifier"),
     ),
     tag = "actions",
+    summary = "Remove queued action",
     responses(
         (status = 200, description = "Action cancelled successfully", body = CancelActionV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),

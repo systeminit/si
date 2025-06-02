@@ -49,10 +49,11 @@ use crate::{
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
         ("component_id" = String, Path, description = "Component identifier")
     ),
     tag = "components",
+    summary = "Update a component",
     request_body = UpdateComponentV1Request,
     responses(
         (status = 200, description = "Component updated successfully", body = UpdateComponentV1Response),

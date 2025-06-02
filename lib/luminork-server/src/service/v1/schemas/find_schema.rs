@@ -47,10 +47,11 @@ pub struct FindSchemaV1Params {
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/find",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
         FindSchemaV1Params,
     ),
     tag = "schemas",
+    summary = "Find schema by name or schema id",
     responses(
         (status = 200, description = "Schema retrieved successfully", body = FindSchemaV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),

@@ -48,7 +48,7 @@ class SecretsApi:
     def create_secret(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         create_secret_v1_request: CreateSecretV1Request,
         _request_timeout: Union[
             None,
@@ -63,12 +63,12 @@ class SecretsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> CreateSecretV1Response:
-        """create_secret
+        """Create a secret
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param create_secret_v1_request: (required)
         :type create_secret_v1_request: CreateSecretV1Request
@@ -125,7 +125,7 @@ class SecretsApi:
     def create_secret_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         create_secret_v1_request: CreateSecretV1Request,
         _request_timeout: Union[
             None,
@@ -140,12 +140,12 @@ class SecretsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[CreateSecretV1Response]:
-        """create_secret
+        """Create a secret
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param create_secret_v1_request: (required)
         :type create_secret_v1_request: CreateSecretV1Request
@@ -202,7 +202,7 @@ class SecretsApi:
     def create_secret_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         create_secret_v1_request: CreateSecretV1Request,
         _request_timeout: Union[
             None,
@@ -217,12 +217,12 @@ class SecretsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """create_secret
+        """Create a secret
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param create_secret_v1_request: (required)
         :type create_secret_v1_request: CreateSecretV1Request
@@ -357,7 +357,7 @@ class SecretsApi:
     def delete_secret(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         secret_id: Annotated[StrictStr, Field(description="Secret identifier")],
         _request_timeout: Union[
             None,
@@ -372,12 +372,12 @@ class SecretsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> DeleteSecretV1Response:
-        """delete_secret
+        """Delete a secret
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param secret_id: Secret identifier (required)
         :type secret_id: str
@@ -434,7 +434,7 @@ class SecretsApi:
     def delete_secret_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         secret_id: Annotated[StrictStr, Field(description="Secret identifier")],
         _request_timeout: Union[
             None,
@@ -449,12 +449,12 @@ class SecretsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[DeleteSecretV1Response]:
-        """delete_secret
+        """Delete a secret
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param secret_id: Secret identifier (required)
         :type secret_id: str
@@ -511,7 +511,7 @@ class SecretsApi:
     def delete_secret_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         secret_id: Annotated[StrictStr, Field(description="Secret identifier")],
         _request_timeout: Union[
             None,
@@ -526,12 +526,12 @@ class SecretsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """delete_secret
+        """Delete a secret
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param secret_id: Secret identifier (required)
         :type secret_id: str
@@ -653,7 +653,7 @@ class SecretsApi:
     def get_secrets(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -667,12 +667,12 @@ class SecretsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> Dict[str, HashMapValue]:
-        """get_secrets
+        """List all secrets
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -725,7 +725,7 @@ class SecretsApi:
     def get_secrets_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -739,12 +739,12 @@ class SecretsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[Dict[str, HashMapValue]]:
-        """get_secrets
+        """List all secrets
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -797,7 +797,7 @@ class SecretsApi:
     def get_secrets_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -811,12 +811,12 @@ class SecretsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """get_secrets
+        """List all secrets
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -931,7 +931,7 @@ class SecretsApi:
     def update_secret(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         secret_id: Annotated[StrictStr, Field(description="Secret identifier")],
         update_secret_v1_request: UpdateSecretV1Request,
         _request_timeout: Union[
@@ -947,12 +947,12 @@ class SecretsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> UpdateSecretV1Response:
-        """update_secret
+        """Update a secret
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param secret_id: Secret identifier (required)
         :type secret_id: str
@@ -1012,7 +1012,7 @@ class SecretsApi:
     def update_secret_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         secret_id: Annotated[StrictStr, Field(description="Secret identifier")],
         update_secret_v1_request: UpdateSecretV1Request,
         _request_timeout: Union[
@@ -1028,12 +1028,12 @@ class SecretsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[UpdateSecretV1Response]:
-        """update_secret
+        """Update a secret
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param secret_id: Secret identifier (required)
         :type secret_id: str
@@ -1093,7 +1093,7 @@ class SecretsApi:
     def update_secret_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         secret_id: Annotated[StrictStr, Field(description="Secret identifier")],
         update_secret_v1_request: UpdateSecretV1Request,
         _request_timeout: Union[
@@ -1109,12 +1109,12 @@ class SecretsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """update_secret
+        """Update a secret
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param secret_id: Secret identifier (required)
         :type secret_id: str

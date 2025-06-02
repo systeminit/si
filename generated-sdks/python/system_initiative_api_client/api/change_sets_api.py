@@ -50,7 +50,7 @@ class ChangeSetsApi:
     def abandon_change_set(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -64,12 +64,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> DeleteChangeSetV1Response:
-        """abandon_change_set
+        """Delete a Change Set
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -122,7 +122,7 @@ class ChangeSetsApi:
     def abandon_change_set_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -136,12 +136,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[DeleteChangeSetV1Response]:
-        """abandon_change_set
+        """Delete a Change Set
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -194,7 +194,7 @@ class ChangeSetsApi:
     def abandon_change_set_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -208,12 +208,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """abandon_change_set
+        """Delete a Change Set
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -342,7 +342,7 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> CreateChangeSetV1Response:
-        """create_change_set
+        """Create a Change Set
 
 
         :param workspace_id: Workspace identifier (required)
@@ -415,7 +415,7 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[CreateChangeSetV1Response]:
-        """create_change_set
+        """Create a Change Set
 
 
         :param workspace_id: Workspace identifier (required)
@@ -488,7 +488,7 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """create_change_set
+        """Create a Change Set
 
 
         :param workspace_id: Workspace identifier (required)
@@ -622,7 +622,7 @@ class ChangeSetsApi:
     def force_apply(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -636,12 +636,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ForceApplyChangeSetV1Response:
-        """force_apply
+        """Merge Change Set without approval
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -694,7 +694,7 @@ class ChangeSetsApi:
     def force_apply_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -708,12 +708,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[ForceApplyChangeSetV1Response]:
-        """force_apply
+        """Merge Change Set without approval
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -766,7 +766,7 @@ class ChangeSetsApi:
     def force_apply_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -780,12 +780,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """force_apply
+        """Merge Change Set without approval
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -900,7 +900,7 @@ class ChangeSetsApi:
     def get_change_set(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -914,12 +914,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> GetChangeSetV1Response:
-        """get_change_set
+        """Get a Change Set by Change Set Id
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -973,7 +973,7 @@ class ChangeSetsApi:
     def get_change_set_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -987,12 +987,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[GetChangeSetV1Response]:
-        """get_change_set
+        """Get a Change Set by Change Set Id
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -1046,7 +1046,7 @@ class ChangeSetsApi:
     def get_change_set_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1060,12 +1060,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """get_change_set
+        """Get a Change Set by Change Set Id
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -1194,7 +1194,7 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ListChangeSetV1Response:
-        """list_change_sets
+        """List all active Change Sets
 
 
         :param workspace_id: Workspace identifier (required)
@@ -1262,7 +1262,7 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[ListChangeSetV1Response]:
-        """list_change_sets
+        """List all active Change Sets
 
 
         :param workspace_id: Workspace identifier (required)
@@ -1330,7 +1330,7 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """list_change_sets
+        """List all active Change Sets
 
 
         :param workspace_id: Workspace identifier (required)
@@ -1444,7 +1444,7 @@ class ChangeSetsApi:
     def merge_status(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1458,12 +1458,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> MergeStatusV1Response:
-        """merge_status
+        """Get Change Set post merge status
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -1516,7 +1516,7 @@ class ChangeSetsApi:
     def merge_status_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1530,12 +1530,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[MergeStatusV1Response]:
-        """merge_status
+        """Get Change Set post merge status
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -1588,7 +1588,7 @@ class ChangeSetsApi:
     def merge_status_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1602,12 +1602,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """merge_status
+        """Get Change Set post merge status
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -1735,7 +1735,7 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> PurgeOpenChangeSetsV1Response:
-        """purge_open
+        """Abandon all active Change Sets
 
 
         :param workspace_id: Workspace identifier (required)
@@ -1803,7 +1803,7 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[PurgeOpenChangeSetsV1Response]:
-        """purge_open
+        """Abandon all active Change Sets
 
 
         :param workspace_id: Workspace identifier (required)
@@ -1871,7 +1871,7 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """purge_open
+        """Abandon all active Change Sets
 
 
         :param workspace_id: Workspace identifier (required)
@@ -1985,7 +1985,7 @@ class ChangeSetsApi:
     def request_approval(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1999,12 +1999,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RequestApprovalChangeSetV1Response:
-        """request_approval
+        """Request Change Set merge approval
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -2057,7 +2057,7 @@ class ChangeSetsApi:
     def request_approval_with_http_info(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2071,12 +2071,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> ApiResponse[RequestApprovalChangeSetV1Response]:
-        """request_approval
+        """Request Change Set merge approval
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
@@ -2129,7 +2129,7 @@ class ChangeSetsApi:
     def request_approval_without_preload_content(
         self,
         workspace_id: Annotated[StrictStr, Field(description="Workspace identifier")],
-        change_set_id: Annotated[StrictStr, Field(description="Change set identifier")],
+        change_set_id: Annotated[StrictStr, Field(description="Change Set identifier")],
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2143,12 +2143,12 @@ class ChangeSetsApi:
         _headers: Optional[Dict[StrictStr, Any]] = None,
         _host_index: Annotated[StrictInt, Field(ge=0, le=0)] = 0,
     ) -> RESTResponseType:
-        """request_approval
+        """Request Change Set merge approval
 
 
         :param workspace_id: Workspace identifier (required)
         :type workspace_id: str
-        :param change_set_id: Change set identifier (required)
+        :param change_set_id: Change Set identifier (required)
         :type change_set_id: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request

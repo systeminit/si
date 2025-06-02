@@ -29,12 +29,14 @@ class TestFuncsApi(unittest.TestCase):
     def test_get_func(self) -> None:
         """Test case for get_func
 
+        Get function details
         """
         pass
 
     def test_get_func_run(self) -> None:
         """Test case for get_func_run
 
+        Get func execution run logs
         """
         pass
 

@@ -27,8 +27,7 @@ class SystemStatusResponse(BaseModel):
     SystemStatusResponse
     """ # noqa: E501
     api_documentation: StrictStr = Field(alias="API Documentation")
-    what_is_this: StrictStr = Field(alias="What is this?")
-    __properties: ClassVar[List[str]] = ["API Documentation", "What is this?"]
+    __properties: ClassVar[List[str]] = ["API Documentation"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -81,8 +80,7 @@ class SystemStatusResponse(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "API Documentation": obj.get("API Documentation"),
-            "What is this?": obj.get("What is this?")
+            "API Documentation": obj.get("API Documentation")
         })
         return _obj
 

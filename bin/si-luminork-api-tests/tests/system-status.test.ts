@@ -19,7 +19,6 @@ Deno.test("API Server System Status", async () => {
     
     // Check that the response contains expected fields
     const data = response.data;
-    assertEquals(typeof data["What is this?"], 'string');
     assertEquals(typeof data["API Documentation"], 'string');
     
     console.log("System status test passed!");

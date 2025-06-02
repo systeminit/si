@@ -29,24 +29,28 @@ class TestSecretsApi(unittest.TestCase):
     def test_create_secret(self) -> None:
         """Test case for create_secret
 
+        Create a secret
         """
         pass
 
     def test_delete_secret(self) -> None:
         """Test case for delete_secret
 
+        Delete a secret
         """
         pass
 
     def test_get_secrets(self) -> None:
         """Test case for get_secrets
 
+        List all secrets
         """
         pass
 
     def test_update_secret(self) -> None:
         """Test case for update_secret
 
+        Update a secret
         """
         pass
 

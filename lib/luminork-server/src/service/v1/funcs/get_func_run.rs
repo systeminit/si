@@ -24,12 +24,13 @@ use crate::{
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/funcs/runs/{func_run_id}",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
         ("func_run_id" = String, Path, description = "Func run identifier"),
     ),
     tag = "funcs",
+    summary = "Get func execution run logs",
     responses(
-        (status = 200, description = "Func Run retrieved successfully", body = GetFuncRunV1Response, 
+        (status = 200, description = "Func Run retrieved successfully", body = GetFuncRunV1Response,
           example = json!({
             "funcRun": {
               "id": "01JQCJ0AAXGX5M9QY10AVF4GK1",
@@ -97,7 +98,7 @@ use crate::{
                   {
                     "stream": "output",
                     "executionId": "01JQCJ0AAXGX5M9QY10AVF4GK1",
-                    "level": "info", 
+                    "level": "info",
                     "group": "log",
                     "message": "Output: {\"status\":\"success\"}",
                     "timestamp": 1743104521

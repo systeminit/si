@@ -25,10 +25,11 @@ use crate::extract::{
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
         ("schema_id" = String, Path, description = "Schema identifier"),
     ),
     tag = "schemas",
+    summary = "Get a schema by schema id",
     responses(
         (status = 200, description = "Schema retrieved successfully", body = GetSchemaV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),

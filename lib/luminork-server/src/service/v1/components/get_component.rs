@@ -79,10 +79,11 @@ pub struct GetComponentV1ResponseActionFunction {
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
         ("component_id" = String, Path, description = "Component identifier")
     ),
     tag = "components",
+    summary = "Get a component by component Id",
     responses(
         (status = 200, description = "Component retrieved successfully", body = GetComponentV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),

@@ -33,9 +33,10 @@ use crate::{
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/secrets",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
     ),
     tag = "secrets",
+    summary = "Create a secret",
     request_body = CreateSecretV1Request,
     responses(
         (status = 200, description = "Secret created successfully", body = CreateSecretV1Response),

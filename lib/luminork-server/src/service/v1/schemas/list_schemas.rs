@@ -37,10 +37,11 @@ use crate::{
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
         ("limit" = Option<String>, Query, description = "Maximum number of results to return (default: 50, max: 300)"),
         ("cursor" = Option<String>, Query, description = "Cursor for pagination (SchemaId of the last item from previous page)"),
     ),
+    summary = "List all schemas (paginated endpoint)",
     tag = "schemas",
     responses(
         (status = 200, description = "Schemas listed successfully", body = ListSchemaV1Response),

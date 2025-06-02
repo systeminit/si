@@ -36,10 +36,11 @@ pub struct ListComponentsV1Response {
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/components",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
         ("limit" = Option<String>, Query, description = "Maximum number of results to return (default: 50, max: 300)"),
         ("cursor" = Option<String>, Query, description = "Cursor for pagination (ComponentId of the last item from previous page)"),
     ),
+    summary = "List all components",
     tag = "components",
     responses(
         (status = 200, description = "Components retrieved successfully", body = ListComponentsV1Response, example = json!(["01H9ZQD35JPMBGHH69BT0Q79AA", "01H9ZQD35JPMBGHH69BT0Q79BB", "01H9ZQD35JPMBGHH69BT0Q79CC"])),

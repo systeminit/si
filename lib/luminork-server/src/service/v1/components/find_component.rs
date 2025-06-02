@@ -53,10 +53,11 @@ pub struct FindComponentV1Params {
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/components/find",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
         FindComponentV1Params,
     ),
     tag = "components",
+    summary = "Find a component by name or component Id",
     responses(
         (status = 200, description = "Component retrieved successfully", body = GetComponentV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),

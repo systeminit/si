@@ -29,30 +29,35 @@ class TestSchemasApi(unittest.TestCase):
     def test_find_schema(self) -> None:
         """Test case for find_schema
 
+        Find schema by name or schema id
         """
         pass
 
     def test_get_default_variant(self) -> None:
         """Test case for get_default_variant
 
+        Get the default variant for a schema id
         """
         pass
 
     def test_get_schema(self) -> None:
         """Test case for get_schema
 
+        Get a schema by schema id
         """
         pass
 
     def test_get_variant(self) -> None:
         """Test case for get_variant
 
+        Get a schema variant by schema id and schema variant id
         """
         pass
 
     def test_list_schemas(self) -> None:
         """Test case for list_schemas
 
+        List all schemas (paginated endpoint)
         """
         pass
 

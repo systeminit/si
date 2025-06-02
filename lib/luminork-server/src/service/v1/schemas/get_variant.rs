@@ -27,10 +27,11 @@ use crate::extract::{
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/schemas/{schema_id}/variant/{schema_variant_id}",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
         ("schema_id" = String, Path, description = "Schema identifier"),
         ("schema_variant_id" = String, Path, description = "Schema variant identifier"),
     ),
+    summary = "Get a schema variant by schema id and schema variant id",
     tag = "schemas",
     responses(
         (status = 200, description = "Schema variant retrieved successfully", body = GetSchemaVariantV1Response),

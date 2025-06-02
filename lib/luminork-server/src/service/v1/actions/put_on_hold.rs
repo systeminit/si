@@ -33,10 +33,11 @@ use crate::extract::{
     path = "/v1/w/{workspace_id}/change-sets/{change_set_id}/actions/{action_id}/put_on_hold",
     params(
         ("workspace_id" = String, Path, description = "Workspace identifier"),
-        ("change_set_id" = String, Path, description = "Change set identifier"),
+        ("change_set_id" = String, Path, description = "Change Set identifier"),
         ("action_id" = String, Path, description = "Action identifier"),
     ),
     tag = "actions",
+    summary = "Put action on-hold",
     responses(
         (status = 200, description = "Action successfully put on hold", body = PutOnHoldActionV1Response),
         (status = 401, description = "Unauthorized - Invalid or missing token"),
