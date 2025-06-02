@@ -1,8 +1,5 @@
 use std::{
-    collections::{
-        HashMap,
-        HashSet,
-    },
+    collections::HashSet,
     sync::{
         Arc,
         atomic::AtomicBool,
@@ -25,14 +22,12 @@ use si_events::{
     ContentHash,
     Timestamp,
     WorkspaceSnapshotAddress,
-    merkle_tree_hash::MerkleTreeHash,
     workspace_snapshot::{
         Change,
         EntityKind,
     },
 };
 use si_id::{
-    ApprovalRequirementDefinitionId,
     AttributeValueId,
     ChangeSetId,
     ComponentId,
@@ -41,7 +36,6 @@ use si_id::{
     PropId,
     SchemaId,
     SchemaVariantId,
-    UserPk,
     ViewId,
     ulid::Ulid,
 };
@@ -92,7 +86,6 @@ use super::{
         category_node_weight::CategoryNodeKind,
     },
     traits::{
-        approval_requirement::ApprovalRequirementExt,
         diagram::view::ViewExt,
         prop::PropExt,
         socket::input::input_socket_from_node_weight,
@@ -107,11 +100,6 @@ use crate::{
     InputSocket,
     NodeWeightDiscriminants,
     SchemaVariantError,
-    approval_requirement::{
-        ApprovalRequirement,
-        ApprovalRequirementApprover,
-        ApprovalRequirementDefinition,
-    },
     component::{
         ComponentResult,
         inferred_connection_graph::InferredConnectionGraph,
@@ -125,6 +113,7 @@ use crate::{
     socket::input::InputSocketError,
 };
 
+pub mod approval_requirement;
 pub mod corrections;
 
 pub type SplitSnapshotGraphV1 = SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>;
@@ -1337,77 +1326,6 @@ impl SplitSnapshot {
             updates,
             from_different_change_set,
         )?)
-    }
-}
-#[async_trait]
-impl ApprovalRequirementExt for SplitSnapshot {
-    async fn new_definition(
-        &self,
-        _ctx: &DalContext,
-        _entity_id: Ulid,
-        _minimum_approvers_count: usize,
-        _approvers: HashSet<ApprovalRequirementApprover>,
-    ) -> WorkspaceSnapshotResult<ApprovalRequirementDefinitionId> {
-        // XXX: implement
-        Ok(ApprovalRequirementDefinitionId::new())
-    }
-
-    async fn remove_definition(
-        &self,
-        _approval_requirement_definition_id: ApprovalRequirementDefinitionId,
-    ) -> WorkspaceSnapshotResult<()> {
-        // XXX: implement
-        Ok(())
-    }
-
-    async fn add_individual_approver_for_definition(
-        &self,
-        _ctx: &DalContext,
-        _id: ApprovalRequirementDefinitionId,
-        _user_id: UserPk,
-    ) -> WorkspaceSnapshotResult<()> {
-        Ok(())
-    }
-
-    async fn remove_individual_approver_for_definition(
-        &self,
-        _ctx: &DalContext,
-        _id: ApprovalRequirementDefinitionId,
-        _user_id: UserPk,
-    ) -> WorkspaceSnapshotResult<()> {
-        Ok(())
-    }
-
-    async fn approval_requirements_for_changes(
-        &self,
-        _ctx: &DalContext,
-        _changes: &[Change],
-    ) -> WorkspaceSnapshotResult<(Vec<ApprovalRequirement>, HashMap<EntityId, MerkleTreeHash>)>
-    {
-        Ok((Vec::new(), HashMap::new()))
-    }
-
-    async fn approval_requirement_definitions_for_entity_id_opt(
-        &self,
-        _ctx: &DalContext,
-        _entity_id: EntityId,
-    ) -> WorkspaceSnapshotResult<Option<Vec<ApprovalRequirementDefinition>>> {
-        Ok(None)
-    }
-
-    async fn entity_id_for_approval_requirement_definition_id(
-        &self,
-        _id: ApprovalRequirementDefinitionId,
-    ) -> WorkspaceSnapshotResult<EntityId> {
-        Ok(EntityId::new())
-    }
-
-    async fn get_approval_requirement_definition_by_id(
-        &self,
-        _ctx: &DalContext,
-        _id: ApprovalRequirementDefinitionId,
-    ) -> WorkspaceSnapshotResult<ApprovalRequirementDefinition> {
-        Ok(ApprovalRequirementDefinition::fake())
     }
 }
 

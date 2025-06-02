@@ -161,6 +161,8 @@ pub enum WorkspaceSnapshotError {
     CorrectTransformsSplit(#[from] split_snapshot::corrections::CorrectTransformsError),
     #[error("Action would create a graph cycle")]
     CreateGraphCycle,
+    #[error("Entity not found for Approval Requirement Definition Id: {0}")]
+    EntityNotFoundForApprovalRequirementDefinition(ApprovalRequirementDefinitionId),
     #[error("InferredConnectionGraph error: {0}")]
     InferredConnectionGraph(#[from] Box<InferredConnectionGraphError>),
     #[error("InputSocket error: {0}")]
