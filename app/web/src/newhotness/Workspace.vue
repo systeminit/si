@@ -239,7 +239,6 @@ realtimeStore.subscribe(
             props.workspacePk,
             data.changeSetId,
             context.value.headChangeSetId.value,
-            data.workspaceSnapshotAddress,
           );
         }
       },

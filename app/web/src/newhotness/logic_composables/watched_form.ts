@@ -91,7 +91,7 @@ export const useWatchedForm = <Data>(label: string) => {
         });
         start = Date.now();
         onSubmit(props);
-        if (watchFn) bifrosting.value = true;
+        bifrosting.value = true;
         rainbow.add(ctx.changeSetId.value, label);
       },
       validators,

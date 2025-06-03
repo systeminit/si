@@ -471,12 +471,20 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
   // in between throwing a hammer and receiving it, i might already have written the atom
   const indexes = await atomExistsOnIndexes(msg.atom, msg.atom.toChecksum);
   if (indexes.length > 0) {
-    debug(
-      "🔨 HAMMER NOOP: Atom already exists in index:",
-      msg.atom.kind,
-      msg.atom.id,
-    );
-    return; // noop
+    if (indexes.includes(msg.atom.toIndexChecksum)) {
+      debug(
+        "🔨 HAMMER NOOP: Atom already exists in index:",
+        msg.atom.kind,
+        msg.atom.id,
+        msg.atom.toChecksum,
+        indexes,
+      );
+      return; // noop
+    } else {
+      debug("HAMMER: Atom exists, MTM needed");
+      await insertAtomMTM(msg.atom, msg.atom.toIndexChecksum);
+      return;
+    }
   }
 
   const indexChecksum = await indexLogic(msg.atom, span);
@@ -619,14 +627,16 @@ const indexLogic = async (meta: AtomMeta, span?: Span) => {
     changeSetExists &&
     meta.fromIndexChecksum &&
     meta.fromIndexChecksum !== currentIndexChecksum
-  )
-    throw new Ragnarok(
-      "From Checksum Doesn't Exist",
-      workspaceId,
-      changeSetId,
-      meta.fromIndexChecksum,
-      currentIndexChecksum,
-    );
+  ) {
+    debug("🔥🔥 RAGNAROK", meta.fromIndexChecksum, currentIndexChecksum);
+    // throw new Ragnarok(
+    //   "From Checksum Doesn't Exist",
+    //   workspaceId,
+    //   changeSetId,
+    //   meta.fromIndexChecksum,
+    //   currentIndexChecksum,
+    // );
+  }
 
   // Create index if needed - this is the new validation mechanism
   if (indexExists === NOROW) await newIndex(meta, currentIndexChecksum);
@@ -1146,9 +1156,6 @@ const removeOldIndex = async () => {
         DELETE FROM atoms
         WHERE (kind, args, checksum) NOT IN (
           SELECT kind, args, checksum FROM index_mtm_atoms
-          WHERE index_checksum IN (
-            SELECT checksum FROM indexes
-          )
         ) returning atoms.kind, atoms.args, atoms.checksum;
       `,
       returnValue: "resultRows",
@@ -1164,10 +1171,11 @@ const removeOldIndex = async () => {
         "🗑️ Cleaned up",
         deleteIndexes.length,
         "old indexes (keeping recent 5 per workspace)",
+        deleteIndexes,
       );
     }
     if (deleteAtoms.length > 0) {
-      debug("🗑️ Cleaned up", deleteAtoms.length, "orphaned atoms");
+      debug("🗑️ Cleaned up", deleteAtoms.length, "orphaned atoms", deleteAtoms);
     }
 
     span.end();
@@ -2463,7 +2471,6 @@ const dbInterface: DBInterface = {
     workspaceId,
     headChangeSet,
     changeSetId,
-    indexChecksum,
   ): Promise<void> {
     try {
       const headRows = db.exec({
@@ -2476,30 +2483,9 @@ const dbInterface: DBInterface = {
         throw new Error(`HEAD is missing: ${workspaceId}: ${headChangeSet}`);
       const currentIndexChecksum = headRow;
 
-      if (currentIndexChecksum === indexChecksum) {
-        debug("~ new change set, no-op");
-        return; // NO-OP
-      }
-
-      await db.exec({
-        sql: `INSERT INTO indexes (checksum) VALUES (?);`,
-        bind: [indexChecksum],
-      });
-
-      await db.exec({
-        sql: `INSERT INTO index_mtm_atoms
-        SELECT
-          ?, kind, args, checksum
-        FROM index_mtm_atoms
-        WHERE
-          index_checksum = ?
-        ;`,
-        bind: [indexChecksum, currentIndexChecksum],
-      });
-
       await db.exec({
         sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?);",
-        bind: [changeSetId, workspaceId, indexChecksum],
+        bind: [changeSetId, workspaceId, currentIndexChecksum],
       });
     } catch (err) {
       // eslint-disable-next-line no-console

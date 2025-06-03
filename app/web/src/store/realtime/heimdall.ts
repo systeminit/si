@@ -75,7 +75,7 @@ const returned = (changeSetId: ChangeSetId, label: string) => {
 };
 db.addListenerReturned(Comlink.proxy(returned));
 
-const lobbyExit: LobbyExitFn = () => {
+const lobbyExit: LobbyExitFn = async () => {
   // Only navigate away from lobby if user is currently in the lobby
   if (router.currentRoute.value.name !== "new-hotness-lobby") {
     return;
@@ -88,6 +88,7 @@ const lobbyExit: LobbyExitFn = () => {
   // find the current workspace or change set?
 
   if (workspacePk && changeSetId) {
+    await niflheim(workspacePk, changeSetId, true);
     router.push({
       name: "new-hotness",
       params: {
@@ -153,14 +154,8 @@ export const linkNewChangeset = async (
   workspaceId: string,
   changeSetId: string,
   headChangeSetId: string,
-  workspaceSnapshotAddress: string,
 ) => {
-  await db.linkNewChangeset(
-    workspaceId,
-    headChangeSetId,
-    changeSetId,
-    workspaceSnapshotAddress,
-  );
+  await db.linkNewChangeset(workspaceId, headChangeSetId, changeSetId);
 };
 
 export const getOutgoingConnections = async (args: {
