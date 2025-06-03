@@ -48,6 +48,7 @@ pub mod execute_management_function;
 pub mod find_component;
 pub mod get_component;
 pub mod list_components;
+pub mod search_components;
 pub mod update_component;
 
 #[remain::sorted]
@@ -342,6 +343,7 @@ pub fn routes() -> Router<AppState> {
         .route("/", post(create_component::create_component))
         .route("/", get(list_components::list_components))
         .route("/find", get(find_component::find_component))
+        .route("/search", post(search_components::search_components))
         .nest(
             "/:component_id",
             Router::new()
