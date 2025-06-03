@@ -394,9 +394,7 @@ pub async fn resolve_remote_artifact_files(
         ));
     } else if !found_sql {
         return Err(format!("No .sql files found under prefix {}", prefix));
-    } else if !found_sequence {
-        return Err(format!("No .sequence files found under prefix {}", prefix));
-    }
+    } // No sequence files is totally valid for a DB restore point only, i.e. not recording.
 
     info!(
         "Downloaded {} file(s) to ./recordings/datasources/{}",
@@ -436,6 +434,30 @@ pub async fn resolve_test(
             }
         }
     }
+}
+
+pub async fn collect_files(recording_id: &str) -> Result<Vec<PathBuf>, String> {
+    fn collect_files_rec(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), String> {
+        for entry in fs::read_dir(dir).map_err(|e| format!("Read dir error: {}", e))? {
+            let entry = entry.map_err(|e| format!("Dir entry error: {}", e))?;
+            let path = entry.path();
+            if path.is_dir() {
+                collect_files_rec(&path, files)?;
+            } else if path.is_file() {
+                files.push(path);
+            }
+        }
+        Ok(())
+    }
+
+    let base_path = PathBuf::from("recordings/datasources").join(recording_id);
+    if !base_path.exists() {
+        return Err(format!("Path does not exist: {:?}", base_path));
+    }
+
+    let mut file_paths = Vec::new();
+    collect_files_rec(&base_path, &mut file_paths)?;
+    Ok(file_paths)
 }
 
 pub async fn configure_nats(
@@ -724,21 +746,7 @@ pub async fn publish_artifact(
             ));
         }
 
-        fn collect_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), String> {
-            for entry in fs::read_dir(dir).map_err(|e| format!("Read dir error: {}", e))? {
-                let entry = entry.map_err(|e| format!("Dir entry error: {}", e))?;
-                let path = entry.path();
-                if path.is_dir() {
-                    collect_files(&path, files)?;
-                } else if path.is_file() {
-                    files.push(path);
-                }
-            }
-            Ok(())
-        }
-
-        let mut file_paths = Vec::new();
-        collect_files(&base_path, &mut file_paths)?;
+        let file_paths: Vec<PathBuf> = collect_files(artifact_id).await?;
 
         for (index, path) in file_paths.iter().enumerate() {
             let key = path
