@@ -83,6 +83,7 @@ export class APICall<Response> {
   canMutateHead: boolean;
   description: string;
   obs: LabeledObs;
+  lobbyRequired: boolean;
 
   constructor(
     ctx: Context,
@@ -100,6 +101,7 @@ export class APICall<Response> {
     this.canMutateHead = canMutateHead;
     this.description = description;
     this.obs = obs;
+    this.lobbyRequired = false;
   }
 
   url(): string {
@@ -130,7 +132,7 @@ export class APICall<Response> {
       this.changeSetId = newChangeSetId;
       return newChangeSetId;
     } else if (req.status === 202) {
-      // todo: handle 202 correctly. Fortunately we shouldn't hit this often
+      this.lobbyRequired = true;
       const newChangeSetId = req.data.id;
       this.changeSetId = newChangeSetId;
       return newChangeSetId;
@@ -204,6 +206,8 @@ export const useApi = () => {
 
   // You have to run endpoint BEFORE you call setWatchFn or it will break
   let labeledObs: LabeledObs;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let apiCall: APICall<any>;
   const endpoint = <Response>(key: routes, args?: Record<string, string>) => {
     let path = _routes[key];
     const needsArgs = path.includes("<") && path.includes(">");
@@ -220,7 +224,15 @@ export const useApi = () => {
       ctx.user?.name
     } on ${new Date().toLocaleDateString()}`;
     labeledObs = setLabel(obs, `${key}.${argList.join(".")}`);
-    return new APICall<Response>(ctx, path, canMutateHead, desc, labeledObs);
+    const call = new APICall<Response>(
+      ctx,
+      path,
+      canMutateHead,
+      desc,
+      labeledObs,
+    );
+    apiCall = call;
+    return call;
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -262,6 +274,11 @@ export const useApi = () => {
         retry += 1;
       }, INTERVAL);
     });
+    if (apiCall.lobbyRequired) {
+      if (typeof to === "string") to = "new-hotness-lobby";
+      else if ("name" in to) to.name = "new-hotness-lobby";
+      else throw new Error("Thanks, router");
+    }
     await router.push(to);
     reset();
   };

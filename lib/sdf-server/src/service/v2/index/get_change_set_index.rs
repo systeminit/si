@@ -5,7 +5,6 @@ use axum::{
     response::IntoResponse,
 };
 use dal::{
-    ChangeSet,
     ChangeSetId,
     WorkspacePk,
 };
@@ -31,11 +30,9 @@ pub async fn get_change_set_index(
     EddaClient(edda_client): EddaClient,
     Path((workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
 ) -> IndexResult<impl IntoResponse> {
-    let ctx = builder
+    let _ctx = builder
         .build(access_builder.build(change_set_id.into()))
         .await?;
-    let change_set = ChangeSet::get_by_id(&ctx, change_set_id).await?;
-
     let index = match frigg.get_index(workspace_pk, change_set_id).await? {
         Some((index, _kv_revision)) => index,
         None => {
@@ -63,7 +60,9 @@ pub async fn get_change_set_index(
     Ok((
         StatusCode::OK,
         Json(Some(FrontEndObjectMeta {
-            workspace_snapshot_address: change_set.workspace_snapshot_address,
+            workspace_snapshot_address: index.clone().id,
+            index_checksum: index.clone().checksum,
+
             front_end_object: index,
         })),
     ))

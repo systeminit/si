@@ -190,17 +190,41 @@ onBeforeMount(async () => {
     { immediate: true },
   );
 
-  // Initial setup with resolved change set ID
-  heimdall.niflheim(props.workspacePk, props.changeSetId, true);
-  // NOTE: onBeforeMount doesn't wait on promises, so I could
-  // throw an await here, but it has no effect...
-  // leaving it off to communicate that the page will load before execution finishes
+  // NOTE: onBeforeMount doesn't wait on promises
+  // the page will load before execution finishes
+  const success = await heimdall.niflheim(
+    props.workspacePk,
+    props.changeSetId,
+    true,
+  );
+  if (success && lobby.value) {
+    router.push({
+      name: "new-hotness",
+      params: {
+        workspacePk: props.workspacePk,
+        changeSetId: props.changeSetId,
+      },
+    });
+  }
 });
 
 watch(
   () => props.changeSetId,
-  () => {
-    heimdall.niflheim(props.workspacePk, props.changeSetId, true);
+  async () => {
+    const success = await heimdall.niflheim(
+      props.workspacePk,
+      props.changeSetId,
+      true,
+    );
+    if (success && lobby.value) {
+      router.push({
+        name: "new-hotness",
+        params: {
+          workspacePk: props.workspacePk,
+          changeSetId: props.changeSetId,
+        },
+      });
+    }
   },
 );
 realtimeStore.subscribe(
@@ -210,12 +234,14 @@ realtimeStore.subscribe(
     {
       eventType: "ChangeSetCreated",
       callback: async (data) => {
-        await heimdall.linkNewChangeset(
-          props.workspacePk,
-          data.changeSetId,
-          context.value.headChangeSetId.value,
-          data.workspaceSnapshotAddress,
-        );
+        if (context.value.headChangeSetId.value) {
+          await heimdall.linkNewChangeset(
+            props.workspacePk,
+            data.changeSetId,
+            context.value.headChangeSetId.value,
+            data.workspaceSnapshotAddress,
+          );
+        }
       },
     },
   ],

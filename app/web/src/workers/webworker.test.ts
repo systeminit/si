@@ -57,21 +57,20 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
   log("~~ DIAGNOSTIC STARTED ~~");
   const head = "HEAD";
   const workspace = "W";
-  const checksum = "HEAD";
   await db.exec({
     sql: `
-        INSERT INTO snapshots (address)
+        INSERT INTO indexes (checksum)
         VALUES (?);
       `,
-    bind: [checksum],
+    bind: ["HEAD"],
   });
 
   await db.exec({
     sql: `
-        INSERT INTO changesets (change_set_id, workspace_id, snapshot_address)
+        INSERT INTO changesets (change_set_id, workspace_id, index_checksum)
         VALUES (?, ?, ?);
       `,
-    bind: [head, workspace, checksum],
+    bind: [head, workspace, "HEAD"],
   });
 
   const testRecord = "testRecord" as EntityKind;
@@ -90,10 +89,10 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
 
   await db.exec({
     sql: `
-        INSERT INTO snapshots_mtm_atoms (snapshot_address, kind, args, checksum)
+        INSERT INTO index_mtm_atoms (index_checksum, kind, args, checksum)
         VALUES (?, ?, ?, ?);
       `,
-    bind: [checksum, testRecord, "testId1", "tr1"],
+    bind: ["HEAD", testRecord, "testId1", "tr1"],
   });
 
   await db.exec({
@@ -111,10 +110,10 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
 
   await db.exec({
     sql: `
-        INSERT INTO snapshots_mtm_atoms (snapshot_address, kind, args, checksum)
+        INSERT INTO index_mtm_atoms (index_checksum, kind, args, checksum)
         VALUES (?, ?, ?, ?);
       `,
-    bind: [checksum, testRecord, "testId2", "tr2"],
+    bind: ["HEAD", testRecord, "testId2", "tr2"],
   });
 
   const testList = "testList" as EntityKind;
@@ -135,10 +134,10 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
 
   await db.exec({
     sql: `
-        INSERT INTO snapshots_mtm_atoms (snapshot_address, kind, args, checksum)
+        INSERT INTO index_mtm_atoms (index_checksum, kind, args, checksum)
         VALUES (?, ?, ?, ?);
       `,
-    bind: [checksum, testList, "changeSetId", "tl1"],
+    bind: ["HEAD", testList, "changeSetId", "tl1"],
   });
   log("~~ FIXTURE COMPLETED ~~");
 
@@ -156,8 +155,8 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
     meta: {
       workspaceId: "W",
       changeSetId: "new_change_set",
-      snapshotFromAddress: "HEAD",
-      snapshotToAddress: "new_change_set",
+      fromIndexChecksum: "HEAD",
+      toIndexChecksum: "test_index_checksum_1",
     },
     kind: MessageKind.PATCH,
     patches: [
@@ -173,7 +172,7 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
   await db.handlePatchMessage(payload1);
 
   const confirm1 = await db.exec({
-    sql: `SELECT count(snapshot_address) FROM snapshots_mtm_atoms WHERE snapshot_address = ?;`,
+    sql: `SELECT count(index_checksum) FROM index_mtm_atoms WHERE index_checksum = ?;`,
     bind: ["HEAD"],
     returnValue: "resultRows",
   });
@@ -181,19 +180,19 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
   // one for each original atom
   assert(
     count_old_snapshot_atoms === 3,
-    `old snapshots ${String(count_old_snapshot_atoms)} === 3`,
+    `old indexes ${String(count_old_snapshot_atoms)} === 3`,
   );
 
   const confirm2 = await db.exec({
-    sql: `SELECT count(snapshot_address) FROM snapshots_mtm_atoms WHERE snapshot_address = ?;`,
-    bind: ["new_change_set"],
+    sql: `SELECT count(index_checksum) FROM index_mtm_atoms WHERE index_checksum = ?;`,
+    bind: ["test_index_checksum_1"],
     returnValue: "resultRows",
   });
   const count_new_snapshot_atoms = await db.oneInOne(confirm2);
   // copied mtm & the patched atom
   assert(
     count_new_snapshot_atoms === 3,
-    `new snapshots ${String(count_new_snapshot_atoms)} === 3`,
+    `payload1 new indexes ${String(count_new_snapshot_atoms)} === 3`,
   );
 
   const confirm3 = await db.exec({
@@ -218,13 +217,13 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
   );
 
   const addressQuery = await db.exec({
-    sql: "select snapshot_address from changesets where change_set_id = ?;",
+    sql: "select index_checksum from changesets where change_set_id = ?;",
     bind: ["new_change_set"],
     returnValue: "resultRows",
   });
   const address = (await db.oneInOne(addressQuery)) as string;
   assert(
-    address === "new_change_set",
+    address === "test_index_checksum_1",
     `Changeset address didn't move forward ${address}`,
   );
 
@@ -238,8 +237,8 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
     meta: {
       workspaceId: "W",
       changeSetId: "HEAD",
-      snapshotFromAddress: "HEAD",
-      snapshotToAddress: "new_change_set_on_head",
+      fromIndexChecksum: "HEAD",
+      toIndexChecksum: "test_index_checksum_2",
     },
     kind: MessageKind.PATCH,
     patches: [
@@ -255,38 +254,38 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
   await db.handlePatchMessage(payload2);
 
   const confirm4 = await db.exec({
-    sql: `SELECT count(snapshot_address) FROM snapshots_mtm_atoms WHERE snapshot_address = ?;`,
-    bind: [checksum],
+    sql: `SELECT count(index_checksum) FROM index_mtm_atoms WHERE index_checksum = ?;`,
+    bind: ["HEAD"],
     returnValue: "resultRows",
   });
   const count_old_head_snapshot_atoms = await db.oneInOne(confirm4);
   // one for each original atom
   assert(
     count_old_head_snapshot_atoms === 0,
-    `old head snapshots ${String(count_old_head_snapshot_atoms)} === 0`,
+    `old head indexes ${String(count_old_head_snapshot_atoms)} === 0`,
   );
 
   const confirm5 = await db.exec({
-    sql: `SELECT count(snapshot_address) FROM snapshots_mtm_atoms WHERE snapshot_address != ?;`,
-    bind: [checksum],
+    sql: `SELECT count(index_checksum) FROM index_mtm_atoms WHERE index_checksum != ?;`,
+    bind: ["HEAD"],
     returnValue: "resultRows",
   });
   const count_new_snapshot_atoms_again = await db.oneInOne(confirm5);
   // copied mtm & the patched atom, 3 for the changeset, 3 for HEAD
   assert(
     count_new_snapshot_atoms_again === 3 * 2,
-    `new snapshots ${String(count_new_snapshot_atoms_again)} === 3*2`,
+    `payload2 new indexes ${String(count_new_snapshot_atoms_again)} === 3*2`,
   );
 
   const confirm6 = await db.exec({
     sql: `SELECT count(*) FROM atoms;`,
     returnValue: "resultRows",
   });
-  const count_atoms_no_change = await db.oneInOne(confirm6);
-  // same number of atoms no change
+  const count_atoms_one_more = await db.oneInOne(confirm6);
+  // 3 original atoms, 1 patched atom
   assert(
-    count_atoms_no_change === 3,
-    `payload2 atoms ${String(count_atoms_no_change)} === 3`,
+    count_atoms_one_more === 4,
+    `payload2 atoms ${String(count_atoms_one_more)} === 4`,
   );
 
   log("~~ SECOND PAYLOAD SUCCESS ~~");
@@ -297,25 +296,26 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
    * */
 
   const removed_record_before = await db.exec({
-    sql: `SELECT COUNT(snapshot_address) FROM snapshots_mtm_atoms WHERE checksum = ?`,
+    sql: `SELECT COUNT(index_checksum) FROM index_mtm_atoms WHERE checksum = ?`,
     bind: ["tr1-new-name"],
     returnValue: "resultRows",
   });
   const before = await db.oneInOne(removed_record_before);
 
-  assert(before === 2, `Before state wrong ${removed_record_before}`);
+  // there is only 1 mtm for the altered atom
+  assert(before === 1, `Before state wrong ${removed_record_before}`);
 
   await db.pruneAtomsForClosedChangeSet("W", "new_change_set");
   const confirm7 = await db.exec({
-    sql: `SELECT count(snapshot_address) FROM snapshots_mtm_atoms WHERE snapshot_address != ?;`,
-    bind: [checksum],
+    sql: `SELECT count(index_checksum) FROM index_mtm_atoms WHERE index_checksum != ?;`,
+    bind: ["HEAD"],
     returnValue: "resultRows",
   });
   const count_snapshots_after_purge = await db.oneInOne(confirm7);
   // 3 for HEAD
   assert(
     count_snapshots_after_purge === 3,
-    `new snapshots ${String(count_snapshots_after_purge)} === 3`,
+    `remove new indexes ${String(count_snapshots_after_purge)} === 3`,
   );
 
   const confirm8 = await db.exec({
@@ -330,12 +330,15 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
   );
 
   const removed_record = await db.exec({
-    sql: `SELECT COUNT(snapshot_address) FROM snapshots_mtm_atoms WHERE checksum = ?`,
+    sql: `SELECT COUNT(index_checksum) FROM index_mtm_atoms WHERE checksum = ?`,
     bind: ["tr1-new-name"],
     returnValue: "resultRows",
   });
   const removed = await db.oneInOne(removed_record);
-  assert(removed === 1, "Expected removed is still here");
+  assert(
+    removed === 0,
+    `Expected removed is still here: ${removed?.toString()}`,
+  );
 
   log("~~ PURGE SUCCESS ~~");
 
@@ -347,8 +350,8 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
     meta: {
       workspaceId: "W",
       changeSetId: "add_remove",
-      snapshotFromAddress: "new_change_set_on_head",
-      snapshotToAddress: "add_remove_1",
+      fromIndexChecksum: "test_index_checksum_2",
+      toIndexChecksum: "test_index_checksum_3",
     },
     kind: MessageKind.PATCH,
     patches: [
@@ -435,7 +438,8 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
       toChecksum: "fb1",
       workspaceId: "W",
       changeSetId: "add_remove",
-      snapshotToAddress: "add_remove_1",
+      fromIndexChecksum: "test_index_checksum_3",
+      toIndexChecksum: "test_index_checksum_3",
     },
     data: { foo: "bar" },
   };
@@ -462,13 +466,13 @@ const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
   );
 
   const addressQuery2 = await db.exec({
-    sql: "select snapshot_address from changesets where change_set_id = ?;",
+    sql: "select index_checksum from changesets where change_set_id = ?;",
     bind: ["add_remove"],
     returnValue: "resultRows",
   });
   const address2 = (await db.oneInOne(addressQuery2)) as string;
   assert(
-    address2 === "add_remove_1",
+    address2 === "test_index_checksum_3",
     `Changeset address didn't move forward ${address2}`,
   );
 

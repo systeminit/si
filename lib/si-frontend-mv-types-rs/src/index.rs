@@ -59,4 +59,5 @@ pub struct IndexPointerValue {
     pub index_object_key: String,
     pub snapshot_address: String,
     pub definition_checksum: Checksum,
+    pub index_checksum: String,
 }

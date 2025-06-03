@@ -14,7 +14,6 @@ use axum::{
 use dal::{
     ChangeSetId,
     WorkspacePk,
-    WorkspaceSnapshotAddress,
 };
 use futures_lite::StreamExt;
 use hyper::StatusCode;
@@ -93,7 +92,8 @@ pub fn v2_change_set_routes() -> Router<AppState> {
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct FrontEndObjectMeta {
-    workspace_snapshot_address: WorkspaceSnapshotAddress,
+    workspace_snapshot_address: String,
+    index_checksum: String,
     front_end_object: FrontendObject,
 }
 

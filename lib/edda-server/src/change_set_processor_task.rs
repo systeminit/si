@@ -419,7 +419,7 @@ mod handlers {
                     materialized_view::build_all_mv_for_change_set(
                         ctx,
                         frigg,
-                        Some(to_snapshot_address),
+                        None,
                     )
                     .instrument(tracing::info_span!(
                         "edda.change_set_processor_task.build_all_mv_for_change_set.explicit_rebuild"
@@ -465,10 +465,17 @@ mod handlers {
                 }
                 // Current snapshot address is *not* currently `to_snapshot_address`
                 else if ctx.workspace_snapshot()?.id().await != to_snapshot_address {
+                    let latest_index_checksum = match frigg
+                        .get_index_pointer_value(workspace_id, change_set_id)
+                        .await?
+                    {
+                        Some((pointer, _kv_revision)) => Some(pointer.index_checksum),
+                        None => None,
+                    };
                     materialized_view::build_all_mv_for_change_set(
                         ctx,
                         frigg,
-                        Some(from_snapshot_address),
+                        latest_index_checksum,
                     )
                     .instrument(tracing::info_span!(
                         "edda.change_set_processor_task.build_all_mv_for_change_set.snapshot_moved"
