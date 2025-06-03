@@ -171,9 +171,10 @@ pub async fn try_reuse_mv_index_for_new_change_set(
 
     for change_set in change_sets_using_snapshot {
         // found a match, so let's retrieve that MvIndex and put the same object as ours
-        let Some((pointer, _revision)) = frigg
+        // If we're unable to parse the pointer for some reason, don't treat it as a hard error and just move on.
+        let Ok(Some((pointer, _revision))) = frigg
             .get_index_pointer_value(workspace_id, change_set.id)
-            .await?
+            .await
         else {
             // try the next one
             // no need error if this index was never built, it would get rebuilt when necessary
