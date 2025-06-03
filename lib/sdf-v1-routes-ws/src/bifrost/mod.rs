@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use axum::{
     extract::{
         State,
@@ -10,20 +12,21 @@ use dal::{
     DedicatedExecutor,
     WorkspacePk,
 };
+use frigg::FriggStore;
 use sdf_core::nats_multiplexer::{
     EddaUpdatesMultiplexerClient,
     NatsMultiplexerClients,
 };
 use sdf_extract::{
     ComputeExecutor,
+    Nats,
     request::TokenFromQueryParam,
-    services::Nats,
     workspace::{
         TargetWorkspaceIdFromToken,
         WorkspaceAuthorization,
     },
 };
-use si_data_nats::NatsClient;
+use si_data_nats::ConnectionMetadata;
 use telemetry::prelude::*;
 use tokio_util::sync::CancellationToken;
 
@@ -34,10 +37,11 @@ pub mod proto;
 #[allow(clippy::too_many_arguments)]
 pub async fn bifrost_handler(
     wsu: WebSocketUpgrade,
-    Nats(nats): Nats,
     _: TokenFromQueryParam,
     _: TargetWorkspaceIdFromToken,
     auth: WorkspaceAuthorization,
+    Nats(nats): Nats,
+    State(frigg): State<FriggStore>,
     ComputeExecutor(compute_executor): ComputeExecutor,
     State(shutdown_token): State<CancellationToken>,
     State(channel_multiplexer_clients): State<NatsMultiplexerClients>,
@@ -45,7 +49,8 @@ pub async fn bifrost_handler(
     Ok(wsu.on_upgrade(move |socket| {
         run_bifrost_proto(
             socket,
-            nats,
+            nats.metadata_clone(),
+            frigg,
             auth.workspace_id,
             channel_multiplexer_clients.edda_updates,
             compute_executor,
@@ -56,15 +61,22 @@ pub async fn bifrost_handler(
 
 async fn run_bifrost_proto(
     mut socket: WebSocket,
-    nats: NatsClient,
+    metadata: Arc<ConnectionMetadata>,
+    frigg: FriggStore,
     workspace_pk: WorkspacePk,
     bifrost_multiplexer_client: EddaUpdatesMultiplexerClient,
     compute_executor: DedicatedExecutor,
     shutdown_token: CancellationToken,
 ) {
-    let proto = match proto::run(nats, compute_executor, workspace_pk, shutdown_token)
-        .start(bifrost_multiplexer_client)
-        .await
+    let proto = match proto::run(
+        metadata,
+        frigg,
+        compute_executor,
+        workspace_pk,
+        shutdown_token,
+    )
+    .start(bifrost_multiplexer_client)
+    .await
     {
         Ok(started) => started,
         Err(err) => {

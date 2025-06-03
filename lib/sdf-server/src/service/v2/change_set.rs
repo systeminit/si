@@ -27,13 +27,13 @@ use sdf_core::{
     api_error::ApiError,
     app_state::AppState,
     dal_wrapper::DalWrapperError,
+    index::IndexError,
 };
 use serde::Serialize;
 use si_data_spicedb::SpiceDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use super::index::IndexError;
 use crate::middleware::WorkspacePermissionLayer;
 
 mod apply;

@@ -40,7 +40,7 @@ impl EddaUpdatesMultiplexerClient {
         }
     }
 
-    pub async fn receiver_for_workspace(
+    pub async fn messages_for_workspace(
         &self,
         prefix: Option<&str>,
         workspace_id: WorkspacePk,
