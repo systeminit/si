@@ -56,10 +56,7 @@ use crate::{
         intrinsics::IntrinsicFunc,
     },
     implement_add_edge_to,
-    layer_db_types::{
-        FuncContent,
-        FuncContentV2,
-    },
+    layer_db_types::FuncContent,
     pkg,
     workspace_snapshot::{
         WorkspaceSnapshotError,
@@ -141,7 +138,7 @@ pub type FuncResult<T> = Result<T, FuncError>;
 
 impl From<Func> for FuncContent {
     fn from(value: Func) -> Self {
-        Self::V2(FuncContentV2 {
+        Self::V3(FuncContentV3 {
             timestamp: value.timestamp,
             display_name: value.display_name,
             description: value.description,
@@ -154,6 +151,7 @@ impl From<Func> for FuncContent {
             code_base64: value.code_base64,
             code_blake3: value.code_blake3,
             is_locked: value.is_locked,
+            is_transformation: value.is_transformation,
         })
     }
 }
@@ -174,6 +172,8 @@ pub use si_id::{
     FuncExecutionPk,
     FuncId,
 };
+
+use crate::layer_db_types::FuncContentV3;
 
 /// A `Func` is the declaration of the existence of a function. It has a name,
 /// and corresponds to a given function backend (and its associated return types).
@@ -200,10 +200,11 @@ pub struct Func {
     pub code_base64: Option<String>,
     pub code_blake3: ContentHash,
     pub is_locked: bool,
+    pub is_transformation: bool,
 }
 
 impl Func {
-    pub fn assemble(node_weight: &FuncNodeWeight, content: FuncContentV2) -> Self {
+    pub fn assemble(node_weight: &FuncNodeWeight, content: FuncContentV3) -> Self {
         Self {
             id: node_weight.id().into(),
             name: node_weight.name().to_owned(),
@@ -221,6 +222,7 @@ impl Func {
             code_base64: content.code_base64,
             code_blake3: content.code_blake3,
             is_locked: content.is_locked,
+            is_transformation: content.is_transformation,
         }
     }
 
@@ -252,6 +254,7 @@ impl Func {
         backend_response_type: FuncBackendResponseType,
         handler: Option<impl Into<String>>,
         code_base64: Option<impl Into<String>>,
+        is_transformation: bool,
     ) -> FuncResult<Self> {
         let timestamp = Timestamp::now();
         let _finalized_once = false;
@@ -272,7 +275,7 @@ impl Func {
             ContentHash::new("".as_bytes())
         };
 
-        let content = FuncContentV2 {
+        let content = FuncContentV3 {
             timestamp,
             display_name: display_name.map(Into::into),
             description: description.map(Into::into),
@@ -285,10 +288,11 @@ impl Func {
             code_base64,
             code_blake3,
             is_locked: false,
+            is_transformation,
         };
 
         let (hash, _) = ctx.layer_db().cas().write(
-            Arc::new(FuncContent::V2(content.clone()).into()),
+            Arc::new(FuncContent::V3(content.clone()).into()),
             None,
             ctx.events_tenancy(),
             ctx.events_actor(),
@@ -386,7 +390,7 @@ impl Func {
         )?;
 
         // migrate if necessary!
-        let inner: FuncContentV2 = content.extract();
+        let inner = content.extract();
 
         Ok(Self::assemble(func_node_weight, inner))
     }
@@ -749,6 +753,7 @@ impl Func {
             self.backend_response_type,
             self.handler.clone(),
             self.code_base64.clone(),
+            self.is_transformation,
         )
         .await?;
 
@@ -761,9 +766,6 @@ impl Func {
                 .await
                 .map_err(Box::new)?;
         }
-        FuncArgument::list_for_func(ctx, new_func.id)
-            .await
-            .map_err(Box::new)?;
         Ok(new_func)
     }
 
@@ -788,6 +790,7 @@ impl Func {
             self.backend_response_type,
             self.handler.clone(),
             self.code_base64.clone(),
+            self.is_transformation,
         )
         .await?;
 
@@ -837,6 +840,7 @@ impl Func {
             bindings,
             arguments,
             types: Some(types),
+            is_transformation: self.is_transformation,
         })
     }
     // helper to get updated types to fire WSEvents so SDF can decide when these events need to fire

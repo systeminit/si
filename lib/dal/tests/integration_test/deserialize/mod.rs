@@ -47,7 +47,7 @@ use dal::{
         FuncArgumentContent,
         FuncArgumentContentV1,
         FuncContent,
-        FuncContentV2,
+        FuncContentV3,
         GeometryContent,
         InputSocketContent,
         InputSocketContentV2,
@@ -92,7 +92,7 @@ use strum::IntoEnumIterator;
 const CURRENT_SERIALIZED_GRAPH_DIR_PATH: &str = "./lib/dal/tests";
 const CURRENT_SERIALIZED_GRAPH_FILENAME: &str = "serialization-test-data-2024-11-21.snapshot";
 const CURRENT_SERIALIZED_CONTENT_FILENAME: &str =
-    "serialization-test-content-store-data-2025-03-25.bin";
+    "serialization-test-content-store-data-2025-06-02.bin";
 
 // If you're modifying this, you probably just added a new node or edge weight. Before you replace
 // the snapshot with one that includes the new weights, ensure that your current code passes the
@@ -379,7 +379,7 @@ fn make_me_one_with_everything_content_types_edition() -> Vec<ContentTypes> {
                 })
                 .into()
             }
-            ContentTypesDiscriminants::Func => FuncContent::V2(FuncContentV2 {
+            ContentTypesDiscriminants::Func => FuncContent::V3(FuncContentV3 {
                 timestamp,
                 display_name: Some("Binof".into()),
                 description: Some("Leadership Yumenes".into()),
@@ -392,6 +392,7 @@ fn make_me_one_with_everything_content_types_edition() -> Vec<ContentTypes> {
                 code_base64: Some("this isn't base64, is it".into()),
                 code_blake3: ContentHash::nil(),
                 is_locked: true,
+                is_transformation: false,
             })
             .into(),
             ContentTypesDiscriminants::FuncArgument => {

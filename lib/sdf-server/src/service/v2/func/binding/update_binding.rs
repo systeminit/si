@@ -171,6 +171,10 @@ pub async fn update_binding(
     // add cycle check so we don't end up with a cycle as a result of updating this binding
     let cycle_check_guard = ctx.workspace_snapshot()?.enable_cycle_check().await;
 
+    if func.is_transformation {
+        return Err(FuncAPIError::WrongFunctionKindForBinding);
+    }
+
     match func.kind {
         FuncKind::Attribute | FuncKind::Intrinsic => {
             update_attribute_func_bindings(&ctx, request.bindings).await?;

@@ -74,6 +74,8 @@ pub enum FuncAPIError {
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("cannot create non-transformation attribute function(")]
+    CreatingAttributeFuncWithoutBinding,
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func already unlocked: {0}")]
@@ -120,6 +122,8 @@ pub enum FuncAPIError {
     SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("serde json error: {0}")]
     Serde(#[from] serde_json::Error),
+    #[error("cannot set binding on transformation function")]
+    SettingBindingOnTransformationFunction,
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("workspace snapshot error: {0}")]

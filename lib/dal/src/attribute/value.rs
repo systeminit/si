@@ -268,6 +268,8 @@ pub enum AttributeValueError {
         "attribute value {0} with type {1} must be set to 1 subscription, attempted to include {2} subscriptions"
     )]
     SingleValueMustHaveOneSubscription(AttributeValueId, PropKind, usize),
+    #[error("Cannot set subscription with function that isn't builtin or transformation")]
+    SubscribingWithInvalidFunction,
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("try lock error: {0}")]
@@ -1908,7 +1910,7 @@ impl AttributeValue {
 
         let func_args = match normalized_value {
             Some(value) => {
-                let func_arg_id = FuncArgument::single_arg_for_intrinsic(ctx, func_id).await?;
+                let func_arg_id = FuncArgument::single_arg_for_func(ctx, func_id).await?;
 
                 let func_arg_name = {
                     ctx.workspace_snapshot()?
@@ -2162,8 +2164,14 @@ impl AttributeValue {
         func_id: Option<FuncId>,
     ) -> AttributeValueResult<()> {
         let func_id = if let Some(id) = func_id {
+            let func = Func::get_by_id(ctx, id).await?;
+            if !func.is_transformation && !func.builtin {
+                return Err(AttributeValueError::SubscribingWithInvalidFunction);
+            }
+
             id
         } else {
+            // TODO(victor) remove this new ui comes around
             // Pick the prototype for the function based on prop type: if it's Array, use
             // si:normalizeToArray, otherwise use si:identity
             let intrinsic_func = match Self::prop(ctx, subscriber_av_id).await?.kind {
@@ -2192,7 +2200,7 @@ impl AttributeValue {
         Self::set_component_prototype_id(ctx, subscriber_av_id, prototype_id, None).await?;
 
         // Add the subscriptions as the argument
-        let arg_id = FuncArgument::single_arg_for_intrinsic(ctx, func_id).await?;
+        let arg_id = FuncArgument::single_arg_for_func(ctx, func_id).await?;
         for subscription in subscriptions {
             AttributePrototypeArgument::new(ctx, prototype_id, arg_id, subscription).await?;
         }

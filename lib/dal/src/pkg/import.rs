@@ -385,6 +385,7 @@ async fn create_func(
         .data()
         .ok_or(PkgError::DataNotFound(name.into()))?;
 
+    // TODO see how to best support is_transformation on func_spec
     let func = Func::new(
         ctx,
         name,
@@ -399,6 +400,7 @@ async fn create_func(
         func_spec_data.response_type().into(),
         Some(func_spec_data.handler().to_owned()),
         Some(func_spec_data.code_base64().to_owned()),
+        false,
     )
     .await?;
 

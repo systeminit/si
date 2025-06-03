@@ -68,10 +68,10 @@ pub enum FuncArgumentError {
     Func(#[from] FuncError),
     #[error("func id not found for func arg id: {0}")]
     FuncIdNotFound(FuncArgumentId),
-    #[error("intrinsic func {0} ({1}) missing func argument edge")]
-    IntrinsicMissingFuncArgumentEdge(String, FuncId),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
+    #[error("func {0} ({1}) missing func argument edge")]
+    MissingArgumentEdge(String, FuncId),
     #[error("node weight error: {0}")]
     NodeWeight(#[from] NodeWeightError),
     #[error("func argument not found with name {0} for Func {1}")]
@@ -80,6 +80,8 @@ pub enum FuncArgumentError {
     Pg(#[from] si_data_pg::PgError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("func {0} ({1}) has too many args. Expected ({2})")]
+    TooManyArguments(String, FuncId, usize),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -364,18 +366,25 @@ impl FuncArgument {
         Ok(func_args)
     }
 
-    pub async fn single_arg_for_intrinsic(
+    pub async fn single_arg_for_func(
         ctx: &DalContext,
-        intrinsic_id: FuncId,
+        func_id: FuncId,
     ) -> FuncArgumentResult<FuncArgumentId> {
-        match FuncArgument::list_ids_for_func(ctx, intrinsic_id)
-            .await?
-            .first()
-        {
+        let args = FuncArgument::list_ids_for_func(ctx, func_id).await?;
+
+        if args.len() > 1 {
+            return Err(FuncArgumentError::TooManyArguments(
+                Func::get_by_id(ctx, func_id).await?.name.to_owned(),
+                func_id,
+                1,
+            ));
+        }
+
+        match FuncArgument::list_ids_for_func(ctx, func_id).await?.first() {
             Some(&arg_id) => Ok(arg_id),
-            None => Err(FuncArgumentError::IntrinsicMissingFuncArgumentEdge(
-                Func::get_by_id(ctx, intrinsic_id).await?.name.to_owned(),
-                intrinsic_id,
+            None => Err(FuncArgumentError::MissingArgumentEdge(
+                Func::get_by_id(ctx, func_id).await?.name.to_owned(),
+                func_id,
             )),
         }
     }
