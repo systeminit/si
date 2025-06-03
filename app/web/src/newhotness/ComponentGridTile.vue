@@ -55,7 +55,7 @@
         <hr class="border-neutral-500" />
         <li>
           <Icon name="output-connection" size="sm" />
-          <div>Inputs</div>
+          <div>Incoming</div>
           <PillCounter
             :count="component.inputCount"
             size="sm"
@@ -64,7 +64,7 @@
         </li>
         <li>
           <Icon name="input-connection" size="sm" />
-          <div>Outputs</div>
+          <div>Outgoing</div>
           <PillCounter
             :count="component.outputCount"
             size="sm"
