@@ -150,7 +150,7 @@ const secretForm = wForm.newForm({
     const publicKey = resp.data;
 
     const filteredValue = Object.fromEntries(
-      Object.entries(value).filter(([val]) => val !== ""),
+      Object.entries(value).filter(([_key, val]) => val !== ""),
     );
 
     const name = filteredValue.Name ?? "";
