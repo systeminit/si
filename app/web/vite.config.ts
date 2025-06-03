@@ -1,6 +1,6 @@
 import path from "path";
-import { existsSync, readFileSync } from "fs";
-import { loadEnv, defineConfig } from "vite";
+import {existsSync, readFileSync} from "fs";
+import {loadEnv, defineConfig} from "vite";
 import vue from "@vitejs/plugin-vue";
 import checkerPlugin from "vite-plugin-checker";
 import svgLoaderPlugin from "vite-svg-loader";
@@ -52,7 +52,7 @@ export default (opts: { mode: string }) => {
 
       // using "raw" as icon compiler (rather than `vue3`) because we need raw svgs for use in konva
       // our Icon component knows how to deal with raw SVGs
-      IconsPlugin({ compiler: "raw" }),
+      IconsPlugin({compiler: "raw"}),
 
       process.env.NODE_ENV !== "production" &&
       checkerPlugin({
@@ -61,7 +61,7 @@ export default (opts: { mode: string }) => {
           lintCommand: packageJson.scripts.lint,
           // I _think_ we only want to pop up an error on the screen for proper errors
           // otherwise we can get a lot of unused var errors when you comment something out temporarily
-          dev: { logLevel: ["error"] },
+          dev: {logLevel: ["error"]},
         },
       }),
 
@@ -70,11 +70,12 @@ export default (opts: { mode: string }) => {
     css: {
       postcss,
       preprocessorOptions: {
-        less: { additionalData: lessVars },
+        less: {additionalData: lessVars},
       },
     },
     server: {
       host: config.DEV_HOST,
+      allowedHosts: true,
       port: parseInt(config.DEV_PORT),
       strictPort: true,
       fs: {
@@ -108,7 +109,7 @@ export default (opts: { mode: string }) => {
           find: "@",
           replacement: path.resolve(__dirname, "src"),
         },
-        { find: "util", replacement: "util-browser" },
+        {find: "util", replacement: "util-browser"},
       ],
     },
     build: {
