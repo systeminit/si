@@ -69,6 +69,10 @@ pub use components::{
         GetComponentV1ResponseManagementFunction,
     },
     list_components::ListComponentsV1Response,
+    search_components::{
+        SearchComponentsV1Request,
+        SearchComponentsV1Response,
+    },
     update_component::{
         UpdateComponentV1Request,
         UpdateComponentV1Response,
@@ -132,6 +136,7 @@ pub use crate::api_types::{
         components::get_component::get_component,
         components::create_component::create_component,
         components::list_components::list_components,
+        components::search_components::search_components,
         components::find_component::find_component,
         components::update_component::update_component,
         components::delete_component::delete_component,
