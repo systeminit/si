@@ -13,6 +13,7 @@ audit-database = { path = "../../lib/audit-database" }
 auth-api-client = { path = "../../lib/auth-api-client" }
 buck2-resources = { path = "../../lib/buck2-resources" }
 dal = { path = "../../lib/dal" }
+dal-materialized-views = { path = "../../lib/dal-materialized-views" }
 si-db = { path = "../../lib/si-db" }
 edda-client = { path = "../../lib/edda-client" }
 innit-client = { path = "../../lib/innit-client" }

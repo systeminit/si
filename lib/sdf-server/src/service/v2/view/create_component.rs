@@ -33,6 +33,10 @@ use serde::{
     Serialize,
 };
 use si_events::audit_log::AuditLogKind;
+use si_frontend_mv_types::{
+    component::Component as ComponentMv,
+    schema_variant::SchemaVariant as SchemaVariantMv,
+};
 use si_frontend_types::SchemaVariant as FrontendVariant;
 
 use super::{
@@ -74,6 +78,8 @@ pub struct CreateComponentRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateComponentResponse {
+    pub materialized_view: ComponentMv,
+    pub schema_variant_materialized_view: SchemaVariantMv,
     pub component_id: ComponentId,
     pub installed_variant: Option<FrontendVariant>,
 }
@@ -229,9 +235,35 @@ pub async fn create_component(
 
     ctx.commit().await?;
 
+    // Construct the two materialized views in parallel
+    let component_id = component.id();
+    let variant_id = variant.id();
+    let ctx_clone = ctx.clone();
+    let ctx_clone2 = ctx.clone();
+
+    let component_mv_task = tokio::spawn(async move {
+        dal_materialized_views::component::assemble(ctx_clone, component_id)
+            .await
+            .map_err(Box::new)
+    });
+
+    let schema_variant_mv_task = tokio::spawn(async move {
+        dal_materialized_views::schema_variant::assemble(ctx_clone2, variant_id)
+            .await
+            .map_err(Box::new)
+    });
+
+    let (component_mv_result, schema_variant_mv_result) =
+        tokio::join!(component_mv_task, schema_variant_mv_task);
+
+    let materialized_view = component_mv_result??;
+    let schema_variant_materialized_view = schema_variant_mv_result??;
+
     Ok(ForceChangeSetResponse::new(
         force_change_set_id,
         CreateComponentResponse {
+            materialized_view,
+            schema_variant_materialized_view,
             component_id: component.id(),
             installed_variant,
         },

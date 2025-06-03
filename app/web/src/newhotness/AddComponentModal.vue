@@ -206,7 +206,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { computed, inject, nextTick, ref, watch } from "vue";
 import clsx from "clsx";
-import { useQuery } from "@tanstack/vue-query";
+import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { Fzf } from "fzf";
 import { useRoute, useRouter } from "vue-router";
 import { debounce } from "lodash-es";
@@ -220,6 +220,8 @@ import {
   EntityKind,
   SchemaVariant,
   UninstalledVariant,
+  BifrostComponent,
+  EddaComponent,
 } from "@/workers/types/entity_kind_types";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import FilterTile from "./layout_components/FilterTile.vue";
@@ -319,6 +321,9 @@ const selectionIndex = ref<number | undefined>();
 const route = useRoute();
 const router = useRouter();
 const api = useApi();
+const queryClient = useQueryClient();
+const makeKey = useMakeKey();
+const makeArgs = useMakeArgs();
 
 const onEnter = async () => {
   if (!selectedAsset.value) return;
@@ -339,12 +344,30 @@ const onEnter = async () => {
     };
 
   const payload = componentTypes.createComponentPayload(params);
-  const call = api.endpoint<{ componentId: string }>(routes.CreateComponent, {
+  const call = api.endpoint<{
+    componentId: string;
+    materializedView: EddaComponent;
+    schemaVariantMaterializedView: SchemaVariant;
+  }>(routes.CreateComponent, {
     viewId: viewId.value,
   });
+
   const { req, newChangeSetId } =
     await call.post<componentTypes.CreateComponentPayload>(payload);
+
   if (api.ok(req)) {
+    const componentQueryKey = makeKey(
+      EntityKind.Component,
+      req.data.componentId,
+    );
+    const eddaComponent = req.data.materializedView;
+    const bifrostComponent: BifrostComponent = {
+      ...eddaComponent,
+      schemaVariant: req.data.schemaVariantMaterializedView,
+    };
+
+    queryClient.setQueryData(componentQueryKey.value, () => bifrostComponent);
+
     const to = {
       name: "new-hotness-component",
       params: {
@@ -414,9 +437,6 @@ type UIAsset = {
   variant: CategoryVariant;
   uiCategory: UICategoryInfo;
 };
-
-const makeKey = useMakeKey();
-const makeArgs = useMakeArgs();
 
 const queryKey = makeKey(EntityKind.SchemaVariantCategories);
 const schemaVariantCategoriesOverBifrost =
