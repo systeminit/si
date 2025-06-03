@@ -9,9 +9,11 @@ use axum::{
     response::IntoResponse,
 };
 use dal::WorkspacePk;
+use frigg::FriggStore as FriggClient;
 use nats_multiplexer_client::MultiplexerClient;
 use sdf_core::nats_multiplexer::NatsMultiplexerClients;
 use sdf_extract::{
+    FriggStore,
     request::TokenFromQueryParam,
     services::Nats,
     workspace::{
@@ -28,9 +30,11 @@ use crate::WsError;
 
 pub mod proto;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn bifrost_handler(
     wsu: WebSocketUpgrade,
     Nats(nats): Nats,
+    FriggStore(frigg): FriggStore,
     _: TokenFromQueryParam,
     _: TargetWorkspaceIdFromToken,
     auth: WorkspaceAuthorization,
@@ -41,6 +45,7 @@ pub async fn bifrost_handler(
         run_bifrost_proto(
             socket,
             nats,
+            frigg,
             auth.workspace_id,
             channel_multiplexer_clients.data_cache,
             shutdown_token,
@@ -51,11 +56,12 @@ pub async fn bifrost_handler(
 async fn run_bifrost_proto(
     mut socket: WebSocket,
     nats: NatsClient,
+    frigg: FriggClient,
     workspace_pk: WorkspacePk,
     bifrost_multiplexer_client: Arc<Mutex<MultiplexerClient>>,
     shutdown_token: CancellationToken,
 ) {
-    let proto = match proto::run(nats, workspace_pk, shutdown_token)
+    let proto = match proto::run(nats, frigg, workspace_pk, shutdown_token)
         .start(bifrost_multiplexer_client)
         .await
     {

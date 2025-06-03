@@ -80,3 +80,30 @@ impl IndexUpdate {
         self.meta.publish_subject(INDEX_UPDATE_POST_FIX)
     }
 }
+
+pub enum MessageKind {
+    // do this!
+}
+
+pub struct FullObject {
+    // from webworker.ts
+//     export interface AtomMessage {
+//   kind: MessageKind.MJOLNIR;
+//   atom: Atom;
+//   data: object;
+// }
+
+// const msg: AtomMessage = {
+//     kind: MessageKind.MJOLNIR,
+//     atom: {
+//       id: req.data.frontEndObject.id,
+//       kind: req.data.frontEndObject.kind,
+//       toChecksum: req.data.frontEndObject.checksum,
+//       workspaceId,
+//       changeSetId,
+//       toIndexChecksum: indexChecksum,
+//       fromIndexChecksum: indexChecksum,
+//     },
+//     data: req.data.frontEndObject.data,
+//   };
+}
