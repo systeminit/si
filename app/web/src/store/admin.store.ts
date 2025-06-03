@@ -1,36 +1,37 @@
 import { addStoreHooks, ApiRequest } from "@si/vue-lib/pinia";
 import { defineStore } from "pinia";
 import * as _ from "lodash-es";
-import { useWorkspacesStore } from "@/store/workspaces.store";
+import { UserId, WorkspaceUser } from "@/store/auth.store";
 import { FuncRunId } from "@/store/func_runs.store";
+import { useWorkspacesStore, WorkspacePk } from "@/store/workspaces.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
-import { WorkspaceUser } from "@/store/auth.store";
+import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
+import { ComponentId } from "@/api/sdf/dal/component";
 import {
   AttributePrototypeArgumentId,
   FuncArgumentId,
   FuncId,
 } from "@/api/sdf/dal/func";
-import { ComponentId } from "@/api/sdf/dal/component";
 import { PropId } from "@/api/sdf/dal/prop";
 import { InputSocketId, OutputSocketId } from "@/api/sdf/dal/schema";
 import { AttributeValueId } from "./status.store";
 
 export interface AdminWorkspace {
-  id: string;
+  id: WorkspacePk;
   name: string;
-  defaultChangeSetId: string;
+  defaultChangeSetId: ChangeSetId;
   componentConcurrencyLimit?: number;
   snapshotVersion: string;
 }
 
 export interface AdminChangeSet {
-  id: string;
+  id: ChangeSetId;
   name: string;
-  status: string;
-  baseChangeSetId?: string;
+  status: ChangeSetStatus;
+  baseChangeSetId?: ChangeSetId;
   workspaceSnapshotAddress: string;
-  workspaceId: string;
-  mergeRequestedByUserId?: string;
+  workspaceId: WorkspacePk;
+  mergeRequestedByUserId?: UserId;
 }
 
 export const useAdminStore = () => {
@@ -176,15 +177,6 @@ export const useAdminStore = () => {
             },
           });
         },
-        async VALIDATE_SNAPSHOT(workspaceId: string, changeSetId: string) {
-          return new ApiRequest<ValidateSnapshotResponse>({
-            method: "get",
-            url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/validate_snapshot`,
-            onSuccess: (response) => {
-              this.validateSnapshotResponse = response;
-            },
-          });
-        },
         async MIGRATE_CONNECTIONS(
           workspaceId: string,
           changeSetId: string,
@@ -195,6 +187,19 @@ export const useAdminStore = () => {
             url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/migrate_connections`,
             onSuccess: (response) => {
               this.migrateConnectionsResponse = response;
+            },
+          });
+        },
+        async VALIDATE_SNAPSHOT(
+          workspaceId: string,
+          changeSetId: string,
+          options?: { fixIssues?: boolean },
+        ) {
+          return new ApiRequest<ValidateSnapshotResponse>({
+            method: options?.fixIssues ? "post" : "get",
+            url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/validate_snapshot`,
+            onSuccess: (response) => {
+              this.validateSnapshotResponse = response;
             },
           });
         },

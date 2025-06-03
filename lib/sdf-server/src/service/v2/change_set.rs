@@ -233,6 +233,10 @@ pub fn change_set_routes(state: AppState) -> Router<AppState> {
             "/validate_snapshot",
             get(validate_snapshot::validate_snapshot),
         )
+        .route(
+            "/validate_snapshot",
+            post(validate_snapshot::validate_and_fix_snapshot),
+        )
         .nest("/index", super::index::v2_change_set_routes())
 }
 
