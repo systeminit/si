@@ -1165,11 +1165,6 @@ impl AttributeValue {
                         .get_prop_node_weight()?
                 };
 
-                println!(
-                    "  vivify {attribute_value_id} {} ({})",
-                    prop_node.name(),
-                    prop_node.kind()
-                );
                 prop_node.kind()
             };
 
@@ -1179,7 +1174,6 @@ impl AttributeValue {
             if !prop_kind.is_scalar() {
                 // if value of non-scalar is set, we're done, else set the empty value
                 if attribute_value.value.is_some() {
-                    println!("  has value!!");
                     return Ok(());
                 } else {
                     Self::set_value(ctx, attribute_value_id, prop_kind.empty_value()).await?;
