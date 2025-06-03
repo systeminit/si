@@ -149,15 +149,24 @@ const secretForm = wForm.newForm({
     const resp = await callApi.get();
     const publicKey = resp.data;
 
-    const name = value.Name ?? "";
-    delete value.Name;
-    const crypted = await encryptMessage(value, publicKey);
+    const filteredValue = Object.fromEntries(
+      Object.entries(value).filter(([val]) => val !== ""),
+    );
+
+    const name = filteredValue.Name ?? "";
+    delete filteredValue.Name;
+
+    const description = filteredValue.Description ?? "";
+    delete filteredValue.Description;
+
+    const crypted = await encryptMessage(filteredValue, publicKey);
 
     const payload: componentTypes.CreateSecret = {
       name,
       attributeValueId: props.attributeTree.attributeValue.id,
       propId,
       definition,
+      description,
       crypted,
       keyPairPk: publicKey.pk,
       version: componentTypes.SecretVersion.V1,
