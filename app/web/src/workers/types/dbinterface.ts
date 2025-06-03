@@ -45,7 +45,6 @@ export interface DBInterface {
     workspaceId: string,
     headChangeSetId: string,
     changeSetId: string,
-    workspaceSnapshotAddress: string,
   ): Promise<void>;
   getConnectionByAnnotation(
     workspaceId: string,
