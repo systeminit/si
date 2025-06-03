@@ -1,10 +1,10 @@
 <template>
   <div
-    class="w-full h-full flex flex-col items-center relative overflow-scroll dark:bg-neutral-800 dark:text-shade-0 bg-neutral-50 text-neutral-900"
+    class="w-full h-full flex flex-col gap-xs p-lg items-center relative overflow-scroll dark:bg-neutral-800 dark:text-shade-0 bg-neutral-50 text-neutral-900"
   >
-    <span class="flex flex-row mt-10 font-bold text-3xl">Admin Dashboard</span>
-    <div class="flex flex-row w-full">
-      <Stack spacing="md" class="p-10">
+    <span class="font-bold text-3xl">Admin Dashboard</span>
+    <div class="flex flex-row gap-sm w-full">
+      <Stack spacing="md" class="flex-none">
         <Stack class="max-w-xl">
           <h2 class="font-bold text-lg">UPDATE MODULE CACHE</h2>
           <div class="flex flex-row-reverse gap-sm">
@@ -54,7 +54,6 @@
             />
           </div>
         </Stack>
-        <WorkspaceAdmin @showPanel="showPanel" />
         <Stack class="text-xs font-bold" spacing="none">
           <div class="text-lg pb-2xs">Feature Flags:</div>
           <div
@@ -81,8 +80,7 @@
           </div>
         </Stack>
       </Stack>
-      <ValidateSnapshot v-if="mainPanel === 'validate-snapshot'" />
-      <MigrateConnections v-else-if="mainPanel === 'migrate-connections'" />
+      <WorkspaceAdmin class="flex-1 min-w-0 overflow-hidden" />
     </div>
   </div>
 </template>
@@ -101,10 +99,6 @@ import clsx from "clsx";
 import { useAdminStore } from "@/store/admin.store";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import WorkspaceAdmin from "@/components/AdminDashboard/WorkspaceAdmin.vue";
-import ValidateSnapshot from "@/components/AdminDashboard/ValidateSnapshot.vue";
-import MigrateConnections from "@/components/AdminDashboard/MigrateConnections.vue";
-
-export type PanelKind = "validate-snapshot" | "migrate-connections";
 
 const adminStore = useAdminStore();
 const featureFlagsStore = useFeatureFlagsStore();
@@ -137,9 +131,4 @@ const funcRunId = ref<string | null>(null);
 const featureFlags = computed(() => {
   return featureFlagsStore.allFeatureFlags;
 });
-
-const mainPanel = ref<PanelKind>();
-const showPanel = (panel?: PanelKind) => {
-  mainPanel.value = panel;
-};
 </script>
