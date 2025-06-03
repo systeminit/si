@@ -349,6 +349,9 @@ properties required to expand the component parts of the template.
             template_options)
         template_component_id = template_component_data["component"]["id"]
         print(f'Template Component created with ID: {template_component_id}')
+
+        print('6.5. Waiting for DVU to run...')
+        time.sleep(5)
 ```
 
 ### Expanding the template
@@ -416,7 +419,7 @@ We have created the `Region`, `AWS Credential` and `AWS Standard VPC Template`
 components and then expanded that template to create the component parts that
 represent the pieces of the VPC. Each of the component parts have all of the
 connections they need to the credential and the region. It has also queued all
-of the create actions required to deploy the VPC infrastructure. 
+of the create actions required to deploy the VPC infrastructure.
 
 ### Python code
 
@@ -582,6 +585,9 @@ def main():
         template_component_data = create_component(change_set_id, "AWS Standard VPC Template", "demo-template", template_options)
         template_component_id = template_component_data["component"]["id"]
         print(f'Template Component created with ID: {template_component_id}')
+
+        print('6.5. Waiting for DVU to run...')
+        time.sleep(5)
 
         print('7. Expanding Template')
         expansion_options = {
@@ -778,6 +784,10 @@ async function createSecret(
   return response.json() as Promise<any>;
 }
 
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function main(): Promise<void> {
   try {
     console.log("Creating change set...");
@@ -862,6 +872,9 @@ async function main(): Promise<void> {
     );
     const templateComponentId = templateComponentData.component.id;
     console.log(`Template Component created with ID: ${templateComponentId}`);
+
+    console.log("6.5 Waiting for DVU to land");
+    await sleep(5000)
 
     console.log("7. Expanding Template");
     const expansionOptions: ManagementFunctionOptions = {
