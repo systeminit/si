@@ -1,4 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
 use itertools::Itertools;
 use petgraph::prelude::*;
@@ -10,7 +13,6 @@ use si_id::{
     AttributePrototypeArgumentId,
     AttributeValueId,
     ComponentId,
-    FuncArgumentId,
     FuncId,
     InputSocketId,
     OutputSocketId,
@@ -19,26 +21,29 @@ use si_id::{
 
 use super::{
     WorkspaceSnapshotGraphError,
-    av_for_path,
     is_identity_func,
+    is_normalize_to_array_func,
     prop_path_from_root,
 };
-use crate::workspace_snapshot::{
-    content_address::ContentAddress,
-    edge_weight::{
-        EdgeWeight,
-        EdgeWeightKind,
-        EdgeWeightKindDiscriminants,
-    },
-    graph::{
-        WorkspaceSnapshotGraphVCurrent,
-        validator::WithGraph,
-    },
-    node_weight::{
-        ArgumentTargets,
-        NodeWeight,
-        NodeWeightError,
-        traits::SiNodeWeight as _,
+use crate::{
+    PropKind,
+    workspace_snapshot::{
+        content_address::ContentAddress,
+        edge_weight::{
+            EdgeWeight,
+            EdgeWeightKind,
+            EdgeWeightKindDiscriminants,
+        },
+        graph::{
+            WorkspaceSnapshotGraphVCurrent,
+            validator::WithGraph,
+        },
+        node_weight::{
+            ArgumentTargets,
+            NodeWeight,
+            NodeWeightError,
+            traits::SiNodeWeight as _,
+        },
     },
 };
 
@@ -89,20 +94,40 @@ pub fn connection_migrations(
     // Check if any proposed prop connections already have values (which we don't want to overwrite)
     for migration in &mut migrations {
         if let Some(ref prop_connection) = migration.prop_connection {
-            if has_prototype(graph, prop_connection.dest_av_id) {
-                migration.issue =
-                    Some(ConnectionUnmigrateableBecause::DestinationPropAlreadyHasValue);
+            if let Ok(Some(av)) =
+                super::resolve_av(graph, prop_connection.to.0, &prop_connection.to.1)
+            {
+                if has_prototype(graph, av) {
+                    migration.issue =
+                        Some(ConnectionUnmigrateableBecause::DestinationPropAlreadyHasValue);
+                }
             }
         }
     }
 
     // Look for multiple connections to the same destination socket
-    let mut seen_destination_sockets = HashSet::new();
+    let mut seen_destination_sockets = HashMap::new();
     let mut dup_destination_sockets = HashSet::new();
     for migration in &migrations {
         if let Some(ref socket_connection) = migration.socket_connection {
-            if !seen_destination_sockets.insert(socket_connection.destination) {
-                dup_destination_sockets.insert(socket_connection.destination);
+            let is_append = migration
+                .prop_connection
+                .as_ref()
+                .is_some_and(|prop_connection| {
+                    prop_connection
+                        .to
+                        .1
+                        .back()
+                        .is_some_and(|token| token.is_next())
+                });
+            // If we had a previous connection to this socket, mark it as a duplicate
+            if let Some(old_is_append) =
+                seen_destination_sockets.insert(socket_connection.to, is_append)
+            {
+                // If all of them are appends, it's not a problem.
+                if !(old_is_append && is_append) {
+                    dup_destination_sockets.insert(socket_connection.to);
+                }
             }
         }
     }
@@ -110,7 +135,7 @@ pub fn connection_migrations(
     // If we have multiple connections to the same destination socket, we can't migrate any of them
     for migration in &mut migrations {
         if let Some(ref socket_connection) = migration.socket_connection {
-            if dup_destination_sockets.contains(&socket_connection.destination) {
+            if dup_destination_sockets.contains(&socket_connection.to) {
                 // We dedup whether or not socket connections are migrateable; if there are 10
                 // un-migrateable connections to the same socket, and one migrateable one, we
                 // still can't migrate any of them because it would still be inaccurate!
@@ -120,7 +145,6 @@ pub fn connection_migrations(
         }
     }
 
-    // TODO what if one socket sets /domain/Foo, and another sets /domain/Foo/Bar?
     migrations
 }
 
@@ -191,8 +215,8 @@ impl ConnectionMigration {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct SocketConnection {
-    pub source: (ComponentId, OutputSocketId),
-    pub destination: (ComponentId, InputSocketId),
+    pub from: (ComponentId, OutputSocketId),
+    pub to: (ComponentId, InputSocketId),
 }
 
 impl SocketConnection {
@@ -240,8 +264,8 @@ impl SocketConnection {
         };
 
         Ok(Self {
-            source: (source_component_id, source_socket_id),
-            destination: (destination_component_id, destination_socket_id),
+            from: (source_component_id, source_socket_id),
+            to: (destination_component_id, destination_socket_id),
         })
     }
 
@@ -297,11 +321,9 @@ impl SocketConnection {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct PropConnection {
-    pub dest_av_id: AttributeValueId,
-    pub source_root_av_id: AttributeValueId,
-    pub source_path: jsonptr::PointerBuf,
+    pub from: (ComponentId, jsonptr::PointerBuf),
+    pub to: (ComponentId, jsonptr::PointerBuf),
     pub func_id: FuncId,
-    pub func_arg_id: FuncArgumentId,
 }
 
 impl PropConnection {
@@ -335,73 +357,55 @@ impl PropConnection {
     ///
     fn equivalent_to_socket_connection(
         graph: &WorkspaceSnapshotGraphVCurrent,
-        socket_connection: &SocketConnection,
+        &SocketConnection {
+            from: (source_component_id, source_socket_id),
+            to: (destination_component_id, destination_socket_id),
+        }: &SocketConnection,
     ) -> Result<Self, ConnectionUnmigrateableBecause> {
         // Get the source AV path and function for the source component+socket
-        let (source_root_av_id, source_path, source_func_id, source_func_arg_id) = {
-            let (source_prop_id, source_func_id, source_func_arg_id) =
-                Self::source_prop(graph, socket_connection.source.1)?;
-            let (_, source_path) = prop_path_from_root(graph, source_prop_id)?;
+        let (source_prop_id, source_func_id) = Self::source_prop(graph, source_socket_id)?;
+        let (_, source_path) = prop_path_from_root(graph, source_prop_id)?;
 
-            let source_component = graph.get_node_index_by_id(socket_connection.source.0)?;
-            let source_root_av = graph.target(source_component, EdgeWeightKind::Root)?;
-            let source_root_av_id = graph
-                .get_node_weight(source_root_av)?
-                .get_attribute_value_node_weight()?
-                .id()
-                .into();
-            (
-                source_root_av_id,
-                source_path,
-                source_func_id,
-                source_func_arg_id,
-            )
-        };
+        // Get the destination AV path and function for the destination component+socket
+        let (destination_prop_id, destination_func_id) =
+            Self::dest_prop(graph, destination_socket_id)?;
+        let (_, mut destination_path) = prop_path_from_root(graph, destination_prop_id)?;
 
-        // Get the destination AV for the given destination component+socket
-        let (dest_av_id, dest_func_id, dest_func_arg_id) = {
-            let (dest_prop_id, dest_func_id, dest_func_arg_id) =
-                Self::dest_prop(graph, socket_connection.destination.1)?;
-            let (_, dest_path) = prop_path_from_root(graph, dest_prop_id)?;
-
-            let destination_component =
-                graph.get_node_index_by_id(socket_connection.destination.0)?;
-            let dest_root_av = graph.target(destination_component, EdgeWeightKind::Root)?;
-            let dest_root_av_id = graph
-                .get_node_weight(dest_root_av)?
-                .get_attribute_value_node_weight()?
-                .id()
-                .into();
-            let Some(dest_av_id) = av_for_path(graph, dest_root_av_id, &dest_path)? else {
-                return Err(
-                    ConnectionUnmigrateableBecause::DestinationSocketBoundToPropWithNoValue {
-                        dest_prop_id,
-                    },
-                );
-            };
-            (dest_av_id, dest_func_id, dest_func_arg_id)
-        };
-
-        // Figure out the func to use
-        let (func_id, func_arg_id) = if is_identity_func(graph, source_func_id)? {
-            (dest_func_id, dest_func_arg_id)
-        } else if is_identity_func(graph, dest_func_id)? {
-            (source_func_id, source_func_arg_id)
+        // Figure out the func to use, if one side is not identity.
+        let func_id = if is_identity_func(graph, source_func_id)? {
+            // If the dest func is normalizeToArray, we can safely use identity as long as we
+            // uplevel the AVs instead of the functions.
+            if is_normalize_to_array_func(graph, destination_func_id)? {
+                // If the other side is not an array, we append a new element to the array and
+                // attach the subscription to that.
+                if PropKind::Array
+                    != graph
+                        .get_node_weight_by_id(source_prop_id)?
+                        .get_prop_node_weight()?
+                        .kind
+                {
+                    destination_path.push_back("-"); // append
+                }
+                source_func_id // we already checked that this is identity
+            } else {
+                destination_func_id
+            }
+        } else if is_identity_func(graph, destination_func_id)? {
+            source_func_id
         } else {
+            // If the dest is si:normalizeToArray
             return Err(
                 ConnectionUnmigrateableBecause::SourceAndDestinationSocketBothHaveFuncs {
                     source_func_id,
-                    dest_func_id,
+                    destination_func_id,
                 },
             );
         };
 
         Ok(PropConnection {
-            dest_av_id,
-            source_root_av_id,
-            source_path,
+            to: (destination_component_id, destination_path),
+            from: (source_component_id, source_path),
             func_id,
-            func_arg_id,
         })
     }
 
@@ -414,7 +418,7 @@ impl PropConnection {
     fn source_prop(
         graph: &WorkspaceSnapshotGraphVCurrent,
         source_socket_id: OutputSocketId,
-    ) -> Result<(PropId, FuncId, FuncArgumentId), ConnectionUnmigrateableBecause> {
+    ) -> Result<(PropId, FuncId), ConnectionUnmigrateableBecause> {
         // Get the prototype for the output socket
         //
         //     Source Socket --|Prototype|-> .
@@ -425,9 +429,8 @@ impl PropConnection {
         // Get the prop the prototype is bound to, and the arg through which it is bound
         //
         //    . --|PrototypeArgument|-> . --|PrototypeArgumentValue|-> *Source Prop*
-        //                              . --|Use|-> *Func Argument*
         //
-        let (prop_id, func_arg_id) = {
+        let prop_id = {
             //    . --|PrototypeArgument|-> .
             let arg = {
                 let mut args =
@@ -447,29 +450,14 @@ impl PropConnection {
                 arg
             };
 
-            //    . --|PrototypeArgumentValue|-> *Source Prop*
-            let prop_id = {
-                let prop = graph.target(arg, EdgeWeightKind::PrototypeArgumentValue)?;
-                // Must be a bound to a prop
-                let NodeWeight::Prop(prop_node) = graph.get_node_weight(prop)? else {
-                    return Err(
-                        ConnectionUnmigrateableBecause::SourceSocketPrototypeArgumentNotBoundToProp,
-                    );
-                };
-                prop_node.id().into()
+            let prop = graph.target(arg, EdgeWeightKind::PrototypeArgumentValue)?;
+            // Must be a bound to a prop
+            let NodeWeight::Prop(prop_node) = graph.get_node_weight(prop)? else {
+                return Err(
+                    ConnectionUnmigrateableBecause::SourceSocketPrototypeArgumentNotBoundToProp,
+                );
             };
-
-            //    . --|Use|-> *Func Argument*
-            let func_arg_id = {
-                let func_arg = graph.target(arg, EdgeWeightKindDiscriminants::Use)?;
-                graph
-                    .get_node_weight(func_arg)?
-                    .get_func_argument_node_weight()?
-                    .id()
-                    .into()
-            };
-
-            (prop_id, func_arg_id)
+            prop_node.id().into()
         };
 
         // Get the func the prototype is bound to
@@ -485,26 +473,24 @@ impl PropConnection {
                 .into()
         };
 
-        Ok((prop_id, func_id, func_arg_id))
+        Ok((prop_id, func_id))
     }
 
     /// Get the destination prop and transformation func for a socket by looking at its bindings
     ///
     ///     *Dest Prop* --|Prototype|-> . --|PrototypeArgument|-> . --|PrototypeArgumentValue|-> Dest Socket
-    ///                                                           . --|Use|-> *Func Argument*
     ///                                 . --|Use|-> *Func*
     ///
     fn dest_prop(
         graph: &WorkspaceSnapshotGraphVCurrent,
         destination_socket_id: InputSocketId,
-    ) -> Result<(PropId, FuncId, FuncArgumentId), ConnectionUnmigrateableBecause> {
+    ) -> Result<(PropId, FuncId), ConnectionUnmigrateableBecause> {
         // Get the prototype the input socket is bound to, and the argument through which it is bound
         //
         //     . --|PrototypeArgument|-> . --|PrototypeArgumentValue|-> Source Socket
-        //                               . --|Use|-> *Func Argument*
         //
         let destination_socket = graph.get_node_index_by_id(destination_socket_id)?;
-        let (func_arg_id, prototype) = {
+        let prototype = {
             //     . --|PrototypeArgumentValue|-> Source Socket
             let arg = {
                 let mut args =
@@ -522,18 +508,8 @@ impl PropConnection {
                 arg
             };
 
-            //     . --|Use|-> *Func Argument*
-            let func_arg = graph.target(arg, EdgeWeightKindDiscriminants::Use)?;
-            let func_arg_id = graph
-                .get_node_weight(func_arg)?
-                .get_func_argument_node_weight()?
-                .id()
-                .into();
-
             //     . --|PrototypeArgument|-> .
-            let prototype = graph.source(arg, EdgeWeightKind::PrototypeArgument)?;
-
-            (func_arg_id, prototype)
+            graph.source(arg, EdgeWeightKind::PrototypeArgument)?
         };
 
         // Get the prop the prototype is bound to
@@ -557,7 +533,7 @@ impl PropConnection {
                 .into()
         };
 
-        Ok((prop_id, func_id, func_arg_id))
+        Ok((prop_id, func_id))
     }
 }
 
@@ -576,7 +552,7 @@ pub enum ConnectionUnmigrateableBecause {
     /// The destination socket is not bound to a prop
     DestinationSocketArgumentNotBoundToProp,
     /// The destination socket is bound to a prop, but we can't find the AV for it
-    DestinationSocketBoundToPropWithNoValue { dest_prop_id: PropId },
+    DestinationSocketBoundToPropWithNoValue { destination_prop_id: PropId },
     /// The destination socket is bound to more than one argument, prototype, or prop
     DestinationSocketHasMultipleBindings,
     /// The destination socket is not bound to anything
@@ -592,7 +568,7 @@ pub enum ConnectionUnmigrateableBecause {
     /// their props, so we can't pick a single function to use for the new connection
     SourceAndDestinationSocketBothHaveFuncs {
         source_func_id: FuncId,
-        dest_func_id: FuncId,
+        destination_func_id: FuncId,
     },
     /// There is a single binding for this socket, but it is not bound to a prop
     SourceSocketPrototypeArgumentNotBoundToProp,
@@ -624,19 +600,19 @@ impl std::fmt::Display for WithGraph<'_, &'_ ConnectionMigration> {
             write!(f, "ERROR {}: ", WithGraph(graph, issue))?;
         }
         write!(f, "migrate")?;
-        if migration.explicit_connection_id.is_none() {
-            write!(f, " inferred connection")?;
-        }
         if let Some(ref socket_connection) = migration.socket_connection {
             write!(f, " {}", WithGraph(graph, socket_connection))?;
             if let Some(ref prop_connection) = migration.prop_connection {
                 write!(f, " to {}", WithGraph(graph, prop_connection))?;
             }
-        } else if let Some(explicit_connection_id) = migration.explicit_connection_id {
-            write!(f, " connection APA {}", explicit_connection_id)?;
         }
 
-        Ok(())
+        match migration.explicit_connection_id {
+            Some(explicit_connection_id) => {
+                write!(f, " (explicit connection APA {})", explicit_connection_id)
+            }
+            None => write!(f, " (inferred connection)"),
+        }
     }
 }
 
@@ -646,11 +622,18 @@ impl std::fmt::Display for WithGraph<'_, &'_ SocketConnection> {
         write!(
             f,
             "socket connection from output {} on component {} to input {} on component {}",
-            WithGraph(graph, socket_connection.source.1),
-            WithGraph(graph, socket_connection.source.0),
-            WithGraph(graph, socket_connection.destination.1),
-            WithGraph(graph, socket_connection.destination.0),
+            WithGraph(graph, socket_connection.from.1),
+            WithGraph(graph, socket_connection.from.0),
+            WithGraph(graph, socket_connection.to.1),
+            WithGraph(graph, socket_connection.to.0),
         )
+    }
+}
+
+impl std::fmt::Display for WithGraph<'_, &'_ (ComponentId, jsonptr::PointerBuf)> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let &WithGraph(graph, &(component_id, ref path)) = self;
+        write!(f, "{} on {}", WithGraph(graph, component_id), path)
     }
 }
 
@@ -659,11 +642,14 @@ impl std::fmt::Display for WithGraph<'_, &'_ PropConnection> {
         let &WithGraph(graph, prop_connection) = self;
         write!(
             f,
-            "Prop connection from {} on {} to {}",
-            prop_connection.source_path,
-            WithGraph(graph, prop_connection.source_root_av_id),
-            WithGraph(graph, prop_connection.dest_av_id),
-        )
+            "prop connection {} -> {}",
+            WithGraph(graph, &prop_connection.from),
+            WithGraph(graph, &prop_connection.to)
+        )?;
+        if !is_identity_func(graph, prop_connection.func_id).unwrap_or(true) {
+            write!(f, " using {}", WithGraph(graph, prop_connection.func_id))?;
+        }
+        Ok(())
     }
 }
 
@@ -684,7 +670,7 @@ impl std::fmt::Display for WithGraph<'_, &'_ ConnectionUnmigrateableBecause> {
                 write!(f, "Destination socket argument is not bound to a prop")
             }
             ConnectionUnmigrateableBecause::DestinationSocketBoundToPropWithNoValue {
-                dest_prop_id,
+                destination_prop_id: dest_prop_id,
             } => {
                 write!(
                     f,
@@ -712,7 +698,7 @@ impl std::fmt::Display for WithGraph<'_, &'_ ConnectionUnmigrateableBecause> {
             }
             ConnectionUnmigrateableBecause::SourceAndDestinationSocketBothHaveFuncs {
                 source_func_id,
-                dest_func_id,
+                destination_func_id: dest_func_id,
             } => {
                 write!(
                     f,

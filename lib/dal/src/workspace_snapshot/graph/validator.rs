@@ -375,12 +375,23 @@ pub fn is_identity_func(
     Ok(func_node.func_kind() == FuncKind::Intrinsic && func_node.name() == "si:identity")
 }
 
-pub fn av_for_path(
+pub fn is_normalize_to_array_func(
     graph: &WorkspaceSnapshotGraphVCurrent,
-    root_av_id: AttributeValueId,
+    func_id: FuncId,
+) -> WorkspaceSnapshotGraphResult<bool> {
+    let func_node = graph
+        .get_node_weight_by_id(func_id)?
+        .get_func_node_weight()?;
+    Ok(func_node.func_kind() == FuncKind::Intrinsic && func_node.name() == "si:normalizeToArray")
+}
+
+pub fn resolve_av(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    component_id: ComponentId,
     path: impl AsRef<jsonptr::Pointer>,
 ) -> WorkspaceSnapshotGraphResult<Option<AttributeValueId>> {
-    let mut av = graph.get_node_index_by_id(root_av_id)?;
+    let component = graph.get_node_index_by_id(component_id)?;
+    let mut av = graph.target(component, EdgeWeightKind::Root)?;
     for segment in path.as_ref() {
         let prop = graph.target(av, EdgeWeightKind::Prop)?;
         let child_av =

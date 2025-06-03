@@ -10,9 +10,8 @@ use std::{
 use dal::{
     WorkspaceSnapshotGraph,
     workspace_snapshot::graph::validator::{
-        ValidationIssue,
         WithGraph,
-        validate_graph,
+        connections::connection_migrations,
     },
 };
 use si_layer_cache::db::serialize;
@@ -48,13 +47,16 @@ async fn main() -> Result<()> {
     // let node_id = "01JTXGMYKFFPY7H2ZNV7SKFQ9X";
     // remove_node_by_id(&mut graph, node_id)?;
 
-    for issue in validate_graph(&graph)? {
-        println!("{}", WithGraph(&graph, &issue));
-        // Only fix ConnectionToUnknownSocket issues for now
-        if let issue @ ValidationIssue::ConnectionToUnknownSocket { .. } = issue {
-            issue.fix(&mut graph)?
-        }
+    for migration in connection_migrations(&graph, vec![]) {
+        println!("{}", WithGraph(&graph, &migration));
     }
+    // for issue in validate_graph(&graph)? {
+    //     println!("{}", WithGraph(&graph, &issue));
+    //     // Only fix ConnectionToUnknownSocket issues for now
+    //     if let issue @ ValidationIssue::ConnectionToUnknownSocket { .. } = issue {
+    //         issue.fix(&mut graph)?
+    //     }
+    // }
     // for issue in validate_graph(graph)? {
     //     // println!("{}", issue.with_graph(&graph));
     //     // Only fix ConnectionToUnknownSocket issues for now

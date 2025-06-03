@@ -48,9 +48,9 @@ pub async fn migrate_connections(
     let force_change_set_id = ChangeSet::force_new(ctx).await?;
 
     // Migrate
-    let mut migrations = get_connection_migrations(ctx).await?;
-    for migration in &mut migrations {
-        migration.migrated = migrate_connection(ctx, &migration.migration).await?;
+    let migrations = get_connection_migrations(ctx).await?;
+    for migration in &migrations {
+        migrate_connection(ctx, &migration.migration).await?;
     }
 
     // Send WsEvents for components we migrated
@@ -63,8 +63,8 @@ pub async fn migrate_connections(
             continue;
         };
 
-        if components.insert(socket_connection.destination.0) {
-            let component = Component::get_by_id(ctx, socket_connection.destination.0).await?;
+        if components.insert(socket_connection.to.0) {
+            let component = Component::get_by_id(ctx, socket_connection.to.0).await?;
 
             let mut socket_map = HashMap::new();
             let payload = component
@@ -111,8 +111,8 @@ async fn get_connection_migrations(
         .await?
         .into_iter()
         .map(|connection| SocketConnection {
-            source: (connection.source_component_id, connection.output_socket_id),
-            destination: (
+            from: (connection.source_component_id, connection.output_socket_id),
+            to: (
                 connection.destination_component_id,
                 connection.input_socket_id,
             ),
@@ -138,16 +138,14 @@ async fn migrate_connection(ctx: &DalContext, migration: &ConnectionMigration) -
         explicit_connection_id,
         prop_connection:
             Some(PropConnection {
-                dest_av_id,
-                source_root_av_id,
-                ref source_path,
+                from: (from_component_id, ref from_path),
+                to: (to_component_id, ref to_path),
                 func_id,
-                func_arg_id: _, // TODO handle funcs with multiple args but only get passed one
             }),
         socket_connection:
             Some(SocketConnection {
-                source: (from_component_id, from_socket_id),
-                destination: (to_component_id, to_socket_id),
+                from: (_, from_socket_id),
+                to: (_, to_socket_id),
             }),
     } = migration
     else {
@@ -155,20 +153,35 @@ async fn migrate_connection(ctx: &DalContext, migration: &ConnectionMigration) -
     };
 
     // Add the prop connection
+    let from_root_av_id = Component::root_attribute_value_id(ctx, from_component_id).await?;
+    let to_root_av_id = Component::root_attribute_value_id(ctx, to_component_id).await?;
+    println!("Vivifying path {}", to_path);
+    let to_av_id = AttributePath::from_json_pointer(to_path.to_string())
+        .vivify(ctx, to_root_av_id)
+        .await?;
     AttributeValue::set_to_subscriptions(
         ctx,
-        dest_av_id,
+        to_av_id,
         vec![ValueSubscription {
-            attribute_value_id: source_root_av_id,
-            path: AttributePath::from_json_pointer(source_path.to_string()),
+            attribute_value_id: from_root_av_id,
+            path: AttributePath::from_json_pointer(from_path.to_string()),
         }],
         Some(func_id),
     )
     .await?;
 
+    if let Some(parent_id) = AttributeValue::parent_id(ctx, to_av_id).await? {
+        println!(
+            "Set subscriptions at {to_component_id} on {to_path}: AV {to_av_id} ({:?}), parent {parent_id} (prototype {:?})",
+            AttributeValue::component_prototype_id(ctx, to_av_id).await?,
+            AttributeValue::component_prototype_id(ctx, parent_id).await?,
+        );
+    }
+
     // Remove the existing socket connection (unless it was inferred, in which case there isn't one)
     if let Some(explicit_connection_id) = explicit_connection_id {
         AttributePrototypeArgument::remove(ctx, explicit_connection_id).await?;
+
         // Send the WsEvent
         WsEvent::connection_deleted(
             ctx,
