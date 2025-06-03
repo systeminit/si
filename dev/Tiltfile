@@ -339,6 +339,9 @@ si_buck2_resource(
 # Locally build and run `bedrock`
 si_buck2_resource(
     "//bin/bedrock:bedrock",
+    resource_deps = [
+        "nats"
+    ],
     readiness_probe = probe(
         period_secs = 5,
         http_get = http_get_action(
