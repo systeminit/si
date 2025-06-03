@@ -84,6 +84,8 @@ pub enum ViewError {
     InvalidRequest(String),
     #[error("join error: {0}")]
     Join(#[from] JoinError),
+    #[error("materialized view error: {0}")]
+    MaterializedView(#[from] Box<dal_materialized_views::Error>),
     #[error("there is already a view called {0}")]
     NameAlreadyInUse(String),
     #[error(transparent)]

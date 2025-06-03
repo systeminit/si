@@ -7411,6 +7411,7 @@ dependencies = [
  "clap",
  "convert_case 0.6.0",
  "dal",
+ "dal-materialized-views",
  "dal-test",
  "derive_builder",
  "derive_more",

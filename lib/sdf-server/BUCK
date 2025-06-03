@@ -7,6 +7,7 @@ rust_library(
         "//lib/auth-api-client:auth-api-client",
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",
+        "//lib/dal-materialized-views:dal-materialized-views",
         "//lib/si-db:si-db",
         "//lib/edda-client:edda-client",
         "//lib/innit-client:innit-client",

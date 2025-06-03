@@ -231,10 +231,15 @@ const componentId = computed(() => props.componentId);
 
 const componentQuery = useQuery<BifrostComponent | null>({
   queryKey: key(EntityKind.Component, componentId),
-  queryFn: async () => {
+  queryFn: async (queryContext) => {
     const component = await bifrost<BifrostComponent>(
       args(EntityKind.Component, componentId.value),
     );
+    if (!component) {
+      return queryContext.client.getQueryData(
+        key(EntityKind.Component, componentId).value,
+      ) as BifrostComponent | null;
+    }
     return component;
   },
 });
