@@ -4,6 +4,7 @@ packages:
   - app/web
   - app/docs
   - bin/auth-api
+  - bin/si-discord-bot 
   - lib/eslint-config
   - lib/ts-lib
   - lib/tsconfig
