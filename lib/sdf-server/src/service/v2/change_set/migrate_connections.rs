@@ -155,7 +155,6 @@ async fn migrate_connection(ctx: &DalContext, migration: &ConnectionMigration) -
     // Add the prop connection
     let from_root_av_id = Component::root_attribute_value_id(ctx, from_component_id).await?;
     let to_root_av_id = Component::root_attribute_value_id(ctx, to_component_id).await?;
-    println!("Vivifying path {}", to_path);
     let to_av_id = AttributePath::from_json_pointer(to_path.to_string())
         .vivify(ctx, to_root_av_id)
         .await?;
@@ -169,14 +168,6 @@ async fn migrate_connection(ctx: &DalContext, migration: &ConnectionMigration) -
         Some(func_id),
     )
     .await?;
-
-    if let Some(parent_id) = AttributeValue::parent_id(ctx, to_av_id).await? {
-        println!(
-            "Set subscriptions at {to_component_id} on {to_path}: AV {to_av_id} ({:?}), parent {parent_id} (prototype {:?})",
-            AttributeValue::component_prototype_id(ctx, to_av_id).await?,
-            AttributeValue::component_prototype_id(ctx, parent_id).await?,
-        );
-    }
 
     // Remove the existing socket connection (unless it was inferred, in which case there isn't one)
     if let Some(explicit_connection_id) = explicit_connection_id {
