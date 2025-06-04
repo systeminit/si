@@ -155,6 +155,8 @@ enum State {
         /// The compressed request to later yield (outer [`Option`] for `mem::take()`, and inner is
         /// when there were no requests to be compressed)
         compressed_request: Option<Option<CompressedRequest>>,
+        /// The number of successfully deleted messages
+        deleted_count: usize,
     },
     /// 7. Converting request into final message to yield from [`Stream`]
     YieldItem {
@@ -191,6 +193,8 @@ enum State {
         compressed_request: Option<Option<CompressedRequest>>,
         /// The remaining list of stream sequence numbers to delete
         stream_sequence_numbers: VecDeque<u64>,
+        /// The number of successfully deleted messages
+        deleted_count: usize,
     },
     /// 3.3. Converting request into final message to yield from [`Stream`] before closing
     /// [`Stream`]
@@ -208,6 +212,8 @@ enum State {
         delete_message_fut: BoxFuture<'static, result::Result<(), DeleteMessageError>>,
         /// The remaining list of stream sequence numbers to delete
         stream_sequence_numbers: VecDeque<u64>,
+        /// The number of successfully deleted messages
+        deleted_count: usize,
     },
     /// 3.1.2 Deleting messages from the Jetstream stream after failing to compress requests before
     /// closing [`Stream`]
@@ -216,6 +222,8 @@ enum State {
         delete_message_fut: BoxFuture<'static, result::Result<(), DeleteMessageError>>,
         /// The remaining list of stream sequence numbers to delete
         stream_sequence_numbers: VecDeque<u64>,
+        /// The number of successfully deleted messages
+        deleted_count: usize,
     },
 }
 
@@ -225,6 +233,7 @@ pin_project! {
         subscription: S,
         stream: jetstream::stream::Stream,
         state: State,
+        span: Option<Span>,
     }
 }
 
@@ -235,6 +244,7 @@ impl<S> CompressingStream<S> {
             subscription,
             stream,
             state: Default::default(),
+            span: None,
         }
     }
 }
@@ -256,6 +266,25 @@ where
         let mut this = self.project();
 
         loop {
+            let span = this.span.get_or_insert_with(|| {
+                let follows_from = Span::current();
+
+                let s = span!(
+                    parent: None,
+                    Level::INFO,
+                    "compressing_stream.next",
+                    messages.deleted.count = Empty,
+                    messaging.destination.name = Empty,
+                    read_window.count = Empty,
+                    requests.count = Empty,
+                    compressed.kind = Empty,
+                );
+                s.follows_from(follows_from);
+
+                s
+            });
+            let _guard = span.enter();
+
             match this.state {
                 // 1. Reading the first message from the subscription
                 State::ReadFirstMessage => {
@@ -288,11 +317,17 @@ where
 
                                     // Set next state and return error
                                     *this.state = State::ReadFirstMessage;
+                                    let err = span.record_err(err);
+                                    drop(_guard);
+                                    *this.span = None;
                                     return Poll::Ready(Some(Err(Error::FirstMessageInfoParse(
                                         err,
                                     ))));
                                 }
                             };
+
+                            span.record("read_window.count", read_window);
+                            span.record("messaging.destination.name", message.subject.as_str());
 
                             let subject = Some(message.subject.clone());
 
@@ -319,10 +354,16 @@ where
 
                             // Set next state and return error
                             *this.state = State::ReadFirstMessage;
+                            let err = span.record_err(err);
+                            drop(_guard);
+                            *this.span = None;
                             return Poll::Ready(Some(Err(Error::ReadFirstMessage(Box::new(err)))));
                         }
                         // Subscription stream has closed, so we close
-                        Poll::Ready(None) => return Poll::Ready(None),
+                        Poll::Ready(None) => {
+                            span.record_ok();
+                            return Poll::Ready(None);
+                        }
                         // Pending on the first message, so we are pending too
                         Poll::Pending => return Poll::Pending,
                     }
@@ -364,6 +405,7 @@ where
                                                 }),
                                                 compressed_request: Some(None),
                                                 stream_sequence_numbers,
+                                                deleted_count: 0,
                                             };
                                             continue;
                                         }
@@ -372,14 +414,20 @@ where
                                             // Nothing to compress and nothing to delete, so
                                             // re-start state machine
 
+                                            span.record("messages.deleted.count", 0);
+
                                             // Set next state and continue loop
                                             *this.state = State::ReadFirstMessage;
+                                            drop(_guard);
+                                            *this.span = None;
                                             continue;
                                         }
                                     }
                                 }
                                 // There are requests to compress
                                 else {
+                                    span.record("requests.count", requests.len());
+
                                     // Set next state and continue loop
                                     *this.state = State::CompressRequests {
                                         subject: subject.take(),
@@ -424,6 +472,7 @@ where
                                         .map(|_| ())
                                 }),
                             };
+                            let rejection = span.record_err(rejection);
                             return Poll::Ready(Some(Err(Error::ParseFirstRequest(rejection))));
                         }
                         // Pending on parse message, so we are pending too
@@ -461,6 +510,8 @@ where
 
                                     let requests = mem::take(requests);
 
+                                    span.record("requests.count", requests.len());
+
                                     // Set next state and return error
                                     *this.state = State::CompressRequests {
                                         subject: subject.take(),
@@ -469,6 +520,7 @@ where
                                         }),
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
                                     };
+                                    let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(Error::NextMessageInfoParse(
                                         err,
                                     ))));
@@ -501,6 +553,8 @@ where
 
                             let requests = mem::take(requests);
 
+                            span.record("requests.count", requests.len());
+
                             // Set next state and return error
                             *this.state = State::CompressRequests {
                                 subject: subject.take(),
@@ -509,6 +563,7 @@ where
                                 }),
                                 stream_sequence_numbers: mem::take(stream_sequence_numbers),
                             };
+                            let err = span.record_err(err);
                             return Poll::Ready(Some(Err(Error::ReadNextMessageInWindow(
                                 Box::new(err),
                             ))));
@@ -558,6 +613,8 @@ where
 
                             // We've read all message in the read window
                             if requests.len() == *read_window {
+                                span.record("requests.count", requests.len());
+
                                 // Set next state and continue loop
                                 *this.state = State::CompressRequests {
                                     subject: subject.take(),
@@ -597,6 +654,8 @@ where
                             let requests = mem::take(requests);
                             let stream_sequence_numbers = mem::take(stream_sequence_numbers);
 
+                            span.record("requests.count", requests.len());
+
                             // Set next state and return error
                             *this.state = State::CompressRequests {
                                 subject: subject.take(),
@@ -605,6 +664,7 @@ where
                                 }),
                                 stream_sequence_numbers,
                             };
+                            let rejection = span.record_err(rejection);
                             return Poll::Ready(Some(Err(Error::ParseNextRequestInWindow(
                                 rejection,
                             ))));
@@ -623,6 +683,8 @@ where
                     match compress_messages_fut.poll_unpin(cx) {
                         // Requests compressed successfully
                         Poll::Ready(Ok(compressed_request)) => {
+                            span.record("compressed.kind", compressed_request.as_ref());
+
                             // Pop the first sequence number off the delete list
                             match stream_sequence_numbers.pop_front() {
                                 // A message was popped off list
@@ -639,11 +701,14 @@ where
                                         }),
                                         compressed_request: Some(Some(compressed_request)),
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
+                                        deleted_count: 0,
                                     };
                                     continue;
                                 }
                                 // The delete list is empty
                                 None => {
+                                    span.record("messages.deleted.count", 0);
+
                                     // Set next state and continue loop
                                     *this.state = State::YieldItem {
                                         subject: subject.take(),
@@ -681,16 +746,23 @@ where
                                                 .map(|_| ())
                                         }),
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
+                                        deleted_count: 0,
                                     };
+                                    let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(Error::CompressedRequest(err))));
                                 }
                                 // The delete list is empty
                                 None => {
+                                    span.record("messages.deleted.count", 0);
+
                                     // Nothing to compress and nothing to delete, so
                                     // re-start state machine
 
                                     // Set next state and return error
                                     *this.state = State::ReadFirstMessage;
+                                    let err = span.record_err(err);
+                                    drop(_guard);
+                                    *this.span = None;
                                     return Poll::Ready(Some(Err(Error::CompressedRequest(err))));
                                 }
                             }
@@ -705,11 +777,14 @@ where
                     delete_message_fut,
                     compressed_request,
                     stream_sequence_numbers,
+                    deleted_count,
                 } => {
                     // Delete a message
                     match delete_message_fut.poll_unpin(cx) {
                         // Message was deleted successfully
                         Poll::Ready(Ok(_)) => {
+                            *deleted_count += 1;
+
                             let compressed_request = compressed_request
                                 .take()
                                 .expect("extracting owned value only happens once");
@@ -731,11 +806,14 @@ where
                                         }),
                                         compressed_request: Some(compressed_request),
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
+                                        deleted_count: *deleted_count,
                                     };
                                     continue;
                                 }
                                 // The delete list is empty
                                 None => {
+                                    span.record("messages.deleted.count", deleted_count);
+
                                     // Do we have a compressed request?
                                     match compressed_request {
                                         // Compressed request found
@@ -753,6 +831,8 @@ where
 
                                             // Set next state and continue loop
                                             *this.state = State::ReadFirstMessage;
+                                            drop(_guard);
+                                            *this.span = None;
                                             continue;
                                         }
                                     }
@@ -792,11 +872,15 @@ where
                                         }),
                                         compressed_request: Some(compressed_request),
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
+                                        deleted_count: *deleted_count,
                                     };
+                                    let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(Error::DeleteStreamMessage(err))));
                                 }
                                 // The delete list is empty
                                 None => {
+                                    span.record("messages.deleted.count", deleted_count);
+
                                     // Do we have a compressed request?
                                     match compressed_request {
                                         // Compressed request found
@@ -806,6 +890,7 @@ where
                                                 subject: subject.take(),
                                                 compressed_request: Some(compressed_request),
                                             };
+                                            let err = span.record_err(err);
                                             return Poll::Ready(Some(Err(
                                                 Error::DeleteStreamMessage(err),
                                             )));
@@ -816,6 +901,9 @@ where
 
                                             // Set next state and return error
                                             *this.state = State::ReadFirstMessage;
+                                            let err = span.record_err(err);
+                                            drop(_guard);
+                                            *this.span = None;
                                             return Poll::Ready(Some(Err(
                                                 Error::DeleteStreamMessage(err),
                                             )));
@@ -856,6 +944,9 @@ where
 
                             // Set next state and return error
                             *this.state = State::ReadFirstMessage;
+                            let err = span.record_err(err);
+                            drop(_guard);
+                            *this.span = None;
                             return Poll::Ready(Some(Err(Error::SerializeLocalMessage(err))));
                         }
                     };
@@ -868,6 +959,9 @@ where
 
                     // Set next state and return item
                     *this.state = State::ReadFirstMessage;
+                    span.record_ok();
+                    drop(_guard);
+                    *this.span = None;
                     return Poll::Ready(Some(Ok(local_message)));
                 }
                 // 2.1 Deleting the initial message after error
@@ -878,7 +972,9 @@ where
                     // Delete the message
                     match delete_message_fut.poll_unpin(cx) {
                         // Message was deleted successfully
-                        Poll::Ready(Ok(_)) => {}
+                        Poll::Ready(Ok(_)) => {
+                            span.record("messages.deleted.count", 1);
+                        }
                         // Error when deleting message
                         Poll::Ready(Err(err)) => {
                             let subject = subject
@@ -896,6 +992,8 @@ where
 
                     // Set next state and continue loop
                     *this.state = State::ReadFirstMessage;
+                    drop(_guard);
+                    *this.span = None;
                     continue;
                 }
                 // 3.1 Compressing remaining requests before closing [`Stream`]
@@ -925,11 +1023,14 @@ where
                                         }),
                                         compressed_request: Some(Some(compressed_request)),
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
+                                        deleted_count: 0,
                                     };
                                     continue;
                                 }
                                 // The delete list is empty
                                 None => {
+                                    span.record("messages.deleted.count", 0);
+
                                     // Set next state and continue loop
                                     *this.state = State::YieldItemAndClose {
                                         subject: subject.take(),
@@ -970,18 +1071,23 @@ where
                                             stream_sequence_numbers: mem::take(
                                                 stream_sequence_numbers,
                                             ),
+                                            deleted_count: 0,
                                         };
+                                    let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(
                                         Error::CompressedRequestBeforeClose(err),
                                     )));
                                 }
                                 // The delete list is empty
                                 None => {
+                                    span.record("messages.deleted.count", 0);
+
                                     // Nothing to compress and nothing to delete, so
                                     // move to close stream
 
                                     // Set next state and return error
                                     *this.state = State::CloseStream;
+                                    let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(
                                         Error::CompressedRequestBeforeClose(err),
                                     )));
@@ -998,11 +1104,14 @@ where
                     delete_message_fut,
                     compressed_request,
                     stream_sequence_numbers,
+                    deleted_count,
                 } => {
                     // Delete a message
                     match delete_message_fut.poll_unpin(cx) {
                         // Message was deleted successfully
                         Poll::Ready(Ok(_)) => {
+                            *deleted_count += 1;
+
                             let compressed_request = compressed_request
                                 .take()
                                 .expect("extracting owned value only happens once");
@@ -1024,11 +1133,14 @@ where
                                         }),
                                         compressed_request: Some(compressed_request),
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
+                                        deleted_count: *deleted_count,
                                     };
                                     continue;
                                 }
                                 // The delete list is empty
                                 None => {
+                                    span.record("messages.deleted.count", deleted_count);
+
                                     // Do we have a compressed request?
                                     match compressed_request {
                                         // Compressed request found
@@ -1085,13 +1197,17 @@ where
                                         }),
                                         compressed_request: Some(compressed_request),
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
+                                        deleted_count: *deleted_count,
                                     };
+                                    let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(
                                         Error::DeleteStreamMessageBeforeClose(err),
                                     )));
                                 }
                                 // The delete list is empty
                                 None => {
+                                    span.record("messages.deleted.count", deleted_count);
+
                                     // Do we have a compressed request?
                                     match compressed_request {
                                         // Compressed request found
@@ -1101,6 +1217,7 @@ where
                                                 subject: subject.take(),
                                                 compressed_request: Some(compressed_request),
                                             };
+                                            let err = span.record_err(err);
                                             return Poll::Ready(Some(Err(
                                                 Error::DeleteStreamMessageBeforeClose(err),
                                             )));
@@ -1111,6 +1228,7 @@ where
 
                                             // Set next state and return error
                                             *this.state = State::CloseStream;
+                                            let err = span.record_err(err);
                                             return Poll::Ready(Some(Err(
                                                 Error::DeleteStreamMessageBeforeClose(err),
                                             )));
@@ -1155,6 +1273,7 @@ where
 
                             // Set next state and return error
                             *this.state = State::CloseStream;
+                            let err = span.record_err(err);
                             return Poll::Ready(Some(Err(
                                 Error::SerializeLocalMessageBeforeClose(err),
                             )));
@@ -1169,10 +1288,12 @@ where
 
                     // Set next state and return item
                     *this.state = State::CloseStream;
+                    span.record_ok();
                     return Poll::Ready(Some(Ok(local_message)));
                 }
                 // 3.1.1 Closing the stream
                 State::CloseStream => {
+                    // Don't record span either way as it may have already been marked ok/err
                     return Poll::Ready(None);
                 }
                 // 5.1 Deleting messages from the Jetstream stream after failing to compress
@@ -1180,11 +1301,14 @@ where
                 State::DeleteStreamMessageAfterCompressError {
                     delete_message_fut,
                     stream_sequence_numbers,
+                    deleted_count,
                 } => {
                     // Delete a message
                     match delete_message_fut.poll_unpin(cx) {
                         // Message was deleted successfully
                         Poll::Ready(Ok(_)) => {
+                            *deleted_count += 1;
+
                             // Pop the next sequence number off the delete list
                             match stream_sequence_numbers.pop_front() {
                                 // A message was popped off list
@@ -1200,15 +1324,20 @@ where
                                                 .map(|_| ())
                                         }),
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
+                                        deleted_count: *deleted_count,
                                     };
                                     continue;
                                 }
                                 // The delete list is empty
                                 None => {
+                                    span.record("messages.deleted.count", deleted_count);
+
                                     // Nothing to yield so re-start state machine
 
                                     // Set next state and continue loop
                                     *this.state = State::ReadFirstMessage;
+                                    drop(_guard);
+                                    *this.span = None;
                                     continue;
                                 }
                             }
@@ -1240,17 +1369,24 @@ where
                                                 .map(|_| ())
                                         }),
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
+                                        deleted_count: *deleted_count,
                                     };
+                                    let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(
                                         Error::DeleteStreamMessageAfterCompressError(err),
                                     )));
                                 }
                                 // The delete list is empty
                                 None => {
+                                    span.record("messages.deleted.count", deleted_count);
+
                                     // Nothing to yield so re-start state machine
 
                                     // Set next state and return error
                                     *this.state = State::ReadFirstMessage;
+                                    let err = span.record_err(err);
+                                    drop(_guard);
+                                    *this.span = None;
                                     return Poll::Ready(Some(Err(
                                         Error::DeleteStreamMessageAfterCompressError(err),
                                     )));
@@ -1264,11 +1400,14 @@ where
                 State::DeleteStreamMessageAfterCompressErrorAndClose {
                     delete_message_fut,
                     stream_sequence_numbers,
+                    deleted_count,
                 } => {
                     // Delete a message
                     match delete_message_fut.poll_unpin(cx) {
                         // Message was deleted successfully
                         Poll::Ready(Ok(_)) => {
+                            *deleted_count += 1;
+
                             // Pop the next sequence number off the delete list
                             match stream_sequence_numbers.pop_front() {
                                 // A message was popped off list
@@ -1287,11 +1426,14 @@ where
                                             stream_sequence_numbers: mem::take(
                                                 stream_sequence_numbers,
                                             ),
+                                            deleted_count: *deleted_count,
                                         };
                                     continue;
                                 }
                                 // The delete list is empty
                                 None => {
+                                    span.record("messages.deleted.count", deleted_count);
+
                                     // Nothing to yield so re-start state machine
 
                                     // Set next state and continue loop
@@ -1330,7 +1472,9 @@ where
                                             stream_sequence_numbers: mem::take(
                                                 stream_sequence_numbers,
                                             ),
+                                            deleted_count: *deleted_count,
                                         };
+                                    let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(
                                         Error::DeleteStreamMessageAfterCompressErrorBeforeClose(
                                             err,
@@ -1339,10 +1483,13 @@ where
                                 }
                                 // The delete list is empty
                                 None => {
+                                    span.record("messages.deleted.count", deleted_count);
+
                                     // Nothing to yield so close stream
 
                                     // Set next state and return error
                                     *this.state = State::CloseStream;
+                                    let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(
                                         Error::DeleteStreamMessageAfterCompressErrorBeforeClose(
                                             err,

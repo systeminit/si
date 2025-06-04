@@ -52,7 +52,7 @@ impl CompressedRequest {
     // it this way with future compat in mind.
     #[instrument(
         name = "edda.compressed_request.from_requests",
-        level = "debug",
+        level = "info",
         skip_all,
         fields(
             si.edda.compressed_request.inputs = Empty,
