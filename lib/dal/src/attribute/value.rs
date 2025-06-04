@@ -2431,7 +2431,7 @@ impl AttributeValue {
                         let component =
                             Component::get_by_id(ctx, Self::component_id(ctx, child_id).await?)
                                 .await?;
-                        warn!(
+                        debug!(
                             "Multiple AVs for prop {} in component {}, schema {}",
                             Prop::path_by_id(ctx, child_prop_id).await?,
                             component.name(ctx).await?,
@@ -2464,7 +2464,7 @@ impl AttributeValue {
                             let component =
                                 Component::get_by_id(ctx, Self::component_id(ctx, child_id).await?)
                                     .await?;
-                            warn!(
+                            debug!(
                                 "Child AV with prop {} (parent ID {:?}) not found in corresponding parent prop {} (ID {}) in component {}, schema {}",
                                 Prop::path_by_id(ctx, child_prop_id).await?,
                                 Prop::parent_prop_id_by_id(ctx, child_prop_id).await?,
