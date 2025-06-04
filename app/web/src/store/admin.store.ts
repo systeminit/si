@@ -241,29 +241,34 @@ export type ValidationIssue =
       source_component: ComponentId;
       source_socket: OutputSocketId;
       message: string;
+      fixed: boolean;
     }
   | {
       type: "duplicateAttributeValue";
       original: AttributeValueId;
       duplicate: AttributeValueId;
       message: string;
+      fixed: boolean;
     }
   | {
       type: "duplicateAttributeValueWithDifferentValues";
       original: AttributeValueId;
       duplicate: AttributeValueId;
       message: string;
+      fixed: boolean;
     }
   | {
       type: "missingChildAttributeValues";
       object: AttributeValueId;
       missing_children: PropId[];
       message: string;
+      fixed: boolean;
     }
   | {
       type: "unknownChildAttributeValue";
       child: AttributeValueId;
       message: string;
+      fixed: boolean;
     };
 
 export interface MigrateConnectionsResponse {
@@ -276,17 +281,17 @@ export type ConnectionMigration =
       issue?: undefined;
       explicitConnectionId?: AttributePrototypeArgumentId;
       socketConnection: ConnectionMigrationSocketConnection;
-      propConnection: ConnectionMigrationPropConnection;
+      propConnections: ConnectionMigrationPropConnection[];
       message: string;
       migrated: boolean;
     }
-  // If there is an issue with an explicit connection, socket and prop connections may be undefined
+  // If there is an issue with an explicit connection, socket connections may be undefined
   // (because we may have identified the connection but been unable to completely build them out).
   | {
       issue: ConnectionUnmigrateableBecause;
       explicitConnectionId: AttributePrototypeArgumentId;
       socketConnection?: ConnectionMigrationSocketConnection;
-      propConnection?: ConnectionMigrationPropConnection;
+      propConnections: ConnectionMigrationPropConnection[];
       message: string;
       migrated: boolean;
     }
@@ -295,7 +300,7 @@ export type ConnectionMigration =
       issue: ConnectionUnmigrateableBecause;
       explicitConnectionId?: undefined;
       socketConnection: ConnectionMigrationSocketConnection;
-      propConnection?: ConnectionMigrationPropConnection;
+      propConnections: ConnectionMigrationPropConnection[];
       message: string;
       migrated: boolean;
     };
