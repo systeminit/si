@@ -370,7 +370,13 @@ const onEnter = async () => {
       schemaVariant: req.data.schemaVariantMaterializedView,
     };
 
-    queryClient.setQueryData(componentQueryKey.value, () => bifrostComponent);
+    const keyValue = componentQueryKey.value;
+    // replace old change set id with new one for the query key
+    if (newChangeSetId)
+      keyValue.forEach((v, idx) => {
+        if (v === route.params.changeSetId) keyValue[idx] = newChangeSetId;
+      });
+    queryClient.setQueryData(keyValue, () => bifrostComponent);
 
     const to = {
       name: "new-hotness-component",
