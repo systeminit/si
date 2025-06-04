@@ -516,6 +516,9 @@ const valueForm = wForm.newForm({
       emit("save", path.value, props.attributeValueId, value.value);
     }
   },
+  watchFn: () => {
+    return [attrData, props.externalSources];
+  },
 });
 
 // i assume more things than comboboxes have a list of options
