@@ -1103,6 +1103,13 @@
       "REPLICATING"
     ]
   },
+  "The status of the file system's replication overwrite protection.\n  +  ``ENABLED`` – The file system cannot be used as the destination file system in a replication configuration. The file system is writeable. Replication overwrite protection is ``ENABLED`` by default. \n  +  ``DISABLED`` – The file system can be used as the destination file system in a replication configuration. The file system is read-only and can only be modified by EFS replication.\n  +  ``REPLICATING`` – The file system is being used as the destination file system in a replication configuration. The file system is read-only and is modified only by EFS replication.\n  \n If the replication configuration is deleted, the file system's replication overwrite protection is re-enabled, the file system becomes writeable.": {
+    "enum": [
+      "ENABLED",
+      "DISABLED",
+      "REPLICATING"
+    ]
+  },
   "The deployment controller type to use. There are three deployment controller types available:\n  + ECS The rolling update (ECS) deployment type involves replacing the current running version of the container with the latest version. The number of containers Amazon ECS adds or removes from the service during a rolling update is controlled by adjusting the minimum and maximum number of healthy tasks allowed during a service deployment, as specified in the DeploymentConfiguration. + CODE_DEPLOY The blue/green (CODE_DEPLOY) deployment type uses the blue/green deployment model powered by , which allows you to verify a new deployment of a service before sending production traffic to it. + EXTERNAL The external (EXTERNAL) deployment type enables you to use any third-party deployment controller for full control over the deployment process for an Amazon ECS service.": {
     "enum": [
       "ECS",
@@ -1164,6 +1171,13 @@
       "CRAWL_EVERYTHING",
       "CRAWL_NEW_FOLDERS_ONLY",
       "CRAWL_EVENT_MODE"
+    ]
+  },
+  "The valid routing modes are [BASE_PATH_MAPPING_ONLY], [ROUTING_RULE_THEN_BASE_PATH_MAPPING] and [ROUTING_RULE_ONLY]. All other inputs are invalid.": {
+    "enum": [
+      "BASE_PATH_MAPPING_ONLY",
+      "ROUTING_RULE_THEN_BASE_PATH_MAPPING",
+      "ROUTING_RULE_ONLY"
     ]
   },
   "Identifies the report template for the report. Reports are built using a report template. The report templates are: `BACKUP_JOB_REPORT | COPY_JOB_REPORT | RESTORE_JOB_REPORT`": {
@@ -1686,6 +1700,12 @@
       "Infrequent Access"
     ]
   },
+  "Specifies the maximum size allowed for the event. Valid values are Standard and Large. If you add ContextKeySelectors, this value must be set to Large.": {
+    "enum": [
+      "Standard",
+      "Large"
+    ]
+  },
   "Wireless device type, currently only Sidewalk and LoRa": {
     "enum": [
       "Sidewalk",
@@ -2077,6 +2097,12 @@
     ]
   },
   "Set the backup policy status for the file system.\n  +   *ENABLED* - Turns automatic backups on for the file system. \n  +   *DISABLED* - Turns automatic backups off for the file system.": {
+    "enum": [
+      "ENABLED",
+      "DISABLED"
+    ]
+  },
+  "Set the backup policy status for the file system.\n  +  *ENABLED* - Turns automatic backups on for the file system. \n  +  *DISABLED* - Turns automatic backups off for the file system.": {
     "enum": [
       "ENABLED",
       "DISABLED"
@@ -16042,6 +16068,9 @@
     "enum": null
   },
   "The weekly time range during which system maintenance can occur, in Universal Coordinated Time (UTC).\n Format: ``ddd:hh24:mi-ddd:hh24:mi`` \n The default is a 30-minute window selected at random from an 8-hour block of time for each AWS Region, occurring on a random day of the week. To see the time blocks available, see [Maintaining an Amazon Aurora DB cluster](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_UpgradeDBInstance.Maintenance.html#AdjustingTheMaintenanceWindow.Aurora) in the *Amazon Aurora User Guide.* \n Valid Days: Mon, Tue, Wed, Thu, Fri, Sat, Sun.\n Constraints: Minimum 30-minute window.\n Valid for: Aurora DB clusters and Multi-AZ DB clusters": {
+    "enum": null
+  },
+  "The witness region in a multi-region cluster.": {
     "enum": null
   },
   "The workGroup name.": {
