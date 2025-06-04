@@ -33,6 +33,12 @@ export type OutgoingConnections = DefaultMap<
 
 export type RainbowFn = (changeSetId: ChangeSetId, label: string) => void;
 export type LobbyExitFn = () => void;
+
+export type MjolnirBulk = Array<{
+  kind: string;
+  id: Id;
+  checksum?: Checksum;
+}>;
 export interface DBInterface {
   initDB: (testing: boolean) => Promise<void>;
   migrate: (testing: boolean) => void;
@@ -65,6 +71,12 @@ export interface DBInterface {
     kind: EntityKind,
     id: Id,
   ): Promise<typeof NOROW | AtomDocument>;
+  mjolnirBulk(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+    objs: MjolnirBulk,
+    indexChecksum: string,
+  ): void;
   mjolnir(
     workspaceId: string,
     changeSetId: ChangeSetId,

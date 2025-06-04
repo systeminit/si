@@ -52,6 +52,7 @@ import {
   RainbowFn,
   IndexUpdate,
   LobbyExitFn,
+  MjolnirBulk,
 } from "./types/dbinterface";
 import {
   BifrostViewList,
@@ -74,7 +75,12 @@ import {
   BifrostSchemaVariantCategories,
   CategoryVariant,
 } from "./types/entity_kind_types";
-import { hasReturned, maybeMjolnir } from "./mjolnir_queue";
+import {
+  hasReturned,
+  maybeMjolnir,
+  bulkDone,
+  bulkInflight,
+} from "./mjolnir_queue";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
 if (!otelEndpoint) otelEndpoint = "http://localhost:8080";
@@ -533,6 +539,17 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
   await updateChangeSetWithNewIndex(msg.atom);
   await removeOldIndex();
 
+  if (COMPUTED_KINDS.includes(msg.atom.kind)) {
+    debug("🔨 HAMMER: Updating computed for:", msg.atom.kind, msg.atom.id);
+    await updateComputed(
+      msg.atom.workspaceId,
+      msg.atom.changeSetId,
+      msg.atom.kind,
+      msg.data,
+      indexChecksum,
+    );
+  }
+
   debug(
     "🔨 HAMMER: Busting cache for:",
     msg.atom.kind,
@@ -546,17 +563,6 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     msg.atom.kind,
     msg.atom.id,
   );
-
-  if (COMPUTED_KINDS.includes(msg.atom.kind)) {
-    debug("🔨 HAMMER: Updating computed for:", msg.atom.kind, msg.atom.id);
-    await updateComputed(
-      msg.atom.workspaceId,
-      msg.atom.changeSetId,
-      msg.atom.kind,
-      msg.data,
-      indexChecksum,
-    );
-  }
 };
 
 const insertAtomMTM = async (atom: Atom, indexChecksum: Checksum) => {
@@ -1011,6 +1017,119 @@ const patchAtom = async (atom: Required<Atom>) => {
   return afterDoc;
 };
 
+type BulkResponse = { successful: IndexObjectMeta[]; failed: MjolnirBulk[] };
+const mjolnirBulk = async (
+  workspaceId: string,
+  changeSetId: ChangeSetId,
+  objs: MjolnirBulk,
+  indexChecksum: string,
+) => {
+  debug("🔨 BULK MJOLNIR:", objs.length, objs);
+
+  const pattern = [
+    "v2",
+    "workspaces",
+    { workspaceId },
+    "change-sets",
+    { changeSetId },
+    "index",
+    "multi_mjolnir",
+  ] as URLPattern;
+  const [url, desc] = describePattern(pattern);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let req: undefined | AxiosResponse<BulkResponse, any>;
+
+  objs.forEach((o) => {
+    inFlight(changeSetId, `${o.kind}.${o.id}`);
+  });
+
+  await tracer.startActiveSpan(`GET ${desc}`, async (span) => {
+    span.setAttributes({
+      workspaceId,
+      changeSetId,
+      indexChecksum,
+      numHammers: objs.length,
+    });
+    try {
+      req = await sdf<BulkResponse>({
+        method: "post",
+        url,
+        data: { requests: objs },
+      });
+      debug("🔨 MJOLNIR BULK HTTP SUCCESS:", indexChecksum);
+      span.setAttributes({
+        successful: req.data.successful.length,
+        failed: req.data.failed.length,
+      });
+    } catch (err) {
+      span.setAttribute("http.status", 404);
+      debug("🔨 MJOLNIR HTTP 404:", indexChecksum, err);
+      error("MJOLNIR 404", url, objs, err);
+    } finally {
+      if (req?.status) span.setAttribute("http.status", req.status);
+      span.end();
+    }
+  });
+
+  if (!req) {
+    debug("🔨 MJOLNIR BULK FAILED:", indexChecksum, "no response");
+    bulkDone(true);
+    return;
+  }
+
+  const first = req.data.successful.shift();
+  if (!first) {
+    debug("🔨 MJOLNIR BULK NO FIRST?:", req.data.successful.length);
+    return;
+  }
+  const msg: AtomMessage = {
+    kind: MessageKind.MJOLNIR,
+    atom: {
+      id: first.frontEndObject.id,
+      kind: first.frontEndObject.kind,
+      toChecksum: first.frontEndObject.checksum,
+      workspaceId,
+      changeSetId,
+      toIndexChecksum: first.indexChecksum,
+      fromIndexChecksum: first.indexChecksum,
+    },
+    data: first.frontEndObject.data,
+  };
+  // doing this first, by itself, await'd, because its going to make the new index, etc
+  // and we dont want that to race across multiple patches
+  returned(
+    changeSetId,
+    `${first.frontEndObject.kind}.${first.frontEndObject.id}`,
+  );
+  await handleHammer(msg);
+
+  await Promise.all(
+    req.data.successful.map((obj) => {
+      const msg: AtomMessage = {
+        kind: MessageKind.MJOLNIR,
+        atom: {
+          id: obj.frontEndObject.id,
+          kind: obj.frontEndObject.kind,
+          toChecksum: obj.frontEndObject.checksum,
+          workspaceId,
+          changeSetId,
+          toIndexChecksum: obj.indexChecksum,
+          fromIndexChecksum: obj.indexChecksum,
+        },
+        data: obj.frontEndObject.data,
+      };
+      returned(
+        changeSetId,
+        `${obj.frontEndObject.kind}.${obj.frontEndObject.id}`,
+      );
+      return handleHammer(msg);
+    }),
+  );
+  debug("🔨 MJOLNIR BULK DONE!");
+  bulkDone();
+};
+
 const mjolnir = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
@@ -1238,6 +1357,7 @@ const niflheim = async (
   return await tracer.startActiveSpan("niflheim", async (span: Span) => {
     // build connections list based on data we have in the DB
     // connections list will rebuild as data comes in
+    bulkInflight();
     const computedPromise = coldStartComputed(workspaceId, changeSetId);
 
     // clear out references, no queries have been performed yet
@@ -1284,31 +1404,28 @@ const niflheim = async (
     local.setAttribute("numEntries", Object.keys(localChecksums).length);
     local.end();
 
-    const compare = tracer.startSpan("compare");
     let numHammers = 0;
     // Compare each atom checksum from the index with local checksums
+    const objs: MjolnirBulk = [];
     atoms.forEach(({ kind, id, checksum }) => {
       const key = partialKeyFromKindAndArgs(kind, id);
       const local = localChecksums[key];
       if (!local || local !== checksum) {
         const { kind, id } = kindAndArgsFromKey(key);
-        span.addEvent("mjolnir", {
-          workspaceId,
-          changeSetId,
-          kind,
-          id,
-          checksum,
-          indexChecksum,
-          source: "niflheim",
-        });
-        debug("niflheim mjolnir", kind, id);
-        mjolnir(workspaceId, changeSetId, kind, id, checksum);
+        objs.push({ kind, id, checksum });
+
         numHammers++;
       }
     });
-    compare.setAttribute("numHammers", numHammers);
-    compare.setAttribute("indexChecksum", indexChecksum);
-    compare.end();
+    span.setAttribute("numHammers", numHammers);
+    span.setAttribute("indexChecksum", indexChecksum);
+
+    if (objs.length > 0)
+      await mjolnirBulk(workspaceId, changeSetId, objs, indexChecksum);
+    else {
+      bulkDone(true);
+      span.setAttribute("noop", true);
+    }
 
     span.end();
     return true;
@@ -2405,6 +2522,7 @@ const dbInterface: DBInterface = {
   getConnectionByAnnotation,
   partialKeyFromKindAndId: partialKeyFromKindAndArgs,
   kindAndIdFromKey: kindAndArgsFromKey,
+  mjolnirBulk,
   mjolnir,
   atomChecksumsFor,
   pruneAtomsForClosedChangeSet,
