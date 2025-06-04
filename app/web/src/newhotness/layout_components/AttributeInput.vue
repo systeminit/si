@@ -462,6 +462,7 @@ import {
   useMakeKey,
 } from "@/store/realtime/heimdall";
 import CodeViewer from "@/components/CodeViewer.vue";
+import { PropKind } from "@/api/sdf/dal/prop";
 import { attributeEmitter } from "../logic_composables/emitters";
 import { useWatchedForm } from "../logic_composables/watched_form";
 import TextPill from "./TextPill.vue";
@@ -527,16 +528,24 @@ const attrData = computed<AttrData>(() => {
 const valueForm = wForm.newForm({
   data: attrData,
   onSubmit: async ({ value }) => {
+    if (!props.prop) return;
     if (connectingComponentId.value) {
       emit(
         "save",
         path.value,
         props.attributeValueId,
         value.value,
+        props.prop.kind,
         connectingComponentId.value,
       );
     } else {
-      emit("save", path.value, props.attributeValueId, value.value);
+      emit(
+        "save",
+        path.value,
+        props.attributeValueId,
+        value.value,
+        props.prop.kind,
+      );
     }
   },
   watchFn: () => {
@@ -692,6 +701,7 @@ const emit = defineEmits<{
     path: string,
     id: string,
     value: string,
+    propKind: PropKind,
     connectingComponentId?: string,
   ): void;
   (e: "delete", path: string, id: string): void;

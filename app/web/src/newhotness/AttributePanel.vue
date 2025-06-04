@@ -78,6 +78,7 @@ import {
   AttributeValue,
   Secret,
 } from "@/workers/types/entity_kind_types";
+import { PropKind } from "@/api/sdf/dal/prop";
 import { useApi, routes, componentTypes } from "./api_composables";
 import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
 import { keyEmitter } from "./logic_composables/emitters";
@@ -251,18 +252,30 @@ const save = async (
   path: string,
   _id: string,
   value: string,
+  propKind: PropKind,
   connectingComponentId?: string,
 ) => {
   const call = api.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
+
+  // TODO - Paul there's a better way to handle this for sure!
+  let coercedVal: string | boolean | number = value;
+  if (propKind === PropKind.Boolean) {
+    coercedVal = value.toLowerCase() === "true" || value === "1";
+  } else if (propKind === PropKind.Integer) {
+    coercedVal = Math.trunc(Number(value));
+  } else if (propKind === PropKind.Float) {
+    coercedVal = Number(value);
+  }
+
   const payload: componentTypes.UpdateComponentAttributesArgs = {};
   path = path.replace("root", ""); // endpoint doesn't want it
-  payload[path] = value;
+  payload[path] = coercedVal;
   if (connectingComponentId) {
     payload[path] = {
-      $source: { component: connectingComponentId, path: value },
+      $source: { component: connectingComponentId, path: coercedVal },
     };
   }
   await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);

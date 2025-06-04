@@ -24,8 +24,8 @@
             :component="component"
             :attributeTree="child"
             @save="
-              (path, id, value, connectingComponentId) =>
-                emit('save', path, id, value, connectingComponentId)
+              (path, id, value, propKind, connectingComponentId) =>
+                emit('save', path, id, value, propKind, connectingComponentId)
             "
             @delete="(path, id) => emit('delete', path, id)"
           />
@@ -91,8 +91,8 @@
         :isArray="props.attributeTree.prop?.kind === 'array'"
         :isMap="props.attributeTree.prop?.kind === 'map'"
         @save="
-          (path, id, value, connectingComponentId) =>
-            emit('save', path, id, value, connectingComponentId)
+          (path, id, value, propKind, connectingComponentId) =>
+            emit('save', path, id, value, propKind, connectingComponentId)
         "
         @delete="(path, id) => emit('delete', path, id)"
         @add="add"
@@ -107,6 +107,7 @@ import { VButton, IconButton, themeClasses } from "@si/vue-lib/design-system";
 import { useRoute } from "vue-router";
 import clsx from "clsx";
 import { BifrostComponent } from "@/workers/types/entity_kind_types";
+import { PropKind } from "@/api/sdf/dal/prop";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
 import { AttrTree } from "../AttributePanel.vue";
@@ -275,6 +276,7 @@ const emit = defineEmits<{
     path: string,
     id: string,
     value: string,
+    propKind: PropKind,
     connectingComponentId?: string,
   ): void;
   (e: "delete", path: string, id: string): void;
