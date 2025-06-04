@@ -4145,31 +4145,18 @@ impl Component {
         ))
     }
 
-    /// Return the ids of all the components that manage this component
+    /// Return the IDs of all the [`Components`](Component) that manage this [`Component`](Component).
     pub async fn managers(&self, ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
-        let mut result = vec![];
-
-        let snapshot = ctx.workspace_snapshot()?;
-
-        for source_idx in snapshot
-            .incoming_sources_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Manages)
-            .await?
-        {
-            let node_weight = snapshot.get_node_weight(source_idx).await?;
-            if let NodeWeight::Component(_) = &node_weight {
-                result.push(node_weight.id().into());
-            }
-        }
-
-        Ok(result)
+        Self::managers_by_id(ctx, self.id).await
     }
 
-    /// Return the ids of all the components that manage this component
+    /// Return the IDs of all the [`Components`](Component) that manage the [`Component`](Component) corresponding
+    /// to the provided ID.
     pub async fn managers_by_id(
         ctx: &DalContext,
         id: ComponentId,
     ) -> ComponentResult<Vec<ComponentId>> {
-        let mut result = vec![];
+        let mut result = Vec::new();
 
         let snapshot = ctx.workspace_snapshot()?;
 

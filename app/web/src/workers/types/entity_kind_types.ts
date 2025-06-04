@@ -1,11 +1,6 @@
 import { ActionProposedView } from "@/store/actions.store";
 import { ComponentId } from "@/api/sdf/dal/component";
-import {
-  InputSocketId,
-  OutputSocketId,
-  SchemaId,
-  SchemaVariantId,
-} from "@/api/sdf/dal/schema";
+import { SchemaId, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { ActionKind, ActionPrototypeId } from "@/api/sdf/dal/action";
 import { FuncId } from "@/api/sdf/dal/func";
 import { AttributeValueId } from "@/store/status.store";
@@ -359,6 +354,11 @@ export interface BifrostComponentConnections {
 
 export type EddaConnection =
   | {
+      kind: "management";
+      fromComponentId: WeakReference<EntityKind.Component>;
+      toComponentId: WeakReference<EntityKind.Component>;
+    }
+  | {
       kind: "prop";
       fromComponentId: WeakReference<EntityKind.Component>;
       fromAttributeValueId: AttributeValueId;
@@ -368,25 +368,17 @@ export type EddaConnection =
       toComponentId: WeakReference<EntityKind.Component>;
       toPropId: PropId;
       toPropPath: string;
-      toAttributeValueId: AttributeValueId;
-      toAttributeValuePath: string;
-    }
-  | {
-      kind: "socket";
-      fromComponentId: WeakReference<EntityKind.Component>;
-      fromAttributeValueId: AttributeValueId;
-      fromAttributeValuePath: string;
-      fromSocketId: OutputSocketId;
-      fromSocketName: string;
-      toComponentId: WeakReference<EntityKind.Component>;
-      toSocketId: InputSocketId;
-      toSocketName: string;
       toAttributeValueId: AttributeValueId;
       toAttributeValuePath: string;
     };
 
 export type BifrostConnection =
   | {
+      kind: "management";
+      fromComponent: BifrostComponent;
+      toComponent: BifrostComponent;
+    }
+  | {
       kind: "prop";
       fromComponent: BifrostComponent;
       fromAttributeValueId: AttributeValueId;
@@ -396,19 +388,6 @@ export type BifrostConnection =
       toComponent: BifrostComponent;
       toPropId: PropId;
       toPropPath: string;
-      toAttributeValueId: AttributeValueId;
-      toAttributeValuePath: string;
-    }
-  | {
-      kind: "socket";
-      fromComponent: BifrostComponent;
-      fromAttributeValueId: AttributeValueId;
-      fromAttributeValuePath: string;
-      fromSocketId: OutputSocketId;
-      fromSocketName: string;
-      toComponent: BifrostComponent;
-      toSocketId: InputSocketId;
-      toSocketName: string;
       toAttributeValueId: AttributeValueId;
       toAttributeValuePath: string;
     };

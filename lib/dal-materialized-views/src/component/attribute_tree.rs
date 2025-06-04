@@ -22,10 +22,7 @@ use si_frontend_mv_types::component::attribute_tree::{
     ExternalSource,
     ValidationOutput,
 };
-use si_id::{
-    AttributeValueId,
-    ComponentId,
-};
+use si_id::ComponentId;
 use telemetry::prelude::*;
 
 use crate::{
@@ -51,12 +48,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
 
     while let Some(av_id) = work_queue.pop_front() {
         let maybe_parent_av_id = AttributeValue::parent_id(ctx, av_id).await?;
-        let child_av_ids: Vec<AttributeValueId> =
-            AttributeValue::get_child_avs_in_order(ctx, av_id)
-                .await?
-                .iter()
-                .map(|av| av.id())
-                .collect();
+        let child_av_ids = AttributeValue::get_child_av_ids_in_order(ctx, av_id).await?;
         work_queue.extend(&child_av_ids);
         tree_info.insert(
             av_id,
