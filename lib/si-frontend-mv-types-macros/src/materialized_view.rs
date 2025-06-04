@@ -1,13 +1,15 @@
 use std::collections::HashSet;
 
-use darling::FromAttributes;
+use darling::{
+    FromAttributes,
+    util::path_to_string,
+};
 use manyhow::{
     bail,
     emit,
 };
 use proc_macro2::TokenStream;
 use quote::{
-    ToTokens,
     format_ident,
     quote,
 };
@@ -16,6 +18,8 @@ use syn::{
     DeriveInput,
     Path,
 };
+
+use crate::ty_to_string;
 
 #[derive(Debug, Default, FromAttributes)]
 #[darling(attributes(mv))]
@@ -97,8 +101,10 @@ pub fn derive_materialized_view(
     let mut sorted_reference_kinds: Vec<Path> = reference_kinds.into_iter().collect();
     sorted_reference_kinds.sort_by_cached_key(path_to_string);
 
-    let checksum_static_ident =
-        format_ident!("{}_DEFINITION_CHECKSUM", ident.to_string().to_uppercase());
+    let checksum_static_ident = format_ident!(
+        "{}_MATERIALIZED_VIEW_DEFINITION_CHECKSUM",
+        ident.to_string().to_uppercase()
+    );
 
     let output = quote! {
         impl crate::MaterializedView for #ident {
@@ -131,25 +137,8 @@ pub fn derive_materialized_view(
                 #trigger_entity,
                 &#checksum_static_ident,
             )
-        }
+        };
     };
 
     Ok(output.into())
-}
-
-fn path_to_string(path: &syn::Path) -> String {
-    path.segments
-        .iter()
-        .map(|segment| segment.ident.to_string())
-        .collect::<Vec<_>>()
-        .join("::")
-}
-
-fn ty_to_string(ty: &syn::Type) -> String {
-    let mut result = String::new();
-    for token in ty.to_token_stream() {
-        result.push_str(&token.to_string());
-    }
-
-    result
 }
