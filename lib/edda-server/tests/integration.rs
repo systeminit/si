@@ -1,6 +1,6 @@
 use edda_server::{
-    compresing_stream::CompressingStream,
     compressed_request::CompressedRequest,
+    compressing_stream::CompressingStream,
     extract::EddaRequestKind,
 };
 use futures::StreamExt as _;

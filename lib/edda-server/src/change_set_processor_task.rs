@@ -53,7 +53,7 @@ use tokio_util::{
 use self::app_state::AppState;
 use crate::{
     ServerMetadata,
-    compresing_stream::CompressingStream,
+    compressing_stream::CompressingStream,
 };
 
 mod materialized_view;

@@ -41,7 +41,7 @@ use crate::{
         ChangeSetProcessorTask,
         ChangeSetProcessorTaskError,
     },
-    compresing_stream::CompressingStream,
+    compressing_stream::CompressingStream,
 };
 
 #[remain::sorted]
