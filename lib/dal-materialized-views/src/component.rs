@@ -46,6 +46,8 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         .values()
         .filter(|value| value.external_sources.is_some())
         .count();
+    let can_be_upgraded = Component::can_be_upgraded_by_id(ctx, component_id).await?;
+
     Ok(ComponentMv {
         id: component_id,
         name: Component::name_by_id(ctx, component_id).await?,
@@ -64,5 +66,6 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         attribute_tree,
         resource_diff,
         is_secret_defining,
+        can_be_upgraded,
     })
 }

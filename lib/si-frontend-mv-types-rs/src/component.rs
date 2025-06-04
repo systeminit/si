@@ -88,6 +88,7 @@ pub struct Component {
     pub attribute_tree: AttributeTree,
     pub resource_diff: ComponentDiff,
     pub is_secret_defining: bool,
+    pub can_be_upgraded: bool,
 }
 
 #[derive(

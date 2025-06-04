@@ -203,6 +203,8 @@ async fn component(ctx: &DalContext) -> Result<()> {
     )
     .await?;
     let is_secret_defining = SchemaVariant::is_secret_defining(ctx, sv_id).await?;
+    let can_be_upgraded = Component::can_be_upgraded_by_id(ctx, created_component.id()).await?;
+
     assert_eq!(
         ComponentMv {
             id: created_component.id(),
@@ -222,6 +224,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
             resource_diff,
             attribute_tree,
             is_secret_defining,
+            can_be_upgraded,
         }, // expected
         component // actual
     );
