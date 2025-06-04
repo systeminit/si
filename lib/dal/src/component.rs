@@ -44,6 +44,7 @@ use si_frontend_types::{
     GeometryAndView,
     RawGeometry,
 };
+use si_id::SchemaId;
 use si_pkg::KeyOrIndex;
 use si_split_graph::SplitGraphError;
 use socket::{
@@ -1553,6 +1554,14 @@ impl Component {
 
     pub async fn schema(&self, ctx: &DalContext) -> ComponentResult<Schema> {
         Self::schema_for_component_id(ctx, self.id).await
+    }
+
+    pub async fn schema_id_for_component_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<SchemaId> {
+        let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
+        Ok(SchemaVariant::schema_id(ctx, schema_variant_id).await?)
     }
 
     pub async fn schema_variant_for_component_id(
@@ -4012,6 +4021,41 @@ impl Component {
             }
         }
         Ok(components)
+    }
+
+    pub async fn can_be_upgraded_by_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<bool> {
+        let schema_variant = Component::schema_variant_for_component_id(ctx, component_id).await?;
+
+        let schema_id = Component::schema_id_for_component_id(ctx, component_id).await?;
+        let default_schema_variant_id =
+            SchemaVariant::default_id_for_schema(ctx, schema_id).await?;
+
+        let newest_schema_variant_id =
+            match SchemaVariant::get_unlocked_for_schema(ctx, schema_id).await? {
+                Some(unlocked_schema_variant) => unlocked_schema_variant.id(),
+                None => default_schema_variant_id,
+            };
+
+        Ok(if newest_schema_variant_id != schema_variant.id() {
+            // There's a chance that the exact same asset was installed in
+            // different change sets and then applied to head. In that case,
+            // there's no need to show the upgrade for this component, since the
+            // upgrade will be effectively a no-op.
+            let current_module = Module::find_for_member_id(ctx, schema_variant.id()).await?;
+            let new_module = Module::find_for_member_id(ctx, newest_schema_variant_id).await?;
+
+            match (current_module, new_module) {
+                (Some(current_module), Some(new_module)) => {
+                    current_module.root_hash() != new_module.root_hash()
+                }
+                _ => true,
+            }
+        } else {
+            false
+        })
     }
 
     /// Is there a newer version of the schema variant that this component is using?
