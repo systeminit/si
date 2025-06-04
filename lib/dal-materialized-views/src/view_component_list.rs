@@ -31,6 +31,7 @@ pub async fn assemble(ctx: DalContext, view_id: ViewId) -> super::Result<ViewCom
             GeometryRepresents::View(_view_id) => {}
         }
     }
+    components.sort_by_key(|c| c.id);
 
     Ok(ViewComponentListMv {
         id: view_id,
