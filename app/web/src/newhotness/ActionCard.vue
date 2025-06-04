@@ -84,7 +84,8 @@
         <DropdownMenuItem
           icon="eye"
           label="View details"
-          @select="navigateToActionDetails"
+          :disabled="!props.action.funcRunId"
+          @select="navigateToActionDetailsProtected"
         />
 
         <!-- Action state controls -->
@@ -155,6 +156,12 @@ const route = useRoute();
 const confirmRef = ref<InstanceType<typeof ConfirmHoldModal> | null>(null);
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
+// Navigate to action details only if the func run ID is populated for the action
+const navigateToActionDetailsProtected = () => {
+  if (!props.action.funcRunId) return;
+  navigateToActionDetails();
+};
+
 // Navigate to action details
 const navigateToActionDetails = () => {
   router.push({
@@ -186,6 +193,8 @@ const navigateToFuncRunDetails = () => {
 
 // Handle click on the card
 const handleClick = () => {
+  if (!props.action.funcRunId) return;
+
   emit("click", props.action);
 
   // Navigate to action details which will show the latest function run
