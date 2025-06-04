@@ -156,6 +156,8 @@ export class APICall<Response> {
       data,
     });
     this.obs.inFlight.value = false;
+    if (!this.obs.isWatched)
+      rainbow.remove(this.ctx.changeSetId.value, this.obs.label);
     return { req, newChangeSetId };
   }
 
@@ -176,6 +178,8 @@ export class APICall<Response> {
       data,
     });
     this.obs.inFlight.value = false;
+    if (!this.obs.isWatched)
+      rainbow.remove(this.ctx.changeSetId.value, this.obs.label);
     return { req, newChangeSetId };
   }
 

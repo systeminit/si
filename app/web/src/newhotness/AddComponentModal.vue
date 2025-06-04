@@ -152,7 +152,9 @@
                     "
                     #icons
                   >
+                    <Icon v-if="api.inFlight.value" name="loader" size="sm" />
                     <div
+                      v-else
                       :class="
                         clsx(
                           'text-xs',
@@ -326,6 +328,8 @@ const makeKey = useMakeKey();
 const makeArgs = useMakeArgs();
 
 const onEnter = async () => {
+  if (api.inFlight.value) return; // you've already submitted, disable submission
+
   if (!selectedAsset.value) return;
   const variant =
     "uninstalled" in selectedAsset.value.variant
