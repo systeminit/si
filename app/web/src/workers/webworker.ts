@@ -2454,7 +2454,7 @@ const dbInterface: DBInterface = {
             } else if (data.kind === MessageKind.INDEXUPDATE) {
               // Index has been updated - signal lobby exit
               if (lobbyExitFn) {
-                lobbyExitFn();
+                lobbyExitFn(data.meta.workspaceId, data.meta.changeSetId);
               }
             }
           }

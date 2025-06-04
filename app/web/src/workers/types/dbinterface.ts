@@ -32,7 +32,7 @@ export type OutgoingConnections = DefaultMap<
 >;
 
 export type RainbowFn = (changeSetId: ChangeSetId, label: string) => void;
-export type LobbyExitFn = () => void;
+export type LobbyExitFn = (workspacePk: string, changeSetId: string) => void;
 
 export type MjolnirBulk = Array<{
   kind: string;

@@ -75,28 +75,30 @@ const returned = (changeSetId: ChangeSetId, label: string) => {
 };
 db.addListenerReturned(Comlink.proxy(returned));
 
-const lobbyExit: LobbyExitFn = async () => {
+const lobbyExit: LobbyExitFn = async (workspaceId, changeSetId) => {
   // Only navigate away from lobby if user is currently in the lobby
+  // for this workspace and change set
   if (router.currentRoute.value.name !== "new-hotness-lobby") {
     return;
+  } else {
+    const params = router.currentRoute.value.params;
+    if (!params || Object.keys(params).length === 0)
+      throw new Error("Params expected");
+    if (
+      params.workspaceId !== workspaceId ||
+      params.changeSetId !== changeSetId
+    )
+      return;
   }
-  const ctx: Context | undefined = inject("CONTEXT");
-  const workspacePk: string | undefined = ctx?.workspacePk.value;
-  const changeSetId: string | undefined = ctx?.changeSetId.value;
 
-  // Should we have a default behavior if we can't
-  // find the current workspace or change set?
-
-  if (workspacePk && changeSetId) {
-    await niflheim(workspacePk, changeSetId, true);
-    router.push({
-      name: "new-hotness",
-      params: {
-        workspacePk,
-        changeSetId,
-      },
-    });
-  }
+  await niflheim(workspaceId, changeSetId, true);
+  router.push({
+    name: "new-hotness",
+    params: {
+      workspacePk: workspaceId,
+      changeSetId,
+    },
+  });
 };
 
 db.addListenerLobbyExit(Comlink.proxy(lobbyExit));
