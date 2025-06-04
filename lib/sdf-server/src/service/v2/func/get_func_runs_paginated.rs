@@ -73,6 +73,19 @@ async fn get_func_run_view_without_logs(
             None => None,
         }
     };
+    let unprocessed_result_value: Option<serde_json::Value> = {
+        match func_run.result_unprocessed_value_cas_address() {
+            Some(result_unprocessed_value_cas_address) => {
+                let result_unprocessed_value_cas: Option<CasValue> = ctx
+                    .layer_db()
+                    .cas()
+                    .try_read_as(&result_unprocessed_value_cas_address)
+                    .await?;
+                result_unprocessed_value_cas.map(|r| r.into())
+            }
+            None => None,
+        }
+    };
 
     // Skip fetching logs to improve performance
     let logs = None;
@@ -83,6 +96,7 @@ async fn get_func_run_view_without_logs(
         code_base64,
         result_value,
         logs,
+        unprocessed_result_value,
     ))
 }
 

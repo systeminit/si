@@ -129,6 +129,7 @@ pub struct FuncRunView {
     logs: Option<FuncRunLogView>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
+    unprocessed_result_value: Option<serde_json::Value>,
 }
 
 impl FuncRunView {
@@ -138,6 +139,7 @@ impl FuncRunView {
         function_code_base64: String,
         result_value: Option<serde_json::Value>,
         logs: Option<FuncRunLogView>,
+        unprocessed_result_value: Option<serde_json::Value>,
     ) -> Self {
         FuncRunView {
             id: func_run.id(),
@@ -173,6 +175,7 @@ impl FuncRunView {
             logs,
             created_at: func_run.created_at(),
             updated_at: func_run.updated_at(),
+            unprocessed_result_value,
         }
     }
 }
@@ -238,6 +241,7 @@ pub async fn get_func_run_view(ctx: &DalContext, func_run: &FuncRun) -> FuncAPIR
         code_base64,
         result_value,
         logs,
+        None, // TODO(nick): we likely need to add the unprocessed value here as well in the future
     ))
 }
 

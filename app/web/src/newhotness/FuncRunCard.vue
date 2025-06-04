@@ -77,8 +77,8 @@
 import clsx from "clsx";
 import { computed } from "vue";
 import { Icon, themeClasses } from "@si/vue-lib/design-system";
-import { FuncRun, funcRunStatus } from "@/store/func_runs.store";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
+import { funcRunStatus, FuncRun } from "./api_composables/func_run";
 
 const props = defineProps<{
   funcRun: FuncRun;
