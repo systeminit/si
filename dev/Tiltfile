@@ -326,6 +326,7 @@ si_buck2_resource(
     ),
     links = [
         link("http://127.0.0.1:8080", "web"),
+        link("https://auth.systeminit.com/workspaces", "workspaces"),
         link("https://auth.systeminit.com", "auth-prod"),
     ],
 )
