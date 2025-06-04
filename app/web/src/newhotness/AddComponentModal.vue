@@ -121,7 +121,7 @@
               >
                 <TreeNode
                   v-for="asset in category.assets"
-                  :key="asset.variant.schemaId"
+                  :key="asset.key.schemaId + asset.key.schemaVariantId"
                   :class="
                     clsx(
                       'hover:outline hover:z-10 hover:-outline-offset-1 hover:outline-1',
@@ -129,8 +129,7 @@
                         'bg-shade-0 hover:outline-action-500',
                         'bg-neutral-800 hover:outline-action-300',
                       ),
-                      selectedAsset?.variant.schemaId ===
-                        asset.variant.schemaId && [
+                      compareKeys(selectedAsset?.key, asset.key) && [
                         'add-component-selected-item',
                         themeClasses(
                           'outline-action-500 bg-action-200',
@@ -144,12 +143,18 @@
                 >
                   <template #label>
                     <!-- TODO(Wendy) - style this text based on the fuzzy search! -->
-                    {{ asset.name }}
+                    <div class="flex flex-row items-center gap-xs">
+                      <TruncateWithTooltip>
+                        {{ asset.name }}
+                      </TruncateWithTooltip>
+                      <EditingPill
+                        v-if="!asset.variant.isLocked"
+                        :color="asset.variant.color"
+                      />
+                    </div>
                   </template>
                   <template
-                    v-if="
-                      selectedAsset?.variant.schemaId === asset.variant.schemaId
-                    "
+                    v-if="compareKeys(selectedAsset?.key, asset.key)"
                     #icons
                   >
                     <Icon v-if="api.inFlight.value" name="loader" size="sm" />
@@ -205,6 +210,7 @@ import {
   SiSearch,
   themeClasses,
   TreeNode,
+  TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import { computed, inject, nextTick, ref, watch } from "vue";
 import clsx from "clsx";
@@ -214,6 +220,7 @@ import { useRoute, useRouter } from "vue-router";
 import { debounce } from "lodash-es";
 import VueMarkdown from "vue-markdown-render";
 import TextPill from "@/components/TextPill.vue";
+import EditingPill from "@/components/EditingPill.vue";
 import {
   BifrostSchemaVariantCategories,
   CategoryVariant,
@@ -240,12 +247,10 @@ const bannerClosed = ref(false);
 
 const selectedAsset = ref<UIAsset | undefined>(undefined);
 const selectAsset = (asset: UIAsset) => {
-  // TODO - needs to account for schema variant as well
-  if (selectedAsset.value?.variant.schemaId === asset.variant.schemaId)
-    onEnter();
+  if (compareKeys(selectedAsset.value?.key, asset.key)) onEnter();
   else selectedAsset.value = asset;
-  selectionIndex.value = filteredAssetsFlat.value.findIndex(
-    (a) => a.variant.schemaId === asset.variant.schemaId,
+  selectionIndex.value = filteredAssetsFlat.value.findIndex((a) =>
+    compareKeys(a.key, asset.key),
   );
 
   // scroll selected item into view
@@ -443,9 +448,15 @@ type UICategory = UICategoryInfo & {
 };
 
 type UIAsset = {
+  key: UISchemaKey;
   name: string;
   variant: CategoryVariant;
   uiCategory: UICategoryInfo;
+};
+
+type UISchemaKey = {
+  schemaId: string;
+  schemaVariantId?: string;
 };
 
 const queryKey = makeKey(EntityKind.SchemaVariantCategories);
@@ -476,6 +487,7 @@ const categories = computed(() => {
     };
     rawCategory.schemaVariants.forEach((sv) => {
       const asset: UIAsset = {
+        key: buildKey(sv),
         variant: sv,
         name: sv.displayName ?? sv.schemaName,
         uiCategory: categoryInfo,
@@ -485,6 +497,30 @@ const categories = computed(() => {
     return category;
   });
 });
+
+const compareKeys = (
+  key1: UISchemaKey | undefined,
+  key2: UISchemaKey | undefined,
+) => {
+  if (!key1 || !key2) return false;
+  return (
+    key1.schemaId === key2.schemaId &&
+    key1.schemaVariantId === key2.schemaVariantId
+  );
+};
+
+const buildKey = (sv: CategoryVariant) => {
+  const variant =
+    "uninstalled" in sv ? (sv as UninstalledVariant) : (sv as SchemaVariant);
+  const key: UISchemaKey = {
+    schemaId: variant.schemaId,
+  };
+
+  if ("schemaVariantId" in variant)
+    key.schemaVariantId = variant.schemaVariantId;
+
+  return key;
+};
 
 const filteredCategories = computed(() => {
   const filteredResults: UICategory[] = [];

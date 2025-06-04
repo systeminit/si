@@ -177,6 +177,7 @@ export interface UninstalledVariant {
   link: string | null;
   description: string | null;
   uninstalled: "uninstalled";
+  isLocked: boolean;
 }
 
 export type CategoryVariant = SchemaVariant | UninstalledVariant;

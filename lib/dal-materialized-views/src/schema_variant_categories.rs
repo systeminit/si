@@ -71,6 +71,7 @@ pub async fn assemble(ctx: DalContext) -> super::Result<SchemaVariantCategoriesM
                 link: module.link,
                 color: module.color,
                 description: module.description,
+                is_locked: true,
             };
             variants.push(DisambiguateVariant {
                 variant_type: VariantType::Uninstalled,

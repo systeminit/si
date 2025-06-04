@@ -101,6 +101,7 @@ pub struct UninstalledVariant {
     pub link: Option<String>,
     pub color: Option<String>,
     pub description: Option<String>,
+    pub is_locked: bool,
 }
 
 #[derive(
