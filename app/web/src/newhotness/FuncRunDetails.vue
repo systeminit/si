@@ -200,6 +200,19 @@ const resultJson = computed<string>(() => {
 
 let executionKey: string | undefined;
 
+const bustFuncQuery = _.debounce(
+  () => {
+    queryClient.invalidateQueries({
+      queryKey: [ctx.changeSetId.value, "funcRunLogs", props.funcRunId],
+    });
+  },
+  1000,
+  {
+    leading: false,
+    trailing: true,
+  },
+);
+
 // Function to set up subscription for FuncRunLogUpdated events
 const setupFuncRunSubscription = () => {
   executionKey = `funcRunDetails-${props.funcRunId}`;
@@ -215,9 +228,7 @@ const setupFuncRunSubscription = () => {
 
           // Only fetch the logs instead of the entire function run
           // This is more efficient than re-fetching the entire function run
-          queryClient.invalidateQueries({
-            queryKey: [ctx.changeSetId.value, "funcRunLogs", props.funcRunId],
-          });
+          bustFuncQuery();
 
           // Reset the live indicator after a brief delay if the function run is complete
           if (funcRun.value?.state !== "Running") {

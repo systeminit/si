@@ -123,6 +123,12 @@ export const useWatchedForm = <Data>(label: string) => {
         observe(end - start);
         wForm.reset(unref(data));
       });
+
+      // there are cases in which we don't have a watched value
+      // so this will never get removed, this is just a UI fallback
+      setTimeout(() => {
+        rainbow.remove(ctx.changeSetId.value, label);
+      }, 750);
     }
 
     return wForm;
