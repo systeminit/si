@@ -166,3 +166,19 @@ services:
       - "ZED_KEYRING_PASSWORD=orc"
     ports:
       - "50051:50051"
+
+  node_exporter:
+    container_name: node_exporter
+    image: prom/node-exporter:v1.7.0
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)
+    ports:
+      - 9000:9100
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket:ro

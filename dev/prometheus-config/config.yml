@@ -5,3 +5,7 @@ scrape_configs:
    static_configs:
     - targets:
        - otelcol:9090
+ - job_name: node-exporter
+   static_configs:
+    - targets:
+       - node_exporter:9100
