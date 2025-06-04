@@ -47,6 +47,7 @@ import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import FuncRunDetailsLayout from "./layout_components/FuncRunDetailsLayout.vue";
 import { assertIsDefined, Context } from "./types";
 import { useApi, routes, funcRunTypes } from "./api_composables";
+import { keyEmitter } from "./logic_composables/emitters";
 import { FuncRun, funcRunStatus } from "./api_composables/func_run";
 
 export interface OutputLine {
@@ -78,6 +79,14 @@ const router = useRouter();
 const queryClient = useQueryClient();
 const realtimeStore = useRealtimeStore();
 const isLive = ref(false);
+
+const back = () => {
+  const params = router.currentRoute?.value.params ?? {};
+  router.push({
+    name: "new-hotness",
+    params,
+  });
+};
 
 // Action handlers
 const removeApi = useApi();
@@ -245,10 +254,14 @@ const setupFuncRunSubscription = () => {
 // Set up subscription on component mount
 onMounted(() => {
   setupFuncRunSubscription();
+  keyEmitter.on("Escape", () => {
+    back();
+  });
 });
 
 // Ensure cleanup on component unmount
 onBeforeUnmount(() => {
+  keyEmitter.off("Escape");
   if (executionKey) {
     realtimeStore.unsubscribe(executionKey);
     executionKey = undefined;
