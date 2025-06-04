@@ -111,11 +111,21 @@
           >
 
           <VButton
+            :requestStatus="validateSnapshotRequestStatus"
+            @click="
+              validateSnapshot(selectedWorkspaceId, selectedChangeSetId, {
+                fixIssues: true,
+              })
+            "
+            >Validate AND FIX changeset</VButton
+          >
+
+          <VButton
             :requestStatus="migrateConnectionsRequestStatus"
             @click="
               migrateConnections(selectedWorkspaceId, selectedChangeSetId)
             "
-            >Migrate connections</VButton
+            >Migrate connections (UPDATES changeset)</VButton
           >
 
           <VButton
@@ -125,7 +135,7 @@
                 dryRun: true,
               })
             "
-            >Migrate connections (dry run only)</VButton
+            >Migrate connections (dry run)</VButton
           >
         </Stack>
 
@@ -226,7 +236,7 @@ import {
   useAdminStore,
 } from "@/store/admin.store";
 import { useWorkspacesStore, WorkspacePk } from "@/store/workspaces.store";
-import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import ValidateSnapshot from "@/components/AdminDashboard/ValidateSnapshot.vue";
 import MigrateConnections from "@/components/AdminDashboard/MigrateConnections.vue";
 
@@ -320,13 +330,13 @@ watch(selectedWorkspaceId, async (currentWorkspaceId) => {
 const changeSetsFilter = ref<string | null>(null);
 // Sort open change sets first
 
-const ACTIVE_CHANGE_SET_STATUS = [
-  "Open",
-  "Approved",
-  "NeedsApproval",
-  "NeedsAbanadonApproval",
-  "Rejected",
-] as const;
+const ACTIVE_CHANGE_SET_STATUS: ChangeSetStatus[] = [
+  ChangeSetStatus.Open,
+  ChangeSetStatus.Approved,
+  ChangeSetStatus.NeedsApproval,
+  ChangeSetStatus.NeedsAbandonApproval,
+  ChangeSetStatus.Rejected,
+];
 const fetchChangeSets = async (workspaceId: string) => {
   const result = await adminStore.LIST_CHANGE_SETS(workspaceId);
   if (result?.result.success) {
@@ -336,11 +346,12 @@ const fetchChangeSets = async (workspaceId: string) => {
         if (!a[1].baseChangeSetId !== !b[1].baseChangeSetId) {
           return !a[1].baseChangeSetId ? -1 : 1;
         }
-        if (
-          a[1].status in ACTIVE_CHANGE_SET_STATUS !==
-          b[1].status in ACTIVE_CHANGE_SET_STATUS
-        ) {
-          return a[1].status in ACTIVE_CHANGE_SET_STATUS ? -1 : 1;
+        const aIsActive = ACTIVE_CHANGE_SET_STATUS.includes(a[1].status);
+        const bIsActive = ACTIVE_CHANGE_SET_STATUS.includes(b[1].status);
+        if (aIsActive && !bIsActive) {
+          return -1;
+        } else if (!aIsActive && bIsActive) {
+          return 1;
         }
         return a[1].name.localeCompare(b[1].name);
       }),
@@ -546,8 +557,12 @@ function migrateConnections(
 const validateSnapshotRequestStatus =
   adminStore.getRequestStatus("VALIDATE_SNAPSHOT");
 
-function validateSnapshot(workspaceId: WorkspacePk, changeSetId: ChangeSetId) {
-  adminStore.VALIDATE_SNAPSHOT(workspaceId, changeSetId);
+function validateSnapshot(
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
+  options?: { fixIssues?: boolean },
+) {
+  adminStore.VALIDATE_SNAPSHOT(workspaceId, changeSetId, options);
   showPanel.value = "validate-snapshot";
 }
 </script>

@@ -38,6 +38,7 @@ use crate::{
         node_weight::{
             ArgumentTargets,
             AttributePrototypeArgumentNodeWeight,
+            AttributeValueNodeWeight,
             NodeWeight,
             traits::SiNodeWeight as _,
         },
@@ -64,122 +65,172 @@ pub fn validate_graph(
     graph: &impl std::ops::Deref<Target = WorkspaceSnapshotGraphVCurrent>,
 ) -> WorkspaceSnapshotGraphResult<Vec<ValidationIssue>> {
     let mut issues = vec![];
-    for (node_weight, node_index) in graph.nodes() {
-        issues.extend(validate_node(graph, node_weight, node_index)?);
+    for node in graph.nodes() {
+        if let Some(issue) = ValidateNode::validate_node(graph, node)? {
+            issues.push(issue);
+        }
     }
     Ok(issues)
 }
 
-/// Validate a single node in the graph, returning a list of validation issues found.
-pub fn validate_node(
-    graph: &WorkspaceSnapshotGraphVCurrent,
-    node: &NodeWeight,
-    node_index: NodeIndex,
-) -> WorkspaceSnapshotGraphResult<Vec<ValidationIssue>> {
-    let mut issues = vec![];
-    match node {
-        NodeWeight::AttributeValue(_) => {
-            // If this is an object attribute value, check that it has child attribute values for each child prop
-            let attr = node_index;
-            let Some(prop) = graph.target_opt(attr, EdgeWeightKind::Prop)? else {
-                return Ok(issues);
-            };
-            if PropKind::Object == graph.get_node_weight(prop)?.as_prop_node_weight()?.kind() {
-                // Check our the children we *do* have against the child props we *should* have
-                let child_props: HashSet<_> = graph
-                    .targets(prop, EdgeWeightKindDiscriminants::Use)
-                    .collect();
+trait ValidateNode {
+    /// Validate a single node in the graph, returning a list of validation issues found.
+    fn validate_node(
+        graph: &WorkspaceSnapshotGraphVCurrent,
+        node: (&Self, NodeIndex),
+    ) -> WorkspaceSnapshotGraphResult<Option<ValidationIssue>>;
+}
 
-                // Step through child avs, and record the ones we see (maybe report duplicates)
-                let mut attr_content = HashMap::new();
-                for child_attr in graph.targets(attr, EdgeWeightKindDiscriminants::Contain) {
-                    let child_attr_prop = graph.target(child_attr, EdgeWeightKind::Prop)?;
-                    if !child_props.contains(&child_attr_prop) {
-                        issues.push(ValidationIssue::UnknownChildAttributeValue {
-                            child: graph.get_node_weight(child_attr)?.id().into(),
-                        });
-                        continue;
-                    }
-                    let content = graph
-                        .get_node_weight(child_attr)?
-                        .get_attribute_value_node_weight()?
-                        .value();
-                    if let Some(orig_content) = attr_content.insert(child_attr_prop, content) {
-                        let original = graph.get_node_weight(child_attr)?.id().into();
-                        let duplicate = graph.get_node_weight(child_attr)?.id().into();
-                        if content == orig_content {
-                            issues.push(ValidationIssue::DuplicateAttributeValue {
+impl ValidateNode for NodeWeight {
+    fn validate_node(
+        graph: &WorkspaceSnapshotGraphVCurrent,
+        (node, node_index): (&Self, NodeIndex),
+    ) -> WorkspaceSnapshotGraphResult<Option<ValidationIssue>> {
+        match node {
+            Self::AttributeValue(node) => ValidateNode::validate_node(graph, (node, node_index)),
+            Self::AttributePrototypeArgument(node) => {
+                ValidateNode::validate_node(graph, (node, node_index))
+            }
+            _ => Ok(None),
+        }
+    }
+}
+
+impl ValidateNode for AttributeValueNodeWeight {
+    fn validate_node(
+        graph: &WorkspaceSnapshotGraphVCurrent,
+        (_, attr): (&Self, NodeIndex),
+    ) -> WorkspaceSnapshotGraphResult<Option<ValidationIssue>> {
+        // If this is an object attribute value, check that it has child attribute values for each child prop
+        let Some(prop) = graph.target_opt(attr, EdgeWeightKind::Prop)? else {
+            return Ok(None);
+        };
+        if PropKind::Object == graph.get_node_weight(prop)?.as_prop_node_weight()?.kind() {
+            // Check our the children we *do* have against the child props we *should* have
+            let child_props: HashSet<_> = graph
+                .targets(prop, EdgeWeightKindDiscriminants::Use)
+                .collect();
+
+            // Step through child avs, and record the ones we see (maybe report duplicates)
+            let mut attr_content = HashMap::new();
+            for child_attr in graph.targets(attr, EdgeWeightKindDiscriminants::Contain) {
+                let child_attr_prop = graph.target(child_attr, EdgeWeightKind::Prop)?;
+                if !child_props.contains(&child_attr_prop) {
+                    return Ok(Some(ValidationIssue::UnknownChildAttributeValue {
+                        child: graph.get_node_weight(child_attr)?.id().into(),
+                    }));
+                }
+                let content = graph
+                    .get_node_weight(child_attr)?
+                    .get_attribute_value_node_weight()?
+                    .value();
+                if let Some(orig_content) = attr_content.insert(child_attr_prop, content) {
+                    let original = graph.get_node_weight(child_attr)?.id().into();
+                    let duplicate = graph.get_node_weight(child_attr)?.id().into();
+                    if content == orig_content {
+                        return Ok(Some(ValidationIssue::DuplicateAttributeValue {
+                            original,
+                            duplicate,
+                        }));
+                    } else {
+                        return Ok(Some(
+                            ValidationIssue::DuplicateAttributeValueWithDifferentValues {
                                 original,
                                 duplicate,
-                            })
-                        } else {
-                            issues.push(
-                                ValidationIssue::DuplicateAttributeValueWithDifferentValues {
-                                    original,
-                                    duplicate,
-                                },
-                            )
-                        };
-                    }
-                }
-
-                // If any child attributes are *not* associated with child props, report those
-                let mut missing_children = HashSet::new();
-                for child_prop in child_props {
-                    if !attr_content.contains_key(&child_prop) {
-                        missing_children.insert(graph.get_node_weight(child_prop)?.id().into());
-                    }
-                }
-                if !missing_children.is_empty() {
-                    issues.push(ValidationIssue::MissingChildAttributeValues {
-                        object: graph.get_node_weight(attr)?.id().into(),
-                        missing_children,
-                    });
+                            },
+                        ));
+                    };
                 }
             }
-        }
-        NodeWeight::AttributePrototypeArgument(AttributePrototypeArgumentNodeWeight {
-            targets:
-                Some(ArgumentTargets {
-                    source_component_id,
-                    ..
-                }),
-            ..
-        }) => {
-            let dest_apa = node_index;
-            let source_component = graph.get_node_index_by_id(source_component_id)?;
 
-            // If this is a connection to a socket or prop, make sure the component on the other
-            // end has an AV for it
-            let Some(source_socket) =
-                graph.target_opt(dest_apa, EdgeWeightKind::PrototypeArgumentValue)?
-            else {
-                return Ok(issues);
-            };
-            // Make sure the source is an output socket
-            if Some(ContentAddressDiscriminants::OutputSocket)
-                != graph
-                    .get_node_weight(source_socket)?
-                    .content_address_discriminants()
-            {
-                return Ok(issues);
-            };
-            // Run through the sockets on the component, and find the one that matches
-            let mut component_sockets = graph
-                .targets(source_component, EdgeWeightKind::SocketValue)
-                .filter_map(|socket_value| graph.target(socket_value, EdgeWeightKind::Socket).ok());
-            if !component_sockets.contains(&source_socket) {
-                issues.push(ValidationIssue::ConnectionToUnknownSocket {
-                    dest_apa: graph.get_node_weight(dest_apa)?.id().into(),
-                    source_component: graph.get_node_weight(source_component)?.id().into(),
-                    source_socket: graph.get_node_weight(source_socket)?.id().into(),
-                })
+            // If any child attributes are *not* associated with child props, report those
+            let mut missing_children = HashSet::new();
+            for child_prop in child_props {
+                if !attr_content.contains_key(&child_prop) {
+                    missing_children.insert(graph.get_node_weight(child_prop)?.id().into());
+                }
+            }
+            if !missing_children.is_empty() {
+                return Ok(Some(ValidationIssue::MissingChildAttributeValues {
+                    object: graph.get_node_weight(attr)?.id().into(),
+                    missing_children,
+                }));
             }
         }
-        _ => {}
+
+        Ok(None)
     }
+}
 
-    Ok(issues)
+impl ValidateNode for AttributePrototypeArgumentNodeWeight {
+    fn validate_node(
+        graph: &WorkspaceSnapshotGraphVCurrent,
+        (apa_node, apa): (&Self, NodeIndex),
+    ) -> WorkspaceSnapshotGraphResult<Option<ValidationIssue>> {
+        // Check that the APA has exactly one value
+        {
+            let mut values = graph
+                .edges_directed(apa, Direction::Outgoing)
+                .filter(|edge| {
+                    &EdgeWeightKind::PrototypeArgumentValue == edge.weight().kind()
+                        || EdgeWeightKindDiscriminants::ValueSubscription
+                            == edge.weight().kind().into()
+                });
+            // If there are no values, report a missing value
+            if values.next().is_none() {
+                return Ok(Some(ValidationIssue::MissingValue {
+                    apa: graph.get_node_weight(apa)?.id().into(),
+                }));
+            };
+            // If there are multiple values, report a multiple values issue
+            if values.next().is_some() {
+                return Ok(Some(ValidationIssue::MultipleValues {
+                    apa: graph.get_node_weight(apa)?.id().into(),
+                }));
+            }
+        }
+
+        // Check for connection to unknown socket
+        if let Some(ArgumentTargets {
+            source_component_id,
+            ..
+        }) = apa_node.targets
+        {
+            let source_component = graph.get_node_index_by_id(source_component_id)?;
+            {
+                // If this is a connection to a socket or prop, make sure the component on the other
+                // end has an AV for it
+                let Some(source_socket) =
+                    graph.target_opt(apa, EdgeWeightKind::PrototypeArgumentValue)?
+                else {
+                    return Ok(None);
+                };
+                // Make sure the source is an output socket
+                if Some(ContentAddressDiscriminants::OutputSocket)
+                    != graph
+                        .get_node_weight(source_socket)?
+                        .content_address_discriminants()
+                {
+                    return Ok(None);
+                };
+                // Run through the sockets on the component, and find the one that matches
+                let mut component_sockets = graph
+                    .targets(source_component, EdgeWeightKind::SocketValue)
+                    .filter_map(|socket_value| {
+                        graph.target(socket_value, EdgeWeightKind::Socket).ok()
+                    });
+                if !component_sockets.contains(&source_socket) {
+                    return Ok(Some(ValidationIssue::ConnectionToUnknownSocket {
+                        apa: graph.get_node_weight(apa)?.id().into(),
+                        source_component: graph.get_node_weight(source_component)?.id().into(),
+                        source_socket: graph.get_node_weight(source_socket)?.id().into(),
+                    }));
+                }
+            }
+        }
+
+        Ok(None)
+    }
 }
 
 /// A single validation issue found in the graph
@@ -189,7 +240,7 @@ pub fn validate_node(
 pub enum ValidationIssue {
     /// APA is connected to a socket that does not exist on the source component
     ConnectionToUnknownSocket {
-        dest_apa: AttributePrototypeArgumentId,
+        apa: AttributePrototypeArgumentId,
         source_component: ComponentId,
         source_socket: OutputSocketId,
     },
@@ -208,42 +259,13 @@ pub enum ValidationIssue {
         object: AttributeValueId,
         missing_children: HashSet<PropId>,
     },
+    /// APA has neither a PrototypeArgumentValue or ValueSubscription edge
+    MissingValue { apa: AttributePrototypeArgumentId },
+    /// APA has multiple PrototypeArgumentValue and ValueSubscription edges
+    MultipleValues { apa: AttributePrototypeArgumentId },
     /// A child attribute value was found under an object, but it was not associated with any
     /// of the object's child props
     UnknownChildAttributeValue { child: AttributeValueId },
-}
-
-impl ValidationIssue {
-    pub fn fix(
-        &self,
-        graph: &mut WorkspaceSnapshotGraphVCurrent,
-    ) -> WorkspaceSnapshotGraphResult<()> {
-        match self {
-            &ValidationIssue::DuplicateAttributeValue { duplicate, .. }
-            | &ValidationIssue::DuplicateAttributeValueWithDifferentValues { duplicate, .. } => {
-                println!("Removing duplicate attribute value {duplicate}");
-                let node_index = graph.get_node_index_by_id(duplicate)?;
-                graph.remove_node(node_index);
-            }
-            ValidationIssue::ConnectionToUnknownSocket { dest_apa, .. } => {
-                println!("Removing APA {dest_apa}");
-                // Remove the APA node (as long as it leads back to an input socket)
-                let dest_apa = graph.get_node_index_by_id(dest_apa)?;
-                let dest_prototype = graph.source(dest_apa, EdgeWeightKind::PrototypeArgument)?;
-                let dest_socket =
-                    graph.source(dest_prototype, EdgeWeightKindDiscriminants::Prototype)?;
-                let NodeWeight::InputSocket(_) = graph.get_node_weight(dest_socket)? else {
-                    // If it's not an input socket, we can't be sure we're fixing what we want to fix
-                    return Ok(());
-                };
-                graph.remove_node(dest_apa);
-            }
-            ValidationIssue::MissingChildAttributeValues { .. }
-            | ValidationIssue::UnknownChildAttributeValue { .. } => {}
-        }
-
-        Ok(())
-    }
 }
 
 /// Helper to format values that need extra context when being displayed (such as graphs, lookup tables,
@@ -257,6 +279,13 @@ impl std::fmt::Display for WithGraph<'_, AttributeValueId> {
             Ok((_, path)) => write!(f, "{path} ({id})"),
             Err(err) => write!(f, "{err} ({id})"),
         }
+    }
+}
+
+impl std::fmt::Display for WithGraph<'_, AttributePrototypeArgumentId> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let &WithGraph(_, id) = self;
+        write!(f, "{id}")
     }
 }
 
@@ -309,7 +338,7 @@ impl std::fmt::Display for WithGraph<'_, &'_ ValidationIssue> {
         let &WithGraph(graph, issue) = self;
         match *issue {
             ValidationIssue::ConnectionToUnknownSocket {
-                dest_apa,
+                apa: dest_apa,
                 source_component,
                 source_socket,
             } => {
@@ -353,6 +382,12 @@ impl std::fmt::Display for WithGraph<'_, &'_ ValidationIssue> {
                         .map(|&child_prop| format!("{}", WithGraph(graph, child_prop)))
                         .join(", ")
                 )
+            }
+            ValidationIssue::MissingValue { apa } => {
+                write!(f, "APA {} has no value", WithGraph(graph, apa))
+            }
+            ValidationIssue::MultipleValues { apa } => {
+                write!(f, "APA {} has multiple values", WithGraph(graph, apa))
             }
             ValidationIssue::UnknownChildAttributeValue { child } => {
                 write!(
