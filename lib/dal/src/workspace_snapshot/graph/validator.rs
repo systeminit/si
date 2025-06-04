@@ -4,6 +4,7 @@ use std::collections::{
 };
 
 use itertools::Itertools as _;
+use lazy_static::lazy_static;
 use petgraph::prelude::*;
 use serde::{
     Deserialize,
@@ -22,7 +23,6 @@ use si_id::{
 
 use super::WorkspaceSnapshotGraphError;
 use crate::{
-    func::FuncKind,
     prop::PropKind,
     workspace_snapshot::{
         content_address::ContentAddressDiscriminants,
@@ -407,7 +407,49 @@ pub fn is_identity_func(
     let func_node = graph
         .get_node_weight_by_id(func_id)?
         .get_func_node_weight()?;
-    Ok(func_node.func_kind() == FuncKind::Intrinsic && func_node.name() == "si:identity")
+    Ok(IDENTITY_FUNCS.contains(func_node.name()))
+}
+
+lazy_static! {
+    static ref IDENTITY_FUNCS: HashSet<&'static str> = [
+        "si:identity",
+
+        // These functions from IAM assets are essentially identity--either direct passthroughs,
+        // or `value || ""`
+
+        // AWS::IAM::CustomerManagedIdentityPolicy
+        "awsIamCustomerManagedIdentityPolicyResourceArnToSocket",
+        "awsIamCustomerManagedIdentityPolicySetPolicyOutput",
+
+        // AWS::IAM::Group
+        "awsIamGroupSetArnOutput",
+        "awsIamGroupSetGroupNameOutput",
+
+        // AWS::IAM::InstanceProfile
+        "awsIamInstanceProfileArnOutput",
+        "awsIamInstanceProfileSetRoleNameFromInput",
+
+        // AWS::IAM::PolicyPrincipal
+        // "awsIamPrincipalOutputSocket", // Maybe? This is essentially `value || {}`
+
+        // AWS::IAM::Role
+        "awsIamRoleSetArnOutput",
+        "awsIamRoleSetRoleNameOutput",
+
+        // AWS::IAM::RolePolicy
+        "awsIamRolePolicySetPolicyArnFromSocket",
+        "awsIamRolePolicySetRoleNameFromSocket",
+
+        // AWS::IAM::User
+        "awsIamUserNameToOutput",
+        "awsIamUserSetOutputSocketToARN",
+
+        // AWS::IAM::UserPolicy
+        "awsIamUserPolicySetUserNameFromInput",
+        "awsIamIdentityPolicyArnFromInputSocket",
+    ]
+    .into_iter()
+    .collect();
 }
 
 pub fn is_normalize_to_array_func(
@@ -417,7 +459,58 @@ pub fn is_normalize_to_array_func(
     let func_node = graph
         .get_node_weight_by_id(func_id)?
         .get_func_node_weight()?;
-    Ok(func_node.func_kind() == FuncKind::Intrinsic && func_node.name() == "si:normalizeToArray")
+    Ok(NORMALIZE_TO_ARRAY_FUNCS.contains(func_node.name()))
+}
+
+lazy_static! {
+    static ref NORMALIZE_TO_ARRAY_FUNCS: HashSet<&'static str> = [
+        "si:normalizeToArray",
+        "normalizeToArray",
+
+        // These functions from IAM assets are essentially normalizeToArray by another name
+
+        // AWS::IAM::CustomerManagedIdentityPolicy
+        "awsIamCustomerManagedIdentityPolicySetStatement",
+
+        // AWS::IAM::Group
+        "awsIamGroupSetUsersFromInput",
+
+        // AWS::IAM::PolicyStatement
+        "setResourcesFromResourceSocket",
+        "setNotResourcesFromNotResourceSocket",
+
+        // AWS::IAM::Role
+        "awsIamRolePrincipalSetPrincipalOutputSocket",
+    ]
+    .into_iter()
+    .collect();
+}
+
+pub fn func_produces_array(
+    graph: &WorkspaceSnapshotGraphVCurrent,
+    func_id: FuncId,
+    input_is_array: bool,
+) -> WorkspaceSnapshotGraphResult<Option<bool>> {
+    let func_node = graph
+        .get_node_weight_by_id(func_id)?
+        .get_func_node_weight()?;
+    Ok(if IDENTITY_FUNCS.contains(func_node.name()) {
+        Some(input_is_array)
+    } else if SINGLE_VALUED_FUNCS.contains(func_node.name()) {
+        Some(false)
+    } else {
+        // We just don't know, so return None
+        None
+    })
+}
+
+lazy_static! {
+    static ref SINGLE_VALUED_FUNCS: HashSet<&'static str> = [
+        // AWS ARN
+        "awsArnToArnString",
+    ]
+    .into_iter()
+    .collect();
 }
 
 pub fn resolve_av(
