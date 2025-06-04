@@ -21,6 +21,7 @@ use si_id::{
 
 use super::{
     WorkspaceSnapshotGraphError,
+    func_produces_array,
     is_identity_func,
     is_normalize_to_array_func,
     prop_path_from_root,
@@ -371,29 +372,47 @@ impl PropConnection {
             Self::dest_prop(graph, destination_socket_id)?;
         let (_, mut destination_path) = prop_path_from_root(graph, destination_prop_id)?;
 
-        // Figure out the func to use, if one side is not identity.
-        let func_id = if is_identity_func(graph, source_func_id)? {
-            // If the dest func is normalizeToArray, we can safely use identity as long as we
-            // uplevel the AVs instead of the functions.
-            if is_normalize_to_array_func(graph, destination_func_id)? {
-                // If the other side is not an array, we append a new element to the array and
-                // attach the subscription to that.
-                if PropKind::Array
-                    != graph
-                        .get_node_weight_by_id(source_prop_id)?
-                        .get_prop_node_weight()?
-                        .kind
-                {
-                    destination_path.push_back("-"); // append
-                }
-                source_func_id // we already checked that this is identity
-            } else {
-                destination_func_id
-            }
-        } else if is_identity_func(graph, destination_func_id)? {
+        // Pick the function to use for the connection (since there are two functions involved,
+        // we hope one of them is identity or normalizeToArray so we can pick the other!)
+        let func_id = if is_identity_func(graph, destination_func_id)? {
             source_func_id
+
+        // Figure out whether the source will produce an array or not based on the input
+        // prop and the type of the input
+        } else if is_normalize_to_array_func(graph, destination_func_id)? {
+            let source_is_array = PropKind::Array
+                == graph
+                    .get_node_weight_by_id(source_prop_id)?
+                    .get_prop_node_weight()?
+                    .kind;
+            match func_produces_array(graph, source_func_id, source_is_array)? {
+                // If the source function already produces an array, we can use it as is
+                Some(false) => source_func_id,
+                // If the source function produces a single value, we append a new element to the
+                // array and set the subscription on the new element.
+                Some(true) => {
+                    destination_path.push_back("");
+                    source_func_id
+                }
+                // If we don't know whether the source func yields an array or not, we can't
+                // migrate a normalizeToArray connection!
+                None => {
+                    return Err(
+                        ConnectionUnmigrateableBecause::SourceAndDestinationSocketBothHaveFuncs {
+                            source_func_id,
+                            destination_func_id,
+                        },
+                    );
+                }
+            }
+
+        // If the source function is identity, we can use the destination function as is
+        } else if is_identity_func(graph, source_func_id)? {
+            destination_func_id
+
+        // If both functions are non-identity and we couldn't figure out which to use,
+        // we can't migrate the connection.
         } else {
-            // If the dest is si:normalizeToArray
             return Err(
                 ConnectionUnmigrateableBecause::SourceAndDestinationSocketBothHaveFuncs {
                     source_func_id,
