@@ -19,9 +19,9 @@ pub async fn assemble(ctx: DalContext) -> super::Result<ComponentListMv> {
     for component_id in component_ids {
         components.push(super::component::assemble(ctx.clone(), component_id).await?);
     }
-
+    let workspace_mv_id = ctx.workspace_pk()?;
     Ok(ComponentListMv {
-        id: ctx.change_set_id(),
+        id: workspace_mv_id,
         components: components.iter().map(Into::into).collect(),
     })
 }

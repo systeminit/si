@@ -535,7 +535,7 @@ async fn build_mv_inner(
                 frigg,
                 change,
                 mv_kind,
-                change_set_id,
+                workspace_pk,
             )
             .await?
             {
@@ -559,7 +559,7 @@ async fn build_mv_inner(
                         frigg,
                         change,
                         mv_kind,
-                        change_set_id,
+                        workspace_pk,
                     )
                     .await?
                     {
@@ -789,7 +789,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
     frigg: &FriggStore,
     change: Change,
     mv_kind: ReferenceKind,
-    change_set_id: ChangeSetId,
+    workspace_pk: si_id::WorkspacePk,
 ) -> Result<Option<QueuedBuildMvTask>, MaterializedViewError> {
     match mv_kind {
         ReferenceKind::ActionPrototypeViewList => {
@@ -819,7 +819,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             }
         }
         ReferenceKind::ActionViewList => {
-            let change_set_mv_id = change_set_id.to_string();
+            let workspace_mv_id = workspace_pk.to_string();
 
             let trigger_entity = <ActionViewListMv as MaterializedView>::trigger_entity();
             if change.entity_kind != trigger_entity {
@@ -833,7 +833,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx,
                     frigg,
                     change,
-                    change_set_mv_id,
+                    workspace_mv_id,
                     ActionViewListMv,
                     dal_materialized_views::action_view_list::assemble(ctx.clone()),
                 );
@@ -868,7 +868,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             }
         }
         ReferenceKind::ComponentList => {
-            let change_set_mv_id = change_set_id.to_string();
+            let workspace_mv_id = workspace_pk.to_string();
 
             let trigger_entity = <ComponentListMv as MaterializedView>::trigger_entity();
             if change.entity_kind != trigger_entity {
@@ -882,7 +882,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx,
                     frigg,
                     change,
-                    change_set_mv_id,
+                    workspace_mv_id,
                     ComponentListMv,
                     dal_materialized_views::component_list::assemble(ctx.clone(),),
                 );
@@ -917,7 +917,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             }
         }
         ReferenceKind::IncomingConnectionsList => {
-            let change_set_mv_id = change_set_id.to_string();
+            let workspace_mv_id = workspace_pk.to_string();
 
             let trigger_entity = <IncomingConnectionsListMv as MaterializedView>::trigger_entity();
             if change.entity_kind != trigger_entity {
@@ -931,7 +931,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx,
                     frigg,
                     change,
-                    change_set_mv_id,
+                    workspace_mv_id,
                     IncomingConnectionsListMv,
                     dal_materialized_views::incoming_connections_list::assemble(ctx.clone()),
                 );
@@ -966,7 +966,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             }
         }
         ReferenceKind::SchemaVariantCategories => {
-            let change_set_mv_id = change_set_id.to_string();
+            let workspace_mv_id = workspace_pk.to_string();
 
             let trigger_entity = <SchemaVariantCategoriesMv as MaterializedView>::trigger_entity();
             if change.entity_kind != trigger_entity {
@@ -980,7 +980,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx,
                     frigg,
                     change,
-                    change_set_mv_id,
+                    workspace_mv_id,
                     SchemaVariantCategoriesMv,
                     dal_materialized_views::schema_variant_categories::assemble(ctx.clone()),
                 );
@@ -1015,7 +1015,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             }
         }
         ReferenceKind::ViewList => {
-            let change_set_mv_id = change_set_id.to_string();
+            let workspace_mv_id = workspace_pk.to_string();
 
             let trigger_entity = <ViewListMv as MaterializedView>::trigger_entity();
             if change.entity_kind != trigger_entity {
@@ -1029,7 +1029,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     ctx,
                     frigg,
                     change,
-                    change_set_mv_id,
+                    workspace_mv_id,
                     ViewListMv,
                     dal_materialized_views::view_list::assemble(ctx.clone()),
                 );

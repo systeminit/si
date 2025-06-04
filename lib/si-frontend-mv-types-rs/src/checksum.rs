@@ -31,6 +31,7 @@ use si_id::{
     SecretId,
     ViewId,
     WorkspaceId,
+    WorkspacePk,
 };
 
 use crate::{
@@ -60,6 +61,12 @@ pub trait FrontendChecksum {
 // seems difficult to work around "conflicting implementations for trait" errors with
 // the other trait impls for the more basic types.
 impl FrontendChecksum for ChangeSetId {
+    fn checksum(&self) -> Checksum {
+        FrontendChecksum::checksum(&self.to_string())
+    }
+}
+
+impl FrontendChecksum for WorkspacePk {
     fn checksum(&self) -> Checksum {
         FrontendChecksum::checksum(&self.to_string())
     }

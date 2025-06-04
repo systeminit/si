@@ -15,9 +15,10 @@ pub async fn assemble(ctx: DalContext) -> super::Result<ViewListMv> {
     for view_id in view_ids {
         views.push(super::view::assemble(ctx.clone(), view_id).await?);
     }
+    let workspace_mv_id = ctx.workspace_pk()?;
 
     Ok(ViewListMv {
-        id: ctx.change_set_id(),
+        id: workspace_mv_id,
         views: views.iter().map(Into::into).collect(),
     })
 }

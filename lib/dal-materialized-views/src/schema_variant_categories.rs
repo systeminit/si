@@ -91,8 +91,9 @@ pub async fn assemble(ctx: DalContext) -> super::Result<SchemaVariantCategoriesM
     }
     categories.sort_by_cached_key(|c| c.display_name.to_owned());
 
+    let workspace_mv_id = ctx.workspace_pk()?;
     Ok(SchemaVariantCategoriesMv {
-        id: ctx.change_set_id(),
+        id: workspace_mv_id,
         categories,
         uninstalled,
     })

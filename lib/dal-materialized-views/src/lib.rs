@@ -83,6 +83,8 @@ pub enum Error {
     CachedModule(#[from] dal::cached_module::CachedModuleError),
     #[error("component error: {0}")]
     Component(#[from] dal::ComponentError),
+    #[error("dal transactions error: {0}")]
+    DalTransactions(#[from] dal::TransactionsError),
     #[error("diagram error: {0}")]
     Diagram(#[from] dal::diagram::DiagramError),
     #[error("func error: {0}")]

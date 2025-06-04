@@ -72,8 +72,9 @@ pub async fn assemble(ctx: DalContext) -> super::Result<ActionViewListMv> {
             hold_status_influenced_by,
         })
     }
+    let workspace_mv_id = ctx.workspace_pk()?;
     Ok(ActionViewListMv {
-        id: ctx.change_set_id(),
+        id: workspace_mv_id,
         actions: views,
     })
 }

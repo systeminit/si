@@ -13,9 +13,9 @@ use si_frontend_mv_types_macros::{
     Refer,
 };
 use si_id::{
-    ChangeSetId,
     ComponentId,
     ViewId,
+    WorkspacePk,
 };
 
 use crate::reference::{
@@ -45,7 +45,7 @@ pub struct View {
     reference_kind = ReferenceKind::ViewList,
 )]
 pub struct ViewList {
-    pub id: ChangeSetId,
+    pub id: WorkspacePk,
     #[mv(reference_kind = ReferenceKind::View)]
     pub views: Vec<Reference<ViewId>>,
 }

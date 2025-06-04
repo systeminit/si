@@ -13,6 +13,7 @@ use si_id::{
     ChangeSetId,
     ComponentId,
     FuncRunId,
+    WorkspacePk,
 };
 
 use crate::reference::ReferenceKind;
@@ -72,6 +73,6 @@ pub struct ActionView {
     reference_kind = ReferenceKind::ActionViewList,
 )]
 pub struct ActionViewList {
-    pub id: ChangeSetId,
+    pub id: WorkspacePk,
     pub actions: Vec<ActionView>,
 }

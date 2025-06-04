@@ -11,11 +11,11 @@ use si_frontend_mv_types_macros::{
 };
 use si_id::{
     AttributeValueId,
-    ChangeSetId,
     ComponentId,
     InputSocketId,
     OutputSocketId,
     PropId,
+    WorkspacePk,
 };
 
 use crate::reference::{
@@ -81,7 +81,7 @@ pub struct IncomingConnections {
   reference_kind = ReferenceKind::IncomingConnectionsList,
 )]
 pub struct IncomingConnectionsList {
-    pub id: ChangeSetId,
+    pub id: WorkspacePk,
     #[mv(reference_kind = ReferenceKind::IncomingConnections)]
     pub component_connections: Vec<Reference<ComponentId>>,
 }
