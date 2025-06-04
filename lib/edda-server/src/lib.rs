@@ -4,8 +4,8 @@ use thiserror::Error;
 
 mod app_state;
 mod change_set_processor_task;
-pub mod compresing_stream;
 pub mod compressed_request;
+pub mod compressing_stream;
 mod config;
 pub mod extract;
 mod handlers;
