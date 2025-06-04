@@ -11,7 +11,24 @@ function debug(...args: any | any[]) {
 
 const inflight = new Set<string>();
 
+// When we are running a bulk mjolnir, dont let other hammers fly...
+// Hold them in a queue, and if the bulk fails, let them fly...
+// if the bulk succeeds, don't fire them...
+let _bulkInflight = false;
+
+export const bulkInflight = () => {
+  bulkQueue.pause();
+  _bulkInflight = true;
+};
+export const bulkDone = (runQueue = false) => {
+  _bulkInflight = false;
+  if (runQueue) {
+    bulkQueue.start();
+  } else bulkQueue.clear();
+};
+
 export const mjolnirQueue = new PQueue({ concurrency: 10, autoStart: true });
+const bulkQueue = new PQueue({ concurrency: 10, autoStart: false });
 
 type Description = {
   workspaceId: string;
@@ -40,6 +57,10 @@ export const hasReturned = (desc: Description) => {
 };
 
 export const maybeMjolnir = async (desc: Description, fn: () => void) => {
+  if (_bulkInflight) {
+    await bulkQueue.add(fn);
+    return;
+  }
   if (canThrow(desc)) {
     try {
       await mjolnirQueue.add(fn);
