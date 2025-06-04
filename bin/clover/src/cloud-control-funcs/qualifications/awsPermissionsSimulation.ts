@@ -2,6 +2,8 @@ async function main(component: Input): Promise<Output> {
   const identityChild = await siExec.waitUntilEnd("aws", [
     "sts",
     "get-caller-identity",
+    "--region",
+    "us-east-1",
     "--output",
     "json",
   ]);
