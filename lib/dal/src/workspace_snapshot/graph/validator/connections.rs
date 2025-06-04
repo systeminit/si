@@ -387,13 +387,15 @@ impl PropConnection {
                     .kind;
             match func_produces_array(graph, source_func_id, source_is_array)? {
                 // If the source function already produces an array, we can use it as is
-                Some(false) => source_func_id,
+                Some(true) => source_func_id,
+
                 // If the source function produces a single value, we append a new element to the
                 // array and set the subscription on the new element.
-                Some(true) => {
-                    destination_path.push_back("");
+                Some(false) => {
+                    destination_path.push_back("-");
                     source_func_id
                 }
+
                 // If we don't know whether the source func yields an array or not, we can't
                 // migrate a normalizeToArray connection!
                 None => {
