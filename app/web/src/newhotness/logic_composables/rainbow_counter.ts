@@ -2,8 +2,9 @@ import { computed, inject, reactive } from "vue";
 import { DefaultMap } from "@/utils/defaultmap";
 import { assertIsDefined, Context } from "../types";
 
-const q = new DefaultMap<string, Set<string>>(() => new Set<string>());
-const queueByChangeSet = reactive(q);
+const queueByChangeSet = new DefaultMap<string, Set<string>>(() => {
+  return reactive(new Set<string>());
+});
 
 export const add = (changeSetId: string, desc: string) => {
   const queue = queueByChangeSet.get(changeSetId);
