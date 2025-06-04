@@ -19,9 +19,10 @@ pub async fn assemble(ctx: DalContext) -> super::Result<IncomingConnectionsListM
         component_connections
             .push(super::incoming_connections::assemble(ctx.clone(), component_id).await?);
     }
+    let workspace_mv_id = ctx.workspace_pk()?;
 
     Ok(IncomingConnectionsListMv {
-        id: ctx.change_set_id(),
+        id: workspace_mv_id,
         component_connections: component_connections.iter().map(Into::into).collect(),
     })
 }

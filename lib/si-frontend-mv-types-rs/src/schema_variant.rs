@@ -11,7 +11,7 @@ use si_events::{
     Timestamp,
     workspace_snapshot::EntityKind,
 };
-use si_id::ChangeSetId;
+use si_id::WorkspacePk;
 use strum::{
     AsRefStr,
     Display,
@@ -180,7 +180,7 @@ pub struct SchemaVariantsByCategory {
     reference_kind = ReferenceKind::SchemaVariantCategories,
 )]
 pub struct SchemaVariantCategories {
-    pub id: ChangeSetId,
+    pub id: WorkspacePk,
     pub categories: Vec<SchemaVariantsByCategory>,
     pub uninstalled: HashMap<SchemaId, UninstalledVariant>,
 }

@@ -4,12 +4,12 @@ use serde::{
     Serialize,
 };
 use si_events::{
-    ChangeSetId,
     ComponentId,
     SchemaId,
     SchemaVariantId,
     workspace_snapshot::EntityKind,
 };
+use si_id::WorkspacePk;
 
 use crate::reference::{
     Reference,
@@ -107,7 +107,7 @@ pub struct Component {
   reference_kind = ReferenceKind::ComponentList,
 )]
 pub struct ComponentList {
-    pub id: ChangeSetId,
+    pub id: WorkspacePk,
     #[mv(reference_kind = ReferenceKind::Component)]
     pub components: Vec<Reference<ComponentId>>,
 }

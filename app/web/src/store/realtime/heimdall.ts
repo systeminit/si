@@ -244,7 +244,7 @@ export const useMakeArgs = () => {
       workspaceId: ctx?.workspacePk.value ?? "",
       changeSetId: ctx?.changeSetId.value ?? "",
       kind,
-      id: id ?? ctx?.changeSetId.value ?? "",
+      id: id ?? ctx?.workspacePk.value ?? "",
     };
   };
 };
@@ -266,7 +266,7 @@ export const useMakeKey = () => {
         ctx?.workspacePk.value,
         ctx?.changeSetId.value,
         kind,
-        unref(id) ?? ctx?.changeSetId.value,
+        unref(id) ?? ctx?.workspacePk.value,
       ];
     });
 };

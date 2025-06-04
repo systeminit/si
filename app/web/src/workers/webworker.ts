@@ -1544,7 +1544,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     workspaceId,
     changeSetId,
     EntityKind.ComponentList,
-    changeSetId,
+    workspaceId,
   )) as BifrostComponentList | -1;
 
   if (data === -1) return;
@@ -1566,14 +1566,14 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     workspaceId,
     changeSetId,
     EntityKind.PossibleConnections,
-    changeSetId,
+    workspaceId,
   );
 
   const list = (await get(
     workspaceId,
     changeSetId,
     EntityKind.IncomingConnectionsList,
-    changeSetId,
+    workspaceId,
     undefined,
     undefined,
     false, // don't compute
@@ -1599,7 +1599,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     workspaceId,
     changeSetId,
     EntityKind.OutgoingConnections,
-    changeSetId,
+    workspaceId,
   );
 };
 
@@ -1811,7 +1811,7 @@ const getComputed = async (
     // making this, so when connections populate, we re-query
     weakReference(
       changeSetId,
-      { kind: EntityKind.OutgoingConnections, args: changeSetId },
+      { kind: EntityKind.OutgoingConnections, args: workspaceId },
       { kind, args: id },
     );
     return atomDoc;
@@ -1830,7 +1830,7 @@ const getComputed = async (
     clearWeakReferences(changeSetId, { kind, args: id });
     weakReference(
       changeSetId,
-      { kind: "OutgoingConnections", args: changeSetId },
+      { kind: "OutgoingConnections", args: workspaceId },
       { kind, args: id },
     );
     return data;
@@ -1840,7 +1840,7 @@ const getComputed = async (
     clearWeakReferences(changeSetId, { kind, args: id });
     weakReference(
       changeSetId,
-      { kind: "OutgoingConnections", args: changeSetId },
+      { kind: "OutgoingConnections", args: workspaceId },
       { kind, args: id },
     );
     return data;

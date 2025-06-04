@@ -152,7 +152,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
     let components = dal_materialized_views::component_list::assemble(ctx.clone()).await?;
     assert_eq!(
         ComponentList {
-            id: ctx.change_set_id(),
+            id: ctx.workspace_pk()?,
             components: Vec::new()
         }, // expected
         components // actual
