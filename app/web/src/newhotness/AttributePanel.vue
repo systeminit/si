@@ -1,19 +1,18 @@
 <template>
   <div v-if="root">
+    <div class="py-xs">
+      <!-- TODO(Wendy) - this doesn't work on the secrets tree yet -->
+      <SiSearch
+        ref="searchRef"
+        v-model="q"
+        placeholder="filter attributes..."
+        :tabIndex="0"
+        @keydown.tab="onTab"
+      />
+    </div>
     <template
       v-if="'children' in filtered.tree && filtered.tree.children.length > 0"
     >
-      <!-- TODO(Wendy) - this search should be moved outside of this template once it works on the secret tree -->
-      <div class="py-xs">
-        <SiSearch
-          ref="searchRef"
-          v-model="q"
-          placeholder="filter attributes..."
-          :tabIndex="0"
-          @keydown.tab="onTab"
-        />
-      </div>
-
       <h3
         :class="
           clsx(

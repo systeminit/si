@@ -1,37 +1,86 @@
 <template>
-  <AttributeChildLayout>
-    <template #header>
-      <div class="flex flex-row items-center gap-2xs">
-        <div>{{ displayName }}</div>
-      </div>
-    </template>
-    <template v-if="props.attributeTree.prop?.isOriginSecret">
-      <div class="m-xs p-xs border-2">
+  <div
+    v-if="props.attributeTree.prop?.isOriginSecret && showSecretForm"
+    ref="secretFormRef"
+  >
+    <AttributeChildLayout>
+      <template #header>
+        <div class="flex flex-row items-center gap-2xs">
+          <div>{{ displayName }}</div>
+        </div>
+      </template>
+      <div
+        :class="
+          clsx(
+            'p-xs flex flex-col gap-xs',
+            themeClasses('bg-shade-0', 'bg-neutral-900'),
+          )
+        "
+      >
+        <div
+          :class="
+            clsx(
+              'text-sm italic',
+              themeClasses('text-neutral-600', 'text-neutral-400'),
+            )
+          "
+        >
+          Secret data entered will be encrypted. Secret data can always be
+          replaced, but only the name and description can be viewed.
+        </div>
         <ul class="flex flex-col">
-          <template
-            v-for="fieldname in Object.keys(secretFormData)"
+          <li
+            v-for="(fieldname, index) in Object.keys(secretFormData)"
             :key="fieldname"
+            :class="
+              clsx(
+                'flex flex-col items-center gap-3xs font-sm [&>*]:w-full',
+                index === Object.keys(secretFormData).length - 1
+                  ? 'mb-xs'
+                  : 'mb-[-1px]',
+              )
+            "
           >
-            <li class="mb-2xs flex flex-row items-center">
-              <span>{{ fieldname }}</span>
-              <secretForm.Field :name="fieldname">
-                <template #default="{ field }">
+            <secretForm.Field :name="fieldname">
+              <template #default="{ field }">
+                <div class="grid grid-cols-2">
+                  <TruncateWithTooltip class="py-2xs">{{
+                    fieldname
+                  }}</TruncateWithTooltip>
                   <input
                     :class="
                       clsx(
-                        'block w-64 ml-auto text-white bg-black border-2 border-neutral-300 disabled:bg-neutral-900',
+                        'block h-lg w-full ml-auto border font-sm font-mono disabled:bg-neutral-900 focus:z-100',
+                        themeClasses(
+                          'text-black bg-white border-neutral-400',
+                          'text-white bg-black border-neutral-600',
+                        ),
                         field.state.meta.errors.length > 0 &&
-                          'border-destructive-500',
+                          'border-destructive-500 z-100',
                       )
                     "
                     type="text"
                     :value="field.state.value"
+                    tabindex="0"
+                    :placeholder="
+                      props.attributeTree.secret
+                        ? getPlaceholder(fieldname)
+                        : ''
+                    "
                     @input="(e) => field.handleChange((e.target as HTMLInputElement).value)"
                   />
-                </template>
-              </secretForm.Field>
-            </li>
-          </template>
+                </div>
+                <div
+                  v-for="error in field.state.meta.errors"
+                  :key="error"
+                  class="text-destructive-500 text-right pb-2xs"
+                >
+                  {{ error }}
+                </div>
+              </template>
+            </secretForm.Field>
+          </li>
+          <!-- TODO(Wendy) - figure out tabbing for buttons -->
           <VButton
             :label="
               props.attributeTree.secret ? 'Replace Secret' : 'Add Secret'
@@ -39,35 +88,41 @@
             :loading="wForm.bifrosting.value"
             loadingText="Saving Secret"
             tone="action"
+            tabindex="-1"
             :disabled="!secretForm.state.canSubmit"
-            @click="() => secretForm.handleSubmit()"
+            @click="submitSecretForm"
           />
         </ul>
       </div>
-    </template>
-    <template v-else>
-      <AttributeInput
-        :displayName="props.attributeTree.prop?.name ?? 'Secret Value'"
-        :attributeValueId="props.attributeTree.attributeValue.id"
-        :path="props.attributeTree.attributeValue.path ?? ''"
-        :kind="props.attributeTree.prop?.widgetKind"
-        :prop="props.attributeTree.prop"
-        :externalSources="props.attributeTree.attributeValue.externalSources"
-        :value="props.attributeTree.secret?.name?.toString() ?? ''"
-        :canDelete="false"
-        isSecret
-        @save="
-          (path, id, value, connectingComponentId) =>
-            save(path, id, value, connectingComponentId)
-        "
-      />
-    </template>
-  </AttributeChildLayout>
+    </AttributeChildLayout>
+  </div>
+  <AttributeInput
+    v-else
+    :displayName="props.attributeTree.prop?.name ?? 'Secret Value'"
+    :attributeValueId="props.attributeTree.attributeValue.id"
+    :path="props.attributeTree.attributeValue.path ?? ''"
+    :kind="props.attributeTree.prop?.widgetKind"
+    :prop="props.attributeTree.prop"
+    :externalSources="props.attributeTree.attributeValue.externalSources"
+    :value="props.attributeTree.secret?.name?.toString() ?? ''"
+    :canDelete="false"
+    :disableInputWindow="props.attributeTree.prop?.isOriginSecret"
+    isSecret
+    @selected="openSecretForm"
+    @save="
+      (path, id, value, connectingComponentId) =>
+        save(path, id, value, connectingComponentId)
+    "
+  />
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { VButton } from "@si/vue-lib/design-system";
+import { computed, nextTick, ref } from "vue";
+import {
+  themeClasses,
+  TruncateWithTooltip,
+  VButton,
+} from "@si/vue-lib/design-system";
 import { useRoute } from "vue-router";
 import clsx from "clsx";
 import { BifrostComponent } from "@/workers/types/entity_kind_types";
@@ -100,7 +155,11 @@ const secretFormData = computed(() => {
         obj[name] = "";
         return obj;
       }, {} as Record<string, string>);
-    return { Name: "", Description: "", ...form };
+    return {
+      Name: props.attributeTree.secret?.name ?? "",
+      Description: props.attributeTree.secret?.description ?? "",
+      ...form,
+    };
   } else return {};
 });
 
@@ -203,4 +262,56 @@ const secretForm = wForm.newForm({
   },
   watchFn: () => props.attributeTree.secret,
 });
+
+const getPlaceholder = (fieldname: string) => {
+  if (!props.attributeTree.secret) return "";
+
+  if (fieldname === "Name") {
+    return props.attributeTree.secret.name;
+  } else if (fieldname === "Description") {
+    return props.attributeTree.secret.description;
+  } else return "empty";
+};
+
+const secretFormOpen = ref(false);
+const showSecretForm = computed(
+  () => !props.attributeTree.secret || secretFormOpen.value,
+);
+const openSecretForm = () => {
+  secretFormOpen.value = true;
+  addListeners();
+  nextTick(() => {
+    const inputs = secretFormRef.value?.getElementsByTagName("input");
+
+    if (inputs && inputs[0]) {
+      inputs[0].focus();
+    }
+  });
+};
+
+const secretFormRef = ref<HTMLDivElement>();
+
+const onClick = (e: MouseEvent) => {
+  const target = e.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+  const el = secretFormRef.value;
+  if (el && !el.contains(target)) {
+    secretFormOpen.value = false;
+    removeListeners();
+  }
+};
+
+const addListeners = () => {
+  window.addEventListener("mousedown", onClick);
+};
+const removeListeners = () => {
+  window.removeEventListener("mousedown", onClick);
+};
+
+const submitSecretForm = async () => {
+  await secretForm.handleSubmit();
+  secretFormOpen.value = false;
+};
 </script>

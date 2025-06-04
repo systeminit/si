@@ -6,6 +6,7 @@
       clsx(
         'grid grid-cols-2 items-center gap-xs relative text-sm font-normal',
         inputOpen && 'hidden',
+        isSecret && 'mb-[-1px]',
       )
     "
   >
@@ -48,17 +49,8 @@
       <TruncateWithTooltip>
         <template v-if="isArray"> Set manually or connect to a prop </template>
         <template v-else-if="isMap"> Enter a key </template>
-        <div
+        <AttributeValueBox
           v-else-if="isSetByConnection && props.externalSources"
-          :class="
-            clsx(
-              'flex flex-row items-center gap-xs border w-fit px-3xs rounded-sm',
-              themeClasses(
-                'text-neutral-600 border-neutral-400 bg-neutral-100',
-                'text-neutral-400 border-neutral-600 bg-neutral-900',
-              ),
-            )
-          "
         >
           <template v-if="isSecret">
             <!-- TODO: Paul make this an actual tailwind color! -->
@@ -76,7 +68,14 @@
               {{ attrData.value }}
             </div>
           </template>
-        </div>
+        </AttributeValueBox>
+        <!-- TODO(Wendy) make this an actual tailwind color! -->
+        <AttributeValueBox
+          v-else-if="isSecret && attrData.value"
+          class="text-[#B2DFB9]"
+        >
+          {{ attrData.value }}
+        </AttributeValueBox>
         <template v-else>
           {{
             maybeOptions.options?.find((o) => o.value === attrData.value)
@@ -84,16 +83,37 @@
           }}
         </template>
       </TruncateWithTooltip>
-      <Icon v-if="isArray" name="chevron--down" class="ml-auto" />
+      <div class="ml-auto" />
+      <!-- This pushes all the icons to the right side! -->
+      <Icon v-if="isArray" name="chevron--down" />
+      <Icon
+        v-if="wForm.bifrosting.value"
+        name="loader"
+        size="sm"
+        tone="action"
+      />
+      <!-- TODO(Wendy) - add this button to clear a secret value -->
+      <!-- <Icon
+        v-else-if="
+          isSecret && props.externalSources && props.externalSources.length > 0
+        "
+        v-tooltip="'Remove secret'"
+        name="x-circle"
+        size="sm"
+        :class="
+          clsx(
+            'cursor-pointer hover:scale-110 active:scale-100',
+            themeClasses(
+              'text-neutral-600 hover:text-shade-100',
+              'text-neutral-400 hover:text-shade-0',
+            ),
+          )
+        "
+        tabindex="-1"
+        @click.stop="clearValue"
+      /> -->
     </div>
     <!-- `relative` on label just to "float" this loader above the form input -->
-    <Icon
-      v-if="wForm.bifrosting.value"
-      class="absolute right-2xs"
-      name="loader"
-      size="sm"
-      tone="action"
-    />
   </label>
 
   <!-- floating input window, shows when this attribute is selected -->
@@ -185,6 +205,7 @@
             </div>
           </div>
           <div
+            v-if="!isSecret"
             :class="
               clsx(
                 'flex flex-row items-center cursor-pointer border border-transparent',
@@ -222,7 +243,6 @@
               <template v-else-if="field.state.value">
                 "{{ field.state.value }}"
               </template>
-              <template v-else-if="isSecret"> Select a Secret</template>
               <template v-else> Set to no value</template>
             </TruncateWithTooltip>
             <div
@@ -308,6 +328,7 @@
           <!-- select potential connection area -->
           <template v-if="!isMap">
             <div
+              v-if="!isSecret"
               :class="
                 clsx(
                   'px-xs font-bold',
@@ -444,6 +465,7 @@ import CodeViewer from "@/components/CodeViewer.vue";
 import { attributeEmitter } from "../logic_composables/emitters";
 import { useWatchedForm } from "../logic_composables/watched_form";
 import TextPill from "./TextPill.vue";
+import AttributeValueBox from "../AttributeValueBox.vue";
 
 type UIPotentialConnection = PossibleConnection & {
   pathArray: string[];
@@ -462,6 +484,7 @@ const props = defineProps<{
   isArray?: boolean;
   isMap?: boolean;
   isSecret?: boolean;
+  disableInputWindow?: boolean;
 }>();
 
 const isSetByConnection = computed(
@@ -670,19 +693,26 @@ const emit = defineEmits<{
   ): void;
   (e: "delete", path: string, id: string): void;
   (e: "add", key?: string): void;
+  (e: "selected"): void;
 }>();
 
 // INPUT WINDOW LOGIC
 
 const mapKey = ref("");
 const mapKeyError = ref(false);
-const selectedIndex = ref(0);
+const defaultSelectedIndex = () => (props.isSecret ? 1 : 0);
+const selectedIndex = ref(defaultSelectedIndex());
 const inputRef = ref<InstanceType<typeof HTMLInputElement>>();
 const inputWindowRef = ref<InstanceType<typeof HTMLDivElement>>();
 const inputOpen = ref(false);
 const labelRect = ref<undefined | DOMRect>(undefined);
 
 const openInput = () => {
+  if (props.disableInputWindow) {
+    emit("selected");
+    return;
+  }
+
   resetFilteredOptions();
   valueForm.reset();
   labelRect.value = anchorRef.value?.getClientRects()[0];
@@ -691,7 +721,7 @@ const openInput = () => {
   mapKeyError.value = false;
   if (!labelRect.value) return;
   inputOpen.value = true;
-  selectedIndex.value = 0;
+  selectedIndex.value = defaultSelectedIndex();
   connectingComponentId.value = undefined;
   nextTick(() => {
     inputRef.value?.focus();
@@ -773,7 +803,7 @@ const onInputChange = (e: Event) => {
 
   valueForm.setFieldValue("value", v);
   filterStr.value = v;
-  selectedIndex.value = 0;
+  selectedIndex.value = defaultSelectedIndex();
 };
 const onClick = (e: MouseEvent) => {
   const target = e.target;
@@ -788,7 +818,7 @@ const onUp = () => {
   if (props.isMap) return;
 
   selectedIndex.value--;
-  if (selectedIndex.value < 0) {
+  if (selectedIndex.value < defaultSelectedIndex()) {
     selectedIndex.value =
       filteredConnections.value.length + filteredOptions.length;
   }
@@ -801,7 +831,7 @@ const onDown = () => {
     selectedIndex.value >
     filteredConnections.value.length + filteredOptions.length
   ) {
-    selectedIndex.value = 0;
+    selectedIndex.value = defaultSelectedIndex();
   }
 };
 const onEnter = () => {
@@ -945,6 +975,11 @@ const selectedConnection = computed(
 //     fixWindowPosition();
 //   });
 // });
+
+// TODO(Wendy) - add the ability to clear a value!
+// const clearValue = (e: Event) => {
+//   e.preventDefault();
+// };
 </script>
 
 <style lang="css" scoped>
