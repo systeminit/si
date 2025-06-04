@@ -62,11 +62,11 @@ import { useInfiniteQuery, useQueryClient } from "@tanstack/vue-query";
 import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import { useRouter, useRoute } from "vue-router";
 import clsx from "clsx";
-import { FuncRun } from "@/store/func_runs.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import FuncRunCard from "./FuncRunCard.vue";
 import { funcRunTypes, useApi, routes } from "./api_composables";
 import { assertIsDefined, Context } from "./types";
+import { FuncRun } from "./api_composables/func_run";
 
 // Component props
 const props = defineProps<{

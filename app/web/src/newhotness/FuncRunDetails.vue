@@ -43,11 +43,11 @@ import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { VButton } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
 import { useRouter } from "vue-router";
-import { funcRunStatus, FuncRun } from "@/store/func_runs.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import FuncRunDetailsLayout from "./layout_components/FuncRunDetailsLayout.vue";
 import { assertIsDefined, Context } from "./types";
 import { useApi, routes, funcRunTypes } from "./api_composables";
+import { FuncRun, funcRunStatus } from "./api_composables/func_run";
 
 export interface OutputLine {
   stream: string;

@@ -19,13 +19,17 @@ export type FuncRunState =
   | "Failure"
   | "Success";
 
-export type FuncKind =
-  | "action"
-  | "attribute"
-  | "authentication"
-  | "codeGeneration"
-  | "intrinsic"
-  | "management";
+export enum FuncKind {
+  Action = "Action",
+  Attribute = "Attribute",
+  Authentication = "Authentication",
+  CodeGeneration = "CodeGeneration",
+  Intrinsic = "Intrinsic",
+  Qualification = "Qualification",
+  SchemaVariantDefinition = "SchemaVariantDefinition",
+  Unknown = "Unknown",
+  Management = "Management",
+}
 
 export enum FuncBackendKind {
   Array,
@@ -96,6 +100,7 @@ export interface FuncRun {
   functionCodeBase64: string;
   resultValue: unknown;
   logs?: FuncRunLog;
+  unprocessedResultValue: unknown;
 }
 export interface OutputLine {
   stream: string;
@@ -113,6 +118,27 @@ export interface FuncRunLog {
   funcRunID: FuncRunId;
   logs: OutputLine[];
   finalized: boolean;
+}
+
+export function funcRunStatus(
+  funcRun?: FuncRun,
+): FuncRunState | "ActionFailure" | undefined | null {
+  if (!funcRun) return null;
+  if (!funcRun.state) return null;
+
+  // If the qualification ran successfully, but it resulted in failure, then the state is a failure state.
+  if (
+    funcRun.functionKind === "Qualification" &&
+    funcRun.state === "Success" &&
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (funcRun.unprocessedResultValue as any)?.result !== "success"
+  ) {
+    return "Failure";
+  }
+
+  // If actionResultState is Failure, it's an error even though state may be Success
+  if (funcRun.actionResultState === "Failure") return "ActionFailure";
+  return funcRun.state;
 }
 
 // move all the above types out of here for cleanliness

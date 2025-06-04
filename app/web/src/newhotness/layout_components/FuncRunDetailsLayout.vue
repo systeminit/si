@@ -130,7 +130,7 @@ import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import CodeViewer from "@/components/CodeViewer.vue";
-import { FuncRun } from "@/store/func_runs.store";
+import { FuncRun } from "../api_composables/func_run";
 import FuncRunStatusBadge from "../FuncRunStatusBadge.vue";
 import GridItemWithLiveHeader from "./GridItemWithLiveHeader.vue";
 
