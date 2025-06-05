@@ -29,7 +29,7 @@
           icon="beaker"
           :selected="route.matched.some((r) => r.name === 'workspace-lab')"
           :linkTo="{
-            path: `/w/${workspacePk}/:${changeSetId}/l`,
+            path: `/w/${workspacePk}/${changeSetId}/l`,
           }"
         />
 
@@ -38,7 +38,7 @@
           icon="eye"
           :selected="route.matched.some((r) => r.name === 'workspace-audit')"
           :linkTo="{
-            path: `/w/${workspacePk}/:${changeSetId}/a`,
+            path: `/w/${workspacePk}/${changeSetId}/a`,
           }"
         />
       </div>
