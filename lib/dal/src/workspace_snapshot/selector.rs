@@ -863,14 +863,17 @@ impl InputSocketExt for WorkspaceSnapshotSelector {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> WorkspaceSnapshotResult<Vec<InputSocket>> {
-        match self {
+        let mut result = match self {
             Self::LegacySnapshot(snapshot) => {
                 snapshot.list_input_sockets(ctx, schema_variant_id).await
             }
             Self::SplitSnapshot(snapshot) => {
                 snapshot.list_input_sockets(ctx, schema_variant_id).await
             }
-        }
+        }?;
+        result.sort_by_key(|socket| socket.id());
+
+        Ok(result)
     }
 
     async fn all_attribute_value_ids_everywhere_for_input_socket_id(

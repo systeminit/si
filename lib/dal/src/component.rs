@@ -1483,6 +1483,8 @@ impl Component {
                 .get_component_node_weight()?;
             component_ids.push(node_weight.id.into())
         }
+        component_ids.sort();
+
         Ok(component_ids)
     }
 

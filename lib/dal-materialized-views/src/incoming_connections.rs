@@ -55,8 +55,9 @@ async fn socket_to_socket(ctx: &DalContext, component_id: ComponentId) -> Result
             InputSocket::component_attribute_value_id(ctx, input_socket_id, component_id).await?;
         let attribute_prototype_id =
             AttributeValue::prototype_id(ctx, input_socket_attribute_value_id).await?;
-        let attribute_prototype_argument_ids =
+        let mut attribute_prototype_argument_ids =
             AttributePrototype::list_arguments(ctx, attribute_prototype_id).await?;
+        attribute_prototype_argument_ids.sort();
 
         // Don't bother gathering information to cache if there are no prototype arguments.
         if attribute_prototype_argument_ids.is_empty() {
