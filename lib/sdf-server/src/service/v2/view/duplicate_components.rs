@@ -49,8 +49,8 @@ pub struct PasteComponentsRequest {
     pub new_parent_node_id: Option<ComponentId>,
 }
 
-/// Paste a set of [`Component`](dal::Component)s via their componentId. Creates change-set if on head
-pub async fn paste_component(
+/// Duplicate a set of [`Component`](dal::Component)s via their componentId. Creates change-set if on head
+pub async fn duplicate_components(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
     Path(ViewParam { view_id }): Path<ViewParam>,
