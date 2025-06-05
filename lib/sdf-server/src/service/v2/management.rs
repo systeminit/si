@@ -16,27 +16,26 @@ use axum::{
         post,
     },
 };
+use chrono::{
+    Duration,
+    Utc,
+};
 use dal::{
     ChangeSet,
     ChangeSetError,
     ChangeSetId,
     ComponentId,
-    Func,
     FuncError,
     FuncId,
     SchemaVariantError,
     TransactionsError,
     WorkspacePk,
-    WsEvent,
     WsEventError,
     diagram::view::ViewId,
     func::authoring::FuncAuthoringError,
     management::{
         ManagementError,
-        ManagementFuncReturn,
-        ManagementOperator,
         prototype::{
-            ManagementPrototype,
             ManagementPrototypeError,
             ManagementPrototypeId,
         },
@@ -48,7 +47,11 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_events::audit_log::AuditLogKind;
+use si_db::{
+    ManagementFuncExecutionError,
+    ManagementFuncJobState,
+    ManagementState,
+};
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -93,6 +96,8 @@ pub enum ManagementApiError {
     LayerDb(#[from] LayerDbError),
     #[error("management error: {0}")]
     Management(#[from] ManagementError),
+    #[error("management func job status error: {0}")]
+    ManagementFuncJobStatus(#[from] ManagementFuncExecutionError),
     #[error("management history missing a field - this is a bug!: {0}")]
     ManagementHistoryFieldMissing(String),
     #[error("management prototype error: {0}")]
@@ -136,6 +141,8 @@ pub struct RunPrototypeResponse {
     message: Option<String>,
 }
 
+const MAX_PENDING_DURATION: Duration = Duration::minutes(7);
+
 pub async fn run_prototype(
     HandlerContext(builder): HandlerContext,
     AccessBuilder(access_builder): AccessBuilder,
@@ -156,11 +163,41 @@ pub async fn run_prototype(
         .await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
+    let state_ctx = ctx.clone();
 
-    // TODO check that this is a valid prototypeId
-    let mut execution_result =
-        ManagementPrototype::execute_by_id(&ctx, prototype_id, component_id, view_id.into())
+    // Is there already a pending run? if so fail it if it's too old, so that we can start a new one
+    if let Some(pending) =
+        ManagementFuncJobState::get_pending(&state_ctx, component_id, prototype_id).await?
+    {
+        if pending.timestamp().updated_at <= Utc::now() - MAX_PENDING_DURATION {
+            ManagementFuncJobState::transition_state(
+                &state_ctx,
+                pending.id(),
+                ManagementState::Failure,
+                None,
+            )
             .await?;
+            state_ctx.commit().await?;
+        }
+    }
+
+    if let Err(err) = ManagementFuncJobState::new_pending(&ctx, component_id, prototype_id).await {
+        match err {
+            ManagementFuncExecutionError::CreationFailed => {
+                return Ok(ForceChangeSetResponse::new(
+                    force_change_set_id,
+                    RunPrototypeResponse {
+                        status: ManagementFuncStatus::Error,
+                        message: "This management func is already running".to_string().into(),
+                    },
+                ));
+            }
+            other => Err(other)?,
+        }
+    }
+
+    ctx.enqueue_management_func(prototype_id, component_id, view_id, request.request_ulid)
+        .await?;
 
     track(
         &posthog_client,
@@ -176,69 +213,14 @@ pub async fn run_prototype(
         }),
     );
 
-    if let Some(result) = execution_result.result.take() {
-        let result: ManagementFuncReturn = result.try_into()?;
-        let mut created_component_ids = None;
-        if result.status == ManagementFuncStatus::Ok {
-            if let Some(operations) = result.operations {
-                created_component_ids = ManagementOperator::new(
-                    &ctx,
-                    component_id,
-                    operations,
-                    execution_result,
-                    Some(view_id),
-                )
-                .await?
-                .operate()
-                .await?;
-            }
-        }
+    ctx.commit().await?;
 
-        let func_id = ManagementPrototype::func_id(&ctx, prototype_id).await?;
-        let func = Func::get_by_id(&ctx, func_id).await?;
-
-        WsEvent::management_operations_complete(
-            &ctx,
-            request.request_ulid,
-            func.name.clone(),
-            result.message.clone(),
-            result.status,
-            created_component_ids,
-        )
-        .await?
-        .publish_on_commit(&ctx)
-        .await?;
-
-        ctx.write_audit_log(
-            AuditLogKind::ManagementOperationsComplete {
-                component_id,
-                prototype_id,
-                func_id,
-                func_name: func.name.clone(),
-                status: match result.status {
-                    ManagementFuncStatus::Ok => "ok",
-                    ManagementFuncStatus::Error => "error",
-                }
-                .to_string(),
-                message: result.message.clone(),
-            },
-            func.name,
-        )
-        .await?;
-
-        ctx.commit().await?;
-
-        return Ok(ForceChangeSetResponse::new(
-            force_change_set_id,
-            RunPrototypeResponse {
-                status: result.status,
-                message: result.message,
-            },
-        ));
-    }
-
-    Err(ManagementApiError::ManagementPrototypeExecutionFailure(
-        prototype_id,
+    Ok(ForceChangeSetResponse::new(
+        force_change_set_id,
+        RunPrototypeResponse {
+            status: ManagementFuncStatus::Ok,
+            message: "enqueued".to_string().into(),
+        },
     ))
 }
 

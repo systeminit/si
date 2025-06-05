@@ -21,4 +21,11 @@ impl Timestamp {
             updated_at: now,
         }
     }
+
+    pub fn new(created_at: DateTime<Utc>, updated_at: DateTime<Utc>) -> Self {
+        Self {
+            created_at,
+            updated_at,
+        }
+    }
 }

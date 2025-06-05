@@ -865,7 +865,7 @@ impl FuncRunner {
         manager_component_id: ComponentId,
         management_func_id: FuncId,
         args: serde_json::Value,
-    ) -> FuncRunnerResult<FuncRunnerValueChannel> {
+    ) -> FuncRunnerResult<(FuncRunId, FuncRunnerValueChannel)> {
         let span = current_span_for_instrument_at!("debug");
 
         // Prepares the function for execution.
@@ -1007,9 +1007,10 @@ impl FuncRunner {
         .await
         .map_err(|err| span.record_err(err))?;
 
+        let func_run_id = runner.func_run.id();
         let result_channel = runner.execute(ctx.clone(), span).await;
 
-        Ok(result_channel)
+        Ok((func_run_id, result_channel))
     }
 
     pub async fn build_management(

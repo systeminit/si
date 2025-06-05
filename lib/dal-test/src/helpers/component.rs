@@ -88,13 +88,25 @@ pub async fn execute_management_func(
     if prototype_ids.next().is_some() {
         return Err(eyre!("multiple prototypes for func"));
     }
-    let mut execution_result = ManagementPrototype::execute_by_id(
+
+    let (geometries, placeholders, run_channel, _) = ManagementPrototype::start_execution(
         ctx,
         prototype_id,
         component_id,
         Some(view_id(ctx, component_id).await?),
     )
     .await?;
+
+    let mut execution_result = ManagementPrototype::finalize_execution(
+        ctx,
+        component_id,
+        prototype_id,
+        geometries,
+        placeholders,
+        run_channel,
+    )
+    .await?;
+
     let result: ManagementFuncReturn = execution_result
         .result
         .take()

@@ -827,7 +827,7 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
     let bindings = FuncBinding::get_qualification_bindings_for_func_id(ctx, created_func_one.id)
         .await
         .expect("could not get bindings");
-    
+
     // Check the qualifications.
     assert_eq!(
         1,                                  // expected

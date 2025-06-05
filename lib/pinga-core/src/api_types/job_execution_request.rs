@@ -1,4 +1,5 @@
 mod v1;
+mod v2;
 
 use std::{
     fmt,
@@ -25,23 +26,26 @@ use strum::{
     EnumString,
     VariantNames,
 };
-use v1::JobArgsV1Discriminants;
-
-pub use self::v1::{
+pub use v1::{
     JobArgsV1,
     JobExecutionRequestV1,
 };
+use v2::JobArgsV2Discriminants;
+pub use v2::{
+    JobArgsV2,
+    JobExecutionRequestV2,
+};
 
-pub type JobExecutionRequestVCurrent = JobExecutionRequestV1;
+pub type JobExecutionRequestVCurrent = JobExecutionRequestV2;
 
-pub type JobArgsVCurrent = JobArgsV1;
-pub type JobArgsVCurrentDiscriminants = JobArgsV1Discriminants;
+pub type JobArgsVCurrent = JobArgsV2;
+pub type JobArgsVCurrentDiscriminants = JobArgsV2Discriminants;
 
 #[derive(Clone, Eq, Serialize, PartialEq, VariantNames)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum JobExecutionRequest {
-    V1(JobExecutionRequestV1),
+    V2(JobExecutionRequestV2),
 }
 
 impl ApiWrapper for JobExecutionRequest {
@@ -52,19 +56,19 @@ impl ApiWrapper for JobExecutionRequest {
 
     fn id(&self) -> naxum_api_types::RequestId {
         match self {
-            Self::V1(JobExecutionRequestVCurrent { id, .. }) => *id,
+            Self::V2(JobExecutionRequestVCurrent { id, .. }) => *id,
         }
     }
 
     fn new_current(current: Self::Current) -> Self {
-        Self::V1(current)
+        Self::V2(current)
     }
 }
 
 impl fmt::Debug for JobExecutionRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::V1(inner) => inner.fmt(f),
+            Self::V2(inner) => inner.fmt(f),
         }
     }
 }
@@ -74,7 +78,7 @@ impl Deref for JobExecutionRequest {
 
     fn deref(&self) -> &Self::Target {
         match self {
-            Self::V1(inner) => inner,
+            Self::V2(inner) => inner,
         }
     }
 }
@@ -82,7 +86,7 @@ impl Deref for JobExecutionRequest {
 impl DerefMut for JobExecutionRequest {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
-            Self::V1(inner) => inner,
+            Self::V2(inner) => inner,
         }
     }
 }
@@ -94,6 +98,7 @@ impl DerefMut for JobExecutionRequest {
 #[strum_discriminants(strum(serialize_all = "camelCase"), derive(AsRefStr, EnumString))]
 pub enum JobExecutionRequestVersions {
     V1(JobExecutionRequestV1),
+    V2(JobExecutionRequestV2),
 }
 
 impl ApiVersionsWrapper for JobExecutionRequestVersions {
@@ -102,12 +107,28 @@ impl ApiVersionsWrapper for JobExecutionRequestVersions {
     fn id(&self) -> RequestId {
         match self {
             Self::V1(JobExecutionRequestV1 { id, .. }) => *id,
+            Self::V2(JobExecutionRequestV2 { id, .. }) => *id,
         }
     }
 
     fn into_current_version(self) -> Result<Self::Target, UpgradeError> {
         match self {
-            Self::V1(inner) => Ok(Self::Target::V1(inner)),
+            Self::V1(inner) => Ok(Self::Target::V2(JobExecutionRequestV2 {
+                id: inner.id,
+                workspace_id: inner.workspace_id,
+                change_set_id: inner.change_set_id,
+                args: match inner.args {
+                    JobArgsV1::Action { action_id } => JobArgsV2::Action { action_id },
+                    JobArgsV1::DependentValuesUpdate => JobArgsV2::DependentValuesUpdate,
+                    JobArgsV1::Validation {
+                        attribute_value_ids,
+                    } => JobArgsV2::Validation {
+                        attribute_value_ids,
+                    },
+                },
+                is_job_blocking: inner.is_job_blocking,
+            })),
+            Self::V2(inner) => Ok(Self::Target::V2(inner)),
         }
     }
 }

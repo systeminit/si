@@ -46,7 +46,11 @@ use si_events::{
     ActionId,
     AttributeValueId,
     ChangeSetId,
+    ComponentId,
+    ManagementPrototypeId,
+    ViewId,
     WorkspacePk,
+    ulid::CoreUlid,
 };
 use telemetry::prelude::*;
 use telemetry_nats::propagation;
@@ -159,6 +163,32 @@ impl Client {
         .await
     }
 
+    /// Requests a management job execution and returns an awaitable response future.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn await_management_job(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        component_id: ComponentId,
+        prototype_id: ManagementPrototypeId,
+        view_id: ViewId,
+        request_ulid: Option<CoreUlid>,
+        is_job_blocking: bool,
+    ) -> Result<(RequestId, BoxFuture<'static, Result<JobExecutionResponse>>)> {
+        self.call_with_reply(
+            workspace_id,
+            change_set_id,
+            JobArgsVCurrent::ManagementFunc {
+                component_id,
+                prototype_id,
+                view_id,
+                request_ulid,
+            },
+            is_job_blocking,
+        )
+        .await
+    }
+
     /// Requests an action job execution and doesnt't wait for a response.
     pub async fn dispatch_action_job(
         &self,
@@ -207,6 +237,33 @@ impl Client {
             change_set_id,
             JobArgsVCurrent::Validation {
                 attribute_value_ids,
+            },
+            is_job_blocking,
+            None,
+        )
+        .await
+    }
+
+    /// Requests a management job execution and doesnt't wait for a response.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn dispatch_management_job(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        component_id: ComponentId,
+        prototype_id: ManagementPrototypeId,
+        view_id: ViewId,
+        request_ulid: Option<CoreUlid>,
+        is_job_blocking: bool,
+    ) -> Result<RequestId> {
+        self.call_async(
+            workspace_id,
+            change_set_id,
+            JobArgsVCurrent::ManagementFunc {
+                component_id,
+                prototype_id,
+                view_id,
+                request_ulid,
             },
             is_job_blocking,
             None,

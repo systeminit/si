@@ -68,6 +68,7 @@ use crate::{
     func::runner::{
         FuncRunner,
         FuncRunnerError,
+        FuncRunnerValueChannel,
     },
     implement_add_edge_to,
     layer_db_types::{
@@ -105,14 +106,20 @@ pub enum ManagementPrototypeError {
     Helper(#[from] HelperError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] crate::socket::input::InputSocketError),
+    #[error("invalid prototype for component")]
+    InvalidPrototypeForComponent(ManagementPrototypeId, ComponentId),
     #[error("layer db error: {0}")]
     LayerDbError(#[from] si_layer_cache::LayerDbError),
     #[error("management error: {0}")]
     Management(#[from] ManagementError),
+    #[error("management func execution state error: {0}")]
+    ManagementExecution(#[from] si_db::ManagementFuncExecutionError),
     #[error("management prototype {0} has no use edge to a function")]
     MissingFunction(ManagementPrototypeId),
     #[error("More than one connection to input socket with arity one: {0}")]
     MoreThanOneInputConnection(String),
+    #[error("No pending management func execution found")]
+    NoPendingManagementFuncExecution,
     #[error("management prototype {0} not found")]
     NotFound(ManagementPrototypeId),
     #[error("output socket error: {0}")]
@@ -463,21 +470,17 @@ impl ManagementPrototype {
         Err(ManagementPrototypeError::MissingFunction(id))
     }
 
-    pub async fn execute(
-        &self,
-        ctx: &DalContext,
-        manager_component_id: ComponentId,
-        view_id: Option<ViewId>,
-    ) -> ManagementPrototypeResult<ManagementPrototypeExecution> {
-        Self::execute_by_id(ctx, self.id, manager_component_id, view_id).await
-    }
-
-    pub async fn execute_by_id(
+    pub async fn start_execution(
         ctx: &DalContext,
         id: ManagementPrototypeId,
         manager_component_id: ComponentId,
         view_id: Option<ViewId>,
-    ) -> ManagementPrototypeResult<ManagementPrototypeExecution> {
+    ) -> ManagementPrototypeResult<(
+        HashMap<String, ManagementGeometry>,
+        HashMap<String, ComponentId>,
+        FuncRunnerValueChannel,
+        FuncRunId,
+    )> {
         let views: HashMap<ViewId, String> = View::list(ctx)
             .await?
             .into_iter()
@@ -524,11 +527,27 @@ impl ManagementPrototype {
             "variant_socket_map": variant_socket_map,
         });
 
-        let result_channel =
+        let (func_run_id, result_channel) =
             FuncRunner::run_management(ctx, id, manager_component_id, management_func_id, args)
                 .await?;
 
-        let run_value = match result_channel.await {
+        Ok((
+            manager_component_geometry,
+            managed_component_placeholders,
+            result_channel,
+            func_run_id,
+        ))
+    }
+
+    pub async fn finalize_execution(
+        ctx: &DalContext,
+        manager_component_id: ComponentId,
+        id: ManagementPrototypeId,
+        manager_component_geometry: HashMap<String, ManagementGeometry>,
+        managed_component_placeholders: HashMap<String, ComponentId>,
+        func_run_channel: FuncRunnerValueChannel,
+    ) -> ManagementPrototypeResult<ManagementPrototypeExecution> {
+        let run_value = match func_run_channel.await {
             Ok(Err(FuncRunnerError::ResultFailure {
                 kind: _,
                 message,
@@ -713,6 +732,56 @@ impl ManagementPrototype {
         }
 
         Ok(variant_socket_map)
+    }
+
+    pub async fn execute(
+        &self,
+        ctx: &DalContext,
+        component_id: ComponentId,
+        view_id: Option<ViewId>,
+    ) -> ManagementPrototypeResult<ManagementPrototypeExecution> {
+        Self::execute_by_id(ctx, self.id(), component_id, view_id).await
+    }
+
+    /// Execute the management function defined by the `prototype_id` for the given component
+    pub async fn execute_by_id(
+        ctx: &DalContext,
+        prototype_id: ManagementPrototypeId,
+        component_id: ComponentId,
+        view_id: Option<ViewId>,
+    ) -> ManagementPrototypeResult<ManagementPrototypeExecution> {
+        if !ManagementPrototype::is_valid_prototype_for_component(ctx, prototype_id, component_id)
+            .await?
+        {
+            return Err(ManagementPrototypeError::InvalidPrototypeForComponent(
+                prototype_id,
+                component_id,
+            ));
+        }
+
+        let (geometries, placeholders, run_channel, _) =
+            ManagementPrototype::start_execution(ctx, prototype_id, component_id, view_id).await?;
+
+        ManagementPrototype::finalize_execution(
+            ctx,
+            component_id,
+            prototype_id,
+            geometries,
+            placeholders,
+            run_channel,
+        )
+        .await
+    }
+
+    pub async fn is_valid_prototype_for_component(
+        ctx: &DalContext,
+        management_prototype_id: ManagementPrototypeId,
+        component_id: ComponentId,
+    ) -> ManagementPrototypeResult<bool> {
+        let prototoype_schema_variant_id =
+            Self::get_schema_variant_id(ctx, management_prototype_id).await?;
+        let component_schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
+        Ok(prototoype_schema_variant_id == component_schema_variant_id)
     }
 
     pub async fn get_schema_variant_id(

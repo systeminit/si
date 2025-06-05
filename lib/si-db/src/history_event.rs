@@ -48,6 +48,13 @@ impl HistoryActor {
         Ok(email_as_lowercase.ends_with(SYSTEMINIT_EMAIL_SUFFIX)
             || email_as_lowercase.ends_with(TEST_SYSTEMINIT_EMAIL_SUFFIX))
     }
+
+    pub fn user_pk(&self) -> Option<UserPk> {
+        match self {
+            HistoryActor::User(pk) => Some(*pk),
+            HistoryActor::SystemInit => None,
+        }
+    }
 }
 
 impl From<UserPk> for HistoryActor {

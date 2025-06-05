@@ -120,6 +120,7 @@ pub mod test_exclusive_schemas;
 pub use color_eyre::{
     self,
     eyre::{
+        Report,
         Result,
         WrapErr,
         eyre,

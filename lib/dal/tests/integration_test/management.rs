@@ -6,6 +6,7 @@ use dal::{
     ComponentId,
     DalContext,
     SchemaId,
+    Ulid,
     component::resource::ResourceData,
     diagram::{
         geometry::Geometry,
@@ -23,6 +24,7 @@ use dal::{
     },
 };
 use dal_test::{
+    Report,
     Result,
     SCHEMA_ID_SMALL_EVEN_LEGO,
     expected::{
@@ -40,8 +42,13 @@ use dal_test::{
     test,
 };
 use serde_json::json;
+use si_db::{
+    ManagementFuncJobState,
+    ManagementState,
+};
 use si_frontend_types::RawGeometry;
 use si_id::ViewId;
+use tokio::try_join;
 use veritech_client::{
     ManagementFuncStatus,
     ResourceStatus,
@@ -49,12 +56,11 @@ use veritech_client::{
 
 pub mod generator;
 
-async fn exec_mgmt_func(
+async fn find_mgmt_prototype(
     ctx: &DalContext,
     component_id: ComponentId,
     prototype_name: &str,
-    view_id: Option<ViewId>,
-) -> Result<(ManagementPrototypeExecution, ManagementFuncReturn)> {
+) -> Result<ManagementPrototype> {
     let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
 
     let management_prototype = ManagementPrototype::list_for_variant_id(ctx, schema_variant_id)
@@ -62,6 +68,17 @@ async fn exec_mgmt_func(
         .into_iter()
         .find(|proto| proto.name() == prototype_name)
         .expect("could not find prototype");
+
+    Ok(management_prototype)
+}
+
+async fn exec_mgmt_func(
+    ctx: &DalContext,
+    component_id: ComponentId,
+    prototype_name: &str,
+    view_id: Option<ViewId>,
+) -> Result<(ManagementPrototypeExecution, ManagementFuncReturn)> {
+    let management_prototype = find_mgmt_prototype(ctx, component_id, prototype_name).await?;
 
     let mut execution_result = management_prototype
         .execute(ctx, component_id, view_id)
@@ -1754,4 +1771,153 @@ pub mod connection_test {
             Ok(())
         }
     }
+}
+
+#[test]
+async fn management_execution_state_db_test(ctx: &mut DalContext) {
+    let small_odd_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small odd lego",
+        "small odd lego",
+    )
+    .await
+    .expect("create small odd lego");
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
+        .await
+        .expect("commit");
+
+    let prototype_id = find_mgmt_prototype(ctx, small_odd_lego.id(), "Clone")
+        .await
+        .expect("get prototype for management func")
+        .id();
+    let prototype_2_id = find_mgmt_prototype(ctx, small_odd_lego.id(), "Update")
+        .await
+        .expect("get prototype for management func")
+        .id();
+
+    let ctx_clone = ctx.clone();
+    let ctx_clone_2 = ctx.clone();
+    let small_odd_lego_id = small_odd_lego.id();
+
+    let write_1 = tokio::spawn(async move {
+        let execution_state =
+            ManagementFuncJobState::new_pending(&ctx_clone, small_odd_lego_id, prototype_id)
+                .await?;
+        ctx_clone.commit_no_rebase().await?;
+        Ok::<_, Report>(execution_state)
+    });
+
+    let write_2 = tokio::spawn(async move {
+        let execution_state =
+            ManagementFuncJobState::new_pending(&ctx_clone_2, small_odd_lego_id, prototype_id)
+                .await?;
+        ctx_clone_2.commit_no_rebase().await?;
+        Ok::<_, Report>(execution_state)
+    });
+
+    let result = try_join!(write_1, write_2).expect("should not have a join error");
+
+    let execution = match result {
+        (Ok(_), Ok(_)) => panic!("one should fail"),
+        (Err(_), Err(_)) => panic!("one should fail, not both"),
+        (_, Ok(result)) | (Ok(result), _) => result,
+    };
+
+    let ctx_clone = ctx.clone();
+    ManagementFuncJobState::new_pending(&ctx_clone, small_odd_lego_id, prototype_id)
+        .await
+        .expect_err("should not allow new pending if one in pending state");
+
+    let latest_execution =
+        ManagementFuncJobState::get_latest_by_keys(&ctx_clone, small_odd_lego_id, prototype_id)
+            .await
+            .expect("get latest execution")
+            .expect("exists");
+
+    assert_eq!(execution, latest_execution);
+
+    let other_execution =
+        ManagementFuncJobState::new_pending(&ctx_clone, small_odd_lego_id, prototype_2_id)
+            .await
+            .expect("should not fail");
+
+    assert_ne!(execution.id(), other_execution.id());
+
+    ManagementFuncJobState::transition_state(
+        &ctx_clone,
+        latest_execution.id(),
+        ManagementState::Operating,
+        None,
+    )
+    .await
+    .expect_err("should not allow you to transition state");
+
+    let new_state = ManagementFuncJobState::transition_state(
+        &ctx_clone,
+        latest_execution.id(),
+        ManagementState::Executing,
+        Some(Ulid::new().into()),
+    )
+    .await
+    .expect("should transition state");
+
+    ctx_clone.commit_no_rebase().await.expect("commit");
+    let ctx_clone = ctx.clone();
+
+    ManagementFuncJobState::new_pending(&ctx_clone, small_odd_lego_id, prototype_id)
+        .await
+        .expect_err("should not allow new pending if one in executing state");
+
+    let latest_execution =
+        ManagementFuncJobState::get_latest_by_keys(&ctx_clone, small_odd_lego_id, prototype_id)
+            .await
+            .expect("get latest execution")
+            .expect("exists");
+
+    assert_eq!(new_state, latest_execution);
+    assert_eq!(ManagementState::Executing, new_state.state());
+
+    ManagementFuncJobState::transition_state(
+        &ctx_clone,
+        latest_execution.id(),
+        ManagementState::Operating,
+        Some(Ulid::new().into()),
+    )
+    .await
+    .expect("should transition state");
+
+    ManagementFuncJobState::new_pending(&ctx_clone, small_odd_lego_id, prototype_id)
+        .await
+        .expect_err("should not allow new pending if one in operating state");
+
+    let new_state = ManagementFuncJobState::transition_state(
+        &ctx_clone,
+        latest_execution.id(),
+        ManagementState::Success,
+        Some(Ulid::new().into()),
+    )
+    .await
+    .expect("should transition state");
+
+    let latest_execution =
+        ManagementFuncJobState::get_latest_by_keys(&ctx_clone, small_odd_lego_id, prototype_id)
+            .await
+            .expect("get latest execution")
+            .expect("exists");
+
+    assert_eq!(new_state, latest_execution);
+    assert_eq!(ManagementState::Success, new_state.state());
+
+    let new_pending =
+        ManagementFuncJobState::new_pending(&ctx_clone, small_odd_lego_id, prototype_id)
+            .await
+            .expect("should allow new pending");
+
+    let pending = ManagementFuncJobState::get_pending(ctx, small_odd_lego_id, prototype_id)
+        .await
+        .expect("should get pending")
+        .expect("pending should exist");
+
+    assert_eq!(new_pending, pending);
 }

@@ -8,11 +8,17 @@ use si_id::{
     ActionId,
     AttributeValueId,
     ChangeSetId,
+    ComponentId,
+    ManagementPrototypeId,
+    ViewId,
     WorkspacePk,
 };
 use tokio::sync::Mutex;
 
-use super::definition::ActionJob;
+use super::definition::{
+    ActionJob,
+    ManagementFuncJob,
+};
 use crate::job::{
     consumer::DalJob,
     definition::{
@@ -24,12 +30,25 @@ use crate::job::{
 type ActionChangeSets = Arc<Mutex<RingSet<(WorkspacePk, ChangeSetId, ActionId)>>>;
 type DependentValuesUpdateChangeSets = Arc<Mutex<RingSet<(WorkspacePk, ChangeSetId)>>>;
 type ValidationChangeSets = Arc<Mutex<RingMap<(WorkspacePk, ChangeSetId), Vec<AttributeValueId>>>>;
+type ManagementChangeSets = Arc<
+    Mutex<
+        RingSet<(
+            WorkspacePk,
+            ChangeSetId,
+            ManagementPrototypeId,
+            ComponentId,
+            ViewId,
+            Option<ulid::Ulid>,
+        )>,
+    >,
+>;
 
 #[derive(Debug, Clone, Default)]
 pub struct JobQueue {
     action_change_sets: ActionChangeSets,
     dependent_value_update_change_sets: DependentValuesUpdateChangeSets,
     validation_change_sets: ValidationChangeSets,
+    management_change_sets: ManagementChangeSets,
 }
 
 impl JobQueue {
@@ -70,6 +89,25 @@ impl JobQueue {
             .push(attribute_value_id);
     }
 
+    pub async fn enqueue_management_func_job(
+        &self,
+        workspace_id: WorkspacePk,
+        change_set_id: ChangeSetId,
+        prototype_id: ManagementPrototypeId,
+        component_id: ComponentId,
+        view_id: ViewId,
+        reqeust_ulid: Option<ulid::Ulid>,
+    ) {
+        self.management_change_sets.lock().await.insert((
+            workspace_id,
+            change_set_id,
+            prototype_id,
+            component_id,
+            view_id,
+            reqeust_ulid,
+        ));
+    }
+
     /// Pop jobs off queue in a prioritized, FIFO manner.
     pub async fn pop_job(&self) -> Option<Box<dyn DalJob>> {
         if let Some((workspace_id, change_set_id)) = self
@@ -91,6 +129,23 @@ impl JobQueue {
             self.action_change_sets.lock().await.pop_front()
         {
             Some(ActionJob::new(workspace_id, change_set_id, action_id))
+        } else if let Some((
+            workspace_id,
+            change_set_id,
+            prototype_id,
+            component_id,
+            view_id,
+            request_ulid,
+        )) = self.management_change_sets.lock().await.pop_front()
+        {
+            Some(ManagementFuncJob::new(
+                workspace_id,
+                change_set_id,
+                prototype_id,
+                component_id,
+                view_id,
+                request_ulid,
+            ))
         } else {
             None
         }
