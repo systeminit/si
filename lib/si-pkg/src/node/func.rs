@@ -6,6 +6,10 @@ use std::{
     str::FromStr,
 };
 
+use chrono::{
+    DateTime,
+    Utc,
+};
 use object_tree::{
     GraphError,
     NameStr,
@@ -42,6 +46,8 @@ const KEY_RESPONSE_TYPE_STR: &str = "response_type";
 const KEY_HIDDEN_STR: &str = "hidden";
 const KEY_LINK_STR: &str = "link";
 const KEY_IS_FROM_BUILTIN: &str = "is_from_builtin";
+const KEY_IS_TRANSFORMATION: &str = "is_transformation";
+const KEY_LAST_UPDATED: &str = "is_transformation";
 
 #[derive(Clone, Debug)]
 pub struct FuncData {
@@ -54,6 +60,8 @@ pub struct FuncData {
     pub response_type: FuncSpecBackendResponseType,
     pub hidden: bool,
     pub link: Option<Url>,
+    pub is_transformation: bool,
+    pub last_updated_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Clone, Debug)]
@@ -95,6 +103,9 @@ impl WriteBytes for FuncNode {
                 KEY_LINK_STR,
                 data.link.as_ref().map(|l| l.as_str()).unwrap_or(""),
             )?;
+
+            write_key_value_line_opt(writer, KEY_IS_TRANSFORMATION, Some(data.is_transformation))?;
+            write_key_value_line_opt(writer, KEY_LAST_UPDATED, data.last_updated_at)?;
         }
 
         write_common_fields(writer, Some(self.unique_id.as_str()), self.deleted)?;
@@ -141,6 +152,20 @@ impl ReadBytes for FuncNode {
                     Some(Url::parse(&link_str).map_err(GraphError::parse)?)
                 };
 
+                let is_transformation_str = read_key_value_line_opt(reader, KEY_IS_TRANSFORMATION)?;
+
+                let is_transformation = if let Some(str) = is_transformation_str {
+                    bool::from_str(&str).map_err(GraphError::parse)?
+                } else {
+                    false
+                };
+
+                let updated_str = read_key_value_line_opt(reader, KEY_LAST_UPDATED)?;
+
+                let last_updated_at = updated_str
+                    .map(|str| DateTime::from_str(&str).map_err(GraphError::parse))
+                    .transpose()?;
+
                 Some(FuncData {
                     name: name.clone(),
                     display_name,
@@ -151,6 +176,8 @@ impl ReadBytes for FuncNode {
                     response_type,
                     hidden,
                     link,
+                    is_transformation,
+                    last_updated_at,
                 })
             }
         };
@@ -197,6 +224,8 @@ impl NodeChild for FuncSpec {
                     response_type: data.response_type,
                     hidden: data.hidden,
                     link: data.link.as_ref().cloned(),
+                    is_transformation: data.is_transformation,
+                    last_updated_at: data.last_updated_at,
                 }),
                 unique_id: self.unique_id.to_owned(),
                 deleted: self.deleted,

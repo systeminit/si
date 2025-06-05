@@ -57,6 +57,7 @@ use crate::{
             FuncArgumentError,
             FuncArgumentId,
         },
+        binding::FuncBindingError,
     },
     management::prototype::ManagementPrototypeError,
     module::{
@@ -105,6 +106,8 @@ pub enum PkgError {
     FuncArgument(#[from] FuncArgumentError),
     #[error("func argument for {0} not found with name {1}")]
     FuncArgumentNotFoundByName(FuncId, String),
+    #[error("action prototype error: {0}")]
+    FuncBinding(#[from] FuncBindingError),
     #[error("input socket error: {0}")]
     InputSocket(#[from] InputSocketError),
     #[error("found multiple intrinsic func specs for name: {0}")]

@@ -20,6 +20,10 @@ use binding::{
     FuncBinding,
     FuncBindingError,
 };
+use chrono::{
+    DateTime,
+    Utc,
+};
 use itertools::Itertools;
 use serde::{
     Deserialize,
@@ -242,8 +246,9 @@ impl Func {
     );
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn new(
+    pub async fn upsert_with_id(
         ctx: &DalContext,
+        id: FuncId,
         name: impl Into<String> + Clone,
         display_name: Option<impl Into<String>>,
         description: Option<impl Into<String>>,
@@ -255,9 +260,17 @@ impl Func {
         handler: Option<impl Into<String>>,
         code_base64: Option<impl Into<String>>,
         is_transformation: bool,
+        updated_at: Option<DateTime<Utc>>,
     ) -> FuncResult<Self> {
-        let timestamp = Timestamp::now();
-        let _finalized_once = false;
+        let timestamp = {
+            let mut timestamp = Timestamp::now();
+
+            if let Some(updated) = updated_at {
+                timestamp.updated_at = updated;
+                timestamp.created_at = updated;
+            }
+            timestamp
+        };
 
         let code_base64: Option<String> = code_base64.map(Into::into);
         let code_blake3 = if let Some(code) = code_base64.as_ref() {
@@ -300,10 +313,9 @@ impl Func {
 
         let func_kind = FuncKind::new(backend_kind, backend_response_type)?;
 
-        let id = ctx.workspace_snapshot()?.generate_ulid().await?;
-        let lineage_id = ctx.workspace_snapshot()?.generate_ulid().await?;
+        let lineage_id = id.into();
         let node_weight =
-            NodeWeight::new_func(id, lineage_id, name.clone().into(), func_kind, hash);
+            NodeWeight::new_func(id.into(), lineage_id, name.clone().into(), func_kind, hash);
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
         workspace_snapshot
@@ -313,12 +325,47 @@ impl Func {
         let func_category_id = workspace_snapshot
             .get_category_node_or_err(None, CategoryNodeKind::Func)
             .await?;
-        Self::add_category_edge(ctx, func_category_id, id.into(), EdgeWeightKind::new_use())
-            .await?;
+        Self::add_category_edge(ctx, func_category_id, id, EdgeWeightKind::new_use()).await?;
 
         let func_node_weight = node_weight.get_func_node_weight()?;
 
         Ok(Self::assemble(&func_node_weight, content))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn new(
+        ctx: &DalContext,
+        name: impl Into<String> + Clone,
+        display_name: Option<impl Into<String>>,
+        description: Option<impl Into<String>>,
+        link: Option<impl Into<String>>,
+        hidden: bool,
+        builtin: bool,
+        backend_kind: FuncBackendKind,
+        backend_response_type: FuncBackendResponseType,
+        handler: Option<impl Into<String>>,
+        code_base64: Option<impl Into<String>>,
+        is_transformation: bool,
+    ) -> FuncResult<Self> {
+        let id = ctx.workspace_snapshot()?.generate_ulid().await?.into();
+
+        Self::upsert_with_id(
+            ctx,
+            id,
+            name,
+            display_name,
+            description,
+            link,
+            hidden,
+            builtin,
+            backend_kind,
+            backend_response_type,
+            handler,
+            code_base64,
+            is_transformation,
+            None,
+        )
+        .await
     }
 
     pub async fn lock(self, ctx: &DalContext) -> FuncResult<Func> {

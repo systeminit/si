@@ -581,6 +581,7 @@ impl Module {
         name: impl AsRef<str>,
         version: impl AsRef<str>,
         schema_variant_id: SchemaVariantId,
+        include_transformations: bool,
     ) -> ModuleResult<(
         String,
         String,
@@ -625,6 +626,7 @@ impl Module {
             version,
             &created_by_email,
             associated_schema.id(),
+            include_transformations,
         );
         let module_payload = exporter.export_as_bytes(ctx).await.map_err(Box::new)?;
 

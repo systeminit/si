@@ -2,8 +2,11 @@ use base64::{
     Engine,
     engine::general_purpose,
 };
+use chrono::{
+    DateTime,
+    Utc,
+};
 use derive_builder::Builder;
-use object_tree::Hash;
 use serde::{
     Deserialize,
     Serialize,
@@ -150,6 +153,10 @@ pub struct FuncSpecData {
     pub hidden: bool,
     #[builder(setter(into, strip_option), default)]
     pub link: Option<Url>,
+    #[builder(setter(into), default)]
+    pub is_transformation: bool,
+    #[builder(setter(into), default)]
+    pub last_updated_at: Option<DateTime<Utc>>,
 }
 
 impl FuncSpecData {
@@ -194,20 +201,6 @@ pub struct FuncSpec {
 
     #[builder(setter(each(name = "argument"), into), default)]
     pub arguments: Vec<FuncArgumentSpec>,
-}
-
-impl FuncSpecBuilder {
-    pub fn gen_unique_id(&self) -> Result<String, SpecError> {
-        let mut bytes = vec![];
-
-        bytes.extend_from_slice(self.name.as_deref().unwrap_or("").as_bytes());
-        bytes.extend_from_slice(self.deleted.unwrap_or(false).to_string().as_bytes());
-        if let Some(data) = &self.data {
-            bytes.extend_from_slice(serde_json::to_string(data)?.as_bytes());
-        }
-
-        Ok(Hash::new(&bytes).to_string())
-    }
 }
 
 impl FuncSpec {

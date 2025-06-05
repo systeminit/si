@@ -1,3 +1,7 @@
+use chrono::{
+    DateTime,
+    Utc,
+};
 use object_tree::{
     Hash,
     HashedNode,
@@ -114,8 +118,10 @@ pub struct SiPkgFuncData {
     code_base64: String,
     backend_kind: FuncSpecBackendKind,
     response_type: FuncSpecBackendResponseType,
+    is_transformation: bool,
     hidden: bool,
     link: Option<Url>,
+    last_updated_at: Option<DateTime<Utc>>,
 }
 
 impl SiPkgFuncData {
@@ -145,6 +151,14 @@ impl SiPkgFuncData {
 
     pub fn response_type(&self) -> FuncSpecBackendResponseType {
         self.response_type
+    }
+
+    pub fn is_transformation(&self) -> bool {
+        self.is_transformation
+    }
+
+    pub fn last_updated_at(&self) -> Option<DateTime<Utc>> {
+        self.last_updated_at
     }
 
     pub fn hidden(&self) -> bool {
@@ -196,6 +210,8 @@ impl<'a> SiPkgFunc<'a> {
                 response_type: data.response_type,
                 hidden: data.hidden,
                 link: data.link,
+                is_transformation: data.is_transformation,
+                last_updated_at: data.last_updated_at,
             }),
             hash: func_hashed_node.hash(),
             unique_id: func_node.unique_id,
@@ -321,6 +337,9 @@ impl<'a> TryFrom<SiPkgFunc<'a>> for FuncSpec {
             if let Some(link) = &data.link {
                 data_builder.link(link.to_owned());
             }
+
+            data_builder.is_transformation(data.is_transformation);
+            data_builder.last_updated_at(data.last_updated_at);
 
             builder.data(data_builder.build()?);
         }
