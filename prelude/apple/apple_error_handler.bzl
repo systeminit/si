@@ -5,59 +5,68 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//apple:apple_error_handler_types.bzl", "AppleErrorCategories")
-# @oss-disable: load("@prelude//apple/meta_only:apple_extra_error_categories.bzl", "APPLE_META_STDERR_ERROR_CATEGORIES") 
+load("@prelude//apple:apple_error_handler_types.bzl", "AppleErrorCategory")
+# @oss-disable[end= ]: load("@prelude//apple/meta_only:apple_extra_error_categories.bzl", "APPLE_META_STDERR_ERROR_CATEGORIES")
 
 _APPLE_STDERR_ERROR_CATEGORIES = [
+
+    # STOP! @oss-disable
+    # If you work at Meta, you probably want to include things in APPLE_META_STDERR_ERROR_CATEGORIES   @oss-disable
+    # so you can include a link to an internal resource (wiki, task, etc)                              @oss-disable
+    # I would only add additional categories here if you think someone in open-source would benefit    @oss-disable
+
     #codesigning issues
-    AppleErrorCategories(string_match = "codesignprovisioningerror", categories = ["apple_code_sign_error", "code_sign_provisioning_error"]),
-    AppleErrorCategories(string_match = "the timestamp service is not available", categories = ["apple_code_sign_error"]),
+    AppleErrorCategory(matcher = "codesignprovisioningerror", category = "code_sign_error"),
+    AppleErrorCategory(matcher = "the timestamp service is not available", category = "code_sign_error"),
+
     #compilation issues
-    AppleErrorCategories(string_match = "failed to emit precompiled module", categories = ["apple_compilation_failure", "apple_pcm_compilation_failure"]),
-    AppleErrorCategories(string_match = "please rebuild precompiled header", categories = ["apple_compilation_failure", "apple_pcm_compilation_failure"]),
-    AppleErrorCategories(string_match = "llvm-lipo", categories = ["apple_lipo_failure"]),
-    AppleErrorCategories(string_match = ".swift:", categories = ["apple_compilation_failure", "apple_swift_compilation_failure"]),
-    AppleErrorCategories(string_match = ".cpp:", categories = ["apple_compilation_failure", "apple_cpp_compilation_failure"]),
-    AppleErrorCategories(string_match = ".cxx:", categories = ["apple_compilation_failure", "apple_cpp_compilation_failure"]),
-    AppleErrorCategories(string_match = ".m:", categories = ["apple_compilation_failure", "apple_objc_compilation_failure"]),
-    AppleErrorCategories(string_match = ".mm:", categories = ["apple_compilation_failure", "apple_objc_compilation_failure", "apple_cpp_compilation_failure", "apple_objcpp_compilation_failure"]),
-    AppleErrorCategories(string_match = ".c:", categories = ["apple_compilation_failure", "apple_c_compilation_failure"]),
-    AppleErrorCategories(string_match = ".modulemap:", categories = ["apple_compilation_failure", "apple_modulemap_compilation_failure"]),
-    AppleErrorCategories(string_match = "missing required modules", categories = ["apple_compilation_failure", "apple_missing_required_modules_error"]),
-    AppleErrorCategories(string_match = "has a minimum deployment target", categories = ["apple_compilation_failure", "apple_deployment_target_error"]),
+    AppleErrorCategory(matcher = "failed to emit precompiled module", category = "pcm_compilation_failure"),
+    AppleErrorCategory(matcher = "please rebuild precompiled header", category = "pcm_compilation_failure"),
+    AppleErrorCategory(matcher = "llvm-lipo", category = "lipo_failure"),
+    AppleErrorCategory(matcher = ".modulemap:", category = "modulemap_compilation_failure"),
+    AppleErrorCategory(matcher = "missing required modules", category = "missing_required_modules_error"),
+    AppleErrorCategory(matcher = "has a minimum deployment target", category = "deployment_target_error"),
 
     #toolchain / genrule issues
-    AppleErrorCategories(string_match = "stack dump:", categories = ["apple_binary_execution_failure"]),
-    AppleErrorCategories(string_match = "thread 'main' panicked", categories = ["apple_binary_execution_failure"]),
-    AppleErrorCategories(string_match = "error while loading shared libraries", categories = ["apple_binary_execution_failure"]),
-    AppleErrorCategories(string_match = "traceback (most recent call last)", categories = ["apple_python_execution_failure"]),
-    AppleErrorCategories(string_match = "command not found", categories = ["apple_command_not_found_failure"]),
-    AppleErrorCategories(string_match = "command timed out", categories = ["apple_timeout_failure"]),
-    AppleErrorCategories(string_match = "no such file or directory", categories = ["apple_no_such_file_failure"]),
+    AppleErrorCategory(matcher = "stack dump:", category = "binary_execution_failure"),
+    AppleErrorCategory(matcher = "thread 'main' panicked", category = "binary_execution_failure"),
+    AppleErrorCategory(matcher = "error while loading shared libraries", category = "binary_execution_failure"),
+    AppleErrorCategory(matcher = "traceback (most recent call last)", category = "python_execution_failure"),
+    AppleErrorCategory(matcher = "command not found", category = "command_not_found_failure"),
+    AppleErrorCategory(matcher = "command timed out", category = "timeout_failure"),
+    AppleErrorCategory(matcher = "no such file or directory", category = "no_such_file_failure"),
 
     #user errors
-    AppleErrorCategories(string_match = "unknown target", categories = ["apple_unknown_buck_target_failure"]),
+    AppleErrorCategory(matcher = "unknown target", category = "unknown_buck_target_failure"),
 
     #linker issues
-    AppleErrorCategories(string_match = "linker command failed", categories = ["apple_linker_failure"]),
-    AppleErrorCategories(string_match = "duplicate symbol", categories = ["apple_duplicate_symbol_failure"]),
-    AppleErrorCategories(string_match = "undefined symbol", categories = ["apple_undefined_symbol_failure"]),
-    AppleErrorCategories(string_match = "framework not found", categories = ["apple_framework_not_found_failure"]),
+    AppleErrorCategory(matcher = "linker command failed", category = "linker_failure"),
+    AppleErrorCategory(matcher = "duplicate symbol", category = "duplicate_symbol_failure"),
+    AppleErrorCategory(matcher = "undefined symbol", category = "undefined_symbol_failure"),
+    AppleErrorCategory(matcher = "framework not found", category = "framework_not_found_failure"),
 
     #buck configuration issues
-    AppleErrorCategories(string_match = "unknown cell alias", categories = ["apple_buck_configuration_failure", "apple_unknown_cell_alias_failure"]),
+    AppleErrorCategory(matcher = "unknown cell alias", category = "unknown_cell_alias_failure"),
 ]
 
-def _add_category_strings(lowercase_stderr: str, category_string_target: set[str], source: list[AppleErrorCategories]):
+def _match(matcher: str | BuckRegex, lowercase_stderr: str) -> bool:
+    if isinstance(matcher, str):
+        return matcher in lowercase_stderr
+    elif isinstance(matcher, BuckRegex):
+        return matcher.match(lowercase_stderr)
+    else:
+        fail("Unknown matcher type: {}", type(matcher))
+
+def _add_category_strings(ctx: ActionErrorCtx, lowercase_stderr: str, errors: list[ActionSubError], source: list[AppleErrorCategory]):
     for error_category in source:
-        if error_category.string_match in lowercase_stderr:
-            for category_string in error_category.categories:
-                category_string_target.add(category_string)
+        if _match(error_category.matcher, lowercase_stderr):
+            errors.append(ctx.new_sub_error(category = "apple_" + error_category.category, message = error_category.message))
 
 def apple_build_error_handler(ctx: ActionErrorCtx) -> list[ActionSubError]:
     lowercase_stderr = ctx.stderr.lower()
-    categories = set()
-    _add_category_strings(lowercase_stderr, categories, _APPLE_STDERR_ERROR_CATEGORIES)
-    # @oss-disable: _add_category_strings(lowercase_stderr, categories, APPLE_META_STDERR_ERROR_CATEGORIES) 
 
-    return [ctx.new_sub_error(category = category_string) for category_string in sorted(categories)]
+    errors = []
+    _add_category_strings(ctx, lowercase_stderr, errors, _APPLE_STDERR_ERROR_CATEGORIES)
+    # @oss-disable[end= ]: _add_category_strings(ctx, lowercase_stderr, errors, APPLE_META_STDERR_ERROR_CATEGORIES)
+
+    return errors

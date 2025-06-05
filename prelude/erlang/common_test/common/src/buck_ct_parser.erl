@@ -5,15 +5,15 @@
 %% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %% of this source tree.
 
-%%% % @format
-%%%-------------------------------------------------------------------
-%%% @doc
-%%% Utilities method to parse string args given to the test binary
-%%% via user input.
-%%% @end
-
+%% @format
 -module(buck_ct_parser).
--compile(warn_missing_spec).
+-compile(warn_missing_spec_all).
+-moduledoc """
+Utilities method to parse string args given to the test binary
+via user input.
+""".
+
+-import(common_util, [unicode_characters_to_list/1]).
 
 %% Public API
 -export([parse_str/1]).
@@ -23,7 +23,7 @@ parse_str(<<"">>) ->
     [];
 parse_str(StrArgs) ->
     try
-        {ok, Tokens, _} = erl_scan:string(unicode:characters_to_list([StrArgs, "."])),
+        {ok, Tokens, _} = erl_scan:string(unicode_characters_to_list([StrArgs, "."])),
         erl_parse:parse_term(Tokens)
     of
         {ok, Term} ->

@@ -6,6 +6,7 @@
 # of this source tree.
 
 load("@prelude//java:java_toolchain.bzl", "JavaToolchainInfo")
+load("@prelude//java:proguard.bzl", "get_proguard_output")
 load("@prelude//java/utils:java_utils.bzl", "get_class_to_source_map_info", "get_classpath_subtarget")
 load(
     "@prelude//linking:shared_libraries.bzl",
@@ -93,7 +94,7 @@ def _create_fat_jar(
     if build_manifest:
         args += ["--build_manifest", build_manifest]
 
-    blocklist = ctx.attrs.blacklist
+    blocklist = ctx.attrs.blocklist
     if blocklist:
         args += ["--blocklist", ctx.actions.write("{}blocklist_args".format(name_prefix), blocklist)]
 
@@ -146,7 +147,7 @@ def _get_run_cmd(
     else:
         return cmd_args([java_toolchain.java[RunInfo]] + attrs.java_args_for_run_info + ["-jar", main_artifact])
 
-def _get_java_tool_artifacts(java_toolchain: JavaToolchainInfo) -> list[Artifact]:
+def _get_java_tool_artifacts(java_toolchain: JavaToolchainInfo) -> list:
     default_info = java_toolchain.java[DefaultInfo]
     return default_info.default_outputs + default_info.other_outputs
 
@@ -182,11 +183,30 @@ def java_binary_impl(ctx: AnalysisContext) -> list[Provider]:
     concat_deps = ctx.attrs.concat_deps
     need_to_generate_wrapper = ctx.attrs.generate_wrapper == True
     do_not_create_inner_jar = ctx.attrs.do_not_create_inner_jar == True
-    packaging_jar_args = packaging_info.packaging_deps.project_as_args("full_jar_args")
+    packaging_deps = list(packaging_info.packaging_deps.traverse())
     incremental_target_prefix = ctx.attrs.incremental_target_prefix
     main_class = ctx.attrs.main_class
+    packaging_dep_infos = {dep.jar: dep.label.raw_target() for dep in packaging_deps if dep and dep.jar}
 
     other_outputs = []
+
+    if ctx.attrs.proguard_config:
+        java_base = ([java_toolchain.java_base_jar] if java_toolchain.java_base_jar else [])
+        library_jars = ctx.attrs.proguard_library_jars + java_base
+        proguard_output = get_proguard_output(
+            ctx = ctx,
+            input_jars = packaging_dep_infos,
+            java_packaging_deps = packaging_deps,
+            additional_proguard_configs = [],
+            additional_jars = library_jars,
+            sdk_proguard_config_mode = None,
+            sdk_proguard_config = None,
+            sdk_optimized_proguard_config = None,
+            proguard_jar = java_toolchain.proguard_jar,
+            skip_proguard = False,
+        )
+        packaging_dep_infos = proguard_output.jars_to_owners
+    packaging_jar_args = cmd_args(packaging_dep_infos.keys())
 
     if incremental_target_prefix:
         base_jar = None
@@ -194,20 +214,19 @@ def java_binary_impl(ctx: AnalysisContext) -> list[Provider]:
         dependency_jars = []
 
         # separate jars in groups
-        for dep in packaging_jar_args.transitive_set.traverse():
-            if dep.jar:
-                # lookup for the base jar that can be used to append all other dependencies
-                if base_dep and dep.label.raw_target() == base_dep.label.raw_target():
-                    expect(
-                        base_jar == None,
-                        "JAR can only have one base JAR file.",
-                    )
-                    base_jar = dep.jar
-                elif str(dep.label.raw_target()).startswith(incremental_target_prefix):
-                    # if it's not a base jar, it can be an incremental jar or dependency only
-                    incremental_jars.append(dep.jar)
-                else:
-                    dependency_jars.append(dep.jar)
+        for (dep_jar, owner) in packaging_dep_infos.items():
+            # lookup for the base jar that can be used to append all other dependencies
+            if base_dep and owner == base_dep.label.raw_target():
+                expect(
+                    base_jar == None,
+                    "JAR can only have one base JAR file.",
+                )
+                base_jar = dep_jar
+            elif str(owner).startswith(incremental_target_prefix):
+                # if it's not a base jar, it can be an incremental jar or dependency only
+                incremental_jars.append(dep_jar)
+            else:
+                dependency_jars.append(dep_jar)
 
         # collect incremental targets
         expect(
@@ -238,7 +257,7 @@ def java_binary_impl(ctx: AnalysisContext) -> list[Provider]:
     else:
         outputs = _create_fat_jar(
             ctx,
-            cmd_args(packaging_jar_args),
+            packaging_jar_args,
             concat_jars = concat_deps,
             native_libs = native_deps,
             do_not_create_inner_jar = do_not_create_inner_jar,

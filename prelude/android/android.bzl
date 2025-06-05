@@ -69,14 +69,20 @@ DISABLE_STRIPPING = read_root_config("android", "disable_stripping") in ("True",
 #            "pool": "EUREKA_POOL",
 #        },
 #    }
-_RE_CAPS = attrs.option(attrs.dict(key = attrs.string(), value = attrs.dict(key = attrs.string(), value = attrs.string())), default = None)
+RE_CAPS = attrs.option(attrs.dict(key = attrs.string(), value = attrs.dict(key = attrs.string(), value = attrs.string())), default = None)
 
 # Format is {"ovveride_name": "re_use_case"}; for example:
 #     {
 #         "dynamic-listing": "riot",
 #         "test-execution": "riot",
 #     }
-_RE_USE_CASE = attrs.option(attrs.dict(key = attrs.string(), value = attrs.string()), default = None)
+RE_USE_CASE = attrs.option(attrs.dict(key = attrs.string(), value = attrs.string()), default = None)
+
+# Format is {"ovveride_name": {"param_name": param_value}}; for example:
+#    {
+#        "remote_execution_policy": {"setup_preference_key": "some_json_string"},
+#    }
+META_INTERNAL_EXTRA_PARAMS = attrs.option(attrs.dict(key = attrs.string(), value = attrs.any()), default = None)
 
 extra_attributes = {
     "android_aar": {
@@ -108,6 +114,7 @@ extra_attributes = {
         "application_module_configs": attrs.dict(key = attrs.string(), value = attrs.list(attrs.transition_dep(cfg = cpu_transition)), sorted = False, default = {}),
         "build_config_values_file": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
         "deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
+        "duplicate_class_checker_enabled": attrs.bool(default = False),
         "duplicate_resource_behavior": attrs.enum(DuplicateResourceBehaviour, default = "allow_by_default"),  # Match default in V1
         "manifest": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
         "manifest_skeleton": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
@@ -139,6 +146,7 @@ extra_attributes = {
         "application_module_configs": attrs.dict(key = attrs.string(), value = attrs.list(attrs.transition_dep(cfg = cpu_transition)), sorted = False, default = {}),
         "build_config_values_file": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
         "deps": attrs.list(attrs.split_transition_dep(cfg = cpu_split_transition), default = []),
+        "duplicate_class_checker_enabled": attrs.bool(default = False),
         "duplicate_resource_behavior": attrs.enum(DuplicateResourceBehaviour, default = "allow_by_default"),  # Match default in V1
         "manifest": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
         "manifest_skeleton": attrs.option(attrs.one_of(attrs.transition_dep(cfg = cpu_transition), attrs.source()), default = None),
@@ -182,8 +190,9 @@ extra_attributes = {
         "instrumentation_test_listener": attrs.option(attrs.exec_dep(), default = None),
         "instrumentation_test_listener_class": attrs.option(attrs.string(), default = None),
         "is_self_instrumenting": attrs.bool(default = False),
-        "re_caps": _RE_CAPS,
-        "re_use_case": _RE_USE_CASE,
+        "meta_internal_extra_params": META_INTERNAL_EXTRA_PARAMS,
+        "re_caps": RE_CAPS,
+        "re_use_case": RE_USE_CASE,
         "_android_toolchain": toolchains_common.android(),
         "_exec_os_type": buck.exec_os_type_arg(),
         "_java_test_toolchain": toolchains_common.java_for_host_test(),
@@ -196,16 +205,12 @@ extra_attributes = {
         VALIDATION_DEPS_ATTR_NAME: attrs.set(attrs.dep(), sorted = True, default = []),
         "_android_toolchain": toolchains_common.android(),
         "_build_only_native_code": attrs.default_only(attrs.bool(default = is_build_only_native_code())),
-        "_compose_stability_config": attrs.option(attrs.source(), default = select({
-            "DEFAULT": None,
-            "fbsource//tools/build_defs/android/compose:enable-compose-stability-config": "fbsource//tools/build_defs/android/compose:stability_config",
-        })),
         "_dex_min_sdk_version": attrs.default_only(attrs.option(attrs.int(), default = dex_min_sdk_version())),
         "_dex_toolchain": toolchains_common.dex(),
         "_exec_os_type": buck.exec_os_type_arg(),
         "_is_building_android_binary": is_building_android_binary_attr(),
         "_java_toolchain": toolchains_common.java_for_android(),
-        "_kotlin_toolchain": toolchains_common.kotlin(),
+        "_kotlin_toolchain": toolchains_common.kotlin_for_android(),
     },
     "android_manifest": {
         "_android_toolchain": toolchains_common.android(),

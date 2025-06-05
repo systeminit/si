@@ -32,7 +32,7 @@ load(
 )
 load("@prelude//linking:types.bzl", "Linkage")
 load("@prelude//os_lookup:defs.bzl", "OsLookup")
-load("@prelude//utils:cmd_script.bzl", "ScriptOs", "cmd_script")
+load("@prelude//utils:cmd_script.bzl", "cmd_script")
 load("@prelude//utils:expect.bzl", "expect")
 load(":toolchain.bzl", "GoToolchainInfo", "get_toolchain_env_vars")
 
@@ -119,7 +119,7 @@ def _cxx_wrapper(ctx: AnalysisContext, own_pre: list[CPreprocessor], inherited_p
         ctx = ctx,
         name = "cxx_wrapper",
         cmd = cxx_cmd,
-        os = ScriptOs("windows" if ctx.attrs._exec_os_type[OsLookup].platform == "windows" else "unix"),
+        language = ctx.attrs._exec_os_type[OsLookup].script,
     )
 
 # build CPreprocessor similar as cxx_private_preprocessor_info does, but with our filtered headers
@@ -161,6 +161,8 @@ def build_cgo(ctx: AnalysisContext, cgo_files: list[Artifact], h_files: list[Art
         link_style = "static"
     linkage = _LINKAGE_FOR_LINK_STYLE[LinkStyle(link_style)]
 
+    go_toolchain = ctx.attrs._go_toolchain[GoToolchainInfo]
+
     # Compile C++ sources into object files.
     c_compile_cmds = cxx_compile_srcs(
         ctx,
@@ -168,7 +170,7 @@ def build_cgo(ctx: AnalysisContext, cgo_files: list[Artifact], h_files: list[Art
             rule_type = "cgo_sources",
             headers_layout = cxx_get_regular_cxx_headers_layout(ctx),
             srcs = [CxxSrcWithFlags(file = src) for src in c_files + c_gen_srcs],
-            compiler_flags = c_flags + ctx.attrs.cxx_compiler_flags + get_target_sdk_version_flags(ctx),
+            compiler_flags = go_toolchain.c_compiler_flags + c_flags + ctx.attrs.cxx_compiler_flags + get_target_sdk_version_flags(ctx),
             preprocessor_flags = cpp_flags + ctx.attrs.cxx_preprocessor_flags,
         ),
         # Create private header tree and propagate via args.

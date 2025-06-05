@@ -1,4 +1,6 @@
+%% @format
 -module(test_info).
+-eqwalizer(ignore).
 
 -export([load_from_file/1, write_to_file/2]).
 -include_lib("common/include/buck_ct_records.hrl").
@@ -20,7 +22,8 @@ load_from_file(TestInfoFile) ->
         <<"erl_cmd">> := [ErlExec | ErlFlags],
         <<"extra_flags">> := ExtraFlags,
         <<"artifact_annotation_mfa">> := ArtifactAnnotationMFA,
-        <<"common_app_env">> := CommonAppEnv
+        <<"common_app_env">> := CommonAppEnv,
+        <<"raw_target">> := RawTarget
     } = json:decode(Content),
     Providers1 = buck_ct_parser:parse_str(Providers),
     CtOpts1 = make_ct_opts(
@@ -37,11 +40,12 @@ load_from_file(TestInfoFile) ->
         ct_opts = CtOpts1,
         erl_cmd = [make_path_absolute(ErlExec) | ErlFlags],
         extra_flags = ExtraFlags,
-        common_app_env = CommonAppEnv
+        common_app_env = CommonAppEnv,
+        raw_target = RawTarget
     }.
 
 -spec write_to_file(file:filename_all(), test_info()) -> ok | {error, Reason :: term()}.
-write_to_file(FileName, TestInfo ) ->
+write_to_file(FileName, TestInfo) ->
     #test_info{
         dependencies = Dependencies,
         test_suite = SuiteBeamPath,
@@ -51,7 +55,8 @@ write_to_file(FileName, TestInfo ) ->
         ct_opts = CtOpts,
         erl_cmd = [ErlCmd | ErlFlags],
         extra_flags = ExtraFlags,
-        common_app_env = CommonAppEnv
+        common_app_env = CommonAppEnv,
+        raw_target = RawTarget
     } = TestInfo,
     ErlTermToStr = fun(Term) -> list_to_binary(lists:flatten(io_lib:format("~p", [Term]))) end,
     Json = #{
@@ -65,10 +70,10 @@ write_to_file(FileName, TestInfo ) ->
         <<"erl_cmd">> => [try_make_path_relative(ErlCmd) | ErlFlags],
         <<"extra_flags">> => ExtraFlags,
         <<"artifact_annotation_mfa">> => ErlTermToStr(ArtifactAnnotationMFA),
-        <<"common_app_env">> => CommonAppEnv
+        <<"common_app_env">> => CommonAppEnv,
+        <<"raw_target">> => RawTarget
     },
     file:write_file(FileName, json:encode(Json)).
-
 
 -spec make_path_absolute(file:filename_all()) -> file:filename_all().
 make_path_absolute(Path) ->
@@ -80,22 +85,24 @@ make_path_absolute(Path) ->
 -spec try_make_path_relative(file:filename_all()) -> file:filename_all().
 try_make_path_relative(Path) ->
     case filename:pathtype(Path) of
-        relative -> Path;
+        relative ->
+            Path;
         _ ->
-               BaseDir = case os:getenv("REPO_ROOT") of
+            BaseDir =
+                case os:getenv("REPO_ROOT") of
                     false ->
                         {ok, CWD} = file:get_cwd(),
                         CWD;
-                    RepoRoot -> RepoRoot
-               end,
-               BaseDirParts = filename:split(BaseDir),
-               PathParts = filename:split(Path),
-               case lists:split(length(BaseDirParts), PathParts) of
-                   {BaseDirParts, RelativeParts} -> filename:join(RelativeParts);
-                   _ -> Path
-               end
+                    RepoRoot ->
+                        RepoRoot
+                end,
+            BaseDirParts = filename:split(BaseDir),
+            PathParts = filename:split(Path),
+            case lists:split(length(BaseDirParts), PathParts) of
+                {BaseDirParts, RelativeParts} -> filename:join(RelativeParts);
+                _ -> Path
+            end
     end.
-
 
 -spec parse_mfa(binary()) -> artifact_annotations:annotation_function() | {error, term()}.
 parse_mfa(MFA) ->

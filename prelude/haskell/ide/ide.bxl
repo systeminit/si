@@ -97,10 +97,13 @@ def _find_project_and_solve(ctx, target, project_universe = []):
 
 def _find_target_in_universe(ctx, target, project_universe):
     for p in project_universe:
-        cfg_p = ctx.configured_targets(
+        cfg_p = ctx.lazy.configured_target_node(
             p,
             modifiers = configuration_modifiers,
-        )
+        ).catch().resolve()
+        if not (cfg_p.is_ok()) or cfg_p.unwrap() == None:
+            continue
+        cfg_p = cfg_p.unwrap()
         members = cfg_p.resolved_attrs_eager(ctx).include_projects
         for member in members:
             if target.label.raw_target() == member.label.raw_target():
@@ -223,7 +226,8 @@ def externalSourcesForTarget(ctx, target):
     return paths
 
 def merge(results):
-    flags = {}
+    seen_flags = set()
+    flags = []
     sources = {}
     haskellDeps = {}
     import_dirs = {}
@@ -232,9 +236,10 @@ def merge(results):
     exclude_packages = {}
 
     for result in results:
-        # TODO flags are order sensitive, so avoid the dedup dictionary trick
         for flag in result["flags"]:
-            flags[flag] = ()
+            if not (flag in seen_flags):
+                flags.append(flag)
+                seen_flags.add(flag)
         for source in result["sources"]:
             sources[source] = ()
         for p, v in result["haskell_deps"].items():
@@ -250,7 +255,7 @@ def merge(results):
 
     return {
         "exclude_packages": exclude_packages,
-        "flags": flags.keys(),
+        "flags": flags,
         "generated_dependencies": generated_dependencies.keys(),
         "haskell_deps": haskellDeps,
         "import_dirs": import_dirs.keys(),

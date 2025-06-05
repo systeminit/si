@@ -10,6 +10,7 @@
 # the generated docs, and so those should be verified to be accurate and
 # well-formatted (and then delete this TODO)
 
+load("@prelude//:attrs_validators.bzl", "validation_common")
 load("@prelude//decls:test_common.bzl", "test_common")
 load(":common.bzl", "AbiGenerationMode", "AnnotationProcessingTool", "LogLevel", "SourceAbiVerificationMode", "TestType", "UnusedDependenciesAction", "buck", "prelude_rule")
 load(":jvm_common.bzl", "jvm_common")
@@ -91,7 +92,7 @@ kotlin_library = prelude_rule(
                 Rules (usually other `kotlin_library` rules) that are used to
                  generate the classpath required to compile this `kotlin_library`.
             """),
-            "extra_kotlinc_arguments": attrs.list(attrs.string(), default = [], doc = """
+            "extra_kotlinc_arguments": attrs.list(attrs.arg(anon_target_compatible = True), default = [], doc = """
                 List of additional arguments to pass into the Kotlin compiler.
             """),
             "friend_paths": attrs.list(attrs.dep(), default = [], doc = """
@@ -140,7 +141,7 @@ kotlin_library = prelude_rule(
             "source_only_abi_deps": attrs.list(attrs.dep(), default = []),
             "target": attrs.option(attrs.string(), default = None),
             "use_jvm_abi_gen": attrs.option(attrs.bool(), default = None),
-        } | jvm_common.plugins()
+        } | jvm_common.plugins() | validation_common.attrs_validators_arg()
     ),
 )
 
@@ -215,14 +216,17 @@ kotlin_test = prelude_rule(
             "annotation_processor_params": attrs.list(attrs.string(), default = []),
             "annotation_processors": attrs.list(attrs.string(), default = []),
             "contacts": attrs.list(attrs.string(), default = []),
-            "cxx_library_whitelist": attrs.list(attrs.dep(), default = []),
+            "cxx_library_allowlist": attrs.list(attrs.dep(), default = [], doc = """
+                List of cxx_library targets to build, if use_cxx_libraries is true.
+                This can be useful if some dependencies are Android-only and won't build for the test host platform.
+            """),
             "default_cxx_platform": attrs.option(attrs.string(), default = None),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "deps_query": attrs.option(attrs.query(), default = None),
             "exported_deps": attrs.list(attrs.dep(), default = []),
             "exported_provided_deps": attrs.list(attrs.dep(), default = []),
             "extra_arguments": attrs.list(attrs.string(), default = []),
-            "extra_kotlinc_arguments": attrs.list(attrs.string(), default = []),
+            "extra_kotlinc_arguments": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
             "friend_paths": attrs.list(attrs.dep(), default = []),
             "java_version": attrs.option(attrs.string(), default = None),
             "java": attrs.option(attrs.dep(), default = None),

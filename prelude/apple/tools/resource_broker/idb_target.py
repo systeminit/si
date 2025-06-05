@@ -17,18 +17,23 @@ from dataclasses_json import dataclass_json
 
 class SimState(str, Enum):
     booted = "Booted"
+    booting = "Booting"
+    creating = "Creating"
     shutdown = "Shutdown"
+    shutting_down = "Shutting Down"
+    unknown = "Unknown"
 
 
 @dataclass_json
 @dataclass
 class IdbTarget:
-    name: str
-    os_version: str
-    udid: str
-    state: SimState
-    host: str = ""
-    port: int = 0
+    name: str = ""
+    os_version: str = ""
+    udid: str = ""
+    state: SimState = SimState.shutdown
+
+    def is_valid(self):
+        return self.os_version != "" and self.udid != ""
 
 
 @dataclass
@@ -52,4 +57,4 @@ def managed_simulators_list_from_stdout(stdout: Optional[str]) -> List[IdbTarget
         IdbTarget.from_dict,
         json.loads(stdout),
     )
-    return list(targets)
+    return list(filter(lambda target: target.is_valid(), targets))

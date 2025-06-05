@@ -63,8 +63,7 @@ int main(int argc, char* argv[]) {
       return *exit_code;
     }
   }
-
-#if PY_MINOR_VERSION >= 10
+#if PY_VERSION_HEX >= 0x030a0000 // 3.10
   status = PyConfig_SetBytesArgv(&config, argc, argv);
 #else
   // Read all configuration at once.
@@ -76,7 +75,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-#if PY_MINOR_VERSION >= 10
+#if PY_VERSION_HEX >= 0x030a0000 // 3.10
   // Read all configuration at once.
   status = PyConfig_Read(&config);
 #else
@@ -148,7 +147,7 @@ int main(int argc, char* argv[]) {
     // the path (I think this happens in `Py_RunMain` below), so we need to get
     // it added for this block.
     const auto par = std::getenv("FB_PAR_FILENAME");
-    if (par != NULL) {
+    if (par != nullptr) {
       PyObject* sysPath = PySys_GetObject((char*)"path");
       auto result = PyList_Insert(sysPath, 0, PyUnicode_FromString((char*)par));
       if (result == -1) {
@@ -165,35 +164,6 @@ int main(int argc, char* argv[]) {
         Py_DECREF(result);
       });
     };
-
-    // Call static_extension_finder._initialize()
-    PyObject* pmodule = PyImport_ImportModule("static_extension_finder");
-    if (pmodule == nullptr) {
-      PyErr_Print();
-      fprintf(
-          stderr, "Error: could not import module 'static_extension_finder'\n");
-      // return 1;
-    } else {
-      PyObject* pinitialize = PyObject_GetAttrString(pmodule, "_initialize");
-      Py_DECREF(pmodule);
-      if (pinitialize == nullptr || !PyCallable_Check(pinitialize)) {
-        PyErr_Print();
-        fprintf(
-            stderr,
-            "Error: could not find '_initialize' in module 'static_extension_finder'\n");
-        // return 1;
-      }
-      PyObject* retvalue = PyObject_CallObject(pinitialize, nullptr);
-      Py_DECREF(pinitialize);
-      if (retvalue == nullptr) {
-        PyErr_Print();
-        fprintf(
-            stderr,
-            "Error: could not call 'static_extension_finder._initialize()'\n");
-        // return 1;
-      }
-      Py_DECREF(retvalue);
-    }
   }
 
   PyConfig_Clear(&config);

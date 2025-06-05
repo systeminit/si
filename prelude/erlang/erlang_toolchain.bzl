@@ -15,62 +15,26 @@ load(
     "ErlangOTPBinariesInfo",
     "ErlangParseTransformInfo",
     "ErlangToolchainInfo",
+    "Tool",
+    "Tools",
 )
 
-Tool = cmd_args
-
-ToolsBinaries = record(
-    erl = field(Artifact),
-    erlc = field(Artifact),
-    escript = field(Artifact),
-)
-
-Tools = record(
-    name = field(str),
-    erl = field(Tool),
-    erlc = field(Tool),
-    escript = field(Tool),
-    _tools_binaries = field(ToolsBinaries),
-)
-
-Toolchain = record(
-    name = field(str),
-    erl_opts = field(list[str]),
-    app_file_script = field(Artifact),
-    boot_script_builder = field(Artifact),
-    dependency_analyzer = field(Artifact),
-    dependency_finalizer = field(Artifact),
-    erlc_trampoline = field(Artifact),
-    escript_trampoline = field(Artifact),
-    escript_builder = field(Artifact),
-    otp_binaries = field(Tools),
-    release_variables_builder = field(Artifact),
-    include_erts = field(Artifact),
-    core_parse_transforms = field(dict[str, (Artifact, Artifact)]),
-    parse_transforms = field(dict[str, (Artifact, Artifact)]),
-    parse_transforms_filters = field(dict[str, list[str]]),
-    edoc = field(Artifact),
-    edoc_options = field(list[str]),
-    edoc_preprocess = field(list[str]),
-    utility_modules = field(Artifact),
-    env = field(dict[str, str]),
-)
+Toolchain = ErlangToolchainInfo
 
 ToolchainUtillInfo = provider(
     # @unsorted-dict-items
     fields = {
-        "app_src_script": provider_field(typing.Any, default = None),
-        "boot_script_builder": provider_field(typing.Any, default = None),
-        "core_parse_transforms": provider_field(typing.Any, default = None),
-        "dependency_analyzer": provider_field(typing.Any, default = None),
-        "dependency_finalizer": provider_field(typing.Any, default = None),
-        "edoc": provider_field(typing.Any, default = None),
-        "erlc_trampoline": provider_field(typing.Any, default = None),
-        "escript_trampoline": provider_field(typing.Any, default = None),
-        "escript_builder": provider_field(typing.Any, default = None),
-        "release_variables_builder": provider_field(typing.Any, default = None),
-        "include_erts": provider_field(typing.Any, default = None),
-        "utility_modules": provider_field(typing.Any, default = None),
+        "app_src_script": provider_field(Artifact),
+        "boot_script_builder": provider_field(Artifact),
+        "core_parse_transforms": provider_field(list[Dependency]),
+        "dependency_analyzer": provider_field(Artifact),
+        "dependency_finalizer": provider_field(Artifact),
+        "erlc_trampoline": provider_field(Artifact),
+        "escript_trampoline": provider_field(Artifact),
+        "escript_builder": provider_field(Artifact),
+        "release_variables_builder": provider_field(Artifact),
+        "include_erts": provider_field(Artifact),
+        "utility_modules": provider_field(list[Artifact]),
     },
 )
 
@@ -91,28 +55,7 @@ def _multi_version_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     toolchains = {}
     for toolchain in ctx.attrs.targets:
         toolchain_info = toolchain[ErlangToolchainInfo]
-        toolchains[toolchain_info.name] = Toolchain(
-            name = toolchain_info.name,
-            app_file_script = toolchain_info.app_file_script,
-            boot_script_builder = toolchain_info.boot_script_builder,
-            dependency_analyzer = toolchain_info.dependency_analyzer,
-            dependency_finalizer = toolchain_info.dependency_finalizer,
-            erl_opts = toolchain_info.erl_opts,
-            erlc_trampoline = toolchain_info.erlc_trampoline,
-            escript_trampoline = toolchain_info.escript_trampoline,
-            escript_builder = toolchain_info.escript_builder,
-            otp_binaries = toolchain_info.otp_binaries,
-            release_variables_builder = toolchain_info.release_variables_builder,
-            include_erts = toolchain_info.include_erts,
-            core_parse_transforms = toolchain_info.core_parse_transforms,
-            parse_transforms = toolchain_info.parse_transforms,
-            parse_transforms_filters = toolchain_info.parse_transforms_filters,
-            edoc = toolchain_info.edoc,
-            edoc_options = toolchain_info.edoc_options,
-            edoc_preprocess = toolchain_info.edoc_preprocess,
-            utility_modules = toolchain_info.utility_modules,
-            env = toolchain_info.env,
-        )
+        toolchains[toolchain_info.name] = toolchain_info
     return [
         DefaultInfo(),
         ErlangMultiVersionToolchainInfo(
@@ -136,25 +79,18 @@ def _config_erlang_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
     # split the options string to get a list of options
     erl_opts = ctx.attrs.erl_opts.split()
     emu_flags = ctx.attrs.emu_flags.split()
-    edoc_options = ctx.attrs.edoc_options.split()
-    edoc_preprocess = ctx.attrs.edoc_preprocess.split()
 
     # get otp binaries
     binaries_info = ctx.attrs.otp_binaries[ErlangOTPBinariesInfo]
     erl = cmd_args([binaries_info.erl] + emu_flags)
     erlc = cmd_args(binaries_info.erlc, hidden = binaries_info.erl)
     escript = cmd_args(binaries_info.escript, hidden = binaries_info.erl)
-    tools_binaries = ToolsBinaries(
-        erl = binaries_info.erl,
-        erlc = binaries_info.erl,
-        escript = binaries_info.escript,
-    )
     otp_binaries = Tools(
         name = ctx.attrs.name,
         erl = erl,
         erlc = erlc,
         escript = escript,
-        _tools_binaries = tools_binaries,
+        _tools_binaries = binaries_info,
     )
 
     # extract utility artefacts
@@ -177,29 +113,34 @@ def _config_erlang_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
 
     utility_modules = _gen_util_beams(ctx, utils.utility_modules, otp_binaries.erlc)
 
+    app_src_script = _gen_toolchain_script(ctx, utils.app_src_script, otp_binaries)
+    boot_script_builder = _gen_toolchain_script(ctx, utils.boot_script_builder, otp_binaries)
+    dependency_analyzer = _gen_toolchain_script(ctx, utils.dependency_analyzer, otp_binaries)
+    dependency_finalizer = _gen_toolchain_script(ctx, utils.dependency_finalizer, otp_binaries)
+    escript_builder = _gen_toolchain_script(ctx, utils.escript_builder, otp_binaries)
+    release_variables_builder = _gen_toolchain_script(ctx, utils.release_variables_builder, otp_binaries)
+    include_erts = _gen_toolchain_script(ctx, utils.include_erts, otp_binaries)
+
     return [
         DefaultInfo(),
         ErlangToolchainInfo(
             name = ctx.attrs.name,
-            app_file_script = utils.app_src_script,
-            boot_script_builder = utils.boot_script_builder,
-            dependency_analyzer = utils.dependency_analyzer,
-            dependency_finalizer = utils.dependency_finalizer,
+            app_src_script = app_src_script,
+            boot_script_builder = boot_script_builder,
+            dependency_analyzer = dependency_analyzer,
+            dependency_finalizer = dependency_finalizer,
             erl_opts = erl_opts,
             env = ctx.attrs.env,
             emu_flags = emu_flags,
             erlc_trampoline = utils.erlc_trampoline,
             escript_trampoline = utils.escript_trampoline,
-            escript_builder = utils.escript_builder,
+            escript_builder = escript_builder,
             otp_binaries = otp_binaries,
-            release_variables_builder = utils.release_variables_builder,
-            include_erts = utils.include_erts,
+            release_variables_builder = release_variables_builder,
+            include_erts = include_erts,
             core_parse_transforms = core_parse_transforms,
             parse_transforms = parse_transforms,
             parse_transforms_filters = ctx.attrs.parse_transforms_filters,
-            edoc = utils.edoc,
-            edoc_options = edoc_options,
-            edoc_preprocess = edoc_preprocess,
             utility_modules = utility_modules,
         ),
     ]
@@ -258,29 +199,44 @@ def _gen_parse_transform_beam(
     )
 
     # build beam
-    beam = paths.join(
-        name,
-        paths.replace_extension(src.basename, ".beam"),
-    )
-    output = ctx.actions.declare_output(beam)
+    output = ctx.actions.declare_output(name, name + ".beam")
+    _compile_toolchain_module(ctx, src, output.as_output(), erlc)
 
-    # NOTE: since we do NOT define +debug_info, this is hermetic
-    cmd = cmd_args([
-        erlc,
-        "+deterministic",
-        "-o",
-        cmd_args(output.as_output(), parent = 1),
-        src,
-    ])
-    ctx.actions.run(cmd, category = "erlc", identifier = src.short_path)
     return output, resource_dir
+
+default_toolchain_script_args_pre = cmd_args(
+    "+A0",
+    "+S1:1",
+    "+sbtu",
+    "+MMscs",
+    "8",
+    "+MMsco",
+    "false",
+    "-mode",
+    "minimal",
+    "-noinput",
+    "-noshell",
+    "-eval",
+)
+default_toolchain_script_args_post = cmd_args("-s", "erlang", "halt", "--")
+
+def _gen_toolchain_script(ctx: AnalysisContext, script: Artifact, tools: Tools) -> Tool:
+    name, _ext = paths.split_extension(script.basename)
+    out = ctx.actions.declare_output(name, name + ".beam")
+    _compile_toolchain_module(ctx, script, out.as_output(), tools.erlc)
+    eval = cmd_args(name, ":main(init:get_plain_arguments())", delimiter = "")
+    return cmd_args(
+        tools.erl,
+        cmd_args(out, parent = 1, prepend = "-pa"),
+        default_toolchain_script_args_pre,
+        eval,
+        default_toolchain_script_args_post,
+    )
 
 config_erlang_toolchain_rule = rule(
     impl = _config_erlang_toolchain_impl,
     attrs = {
         "core_parse_transforms": attrs.list(attrs.dep(), default = ["@prelude//erlang/toolchain:transform_project_root"]),
-        "edoc_options": attrs.string(default = ""),
-        "edoc_preprocess": attrs.string(default = ""),
         "emu_flags": attrs.string(default = ""),
         "env": attrs.dict(key = attrs.string(), value = attrs.string(), default = {}),
         "erl_opts": attrs.string(default = ""),
@@ -301,17 +257,7 @@ def _gen_util_beams(
             "__build",
             paths.replace_extension(src.basename, ".beam"),
         ))
-        ctx.actions.run(
-            [
-                erlc,
-                "+deterministic",
-                "-o",
-                cmd_args(output.as_output(), parent = 1),
-                src,
-            ],
-            category = "erlc",
-            identifier = src.short_path,
-        )
+        _compile_toolchain_module(ctx, src, output.as_output(), erlc)
         beams.append(output)
 
     beam_dir = ctx.actions.symlinked_dir(
@@ -320,6 +266,18 @@ def _gen_util_beams(
     )
 
     return beam_dir
+
+def _compile_toolchain_module(
+        ctx: AnalysisContext,
+        src: Artifact,
+        out: OutputArtifact,
+        erlc: Tool):
+    # NOTE: since we do NOT define +debug_info, this is hermetic
+    ctx.actions.run(
+        [erlc, "+deterministic", "-o", cmd_args(out, parent = 1), src],
+        category = "erlc",
+        identifier = src.short_path,
+    )
 
 # Parse Transform
 
@@ -359,7 +317,6 @@ def _toolchain_utils(ctx: AnalysisContext) -> list[Provider]:
             core_parse_transforms = ctx.attrs.core_parse_transforms,
             dependency_analyzer = ctx.attrs.dependency_analyzer,
             dependency_finalizer = ctx.attrs.dependency_finalizer,
-            edoc = ctx.attrs.edoc,
             erlc_trampoline = ctx.attrs.erlc_trampoline,
             escript_trampoline = ctx.attrs.escript_trampoline,
             escript_builder = ctx.attrs.escript_builder,
@@ -377,7 +334,6 @@ toolchain_utilities = rule(
         "core_parse_transforms": attrs.list(attrs.dep()),
         "dependency_analyzer": attrs.source(),
         "dependency_finalizer": attrs.source(),
-        "edoc": attrs.source(),
         "erlc_trampoline": attrs.source(),
         "escript_builder": attrs.source(),
         "escript_trampoline": attrs.source(),
