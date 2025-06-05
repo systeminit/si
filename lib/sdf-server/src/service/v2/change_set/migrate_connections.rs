@@ -133,58 +133,54 @@ async fn get_connection_migrations(
 // Returns true if migrated, false if we didn't migrate
 async fn migrate_connection(ctx: &DalContext, migration: &ConnectionMigration) -> Result<bool> {
     // Make sure it's migrateable (no issues and has all the data we need)
-    let &ConnectionMigration {
-        issue: None,
-        explicit_connection_id,
-        prop_connection:
-            Some(PropConnection {
-                from: (from_component_id, ref from_path),
-                to: (to_component_id, ref to_path),
-                func_id,
-            }),
-        socket_connection:
-            Some(SocketConnection {
-                from: (_, from_socket_id),
-                to: (_, to_socket_id),
-            }),
-    } = migration
-    else {
+    if migration.issue.is_some() {
         return Ok(false);
-    };
-
-    // Add the prop connection
-    let from_root_av_id = Component::root_attribute_value_id(ctx, from_component_id).await?;
-    let to_root_av_id = Component::root_attribute_value_id(ctx, to_component_id).await?;
-    let to_av_id = AttributePath::from_json_pointer(to_path.to_string())
-        .vivify(ctx, to_root_av_id)
+    }
+    // Add the prop connections
+    for &PropConnection {
+        from: (from_component_id, ref from_path),
+        to: (to_component_id, ref to_path),
+        func_id,
+    } in &migration.prop_connections
+    {
+        let from_root_av_id = Component::root_attribute_value_id(ctx, from_component_id).await?;
+        let to_root_av_id = Component::root_attribute_value_id(ctx, to_component_id).await?;
+        let to_av_id = AttributePath::from_json_pointer(to_path.to_string())
+            .vivify(ctx, to_root_av_id)
+            .await?;
+        AttributeValue::set_to_subscriptions(
+            ctx,
+            to_av_id,
+            vec![ValueSubscription {
+                attribute_value_id: from_root_av_id,
+                path: AttributePath::from_json_pointer(from_path.to_string()),
+            }],
+            Some(func_id),
+        )
         .await?;
-    AttributeValue::set_to_subscriptions(
-        ctx,
-        to_av_id,
-        vec![ValueSubscription {
-            attribute_value_id: from_root_av_id,
-            path: AttributePath::from_json_pointer(from_path.to_string()),
-        }],
-        Some(func_id),
-    )
-    .await?;
+    }
 
     // Remove the existing socket connection (unless it was inferred, in which case there isn't one)
-    if let Some(explicit_connection_id) = explicit_connection_id {
+    if let Some(explicit_connection_id) = migration.explicit_connection_id {
         AttributePrototypeArgument::remove(ctx, explicit_connection_id).await?;
-
-        // Send the WsEvent
-        WsEvent::connection_deleted(
-            ctx,
-            from_component_id,
-            to_component_id,
-            from_socket_id,
-            to_socket_id,
-        )
-        .await?
-        .publish_on_commit(ctx)
-        .await?;
-    };
+        if let Some(SocketConnection {
+            from: (from_component_id, from_socket_id),
+            to: (to_component_id, to_socket_id),
+        }) = migration.socket_connection
+        {
+            // Send the WsEvent
+            WsEvent::connection_deleted(
+                ctx,
+                from_component_id,
+                to_component_id,
+                from_socket_id,
+                to_socket_id,
+            )
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
+        }
+    }
 
     Ok(true)
 }
