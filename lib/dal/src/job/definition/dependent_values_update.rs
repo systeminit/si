@@ -43,11 +43,13 @@ use crate::{
     ComponentId,
     DalContext,
     Func,
+    SchemaVariantError,
     TransactionsError,
     WorkspacePk,
     WorkspaceSnapshotError,
     WsEvent,
     WsEventError,
+    action::ActionError,
     attribute::value::{
         AttributeValueError,
         dependent_value_graph::DependentValueGraph,
@@ -73,6 +75,8 @@ use crate::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum DependentValueUpdateError {
+    #[error("action error: {0}")]
+    Action(#[from] ActionError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("change set error: {0}")]
@@ -85,6 +89,8 @@ pub enum DependentValueUpdateError {
     DependentValuesUpdateAuditLog(#[from] DependentValueUpdateAuditLogError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("status update error: {0}")]
     StatusUpdate(#[from] StatusUpdateError),
     #[error(transparent)]
@@ -272,7 +278,10 @@ impl DependentValuesUpdate {
         let start = tokio::time::Instant::now();
         let span = Span::current();
         let roots = DependentValueRoot::take_dependent_values(ctx).await?;
-
+        let is_on_head = ChangeSet::get_by_id(ctx, self.change_set_id)
+            .await?
+            .is_head(ctx)
+            .await?;
         let mut unfinished_values: HashSet<Ulid> = HashSet::new();
         let mut finished_values: HashSet<Ulid> = HashSet::new();
 
@@ -388,6 +397,8 @@ impl DependentValuesUpdate {
                             // Lock the graph for writing inside this job. The
                             // lock will be released when this guard is dropped
                             // at the end of the scope.
+                            let value_is_changed =
+                                before_value.as_ref() != execution_values.value();
                             let write_guard = self.set_value_lock.write().await;
 
                             // Only set values if their functions are actually
@@ -419,6 +430,15 @@ impl DependentValuesUpdate {
                                         // become independent values (once all other dependencies are removed)
                                         dependency_graph.remove_value(finished_value_id);
                                         drop(write_guard);
+                                        // if we're not on head, and the value is different after processing,
+                                        // let's see if we should enqueue an update function
+                                        if !is_on_head && value_is_changed {
+                                            Component::enqueue_update_action_if_applicable(
+                                                ctx,
+                                                finished_value_id,
+                                            )
+                                            .await?;
+                                        }
 
                                         // Publish the audit log for the updated dependent value.
                                         audit_log::write(

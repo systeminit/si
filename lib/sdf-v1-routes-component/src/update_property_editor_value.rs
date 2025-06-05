@@ -88,7 +88,8 @@ pub async fn update_property_editor_value(
         if request.value != before_value {
             // If the values have changed then we should enqueue an update action
             // if the values haven't changed then we can skip this update action as it is usually a no-op
-            Component::enqueue_relevant_update_actions(&ctx, request.attribute_value_id).await?;
+            Component::enqueue_update_action_if_applicable(&ctx, request.attribute_value_id)
+                .await?;
         }
     }
 

@@ -2826,80 +2826,54 @@ impl Component {
         Ok(modified)
     }
 
-    /// Based on the attribute value being updated, enqueue update actions for components
-    /// impacted if they have an update action and they have a resource
-    pub async fn enqueue_relevant_update_actions(
+    /// If the attribute value is somewhere in 'root/domain', the component has a resource, and a single update function,
+    /// and there isn't an update func already enqueued for this component, enqueue it!
+    pub async fn enqueue_update_action_if_applicable(
         ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-    ) -> ComponentResult<Vec<Action>> {
-        let mut enqueued_actions = Vec::new();
-
-        // first check the initial component
-        let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
-        let actions = Self::enqueue_update_action_if_applicable(ctx, component_id).await?;
-        enqueued_actions.extend(actions);
-
-        // Next, calculate dependency graph to get all of the downstream components that are now also
-        // potentially needing an update action
-        // NOTE: We have no way to guarantee that a component's value will actually be different after DVU
-        // so for now, just enqueue if the value is enqueued to change. More work here is likely needed
-        let dependency_graph = DependentValueGraph::new(
-            ctx,
-            vec![DependentValueRoot::Unfinished(attribute_value_id.into())],
-        )
-        .await?;
-        for impacted_attribute_value_id in dependency_graph.all_value_ids() {
-            // check if the attribute value is in the domain tree for the component first
-            if let Some(prop_for_value) =
-                AttributeValue::prop_opt(ctx, impacted_attribute_value_id).await?
-            {
-                if prop_for_value
-                    .path(ctx)
-                    .await?
-                    .is_descendant_of(&PropPath::new(["root", "domain"]))
-                {
-                    // first get the component for this attribute value
-                    let component_id =
-                        AttributeValue::component_id(ctx, impacted_attribute_value_id).await?;
-                    let actions =
-                        Self::enqueue_update_action_if_applicable(ctx, component_id).await?;
-                    enqueued_actions.extend(actions);
-                }
-            }
-        }
-        Ok(enqueued_actions)
-    }
-
-    async fn enqueue_update_action_if_applicable(
-        ctx: &DalContext,
-        component_id: ComponentId,
-    ) -> ComponentResult<Vec<Action>> {
-        let mut enqueued_actions = Vec::new();
-        if Component::resource_by_id(ctx, component_id)
-            .await?
-            .is_some()
+        modified_attribute_value_id: AttributeValueId,
+    ) -> ComponentResult<Option<Action>> {
+        if let Some(prop_for_value) =
+            AttributeValue::prop_opt(ctx, modified_attribute_value_id).await?
         {
-            // then if the current component has an update action, enqueue it
-            let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
-            let prototypes_for_variant = SchemaVariant::find_action_prototypes_by_kind(
-                ctx,
-                schema_variant_id,
-                ActionKind::Update,
-            )
-            .await?;
-
-            for prototype_id in prototypes_for_variant {
-                // don't enqueue the same action twice!
-                if Action::find_equivalent(ctx, prototype_id, Some(component_id))
+            if prop_for_value
+                .path(ctx)
+                .await?
+                .is_descendant_of(&PropPath::new(["root", "domain"]))
+            {
+                let component_id =
+                    AttributeValue::component_id(ctx, modified_attribute_value_id).await?;
+                if Component::resource_by_id(ctx, component_id)
                     .await?
-                    .is_none()
+                    .is_some()
                 {
-                    let new_action = Action::new(ctx, prototype_id, Some(component_id)).await?;
-                    enqueued_actions.push(new_action);
+                    // then if the current component has an update action, enqueue it
+                    let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
+                    let mut prototypes_for_variant = SchemaVariant::find_action_prototypes_by_kind(
+                        ctx,
+                        schema_variant_id,
+                        ActionKind::Update,
+                    )
+                    .await?;
+
+                    if prototypes_for_variant.len() > 1 {
+                        // if there are multiple update funcs, not sure which one to enqueue!
+                        return Ok(None);
+                    }
+                    if let Some(prototype_id) = prototypes_for_variant.pop() {
+                        // don't enqueue the same action twice!
+                        if Action::find_equivalent(ctx, prototype_id, Some(component_id))
+                            .await?
+                            .is_none()
+                        {
+                            let new_action =
+                                Action::new(ctx, prototype_id, Some(component_id)).await?;
+                            return Ok(Some(new_action));
+                        }
+                    }
                 }
             }
         }
-        Ok(enqueued_actions)
+        Ok(None)
     }
 
     pub async fn autoconnect(
