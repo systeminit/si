@@ -398,9 +398,6 @@ mod handlers {
                     frigg,
                     to_snapshot_address,
                 )
-                .instrument(tracing::info_span!(
-                    "edda.change_set_processor_task.new_change_set"
-                ))
                 .await?;
 
                 if index_was_copied {
@@ -420,26 +417,17 @@ mod handlers {
                         ctx,
                         frigg,
                         None,
+                        "explicit rebuild",
                     )
-                    .instrument(tracing::info_span!(
-                        "edda.change_set_processor_task.build_all_mv_for_change_set.explicit_rebuild"
-                    ))
                     .await
                     .map_err(Into::into)
                 }
             }
             CompressedRequest::Rebuild => {
                 // Rebuild
-                materialized_view::build_all_mv_for_change_set(
-                    ctx,
-                    frigg,
-                    None,
-                )
-                .instrument(tracing::info_span!(
-                    "edda.change_set_processor_task.build_all_mv_for_change_set.explicit_rebuild"
-                ))
-                .await
-                .map_err(Into::into)
+                materialized_view::build_all_mv_for_change_set(ctx, frigg, None, "explicit rebuild")
+                    .await
+                    .map_err(Into::into)
             }
             CompressedRequest::Update {
                 from_snapshot_address,
@@ -476,10 +464,8 @@ mod handlers {
                         ctx,
                         frigg,
                         latest_index_checksum,
+                        "snapshot moved",
                     )
-                    .instrument(tracing::info_span!(
-                        "edda.change_set_processor_task.build_all_mv_for_change_set.snapshot_moved"
-                    ))
                     .await
                     .map_err(Into::into)
                 }
@@ -487,10 +473,12 @@ mod handlers {
                 else {
                     // todo: this is where we'd handle reusing an index from another change set if
                     // the snapshots match!
-                    materialized_view::build_all_mv_for_change_set(ctx, frigg, None)
-                    .instrument(tracing::info_span!(
-                        "edda.change_set_processor_task.build_all_mv_for_change_set.initial_build"
-                    ))
+                    materialized_view::build_all_mv_for_change_set(
+                        ctx,
+                        frigg,
+                        None,
+                        "initial build",
+                    )
                     .await
                     .map_err(Into::into)
                 }
@@ -529,9 +517,6 @@ mod handlers {
             to_snapshot_address,
             &changes,
         )
-        .instrument(tracing::info_span!(
-            "edda.change_set_processor_task.build_mv_for_changes_in_change_set"
-        ))
         .await
         .map_err(Into::into)
     }

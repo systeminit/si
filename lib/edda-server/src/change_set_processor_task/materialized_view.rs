@@ -142,7 +142,7 @@ pub enum MaterializedViewError {
 /// the found [`MvIndex`] and return true. If none can be used, return false.
 /// NOTE: The copy will fail if we try to reuse an index for a change set that already has an index pointer
 #[instrument(
-    name = "materialized_view.try_reuse_index_for_snapshot",
+    name = "materialized_view.try_reuse_mv_index_for_new_change_set",
     level = "info",
     skip_all,
     fields(
@@ -229,11 +229,7 @@ pub async fn reuse_or_rebuild_index_for_new_change_set(
     let span = current_span_for_instrument_at!("info");
     span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
     let did_copy_result =
-        self::try_reuse_mv_index_for_new_change_set(ctx, frigg, to_snapshot_address)
-            .instrument(tracing::info_span!(
-                "edda.change_set_processor_task.try_clone_index_from_snapshot"
-            ))
-            .await;
+        self::try_reuse_mv_index_for_new_change_set(ctx, frigg, to_snapshot_address).await;
 
     match did_copy_result {
         // If we returned successfully, evaluate the response,
@@ -242,21 +238,13 @@ pub async fn reuse_or_rebuild_index_for_new_change_set(
                 return Ok(());
             } else {
                 // we did not copy anything, so we must rebuild from scratch (no from_snapshot_address this time)
-                self::build_all_mv_for_change_set(ctx, frigg, None)
-                    .instrument(tracing::info_span!(
-                        "edda.change_set_processor_task.build_all_mv_for_change_set.initial_build"
-                    ))
-                    .await?
+                self::build_all_mv_for_change_set(ctx, frigg, None, "initial build").await?
             }
         }
         Err(err) => {
             error!(si.error.message = ?err, "error copying existing index");
             // we did not copy anything, so we must rebuild from scratch (no from_snapshot_address this time)
-            self::build_all_mv_for_change_set(ctx, frigg, None)
-                .instrument(tracing::info_span!(
-                    "edda.change_set_processor_task.build_all_mv_for_change_set.initial_build"
-                ))
-                .await?
+            self::build_all_mv_for_change_set(ctx, frigg, None, "initial build").await?
         }
     }
     Ok(())
@@ -274,12 +262,14 @@ pub async fn reuse_or_rebuild_index_for_new_change_set(
     fields(
         si.workspace.id = Empty,
         si.change_set.id = %ctx.change_set_id(),
+        si.materialized_view.reason = reason_message,
     ),
 )]
 pub async fn build_all_mv_for_change_set(
     ctx: &DalContext,
     frigg: &FriggStore,
     from_index_checksum: Option<String>,
+    reason_message: &'static str,
 ) -> Result<(), MaterializedViewError> {
     let span = current_span_for_instrument_at!("info");
     span.record("si.workspace.id", ctx.workspace_pk()?.to_string());
@@ -484,7 +474,7 @@ macro_rules! spawn_build_mv_task {
 
 #[instrument(
     name = "materialized_view.build_mv_inner",
-    level = "info",
+    level = "debug",
     skip_all,
     fields(
         si.workspace.id = %workspace_pk,
