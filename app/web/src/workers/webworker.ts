@@ -80,6 +80,9 @@ import {
   maybeMjolnir,
   bulkDone,
   bulkInflight,
+  processPatchQueue,
+  processMjolnirQueue,
+  bustQueueAdd,
 } from "./mjolnir_queue";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
@@ -293,7 +296,8 @@ const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
  */
 
 const atomExistsOnIndexes = async (
-  atom: Atom,
+  kind: EntityKind,
+  id: string,
   checksum: Checksum,
 ): Promise<Checksum[]> => {
   const rows = db.exec({
@@ -307,7 +311,7 @@ const atomExistsOnIndexes = async (
       checksum = ?
     ;
     `,
-    bind: [atom.kind, atom.id, checksum],
+    bind: [kind, id, checksum],
     returnValue: "resultRows",
   });
   return rows.flat().filter(nonNullable) as Checksum[];
@@ -429,14 +433,26 @@ const kindAndArgsFromKey = (key: QueryKey): { kind: EntityKind; id: Id } => {
   return { kind, id };
 };
 
-const bustCacheAndReferences: BustCacheFn = async (
+const bustOrQueue = (
   workspaceId: string,
   changeSetId: string,
   kind: EntityKind,
   id: string,
+  skipQueue = false,
+) => {
+  if (skipQueue) bustCacheFn(workspaceId, changeSetId, kind, id);
+  else bustQueueAdd(workspaceId, changeSetId, kind, id, bustCacheFn);
+};
+
+const bustCacheAndReferences = async (
+  workspaceId: string,
+  changeSetId: string,
+  kind: EntityKind,
+  id: string,
+  skipQueue = false,
 ) => {
   // bust me
-  bustCacheFn(workspaceId, changeSetId, kind, id);
+  bustOrQueue(workspaceId, changeSetId, kind, id, skipQueue);
 
   // bust everyone who refers to me
   const sql = `
@@ -450,11 +466,12 @@ const bustCacheAndReferences: BustCacheFn = async (
   });
   refs.forEach(([ref_kind, ref_id]) => {
     if (ref_kind && ref_id)
-      bustCacheFn(
+      bustOrQueue(
         workspaceId,
         changeSetId,
         ref_kind as EntityKind,
         ref_id as string,
+        skipQueue,
       );
   });
 };
@@ -475,7 +492,11 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
   }
 
   // in between throwing a hammer and receiving it, i might already have written the atom
-  const indexes = await atomExistsOnIndexes(msg.atom, msg.atom.toChecksum);
+  const indexes = await atomExistsOnIndexes(
+    msg.atom.kind,
+    msg.atom.id,
+    msg.atom.toChecksum,
+  );
   if (indexes.length > 0) {
     if (indexes.includes(msg.atom.toIndexChecksum)) {
       debug(
@@ -849,7 +870,8 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
 
     // Check if we actually have the atom data, not just the MTM relationship
     const upToDateAtomIndexes = await atomExistsOnIndexes(
-      atom,
+      atom.kind,
+      atom.id,
       atom.toChecksum,
     );
     if (upToDateAtomIndexes.length > 0) {
@@ -868,7 +890,11 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
     }
 
     // do we have an index with the fromChecksum (without we cannot patch)
-    const previousIndexes = await atomExistsOnIndexes(atom, atom.fromChecksum);
+    const previousIndexes = await atomExistsOnIndexes(
+      atom.kind,
+      atom.id,
+      atom.fromChecksum,
+    );
     span.setAttribute("previousIndexes", JSON.stringify(previousIndexes));
     const exists = previousIndexes.length > 0;
     span.setAttribute("exists", exists);
@@ -1133,17 +1159,29 @@ const mjolnirBulk = async (
 const mjolnir = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
-  kind: string,
+  kind: EntityKind,
   id: Id,
   checksum?: Checksum,
 ) => {
   const atomKey = `${kind}.${id}`;
   debug("🔨 MJOLNIR REQUESTED:", atomKey, "checksum:", checksum);
 
-  maybeMjolnir({ workspaceId, changeSetId, kind, id }, () => {
+  maybeMjolnir({ workspaceId, changeSetId, kind, id }, async () => {
     debug("🔨 MJOLNIR FIRING:", atomKey);
     inFlight(changeSetId, `${kind}.${id}`);
-    return mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
+    // NOTE: since we're moving to all weak refs
+    // storing the index becomes useful here, we can lookup the
+    // checksum we would expect to be returned, and see if we have it already
+    if (!checksum)
+      return mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
+
+    // these are sent after patches are completed
+    // double check that i am still necessary!
+    const exists = await atomExistsOnIndexes(kind, id, checksum);
+    if (exists.length === 0)
+      return mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
+    // if i have it, bust!
+    else bustCacheAndReferences(workspaceId, changeSetId, kind, id);
   });
 };
 
@@ -1244,7 +1282,7 @@ const mjolnirJob = async (
   };
 
   debug("🔨 MJOLNIR JOB COMPLETE:", kind, id, "sending to handleHammer");
-  await handleHammer(msg);
+  processMjolnirQueue.add(() => handleHammer(msg));
 };
 
 const updateChangeSetWithNewIndex = async (meta: AtomMeta) => {
@@ -1567,6 +1605,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     changeSetId,
     EntityKind.PossibleConnections,
     workspaceId,
+    true,
   );
 
   const list = (await get(
@@ -1600,6 +1639,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     changeSetId,
     EntityKind.OutgoingConnections,
     workspaceId,
+    true,
   );
 };
 
@@ -2422,7 +2462,7 @@ const dbInterface: DBInterface = {
                 "patches:",
                 data.patches.length,
               );
-              await handlePatchMessage(data, span);
+              processPatchQueue.add(() => handlePatchMessage(data));
               debug("📨 PATCH MESSAGE COMPLETE:", data.meta.toIndexChecksum);
             } else if (data.kind === MessageKind.MJOLNIR) {
               debug(
@@ -2442,7 +2482,7 @@ const dbInterface: DBInterface = {
                 kind: data.atom.kind,
                 id: data.atom.id,
               });
-              await handleHammer(data, span);
+              processMjolnirQueue.add(() => handleHammer(data));
               debug(
                 "📨 MJOLNIR MESSAGE COMPLETE:",
                 data.atom.kind,
