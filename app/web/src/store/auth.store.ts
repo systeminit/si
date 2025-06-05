@@ -66,9 +66,9 @@ export const useAuthStore = () => {
           return state.tokens[workspacesStore.selectedWorkspacePk];
         }
       },
-      selectedOrDefaultAuthToken(): string | undefined {
-        return this.selectedWorkspaceToken || _.values(this.tokens)[0];
-      },
+      // Pick a workspace token, any token. Used for global auth endpoints when there is no
+      // selected workspace.
+      anyWorkspaceToken: (state) => _.values(state.tokens)[0],
       workspaceHasOneUser(): boolean {
         return Object.keys(this.workspaceUsers).length === 1;
       },

@@ -35,7 +35,9 @@ export function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
   const authStore = useAuthStore();
   config.headers = config.headers || {};
 
-  const token = authStore.selectedOrDefaultAuthToken;
+  // TODO we don't have any reason to believe `anyWorkspaceToken` is valid, and no workflow
+  // should require us to use it--but things fail if you remove `anyWorkspaceToken`! Debug.
+  const token = authStore.selectedWorkspaceToken || authStore.anyWorkspaceToken;
   if (token) {
     config.headers.authorization = `Bearer ${token}`;
   }
