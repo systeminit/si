@@ -5,13 +5,11 @@
 %% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %% of this source tree.
 
-%%%-------------------------------------------------------------------
-%%% @doc
-%%% Abstractions for pretty printing test results
-%%% @end
-%%% % @format
-
+%% @format
 -module(ct_daemon_printer).
+-moduledoc """
+Abstractions for pretty printing test results
+""".
 
 %% Public API
 -export([print_result/2, print_summary/3]).
@@ -29,7 +27,7 @@ print_summary(Total, Passed, FailedOrSkipped) ->
     io:format("~ts/~ts Failed or Skipped: ~b~n", [?CROSS_MARK, ?SKIP_MARK, FailedOrSkipped]).
 
 -spec print_result(string(), ct_daemon_core:run_result() | ct_daemon_runner:discover_error()) ->
-    ok | fail.
+    ok | fail | skip.
 print_result(Name, pass_result) ->
     io:format("~ts ~ts~n", [?CHECK_MARK, Name]);
 print_result(Name, {fail, {TestId, {end_per_testcase, E}}}) ->
@@ -59,6 +57,9 @@ print_result(Name, {error, {_TestId, {timetrap, TimeoutValue}}}) ->
     io:format("~ts ~ts~n", [?CROSS_MARK, Name]),
     io:format("Test timed out after ~p ms~n", [TimeoutValue]),
     fail;
+print_result(Name, {error, {_TestId, {Reason, Stacktrace}}}) ->
+    io:format("~ts ~ts~n", [?CROSS_MARK, Name]),
+    print_error(Name, error, Reason, Stacktrace);
 print_result(Name, Unstructured) ->
     io:format("~ts ~ts~n", [?CROSS_MARK, Name]),
     io:format("unable to format failure reason, please report.~n"),

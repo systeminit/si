@@ -5,20 +5,17 @@
 %% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %% of this source tree.
 
-%%%-------------------------------------------------------------------
-%%% @doc
-%%% An IOBuffer is an input only IOServer
-%%% (see https://www.erlang.org/doc/apps/stdlib/io_protocol.html)
-%%% that acts as a buffer, storing IO inputs in a queue
-%%% that one can empty using the flush method.
-%%% It is designed to work alongside a "group leader", capturing
-%%% IOEvents directed at it. This capture can be started/stopped
-%%% using appropriate methods.
-%%%
-%%% @end
-%%% % @format
-
+%% @format
 -module(io_buffer).
+-moduledoc """
+An IOBuffer is an input only IOServer
+(see https://www.erlang.org/doc/apps/stdlib/io_protocol.html)
+that acts as a buffer, storing IO inputs in a queue
+that one can empty using the flush method.
+It is designed to work alongside a "group leader", capturing
+IOEvents directed at it. This capture can be started/stopped
+using appropriate methods.
+""".
 
 -record(state, {buffer, process, group_leader, capture, pass_through, max_elements, max_length}).
 
@@ -40,7 +37,9 @@
 
 %% Public API
 
-%% @doc Starts an linked IO server.
+-doc """
+Starts an linked IO server.
+""".
 -spec start_link() -> {ok, pid()}.
 start_link() ->
     start_link(#{passthrough => true, max_elements => ?MAX_LINES, max_length => ?MAX_LENGTH}).
@@ -50,22 +49,34 @@ start_link(#{passthrough := PassThrough, max_elements := MaxElements, max_length
         ?MODULE, [self(), group_leader(), PassThrough, MaxElements, MaxLength], []
     ).
 
-%% @doc Empties the buffer and retrieves its content.
+-doc """
+Empties the buffer and retrieves its content.
+""".
 -spec flush(pid()) -> {string(), boolean()}.
 flush(IoBuffer) ->
-    gen_server:call(IoBuffer, flush).
+    do_call(IoBuffer, flush).
 
-%% @doc Starts caturing IOEvents and redirecting them to its queue.
+-doc """
+Starts caturing IOEvents and redirecting them to its queue.
+""".
 -spec start_capture(pid()) -> ok.
 start_capture(IoBuffer) ->
-    gen_server:call(IoBuffer, start_capture).
+    do_call(IoBuffer, start_capture).
 
-%% @doc Stops capturing IOEvents, letting them flow to their initial group leader.
+-doc """
+Stops capturing IOEvents, letting them flow to their initial group leader.
+""".
 -spec stop_capture(pid()) -> ok.
 stop_capture(IoBuffer) ->
-    gen_server:call(IoBuffer, stop_capture).
+    do_call(IoBuffer, stop_capture).
 
-%% @doc Stop the IoBuffer
+-spec do_call(gen_server:server_ref(), flush | start_capture | stop_capture) -> dynamic().
+do_call(IoBuffer, Request) ->
+    gen_server:call(IoBuffer, Request).
+
+-doc """
+Stop the IoBuffer
+""".
 stop(IoBuffer) ->
     gen_server:stop(IoBuffer).
 
@@ -89,6 +100,7 @@ handle_call(start_capture, _From, State = #state{}) ->
     {reply, ok, State#state{capture = true}};
 handle_call(stop_capture, _From, #state{group_leader = GroupLeader, buffer = Buffer} = State) ->
     {Elements, _Truncated} = bounded_buffer:get_elements(Buffer),
+    %% eqwalizer:fixme: remove the fixme once eqwalizer_specs is shipped with elp
     lists:foreach(fun(Chars) -> io:put_chars(GroupLeader, Chars) end, Elements),
     {reply, ok, State#state{capture = false}};
 handle_call(_Request, _From, State) ->
@@ -121,20 +133,21 @@ handle_info(_Info, State) ->
     {noreply, State}.
 
 -type request() ::
-    {put_chars, unicode:encoding(),
-        unicode:latin1_chardata() | unicode:chardata() | unicode:external_chardata()}.
-% Output Requests
-% {put_chars, Encoding, Characters}
-% {put_chars, Encoding, Module, Function, Args}
-% Input Requests
-% {get_until, Encoding, Prompt, Module, Function, ExtraArgs}
-% {get_chars, Encoding, Prompt, N}
-% {get_line, Encoding, Prompt}
-% Other:
-% getopts
-% {setopts, Opts}
-% {get_geometry, Geometru}
-% {requests, Requests}
+    % Output Requests
+    {put_chars, Encoding :: unicode:encoding(),
+        Characters :: unicode:latin1_chardata() | unicode:chardata() | unicode:external_chardata()}
+    | {put_chars, Encoding :: unicode:encoding(), Module :: module(), Function :: atom(), Args :: [term()]}
+    % Input Requests
+    | {get_until, Encoding :: unicode:encoding(), Prompt :: term(), Module :: module(), Function :: atom(),
+        ExtraArgs :: [term()]}
+    | {get_chars, Encoding :: unicode:encoding(), Prompt :: term(), N :: integer()}
+    | {get_line, Encoding :: unicode:encoding(), Prompt :: term()}
+    % Other Requests
+    | getopts
+    | {setopts, Opts :: term()}
+    | {get_geometry, Geometry :: term()}
+    | {requests, [request()]}.
+
 -spec request(request(), #state{}) -> {{error, term()} | term(), #state{}}.
 request({put_chars, Encoding, Chars}, #state{buffer = Buffer, max_length = MaxLength} = State) ->
     Line =
@@ -148,7 +161,8 @@ request({put_chars, Encoding, Chars}, #state{buffer = Buffer, max_length = MaxLe
     {ok, State#state{buffer = NewBuffer}};
 request({put_chars, Encoding, Module, Function, Args}, State) ->
     try
-        request({put_chars, Encoding, apply(Module, Function, Args)}, State)
+        %% eqwalizer:fixme: remove the fixme once eqwalizer_specs is shipped with elp
+        request({put_chars, Encoding, erlang:apply(Module, Function, Args)}, State)
     catch
         _:_ ->
             {{error, Function}, State}
@@ -174,8 +188,8 @@ multi_request([], {LatestReply, State}) ->
     {LatestReply, State};
 multi_request([_ | _], {{error, Error}, State}) ->
     {{error, Error}, State};
-multi_request([R | _Rs], {_Reply, State}) ->
-    multi_request(R, request(R, State)).
+multi_request([R | Rs], {_Reply, State}) ->
+    multi_request(Rs, request(R, State)).
 
 terminate(#state{process = Process, group_leader = GroupLeader} = _State) ->
     group_leader(GroupLeader, Process).

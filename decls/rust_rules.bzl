@@ -25,7 +25,6 @@ def _rust_common_attributes(is_binary: bool):
         "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
         "default_platform": attrs.option(attrs.string(), default = None),
         "flagged_deps": attrs.list(attrs.tuple(rust_target_dep(is_binary), attrs.list(attrs.string())), default = []),
-        "incremental_build_mode": attrs.option(attrs.string(), default = None),
         "incremental_enabled": attrs.bool(default = False),
         "labels": attrs.list(attrs.string(), default = []),
         "licenses": attrs.list(attrs.source(), default = []),
@@ -130,6 +129,7 @@ rust_binary = prelude_rule(
         buck.allow_cache_upload_arg()
     ),
     uses_plugins = [RustProcMacroPlugin],
+    supports_incoming_transition = True,
 )
 
 rust_library = prelude_rule(
@@ -282,6 +282,7 @@ rust_test = prelude_rule(
         test_common.attributes()
     ),
     uses_plugins = [RustProcMacroPlugin],
+    supports_incoming_transition = True,
 )
 
 rust_rules = struct(

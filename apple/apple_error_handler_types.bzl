@@ -5,10 +5,13 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-AppleErrorCategories = record(
-    # Lowercase string that should (preferably uniquely) match the lowercased
-    # stderr output caused by an error of interest.
-    string_match = str,
+AppleErrorCategory = record(
+    # If you pass a string, it will use `matcher in stderr.lower()`.
+    # If you pass a regex(), it will run `regex("exp").match(stderr.lower())`.
+    matcher = str | BuckRegex,
     # List of category tags to be applied in the event of this error.
-    categories = list[str],
+    # Categories are automatically prefixed with "apple_" for historical reasons.
+    category = str,
+    # Based on the error, you can inject something like a wiki link/etc.
+    message = field([str, None], default = None),
 )

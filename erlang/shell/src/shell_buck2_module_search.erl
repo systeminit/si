@@ -5,15 +5,17 @@
 %% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %% of this source tree.
 
-%%%-------------------------------------------------------------------
-%%% @doc
-%%%     Configurable hook for module discovery
-%%% @end
-%%% % @format
-
+%% @format
 -module(shell_buck2_module_search).
 
 -export([find_module/1, find_module_source/1]).
+
+-compile(warn_missing_spec_all).
+-moduledoc """
+Configurable hook for module discovery
+""".
+
+-eqwalizer(ignore).
 
 -callback find_module_source(module()) ->
     {source, file:filename_all()}
@@ -59,7 +61,9 @@ find_module_source(Module) ->
     ),
     case
         [
-            RelPath
+            case unicode:characters_to_list(RelPath) of
+                Value when not is_tuple(Value) -> Value
+            end
          || RelPath <- [
                 string:prefix(Path, [Root, "/"])
              || Path <- string:split(Output, "\n", all)

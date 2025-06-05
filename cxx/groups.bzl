@@ -16,7 +16,6 @@ load(
     "@prelude//utils:graph_utils.bzl",
     "depth_first_traversal_by",
 )
-load("@prelude//utils:lazy.bzl", "lazy")
 load(
     "@prelude//utils:strings.bzl",
     "strip_prefix",
@@ -37,9 +36,10 @@ load(
 _VALID_ATTRS = [
     "enable_distributed_thinlto",
     "enable_if_node_count_exceeds",
-    "exported_linker_flags",
     "discard_group",
     "linker_flags",
+    "exported_linker_flags",
+    "no_as_needed",
     "requires_root_node_exists",
     "prohibit_file_duplicates",
     "prefer_optimized_experimental",
@@ -89,8 +89,14 @@ def parse_groups_definitions(
         # callers to have different top-level types for the `root`s.
         parse_root: typing.Callable = lambda d: d) -> list[Group]:
     groups = []
+    group_names = set()
     for map_entry in map:
         name = map_entry[0]
+
+        # Dedup the link group specs, take the deinition from the first definition
+        if name in group_names:
+            continue
+        group_names.add(name)
         mappings = map_entry[1]
         attrs = (map_entry[2] or {}) if len(map_entry) > 2 else {}
 
@@ -100,9 +106,10 @@ def parse_groups_definitions(
         group_attrs = GroupAttrs(
             enable_distributed_thinlto = attrs.get("enable_distributed_thinlto", False),
             enable_if_node_count_exceeds = attrs.get("enable_if_node_count_exceeds", None),
-            exported_linker_flags = attrs.get("exported_linker_flags", []),
             discard_group = attrs.get("discard_group", False),
             linker_flags = attrs.get("linker_flags", []),
+            exported_linker_flags = attrs.get("exported_linker_flags", []),
+            no_as_needed = attrs.get("no_as_needed", False),
             requires_root_node_exists = attrs.get("requires_root_node_exists", True),
             prohibit_file_duplicates = attrs.get("prohibit_file_duplicates", False),
             prefer_optimized_experimental = attrs.get("prefer_optimized_experimental", False),
@@ -154,8 +161,7 @@ def _parse_filter(entry: str) -> GroupFilterInfo:
             # We need the anchors "^"" and "$" because experimental_regex match
             # anywhere in the text, while we want full text match for group label
             # text.
-            # TODO(nga): fancy is probably not needed here.
-            regex_expr = regex("^{}$".format(label_regex), fancy = True)
+            regex_expr = regex("^{}$".format(label_regex), fancy = False)
 
             def matches_regex(_t, labels):
                 for label in labels:
@@ -267,13 +273,21 @@ def _find_targets_in_mapping(
 
     def populate_matching_targets(node):  # Label -> bool:
         graph_node = graph_map[node]
-        if not mapping.filters or lazy.is_all(lambda filter: filter.matches(node, graph_node.labels), mapping.filters):
-            matching_targets[node] = None
-            if mapping.traversal == Traversal("tree"):
-                # We can stop traversing the tree at this point because we've added the
-                # build target to the list of all targets that will be traversed by the
-                # algorithm that applies the groups.
-                return False
+
+        # This callsite was migrated away from `lazy.is_any()`
+        # because we saw a non-trivial increase in retained bytes
+        # associated with the lambda required by the function.
+        if mapping.filters:
+            for filter in mapping.filters:
+                if not filter.matches(node, graph_node.labels):
+                    return True
+
+        matching_targets[node] = None
+        if mapping.traversal == Traversal("tree"):
+            # We can stop traversing the tree at this point because we've added the
+            # build target to the list of all targets that will be traversed by the
+            # algorithm that applies the groups.
+            return False
         return True
 
     def populate_matching_targets_bfs_wrapper(node):  # (Label) -> list

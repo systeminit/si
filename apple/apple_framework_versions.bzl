@@ -238,6 +238,9 @@ FRAMEWORK_INTRODUCED_VERSIONS = {
         "macosx": (10, 4, 0),
         "watchos": (2, 0, 0),
     },
+    "CoreDisplay": {
+        "macosx": (10, 8, 0),
+    },
     "CoreFoundation": {
         "appletvos": (9, 0, 0),
         "iphoneos": (2, 0, 0),
@@ -1101,7 +1104,9 @@ def get_framework_linker_args(ctx: AnalysisContext, framework_names: list[str]) 
         if versions:
             introduced = versions.get(sdk_name, None)
             if not introduced:
-                fail("SDK framework {} is not compatible with platform {}".format(name, sdk_name))
+                message = "SDK framework {} is not compatible with platform {}".format(name, sdk_name)
+                # @oss-disable[end= ]: message += "\n\nFor help, see: https://fburl.com/apple_build_errors/sdk_framework_is_not_compatible\n"
+                fail(message)
 
             if _version_is_greater_than(introduced, deployment_target):
                 args.append("-weak_framework")

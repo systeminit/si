@@ -5,19 +5,23 @@
 %% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %% of this source tree.
 
+%% @format
+
 -record(test_spec_test_info, {name :: string(), filter :: string()}).
 
--record(test_spec_test_case, {suite :: string(), testcases :: [#test_spec_test_info{}]}).
+-record(test_spec_test_case, {suite :: binary(), testcases :: [#test_spec_test_info{}]}).
+
+-type optional(Type) :: undefined | Type.
 
 -record(test, {
     name :: string(),
     suite :: string(),
-    type :: junit_interfacer:test_result(),
-    message :: junit_interfacer:optional(string()),
-    stacktrace :: junit_interfacer:optional(string()),
-    stdout :: junit_interfacer:optional(string()),
-    stderr :: junit_interfacer:optional(string()),
-    time :: junit_interfacer:optional(integer())
+    type :: string(),
+    message :: optional(string()),
+    stacktrace :: optional(string()),
+    stdout :: optional(string()),
+    stderr :: optional(string()),
+    time :: optional(integer())
 }).
 
 -record(test_case, {

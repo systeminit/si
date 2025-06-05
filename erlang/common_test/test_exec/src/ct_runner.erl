@@ -5,12 +5,13 @@
 %% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %% of this source tree.
 
-%% % @format
-
-%% @doc Simple gen_server that will run the the test and
-%% communicates the result to the test runner.
-
+%% @format
 -module(ct_runner).
+-moduledoc """
+Simple gen_server that will run the the test and
+communicates the result to the test runner.
+""".
+-eqwalizer(ignore).
 
 -behavior(gen_server).
 
@@ -133,7 +134,9 @@ terminate(_Reason, #{port := Port}) ->
 terminate(_Reason, _State) ->
     ok.
 
-%% @doc Executes the test in a new node by launching ct_run.
+-doc """
+Executes the test in a new node by launching ct_run.
+""".
 -spec run_test(#test_env{}, integer()) -> port().
 run_test(
     #test_env{
@@ -146,7 +149,8 @@ run_test(
         suite = Suite,
         erl_cmd = ErlCmd,
         extra_flags = ExtraFlags,
-        common_app_env = CommonAppEnv
+        common_app_env = CommonAppEnv0,
+        raw_target = RawTarget
     } = _TestEnv,
     PortEpmd
 ) ->
@@ -154,8 +158,9 @@ run_test(
     % where the suite is as part of the dependencies.
     SuiteFolder = filename:dirname(filename:absname(SuitePath)),
     CodePath = [SuiteFolder | Dependencies],
+    CommonAppEnv1 = CommonAppEnv0#{"raw_target" => lists:flatten(io_lib:format("~0p", [RawTarget]))},
 
-    Args = build_run_args(OutputDir, Providers, Suite, TestSpecFile, CommonAppEnv),
+    Args = build_run_args(OutputDir, Providers, Suite, TestSpecFile, CommonAppEnv1),
 
     {ok, ProjectRoot} = file:get_cwd(),
 
@@ -179,7 +184,7 @@ run_test(
     ConfigFiles :: [file:filename_all()]
 ) -> [string()].
 build_common_args(CodePath, ConfigFiles) ->
-    lists:concat([
+    lists:append([
         ["-noinput"],
         ["-pa"],
         CodePath,
@@ -208,7 +213,7 @@ build_run_args(OutputDir, Providers, Suite, TestSpecFile, CommonAppEnv) ->
 
 -spec common_app_env_args(Env :: #{string() => string()}) -> [string()].
 common_app_env_args(Env) ->
-    lists:append([["-common", Key, Value] || {Key, Value} <- maps:to_list(Env)]).
+    lists:append([["-common", Key, Value] || Key := Value <- Env]).
 
 -spec start_test_node(
     Erl :: [binary()],
@@ -313,10 +318,12 @@ generate_arg_tuple(Prop, ConfigFiles) ->
 config_arg([]) -> [];
 config_arg(ConfigFiles) -> ["-config"] ++ ConfigFiles.
 
-%% @doc Create a set up a home dir in the output directory.
-%% Each test execution will have a separate home dir with a
-%% erlang default cookie file, setting the default cookie to
-%% buck2-test-runner-cookie
+-doc """
+Create a set up a home dir in the output directory.
+Each test execution will have a separate home dir with a
+erlang default cookie file, setting the default cookie to
+buck2-test-runner-cookie
+""".
 -spec set_home_dir(file:filename_all()) -> file:filename_all().
 set_home_dir(OutputDir) ->
     HomeDir = filename:join(OutputDir, "HOME"),
