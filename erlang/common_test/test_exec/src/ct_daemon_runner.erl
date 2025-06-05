@@ -5,13 +5,12 @@
 %% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %% of this source tree.
 
-%%%-------------------------------------------------------------------
-%%% @doc
-%%% gen_server holding state between test runs
-%%% @end
-%%% % @format
-
+%% @format
 -module(ct_daemon_runner).
+-moduledoc """
+gen_server holding state between test runs
+""".
+-eqwalizer(ignore).
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -47,7 +46,9 @@ start_monitor(Node, OutputDir) ->
         []
     ).
 
-%% @doc global name based on calling node
+-doc """
+global name based on calling node
+""".
 -spec name(node()) -> atom().
 name(Node) ->
     erlang:list_to_atom(lists:flatten(io_lib:format("~s-~s", [Node, ?MODULE]))).
@@ -180,7 +181,7 @@ list_result(Tests, State) ->
     NewState = State#{enumerated_tests => flatten_enumerated_tests(EnumeratedTests)},
     {reply, EnumeratedTests, NewState}.
 
--spec enumerate_tests(#{module() => [string()]}) -> [{module(), [{non_neg_integer(), string()}]}].
+-spec enumerate_tests(#{module() => [string()]}) -> {number(), [{module(), [{non_neg_integer(), string()}]}]}.
 enumerate_tests(Tests) ->
     maps:fold(
         fun(Suite, SuiteTests, {InCounter, Acc}) ->
@@ -208,15 +209,13 @@ run_test(Test, State = #{output_dir := OutputDir, setup := InSetupState}) ->
 
     {Result, State#{setup => OutSetupState}}.
 
--spec load_changed_modules() -> ok.
+-spec load_changed_modules() -> [module()].
 load_changed_modules() ->
     ChangedModules = lists:usort([
         M
-     || {M, _} <- code:all_loaded(), module_modified(M) orelse module_interpreted(M)
+     || {M, _} <- code:all_loaded(), module_modified(M)
     ]),
     [reload_module(Module) || Module <- ChangedModules],
-    %% reinterprete debugged modules
-    [int:i(Module) || Module <- int:interpreted()],
     ChangedModules.
 
 module_modified(Mod) ->
@@ -240,9 +239,6 @@ module_modified(Mod, BeamPath) ->
         _ ->
             false
     end.
-
-module_interpreted(Mod) ->
-    lists:member(Mod, int:interpreted()).
 
 reload_module(Module) ->
     code:purge(Module),

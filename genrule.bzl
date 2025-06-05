@@ -13,7 +13,7 @@ load("@prelude//:genrule_prefer_local_labels.bzl", "genrule_labels_prefer_local"
 load("@prelude//:genrule_toolchain.bzl", "GenruleToolchainInfo")
 load("@prelude//:is_full_meta_repo.bzl", "is_full_meta_repo")
 load("@prelude//android:build_only_native_code.bzl", "is_build_only_native_code")
-load("@prelude//os_lookup:defs.bzl", "OsLookup")
+load("@prelude//os_lookup:defs.bzl", "Os", "OsLookup")
 load("@prelude//utils:expect.bzl", "expect")
 load("@prelude//utils:utils.bzl", "flatten", "value_or")
 
@@ -136,7 +136,8 @@ def process_genrule(
         outs_attr: [dict, None],
         extra_env_vars: dict = {},
         identifier: [str, None] = None,
-        other_outputs: list[Artifact] = []) -> list[Provider]:
+        other_outputs: list[Artifact] = [],
+        genrule_error_handler: [typing.Callable[[ActionErrorCtx], list[ActionSubError]], None] = None) -> list[Provider]:
     if (out_attr != None) and (outs_attr != None):
         fail("Only one of `out` and `outs` should be set. Got out=`%s`, outs=`%s`" % (repr(out_attr), repr(outs_attr)))
 
@@ -180,7 +181,7 @@ def process_genrule(
         fail("One of `out` or `outs` should be set. Got `%s`" % repr(ctx.attrs))
 
     # Some custom rules use `process_genrule` but doesn't set this attribute.
-    is_windows = hasattr(ctx.attrs, "_exec_os_type") and ctx.attrs._exec_os_type[OsLookup].platform == "windows"
+    is_windows = hasattr(ctx.attrs, "_exec_os_type") and ctx.attrs._exec_os_type[OsLookup].os == Os("windows")
     if is_windows:
         path_sep = "\\"
         cmd = ctx.attrs.cmd_exe if ctx.attrs.cmd_exe != None else ctx.attrs.cmd
@@ -376,6 +377,7 @@ def process_genrule(
         identifier = identifier,
         no_outputs_cleanup = ctx.attrs.no_outputs_cleanup,
         always_print_stderr = ctx.attrs.always_print_stderr,
+        error_handler = genrule_error_handler,
         **metadata_args
     )
 

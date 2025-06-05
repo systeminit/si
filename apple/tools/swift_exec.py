@@ -9,6 +9,7 @@
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 
@@ -45,11 +46,12 @@ def _get_modulename(args):
 
 def _get_modules(command):
     args = _expand_args(command)
+    modules = set()
+    modules.add(_get_modulename(args))
     modulemap = _get_modulemap(args)
     if modulemap is None:
-        return set()
+        return modules
 
-    modules = set()
     for entry in modulemap:
         # We only remove prefixes from first party modules.
         if "sdk_deps" in entry.get("clangModulePath", ""):
@@ -59,32 +61,65 @@ def _get_modules(command):
         else:
             modules.add(entry["moduleName"])
 
-    modules.add(_get_modulename(args))
-
     return modules
 
 
 def _remove_swiftinterface_module_prefixes(command):
     interface_path = command[command.index("-emit-module-interface-path") + 1]
     modules = _get_modules(command)
-    if len(modules) == 0:
-        return
+    pattern = re.compile(r"(\w+)\.([\w.]+)")
 
-    with open(interface_path) as f:
+    def replace_module_prefixes(match):
+        if match.group(1) in modules:
+            return match.group(2)
+        else:
+            return match.group(0)
+
+    with open(interface_path, "r+") as f:
         interface = f.read()
+        f.seek(0)
+        f.write(pattern.sub(replace_module_prefixes, interface))
+        f.truncate()
 
-    output = []
-    pattern = re.compile(r"(\w+)\.(\w+)")
-    for line in interface.splitlines():
-        outline = line
-        for m in pattern.finditer(line):
-            if m.group(1) in modules:
-                outline = outline.replace(m.group(0), m.group(2))
 
-        output.append(outline)
+def _rewrite_dependency_file(command):
+    # The compiler will output d files in Makefile format with abolute paths,
+    # Buck expects line separated relative paths with no input prefix.
+    output_file_map_path = command[command.index("-output-file-map") + 1]
+    with open(output_file_map_path) as f:
+        output_file_map = json.load(f)
 
-    with open(interface_path, "w") as f:
-        f.write("\n".join(output))
+    deps_file_path = output_file_map[""]["dependencies"]
+    with open(deps_file_path, encoding="utf-8") as f:
+        for line in f:
+            # We have multiple entries for the supplementary outputs of the
+            # compilation action. We have two cases we care about:
+            #  1. swiftmodule output
+            #  2. object file output
+            # Other supplemenatary outputs like swiftsourceinfo are not
+            # tracked.
+            output, inputs = line.split(" : ")
+            if output.endswith(".swiftmodule") or output.endswith(".o"):
+                dependencies = shlex.split(inputs)
+                break
+
+    # Sanity check that we only track relative paths
+    cwd = os.getcwd()
+    relative_paths = []
+    for path in dependencies:
+        if path.startswith(cwd):
+            # The driver passes the host plugins path as an absolute path.
+            # Until that is fixed upstream we need to remove the prefix
+            # from any macro library dependencies.
+            relative_paths.append(path[len(cwd) + 1 :])
+        elif path.startswith("/"):
+            # This can occur for Xcode toolchain plugins like libSwiftUIMacros.dylib
+            print(f"Dependency file contains absolute path: {path}", file=sys.stderr)
+        else:
+            relative_paths.append(path)
+
+    with open(deps_file_path, "w") as f:
+        f.write("\n".join(sorted(relative_paths)))
         f.write("\n")
 
 
@@ -114,6 +149,10 @@ def main():
     if should_remove_module_prefixes:
         command.remove("-remove-module-prefixes")
 
+    should_ignore_errors = "-ignore-errors" in command
+    if should_ignore_errors:
+        command.remove("-ignore-errors")
+
     # Use relative paths for debug information and index information,
     # so we generate relocatable files.
     #
@@ -122,6 +161,8 @@ def main():
     command += [
         "-file-prefix-map",
         f"{os.getcwd()}/=",
+        "-file-prefix-map",
+        f"{os.getcwd()}=.",
     ]
 
     # Apply a coverage prefix map for the current directory
@@ -133,6 +174,8 @@ def main():
         "-coverage-prefix-map",
         f"{os.getcwd()}=.",
     ]
+
+    command = _process_skip_incremental_outputs(command)
 
     result = subprocess.run(
         command,
@@ -158,11 +201,71 @@ def main():
             )
             sys.exit(1)
 
+        # Rewrite .d files for the format that Buck requires.
+        if "-emit-dependencies" in command:
+            _rewrite_dependency_file(command)
+
     # https://github.com/swiftlang/swift/issues/56573
     if should_remove_module_prefixes:
         _remove_swiftinterface_module_prefixes(command)
 
-    sys.exit(result.returncode)
+    if should_ignore_errors:
+        sys.exit(0)
+    else:
+        sys.exit(result.returncode)
+
+
+_SKIP_INCREMENTAL_OUTPUTS_ARG = "-skip-incremental-outputs"
+_SWIFT_FILES_ARGSFILE = ".swift_files"
+
+
+def _process_skip_incremental_outputs(command):
+    if _SKIP_INCREMENTAL_OUTPUTS_ARG not in command:
+        return command
+
+    command.remove(_SKIP_INCREMENTAL_OUTPUTS_ARG)
+
+    output_file_map = command[command.index("-output-file-map") + 1]
+    output_dir = os.path.dirname(os.path.dirname(output_file_map))
+
+    module_swiftdeps = (
+        f"{output_dir}/__swift_incremental__/swiftdeps/module-build-record.priors"
+    )
+    output_file_map_content = {
+        "": {
+            "swift-dependencies": module_swiftdeps,
+        },
+    }
+
+    swift_files = _get_swift_files_to_compile(command)
+    for swift_file in swift_files:
+        file_name = swift_file.split("/")[-1]
+        output_artifact = f"{output_dir}/__swift_incremental__/objects/{file_name}.o"
+        swiftdeps_artifact = (
+            f"{output_dir}/__swift_incremental__/swiftdeps/{file_name}.swiftdeps"
+        )
+        output_file_map_content[swift_file] = {
+            "object": output_artifact,
+            "swift-dependencies": swiftdeps_artifact,
+        }
+
+    with open(output_file_map, "w") as f:
+        json.dump(output_file_map_content, f, indent=2)
+
+    return command
+
+
+def _get_swift_files_to_compile(command):
+    for arg in command:
+        if arg.endswith(_SWIFT_FILES_ARGSFILE):
+            path = arg[1:]  # Remove leading @
+            with open(path) as swift_files:
+                return [
+                    line.rstrip().strip('"').strip("'")
+                    for line in swift_files.readlines()
+                ]
+
+    raise Exception(f"No {_SWIFT_FILES_ARGSFILE} found!")
 
 
 if __name__ == "__main__":

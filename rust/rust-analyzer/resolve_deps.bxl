@@ -40,6 +40,8 @@ def _process_target_config(
         target: bxl.ConfiguredTargetNode,
         analysis: bxl.AnalysisResult,
         in_workspace: bool) -> TargetInfo:
+    target = target.unwrap_forward()
+
     providers = analysis.providers()
     ra_info = providers[RustAnalyzerInfo]
 
@@ -78,18 +80,13 @@ def _process_target_config(
     for test in resolved_attrs.tests:
         tests.append(test.raw_target())
 
-    # materialize a file containing the dynamic crate name
-    crate_dynamic = getattr(resolved_attrs, "crate_dynamic", None)
-    if crate_dynamic:
-        crate_dynamic = crate_dynamic.get(DefaultInfo).default_outputs[0]
-
     env = {k: cmd_args(v, delimiter = "") for k, v in ra_info.env.items()}
 
     # copy over the absolute paths and raw targets into the output
     attrs = target.attrs_eager()
     return {
-        "crate": _get_nullable_attr(attrs, "crate"),
-        "crate_dynamic": crate_dynamic,
+        "crate": ra_info.crate.simple,
+        "crate_dynamic": ra_info.crate.dynamic,
         "crate_root": ra_info.crate_root,
         "deps": deps,
         "edition": _get_nullable_attr(attrs, "edition"),
@@ -109,14 +106,107 @@ def _process_target_config(
         "tests": tests,
     }
 
-def cquery_deps(
+def _select_assume_default(value):
+    """Unwrap select() values, assuming the DEFAULT value is always used.
+    """
+    if isinstance(value, bxl.SelectConcat):
+        items = []
+        for raw_item in value.select_iter():
+            if isinstance(raw_item, list):
+                items.extend(raw_item)
+            else:
+                unwrapped = _select_assume_default(raw_item)
+                if isinstance(unwrapped, list):
+                    items.extend(unwrapped)
+
+        return items
+
+    if isinstance(value, bxl.SelectDict):
+        return value.get_select_entry("DEFAULT")
+
+    return value
+
+def _get_attr_no_select(target: bxl.UnconfiguredTargetNode, attr: str) -> typing.Any:
+    return _select_assume_default(target.get_attr(attr))
+
+def gather_unconfigured_deps(ctx: bxl.Context, targets: list[TargetLabel]) -> dict[TargetLabel, TargetInfo]:
+    """Make a best-effort attempt to gather target and dependency information for
+    the targets given.
+
+    This intended for targets where we cannot use the configured target nodes,
+    typically because they have compatible_with constraints that do not match the
+    current machine.
+
+    """
+    out = {}
+
+    unconfigured_targets = ctx.unconfigured_targets(targets)
+
+    for target in unconfigured_targets:
+        deps = []
+        for dep in _get_attr_no_select(target, "deps") or []:
+            deps.append(dep.raw_target())
+
+        raw_env = _get_attr_no_select(target, "env") or {}
+        env = {k: cmd_args(v, delimiter = "") for k, v in raw_env.items()}
+
+        srcs = [src.short_path for src in _get_attr_no_select(target, "srcs") or []]
+
+        mapped_srcs = {}
+
+        raw_mapped_srcs = _get_attr_no_select(target, "mapped_srcs") or {}
+        for t, t_srcs in raw_mapped_srcs.items():
+            mapped_srcs[t.raw_target()] = t_srcs
+
+        abs_buildfile_path = ctx.root() + "/" + target.buildfile_path.cell + "/" + target.buildfile_path.path
+        source_folder = abs_buildfile_path.removesuffix("/TARGETS").removesuffix("/BUCK")
+
+        crate_root = _get_attr_no_select(target, "crate_root")
+        if not crate_root:
+            for src in srcs:
+                if src.endswith("/lib.rs") or src.endswith("/main.rs"):
+                    crate_root = src
+                    break
+
+        if not crate_root:
+            continue
+
+        tests = []
+        for test in _get_attr_no_select(target, "tests") or []:
+            tests.append(test.raw_target())
+
+        info = {
+            "crate": _get_attr_no_select(target, "crate"),
+            "crate_dynamic": _get_attr_no_select(target, "crate_dynamic"),
+            "crate_root": crate_root,
+            "deps": deps,
+            "edition": _get_attr_no_select(target, "edition"),
+            "env": env,
+            "features": _get_attr_no_select(target, "features"),
+            "in_workspace": False,
+            "kind": target.rule_type,
+            "label": target.label,
+            "mapped_srcs": mapped_srcs,
+            "name": target.get_attr("name"),
+            "named_deps": {},
+            "proc_macro": _get_attr_no_select(target, "proc_macro"),
+            "project_relative_buildfile": ctx.fs.project_rel_path(target.buildfile_path),
+            "rustc_flags": _get_attr_no_select(target, "rustc_flags"),
+            "source_folder": source_folder,
+            "srcs": srcs,
+            "tests": tests,
+        }
+
+        out[target.label] = info
+
+    return out
+
+def gather_deps(
         ctx: bxl.Context,
-        top_targets: list[TargetLabel],
+        target_analysis: dict[Label, bxl.AnalysisResult],
         workspaces: list[TargetLabel]) -> dict[TargetLabel, TargetInfo]:
     targets = set()
-    target_universe = ctx.target_universe(top_targets).target_set()
-    analysis_set = ctx.analysis(target_universe)
-    for _target, analysis in analysis_set.items():
+    for _target, analysis in target_analysis.items():
         info = analysis.providers().get(RustAnalyzerInfo)
         if info:
             for target_set in info.transitive_target_set:
@@ -131,8 +221,9 @@ def cquery_deps(
 
     for target in outputs:
         attrs = target.attrs_lazy()
+        label = target.label.with_sub_target()
 
-        in_workspace = target.label.raw_target() in top_targets
+        in_workspace = label in target_analysis
         candidate_workspaces = attrs.get("_workspaces")
         if candidate_workspaces:
             for candidate_workspace in candidate_workspaces.value():
@@ -153,30 +244,29 @@ def cquery_deps(
 
 def expand_proc_macros(
         ctx: bxl.Context,
-        targets: list[TargetLabel]) -> dict[TargetLabel, MacroOutput]:
-    target_universe = ctx.target_universe(targets).target_set()
-    targets = ctx.cquery().deps(target_universe)
-    targets = ctx.cquery().kind("^(rust_binary|rust_library)$", targets)
+        target_analysis: dict[Label, bxl.AnalysisResult]) -> dict[TargetLabel, MacroOutput]:
+    macros = set()
+    for _target, analysis in target_analysis.items():
+        info = analysis.providers().get(RustAnalyzerInfo)
+        if info:
+            macros.update([d.label for d in info.available_proc_macros])
 
+    proc_macro_analysis = ctx.analysis(list(macros))
     out = {}
-    for target in targets:
-        attrs = target.resolved_attrs_eager(ctx)
-        proc_macro = getattr(attrs, "proc_macro", False)
-        if proc_macro:
-            analysis = ctx.analysis(target)
-            rlib = analysis.providers()[RustLinkInfo].strategies[LinkStrategy("shared")].outputs[MetadataKind("link")]
-            label = target.label.raw_target()
-            out[label] = MacroOutput(
-                actual = label,
-                dylib = rlib,
-            )
+    for target, analysis in proc_macro_analysis.items():
+        rlib = analysis.providers()[RustLinkInfo].strategies[LinkStrategy("shared")].outputs[MetadataKind("link")]
+        label = target.raw_target()
+        out[label] = MacroOutput(
+            actual = label,
+            dylib = rlib,
+        )
     return out
 
 # Returns a list of all the expanded targets including any workspaces, followed by just the workspaces
 def expand_targets(
         ctx: bxl.Context,
         targets: list[TargetLabel],
-        exclude_workspaces: bool) -> (list[TargetLabel], list[TargetLabel]):
+        exclude_workspaces: bool) -> (dict[Label, bxl.AnalysisResult], list[TargetLabel]):
     target_universe = ctx.target_universe(targets).target_set()
     kind_target_list = ctx.cquery().kind("^(rust_binary|rust_library|rust_test|alias)$", target_universe)
 
@@ -205,7 +295,7 @@ def expand_targets(
         candidate_deps = possible_workspaces[workspace]
         workspace_info = analysis.providers().get(RustAnalyzerInfo)
         if workspace_info:
-            workspace_deps = {t: () for t in workspace_info.transitive_target_set}
+            workspace_deps = {t.raw_target(): () for t in workspace_info.transitive_target_set}
         else:
             workspace_deps = {}
 
@@ -221,17 +311,28 @@ def expand_targets(
                 # FIXME: Add a test for this. It's currently a bit hard to test because proc macros
                 # in the prelude are a bit hard in general
                 expanded_targets.pop(d, None)
-
-    return dedupe(sorted(expanded_targets.keys() + active_workspaces.keys())), sorted(possible_workspaces.keys())
+    target_set = ctx.target_universe(expanded_targets.keys() + active_workspaces.keys()).target_set()
+    target_analysis = ctx.analysis(target_set)
+    return target_analysis, sorted(possible_workspaces.keys())
 
 def resolve_targets_impl(ctx: bxl.Context) -> None:
     # equivalent of `flat_map`ing
     targets = [target for sublist in ctx.cli_args.targets for target in sublist]
     actions = ctx.bxl_actions().actions
 
-    expanded_targets, workspaces = expand_targets(ctx, targets, ctx.cli_args.exclude_workspaces)
-    queried_proc_macros = expand_proc_macros(ctx, expanded_targets)
-    resolved_deps = cquery_deps(ctx, expanded_targets, workspaces)
+    target_analysis, workspaces = expand_targets(ctx, targets, ctx.cli_args.exclude_workspaces)
+    queried_proc_macros = expand_proc_macros(ctx, target_analysis)
+    resolved_deps = gather_deps(ctx, target_analysis, workspaces)
+
+    expanded_targets = sorted([t.raw_target() for t in target_analysis.keys()])
+    if not expanded_targets:
+        # ctx.analysis() drops targets that are incompatible with the current buck
+        # configuration (see the `skip_incompatible` keyword argument).
+        #
+        # If we have no expanded targets at all, try to find sufficient metadata about
+        # the requested targets using unconfigured buck targets.
+        expanded_targets = targets
+        resolved_deps = gather_unconfigured_deps(ctx, targets)
 
     artifact = actions.declare_output("resolve_targets.json")
     artifacts = actions.write_json(

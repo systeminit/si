@@ -19,7 +19,10 @@ def _impl(ctx):
                 LinkerType(linker_type): opt[RunInfo]
                 for linker_type, opt in ctx.attrs.opt.items()
             },
-            prepare = ctx.attrs.prepare[RunInfo],
+            prepare = {
+                LinkerType(linker_type): prepare[RunInfo]
+                for linker_type, prepare in ctx.attrs.prepare.items()
+            },
             copy = ctx.attrs.copy[RunInfo],
         ),
     ]
@@ -27,15 +30,30 @@ def _impl(ctx):
 dist_lto_tools = rule(
     impl = _impl,
     attrs = {
-        "copy": attrs.dep(providers = [RunInfo]),
+        "copy": attrs.dep(providers = [RunInfo], default = "prelude//cxx/dist_lto/tools:dist_lto_copy"),
         "opt": attrs.dict(
             key = attrs.enum(LinkerType.values()),
             value = attrs.dep(providers = [RunInfo]),
+            default = {
+                "darwin": "prelude//cxx/dist_lto/tools:dist_lto_opt_darwin",
+                "gnu": "prelude//cxx/dist_lto/tools:dist_lto_opt_gnu",
+            },
         ),
         "planner": attrs.dict(
             key = attrs.enum(LinkerType.values()),
             value = attrs.dep(providers = [RunInfo]),
+            default = {
+                "darwin": "prelude//cxx/dist_lto/tools:dist_lto_planner_darwin",
+                "gnu": "prelude//cxx/dist_lto/tools:dist_lto_planner_gnu",
+            },
         ),
-        "prepare": attrs.dep(providers = [RunInfo]),
+        "prepare": attrs.dict(
+            key = attrs.enum(LinkerType.values()),
+            value = attrs.dep(providers = [RunInfo]),
+            default = {
+                "darwin": "prelude//cxx/dist_lto/tools:dist_lto_prepare_darwin",
+                "gnu": "prelude//cxx/dist_lto/tools:dist_lto_prepare_gnu",
+            },
+        ),
     },
 )

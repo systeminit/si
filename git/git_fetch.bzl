@@ -39,6 +39,13 @@ def git_fetch_impl(ctx: AnalysisContext) -> list[Provider]:
         cmd,
         category = "git_fetch",
         local_only = True,
+        allow_cache_upload = ctx.attrs.allow_cache_upload,
     )
 
-    return [DefaultInfo(default_output = work_tree)]
+    return [DefaultInfo(
+        default_output = work_tree,
+        sub_targets = {
+            path: [DefaultInfo(default_output = work_tree.project(path))]
+            for path in ctx.attrs.sub_targets
+        },
+    )]

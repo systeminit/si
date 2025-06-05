@@ -19,7 +19,6 @@ load(
     "JavaPackagingDep",  # @unused Used as type
 )
 load("@prelude//utils:expect.bzl", "expect")
-load("@prelude//utils:set.bzl", "set_type")  # @unused Used as a type
 load("@prelude//utils:utils.bzl", "flatten")
 
 _FilteredResourcesOutput = record(
@@ -39,8 +38,8 @@ def get_android_binary_resources_info(
         referenced_resources_lists: list[Artifact],
         apk_module_graph_file: Artifact | None = None,
         manifest_entries: dict = {},
-        resource_infos_to_exclude: [set_type, None] = None,
-        r_dot_java_packages_to_exclude: [list[str], None] = [],
+        resource_infos_to_exclude: set[TargetLabel] = set(),
+        r_dot_java_packages_to_exclude: set[str] = set(),
         generate_strings_and_ids_separately: [bool, None] = True,
         aapt2_preferred_density: [str, None] = None) -> AndroidBinaryResourcesInfo:
     android_toolchain = ctx.attrs._android_toolchain[AndroidToolchainInfo]
@@ -49,7 +48,7 @@ def get_android_binary_resources_info(
     unfiltered_resource_infos = reversed([
         resource_info
         for resource_info in list(android_packageable_info.resource_infos.traverse(ordering = "topological") if android_packageable_info.resource_infos else [])
-        if not (resource_infos_to_exclude and resource_infos_to_exclude.contains(resource_info.raw_target))
+        if resource_info.raw_target not in resource_infos_to_exclude
     ])
     filtered_resources_output = _maybe_filter_resources(
         ctx,
@@ -74,7 +73,7 @@ def get_android_binary_resources_info(
         package_id_offset = 0,
         should_keep_raw_values = getattr(ctx.attrs, "aapt2_keep_raw_values", False),
         resource_stable_ids = getattr(ctx.attrs, "resource_stable_ids", None),
-        compiled_resource_apks = [],
+        compiled_resource_apks = getattr(ctx.attrs, "compiled_resource_apks", []),
         additional_aapt2_params = getattr(ctx.attrs, "additional_aapt_params", []),
         extra_filtered_resources = getattr(ctx.attrs, "extra_filtered_resources", []),
         locales = getattr(ctx.attrs, "locales", []) or getattr(ctx.attrs, "locales_for_binary_resources", []),
@@ -437,10 +436,6 @@ def get_manifest(
         android_packageable_info: AndroidPackageableInfo,
         manifest_entries: dict,
         should_replace_application_id_placeholders: bool) -> Artifact:
-    robolectric_manifest = getattr(ctx.attrs, "robolectric_manifest", None)
-    if robolectric_manifest:
-        return robolectric_manifest
-
     android_toolchain = ctx.attrs._android_toolchain[AndroidToolchainInfo]
     if ctx.attrs.manifest:
         expect(getattr(ctx.attrs, "manifest_skeleton", None) == None, "Only one of manifest and manifest_skeleton should be declared")

@@ -7,7 +7,8 @@
 
 load("@prelude//cxx:cxx_toolchain_types.bzl", "CxxToolchainInfo")
 load("@prelude//linking:link_info.bzl", "LinkStrategy")
-load(":build_params.bzl", "BuildParams", "CrateType", "Emit")
+load("@prelude//rust/tools:attrs.bzl", "RustInternalToolsInfo")
+load(":build_params.bzl", "BuildParams", "CrateType", "Emit", "ProfileMode")
 load(":rust_toolchain.bzl", "PanicRuntime", "RustExplicitSysrootDeps", "RustToolchainInfo")
 
 CrateName = record(
@@ -46,8 +47,11 @@ DepCollectionContext = record(
 # by the same rule.
 CompileContext = record(
     toolchain_info = field(RustToolchainInfo),
+    internal_tools_info = field(RustInternalToolsInfo),
     cxx_toolchain_info = field(CxxToolchainInfo),
     dep_ctx = field(DepCollectionContext),
+    exec_is_windows = field(bool),
+    path_sep = field(str),
     # Symlink root containing all sources.
     symlinked_srcs = field(Artifact),
     # Linker args to pass the linker wrapper to rustc.
@@ -55,7 +59,7 @@ CompileContext = record(
     # Clippy wrapper (wrapping clippy-driver so it has the same CLI as rustc).
     clippy_wrapper = field(cmd_args),
     # Memoized common args for reuse.
-    common_args = field(dict[(CrateType, Emit, LinkStrategy, bool, bool, bool), CommonArgsInfo]),
+    common_args = field(dict[(CrateType, Emit, LinkStrategy, bool, bool, bool, ProfileMode), CommonArgsInfo]),
     transitive_dependency_dirs = field(dict[Artifact, None]),
     sysroot_args = field(cmd_args),
 )

@@ -10,6 +10,7 @@
 # the generated docs, and so those should be verified to be accurate and
 # well-formatted (and then delete this TODO)
 
+load("@prelude//:attrs_validators.bzl", "validation_common")
 load("@prelude//decls:test_common.bzl", "test_common")
 load(":common.bzl", "AbiGenerationMode", "LogLevel", "SourceAbiVerificationMode", "TestType", "UnusedDependenciesAction", "buck", "prelude_rule")
 load(":jvm_common.bzl", "jvm_common")
@@ -87,6 +88,7 @@ java_annotation_processor = prelude_rule(
             "licenses": attrs.list(attrs.source(), default = []),
             "processor_class": attrs.string(default = ""),
             "supports_abi_generation_from_source": attrs.bool(default = False),
+            "runs_on_java_only": attrs.bool(default = False),
         }
     ),
 )
@@ -135,7 +137,7 @@ java_binary = prelude_rule(
                  If provided, the contents in this directory will end up in the
                  `META-INF` directory inside the generated JAR file.
             """),
-            "blacklist": attrs.list(attrs.regex(), default = [], doc = """
+            "blocklist": attrs.list(attrs.regex(), default = [], doc = """
                 A list of patterns that identify files to exclude from the final generated JAR
                  file. Example:
 
@@ -144,7 +146,7 @@ java_binary = prelude_rule(
 
                 java_binary(
                   name = 'example',
-                  blacklist = [
+                  blocklist = [
                     # Excludes com.example.A and com.example.Alligator,
                     # as well as their inner classes and any non-class files that happen to match
                     # the pattern
@@ -172,6 +174,9 @@ java_binary = prelude_rule(
             "java_runtime": attrs.option(attrs.string(), default = None, doc = "Expected java version used at runtime"),
             "labels": attrs.list(attrs.string(), default = []),
             "licenses": attrs.list(attrs.source(), default = []),
+            "proguard_config": attrs.option(attrs.source(), default = None),
+            "proguard_jvm_args": attrs.list(attrs.string(), default = []),
+            "proguard_library_jars": attrs.list(attrs.source(), default = []),
         }
     ),
 )
@@ -273,6 +278,9 @@ java_library = prelude_rule(
                 List of additional arguments to pass into the Java compiler. These
                  arguments follow the ones specified in `.buckconfig`.
             """),
+            "concat_resources": attrs.bool(default = False, doc = """
+                Use parallel compression and concatenation of intermediary jars to speed up jar time generation.
+            """),
         } |
         jvm_common.remove_classes_arg() |
         jvm_common.exported_deps() |
@@ -299,7 +307,7 @@ java_library = prelude_rule(
             "proguard_config": attrs.option(attrs.source(), default = None),
             "runtime_deps": attrs.list(attrs.dep(), default = []),
             "source_abi_verification_mode": attrs.option(attrs.enum(SourceAbiVerificationMode), default = None),
-        }
+        } | validation_common.attrs_validators_arg()
     ),
 )
 
@@ -389,10 +397,9 @@ java_test = prelude_rule(
             "use_cxx_libraries": attrs.option(attrs.bool(), default = None, doc = """
                 Whether or not to build and link against `cxx_library()` dependencies when testing.
             """),
-            "cxx_library_whitelist": attrs.list(attrs.dep(), default = [], doc = """
-                EXPERIMENTAL.
-                 List of cxx\\_libraries to build, if use\\_cxx\\_libraries is true.
-                 This can be useful if some dependencies are Android-only and won't build on the default platform.
+            "cxx_library_allowlist": attrs.list(attrs.dep(), default = [], doc = """
+                 List of cxx_library targets to build, if use_cxx_libraries is true.
+                 This can be useful if some dependencies are Android-only and won't build for the test host platform.
             """),
             "vm_args": attrs.list(attrs.arg(), default = [], doc = """
                 Runtime arguments to the JVM running the tests.

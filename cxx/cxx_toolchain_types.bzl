@@ -5,6 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//cxx:cxx_error_handler.bzl", "cxx_generic_error_handler")
 load("@prelude//cxx:debug.bzl", "SplitDebugMode")
 
 LinkerType = enum("gnu", "darwin", "windows", "wasm")
@@ -21,7 +22,7 @@ LinkerInfo = provider(
         "archiver_reads_inputs": provider_field(bool, default = True),
         "archiver_supports_argfiles": provider_field(typing.Any, default = None),
         "archiver_type": provider_field(typing.Any, default = None),
-        "archive_contents": provider_field(typing.Any, default = None),
+        "archive_contents": provider_field(typing.Any, default = "normal"),
         "archive_objects_locally": provider_field(typing.Any, default = None),
         "archive_symbol_table": provider_field(bool, default = True),
         # "archiver_platform",
@@ -76,7 +77,9 @@ LinkerInfo = provider(
 )
 
 BinaryUtilitiesInfo = provider(fields = {
+    "bolt": provider_field(typing.Any, default = None),
     "bolt_msdk": provider_field(typing.Any, default = None),
+    "custom_tools": provider_field(dict[str, RunInfo], default = {}),
     "dwp": provider_field(typing.Any, default = None),
     "nm": provider_field(typing.Any, default = None),
     "objcopy": provider_field(typing.Any, default = None),
@@ -130,19 +133,21 @@ _compiler_fields = [
     "supports_two_phase_compilation",
 ]
 
-HipCompilerInfo = provider(fields = _compiler_fields)
+AsCompilerInfo = provider(fields = _compiler_fields)
+AsmCompilerInfo = provider(fields = _compiler_fields)
+CCompilerInfo = provider(fields = _compiler_fields)
 CudaCompilerInfo = provider(fields = _compiler_fields)
 CvtresCompilerInfo = provider(fields = _compiler_fields)
-RcCompilerInfo = provider(fields = _compiler_fields)
-CCompilerInfo = provider(fields = _compiler_fields)
 CxxCompilerInfo = provider(fields = _compiler_fields)
-AsmCompilerInfo = provider(fields = _compiler_fields)
-AsCompilerInfo = provider(fields = _compiler_fields)
+HipCompilerInfo = provider(fields = _compiler_fields)
+ObjcCompilerInfo = provider(fields = _compiler_fields)
+ObjcxxCompilerInfo = provider(fields = _compiler_fields)
+RcCompilerInfo = provider(fields = _compiler_fields)
 
 DistLtoToolsInfo = provider(fields = dict(
     planner = dict[LinkerType, RunInfo],
     opt = dict[LinkerType, RunInfo],
-    prepare = RunInfo,
+    prepare = dict[LinkerType, RunInfo],
     copy = RunInfo,
 ))
 
@@ -189,41 +194,42 @@ PicBehavior = enum(
 # could be provided by different dependencies? That would allow a target to
 # only depend on the compilers it actually needs.
 CxxToolchainInfo = provider(
-    # @unsorted-dict-items
     fields = {
-        "internal_tools": provider_field(CxxInternalTools),
-        "conflicting_header_basename_allowlist": provider_field(typing.Any, default = None),
-        "use_distributed_thinlto": provider_field(typing.Any, default = None),
-        "header_mode": provider_field(typing.Any, default = None),
-        "headers_as_raw_headers_mode": provider_field(typing.Any, default = None),
-        "raw_headers_as_headers_mode": provider_field(typing.Any, default = None),
-        "linker_info": provider_field(typing.Any, default = None),
-        "object_format": provider_field(typing.Any, default = None),
-        "binary_utilities_info": provider_field(typing.Any, default = None),
-        "c_compiler_info": provider_field(typing.Any, default = None),
-        "cxx_compiler_info": provider_field(typing.Any, default = None),
-        "asm_compiler_info": provider_field(typing.Any, default = None),
         "as_compiler_info": provider_field(typing.Any, default = None),
-        "hip_compiler_info": provider_field(typing.Any, default = None),
-        "cuda_compiler_info": provider_field(typing.Any, default = None),
-        "cvtres_compiler_info": provider_field(typing.Any, default = None),
-        "rc_compiler_info": provider_field(typing.Any, default = None),
-        "llvm_link": provider_field(typing.Any, default = None),
-        "use_dep_files": provider_field(typing.Any, default = None),
+        "asm_compiler_info": provider_field(typing.Any, default = None),
+        "binary_utilities_info": provider_field(typing.Any, default = None),
+        "bolt_enabled": provider_field(typing.Any, default = None),
+        "c_compiler_info": provider_field(typing.Any, default = None),
         "clang_remarks": provider_field(typing.Any, default = None),
-        "gcno_files": provider_field(typing.Any, default = None),
         "clang_trace": provider_field(typing.Any, default = None),
         "cpp_dep_tracking_mode": provider_field(typing.Any, default = None),
+        "cuda_compiler_info": provider_field(typing.Any, default = None),
         "cuda_dep_tracking_mode": provider_field(typing.Any, default = None),
-        "strip_flags_info": provider_field(typing.Any, default = None),
-        "split_debug_mode": provider_field(typing.Any, default = None),
-        "bolt_enabled": provider_field(typing.Any, default = None),
-        "pic_behavior": provider_field(typing.Any, default = None),
+        "cvtres_compiler_info": provider_field(typing.Any, default = None),
+        "cxx_compiler_info": provider_field(typing.Any, default = None),
+        "cxx_error_handler": provider_field(typing.Any, default = None),
         "dumpbin_toolchain_path": provider_field(typing.Any, default = None),
-        "target_sdk_version": provider_field([str, None], default = None),
+        "gcno_files": provider_field(typing.Any, default = None),
+        "header_mode": provider_field(typing.Any, default = None),
+        "headers_as_raw_headers_mode": provider_field(typing.Any, default = None),
+        "hip_compiler_info": provider_field(typing.Any, default = None),
+        "internal_tools": provider_field(CxxInternalTools),
+        "linker_info": provider_field(typing.Any, default = None),
         "lipo": provider_field([RunInfo, None], default = None),
-        "remap_cwd": provider_field(bool, default = False),
+        "llvm_link": provider_field(typing.Any, default = None),
+        "objc_compiler_info": provider_field([ObjcCompilerInfo, None], default = None),
+        "objcxx_compiler_info": provider_field([ObjcxxCompilerInfo, None], default = None),
+        "object_format": provider_field(typing.Any, default = None),
         "optimization_compiler_flags_EXPERIMENTAL": provider_field(typing.Any, default = []),
+        "pic_behavior": provider_field(typing.Any, default = None),
+        "raw_headers_as_headers_mode": provider_field(typing.Any, default = None),
+        "rc_compiler_info": provider_field(typing.Any, default = None),
+        "remap_cwd": provider_field(bool, default = False),
+        "split_debug_mode": provider_field(typing.Any, default = None),
+        "strip_flags_info": provider_field(typing.Any, default = None),
+        "target_sdk_version": provider_field([str, None], default = None),
+        "use_dep_files": provider_field(typing.Any, default = None),
+        "use_distributed_thinlto": provider_field(typing.Any, default = None),
     },
 )
 
@@ -254,7 +260,6 @@ def cxx_toolchain_infos(
         internal_tools: CxxInternalTools,
         headers_as_raw_headers_mode = None,
         raw_headers_as_headers_mode = None,
-        conflicting_header_basename_allowlist = [],
         asm_compiler_info = None,
         as_compiler_info = None,
         hip_compiler_info = None,
@@ -279,7 +284,10 @@ def cxx_toolchain_infos(
         target_sdk_version = None,
         lipo = None,
         remap_cwd = False,
-        optimization_compiler_flags_EXPERIMENTAL = []):
+        optimization_compiler_flags_EXPERIMENTAL = [],
+        objc_compiler_info = None,
+        objcxx_compiler_info = None,
+        cxx_error_handler = None):
     """
     Creates the collection of cxx-toolchain Infos for a cxx toolchain.
 
@@ -291,40 +299,70 @@ def cxx_toolchain_infos(
     # TODO(T110378099): verify types of the inner info objects.
     _validate_linker_info(linker_info)
 
+    # Maintain backwards compatibility with ObjC compilation using the C compiler.
+    if objc_compiler_info == None:
+        objc_compiler_info = ObjcCompilerInfo(
+            **{k: getattr(c_compiler_info, k, None) for k in _compiler_fields}
+        )
+    if objcxx_compiler_info == None:
+        objcxx_compiler_info = ObjcxxCompilerInfo(
+            **{k: getattr(cxx_compiler_info, k, None) for k in _compiler_fields}
+        )
+
+    # TODO(minglunli): Should probably dedup from Buck2 side instead
+    def cxx_combined_error_handler(ctx: ActionErrorCtx) -> list[ActionSubError]:
+        categories = []
+        seen_categories = set()
+
+        # cxx specific error handler is called if it's defined
+        if cxx_error_handler != None:
+            specific_errors = cxx_error_handler(ctx)
+            categories.extend(specific_errors)
+            seen_categories.update([err.category for err in specific_errors])
+
+        # generic error handler is always called
+        for generic in cxx_generic_error_handler(ctx):
+            if generic.category not in seen_categories:
+                categories.append(generic)
+                seen_categories.add(generic.category)
+        return categories
+
     toolchain_info = CxxToolchainInfo(
-        internal_tools = internal_tools,
-        conflicting_header_basename_allowlist = conflicting_header_basename_allowlist,
-        header_mode = header_mode,
-        headers_as_raw_headers_mode = headers_as_raw_headers_mode,
-        raw_headers_as_headers_mode = raw_headers_as_headers_mode,
-        linker_info = linker_info,
-        llvm_link = llvm_link,
-        binary_utilities_info = binary_utilities_info,
-        c_compiler_info = c_compiler_info,
-        cxx_compiler_info = cxx_compiler_info,
-        asm_compiler_info = asm_compiler_info,
         as_compiler_info = as_compiler_info,
-        hip_compiler_info = hip_compiler_info,
-        cuda_compiler_info = cuda_compiler_info,
-        cvtres_compiler_info = cvtres_compiler_info,
-        rc_compiler_info = rc_compiler_info,
-        object_format = object_format,
-        use_distributed_thinlto = use_distributed_thinlto,
-        use_dep_files = use_dep_files,
+        asm_compiler_info = asm_compiler_info,
+        binary_utilities_info = binary_utilities_info,
+        bolt_enabled = bolt_enabled,
+        c_compiler_info = c_compiler_info,
         clang_remarks = clang_remarks,
-        gcno_files = gcno_files,
         clang_trace = clang_trace,
         cpp_dep_tracking_mode = cpp_dep_tracking_mode,
+        cuda_compiler_info = cuda_compiler_info,
         cuda_dep_tracking_mode = cuda_dep_tracking_mode,
-        strip_flags_info = strip_flags_info,
-        split_debug_mode = split_debug_mode,
-        bolt_enabled = bolt_enabled,
-        pic_behavior = pic_behavior,
+        cvtres_compiler_info = cvtres_compiler_info,
+        cxx_compiler_info = cxx_compiler_info,
         dumpbin_toolchain_path = dumpbin_toolchain_path,
-        target_sdk_version = target_sdk_version,
+        gcno_files = gcno_files,
+        header_mode = header_mode,
+        headers_as_raw_headers_mode = headers_as_raw_headers_mode,
+        hip_compiler_info = hip_compiler_info,
+        internal_tools = internal_tools,
+        linker_info = linker_info,
         lipo = lipo,
-        remap_cwd = remap_cwd,
+        llvm_link = llvm_link,
+        objc_compiler_info = objc_compiler_info,
+        objcxx_compiler_info = objcxx_compiler_info,
+        object_format = object_format,
         optimization_compiler_flags_EXPERIMENTAL = optimization_compiler_flags_EXPERIMENTAL,
+        pic_behavior = pic_behavior,
+        raw_headers_as_headers_mode = raw_headers_as_headers_mode,
+        rc_compiler_info = rc_compiler_info,
+        remap_cwd = remap_cwd,
+        split_debug_mode = split_debug_mode,
+        strip_flags_info = strip_flags_info,
+        target_sdk_version = target_sdk_version,
+        use_dep_files = use_dep_files,
+        use_distributed_thinlto = use_distributed_thinlto,
+        cxx_error_handler = cxx_combined_error_handler,
     )
 
     # Provide placeholder mappings, used primarily by cxx_genrule.

@@ -5,7 +5,7 @@
 %% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %% of this source tree.
 
-%% % @format
+%% @format
 
 -record(test_info, {
     dependencies :: [file:filename()],
@@ -16,16 +16,19 @@
     erl_cmd :: [binary()],
     extra_flags :: [string()],
     common_app_env :: #{string() => string()},
-    artifact_annotation_mfa :: artifact_annotations:annotation_function()
+    artifact_annotation_mfa :: artifact_annotations:annotation_function(),
+    raw_target :: binary()
 }).
+
+-record(ct_test, {suite, groups, test_name, canonical_name}).
 
 -record(test_env, {
     suite :: module(),
-    tests :: [function()],
+    tests :: [#ct_test{}],
     suite_path :: file:filename_all(),
     output_dir :: file:filename_all(),
     dependencies :: [file:filename_all()],
-    test_spec_file :: file:filename_all(),
+    test_spec_file :: file:filename_all() | undefined,
     output_format :: xml | json,
     config_files :: [file:filename_all()],
     providers :: [{module(), [term()]}],
@@ -33,7 +36,8 @@
     common_app_env :: #{string() => string()},
     erl_cmd :: [binary()],
     extra_flags :: [string()],
-    artifact_annotation_mfa :: artifact_annotations:annotation_function()
+    artifact_annotation_mfa :: artifact_annotations:annotation_function(),
+    raw_target :: binary() | undefined
 }).
 
 -record(run_specs, {
@@ -43,6 +47,4 @@
     code_path = [] :: [file:filename()]
 }).
 
--record(init_provider_state, {output_dir :: file:filename(), suite :: module()}).
-
--record(ct_test, {suite, groups, test_name, canonical_name}).
+-record(init_provider_state, {output_dir :: file:filename(), suite :: module(), raw_target :: binary()}).

@@ -5,14 +5,9 @@
 %% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %% of this source tree.
 
-%%%-------------------------------------------------------------------
-%%% @doc
-%%% Documentation for ct_daemon_node, ways to use
-%%%   it, ways to break it, etc. etc
-%%% @end
-%%% % @format
-
+%% @format
 -module(ct_daemon_node).
+-eqwalizer(ignore).
 
 -compile(warn_missing_spec_all).
 
@@ -34,11 +29,14 @@
 
 -type opt() ::
     {multiply_timetraps, number() | infinity}
-    | {ct_hooks, [atom() | {atom(), [term()]}]}.
+    | {ct_hooks, [atom() | {atom(), [term()]}]}
+    | {output_dir, file:filename()}.
 
 -export_type([config/0]).
 
-%% @doc start node for running tests in isolated way and keep state
+-doc """
+start node for running tests in isolated way and keep state
+""".
 -spec start(ErlCommand) -> ok when
     ErlCommand :: nonempty_list(binary()).
 start(ErlCommand) ->
@@ -53,7 +51,9 @@ start(ErlCommand) ->
     },
     start(ErlCommand, StartConfig).
 
-%% @doc start node for running tests in isolated way and keep state
+-doc """
+start node for running tests in isolated way and keep state
+""".
 -spec start(ErlCommand, Config) -> ok | {error, {crash_on_startup, integer()}} when
     ErlCommand :: nonempty_list(binary()),
     Config :: config().
@@ -75,18 +75,20 @@ start(
     FullOptions = [{output_dir, OutputDir} | Options],
     Args = build_daemon_args(Type, Node, Cookie, FullOptions, OutputDir),
     % Replay = maps:get(replay, Config, false),
-    Port = ct_runner:start_test_node(
-        ErlCommand,
-        [],
-        CodePaths,
-        ConfigFiles,
-        OutputDir,
-        [{args, Args}, {cd, OutputDir}],
-        false
-    ),
+    Port =
+        ct_runner:start_test_node(
+            ErlCommand,
+            [],
+            CodePaths,
+            ConfigFiles,
+            OutputDir,
+            [{args, Args}, {cd, OutputDir}],
+            false
+        ),
     %% wait for the ct_daemon gen_server to be started
     true = erlang:register(?MODULE, self()),
-    port_loop(Port, []).
+    port_loop(Port, []),
+    ok.
 
 -spec port_loop(port(), list()) -> ok | {error, {crash_on_startup, integer()}}.
 port_loop(Port, Acc) ->
@@ -130,7 +132,9 @@ get_node() ->
 alive() ->
     erlang:is_pid(get_runner_pid()).
 
-%% @doc node main entry point
+-doc """
+node main entry point
+""".
 -spec node_main([node()]) -> no_return().
 node_main([Parent, OutputDirAtom]) ->
     ok = application:load(test_exec),
@@ -241,14 +245,8 @@ random_name() ->
 
 -spec get_domain_type() -> longnames | shortnames.
 get_domain_type() ->
-    %% now the docs say this returns shortnames or longnames for field
-    %% name_domain, but the code says domain_type long or short
-    %% Upstream code agrees with the documentation, and until we have
-    %% updated to at least 25 this code supports both versions.
     case net_kernel:get_state() of
-        #{domain_type := short} -> shortnames;
         #{name_domain := shortnames} -> shortnames;
-        #{domain_type := long} -> longnames;
         #{name_domain := longnames} -> longnames
     end.
 

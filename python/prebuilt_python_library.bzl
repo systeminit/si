@@ -38,6 +38,7 @@ load("@prelude//third-party:providers.bzl", "ThirdPartyBuild", "third_party_buil
 load("@prelude//unix:providers.bzl", "UnixEnv", "create_unix_env_info")
 load(":compile.bzl", "compile_manifests")
 load(":manifest.bzl", "ManifestInfo", "create_manifest_for_source_dir")
+load(":python.bzl", "NativeDepsInfo", "NativeDepsInfoTSet")
 load(
     ":python_library.bzl",
     "create_python_library_info",
@@ -49,7 +50,6 @@ def prebuilt_python_library_impl(ctx: AnalysisContext) -> list[Provider]:
     providers = []
 
     # Extract prebuilt wheel and wrap in python library provider.
-    # TODO(nmj): Make sure all attrs are used if necessary, esp compile
     entry_points = ctx.actions.declare_output("entry_points.manifest")
     entry_points_dir = ctx.actions.declare_output("__entry_points__", dir = True)
     extracted_src = ctx.actions.declare_output("{}_extracted".format(ctx.label.name), dir = True)
@@ -84,6 +84,12 @@ def prebuilt_python_library_impl(ctx: AnalysisContext) -> list[Provider]:
         bytecode = bytecode,
         deps = deps,
         shared_libraries = shared_deps,
+        native_deps = ctx.actions.tset(
+            NativeDepsInfoTSet,
+            value = NativeDepsInfo(native_deps = {}),
+            children = [],
+        ),
+        is_native_dep = False,
     )
     providers.append(library_info)
 

@@ -142,10 +142,9 @@ def suffix(path):
     return chunks[1] if len(chunks) > 1 else ""
 
 def get_project_file_path(target_label, extension):
+    path = target_label.cell + "/"
     if target_label.package:
-        path = target_label.package + "/"
-    else:
-        path = ""
+        path = path + target_label.package + "/"
 
     # The same target may exists under two configuration
     config_hash = str(target_label.config()).split("#")
@@ -166,10 +165,10 @@ def get_mode_config_path(mode_name):
 def get_root_path_relative_to(target_label):
     # Workaround: "".split("/") returns [""], which is not expected.
     if not target_label.package:
-        return "../"
+        return "../../"
 
-    # + 1 for the hash layer of directory
-    return "../" * (len(target_label.package.split("/")) + 1)
+    # + 1 for the hash layer of directory and + 1 more for cell
+    return "../" * (len(target_label.package.split("/")) + 2)
 
 def get_output_path(target_node: bxl.ConfiguredTargetNode, bxl_ctx) -> str:
     providers = bxl_ctx.analysis(target_node).providers()
@@ -179,15 +178,27 @@ def get_output_path(target_node: bxl.ConfiguredTargetNode, bxl_ctx) -> str:
 
     return get_path_without_materialization(default_outputs[0], bxl_ctx, abs = True)
 
-def infer_settings_by_modes(settings, mode_files, mode_hashes) -> dict[str, typing.Any]:
+def infer_settings_by_modes(target_label, settings, mode_files, mode_hashes) -> dict[str, typing.Any]:
+    if len(mode_files) == 1:
+        settings_by_modes = {mode_files[0]: settings}
+        return settings_by_modes
+
     mode_hashes = mode_hashes or {}
     default_mode_file = mode_files[0]
-    default_mode_hash = mode_hashes.get(default_mode_file)
+    default_mode_hash = mode_hashes.get(default_mode_file) or {}
+    if target_label in default_mode_hash:
+        default_mode_hash = default_mode_hash[target_label]
+    else:
+        default_mode_hash = default_mode_hash["default"]
     settings_json = json.encode(settings)
 
     settings_by_modes = {default_mode_file: settings}
     for mode_file in mode_files[1:]:
-        mode_hash = mode_hashes.get(mode_file)
+        mode_hash = mode_hashes.get(mode_file) or {}
+        if target_label in mode_hash:
+            mode_hash = mode_hash[target_label]
+        else:
+            mode_hash = mode_hash["default"]
 
         # We're ignoring the suggestion that don't rely on buck-out implementation detail here,
         # as we have no way to get the buck-out under a different mode than current one using to run the BXL script.
@@ -215,8 +226,9 @@ def dedupe_by_value(list):
             map[item] = True
     return uniques
 
+# Replace problematic characters when used as filename. https://en.wikipedia.org/wiki/Filename#Problematic_characters
 def sanitize(input):
-    return input.replace("/", "_").replace("-", "_").replace(".", "_")
+    return input.replace("/", "_").replace(".", "_")
 
 # https://en.wikipedia.org/wiki/XML#Escaping
 # TODO: apply escape in more places.
