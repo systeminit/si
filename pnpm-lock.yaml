@@ -864,6 +864,9 @@ importers:
       '@si/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@tailwindcss/typography':
+        specifier: ^0.5.16
+        version: 0.5.16(tailwindcss@3.2.2(postcss@8.4.47)(ts-node@10.9.2(@swc/core@1.3.36)(@types/node@18.19.59)(typescript@5.0.4)))
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12
@@ -2993,6 +2996,11 @@ packages:
     resolution: {integrity: sha512-HFzAQuqYCjyy/SX9sLGB1lroPzmcnWv1FHkIpmypte10hptf4oPUfucryMKovZh2u0uiS9U5Ty3GghWfEJGwVw==}
     peerDependencies:
       tailwindcss: '>=2.0.0 || >=3.0.0 || >=3.0.0-alpha.1'
+
+  '@tailwindcss/typography@0.5.16':
+    resolution: {integrity: sha512-0wDLwCVF5V3x3b1SGXPCDcdsbDHMBe+lkFzBRaHeLvNi+nrrnZ1lA18u+OTWO8iSWU2GxUOCvlXtDuqftc1oiA==}
+    peerDependencies:
+      tailwindcss: '>=3.0.0 || insiders || >=4.0.0-alpha.20 || >=4.0.0-beta.1'
 
   '@tanstack/form-core@1.9.0':
     resolution: {integrity: sha512-lEXXQdIMW7PcybwnzJ+6VaEC65tWV/ZCgYfR5nC+lApXSlLPN+bp1fJanIclsw5U4dnx3DOxeOy/uzXwJ02wDQ==}
@@ -7967,6 +7975,9 @@ packages:
 
   lodash-es@4.17.21:
     resolution: {integrity: sha512-mKnC+QJ9pWVzv+C4/U3rRsHapFfHvQFoFB92e52xeyGMcX6/OlIl78je1u8vePzYZSkkogMPJ2yjxxsb89cxyw==}
+
+  lodash.castarray@4.4.0:
+    resolution: {integrity: sha512-aVx8ztPv7/2ULbArGJ2Y42bG1mEQ5mGjpdvrbJcJFU3TbYybe+QlLS4pst9zV52ymy2in1KpFPiZnAOATxD4+Q==}
 
   lodash.debounce@4.0.8:
     resolution: {integrity: sha512-FT1yDzDYEoYWhnSGnpE/4Kj1fLZkDFyqRb7fNt6FdYOSxlUWAtp42Eh6Wb0rGIv/m9Bgo7x4GhQbm5Ys4SG5ow==}
@@ -13979,6 +13990,14 @@ snapshots:
 
   '@tailwindcss/line-clamp@0.4.2(tailwindcss@3.2.2(postcss@8.4.47)(ts-node@10.9.2(@swc/core@1.3.36)(@types/node@18.19.59)(typescript@5.0.4)))':
     dependencies:
+      tailwindcss: 3.2.2(postcss@8.4.47)(ts-node@10.9.2(@swc/core@1.3.36)(@types/node@18.19.59)(typescript@5.0.4))
+
+  '@tailwindcss/typography@0.5.16(tailwindcss@3.2.2(postcss@8.4.47)(ts-node@10.9.2(@swc/core@1.3.36)(@types/node@18.19.59)(typescript@5.0.4)))':
+    dependencies:
+      lodash.castarray: 4.4.0
+      lodash.isplainobject: 4.0.6
+      lodash.merge: 4.6.2
+      postcss-selector-parser: 6.0.10
       tailwindcss: 3.2.2(postcss@8.4.47)(ts-node@10.9.2(@swc/core@1.3.36)(@types/node@18.19.59)(typescript@5.0.4))
 
   '@tanstack/form-core@1.9.0':
@@ -20349,6 +20368,8 @@ snapshots:
       p-locate: 6.0.0
 
   lodash-es@4.17.21: {}
+
+  lodash.castarray@4.4.0: {}
 
   lodash.debounce@4.0.8: {}
 
