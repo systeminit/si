@@ -194,6 +194,10 @@ export default defineConfig({
             text: "Enable Slack Webhook",
             link: "/explanation/enable-slack-webhook",
           },
+          {
+            text: "Create Workspace API Tokens",
+            link: "/explanation/generate-a-workspace-api-token",
+          },
         ],
       },
       {
