@@ -85,6 +85,38 @@ const componentConnections = computed(() => {
 const incoming = computed(
   () =>
     componentConnections.value.incoming.map((conn) => {
+      if (conn.kind === "management") {
+        return {
+          key: `mgmt-${conn.toComponent.id}-${conn.fromComponent.id}`,
+          component: conn.fromComponent,
+          componentId: conn.fromComponent.id,
+          self: "Management",
+          other: "-",
+        };
+      } else {
+        return {
+          key: `${conn.toAttributeValueId}-${conn.toComponent.id}-${conn.fromComponent.id}-${conn.fromAttributeValueId}`,
+          component: conn.fromComponent,
+          componentId: conn.fromComponent.id,
+          self: conn.toAttributeValuePath,
+          other: conn.fromAttributeValuePath,
+        };
+      }
+    }) ?? ([] as SimpleConnection[]),
+);
+
+const outgoing = computed<SimpleConnection[]>(() => {
+  const outgoing = outgoingQuery.data?.value ?? [];
+  return outgoing.map((conn) => {
+    if (conn.kind === "management") {
+      return {
+        key: `mgmt-${conn.toComponent.id}-${conn.fromComponent.id}`,
+        component: conn.fromComponent,
+        componentId: conn.fromComponent.id,
+        self: "Management",
+        other: "-",
+      };
+    } else {
       return {
         key: `${conn.toAttributeValueId}-${conn.toComponent.id}-${conn.fromComponent.id}-${conn.fromAttributeValueId}`,
         component: conn.fromComponent,
@@ -92,19 +124,7 @@ const incoming = computed(
         self: conn.toAttributeValuePath,
         other: conn.fromAttributeValuePath,
       };
-    }) ?? ([] as SimpleConnection[]),
-);
-
-const outgoing = computed<SimpleConnection[]>(() => {
-  const outgoing = outgoingQuery.data?.value ?? [];
-  return outgoing.map((conn) => {
-    return {
-      key: `${conn.toAttributeValueId}-${conn.toComponent.id}-${conn.fromComponent.id}-${conn.fromAttributeValueId}`,
-      component: conn.fromComponent,
-      componentId: conn.fromComponent.id,
-      self: conn.toAttributeValuePath,
-      other: conn.fromAttributeValuePath,
-    };
+    }
   });
 });
 </script>

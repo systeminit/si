@@ -89,14 +89,8 @@ pub enum Error {
     Diagram(#[from] dal::diagram::DiagramError),
     #[error("func error: {0}")]
     Func(#[from] dal::FuncError),
-    #[error("input socket error: {0}")]
-    InputSocket(#[from] dal::socket::input::InputSocketError),
-    #[error("invalid value source: {0:?}")]
-    InvalidValueSource(dal::attribute::prototype::argument::value_source::ValueSource),
     #[error("mgmt prototype error: {0}")]
     ManagementPrototype(#[from] dal::management::prototype::ManagementPrototypeError),
-    #[error("output socket error: {0}")]
-    OutputSocket(#[from] dal::socket::output::OutputSocketError),
     #[error("prop error: {0}")]
     Prop(#[from] dal::prop::PropError),
     #[error("qualification summary error: {0}")]

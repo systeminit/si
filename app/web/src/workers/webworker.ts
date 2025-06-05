@@ -1630,7 +1630,10 @@ const updateComputed = async (
   if (kind === EntityKind.IncomingConnections) {
     const data = doc as BifrostComponentConnections;
     data.incoming.forEach((incoming) => {
-      const id = `${incoming.toAttributeValueId}-${incoming.fromAttributeValueId}`;
+      const id =
+        incoming.kind === "management"
+          ? `mgmt-${incoming.toComponent.id}-${incoming.fromComponent.id}`
+          : `${incoming.toAttributeValueId}-${incoming.fromAttributeValueId}`;
       const outgoing = flip(incoming);
       const conns = allOutgoingConns
         .get(changeSetId)
@@ -1741,23 +1744,17 @@ const flip = (i: BifrostConnection): BifrostConnection => {
   const o: BifrostConnection = {
     ...i,
     fromComponent: i.toComponent,
-    fromAttributeValueId: i.toAttributeValueId,
-    fromAttributeValuePath: i.toAttributeValuePath,
     toComponent: i.fromComponent,
-    toAttributeValueId: i.fromAttributeValueId,
-    toAttributeValuePath: i.fromAttributeValuePath,
   };
   if ("toPropId" in i && o.kind === "prop") {
     o.fromPropId = i.toPropId;
     o.fromPropPath = i.toPropPath;
     o.toPropId = i.fromPropId;
     o.toPropPath = i.fromPropId;
-  }
-  if ("toSocketId" in i && o.kind === "socket") {
-    o.fromSocketId = i.toSocketId;
-    o.fromSocketName = i.toSocketName;
-    o.toSocketId = i.fromSocketId;
-    o.toSocketName = i.fromSocketName;
+    o.fromAttributeValueId = i.toAttributeValueId;
+    o.fromAttributeValuePath = i.toAttributeValuePath;
+    o.toAttributeValueId = i.fromAttributeValueId;
+    o.toAttributeValuePath = i.fromAttributeValuePath;
   }
   return o;
 };

@@ -5,8 +5,6 @@ use dal::{
     Component,
     DalContext,
     Func,
-    InputSocket,
-    OutputSocket,
     Prop,
     SchemaVariant,
     action::{
@@ -20,7 +18,6 @@ use dal_test::{
     Result,
     helpers::{
         attribute::value,
-        connect_components_with_socket_names,
         create_component_for_default_schema_name_in_default_view,
     },
     prelude::{
@@ -232,6 +229,10 @@ async fn component(ctx: &DalContext) -> Result<()> {
     Ok(())
 }
 
+// FIXME(nick): this test used to handle socket-to-socket connections, but now that sockets are dead, it has
+// become much simpler. We should do two things to make this test better: 1) make the original connections with
+// the eventual replacement to sockets (alpha "two" to beta "two" and beta "one" to charlie "one") and 2) use
+// management functions provided by the lego schemas.
 #[test]
 async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
     // Create all components.
@@ -311,8 +312,6 @@ async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
 
     // Perform all connections and commit. This is the core of the test!
     {
-        connect_components_with_socket_names(ctx, alpha.id(), "two", beta.id(), "two").await?;
-        connect_components_with_socket_names(ctx, beta.id(), "one", charlie.id(), "one").await?;
         value::subscribe(
             ctx,
             charlie_si_name_attribute_value_id,
@@ -327,44 +326,6 @@ async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
         .await?;
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
     }
-
-    // Cache everything else needed for assertions.
-    let alpha_output_socket =
-        OutputSocket::find_with_name_or_error(ctx, "two", alpha_schema_variant_id).await?;
-    let beta_input_socket =
-        InputSocket::find_with_name_or_error(ctx, "two", beta_schema_variant_id).await?;
-    let beta_output_socket =
-        OutputSocket::find_with_name_or_error(ctx, "one", beta_schema_variant_id).await?;
-    let charlie_input_socket =
-        InputSocket::find_with_name_or_error(ctx, "one", charlie_schema_variant_id).await?;
-
-    let alpha_output_socket_attribute_value_id =
-        OutputSocket::component_attribute_value_id(ctx, alpha_output_socket.id(), alpha.id())
-            .await?;
-    let beta_input_socket_attribute_value_id =
-        InputSocket::component_attribute_value_id(ctx, beta_input_socket.id(), beta.id()).await?;
-    let beta_output_socket_attribute_value_id =
-        OutputSocket::component_attribute_value_id(ctx, beta_output_socket.id(), beta.id()).await?;
-    let charlie_input_socket_attribute_value_id =
-        InputSocket::component_attribute_value_id(ctx, charlie_input_socket.id(), charlie.id())
-            .await?;
-
-    let alpha_output_socket_attribute_value_path =
-        AttributeValue::get_path_for_id(ctx, alpha_output_socket_attribute_value_id)
-            .await?
-            .expect("has input socket name");
-    let beta_input_socket_attribute_value_path =
-        AttributeValue::get_path_for_id(ctx, beta_input_socket_attribute_value_id)
-            .await?
-            .expect("has input socket name");
-    let beta_output_socket_attribute_value_path =
-        AttributeValue::get_path_for_id(ctx, beta_output_socket_attribute_value_id)
-            .await?
-            .expect("has input socket name");
-    let charlie_input_socket_attribute_value_path =
-        AttributeValue::get_path_for_id(ctx, charlie_input_socket_attribute_value_id)
-            .await?
-            .expect("has input socket name");
 
     // Check the alpha MV.
     {
@@ -385,21 +346,7 @@ async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
             beta.id(),  // expected
             beta_mv.id  // actual
         );
-        assert_eq!(
-            vec![Connection::Socket {
-                from_component_id: alpha.id().into(),
-                from_attribute_value_id: alpha_output_socket_attribute_value_id,
-                from_attribute_value_path: alpha_output_socket_attribute_value_path,
-                from_socket_id: alpha_output_socket.id(),
-                from_socket_name: alpha_output_socket.name().to_owned(),
-                to_component_id: beta.id().into(),
-                to_socket_id: beta_input_socket.id(),
-                to_socket_name: beta_input_socket.name().to_owned(),
-                to_attribute_value_id: beta_input_socket_attribute_value_id,
-                to_attribute_value_path: beta_input_socket_attribute_value_path,
-            }], // expected
-            beta_mv.connections // actual
-        );
+        assert!(beta_mv.connections.is_empty());
     }
 
     // Check the charlie MV.
@@ -437,18 +384,6 @@ async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
                     to_prop_id: charlie_domain_name_prop_id,
                     to_prop_path: charlie_domain_name_prop_path.with_replaced_sep_and_prefix("/"),
                 },
-                Connection::Socket {
-                    from_component_id: beta.id().into(),
-                    from_attribute_value_id: beta_output_socket_attribute_value_id,
-                    from_attribute_value_path: beta_output_socket_attribute_value_path,
-                    from_socket_id: beta_output_socket.id(),
-                    from_socket_name: beta_output_socket.name().to_owned(),
-                    to_component_id: charlie.id().into(),
-                    to_socket_id: charlie_input_socket.id(),
-                    to_socket_name: charlie_input_socket.name().to_owned(),
-                    to_attribute_value_id: charlie_input_socket_attribute_value_id,
-                    to_attribute_value_path: charlie_input_socket_attribute_value_path,
-                }
             ], // expected
             charlie_mv.connections // actual
         );

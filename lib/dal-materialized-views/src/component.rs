@@ -41,12 +41,20 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
 
     let is_secret_defining = SchemaVariant::is_secret_defining(ctx, schema_variant_id).await?;
     let attribute_tree = attribute_tree::assemble(ctx.to_owned(), component_id).await?;
-    let input_count = attribute_tree
+    let can_be_upgraded = Component::can_be_upgraded_by_id(ctx, component_id).await?;
+
+    // NOTE(nick): I think having both null and empty external sources may lead to a path of pain
+    // and despair. Given that we're solely concerned with the input count though, now is not the
+    // time to refactor that.
+    let mut input_count = attribute_tree
         .attribute_values
         .values()
-        .filter(|value| value.external_sources.is_some())
+        .filter(|value| match value.external_sources.as_ref() {
+            Some(sources) => !sources.is_empty(),
+            None => false,
+        })
         .count();
-    let can_be_upgraded = Component::can_be_upgraded_by_id(ctx, component_id).await?;
+    input_count += Component::managers_by_id(ctx, component_id).await?.len();
 
     Ok(ComponentMv {
         id: component_id,
