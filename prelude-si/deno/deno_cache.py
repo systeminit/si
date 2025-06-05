@@ -22,7 +22,8 @@ def parse_args() -> argparse.Namespace:
 
 def run_cache(input_path: str) -> None:
     """Run deno cache with the specified arguments."""
-    cmd = ["deno", "cache"]
+    deno_bin = os.environ.get("DENO_BIN", "deno")
+    cmd = [deno_bin, "cache"]
     cmd.append(input_path)
 
     try:
