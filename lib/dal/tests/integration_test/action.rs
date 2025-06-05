@@ -187,8 +187,11 @@ async fn auto_queue_update(ctx: &mut DalContext) -> Result<()> {
     // ======================================================
     // Creating a component  should enqueue a create action
     // ======================================================
-    let component =
+    let component_jack =
         create_component_for_default_schema_name_in_default_view(ctx, "swifty", "jack antonoff")
+            .await?;
+    let component_swift =
+        create_component_for_default_schema_name_in_default_view(ctx, "swifty", "taylor swift")
             .await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
@@ -205,14 +208,16 @@ async fn auto_queue_update(ctx: &mut DalContext) -> Result<()> {
     // ======================================================
 
     let name_path = &["root", "si", "name"];
-    let av_id = component
+    let av_id = component_jack
         .attribute_values_for_prop(ctx, name_path)
         .await?
         .pop()
         .expect("there should only be one value id");
 
+    // Note: we're updating the root/si/name - which propagates to root/domain/name
+    // and as this component has a resource, DVU should be enqueuing the update func!
     AttributeValue::update(ctx, av_id, Some(serde_json::json!("whomever"))).await?;
-    Component::enqueue_relevant_update_actions(ctx, av_id).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     let action_ids = Action::list_topologically(ctx).await?;
 
@@ -224,13 +229,50 @@ async fn auto_queue_update(ctx: &mut DalContext) -> Result<()> {
         if action.state() == ActionState::Queued {
             let prototype_id = Action::prototype_id(ctx, action_id).await?;
             let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
-
-            if prototype.kind == ActionKind::Update {
+            let component_id = Action::component_id(ctx, action_id)
+                .await?
+                .expect("is some");
+            if prototype.kind == ActionKind::Update && component_id == component_jack.id() {
                 update_action_count += 1;
             };
         }
     }
     assert_eq!(update_action_count, 1);
+
+    // ======================================================
+    // Updating values in a component that has a resource should not enqueue an update
+    // action if the value didn't change
+    // ======================================================
+    let name_path = &["root", "si", "name"];
+    let av_id = component_swift
+        .attribute_values_for_prop(ctx, name_path)
+        .await?
+        .pop()
+        .expect("there should only be one value id");
+
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!("taylor swift"))).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let action_ids = Action::list_topologically(ctx).await?;
+
+    let mut update_action_count = 0;
+
+    for action_id in &action_ids {
+        let action_id = *action_id;
+        let action = Action::get_by_id(ctx, action_id).await?;
+        if action.state() == ActionState::Queued {
+            let prototype_id = Action::prototype_id(ctx, action_id).await?;
+            let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
+            let component_id = Action::component_id(ctx, action_id)
+                .await?
+                .expect("is some");
+            if prototype.kind == ActionKind::Update && component_id == component_swift.id() {
+                update_action_count += 1;
+            };
+        }
+    }
+    // didn't actually change the value, so there should not be an update function for swifty!
+    assert_eq!(update_action_count, 0);
 
     Ok(())
 }
