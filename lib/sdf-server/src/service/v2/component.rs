@@ -5,6 +5,10 @@ use axum::{
         IntoResponse,
         Response,
     },
+    routing::{
+        delete,
+        post,
+    },
 };
 use dal::{
     AttributeValueId,
@@ -19,12 +23,16 @@ use si_id::ComponentId;
 use crate::app_state::AppState;
 
 pub mod attributes;
+pub mod delete_components;
 pub mod name;
 pub mod secrets;
+pub mod upgrade_components;
 
 #[remain::sorted]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("action error: {0}")]
+    Action(#[from] dal::action::ActionError),
     #[error("attribute $source: {0} has extra fields: {1}")]
     AttributeSourceHasExtraFields(serde_json::Value, serde_json::Value),
     #[error("invalid attribute $source: {0}")]
@@ -51,12 +59,18 @@ pub enum Error {
     NoValueToSet(String),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] dal::SchemaVariantError),
+    #[error("schema variant upgrade not required")]
+    SchemaVariantUpgradeSkipped,
     #[error("serde json error: {0}")]
     SerdeJsonError(#[from] serde_json::Error),
     #[error("source component not found: {0}")]
     SourceComponentNotFound(String),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
+    #[error("component upgrade skipped due to running or dispatched actions")]
+    UpgradeSkippedDueToActions,
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
@@ -72,6 +86,9 @@ impl IntoResponse for Error {
             | Error::AttributeSourceInvalid(..)
             | Error::NoValueToSet(..)
             | Error::SourceComponentNotFound(..) => StatusCode::BAD_REQUEST,
+            Error::SchemaVariantUpgradeSkipped | Error::UpgradeSkippedDueToActions => {
+                StatusCode::NOT_MODIFIED
+            }
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
@@ -81,13 +98,16 @@ impl IntoResponse for Error {
 }
 
 pub fn v2_routes() -> Router<AppState> {
-    Router::new().nest(
-        "/:componentId",
-        Router::new()
-            .nest("/attributes", attributes::v2_routes())
-            .nest("/name", name::v2_routes())
-            .nest("/secret", secrets::v2_routes()),
-    )
+    Router::new()
+        .route("/upgrade", post(upgrade_components::upgrade_components))
+        .route("/delete", delete(delete_components::delete_components))
+        .nest(
+            "/:componentId",
+            Router::new()
+                .nest("/attributes", attributes::v2_routes())
+                .nest("/name", name::v2_routes())
+                .nest("/secret", secrets::v2_routes()),
+        )
 }
 
 #[derive(Deserialize, Clone, Copy, Debug)]
