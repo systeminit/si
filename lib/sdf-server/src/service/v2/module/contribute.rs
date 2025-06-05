@@ -64,6 +64,7 @@ pub async fn contribute(
         request.name.as_str(),
         request.version.as_str(),
         request.schema_variant_id,
+        true, // TODO make this an API argument
     )
     .await?;
 

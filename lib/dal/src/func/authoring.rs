@@ -33,6 +33,7 @@ use base64::{
     Engine,
     engine::general_purpose,
 };
+use chrono::Utc;
 use si_events::FuncRunId;
 use si_layer_cache::LayerDbError;
 use telemetry::prelude::*;
@@ -623,6 +624,7 @@ impl FuncAuthoringClient {
         func.error_if_locked()?;
         Func::modify_by_id(ctx, func.id, |func| {
             func.code_base64 = Some(general_purpose::STANDARD_NO_PAD.encode(code.into()));
+            func.timestamp.updated_at = Utc::now();
 
             Ok(())
         })

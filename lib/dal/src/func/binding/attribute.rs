@@ -291,6 +291,13 @@ impl AttributeBinding {
         func_id: FuncId,
     ) -> FuncBindingResult<Vec<FuncBinding>> {
         let mut bindings = vec![];
+
+        // Note(victor): AttributeArgumentBinding::assemble, fails for ValueSubscription value source.
+        // Since this method does not care for these func bindings, we'll just return an empty list here
+        if Func::get_by_id(ctx, func_id).await?.is_transformation {
+            return Ok(bindings);
+        }
+
         for attribute_prototype_id in AttributePrototype::list_ids_for_func_id(ctx, func_id).await?
         {
             let eventual_parent = Self::find_eventual_parent(ctx, attribute_prototype_id).await?;

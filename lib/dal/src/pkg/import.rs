@@ -21,7 +21,6 @@ use si_pkg::{
     SiPkgError,
     SiPkgFunc,
     SiPkgFuncArgument,
-    SiPkgFuncData,
     SiPkgKind,
     SiPkgLeafFunction,
     SiPkgManagementFunc,
@@ -72,6 +71,7 @@ use crate::{
     func::{
         FuncKind,
         argument::FuncArgument,
+        binding::attribute::AttributeBinding,
         intrinsics::IntrinsicFunc,
     },
     management::prototype::ManagementPrototype,
@@ -145,8 +145,6 @@ async fn import_change_set(
     Vec<(String, Vec<bool /*ImportAttributeSkip*/>)>,
     Vec<bool /*ImportEdgeSkip*/>,
 )> {
-    // let default_change_set_id = ctx.get_workspace_default_change_set_id().await?;
-
     // Cache the intrinsic funcs pkg in case we need it.
     let unsafe_to_install_intrinsic_funcs_pkg = SiPkg::load_from_spec(IntrinsicFunc::pkg_spec()?)?;
 
@@ -201,7 +199,7 @@ async fn import_change_set(
                 }
             }
         } else {
-            let func = if let Some(Some(func)) = options
+            if let Some(Some(func)) = options
                 .skip_import_funcs
                 .as_ref()
                 .map(|skip_funcs| skip_funcs.get(func_spec.unique_id()))
@@ -216,35 +214,63 @@ async fn import_change_set(
                     Thing::Func(func.to_owned()),
                 );
 
-                None
-            } else {
-                Some(
-                    import_func(
-                        ctx,
-                        func_spec,
-                        installed_module.clone(),
-                        thing_map,
-                        options.create_unlocked,
-                    )
-                    .await?,
-                )
-            };
+                continue;
+            }
 
-            if let Some(func) = func {
-                thing_map.insert(
-                    func_spec.unique_id().to_owned(),
-                    Thing::Func(func.to_owned()),
-                );
+            let func_spec_data = func_spec
+                .data()
+                .ok_or(PkgError::DataNotFound(func_spec.name().into()))?;
 
-                if let Some(module) = installed_module.clone() {
-                    module.create_association(ctx, func.id.into()).await?;
+            // If this func is a transformation, we need to see if it updates an existing func before creating it
+            if func_spec_data.is_transformation() {
+                let func_id = FuncId::from_str(func_spec.unique_id())?;
+
+                // In the future we may have a strategy to update funcs that already exist, but right now we'll just skip them
+                if Func::get_by_id_opt(ctx, func_id).await?.is_some() {
+                    // // if no updated timestamp, skip
+                    // let Some(incoming_update_timestamp) = func_spec_data.last_updated_at() else {
+                    //     continue;
+                    // };
+
+                    // if incoming_update_timestamp > existing_func.timestamp.updated_at {
+                    //     let func = upsert_func(ctx, func_spec, false).await?;
+                    //
+                    //     thing_map.insert(
+                    //         func_spec.unique_id().to_owned(),
+                    //         Thing::Func(func.to_owned()),
+                    //     );
+                    //
+                    //     if let Some(module) = installed_module.clone() {
+                    //         module.create_association(ctx, func.id.into()).await?;
+                    //     }
+                    // }
+
+                    continue;
                 }
+            }
 
-                let args = func_spec.arguments()?;
+            let func = import_func(
+                ctx,
+                func_spec,
+                installed_module.clone(),
+                thing_map,
+                options.create_unlocked,
+            )
+            .await?;
 
-                if !args.is_empty() {
-                    import_func_arguments(ctx, func.id, &args).await?;
-                }
+            thing_map.insert(
+                func_spec.unique_id().to_owned(),
+                Thing::Func(func.to_owned()),
+            );
+
+            if let Some(module) = installed_module.clone() {
+                module.create_association(ctx, func.id.into()).await?;
+            }
+
+            let args = func_spec.arguments()?;
+
+            if !args.is_empty() {
+                import_func_arguments(ctx, func.id, &args).await?;
             }
         };
     }
@@ -385,9 +411,68 @@ async fn create_func(
         .data()
         .ok_or(PkgError::DataNotFound(name.into()))?;
 
-    // TODO see how to best support is_transformation on func_spec
-    let func = Func::new(
+    let func = if func_spec_data.is_transformation() {
+        let func_id = FuncId::from_str(func_spec.unique_id())?;
+
+        Func::upsert_with_id(
+            ctx,
+            func_id,
+            name,
+            func_spec_data
+                .display_name()
+                .map(|display_name| display_name.to_owned()),
+            func_spec_data.description().map(|desc| desc.to_owned()),
+            func_spec_data.link().map(|l| l.to_string()),
+            func_spec_data.hidden(),
+            is_builtin,
+            func_spec_data.backend_kind().into(),
+            func_spec_data.response_type().into(),
+            Some(func_spec_data.handler().to_owned()),
+            Some(func_spec_data.code_base64().to_owned()),
+            func_spec_data.is_transformation(),
+            func_spec_data.last_updated_at(),
+        )
+        .await?
+    } else {
+        Func::new(
+            ctx,
+            name,
+            func_spec_data
+                .display_name()
+                .map(|display_name| display_name.to_owned()),
+            func_spec_data.description().map(|desc| desc.to_owned()),
+            func_spec_data.link().map(|l| l.to_string()),
+            func_spec_data.hidden(),
+            is_builtin,
+            func_spec_data.backend_kind().into(),
+            func_spec_data.response_type().into(),
+            Some(func_spec_data.handler().to_owned()),
+            Some(func_spec_data.code_base64().to_owned()),
+            func_spec_data.is_transformation(),
+        )
+        .await?
+    };
+
+    Ok(func)
+}
+
+#[allow(unused)]
+async fn upsert_func(
+    ctx: &DalContext,
+    func_spec: &SiPkgFunc<'_>,
+    is_builtin: bool,
+) -> PkgResult<Func> {
+    let name = func_spec.name();
+
+    let func_spec_data = func_spec
+        .data()
+        .ok_or(PkgError::DataNotFound(name.into()))?;
+
+    let func_id = FuncId::from_str(func_spec.unique_id())?;
+
+    let func = Func::upsert_with_id(
         ctx,
+        func_id,
         name,
         func_spec_data
             .display_name()
@@ -400,36 +485,16 @@ async fn create_func(
         func_spec_data.response_type().into(),
         Some(func_spec_data.handler().to_owned()),
         Some(func_spec_data.code_base64().to_owned()),
-        false,
+        func_spec_data.is_transformation(),
+        func_spec_data.last_updated_at(),
     )
     .await?;
 
-    Ok(func)
-}
-
-#[allow(dead_code)]
-async fn update_func(
-    ctx: &DalContext,
-    func: Func,
-    func_spec_data: &SiPkgFuncData,
-) -> PkgResult<Func> {
-    let func = func
-        .modify(ctx, |func| {
-            func_spec_data.name().clone_into(&mut func.name);
-            func.backend_kind = func_spec_data.backend_kind().into();
-            func.backend_response_type = func_spec_data.response_type().into();
-            func.display_name = func_spec_data
-                .display_name()
-                .map(|display_name| display_name.to_owned());
-            func.code_base64 = Some(func_spec_data.code_base64().to_owned());
-            func.description = func_spec_data.description().map(|desc| desc.to_owned());
-            func.handler = Some(func_spec_data.handler().to_owned());
-            func.hidden = func_spec_data.hidden();
-            func.link = func_spec_data.link().map(|l| l.to_string());
-
-            Ok(())
-        })
-        .await?;
+    // Update values that depend on the function
+    let attribute_prototypes = AttributePrototype::list_ids_for_func_id(ctx, func_id).await?;
+    for attribute_prototype_id in attribute_prototypes {
+        AttributeBinding::enqueue_dvu_for_impacted_values(ctx, attribute_prototype_id).await?;
+    }
 
     Ok(func)
 }

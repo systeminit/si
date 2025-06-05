@@ -95,6 +95,7 @@ pub struct PkgExporter {
     schema_ids: Option<Vec<SchemaId>>,
     func_map: FuncSpecMap,
     variant_map: VariantSpecMap,
+    include_transformations: bool,
 }
 
 impl PkgExporter {
@@ -108,6 +109,7 @@ impl PkgExporter {
         description: Option<impl Into<String>>,
         created_by: impl Into<String>,
         schema_ids: Vec<SchemaId>,
+        include_transformations: bool,
     ) -> Self {
         Self {
             name: name.into(),
@@ -118,6 +120,7 @@ impl PkgExporter {
             schema_ids: Some(schema_ids),
             func_map: FuncSpecMap::new(),
             variant_map: VariantSpecMap::new(),
+            include_transformations,
         }
     }
 
@@ -127,12 +130,20 @@ impl PkgExporter {
         version: impl Into<String>,
         created_by: impl Into<String>,
         schema_id: SchemaId,
+        include_transformations: bool,
     ) -> Self {
-        Self::new(name, version, None::<String>, created_by, vec![schema_id])
+        Self::new(
+            name,
+            version,
+            None::<String>,
+            created_by,
+            vec![schema_id],
+            include_transformations,
+        )
     }
 
     fn new_standalone_variant_exporter(schema_name: &str) -> Self {
-        Self::new(schema_name, "", None::<String>, "", vec![])
+        Self::new(schema_name, "", None::<String>, "", vec![], false)
     }
 
     pub async fn export_as_bytes(&mut self, ctx: &DalContext) -> PkgResult<Vec<u8>> {
@@ -959,6 +970,8 @@ impl PkgExporter {
 
         data_builder.response_type(func.backend_response_type);
         data_builder.backend_kind(func.backend_kind);
+        data_builder.is_transformation(func.is_transformation);
+        data_builder.last_updated_at(Some(func.timestamp.updated_at));
 
         data_builder.hidden(func.hidden);
 
@@ -1099,6 +1112,16 @@ impl PkgExporter {
 
                     let (spec, _) = self.add_func_to_map(ctx, &intrinsic_func).await?;
 
+                    func_specs.push(spec);
+                }
+            }
+        }
+
+        // Add all transformation funcs to package
+        if self.include_transformations {
+            for func in Func::list_all(ctx).await? {
+                if func.is_transformation && func.kind == FuncKind::Attribute {
+                    let (spec, _) = self.add_func_to_map(ctx, &func).await?;
                     func_specs.push(spec);
                 }
             }

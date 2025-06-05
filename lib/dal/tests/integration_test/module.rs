@@ -93,8 +93,13 @@ async fn module_export_simple(ctx: &mut DalContext) {
     let name = "Paul's Test Pkg".to_string();
     let version = "2019-06-03".to_string();
     let user = "System Initiative".to_string();
-    let mut exporter =
-        PkgExporter::new_for_module_contribution(name.clone(), version.clone(), &user, schema.id());
+    let mut exporter = PkgExporter::new_for_module_contribution(
+        name.clone(),
+        version.clone(),
+        &user,
+        schema.id(),
+        false,
+    );
 
     let exported_pkg = exporter
         .export_as_spec(ctx)
@@ -183,7 +188,7 @@ async fn prepare_contribution_works(ctx: &DalContext) {
         .expect("unable to get a default variant");
 
     let (actual_name, actual_version, _, _, _, _, _, _) =
-        Module::prepare_contribution(ctx, name, version, default_variant_id)
+        Module::prepare_contribution(ctx, name, version, default_variant_id, false)
             .await
             .expect("could not prepare contribution");
 

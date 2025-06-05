@@ -169,10 +169,15 @@ async fn prop_order_preserved(ctx: &mut DalContext) -> Result<()> {
     };
 
     // Export variant -> PkgSpec
-    let exported_spec =
-        PkgExporter::new_for_module_contribution("testme", "test_version", "me@me.com", schema_id)
-            .export_as_spec(ctx)
-            .await?;
+    let exported_spec = PkgExporter::new_for_module_contribution(
+        "testme",
+        "test_version",
+        "me@me.com",
+        schema_id,
+        false,
+    )
+    .export_as_spec(ctx)
+    .await?;
     assert_eq!(spec_prop_names(&exported_spec), expected_props);
 
     // PkgSpec -> SiPkg
