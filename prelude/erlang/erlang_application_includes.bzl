@@ -5,7 +5,6 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//:paths.bzl", "paths")
 load(":erlang_build.bzl", "BuildEnvironment", "erlang_build")
 load(":erlang_info.bzl", "ErlangAppIncludeInfo")
 load(
@@ -14,7 +13,6 @@ load(
 )
 load(
     ":erlang_utils.bzl",
-    "multidict_projection",
     "multidict_projection_key",
 )
 
@@ -23,33 +21,32 @@ def erlang_application_includes_impl(ctx: AnalysisContext) -> list[Provider]:
     """
 
     # prepare include directory for current app
-    name = ctx.attrs.application_name
-
-    # input mapping
-    input_mapping = {}
-    for input_artifact in ctx.attrs.includes:
-        input_mapping[paths.basename(input_artifact.short_path)] = input_artifact
+    name = ctx.attrs.app_name
 
     toolchains = select_toolchains(ctx)
     build_environments = {}
     for toolchain in toolchains.values():
-        build_environments[toolchain.name] = (
-            erlang_build.build_steps.generate_include_artifacts(
-                ctx,
-                toolchain,
-                BuildEnvironment(input_mapping = input_mapping),
-                name,
-                ctx.attrs.includes,
-            )
+        build_environment = BuildEnvironment(
+            includes = {},
+            include_dirs = {},
+            deps_files = {},
         )
+        erlang_build.build_steps.generate_include_artifacts(
+            ctx,
+            toolchain,
+            build_environment,
+            name,
+            ctx.attrs.includes,
+        )
+        build_environments[toolchain.name] = build_environment
 
     # build application info
     app_include_info = ErlangAppIncludeInfo(
         name = name,
-        includes = multidict_projection(build_environments, "includes"),
+        includes = multidict_projection_key(build_environments, "includes", name),
         include_dir = multidict_projection_key(build_environments, "include_dirs", name),
-        deps_files = multidict_projection(build_environments, "deps_files"),
-        input_mapping = multidict_projection(build_environments, "input_mapping"),
+        deps_files = multidict_projection_key(build_environments, "deps_files", name),
+        _original_includes = ctx.attrs.includes,
     )
 
     return [

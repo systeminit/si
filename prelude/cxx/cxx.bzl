@@ -70,7 +70,7 @@ load(
 )
 load("@prelude//linking:strip.bzl", "strip_debug_info")
 load("@prelude//linking:types.bzl", "Linkage")
-load("@prelude//os_lookup:defs.bzl", "OsLookup")
+load("@prelude//os_lookup:defs.bzl", "Os", "OsLookup")
 load("@prelude//python:manifest.bzl", "create_manifest_for_entries")
 load("@prelude//test:inject_test_run_info.bzl", "inject_test_run_info")
 load(
@@ -100,6 +100,7 @@ load(
     "cxx_attr_dep_metadata",
     "cxx_attr_deps",
     "cxx_attr_exported_deps",
+    "cxx_attr_link_style",
     "cxx_attr_linker_flags_all",
     "cxx_attr_preferred_linkage",
     "cxx_inherited_link_info",
@@ -219,6 +220,7 @@ def cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
         use_header_units = ctx.attrs.use_header_units,
         export_header_unit = ctx.attrs.export_header_unit,
         export_header_unit_filter = ctx.attrs.export_header_unit_filter,
+        error_handler = get_cxx_toolchain_info(ctx).cxx_error_handler,
     )
     output = cxx_library_parameterized(ctx, params)
     return output.providers
@@ -233,10 +235,10 @@ def _only_shared_mappings(group: Group) -> bool:
             return False
     return True
 
-def create_shared_lib_link_group_specs(ctx: AnalysisContext, link_group_info: LinkGroupInfo) -> list[LinkGroupLibSpec]:
+def create_shared_lib_link_group_specs(ctx: AnalysisContext, link_group_definitions: list[Group]) -> list[LinkGroupLibSpec]:
     specs = []
     linker_info = get_cxx_toolchain_info(ctx).linker_info
-    for group in link_group_info.groups.values():
+    for group in link_group_definitions:
         if group.name in (MATCH_ALL_LABEL, NO_MATCH_LABEL):
             continue
 
@@ -256,10 +258,15 @@ def create_shared_lib_link_group_specs(ctx: AnalysisContext, link_group_info: Li
 def get_auto_link_group_specs(ctx: AnalysisContext, link_group_info: [LinkGroupInfo, None]) -> [list[LinkGroupLibSpec], None]:
     if link_group_info == None or not ctx.attrs.auto_link_groups:
         return None
-    return create_shared_lib_link_group_specs(ctx, link_group_info)
+    return create_shared_lib_link_group_specs(ctx, link_group_info.groups.values())
 
 def cxx_binary_impl(ctx: AnalysisContext) -> list[Provider]:
-    link_group_info = get_link_group_info(ctx, filter_and_map_idx(LinkableGraph, cxx_attr_deps(ctx)))
+    link_strategy = to_link_strategy(cxx_attr_link_style(ctx))
+    link_group_info = get_link_group_info(
+        ctx,
+        filter_and_map_idx(LinkableGraph, cxx_attr_deps(ctx)),
+        link_strategy,
+    )
     params = CxxRuleConstructorParams(
         rule_type = "cxx_binary",
         executable_name = ctx.attrs.executable_name,
@@ -280,6 +287,7 @@ def cxx_binary_impl(ctx: AnalysisContext) -> list[Provider]:
         lang_platform_preprocessor_flags = ctx.attrs.lang_platform_preprocessor_flags,
         use_header_units = ctx.attrs.use_header_units,
         runtime_dependency_handling = cxx_attr_runtime_dependency_handling(ctx),
+        error_handler = get_cxx_toolchain_info(ctx).cxx_error_handler,
     )
     output = cxx_executable(ctx, params)
 
@@ -545,7 +553,7 @@ def prebuilt_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
                             ctx = ctx,
                             shared_lib = shared_lib.output,
                         )
-                    if ctx.attrs._target_os_type[OsLookup].platform == "windows":
+                    if ctx.attrs._target_os_type[OsLookup].os == Os("windows"):
                         shared_lib_for_linking = ctx.attrs.import_lib
 
                     linkable = None
@@ -583,6 +591,8 @@ def prebuilt_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
                     dumpbin_toolchain_path = get_cxx_toolchain_info(ctx).dumpbin_toolchain_path
                     if dumpbin_toolchain_path != None:
                         sub_targets[DUMPBIN_SUB_TARGET] = get_dumpbin_providers(ctx, shared_lib.output, dumpbin_toolchain_path)
+                    if shared_lib.dwp != None:
+                        sub_targets["dwp"] = [DefaultInfo(default_output = shared_lib.dwp)]
 
         # TODO(cjhopman): is it okay that we sometimes don't have a linkable?
         outputs[output_style] = out
@@ -717,6 +727,7 @@ def prebuilt_cxx_library_impl(ctx: AnalysisContext) -> list[Provider]:
                 shared_libs = shared_libs,
                 linker_flags = linker_flags,
                 can_be_asset = getattr(ctx.attrs, "can_be_asset", False) or False,
+                stub = getattr(ctx.attrs, "stub", False),
             ),
             excluded = {ctx.label: None} if not value_or(ctx.attrs.supports_merged_linking, True) else {},
         ),
@@ -755,7 +766,12 @@ def cxx_precompiled_header_impl(ctx: AnalysisContext) -> list[Provider]:
     ]
 
 def cxx_test_impl(ctx: AnalysisContext) -> list[Provider]:
-    link_group_info = get_link_group_info(ctx, filter_and_map_idx(LinkableGraph, cxx_attr_deps(ctx)))
+    link_strategy = to_link_strategy(cxx_attr_link_style(ctx))
+    link_group_info = get_link_group_info(
+        ctx,
+        filter_and_map_idx(LinkableGraph, cxx_attr_deps(ctx)),
+        link_strategy,
+    )
 
     # TODO(T110378115): have the runinfo contain the correct test running args
     params = CxxRuleConstructorParams(
@@ -776,6 +792,7 @@ def cxx_test_impl(ctx: AnalysisContext) -> list[Provider]:
         lang_platform_preprocessor_flags = ctx.attrs.lang_platform_preprocessor_flags,
         use_header_units = ctx.attrs.use_header_units,
         runtime_dependency_handling = cxx_attr_runtime_dependency_handling(ctx),
+        error_handler = get_cxx_toolchain_info(ctx).cxx_error_handler,
     )
     output = cxx_executable(ctx, params, is_cxx_test = True)
 

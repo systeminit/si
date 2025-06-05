@@ -6,6 +6,7 @@
 # of this source tree.
 
 load("@prelude//:artifact_tset.bzl", "project_artifacts")
+load("@prelude//:paths.bzl", "paths")
 load(
     "@prelude//linking:shared_libraries.bzl",
     "SharedLibrary",
@@ -66,7 +67,8 @@ def get_srcs_from_manifest(
 def create_manifest_for_shared_libs(
         actions: AnalysisActions,
         name: str,
-        shared_libs: list[SharedLibrary]) -> ManifestInfo:
+        shared_libs: list[SharedLibrary],
+        lib_dir: str = "") -> ManifestInfo:
     """
     Generate a source manifest for the given list of sources.
     """
@@ -78,13 +80,29 @@ def create_manifest_for_shared_libs(
             gen_action = lambda actions, output, shared_libs: actions.write_json(
                 output,
                 [
-                    (soname, shlib.lib.output, name)
+                    (paths.join(lib_dir, soname), shlib.lib.output, name)
                     for soname, shlib in shared_libs.items()
                 ],
             ),
         ),
         artifacts = [(shlib.lib.output, "") for shlib in shared_libs],
     )
+
+def enumerate_dirs_for_manifest(
+        ctx: AnalysisContext,
+        param: str,
+        input_manifest: ManifestInfo) -> ManifestInfo:
+    """
+    Generate a source manifest for the given directory of sources from the given
+    rule.
+    """
+    name = "{}.enumerated".format(param)
+    manifest = ctx.actions.declare_output(name + ".manifest")
+    cmd = cmd_args(ctx.attrs._create_manifest_for_source_dir[RunInfo])
+    cmd.add(cmd_args(input_manifest.manifest, format = "--manifest={}", hidden = [a for a, _ in input_manifest.artifacts]))
+    cmd.add(cmd_args(manifest.as_output(), format = "--output={}"))
+    ctx.actions.run(cmd, category = "py_enumerate_source_manifest", identifier = name)
+    return ManifestInfo(manifest = manifest, artifacts = input_manifest.artifacts)
 
 def create_manifest_for_source_dir(
         ctx: AnalysisContext,
@@ -99,13 +117,13 @@ def create_manifest_for_source_dir(
     cmd = cmd_args(ctx.attrs._create_manifest_for_source_dir[RunInfo])
     cmd.add("--origin={}".format(ctx.label.raw_target()))
     cmd.add(cmd_args(manifest.as_output(), format = "--output={}"))
-    cmd.add(extracted)
+    cmd.add(cmd_args(extracted, format = "--extracted={}"))
     if exclude != None:
         cmd.add("--exclude={}".format(exclude))
     ctx.actions.run(cmd, category = "py_source_manifest", identifier = param)
 
     # TODO: enumerate directory?
-    return ManifestInfo(manifest = manifest, artifacts = [(extracted, param)])
+    return ManifestInfo(manifest = manifest.without_associated_artifacts(), artifacts = [(extracted, param)])
 
 def create_manifest_for_extensions(
         ctx: AnalysisContext,

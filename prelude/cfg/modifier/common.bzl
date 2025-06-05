@@ -117,7 +117,7 @@ def get_modifier_info(
             conditional_modifier_info = modifier_info[ConditionalModifierInfo]
             return conditional_modifier_info.key, conditional_modifier_info.inner
         cfg_info = modifier_info[ConfigurationInfo]
-        asserts.true(len(cfg_info.constraints) == 1, "Modifier should only be a single constraint value. Found multiple in `{}`".format(modifier))
+        asserts.true(len(cfg_info.constraints) == 1, "Modifier should only be a single constraint value. Found multiple or none in `{}`".format(modifier))
         constraint_value_info = list(cfg_info.constraints.values())[0]
         return constraint_value_info.setting.label, constraint_value_info
     fail("Internal error: Found unexpected modifier `{}` type `{}`".format(modifier, type(modifier)))
@@ -244,3 +244,13 @@ def get_and_insert_modifier_info(
     )
     add_to_constraint_setting_to_modifier_infos(constraint_setting_to_modifier_infos, constraint_setting_label, modifier_info)
     return (constraint_setting_label, modifier_info)
+
+def apply_buckconfig_backed_modifiers(
+        constraint_setting_to_modifier_infos: dict[TargetLabel, list[ModifierInfo]],
+        modifiers: list[ConditionalModifierInfo]):
+    for conditional_modifier_info in modifiers:
+        add_to_constraint_setting_to_modifier_infos(
+            constraint_setting_to_modifier_infos = constraint_setting_to_modifier_infos,
+            constraint_setting_label = conditional_modifier_info.key,
+            modifier_info = conditional_modifier_info.inner,
+        )

@@ -5,33 +5,11 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-# Input to build Python libraries and binaries (which are libraries wrapped in
-# an executable). The various functions here must returns the inputs annotated
-# below.
-PythonLibraryInterface = record(
-    # Shared libraries used by this Python library.
-    # dict[str, SharedLibraryInfo]
-    shared_libraries = field(typing.Callable),
-
-    # Shared libraries used by this Python library.
-    # dict[str, SharedLibraryInfo]
-    extension_shared_libraries = field(typing.Callable),
-
-    # An iterator of PythonLibraryManifests objects. This is used to collect extensions.
-    # iterator of PythonLibraryManifests
-    iter_manifests = field(typing.Callable),
-
-    # A PythonLibraryManifestsInterface. This is used to convert manifests to
-    # arguments for pexing. Unlike iter_manifests this allows for more
-    # efficient calls, such as using t-sets projections.
-    # PythonLibraryManifestsInterface
-    manifests = field(typing.Callable),
-)
-
 PythonLibraryManifestsInterface = record(
     # Returns the source manifests for this Python library.
     # [_arglike] of source manifests
     src_manifests = field(typing.Callable),
+    sources_simple = field(typing.Callable),
 
     # Returns the files referenced by source manifests for this Python library.
     # [_arglike] of source artifacts
@@ -65,6 +43,7 @@ PythonLibraryManifestsInterface = record(
     # [_arglike] of resource artifacts
     resource_artifacts = field(typing.Callable),
     resource_artifacts_with_paths = field(typing.Callable),
+    resource_artifacts_simple = field(typing.Callable),
     hidden_resources = field(typing.Callable),
     has_hidden_resources = field(typing.Callable),
 )

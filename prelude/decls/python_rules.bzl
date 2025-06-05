@@ -5,13 +5,128 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//cxx:cuda.bzl", "CudaCompileStyle")
+load("@prelude//cxx:headers.bzl", "CPrecompiledHeaderInfo")
+load("@prelude//cxx:link_groups_types.bzl", "LINK_GROUP_MAP_ATTR")
+load("@prelude//decls:cxx_rules.bzl", "BUILD_INFO_ATTR", "cxx_rules")
+load("@prelude//decls:re_test_common.bzl", "re_test_common")
 load("@prelude//decls:test_common.bzl", "test_common")
+load("@prelude//decls:toolchains_common.bzl", "toolchains_common")
+load("@prelude//linking:link_info.bzl", "LinkOrdering")
+load("@prelude//python:python.bzl", "PythonLibraryInfo")
+load("@prelude//python:python_runtime_bundle.bzl", "PythonRuntimeBundleInfo")
+load("@prelude//python:toolchain.bzl", "NativeLinkStrategy")
+load("@prelude//transitions:constraint_overrides.bzl", "constraint_overrides")
 load(":common.bzl", "CxxRuntimeType", "CxxSourceType", "HeadersAsRawHeadersMode", "LinkableDepType", "buck", "prelude_rule")
 load(":cxx_common.bzl", "cxx_common")
 load(":native_common.bzl", "native_common")
 load(":python_common.bzl", "python_common")
 
-NativeLinkStrategy = ["separate", "merged"]
+StripLibparStrategy = ["full", "extract", "none"]
+
+def _create_manifest_for_source_dir():
+    return attrs.exec_dep(default = "prelude//python/tools:create_manifest_for_source_dir")
+
+# Attrs common between python binary/test
+def _python_executable_attrs():
+    python_executable_attrs = {}
+
+    python_executable_attrs.update(constraint_overrides.attributes)
+
+    # allow non-default value for the args below
+    python_executable_attrs.update({
+        "anonymous_link_groups": attrs.bool(default = False),
+        "binary_linker_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
+        "bolt_flags": attrs.list(attrs.arg(), default = []),
+        "bolt_profile": attrs.option(attrs.source(), default = None),
+        "compiler_flags": attrs.list(attrs.arg(anon_target_compatible = True), default = []),
+        "cxx_main": attrs.source(default = "prelude//python/tools:embedded_main.cpp"),
+        "distributed_thinlto_partial_split_dwarf": attrs.bool(default = False),
+        "enable_distributed_thinlto": attrs.bool(default = False),
+        "executable_name": attrs.option(attrs.string(), default = None),
+        "inplace_build_args": attrs.list(attrs.arg(), default = []),
+        "link_group": attrs.option(attrs.string(), default = None),
+        "link_group_map": LINK_GROUP_MAP_ATTR,
+        "link_group_min_binary_node_count": attrs.option(attrs.int(), default = None),
+        "link_style": attrs.enum(LinkableDepType, default = "static"),
+        "main_function": attrs.option(
+            attrs.string(),
+            default = None,
+            doc = """
+            Name of a Python function that will serve as the main entry point of
+            the binary. The name is either a fully qualified name like
+            `foo.bar.baz` or it starts with a `.` like `.bar.baz`, in which case
+            it is relative to the package containing the target. This should
+            usually be a function defined within one of the dependencies of this
+            target. This attribute should be preferred over `main_module` or
+            `main`, and it is an error to specify more than one of these.
+        """,
+        ),
+        "make_py_package": attrs.option(attrs.exec_dep(providers = [RunInfo]), default = None),
+        "manifest_module_entries": attrs.option(
+            attrs.dict(
+                key = attrs.string(),
+                value = attrs.one_of(
+                    attrs.dict(key = attrs.string(), value = attrs.option(attrs.any())),
+                    attrs.list(attrs.string()),
+                ),
+            ),
+            default = None,
+            doc = """If present, it should be a `string` -> `entry` mapping that
+            gets generated into a `__manifest__` module in the executable. Top
+            level string keys will be the names of variables in this module (so
+            they must be valid Python identifiers). An `entry` can be a list of
+            `string`s, or a further `string`-keyed dictionary.""",
+        ),
+        "native_link_strategy": attrs.option(attrs.enum(NativeLinkStrategy.values()), default = None),
+        "opt_by_default_enabled": attrs.bool(default = False),
+        "package_split_dwarf_dwp": attrs.bool(default = False),
+        "par_style": attrs.option(attrs.string(), default = None),
+        "resources": attrs.named_set(attrs.one_of(attrs.dep(), attrs.source(allow_directory = True)), sorted = True, default = []),
+        "run_with_inplace": attrs.bool(default = False),
+        "runtime_bundle": attrs.option(attrs.dep(providers = [PythonRuntimeBundleInfo]), default = None),
+        "runtime_bundle_full": attrs.bool(default = False),
+        "runtime_env": attrs.option(attrs.dict(key = attrs.string(), value = attrs.string()), default = None),
+        "standalone_build_args": attrs.list(attrs.arg(), default = []),
+        "static_extension_finder": attrs.source(default = "prelude//python/tools:static_extension_finder.py"),
+        "static_extension_utils": attrs.source(default = "prelude//python/tools:static_extension_utils.cpp"),
+        "strip_libpar": attrs.enum(StripLibparStrategy, default = "none"),
+        "strip_stapsdt": attrs.bool(default = False),
+        "use_anon_target_for_analysis": attrs.bool(default = False),  # TODO(dcssiva) Delete this when we change the default analysis method to use anon targets
+        "use_oss_python": attrs.bool(default = False),
+        "use_rust_make_par": attrs.bool(default = False),  # TODO(lorenarthur) Delete this when we change the default build style
+        "_build_info": BUILD_INFO_ATTR,
+        "_create_manifest_for_source_dir": _create_manifest_for_source_dir(),
+        "_cxx_hacks": attrs.default_only(attrs.dep(default = "prelude//cxx/tools:cxx_hacks")),
+        "_cxx_toolchain": toolchains_common.cxx(),
+        "_exec_os_type": buck.exec_os_type_arg(),
+        "_python_toolchain": toolchains_common.python(),
+        "_target_os_type": buck.target_os_type_arg(),
+    })
+
+    return python_executable_attrs
+
+def _python_test_attrs():
+    test_attrs = _python_executable_attrs()
+    test_attrs["_test_main"] = attrs.source(default = "prelude//python/tools:__test_main__.py")
+    test_attrs["implicit_test_library"] = attrs.option(attrs.dep(providers = [PythonLibraryInfo]), default = None)
+    test_attrs.update(re_test_common.test_args())
+    return test_attrs
+
+def _package_python_binary_remotely():
+    return select({
+        "DEFAULT": False,
+        "config//os/constraints:android": True,
+    })
+
+def _python_binary_attrs():
+    binary_attrs = _python_executable_attrs()
+    binary_attrs.update({
+        "link_style": attrs.enum(LinkableDepType, default = "static"),
+        "_package_remotely": attrs.bool(default = _package_python_binary_remotely()),
+        "_python_toolchain": toolchains_common.python(),
+    })
+    return binary_attrs
 
 def _typing_arg():
     return {
@@ -72,7 +187,12 @@ cxx_python_extension = prelude_rule(
     """,
     further = None,
     attrs = (
+        # cxx_python_extension is a subset of cxx_library, plus a base_module.
+        # So we can reuse cxx_library, we augment it with the additional attributes it defines.
+        # This isn't the ideal way to reuse it (we'd rather cxx_library was split it multiple reusable parts),
+        # but it's the pragmatic way of getting it working for now.
         # @unsorted-dict-items
+        {k: attrs.default_only(v) for k, v in cxx_rules.cxx_library.attrs.items()} |
         buck.labels_arg() |
         python_common.base_module_arg() |
         cxx_common.srcs_arg() |
@@ -121,6 +241,30 @@ cxx_python_extension = prelude_rule(
             "prefix_header": attrs.option(attrs.source(), default = None),
             "raw_headers": attrs.set(attrs.source(), sorted = True, default = []),
             "type_stub": attrs.option(attrs.source(), default = None),
+        } | {
+            "allow_embedding": attrs.bool(default = True),
+            "allow_suffixing": attrs.bool(default = True),
+            # Copied from cxx_library.
+            "auto_link_groups": attrs.bool(default = False),
+
+            # These flags will only be used to instrument a target
+            # when coverage for that target is enabled by `exported_needs_coverage_instrumentation`
+            # or by any of the target's dependencies.
+            "coverage_instrumentation_compiler_flags": attrs.list(attrs.string(), default = []),
+            "cuda_compile_style": attrs.enum(CudaCompileStyle.values(), default = "mono"),
+            "exported_needs_coverage_instrumentation": attrs.bool(default = False),
+            "link_ordering": attrs.option(attrs.enum(LinkOrdering.values()), default = None),
+            "link_whole": attrs.default_only(attrs.bool(default = True)),
+            "precompiled_header": attrs.option(attrs.dep(providers = [CPrecompiledHeaderInfo]), default = None),
+            "preferred_linkage": attrs.default_only(attrs.string(default = "any")),
+            "separate_debug_info": attrs.bool(default = False),
+            "suffix_all": attrs.bool(default = True),
+            "support_shlib_interfaces": attrs.bool(default = True),
+            "_cxx_hacks": attrs.default_only(attrs.dep(default = "prelude//cxx/tools:cxx_hacks")),
+            "_cxx_toolchain": toolchains_common.cxx(),
+            # Copied from python_library.
+            "_python_toolchain": toolchains_common.python(),
+            "_target_os_type": buck.target_os_type_arg(),
         }
     ),
 )
@@ -185,19 +329,14 @@ prebuilt_python_library = prelude_rule(
                  Note: `.egg` files have a very particular naming convention
                  that must be followed - otherwise it will not be found at runtime!
             """),
-            "deps": attrs.list(attrs.dep(), default = [], doc = """
-                Other `prebuilt_python_library()` rules which this library depends on. These may also
-                 be `python_library` rules if you want to depend on a source-based copy of the library.
-            """),
         } |
+        python_common.deps_arg() |
         python_common.exclude_deps_from_merged_linking_arg() |
         {
-            "compile": attrs.bool(default = False),
             "contacts": attrs.list(attrs.string(), default = []),
             "cxx_header_dirs": attrs.option(attrs.list(attrs.string()), default = None),
             "infer_cxx_header_dirs": attrs.bool(default = False),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
-            "ignore_compile_errors": attrs.bool(default = False),
             "licenses": attrs.list(attrs.source(), default = []),
             "strip_soabi_tags": attrs.bool(
                 default = False,
@@ -209,6 +348,7 @@ prebuilt_python_library = prelude_rule(
                     native extension is imported.
                 """,
             ),
+            "_create_manifest_for_source_dir": _create_manifest_for_source_dir(),
         }
     ),
 )
@@ -248,6 +388,7 @@ python_binary = prelude_rule(
     further = None,
     attrs = (
         # @unsorted-dict-items
+        {k: attrs.default_only(v) for k, v in cxx_rules.cxx_binary.attrs.items()} |
         buck.labels_arg() |
         {
             "main_module": attrs.option(attrs.string(), default = None, doc = """
@@ -267,29 +408,23 @@ python_binary = prelude_rule(
             """),
         } |
         python_common.platform_arg() |
-        {
-            "deps": attrs.list(attrs.dep(), default = [], doc = """
-                A list of `python_library()` rules that specify Python
-                 modules to include in the binary — including all transitive
-                 dependencies of these rules.
-            """),
-        } |
+        python_common.deps_arg() |
+        python_common.version_selections_arg() |
         python_common.preload_deps_arg() |
         python_common.package_style_arg() |
         python_common.linker_flags_arg() |
         python_common.deduplicate_merged_link_roots() |
+        python_common.executable_deps_arg() |
         native_common.link_group_deps() |
         native_common.link_group_public_deps_label() |
         {
             "build_args": attrs.list(attrs.arg(), default = []),
             "compile": attrs.option(attrs.bool(), default = None),
             "contacts": attrs.list(attrs.string(), default = []),
-            "cxx_platform": attrs.option(attrs.string(), default = None),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "dummy_omnibus": attrs.option(attrs.dep(), default = None),
             "extension": attrs.option(attrs.string(), default = None),
             "licenses": attrs.list(attrs.source(), default = []),
-            "native_link_strategy": attrs.option(attrs.enum(NativeLinkStrategy), default = None),
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
             "platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
             "platform_preload_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = False)), default = []),
@@ -299,7 +434,8 @@ python_binary = prelude_rule(
             "zip_safe": attrs.option(attrs.bool(), default = None),
         } |
         buck.allow_cache_upload_arg() |
-        _typing_arg()
+        _typing_arg() |
+        _python_binary_attrs()
     ),
 )
 
@@ -348,25 +484,19 @@ python_library = prelude_rule(
         python_common.resources_arg() |
         python_common.platform_resources_arg() |
         python_common.base_module_arg() |
-        {
-            "deps": attrs.list(attrs.dep(), default = [], doc = """
-                Other `python_library()` rules that list `srcs` from
-                 which this rule imports modules.
-            """),
-        } |
+        python_common.deps_arg() |
         python_common.exclude_deps_from_merged_linking_arg() |
         {
             "contacts": attrs.list(attrs.string(), default = []),
-            "cxx_platform": attrs.option(attrs.string(), default = None),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "ignore_compile_errors": attrs.bool(default = False),
             "licenses": attrs.list(attrs.source(), default = []),
-            "platform": attrs.option(attrs.string(), default = None),
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
             "type_stubs": attrs.named_set(attrs.source(), sorted = True, default = []),
             "versioned_resources": attrs.option(attrs.versioned(attrs.named_set(attrs.source(), sorted = True)), default = None),
             "versioned_srcs": attrs.option(attrs.versioned(attrs.named_set(attrs.source(), sorted = True)), default = None),
             "zip_safe": attrs.option(attrs.bool(), default = None),
+            "_create_manifest_for_source_dir": _create_manifest_for_source_dir(),
         } |
         _typing_arg()
     ),
@@ -411,6 +541,7 @@ python_test = prelude_rule(
     further = None,
     attrs = (
         # @unsorted-dict-items
+        {k: attrs.default_only(v) for k, v in cxx_rules.cxx_binary.attrs.items()} |
         buck.inject_test_env_arg() |
         buck.labels_arg() |
         python_common.srcs_arg() |
@@ -446,15 +577,15 @@ python_test = prelude_rule(
                  means that you can refer to these without needing to be aware of how
                  Buck is storing data on the disk mid-build.
             """),
-            "deps": attrs.list(attrs.dep(), default = [], doc = """
-                other rules used by the tests in this rule's sources.
-            """),
         } |
+        python_common.deps_arg() |
+        python_common.version_selections_arg() |
         buck.test_rule_timeout_ms() |
         python_common.package_style_arg() |
         python_common.preload_deps_arg() |
         python_common.linker_flags_arg() |
         python_common.deduplicate_merged_link_roots() |
+        python_common.executable_deps_arg() |
         native_common.link_group_deps() |
         native_common.link_group_public_deps_label() |
         {
@@ -462,12 +593,10 @@ python_test = prelude_rule(
             "build_args": attrs.list(attrs.arg(), default = []),
             "compile": attrs.option(attrs.bool(), default = None),
             "contacts": attrs.list(attrs.string(), default = []),
-            "cxx_platform": attrs.option(attrs.string(), default = None),
             "default_host_platform": attrs.option(attrs.configuration_label(), default = None),
             "dummy_omnibus": attrs.option(attrs.dep(), default = None),
             "extension": attrs.option(attrs.string(), default = None),
             "licenses": attrs.list(attrs.source(), default = []),
-            "native_link_strategy": attrs.option(attrs.enum(NativeLinkStrategy), default = None),
             "needed_coverage": attrs.list(attrs.tuple(attrs.int(), attrs.dep(), attrs.option(attrs.string())), default = []),
             "platform_deps": attrs.list(attrs.tuple(attrs.regex(), attrs.set(attrs.dep(), sorted = True)), default = []),
             "platform_linker_flags": attrs.list(attrs.tuple(attrs.regex(), attrs.list(attrs.arg(anon_target_compatible = True))), default = []),
@@ -482,7 +611,8 @@ python_test = prelude_rule(
             "zip_safe": attrs.option(attrs.bool(), default = None),
         } |
         _typing_arg() |
-        test_common.attributes()
+        test_common.attributes() |
+        _python_test_attrs()
     ),
 )
 

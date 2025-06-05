@@ -116,6 +116,9 @@ LinkableNode = record(
     # It should be SharedInterfaceInfo | None
     shared_interface_info = field(typing.Any),
 
+    # Should this library only be used for build time linkage
+    stub = field(bool),
+
     # Only allow constructing within this file.
     _private = _DisallowConstruction,
 )
@@ -185,7 +188,8 @@ def create_linkable_node(
         # TODO(mattpayne): This type is incompatible with Autodeps.
         # Once the pyautotargets service is rolled out, we can change it back.
         # It should be SharedInterfaceInfo | None
-        shared_interface_info: typing.Any = None) -> LinkableNode:
+        shared_interface_info: typing.Any = None,
+        stub: bool = False) -> LinkableNode:
     for output_style in _get_required_outputs_for_linkage(preferred_linkage):
         expect(
             output_style in link_infos,
@@ -211,6 +215,7 @@ def create_linkable_node(
         linker_flags = linker_flags,
         ignore_force_static_follows_dependents = ignore_force_static_follows_dependents,
         shared_interface_info = shared_interface_info,
+        stub = stub,
         _private = _DisallowConstruction(),
     )
 
@@ -266,6 +271,41 @@ def create_linkable_graph(
         nodes = ctx.actions.tset(LinkableGraphTSet, **kwargs),
     )
 
+ReducedLinkableGraph = record(
+    # Label to information map for whole graph.
+    # Does not have entry for executable
+    nodes = field(dict[Label, LinkableNode]),
+
+    # Order of linkable in the graph as it would go into linker argsfile
+    # when building executable in static link strategy
+    link_order = field(dict[Label, int]),
+)
+
+def reduce_linkable_graph(graph: LinkableGraph) -> ReducedLinkableGraph:
+    linkable_nodes = {}
+    link_order = {}
+
+    # Link groups machinery may be used by something that does not
+    # store all information in dependency graph. E.g. python native dlopen
+    # So gathering link ordering starting from executable label may not collect all
+    # dependencies correctly. To account for that we add remaining pieces to
+    # final result. There is no particular reasoning behing putting remaining linkables first,
+    # but it is just more convenient to implement.
+    # So to make it work properly we start with `1` instead of `0` and return default `0` for linkables
+    # that we did not put into linkable graph nodes.
+    link_order_idx = 1
+
+    for node in filter(None, graph.nodes.traverse()):
+        if node.linkable:
+            linkable_nodes[node.label] = node.linkable
+            link_order[node.label] = link_order_idx
+            link_order_idx += 1
+
+    return ReducedLinkableGraph(
+        nodes = linkable_nodes,
+        link_order = link_order,
+    )
+
 def get_linkable_graph_node_map_func(graph: LinkableGraph):
     def get_linkable_graph_node_map() -> dict[Label, LinkableNode]:
         nodes = graph.nodes.traverse()
@@ -304,12 +344,6 @@ def linkable_graph(dep: Dependency) -> [LinkableGraph, None]:
         # `cxx_precompiled_header()` does not contribute to the link, only to compile
         return None
 
-    expect(
-        LinkableGraph in dep,
-        "{} provides `MergedLinkInfo`".format(dep.label) +
-        " but doesn't also provide `LinkableGraph`",
-    )
-
     return dep[LinkableGraph]
 
 def get_link_info(
@@ -327,14 +361,15 @@ def get_link_info(
 def get_deps_for_link(
         node: LinkableNode,
         strategy: LinkStrategy,
-        pic_behavior: PicBehavior) -> list[Label]:
+        pic_behavior: PicBehavior,
+        overridden_preferred_linkage: Linkage | None = None) -> list[Label]:
     """
     Return deps to follow when linking against this node with the given link
     style.
     """
 
     # If we're linking statically, include non-exported deps.
-    output_style = get_lib_output_style(strategy, node.preferred_linkage, pic_behavior)
+    output_style = get_lib_output_style(strategy, overridden_preferred_linkage if overridden_preferred_linkage else node.preferred_linkage, pic_behavior)
     if output_style != LibOutputStyle("shared_lib"):
         return node.all_deps
     else:

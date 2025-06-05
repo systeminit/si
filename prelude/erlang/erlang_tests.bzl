@@ -9,7 +9,6 @@ load("@prelude//:paths.bzl", "paths")
 load("@prelude//utils:utils.bzl", "dedupe_by_value")
 load(
     ":erlang_build.bzl",
-    "BuildEnvironment",
     "erlang_build",
     "module_name",
 )
@@ -70,11 +69,9 @@ def erlang_tests_macro(
         )
         deps.append(":" + srcs_app)
 
-    target_resources = list(resources)
-
     if not property_tests:
         first_suite = suites[0]
-        prop_target = generate_file_map_target(first_suite, "property_test")
+        prop_target = generate_file_map_target(first_suite, None, "property_test")
         if prop_target:
             property_tests = [prop_target]
 
@@ -85,15 +82,16 @@ def erlang_tests_macro(
     for suite in suites:
         # forward resources and deps fields and generate erlang_test target
         (suite_name, _ext) = paths.split_extension(paths.basename(suite))
+        suite_name = normalize_suite_name(suite_name)
         if not suite_name.endswith("_SUITE"):
             fail("erlang_tests target only accept suite as input, found " + suite_name)
 
         # check if there is a data folder and add it as resource if existing
         data_dir_name = "{}_data".format(suite_name)
-        suite_resource = target_resources
-        data_target = generate_file_map_target(suite, data_dir_name)
+        suite_resource = resources
+        data_target = generate_file_map_target(suite, prefix, data_dir_name)
         if data_target:
-            suite_resource = [target for target in target_resources]
+            suite_resource = list(suite_resource)  # copy
             suite_resource.append(data_target)
 
         if prefix != None:
@@ -109,6 +107,22 @@ def erlang_tests_macro(
             **common_attributes
         )
 
+def normalize_suite_name(suite_name: str) -> str:
+    return suite_name.replace(":", "_")
+
+default_test_args = cmd_args(
+    "-mode",
+    "minimal",
+    "-noinput",
+    "-noshell",
+    "+A0",
+    "+S1:1",
+    "+sbtu",
+    "-run",
+    "test_binary",  # provided by ctx.attr._test_binary_lib
+    "main",
+)
+
 def erlang_test_impl(ctx: AnalysisContext) -> list[Provider]:
     toolchains = select_toolchains(ctx)
     primary_toolchain_name = get_primary(ctx)
@@ -118,80 +132,39 @@ def erlang_test_impl(ctx: AnalysisContext) -> list[Provider]:
     deps = ctx.attrs.deps + [ctx.attrs._test_binary_lib]
 
     # collect all dependencies
-    all_direct_dependencies = check_dependencies(deps, [ErlangAppInfo, ErlangTestInfo])
-    dependencies = flatten_dependencies(ctx, all_direct_dependencies)
+    check_dependencies(deps, [ErlangAppInfo, ErlangTestInfo])
+    dependencies = flatten_dependencies(ctx, deps)
 
     # prepare build environment
-    pre_build_environment = erlang_build.prepare_build_environment(ctx, primary_toolchain, dependencies)
+    build_environment = erlang_build.prepare_build_environment(ctx, primary_toolchain, dependencies)
 
-    pre_build_environment = erlang_build.utils.peek_private_includes(
+    erlang_build.utils.peek_private_includes(
         ctx,
         primary_toolchain,
-        pre_build_environment,
+        build_environment,
         dependencies,
         force_peek = True,
-    )
-
-    # Records are immutable, hence we need to create a new record from the previous one.
-    build_environment = BuildEnvironment(
-        includes = pre_build_environment.includes,
-        private_includes = pre_build_environment.private_includes,
-        beams = pre_build_environment.beams,
-        priv_dirs = pre_build_environment.priv_dirs,
-        include_dirs = pre_build_environment.include_dirs,
-        private_include_dir = pre_build_environment.private_include_dir,
-        ebin_dirs = pre_build_environment.ebin_dirs,
-        deps_files = pre_build_environment.deps_files,
-        app_files = pre_build_environment.app_files,
-        full_dependencies = pre_build_environment.full_dependencies,
-        # convenience storrage
-        app_includes = pre_build_environment.app_includes,
-        app_beams = pre_build_environment.app_beams,
-        app_chunks = pre_build_environment.app_chunks,
-        # input mapping
-        input_mapping = pre_build_environment.input_mapping,
     )
 
     # Config files for ct
     config_files = [config_file[DefaultInfo].default_outputs[0] for config_file in ctx.attrs.config_files]
 
-    trampolines = ctx.attrs._trampolines
-    if ctx.attrs._trampoline != None:
-        if trampolines != None:
-            fail("_trampoline and _trampolines can't be both provided")
-        trampolines = [ctx.attrs._trampoline]
+    cmd = cmd_args([trampoline[RunInfo] for trampoline in ctx.attrs._trampolines])
+    cmd.add(tools.erl, default_test_args)
 
-    cmd = cmd_args([])
-    if trampolines:
-        cmd.add(*[trampoline[RunInfo] for trampoline in trampolines])
-
-    binary_lib_deps = flatten_dependencies(ctx, check_dependencies([ctx.attrs._test_binary_lib], [ErlangAppInfo]))
-    cmd.add([
-        tools.erl,
-        "-mode",
-        "minimal",
-        "-noinput",
-        "-noshell",
-        "+A0",
-        "+S1:1",
-        "+sbtu",
-        "-run",
-        "test_binary",  # provided by ctx.attr._test_binary_lib
-        "main",
-    ])
-
-    for dep in binary_lib_deps.values():
-        if dep[ErlangAppInfo].virtual:
-            continue
-        app_folder = dep[ErlangAppInfo].app_folders[primary_toolchain_name]
-        cmd.add(["-pa", cmd_args(app_folder, format = "{}/ebin", delimiter = "")])
-
-    cmd.add(["--"])
+    binary_lib_deps = flatten_dependencies(ctx, [ctx.attrs._test_binary_lib])
+    app_folders = [
+        dep[ErlangAppInfo].app_folders[primary_toolchain_name]
+        for dep in binary_lib_deps.values()
+        if not dep[ErlangAppInfo].virtual
+    ]
+    cmd.add(cmd_args(app_folders, format = "{}/ebin", prepend = "-pa"))
+    cmd.add("--")
 
     suite = ctx.attrs.suite
     suite_name = module_name(suite)
 
-    build_environment = erlang_build.build_steps.generate_beam_artifacts(
+    erlang_build.build_steps.generate_beam_artifacts(
         ctx,
         primary_toolchain,
         build_environment,
@@ -199,13 +172,14 @@ def erlang_test_impl(ctx: AnalysisContext) -> list[Provider]:
         [suite],
     )
 
-    ebin_dir = paths.dirname(build_environment.ebin_dirs["tests"].short_path)
+    beam = build_environment.beams["tests"][suite_name]
+    ebin_dir = paths.dirname(beam.short_path)
 
     suite_data = paths.join(ebin_dir, suite_name + "_data")
     data_dir = _build_resource_dir(ctx, ctx.attrs.resources, suite_data)
     property_dir = _build_resource_dir(ctx, ctx.attrs.property_tests, paths.join(ebin_dir, "property_test"))
 
-    output_dir = link_output(ctx, suite_name, build_environment, data_dir, property_dir)
+    output_dir = link_output(ctx, beam, data_dir, property_dir)
     test_info_file = _write_test_info_file(
         ctx = ctx,
         test_suite = suite_name,
@@ -213,19 +187,11 @@ def erlang_test_impl(ctx: AnalysisContext) -> list[Provider]:
         test_dir = output_dir,
         config_files = config_files,
         erl_cmd = primary_toolchain.otp_binaries.erl,
+        raw_target = str(ctx.label.raw_target()) if ctx.label else "",
     )
     cmd.add(test_info_file)
 
-    hidden_args = []
-
     default_info = _build_default_info(ctx, dependencies, output_dir)
-    for output_artifact in default_info.other_outputs:
-        hidden_args.append(output_artifact)
-    for config_file in config_files:
-        hidden_args.append(config_file)
-
-    hidden_args.append(output_dir)
-    cmd.add(cmd_args(hidden = hidden_args))
 
     # prepare shell dependencies
     additional_shell_paths = [
@@ -238,23 +204,21 @@ def erlang_test_impl(ctx: AnalysisContext) -> list[Provider]:
     # So we wrap everything in extra double-quotes to protect from spaces in the path
     test_info_file_arg = cmd_args(test_info_file, format = '"<<\\"${REPO_ROOT}/{}\\">>"')
 
-    additional_shell_args = cmd_args([
-        cmd_args(["-test_cli_lib", "test_info_file", test_info_file_arg], delimiter = " "),
+    additional_shell_args = cmd_args(
+        cmd_args("-test_cli_lib", "test_info_file", test_info_file_arg, delimiter = " "),
         cmd_args("-eval", ctx.attrs.preamble, quote = "shell", delimiter = " "),
         "-noshell",
-    ])
+    )
 
-    all_direct_shell_dependencies = check_dependencies([ctx.attrs._cli_lib], [ErlangAppInfo])
-    cli_lib_deps = flatten_dependencies(ctx, all_direct_shell_dependencies)
-
+    cli_lib_deps = flatten_dependencies(ctx, [ctx.attrs._cli_lib])
     shell_deps = dict(dependencies)
-    shell_deps.update(**{name: dep for (name, dep) in cli_lib_deps.items() if ErlangAppInfo in dep})
+    shell_deps.update(cli_lib_deps)
 
     run_info = erlang_shell.build_run_info(
         ctx,
         dependencies = shell_deps.values(),
         additional_paths = additional_shell_paths,
-        additional_args = [additional_shell_args],
+        additional_args = additional_shell_args,
     )
 
     re_executor = get_re_executor_from_props(ctx)
@@ -299,7 +263,8 @@ def _write_test_info_file(
         dependencies: ErlAppDependencies,
         test_dir: Artifact,
         config_files: list[Artifact],
-        erl_cmd: [cmd_args, Artifact]) -> Artifact:
+        erl_cmd: [cmd_args, Artifact],
+        raw_target: str) -> WriteJsonCliArgs:
     dependency_paths = _list_code_paths(ctx, dependencies)
     tests_info = {
         "artifact_annotation_mfa": ctx.attrs._artifact_annotation_mfa,
@@ -311,30 +276,29 @@ def _write_test_info_file(
         "extra_ct_hooks": ctx.attrs.extra_ct_hooks,
         "extra_flags": ctx.attrs.extra_erl_flags,
         "providers": ctx.attrs._providers,
+        "raw_target": raw_target,
         "test_dir": test_dir,
         "test_suite": test_suite,
     }
     test_info_file = ctx.actions.declare_output("tests_info")
-    ctx.actions.write_json(test_info_file, tests_info)
-    return test_info_file
+    return ctx.actions.write_json(test_info_file, tests_info, with_inputs = True)
 
-def _list_code_paths(ctx: AnalysisContext, dependencies: ErlAppDependencies) -> list[[Artifact, cmd_args]]:
+def _list_code_paths(ctx: AnalysisContext, dependencies: ErlAppDependencies) -> cmd_args:
     """lists all ebin/ dirs from the test targets dependencies"""
     primary_toolchain_name = get_primary(ctx)
+    app_folders = []
     folders = []
     for dependency in dependencies.values():
         if ErlangAppInfo in dependency:
             dep_info = dependency[ErlangAppInfo]
             if not dep_info.virtual:
-                folders.append(cmd_args(
-                    dep_info.app_folders[primary_toolchain_name],
-                    format = "{}/ebin",
-                    delimiter = "",
-                ))
+                app_folders.append(dep_info.app_folders[primary_toolchain_name])
         elif ErlangTestInfo in dependency:
             dep_info = dependency[ErlangTestInfo]
             folders.append(dep_info.output_dir)
-    return folders
+    args = cmd_args(folders)
+    args.add(cmd_args(app_folders, format = "{}/ebin"))
+    return args
 
 def _build_resource_dir(ctx: AnalysisContext, resources: list, target_dir: str) -> Artifact:
     """ build mapping for suite data directory
@@ -346,7 +310,10 @@ def _build_resource_dir(ctx: AnalysisContext, resources: list, target_dir: str) 
     for resource in resources:
         files = resource[DefaultInfo].default_outputs
         for file in files:
-            include_symlinks[file.short_path] = file
+            if file.short_path in include_symlinks:
+                fail("duplicate resource file: `{}`, defined in {} and {}".format(file.short_path, include_symlinks[file.short_path], file))
+            else:
+                include_symlinks[file.short_path] = file
     return ctx.actions.symlinked_dir(
         target_dir,
         include_symlinks,
@@ -354,33 +321,45 @@ def _build_resource_dir(ctx: AnalysisContext, resources: list, target_dir: str) 
 
 def link_output(
         ctx: AnalysisContext,
-        test_suite: str,
-        build_environment: BuildEnvironment,
+        beam: Artifact,
         data_dir: Artifact,
         property_dir: Artifact) -> Artifact:
     """Link the data_dirs and the test_suite beam in a single output folder."""
     link_spec = {}
-    beam = build_environment.app_beams[test_suite]
     link_spec[beam.basename] = beam
     link_spec[data_dir.basename] = data_dir
     link_spec[property_dir.basename] = property_dir
     link_spec[ctx.attrs.suite.basename] = ctx.attrs.suite
     return ctx.actions.symlinked_dir(ctx.attrs.name, link_spec)
 
-def generate_file_map_target(suite: str, dir_name: str) -> str:
+def generate_file_map_target(suite: str, prefix: str | None, dir_name: str) -> str:
     suite_dir = paths.dirname(suite)
     suite_name = paths.basename(suite)
-    files = glob([paths.join(suite_dir, dir_name, "**")])
+    if is_target(suite):
+        files = []
+    else:
+        files = glob([paths.join(suite_dir, dir_name, "**")])
+    if prefix != None:
+        target_suffix = "{}_{}".format(prefix, suite_name)
+    else:
+        target_suffix = suite_name
     if len(files):
         # generate target for data dir
         file_mapping(
-            name = "{}-{}".format(dir_name, suite_name),
+            name = "{}-{}".format(dir_name, target_suffix),
             mapping = preserve_structure(
                 path = paths.join(suite_dir, dir_name),
             ),
         )
         return ":{}-{}".format(dir_name, suite_name)
     return ""
+
+def is_target(suite: str) -> bool:
+    if suite.startswith(":"):
+        return True
+    if suite.find("//") != -1:
+        return True
+    return False
 
 def get_re_executor_from_props(ctx: AnalysisContext) -> [CommandExecutorConfig, None]:
     """

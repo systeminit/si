@@ -217,7 +217,8 @@ def _create_root(
         pic_behavior: PicBehavior,
         extra_ldflags: list[typing.Any] = [],
         prefer_stripped_objects: bool = False,
-        allow_cache_upload: bool = False) -> OmnibusRootProduct:
+        allow_cache_upload: bool = False,
+        hash_counter = 0) -> OmnibusRootProduct:
     """
     Link a root omnibus node.
     """
@@ -321,10 +322,14 @@ def _create_root(
             ctx,
             cxx_toolchain = toolchain_info,
             output = shared_library.output,
+            # Don't extract weak-undefined symbols, as passing these back into
+            # the omnibus link via `-u` causes undefined sym link failures.
+            weak = False,
             category_prefix = "omnibus",
             # Same as above.
             prefer_local = True,
             allow_cache_upload = allow_cache_upload,
+            hash_counter = hash_counter,
         ),
     )
 
@@ -432,6 +437,13 @@ def _is_shared_only(info: LinkableNode) -> bool:
     """
     return info.preferred_linkage == Linkage("shared")
 
+def _is_static_deps(info: LinkableNode) -> bool:
+    """
+    Return whether avoid excluding this nodes deps, even if this node is shared
+    -only.
+    """
+    return "omnibus_static_deps" in info.labels
+
 def _create_omnibus(
         ctx: AnalysisContext,
         spec: OmnibusSpec,
@@ -439,7 +451,8 @@ def _create_omnibus(
         pic_behavior: PicBehavior,
         extra_ldflags: list[typing.Any] = [],
         prefer_stripped_objects: bool = False,
-        allow_cache_upload: bool = False) -> CxxLinkResult:
+        allow_cache_upload: bool = False,
+        enable_distributed_thinlto = False) -> CxxLinkResult:
     inputs = []
 
     # Undefined symbols roots...
@@ -452,8 +465,7 @@ def _create_omnibus(
         inputs.append(LinkInfo(pre_flags = [
             get_undefined_symbols_args(
                 ctx = ctx,
-                cxx_toolchain = get_cxx_toolchain_info(ctx),
-                name = "__undefined_symbols__.linker_script",
+                name = "__undefined_symbols__.argsfile",
                 symbol_files = non_body_root_undefined_syms,
                 category = "omnibus_undefined_symbols",
             ),
@@ -555,7 +567,7 @@ def _create_omnibus(
             # just use it for omnibus.
             link_execution_preference = get_resolved_cxx_binary_link_execution_preference(ctx, [], False, toolchain_info),
             link_weight = linker_info.link_weight,
-            enable_distributed_thinlto = ctx.attrs.enable_distributed_thinlto,
+            enable_distributed_thinlto = enable_distributed_thinlto,
             identifier = soname,
             allow_cache_upload = allow_cache_upload,
         ),
@@ -569,25 +581,30 @@ def _build_omnibus_spec(
     use to link the various parts of omnibus.
     """
 
-    exclusion_roots = (
-        graph.excluded.keys() +
-        # Exclude any body nodes which can't be linked statically.
-        [
-            label
-            for label, info in graph.nodes.items()
-            if (label not in graph.roots) and _is_shared_only(info)
-        ]
-    )
-
     # Build up the set of all nodes that we have to exclude from omnibus linking
-    # (any node that is excluded will exclude all it's transitive deps).
-    excluded = {
-        label: None
-        for label in get_transitive_deps(
-            graph.nodes,
-            exclusion_roots,
-        )
-    }
+    excluded = {}
+
+    # Track excluded nodes that need to transitively exclude their children.
+    exclusion_roots = []
+    exclusion_roots.extend(graph.excluded.keys())
+
+    # Walk graph nodes, looking for ones to exclude.
+    for label, info in graph.nodes.items():
+        # Exclude any body nodes which can't be linked statically.
+        if (label not in graph.roots) and _is_shared_only(info):
+            # By default, we'll also exclude this nodes transitive children,
+            # but nodes can opt-out.
+            if _is_static_deps(info):
+                excluded[label] = None
+            else:
+                exclusion_roots.append(label)
+
+    # Recursively expand exluded roots and add them to the excluded list.
+    for label in get_transitive_deps(
+        graph.nodes,
+        exclusion_roots,
+    ):
+        excluded[label] = None
 
     # Finalized root nodes, after removing any excluded roots.
     roots = {
@@ -687,7 +704,9 @@ def create_omnibus_libraries(
         ctx: AnalysisContext,
         graph: OmnibusGraph,
         extra_ldflags: list[typing.Any] = [],
-        prefer_stripped_objects: bool = False) -> OmnibusSharedLibraries:
+        extra_root_ldflags: dict[Label, list[typing.Any]] = {},
+        prefer_stripped_objects: bool = False,
+        enable_distributed_thinlto = False) -> OmnibusSharedLibraries:
     spec = _build_omnibus_spec(ctx, graph)
     pic_behavior = get_cxx_toolchain_info(ctx).pic_behavior
 
@@ -696,9 +715,11 @@ def create_omnibus_libraries(
 
     libraries = []
     root_products = {}
+    counter = 0  # counter to avoid hash collisions
 
     # Link all root nodes against the dummy libomnibus lib.
     for label, root, link_deps in _ordered_roots(spec, pic_behavior):
+        counter += 1
         product = _create_root(
             ctx,
             spec,
@@ -708,9 +729,10 @@ def create_omnibus_libraries(
             link_deps,
             dummy_omnibus,
             pic_behavior,
-            extra_ldflags,
+            extra_ldflags + extra_root_ldflags.get(label, []),
             prefer_stripped_objects,
             allow_cache_upload = True,
+            hash_counter = counter,
         )
         if root.name != None:
             libraries.append(
@@ -732,6 +754,7 @@ def create_omnibus_libraries(
             pic_behavior,
             extra_ldflags,
             prefer_stripped_objects,
+            enable_distributed_thinlto = enable_distributed_thinlto,
             allow_cache_upload = True,
         )
         libraries.append(
