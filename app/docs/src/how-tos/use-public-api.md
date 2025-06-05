@@ -8,7 +8,7 @@ outline:
 This how-to assumes:
 
 - Basic [familiarity with System Initiative](../tutorials/getting-started)
-- Have generated a workspace scoped API token
+- Have generated a [workspace scoped API token](../explanation/generate-a-workspace-api-token)
 
 It will teach you how to use the
 [System Initiative Public API](../reference/public-api) to manage your

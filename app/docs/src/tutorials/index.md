@@ -15,5 +15,5 @@ rather than explaining why things work the way they do.
 - [Editing, Updating, and Contributing Components](./editing-components-and-contributing.md) - how to edit, upgrade, update, install and contribute assets.
 
 ## Vocabulary
-In this tutorial bits of System Initiative Vocabulary will be shown with a capital letter. 
-All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary) 
+In this tutorial bits of System Initiative Vocabulary will be shown with a capital letter.
+All definitions for these can be found here: [System Initative - Vocabulary](https://docs.systeminit.com/reference/vocabulary)

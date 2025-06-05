@@ -13,7 +13,7 @@ allows a user to be able to do the following:
 
 ### Required Parameters
 
-- **apiToken:** The API token. You can generate an API token on the workspace
+- **apiToken:** The API token. You can [generate an API token](../explanation/generate-a-workspace-api-token) on the workspace
   details page in the [auth portal](https://auth.systeminit.com). It is
   suggested to store this as a
   [secret for the GitHub Action](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions)
