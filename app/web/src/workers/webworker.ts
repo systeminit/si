@@ -148,7 +148,7 @@ const start = async (sqlite3: Sqlite3Static, testing: boolean) => {
       ? `OPFS is available, created persisted database at ${db.filename}`
       : `OPFS is not available, created transient database ${db.filename}`,
   );
-  await db.exec({ sql: "PRAGMA foreign_keys = ON;" });
+  db.exec({ sql: "PRAGMA foreign_keys = ON;" });
 };
 
 const initializeSQLite = async (testing: boolean) => {
@@ -170,7 +170,7 @@ const dropTables = async () => {
   DROP TABLE IF EXISTS changesets;
   DROP TABLE IF EXISTS weak_references;
   `;
-  await db.exec({ sql });
+  db.exec({ sql });
 };
 
 // INTEGER is 8 bytes, not large enough to store ULIDs
@@ -251,7 +251,7 @@ const ensureTables = async (testing: boolean) => {
    *  - DELETE FROM indexes WHERE change_set_id=<this_changeSetId> AND checksum=<old_index_checksum>
    */
 
-  return await db.exec({ sql });
+  return db.exec({ sql });
 };
 
 // NOTE: this is just for external test usage, do not use this within this file
@@ -296,7 +296,7 @@ const atomExistsOnIndexes = async (
   atom: Atom,
   checksum: Checksum,
 ): Promise<Checksum[]> => {
-  const rows = await db.exec({
+  const rows = db.exec({
     sql: `
     select
      index_checksum
@@ -317,12 +317,12 @@ const newIndex = async (
   meta: AtomMeta,
   fromIndexChecksum: string | undefined,
 ) => {
-  await db.exec({
+  db.exec({
     sql: `INSERT INTO indexes (checksum) VALUES (?);`,
     bind: [meta.toIndexChecksum],
   });
 
-  const rows = await db.exec({
+  const rows = db.exec({
     sql: `SELECT index_checksum FROM changesets WHERE change_set_id = ?`,
     bind: [meta.changeSetId],
     returnValue: "resultRows",
@@ -333,7 +333,7 @@ const newIndex = async (
     | typeof NOROW;
 
   if (fromIndexChecksum && fromIndexChecksum !== meta.toIndexChecksum) {
-    await db.exec({
+    db.exec({
       sql: `INSERT INTO index_mtm_atoms
         SELECT
           ?, kind, args, checksum
@@ -345,7 +345,7 @@ const newIndex = async (
     });
   } else if (lastKnownFromChecksum && lastKnownFromChecksum !== NOROW) {
     debug(`HIT ELSE BRANCH NEW FROM CHECKSUM SHIT`);
-    await db.exec({
+    db.exec({
       sql: `INSERT INTO index_mtm_atoms
         SELECT
           ?, kind, args, checksum
@@ -359,7 +359,7 @@ const newIndex = async (
     // we have a new change set and a patch at the same time
     // which means that the change set record did not exist, no from in the DB
     // but we have the from in the payload
-    await db.exec({
+    db.exec({
       sql: `INSERT INTO index_mtm_atoms
         SELECT
           ?, kind, args, checksum
@@ -373,7 +373,7 @@ const newIndex = async (
 };
 
 const removeAtom = async (indexChecksum: Checksum, atom: Required<Atom>) => {
-  await db.exec({
+  db.exec({
     sql: `
     DELETE FROM index_mtm_atoms
     WHERE index_checksum = ? AND kind = ? AND args = ? AND checksum = ?
@@ -398,7 +398,7 @@ const createAtom = async (atom: Atom, doc: object, _span?: Span) => {
 
   const encodedDoc = await encodeDocumentForDB(doc);
   try {
-    await db.exec({
+    db.exec({
       sql: `insert into atoms
         (kind, checksum, args, data)
           VALUES
@@ -443,7 +443,7 @@ const bustCacheAndReferences: BustCacheFn = async (
     select referrer_kind, referrer_args from weak_references where target_kind = ? and target_args = ? and change_set_id = ?;
   `;
   const bind = [kind, id, changeSetId];
-  const refs = await db.exec({
+  const refs = db.exec({
     sql,
     bind,
     returnValue: "resultRows",
@@ -568,7 +568,7 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
 const insertAtomMTM = async (atom: Atom, indexChecksum: Checksum) => {
   try {
     const bind = [indexChecksum, atom.kind, atom.id, atom.toChecksum];
-    const exists = await db.exec({
+    const exists = db.exec({
       sql: `select index_checksum, kind, args, checksum from index_mtm_atoms
         where index_checksum = ? and kind = ? and args = ? and checksum = ?
       ;`,
@@ -579,7 +579,7 @@ const insertAtomMTM = async (atom: Atom, indexChecksum: Checksum) => {
       return false; // no-op
     }
 
-    await db.exec({
+    db.exec({
       sql: `insert into index_mtm_atoms
         (index_checksum, kind, args, checksum)
           VALUES
@@ -607,7 +607,7 @@ const indexLogic = async (meta: AtomMeta, span?: Span) => {
     toIndexChecksum,
   });
 
-  const changeSetQuery = await db.exec({
+  const changeSetQuery = db.exec({
     sql: `select change_set_id, index_checksum from changesets where change_set_id = ?`,
     returnValue: "resultRows",
     bind: [meta.changeSetId],
@@ -619,7 +619,7 @@ const indexLogic = async (meta: AtomMeta, span?: Span) => {
     [changeSetExists, currentIndexChecksum] = [...changeSet];
   }
 
-  const indexQuery = await db.exec({
+  const indexQuery = db.exec({
     sql: `select checksum from indexes where checksum = ?`,
     returnValue: "resultRows",
     bind: [toIndexChecksum],
@@ -648,7 +648,7 @@ const indexLogic = async (meta: AtomMeta, span?: Span) => {
   if (indexExists === NOROW) await newIndex(meta, currentIndexChecksum);
 
   if (!changeSetExists) {
-    await db.exec({
+    db.exec({
       sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?);",
       bind: [meta.changeSetId, meta.workspaceId, toIndexChecksum],
     });
@@ -976,7 +976,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
 };
 
 const patchAtom = async (atom: Required<Atom>) => {
-  const atomRows = await db.exec({
+  const atomRows = db.exec({
     sql: `SELECT kind, args, checksum, data
       FROM atoms
       WHERE
@@ -999,7 +999,7 @@ const patchAtom = async (atom: Required<Atom>) => {
     afterDoc = applied.newDocument;
   }
 
-  await db.exec({
+  db.exec({
     sql: `
     insert into atoms
       (kind, args, checksum, data)
@@ -1248,7 +1248,7 @@ const mjolnirJob = async (
 };
 
 const updateChangeSetWithNewIndex = async (meta: AtomMeta) => {
-  await db.exec({
+  db.exec({
     sql: "update changesets set index_checksum = ? where change_set_id = ?;",
     bind: [meta.toIndexChecksum, meta.changeSetId],
   });
@@ -1258,7 +1258,7 @@ const removeOldIndex = async () => {
   await tracer.startActiveSpan("removeOldIndex", async (span) => {
     // Keep the last 5 indexes per changeset for debugging purposes
     // This helps track previous session checksums
-    const deleteIndexes = await db.exec({
+    const deleteIndexes = db.exec({
       sql: `
         DELETE FROM indexes
         WHERE checksum NOT IN (
@@ -1270,7 +1270,7 @@ const removeOldIndex = async () => {
     });
 
     // Only delete atoms that aren't referenced by any index (including retained ones)
-    const deleteAtoms = await db.exec({
+    const deleteAtoms = db.exec({
       sql: `
         DELETE FROM atoms
         WHERE (kind, args, checksum) NOT IN (
@@ -1307,7 +1307,7 @@ const pruneAtomsForClosedChangeSet = async (
 ) => {
   await tracer.startActiveSpan("pruneClosedChangeSet", async (span) => {
     span.setAttributes({ workspaceId, changeSetId });
-    await db.exec({
+    db.exec({
       sql: `
         DELETE FROM changesets WHERE change_set_id = ?;
       `,
@@ -1322,7 +1322,7 @@ const atomChecksumsFor = async (
   changeSetId: ChangeSetId,
 ): Promise<Record<QueryKey, Checksum>> => {
   const mapping: Record<QueryKey, Checksum> = {};
-  const rows = await db.exec({
+  const rows = db.exec({
     sql: `
     select atoms.kind, atoms.args, atoms.checksum
     from atoms
@@ -1438,7 +1438,7 @@ const ragnarok = async (
   noColdStart = false,
 ) => {
   // get rid of the indexes we have for this changeset
-  await db.exec({
+  db.exec({
     sql: `delete from indexes
           where checksum IN (
             select index_checksum
@@ -1467,7 +1467,7 @@ const clearAllWeakReferences = async (changeSetId: string) => {
     where change_set_id = ?
   ;`;
   const bind = [changeSetId];
-  await db.exec({
+  db.exec({
     sql,
     bind,
   });
@@ -1482,7 +1482,7 @@ const clearWeakReferences = async (
     where change_set_id = ? and referrer_kind = ? and referrer_args = ?
   ;`;
   const bind = [changeSetId, referrer.kind, referrer.args];
-  await db.exec({
+  db.exec({
     sql,
     bind,
   });
@@ -1508,7 +1508,7 @@ const weakReference = async (
         (?, ?, ?, ?, ?)
       on conflict do nothing
     ;`;
-    await db.exec({
+    db.exec({
       sql,
       bind,
     });
@@ -2257,7 +2257,7 @@ const get = async (
     ;`;
   const bind = [indexChecksum ?? changeSetId, kind, id];
   const start = Date.now();
-  const atomData = await db.exec({
+  const atomData = db.exec({
     sql,
     bind,
     returnValue: "resultRows",
@@ -2533,7 +2533,7 @@ const dbInterface: DBInterface = {
   bobby: dropTables,
   ragnarok,
   changeSetExists: async (workspaceId: string, changeSetId: ChangeSetId) => {
-    const row = await db.exec({
+    const row = db.exec({
       sql: "select change_set_id from changesets where workspace_id = ? and change_set_id = ?",
       returnValue: "resultRows",
       bind: [workspaceId, changeSetId],
@@ -2598,7 +2598,7 @@ const dbInterface: DBInterface = {
         throw new Error(`HEAD is missing: ${workspaceId}: ${headChangeSet}`);
       const currentIndexChecksum = headRow;
 
-      await db.exec({
+      db.exec({
         sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?);",
         bind: [changeSetId, workspaceId, currentIndexChecksum],
       });
