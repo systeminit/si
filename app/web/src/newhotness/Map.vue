@@ -11,7 +11,7 @@
       <ComponentGridTile
         :component="selectedComponent"
         hideConnections
-        @dblclick="componentNavigate(selectedComponent.id)"
+        @click="componentNavigate(selectedComponent.id)"
       />
       <ConnectionsPanel :component="selectedComponent" />
     </div>
@@ -46,8 +46,8 @@
       preserveAspectRatio="xMidYMid"
       :viewBox="`0 0 ${viewBox} ${viewBox}`"
       @wheel="wheel"
-      @mousedown.prevent="mousedown"
-      @mouseup="mouseup"
+      @mousedown.left.prevent="mousedown"
+      @mouseup.left="mouseup"
       @mousemove="mousemove"
     >
       <defs v-for="logo in logos" :key="logo">
@@ -75,6 +75,8 @@
       <g :transform="`matrix(${transformMatrix})`"></g>
       <circle :cx="origCenter" :cy="origCenter" r="5" fill="yellow" />
     </svg>
+
+    <ComponentContextMenu ref="componentContextMenuRef" />
   </section>
 </template>
 
@@ -116,13 +118,17 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { SelectionsInQueryString } from "./Workspace.vue";
-import { keyEmitter } from "./logic_composables/emitters";
+import { KeyDetails, keyEmitter } from "./logic_composables/emitters";
 import { assertIsDefined, Context } from "./types";
 import ComponentGridTile from "./ComponentGridTile.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import { getAssetIcon } from "./util";
+import ComponentContextMenu from "./ComponentContextMenu.vue";
 
 const props = defineProps<{ active: boolean }>();
+
+const componentContextMenuRef =
+  ref<InstanceType<typeof ComponentContextMenu>>();
 
 const selectedComponent = ref<BifrostComponent | null>(null);
 
@@ -266,23 +272,38 @@ const onEscape = () => {
   if (!active.value) return;
   selectedComponent.value = null;
 };
-onMounted(() => {
-  // if we need to adjust zoom level on load dynamically
-  // change it here
-  applyZoom();
-
+const onE = (e: KeyDetails["e"]) => {
+  if (selectedComponent.value && (e.ctrlKey || e.metaKey)) {
+    componentContextMenuRef.value?.componentsStartErase([
+      selectedComponent.value.id,
+    ]);
+  }
+};
+const mountKeyEmitters = () => {
   keyEmitter.on("ArrowDown", onArrowDown);
   keyEmitter.on("ArrowUp", onArrowUp);
   keyEmitter.on("ArrowLeft", onArrowLeft);
   keyEmitter.on("ArrowRight", onArrowRight);
   keyEmitter.on("Escape", onEscape);
-});
-onBeforeUnmount(() => {
+  keyEmitter.on("e", onE);
+};
+const removeKeyEmitters = () => {
   keyEmitter.off("ArrowDown", onArrowDown);
   keyEmitter.off("ArrowUp", onArrowUp);
   keyEmitter.off("ArrowLeft", onArrowLeft);
   keyEmitter.off("ArrowRight", onArrowRight);
   keyEmitter.off("Escape", onEscape);
+  keyEmitter.off("e", onE);
+};
+onMounted(() => {
+  // if we need to adjust zoom level on load dynamically
+  // change it here
+  applyZoom();
+
+  mountKeyEmitters();
+});
+onBeforeUnmount(() => {
+  removeKeyEmitters();
 });
 
 const mousemove = (event: MouseEvent) => {
@@ -440,12 +461,16 @@ const WIDTH = 250;
 const HEIGHT = 75;
 
 const router = useRouter();
-const clickedNode = (n: layoutNode) => {
+const clickedNode = (e: MouseEvent, n: layoutNode) => {
+  e.preventDefault();
   if (selectedComponent.value?.id === n.component.id) {
     selectedComponent.value = null;
-    return;
+    componentContextMenuRef.value?.close();
+  } else {
+    selectedComponent.value = n.component;
+    // TODO - figure out menu placement here!
+    // componentContextMenuRef.value?.open(IDK, [n.component.id]);
   }
-  selectedComponent.value = n.component;
 };
 
 watch(selectedComponent, () => {
@@ -550,8 +575,11 @@ watch(
               selectedComponent.value?.id === d.component.id && "selected"
             }`,
         )
-        .on("click", (_e: Event, d: layoutNode) => {
-          clickedNode(d);
+        .on("click", (e: MouseEvent, d: layoutNode) => {
+          clickedNode(e, d);
+        })
+        .on("contextmenu", (e: MouseEvent, d: layoutNode) => {
+          clickedNode(e, d);
         })
         .on("dblclick", (_e: Event, d: layoutNode) => {
           componentNavigate(d.component.id);
@@ -567,7 +595,8 @@ watch(
           ]);
         })
         .attr("stroke", (d) => d.component.color ?? "#111111")
-        .attr("stroke-width", 3);
+        .attr("stroke-width", 3)
+        .attr("pointer-events", "none"); // prevents this from being clickable
 
       // logos
       groups
@@ -576,6 +605,7 @@ watch(
         .attr("transform", () => {
           return "translate(23, 35)";
         })
+        .attr("pointer-events", "none") // prevents this from being clickable
         .style("fill", (d) => {
           const icon = getAssetIcon(d.component.schemaCategory);
           return `url(#${icon})`;
@@ -588,7 +618,8 @@ watch(
         .attr("dx", "45")
         .attr("dy", "25")
         .attr("class", "name")
-        .attr("alignment-baseline", "middle");
+        .attr("alignment-baseline", "middle")
+        .attr("pointer-events", "none"); // prevents this from being clickable
 
       groups
         .append("text")
@@ -596,7 +627,8 @@ watch(
         .attr("dx", "45")
         .attr("dy", "45")
         .attr("alignment-baseline", "middle")
-        .attr("color", "white");
+        .attr("color", "white")
+        .attr("pointer-events", "none"); // prevents this from being clickable
 
       // qual & resource icons
       groups.each(function doTheIcons(d) {
@@ -611,6 +643,7 @@ watch(
             .attr("transform", () => {
               return `translate(${WIDTH - 13 - 23 * idx}, ${HEIGHT - 9})`;
             })
+            .attr("pointer-events", "none")
             .style("fill", () => {
               return icon ? `url(#${icon})` : "none";
             });

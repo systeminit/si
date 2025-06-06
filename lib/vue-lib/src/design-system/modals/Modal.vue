@@ -76,7 +76,7 @@
                 :class="
                   clsx(
                     'border-neutral-200 dark:border-shade-100 flex flex-col place-content-center text-sm',
-                    !noInnerPadding && 'p-sm',
+                    !noInnerPadding && !noWrapper && 'p-sm',
                     !noWrapper && 'border-t',
                   )
                 "
@@ -256,15 +256,15 @@ function exitHandler() {
 
 const saveLabel = toRef(props, "saveLabel", "Create");
 
-const onChromeClick = () => {
-  emit("click");
+const onChromeClick = (e: MouseEvent) => {
+  emit("click", e);
 };
 
 const emit = defineEmits<{
   close: [];
   closeComplete: [];
   save: [];
-  click: [];
+  click: [e: MouseEvent];
 }>();
 
 defineExpose({ open, close, isOpen });

@@ -135,7 +135,7 @@
           :style="inputWindowStyles"
         >
           <!-- top input row, looks mostly the same as the unselected input -->
-          <div class="grid grid-cols-2 pl-xs gap-2xs">
+          <div class="grid grid-cols-2 pl-xs gap-2xs relative">
             <div class="flex flex-row items-center gap-2xs">
               <TruncateWithTooltip>{{ displayName }}</TruncateWithTooltip>
               <IconButton
@@ -173,7 +173,17 @@
               @keydown.enter.prevent="onEnter"
               @keydown.tab="onTab"
             />
-            <TextPill class="absolute text-xs right-sm top-sm">Tab</TextPill>
+            <Icon
+              v-if="wForm.bifrosting.value"
+              class="absolute right-[42px] top-xs pointer-events-none"
+              name="loader"
+              size="sm"
+              tone="action"
+            />
+            <TextPill
+              class="absolute text-xs right-xs top-[7px] pointer-events-none"
+              >Tab</TextPill
+            >
           </div>
 
           <!-- raw value selection area -->
