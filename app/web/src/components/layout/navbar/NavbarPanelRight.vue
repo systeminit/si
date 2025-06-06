@@ -64,8 +64,13 @@
             "
             icon="trash"
             label="Ragnarok"
-            @click="() => heimdall.ragnarok(changeSetsStore.selectedWorkspacePk!,
-                changeSetsStore.selectedChangeSetId!)"
+            @click="
+              () =>
+                heimdall.ragnarok(
+                  changeSetsStore.selectedWorkspacePk!,
+                  changeSetsStore.selectedChangeSetId!,
+                )
+            "
           />
 
           <hr
@@ -103,6 +108,8 @@
 
     <ProfileButton :showTopLevelMenuItems="collapse" />
 
+    <ApplyChangeSetButton v-if="useNewUI" />
+
     <Modal ref="modalRef" title="Throw">
       <Stack>
         <VormInput v-model="entityKind" label="Entity Kind" type="text" />
@@ -135,6 +142,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { sdfApiInstance } from "@/store/apis.web";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { EntityKind } from "@/workers/types/entity_kind_types";
+import ApplyChangeSetButton from "@/newhotness/ApplyChangeSetButton.vue";
 import NavbarButton from "./NavbarButton.vue";
 import Collaborators from "./Collaborators.vue";
 import Notifications from "./Notifications.vue";
