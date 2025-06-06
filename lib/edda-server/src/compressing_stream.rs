@@ -1,5 +1,8 @@
 use std::{
-    collections::VecDeque,
+    collections::{
+        HashMap,
+        VecDeque,
+    },
     error,
     fmt,
     mem,
@@ -15,6 +18,7 @@ use futures::{
     FutureExt,
     Stream,
     StreamExt,
+    TryStreamExt,
     future::BoxFuture,
 };
 use naxum::extract::FromMessage;
@@ -45,6 +49,8 @@ use crate::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum CompressingStreamError {
+    #[error("failed to get count of messages on subject {0}; setting value to `1`")]
+    CalculateReadWindowCountNotFound(Subject),
     #[error("failed to compress requests; skipping requests & deleting messages: {0}")]
     CompressedRequest(CompressedRequestError),
     #[error("failed to compress requests; skipping requests, deleting messages & closing: {0}")]
@@ -95,7 +101,21 @@ enum State {
     #[default]
     /// 1. Reading the first message from the subscription
     ReadFirstMessage,
-    /// 2. Parsing the first message into an API request
+    /// 2. Calculating the number of messages to read, a.k.a the "read window"
+    CalculateReadWindow {
+        /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
+        subject: Option<Subject>,
+        /// The message to be parsed ([`Option`] for `mem::take()`)
+        message: Option<jetstream::Message>,
+        /// The stream sequence number of the first message
+        message_stream_sequence: u64,
+        /// A [`Future`] that calculates the read window
+        calculate_read_window_fut: BoxFuture<
+            'static,
+            result::Result<usize, Box<dyn error::Error + Send + Sync + 'static>>,
+        >,
+    },
+    /// 3. Parsing the first message into an API request
     ParseFirstRequest {
         /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
         subject: Option<Subject>,
@@ -107,7 +127,7 @@ enum State {
         parse_message_fut:
             BoxFuture<'static, result::Result<ApiTypesNegotiate, ApiTypesNegotiateRejection>>,
     },
-    /// 3. Reading the next message from the subscription in the read window
+    /// 4. Reading the next message from the subscription in the read window
     ReadNextMessageInWindow {
         /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
         subject: Option<Subject>,
@@ -118,7 +138,7 @@ enum State {
         /// The accumulated list of stream sequence numbers to later delete
         stream_sequence_numbers: VecDeque<u64>,
     },
-    /// 4. Parsing the next message into an API request in the read window
+    /// 5. Parsing the next message into an API request in the read window
     ParseNextRequestInWindow {
         /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
         subject: Option<Subject>,
@@ -144,7 +164,7 @@ enum State {
         /// The accumulated list of stream sequence numbers to later delete
         stream_sequence_numbers: VecDeque<u64>,
     },
-    /// 6. Deleting a message from the Jetstream stream
+    /// 7. Deleting a message from the Jetstream stream
     DeleteStreamMessage {
         /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
         subject: Option<Subject>,
@@ -158,21 +178,21 @@ enum State {
         /// The number of successfully deleted messages
         deleted_count: usize,
     },
-    /// 7. Converting request into final message to yield from [`Stream`]
+    /// 8. Converting request into final message to yield from [`Stream`]
     YieldItem {
         /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
         subject: Option<Subject>,
         /// The compressed request to later yield ([`Option`] for `mem::take()`)
         compressed_request: Option<CompressedRequest>,
     },
-    /// 2.1 Deleting the first message after error
+    /// 3.1 Deleting the first message after error
     DeleteFirstMessageAfterError {
         /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
         subject: Option<Subject>,
         /// A [`Future`] that deletes a message from the Jetstream stream
         delete_message_fut: BoxFuture<'static, result::Result<(), DeleteMessageError>>,
     },
-    /// 3.1 Compressing remaining requests before closing [`Stream`]
+    /// 4.1 Compressing remaining requests before closing [`Stream`]
     CompressRequestsAndClose {
         /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
         subject: Option<Subject>,
@@ -182,7 +202,7 @@ enum State {
         /// The accumulated list of stream sequence numbers to later delete
         stream_sequence_numbers: VecDeque<u64>,
     },
-    /// 3.2 Deleting messages from the Jetstream stream before closing [`Stream`]
+    /// 4.2 Deleting messages from the Jetstream stream before closing [`Stream`]
     DeleteStreamMessageAndClose {
         /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
         subject: Option<Subject>,
@@ -196,7 +216,7 @@ enum State {
         /// The number of successfully deleted messages
         deleted_count: usize,
     },
-    /// 3.3. Converting request into final message to yield from [`Stream`] before closing
+    /// 4.3. Converting request into final message to yield from [`Stream`] before closing
     /// [`Stream`]
     YieldItemAndClose {
         /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
@@ -204,9 +224,9 @@ enum State {
         /// The compressed request to later yield ([`Option`] for `mem::take()`)
         compressed_request: Option<CompressedRequest>,
     },
-    /// 3.1.1 Closing the stream
+    /// 4.1.1 Closing the stream
     CloseStream,
-    /// 5.1 Deleting messages from the Jetstream stream after failing to compress requests
+    /// 6.1 Deleting messages from the Jetstream stream after failing to compress requests
     DeleteStreamMessageAfterCompressError {
         /// A [`Future`] that deletes a message from the Jetstream stream
         delete_message_fut: BoxFuture<'static, result::Result<(), DeleteMessageError>>,
@@ -215,7 +235,7 @@ enum State {
         /// The number of successfully deleted messages
         deleted_count: usize,
     },
-    /// 3.1.2 Deleting messages from the Jetstream stream after failing to compress requests before
+    /// 4.1.2 Deleting messages from the Jetstream stream after failing to compress requests before
     /// closing [`Stream`]
     DeleteStreamMessageAfterCompressErrorAndClose {
         /// A [`Future`] that deletes a message from the Jetstream stream
@@ -292,15 +312,11 @@ where
                     match this.subscription.poll_next_unpin(cx) {
                         // Read the first Jetstream message successfully
                         Poll::Ready(Some(Ok(message))) => {
-                            // Determine the number of messages pending for this consumer. This is
-                            // the number of messages we will unconditionally read in as our "read
-                            // window".
-                            //
                             // Determine the stream sequence number of this message so we can
                             // delete it later.
-                            let (read_window, message_stream_sequence) = match message.info() {
+                            let message_stream_sequence = match message.info() {
                                 // Info parsed successfully from the message
-                                Ok(info) => (info.pending + 1, info.stream_sequence),
+                                Ok(info) => info.stream_sequence,
                                 // Failed to parse [`Info`] from message
                                 Err(err) => {
                                     // We can't delete this message easily as the sequence number
@@ -326,18 +342,31 @@ where
                                 }
                             };
 
-                            span.record("read_window.count", read_window);
                             span.record("messaging.destination.name", message.subject.as_str());
 
                             let subject = Some(message.subject.clone());
+                            let fut_subject = message.subject.clone();
+
+                            let stream = this.stream.clone();
 
                             // Set next state and continue loop
-                            *this.state = State::ParseFirstRequest {
+                            *this.state = State::CalculateReadWindow {
                                 subject,
-                                read_window: read_window as usize,
+                                message: Some(message),
                                 message_stream_sequence,
-                                parse_message_fut: Box::pin(async move {
-                                    ApiTypesNegotiate::from_message(message.into(), &()).await
+                                calculate_read_window_fut: Box::pin(async move {
+                                    let info: HashMap<_, _> = stream
+                                        .info_with_subjects(fut_subject.as_str())
+                                        .await?
+                                        .try_collect()
+                                        .await?;
+
+                                    let message_count_on_subject =
+                                        info.get(fut_subject.as_str()).copied().ok_or(
+                                            Error::CalculateReadWindowCountNotFound(fut_subject),
+                                        )?;
+
+                                    Ok(message_count_on_subject)
                                 }),
                             };
                             continue;
@@ -368,7 +397,79 @@ where
                         Poll::Pending => return Poll::Pending,
                     }
                 }
-                // 2. Parsing the first message into an API request
+                // 2. Calculating the number of messages to read, a.k.a the "read window"
+                State::CalculateReadWindow {
+                    subject,
+                    message,
+                    message_stream_sequence,
+                    calculate_read_window_fut,
+                } => {
+                    // Caclulate the number of messages available to read, a.k.a the "read window".
+                    // This is the number of messages we will unconditionally read in as our "read
+                    // window".
+                    match calculate_read_window_fut.poll_unpin(cx) {
+                        // Read window calculated successfully
+                        Poll::Ready(Ok(read_window)) => {
+                            span.record("read_window.count", read_window);
+
+                            let message = message
+                                .take()
+                                .expect("extracting owned value only happens once");
+
+                            debug!(
+                                first_message_info_pending = message
+                                    .info()
+                                    .map(|info| info.pending as isize)
+                                    .unwrap_or(-1),
+                                stream_info_with_subjects_count = read_window,
+                                "calculated number of messages to read"
+                            );
+
+                            // Set next state and continue loop
+                            *this.state = State::ParseFirstRequest {
+                                subject: subject.take(),
+                                read_window,
+                                message_stream_sequence: *message_stream_sequence,
+                                parse_message_fut: Box::pin(async move {
+                                    ApiTypesNegotiate::from_message(message.into(), &()).await
+                                }),
+                            };
+                            continue;
+                        }
+                        // Failed to determine read window
+                        Poll::Ready(Err(err)) => {
+                            // We can't determine the read window, so we'll set it to `1` and
+                            // continue as there is work we can do with the first message
+                            warn!(
+                                si.error.message = ?err,
+                                concat!(
+                                    "failed calculate read window; ",
+                                    "setting value to `1`",
+                                ),
+                            );
+
+                            let read_window = 1;
+
+                            let message = message
+                                .take()
+                                .expect("extracting owned value only happens once");
+
+                            // Set next state and continue loop
+                            *this.state = State::ParseFirstRequest {
+                                subject: subject.take(),
+                                read_window,
+                                message_stream_sequence: *message_stream_sequence,
+                                parse_message_fut: Box::pin(async move {
+                                    ApiTypesNegotiate::from_message(message.into(), &()).await
+                                }),
+                            };
+                            continue;
+                        }
+                        // Pending on parse message, so we are pending too
+                        Poll::Pending => return Poll::Pending,
+                    }
+                }
+                // 3. Parsing the first message into an API request
                 State::ParseFirstRequest {
                     subject,
                     read_window,
@@ -479,7 +580,7 @@ where
                         Poll::Pending => return Poll::Pending,
                     }
                 }
-                // 3. Reading the next message from the subscription in the read window
+                // 4. Reading the next message from the subscription in the read window
                 State::ReadNextMessageInWindow {
                     subject,
                     read_window,
@@ -592,7 +693,7 @@ where
                         Poll::Pending => return Poll::Pending,
                     }
                 }
-                // 4. Parsing the next message into an API request in the read window
+                // 5. Parsing the next message into an API request in the read window
                 State::ParseNextRequestInWindow {
                     subject,
                     read_window,
@@ -673,7 +774,7 @@ where
                         Poll::Pending => return Poll::Pending,
                     }
                 }
-                // 5. Compressing multiple API requests into a single compressed request
+                // 6. Compressing multiple API requests into a single compressed request
                 State::CompressRequests {
                     subject,
                     compress_messages_fut,
@@ -771,7 +872,7 @@ where
                         Poll::Pending => return Poll::Pending,
                     }
                 }
-                // 6. Deleting a message from the Jetstream stream
+                // 7. Deleting a message from the Jetstream stream
                 State::DeleteStreamMessage {
                     subject,
                     delete_message_fut,
@@ -916,7 +1017,7 @@ where
                         Poll::Pending => return Poll::Pending,
                     }
                 }
-                // 7. Converting request into final message to yield from [`Stream`]
+                // 8. Converting request into final message to yield from [`Stream`]
                 State::YieldItem {
                     subject,
                     compressed_request,
@@ -964,7 +1065,7 @@ where
                     *this.span = None;
                     return Poll::Ready(Some(Ok(local_message)));
                 }
-                // 2.1 Deleting the initial message after error
+                // 3.1 Deleting the initial message after error
                 State::DeleteFirstMessageAfterError {
                     subject,
                     delete_message_fut,
@@ -996,7 +1097,7 @@ where
                     *this.span = None;
                     continue;
                 }
-                // 3.1 Compressing remaining requests before closing [`Stream`]
+                // 4.1 Compressing remaining requests before closing [`Stream`]
                 State::CompressRequestsAndClose {
                     subject,
                     compress_messages_fut,
@@ -1098,7 +1199,7 @@ where
                         Poll::Pending => return Poll::Pending,
                     }
                 }
-                // 3.2 Deleting messages from the Jetstream stream before closing [`Stream`]
+                // 4.2 Deleting messages from the Jetstream stream before closing [`Stream`]
                 State::DeleteStreamMessageAndClose {
                     subject,
                     delete_message_fut,
@@ -1241,7 +1342,7 @@ where
                         Poll::Pending => return Poll::Pending,
                     }
                 }
-                // 3.3. Converting request into final message to yield from [`Stream`] before
+                // 4.3. Converting request into final message to yield from [`Stream`] before
                 // closing [`Stream`]
                 State::YieldItemAndClose {
                     subject,
@@ -1291,12 +1392,12 @@ where
                     span.record_ok();
                     return Poll::Ready(Some(Ok(local_message)));
                 }
-                // 3.1.1 Closing the stream
+                // 4.1.1 Closing the stream
                 State::CloseStream => {
                     // Don't record span either way as it may have already been marked ok/err
                     return Poll::Ready(None);
                 }
-                // 5.1 Deleting messages from the Jetstream stream after failing to compress
+                // 6.1 Deleting messages from the Jetstream stream after failing to compress
                 // requests
                 State::DeleteStreamMessageAfterCompressError {
                     delete_message_fut,
@@ -1397,6 +1498,8 @@ where
                         Poll::Pending => return Poll::Pending,
                     }
                 }
+                // 4.1.2 Deleting messages from the Jetstream stream after failing to compress
+                // requests before closing [`Stream`]
                 State::DeleteStreamMessageAfterCompressErrorAndClose {
                     delete_message_fut,
                     stream_sequence_numbers,

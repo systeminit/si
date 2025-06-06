@@ -354,7 +354,7 @@ pub async fn map_all_nodes_to_change_objects(
         si.change_set.id = %change_set_id,
         si.snapshot_from_address = %from_snapshot_address,
         si.snapshot_to_address = %to_snapshot_address,
-        si.edda_request.changes = Empty,
+        si.edda_request.changes.count = changes.len(),
     )
 )]
 pub async fn build_mv_for_changes_in_change_set(
@@ -369,7 +369,6 @@ pub async fn build_mv_for_changes_in_change_set(
     debug!("building for changes: {:?}", changes);
     let span = current_span_for_instrument_at!("info");
     span.record("si.workspace.id", workspace_id.to_string());
-    span.record("si.edda_request.changes", format!("{:?}", changes));
     let (index_frontend_object, index_kv_revision) = frigg
         .get_index(ctx.workspace_pk()?, change_set_id)
         .await?
