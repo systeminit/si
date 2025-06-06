@@ -559,7 +559,7 @@ const valueForm = wForm.newForm({
     }
   },
   watchFn: () => {
-    return [attrData, props.externalSources];
+    return [attrData.value, props.externalSources];
   },
 });
 

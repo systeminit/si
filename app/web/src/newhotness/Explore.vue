@@ -306,7 +306,7 @@ const kind = computed(() =>
   selectedView.value ? EntityKind.ViewComponentList : EntityKind.ComponentList,
 );
 const id = computed(() =>
-  selectedView.value ? selectedView.value : ctx.changeSetId.value,
+  selectedView.value ? selectedView.value : ctx.workspacePk.value,
 );
 const componentQueryKey = key(kind, id);
 
