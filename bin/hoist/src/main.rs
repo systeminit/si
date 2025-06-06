@@ -74,7 +74,7 @@ async fn main() -> Result<()> {
 
     let endpoint = &args.endpoint;
     let token = &args.token;
-    let client = ModuleIndexClient::new(Url::parse(endpoint)?, token);
+    let client = ModuleIndexClient::new(Url::parse(endpoint)?, token)?;
 
     match args.command {
         Some(Commands::AnonymizeSpecs(args)) => anonymize_specs(args.target_dir, args.out).await?,

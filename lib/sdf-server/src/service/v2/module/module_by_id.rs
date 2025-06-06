@@ -62,7 +62,7 @@ pub async fn remote_module_by_id(
     };
 
     let module_index_client =
-        ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
+        ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token)?;
     let pkg_data = module_index_client.download_module(request.id).await?;
 
     let pkg = SiPkg::load_from_bytes(&pkg_data)?;

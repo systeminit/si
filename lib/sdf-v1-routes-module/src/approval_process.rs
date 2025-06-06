@@ -52,7 +52,7 @@ pub async fn begin_approval_process(
     };
 
     let module_index_client =
-        ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
+        ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token)?;
     let pkg_data = module_index_client.download_workspace(request.id).await?;
 
     let metadata = pkg_data.into_latest().metadata;
