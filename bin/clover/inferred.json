@@ -2927,6 +2927,9 @@
   "A DB subnet group to associate with the DB instance. If you update this value, the new subnet group must be a subnet group in a new VPC. \n If you don't specify a DB subnet group, RDS uses the default DB subnet group if one exists. If a default DB subnet group does not exist, and you don't specify a ``DBSubnetGroupName``, the DB instance fails to launch. \n For more information about using Amazon RDS in a VPC, see [Amazon VPC and Amazon RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.html) in the *Amazon RDS User Guide*. \n This setting doesn't apply to Amazon Aurora DB instances. The DB subnet group is managed by the DB cluster. If specified, the setting must match the DB cluster setting.": {
     "enum": null
   },
+  "A IPAddressType": {
+    "enum": null
+  },
   "A JSON string containing a Definition with the same schema as the Definition property of this resource": {
     "enum": null
   },
@@ -2940,6 +2943,9 @@
     "enum": null
   },
   "A PartiQL predicate.": {
+    "enum": null
+  },
+  "A SubnetId.": {
     "enum": null
   },
   "A URI that identifies the Amazon S3 storage location where Amazon SageMaker saves the results of a monitoring job.": {
@@ -12369,6 +12375,9 @@
     "enum": null
   },
   "The name of an EC2 instance type that is supported in Amazon GameLift. A fleet instance type determines the computing resources of each instance in the fleet, including CPU, memory, storage, and networking capacity. Amazon GameLift supports the following EC2 instance types. See Amazon EC2 Instance Types for detailed descriptions.": {
+    "enum": null
+  },
+  "The name of an EVS environment": {
     "enum": null
   },
   "The name of an Elastic Beanstalk solution stack (platform version) that this configuration uses. For example, 64bit Amazon Linux 2013.09 running Tomcat 7 Java 7. A solution stack specifies the operating system, runtime, and application server for a configuration template. It also determines the set of configuration options as well as the possible and default values. For more information, see [Supported Platforms](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/concepts.platforms.html) in the AWS Elastic Beanstalk Developer Guide.\n\n You must specify SolutionStackName if you don't specify PlatformArn, EnvironmentId, or SourceConfiguration.\n\n Use the ListAvailableSolutionStacks API to obtain a list of available solution stacks. ": {
