@@ -139,15 +139,16 @@ const getDbName = (testing: boolean) => {
 
 const start = async (sqlite3: Sqlite3Static, testing: boolean) => {
   const dbname = getDbName(testing);
-  db =
-    "opfs" in sqlite3
-      ? new sqlite3.oo1.OpfsDb(`/${dbname}`)
-      : new sqlite3.oo1.DB(`/${dbname}`, "c");
-  debug(
-    "opfs" in sqlite3
-      ? `OPFS is available, created persisted database at ${db.filename}`
-      : `OPFS is not available, created transient database ${db.filename}`,
-  );
+
+  if ("opfs" in sqlite3) {
+    const poolUtil = await sqlite3.installOpfsSAHPoolVfs({});
+    db = new poolUtil.OpfsSAHPoolDb(`/${dbname}`);
+    debug(`OPFS is available, created persisted database in SAH Pool VFS at ${db.filename}`);
+  } else {
+    db = new sqlite3.oo1.DB(`/${dbname}`, "c");
+    debug(`OPFS is not available, created transient database ${db.filename}`);
+  }
+
   db.exec({ sql: "PRAGMA foreign_keys = ON;" });
 };
 
