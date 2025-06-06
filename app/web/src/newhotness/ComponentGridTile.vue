@@ -3,8 +3,11 @@
     :class="
       clsx(
         'component tile',
-        'cursor-pointer border border-neutral-500 rounded overflow-hidden',
-        themeClasses('bg-shade-0', 'bg-neutral-900'),
+        'cursor-pointer border rounded overflow-hidden',
+        themeClasses(
+          'bg-shade-0 border-neutral-400',
+          'bg-neutral-900 border-neutral-600',
+        ),
       )
     "
   >
@@ -52,7 +55,7 @@
       </li>
       <!-- NOTE: when coming from the Map page we don't have accurate outputCount, hiding this -->
       <template v-if="!props.hideConnections">
-        <hr class="border-neutral-500" />
+        <hr :class="themeClasses('border-neutral-400', 'border-neutral-600')" />
         <li>
           <Icon name="output-connection" size="sm" />
           <div>Incoming</div>

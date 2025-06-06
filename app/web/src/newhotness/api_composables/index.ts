@@ -29,6 +29,7 @@ export enum routes {
   ActionCancel = "ActionCancel",
   ActionHold = "ActionHold",
   ActionRetry = "ActionRetry",
+  DeleteComponents = "DeleteComponents",
 }
 
 /**
@@ -42,6 +43,7 @@ const CAN_MUTATE_ON_HEAD: readonly routes[] = [
 ] as const;
 
 const _routes: Record<routes, string> = {
+  DeleteComponents: "/components/delete",
   GetFuncRunsPaginated: "/funcs/runs/paginated",
   FuncRun: "/funcs/runs/<id>",
   FuncRunByAv: "/funcs/runs/latest_av/<id>/logs",
@@ -109,6 +111,36 @@ export class APICall<Response> {
     return `${API_PREFIX}${this.path}`;
   }
 
+  async do<D = Record<string, unknown>>(
+    method: string,
+    data: D,
+    params?: URLSearchParams,
+  ) {
+    this.obs.inFlight.value = true;
+    this.obs.bifrosting.value = true;
+    rainbow.add(this.ctx.changeSetId.value, this.obs.label);
+    if (this.obs.isWatched) this.obs.span = tracer.startSpan("watchedApi");
+    let newChangeSetId;
+    if (!this.canMutateHead && this.ctx.onHead.value) {
+      newChangeSetId = await this.makeChangeSet();
+    }
+
+    const req = await sdf<Response>({
+      method,
+      url: this.url(),
+      params,
+      data,
+    });
+    this.obs.inFlight.value = false;
+    if (!this.obs.isWatched)
+      rainbow.remove(this.ctx.changeSetId.value, this.obs.label);
+    return { req, newChangeSetId };
+  }
+
+  async delete<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
+    return this.do("DELETE", data, params);
+  }
+
   async get(params?: URLSearchParams) {
     this.obs.inFlight.value = true;
     const req = await sdf<Response>({
@@ -140,47 +172,11 @@ export class APICall<Response> {
   }
 
   async put<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
-    this.obs.inFlight.value = true;
-    this.obs.bifrosting.value = true;
-    rainbow.add(this.ctx.changeSetId.value, this.obs.label);
-    if (this.obs.isWatched) this.obs.span = tracer.startSpan("watchedApi");
-    let newChangeSetId;
-    if (!this.canMutateHead && this.ctx.onHead.value) {
-      newChangeSetId = await this.makeChangeSet();
-    }
-
-    const req = await sdf<Response>({
-      method: "PUT",
-      url: this.url(),
-      params,
-      data,
-    });
-    this.obs.inFlight.value = false;
-    if (!this.obs.isWatched)
-      rainbow.remove(this.ctx.changeSetId.value, this.obs.label);
-    return { req, newChangeSetId };
+    return this.do("PUT", data, params);
   }
 
   async post<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
-    this.obs.inFlight.value = true;
-    this.obs.bifrosting.value = true;
-    rainbow.add(this.ctx.changeSetId.value, this.obs.label);
-    if (this.obs.isWatched) this.obs.span = tracer.startSpan("watchedApi");
-    let newChangeSetId;
-    if (!this.canMutateHead && this.ctx.onHead.value) {
-      newChangeSetId = await this.makeChangeSet();
-    }
-
-    const req = await sdf<Response>({
-      method: "POST",
-      url: this.url(),
-      params,
-      data,
-    });
-    this.obs.inFlight.value = false;
-    if (!this.obs.isWatched)
-      rainbow.remove(this.ctx.changeSetId.value, this.obs.label);
-    return { req, newChangeSetId };
+    return this.do("POST", data, params);
   }
 
   // very odd, i tried having a private `innerPostPut` to pass `method = "POST" | "PUT"`

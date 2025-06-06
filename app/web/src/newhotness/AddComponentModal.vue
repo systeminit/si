@@ -1,6 +1,6 @@
 <template>
   <!-- NOTE: the Modal CSS for height in "max" doesn't work as we might expect -->
-  <Modal ref="modalRef" noWrapper hideExitButton size="max">
+  <Modal ref="modalRef" noWrapper hideExitButton size="max" @click="onClick">
     <div class="h-[45svh]">
       <div
         :class="
@@ -15,12 +15,12 @@
         "
       >
         <!-- Left side - search, filters, asset list -->
-        <div class="assets flex flex-col gap-xs">
+        <div ref="leftSideRef" class="assets flex flex-col gap-xs">
           <header class="text-md border-b p-xs flex-none">
             Create a component
           </header>
 
-          <!-- I don't like that we have tos specify a height here it should
+          <!-- I don't like that we have to specify a height here it should
           contain within its parent, and its possible, just dont want to spend more time on it -->
           <div class="flex flex-col gap-xs grow p-xs max-h-[41svh]">
             <!-- warning header for when user is on HEAD -->
@@ -683,7 +683,26 @@ const componentFilters = computed((): AssetFilter[] => {
   return filters;
 });
 
-defineExpose({ open, close });
+const leftSideRef = ref<HTMLDivElement>();
+
+const onClick = (e: MouseEvent | undefined) => {
+  // Fixing the click exit handler
+  if (!e) return;
+
+  const target = e.target;
+
+  if (!leftSideRef.value || !(target instanceof Node)) return;
+
+  if (
+    (!showResults.value || !selectedAsset.value) &&
+    !leftSideRef.value.contains(target)
+  ) {
+    // clicking the empty area inside the modal
+    close();
+  }
+};
+
+defineExpose({ open, close, isOpen: modalRef.value?.isOpen });
 </script>
 
 <style lang="less" scoped>

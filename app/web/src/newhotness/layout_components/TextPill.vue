@@ -5,8 +5,8 @@
         'border rounded-sm',
         tighter ? 'leading-snug px-3xs' : 'py-3xs px-2xs',
         themeClasses(
-          'border-neutral-400 bg-neutral-100',
-          'border-neutral-500 bg-neutral-800',
+          'border-neutral-600 bg-neutral-100',
+          'border-neutral-400 bg-neutral-800',
         ),
       )
     "

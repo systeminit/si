@@ -1,7 +1,12 @@
 <template>
   <div
     v-if="incoming.length > 0 || outgoing.length > 0"
-    class="border border-neutral-500 rounded bg-neutral-900 pb-sm"
+    :class="
+      clsx(
+        'border rounded bg-neutral-900 pb-sm',
+        themeClasses('border-neutral-400', 'border-neutral-600'),
+      )
+    "
   >
     <template v-if="incoming.length">
       <ConnectionLayout label="Inputs" :connections="incoming" />
@@ -15,6 +20,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useQuery } from "@tanstack/vue-query";
+import clsx from "clsx";
+import { themeClasses } from "@si/vue-lib/design-system";
 import {
   BifrostComponent,
   BifrostComponentConnections,

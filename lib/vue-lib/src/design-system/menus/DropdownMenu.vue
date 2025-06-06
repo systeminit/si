@@ -137,6 +137,7 @@ const props = defineProps({
   forceAbove: Boolean, // forces the menu to appear above the anchor position
   forceAlignRight: Boolean, // forces the menu to align to the right edge of the anchor position instead of defaulting to aligning left
   alignCenter: Boolean, // aligns the menu to be centered on the anchor position horizontally
+  alignOutsideRightEdge: Boolean, // aligns the menu's left edge with the right edge of the anchor element
   overlapAnchorOnAnchorTo: Boolean, // adjusts the menu position to cover the anchor element instead of positioning on its edge
   overlapAnchorOffset: { type: Number, default: 0 }, // adjust the overlap position with a fixed number
 
@@ -346,6 +347,8 @@ function readjustMenuPosition() {
     posX.value = anchorRect.right;
   } else if (props.alignCenter) {
     posX.value = anchorRect.x + anchorRect.width / 2 - menuRect.width / 2;
+  } else if (props.alignOutsideRightEdge) {
+    posX.value = anchorRect.x + anchorRect.width;
   }
   // NOTE - window.innerWidth was including scrollbar width, so throwing off calc
   const windowWidth = document.documentElement.clientWidth;
@@ -369,7 +372,7 @@ function readjustMenuPosition() {
     posY.value = anchorRect.bottom + 4;
     if (props.submenu) {
       posY.value = anchorRect.top;
-    } else if (props.overlapAnchorOnAnchorTo) {
+    } else if (props.overlapAnchorOnAnchorTo || props.alignOutsideRightEdge) {
       posY.value -= overlapOffset;
     }
   };
@@ -381,7 +384,7 @@ function readjustMenuPosition() {
   if (props.forceAbove || posY.value + menuRect.height > window.innerHeight) {
     vAlign.value = "above";
     posY.value = window.innerHeight - (anchorRect.top - 4);
-    if (props.overlapAnchorOnAnchorTo) {
+    if (props.overlapAnchorOnAnchorTo || props.alignOutsideRightEdge) {
       posY.value -= overlapOffset;
     }
     const availableHeightAbove =
@@ -397,7 +400,7 @@ function readjustMenuPosition() {
         // constrain the height of the menu and put it below
         positionBelow();
         menuHeight.value = window.innerHeight - posY.value - MENU_EDGE_BUFFER;
-        if (props.overlapAnchorOnAnchorTo) {
+        if (props.overlapAnchorOnAnchorTo || props.alignOutsideRightEdge) {
           menuHeight.value -= overlapOffset;
         }
       }
