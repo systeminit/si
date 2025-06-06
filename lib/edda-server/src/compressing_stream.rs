@@ -315,8 +315,6 @@ where
             });
             let _guard = span.enter();
 
-            span.record("task.state", this.state.as_ref());
-
             if let Some(last_compressing_heartbeat_tx) = this.last_compressing_heartbeat_tx {
                 // Update the "liveness" of the stream to prevent a quiescent period if there is
                 // still work to do
@@ -351,6 +349,7 @@ where
 
                                     // Set next state and return error
                                     *this.state = State::ReadFirstMessage;
+                                    span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
                                     drop(_guard);
                                     *this.span = None;
@@ -401,6 +400,7 @@ where
 
                             // Set next state and return error
                             *this.state = State::ReadFirstMessage;
+                            span.record("task.state", this.state.as_ref());
                             let err = span.record_err(err);
                             drop(_guard);
                             *this.span = None;
@@ -408,6 +408,7 @@ where
                         }
                         // Subscription stream has closed, so we close
                         Poll::Ready(None) => {
+                            span.record("task.state", this.state.as_ref());
                             span.record_ok();
                             return Poll::Ready(None);
                         }
@@ -591,6 +592,7 @@ where
                                         .map(|_| ())
                                 }),
                             };
+                            span.record("task.state", this.state.as_ref());
                             let rejection = span.record_err(rejection);
                             return Poll::Ready(Some(Err(Error::ParseFirstRequest(rejection))));
                         }
@@ -639,6 +641,7 @@ where
                                         }),
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
                                     };
+                                    span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(Error::NextMessageInfoParse(
                                         err,
@@ -682,6 +685,7 @@ where
                                 }),
                                 stream_sequence_numbers: mem::take(stream_sequence_numbers),
                             };
+                            span.record("task.state", this.state.as_ref());
                             let err = span.record_err(err);
                             return Poll::Ready(Some(Err(Error::ReadNextMessageInWindow(
                                 Box::new(err),
@@ -783,6 +787,7 @@ where
                                 }),
                                 stream_sequence_numbers,
                             };
+                            span.record("task.state", this.state.as_ref());
                             let rejection = span.record_err(rejection);
                             return Poll::Ready(Some(Err(Error::ParseNextRequestInWindow(
                                 rejection,
@@ -867,6 +872,7 @@ where
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
                                         deleted_count: 0,
                                     };
+                                    span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(Error::CompressedRequest(err))));
                                 }
@@ -879,6 +885,7 @@ where
 
                                     // Set next state and return error
                                     *this.state = State::ReadFirstMessage;
+                                    span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
                                     drop(_guard);
                                     *this.span = None;
@@ -993,6 +1000,7 @@ where
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
                                         deleted_count: *deleted_count,
                                     };
+                                    span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(Error::DeleteStreamMessage(err))));
                                 }
@@ -1009,6 +1017,7 @@ where
                                                 subject: subject.take(),
                                                 compressed_request: Some(compressed_request),
                                             };
+                                            span.record("task.state", this.state.as_ref());
                                             let err = span.record_err(err);
                                             return Poll::Ready(Some(Err(
                                                 Error::DeleteStreamMessage(err),
@@ -1020,6 +1029,7 @@ where
 
                                             // Set next state and return error
                                             *this.state = State::ReadFirstMessage;
+                                            span.record("task.state", this.state.as_ref());
                                             let err = span.record_err(err);
                                             drop(_guard);
                                             *this.span = None;
@@ -1063,6 +1073,7 @@ where
 
                             // Set next state and return error
                             *this.state = State::ReadFirstMessage;
+                            span.record("task.state", this.state.as_ref());
                             let err = span.record_err(err);
                             drop(_guard);
                             *this.span = None;
@@ -1078,6 +1089,7 @@ where
 
                     // Set next state and return item
                     *this.state = State::ReadFirstMessage;
+                    span.record("task.state", this.state.as_ref());
                     span.record_ok();
                     drop(_guard);
                     *this.span = None;
@@ -1192,6 +1204,7 @@ where
                                             ),
                                             deleted_count: 0,
                                         };
+                                    span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(
                                         Error::CompressedRequestBeforeClose(err),
@@ -1206,6 +1219,7 @@ where
 
                                     // Set next state and return error
                                     *this.state = State::CloseStream;
+                                    span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(
                                         Error::CompressedRequestBeforeClose(err),
@@ -1318,6 +1332,7 @@ where
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
                                         deleted_count: *deleted_count,
                                     };
+                                    span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(
                                         Error::DeleteStreamMessageBeforeClose(err),
@@ -1336,6 +1351,7 @@ where
                                                 subject: subject.take(),
                                                 compressed_request: Some(compressed_request),
                                             };
+                                            span.record("task.state", this.state.as_ref());
                                             let err = span.record_err(err);
                                             return Poll::Ready(Some(Err(
                                                 Error::DeleteStreamMessageBeforeClose(err),
@@ -1347,6 +1363,7 @@ where
 
                                             // Set next state and return error
                                             *this.state = State::CloseStream;
+                                            span.record("task.state", this.state.as_ref());
                                             let err = span.record_err(err);
                                             return Poll::Ready(Some(Err(
                                                 Error::DeleteStreamMessageBeforeClose(err),
@@ -1392,6 +1409,7 @@ where
 
                             // Set next state and return error
                             *this.state = State::CloseStream;
+                            span.record("task.state", this.state.as_ref());
                             let err = span.record_err(err);
                             return Poll::Ready(Some(Err(
                                 Error::SerializeLocalMessageBeforeClose(err),
@@ -1407,11 +1425,13 @@ where
 
                     // Set next state and return item
                     *this.state = State::CloseStream;
+                    span.record("task.state", this.state.as_ref());
                     span.record_ok();
                     return Poll::Ready(Some(Ok(local_message)));
                 }
                 // 4.1.1 Closing the stream
                 State::CloseStream => {
+                    span.record("task.state", this.state.as_ref());
                     // Don't record span either way as it may have already been marked ok/err
                     return Poll::Ready(None);
                 }
@@ -1490,6 +1510,7 @@ where
                                         stream_sequence_numbers: mem::take(stream_sequence_numbers),
                                         deleted_count: *deleted_count,
                                     };
+                                    span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(
                                         Error::DeleteStreamMessageAfterCompressError(err),
@@ -1503,6 +1524,7 @@ where
 
                                     // Set next state and return error
                                     *this.state = State::ReadFirstMessage;
+                                    span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
                                     drop(_guard);
                                     *this.span = None;
@@ -1595,6 +1617,7 @@ where
                                             ),
                                             deleted_count: *deleted_count,
                                         };
+                                    span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(
                                         Error::DeleteStreamMessageAfterCompressErrorBeforeClose(
@@ -1610,6 +1633,7 @@ where
 
                                     // Set next state and return error
                                     *this.state = State::CloseStream;
+                                    span.record("task.state", this.state.as_ref());
                                     let err = span.record_err(err);
                                     return Poll::Ready(Some(Err(
                                         Error::DeleteStreamMessageAfterCompressErrorBeforeClose(
