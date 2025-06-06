@@ -153,6 +153,7 @@ import SiLogo from "../../brand-assets/si-logo-symbol-padded.svg?raw";
 import DockerLogo from "~icons/mdi/docker";
 // import KubernetesCircleLogo from "~icons/carbon/logo-kubernetes";
 import KubernetesLogo from "~icons/carbon/kubernetes";
+import CarbonLightning from "~icons/carbon/lightning";
 import DiscordLogo from "~icons/carbon/logo-discord";
 import GithubLogo from "~icons/carbon/logo-github";
 import VimLogo from "~icons/raphael/vim";
@@ -222,6 +223,7 @@ export const ICONS = Object.freeze({
   beaker: Beaker,
   bell: MaterialSymbolsNotifications,
   bolt: Bolt,
+  "bolt-outline": CarbonLightning,
   bookOpen: BookOpen,
   "brackets-angle": BracketsAngle,
   "brackets-curly": BracketsCurly,

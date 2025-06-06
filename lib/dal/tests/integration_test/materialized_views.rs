@@ -200,7 +200,6 @@ async fn component(ctx: &DalContext) -> Result<()> {
     )
     .await?;
     let is_secret_defining = SchemaVariant::is_secret_defining(ctx, sv_id).await?;
-    let can_be_upgraded = Component::can_be_upgraded_by_id(ctx, created_component.id()).await?;
 
     assert_eq!(
         ComponentMv {
@@ -210,6 +209,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
             schema_name: schema_name.to_owned(),
             schema_id: schema.id(),
             schema_variant_id: sv_id.into(),
+            schema_members: schema.id().into(),
             schema_variant_name: schema_variant.display_name().to_owned(),
             schema_category: schema_variant.category().to_owned(),
             schema_variant_description: schema_variant.description().to_owned(),
@@ -221,7 +221,6 @@ async fn component(ctx: &DalContext) -> Result<()> {
             resource_diff,
             attribute_tree,
             is_secret_defining,
-            can_be_upgraded,
         }, // expected
         component // actual
     );

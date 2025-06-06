@@ -95,6 +95,8 @@ pub enum Error {
     Prop(#[from] dal::prop::PropError),
     #[error("qualification summary error: {0}")]
     QualificationSummary(#[from] dal::qualification::QualificationSummaryError),
+    #[error("schema error: {0}")]
+    Schema(#[from] dal::SchemaError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] dal::SchemaVariantError),
     #[error("secret error: {0}")]

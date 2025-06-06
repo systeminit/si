@@ -40,6 +40,7 @@ use si_frontend_mv_types::{
     component::{
         Component as ComponentMv,
         ComponentList as ComponentListMv,
+        SchemaMembers,
     },
     incoming_connections::{
         IncomingConnections as IncomingConnectionsMv,
@@ -923,6 +924,32 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     workspace_mv_id,
                     IncomingConnectionsListMv,
                     dal_materialized_views::incoming_connections_list::assemble(ctx.clone()),
+                );
+            } else {
+                return Ok(Some(QueuedBuildMvTask { change, mv_kind }));
+            }
+        }
+        ReferenceKind::SchemaMembers => {
+            let entity_mv_id = change.entity_id.to_string();
+
+            let trigger_entity = <SchemaMembers as MaterializedView>::trigger_entity();
+            if change.entity_kind != trigger_entity {
+                return Ok(None);
+            }
+
+            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+                spawn_build_mv_task!(
+                    build_tasks,
+                    mv_task_ids,
+                    ctx,
+                    frigg,
+                    change,
+                    entity_mv_id,
+                    SchemaMembers,
+                    dal_materialized_views::component::assemble_schema_members(
+                        ctx.clone(),
+                        si_events::ulid::Ulid::from(change.entity_id).into()
+                    ),
                 );
             } else {
                 return Ok(Some(QueuedBuildMvTask { change, mv_kind }));

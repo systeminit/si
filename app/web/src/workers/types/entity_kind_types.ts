@@ -23,6 +23,7 @@ export enum EntityKind {
   IncomingConnectionsList = "IncomingConnectionsList",
   SchemaVariantCategories = "SchemaVariantCategories",
   SchemaVariant = "SchemaVariant",
+  SchemaMembers = "SchemaMembers",
   ActionViewList = "ActionViewList",
   ActionPrototypeViewList = "ActionPrototypeViewList",
   SecretList = "SecretList",
@@ -161,6 +162,13 @@ export interface EddaComponent {
     diff?: string;
   };
   attributeTree: AttributeTree;
+  schemaMembers: WeakReference<EntityKind.SchemaMembers>;
+}
+
+export interface SchemaMembers {
+  id: SchemaId;
+  defaultVariantId: SchemaVariantId;
+  editingVariantId?: SchemaVariantId;
 }
 
 export interface UninstalledVariant {
@@ -234,6 +242,7 @@ export interface BifrostComponent {
   hasResource: boolean;
   qualificationTotals: ComponentQualificationTotals;
   isSecretDefining: boolean;
+  canBeUpgraded: boolean;
   inputCount: number;
   // this will only be filled in when it is computed
   outputCount: number;

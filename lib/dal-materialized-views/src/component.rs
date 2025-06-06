@@ -2,12 +2,15 @@ use dal::{
     Component,
     ComponentId,
     DalContext,
+    Schema,
+    SchemaId,
     SchemaVariant,
     qualification::QualificationSummary,
 };
 use si_frontend_mv_types::component::{
     Component as ComponentMv,
     ComponentDiff,
+    SchemaMembers,
 };
 use telemetry::prelude::*;
 
@@ -41,7 +44,6 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
 
     let is_secret_defining = SchemaVariant::is_secret_defining(ctx, schema_variant_id).await?;
     let attribute_tree = attribute_tree::assemble(ctx.to_owned(), component_id).await?;
-    let can_be_upgraded = Component::can_be_upgraded_by_id(ctx, component_id).await?;
 
     // NOTE(nick): I think having both null and empty external sources may lead to a path of pain
     // and despair. Given that we're solely concerned with the input count though, now is not the
@@ -69,11 +71,34 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         schema_variant_doc_link: schema_variant.link().to_owned(),
         has_resource,
         qualification_totals: stats,
+        schema_members: schema.id().into(),
         input_count,
         diff_count,
         attribute_tree,
         resource_diff,
         is_secret_defining,
-        can_be_upgraded,
+    })
+}
+
+#[instrument(
+    name = "dal_materialized_views.schema_members",
+    level = "debug",
+    skip_all
+)]
+pub async fn assemble_schema_members(
+    ctx: DalContext,
+    schema_id: SchemaId,
+) -> crate::Result<SchemaMembers> {
+    let ctx = &ctx;
+
+    let default_variant_id = Schema::default_variant_id(ctx, schema_id).await?;
+    let unlocked_variant_id = SchemaVariant::get_unlocked_for_schema(ctx, schema_id)
+        .await?
+        .map(|variant| variant.id());
+
+    Ok(SchemaMembers {
+        id: schema_id,
+        default_variant_id,
+        editing_variant_id: unlocked_variant_id,
     })
 }
