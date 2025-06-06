@@ -1,5 +1,6 @@
 <template>
-  <section :class="clsx('grid h-full', showGrid ? 'explore' : 'map')">
+  <DelayedLoader v-if="componentListRaw.isLoading.value" :size="'full'" />
+  <section v-else :class="clsx('grid h-full', showGrid ? 'explore' : 'map')">
     <!-- Left column -->
     <!-- 12 pixel padding to align with the SI logo -->
     <div
@@ -212,11 +213,11 @@ import { tw } from "@si/vue-lib";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
-  BifrostComponent,
   BifrostComponentList,
   BifrostViewList,
   ViewComponentList,
   EntityKind,
+  BifrostComponentInList,
 } from "@/workers/types/entity_kind_types";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -229,6 +230,7 @@ import Breadcrumbs from "./layout_components/Breadcrumbs.vue";
 import ActionCard from "./ActionCard.vue";
 import FuncRunList from "./FuncRunList.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
+import DelayedLoader from "./layout_components/DelayedLoader.vue";
 import { KeyDetails, keyEmitter } from "./logic_composables/emitters";
 import TabGroupToggle from "./layout_components/TabGroupToggle.vue";
 import { SelectionsInQueryString } from "./Workspace.vue";
@@ -341,7 +343,7 @@ const componentList = computed(
 
 const scrollRef = ref<HTMLDivElement>();
 
-const filteredComponents = reactive<BifrostComponent[]>([]);
+const filteredComponents = reactive<BifrostComponentInList[]>([]);
 
 const searchString = ref("");
 const computedSearchString = computed(() => searchString.value);

@@ -26,15 +26,15 @@ pub async fn assemble(ctx: DalContext, view_id: ViewId) -> super::Result<ViewCom
 
         match geo_represents {
             GeometryRepresents::Component(component_id) => {
-                components.push(super::component::assemble(ctx.clone(), component_id).await?);
+                components.push(component_id);
             }
             GeometryRepresents::View(_view_id) => {}
         }
     }
-    components.sort_by_key(|c| c.id);
+    components.sort();
 
     Ok(ViewComponentListMv {
         id: view_id,
-        components: components.iter().map(Into::into).collect(),
+        components: components.iter().map(|&id| id.into()).collect(),
     })
 }

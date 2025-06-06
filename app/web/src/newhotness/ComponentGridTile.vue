@@ -104,12 +104,15 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed } from "vue";
-import { BifrostComponent } from "@/workers/types/entity_kind_types";
+import {
+  BifrostComponent,
+  BifrostComponentInList,
+} from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon } from "./util";
 
 const props = defineProps<{
-  component: BifrostComponent;
+  component: BifrostComponent | BifrostComponentInList;
   hideConnections?: boolean;
 }>();
 
