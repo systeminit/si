@@ -143,7 +143,7 @@ const origCenter = ref(viewBox.value / 2);
 const origTransformMatrix = [1, 0, 0, 1, 0, 0];
 const transformMatrix = reactive<number[]>([...origTransformMatrix]);
 
-const scaleStep = 0.1;
+const scaleStep = 0.13;
 const baseZoom = 1;
 const zoomLevel = ref(baseZoom);
 const lastPos = ref<xy | null>(null);
@@ -231,8 +231,18 @@ const zoomOut = () => {
 };
 
 const wheel = (event: WheelEvent) => {
-  if (event.deltaY > 0) zoomIn();
-  else zoomOut();
+  if (event.metaKey || event.ctrlKey) {
+    // Zoom behavior when modifier key is held
+    if (event.deltaY > 0) {
+      zoomOut();
+    } else {
+      zoomIn();
+    }
+  } else {
+    // Pan behavior - move map in scroll direction
+    const panSpeed = 40;
+    pan((-event.deltaX * panSpeed) / 100, (-event.deltaY * panSpeed) / 100);
+  }
 };
 
 const reset = () => {
@@ -254,19 +264,19 @@ const active = computed(() => props.active);
 const KEYSTEP = 10;
 const onArrowDown = () => {
   if (!active.value) return;
-  pan(0, KEYSTEP);
+  pan(0, -KEYSTEP);
 };
 const onArrowUp = () => {
   if (!active.value) return;
-  pan(0, -KEYSTEP);
+  pan(0, KEYSTEP);
 };
 const onArrowLeft = () => {
   if (!active.value) return;
-  pan(-KEYSTEP, 0);
+  pan(KEYSTEP, 0);
 };
 const onArrowRight = () => {
   if (!active.value) return;
-  pan(KEYSTEP, 0);
+  pan(-KEYSTEP, 0);
 };
 const onEscape = () => {
   if (!active.value) return;
