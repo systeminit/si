@@ -25,6 +25,18 @@
           component.schemaName
         }}</TruncateWithTooltip>
       </h3>
+      <Icon
+        v-if="component.canBeUpgraded"
+        name="bolt-outline"
+        size="lg"
+        :class="
+          clsx(
+            'hover:scale-110',
+            themeClasses('text-success-500', 'text-success-400'),
+          )
+        "
+        @click.stop="upgradeComponent"
+      />
     </header>
     <ol
       class="[&>li]:p-xs [&>li]:flex [&>li]:flex-row [&>li]:items-center [&>li]:gap-xs [&>li]:h-9 [&_.pillcounter]:w-5 [&_.pillcounter]:h-5"
@@ -113,4 +125,6 @@ const qualificationSummary = computed(() => {
   if (props.component.qualificationTotals.warned > 0) return "warning";
   return "success";
 });
+
+const upgradeComponent = () => {};
 </script>

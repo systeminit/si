@@ -74,6 +74,7 @@ import {
   EddaSchemaVariantCategories,
   BifrostSchemaVariantCategories,
   CategoryVariant,
+  SchemaMembers,
 } from "./types/entity_kind_types";
 import {
   hasReturned,
@@ -2024,8 +2025,59 @@ const getReferences = async (
         { kind, args: data.id },
       );
     }
+
+    const sm = (await get(
+      workspaceId,
+      changeSetId,
+      data.schemaMembers.kind,
+      data.schemaMembers.id,
+      undefined,
+      indexChecksum,
+      followComputed,
+    )) as SchemaMembers | -1;
+
+    if (sm === -1) {
+      hasReferenceError = true;
+      span.addEvent("mjolnir", {
+        workspaceId,
+        changeSetId,
+        kind: data.schemaMembers.kind,
+        id: data.schemaMembers.id,
+        source: "getReferences",
+        sourceKind: kind,
+      });
+      mjolnir(
+        workspaceId,
+        changeSetId,
+        data.schemaMembers.kind,
+        data.schemaMembers.id,
+      );
+      // add a weak reference in the case of a miss
+      // because if we throw a hammer for what we missed
+      // this referencing data doesn't change and needs to bust
+      weakReference(
+        changeSetId,
+        { kind: data.schemaMembers.kind, args: data.schemaMembers.id },
+        { kind, args: data.id },
+      );
+    }
+
+    const schemaMembers = sm !== -1 ? sm : ({} as SchemaMembers);
+    let canBeUpgraded = false;
+    if (schemaMembers) {
+      if (
+        schemaMembers.editingVariantId &&
+        data.schemaVariantId.id !== schemaMembers.editingVariantId
+      ) {
+        canBeUpgraded = true;
+      } else if (data.schemaVariantId.id !== schemaMembers.defaultVariantId) {
+        canBeUpgraded = true;
+      }
+    }
+
     const component: BifrostComponent = {
       ...data,
+      canBeUpgraded,
       schemaVariant: sv !== -1 ? sv : ({} as SchemaVariant),
     };
     span.end();

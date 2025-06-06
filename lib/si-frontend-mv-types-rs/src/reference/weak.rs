@@ -103,4 +103,12 @@ pub mod markers {
     impl ReferenceKindMarker for SchemaVariant {
         const REFERENCE_KIND: ReferenceKind = ReferenceKind::SchemaVariant;
     }
+
+    /// A weak reference marker for [`ReferenceKind::SchemaMembers`].
+    #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
+    pub struct SchemaMembers;
+
+    impl ReferenceKindMarker for SchemaMembers {
+        const REFERENCE_KIND: ReferenceKind = ReferenceKind::SchemaMembers;
+    }
 }

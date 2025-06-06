@@ -43,6 +43,7 @@ pub enum ReferenceKind {
     IncomingConnections,
     IncomingConnectionsList,
     MvIndex,
+    SchemaMembers,
     SchemaVariant,
     SchemaVariantCategories,
     View,

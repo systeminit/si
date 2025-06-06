@@ -372,6 +372,8 @@ const onEnter = async () => {
     const eddaComponent = req.data.materializedView;
     const bifrostComponent: BifrostComponent = {
       ...eddaComponent,
+      // This can be set as false as the system doesn't really care about it in this menu
+      canBeUpgraded: false,
       schemaVariant: req.data.schemaVariantMaterializedView,
     };
 
