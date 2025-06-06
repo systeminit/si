@@ -416,8 +416,7 @@ where
                                 .take()
                                 .expect("extracting owned value only happens once");
 
-                            // FIXME: demote me!
-                            info!(
+                            debug!(
                                 first_message_info_pending = message
                                     .info()
                                     .map(|info| info.pending as isize)
