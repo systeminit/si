@@ -12,6 +12,7 @@ pub mod app_state;
 pub mod async_route;
 pub mod dal_wrapper;
 pub mod force_change_set_response;
+pub mod index;
 pub mod nats_multiplexer;
 pub mod tracking;
 pub mod workspace_permissions;

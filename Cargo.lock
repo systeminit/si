@@ -7362,6 +7362,7 @@ dependencies = [
  "si-data-spicedb",
  "si-db",
  "si-events",
+ "si-frontend-mv-types",
  "si-frontend-types",
  "si-id",
  "si-jwt-public-key",
