@@ -37,6 +37,7 @@ async fn multiple_updates() {
     let mut messages = CompressingStream::new(
         incoming_messages(&nats, &stream, test_name).await,
         stream.clone(),
+        None,
     );
 
     assert_eq!(
@@ -114,6 +115,7 @@ async fn updates_with_single_rebuild() {
     let mut messages = CompressingStream::new(
         incoming_messages(&nats, &stream, test_name).await,
         stream.clone(),
+        None,
     );
 
     assert_eq!(
@@ -190,7 +192,7 @@ mod helpers {
     use uuid::Uuid;
 
     const STREAM_NAME: &str = "TEST_COMPRESSING_STREAM";
-    const SUBJECT_WILDCARD: &str = "test.compressing_stream.>";
+    const SUBJECT_PREFIX: &str = "test.compressing_stream";
 
     fn nats_config(subject_prefix: String) -> NatsConfig {
         let mut config = NatsConfig::default();
@@ -221,7 +223,9 @@ mod helpers {
             .get_or_create_stream(jetstream::stream::Config {
                 name: STREAM_NAME.to_string(),
                 description: Some("CompressingStream integration tests".to_string()),
-                subjects: vec![subject::prefixed(Some("*"), SUBJECT_WILDCARD).to_string()],
+                subjects: vec![
+                    subject::prefixed(Some(&format!("{SUBJECT_PREFIX}.*")), ">").to_string(),
+                ],
                 allow_direct: true,
                 retention: jetstream::stream::RetentionPolicy::Limits,
                 storage: jetstream::stream::StorageType::Memory,
@@ -235,10 +239,8 @@ mod helpers {
         prefix: impl Into<Option<&'a str>>,
         subject_suffix: &'a str,
     ) -> Subject {
-        subject::prefixed(
-            prefix.into(),
-            format!("test.compressing_stream.{subject_suffix}"),
-        )
+        let prefix = prefix.into().map(|p| format!("{SUBJECT_PREFIX}.{p}"));
+        subject::prefixed(prefix.as_deref(), subject_suffix)
     }
 
     pub async fn message_count_on_subject(

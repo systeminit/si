@@ -28,7 +28,7 @@ use ulid::Ulid;
 
 const DEFAULT_CONCURRENCY_LIMIT: Option<usize> = None;
 
-const DEFAULT_QUIESCENT_PERIOD_SECS: u64 = 60;
+const DEFAULT_QUIESCENT_PERIOD_SECS: u64 = 60 * 10;
 const DEFAULT_QUIESCENT_PERIOD: Duration = Duration::from_secs(DEFAULT_QUIESCENT_PERIOD_SECS);
 
 #[remain::sorted]

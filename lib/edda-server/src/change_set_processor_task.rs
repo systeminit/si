@@ -6,7 +6,10 @@ use std::{
     io,
     result,
     sync::Arc,
-    time::Duration,
+    time::{
+        Duration,
+        Instant,
+    },
 };
 
 use dal::DalContextBuilder;
@@ -43,7 +46,13 @@ use si_events::{
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use thiserror::Error;
-use tokio::sync::Notify;
+use tokio::{
+    sync::{
+        Notify,
+        watch,
+    },
+    time,
+};
 use tokio_stream::StreamExt as _;
 use tokio_util::{
     sync::CancellationToken,
@@ -92,6 +101,7 @@ impl ChangeSetProcessorTask {
         quiescent_period: Duration,
         quiesced_notify: Arc<Notify>,
         quiesced_token: CancellationToken,
+        last_compressing_heartbeat_rx: watch::Receiver<Instant>,
         task_token: CancellationToken,
         server_tracker: TaskTracker,
     ) -> Self {
@@ -108,6 +118,10 @@ impl ChangeSetProcessorTask {
             server_tracker,
         );
 
+        // Set up a check interval that ideally fires more often than the quiescent period
+        let check_interval =
+            time::interval(quiescent_period.checked_div(4).unwrap_or(quiescent_period));
+
         let captured = QuiescedCaptured {
             instance_id: metadata.instance_id().to_string(),
             workspace_id,
@@ -115,25 +129,29 @@ impl ChangeSetProcessorTask {
             quiesced_notify: quiesced_notify.clone(),
         };
         let inactive_aware_incoming = incoming
-            // Looks for a gap between incoming messages greater than the duration
-            .timeout(quiescent_period)
+            // Frequency at which we check for a quiet period
+            .timeout_repeating(check_interval)
             // Fire quiesced_notify which triggers a specific shutdown of the serial dvu task where
             // we *know* we want to remove the task from the set of work.
             .inspect_err(move |_elapsed| {
-                let QuiescedCaptured {
-                    instance_id,
-                    workspace_id,
-                    change_set_id,
-                    quiesced_notify,
-                } = &captured;
-                debug!(
-                    service.instance.id = instance_id,
-                    si.workspace.id = %workspace_id,
-                    si.change_set.id = %change_set_id,
-                    "rate of requests has become inactive, triggering a quiesced shutdown",
-                );
-                // Notify the serial dvu task that we want to shutdown due to a quiet period
-                quiesced_notify.notify_one();
+                // Note: the `*` is copying the value out of the borrow to release the inner read
+                // lock on the data structure, otherwise we would block the `tx` side
+                if last_compressing_heartbeat_rx.borrow().elapsed() > quiescent_period {
+                    let QuiescedCaptured {
+                        instance_id,
+                        workspace_id,
+                        change_set_id,
+                        quiesced_notify,
+                    } = &captured;
+                    debug!(
+                        service.instance.id = instance_id,
+                        si.workspace.id = %workspace_id,
+                        si.change_set.id = %change_set_id,
+                        "rate of requests has become inactive, triggering a quiesced shutdown",
+                    );
+                    // Notify the serial dvu task that we want to shutdown due to a quiet period
+                    quiesced_notify.notify_one();
+                }
             })
             // Continue processing messages as normal until the Naxum app's graceful shutdown is
             // triggered. This means we turn the stream back from a stream of
