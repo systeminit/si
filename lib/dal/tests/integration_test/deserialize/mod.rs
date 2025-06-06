@@ -447,6 +447,7 @@ fn make_me_one_with_everything_content_types_edition() -> Vec<ContentTypes> {
                 refers_to_prop_id: Some(make_static_ulid()),
                 diff_func_id: Some(make_static_ulid()),
                 validation_format: Some("smack barm pey wet".into()),
+                ui_optionals: serde_json::json!({ "suggestedSources": [], "suggestedSourceFor": [] }),
             })
             .into(),
             ContentTypesDiscriminants::Schema => {

@@ -82,6 +82,8 @@ pub struct PropSpecData {
     pub hidden: Option<bool>,
     pub doc_link: Option<Url>,
     pub documentation: Option<String>,
+    #[serde(flatten, skip_serializing_if = "serde_json::Value::is_null")]
+    pub ui_optionals: serde_json::Value,
 }
 
 #[remain::sorted]
@@ -578,6 +580,7 @@ pub struct PropSpecBuilder {
     pub name: Option<String>,
     type_prop: Option<PropSpec>,
     validation_format: Option<String>,
+    ui_optionals: Option<serde_json::Value>,
     widget_kind: Option<PropSpecWidgetKind>,
     widget_options: Option<serde_json::Value>,
     unique_id: Option<String>,
@@ -598,6 +601,7 @@ impl Default for PropSpecBuilder {
             map_key_funcs: vec![],
             name: None,
             type_prop: None,
+            ui_optionals: None,
             validation_format: None,
             widget_kind: None,
             widget_options: None,
@@ -647,6 +651,13 @@ impl PropSpecBuilder {
     pub fn validation_format(&mut self, value: impl Into<String>) -> &mut Self {
         self.has_data = true;
         self.validation_format = Some(value.into());
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn ui_optionals(&mut self, value: impl Into<serde_json::Value>) -> &mut Self {
+        self.has_data = true;
+        self.ui_optionals = Some(value.into());
         self
     }
 
@@ -756,6 +767,7 @@ impl PropSpecBuilder {
                 hidden: Some(self.hidden),
                 doc_link: self.doc_link.to_owned(),
                 documentation: self.documentation.to_owned(),
+                ui_optionals: self.ui_optionals.clone().unwrap_or(serde_json::Value::Null),
             })
         } else {
             None

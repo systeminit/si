@@ -562,6 +562,10 @@ pub struct PropContentV1 {
     pub diff_func_id: Option<FuncId>,
     /// A serialized validation format JSON object for the prop.
     pub validation_format: Option<String>,
+    /// Optional UI data that isn't needed in the graph
+    /// (Eventually, many other fields in content will be moved here, e.g. documentation/docLink)
+    #[serde(flatten, skip_serializing_if = "serde_json::Value::is_null")]
+    pub ui_optionals: serde_json::Value,
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]

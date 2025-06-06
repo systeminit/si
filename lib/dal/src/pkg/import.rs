@@ -1804,6 +1804,7 @@ async fn create_dal_prop(
             data.documentation.clone(),
             Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
             data.validation_format.clone(),
+            Some(data.ui_optionals.clone()),
             parent_info.prop_id,
         )
         .await
@@ -1817,6 +1818,7 @@ async fn create_dal_prop(
             data.documentation.clone(),
             Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
             data.validation_format.clone(),
+            Some(data.ui_optionals.clone()),
             schema_variant_id,
         )
         .await

@@ -41,6 +41,7 @@ const KEY_HIDDEN_STR: &str = "hidden";
 const KEY_DOC_LINK_STR: &str = "doc_link";
 const KEY_DOCUMENTATION_STR: &str = "documentation";
 const KEY_VALIDATION_FORMAT_STR: &str = "validation_format";
+const KEY_UI_OPTIONALS_STR: &str = "ui_optionals";
 const KEY_UNIQUE_ID_STR: &str = "unique_id";
 const KEY_CHILD_ORDER_STR: &str = "child_order";
 
@@ -64,6 +65,7 @@ pub struct PropNodeData {
     pub hidden: bool,
     pub documentation: Option<String>,
     pub validation_format: Option<String>,
+    pub ui_optionals: serde_json::Value,
 }
 
 #[remain::sorted]
@@ -208,6 +210,15 @@ impl WriteBytes for PropNode {
                 KEY_VALIDATION_FORMAT_STR,
                 data.validation_format.as_ref(),
             )?;
+            write_key_value_line_opt(
+                writer,
+                KEY_UI_OPTIONALS_STR,
+                if data.ui_optionals.is_null() {
+                    None
+                } else {
+                    Some(serde_json::to_string(&data.ui_optionals).map_err(GraphError::parse)?)
+                },
+            )?;
         }
 
         if let Some(unique_id) = match &self {
@@ -286,6 +297,13 @@ impl ReadBytes for PropNode {
                 let documentation = read_key_value_line_opt(reader, KEY_DOCUMENTATION_STR)?;
                 let validation_format = read_key_value_line_opt(reader, KEY_VALIDATION_FORMAT_STR)?;
 
+                let ui_optionals_str = read_key_value_line_opt(reader, KEY_UI_OPTIONALS_STR)?;
+                let ui_optionals = if let Some(ui_optionals_str) = ui_optionals_str {
+                    serde_json::from_str(&ui_optionals_str).map_err(GraphError::parse)?
+                } else {
+                    serde_json::Value::Null
+                };
+
                 Some(PropNodeData {
                     name: name.to_owned(),
                     func_unique_id,
@@ -296,6 +314,7 @@ impl ReadBytes for PropNode {
                     hidden,
                     documentation,
                     validation_format,
+                    ui_optionals,
                 })
             }
         };
@@ -421,7 +440,8 @@ impl NodeChild for PropSpec {
                          doc_link,
                          documentation,
                          validation_format,
-                         ..
+                         ui_optionals,
+                         inputs: _,
                      }| PropNodeData {
                         name,
                         default_value,
@@ -432,6 +452,7 @@ impl NodeChild for PropSpec {
                         doc_link,
                         documentation,
                         validation_format,
+                        ui_optionals,
                     },
                 ),
                 unique_id.to_owned(),

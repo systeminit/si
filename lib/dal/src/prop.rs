@@ -172,7 +172,9 @@ pub type WidgetOptions = Vec<WidgetOption>;
 /// An individual "field" within the tree of a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Prop {
+    /// Unique ID in the workspace for this [`Prop`].
     pub id: PropId,
+    /// Create/update timestamps
     #[serde(flatten)]
     pub timestamp: Timestamp,
     /// The name of the [`Prop`].
@@ -198,6 +200,13 @@ pub struct Prop {
     pub validation_format: Option<String>,
     /// Indicates whether this prop is a valid input for a function
     pub can_be_used_as_prototype_arg: bool,
+    /// Extra data for this prop that we don't need in Rust, but still need to carry through to
+    /// the frontend, such as suggestions and eventually documentation, docLinks, hidden, widgetKind,
+    /// widgetOptions, etc.
+    /// This allows us to carry more properties through without having to thread them through
+    /// all the Rust code.
+    #[serde(flatten, skip_serializing_if = "serde_json::Value::is_null")]
+    pub ui_optionals: serde_json::Value,
 }
 
 impl From<Prop> for PropContentV1 {
@@ -214,6 +223,7 @@ impl From<Prop> for PropContentV1 {
             refers_to_prop_id: value.refers_to_prop_id,
             diff_func_id: value.diff_func_id,
             validation_format: value.validation_format,
+            ui_optionals: value.ui_optionals,
         }
     }
 }
@@ -475,6 +485,7 @@ impl Prop {
             diff_func_id: inner.diff_func_id,
             validation_format: inner.validation_format,
             can_be_used_as_prototype_arg: prop_node_weight.can_be_used_as_prototype_arg(),
+            ui_optionals: inner.ui_optionals,
         }
     }
 
@@ -491,6 +502,7 @@ impl Prop {
             name.as_ref(),
             kind,
             false,
+            None,
             None,
             None,
             None,
@@ -514,6 +526,7 @@ impl Prop {
         documentation: Option<String>,
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         validation_format: Option<String>,
+        ui_optionals: Option<serde_json::Value>,
         parent_prop_id: PropId,
     ) -> PropResult<Self> {
         let prop = Self::new_inner(
@@ -525,6 +538,7 @@ impl Prop {
             documentation,
             widget_kind_and_options,
             validation_format,
+            ui_optionals,
         )
         .await?;
 
@@ -545,6 +559,7 @@ impl Prop {
         documentation: Option<String>,
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         validation_format: Option<String>,
+        ui_optionals: Option<serde_json::Value>,
         schema_variant_id: SchemaVariantId,
     ) -> PropResult<Self> {
         let root_prop = Self::new_inner(
@@ -556,6 +571,7 @@ impl Prop {
             documentation,
             widget_kind_and_options,
             validation_format,
+            ui_optionals,
         )
         .await?;
 
@@ -586,9 +602,11 @@ impl Prop {
         documentation: Option<String>,
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         validation_format: Option<String>,
+        ui_optionals: Option<serde_json::Value>,
     ) -> PropResult<Self> {
         let ordered = kind.ordered();
         let name = name.into();
+        let ui_optionals = ui_optionals.unwrap_or(serde_json::Value::Null);
 
         let timestamp = Timestamp::now();
         let (widget_kind, widget_options): (WidgetKind, Option<WidgetOptions>) =
@@ -615,6 +633,7 @@ impl Prop {
             refers_to_prop_id: None,
             diff_func_id: None,
             validation_format,
+            ui_optionals,
         };
 
         let (hash, _) = ctx.layer_db().cas().write(

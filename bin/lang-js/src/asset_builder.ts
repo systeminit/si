@@ -157,7 +157,7 @@ export class SocketDefinitionBuilder implements ISocketDefinitionBuilder {
     this.connectionAnnotations.push(this.socket.name.toLowerCase());
 
     this.socket.connectionAnnotations = JSON.stringify(
-      this.connectionAnnotations.map((a) => a.toLowerCase().trim()),
+      this.connectionAnnotations.map((a) => a.toLowerCase().trim())
     );
 
     return this.socket;
@@ -537,6 +537,8 @@ export interface PropDefinition {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   defaultValue?: any;
   validationFormat?: string; // A JSON.stringify()-ed Joi.Descriptor
+  suggestedSources?: { schema: string; path: string }[];
+  suggestedSourceFor?: { schema: string; path: string }[];
   mapKeyFuncs?: MapKeyFunc[];
 }
 
@@ -565,6 +567,10 @@ export interface IPropBuilder {
   setDefaultValue(value: any): this;
 
   setValidationFormat(format: Joi.Schema): this;
+
+  suggestSource(suggestion: { schema: string; path: string }): this;
+
+  suggestSourceFor(suggestion: { schema: string; path: string }): this;
 
   addMapKeyFunc(func: MapKeyFunc): this;
 
@@ -629,7 +635,7 @@ export class PropBuilder implements IPropBuilder {
   setEntry(entry: PropDefinition): this {
     if (this.prop.kind !== "array" && this.prop.kind !== "map") {
       throw new Error(
-        "setEntry can only be called on prop that are arrays or maps",
+        "setEntry can only be called on prop that are arrays or maps"
       );
     }
 
@@ -823,10 +829,22 @@ export class PropBuilder implements IPropBuilder {
   setWidget(widget: PropWidgetDefinition): this {
     if (widget.kind === "secret") {
       throw new Error(
-        "Cannot create prop with secret widget. Use addSecretProp() to create those.",
+        "Cannot create prop with secret widget. Use addSecretProp() to create those."
       );
     }
     this.prop.widget = widget;
+    return this;
+  }
+
+  suggestSource(suggestion: { schema: string; path: string }) {
+    this.prop.suggestedSources ??= [];
+    this.prop.suggestedSources.push(suggestion);
+    return this;
+  }
+
+  suggestSourceFor(suggestion: { schema: string; path: string }) {
+    this.prop.suggestedSourceFor ??= [];
+    this.prop.suggestedSourceFor.push(suggestion);
     return this;
   }
 }
@@ -848,6 +866,10 @@ export interface ISecretPropBuilder {
   setDocLink(link: string): this;
 
   skipInputSocket(): this;
+
+  suggestSource(suggestion: { schema: string; path: string }): this;
+
+  suggestSourceFor(suggestion: { schema: string; path: string }): this;
 
   build(): SecretPropDefinition;
 }
@@ -918,6 +940,18 @@ export class SecretPropBuilder implements ISecretPropBuilder {
     return this;
   }
 
+  suggestSource(suggestion: { schema: string; path: string }) {
+    this.prop.suggestedSources ??= [];
+    this.prop.suggestedSources.push(suggestion);
+    return this;
+  }
+
+  suggestSourceFor(suggestion: { schema: string; path: string }) {
+    this.prop.suggestedSourceFor ??= [];
+    this.prop.suggestedSourceFor.push(suggestion);
+    return this;
+  }
+
   /**
    * Whether the prop should disable the auto-creation of an input socket
    *
@@ -934,7 +968,7 @@ export class SecretPropBuilder implements ISecretPropBuilder {
   build(): SecretPropDefinition {
     if (
       this.prop.widget?.options?.find(
-        (option) => option.label === "secretKind",
+        (option) => option.label === "secretKind"
       ) === undefined
     ) {
       throw new Error("must call setSecretKind() before build()");
@@ -1128,7 +1162,7 @@ export class AssetBuilder implements IAssetBuilder {
 
     if (prop.hasInputSocket) {
       const secretKind = prop.widget?.options?.find(
-        (option) => option.label === "secretKind",
+        (option) => option.label === "secretKind"
       )?.value;
 
       if (secretKind === undefined) {
@@ -1139,7 +1173,7 @@ export class AssetBuilder implements IAssetBuilder {
         new SocketDefinitionBuilder()
           .setArity("one")
           .setName(secretKind)
-          .build(),
+          .build()
       );
 
       prop.valueFrom = new ValueFromBuilder()
@@ -1166,7 +1200,7 @@ export class AssetBuilder implements IAssetBuilder {
         .setName(definition.name)
         .setSecretKind(definition.name)
         .skipInputSocket()
-        .build(),
+        .build()
     );
 
     const outputSocketBuilder = new SocketDefinitionBuilder()
@@ -1176,7 +1210,7 @@ export class AssetBuilder implements IAssetBuilder {
         new ValueFromBuilder()
           .setKind("prop")
           .setPropPath(["root", "secrets", definition.name])
-          .build(),
+          .build()
       );
 
     if (
@@ -1184,7 +1218,7 @@ export class AssetBuilder implements IAssetBuilder {
       definition.connectionAnnotations !== ""
     ) {
       outputSocketBuilder.setConnectionAnnotation(
-        definition.connectionAnnotations,
+        definition.connectionAnnotations
       );
     }
 
@@ -1262,7 +1296,7 @@ export class AssetBuilder implements IAssetBuilder {
   build() {
     if (this.asset.secretDefinition && this.asset.outputSockets?.length > 1) {
       throw new Error(
-        "secret defining assets cannot have more than one output socket since it can only output the secret corresponding to the definition",
+        "secret defining assets cannot have more than one output socket since it can only output the secret corresponding to the definition"
       );
     }
     return this.asset;

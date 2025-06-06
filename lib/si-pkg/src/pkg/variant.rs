@@ -656,6 +656,7 @@ async fn create_prop_stack(
                 documentation,
                 default_value,
                 validation_format,
+                ui_optionals,
             }) = data
             {
                 builder
@@ -689,6 +690,10 @@ async fn create_prop_stack(
 
                 if let Some(validation_format) = validation_format {
                     builder.validation_format(validation_format.to_owned());
+                }
+
+                if !ui_optionals.is_null() {
+                    builder.ui_optionals(ui_optionals.to_owned());
                 }
             }
         }

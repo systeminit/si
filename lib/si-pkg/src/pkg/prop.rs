@@ -33,6 +33,7 @@ pub struct SiPkgPropData {
     pub hidden: bool,
     pub documentation: Option<String>,
     pub validation_format: Option<String>,
+    pub ui_optionals: serde_json::Value,
 }
 
 #[remain::sorted]
@@ -213,6 +214,7 @@ impl<'a> SiPkgProp<'a> {
                          doc_link,
                          documentation,
                          validation_format,
+                         ui_optionals,
                      }| SiPkgPropData {
                         name,
                         default_value,
@@ -223,6 +225,7 @@ impl<'a> SiPkgProp<'a> {
                         doc_link,
                         documentation,
                         validation_format,
+                        ui_optionals,
                     },
                 ),
                 unique_id.to_owned(),
