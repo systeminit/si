@@ -111,8 +111,8 @@ import * as _ from "lodash-es";
 import { Fzf } from "fzf";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
-  BifrostComponent,
   BifrostComponentConnections,
+  BifrostComponentInList,
   BifrostIncomingConnectionsList,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
@@ -130,7 +130,7 @@ const props = defineProps<{ active: boolean }>();
 const componentContextMenuRef =
   ref<InstanceType<typeof ComponentContextMenu>>();
 
-const selectedComponent = ref<BifrostComponent | null>(null);
+const selectedComponent = ref<BifrostComponentInList | null>(null);
 
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
@@ -336,6 +336,7 @@ const tones = reactive<Tones[]>(["success", "destructive"]);
 
 const connections = useQuery<BifrostIncomingConnectionsList>({
   queryKey,
+  enabled: () => active.value, // Only run query when map view is active
   queryFn: async () => {
     const d = await bifrost<BifrostIncomingConnectionsList | null>(
       args(EntityKind.IncomingConnectionsList),
@@ -365,14 +366,14 @@ const connections = useQuery<BifrostIncomingConnectionsList>({
 const mapData = computed(() => {
   const nodes = new Set<string>();
   const edges = new Set<string>();
-  const components: Record<string, BifrostComponent> = {};
+  const components: Record<string, BifrostComponentInList> = {};
   if (!connections.data.value) {
     return { nodes, edges, components };
   }
 
   const matchingIds: string[] = [];
   if (searchString?.value && searchString.value.trim().length > 0) {
-    const componentsMap: Record<string, BifrostComponent> = {};
+    const componentsMap: Record<string, BifrostComponentInList> = {};
     connections.data.value.componentConnections.forEach((c) => {
       componentsMap[c.id] = c.component;
     });
@@ -421,7 +422,7 @@ type node = {
   id: string;
   width: number;
   height: number;
-  component: BifrostComponent;
+  component: BifrostComponentInList;
   icons: [string | null];
 };
 

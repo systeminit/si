@@ -66,7 +66,6 @@ import {
   EddaIncomingConnections,
   BifrostComponentConnections,
   BifrostConnection,
-  EddaConnection,
   BifrostComponent,
   SchemaVariant,
   PossibleConnection,
@@ -75,6 +74,8 @@ import {
   BifrostSchemaVariantCategories,
   CategoryVariant,
   SchemaMembers,
+  UninstalledVariant,
+  BifrostComponentInList,
 } from "./types/entity_kind_types";
 import {
   hasReturned,
@@ -1597,6 +1598,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
         c,
         undefined,
         false,
+        false,
       ),
     ),
   );
@@ -1873,7 +1875,7 @@ const getComputed = async (
     );
     return data;
   } else if (kind === EntityKind.Component) {
-    const data = atomDoc as BifrostComponent;
+    const data = atomDoc as BifrostComponent | EddaComponent;
     data.outputCount = Object.values(connectionsById.get(id)).length;
     clearWeakReferences(changeSetId, { kind, args: id });
     weakReference(
@@ -1929,7 +1931,7 @@ const getReferences = async (
     id,
   });
 
-  //  debug("🔗 reference query", kind, id);
+  debug("🔗 reference query", kind, id);
 
   let hasReferenceError = false;
 
@@ -1939,53 +1941,57 @@ const getReferences = async (
       id: data.id,
       categories: [],
     };
-    await Promise.all(
-      data.categories.map(async (category) => {
-        const variants = await Promise.all(
-          category.schemaVariants.map(async (schemaVariant) => {
-            if (schemaVariant.type === "uninstalled") {
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              const variant = data.uninstalled[schemaVariant.id]!;
-              variant.uninstalled = "uninstalled";
-              return variant;
-            } else {
-              const sd = (await get(
-                workspaceId,
-                changeSetId,
-                EntityKind.SchemaVariant,
-                schemaVariant.id,
-                undefined,
-                indexChecksum,
-                followComputed,
-              )) as SchemaVariant | -1;
-
-              if (sd === -1) {
-                hasReferenceError = true;
-                mjolnir(
-                  workspaceId,
-                  changeSetId,
-                  EntityKind.SchemaVariant,
-                  schemaVariant.id,
-                );
-              }
-              weakReference(
-                changeSetId,
-                { kind: EntityKind.SchemaVariant, args: schemaVariant.id },
-                { kind, args: data.id },
-              );
-              return sd;
-            }
-          }),
-        );
-        const schemaVariants = variants.filter(
-          (v): v is CategoryVariant => v !== -1 && v && "schemaId" in v,
-        );
-        bifrost.categories.push({
-          displayName: category.displayName,
-          schemaVariants,
-        });
-      }),
+    const variantIds = data.categories.flatMap((c) =>
+      c.schemaVariants.filter((c) => c.type === "installed").map((c) => c.id),
     );
+    const installedVariants = await getMany(
+      workspaceId,
+      changeSetId,
+      EntityKind.SchemaVariant,
+      variantIds,
+      indexChecksum,
+    );
+    clearWeakReferences(changeSetId, {
+      kind,
+      args: data.id,
+    });
+    data.categories.forEach((category) => {
+      const variants = category.schemaVariants.map((schemaVariant) => {
+        if (schemaVariant.type === "uninstalled") {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          const variant = data.uninstalled[schemaVariant.id]!;
+          variant.uninstalled = "uninstalled";
+          return variant as UninstalledVariant;
+        } else {
+          const result = installedVariants[schemaVariant.id] as
+            | SchemaVariant
+            | -1;
+          if (result === -1) {
+            hasReferenceError = true;
+            mjolnir(
+              workspaceId,
+              changeSetId,
+              EntityKind.SchemaVariant,
+              schemaVariant.id,
+            );
+          }
+          weakReference(
+            changeSetId,
+            { kind: EntityKind.SchemaVariant, args: schemaVariant.id },
+            { kind, args: data.id },
+          );
+          return result;
+        }
+      });
+
+      const schemaVariants = variants.filter(
+        (v): v is CategoryVariant => v !== -1 && v && "schemaId" in v,
+      );
+      bifrost.categories.push({
+        displayName: category.displayName,
+        schemaVariants,
+      });
+    });
     span.end();
     return [bifrost, hasReferenceError];
   } else if (kind === EntityKind.Component) {
@@ -2084,40 +2090,35 @@ const getReferences = async (
     return [component, hasReferenceError];
   } else if (kind === EntityKind.ViewList) {
     const rawList = atomDoc as RawViewList;
-    const maybeViews = await Promise.all(
-      rawList.views.map(async (v) => {
-        const maybeDoc = (await get(
-          workspaceId,
-          changeSetId,
-          v.kind,
-          v.id,
-          v.checksum,
-          indexChecksum,
-          followComputed,
-        )) as View | -1;
-        if (maybeDoc === -1) {
-          hasReferenceError = true;
-          span.addEvent("mjolnir", {
-            workspaceId,
-            changeSetId,
-            kind: v.kind,
-            id: v.id,
-            source: "getReferences",
-            sourceKind: kind,
-          });
-          mjolnir(workspaceId, changeSetId, v.kind, v.id);
-          weakReference(
-            changeSetId,
-            { kind: v.kind, args: v.id },
-            { kind, args: rawList.id },
-          );
-        }
-        return maybeDoc;
-      }),
+
+    const viewIds = rawList.views.map((v) => v.id);
+    const viewResults: Record<Id, View> = await getMany(
+      workspaceId,
+      changeSetId,
+      EntityKind.View,
+      viewIds,
+      indexChecksum,
     );
-    const views = maybeViews.filter(
-      (v): v is View => v !== -1 && v && "id" in v,
-    );
+    const maybeViews: View[] = [];
+    clearWeakReferences(changeSetId, {
+      kind: EntityKind.ViewList,
+      args: rawList.id,
+    });
+    for (const viewRef of rawList.views) {
+      const result = viewResults[viewRef.id];
+      if (result) {
+        maybeViews.push(result);
+      } else {
+        hasReferenceError = true;
+        mjolnir(workspaceId, changeSetId, EntityKind.View, viewRef.id);
+      }
+      weakReference(
+        changeSetId,
+        { kind: viewRef.kind, args: viewRef.id },
+        { kind, args: rawList.id },
+      );
+    }
+    const views = maybeViews.filter((v): v is View => v && "id" in v);
     const list: BifrostViewList = {
       id: rawList.id,
       views,
@@ -2129,41 +2130,43 @@ const getReferences = async (
     kind === EntityKind.ViewComponentList
   ) {
     const rawList = atomDoc as EddaComponentList;
-    const maybeComponents = await Promise.all(
-      rawList.components.map(async (c) => {
-        const maybeDoc = (await get(
+
+    // Extract all component IDs for batch fetching
+    const componentIds = rawList.components.map((c) => c.id);
+
+    // Use getMany to fetch all components in a single query
+    const componentResults: Record<Id, BifrostComponentInList> | -1 =
+      await getMany(
+        workspaceId,
+        changeSetId,
+        EntityKind.Component,
+        componentIds,
+        indexChecksum,
+      );
+
+    // Process results and handle missing components
+    clearWeakReferences(changeSetId, { kind, args: rawList.id });
+    const components: BifrostComponentInList[] = [];
+    for (const componentRef of rawList.components) {
+      const result = componentResults[componentRef.id];
+      if (result) {
+        components.push(result);
+      } else {
+        hasReferenceError = true;
+        mjolnir(
           workspaceId,
           changeSetId,
-          c.kind,
-          c.id,
-          c.checksum,
-          indexChecksum,
-          followComputed,
-        )) as BifrostComponent | -1;
+          EntityKind.Component,
+          componentRef.id,
+        );
+      }
+      weakReference(
+        changeSetId,
+        { kind: componentRef.kind, args: componentRef.id },
+        { kind, args: rawList.id },
+      );
+    }
 
-        if (maybeDoc === -1) {
-          hasReferenceError = true;
-          span.addEvent("mjolnir", {
-            workspaceId,
-            changeSetId,
-            kind: c.kind,
-            id: c.id,
-            source: "getReferences",
-            sourceKind: kind,
-          });
-          mjolnir(workspaceId, changeSetId, c.kind, c.id);
-          weakReference(
-            changeSetId,
-            { kind: c.kind, args: c.id },
-            { kind, args: rawList.id },
-          );
-        }
-        return maybeDoc;
-      }),
-    );
-    const components = maybeComponents.filter(
-      (c): c is BifrostComponent => c !== -1 && c && "id" in c,
-    );
     // NOTE: this is either a bifrost component list or a view component list
     // FUTURE: improve this with some typing magic
     const list: BifrostComponentList = {
@@ -2181,6 +2184,7 @@ const getReferences = async (
       raw.id,
       undefined,
       indexChecksum,
+      false,
       false,
     )) as BifrostComponent | -1;
 
@@ -2211,100 +2215,83 @@ const getReferences = async (
     // explicitly setting this as a warning that these fields are not to be used
     else (component as BifrostComponent).outputCount = -1;
 
-    const connections = await Promise.all(
-      raw.connections.map(async (c: EddaConnection) => {
-        // NOTE: when looking up the weak referenced components in a list of component connections
-        // we pass `followComputed=false` because we don't need the BifrostComponent objects to look up
-        // their own connection stats, we're calling `IncomingConnections` after all!
-        const fromComponent = await get(
+    const componentsToGet = raw.connections.map((c) => c.fromComponentId.id);
+    const results = await getMany(
+      workspaceId,
+      changeSetId,
+      EntityKind.Component,
+      componentsToGet,
+      indexChecksum,
+    );
+    const conns: BifrostConnection[] = [];
+    for (const connRef of raw.connections) {
+      weakReference(
+        changeSetId,
+        {
+          kind: connRef.fromComponentId.kind,
+          args: connRef.fromComponentId.id,
+        },
+        { kind: EntityKind.IncomingConnections, args: raw.id },
+      );
+      const result = results[connRef.fromComponentId.id];
+      if (result === -1) {
+        hasReferenceError = true;
+        mjolnir(
           workspaceId,
           changeSetId,
-          c.fromComponentId.kind,
-          c.fromComponentId.id,
-          undefined,
-          indexChecksum,
-          false,
+          EntityKind.Component,
+          connRef.fromComponentId.id,
         );
+        hasReferenceError = true;
+      } else (result as BifrostComponent).outputCount = -1;
 
-        weakReference(
-          changeSetId,
-          { kind: c.fromComponentId.kind, args: c.fromComponentId.id },
-          { kind: EntityKind.IncomingConnections, args: raw.id },
-        );
-
-        if (fromComponent === -1) {
-          span.addEvent("mjolnir", {
-            workspaceId,
-            changeSetId,
-            kind: c.fromComponentId.kind,
-            id: c.fromComponentId.id,
-            source: "getReferences",
-            sourceKind: kind,
-          });
-          mjolnir(
-            workspaceId,
-            changeSetId,
-            c.fromComponentId.kind,
-            c.fromComponentId.id,
-          );
-          hasReferenceError = true;
-        }
-        // explicitly setting this as a warning that these fields are not to be used
-        else (fromComponent as BifrostComponent).outputCount = -1;
-
-        const conn: BifrostConnection = {
-          ...c,
-          fromComponent: fromComponent as BifrostComponent,
-          toComponent: component as BifrostComponent,
-        };
-        return conn;
-      }),
-    );
+      const conn: BifrostConnection = {
+        ...connRef,
+        fromComponent: result as BifrostComponentInList,
+        toComponent: component as BifrostComponentInList,
+      };
+      conns.push(conn);
+    }
 
     span.end();
     return [
       {
         id: raw.id,
         component,
-        incoming: connections,
+        incoming: conns,
         outgoing: [] as BifrostConnection[],
       } as BifrostComponentConnections,
       hasReferenceError,
     ];
   } else if (kind === EntityKind.IncomingConnectionsList) {
     const rawList = atomDoc as EddaIncomingConnectionsList;
-    const maybeIncomingConnections = await Promise.all(
-      rawList.componentConnections.map(async (c) => {
-        const maybeDoc = (await get(
+    const compIds = rawList.componentConnections.map((c) => c.id);
+    const incomingResults: Record<Id, BifrostComponentConnections> | -1 =
+      await getMany(
+        workspaceId,
+        changeSetId,
+        EntityKind.IncomingConnections,
+        compIds,
+        indexChecksum,
+      );
+    const maybeIncomingConnections: BifrostComponentConnections[] = [];
+    for (const connRef of rawList.componentConnections) {
+      const result = incomingResults[connRef.id];
+      if (result) {
+        maybeIncomingConnections.push(result as BifrostComponentConnections);
+      } else {
+        hasReferenceError = true;
+        mjolnir(
           workspaceId,
           changeSetId,
-          c.kind,
-          c.id,
-          undefined,
-          indexChecksum,
-        )) as BifrostComponentConnections | -1;
-        if (maybeDoc === -1) {
-          hasReferenceError = true;
-          span.addEvent("mjolnir", {
-            workspaceId,
-            changeSetId,
-            kind: c.kind,
-            id: c.id,
-            source: "getReferences",
-            sourceKind: kind,
-          });
-          mjolnir(workspaceId, changeSetId, c.kind, c.id);
-          weakReference(
-            changeSetId,
-            { kind: c.kind, args: c.id },
-            { kind, args: rawList.id },
-          );
-        }
-        return maybeDoc;
-      }),
-    );
+          EntityKind.IncomingConnections,
+          connRef.id,
+        );
+      }
+    }
+
     const componentConnections = maybeIncomingConnections.filter(
-      (c): c is BifrostComponentConnections => c !== -1 && c && "id" in c,
+      (c): c is BifrostComponentConnections => c && "id" in c,
     );
     const list: BifrostIncomingConnectionsList = {
       id: rawList.id,
@@ -2388,10 +2375,7 @@ const get = async (
     // for the possible side-effects
     if (hasReferenceError) return -1;
 
-    // NOTE: Whenever we ask for the full list of connections
-    // This implementation will not compute the outgoing connections (infinite recursion)
-    // You will only get incoming—which is all we need when we ask for the whole list
-    if (followComputed && !["IncomingConnectionsList"].includes(kind)) {
+    if (followComputed) {
       return await getComputed(docAndRefs, workspaceId, changeSetId, kind, id);
     }
     return docAndRefs;
@@ -2400,6 +2384,155 @@ const get = async (
     console.error(err);
     return -1;
   }
+};
+
+/**
+ * NOTE: getMany returns Edda types, not Bifrost types! Because it does not follow references
+ */
+const getMany = async (
+  workspaceId: string,
+  changeSetId: ChangeSetId,
+  kind: EntityKind,
+  ids: Id[],
+  indexChecksum?: string,
+): Promise<Record<Id, AtomDocument | -1>> => {
+  if (ids.length === 0) return {};
+
+  const results: Record<Id, AtomDocument | -1> = {};
+
+  // Build SQL query to fetch multiple atoms at once
+  const placeholders = ids.map(() => "?").join(",");
+  const sql = `
+    select
+      atoms.args as id,
+      atoms.data
+    from
+      atoms
+      inner join index_mtm_atoms mtm
+        ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+      inner join indexes ON mtm.index_checksum = indexes.checksum
+    ${
+      indexChecksum
+        ? ""
+        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+    }
+    where
+      ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+      AND
+      atoms.kind = ? AND
+      atoms.args IN (${placeholders})
+    ;`;
+
+  const bind = [indexChecksum ?? changeSetId, kind, ...ids];
+  const start = Date.now();
+  const atomData = await db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+  const end = Date.now();
+
+  debug(
+    "❓ sql getMany",
+    `[${end - start}ms]`,
+    `kind: ${kind}, ids: ${ids.length}`,
+    " returns",
+    atomData.length,
+    "results",
+  );
+
+  // Track which IDs we found vs missing
+  const foundIds = new Set<Id>();
+
+  // Process found results
+  for (const row of atomData) {
+    const id = row[0] as Id;
+    const data = row[1] as ArrayBuffer;
+    foundIds.add(id);
+
+    const atomDoc = decodeDocumentFromDB(data);
+
+    results[id] = await getComputed(
+      atomDoc,
+      workspaceId,
+      changeSetId,
+      kind,
+      id,
+    );
+  }
+
+  for (const id of ids) {
+    if (!foundIds.has(id)) {
+      results[id] = -1;
+    }
+  }
+
+  // we're not generically following references, because that would re-introduce N+1 queries
+  // but IncomingConnectionsList cannot function without its components
+  if ([EntityKind.IncomingConnections].includes(kind)) {
+    // do a getMany for all the componentIds in connection
+    const eddaIncConns = results as Record<Id, EddaIncomingConnections>;
+    const componentIds: Id[] = Object.values(eddaIncConns)
+      .flatMap((c) => c.connections)
+      .flatMap((r) => [r.toComponentId.id, r.fromComponentId.id]);
+    const components: Record<Id, BifrostComponentInList> | -1 = await getMany(
+      workspaceId,
+      changeSetId,
+      EntityKind.Component,
+      componentIds,
+      indexChecksum,
+    );
+    Object.values(components).forEach((component) => {
+      getComputed(
+        component,
+        workspaceId,
+        changeSetId,
+        EntityKind.Component,
+        component.id,
+      );
+    });
+    type MaybeBifrostConnection = Omit<
+      BifrostConnection,
+      "toComponent" | "fromComponent"
+    > & {
+      toComponent: BifrostComponentInList | -1;
+      fromComponent: BifrostComponentInList | -1;
+    };
+    type MaybeBifrostComponentConnections = Omit<
+      BifrostComponentConnections,
+      "component" | "incoming"
+    > & {
+      component: BifrostComponentInList | -1;
+      incoming: MaybeBifrostConnection[];
+    };
+    const bifrostConns: Record<Id, MaybeBifrostComponentConnections> = {};
+    Object.entries(eddaIncConns).forEach(([id, eConn]) => {
+      const component = components[id];
+      const bifrost: MaybeBifrostComponentConnections = {
+        id,
+        component: component ?? -1,
+        incoming: [],
+      };
+
+      eConn.connections.forEach((c) => {
+        const fromComponent = components[c.fromComponentId.id];
+        const toComponent = components[c.toComponentId.id];
+
+        const conn: MaybeBifrostConnection = {
+          ...c,
+          toComponent: toComponent ?? -1,
+          fromComponent: fromComponent ?? -1,
+        };
+        bifrost.incoming.push(conn);
+      });
+
+      bifrostConns[id] = bifrost;
+    });
+
+    return bifrostConns;
+  }
+
+  return results;
 };
 
 /**
