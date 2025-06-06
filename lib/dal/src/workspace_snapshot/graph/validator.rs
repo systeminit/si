@@ -430,7 +430,7 @@ lazy_static! {
         "awsIamInstanceProfileSetRoleNameFromInput",
 
         // AWS::IAM::PolicyPrincipal
-        // "awsIamPrincipalOutputSocket", // Maybe? This is essentially `value || {}`
+        "awsIamPrincipalOutputSocket",
 
         // AWS::IAM::Role
         "awsIamRoleSetArnOutput",
@@ -480,6 +480,9 @@ lazy_static! {
         "setNotResourcesFromNotResourceSocket",
 
         // AWS::IAM::Role
+        "awsIamRoleSetAssumeRolePolicyStatementFromSocket",
+
+        // AWS::IAM::RolePrincipal
         "awsIamRolePrincipalSetPrincipalOutputSocket",
     ]
     .into_iter()
@@ -494,23 +497,79 @@ pub fn func_produces_array(
     let func_node = graph
         .get_node_weight_by_id(func_id)?
         .get_func_node_weight()?;
-    Ok(if IDENTITY_FUNCS.contains(func_node.name()) {
-        Some(input_is_array)
-    } else if SINGLE_VALUED_FUNCS.contains(func_node.name()) {
-        Some(false)
-    } else {
-        // We just don't know, so return None
-        None
-    })
+    Ok(
+        // Identity functions preserve the input type
+        if IDENTITY_FUNCS.contains(func_node.name()) {
+            Some(input_is_array)
+
+            // If the function always produces a single value, return false
+        } else if SINGLE_VALUED_FUNCS.contains(func_node.name()) {
+            Some(false)
+
+        // If the function always produces an array, return true
+        } else if ARRAY_VALUED_FUNCS.contains(func_node.name())
+            || NORMALIZE_TO_ARRAY_FUNCS.contains(func_node.name())
+        {
+            Some(true)
+
+        // Most functions we just don't know what they will do.
+        // It's JavaScript, c'est la vie
+        } else {
+            None
+        },
+    )
 }
 
 lazy_static! {
+    /// Known transform functions that always produce a single value, regardless of input.
     static ref SINGLE_VALUED_FUNCS: HashSet<&'static str> = [
         // AWS ARN
         "awsArnToArnString",
+
+        // AWS::IAM::AccountPrincipal
+        "awsAccountPrincipalAccountOutputSocket",
+        "awsAccountPrincipalCanonicalIdOutputSocket",
+
+        // AWS::IAM::AssumedRoleSessionPrincipal
+        "awsIamAssumedRoleSessionPrincipalSetPrincipalOutputSocket",
+
+        // AWS::IAM::ConditionOperator
+        "awsIamConditionOperatorSetConditionOutput",
+
+        // AWS::IAM::OIDCSessionPrincipal
+        "awsIamOidcSessionPrincipalSetPrincipalOutputSocket",
+
+        // AWS::IAM::PolicyStatement
+        "awsIamPolicyStatementSetStatementOutput",
+
+        // AWS::IAM::SAMLSessionPrincipal
+        "awsIamSamlSessionPrincipalSetPrincipalOutputSocket",
+
+        // AWS::IAM::ServicePrincipal
+        "awsIamAwsServciePrincipalSetPrincipalOutput",
+        "awsIamAwsServicePrincipalSetPrincipalOutput", // For when we fix spelling :)
+
+        // AWS::IAM::STSFederatedUserPrincipal
+        "awsIamStsFederatedUserPrincipalSetPrincipalOutput",
+
+        // AWS::IAM::UserPrincipal
+        "awsIamUserPrincipalSetPrincipalOutput",
     ]
     .into_iter()
     .collect();
+}
+
+lazy_static! {
+    /// Known transform functions that always produce arrays regardless of input, but are *not*
+    /// identity transforms on input elements. (si:normalizeToArray-type functions also always
+    /// produce arrays, but they keep the individual elements unchanged.)
+    static ref ARRAY_VALUED_FUNCS: HashSet<&'static str> = [
+        // AWS::IAM::Any
+        "awsIamAnyToSocket",
+
+        // AWS::IAM::PolicySimulator
+        "awsIamPolicySimulatorSetPolicyInput",
+    ].into_iter().collect();
 }
 
 pub fn resolve_av(
