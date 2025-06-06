@@ -174,9 +174,9 @@ onBeforeMount(async () => {
   }, 500);
 
   // Activate the norse stack, which is explicitly NOT flagged for the job-specific UI.
-  if (!authStore.selectedOrDefaultAuthToken)
+  if (!authStore.selectedWorkspaceToken)
     throw new Error("no auth token selected");
-  await heimdall.init(authStore.selectedOrDefaultAuthToken, queryClient);
+  await heimdall.init(authStore.selectedWorkspaceToken, queryClient);
   watch(
     connectionShouldBeEnabled,
     async () => {

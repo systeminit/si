@@ -282,10 +282,10 @@ const begin = async () => {
   if (
     changeSetsStore.selectedWorkspacePk &&
     changeSetsStore.selectedChangeSetId &&
-    authStore.selectedOrDefaultAuthToken
+    authStore.selectedWorkspaceToken
   ) {
     if (featureFlagsStore.FRONTEND_ARCH_VIEWS) {
-      await heimdall.init(authStore.selectedOrDefaultAuthToken, queryClient);
+      await heimdall.init(authStore.selectedWorkspaceToken, queryClient);
       watch(
         connectionShouldBeEnabled,
         async () => {
