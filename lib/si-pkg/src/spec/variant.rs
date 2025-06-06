@@ -599,6 +599,7 @@ impl SchemaVariantSpecBuilder {
                 doc_link: None,
                 documentation: None,
                 validation_format: None,
+                ui_optionals: Default::default(),
             }),
             entries: vec![],
         }
@@ -619,6 +620,7 @@ impl SchemaVariantSpecBuilder {
                 doc_link: None,
                 documentation: None,
                 validation_format: None,
+                ui_optionals: Default::default(),
             }),
             entries: vec![],
         }
@@ -639,6 +641,7 @@ impl SchemaVariantSpecBuilder {
                 doc_link: None,
                 documentation: None,
                 validation_format: None,
+                ui_optionals: Default::default(),
             }),
             entries: vec![],
         })
@@ -659,6 +662,7 @@ impl SchemaVariantSpecBuilder {
                 doc_link: None,
                 documentation: None,
                 validation_format: None,
+                ui_optionals: Default::default(),
             }),
             entries: vec![],
         }

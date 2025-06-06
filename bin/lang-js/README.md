@@ -5,7 +5,7 @@ This directory contains `lang-js`, the primary executor for functions in SI.
 ## Local Testing Guide
 
 This is a guide for testing `lang-js` locally by using functions in the
-[examples](exmaples) directory.
+[examples](examples) directory.
 
 > [!NOTE]
 > While [dal integration tests](../../lib/dal/tests/integration.rs) are useful

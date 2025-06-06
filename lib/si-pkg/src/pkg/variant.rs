@@ -656,13 +656,15 @@ async fn create_prop_stack(
                 documentation,
                 default_value,
                 validation_format,
+                ui_optionals,
             }) = data
             {
                 builder
                     .has_data(true)
                     .name(name)
                     .hidden(*hidden)
-                    .widget_kind(*widget_kind);
+                    .widget_kind(*widget_kind)
+                    .ui_optionals(ui_optionals.clone());
 
                 if let Some(widget_options) = widget_options {
                     builder.widget_options(widget_options.to_owned());

@@ -82,6 +82,7 @@ pub struct PropSpecData {
     pub hidden: Option<bool>,
     pub doc_link: Option<Url>,
     pub documentation: Option<String>,
+    pub ui_optionals: HashMap<String, serde_json::Value>,
 }
 
 #[remain::sorted]
@@ -246,34 +247,48 @@ impl PropSpec {
     pub(crate) fn to_builder_without_children(&self) -> PropSpecBuilder {
         let mut builder = PropSpec::builder();
         builder.name(self.name()).kind(self.kind());
-        if let Some(data) = self.data() {
-            if let Some(validation_format) = data.validation_format.as_deref() {
-                builder.validation_format(validation_format);
+        if let Some(PropSpecData {
+            name: _, // handled at the PropSpec level
+            validation_format,
+            default_value,
+            func_unique_id,
+            inputs,
+            widget_kind,
+            widget_options,
+            hidden,
+            doc_link,
+            documentation,
+            ui_optionals,
+        }) = self.data()
+        {
+            if let Some(validation_format) = validation_format {
+                builder.validation_format(validation_format.as_str());
             }
-            if let Some(default_value) = data.default_value.as_ref() {
+            if let Some(default_value) = default_value {
                 builder.default_value(default_value.to_owned());
             }
-            if let Some(func_unique_id) = data.func_unique_id.as_deref() {
-                builder.func_unique_id(func_unique_id);
+            if let Some(func_unique_id) = func_unique_id {
+                builder.func_unique_id(func_unique_id.as_str());
             }
-            if let Some(inputs) = data.inputs.as_ref() {
+            if let Some(inputs) = inputs {
                 builder.inputs(inputs.to_owned());
             }
-            if let Some(widget_kind) = data.widget_kind.as_ref() {
+            if let Some(widget_kind) = widget_kind {
                 builder.widget_kind(widget_kind.to_owned());
             }
-            if let Some(widget_options) = data.widget_options.as_ref() {
+            if let Some(widget_options) = widget_options {
                 builder.widget_options(widget_options.to_owned());
             }
-            if let Some(doc_link) = data.doc_link.as_ref() {
+            if let Some(doc_link) = doc_link {
                 builder.doc_link(doc_link.to_owned());
             }
-            if let Some(docs) = data.documentation.as_deref() {
-                builder.documentation(docs);
+            if let Some(docs) = documentation {
+                builder.documentation(docs.as_str());
             }
-            if let Some(hidden) = data.hidden {
+            if let &Some(hidden) = hidden {
                 builder.hidden(hidden);
             }
+            builder.ui_optionals(ui_optionals.to_owned());
         }
 
         if let PropSpec::Map {
@@ -578,6 +593,7 @@ pub struct PropSpecBuilder {
     pub name: Option<String>,
     type_prop: Option<PropSpec>,
     validation_format: Option<String>,
+    ui_optionals: Option<HashMap<String, serde_json::Value>>,
     widget_kind: Option<PropSpecWidgetKind>,
     widget_options: Option<serde_json::Value>,
     unique_id: Option<String>,
@@ -598,6 +614,7 @@ impl Default for PropSpecBuilder {
             map_key_funcs: vec![],
             name: None,
             type_prop: None,
+            ui_optionals: None,
             validation_format: None,
             widget_kind: None,
             widget_options: None,
@@ -647,6 +664,16 @@ impl PropSpecBuilder {
     pub fn validation_format(&mut self, value: impl Into<String>) -> &mut Self {
         self.has_data = true;
         self.validation_format = Some(value.into());
+        self
+    }
+
+    #[allow(unused_mut)]
+    pub fn ui_optionals(
+        &mut self,
+        value: impl Into<HashMap<String, serde_json::Value>>,
+    ) -> &mut Self {
+        self.has_data = true;
+        self.ui_optionals = Some(value.into());
         self
     }
 
@@ -743,19 +770,20 @@ impl PropSpecBuilder {
                 return Err(UninitializedFieldError::from("name").into());
             }
         };
-
-        let maybe_data = if self.has_data {
+        let unique_id = self.unique_id.clone();
+        let data = if self.has_data {
             Some(PropSpecData {
-                name: name.to_owned(),
+                name: name.clone(),
                 validation_format: self.validation_format.clone(),
-                default_value: self.default_value.to_owned(),
-                func_unique_id: self.func_unique_id.to_owned(),
+                default_value: self.default_value.clone(),
+                func_unique_id: self.func_unique_id.clone(),
                 inputs: Some(self.inputs.clone()),
                 widget_kind: self.widget_kind,
-                widget_options: self.widget_options.to_owned(),
+                widget_options: self.widget_options.clone(),
                 hidden: Some(self.hidden),
-                doc_link: self.doc_link.to_owned(),
-                documentation: self.documentation.to_owned(),
+                doc_link: self.doc_link.clone(),
+                documentation: self.documentation.clone(),
+                ui_optionals: self.ui_optionals.clone().unwrap_or_default(),
             })
         } else {
             None
@@ -764,34 +792,34 @@ impl PropSpecBuilder {
         Ok(match self.kind {
             Some(kind) => match kind {
                 PropSpecKind::String => PropSpec::String {
-                    name: name.to_owned(),
-                    unique_id: self.unique_id.to_owned(),
-                    data: maybe_data,
+                    name,
+                    unique_id,
+                    data,
                 },
                 PropSpecKind::Json => PropSpec::Json {
-                    name: name.to_owned(),
-                    unique_id: self.unique_id.to_owned(),
-                    data: maybe_data,
+                    name,
+                    unique_id,
+                    data,
                 },
                 PropSpecKind::Number => PropSpec::Number {
-                    name: name.to_owned(),
-                    unique_id: self.unique_id.to_owned(),
-                    data: maybe_data,
+                    name,
+                    unique_id,
+                    data,
                 },
                 PropSpecKind::Float => PropSpec::Float {
-                    name: name.to_owned(),
-                    unique_id: self.unique_id.to_owned(),
-                    data: maybe_data,
+                    name,
+                    unique_id,
+                    data,
                 },
                 PropSpecKind::Boolean => PropSpec::Boolean {
-                    name: name.to_owned(),
-                    unique_id: self.unique_id.to_owned(),
-                    data: maybe_data,
+                    name,
+                    unique_id,
+                    data,
                 },
                 PropSpecKind::Map => PropSpec::Map {
-                    name: name.to_owned(),
-                    unique_id: self.unique_id.to_owned(),
-                    data: maybe_data,
+                    name,
+                    unique_id,
+                    data,
                     type_prop: match self.type_prop {
                         Some(ref value) => Box::new(value.clone()),
                         None => {
@@ -801,9 +829,9 @@ impl PropSpecBuilder {
                     map_key_funcs: Some(self.map_key_funcs.to_owned()),
                 },
                 PropSpecKind::Array => PropSpec::Array {
-                    name: name.to_owned(),
-                    unique_id: self.unique_id.to_owned(),
-                    data: maybe_data,
+                    name,
+                    unique_id,
+                    data,
                     type_prop: match self.type_prop {
                         Some(ref value) => Box::new(value.clone()),
                         None => {
@@ -812,9 +840,9 @@ impl PropSpecBuilder {
                     },
                 },
                 PropSpecKind::Object => PropSpec::Object {
-                    name: name.to_owned(),
-                    unique_id: self.unique_id.to_owned(),
-                    data: maybe_data,
+                    name,
+                    unique_id,
+                    data,
                     entries: self.entries.clone(),
                 },
             },

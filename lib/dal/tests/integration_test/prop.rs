@@ -1,63 +1,42 @@
+use std::collections::HashMap;
+
 use dal::{
     ComponentType,
     DalContext,
     Prop,
-    Schema,
     SchemaVariant,
     prop::PropPath,
     property_editor::schema::PropertyEditorSchema,
     schema::variant::authoring::VariantAuthoringClient,
 };
 use dal_test::{
-    helpers::ChangeSetTestHelpers,
+    Result,
+    helpers::{
+        ChangeSetTestHelpers,
+        schema::variant,
+    },
     test,
 };
+use itertools::Itertools as _;
 use pretty_assertions_sorted::assert_eq;
+use serde_json::json;
 
 #[test]
-async fn prop_path(ctx: &DalContext) {
-    let starfield_schema = Schema::list(ctx)
-        .await
-        .expect("list schemas")
-        .iter()
-        .find(|schema| schema.name() == "starfield")
-        .expect("starfield does not exist")
-        .to_owned();
-
-    let variant = SchemaVariant::list_for_schema(ctx, starfield_schema.id())
-        .await
-        .expect("get schema variants")
-        .pop()
-        .expect("get default variant");
+async fn prop_path(ctx: &DalContext) -> Result<()> {
+    let variant = SchemaVariant::default_for_schema_name(ctx, "starfield").await?;
 
     let name_path = PropPath::new(["root", "si", "name"]);
-    let name_id = Prop::find_prop_id_by_path(ctx, variant.id(), &name_path)
-        .await
-        .expect("get name prop id");
-    let fetched_name_path = Prop::path_by_id(ctx, name_id)
-        .await
-        .expect("get prop path by id");
+    let name_id = Prop::find_prop_id_by_path(ctx, variant.id(), &name_path).await?;
+    let fetched_name_path = Prop::path_by_id(ctx, name_id).await?;
 
     assert_eq!(name_path, fetched_name_path);
+
+    Ok(())
 }
 
 #[test]
-async fn verify_prop_used_as_input_flag(ctx: &DalContext) {
-    let pirate_schema = Schema::list(ctx)
-        .await
-        .expect("list schemas")
-        .iter()
-        .find(|schema| schema.name() == "pirate")
-        .expect("pirate does not exist")
-        .to_owned();
-
-    let pirate_default_variant_id = Schema::default_variant_id(ctx, pirate_schema.id())
-        .await
-        .expect("should be able to get default");
-
-    let _pirate = SchemaVariant::get_by_id(ctx, pirate_default_variant_id)
-        .await
-        .expect("should be able to get pirate sv");
+async fn verify_prop_used_as_input_flag(ctx: &DalContext) -> Result<()> {
+    let variant_id = SchemaVariant::default_id_for_schema_name(ctx, "pirate").await?;
 
     let container_props = [
         vec!["root"],
@@ -73,16 +52,10 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) {
     for container_prop_path in &container_props {
         let container_prop = Prop::get_by_id(
             ctx,
-            Prop::find_prop_id_by_path(
-                ctx,
-                pirate_default_variant_id,
-                &PropPath::new(container_prop_path),
-            )
-            .await
-            .expect("should have the container prop"),
+            Prop::find_prop_id_by_path(ctx, variant_id, &PropPath::new(container_prop_path))
+                .await?,
         )
-        .await
-        .expect("id should resolve to a prop");
+        .await?;
 
         assert!(
             container_prop.can_be_used_as_prototype_arg,
@@ -94,16 +67,9 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) {
     for item_prop_path in &item_props {
         let item_prop = Prop::get_by_id(
             ctx,
-            Prop::find_prop_id_by_path(
-                ctx,
-                pirate_default_variant_id,
-                &PropPath::new(item_prop_path),
-            )
-            .await
-            .expect("should have the item prop"),
+            Prop::find_prop_id_by_path(ctx, variant_id, &PropPath::new(item_prop_path)).await?,
         )
-        .await
-        .expect("id should resolve to a prop");
+        .await?;
 
         assert!(
             !item_prop.can_be_used_as_prototype_arg,
@@ -111,34 +77,25 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) {
             item_prop_path
         );
     }
+
+    Ok(())
 }
 
 #[test]
-async fn ordered_child_props(ctx: &DalContext) {
-    let schema = Schema::get_by_name(ctx, "starfield")
-        .await
-        .expect("schema not found");
-    let schema_variant_id = Schema::default_variant_id(ctx, schema.id())
-        .await
-        .expect("could not perform get default schema variant");
+async fn ordered_child_props(ctx: &DalContext) -> Result<()> {
+    let variant_id = SchemaVariant::default_id_for_schema_name(ctx, "starfield").await?;
 
-    let root_prop_id = SchemaVariant::get_root_prop_id(ctx, schema_variant_id)
-        .await
-        .expect("could not get root prop id");
-    let ordered_child_props = Prop::direct_child_props_ordered(ctx, root_prop_id)
-        .await
-        .expect("could not get direct child props ordered");
+    let root_prop_id = SchemaVariant::get_root_prop_id(ctx, variant_id).await?;
+    let ordered_child_props = Prop::direct_child_props_ordered(ctx, root_prop_id).await?;
     let domain_prop = ordered_child_props
         .iter()
         .find(|p| p.name == "domain")
         .expect("could not find prop");
-    let ordered_child_props = Prop::direct_child_props_ordered(ctx, domain_prop.id)
-        .await
-        .expect("could not get direct child props ordered");
-    let ordered_child_prop_names: Vec<String> = ordered_child_props
+    let ordered_child_props = Prop::direct_child_props_ordered(ctx, domain_prop.id).await?;
+    let ordered_child_prop_names = ordered_child_props
         .iter()
         .map(|p| p.name.to_owned())
-        .collect();
+        .collect_vec();
 
     let expected_child_prop_names = [
         "name",
@@ -149,19 +106,21 @@ async fn ordered_child_props(ctx: &DalContext) {
         "possible_world_b",
         "universe",
     ];
-    let expected_child_prop_names: Vec<String> = expected_child_prop_names
+    let expected_child_prop_names = expected_child_prop_names
         .iter()
         .map(|n| n.to_string())
-        .collect();
+        .collect_vec();
 
     assert_eq!(
         expected_child_prop_names, // expected
         ordered_child_prop_names   // actual
     );
+
+    Ok(())
 }
 
 #[test]
-async fn prop_documentation(ctx: &mut DalContext) {
+async fn prop_documentation(ctx: &mut DalContext) -> Result<()> {
     let name = "Toto Wolff";
     let description = None;
     let link = None;
@@ -169,52 +128,49 @@ async fn prop_documentation(ctx: &mut DalContext) {
     let color = "#00A19B";
 
     // Create an asset with a corresponding asset func. After that, commit.
-    let schema_variant_id = {
-        let schema_variant = VariantAuthoringClient::create_schema_and_variant(
-            ctx,
-            name,
-            description.clone(),
-            link.clone(),
-            category,
-            color,
-        )
-        .await
-        .expect("unable to create schema and variant");
-        schema_variant.id()
-    };
-    let asset_func = "function main() {
+    let schema_variant_id = VariantAuthoringClient::create_schema_and_variant(
+        ctx,
+        name,
+        description.clone(),
+        link.clone(),
+        category,
+        color,
+    )
+    .await?
+    .id();
+    let asset_func = r##"function main() {
         const asset = new AssetBuilder();
 
         const alpha_source_prop = new PropBuilder()
-            .setName(\"alpha_source_prop\")
-            .setKind(\"string\")
-            .setWidget(new PropWidgetDefinitionBuilder().setKind(\"text\").build())
+            .setName("alpha_source_prop")
+            .setKind("string")
+            .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
             .build();
         asset.addProp(alpha_source_prop);
 
         const alpha_destination_prop = new PropBuilder()
-            .setName(\"alpha_destination_prop\")
-            .setKind(\"string\")
-            .setWidget(new PropWidgetDefinitionBuilder().setKind(\"text\").build())
+            .setName("alpha_destination_prop")
+            .setKind("string")
+            .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
             .build();
         asset.addProp(alpha_destination_prop);
 
         const beta_source_prop = new PropBuilder()
-            .setName(\"beta_source_prop\")
-            .setKind(\"string\")
-            .setDocumentation(\"sweet docs yo\")
-            .setWidget(new PropWidgetDefinitionBuilder().setKind(\"text\").build())
+            .setName("beta_source_prop")
+            .setKind("string")
+            .setDocumentation("sweet docs yo")
+            .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
             .build();
         asset.addProp(beta_source_prop);
 
         const beta_destination_output_socket = new SocketDefinitionBuilder()
-            .setName(\"beta_destination_output_socket\")
-            .setArity(\"one\")
+            .setName("beta_destination_output_socket")
+            .setArity("one")
             .build();
         asset.addOutputSocket(beta_destination_output_socket);
 
         return asset.build();
-    }";
+    }"##;
     VariantAuthoringClient::save_variant_content(
         ctx,
         schema_variant_id,
@@ -227,24 +183,17 @@ async fn prop_documentation(ctx: &mut DalContext) {
         ComponentType::Component,
         Some(asset_func),
     )
-    .await
-    .expect("could not save content");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Once it's all ready, regenerate and commit.
-    let schema_variant_id = VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id)
-        .await
-        .expect("could not regenerate variant");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
+    let schema_variant_id =
+        VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Assemble property editor schema and ensure Prop Documentation is there.
-    let property_editor_schema = PropertyEditorSchema::assemble(ctx, schema_variant_id, false)
-        .await
-        .expect("could not assemble property editor schema");
+    let property_editor_schema =
+        PropertyEditorSchema::assemble(ctx, schema_variant_id, false).await?;
 
     let prop = property_editor_schema
         .props
@@ -259,40 +208,40 @@ async fn prop_documentation(ctx: &mut DalContext) {
 
     // now let's add documentation for the other prop, regenerate, and make sure everything works
 
-    let asset_func = "function main() {
+    let asset_func = r##"function main() {
         const asset = new AssetBuilder();
 
         const alpha_source_prop = new PropBuilder()
-            .setName(\"alpha_source_prop\")
-            .setKind(\"string\")
-            .setWidget(new PropWidgetDefinitionBuilder().setKind(\"text\").build())
+            .setName("alpha_source_prop")
+            .setKind("string")
+            .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
             .build();
         asset.addProp(alpha_source_prop);
 
         const alpha_destination_prop = new PropBuilder()
-            .setName(\"alpha_destination_prop\")
-            .setKind(\"string\")
-            .setDocumentation(\"more cool docs!\")
-            .setWidget(new PropWidgetDefinitionBuilder().setKind(\"text\").build())
+            .setName("alpha_destination_prop")
+            .setKind("string")
+            .setDocumentation("more cool docs!")
+            .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
             .build();
         asset.addProp(alpha_destination_prop);
 
         const beta_source_prop = new PropBuilder()
-            .setName(\"beta_source_prop\")
-            .setKind(\"string\")
-            .setDocumentation(\"sweet docs yo\")
-            .setWidget(new PropWidgetDefinitionBuilder().setKind(\"text\").build())
+            .setName("beta_source_prop")
+            .setKind("string")
+            .setDocumentation("sweet docs yo")
+            .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
             .build();
         asset.addProp(beta_source_prop);
 
         const beta_destination_output_socket = new SocketDefinitionBuilder()
-            .setName(\"beta_destination_output_socket\")
-            .setArity(\"one\")
+            .setName("beta_destination_output_socket")
+            .setArity("one")
             .build();
         asset.addOutputSocket(beta_destination_output_socket);
 
         return asset.build();
-    }";
+    }"##;
     VariantAuthoringClient::save_variant_content(
         ctx,
         schema_variant_id,
@@ -305,24 +254,17 @@ async fn prop_documentation(ctx: &mut DalContext) {
         ComponentType::Component,
         Some(asset_func),
     )
-    .await
-    .expect("could not save content");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Once it's all ready, regenerate and commit.
-    let schema_variant_id = VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id)
-        .await
-        .expect("could not regenerate variant");
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("could not commit");
+    let schema_variant_id =
+        VariantAuthoringClient::regenerate_variant(ctx, schema_variant_id).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
     // Assemble property editor schema and ensure both Prop Documentation is there.
-    let property_editor_schema = PropertyEditorSchema::assemble(ctx, schema_variant_id, false)
-        .await
-        .expect("could not assemble property editor schema");
+    let property_editor_schema =
+        PropertyEditorSchema::assemble(ctx, schema_variant_id, false).await?;
 
     let first_prop = property_editor_schema
         .props
@@ -351,4 +293,92 @@ async fn prop_documentation(ctx: &mut DalContext) {
             .expect("has documentation"),
         "more cool docs!"
     );
+
+    Ok(())
+}
+
+#[test]
+async fn prop_suggestions(ctx: &DalContext) -> Result<()> {
+    let foo = variant::create(
+        ctx,
+        "foo",
+        r##"function main() { return new AssetBuilder()
+                .addProp(new PropBuilder().setName("Id").setKind("string").build())
+                .build();
+        }"##,
+    )
+    .await?;
+
+    assert_eq!(
+        HashMap::new(),
+        Prop::find_prop_by_path(ctx, foo, &PropPath::new(["root", "domain", "Id"]))
+            .await?
+            .ui_optionals
+    );
+
+    let bar = variant::create(
+        ctx,
+        "bar",
+        r##"function main() { return new AssetBuilder()
+            .addProp(new PropBuilder()
+                .setName("Id")
+                .setKind("string")
+                .suggestAsSourceFor({ schema: "baz", prop: "BarId" })
+
+                // Make sure you can have multiple suggestAsSourceFor
+                .suggestAsSourceFor({ schema: "baz2", prop: "BarId2" })
+                .build())
+            .addProp(new PropBuilder()
+                .setName("FooId")
+                .setKind("string")
+                .suggestSource({ schema: "foo", prop: "Id" })
+
+                // Make sure you can have multiple suggestSource
+                .suggestSource({ schema: "foo2", prop: "Id2" })
+                // Make sure you can have suggestSource as well as suggestAsSourceFor on the same prop
+                .suggestAsSourceFor({ schema: "baz", prop: "FooBarId" })
+                .build())
+            .build();
+        }"##,
+    )
+    .await?;
+
+    assert_eq!(
+        HashMap::from([(
+            "suggestAsSourceFor".to_string(),
+            json!([
+                { "schema": "baz", "prop": "BarId" },
+                { "schema": "baz2", "prop": "BarId2" },
+            ])
+            .into()
+        )]),
+        Prop::find_prop_by_path(ctx, bar, &PropPath::new(["root", "domain", "Id"]))
+            .await?
+            .ui_optionals
+    );
+
+    assert_eq!(
+        HashMap::from([
+            (
+                "suggestSources".to_string(),
+                json!([
+                    { "schema": "foo", "prop": "Id" },
+                    { "schema": "foo2", "prop": "Id2" },
+                ])
+                .into()
+            ),
+            (
+                "suggestAsSourceFor".to_string(),
+                json!([
+                    { "schema": "baz", "prop": "FooBarId" },
+                ])
+                .into()
+            ),
+        ]),
+        Prop::find_prop_by_path(ctx, bar, &PropPath::new(["root", "domain", "FooId"]))
+            .await?
+            .ui_optionals
+    );
+
+    Ok(())
 }

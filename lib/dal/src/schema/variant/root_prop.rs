@@ -138,6 +138,7 @@ impl RootProp {
             None,
             None,
             None,
+            Default::default(),
             schema_variant_id,
         )
         .await?;
@@ -170,6 +171,7 @@ impl RootProp {
             None,
             None,
             None,
+            Default::default(),
             root_prop_id,
         )
         .await?;
@@ -208,6 +210,7 @@ impl RootProp {
             None,
             None,
             None,
+            Default::default(),
             root_prop_id,
         )
         .await?;
@@ -221,6 +224,7 @@ impl RootProp {
             None,
             None,
             None,
+            Default::default(),
             leaf_prop.id(),
         )
         .await?;
@@ -272,6 +276,7 @@ impl RootProp {
                 ])),
             )),
             None,
+            Default::default(),
             si_prop.id(),
         )
         .await?;
@@ -286,6 +291,7 @@ impl RootProp {
             None,
             Some((WidgetKind::Color, None)),
             None,
+            Default::default(),
             si_prop.id(),
         )
         .await?;
@@ -308,6 +314,7 @@ impl RootProp {
             None,
             None,
             None,
+            Default::default(),
             root_prop_id,
         )
         .await?;
@@ -322,6 +329,7 @@ impl RootProp {
             None,
             None,
             None,
+            Default::default(),
             resource_prop.id(),
         )
         .await?;
@@ -336,6 +344,7 @@ impl RootProp {
             None,
             None,
             None,
+            Default::default(),
             resource_prop.id(),
         )
         .await?;
@@ -350,6 +359,7 @@ impl RootProp {
             None,
             None,
             None,
+            Default::default(),
             resource_prop.id(),
         )
         .await?;
@@ -364,6 +374,7 @@ impl RootProp {
             None,
             None,
             None,
+            Default::default(),
             resource_prop.id(),
         )
         .await?;
@@ -384,6 +395,7 @@ impl RootProp {
             None,
             None,
             None,
+            Default::default(),
             root_prop_id,
         )
         .await?;
@@ -404,6 +416,7 @@ impl RootProp {
             None,
             None,
             None,
+            Default::default(),
             code_map_item_prop_id,
         )
         .await?;
@@ -417,6 +430,7 @@ impl RootProp {
             None,
             None,
             None,
+            Default::default(),
             code_map_item_prop_id,
         )
         .await?;
@@ -440,6 +454,7 @@ impl RootProp {
             None,
             None,
             None,
+            Default::default(),
             qualification_map_item_prop_id,
         )
         .await?;
@@ -453,6 +468,7 @@ impl RootProp {
             None,
             None,
             None,
+            Default::default(),
             qualification_map_item_prop_id,
         )
         .await?;

@@ -414,6 +414,8 @@ interface PropDefinition {
   hidden?: boolean;
   defaultValue?: any;
   validationFormat?: string;
+  suggestSources?: PropSuggestion[];
+  suggestAsSourceFor?: PropSuggestion[];
   mapKeyFuncs?: MapKeyFunc[];
 }
 
@@ -441,6 +443,10 @@ interface IPropBuilder {
   setDefaultValue(value: any): this;
 
   setValidationFormat(format: Joi.Schema): this;
+
+  suggestSource(suggestion: PropSuggestion): this;
+
+  suggestAsSourceFor(suggestion: PropSuggestion): this;
 
   addMapKeyFunc(func: MapKeyFunc): this;
 
@@ -639,6 +645,34 @@ declare class PropBuilder implements IPropBuilder {
    * .build())
    */
   setWidget(widget: PropWidgetDefinition): this;
+
+  /**
+   * Suggests another prop (on another component) that this prop typically gets its value from.
+   * The UI will use this to search for other components that could provide the value and
+   * suggest them to the user when they edit the prop.
+   *
+   * @param {PropSuggestion} suggestion - the schema and prop path the UI should suggest to the user.
+   *
+   * @returns this
+   *
+   * @example
+   * .suggestSource({ schema: "AWS::EC2::VPC", prop: "/resource_value/VpcId" })
+   */
+  suggestSource(suggestion: PropSuggestion): this;
+
+  /**
+   * Suggests another prop (on another component) that typically gets its value from this prop.
+   * The UI will use this to search for other components that could provide the value and
+   * suggest them to the user when they edit the prop.
+   *
+   * @param {PropSuggestion} suggestion - the schema and prop path the UI should suggest to the user.
+   *
+   * @returns this
+   *
+   * @example
+   * .suggestAsSourceFor({ schema: "AWS::EC2::Subnet", prop: "/domain/VpcId" })
+   */
+  suggestAsSourceFor(suggestion: PropSuggestion): this;
 }
 
 interface SecretPropDefinition extends PropDefinition {
@@ -658,6 +692,10 @@ interface ISecretPropBuilder {
   setDocLink(link: string): this;
 
   skipInputSocket(): this;
+
+  suggestSource(suggestion: PropSuggestion): this;
+
+  suggestAsSourceFor(suggestion: PropSuggestion): this;
 
   build(): SecretPropDefinition;
 }
@@ -715,6 +753,34 @@ declare class SecretPropBuilder implements ISecretPropBuilder {
    *  .skipInputSocket()
    */
   skipInputSocket(): this;
+
+  /**
+   * Suggests another prop (on another component) that this prop typically gets its value from.
+   * The UI will use this to search for other components that could provide the value and
+   * suggest them to the user when they edit the prop.
+   *
+   * @param {PropSuggestion} suggestion - the schema and prop path the UI should suggest to the user.
+   *
+   * @returns this
+   *
+   * @example
+   * .suggestSource({ schema: "AWS::EC2::VPC", prop: "/resource_value/VpcId" })
+   */
+  suggestSource(suggestion: PropSuggestion): this;
+
+  /**
+   * Suggests another prop (on another component) that typically gets its value from this prop.
+   * The UI will use this to search for other components that could provide the value and
+   * suggest them to the user when they edit the prop.
+   *
+   * @param {PropSuggestion} suggestion - the schema and prop path the UI should suggest to the user.
+   *
+   * @returns this
+   *
+   * @example
+   * .suggestAsSourceFor({ schema: "AWS::EC2::Subnet", prop: "/domain/VpcId" })
+   */
+  suggestAsSourceFor(suggestion: PropSuggestion): this;
 
   build(): SecretPropDefinition;
 }

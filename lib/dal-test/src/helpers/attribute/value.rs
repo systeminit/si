@@ -10,7 +10,6 @@ use dal::{
 };
 use si_id::{
     AttributeValueId,
-    ComponentId,
     FuncId,
 };
 
@@ -99,31 +98,7 @@ impl AttributeValueKey for (AttributeValueId, &str) {
         })
     }
 }
-impl AttributeValueKey for (ComponentId, &str) {
-    async fn lookup_attribute_value(self, ctx: &DalContext) -> Result<AttributeValueId> {
-        self.to_subscription(ctx)
-            .await?
-            .lookup_attribute_value(ctx)
-            .await
-    }
-    async fn resolve_attribute_value(self, ctx: &DalContext) -> Result<Option<AttributeValueId>> {
-        self.to_subscription(ctx)
-            .await?
-            .resolve_attribute_value(ctx)
-            .await
-    }
-    async fn vivify_attribute_value(self, ctx: &DalContext) -> Result<AttributeValueId> {
-        self.to_subscription(ctx)
-            .await?
-            .vivify_attribute_value(ctx)
-            .await
-    }
-    async fn to_subscription(self, ctx: &DalContext) -> Result<ValueSubscription> {
-        let root_id = Component::root_attribute_value_id(ctx, self.0).await?;
-        (root_id, self.1).to_subscription(ctx).await
-    }
-}
-impl AttributeValueKey for (&str, &str) {
+impl<T: ComponentKey> AttributeValueKey for (T, &str) {
     async fn lookup_attribute_value(self, ctx: &DalContext) -> Result<AttributeValueId> {
         self.to_subscription(ctx)
             .await?
@@ -144,7 +119,8 @@ impl AttributeValueKey for (&str, &str) {
     }
     async fn to_subscription(self, ctx: &DalContext) -> Result<ValueSubscription> {
         let component_id = self.0.lookup_component(ctx).await?;
-        (component_id, self.1).to_subscription(ctx).await
+        let root_id = Component::root_attribute_value_id(ctx, component_id).await?;
+        (root_id, self.1).to_subscription(ctx).await
     }
 }
 

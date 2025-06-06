@@ -1,4 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
 use chrono::{
     DateTime,
@@ -533,9 +536,10 @@ pub struct OutputSocketContentV1 {
     pub connection_annotations: Vec<ConnectionAnnotation>,
 }
 
-#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq, derive_more::From)]
 pub enum PropContent {
     V1(PropContentV1),
+    V2(PropContentV2),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -562,6 +566,77 @@ pub struct PropContentV1 {
     pub diff_func_id: Option<FuncId>,
     /// A serialized validation format JSON object for the prop.
     pub validation_format: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct PropContentV2 {
+    pub timestamp: Timestamp,
+    /// The name of the [`Prop`].
+    pub name: String,
+    /// The kind of the [`Prop`].
+    pub kind: PropKind,
+    /// The kind of "widget" that should be used for this [`Prop`].
+    pub widget_kind: WidgetKind,
+    /// The configuration of the "widget".
+    pub widget_options: Option<WidgetOptions>,
+    /// A link to external documentation for working with this specific [`Prop`].
+    pub doc_link: Option<String>,
+    /// Embedded documentation for working with this specific [`Prop`].
+    pub documentation: Option<String>,
+    /// A toggle for whether or not the [`Prop`] should be visually hidden.
+    pub hidden: bool,
+    /// Props can be connected to eachother to signify that they should contain the same value
+    /// This is useful for diffing the resource with the domain, to suggest actions if the real world changes
+    pub refers_to_prop_id: Option<PropId>,
+    /// Connected props may need a custom diff function
+    pub diff_func_id: Option<FuncId>,
+    /// A serialized validation format JSON object for the prop.
+    pub validation_format: Option<String>,
+    /// Optional UI data that isn't needed in the graph
+    /// (Eventually, many other fields in content will be moved here, e.g. documentation/docLink)
+    pub ui_optionals: Option<HashMap<String, CasValue>>,
+}
+
+impl From<PropContentV1> for PropContentV2 {
+    fn from(
+        PropContentV1 {
+            timestamp,
+            name,
+            kind,
+            widget_kind,
+            widget_options,
+            doc_link,
+            documentation,
+            hidden,
+            refers_to_prop_id,
+            diff_func_id,
+            validation_format,
+        }: PropContentV1,
+    ) -> Self {
+        Self {
+            timestamp,
+            name,
+            kind,
+            widget_kind,
+            widget_options,
+            doc_link,
+            documentation,
+            hidden,
+            refers_to_prop_id,
+            diff_func_id,
+            validation_format,
+            ui_optionals: None, // This field is not present in V1
+        }
+    }
+}
+
+impl From<PropContent> for PropContentV2 {
+    fn from(value: PropContent) -> Self {
+        match value {
+            PropContent::V1(v1) => v1.into(),
+            PropContent::V2(v2) => v2,
+        }
+    }
 }
 
 #[derive(Debug, Clone, EnumDiscriminants, Serialize, Deserialize, PartialEq)]

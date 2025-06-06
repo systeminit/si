@@ -621,7 +621,7 @@ impl SchemaVariant {
 
         // New SchemVariants are not locked by default.
         let is_locked = false;
-        let content = SchemaVariantContentV3 {
+        let content = SchemaVariantContent::V3(SchemaVariantContentV3 {
             timestamp: Timestamp::now(),
             version: version.into(),
             link: link.into(),
@@ -634,10 +634,10 @@ impl SchemaVariant {
             description: description.into(),
             asset_func_id,
             is_builtin,
-        };
+        });
 
         let (hash, _) = ctx.layer_db().cas().write(
-            Arc::new(SchemaVariantContent::V3(content.clone()).into()),
+            Arc::new(content.clone().into()),
             None,
             ctx.events_tenancy(),
             ctx.events_actor(),
@@ -655,8 +655,7 @@ impl SchemaVariant {
         let root_prop = RootProp::new(ctx, schema_variant_id).await?;
         let _func_id = Func::find_intrinsic(ctx, IntrinsicFunc::Identity).await?;
 
-        let schema_variant =
-            Self::assemble(ctx, id.into(), is_locked, SchemaVariantContent::V3(content)).await?;
+        let schema_variant = Self::assemble(ctx, id.into(), is_locked, content).await?;
         Ok((schema_variant, root_prop))
     }
 

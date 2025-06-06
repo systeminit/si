@@ -1,5 +1,8 @@
 use std::{
-    collections::HashSet,
+    collections::{
+        HashMap,
+        HashSet,
+    },
     io::Read,
 };
 
@@ -56,7 +59,7 @@ use dal::{
         ModuleContent,
         OutputSocketContent,
         PropContent,
-        PropContentV1,
+        PropContentV2,
         SchemaContent,
         SchemaVariantContent,
         SecretContent,
@@ -81,6 +84,8 @@ use dal::{
     },
 };
 use dal_test::test;
+use pretty_assertions_sorted::assert_eq;
+use serde_json::json;
 use si_events::{
     CasValue,
     EncryptedSecretKey,
@@ -92,7 +97,7 @@ use strum::IntoEnumIterator;
 const CURRENT_SERIALIZED_GRAPH_DIR_PATH: &str = "./lib/dal/tests";
 const CURRENT_SERIALIZED_GRAPH_FILENAME: &str = "serialization-test-data-2024-11-21.snapshot";
 const CURRENT_SERIALIZED_CONTENT_FILENAME: &str =
-    "serialization-test-content-store-data-2025-06-02.bin";
+    "serialization-test-content-store-data-2025-06-10.bin";
 
 // If you're modifying this, you probably just added a new node or edge weight. Before you replace
 // the snapshot with one that includes the new weights, ensure that your current code passes the
@@ -432,7 +437,7 @@ fn make_me_one_with_everything_content_types_edition() -> Vec<ContentTypes> {
                 })
                 .into()
             }
-            ContentTypesDiscriminants::Prop => PropContent::V1(PropContentV1 {
+            ContentTypesDiscriminants::Prop => PropContent::V2(PropContentV2 {
                 timestamp,
                 name: "a prop?".into(),
                 kind: PropKind::Float,
@@ -447,6 +452,10 @@ fn make_me_one_with_everything_content_types_edition() -> Vec<ContentTypes> {
                 refers_to_prop_id: Some(make_static_ulid()),
                 diff_func_id: Some(make_static_ulid()),
                 validation_format: Some("smack barm pey wet".into()),
+                ui_optionals: Some(HashMap::from([
+                    ("suggestSources".to_owned(), json!([{ "schema": "AWS::EC2::VPC", "prop": "/resource_value/VpcId" }]).into()),
+                    ("suggestAsSourceFor".to_owned(), json!([{ "schema": "AWS::EC2::Subnet", "prop": "/resource_value/SubnetId" }]).into())
+                ])),
             })
             .into(),
             ContentTypesDiscriminants::Schema => {
