@@ -61,23 +61,14 @@ def build_junit_test(
     if java_test_toolchain.jvm_args:
         cmd.extend(java_test_toolchain.jvm_args)
 
-    classpath = []
-
-    if java_test_toolchain.use_java_custom_class_loader:
-        cmd.append("-Djava.system.class.loader=" + java_test_toolchain.java_custom_class_loader_class)
-        cmd.extend(java_test_toolchain.java_custom_class_loader_vm_args)
-        classpath.append(java_test_toolchain.java_custom_class_loader_library_jar)
-
     cmd.append(cmd_args(ctx.attrs.java_agents, format = "-javaagent:{}"))
 
-    classpath.extend(
-        [java_test_toolchain.test_runner_library_jar] +
-        [
-            get_all_java_packaging_deps_tset(ctx, java_packaging_infos = [tests_java_packaging_info])
-                .project_as_args("full_jar_args", ordering = "bfs"),
-        ] +
-        extra_classpath_entries,
-    )
+    classpath = [
+        java_test_toolchain.test_runner_library_jar,
+    ] + [
+        get_all_java_packaging_deps_tset(ctx, java_packaging_infos = [tests_java_packaging_info])
+            .project_as_args("full_jar_args", ordering = "bfs"),
+    ] + extra_classpath_entries
 
     if ctx.attrs.unbundled_resources_root:
         classpath.append(ctx.attrs.unbundled_resources_root)
@@ -170,6 +161,16 @@ def build_junit_test(
             transitive_class_to_src_map = cmd_args(transitive_class_to_src_map, relative_to = ctx.label.cell_root)
         env["JACOCO_CLASSNAME_SOURCE_MAP"] = transitive_class_to_src_map
 
+    list_tests = java_test_toolchain.list_tests
+    if list_tests != None and "tpx:supports_static_listing=true" in ctx.attrs.labels and "tpx:supports_static_listing=false" not in ctx.attrs.labels:
+        list_tests_command = cmd_args([
+            list_tests[RunInfo],
+            "list-tests",
+            "--sources-file",
+            ctx.actions.write("source_files.txt", ctx.attrs.srcs, with_inputs = True),
+        ])
+        env["TPX_LIST_TESTS_COMMAND"] = list_tests_command
+
     test_info = ExternalRunnerTestInfo(
         type = "junit",
         command = cmd,
@@ -187,10 +188,8 @@ def _get_native_libs_env(ctx: AnalysisContext) -> dict:
     if not ctx.attrs.use_cxx_libraries:
         return {}
 
-    if ctx.attrs.cxx_library_whitelist:
-        shared_library_infos = filter(None, [x.get(SharedLibraryInfo) for x in ctx.attrs.cxx_library_whitelist])
-    else:
-        shared_library_infos = filter(None, [x.get(SharedLibraryInfo) for x in ctx.attrs.deps])
+    deps_to_search = ctx.attrs.cxx_library_allowlist or ctx.attrs.deps
+    shared_library_infos = filter(None, [x.get(SharedLibraryInfo) for x in deps_to_search])
 
     shared_library_info = merge_shared_libraries(
         ctx.actions,

@@ -5,6 +5,7 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
+load("@prelude//:is_full_meta_repo.bzl", "is_full_meta_repo")
 load(
     "@prelude//java:class_to_srcs.bzl",
     "JavaClassToSourceMapInfo",  # @unused Used as a type
@@ -20,6 +21,14 @@ load(
 load("@prelude//java:java_toolchain.bzl", "AbiGenerationMode", "JavaToolchainInfo")
 load("@prelude//utils:expect.bzl", "expect")
 
+CustomJdkInfo = record(
+    # Used with -bootclasspath flag for JDK 8 and older release targets
+    # This is also added to the normal classpath when used with kotlinc or javac with JDK9+ release
+    bootclasspath = list[Artifact],
+    # Used with --system flag for JDK 9+ release targets
+    system_image = Artifact,
+)
+
 def derive_javac(javac_attribute: [str, Dependency, Artifact]) -> [str, RunInfo, Artifact]:
     javac_attr_type = type(javac_attribute)
     if isinstance(javac_attribute, Dependency):
@@ -30,7 +39,7 @@ def derive_javac(javac_attribute: [str, Dependency, Artifact]) -> [str, RunInfo,
         expect(len(outputs) == 1, "Expect one default output from build dep of attr javac!")
         return outputs[0]
 
-    if javac_attr_type == "artifact":
+    if isinstance(javac_attribute, Artifact):
         return javac_attribute
 
     if javac_attr_type == type(""):
@@ -157,3 +166,15 @@ def get_classpath_subtarget(actions: AnalysisActions, packaging_info: JavaPackag
     proj = packaging_info.packaging_deps.project_as_args("full_jar_args")
     output = actions.write("classpath", proj)
     return {"classpath": [DefaultInfo(output, other_outputs = [proj])]}
+
+def build_bootclasspath(bootclasspath_entries: list[Artifact], source_level: int, java_toolchain: JavaToolchainInfo) -> list[Artifact]:
+    bootclasspath_list = []
+
+    if bootclasspath_entries:
+        bootclasspath_list = bootclasspath_entries
+    elif source_level == 8:
+        if not is_full_meta_repo():
+            return bootclasspath_list
+        expect(java_toolchain.bootclasspath_8, "Must specify bootclasspath for source level 8")
+        bootclasspath_list = java_toolchain.bootclasspath_8
+    return bootclasspath_list

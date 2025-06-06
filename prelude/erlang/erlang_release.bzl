@@ -14,7 +14,7 @@ load(
     "build_apps_start_dependencies",
 )
 load(":erlang_build.bzl", "erlang_build")
-load(":erlang_dependencies.bzl", "ErlAppDependencies", "check_dependencies", "flatten_dependencies")
+load(":erlang_dependencies.bzl", "ErlAppDependencies", "flatten_dependencies")
 load(
     ":erlang_info.bzl",
     "ErlangAppInfo",
@@ -27,13 +27,12 @@ load(
     "get_primary",
     "select_toolchains",
 )
-load(":erlang_utils.bzl", "action_identifier", "to_term_args")
+load(":erlang_utils.bzl", "action_identifier")
 
 # Erlang Releases according to https://www.erlang.org/doc/design_principles/release_structure.html
 
 def erlang_release_impl(ctx: AnalysisContext) -> list[Provider]:
-    root_apps = check_dependencies(_dependencies(ctx), [ErlangAppInfo])
-    all_apps = flatten_dependencies(ctx, root_apps)
+    all_apps = flatten_dependencies(ctx, _dependencies(ctx))
 
     if ctx.attrs.multi_toolchain != None:
         return _build_multi_toolchain_releases(ctx, all_apps, ctx.attrs.multi_toolchain)
@@ -75,14 +74,14 @@ def _build_primary_release(ctx: AnalysisContext, apps: ErlAppDependencies) -> li
 
 def _build_release(ctx: AnalysisContext, toolchain: Toolchain, apps: ErlAppDependencies) -> dict[str, Artifact]:
     # OTP base structure
-    lib_dir = build_lib_dir(ctx, toolchain, _relname(ctx), apps)
+    lib_dir = build_lib_dir(ctx, toolchain, apps)
     boot_scripts = _build_boot_script(ctx, toolchain, lib_dir["lib"])
 
     # release specific variables in bin/release_variables
     release_variables = _build_release_variables(ctx, toolchain)
 
     # Overlays
-    overlays = _build_overlays(ctx, toolchain)
+    overlays = _build_overlays(ctx)
 
     # erts
     maybe_erts = _build_erts(ctx, toolchain)
@@ -103,7 +102,6 @@ def _build_release(ctx: AnalysisContext, toolchain: Toolchain, apps: ErlAppDepen
 def build_lib_dir(
         ctx: AnalysisContext,
         toolchain: Toolchain,
-        release_name: str,
         all_apps: ErlAppDependencies) -> dict[str, Artifact]:
     """Build lib dir according to OTP specifications.
 
@@ -118,7 +116,7 @@ def build_lib_dir(
     }
 
     lib_dir = ctx.actions.symlinked_dir(
-        paths.join(build_dir, release_name, "lib"),
+        paths.join(build_dir, "lib"),
         link_spec,
     )
     return {"lib": lib_dir}
@@ -132,7 +130,7 @@ def _build_boot_script(
     build_dir = erlang_build.utils.build_dir(toolchain)
 
     start_type_mapping = _dependencies_with_start_types(ctx)
-    root_apps = check_dependencies(_dependencies(ctx), [ErlangAppInfo])
+    root_apps = _dependencies(ctx)
     root_apps_names = [app[ErlangAppInfo].name for app in root_apps]
 
     root_apps_with_start_type = [
@@ -165,7 +163,7 @@ def _build_boot_script(
 
         app_spec = {
             "name": spec.name,
-            "resolved": str(spec.resolved),
+            "resolved": spec.resolved,
             "type": spec.start_type.value,
             "version": spec.version,
         }
@@ -183,94 +181,59 @@ def _build_boot_script(
         "version": ctx.attrs.version,
     }
 
-    content = to_term_args(data)
-    spec_file = ctx.actions.write(paths.join(build_dir, "boot_script_spec.term"), content)
+    spec_file = ctx.actions.write_json(paths.join(build_dir, "boot_script_spec.json"), data, with_inputs = True)
 
-    releases_dir = paths.join(build_dir, release_name, "releases", ctx.attrs.version)
-
-    release_resource = ctx.actions.declare_output(paths.join(releases_dir, "%s.rel" % (release_name,)))
-    start_script = ctx.actions.declare_output(paths.join(releases_dir, "start.script"))
-    boot_script = ctx.actions.declare_output(paths.join(releases_dir, "start.boot"))
-
-    script = toolchain.boot_script_builder
-    boot_script_build_cmd = cmd_args(
-        [
-            toolchain.otp_binaries.escript,
-            script,
-            spec_file,
-            cmd_args(release_resource.as_output(), parent = 1),
-        ],
-        hidden = [
-            start_script.as_output(),
-            boot_script.as_output(),
-            lib_dir,
-        ],
-    )
+    scripts_dir = ctx.actions.declare_output(build_dir, "scripts", dir = True)
 
     erlang_build.utils.run_with_env(
         ctx,
         toolchain,
-        boot_script_build_cmd,
+        cmd_args(toolchain.boot_script_builder, spec_file, scripts_dir.as_output()),
         category = "build_boot_script",
         identifier = action_identifier(toolchain, release_name),
     )
 
     return {
-        paths.join("releases", ctx.attrs.version, file.basename): file
+        paths.join("releases", ctx.attrs.version, file): scripts_dir.project(file)
         for file in [
-            release_resource,
-            start_script,
-            boot_script,
+            "{}.rel".format(release_name),
+            "start.script",
+            "start.boot",
         ]
     }
 
-def _build_overlays(ctx: AnalysisContext, toolchain: Toolchain) -> dict[str, Artifact]:
-    release_name = _relname(ctx)
-    build_dir = erlang_build.utils.build_dir(toolchain)
+def _build_overlays(ctx: AnalysisContext) -> dict[str, Artifact]:
     installed = {}
     for target, deps in ctx.attrs.overlays.items():
         for dep in deps:
             for artifact in dep[DefaultInfo].default_outputs + dep[DefaultInfo].other_outputs:
-                build_path = paths.normalize(paths.join(build_dir, release_name, target, artifact.basename))
                 link_path = paths.normalize(paths.join(target, artifact.basename))
                 if link_path in installed:
                     fail("multiple overlays defined for the same location: %s" % (link_path,))
-                installed[link_path] = ctx.actions.copy_file(build_path, artifact)
+                installed[link_path] = artifact
     return installed
 
 def _build_release_variables(ctx: AnalysisContext, toolchain: Toolchain) -> dict[str, Artifact]:
     release_name = _relname(ctx)
 
-    releases_dir = paths.join(
-        erlang_build.utils.build_dir(toolchain),
-        release_name,
-        "releases",
-        ctx.attrs.version,
-    )
     short_path = paths.join("bin", "release_variables")
     release_variables = ctx.actions.declare_output(
-        paths.join(releases_dir, short_path),
+        erlang_build.utils.build_dir(toolchain),
+        "release_variables",
     )
 
-    spec_file = ctx.actions.write(
-        paths.join(erlang_build.utils.build_dir(toolchain), "relvars.term"),
-        to_term_args({"variables": {
+    spec_file = ctx.actions.write_json(
+        paths.join(erlang_build.utils.build_dir(toolchain), "relvars.json"),
+        {
             "REL_NAME": release_name,
             "REL_VSN": ctx.attrs.version,
-        }}),
+        },
     )
-
-    release_variables_build_cmd = cmd_args([
-        toolchain.otp_binaries.escript,
-        toolchain.release_variables_builder,
-        spec_file,
-        release_variables.as_output(),
-    ])
 
     erlang_build.utils.run_with_env(
         ctx,
         toolchain,
-        release_variables_build_cmd,
+        cmd_args(toolchain.release_variables_builder, spec_file, release_variables.as_output()),
         category = "build_release_variables",
         identifier = action_identifier(toolchain, release_name),
     )
@@ -291,12 +254,10 @@ def _build_erts(ctx: AnalysisContext, toolchain: Toolchain) -> dict[str, Artifac
     )
 
     output_artifact = ctx.actions.declare_output(erts_dir)
-    ctx.actions.run(
-        cmd_args([
-            toolchain.otp_binaries.escript,
-            toolchain.include_erts,
-            output_artifact.as_output(),
-        ]),
+    erlang_build.utils.run_with_env(
+        ctx,
+        toolchain,
+        cmd_args(toolchain.include_erts, output_artifact.as_output()),
         category = "include_erts",
         identifier = action_identifier(toolchain, release_name),
     )

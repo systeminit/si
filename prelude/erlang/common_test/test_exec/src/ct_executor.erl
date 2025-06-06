@@ -5,15 +5,17 @@
 %% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %% of this source tree.
 
-%%% % @format
-%%@doc
-%% Simple trampoline for ct_run.
-%% Notably allows us to call post/pre method on the node if needed, e.g for coverage.
-
+%% @format
 -module(ct_executor).
+-compile(warn_missing_spec_all).
+-moduledoc """
+Simple trampoline for ct_run.
+Notably allows us to call post/pre method on the node if needed, e.g for coverage.
+""".
+-eqwalizer(ignore).
+
 -include_lib("kernel/include/logger.hrl").
 -include_lib("common/include/buck_ct_records.hrl").
--compile(warn_missing_spec_all).
 
 -export([run/1]).
 
@@ -59,7 +61,9 @@ run(Args) when is_list(Args) ->
                 ],
                 [file:consult(DotApp) || DotApp <- PotentialDotApp, filelib:is_regular(DotApp)],
                 {_, Suite} = lists:keyfind(suite, 1, CtExecutorArgs),
-                ProviderInitState = #init_provider_state{output_dir = OutputDir, suite = Suite},
+                {ok, RawTarget} = application:get_env(common, raw_target),
+
+                ProviderInitState = #init_provider_state{output_dir = OutputDir, suite = Suite, raw_target = RawTarget},
                 Providers0 =
                     case lists:keyfind(providers, 1, CtExecutorArgs) of
                         false ->
@@ -120,10 +124,12 @@ parse_arguments(Args) ->
     % the args passed to ct are to be found after the --ct-args
     split_args(ParsedArgs).
 
-% @doc Splits the argument before those that happens
-% before ct_args (the executor args) and those after
-% (the args for ct_run). ct_args will always be
-% present in the list
+-doc """
+Splits the argument before those that happens
+before ct_args (the executor args) and those after
+(the args for ct_run). ct_args will always be
+present in the list
+""".
 -spec split_args([term()]) -> {[ct_exec_arg()], [ct_run_arg()]}.
 split_args(Args) ->
     {CtExecutorArgs, [ct_args | CtRunArgs]} = lists:splitwith(fun(Arg) -> Arg =/= ct_args end, Args),

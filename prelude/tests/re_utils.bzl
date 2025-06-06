@@ -5,7 +5,6 @@
 # License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 # of this source tree.
 
-load("@prelude//:build_mode.bzl", "BuildModeInfo")
 load("@prelude//tests:remote_test_execution_toolchain.bzl", "RemoteTestExecutionToolchainInfo")
 load("@prelude//utils:expect.bzl", "expect_non_none")
 
@@ -15,7 +14,13 @@ ReArg = record(
 )
 
 def _get_re_arg(ctx: AnalysisContext) -> ReArg:
-    if not hasattr(ctx.attrs, "remote_execution"):
+    force_local = read_config("fbcode", "disable_re_tests", default = False)
+    if force_local or not hasattr(ctx.attrs, "remote_execution"):
+        # NOTE: this is kinda weird, we take this path if the attr is missing completely
+        # Even if the value is None we still follow. Adding force.local to give users
+        # some means of bypassing.
+        # Example usecase: SGW wants to run kotlin_test targets on MBP/OSX locally
+        # eg: buck2 test --local-only -c fbcode.disable_re_tests=True //signals/cloudbridge/v2/libs/cb-meters:test
         return ReArg(re_props = None, default_run_as_bundle = False)
 
     if ctx.attrs.remote_execution != None:
@@ -57,19 +62,7 @@ def get_re_executors_from_props(ctx: AnalysisContext) -> ([CommandExecutorConfig
 
     re_props = _get_re_arg(ctx).re_props
     if re_props == None:
-        # If no RE args are set and an RE config is specified
-        if read_config("tpx", "force_mac_re_props") == "True":
-            # In the case we want to force tests on mac RE
-            re_props = {
-                "capabilities": {
-                    "platform": "mac",
-                    "subplatform": "any",
-                },
-                "use_case": read_config("remoteexecution", "use_case"),
-            }
-
-        else:
-            return None, {}
+        return None, {}
 
     re_props_copy = dict(re_props)
     capabilities = re_props_copy.pop("capabilities")
@@ -85,28 +78,17 @@ def get_re_executors_from_props(ctx: AnalysisContext) -> ([CommandExecutorConfig
         unexpected_props = ", ".join(re_props_copy.keys())
         fail("found unexpected re props: " + unexpected_props)
 
-    remote_execution_action_key = None
-    build_mode_info = ctx.attrs.remote_execution_action_key_providers[BuildModeInfo]
-    if build_mode_info != None:
-        remote_execution_action_key = "{}={}".format(build_mode_info.cell, build_mode_info.mode)
-
-    # HACK: We have some older pinned versions of buck2 out in the wild that don't
-    # support this key; let's conditionally set it for now.
-    kwargs = {}
-    if "remote_execution_dynamic_image" in dir(CommandExecutorConfig):
-        kwargs["remote_execution_dynamic_image"] = re_dynamic_image
-
     default_executor = CommandExecutorConfig(
         local_enabled = local_enabled,
         remote_enabled = True,
         remote_execution_properties = capabilities,
         remote_execution_use_case = use_case or "tpx-default",
         remote_cache_enabled = remote_cache_enabled,
-        remote_execution_action_key = remote_execution_action_key,
         remote_execution_dependencies = re_dependencies,
         remote_execution_resource_units = re_resource_units,
-        **kwargs
+        remote_execution_dynamic_image = re_dynamic_image,
     )
+
     listing_executor = default_executor
     if listing_capabilities:
         listing_executor = CommandExecutorConfig(
@@ -115,8 +97,7 @@ def get_re_executors_from_props(ctx: AnalysisContext) -> ([CommandExecutorConfig
             remote_execution_properties = listing_capabilities,
             remote_execution_use_case = use_case or "tpx-default",
             remote_cache_enabled = remote_cache_enabled,
-            remote_execution_action_key = remote_execution_action_key,
             remote_execution_resource_units = re_resource_units,
-            **kwargs
+            remote_execution_dynamic_image = re_dynamic_image,
         )
     return default_executor, {"listing": listing_executor}

@@ -5,12 +5,13 @@
 %% License, Version 2.0 found in the LICENSE-APACHE file in the root directory
 %% of this source tree.
 
-%% % @format
-
-%% @doc This module interfaces with the epmd daemon. It allows one to start/stop one for
-%% each suite execution.
-
+%% @format
 -module(epmd_manager).
+-moduledoc """
+This module interfaces with the epmd daemon. It allows one to start/stop one for
+each suite execution.
+""".
+-eqwalizer(ignore).
 
 -include_lib("common/include/buck_ct_records.hrl").
 
@@ -22,11 +23,18 @@
 
 -behaviour(gen_server).
 
-%% @doc Find a new port and starts this epmd daemon on this new port, ensures it is up and working,
-%% and set up the env variable ERL_EPMD_PORT to the port this daemon is working.
--spec start_link(file:filename_all()) -> {ok, reference()} | {error, term()}.
+-doc """
+Find a new port and starts this epmd daemon on this new port, ensures it is up and working,
+and set up the env variable ERL_EPMD_PORT to the port this daemon is working.
+""".
+-spec start_link(#test_env{}) -> gen_server:start_ret().
 start_link(#test_env{} = TestEnv) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [TestEnv], [debugs, [trace, log]]).
+    gen_server:start_link(
+        {local, ?MODULE},
+        ?MODULE,
+        [TestEnv],
+        [{debug, [trace, log]}]
+    ).
 
 -spec get_port() -> inet:port_number().
 get_port() ->
@@ -43,7 +51,12 @@ init([#test_env{output_dir = OutputDir}]) ->
             EpmdOutPath = get_epmd_out_path(OutputDir),
             case start_epmd(EpmdOutPath) of
                 {ok, Port, PortEpmd, LogHandle} ->
-                    {ok, #{epmd_port => Port, epmd_erlang_port => PortEpmd, log_handle => LogHandle, global_epmd => false}};
+                    {ok, #{
+                        epmd_port => Port,
+                        epmd_erlang_port => PortEpmd,
+                        log_handle => LogHandle,
+                        global_epmd => false
+                    }};
                 Error ->
                     {stop, {epmd_start_failed, Error}, #{}}
             end;
@@ -51,7 +64,7 @@ init([#test_env{output_dir = OutputDir}]) ->
             {ok, #{epmd_port => Port, log_handle => undefined, global_epmd => true}}
     end.
 
-handle_cast(_Request, State) -> {ok, State}.
+handle_cast(_Request, State) -> {noreply, State}.
 
 handle_call(get_port, _From, State = #{epmd_port := Port}) -> {reply, Port, State}.
 
@@ -79,9 +92,11 @@ terminate(_Reason, _State) ->
 
 %% --------------  Utilities methods ------------------
 
-%% @doc Find a new port and starts this epmd daemon on this new port, then ensures it is up and working.
-%%  We may have to retry in case the port becomes busy between the time
-%% it is discovered and the time the epmd is ran.
+-doc """
+Find a new port and starts this epmd daemon on this new port, then ensures it is up and working.
+ We may have to retry in case the port becomes busy between the time
+it is discovered and the time the epmd is ran.
+""".
 -spec start_epmd(file:filename()) ->
     {ok, inet:port_number(), erlang:port(), pid()} | {error, {epmd_starting_failed, term()}}.
 start_epmd(EpmdOutPath) -> start_epmd(EpmdOutPath, 3, no_error).
@@ -100,23 +115,28 @@ start_epmd(EpmdOutPath, Attempts, _Error) when Attempts > 0 ->
 start_epmd(_LogDir, 0, Error) ->
     {error, {epmd_starting_failed, Error}}.
 
-%% @doc Finds a free TCP port.
-%% This methods relies on a special behavior of gen_tcp:listen/0,
-%% See https://www.erlang.org/doc/man/gen_tcp.html#listen-2
--spec find_free_port() -> inet:port_number().
+-doc """
+Finds a free TCP port.
+This methods relies on a special behavior of gen_tcp:listen/0,
+See https://www.erlang.org/doc/man/gen_tcp.html#listen-2
+""".
+-spec find_free_port() -> {ok, inet:port_number()} | {error, Reason} when
+    Reason :: system_limit | inet:posix().
 find_free_port() ->
     case gen_tcp:listen(0, [inet]) of
         {ok, ListenSocket} ->
-            Port = inet:port(ListenSocket),
+            Port = {ok, _} = inet:port(ListenSocket),
             gen_tcp:close(ListenSocket),
             Port;
         {error, Reason} ->
             {error, Reason}
     end.
 
-%% @doc Starts the epmd daemon on the given port,
-%% and writes stdout, stderr to files in the LogDir.
--spec start_epmd_instance(inet:port(), file:filename_all()) -> {failed, term()} | {ok, port()}.
+-doc """
+Starts the epmd daemon on the given port,
+and writes stdout, stderr to files in the LogDir.
+""".
+-spec start_epmd_instance(inet:port_number(), file:filename_all()) -> {ok, port(), pid()} | {failed, term()}.
 start_epmd_instance(Port, EpmdOutPath) ->
     %% Note on the -d flag from `man 1 epmd`:
     %% Enables debug output. The more -d flags specified, the more
@@ -142,7 +162,7 @@ start_epmd_instance(Port, EpmdOutPath) ->
     case listen_loop(ProcessPort, LogHandle, []) of
         ok ->
             {ok, ProcessPort, LogHandle};
-        Error ->
+        {failed, _} = Error ->
             exit(LogHandle, closing_epmd),
             Error
     end.
