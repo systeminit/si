@@ -2,6 +2,7 @@ use std::{
     result,
     str::FromStr,
     sync::Arc,
+    time::Instant,
 };
 
 use edda_core::nats;
@@ -29,7 +30,10 @@ use si_events::{
 };
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::Notify;
+use tokio::sync::{
+    Notify,
+    watch,
+};
 use tokio_util::{
     sync::CancellationToken,
     task::TaskTracker,
@@ -117,6 +121,9 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
     let quiesced_token = CancellationToken::new();
     let quiesced_notify = Arc::new(Notify::new());
 
+    let (last_compressing_heartbeat_tx, last_compressing_heartbeat_rx) =
+        watch::channel(Instant::now());
+
     let incoming = requests_stream
         .create_consumer(edda_requests_per_change_set_consumer_config(
             &nats,
@@ -127,7 +134,11 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         .messages()
         .await
         .map_err(HandlerError::Subscribe)?;
-    let incoming = CompressingStream::new(incoming, requests_stream.clone());
+    let incoming = CompressingStream::new(
+        incoming,
+        requests_stream.clone(),
+        last_compressing_heartbeat_tx,
+    );
 
     let processor_task = ChangeSetProcessorTask::create(
         metadata.clone(),
@@ -140,6 +151,7 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         quiescent_period,
         quiesced_notify.clone(),
         quiesced_token.clone(),
+        last_compressing_heartbeat_rx,
         tasks_token.clone(),
         server_tracker,
     );

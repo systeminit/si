@@ -12,6 +12,7 @@ use std::{
         Context,
         Poll,
     },
+    time::Instant,
 };
 
 use futures::{
@@ -30,8 +31,10 @@ use si_data_nats::{
         stream::DeleteMessageError,
     },
 };
+use strum::AsRefStr;
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::sync::watch;
 
 use crate::{
     compressed_request::{
@@ -96,7 +99,7 @@ type Result<T> = result::Result<T, CompressingStreamError>;
 type Error = CompressingStreamError;
 
 /// Internal state machine of [`CompressingStream`].
-#[derive(Default)]
+#[derive(AsRefStr, Default)]
 enum State {
     #[default]
     /// 1. Reading the first message from the subscription
@@ -253,17 +256,23 @@ pin_project! {
         subscription: S,
         stream: jetstream::stream::Stream,
         state: State,
+        last_compressing_heartbeat_tx: Option<watch::Sender<Instant>>,
         span: Option<Span>,
     }
 }
 
 impl<S> CompressingStream<S> {
     /// Creates and return a new CompressingStream.
-    pub fn new(subscription: S, stream: jetstream::stream::Stream) -> Self {
+    pub fn new(
+        subscription: S,
+        stream: jetstream::stream::Stream,
+        last_compressing_heartbeat_tx: impl Into<Option<watch::Sender<Instant>>>,
+    ) -> Self {
         Self {
             subscription,
             stream,
             state: Default::default(),
+            last_compressing_heartbeat_tx: last_compressing_heartbeat_tx.into(),
             span: None,
         }
     }
@@ -298,12 +307,21 @@ where
                     read_window.count = Empty,
                     requests.count = Empty,
                     compressed.kind = Empty,
+                    task.state = Empty,
                 );
                 s.follows_from(follows_from);
 
                 s
             });
             let _guard = span.enter();
+
+            span.record("task.state", this.state.as_ref());
+
+            if let Some(last_compressing_heartbeat_tx) = this.last_compressing_heartbeat_tx {
+                // Update the "liveness" of the stream to prevent a quiescent period if there is
+                // still work to do
+                last_compressing_heartbeat_tx.send_replace(Instant::now());
+            }
 
             match this.state {
                 // 1. Reading the first message from the subscription
@@ -416,7 +434,7 @@ where
                                 .take()
                                 .expect("extracting owned value only happens once");
 
-                            debug!(
+                            info!(
                                 first_message_info_pending = message
                                     .info()
                                     .map(|info| info.pending as isize)
