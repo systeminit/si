@@ -27,6 +27,34 @@ const routes: RouteRecordRaw[] = [
     redirect: { name: "home" },
   },
   {
+    name: "new-hotness-workspace",
+    path: "/n/:workspacePk",
+    beforeEnter: async (loc) => {
+      const resp = await sdf<WorkspaceMetadata>({
+        method: "GET",
+        url: `v2/workspaces/${loc.params.workspacePk}/change-sets`,
+      });
+      const changeSetId = resp.data.defaultChangeSetId;
+      const newloc = `/n/${loc.params.workspacePk}/${changeSetId}/h`;
+      return newloc;
+    },
+    component: () => import("@/newhotness/Workspace.vue"),
+  },
+  {
+    name: "new-hotness-workspace-auto",
+    path: "/n/:workspacePk/auto",
+    beforeEnter: async (loc) => {
+      const resp = await sdf<WorkspaceMetadata>({
+        method: "GET",
+        url: `v2/workspaces/${loc.params.workspacePk}/change-sets`,
+      });
+      const changeSetId = resp.data.defaultChangeSetId;
+      const newloc = `/n/${loc.params.workspacePk}/${changeSetId}/h`;
+      return newloc;
+    },
+    component: () => import("@/newhotness/Workspace.vue"),
+  },
+  {
     name: "new-hotness-head",
     path: "/n/:workspacePk/head/h",
     beforeEnter: async (loc) => {
