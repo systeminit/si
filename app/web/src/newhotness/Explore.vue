@@ -213,11 +213,11 @@ import { tw } from "@si/vue-lib";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
-  BifrostComponent,
   BifrostComponentList,
   BifrostViewList,
   ViewComponentList,
   EntityKind,
+  BifrostComponentInList,
 } from "@/workers/types/entity_kind_types";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -334,7 +334,7 @@ const componentList = computed(
 
 const scrollRef = ref<HTMLDivElement>();
 
-const filteredComponents = reactive<BifrostComponent[]>([]);
+const filteredComponents = reactive<BifrostComponentInList[]>([]);
 
 const searchString = ref("");
 const computedSearchString = computed(() => searchString.value);

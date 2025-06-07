@@ -106,11 +106,11 @@ export interface RawViewList {
 }
 
 export interface BifrostSchemaVariantCategories {
-  id: string; // change set id
+  id: string; // workspace id
   categories: Categories;
 }
 export interface EddaSchemaVariantCategories {
-  id: string; // change set id
+  id: string; // workspace id
   categories: Array<{
     displayName: string;
     schemaVariants: Array<{
@@ -259,19 +259,23 @@ export interface BifrostComponent {
   attributeTree: AttributeTree;
 }
 
+// NOTE: when using `getMany` you don't end up with a BifrostComponent (b/c it doesnt have SchemaVariant)
+// You end up with a BifrostComponentInList
+export type BifrostComponentInList = Omit<BifrostComponent, "schemaVariant">;
+
 export interface BifrostComponentList {
   id: ChangeSetId;
-  components: BifrostComponent[];
+  components: BifrostComponentInList[];
 }
 
 export interface ViewComponentList {
   id: ViewId;
-  components: BifrostComponent[];
+  components: BifrostComponentInList[];
 }
 
 export interface EddaComponentList {
   id: ChangeSetId;
-  components: Reference<EntityKind.Component>[];
+  components: WeakReference<EntityKind.Component>[];
 }
 
 export interface ActionPrototypeView {
@@ -356,7 +360,7 @@ export interface BifrostIncomingConnectionsList {
 // EntityKind.IncomingConnections
 export interface BifrostComponentConnections {
   id: ComponentId;
-  component: BifrostComponent;
+  component: BifrostComponentInList;
   incoming: BifrostConnection[];
   // note: outgoing connections cannot be computed right now
 }
@@ -384,17 +388,17 @@ export type EddaConnection =
 export type BifrostConnection =
   | {
       kind: "management";
-      fromComponent: BifrostComponent;
-      toComponent: BifrostComponent;
+      fromComponent: BifrostComponentInList;
+      toComponent: BifrostComponentInList;
     }
   | {
       kind: "prop";
-      fromComponent: BifrostComponent;
+      fromComponent: BifrostComponentInList;
       fromAttributeValueId: AttributeValueId;
       fromAttributeValuePath: string;
       fromPropId: PropId;
       fromPropPath: string;
-      toComponent: BifrostComponent;
+      toComponent: BifrostComponentInList;
       toPropId: PropId;
       toPropPath: string;
       toAttributeValueId: AttributeValueId;
