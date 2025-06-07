@@ -315,12 +315,6 @@ where
             });
             let _guard = span.enter();
 
-            if let Some(last_compressing_heartbeat_tx) = this.last_compressing_heartbeat_tx {
-                // Update the "liveness" of the stream to prevent a quiescent period if there is
-                // still work to do
-                last_compressing_heartbeat_tx.send_replace(Instant::now());
-            }
-
             match this.state {
                 // 1. Reading the first message from the subscription
                 State::ReadFirstMessage => {
@@ -328,6 +322,8 @@ where
                     match this.subscription.poll_next_unpin(cx) {
                         // Read the first Jetstream message successfully
                         Poll::Ready(Some(Ok(message))) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             // Determine the stream sequence number of this message so we can
                             // delete it later.
                             let message_stream_sequence = match message.info() {
@@ -390,6 +386,8 @@ where
                         }
                         // Subscription stream yielded an error as the next item
                         Poll::Ready(Some(Err(err))) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             // We can't delete this message easily as the sequence number
                             // comes from the [`Info`] struct, so we're going to restart
                             // the whole process
@@ -429,6 +427,7 @@ where
                     match calculate_read_window_fut.poll_unpin(cx) {
                         // Read window calculated successfully
                         Poll::Ready(Ok(read_window)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
                             span.record("read_window.count", read_window);
 
                             let message = message
@@ -457,6 +456,8 @@ where
                         }
                         // Failed to determine read window
                         Poll::Ready(Err(err)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             // We can't determine the read window, so we'll set it to `1` and
                             // continue as there is work we can do with the first message
                             warn!(
@@ -499,6 +500,8 @@ where
                     match parse_message_fut.poll_unpin(cx) {
                         // API request parsed successfully
                         Poll::Ready(Ok(ApiTypesNegotiate(request))) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             let mut requests = Vec::with_capacity(*read_window);
                             requests.push(request);
 
@@ -573,6 +576,8 @@ where
                         }
                         // Failed to parse API request from message
                         Poll::Ready(Err(rejection)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             // Set next state to delete this message and restart the state
                             trace!(
                                 si.error.message = ?rejection,
@@ -610,6 +615,8 @@ where
                     // Read next message from subscription in read window
                     match this.subscription.poll_next_unpin(cx) {
                         Poll::Ready(Some(Ok(message))) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             // Determine the stream sequence number of this message so we can
                             // delete it later.
                             let message_stream_sequence = match message.info() {
@@ -664,6 +671,8 @@ where
                         }
                         // Subscription stream yielded an error as the next item
                         Poll::Ready(Some(Err(err))) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             // Set up state to move into compression of what has been accumulated
                             trace!(
                                 si.error.message = ?err,
@@ -728,6 +737,8 @@ where
                     match parse_message_fut.poll_unpin(cx) {
                         // API request parsed successfully
                         Poll::Ready(Ok(ApiTypesNegotiate(request))) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             requests.push(request);
                             stream_sequence_numbers.push_back(*message_stream_sequence);
 
@@ -762,6 +773,8 @@ where
                         }
                         // Failed to parse API request from message
                         Poll::Ready(Err(rejection)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             // Set next state to compress remaining requests
                             trace!(
                                 si.error.message = ?rejection,
@@ -807,6 +820,7 @@ where
                     match compress_messages_fut.poll_unpin(cx) {
                         // Requests compressed successfully
                         Poll::Ready(Ok(compressed_request)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
                             span.record("compressed.kind", compressed_request.as_ref());
 
                             // Pop the first sequence number off the delete list
@@ -844,6 +858,8 @@ where
                         }
                         // Error while compressing requests
                         Poll::Ready(Err(err)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             // Nothing much we can do at this point, if we can't compress then we
                             // throw all the API requests away and delete the associated messages
 
@@ -909,6 +925,7 @@ where
                     match delete_message_fut.poll_unpin(cx) {
                         // Message was deleted successfully
                         Poll::Ready(Ok(_)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
                             *deleted_count += 1;
 
                             let compressed_request = compressed_request
@@ -967,6 +984,8 @@ where
                         }
                         // Error when deleting a message
                         Poll::Ready(Err(err)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             // This message failed to delete, so return the error but set state to
                             // continue the process of deleting the remaining messages
                             trace!(
@@ -1050,6 +1069,8 @@ where
                     subject,
                     compressed_request,
                 } => {
+                    update_heartbeat(this.last_compressing_heartbeat_tx);
+
                     let subject = subject
                         .take()
                         .expect("extracting owned value only happens once");
@@ -1104,10 +1125,13 @@ where
                     match delete_message_fut.poll_unpin(cx) {
                         // Message was deleted successfully
                         Poll::Ready(Ok(_)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
                             span.record("messages.deleted.count", 1);
                         }
                         // Error when deleting message
                         Poll::Ready(Err(err)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             let subject = subject
                                 .take()
                                 .expect("extracting owned value only happens once");
@@ -1137,6 +1161,8 @@ where
                     match compress_messages_fut.poll_unpin(cx) {
                         // Requests compressed successfully
                         Poll::Ready(Ok(compressed_request)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             // Pop the first sequence number off the delete list
                             match stream_sequence_numbers.pop_front() {
                                 // A message was popped off list
@@ -1173,6 +1199,8 @@ where
                         }
                         // Error while compressing requests
                         Poll::Ready(Err(err)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             // Nothing much we can do at this point, if we can't compress then we
                             // throw all the API requests away and delete the associated messages
 
@@ -1243,6 +1271,7 @@ where
                     match delete_message_fut.poll_unpin(cx) {
                         // Message was deleted successfully
                         Poll::Ready(Ok(_)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
                             *deleted_count += 1;
 
                             let compressed_request = compressed_request
@@ -1299,6 +1328,8 @@ where
                         }
                         // Error when deleting a message
                         Poll::Ready(Err(err)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             // This message failed to delete, so return the error but set state to
                             // continue the process of deleting the remaining messages
                             trace!(
@@ -1383,6 +1414,8 @@ where
                     subject,
                     compressed_request,
                 } => {
+                    update_heartbeat(this.last_compressing_heartbeat_tx);
+
                     let subject = subject
                         .take()
                         .expect("extracting owned value only happens once");
@@ -1446,6 +1479,7 @@ where
                     match delete_message_fut.poll_unpin(cx) {
                         // Message was deleted successfully
                         Poll::Ready(Ok(_)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
                             *deleted_count += 1;
 
                             // Pop the next sequence number off the delete list
@@ -1483,6 +1517,8 @@ where
                         }
                         // Error when deleting a message
                         Poll::Ready(Err(err)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             // This message failed to delete, so return the error but set state to
                             // continue the process of deleting the remaining messages
                             trace!(
@@ -1549,6 +1585,7 @@ where
                     match delete_message_fut.poll_unpin(cx) {
                         // Message was deleted successfully
                         Poll::Ready(Ok(_)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
                             *deleted_count += 1;
 
                             // Pop the next sequence number off the delete list
@@ -1587,6 +1624,8 @@ where
                         }
                         // Error when deleting a message
                         Poll::Ready(Err(err)) => {
+                            update_heartbeat(this.last_compressing_heartbeat_tx);
+
                             // This message failed to delete, so return the error but set state to
                             // continue the process of deleting the remaining messages
                             trace!(
@@ -1649,5 +1688,14 @@ where
                 }
             }
         }
+    }
+}
+
+#[inline]
+fn update_heartbeat(heartbeat_tx: &mut Option<watch::Sender<Instant>>) {
+    if let Some(heartbeat_tx) = heartbeat_tx {
+        // Update the "liveness" of the stream to prevent a quiescent period if there is
+        // still work to do
+        heartbeat_tx.send_replace(Instant::now());
     }
 }
