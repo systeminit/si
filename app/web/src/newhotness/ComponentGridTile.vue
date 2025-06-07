@@ -29,13 +29,7 @@
         v-if="component.canBeUpgraded"
         name="bolt-outline"
         size="lg"
-        :class="
-          clsx(
-            'hover:scale-110',
-            themeClasses('text-success-500', 'text-success-400'),
-          )
-        "
-        @click.stop="upgradeComponent"
+        :class="clsx(themeClasses('text-success-500', 'text-success-400'))"
       />
     </header>
     <ol
@@ -125,6 +119,4 @@ const qualificationSummary = computed(() => {
   if (props.component.qualificationTotals.warned > 0) return "warning";
   return "success";
 });
-
-const upgradeComponent = () => {};
 </script>

@@ -120,6 +120,15 @@ const rightClickMenuItems = computed(() => {
     onSelect: componentDuplicate,
   });
 
+  if (component.value?.canBeUpgraded) {
+    items.push({
+      label: "Upgrade",
+      shortcut: "⌘U",
+      icon: "bolt-outline",
+      onSelect: componentUpgrade,
+    });
+  }
+
   // Only enable actions if we are working with a single component.
   if (id.value && schemaVariantId.value) {
     const submenuItems: DropdownMenuItemObjectDef[] = [];
@@ -205,6 +214,14 @@ const componentDuplicate = async () => {
   });
   await call.post({
     components: props.componentIds,
+  });
+};
+
+const upgradeActionApi = useApi();
+const componentUpgrade = async () => {
+  const call = upgradeActionApi.endpoint(routes.UpgradeComponents);
+  await call.post({
+    componentIds: props.componentIds,
   });
 };
 
