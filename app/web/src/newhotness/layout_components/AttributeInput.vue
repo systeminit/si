@@ -456,7 +456,7 @@ import { Fzf } from "fzf";
 import { useQuery } from "@tanstack/vue-query";
 import {
   PropertyEditorPropWidgetKind,
-  PropertyEditorPropWidgetKindComboBox,
+  PropertyEditorPropWidgetKindComboBox, PropertyEditorPropWidgetKindSecret,
   PropertyEditorPropWidgetKindSelect,
 } from "@/api/sdf/dal/property_editor";
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
@@ -565,6 +565,23 @@ const valueForm = wForm.newForm({
 
 // i assume more things than comboboxes have a list of options
 type AttrOption = string | number;
+const secretKind = computed(() => {
+  if (
+    !props.kind ||
+    !(props.kind instanceof Object) ||
+    !("secret" in props.kind)
+  ) {
+    return undefined;
+  }
+
+  const options = (props.kind.secret as PropertyEditorPropWidgetKindSecret)
+    .options;
+
+
+  const kindOpt = options.find((opt) => opt.label === "secretKind")
+
+  return kindOpt?.value;
+})
 const maybeOptions = computed<{
   hasOptions: boolean;
   options: LabelList<AttrOption>;
@@ -582,7 +599,7 @@ const maybeOptions = computed<{
     };
   }
 
-  // FUTURE: secrets have options
+  // Even though secrets have options, they are only used to transfer the secret kind, which is extracted to its own variable (secretKind0
   if (props.kind instanceof Object) {
     let options: LabelList<AttrOption> | undefined = [];
     if ("comboBox" in props.kind)
@@ -926,6 +943,15 @@ const filteredConnections = computed(() => {
 
   if (potentialConnQuery.data.value?.typeMatches) {
     const addToOutput = (matches: PossibleConnection[]) => {
+      // Node(victor): We know that secret props on secret defining schemas live on /secrets/kind name
+      // This MAY match other secret props on random schemas, but we check the types match. Ideally the MVs at some
+      // point should tells us what props are the secret props on the secret defining schemas. But this solves
+      // our current UI hurdle - only suggesting valid secrets as connection sources for secret props
+      if (props.isSecret) {
+        matches = matches.filter((m) => secretKind.value && m.path === `/secrets/${secretKind.value}`)
+      }
+
+
       const fuzzyMatches: PossibleConnection[] = [];
 
       if (filterStr.value) {
