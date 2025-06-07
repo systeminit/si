@@ -120,13 +120,14 @@ impl ChangeSetProcessorTask {
 
         // Set up a check interval that ideally fires more often than the quiescent period
         let check_interval =
-            time::interval(quiescent_period.checked_div(4).unwrap_or(quiescent_period));
+            time::interval(quiescent_period.checked_div(10).unwrap_or(quiescent_period));
 
         let captured = QuiescedCaptured {
-            instance_id: metadata.instance_id().to_string(),
-            workspace_id,
-            change_set_id,
+            instance_id_str: metadata.instance_id().to_string().into_boxed_str(),
+            workspace_id_str: workspace_id.to_string().into_boxed_str(),
+            change_set_id_str: change_set_id.to_string().into_boxed_str(),
             quiesced_notify: quiesced_notify.clone(),
+            last_compressing_heartbeat_rx,
         };
         let inactive_aware_incoming = incoming
             // Frequency at which we check for a quiet period
@@ -134,19 +135,29 @@ impl ChangeSetProcessorTask {
             // Fire quiesced_notify which triggers a specific shutdown of the serial dvu task where
             // we *know* we want to remove the task from the set of work.
             .inspect_err(move |_elapsed| {
-                // Note: the `*` is copying the value out of the borrow to release the inner read
-                // lock on the data structure, otherwise we would block the `tx` side
-                if last_compressing_heartbeat_rx.borrow().elapsed() > quiescent_period {
-                    let QuiescedCaptured {
-                        instance_id,
-                        workspace_id,
-                        change_set_id,
-                        quiesced_notify,
-                    } = &captured;
+                let QuiescedCaptured {
+                    instance_id_str,
+                    workspace_id_str,
+                    change_set_id_str,
+                    quiesced_notify,
+                    last_compressing_heartbeat_rx,
+                } = &captured;
+
+                let last_heartbeat_elapsed = last_compressing_heartbeat_rx.borrow().elapsed();
+
+                debug!(
+                    service.instance.id = instance_id_str,
+                    si.workspace.id = workspace_id_str,
+                    si.change_set.id = change_set_id_str,
+                    last_heartbeat_elapsed = last_heartbeat_elapsed.as_secs(),
+                    quiescent_period = quiescent_period.as_secs(),
+                );
+
+                if last_heartbeat_elapsed > quiescent_period {
                     debug!(
-                        service.instance.id = instance_id,
-                        si.workspace.id = %workspace_id,
-                        si.change_set.id = %change_set_id,
+                        service.instance.id = instance_id_str,
+                        si.workspace.id = workspace_id_str,
+                        si.change_set.id = change_set_id_str,
                         "rate of requests has become inactive, triggering a quiesced shutdown",
                     );
                     // Notify the serial dvu task that we want to shutdown due to a quiet period
@@ -203,10 +214,11 @@ impl ChangeSetProcessorTask {
 }
 
 struct QuiescedCaptured {
-    instance_id: String,
-    workspace_id: WorkspacePk,
-    change_set_id: ChangeSetId,
+    instance_id_str: Box<str>,
+    workspace_id_str: Box<str>,
+    change_set_id_str: Box<str>,
     quiesced_notify: Arc<Notify>,
+    last_compressing_heartbeat_rx: watch::Receiver<Instant>,
 }
 
 #[derive(Clone, Debug)]
