@@ -48,7 +48,7 @@ pub async fn contribute(
         Some(url) => url,
         None => return Err(ModulesAPIError::ModuleIndexNotConfigured),
     };
-    let index_client = ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
+    let index_client = ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token)?;
 
     let (
         name,

@@ -68,7 +68,7 @@ pub async fn install_module(
     let mut variants = Vec::new();
 
     let module_index_client =
-        ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
+        ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token)?;
 
     // Before we install the module(s), ensure that there are no unlocked variants.
     let mut ids_with_details = Vec::with_capacity(request.ids.len());

@@ -271,7 +271,7 @@ impl CachedModule {
                 .module_index_url()
                 .ok_or(CachedModuleError::ModuleIndexUrlNotSet)?;
 
-            ModuleIndexClient::unauthenticated_client(module_index_url.try_into()?)
+            ModuleIndexClient::unauthenticated_client(module_index_url.try_into()?)?
         };
 
         let modules: HashMap<_, _> = module_index_client

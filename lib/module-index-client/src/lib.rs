@@ -1,6 +1,13 @@
 // Re-export all module index types so that client users do not have to import two crates.
 pub use module_index_types::*;
-use reqwest::StatusCode;
+use reqwest::{
+    StatusCode,
+    header::{
+        self,
+        HeaderMap,
+        HeaderValue,
+    },
+};
 use si_pkg::WorkspaceExport;
 use thiserror::Error;
 use ulid::Ulid;
@@ -27,23 +34,31 @@ pub type ModuleIndexClientResult<T> = Result<T, ModuleIndexClientError>;
 
 #[derive(Debug, Clone)]
 pub struct ModuleIndexClient {
+    inner: reqwest::Client,
     base_url: Url,
-    auth_token: String,
 }
 
 impl ModuleIndexClient {
-    pub fn new(base_url: Url, auth_token: &str) -> Self {
-        Self {
-            base_url,
-            auth_token: auth_token.to_owned(),
-        }
+    pub fn new(base_url: Url, auth_token: &str) -> ModuleIndexClientResult<Self> {
+        let headers = {
+            let mut headers = HeaderMap::new();
+            let mut auth_header_value = HeaderValue::from_str(&format!("Bearer {auth_token}"))?;
+            auth_header_value.set_sensitive(true);
+            headers.insert(header::AUTHORIZATION, auth_header_value);
+            headers
+        };
+
+        let inner = reqwest::Client::builder()
+            .default_headers(headers)
+            .build()?;
+
+        Ok(Self { inner, base_url })
     }
 
-    pub fn unauthenticated_client(base_url: Url) -> Self {
-        Self {
-            base_url,
-            auth_token: "".to_string(),
-        }
+    pub fn unauthenticated_client(base_url: Url) -> ModuleIndexClientResult<Self> {
+        let inner = reqwest::Client::builder().build()?;
+
+        Ok(Self { inner, base_url })
     }
 
     pub async fn reject_module(
@@ -57,12 +72,12 @@ impl ModuleIndexClient {
             .join(&format!("{}/", module_id.to_string()))?
             .join("reject")?;
 
-        let upload_response = reqwest::Client::new()
+        let upload_response = self
+            .inner
             .post(reject_url)
             .multipart(
                 reqwest::multipart::Form::new().text("rejected by user", rejected_by_display_name),
             )
-            .bearer_auth(&self.auth_token)
             .send()
             .await?;
 
@@ -88,13 +103,13 @@ impl ModuleIndexClient {
             .join(&format!("{}/", module_id.to_string()))?
             .join("promote")?;
 
-        let promote_response = reqwest::Client::new()
+        let promote_response = self
+            .inner
             .post(reject_url)
             .multipart(
                 reqwest::multipart::Form::new()
                     .text("promoted by user", promoted_to_builtin_by_display_name),
             )
-            .bearer_auth(&self.auth_token)
             .send()
             .await?;
 
@@ -163,10 +178,10 @@ impl ModuleIndexClient {
         }
 
         let upload_url = self.base_url.join("modules")?;
-        let upload_response = reqwest::Client::new()
+        let upload_response = self
+            .inner
             .post(upload_url)
             .multipart(multipart_form)
-            .bearer_auth(&self.auth_token)
             .send()
             .await?
             .error_for_status()?;
@@ -220,10 +235,10 @@ impl ModuleIndexClient {
         }
 
         let upsert_url = self.base_url.join("builtins/upsert")?;
-        let upsert_response = reqwest::Client::new()
+        let upsert_response = self
+            .inner
             .post(upsert_url)
             .multipart(multipart_form)
-            .bearer_auth(&self.auth_token)
             .send()
             .await?
             .error_for_status()?;
@@ -237,11 +252,7 @@ impl ModuleIndexClient {
             .join("modules/")?
             .join(&format!("{}/", module_id.to_string()))?
             .join("download")?;
-        let response = reqwest::Client::new()
-            .get(download_url)
-            .bearer_auth(&self.auth_token)
-            .send()
-            .await?;
+        let response = self.inner.get(download_url).send().await?;
 
         if response.status() == reqwest::StatusCode::NOT_FOUND {
             return Err(ModuleIndexClientError::ModuleNotFound(
@@ -257,12 +268,7 @@ impl ModuleIndexClient {
 
     pub async fn list_builtins(&self) -> ModuleIndexClientResult<BuiltinsDetailsResponse> {
         let url = self.base_url.join("builtins")?;
-        let resp = reqwest::Client::new()
-            .get(url)
-            .bearer_auth(&self.auth_token)
-            .send()
-            .await?
-            .error_for_status()?;
+        let resp = self.inner.get(url).send().await?.error_for_status()?;
 
         let mut builtins = resp.json::<BuiltinsDetailsResponse>().await?;
 
@@ -272,12 +278,7 @@ impl ModuleIndexClient {
             // We want to fall back to the production module index to pull builtins from there instead
             let url = Url::parse("https://module-index.systeminit.com")?.join("builtins")?;
 
-            let resp = reqwest::Client::new()
-                .get(url)
-                .bearer_auth(&self.auth_token)
-                .send()
-                .await?
-                .error_for_status()?;
+            let resp = self.inner.get(url).send().await?.error_for_status()?;
 
             builtins = resp.json::<BuiltinsDetailsResponse>().await?
         };
@@ -294,11 +295,7 @@ impl ModuleIndexClient {
             .join("modules/")?
             .join(&format!("{}", module_id))?;
 
-        let response = reqwest::Client::new()
-            .get(details_url)
-            .bearer_auth(&self.auth_token)
-            .send()
-            .await?;
+        let response = self.inner.get(details_url).send().await?;
 
         if response.status() == reqwest::StatusCode::NOT_FOUND {
             return Err(ModuleIndexClientError::ModuleNotFound(
@@ -319,7 +316,7 @@ impl ModuleIndexClient {
             .join(&format!("{}/", module_id.to_string()))?
             .join("download_builtin")?;
 
-        let mut response = reqwest::Client::new().get(download_url).send().await?;
+        let mut response = self.inner.get(download_url).send().await?;
 
         if response.status() == StatusCode::NOT_FOUND
             && self.base_url.clone().as_str().contains("http://localhost")
@@ -330,7 +327,7 @@ impl ModuleIndexClient {
                 .join(&format!("{}/", module_id.to_string()))?
                 .join("download_builtin")?;
 
-            response = reqwest::Client::new().get(url).send().await?;
+            response = self.inner.get(url).send().await?;
         };
 
         let bytes = response.error_for_status()?.bytes().await?;
@@ -351,10 +348,9 @@ impl ModuleIndexClient {
 
         let upload_url = self.base_url.join("workspace")?;
 
-        reqwest::Client::new()
+        self.inner
             .post(upload_url)
             .multipart(reqwest::multipart::Form::new().part("workspace bundle", upload_part))
-            .bearer_auth(&self.auth_token)
             .send()
             .await?
             .error_for_status()?;
@@ -371,9 +367,9 @@ impl ModuleIndexClient {
             .join("workspace/")?
             .join(&format!("{}/", module_id.to_string()))?
             .join("download")?;
-        let response = reqwest::Client::new()
+        let response = self
+            .inner
             .get(download_url)
-            .bearer_auth(&self.auth_token)
             .send()
             .await?
             .error_for_status()?;
@@ -391,9 +387,9 @@ impl ModuleIndexClient {
     pub async fn list_latest_modules(&self) -> ModuleIndexClientResult<ListLatestModulesResponse> {
         let url = self.base_url.join("modules/")?.join("latest")?;
 
-        Ok(reqwest::Client::new()
+        Ok(self
+            .inner
             .get(url)
-            .bearer_auth(&self.auth_token)
             .send()
             .await?
             .error_for_status()?
@@ -405,9 +401,9 @@ impl ModuleIndexClient {
     pub async fn list_module_details(&self) -> ModuleIndexClientResult<ListModulesResponse> {
         let url = self.base_url.join("modules")?;
 
-        Ok(reqwest::Client::new()
+        Ok(self
+            .inner
             .get(url)
-            .bearer_auth(&self.auth_token)
             .send()
             .await?
             .error_for_status()?

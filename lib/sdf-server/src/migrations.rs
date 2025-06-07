@@ -223,7 +223,7 @@ impl Migrator {
                     info!("Module cache updated successfully");
                 }
                 Err(err) => {
-                    error!("Error updating module cache: {}", err);
+                    error!("Error updating module cache: {:?}", err);
                 }
             }
         });
