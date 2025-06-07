@@ -37,6 +37,7 @@
 import { useRoute } from "vue-router";
 import { useViewsStore } from "@/store/views.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import NavbarButton from "./NavbarButton.vue";
 
 const route = useRoute();
@@ -44,10 +45,12 @@ const route = useRoute();
 const modelingLink = () => {
   const viewsStore = useViewsStore();
   const changeSetStore = useChangeSetsStore();
+  const ffStore = useFeatureFlagsStore();
+  const prefix = ffStore.NEW_HOTNESS ? "new-hotness" : "workspace-compose";
   if (changeSetStore.selectedChangeSetId) {
     if (viewsStore.selectedViewId) {
       return {
-        name: "workspace-compose-view",
+        name: `${prefix}-view`,
         params: {
           changeSetId: changeSetStore.selectedChangeSetId,
           viewId: viewsStore.selectedViewId,
@@ -55,13 +58,13 @@ const modelingLink = () => {
       };
     } else {
       return {
-        name: "workspace-compose",
+        name: prefix,
         params: { changeSetId: changeSetStore.selectedChangeSetId },
       };
     }
   }
   return {
-    name: "workspace-compose",
+    name: prefix,
     params: { changeSetId: "auto" },
   };
 };
