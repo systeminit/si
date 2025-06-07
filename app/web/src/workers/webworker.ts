@@ -2070,7 +2070,10 @@ const getReferences = async (
         data.schemaVariantId.id !== schemaMembers.editingVariantId
       ) {
         canBeUpgraded = true;
-      } else if (data.schemaVariantId.id !== schemaMembers.defaultVariantId) {
+      } else if (
+        !schemaMembers.editingVariantId &&
+        data.schemaVariantId.id !== schemaMembers.defaultVariantId
+      ) {
         canBeUpgraded = true;
       }
     }

@@ -31,6 +31,7 @@ export enum routes {
   ActionRetry = "ActionRetry",
   DeleteComponents = "DeleteComponents",
   DuplicateComponents = "DuplicateComponents",
+  UpgradeComponents = "UpgradeComponents",
 }
 
 /**
@@ -51,6 +52,7 @@ const _routes: Record<routes, string> = {
   FuncRunLogs: "/funcs/runs/<id>/logs",
   UpdateComponentAttributes: "/components/<id>/attributes",
   UpdateComponentName: "/components/<id>/name",
+  UpgradeComponents: "/components/upgrade",
   CreateComponent: "/views/<viewId>/component",
   DuplicateComponents: "/views/<viewId>/duplicate_components",
   CreateView: "/views",
