@@ -78,7 +78,6 @@
 
     <ComponentContextMenu
       ref="componentContextMenuRef"
-      :viewId="viewId"
       :componentIds="selectedComponent ? [selectedComponent.id] : []"
     />
   </section>
@@ -123,7 +122,7 @@ import {
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { SelectionsInQueryString } from "./Workspace.vue";
 import { KeyDetails, keyEmitter } from "./logic_composables/emitters";
-import { assertIsDefined, Context } from "./types";
+import { assertIsDefined, Context, ExploreContext } from "./types";
 import ComponentGridTile from "./ComponentGridTile.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import { getAssetIcon } from "./util";
@@ -131,7 +130,6 @@ import ComponentContextMenu from "./ComponentContextMenu.vue";
 
 const props = defineProps<{
   active: boolean;
-  viewId: string;
 }>();
 
 const componentContextMenuRef =
@@ -141,6 +139,9 @@ const selectedComponent = ref<BifrostComponent | null>(null);
 
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
+
+const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
+assertIsDefined<ExploreContext>(explore);
 
 // don't change this!
 // magic number puts the yellow dot in the middle!

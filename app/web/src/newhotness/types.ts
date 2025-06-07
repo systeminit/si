@@ -15,6 +15,10 @@ export function assertIsDefined<T>(value: T | undefined): asserts value is T {
   }
 }
 
+export interface ExploreContext {
+  viewId: ComputedRef<string>;
+}
+
 // Define an enum for function kinds
 export enum FunctionKind {
   Action = "action",
