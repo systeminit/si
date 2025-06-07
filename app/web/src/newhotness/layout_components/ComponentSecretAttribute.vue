@@ -67,7 +67,10 @@
                         ? getPlaceholder(fieldname)
                         : ''
                     "
-                    @input="(e) => field.handleChange((e.target as HTMLInputElement).value)"
+                    @input="
+                      (e) =>
+                        field.handleChange((e.target as HTMLInputElement).value)
+                    "
                   />
                 </div>
                 <div
@@ -96,6 +99,7 @@
       </div>
     </AttributeChildLayout>
   </div>
+  <!-- TODO(nick): add the ability to remove a subscription -->
   <AttributeInput
     v-else
     :displayName="props.attributeTree.prop?.name ?? 'Secret Value'"
