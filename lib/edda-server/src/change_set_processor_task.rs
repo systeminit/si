@@ -407,6 +407,7 @@ mod handlers {
             si.workspace.id = %workspace_id,
             si.change_set.id = %change_set_id,
             si.edda.compressed_request.kind = request.as_ref(),
+            si.edda.src_requests.count = request.src_requests_count(),
         )
     )]
     async fn handle_request(
@@ -418,6 +419,7 @@ mod handlers {
     ) -> Result<()> {
         match request {
             CompressedRequest::NewChangeSet {
+                src_requests_count: _,
                 base_change_set_id: _,
                 new_change_set_id: _,
                 to_snapshot_address,
@@ -453,13 +455,14 @@ mod handlers {
                     .map_err(Into::into)
                 }
             }
-            CompressedRequest::Rebuild => {
+            CompressedRequest::Rebuild { .. } => {
                 // Rebuild
                 materialized_view::build_all_mv_for_change_set(ctx, frigg, None, "explicit rebuild")
                     .await
                     .map_err(Into::into)
             }
             CompressedRequest::Update {
+                src_requests_count: _,
                 from_snapshot_address,
                 to_snapshot_address,
                 change_batch_addresses,
