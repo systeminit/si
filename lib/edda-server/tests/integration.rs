@@ -32,7 +32,7 @@ async fn multiple_updates() {
         .map(EddaRequestKind::Update)
         .collect();
 
-    publish_requests(&context, test_name, requests).await;
+    publish_requests(&context, test_name, requests.clone()).await;
 
     let mut messages = CompressingStream::new(
         incoming_messages(&nats, &stream, test_name).await,
@@ -65,6 +65,7 @@ async fn multiple_updates() {
 
     match compressed_request {
         CompressedRequest::Update {
+            src_requests_count,
             from_snapshot_address,
             to_snapshot_address,
             change_batch_addresses,
@@ -73,6 +74,7 @@ async fn multiple_updates() {
             let last_to = updates.last().unwrap().to_snapshot_address;
             let addresses: Vec<_> = updates.iter().map(|r| r.change_batch_address).collect();
 
+            assert_eq!(requests.len(), src_requests_count);
             assert_eq!(first_from, from_snapshot_address);
             assert_eq!(last_to, to_snapshot_address);
             assert_eq!(addresses, change_batch_addresses);
@@ -110,7 +112,7 @@ async fn updates_with_single_rebuild() {
     // Insert a rebuild into the stream of updates, mid-list
     requests.insert(4, EddaRequestKind::Rebuild(rebuild_request()));
 
-    publish_requests(&context, test_name, requests).await;
+    publish_requests(&context, test_name, requests.clone()).await;
 
     let mut messages = CompressingStream::new(
         incoming_messages(&nats, &stream, test_name).await,
@@ -142,8 +144,8 @@ async fn updates_with_single_rebuild() {
         serde_json::from_slice(&compressed_message.payload).expect("failed to deserialize request");
 
     match compressed_request {
-        CompressedRequest::Rebuild => {
-            // compressed request is a rebuild
+        CompressedRequest::Rebuild { src_requests_count } => {
+            assert_eq!(requests.len(), src_requests_count);
         }
         _ => panic!(
             "wrong variant for compressed request: {:?}",
