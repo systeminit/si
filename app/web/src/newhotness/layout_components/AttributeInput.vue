@@ -456,7 +456,8 @@ import { Fzf } from "fzf";
 import { useQuery } from "@tanstack/vue-query";
 import {
   PropertyEditorPropWidgetKind,
-  PropertyEditorPropWidgetKindComboBox, PropertyEditorPropWidgetKindSecret,
+  PropertyEditorPropWidgetKindComboBox,
+  PropertyEditorPropWidgetKindSecret,
   PropertyEditorPropWidgetKindSelect,
 } from "@/api/sdf/dal/property_editor";
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
@@ -577,11 +578,10 @@ const secretKind = computed(() => {
   const options = (props.kind.secret as PropertyEditorPropWidgetKindSecret)
     .options;
 
-
-  const kindOpt = options.find((opt) => opt.label === "secretKind")
+  const kindOpt = options.find((opt) => opt.label === "secretKind");
 
   return kindOpt?.value;
-})
+});
 const maybeOptions = computed<{
   hasOptions: boolean;
   options: LabelList<AttrOption>;
@@ -948,9 +948,10 @@ const filteredConnections = computed(() => {
       // point should tells us what props are the secret props on the secret defining schemas. But this solves
       // our current UI hurdle - only suggesting valid secrets as connection sources for secret props
       if (props.isSecret) {
-        matches = matches.filter((m) => secretKind.value && m.path === `/secrets/${secretKind.value}`)
+        matches = matches.filter(
+          (m) => secretKind.value && m.path === `/secrets/${secretKind.value}`,
+        );
       }
-
 
       const fuzzyMatches: PossibleConnection[] = [];
 
