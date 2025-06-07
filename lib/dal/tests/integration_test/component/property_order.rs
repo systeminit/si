@@ -347,7 +347,7 @@ async fn child_property_value_remains_after_update_and_paste(
         component
             .component(ctx)
             .await
-            .copy_without_connections(
+            .duplicate_without_connections(
                 ctx,
                 default_view_id,
                 component.geometry_for_default(ctx).await,
