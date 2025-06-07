@@ -334,7 +334,7 @@ async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: 
             .expect("couldn't get geometry");
 
         component
-            .copy_without_connections(
+            .duplicate_without_connections(
                 ctx,
                 default_view_id,
                 RawGeometry {
@@ -360,7 +360,7 @@ async fn copy_paste_component_with_secrets_being_used(ctx: &mut DalContext, nw: 
     user_component
         .component(ctx)
         .await
-        .copy_without_connections(
+        .duplicate_without_connections(
             ctx,
             default_view_id,
             RawGeometry {

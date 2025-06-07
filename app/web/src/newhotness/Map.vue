@@ -76,7 +76,11 @@
       <circle :cx="origCenter" :cy="origCenter" r="5" fill="yellow" />
     </svg>
 
-    <ComponentContextMenu ref="componentContextMenuRef" />
+    <ComponentContextMenu
+      ref="componentContextMenuRef"
+      :viewId="viewId"
+      :componentIds="selectedComponent ? [selectedComponent.id] : []"
+    />
   </section>
 </template>
 
@@ -125,7 +129,10 @@ import ConnectionsPanel from "./ConnectionsPanel.vue";
 import { getAssetIcon } from "./util";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
 
-const props = defineProps<{ active: boolean }>();
+const props = defineProps<{
+  active: boolean;
+  viewId: string;
+}>();
 
 const componentContextMenuRef =
   ref<InstanceType<typeof ComponentContextMenu>>();

@@ -30,6 +30,7 @@ export enum routes {
   ActionHold = "ActionHold",
   ActionRetry = "ActionRetry",
   DeleteComponents = "DeleteComponents",
+  DuplicateComponents = "DuplicateComponents",
 }
 
 /**
@@ -51,6 +52,7 @@ const _routes: Record<routes, string> = {
   UpdateComponentAttributes: "/components/<id>/attributes",
   UpdateComponentName: "/components/<id>/name",
   CreateComponent: "/views/<viewId>/component",
+  DuplicateComponents: "/views/<viewId>/duplicate_components",
   CreateView: "/views",
   CreateSecret: "/components/<id>/secret",
   GetPublicKey: "/components/<id>/secret/public_key",
@@ -77,6 +79,7 @@ const setLabel = (obs: Obs, label: string): LabeledObs => {
     label,
   };
 };
+
 export class APICall<Response> {
   workspaceId: string;
   changeSetId: string;

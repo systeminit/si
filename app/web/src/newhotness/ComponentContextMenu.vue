@@ -2,10 +2,10 @@
   <div>
     <DropdownMenu
       ref="contextMenuRef"
-      :items="rightClickMenuItems"
-      variant="editor"
       :anchorTo="anchor"
+      :items="rightClickMenuItems"
       alignOutsideRightEdge
+      variant="editor"
     />
     <EraseModal ref="eraseModalRef" @confirm="componentsFinishErase" />
   </div>
@@ -36,6 +36,12 @@ const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const key = useMakeKey();
 const args = useMakeArgs();
+
+const props = defineProps<{
+  componentIds: string[];
+  // TODO this should be a globally accessible variable, otherwise we'll be prop drilling view id everywhere
+  viewId: string;
+}>();
 
 // ================================================================================================
 // This is the location of objects needed to populate menu items.
@@ -105,6 +111,13 @@ const rightClickMenuItems = computed(() => {
     shortcut: "⌘E",
     icon: "erase",
     onSelect: () => {},
+  });
+
+  items.push({
+    label: "Duplicate",
+    shortcut: "⌘D",
+    icon: "clipboard-copy",
+    onSelect: componentDuplicate,
   });
 
   // Only enable actions if we are working with a single component.
@@ -185,6 +198,16 @@ const componentsFinishErase = async () => {
   // }
 };
 
+const duplicateActionApi = useApi();
+const componentDuplicate = async () => {
+  const call = duplicateActionApi.endpoint(routes.DuplicateComponents, {
+    viewId: props.viewId,
+  });
+  await call.post({
+    components: props.componentIds,
+  });
+};
+
 // eslint-disable-next-line @typescript-eslint/ban-types
 const anchor = ref<Object | undefined>(undefined);
 
@@ -205,5 +228,5 @@ function close() {
 
 const isOpen = computed(() => contextMenuRef.value?.isOpen);
 
-defineExpose({ open, close, isOpen, componentsStartErase });
+defineExpose({ open, close, isOpen, componentsStartErase, componentDuplicate });
 </script>

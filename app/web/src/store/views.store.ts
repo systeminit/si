@@ -1541,7 +1541,7 @@ export const useViewsStore = (forceChangeSetId?: ChangeSetId) => {
             method: "post",
             url: API_PREFIX.concat([
               { viewId: this.selectedViewId },
-              "duplicate_components",
+              "paste_components",
             ]),
             keyRequestStatusBy: components.map((c) => c.id),
             params: {

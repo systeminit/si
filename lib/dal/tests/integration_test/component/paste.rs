@@ -43,7 +43,7 @@ async fn paste_component_with_value(ctx: &mut DalContext) -> Result<()> {
         component
             .component(ctx)
             .await
-            .copy_without_connections(
+            .duplicate_without_connections(
                 ctx,
                 default_view_id,
                 component.geometry_for_default(ctx).await,
@@ -96,7 +96,7 @@ async fn paste_component_with_dependent_value(ctx: &mut DalContext) -> Result<()
         downstream
             .component(ctx)
             .await
-            .copy_without_connections(
+            .duplicate_without_connections(
                 ctx,
                 default_view_id,
                 downstream.geometry_for_default(ctx).await,

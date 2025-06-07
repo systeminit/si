@@ -54,6 +54,7 @@ mod erase_components;
 mod erase_view_object;
 pub mod get_diagram;
 pub mod list_views;
+mod paste_component;
 mod remove_view;
 mod set_component_parent;
 mod set_geometry;
@@ -168,6 +169,10 @@ pub fn v2_routes() -> Router<AppState> {
         .route(
             "/:view_id/component",
             post(create_component::create_component),
+        )
+        .route(
+            "/:view_id/paste_components",
+            post(paste_component::paste_component),
         )
         .route(
             "/:view_id/duplicate_components",

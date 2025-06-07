@@ -3272,7 +3272,7 @@ impl Component {
         Ok(results)
     }
 
-    pub async fn copy_without_connections(
+    pub async fn duplicate_without_connections(
         &self,
         ctx: &DalContext,
         view_id: ViewId,
@@ -3303,6 +3303,40 @@ impl Component {
         Ok(pasted_comp)
     }
 
+    pub async fn duplicate(
+        ctx: &mut DalContext,
+        to_view_id: ViewId,
+        components: Vec<ComponentId>,
+    ) -> ComponentResult<Vec<ComponentId>> {
+        let mut pasted_component_ids = vec![];
+        let mut to_pasted_id = HashMap::new();
+
+        for component_id in components.into_iter() {
+            let component = Component::get_by_id(ctx, component_id).await?;
+            let pasted_component = component
+                .duplicate_without_connections(
+                    ctx,
+                    to_view_id,
+                    RawGeometry {
+                        x: 0,
+                        y: 0,
+                        width: None,
+                        height: None,
+                    },
+                )
+                .await?;
+            pasted_component_ids.push(pasted_component.id());
+            to_pasted_id.insert(component_id, pasted_component.id());
+
+            // Copy manager connections
+            for manager_id in Component::managers_by_id(ctx, component_id).await? {
+                Component::manage_component(ctx, manager_id, pasted_component.id).await?;
+            }
+        }
+
+        Ok(pasted_component_ids)
+    }
+
     // Copy a batch of components, and replicate connections between them
     pub async fn batch_copy(
         ctx: &mut DalContext,
@@ -3316,7 +3350,7 @@ impl Component {
         for (component_id, raw_geometry) in components.into_iter() {
             let component = Component::get_by_id(ctx, component_id).await?;
             let pasted_component = component
-                .copy_without_connections(ctx, to_view_id, raw_geometry)
+                .duplicate_without_connections(ctx, to_view_id, raw_geometry)
                 .await?;
             pasted_component_ids.push(pasted_component.id());
             to_pasted_id.insert(component_id, pasted_component.id());
