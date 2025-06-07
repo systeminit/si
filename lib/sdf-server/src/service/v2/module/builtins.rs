@@ -72,7 +72,7 @@ pub async fn promote(
         ));
 
     let module_index_client =
-        ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
+        ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token)?;
 
     module_index_client
         .promote_to_builtin(module_id.into(), created_by_email.clone())
@@ -132,7 +132,7 @@ pub async fn reject(
         ));
 
     let module_index_client =
-        ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
+        ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token)?;
 
     module_index_client
         .reject_module(module_id.into(), created_by_email.clone())

@@ -112,7 +112,7 @@ async fn install_workspace_inner(
             None => return Err(WorkspaceAPIError::ModuleIndexUrlNotSet),
         };
         let module_index_client =
-            ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token);
+            ModuleIndexClient::new(module_index_url.try_into()?, &raw_access_token)?;
         module_index_client
             .download_workspace(workspace_pk.into())
             .await?
