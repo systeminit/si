@@ -28,6 +28,9 @@
                 emit('save', path, id, value, propKind, connectingComponentId)
             "
             @delete="(path, id) => emit('delete', path, id)"
+            @remove-subscription="
+              (path, id) => emit('removeSubscription', path, id)
+            "
           />
         </ul>
         <div
@@ -95,6 +98,9 @@
             emit('save', path, id, value, propKind, connectingComponentId)
         "
         @delete="(path, id) => emit('delete', path, id)"
+        @remove-subscription="
+          (path, id) => emit('removeSubscription', path, id)
+        "
         @add="add"
       />
     </template>
@@ -280,6 +286,7 @@ const emit = defineEmits<{
     connectingComponentId?: string,
   ): void;
   (e: "delete", path: string, id: string): void;
+  (e: "removeSubscription", path: string, id: string): void;
 }>();
 
 const showingChildren = computed(
