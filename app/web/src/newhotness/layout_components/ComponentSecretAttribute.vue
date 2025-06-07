@@ -67,7 +67,10 @@
                         ? getPlaceholder(fieldname)
                         : ''
                     "
-                    @input="(e) => field.handleChange((e.target as HTMLInputElement).value)"
+                    @input="
+                      (e) =>
+                        field.handleChange((e.target as HTMLInputElement).value)
+                    "
                   />
                 </div>
                 <div
@@ -96,6 +99,7 @@
       </div>
     </AttributeChildLayout>
   </div>
+  <!-- TODO(nick): add the ability to remove a subscription -->
   <AttributeInput
     v-else
     :displayName="props.attributeTree.prop?.name ?? 'Secret Value'"
@@ -151,10 +155,13 @@ const secretFormData = computed(() => {
   ) {
     const form = props.attributeTree.prop.secretDefinition.formData
       .flatMap((row) => row.name)
-      .reduce((obj, name) => {
-        obj[name] = "";
-        return obj;
-      }, {} as Record<string, string>);
+      .reduce(
+        (obj, name) => {
+          obj[name] = "";
+          return obj;
+        },
+        {} as Record<string, string>,
+      );
     return {
       Name: props.attributeTree.secret?.name ?? "",
       Description: props.attributeTree.secret?.description ?? "",

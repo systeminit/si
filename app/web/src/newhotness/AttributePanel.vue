@@ -32,6 +32,7 @@
           :attributeTree="child"
           @save="save"
           @delete="remove"
+          @remove-subscription="removeSubscription"
         />
       </ul>
     </template>
@@ -204,10 +205,13 @@ watch(
           children: [],
         };
       })
-      .reduce((map, attr) => {
-        map[attr.id] = attr;
-        return map;
-      }, {} as Record<string, AttrTree>);
+      .reduce(
+        (map, attr) => {
+          map[attr.id] = attr;
+          return map;
+        },
+        {} as Record<string, AttrTree>,
+      );
 
     const matchesAsTree: Record<string, AttrTree> = {};
     // work backwards from the leaf node, filling in their parents children arrays
@@ -305,6 +309,23 @@ const remove = async (path: string, _id: string) => {
       newChangeSetId,
     );
   }
+};
+
+const removeSubscription = async (path: string, _id: string) => {
+  const call = api.endpoint<{ success: boolean }>(
+    routes.UpdateComponentAttributes,
+    { id: props.component.id },
+  );
+
+  const payload: componentTypes.UpdateComponentAttributesArgs = {};
+  path = path.replace("root", ""); // endpoint doesn't want it
+
+  // NOTE(nick): this assumes that a subscription exists!
+  payload[path] = {
+    $source: null,
+  };
+
+  await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
 };
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();

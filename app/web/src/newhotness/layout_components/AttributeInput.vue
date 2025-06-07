@@ -92,6 +92,29 @@
         size="sm"
         tone="action"
       />
+      <!-- NOTE(nick): you need "click.stop" here to prevent the outer click -->
+      <!-- TODO(nick): remove the "!props.isSecret" check -->
+      <Icon
+        v-if="
+          props.externalSources &&
+          props.externalSources.length > 0 &&
+          !props.isSecret
+        "
+        v-tooltip="'Remove subscription'"
+        name="x"
+        size="sm"
+        :class="
+          clsx(
+            'cursor-pointer hover:scale-110 active:scale-100 bg-neutral-800',
+            themeClasses(
+              'text-neutral-600 hover:text-shade-100',
+              'text-neutral-400 hover:text-shade-0',
+            ),
+          )
+        "
+        tabindex="-1"
+        @click.stop="removeSubscription"
+      />
       <!-- TODO(Wendy) - add this button to clear a secret value -->
       <!-- <Icon
         v-else-if="
@@ -703,6 +726,9 @@ const remove = () => {
   emit("delete", path.value, props.attributeValueId);
   bifrostingTrash.value = true;
 };
+const removeSubscription = () => {
+  emit("removeSubscription", path.value, props.attributeValueId);
+};
 
 // TODO add spinner for deletion
 const emit = defineEmits<{
@@ -715,6 +741,7 @@ const emit = defineEmits<{
     connectingComponentId?: string,
   ): void;
   (e: "delete", path: string, id: string): void;
+  (e: "removeSubscription", path: string, id: string): void;
   (e: "add", key?: string): void;
   (e: "selected"): void;
 }>();
