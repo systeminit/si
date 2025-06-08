@@ -299,6 +299,7 @@ impl QualificationView {
         let mut status = QualificationSubCheckStatus::Success;
 
         let mut fail_counter = 0;
+        let mut has_active_validations = false;
 
         // Note(victor): If this is ever the bottleneck, we could pretty easily compute a
         // validations summary for a component and store it on the graph during the
@@ -307,6 +308,8 @@ impl QualificationView {
         for (av_id, validation_output) in
             ValidationOutput::list_for_component(ctx, component_id).await?
         {
+            // We have validations therefore, we need to show the validations in the Qualifications output
+            has_active_validations = true;
             if validation_output.status != ValidationStatus::Success {
                 status = QualificationSubCheckStatus::Failure;
                 fail_counter += 1;
@@ -328,6 +331,10 @@ impl QualificationView {
                     ),
                 });
             }
+        }
+
+        if !has_active_validations {
+            return Ok(None);
         }
 
         let result = Some(QualificationResult {
