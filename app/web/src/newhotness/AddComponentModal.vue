@@ -234,7 +234,7 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import FilterTile from "./layout_components/FilterTile.vue";
-import { assertIsDefined, Context } from "./types";
+import { assertIsDefined, Context, ExploreContext } from "./types";
 import { componentTypes, routes, useApi } from "./api_composables";
 import PropTreeComponent, {
   PropsAsTree,
@@ -318,11 +318,9 @@ const makePropTree = (
   return tree;
 };
 
-const props = defineProps<{
-  viewId: string;
-}>();
+const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
+assertIsDefined<ExploreContext>(explore);
 
-const viewId = computed(() => props.viewId);
 const selectionIndex = ref<number | undefined>();
 
 const route = useRoute();
@@ -358,7 +356,7 @@ const onEnter = async () => {
     materializedView: EddaComponent;
     schemaVariantMaterializedView: SchemaVariant;
   }>(routes.CreateComponent, {
-    viewId: viewId.value,
+    viewId: explore.viewId.value,
   });
 
   const { req, newChangeSetId } =

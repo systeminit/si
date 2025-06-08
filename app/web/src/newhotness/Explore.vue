@@ -121,7 +121,7 @@
           />
         </footer>
       </template>
-      <Map v-else :viewId="selectedViewOrDefaultId" :active="!showGrid" />
+      <Map v-else :active="!showGrid" />
     </div>
     <!-- Right column -->
     <div
@@ -165,17 +165,13 @@
         <RealtimeStatusPageState />
       </div>
     </div>
-    <AddComponentModal
-      ref="addComponentModalRef"
-      :viewId="selectedViewOrDefaultId"
-    />
+    <AddComponentModal ref="addComponentModalRef" />
     <AddViewModal
       ref="addViewModalRef"
       :views="viewListQuery.data.value?.views"
     />
     <ComponentContextMenu
       ref="componentContextMenuRef"
-      :viewId="selectedViewOrDefaultId"
       :componentIds="
         interactionTargetComponentId ? [interactionTargetComponentId] : []
       "
@@ -229,7 +225,7 @@ import ComponentGridTile from "./ComponentGridTile.vue";
 import Breadcrumbs from "./layout_components/Breadcrumbs.vue";
 import ActionCard from "./ActionCard.vue";
 import FuncRunList from "./FuncRunList.vue";
-import { assertIsDefined, Context } from "./types";
+import { assertIsDefined, Context, ExploreContext } from "./types";
 import { KeyDetails, keyEmitter } from "./logic_composables/emitters";
 import TabGroupToggle from "./layout_components/TabGroupToggle.vue";
 import { SelectionsInQueryString } from "./Workspace.vue";
@@ -298,6 +294,14 @@ const selectedViewOrDefaultId = computed(() => {
   if (!view) return "";
   return view.id;
 });
+
+const exploreContext = computed<ExploreContext>(() => {
+  return {
+    viewId: selectedViewOrDefaultId,
+  };
+});
+
+provide("EXPLORE_CONTEXT", exploreContext.value);
 
 const actionViewListRaw = useQuery<BifrostActionViewList | null>({
   queryKey: key(EntityKind.ActionViewList),

@@ -18,7 +18,7 @@ import {
   DropdownMenuItemObjectDef,
 } from "@si/vue-lib/design-system";
 import { useQuery } from "@tanstack/vue-query";
-import { computed, nextTick, ref } from "vue";
+import { computed, inject, nextTick, ref } from "vue";
 import { RouteLocationRaw } from "vue-router";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -31,6 +31,7 @@ import {
 import { ActionId, ActionPrototypeId } from "@/api/sdf/dal/action";
 import EraseModal from "./EraseModal.vue";
 import { useApi, routes } from "./api_composables";
+import { assertIsDefined, ExploreContext } from "./types";
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
@@ -39,9 +40,10 @@ const args = useMakeArgs();
 
 const props = defineProps<{
   componentIds: string[];
-  // TODO this should be a globally accessible variable, otherwise we'll be prop drilling view id everywhere
-  viewId: string;
 }>();
+
+const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
+assertIsDefined<ExploreContext>(explore);
 
 // ================================================================================================
 // This is the location of objects needed to populate menu items.
@@ -210,7 +212,7 @@ const componentsFinishErase = async () => {
 const duplicateActionApi = useApi();
 const componentDuplicate = async () => {
   const call = duplicateActionApi.endpoint(routes.DuplicateComponents, {
-    viewId: props.viewId,
+    viewId: explore.viewId.value,
   });
   await call.post({
     components: props.componentIds,
