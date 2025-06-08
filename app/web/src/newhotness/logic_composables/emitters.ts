@@ -30,7 +30,13 @@ export const startKeyEmitter = (document: Document) => {
     );
 
     if (!fromInput) {
-      keyEmitter.emit(event.key, event);
+      const isUpperCaseLetter = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".includes(
+        event.key,
+      );
+      keyEmitter.emit(
+        isUpperCaseLetter ? event.key.toLowerCase() : event.key,
+        event,
+      );
     }
   });
 };
