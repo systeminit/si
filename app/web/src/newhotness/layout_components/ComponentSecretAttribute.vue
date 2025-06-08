@@ -114,7 +114,7 @@
     isSecret
     @selected="openSecretForm"
     @save="
-      (path, id, value, connectingComponentId) =>
+      (path, id, value, _kind, connectingComponentId) =>
         save(path, id, value, connectingComponentId)
     "
   />
