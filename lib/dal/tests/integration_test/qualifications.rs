@@ -33,23 +33,6 @@ async fn list_qualifications(ctx: &mut DalContext) {
     .expect("could not create component");
 
     // Prepare expected qualification views.
-    let expected_prop_validations_qualification_view = QualificationView {
-        title: "Prop Validations".to_string(),
-        output: vec![],
-        finalized: true,
-        description: None,
-        link: None,
-        result: Some(QualificationResult {
-            status: QualificationSubCheckStatus::Success,
-            title: None,
-            link: None,
-            sub_checks: vec![QualificationSubCheck {
-                description: "Component has 0 invalid value(s).".to_string(),
-                status: QualificationSubCheckStatus::Success,
-            }],
-        }),
-        qualification_name: "validations".to_string(),
-    };
     let expected_additional_qualification_view_name =
         "test:qualificationDummySecretStringIsTodd".to_string();
     let expected_additional_qualification_view = QualificationView {
@@ -79,10 +62,7 @@ async fn list_qualifications(ctx: &mut DalContext) {
     let qualifications = Component::list_qualifications(ctx, component.id())
         .await
         .expect("could not list qualifications");
-    assert_eq!(
-        vec![expected_prop_validations_qualification_view.clone()], // expected
-        qualifications                                              // actual
-    );
+    assert!(qualifications.is_empty());
 
     // Commit and check qualifications again. We should see the populated map with all
     // qualifications.
@@ -122,7 +102,6 @@ async fn list_qualifications(ctx: &mut DalContext) {
     // neither need to perform an additional sort nor use something like a hash set.
     assert_eq!(
         vec![
-            replace_output_stream_view_line_contents(expected_prop_validations_qualification_view),
             replace_output_stream_view_line_contents(expected_additional_qualification_view)
         ], // expected
         qualifications // actual

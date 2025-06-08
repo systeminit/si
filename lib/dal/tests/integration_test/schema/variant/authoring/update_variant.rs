@@ -827,14 +827,14 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
     let bindings = FuncBinding::get_qualification_bindings_for_func_id(ctx, created_func_one.id)
         .await
         .expect("could not get bindings");
-
+    
     // Check the qualifications.
     assert_eq!(
-        2,                                  // expected
+        1,                                  // expected
         component_one_qualifications.len()  // actual
     );
     assert_eq!(
-        2,                                  // expected
+        1,                                  // expected
         component_two_qualifications.len()  // actual
     );
     let component_one_qualification_one_result = component_one_qualifications
@@ -976,11 +976,11 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
         .expect("could not list qualifications");
 
     assert_eq!(
-        3,                                  // expected
+        2,                                  // expected
         component_one_qualifications.len()  // actual
     );
     assert_eq!(
-        3,                                  // expected
+        2,                                  // expected
         component_two_qualifications.len()  // actual
     );
     let component_one_qualification_one_result = component_one_qualifications
@@ -1079,15 +1079,15 @@ async fn update_variant_with_leaf_func(ctx: &mut DalContext) {
         .await
         .expect("could not list qualifications");
     assert_eq!(
-        3,                                  // expected
+        2,                                  // expected
         component_one_qualifications.len()  // actual
     );
     assert_eq!(
-        3,                                  // expected
+        2,                                  // expected
         component_two_qualifications.len()  // actual
     );
     assert_eq!(
-        3,                                    // expected
+        2,                                    // expected
         component_three_qualifications.len()  // actual
     );
     let component_one_qualification_one_result = component_one_qualifications
