@@ -4,8 +4,11 @@
       ref="contextMenuRef"
       :anchorTo="anchor"
       :items="rightClickMenuItems"
-      alignOutsideRightEdge
       variant="editor"
+      noDefaultClose
+      :alignOutsideRightEdge="onGrid"
+      :alignOutsideLeftEdge="!onGrid"
+      :overlapAnchorOffset="Y_OFFSET"
     />
     <EraseModal ref="eraseModalRef" @confirm="componentsFinishErase" />
   </div>
@@ -33,14 +36,18 @@ import EraseModal from "./EraseModal.vue";
 import { useApi, routes } from "./api_composables";
 import { assertIsDefined, ExploreContext } from "./types";
 
+const props = defineProps<{
+  componentIds: string[];
+  onGrid?: boolean;
+}>();
+
+// This number fixes the Y position to align with the ComponentGridTile
+const Y_OFFSET = 4;
+
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
 const key = useMakeKey();
 const args = useMakeArgs();
-
-const props = defineProps<{
-  componentIds: string[];
-}>();
 
 const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
 assertIsDefined<ExploreContext>(explore);
@@ -112,22 +119,23 @@ const rightClickMenuItems = computed(() => {
     label: "Erase",
     shortcut: "⌘E",
     icon: "erase",
-    onSelect: () => {},
+    onSelect: () => componentsStartErase(props.componentIds),
   });
 
   items.push({
     label: "Duplicate",
     shortcut: "⌘D",
     icon: "clipboard-copy",
-    onSelect: componentDuplicate,
+    onSelect: () => componentDuplicate(props.componentIds),
   });
 
   if (component.value?.canBeUpgraded) {
     items.push({
       label: "Upgrade",
-      shortcut: "⌘U",
+      // TODO(Wendy) - we need to implement this shortcut
+      // shortcut: "⌘U",
       icon: "bolt-outline",
-      onSelect: componentUpgrade,
+      onSelect: () => componentUpgrade(props.componentIds),
     });
   }
 
@@ -176,16 +184,18 @@ const rightClickMenuItems = computed(() => {
       });
     }
 
-    items.push({
-      label: "Actions",
-      submenuItems,
-    });
+    if (submenuItems.length > 0) {
+      items.push({
+        label: "Actions",
+        submenuItems,
+      });
+    }
   }
 
   return items;
 });
 
-// const eraseApi = useApi();
+const eraseApi = useApi();
 const eraseComponentIds = ref<ComponentId[] | undefined>(undefined);
 const eraseModalRef = ref<InstanceType<typeof EraseModal>>();
 
@@ -197,33 +207,32 @@ const componentsStartErase = (componentIds: ComponentId[]) => {
 const componentsFinishErase = async () => {
   if (!eraseComponentIds.value || eraseComponentIds.value.length === 0) return;
 
-  // TODO(WENDY) - finish this when we have the endpoint ready
-  // const callApi = eraseApi.endpoint(
-  //   routes.DeleteComponents,
-  // );
+  const call = eraseApi.endpoint(routes.DeleteComponents);
+  const { req } = await call.delete({
+    componentIds: eraseComponentIds.value,
+    forceErase: true,
+  });
 
-  // const { req } = await callApi.delete({ componentIds: [eraseComponentId.value], forceErase: true });
-
-  // if (eraseApi.ok(req)) {
-  //   eraseModalRef.value?.close();
-  // }
+  if (eraseApi.ok(req)) {
+    eraseModalRef.value?.close();
+  }
 };
 
 const duplicateActionApi = useApi();
-const componentDuplicate = async () => {
+const componentDuplicate = async (componentIds: ComponentId[]) => {
   const call = duplicateActionApi.endpoint(routes.DuplicateComponents, {
     viewId: explore.viewId.value,
   });
   await call.post({
-    components: props.componentIds,
+    components: componentIds,
   });
 };
 
 const upgradeActionApi = useApi();
-const componentUpgrade = async () => {
+const componentUpgrade = async (componentIds: ComponentId[]) => {
   const call = upgradeActionApi.endpoint(routes.UpgradeComponents);
   await call.post({
-    componentIds: props.componentIds,
+    componentIds,
   });
 };
 

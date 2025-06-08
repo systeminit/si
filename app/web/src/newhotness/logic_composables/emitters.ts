@@ -30,6 +30,7 @@ export const startKeyEmitter = (document: Document) => {
     );
 
     if (!fromInput) {
+      // letter keys should be case insensitive
       const isUpperCaseLetter = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".includes(
         event.key,
       );

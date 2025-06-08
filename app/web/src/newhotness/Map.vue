@@ -9,6 +9,7 @@
     >
       <!-- NOTE: 110 is the fixed size (nothing expands/dynamic) above, extra 5px on the bottom, unforuntately tailwind doesn't support that calc -->
       <ComponentGridTile
+        ref="selectedGridTileRef"
         :component="selectedComponent"
         hideConnections
         @click="componentNavigate(selectedComponent.id)"
@@ -20,13 +21,15 @@
       id="controls"
       class="absolute left-0 bottom-0 flex flex-row gap-sm m-sm items-center"
     >
-      <div class="text-white">{{ Math.round(zoomLevel * 100) }}%</div>
       <div
         v-tooltip="'Zoom Out'"
         :class="getButtonClasses(zoomLevel >= MAX_ZOOM)"
         @click="zoomOut"
       >
         <Icon name="minus" size="sm" />
+      </div>
+      <div v-tooltip="'Current Zoom'" class="text-white">
+        {{ Math.round(zoomLevel * 100) }}%
       </div>
       <div
         v-tooltip="'Zoom In'"
@@ -41,6 +44,7 @@
     </div>
 
     <svg
+      :class="mouseDown ? 'cursor-grabbing' : 'cursor-grab'"
       height="100%"
       width="100%"
       preserveAspectRatio="xMidYMid"
@@ -478,16 +482,24 @@ const dataAsGraph = ref<unknown>();
 const WIDTH = 250;
 const HEIGHT = 75;
 
+const selectedGridTileRef = ref<InstanceType<typeof ComponentGridTile>>();
+
 const router = useRouter();
 const clickedNode = (e: MouseEvent, n: layoutNode) => {
   e.preventDefault();
+  e.stopPropagation();
   if (selectedComponent.value?.id === n.component.id) {
     selectedComponent.value = null;
     componentContextMenuRef.value?.close();
   } else {
     selectedComponent.value = n.component;
-    // TODO - figure out menu placement here!
-    // componentContextMenuRef.value?.open(IDK, [n.component.id]);
+    nextTick(() => {
+      if (selectedGridTileRef.value) {
+        componentContextMenuRef.value?.open(selectedGridTileRef.value, [
+          n.component.id,
+        ]);
+      }
+    });
   }
 };
 

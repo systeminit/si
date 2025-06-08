@@ -132,12 +132,16 @@ const props = defineProps({
     type: String as PropType<DropdownMenuVariant>,
     default: "compact",
   },
+  // Turn this boolean on to prevent the default closing behavior and only close when told to externally
+  // The menu will still close if you scroll or resize the document
+  noDefaultClose: Boolean,
 
   // Alignment properties to adjust how the menu behaves in terms of position/alignment
   forceAbove: Boolean, // forces the menu to appear above the anchor position
   forceAlignRight: Boolean, // forces the menu to align to the right edge of the anchor position instead of defaulting to aligning left
   alignCenter: Boolean, // aligns the menu to be centered on the anchor position horizontally
   alignOutsideRightEdge: Boolean, // aligns the menu's left edge with the right edge of the anchor element
+  alignOutsideLeftEdge: Boolean, // aligns the menu's right edge with the left edge of the anchor element
   overlapAnchorOnAnchorTo: Boolean, // adjusts the menu position to cover the anchor element instead of positioning on its edge
   overlapAnchorOffset: { type: Number, default: 0 }, // adjust the overlap position with a fixed number
 
@@ -349,6 +353,8 @@ function readjustMenuPosition() {
     posX.value = anchorRect.x + anchorRect.width / 2 - menuRect.width / 2;
   } else if (props.alignOutsideRightEdge) {
     posX.value = anchorRect.x + anchorRect.width;
+  } else if (props.alignOutsideLeftEdge) {
+    posX.value = anchorRect.x - menuRect.width;
   }
   // NOTE - window.innerWidth was including scrollbar width, so throwing off calc
   const windowWidth = document.documentElement.clientWidth;
@@ -372,7 +378,11 @@ function readjustMenuPosition() {
     posY.value = anchorRect.bottom + 4;
     if (props.submenu) {
       posY.value = anchorRect.top;
-    } else if (props.overlapAnchorOnAnchorTo || props.alignOutsideRightEdge) {
+    } else if (
+      props.overlapAnchorOnAnchorTo ||
+      props.alignOutsideRightEdge ||
+      props.alignOutsideLeftEdge
+    ) {
       posY.value -= overlapOffset;
     }
   };
@@ -384,7 +394,11 @@ function readjustMenuPosition() {
   if (props.forceAbove || posY.value + menuRect.height > window.innerHeight) {
     vAlign.value = "above";
     posY.value = window.innerHeight - (anchorRect.top - 4);
-    if (props.overlapAnchorOnAnchorTo || props.alignOutsideRightEdge) {
+    if (
+      props.overlapAnchorOnAnchorTo ||
+      props.alignOutsideRightEdge ||
+      props.alignOutsideLeftEdge
+    ) {
       posY.value -= overlapOffset;
     }
     const availableHeightAbove =
@@ -400,7 +414,11 @@ function readjustMenuPosition() {
         // constrain the height of the menu and put it below
         positionBelow();
         menuHeight.value = window.innerHeight - posY.value - MENU_EDGE_BUFFER;
-        if (props.overlapAnchorOnAnchorTo || props.alignOutsideRightEdge) {
+        if (
+          props.overlapAnchorOnAnchorTo ||
+          props.alignOutsideRightEdge ||
+          props.alignOutsideLeftEdge
+        ) {
           menuHeight.value -= overlapOffset;
         }
       }
@@ -495,7 +513,7 @@ function onWindowMousedown(e: MouseEvent) {
     });
   } else if (!(props.submenu && e.target === props.anchorTo?.$el)) {
     // finally, close this menu unless it is a submenu and the element being clicked is the parent
-    close();
+    close(props.noDefaultClose);
   }
 }
 function onKeyboardEvent(e: KeyboardEvent) {

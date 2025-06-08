@@ -89,8 +89,10 @@
             :component="filteredComponents[component.index]!"
             @mouseenter="hover(component.index)"
             @mouseleave="unhover(component.index)"
-            @click.stop.left="(e) => componentClicked(e, filteredComponents[component.index]!.id)"
-            @click.stop.right="(e) => componentClicked(e, filteredComponents[component.index]!.id)"
+            @click.stop.left="
+              (e) =>
+                componentClicked(e, filteredComponents[component.index]!.id)
+            "
           />
           <div
             v-if="
@@ -172,6 +174,7 @@
     />
     <ComponentContextMenu
       ref="componentContextMenuRef"
+      onGrid
       :componentIds="
         interactionTargetComponentId ? [interactionTargetComponentId] : []
       "
@@ -426,7 +429,8 @@ const tileClasses = (idx: number) => {
   if (focused)
     return themeClasses(tw`border-action-500`, tw`border-action-300`);
   else if (hovered) return themeClasses(tw`border-black`, tw`border-white`);
-  else if (selected) return ""; // TODO(WENDY) - not using selected yet!
+  // TODO(WENDY) - not using selected yet!
+  else if (selected) return "";
   else return "";
 };
 const hoverByComponentId = (id: ComponentId) => {
@@ -527,18 +531,20 @@ const onA = (e: KeyDetails["a"]) => {
 };
 const onE = (e: KeyDetails["e"]) => {
   if (selectorGridPosition.value !== -1 && (e.metaKey || e.ctrlKey)) {
-    if (!focusedComponentId.value) return;
+    if (!interactionTargetComponentId.value) return;
     componentContextMenuRef.value?.componentsStartErase([
-      focusedComponentId.value,
+      interactionTargetComponentId.value,
     ]);
   }
 };
-const onD = (e: KeyDetails["e"]) => {
+const onD = (e: KeyDetails["d"]) => {
   e.preventDefault();
 
   if (e.metaKey || e.ctrlKey) {
     if (!interactionTargetComponentId.value) return;
-    componentContextMenuRef.value?.componentDuplicate();
+    componentContextMenuRef.value?.componentDuplicate([
+      interactionTargetComponentId.value,
+    ]);
   }
 };
 const onArrowUp = () => {
