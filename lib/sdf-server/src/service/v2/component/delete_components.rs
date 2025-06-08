@@ -1,32 +1,21 @@
 use std::collections::HashMap;
 
-use axum::{
-    Json,
-    extract::{
-        Host,
-        OriginalUri,
-    },
-};
+use axum::Json;
 use dal::{
     ChangeSet,
     Component,
     ComponentId,
     component::delete,
 };
-use sdf_core::{
-    force_change_set_response::ForceChangeSetResponse,
-    tracking::track,
-};
+use sdf_core::force_change_set_response::ForceChangeSetResponse;
 use sdf_extract::{
-    HandlerContext,
-    PosthogClient,
-    v1::AccessBuilder,
+    PosthogEventTracker,
+    change_set::ChangeSetDalContext,
 };
 use serde::{
     Deserialize,
     Serialize,
 };
-use si_db::Visibility;
 
 use super::Result;
 
@@ -35,34 +24,27 @@ use super::Result;
 pub struct DeleteComponentsRequest {
     pub component_ids: Vec<ComponentId>,
     pub force_erase: bool,
-    #[serde(flatten)]
-    pub visibility: Visibility,
 }
 
 /// Delete a set of [`Component`](dal::Component)s via their componentId. Creates change-set if on head
 pub async fn delete_components(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(posthog_client): PosthogClient,
-    OriginalUri(original_uri): OriginalUri,
-    Host(host_name): Host,
+    ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
     Json(request): Json<DeleteComponentsRequest>,
 ) -> Result<ForceChangeSetResponse<HashMap<ComponentId, bool>>> {
-    let mut ctx = builder.build(request_ctx.build(request.visibility)).await?;
-
-    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
+    let force_change_set_id = ChangeSet::force_new(ctx).await?;
     let mut result = HashMap::new();
 
     let mut track_payloads = vec![];
-    // Schema names have to be gathered before deletion
     for &component_id in &request.component_ids {
-        let component_schema_name = Component::schema_for_component_id(&ctx, component_id)
+        let component_schema_name = Component::schema_for_component_id(ctx, component_id)
             .await?
             .name()
             .to_string();
 
         track_payloads.push(serde_json::json!({
             "how": "/diagram/delete_component",
+            "erase": request.force_erase,
             "component_id": component_id,
             "component_schema_name": component_schema_name,
             "change_set_id": ctx.change_set_id(),
@@ -70,7 +52,7 @@ pub async fn delete_components(
     }
 
     for (component_id, status) in
-        delete::delete_components(&ctx, &request.component_ids, request.force_erase).await?
+        delete::delete_components(ctx, &request.component_ids, request.force_erase).await?
     {
         result.insert(
             component_id,
@@ -79,14 +61,7 @@ pub async fn delete_components(
     }
 
     for payload in track_payloads {
-        track(
-            &posthog_client,
-            &ctx,
-            &original_uri,
-            &host_name,
-            "delete_component",
-            payload,
-        );
+        tracker.track(ctx, "delete_component", payload);
     }
 
     ctx.commit().await?;

@@ -57,7 +57,7 @@
         <Icon class="mx-auto" name="loader" size="full" />
       </div>
       <template v-else-if="componentId">
-        <ComponentDetail :componentId="componentId" />
+        <ComponentDetails :componentId="componentId" />
       </template>
       <template v-else-if="funcRunId">
         <FuncRunDetails :funcRunId="funcRunId" />
@@ -98,7 +98,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import Explore from "./Explore.vue";
-import ComponentDetail from "./Component.vue";
+import ComponentDetails from "./ComponentDetails.vue";
 import FuncRunDetails from "./FuncRunDetails.vue";
 import LatestFuncRunDetails from "./LatestFuncRunDetails.vue";
 import { Context, FunctionKind } from "./types";
