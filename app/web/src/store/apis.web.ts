@@ -37,8 +37,6 @@ export function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
   const token = authStore.selectedOrDefaultAuthToken;
   if (token) {
     config.headers.authorization = `Bearer ${token}`;
-  } else {
-    throw new Error("Token required");
   }
   return config;
 }
