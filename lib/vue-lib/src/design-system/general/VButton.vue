@@ -45,7 +45,7 @@
           <Icon v-if="iconRight" class="vbutton__icon" :name="iconRight" />
         </slot>
         <slot name="pill">
-          <TextPill v-if="pill" tighter class="ml-xs" mono>{{ pill }}</TextPill>
+          <TextPill v-if="pill" class="ml-2xs" mono>{{ pill }}</TextPill>
         </slot>
       </template>
     </div>

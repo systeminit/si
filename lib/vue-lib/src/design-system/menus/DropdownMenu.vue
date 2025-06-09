@@ -135,6 +135,7 @@ const props = defineProps({
   // Turn this boolean on to prevent the default closing behavior and only close when told to externally
   // The menu will still close if you scroll or resize the document
   noDefaultClose: Boolean,
+  disableKeyboardControls: Boolean, // disable the keyboard controls for this DropdownMenu
 
   // Alignment properties to adjust how the menu behaves in terms of position/alignment
   forceAbove: Boolean, // forces the menu to appear above the anchor position
@@ -470,7 +471,9 @@ const computedStyle: Object = computed(() => ({
 // Event handling //////////////////////////////////////////////////////////////////////////////////////////////
 
 function startListening() {
-  window.addEventListener("keydown", onKeyboardEvent);
+  if (!props.disableKeyboardControls) {
+    window.addEventListener("keydown", onKeyboardEvent);
+  }
   window.addEventListener("mousedown", onWindowMousedown);
   window.addEventListener("resize", closeOnResizeOrScroll);
   window.addEventListener("scroll", closeOnResizeOrScroll, true);
