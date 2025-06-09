@@ -161,6 +161,7 @@ import VimLogo from "~icons/raphael/vim";
 // carbon
 import Create from "~icons/carbon/intent-request-create";
 import CarbonEdit from "~icons/carbon/edit";
+import Hourglass from "~icons/carbon/hourglass";
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -290,6 +291,7 @@ export const ICONS = Object.freeze({
   "git-merge": GitMerge,
   globe: Globe,
   hide: EyeOff,
+  hourglass: Hourglass,
   "info-circle": MdiInformationVariantCircleOutline,
   "input-connection": InputConnection,
   "input-socket": InputSocket,

@@ -8,11 +8,18 @@
           'bg-shade-0 border-neutral-400',
           'bg-neutral-900 border-neutral-600',
         ),
+        component.toDelete && 'opacity-70',
       )
     "
   >
     <header
-      :class="clsx('p-xs', themeClasses('bg-neutral-200', 'bg-neutral-800'))"
+      :class="
+        clsx(
+          'p-xs',
+          !component.toDelete &&
+            themeClasses('bg-neutral-200', 'bg-neutral-800'),
+        )
+      "
     >
       <Icon :name="getAssetIcon(component.schemaCategory)" size="lg" />
       <h2>
@@ -31,6 +38,8 @@
         size="lg"
         :class="clsx(themeClasses('text-success-500', 'text-success-400'))"
       />
+      <!-- TODO(nick): center this vertically with the pill counters -->
+      <Icon v-if="component.toDelete" name="hourglass" size="md" />
     </header>
     <ol
       class="[&>li]:p-xs [&>li]:flex [&>li]:flex-row [&>li]:items-center [&>li]:gap-xs [&>li]:h-9 [&_.pillcounter]:w-5 [&_.pillcounter]:h-5"

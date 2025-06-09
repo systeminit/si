@@ -188,9 +188,6 @@
       ref="componentContextMenuRef"
       onGrid
       :enableKeyboardControls="CONTROL_SCHEME === 'v2'"
-      :componentIds="
-        interactionTargetComponentId ? [interactionTargetComponentId] : []
-      "
       @edit="openFocusedComponent"
     />
   </section>
@@ -382,6 +379,9 @@ const componentListRaw = useQuery<
 const componentList = computed(
   () => componentListRaw.data.value?.components ?? [],
 );
+const componentsById = computed(() =>
+  Object.fromEntries(componentList.value.map((c) => [c.id, c])),
+);
 
 const scrollRef = ref<HTMLDivElement>();
 
@@ -566,7 +566,10 @@ const focus = (componentId: ComponentId) => {
   const gridTileIndex = getGridTileIndexByComponentId(componentId);
   const gridTile = getGridTileByIndex(gridTileIndex);
   if (gridTile) {
-    componentContextMenuRef.value?.open(gridTile, [componentId]);
+    const component = componentsById.value[componentId];
+    if (component) {
+      componentContextMenuRef.value?.open(gridTile, [component]);
+    }
   }
 };
 const unfocus = () => {
@@ -585,6 +588,7 @@ const mountEmitters = () => {
   keyEmitter.on("e", onE);
   keyEmitter.on("d", onD);
   keyEmitter.on("u", onU);
+  keyEmitter.on("r", onR);
   keyEmitter.on("ArrowDown", onArrowDown);
   keyEmitter.on("ArrowUp", onArrowUp);
   keyEmitter.on("ArrowLeft", onArrowLeft);
@@ -592,6 +596,7 @@ const mountEmitters = () => {
   keyEmitter.on("Enter", onEnter);
   keyEmitter.on("Tab", onTab);
   keyEmitter.on("Escape", onEscape);
+  keyEmitter.on("Backspace", onBackspace);
   windowResizeEmitter.on("resize", onResize);
 };
 const removeEmitters = () => {
@@ -600,6 +605,7 @@ const removeEmitters = () => {
   keyEmitter.off("e", onE);
   keyEmitter.off("d", onD);
   keyEmitter.off("u", onU);
+  keyEmitter.off("r", onR);
   keyEmitter.off("ArrowDown", onArrowDown);
   keyEmitter.off("ArrowUp", onArrowUp);
   keyEmitter.off("ArrowLeft", onArrowLeft);
@@ -607,6 +613,7 @@ const removeEmitters = () => {
   keyEmitter.off("Enter", onEnter);
   keyEmitter.off("Tab", onTab);
   keyEmitter.off("Escape", onEscape);
+  keyEmitter.off("Backspace", onBackspace);
   windowResizeEmitter.off("resize", onResize);
 };
 const nextComponent = (wrap = false) => {
@@ -694,6 +701,35 @@ const onU = (e: KeyDetails["u"]) => {
     }
   } else {
     mapRef.value?.onU(e);
+  }
+};
+const onBackspace = (e: KeyDetails["Backspace"]) => {
+  e.preventDefault();
+
+  if (showGrid.value) {
+    if (!interactionTargetComponentId.value) return;
+    const component = componentsById.value[interactionTargetComponentId.value];
+    if (!component) return;
+    componentContextMenuRef.value?.componentsStartDelete([component]);
+  } else {
+    mapRef.value?.onBackspace(e);
+  }
+};
+const onR = (e: KeyDetails["r"]) => {
+  e.preventDefault();
+
+  if (showGrid.value) {
+    if (!interactionTargetComponentId.value) return;
+    const targetComponent = filteredComponents.find(
+      (comp) => comp.id === interactionTargetComponentId.value,
+    );
+    if (targetComponent && targetComponent.canBeUpgraded) {
+      componentContextMenuRef.value?.componentsRestore([
+        interactionTargetComponentId.value,
+      ]);
+    }
+  } else {
+    mapRef.value?.onR(e);
   }
 };
 const onArrowUp = (e: KeyDetails["ArrowUp"]) => {

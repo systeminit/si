@@ -14,6 +14,21 @@
       @click="back"
     />
   </section>
+  <!-- TODO(nick): replace this with a "read-only" view of the page and a banner -->
+  <section v-else-if="component.toDelete">
+    <h3 class="text-warning-500">
+      This component has been marked for deletion.
+    </h3>
+    <VButton
+      v-tooltip="'Back (Esc)'"
+      class="border-0 mr-2em"
+      icon="arrow--left"
+      size="sm"
+      tone="shade"
+      variant="ghost"
+      @click="back"
+    />
+  </section>
   <section
     v-else
     :class="

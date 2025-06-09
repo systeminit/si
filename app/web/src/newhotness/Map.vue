@@ -94,11 +94,7 @@
       <circle :cx="origCenter" :cy="origCenter" r="5" fill="yellow" />
     </svg>
 
-    <ComponentContextMenu
-      ref="componentContextMenuRef"
-      :componentIds="selectedComponent ? [selectedComponent.id] : []"
-      onGrid
-    />
+    <ComponentContextMenu ref="componentContextMenuRef" onGrid />
   </section>
 </template>
 
@@ -334,6 +330,20 @@ const onU = (_e: KeyDetails["u"]) => {
     ]);
   }
 };
+const onBackspace = (_e: KeyDetails["Backspace"]) => {
+  if (selectedComponent.value && !selectedComponent.value.toDelete) {
+    componentContextMenuRef.value?.componentsStartDelete([
+      selectedComponent.value,
+    ]);
+  }
+};
+const onR = (_e: KeyDetails["r"]) => {
+  if (selectedComponent.value && selectedComponent.value.toDelete) {
+    componentContextMenuRef.value?.componentsRestore([
+      selectedComponent.value.id,
+    ]);
+  }
+};
 onMounted(() => {
   // if we need to adjust zoom level on load dynamically
   // change it here
@@ -536,7 +546,7 @@ const selectComponent = (
       }),
     };
 
-    componentContextMenuRef.value?.open(anchor, [component.id]);
+    componentContextMenuRef.value?.open(anchor, [component]);
   });
 };
 const deselect = () => {
@@ -779,6 +789,8 @@ defineExpose({
   onE,
   onD,
   onU,
+  onBackspace,
+  onR,
 });
 </script>
 

@@ -1,7 +1,24 @@
 import { Ref, unref } from "vue";
-import { IconNames } from "@si/vue-lib/design-system";
+import {
+  IconNames,
+  BRAND_COLOR_FILTER_HEX_CODES,
+} from "@si/vue-lib/design-system";
 import { AttributeTree } from "@/workers/types/entity_kind_types";
 import { Toggle } from "./logic_composables/toggle_containers";
+
+export type BrandColorKey = keyof typeof BRAND_COLOR_FILTER_HEX_CODES;
+
+export const getAssetColor = (name: string) => {
+  const lowerCaseName = name.toLowerCase();
+
+  const key = (
+    Object.keys(BRAND_COLOR_FILTER_HEX_CODES) as BrandColorKey[]
+  ).find((key) => lowerCaseName.startsWith(key.toLowerCase()));
+
+  return key
+    ? BRAND_COLOR_FILTER_HEX_CODES[key]
+    : BRAND_COLOR_FILTER_HEX_CODES.Custom; // fallback to Custom
+};
 
 export const getAssetIcon = (name: string) => {
   const icons = {

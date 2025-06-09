@@ -2079,7 +2079,6 @@ const getReferences = async (
         canBeUpgraded = true;
       }
     }
-
     const component: BifrostComponent = {
       ...data,
       canBeUpgraded,

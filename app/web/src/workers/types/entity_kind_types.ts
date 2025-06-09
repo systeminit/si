@@ -166,6 +166,7 @@ export interface EddaComponent {
   };
   attributeTree: AttributeTree;
   schemaMembers: WeakReference<EntityKind.SchemaMembers>;
+  toDelete: boolean;
 }
 
 export interface SchemaMembers {
@@ -237,6 +238,8 @@ export interface BifrostComponent {
   color?: string;
   schemaName: string;
   schemaId: SchemaId;
+  // Needed for "BifrostComponentInList" usage where the "SchemaVariant" is dropped.
+  schemaVariantId: WeakReference<EntityKind.SchemaVariant>;
   schemaVariant: SchemaVariant;
   schemaVariantName: string;
   schemaVariantDescription?: string;
@@ -259,6 +262,7 @@ export interface BifrostComponent {
     current?: string;
     diff?: string;
   };
+  toDelete: boolean;
 }
 
 // NOTE: when using `getMany` you don't end up with a BifrostComponent (b/c it doesnt have SchemaVariant)
