@@ -1,5 +1,4 @@
 import * as Comlink from "comlink";
-import "@/workers/comlink_transfer";
 import { computed, reactive, Reactive, inject, ComputedRef, unref } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
 import {
@@ -122,7 +121,7 @@ export const bifrost = async <T>(args: {
   changeSetId: ChangeSetId;
   kind: EntityKind;
   id: Id;
-}): Promise<Reactive<T> | null> => {
+}): Promise<T | null> => {
   if (!initCompleted.value) throw new Error("bifrost not initiated");
   const start = Date.now();
   const maybeAtomDoc = await db.get(
@@ -135,7 +134,19 @@ export const bifrost = async <T>(args: {
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost query", args.kind, args.id, end - start, "ms");
   if (maybeAtomDoc === -1) return null;
-  return reactive(maybeAtomDoc);
+  if (args.kind === EntityKind.ComponentList) {
+    try {
+      const components = JSON.parse(maybeAtomDoc);
+      return {
+        id: unref(args.workspaceId), 
+        components,
+      } as T;
+    } catch (err) {
+      console.error("HEIMDALL", err)
+      return null
+    }
+  } else
+    return maybeAtomDoc;
 };
 
 export const getPossibleConnections = async (args: {

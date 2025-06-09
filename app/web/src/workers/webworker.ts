@@ -1,5 +1,4 @@
 import * as Comlink from "comlink";
-import "./comlink_transfer";
 import { applyPatch as applyOperations } from "fast-json-patch";
 import sqlite3InitModule, {
   Database,
@@ -2400,6 +2399,75 @@ const get = async (
   followComputed = true,
   followReferences = true,
 ): Promise<-1 | object> => {
+
+  if (kind === EntityKind.ComponentList) {
+    const sql = `
+select
+  json_group_array(resolved_components.atom_json)
+from
+(
+select
+  jsonb_extract(CAST(data as text), '$') as atom_json
+from
+  atoms 
+INNER JOIN
+(
+select
+  ref ->> '$.id' as args,
+  ref ->> '$.kind' as kind,
+  ref ->> '$.checksum' as checksum
+from
+  (
+    select
+      json_each.value as ref
+    from
+      atoms,
+      json_each(jsonb_extract(CAST(atoms.data as text), '$.components'))
+
+      inner join index_mtm_atoms mtm
+        ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+      inner join indexes ON mtm.index_checksum = indexes.checksum
+    ${
+      indexChecksum
+        ? ""
+        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+    }
+    where
+      ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+      AND atoms.kind = 'ComponentList'
+      AND atoms.args = ?
+  ) as components
+) component_refs
+ON
+atoms.args = component_refs.args
+AND atoms.kind = component_refs.kind
+AND atoms.checksum = component_refs.checksum
+) as resolved_components
+;      `;
+    const bind = [indexChecksum ?? changeSetId, id];
+    const start = Date.now();
+    const atomData = db.exec({
+      sql,
+      bind,
+      returnValue: "resultRows",
+    });
+    const end = Date.now();
+    debug(
+      "❓ sql getJSON",
+      `[${end - start}ms]`,
+      bind,
+      " returns ?",
+      !(atomData.length === 0),
+      atomData,
+    );
+    if (atomData.length === 0)
+      return -1
+    else {
+      return atomData;
+    }
+  }
+  
+
   const sql = `
     select
       data
