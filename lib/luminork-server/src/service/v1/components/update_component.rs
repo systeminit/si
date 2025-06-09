@@ -64,6 +64,7 @@ use crate::{
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
+#[allow(deprecated)]
 pub async fn update_component(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
@@ -157,18 +158,6 @@ pub async fn update_component(
     let after_value = serde_json::to_value(after_domain_tree)?;
 
     let component_list = Component::list_ids(ctx).await?;
-    let added_connection_summary = super::connections::summarise_connections(
-        ctx,
-        &payload.connection_changes.add,
-        &component_list,
-    )
-    .await?;
-    let removed_connection_summary = super::connections::summarise_connections(
-        ctx,
-        &payload.connection_changes.remove,
-        &component_list,
-    )
-    .await?;
     if !payload.connection_changes.add.is_empty() || !payload.connection_changes.remove.is_empty() {
         for connection in payload.connection_changes.add.iter() {
             handle_connection(
@@ -212,8 +201,8 @@ pub async fn update_component(
             component_name: new_name.clone(),
             before_domain_tree: Some(before_value),
             after_domain_tree: Some(after_value),
-            added_connections: Some(added_connection_summary),
-            deleted_connections: Some(removed_connection_summary),
+            added_connections: None,
+            deleted_connections: None,
             added_secrets: payload.secrets.len(),
         },
         new_name.clone(),
@@ -261,44 +250,18 @@ pub struct UpdateComponentV1Request {
     #[serde(default)]
     pub unset: Vec<ComponentPropKey>,
 
-    #[schema(example = json!({
-        "add": [
-            {"from": {"component": "OtherComponentName", "socketName": "output"}, "to": "ThisComponentInputSocketName"},
-            {"from": "ThisComponentOutputSocketName", "to": {"componentId": "01H9ZQD35JPMBGHH69BT0Q79VY", "socketName": "InputSocketName"}}
-        ],
-        "remove": [
-            {"from": {"componentId": "01H9ZQD35JPMBGHH69BT0Q79VY", "socketName": "output"}, "to": "ThisComponentInputSocketName"}
-        ]
-    }))]
-    #[schema(example = json!({
-        "add": [
-            {"from": {"component": "OtherComponentName", "socketName": "output"}, "to": "ThisComponentInputSocketName"}
-        ]
-    }))]
-    #[schema(example = json!({
-        "remove": [
-            {"from": {"componentId": "01H9ZQD35JPMBGHH69BT0Q79VY", "socketName": "output"}, "to": "ThisComponentInputSocketName"}
-        ]
-    }))]
     #[schema(example = json!({}))]
     #[serde(default)]
+    #[deprecated]
     pub connection_changes: ConnectionDetails,
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionDetails {
-    #[schema(example = json!([
-        {"from": {"component": "OtherComponentName", "socketName": "output"}, "to": "ThisComponentInputSocketName"},
-        {"from": "ThisComponentOutputSocketName", "to": {"componentId": "01H9ZQD35JPMBGHH69BT0Q79VY", "socketName": "InputSocketName"}}
-    ]))]
     #[serde(default)]
     pub add: Vec<Connection>,
 
-    #[schema(example = json!([
-        {"from": {"componentId": "01H9ZQD35JPMBGHH69BT0Q79VY", "socketName": "output"}, "to": "ThisComponentInputSocketName"},
-        {"from": "ThisComponentOutputSocketName", "to": {"component": "OtherComponentName", "socketName": "InputSocketName"}}
-    ]))]
     #[serde(default)]
     pub remove: Vec<Connection>,
 }
