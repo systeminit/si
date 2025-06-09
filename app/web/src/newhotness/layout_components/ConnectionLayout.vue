@@ -23,12 +23,12 @@
 
 <script setup lang="ts">
 import { useRoute, useRouter } from "vue-router";
-import { BifrostComponent } from "@/workers/types/entity_kind_types";
+import { BifrostComponentInList } from "@/workers/types/entity_kind_types";
 
 export interface SimpleConnection {
   key: string;
   componentId: string;
-  component: BifrostComponent;
+  component: BifrostComponentInList;
   self: string;
   other: string;
 }

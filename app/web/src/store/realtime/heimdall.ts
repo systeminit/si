@@ -123,14 +123,16 @@ export const bifrost = async <T>(args: {
   id: Id;
 }): Promise<Reactive<T> | null> => {
   if (!initCompleted.value) throw new Error("bifrost not initiated");
-  // eslint-disable-next-line no-console
-  console.log("🌈 bifrost query", args.kind, args.id);
+  const start = Date.now();
   const maybeAtomDoc = await db.get(
     args.workspaceId,
     args.changeSetId,
     args.kind,
     args.id,
   );
+  const end = Date.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost query", args.kind, args.id, end - start, "ms");
   if (maybeAtomDoc === -1) return null;
   return reactive(maybeAtomDoc);
 };
@@ -220,7 +222,7 @@ export const makeKey = (kind: string, id?: string) => {
     workspaceId.value,
     changeSetId.value,
     kind as EntityKind,
-    id ?? changeSetId.value,
+    id ?? workspaceId.value,
   ];
 };
 

@@ -12,7 +12,6 @@ use si_events::{
 use si_id::WorkspacePk;
 
 use crate::reference::{
-    Reference,
     ReferenceKind,
     WeakReference,
     weak,
@@ -133,5 +132,5 @@ pub struct SchemaMembers {
 pub struct ComponentList {
     pub id: WorkspacePk,
     #[mv(reference_kind = ReferenceKind::Component)]
-    pub components: Vec<Reference<ComponentId>>,
+    pub components: Vec<WeakReference<ComponentId, weak::markers::Component>>,
 }

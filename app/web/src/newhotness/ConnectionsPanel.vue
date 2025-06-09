@@ -23,8 +23,8 @@ import { useQuery } from "@tanstack/vue-query";
 import clsx from "clsx";
 import { themeClasses } from "@si/vue-lib/design-system";
 import {
-  BifrostComponent,
   BifrostComponentConnections,
+  BifrostComponentInList,
   BifrostConnection,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
@@ -39,7 +39,7 @@ import ConnectionLayout, {
 } from "./layout_components/ConnectionLayout.vue";
 
 const props = defineProps<{
-  component: BifrostComponent;
+  component: BifrostComponentInList;
   connections?: BifrostComponentConnections;
 }>();
 
