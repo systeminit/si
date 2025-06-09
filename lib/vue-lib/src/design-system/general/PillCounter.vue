@@ -7,7 +7,7 @@
         paddingX !== 'none' && `px-${paddingX}`,
         paddingY !== 'none' && `py-${paddingY}`,
         'inline-block rounded text-center',
-        'flex flex-row items-center', // NOTE(nick): this is for the slot
+        'flex flex-row items-center justify-around',
         !noColorStyles &&
           (toneToBg
             ? getToneBgColorClass(tone)

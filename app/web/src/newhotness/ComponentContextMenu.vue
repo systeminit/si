@@ -1,11 +1,14 @@
 <template>
   <div>
+    <!-- TODO(WENDY) - we might want keyboard controls back in this DropdownMenu at some point? -->
+    <!-- for now they are disabled to avoid conflicts with the keyboard controls in Explore! -->
     <DropdownMenu
       ref="contextMenuRef"
       :anchorTo="anchor"
       :items="rightClickMenuItems"
       variant="editor"
       noDefaultClose
+      disableKeyboardControls
       :alignOutsideRightEdge="onGrid"
       :alignOutsideLeftEdge="!onGrid"
       :overlapAnchorOffset="Y_OFFSET"
@@ -117,7 +120,7 @@ const rightClickMenuItems = computed(() => {
   // can erase so long as you have not selected a view
   items.push({
     label: "Erase",
-    shortcut: "⌘E",
+    shortcut: "E",
     icon: "erase",
     onSelect: () => componentsStartErase(props.componentIds),
   });
@@ -132,7 +135,7 @@ const rightClickMenuItems = computed(() => {
   if (component.value?.canBeUpgraded) {
     items.push({
       label: "Upgrade",
-      shortcut: "⌘U",
+      shortcut: "U",
       icon: "bolt-outline",
       onSelect: () => componentUpgrade(props.componentIds),
     });

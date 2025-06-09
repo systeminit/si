@@ -102,7 +102,6 @@ import {
   ComputedRef,
   inject,
   nextTick,
-  onBeforeUnmount,
   onMounted,
   reactive,
   ref,
@@ -125,7 +124,7 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { SelectionsInQueryString } from "./Workspace.vue";
-import { KeyDetails, keyEmitter } from "./logic_composables/emitters";
+import { KeyDetails } from "./logic_composables/emitters";
 import { assertIsDefined, Context, ExploreContext } from "./types";
 import ComponentGridTile from "./ComponentGridTile.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
@@ -294,38 +293,31 @@ const onEscape = () => {
   if (!active.value) return;
   selectedComponent.value = null;
 };
-const onE = (e: KeyDetails["e"]) => {
-  if (selectedComponent.value && (e.ctrlKey || e.metaKey)) {
+const onE = (_e: KeyDetails["e"]) => {
+  if (selectedComponent.value) {
     componentContextMenuRef.value?.componentsStartErase([
       selectedComponent.value.id,
     ]);
   }
 };
-const mountKeyEmitters = () => {
-  keyEmitter.on("ArrowDown", onArrowDown);
-  keyEmitter.on("ArrowUp", onArrowUp);
-  keyEmitter.on("ArrowLeft", onArrowLeft);
-  keyEmitter.on("ArrowRight", onArrowRight);
-  keyEmitter.on("Escape", onEscape);
-  keyEmitter.on("e", onE);
+const onD = (e: KeyDetails["d"]) => {
+  if (selectedComponent.value && (e.metaKey || e.ctrlKey)) {
+    componentContextMenuRef.value?.componentDuplicate([
+      selectedComponent.value.id,
+    ]);
+  }
 };
-const removeKeyEmitters = () => {
-  keyEmitter.off("ArrowDown", onArrowDown);
-  keyEmitter.off("ArrowUp", onArrowUp);
-  keyEmitter.off("ArrowLeft", onArrowLeft);
-  keyEmitter.off("ArrowRight", onArrowRight);
-  keyEmitter.off("Escape", onEscape);
-  keyEmitter.off("e", onE);
+const onU = (_e: KeyDetails["u"]) => {
+  if (selectedComponent.value && selectedComponent.value.canBeUpgraded) {
+    componentContextMenuRef.value?.componentUpgrade([
+      selectedComponent.value.id,
+    ]);
+  }
 };
 onMounted(() => {
   // if we need to adjust zoom level on load dynamically
   // change it here
   applyZoom();
-
-  mountKeyEmitters();
-});
-onBeforeUnmount(() => {
-  removeKeyEmitters();
 });
 
 const mousemove = (event: MouseEvent) => {
@@ -726,6 +718,17 @@ const componentNavigate = (componentId: ComponentId) => {
     query: {},
   });
 };
+
+defineExpose({
+  onArrowUp,
+  onArrowDown,
+  onArrowLeft,
+  onArrowRight,
+  onEscape,
+  onE,
+  onD,
+  onU,
+});
 </script>
 
 <style lang="less">

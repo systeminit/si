@@ -29,6 +29,6 @@ const computedClasses = computed(() => ({
   ...(props.tone && { [`--tone-${props.tone}`]: true }),
   "--within-dark": containerTheme.theme.value === "dark",
   "--within-light": containerTheme.theme.value === "light",
-  "font-mono pt-3xs pr-2xs": props.mono,
+  "font-mono pt-3xs": props.mono,
 }));
 </script>
