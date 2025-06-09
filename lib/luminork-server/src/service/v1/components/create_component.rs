@@ -63,6 +63,7 @@ use crate::{
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
+#[allow(deprecated)]
 pub async fn create_component(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
@@ -195,7 +196,7 @@ pub async fn create_component(
             component_name: comp_name.clone(),
             before_domain_tree: None,
             after_domain_tree: Some(after_value),
-            added_connections: Some(added_connection_summary),
+            added_connections: None,
             deleted_connections: None,
             added_secrets: payload.secrets.len(),
         },
@@ -246,13 +247,8 @@ pub struct CreateComponentV1Request {
     #[schema(example = "MyView")]
     pub view_name: Option<String>,
 
-    #[schema(example = json!([
-        {"from": {"component": "OtherComponentName", "socketName": "SocketName"}, "to": "ThisComponentInputSocketName"},
-        {"from": {"componentId": "01H9ZQD35JPMBGHH69BT0Q79VY", "socketName": "SocketName"}, "to": "ThisComponentInputSocketName"},
-        {"from": "ThisComponentOutputSocketName", "to": {"component": "OtherComponentName", "socketName": "InputSocketName"}},
-        {"from": "ThisComponentOutputSocketName", "to": {"componentId": "01H9ZQD35JPMBGHH69BT0Q79VY", "socketName": "InputSocketName"}}
-    ]))]
     #[serde(default)]
+    #[deprecated]
     pub connections: Vec<Connection>,
 }
 
