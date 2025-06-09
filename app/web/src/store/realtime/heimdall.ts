@@ -1,4 +1,5 @@
 import * as Comlink from "comlink";
+import "@/workers/comlink_transfer";
 import { computed, reactive, Reactive, inject, ComputedRef, unref } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
 import {

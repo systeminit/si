@@ -1,4 +1,5 @@
 import * as Comlink from "comlink";
+import "./comlink_transfer";
 import { applyPatch as applyOperations } from "fast-json-patch";
 import sqlite3InitModule, {
   Database,
@@ -2375,6 +2376,20 @@ const getReferences = async (
   }
 };
 
+const componentListSQL = `
+  select
+    id,
+    data->components [
+      select data from atoms where kind="Component" and id = 1
+      select data from atoms where kind="Component" and id = 2
+      select data from atoms where kind="Component" and id = 3
+    ]
+  from
+    atoms
+  where
+    kind = "ComponentList"
+`
+
 const get = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
@@ -2860,8 +2875,41 @@ const dbInterface: DBInterface = {
       bind: [changeSetId],
       returnValue: "resultRows",
     });
-    const [changesets, indexes, atoms, mtm] = await Promise.all([c, i, a, m]);
-    return { changesets, indexes, atoms, mtm };
+    const d = db.exec({
+      sql: `
+select
+  CAST(data as text)
+from
+  atoms 
+INNER JOIN
+(
+select
+  ref ->> '$.id' as args,
+  ref ->> '$.kind' as kind,
+  ref ->> '$.checksum' as checksum
+from
+  (
+    select
+      json_each.value as ref
+    from
+      atoms,
+      json_each(jsonb_extract(CAST(atoms.data as text), '$.components'))
+    where
+      atoms.kind = 'ComponentList'
+  ) as components
+) component_refs
+ON
+atoms.args = component_refs.args
+AND atoms.kind = component_refs.kind
+AND atoms.checksum = component_refs.checksum;
+;
+      `,
+      bind: [changeSetId],
+      returnValue: "resultRows",
+    });
+
+    const [changesets, indexes, atoms, mtm, dump] = await Promise.all([c, i, a, m, d]);
+    return { changesets, indexes, atoms, mtm, dump };
   },
   async linkNewChangeset(
     workspaceId,
