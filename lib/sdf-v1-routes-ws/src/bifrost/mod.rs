@@ -9,17 +9,16 @@ use axum::{
     response::IntoResponse,
 };
 use dal::WorkspacePk;
+use frigg::FriggStore;
 use nats_multiplexer_client::MultiplexerClient;
 use sdf_core::nats_multiplexer::NatsMultiplexerClients;
 use sdf_extract::{
     request::TokenFromQueryParam,
-    services::Nats,
     workspace::{
         TargetWorkspaceIdFromToken,
         WorkspaceAuthorization,
     },
 };
-use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
@@ -30,17 +29,17 @@ pub mod proto;
 
 pub async fn bifrost_handler(
     wsu: WebSocketUpgrade,
-    Nats(nats): Nats,
     _: TokenFromQueryParam,
     _: TargetWorkspaceIdFromToken,
     auth: WorkspaceAuthorization,
+    State(frigg): State<FriggStore>,
     State(shutdown_token): State<CancellationToken>,
     State(channel_multiplexer_clients): State<NatsMultiplexerClients>,
 ) -> Result<impl IntoResponse, WsError> {
     Ok(wsu.on_upgrade(move |socket| {
         run_bifrost_proto(
             socket,
-            nats,
+            frigg,
             auth.workspace_id,
             channel_multiplexer_clients.data_cache,
             shutdown_token,
@@ -50,12 +49,12 @@ pub async fn bifrost_handler(
 
 async fn run_bifrost_proto(
     mut socket: WebSocket,
-    nats: NatsClient,
+    frigg: FriggStore,
     workspace_pk: WorkspacePk,
     bifrost_multiplexer_client: Arc<Mutex<MultiplexerClient>>,
     shutdown_token: CancellationToken,
 ) {
-    let proto = match proto::run(nats, workspace_pk, shutdown_token)
+    let proto = match proto::run(frigg, workspace_pk, shutdown_token)
         .start(bifrost_multiplexer_client)
         .await
     {
