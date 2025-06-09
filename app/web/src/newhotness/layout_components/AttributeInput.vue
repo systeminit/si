@@ -93,14 +93,13 @@
         tone="action"
       />
       <!-- NOTE(nick): you need "click.stop" here to prevent the outer click -->
-      <!-- TODO(nick): remove the "!props.isSecret" check -->
       <Icon
-        v-if="
-          props.externalSources &&
-          props.externalSources.length > 0 &&
-          !props.isSecret
+        v-if="props.externalSources && props.externalSources.length > 0"
+        v-tooltip="
+          props.isSecret
+            ? 'Remove subscription to Secret'
+            : 'Remove subscription'
         "
-        v-tooltip="'Remove subscription'"
         name="x"
         size="sm"
         :class="
@@ -115,26 +114,6 @@
         tabindex="-1"
         @click.stop="removeSubscription"
       />
-      <!-- TODO(Wendy) - add this button to clear a secret value -->
-      <!-- <Icon
-        v-else-if="
-          isSecret && props.externalSources && props.externalSources.length > 0
-        "
-        v-tooltip="'Remove secret'"
-        name="x-circle"
-        size="sm"
-        :class="
-          clsx(
-            'cursor-pointer hover:scale-110 active:scale-100',
-            themeClasses(
-              'text-neutral-600 hover:text-shade-100',
-              'text-neutral-400 hover:text-shade-0',
-            ),
-          )
-        "
-        tabindex="-1"
-        @click.stop="clearValue"
-      /> -->
     </div>
     <!-- `relative` on label just to "float" this loader above the form input -->
   </label>
@@ -1052,11 +1031,6 @@ const selectedConnection = computed(
 //     fixWindowPosition();
 //   });
 // });
-
-// TODO(Wendy) - add the ability to clear a value!
-// const clearValue = (e: Event) => {
-//   e.preventDefault();
-// };
 </script>
 
 <style lang="css" scoped>

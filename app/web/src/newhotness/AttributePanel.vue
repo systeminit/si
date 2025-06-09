@@ -317,7 +317,6 @@ const removeSubscription = async (path: string, _id: string) => {
   const payload: componentTypes.UpdateComponentAttributesArgs = {};
   path = path.replace("root", ""); // endpoint doesn't want it
 
-  // NOTE(nick): this assumes that a subscription exists!
   payload[path] = {
     $source: null,
   };
