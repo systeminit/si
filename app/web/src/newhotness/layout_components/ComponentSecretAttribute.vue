@@ -117,6 +117,7 @@
       (path, id, value, _kind, connectingComponentId) =>
         save(path, id, value, connectingComponentId)
     "
+    @remove-subscription="removeSubscription"
   />
 </template>
 
@@ -189,6 +190,23 @@ const save = async (
   }
   await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
 };
+
+const removeSubscription = async (path: string, _id: string) => {
+  const call = api.endpoint<{ success: boolean }>(
+    routes.UpdateComponentAttributes,
+    { id: props.component.id },
+  );
+
+  const payload: componentTypes.UpdateComponentAttributesArgs = {};
+  path = path.replace("root", ""); // endpoint doesn't want it
+
+  payload[path] = {
+    $source: null,
+  };
+
+  await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+};
+
 const route = useRoute();
 
 const secretApi = useApi();
