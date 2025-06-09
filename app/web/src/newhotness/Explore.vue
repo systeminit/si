@@ -475,6 +475,7 @@ const mountKeyEmitters = () => {
   keyEmitter.on("a", onA);
   keyEmitter.on("e", onE);
   keyEmitter.on("d", onD);
+  keyEmitter.on("u", onU);
   keyEmitter.on("ArrowDown", onArrowDown);
   keyEmitter.on("ArrowUp", onArrowUp);
   keyEmitter.on("ArrowLeft", onArrowLeft);
@@ -488,6 +489,7 @@ const removeKeyEmitters = () => {
   keyEmitter.off("a", onA);
   keyEmitter.off("e", onE);
   keyEmitter.off("d", onD);
+  keyEmitter.off("u", onU);
   keyEmitter.off("ArrowDown", onArrowDown);
   keyEmitter.off("ArrowUp", onArrowUp);
   keyEmitter.off("ArrowLeft", onArrowLeft);
@@ -547,6 +549,21 @@ const onD = (e: KeyDetails["d"]) => {
     componentContextMenuRef.value?.componentDuplicate([
       interactionTargetComponentId.value,
     ]);
+  }
+};
+const onU = (e: KeyDetails["u"]) => {
+  e.preventDefault();
+
+  if (e.metaKey || e.ctrlKey) {
+    if (!interactionTargetComponentId.value) return;
+    const targetComponent = filteredComponents.find(
+      (comp) => comp.id === interactionTargetComponentId.value,
+    );
+    if (targetComponent && targetComponent.canBeUpgraded) {
+      componentContextMenuRef.value?.componentUpgrade([
+        interactionTargetComponentId.value,
+      ]);
+    }
   }
 };
 const onArrowUp = () => {
