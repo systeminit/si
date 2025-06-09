@@ -569,13 +569,143 @@ const onU = (e: KeyDetails["u"]) => {
 const onArrowUp = () => {
   if (!showGrid.value) return;
   if (focusedComponentId.value) unfocus();
-  selectorGridPosition.value -= lanes.value;
+
+  // Get references to all rendered grid tile components
+  const gridTiles = componentGridTileRefs.value;
+  if (!gridTiles || gridTiles.length === 0) return;
+
+  // Get the DOM element and position of the currently selected tile
+  const currentTile = gridTiles[selectorGridPosition.value];
+  if (!currentTile?.$el) return;
+
+  // Calculate the center point of the current tile for accurate positioning
+  const currentRect = currentTile.$el.getBoundingClientRect();
+  const currentCenterX = currentRect.left + currentRect.width / 2;
+  const currentCenterY = currentRect.top + currentRect.height / 2;
+
+  // Check if we're already in the top row by seeing if any tiles exist above
+  // Uses 20px tolerance to account for slight alignment differences
+  const isInTopRow = gridTiles.every((tile, index) => {
+    if (!tile?.$el || index === selectorGridPosition.value) return true;
+    const rect = tile.$el.getBoundingClientRect();
+    const centerY = rect.top + rect.height / 2;
+    return centerY >= currentCenterY - 20; // No tiles significantly above
+  });
+
+  // Prevent moving up if already at the top boundary
+  if (isInTopRow) {
+    return;
+  }
+
+  // Find the best tile to move to using geometric distance scoring
+  let bestMatch = -1;
+  let bestScore = Infinity;
+
+  gridTiles.forEach((tile, index) => {
+    if (!tile?.$el || index === selectorGridPosition.value) return;
+
+    // Calculate center point of this potential target tile
+    const rect = tile.$el.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    // Only consider tiles that are above the current one
+    const isAbove = centerY < currentCenterY - 20;
+
+    if (isAbove) {
+      // Calculate distances for scoring
+      const horizontalDistance = Math.abs(centerX - currentCenterX); // Column alignment
+      const verticalDistance = currentCenterY - centerY; // Row distance
+
+      // Scoring system: prioritize horizontal alignment (staying in same column)
+      // while considering vertical distance (prefer nearest row above)
+      const score = horizontalDistance * 2 + verticalDistance * 0.5;
+
+      // Keep track of the best (lowest score) option
+      if (score < bestScore) {
+        bestScore = score;
+        bestMatch = index;
+      }
+    }
+  });
+
+  // Move to the best match if one was found
+  if (bestMatch !== -1) {
+    selectorGridPosition.value = bestMatch;
+  }
+
+  // Ensure the new position is within valid bounds
   constrainPosition();
 };
 const onArrowDown = () => {
   if (!showGrid.value) return;
   if (focusedComponentId.value) unfocus();
-  selectorGridPosition.value += lanes.value;
+
+  // Get references to all rendered grid tile components
+  const gridTiles = componentGridTileRefs.value;
+  if (!gridTiles || gridTiles.length === 0) return;
+
+  // Get the DOM element and position of the currently selected tile
+  const currentTile = gridTiles[selectorGridPosition.value];
+  if (!currentTile?.$el) return;
+
+  // Calculate the center point of the current tile for accurate positioning
+  const currentRect = currentTile.$el.getBoundingClientRect();
+  const currentCenterX = currentRect.left + currentRect.width / 2;
+  const currentCenterY = currentRect.top + currentRect.height / 2;
+
+  // Check if we're already in the bottom row by seeing if any tiles exist below
+  // Uses 20px tolerance to account for slight alignment differences
+  const isInBottomRow = gridTiles.every((tile, index) => {
+    if (!tile?.$el || index === selectorGridPosition.value) return true;
+    const rect = tile.$el.getBoundingClientRect();
+    const centerY = rect.top + rect.height / 2;
+    return centerY <= currentCenterY + 20; // No tiles significantly below
+  });
+
+  // Prevent moving down if already at the bottom boundary
+  if (isInBottomRow) {
+    return;
+  }
+
+  // Find the best tile to move to using geometric distance scoring
+  let bestMatch = -1;
+  let bestScore = Infinity;
+
+  gridTiles.forEach((tile, index) => {
+    if (!tile?.$el || index === selectorGridPosition.value) return;
+
+    // Calculate center point of this potential target tile
+    const rect = tile.$el.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    // Only consider tiles that are below the current one
+    const isBelow = centerY > currentCenterY + 20;
+
+    if (isBelow) {
+      // Calculate distances for scoring
+      const horizontalDistance = Math.abs(centerX - currentCenterX); // Column alignment
+      const verticalDistance = centerY - currentCenterY; // Row distance
+
+      // Scoring system: prioritize horizontal alignment (staying in same column)
+      // while considering vertical distance (prefer nearest row below)
+      const score = horizontalDistance * 2 + verticalDistance * 0.5;
+
+      // Keep track of the best (lowest score) option
+      if (score < bestScore) {
+        bestScore = score;
+        bestMatch = index;
+      }
+    }
+  });
+
+  // Move to the best match if one was found
+  if (bestMatch !== -1) {
+    selectorGridPosition.value = bestMatch;
+  }
+
+  // Ensure the new position is within valid bounds
   constrainPosition();
 };
 const onArrowLeft = () => {
