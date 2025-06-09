@@ -959,6 +959,8 @@ const filteredConnections = computed(() => {
         matches = matches.filter(
           (m) => secretKind.value && m.path === `/secrets/${secretKind.value}`,
         );
+      } else {
+        matches = matches.filter((m) => !m.path.startsWith("/secrets/"));
       }
 
       matches = matches.filter((m) => m.componentId !== props.component.id);
