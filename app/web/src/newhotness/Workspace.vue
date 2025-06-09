@@ -50,7 +50,8 @@
     <!-- grow the main body to fit all the space in between the nav and the bottom of the browser window
      min-h-0 prevents the main container from being *larger* than the max it can grow, no matter its contents -->
     <main class="grow min-h-0">
-      <div v-if="lobby" class="w-[50svh] mx-auto mt-[15svh]">
+      <div v-if="tokenFail">Bad Token</div>
+      <div v-else-if="lobby" class="w-[50svh] mx-auto mt-[15svh]">
         <h1 class="text-center text-2xl">Welcome!</h1>
         <h2 class="text-center text-xl">Have a seat in our lobby</h2>
         <h3 class="text-center text-lg">We are loading your workspace now</h3>
@@ -103,6 +104,7 @@ import FuncRunDetails from "./FuncRunDetails.vue";
 import LatestFuncRunDetails from "./LatestFuncRunDetails.vue";
 import { Context, FunctionKind } from "./types";
 import { startKeyEmitter } from "./logic_composables/emitters";
+import { tokensByWorkspacePk } from "./logic_composables/tokens";
 
 const props = defineProps<{
   workspacePk: string;
@@ -160,6 +162,8 @@ const compositionLink = computed(() => {
 const route = useRoute();
 const router = useRouter();
 
+const tokenFail = ref(false);
+
 const queryClient = useQueryClient();
 
 onBeforeMount(async () => {
@@ -173,10 +177,18 @@ onBeforeMount(async () => {
     }
   }, 500);
 
+  if (!Object.keys(tokensByWorkspacePk).length) {
+    tokenFail.value = true;
+    return;
+  }
+  const workspaceAuthToken = tokensByWorkspacePk[workspacePk.value];
+  if (!workspaceAuthToken) {
+    tokenFail.value = true;
+    return;
+  }
+
   // Activate the norse stack, which is explicitly NOT flagged for the job-specific UI.
-  if (!authStore.selectedOrDefaultAuthToken)
-    throw new Error("no auth token selected");
-  await heimdall.init(authStore.selectedOrDefaultAuthToken, queryClient);
+  await heimdall.init(workspaceAuthToken, queryClient);
   watch(
     connectionShouldBeEnabled,
     async () => {

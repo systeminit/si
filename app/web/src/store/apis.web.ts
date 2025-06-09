@@ -11,7 +11,6 @@ import { trackEvent } from "@/utils/tracking";
 import FiveHundredError from "@/components/toasts/FiveHundredError.vue";
 import MaintenanceMode from "@/components/toasts/MaintenanceMode.vue";
 import UnscheduledDowntime from "@/components/toasts/UnscheduledDowntime.vue";
-import { niflheim } from "@/store/realtime/heimdall";
 
 // api base url - can use a proxy or set a full url
 let apiUrl: string;
@@ -35,9 +34,11 @@ export function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
   const authStore = useAuthStore();
   config.headers = config.headers || {};
 
-  const token = authStore.selectedOrDefaultAuthToken;
+  const token = authStore.selectedWorkspaceToken;
   if (token) {
     config.headers.authorization = `Bearer ${token}`;
+  } else {
+    throw new Error("Token required");
   }
   return config;
 }
@@ -50,13 +51,6 @@ if (typeof window !== "undefined") (window as any).sdf = sdfApiInstance;
 async function handleForcedChangesetRedirection(response: AxiosResponse) {
   if (response.headers.force_change_set_id) {
     const changeSetsStore = useChangeSetsStore();
-
-    niflheim(
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      changeSetsStore.selectedWorkspacePk!,
-      response.headers.force_change_set_id,
-      true,
-    );
 
     await changeSetsStore.setActiveChangeset(
       response.headers.force_change_set_id,
