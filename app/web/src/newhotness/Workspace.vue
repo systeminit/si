@@ -165,6 +165,7 @@ const router = useRouter();
 const tokenFail = ref(false);
 
 const queryClient = useQueryClient();
+queryClient.setDefaultOptions({ queries: { staleTime: Infinity } });
 
 onBeforeMount(async () => {
   // NOTE(nick,wendy): if you do not have the flag enabled, you will be re-directed. This will be
