@@ -108,7 +108,7 @@ async function emulate_authoring_inner(sdf: SdfApiClient,
     );
     const componentQual = qualSummary?.components.find((c) => c.componentId === doublerComponentId);
     assert(componentQual, "Expected to find qualification summary for created component");
-    assert(componentQual?.succeeded === 1, "Expected to have one qualification passing");
+    assert(componentQual?.failed === 1, "Expected to have one qualification failed as it doesn't yet have the value set");
     const { values: doublerValues } = await getPropertyEditor(
         sdf,
         changeSetId,
