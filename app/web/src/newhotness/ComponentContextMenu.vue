@@ -132,8 +132,7 @@ const rightClickMenuItems = computed(() => {
   if (component.value?.canBeUpgraded) {
     items.push({
       label: "Upgrade",
-      // TODO(Wendy) - we need to implement this shortcut
-      // shortcut: "⌘U",
+      shortcut: "⌘U",
       icon: "bolt-outline",
       onSelect: () => componentUpgrade(props.componentIds),
     });
@@ -256,5 +255,12 @@ function close() {
 
 const isOpen = computed(() => contextMenuRef.value?.isOpen);
 
-defineExpose({ open, close, isOpen, componentsStartErase, componentDuplicate });
+defineExpose({
+  open,
+  close,
+  isOpen,
+  componentsStartErase,
+  componentDuplicate,
+  componentUpgrade,
+});
 </script>
