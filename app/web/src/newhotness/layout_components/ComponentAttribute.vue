@@ -88,6 +88,7 @@
         :path="props.attributeTree.attributeValue.path ?? ''"
         :kind="props.attributeTree.prop?.widgetKind"
         :prop="props.attributeTree.prop"
+        :component="component"
         :value="props.attributeTree.attributeValue.value?.toString() ?? ''"
         :canDelete="props.attributeTree.isBuildable"
         :externalSources="props.attributeTree.attributeValue.externalSources"

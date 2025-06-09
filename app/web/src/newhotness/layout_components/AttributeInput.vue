@@ -464,6 +464,7 @@ import {
 } from "@/api/sdf/dal/property_editor";
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
 import {
+  BifrostComponent,
   EntityKind,
   ExternalSource,
   PossibleConnection,
@@ -491,6 +492,7 @@ const props = defineProps<{
   value: string;
   kind?: PropertyEditorPropWidgetKind | string;
   prop?: Prop;
+  component: BifrostComponent;
   displayName: string;
   canDelete?: boolean;
   disabled?: boolean;
@@ -958,6 +960,8 @@ const filteredConnections = computed(() => {
           (m) => secretKind.value && m.path === `/secrets/${secretKind.value}`,
         );
       }
+
+      matches = matches.filter((m) => m.componentId !== props.component.id);
 
       const fuzzyMatches: PossibleConnection[] = [];
 
