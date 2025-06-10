@@ -300,7 +300,7 @@ where
 
                 let s = span!(
                     parent: None,
-                    Level::INFO,
+                    Level::DEBUG,
                     "compressing_stream.next",
                     messages.deleted.count = Empty,
                     messaging.destination.name = Empty,
@@ -434,7 +434,7 @@ where
                                 .take()
                                 .expect("extracting owned value only happens once");
 
-                            info!(
+                            debug!(
                                 first_message_info_pending = message
                                     .info()
                                     .map(|info| info.pending as isize)
