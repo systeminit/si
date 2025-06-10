@@ -70,7 +70,7 @@ export interface DBInterface {
     changeSetId: ChangeSetId,
     kind: EntityKind,
     id: Id,
-  ): Promise<typeof NOROW | AtomDocument>;
+  ): AsyncGenerator<object | -1>;
   mjolnirBulk(
     workspaceId: string,
     changeSetId: ChangeSetId,

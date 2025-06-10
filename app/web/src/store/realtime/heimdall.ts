@@ -1,4 +1,5 @@
 import * as Comlink from "comlink";
+import { asyncGeneratorTransferHandler } from 'comlink-async-generator';
 import { computed, reactive, Reactive, inject, ComputedRef, unref } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
 import {
@@ -18,6 +19,8 @@ import * as rainbow from "@/newhotness/logic_composables/rainbow_counter";
 import router from "@/router";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useWorkspacesStore } from "../workspaces.store";
+
+Comlink.transferHandlers.set('asyncGenerator', asyncGeneratorTransferHandler);
 
 let token: string | undefined;
 let queryClient: QueryClient;
@@ -124,17 +127,18 @@ export const bifrost = async <T>(args: {
 }): Promise<Reactive<T> | null> => {
   if (!initCompleted.value) throw new Error("bifrost not initiated");
   const start = Date.now();
-  const maybeAtomDoc = await db.get(
+  const generator = await db.get(
     args.workspaceId,
     args.changeSetId,
     args.kind,
     args.id,
   );
+  const maybeAtomDoc = await generator.next();
   const end = Date.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost query", args.kind, args.id, end - start, "ms");
-  if (maybeAtomDoc === -1) return null;
-  return reactive(maybeAtomDoc);
+  if (maybeAtomDoc.value === -1) return null;
+  return reactive(maybeAtomDoc.value);
 };
 
 export const getPossibleConnections = async (args: {

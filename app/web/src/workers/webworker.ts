@@ -1,4 +1,5 @@
 import * as Comlink from "comlink";
+import { asyncGeneratorTransferHandler } from 'comlink-async-generator';
 import { applyPatch as applyOperations } from "fast-json-patch";
 import sqlite3InitModule, {
   Database,
@@ -88,6 +89,8 @@ import {
   processMjolnirQueue,
   bustQueueAdd,
 } from "./mjolnir_queue";
+
+Comlink.transferHandlers.set('asyncGenerator', asyncGeneratorTransferHandler);
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
 if (!otelEndpoint) otelEndpoint = "http://localhost:8080";
@@ -1582,12 +1585,13 @@ const allOutgoingConns = new DefaultMap<
 >(() => new DefaultMap(() => ({})));
 
 const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
-  const data = (await get(
+  const dataGenerator = get(
     workspaceId,
     changeSetId,
     EntityKind.ComponentList,
     workspaceId,
-  )) as BifrostComponentList | -1;
+  )
+  const data = (await dataGenerator.next()).value as BifrostComponentList | -1;
 
   if (data === -1) return;
 
@@ -1613,7 +1617,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     true,
   );
 
-  const list = (await get(
+  const listGenerator =  get(
     workspaceId,
     changeSetId,
     EntityKind.IncomingConnectionsList,
@@ -1621,7 +1625,9 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     undefined,
     undefined,
     false, // don't compute
-  )) as BifrostIncomingConnectionsList | -1;
+  );
+  
+  const list = (await listGenerator.next()).value as BifrostIncomingConnectionsList | -1;
 
   if (list === -1) return;
 
@@ -1998,7 +2004,7 @@ const getReferences = async (
     return [bifrost, hasReferenceError];
   } else if (kind === EntityKind.Component) {
     const data = atomDoc as EddaComponent;
-    const sv = (await get(
+    const svGenerator = get(
       workspaceId,
       changeSetId,
       data.schemaVariantId.kind,
@@ -2006,7 +2012,8 @@ const getReferences = async (
       undefined,
       indexChecksum,
       followComputed,
-    )) as SchemaVariant | -1;
+    )
+    const sv = (await svGenerator.next()).value as SchemaVariant | -1;
 
     if (sv === -1) {
       hasReferenceError = true;
@@ -2034,7 +2041,7 @@ const getReferences = async (
       );
     }
 
-    const sm = (await get(
+    const smGenerator = get(
       workspaceId,
       changeSetId,
       data.schemaMembers.kind,
@@ -2042,7 +2049,8 @@ const getReferences = async (
       undefined,
       indexChecksum,
       followComputed,
-    )) as SchemaMembers | -1;
+    )
+    const sm = (await smGenerator.next()).value as SchemaMembers | -1;
 
     if (sm === -1) {
       hasReferenceError = true;
@@ -2182,7 +2190,7 @@ const getReferences = async (
     return [list, hasReferenceError];
   } else if (kind === EntityKind.IncomingConnections) {
     const raw = atomDoc as EddaIncomingConnections;
-    const component = (await get(
+    const componentGenerator = get(
       workspaceId,
       changeSetId,
       EntityKind.Component,
@@ -2191,7 +2199,8 @@ const getReferences = async (
       indexChecksum,
       false,
       false,
-    )) as BifrostComponent | -1;
+    );
+    const component = (await componentGenerator.next()).value as BifrostComponent | -1;
 
     clearWeakReferences(changeSetId, {
       kind: EntityKind.IncomingConnections,
@@ -2375,7 +2384,7 @@ const getReferences = async (
   }
 };
 
-const get = async (
+async function* get (
   workspaceId: string,
   changeSetId: ChangeSetId,
   kind: EntityKind,
@@ -2384,7 +2393,7 @@ const get = async (
   indexChecksum?: string,
   followComputed = true,
   followReferences = true,
-): Promise<-1 | object> => {
+): AsyncGenerator<object | -1, void> {
   const sql = `
     select
       data
@@ -2422,13 +2431,17 @@ const get = async (
   );
   if (data === NOROW) {
     mjolnir(workspaceId, changeSetId, kind, id, checksum);
-    return -1;
+    yield -1;
+    return;
   }
   const atomDoc = decodeDocumentFromDB(data as ArrayBuffer);
   // debug("📄 atom doc", atomDoc);
 
   // THIS GETS REPLACED WITH AUTO-GEN CODE
-  if (!followReferences) return atomDoc;
+  if (!followReferences) {
+    yield atomDoc;
+    return;
+  }
 
   try {
     const [docAndRefs, hasReferenceError] = await getReferences(
@@ -2443,16 +2456,22 @@ const get = async (
     // this is a choice, we could send through objects that don't match the types
     // and potentially have something drawn on the screen—but that seems worse
     // for the possible side-effects
-    if (hasReferenceError) return -1;
+    if (hasReferenceError) {
+      yield -1;
+      return;
+    }
 
     if (followComputed) {
-      return await getComputed(docAndRefs, workspaceId, changeSetId, kind, id);
+      yield await getComputed(docAndRefs, workspaceId, changeSetId, kind, id);
+      return;
     }
-    return docAndRefs;
+    yield docAndRefs;
+    return;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error(err);
-    return -1;
+    yield -1;
+    return;
   }
 };
 
