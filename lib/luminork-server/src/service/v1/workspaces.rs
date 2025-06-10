@@ -71,6 +71,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
                             .nest("/funcs", super::funcs::routes())
                             .nest("/actions", super::actions::routes())
                             .nest("/secrets", super::secrets::routes())
+                            .nest("/management-funcs", super::management_funcs::routes())
                             .route(
                                 "/request_approval",
                                 post(super::change_sets::request_approval::request_approval),
