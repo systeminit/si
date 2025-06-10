@@ -1,5 +1,5 @@
 <template>
-  <DelayedLoader v-if="componentListRaw.isLoading.value" :size="'full'" />
+  <DelayedLoader v-if="componentListRaw.isPending.value" :size="'full'" />
   <section v-else :class="clsx('grid h-full', showGrid ? 'explore' : 'map')">
     <!-- Left column -->
     <!-- 12 pixel padding to align with the SI logo -->
@@ -215,7 +215,7 @@ import { useQuery } from "@tanstack/vue-query";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import { Fzf } from "fzf";
 import { tw } from "@si/vue-lib";
-import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import { bifrost, bifrostGenerator, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
   BifrostComponentList,
@@ -332,22 +332,64 @@ const kind = computed(() =>
 const id = computed(() =>
   selectedView.value ? selectedView.value : ctx.workspacePk.value,
 );
-const componentQueryKey = key(kind, id);
+const componentQueryKey = key(EntityKind.ComponentList, ctx.workspacePk.value);
 
 const componentListRaw = useQuery<
-  BifrostComponentList | ViewComponentList | null
+  BifrostComponentInList[]
 >({
   queryKey: componentQueryKey,
-  queryFn: async () => {
-    const arg = selectedView.value
-      ? args(EntityKind.ViewComponentList, selectedView.value)
-      : args(EntityKind.ComponentList);
-    return await bifrost<BifrostComponentList | ViewComponentList>(arg);
+  queryFn: async (context) => {
+    // PSA: there is an experimental `streamedQuery` in tanstack/react_query
+    // I've stolen most of it here
+    const query = context.client
+      .getQueryCache()
+      .find({ queryKey: context.queryKey, exact: true })
+
+    const isRefetch = !!query && query.state.data !== undefined
+
+    if (isRefetch) {
+      query.setState({
+        status: 'pending',
+        data: undefined,
+        error: null,
+        fetchStatus: 'fetching',
+      })
+    }
+
+    const result: Array<BifrostComponentInList> = [];
+
+    const arg = args(EntityKind.ComponentList);
+    const stream = bifrostGenerator<BifrostComponentInList>(arg);
+    for await (const chunk of stream) {
+      if (!chunk)
+        break;
+      if (context.signal.aborted) {
+        break;
+      }
+
+      // don't append to the cache directly when replace-refetching
+      if (!isRefetch ) {
+        context.client.setQueryData<Array<BifrostComponentInList>>(
+          context.queryKey,
+          (prev = []) => {
+            return [...prev, chunk]
+          },
+        )
+      }
+      result.push(chunk)
+    }
+
+    // finalize result: replace-refetching needs to write to the cache
+    if (isRefetch && !context.signal.aborted) {
+      context.client.setQueryData<Array<BifrostComponentInList>>(context.queryKey, result)
+    }
+
+    return context.client.getQueryData(context.queryKey)!
   },
 });
 
 const componentList = computed(
-  () => componentListRaw.data.value?.components ?? [],
+  () => componentListRaw.data.value ?? [],
 );
 
 const scrollRef = ref<HTMLDivElement>();

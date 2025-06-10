@@ -2462,7 +2462,13 @@ async function* get (
     }
 
     if (followComputed) {
-      yield await getComputed(docAndRefs, workspaceId, changeSetId, kind, id);
+      const completedData = await getComputed(docAndRefs, workspaceId, changeSetId, kind, id);
+      if (kind === EntityKind.ComponentList) {
+        for (const c of (completedData as BifrostComponentList).components) {
+          yield c;
+        };
+      } else
+        yield completedData;
       return;
     }
     yield docAndRefs;

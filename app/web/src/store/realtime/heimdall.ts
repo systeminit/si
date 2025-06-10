@@ -141,6 +141,38 @@ export const bifrost = async <T>(args: {
   return reactive(maybeAtomDoc.value);
 };
 
+export async function* bifrostGenerator<T>(args: {
+  workspaceId: string;
+  changeSetId: ChangeSetId;
+  kind: EntityKind;
+  id: Id;
+}): AsyncGenerator<T | null> {
+  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  const start = Date.now();
+  const generator = await db.get(
+    args.workspaceId,
+    args.changeSetId,
+    args.kind,
+    args.id,
+  );
+  let first = true 
+  let firstTime;
+  for await (const maybeAtomDoc of await generator) {
+    if (first) {
+      first = false;
+      firstTime = Date.now();
+    }
+    if (maybeAtomDoc === -1) yield null;
+    else {
+      console.log("yielding...")
+      yield maybeAtomDoc as T;
+    }
+  }
+  const end = Date.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost query", args.kind, args.id, firstTime ? firstTime-start : Infinity, "ms", end - start, "ms");
+};
+
 export const getPossibleConnections = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
