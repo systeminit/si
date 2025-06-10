@@ -7,6 +7,7 @@ pub mod change_set;
 mod context;
 mod history_event;
 pub mod key_pair;
+mod management_func_execution;
 pub mod migrate;
 // TODO remove pub once we move users out of dal
 pub mod standard_accessors;
@@ -22,6 +23,11 @@ pub use history_event::{
     HistoryActor,
     HistoryEvent,
     HistoryEventMetadata,
+};
+pub use management_func_execution::{
+    ManagementFuncExecutionError,
+    ManagementFuncJobState,
+    ManagementState,
 };
 pub use tenancy::Tenancy;
 pub use transactions::{

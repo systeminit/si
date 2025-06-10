@@ -64,7 +64,12 @@ use si_events::{
     split_snapshot_rebase_batch_address::SplitSnapshotRebaseBatchAddress,
     workspace_snapshot::Change,
 };
-use si_id::ActionId;
+use si_id::{
+    ActionId,
+    ComponentId,
+    ManagementPrototypeId,
+    ViewId,
+};
 use si_layer_cache::{
     LayerDbError,
     activities::ActivityPayloadDiscriminants,
@@ -482,6 +487,10 @@ impl SiDbContext for DalContext {
 
     fn visibility(&self) -> &Visibility {
         self.visibility()
+    }
+
+    fn change_set_id(&self) -> ChangeSetId {
+        self.change_set_id()
     }
 }
 
@@ -1095,6 +1104,29 @@ impl DalContext {
                 self.workspace_pk()?,
                 self.change_set_id(),
                 attribute_value_id,
+            )
+            .await;
+
+        Ok(())
+    }
+
+    pub async fn enqueue_management_func(
+        &self,
+        prototype_id: ManagementPrototypeId,
+        component_id: ComponentId,
+        view_id: ViewId,
+        request_ulid: Option<ulid::Ulid>,
+    ) -> TransactionsResult<()> {
+        self.txns()
+            .await?
+            .job_queue
+            .enqueue_management_func_job(
+                self.workspace_pk()?,
+                self.change_set_id(),
+                prototype_id,
+                component_id,
+                view_id,
+                request_ulid,
             )
             .await;
 

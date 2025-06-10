@@ -101,9 +101,9 @@ async fn list_qualifications(ctx: &mut DalContext) {
     // NOTE(nick): at the time of writing this test, we receive the qualifications sorted, so we
     // neither need to perform an additional sort nor use something like a hash set.
     assert_eq!(
-        vec![
-            replace_output_stream_view_line_contents(expected_additional_qualification_view)
-        ], // expected
+        vec![replace_output_stream_view_line_contents(
+            expected_additional_qualification_view
+        )], // expected
         qualifications // actual
     );
 }

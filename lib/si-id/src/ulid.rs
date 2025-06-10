@@ -1,9 +1,9 @@
 //! Provides a wrapper for [`::ulid::Ulid`] for common visitor and conversion patterns.
 
-use ulid::Ulid as CoreUlid;
 pub use ulid::{
     DecodeError,
     ULID_LEN,
+    Ulid as CoreUlid,
 };
 
 /// Size is the size in bytes, len is the string length

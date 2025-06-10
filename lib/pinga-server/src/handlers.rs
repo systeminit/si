@@ -14,6 +14,7 @@ use dal::{
         definition::{
             ActionJob,
             DependentValuesUpdate,
+            ManagementFuncJob,
             compute_validation::ComputeValidation,
         },
     },
@@ -255,6 +256,19 @@ async fn try_execute_job(
             request.workspace_id,
             request.change_set_id,
             attribute_value_ids.clone(),
+        ) as Box<dyn JobConsumer + Send + Sync>,
+        JobArgsVCurrent::ManagementFunc {
+            component_id,
+            prototype_id,
+            view_id,
+            request_ulid,
+        } => ManagementFuncJob::new(
+            request.workspace_id,
+            request.change_set_id,
+            *prototype_id,
+            *component_id,
+            *view_id,
+            *request_ulid,
         ) as Box<dyn JobConsumer + Send + Sync>,
     };
 

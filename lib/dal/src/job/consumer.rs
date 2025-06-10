@@ -36,7 +36,10 @@ use crate::{
     diagram::DiagramError,
     func::runner::FuncRunnerError,
     job::{
-        definition::dependent_values_update::DependentValueUpdateError,
+        definition::{
+            ManagementFuncJobError,
+            dependent_values_update::DependentValueUpdateError,
+        },
         producer::BlockingJobError,
     },
     prop::PropError,
@@ -77,6 +80,8 @@ pub enum JobConsumerError {
     InvalidArguments(String, Vec<Value>),
     #[error("std io error: {0}")]
     Io(#[from] ::std::io::Error),
+    #[error("management function error: {0}")]
+    ManagementFunc(#[from] ManagementFuncJobError),
     #[error("nats error: {0}")]
     Nats(#[from] NatsError),
     #[error("nats is unavailable")]
@@ -119,7 +124,11 @@ pub enum RetryBackoff {
 /// Jobs that return a state of `JobCompletionState::Retry` will be retried
 /// with the requested backoff and limit
 pub enum JobCompletionState {
-    Retry { limit: u32, backoff: RetryBackoff },
+    Retry {
+        limit: u32,
+        backoff: RetryBackoff,
+        minimum: u32,
+    },
     Done,
 }
 
@@ -154,13 +163,18 @@ pub trait JobConsumer: std::fmt::Debug + Sync + DalJob {
             let mut ctx = ctx_builder.build(request_context.clone()).await?;
 
             match self.run(&mut ctx).await? {
-                JobCompletionState::Retry { limit, backoff } => {
+                JobCompletionState::Retry {
+                    limit,
+                    minimum,
+                    backoff,
+                } => {
                     if retries >= limit {
                         return Err(JobConsumerError::RetriesFailed(self.args(), retries));
                     }
 
                     if let RetryBackoff::Exponential = backoff {
-                        tokio::time::sleep(calculate_exponential_sleep_ms(retries, 2)).await;
+                        tokio::time::sleep(calculate_exponential_sleep_ms(retries, 2, minimum))
+                            .await;
                     };
                 }
                 JobCompletionState::Done => {
@@ -175,12 +189,12 @@ pub trait JobConsumer: std::fmt::Debug + Sync + DalJob {
     }
 }
 
-fn calculate_exponential_sleep_ms(retry_no: u32, base: u32) -> Duration {
-    let sleep_micros = base.pow(retry_no).saturating_mul(1000);
+fn calculate_exponential_sleep_ms(retry_no: u32, base: u32, minimum: u32) -> Duration {
+    let sleep_micros = base.pow(retry_no).saturating_mul(minimum);
     let mut rng = rand::thread_rng();
     // "full" jitter, to prevent "thundering herd". On average this still gives
     // us an exponential distribution
-    let jittered_micros = rng.gen_range(1000..=sleep_micros);
+    let jittered_micros = rng.gen_range(minimum..=sleep_micros);
 
     Duration::from_micros(jittered_micros.into())
 }

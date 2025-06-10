@@ -76,6 +76,24 @@ impl NatsProcessor {
                         )
                         .await?;
                 }
+                JobArgsVCurrent::ManagementFunc {
+                    component_id,
+                    prototype_id,
+                    view_id,
+                    request_ulid,
+                } => {
+                    self.pinga
+                        .dispatch_management_job(
+                            job.workspace_id(),
+                            job.change_set_id(),
+                            component_id,
+                            prototype_id,
+                            view_id,
+                            request_ulid,
+                            false,
+                        )
+                        .await?;
+                }
             }
         }
 
@@ -109,6 +127,24 @@ impl JobQueueProcessor for NatsProcessor {
                         job.workspace_id(),
                         job.change_set_id(),
                         attribute_value_ids,
+                        false,
+                    )
+                    .await?
+            }
+            JobArgsVCurrent::ManagementFunc {
+                component_id,
+                prototype_id,
+                view_id,
+                request_ulid,
+            } => {
+                self.pinga
+                    .await_management_job(
+                        job.workspace_id(),
+                        job.change_set_id(),
+                        component_id,
+                        prototype_id,
+                        view_id,
+                        request_ulid,
                         false,
                     )
                     .await?

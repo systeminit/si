@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use si_id::ChangeSetId;
 use tokio::sync::MappedMutexGuard;
 
 use crate::{
@@ -19,4 +20,5 @@ pub trait SiDbContext {
     -> Result<MappedMutexGuard<'_, Self::Transactions>, SiDbTransactionsError>;
     fn tenancy(&self) -> &Tenancy;
     fn visibility(&self) -> &Visibility;
+    fn change_set_id(&self) -> ChangeSetId;
 }

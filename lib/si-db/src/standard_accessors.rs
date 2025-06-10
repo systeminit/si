@@ -6,3 +6,12 @@ macro_rules! getter {
         }
     };
 }
+
+#[macro_export]
+macro_rules! getter_copy {
+    ($column:ident, $value_type:ty) => {
+        pub fn $column(&self) -> $value_type {
+            self.$column
+        }
+    };
+}

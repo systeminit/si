@@ -146,7 +146,7 @@ pub trait ApiWrapper: Serialize + strum::VariantNames {
     fn message_version() -> u64 {
         if Self::VARIANTS.len() != 1 {
             panic!(
-                "{} must only have variant; this is a bug!",
+                "{} must only have variant. if you added a new variant, it should be the only one; this is a bug!",
                 Self::MESSAGE_TYPE
             );
         }
