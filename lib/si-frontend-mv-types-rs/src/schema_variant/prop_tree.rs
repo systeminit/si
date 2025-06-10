@@ -42,6 +42,8 @@ pub struct Prop {
     pub default_can_be_set_by_socket: bool,
     pub is_origin_secret: bool,
     pub secret_definition: Option<SecretDefinition>,
+    #[serde(flatten)]
+    pub ui_optionals: HashMap<String, serde_json::Value>,
 }
 
 #[remain::sorted]

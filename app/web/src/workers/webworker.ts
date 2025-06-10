@@ -10,7 +10,7 @@ import sqlite3InitModule, {
   SqlValue,
 } from "@sqlite.org/sqlite-wasm";
 import ReconnectingWebSocket from "reconnecting-websocket";
-import { trace, Span } from "@opentelemetry/api";
+import { Span, trace } from "@opentelemetry/api";
 import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
 import {
   BatchSpanProcessor,
@@ -24,7 +24,7 @@ import {
   ATTR_SERVICE_NAME,
   ATTR_SERVICE_VERSION,
 } from "@opentelemetry/semantic-conventions";
-import { URLPattern, describePattern } from "@si/vue-lib";
+import { describePattern, URLPattern } from "@si/vue-lib";
 import Axios, {
   AxiosInstance,
   AxiosResponse,
@@ -35,58 +35,59 @@ import { nonNullable } from "@/utils/typescriptLinter";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
-  DBInterface,
-  NOROW,
-  Checksum,
   Atom,
-  QueryKey,
-  Id,
-  PatchBatch,
-  AtomMeta,
   AtomDocument,
   AtomMessage,
-  MessageKind,
-  IndexObjectMeta,
+  AtomMeta,
   BustCacheFn,
-  Ragnarok,
-  RainbowFn,
+  Checksum,
+  DBInterface,
+  Id,
+  IndexObjectMeta,
   IndexUpdate,
   LobbyExitFn,
+  MessageKind,
   MjolnirBulk,
+  NOROW,
+  PatchBatch,
+  QueryKey,
+  Ragnarok,
+  RainbowFn,
 } from "./types/dbinterface";
 import {
-  BifrostViewList,
-  RawViewList,
-  View,
-  EddaComponentList,
-  EddaComponent,
-  BifrostComponentList,
-  EddaIncomingConnectionsList,
-  BifrostIncomingConnectionsList,
-  EddaIncomingConnections,
-  BifrostComponentConnections,
-  BifrostConnection,
   BifrostComponent,
-  SchemaVariant,
-  PossibleConnection,
-  EntityKind,
-  EddaSchemaVariantCategories,
-  BifrostSchemaVariantCategories,
-  CategoryVariant,
-  SchemaMembers,
-  UninstalledVariant,
+  BifrostComponentConnections,
   BifrostComponentInList,
+  BifrostComponentList,
+  BifrostConnection,
+  BifrostIncomingConnectionsList,
+  BifrostSchemaVariantCategories,
+  BifrostViewList,
+  CategoryVariant,
+  EddaComponent,
+  EddaComponentList,
+  EddaIncomingConnections,
+  EddaIncomingConnectionsList,
+  EddaSchemaVariantCategories,
+  EntityKind,
   MaybeBifrostComponentConnections,
   MaybeBifrostConnection,
+  PossibleConnection,
+  Prop,
+  RawViewList,
+  SchemaMembers,
+  SchemaVariant,
+  UninstalledVariant,
+  View,
 } from "./types/entity_kind_types";
 import {
-  hasReturned,
-  maybeMjolnir,
   bulkDone,
   bulkInflight,
-  processPatchQueue,
-  processMjolnirQueue,
   bustQueueAdd,
+  hasReturned,
+  maybeMjolnir,
+  processMjolnirQueue,
+  processPatchQueue,
 } from "./mjolnir_queue";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
@@ -125,9 +126,7 @@ function debug(...args: any | any[]) {
 }
 
 /**
- *
  *  INITIALIZATION FNS
- *
  */
 let db: Database;
 let sdf: AxiosInstance;
@@ -163,9 +162,9 @@ const initializeSQLite = async (testing: boolean) => {
     const sqlite3 = await sqlite3InitModule({ print: log, printErr: error });
     await start(sqlite3, testing);
   } catch (err) {
-    if (err instanceof Error)
+    if (err instanceof Error) {
       error("Initialization error:", err.name, err.message);
-    else error("Initialization error:", err);
+    } else error("Initialization error:", err);
   }
 };
 
@@ -294,9 +293,7 @@ const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
 };
 
 /**
- *
  * INDEX LOGIC
- *
  */
 
 const atomExistsOnIndexes = async (
@@ -430,8 +427,9 @@ const partialKeyFromKindAndArgs = (kind: EntityKind, id: Id): QueryKey => {
 const kindAndArgsFromKey = (key: QueryKey): { kind: EntityKind; id: Id } => {
   const pieces = key.split("|", 2);
   if (pieces.length !== 2) throw new Error(`Bad key ${key} -> ${pieces}`);
-  if (!pieces[0] || !pieces[1])
+  if (!pieces[0] || !pieces[1]) {
     throw new Error(`Missing key ${key} -> ${pieces}`);
+  }
   const kind = pieces[0] as EntityKind;
   const id = pieces[1];
   return { kind, id };
@@ -469,7 +467,7 @@ const bustCacheAndReferences = async (
     returnValue: "resultRows",
   });
   refs.forEach(([ref_kind, ref_id]) => {
-    if (ref_kind && ref_id)
+    if (ref_kind && ref_id) {
       bustOrQueue(
         workspaceId,
         changeSetId,
@@ -477,6 +475,7 @@ const bustCacheAndReferences = async (
         ref_id as string,
         skipQueue,
       );
+    }
   });
 };
 
@@ -547,8 +546,9 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     );
   }
 
-  if (!indexChecksum)
+  if (!indexChecksum) {
     throw new Error(`Expected index checksum for ${msg.atom.toIndexChecksum}`);
+  }
 
   debug(
     "🔨 HAMMER: Inserting MTM for:",
@@ -651,8 +651,9 @@ const indexLogic = async (meta: AtomMeta, span?: Span) => {
   });
   const indexExists = oneInOne(indexQuery);
 
-  if (changeSetExists && !currentIndexChecksum)
+  if (changeSetExists && !currentIndexChecksum) {
     throw new Error("Null value from SQL, impossible");
+  }
 
   if (
     changeSetExists &&
@@ -764,8 +765,9 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
     .filter((rawAtom): rawAtom is Required<Atom> => !!rawAtom.fromChecksum);
 
   span?.setAttribute("numAtoms", atoms.length);
-  if (!indexChecksum)
+  if (!indexChecksum) {
     throw new Error(`Expected index checksum for ${data.meta.toIndexChecksum}`);
+  }
 
   // non-list atoms
   // non-connections (e.g. components need to go before connections)
@@ -941,8 +943,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
         doc = await patchAtom(atom);
         needToInsertMTM = true;
         bustCache = true;
-      }
-      // otherwise, fire the small hammer to get the full object
+      } // otherwise, fire the small hammer to get the full object
       else {
         debug(
           "🔨 MJOLNIR RACE: Missing fromChecksum data, firing hammer:",
@@ -1176,15 +1177,16 @@ const mjolnir = async (
     // NOTE: since we're moving to all weak refs
     // storing the index becomes useful here, we can lookup the
     // checksum we would expect to be returned, and see if we have it already
-    if (!checksum)
+    if (!checksum) {
       return mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
+    }
 
     // these are sent after patches are completed
     // double check that i am still necessary!
     const exists = await atomExistsOnIndexes(kind, id, checksum);
-    if (exists.length === 0)
+    if (exists.length === 0) {
       return mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
-    // if i have it, bust!
+    } // if i have it, bust!
     else bustCacheAndReferences(workspaceId, changeSetId, kind, id);
   });
 };
@@ -1387,9 +1389,7 @@ const atomChecksumsFor = async (
 };
 
 /**
- *
  * LIFECYCLE EVENTS
- *
  */
 
 const niflheim = async (
@@ -1462,9 +1462,9 @@ const niflheim = async (
     span.setAttribute("numHammers", numHammers);
     span.setAttribute("indexChecksum", indexChecksum);
 
-    if (objs.length > 0)
+    if (objs.length > 0) {
       await mjolnirBulk(workspaceId, changeSetId, objs, indexChecksum);
-    else {
+    } else {
       bulkDone(true);
       span.setAttribute("noop", true);
     }
@@ -1498,9 +1498,7 @@ const ragnarok = async (
 };
 
 /**
- *
  * WEAK REFERENCE TRACKING
- *
  */
 
 const clearAllWeakReferences = async (changeSetId: string) => {
@@ -1561,9 +1559,7 @@ const weakReference = async (
 };
 
 /**
- *
  * COMPUTED IMPLEMENTATIONS
- *
  */
 const COMPUTED_KINDS: EntityKind[] = [
   EntityKind.Component,
@@ -1692,82 +1688,85 @@ const updateComputed = async (
     Object.values(component.attributeTree.attributeValues).forEach((av) => {
       const prop = component.attributeTree.props[av.propId ?? ""];
       if (av.path && prop && prop.eligibleForConnection && !prop.hidden) {
-        if (av.secret) {
-          const conn: PossibleConnection = {
-            attributeValueId: av.id,
-            value: av.secret.name,
-            path: av.path,
-            name: prop.name,
-            componentId: component.id,
-            componentName: component.name,
-            schemaName: component.schemaName,
-            annotation: prop.kind,
-          };
-          conns[av.id] = conn;
-        } else {
-          const conn: PossibleConnection = {
-            attributeValueId: av.id,
-            value: av.value || "<computed>",
-            path: av.path,
-            name: prop.name,
-            componentId: component.id,
-            componentName: component.name,
-            schemaName: component.schemaName,
-            annotation: prop.kind,
-          };
-          conns[av.id] = conn;
-        }
+        conns[av.id] = {
+          attributeValueId: av.id,
+          value: av.secret ? av.secret.name : av.value || "<computed>",
+          path: av.path,
+          name: prop.name,
+          componentId: component.id,
+          componentName: component.name,
+          schemaName: component.schemaName,
+          kind: prop.kind,
+          suggestAsSourceFor: prop.suggestAsSourceFor,
+        };
       }
     });
 
     const existing = allPossibleConns.get(changeSetId);
+    // TODO what if AVs get removed?
     allPossibleConns.set(changeSetId, { ...existing, ...conns });
 
     // dont bust individually on cold start
-    if (bust)
+    if (bust) {
       bustCacheFn(
         workspaceId,
         changeSetId,
         EntityKind.PossibleConnections,
         changeSetId,
       );
+    }
   }
 };
 
-const getConnectionByAnnotation = (
+const getPossibleConnections = (
   _workspaceId: string,
   changeSetId: string,
-  annotation: string,
-) =>
-  sortByAnnotation(
+  destSchemaName: string,
+  destProp: Prop,
+) => {
+  return categorizePossibleConnections(
     Object.values(allPossibleConns.get(changeSetId)),
-    annotation,
+    destSchemaName,
+    destProp,
   );
+};
 
-const sortByAnnotation = (
+const categorizePossibleConnections = (
   possible: Array<PossibleConnection>,
-  annotation: string,
+  destSchemaName: string,
+  destProp: Prop,
 ) => {
   const exactMatches: Array<PossibleConnection> = [];
   const typeMatches: Array<PossibleConnection> = [];
   const nonMatches: Array<PossibleConnection> = [];
 
-  possible.forEach((conn) => {
-    const kind = conn.annotation;
-    // if we've got something like "VPC id" e.g. not one of the basic types
+  const destKind = destProp.kind;
+  for (const source of possible) {
+    const sourceKind = source.kind;
     if (
-      !["string", "boolean", "object", "map", "integer"].includes(annotation)
+      destProp.suggestSources?.some(
+        (s) => s.schema === source.schemaName && s.prop === source.path,
+      ) ||
+      source.suggestAsSourceFor?.some(
+        (s) => s.schema === destSchemaName && `root${s.prop}` === destProp.path,
+      )
     ) {
-      // look for exact matches
-      if (kind === annotation) exactMatches.push(conn);
-      // otherwise, all string types match "exact" types
-      else if (annotation === "string") typeMatches.push(conn);
-      else nonMatches.push(conn);
-    } else {
-      if (kind === annotation) typeMatches.push(conn);
-      else nonMatches.push(conn);
+      exactMatches.push(source);
     }
-  });
+    // if we've got something like "VPC id" e.g. not one of the basic types
+    else if (
+      !["string", "boolean", "object", "map", "integer"].includes(destKind)
+    ) {
+      // look for type matches
+      if (sourceKind === destKind) typeMatches.push(source);
+      // otherwise, all string types match "exact" types
+      else if (destKind === "string") typeMatches.push(source);
+      else nonMatches.push(source);
+    } else {
+      if (sourceKind === destKind) typeMatches.push(source);
+      else nonMatches.push(source);
+    }
+  }
 
   const cmp = (a: PossibleConnection, b: PossibleConnection) =>
     `${a.name} ${a.path}`.localeCompare(`${b.name} ${b.path}`);
@@ -1841,8 +1840,9 @@ const getComputed = async (
       EntityKind.ViewComponentList,
       EntityKind.ComponentList,
     ].includes(kind)
-  )
+  ) {
     return atomDoc;
+  }
 
   const connectionsById = getOutgoingConnectionsByComponentId(
     workspaceId,
@@ -1922,8 +1922,9 @@ const getReferences = async (
       EntityKind.SecretList,
       EntityKind.Secret,
     ].includes(kind)
-  )
+  ) {
     return [atomDoc, false];
+  }
 
   const span = tracer.startSpan("getReferences");
   span.setAttributes({
@@ -2216,8 +2217,7 @@ const getReferences = async (
       mjolnir(workspaceId, changeSetId, EntityKind.Component, raw.id);
       debug(`Connection ${raw.id} missing own component`);
       hasReferenceError = true;
-    }
-    // explicitly setting this as a warning that these fields are not to be used
+    } // explicitly setting this as a warning that these fields are not to be used
     else (component as BifrostComponent).outputCount = -1;
 
     const componentsToGet = raw.connections.map((c) => c.fromComponentId.id);
@@ -2551,7 +2551,7 @@ const getMany = async (
       indexChecksum,
     );
     Object.values(components).forEach((component) => {
-      if (component !== -1)
+      if (component !== -1) {
         getComputed(
           component,
           workspaceId,
@@ -2559,6 +2559,7 @@ const getMany = async (
           EntityKind.Component,
           component.id,
         );
+      }
     });
 
     const bifrostConns: Record<Id, MaybeBifrostComponentConnections> = {};
@@ -2592,9 +2593,7 @@ const getMany = async (
 };
 
 /**
- *
  * INTERFACE DEFINITION
- *
  */
 
 let socket: ReconnectingWebSocket;
@@ -2691,12 +2690,13 @@ const dbInterface: DBInterface = {
           else {
             span.setAttribute("messageKind", data.kind);
             if (data.kind === MessageKind.PATCH) {
-              if (!data.meta.toIndexChecksum)
+              if (!data.meta.toIndexChecksum) {
                 // eslint-disable-next-line no-console
                 console.error(
                   "ATTEMPTING TO PATCH BUT INDEX CHECKSUM IS MISSING",
                   data.meta,
                 );
+              }
               debug(
                 "📨 PATCH MESSAGE START:",
                 data.meta.toIndexChecksum,
@@ -2797,7 +2797,7 @@ const dbInterface: DBInterface = {
 
   get,
   getOutgoingConnectionsByComponentId,
-  getConnectionByAnnotation,
+  getPossibleConnections,
   partialKeyFromKindAndId: partialKeyFromKindAndArgs,
   kindAndIdFromKey: kindAndArgsFromKey,
   mjolnirBulk,
@@ -2875,8 +2875,9 @@ const dbInterface: DBInterface = {
         returnValue: "resultRows",
       });
       const headRow = oneInOne(headRows);
-      if (headRow === NOROW)
+      if (headRow === NOROW) {
         throw new Error(`HEAD is missing: ${workspaceId}: ${headChangeSet}`);
+      }
       const currentIndexChecksum = headRow;
 
       db.exec({

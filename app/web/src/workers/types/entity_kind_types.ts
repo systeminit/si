@@ -41,9 +41,10 @@ export enum EntityKind {
 export const isEntityKind = (maybeEntityKind: any): EntityKind | null => {
   const k = maybeEntityKind as string; // first cast to string, since enum values are strings
   // if the string-y value is in the enum
-  if (k in EntityKind)
+  if (k in EntityKind) {
     // you can safely cast this
     return k as EntityKind;
+  }
   return null;
 };
 interface Reference<T extends EntityKind> {
@@ -84,7 +85,8 @@ export type PossibleConnection = {
   componentName: string;
   schemaName: string;
   componentId: string;
-  annotation: string;
+  kind: string;
+  suggestAsSourceFor?: PropSuggestion[];
 };
 
 export interface View {
@@ -306,6 +308,13 @@ export interface Prop {
   createOnly: boolean;
   eligibleForConnection: boolean;
   hidden: boolean;
+  suggestSources?: PropSuggestion[];
+  suggestAsSourceFor?: PropSuggestion[];
+}
+
+export interface PropSuggestion {
+  schema: string;
+  prop: string;
 }
 
 export interface AttributeValue {
