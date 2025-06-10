@@ -81,7 +81,7 @@
         </InstructiveVormInput>
       </div>
       <template v-if="showGrid">
-        <div ref="scrollRef" class="scrollable tilegrid grow">
+        <div ref="scrollRef" class="scrollable tilegrid grow overflow-y-auto">
           <ComponentGridTile
             v-for="(component, index) in componentVirtualItemsList"
             ref="componentGridTileRefs"
