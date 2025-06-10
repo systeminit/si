@@ -72,7 +72,7 @@ id_with_pg_types!(ChangeSetApprovalId);
 id_with_pg_types!(ComponentId);
 id_with_pg_types!(FuncId);
 id_with_pg_types!(FuncRunId);
-id_with_pg_types!(ManagementFuncExecutionId);
+id_with_pg_types!(ManagementFuncJobStateId);
 id_with_pg_types!(ManagementPrototypeId);
 id_with_pg_types!(UserPk);
 id_with_pg_types!(WorkspaceIntegrationId);

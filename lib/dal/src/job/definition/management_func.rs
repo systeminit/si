@@ -10,7 +10,7 @@ use si_id::{
     ChangeSetId,
     ComponentId,
     FuncRunId,
-    ManagementFuncExecutionId,
+    ManagementFuncJobStateId,
     ManagementPrototypeId,
     ViewId,
     WorkspacePk,
@@ -152,7 +152,7 @@ impl ManagementFuncJob {
     async fn run_inner(
         &self,
         ctx: &DalContext,
-        execution_state_id: ManagementFuncExecutionId,
+        execution_state_id: ManagementFuncJobStateId,
     ) -> ManagementFuncJobResult<JobCompletionState> {
         if !ManagementPrototype::is_valid_prototype_for_component(
             ctx,
@@ -207,7 +207,7 @@ impl ManagementFuncJob {
     async fn operate(
         &self,
         ctx: &DalContext,
-        execution_state_id: ManagementFuncExecutionId,
+        execution_state_id: ManagementFuncJobStateId,
         mut execution_result: ManagementPrototypeExecution,
     ) -> ManagementFuncJobResult<()> {
         let result = execution_result
@@ -294,7 +294,7 @@ impl ManagementFuncJob {
 
     async fn transition_state(
         ctx: &DalContext,
-        execution_state_id: ManagementFuncExecutionId,
+        execution_state_id: ManagementFuncJobStateId,
         new_state: si_db::ManagementState,
         func_run_id: Option<FuncRunId>,
     ) -> ManagementFuncJobResult<()> {
@@ -313,7 +313,7 @@ impl ManagementFuncJob {
 
     async fn executing_state(
         ctx: &DalContext,
-        execution_state_id: ManagementFuncExecutionId,
+        execution_state_id: ManagementFuncJobStateId,
         func_run_id: FuncRunId,
     ) -> ManagementFuncJobResult<()> {
         Self::transition_state(
@@ -327,21 +327,21 @@ impl ManagementFuncJob {
 
     async fn operating_state(
         ctx: &DalContext,
-        execution_state_id: ManagementFuncExecutionId,
+        execution_state_id: ManagementFuncJobStateId,
     ) -> ManagementFuncJobResult<()> {
         Self::transition_state(ctx, execution_state_id, ManagementState::Operating, None).await
     }
 
     async fn success_state(
         ctx: &DalContext,
-        execution_state_id: ManagementFuncExecutionId,
+        execution_state_id: ManagementFuncJobStateId,
     ) -> ManagementFuncJobResult<()> {
         Self::transition_state(ctx, execution_state_id, ManagementState::Success, None).await
     }
 
     async fn fail_state(
         ctx: &DalContext,
-        execution_state_id: ManagementFuncExecutionId,
+        execution_state_id: ManagementFuncJobStateId,
     ) -> ManagementFuncJobResult<()> {
         Self::transition_state(ctx, execution_state_id, ManagementState::Failure, None).await
     }

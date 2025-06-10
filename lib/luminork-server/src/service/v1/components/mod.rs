@@ -90,6 +90,12 @@ pub enum ComponentsError {
     InputSocket(#[from] dal::socket::input::InputSocketError),
     #[error("invalid secret value: {0}")]
     InvalidSecretValue(String),
+    #[error("management func error: {0}")]
+    ManagementFuncExecution(#[from] si_db::ManagementFuncExecutionError),
+    #[error("management function already running for this component")]
+    ManagementFunctionAlreadyRunning,
+    #[error("management function execution error: {0}")]
+    ManagementFunctionExecutionFailed(si_db::ManagementFuncExecutionError),
     #[error("management function not found: {0}")]
     ManagementFunctionNotFound(String),
     #[error("prop error: {0}")]
@@ -206,6 +212,9 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
             ComponentsError::ActionFunctionNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             ComponentsError::ManagementFunctionNotFound(_) => {
                 (StatusCode::NOT_FOUND, self.to_string())
+            }
+            ComponentsError::ManagementFunctionAlreadyRunning => {
+                (StatusCode::CONFLICT, self.to_string())
             }
             ComponentsError::SecretNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             ComponentsError::Secret(dal::SecretError::SecretNotFound(_)) => {
