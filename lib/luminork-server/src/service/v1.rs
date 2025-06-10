@@ -8,6 +8,7 @@ mod change_sets;
 pub mod common;
 mod components;
 mod funcs;
+mod management_funcs;
 mod schemas;
 mod secrets;
 mod workspaces;
@@ -85,6 +86,12 @@ pub use funcs::{
     get_func::GetFuncV1Response,
     get_func_run::GetFuncRunV1Response,
 };
+pub use management_funcs::{
+    ManagementFuncJobStateV1RequestPath,
+    ManagementFuncsError,
+    ManagementFuncsResult,
+    get_management_func_run_state::GetManagementFuncJobStateV1Response,
+};
 pub use schemas::{
     GetSchemaV1Response,
     GetSchemaVariantV1Response,
@@ -149,6 +156,7 @@ pub use crate::api_types::{
         schemas::get_default_variant::get_default_variant,
         funcs::get_func_run::get_func_run,
         funcs::get_func::get_func,
+        management_funcs::get_management_func_run_state::get_management_func_run_state,
         actions::cancel_action::cancel_action,
         actions::retry_action::retry_action,
         actions::get_actions::get_actions,
@@ -215,6 +223,8 @@ pub use crate::api_types::{
             ActionV1RequestPath,
             FindSchemaV1Params,
             FindSchemaV1Response,
+            GetManagementFuncJobStateV1Response,
+            ManagementFuncJobStateV1RequestPath,
         )
     ),
     tags(
@@ -224,7 +234,8 @@ pub use crate::api_types::{
         (name = "schemas", description = "Schema management endpoints"),
         (name = "actions", description = "Action management endpoints"),
         (name = "secrets", description = "Secret management endpoints"),
-        (name = "funcs", description = "Functions management endpoints")
+        (name = "funcs", description = "Functions management endpoints"),
+        (name = "management_funcs", description = "Management functions endpoints")
     )
 )]
 pub struct V1ApiDoc;

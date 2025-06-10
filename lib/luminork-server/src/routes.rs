@@ -95,7 +95,8 @@ async fn app_state_middeware<B>(
         (name = "schemas", description = "Schemas management endpoints"),
         (name = "actions", description = "Actions management endpoints"),
         (name = "secrets", description = "Secrets management endpoints"),
-        (name = "funcs", description = "Functions management endpoints")
+        (name = "funcs", description = "Functions management endpoints"),
+        (name = "management_funcs", description = "Management functions endpoints"),
     ),
     info(
         title = "System Initiative API",

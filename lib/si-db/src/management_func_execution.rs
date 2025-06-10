@@ -4,6 +4,10 @@ use chrono::{
     DateTime,
     Utc,
 };
+use serde::{
+    Deserialize,
+    Serialize,
+};
 use si_data_pg::PgRow;
 use si_events::Timestamp;
 use si_id::{
@@ -50,7 +54,7 @@ pub enum ManagementFuncExecutionError {
 
 pub type ManagementFuncExecutionResult<T> = std::result::Result<T, ManagementFuncExecutionError>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, strum::Display)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, EnumString, strum::Display)]
 pub enum ManagementState {
     /// Waiting to be executed
     #[strum(serialize = "pending")]
@@ -173,6 +177,25 @@ impl ManagementFuncJobState {
             Some(row) => Some(Self::try_from(row)?),
             None => None,
         })
+    }
+
+    pub async fn get_by_id(
+        ctx: &impl SiDbContext,
+        management_func_job_state_id: ManagementFuncJobStateId,
+    ) -> ManagementFuncExecutionResult<Self> {
+        let row = ctx
+            .txns()
+            .await?
+            .pg()
+            .query_opt(
+                r#"SELECT * FROM management_func_job_states WHERE id = $1"#,
+                &[&management_func_job_state_id],
+            )
+            .await?;
+
+        Self::try_from(row.ok_or(ManagementFuncExecutionError::NotFound(
+            management_func_job_state_id,
+        ))?)
     }
 
     pub async fn get_latest_by_keys(
