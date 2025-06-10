@@ -83,6 +83,7 @@
     <ComponentContextMenu
       ref="componentContextMenuRef"
       :componentIds="selectedComponent ? [selectedComponent.id] : []"
+      onGrid
     />
   </section>
 </template>
@@ -227,6 +228,11 @@ const pan = (dx: number, dy: number) => {
   const y = transformMatrix[5]!;
   transformMatrix.splice(4, 1, x + dx);
   transformMatrix.splice(5, 1, y + dy);
+
+  // TODO(Wendy) - this fixes the position of the context menu
+  // but it is not a perfect fix, as it doesn't handle the
+  // selected component going near the edges or offscreen well :(
+  if (selectedComponent.value) selectComponent(selectedComponent.value);
 };
 
 const mouseDown = ref(false);
@@ -291,7 +297,7 @@ const onArrowRight = () => {
 };
 const onEscape = () => {
   if (!active.value) return;
-  selectedComponent.value = null;
+  deselect();
 };
 const onE = (_e: KeyDetails["e"]) => {
   if (selectedComponent.value) {
@@ -363,7 +369,9 @@ const connections = useQuery<BifrostIncomingConnectionsList>({
           const c = d.componentConnections.find(
             (c) => c.id === fillDefault.value,
           );
-          if (c && c.component) selectedComponent.value = c.component;
+          if (c && c.component) {
+            selectComponent(c.component);
+          }
           fillDefault.value = undefined;
         });
       }
@@ -481,19 +489,45 @@ const router = useRouter();
 const clickedNode = (e: MouseEvent, n: layoutNode) => {
   e.preventDefault();
   e.stopPropagation();
+
   if (selectedComponent.value?.id === n.component.id) {
-    selectedComponent.value = null;
-    componentContextMenuRef.value?.close();
+    deselect();
   } else {
-    selectedComponent.value = n.component;
-    nextTick(() => {
-      if (selectedGridTileRef.value) {
-        componentContextMenuRef.value?.open(selectedGridTileRef.value, [
-          n.component.id,
-        ]);
-      }
-    });
+    selectComponent(n.component, e.target as Element);
   }
+};
+
+const selectComponent = (
+  component: BifrostComponentInList,
+  componentEl?: Element,
+) => {
+  selectedComponent.value = component;
+
+  nextTick(() => {
+    let element = componentEl;
+    if (!element) {
+      element = document.getElementsByClassName(`id-${component.id}`)[0];
+      if (!element) return;
+    }
+
+    const rect = element.getBoundingClientRect();
+
+    const anchor = {
+      $el: element,
+      getBoundingClientRect: () => ({
+        ...rect,
+        left: rect.right,
+        x: rect.right,
+        width: 0,
+      }),
+    };
+
+    componentContextMenuRef.value?.open(anchor, [component.id]);
+  });
+};
+const deselect = () => {
+  selectedComponent.value = null;
+  componentContextMenuRef.value?.close();
 };
 
 watch(selectedComponent, () => {
@@ -533,7 +567,7 @@ watch(
       selectedComponent.value?.id &&
       !mapData.value.components[selectedComponent.value.id]
     )
-      selectedComponent.value = null;
+      deselect();
 
     const children: node[] = [...mapData.value.nodes].map((nId) => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -693,6 +727,9 @@ watch(
         })
         .style("fill", "none");
     });
+    if (selectedComponent.value && !componentContextMenuRef.value?.isOpen) {
+      selectComponent(selectedComponent.value);
+    }
   }, 100),
   { immediate: true },
 );
