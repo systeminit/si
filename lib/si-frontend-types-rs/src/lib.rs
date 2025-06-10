@@ -5,7 +5,6 @@ mod component;
 mod conflict;
 pub mod fs;
 mod func;
-mod index;
 mod module;
 pub mod schema_variant;
 mod workspace;
@@ -49,7 +48,6 @@ pub use crate::{
         FuncSummary,
         LeafInputLocation,
     },
-    index::FrontEndObjectRequest,
     module::{
         BuiltinModules,
         LatestModule,

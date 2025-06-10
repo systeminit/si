@@ -8,14 +8,12 @@ use dal::{
     ChangeSetId,
     WorkspacePk,
 };
-use sdf_core::index::{
-    FrontEndObjectMeta,
-    IndexError,
-};
 use telemetry::prelude::*;
 
 use super::{
     AccessBuilder,
+    FrontEndObjectMeta,
+    IndexError,
     IndexResult,
     request_rebuild_and_watch,
 };
