@@ -331,6 +331,7 @@ onMounted(() => {
     e.preventDefault();
     searchRef.value?.focusSearch();
   });
+  searchRef.value?.focusSearch();
 });
 
 onBeforeUnmount(() => {

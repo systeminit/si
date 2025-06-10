@@ -8,21 +8,46 @@
       class="p-xs border-neutral-600 border"
     >
       <p
-        class="text-neutral-400 text-sm cursor-pointer"
+        :class="
+          clsx(
+            'text-sm cursor-pointer hover:underline',
+            themeClasses(
+              'text-neutral-600 hover:text-action-500',
+              'text-neutral-400 hover:text-action-300',
+            ),
+          )
+        "
         @click="() => navigate(conn.componentId)"
       >
         {{ conn.component.schemaName }}
         {{ conn.component.name }}
       </p>
       <!-- negative margin pulls things together -->
-      <p class="text-white text-lg mb-[-6px] mt-[-4px]">{{ conn.self }}</p>
-      <p class="text-neutral-400 text-sm">{{ conn.other }}</p>
+      <p
+        :class="
+          clsx(
+            'text-lg mb-[-6px] mt-[-4px]',
+            themeClasses('text-black', 'text-white'),
+          )
+        "
+      >
+        {{ conn.self }}
+      </p>
+      <p
+        :class="
+          clsx('text-sm', themeClasses('text-neutral-600', 'text-neutral-400'))
+        "
+      >
+        {{ conn.other }}
+      </p>
     </li>
   </ul>
 </template>
 
 <script setup lang="ts">
 import { useRoute, useRouter } from "vue-router";
+import clsx from "clsx";
+import { themeClasses } from "@si/vue-lib/design-system";
 import { BifrostComponentInList } from "@/workers/types/entity_kind_types";
 
 export interface SimpleConnection {

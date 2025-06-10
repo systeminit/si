@@ -16,8 +16,9 @@
           classic: 'p-xs pr-sm',
           compact: 'px-xs py-2xs pr-xs',
           editor: [header ? 'p-xs' : 'p-2xs pr-xs', 'h-7'],
+          contextmenu: 'p-xs pr-sm',
         }[menuCtx.variant as DropdownMenuVariant],
-        isFocused && !header && 'bg-action-500',
+        isFocused && !header && themeClasses('bg-action-300', 'bg-action-500'),
         (!menuCtx.isCheckable.value || disableCheckable) &&
           !icon &&
           !$slots.icon &&
@@ -61,13 +62,28 @@
       />
     </slot>
 
-    <div ref="labelRef" class="max-w-full min-w-0 shrink leading-tight">
+    <div
+      v-show="menuCtx.variant !== 'contextmenu' || !icon"
+      ref="labelRef"
+      class="max-w-full min-w-0 shrink leading-tight"
+    >
       <TruncateWithTooltip role="menuitem">
         <slot>{{ label }}</slot>
       </TruncateWithTooltip>
     </div>
     <div
-      v-if="!(centerHeader && header)"
+      v-if="shortcut && menuCtx.variant === 'contextmenu'"
+      :class="
+        clsx(
+          'border rounded px-2xs py-xs min-w-[24px] h-md text-center capsize text-xs',
+          themeClasses('border-neutral-400', 'border-neutral-600'),
+        )
+      "
+    >
+      {{ shortcut }}
+    </div>
+    <div
+      v-else-if="!(centerHeader && header)"
       :class="
         clsx('ml-auto shrink-0', shortcut && !endLinkTo && 'capsize text-xs')
       "
@@ -79,7 +95,7 @@
           :anchorTo="{ $el: internalRef, close: menuCtx.close }"
           :items="submenuItems"
           submenu
-          variant="editor"
+          :variant="submenuVariant ?? 'editor'"
         />
       </template>
 
@@ -87,7 +103,10 @@
         v-else-if="endLinkTo"
         :class="
           clsx(
-            'text-action-300 group-hover:text-shade-0 group-hover:hover:text-action-300',
+            themeClasses(
+              'text-action-500 group-hover:hover:text-action-500 group-hover:text-shade-0',
+              'text-action-300 group-hover:hover:text-action-300 group-hover:text-shade-0',
+            ),
             'font-bold hover:underline',
           )
         "
@@ -125,7 +144,7 @@ import DropdownMenu, {
 } from "./DropdownMenu.vue";
 import TruncateWithTooltip from "../general/TruncateWithTooltip.vue";
 import Toggle from "../general/Toggle.vue";
-import { useThemeContainer } from "../utils/theme_tools";
+import { themeClasses, useThemeContainer } from "../utils/theme_tools";
 
 export interface DropdownMenuItemProps {
   icon?: IconNames;
@@ -157,13 +176,15 @@ export interface DropdownMenuItemProps {
 
   insideSubmenu?: boolean;
   submenuItems?: DropdownMenuItemProps[];
+
+  submenuVariant?: DropdownMenuVariant;
 }
 
 const props = defineProps<DropdownMenuItemProps>();
 
 const SUBMENU_TIMEOUT_LENGTH = 300;
 
-useThemeContainer("dark");
+useThemeContainer(props.submenuVariant !== "contextmenu" ? "dark" : undefined);
 
 const noInteract = computed(() => props.disabled || props.header);
 
@@ -310,7 +331,12 @@ async function onClickEndLink() {
   }
 }
 
-defineExpose({ domRef: internalRef });
+const elementIsInsideSubmenu = (el: Node) => {
+  if (submenuRef.value) return submenuRef.value.elementIsInsideMenu(el);
+  else return false;
+};
+
+defineExpose({ domRef: internalRef, elementIsInsideSubmenu });
 </script>
 
 <script lang="ts">

@@ -73,15 +73,19 @@
               @keydown.tab="(e: KeyboardEvent) => onTab(e, true)"
               @keydown.left="() => previousComponent()"
               @keydown.right="() => nextComponent()"
-              @keydown.up="() => onArrowUp()"
-              @keydown.down="() => onArrowDown()"
+              @keydown.up="() => onArrowUp"
+              @keydown.down="() => onArrowDown"
               @keydown.esc="onEscape"
             />
           </template>
         </InstructiveVormInput>
       </div>
       <template v-if="showGrid">
-        <div ref="scrollRef" class="scrollable tilegrid grow">
+        <div
+          ref="scrollRef"
+          class="scrollable tilegrid grow"
+          @scroll="onScroll"
+        >
           <ComponentGridTile
             v-for="(component, index) in componentVirtualItemsList"
             ref="componentGridTileRefs"
@@ -261,6 +265,15 @@ const getGridTileIndexByComponentId = (id: ComponentId) => {
     (item) => filteredComponents[item.index]!.id === id,
   );
 };
+const getGridTileByIndex = (idx: number) => {
+  if (componentGridTileRefs.value) {
+    const tile = componentGridTileRefs.value.find((t) => {
+      return Number(t.$el.dataset.index) === idx;
+    });
+    return tile;
+  }
+  return undefined;
+};
 
 const urlGridOrMap = computed(() => {
   const q: SelectionsInQueryString = router.currentRoute.value?.query;
@@ -380,13 +393,40 @@ watch(
   { immediate: true },
 );
 
+function getScrollbarWidth(): number {
+  const temp = document.createElement("div");
+  const inner = document.createElement("div");
+
+  temp.style.visibility = "hidden";
+  temp.style.overflow = "scroll";
+  document.body.appendChild(temp);
+  temp.appendChild(inner);
+
+  const scrollbarWidth = temp.offsetWidth - inner.offsetWidth;
+  temp.parentNode?.removeChild(temp);
+
+  return scrollbarWidth;
+}
+
 const lanes = computed(() => {
   // We need to force a recompute of this value when the screen is resized
   // eslint-disable-next-line @typescript-eslint/no-unused-expressions
   windowWidthReactive.value;
+
+  // We also need to force a recompute of this value if the number of tiles changes
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  componentGridTileRefs.value;
+
   // Our grid is based on a minimum 250px width tile... so how many tiles can we fit?
   let newLanes = 0;
   let availableSpace = scrollRef.value?.getBoundingClientRect().width ?? 0;
+  if (
+    scrollRef.value &&
+    scrollRef.value.scrollHeight > scrollRef.value.clientHeight
+  ) {
+    // need to account for the width of the scrollbar!
+    availableSpace -= getScrollbarWidth();
+  }
   while (availableSpace > 0) {
     availableSpace -= 250; // width of one grid tile
     if (availableSpace > 0) {
@@ -439,6 +479,8 @@ const constrainPosition = () => {
     filteredComponents.length - 1,
     Math.max(-1, selectorGridPosition.value),
   );
+  const tile = getGridTileByIndex(selectorGridPosition.value);
+  tile?.$el.scrollIntoView({ behavior: "smooth", block: "nearest" });
 };
 const isSelected = (idx: number) =>
   selectedComponentIds.has(filteredComponents[idx]!.id);
@@ -476,9 +518,7 @@ const focus = (componentId: ComponentId) => {
   focusedComponentId.value = componentId;
   focusGridPosition.value = selectorGridPosition.value;
   const gridTileIndex = getGridTileIndexByComponentId(componentId);
-  const gridTile = componentGridTileRefs.value.find((tile) => {
-    return Number(tile.$el.dataset.index) === gridTileIndex;
-  });
+  const gridTile = getGridTileByIndex(gridTileIndex);
   if (gridTile) {
     componentContextMenuRef.value?.open(gridTile, [componentId]);
   }
@@ -602,7 +642,8 @@ const onU = (e: KeyDetails["u"]) => {
     mapRef.value?.onU(e);
   }
 };
-const onArrowUp = () => {
+const onArrowUp = (e: KeyDetails["ArrowUp"]) => {
+  e.preventDefault();
   if (showGrid.value) {
     if (focusedComponentId.value) unfocus();
     selectorGridPosition.value -= lanes.value;
@@ -611,10 +652,15 @@ const onArrowUp = () => {
     mapRef.value?.onArrowUp();
   }
 };
-const onArrowDown = () => {
+const onArrowDown = (e: KeyDetails["ArrowDown"]) => {
+  e.preventDefault();
   if (showGrid.value) {
     if (focusedComponentId.value) unfocus();
-    selectorGridPosition.value += lanes.value;
+    if (selectorGridPosition.value === -1) {
+      selectorGridPosition.value = 0;
+    } else {
+      selectorGridPosition.value += lanes.value;
+    }
     constrainPosition();
   } else {
     mapRef.value?.onArrowDown();
@@ -667,7 +713,16 @@ const onEnter = (e: KeyDetails["Enter"]) => {
     componentInteract(componentId);
   }
 };
-const onClick = (_e: MouseEvent) => {
+const onScroll = () => {
+  if (focusedComponentId.value) unfocus();
+};
+const onClick = (e: MouseEvent) => {
+  const inside =
+    componentContextMenuRef.value?.contextMenuRef?.elementIsInsideMenu;
+  if (inside && e.target instanceof Node && inside(e.target)) {
+    return;
+  }
+
   // general click handler for the whole page
   // any click which doesn't do this behavior should have .stop on it!
   unfocus();
