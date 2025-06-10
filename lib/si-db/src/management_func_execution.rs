@@ -10,7 +10,7 @@ use si_id::{
     ChangeSetId,
     ComponentId,
     FuncRunId,
-    ManagementFuncExecutionId,
+    ManagementFuncJobStateId,
     ManagementPrototypeId,
     UserPk,
     WorkspacePk,
@@ -31,7 +31,7 @@ pub enum ManagementFuncExecutionError {
     #[error("cannot transition from {0} to {1}")]
     InvalidTransition(ManagementState, ManagementState),
     #[error("no execution found with id: {0}")]
-    NotFound(ManagementFuncExecutionId),
+    NotFound(ManagementFuncJobStateId),
     #[error(
         "no in progress execution found for workspace {0}, change set {1}, component {2}, management prototype {3}"
     )]
@@ -88,7 +88,7 @@ impl TryFrom<PgRow> for ManagementFuncJobState {
     type Error = ManagementFuncExecutionError;
 
     fn try_from(row: PgRow) -> std::result::Result<Self, Self::Error> {
-        let id: ManagementFuncExecutionId = row.try_get("id")?;
+        let id: ManagementFuncJobStateId = row.try_get("id")?;
         let workspace_id: WorkspacePk = row.try_get("workspace_id")?;
         let change_set_id: ChangeSetId = row.try_get("change_set_id")?;
         let component_id: ComponentId = row.try_get("component_id")?;
@@ -116,7 +116,7 @@ impl TryFrom<PgRow> for ManagementFuncJobState {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagementFuncJobState {
-    id: ManagementFuncExecutionId,
+    id: ManagementFuncJobStateId,
     workspace_id: WorkspacePk,
     change_set_id: ChangeSetId,
     component_id: ComponentId,
@@ -128,7 +128,7 @@ pub struct ManagementFuncJobState {
 }
 
 impl ManagementFuncJobState {
-    getter_copy!(id, ManagementFuncExecutionId);
+    getter_copy!(id, ManagementFuncJobStateId);
     getter_copy!(workspace_id, WorkspacePk);
     getter_copy!(change_set_id, ChangeSetId);
     getter_copy!(component_id, ComponentId);
@@ -196,7 +196,7 @@ impl ManagementFuncJobState {
 
     pub async fn transition_state(
         ctx: &impl SiDbContext,
-        id: ManagementFuncExecutionId,
+        id: ManagementFuncJobStateId,
         next_state: ManagementState,
         func_run_id: Option<FuncRunId>,
     ) -> ManagementFuncExecutionResult<Self> {

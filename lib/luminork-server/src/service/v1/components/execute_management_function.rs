@@ -2,6 +2,10 @@ use axum::{
     extract::Path,
     response::Json,
 };
+use chrono::{
+    Duration,
+    Utc,
+};
 use dal::{
     Component,
     ComponentId,
@@ -13,14 +17,21 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_db::{
+    ManagementFuncExecutionError,
+    ManagementFuncJobState,
+    ManagementState,
+};
 use si_id::{
     FuncRunId,
+    ManagementFuncJobStateId,
     ManagementPrototypeId,
 };
 use utoipa::{
     self,
     ToSchema,
 };
+use veritech_client::ManagementFuncStatus;
 
 use crate::{
     extract::{
@@ -32,6 +43,8 @@ use crate::{
         ComponentsError,
     },
 };
+
+const MAX_PENDING_DURATION: Duration = Duration::minutes(7);
 
 #[utoipa::path(
     post,
@@ -53,6 +66,7 @@ use crate::{
         (status = 500, description = "Internal server error", body = crate::service::v1::common::ApiError)
     )
 )]
+#[allow(deprecated)]
 pub async fn execute_management_function(
     ChangeSetDalContext(ref ctx): ChangeSetDalContext,
     _tracker: PosthogEventTracker,
@@ -81,13 +95,42 @@ pub async fn execute_management_function(
         View::get_id_for_default(ctx).await?
     };
 
-    let func_run_id =
-        ManagementPrototype::dispatch_by_id(ctx, prototype_id, component_id, view_id.into())
+    let state_ctx = ctx.clone();
+    if let Some(pending) =
+        ManagementFuncJobState::get_pending(&state_ctx, component_id, prototype_id).await?
+    {
+        if pending.timestamp().updated_at <= Utc::now() - MAX_PENDING_DURATION {
+            ManagementFuncJobState::transition_state(
+                &state_ctx,
+                pending.id(),
+                ManagementState::Failure,
+                None,
+            )
             .await?;
+            state_ctx.commit().await?;
+        }
+    }
+
+    let result = ManagementFuncJobState::new_pending(ctx, component_id, prototype_id)
+        .await
+        .map_err(|err| match err {
+            ManagementFuncExecutionError::CreationFailed => {
+                ComponentsError::ManagementFunctionAlreadyRunning
+            }
+            other => ComponentsError::ManagementFunctionExecutionFailed(other),
+        })?;
+
+    ctx.enqueue_management_func(prototype_id, component_id, view_id, None)
+        .await?;
 
     ctx.commit().await?;
 
-    Ok(Json(ExecuteManagementFunctionV1Response { func_run_id }))
+    Ok(Json(ExecuteManagementFunctionV1Response {
+        func_run_id: None,
+        management_func_job_state_id: result.id(),
+        status: ManagementFuncStatus::Ok,
+        message: "enqueued".to_string().into(),
+    }))
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
@@ -131,8 +174,18 @@ pub struct ExecuteManagementFunctionV1Request {
 #[derive(Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExecuteManagementFunctionV1Response {
+    #[deprecated(note = "Result has been moved to management_func_job_state_id")]
+    #[schema(value_type = String)]
+    pub func_run_id: Option<FuncRunId>,
+
+    #[schema(value_type = String, example = "Ok")]
+    pub status: ManagementFuncStatus,
+
+    #[schema(value_type = String, example = "enqueued", required = false)]
+    pub message: Option<String>,
+
     #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VY")]
-    pub func_run_id: FuncRunId,
+    pub management_func_job_state_id: ManagementFuncJobStateId,
 }
 
 async fn resolve_management_function_reference(
