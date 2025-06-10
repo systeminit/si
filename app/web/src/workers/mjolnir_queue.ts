@@ -31,9 +31,7 @@ function debug(...args: any | any[]) {
  * As a result of these operations we will:
  * - process 1 batch of patches at a time (processPatchQueue)
  * - while patches are processing, hold hammers
- * - once patches are done processing, bust cache and process hammers
- * - since we expect few hammers, we will each bust cache with each hammer
- * - fallback: if we have a few things to bust that are just waiting, bust them
+ * - once patches are done processing, process hammers
  */
 
 // only throw 10 hammers at a time. Increase this when the throwing is over WS
@@ -54,7 +52,7 @@ export const processMjolnirQueue = new PQueue({
   intervalCap: 1,
   carryoverConcurrencyCount: true,
 });
-const bustQueue = new PQueue({ autoStart: false });
+const bustQueue = new PQueue({ concurrency: 10, autoStart: true });
 
 // de-dupe queue busting!
 const _bustQueue = new Set<string>();
@@ -106,18 +104,10 @@ bustQueue.on("empty", () => {
 // ensure that when we get patches we process them fully
 processPatchQueue.on("active", () => {
   processMjolnirQueue.pause();
-  bustQueue.pause();
 });
-// bust the queue and process any hammers after patches
+// process any hammers after patches
 processPatchQueue.on("idle", () => {
-  bustQueue.start();
   processMjolnirQueue.start();
-});
-
-// if users are waiting for more than 5 things, bust query caches
-// we don't want users wondering where their updates are!
-bustQueue.on("add", () => {
-  if (bustQueue.size > 5) bustQueue.start();
 });
 
 const inflight = new Set<string>();
