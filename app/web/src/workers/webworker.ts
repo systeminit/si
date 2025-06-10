@@ -1587,12 +1587,14 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     changeSetId,
     EntityKind.ComponentList,
     workspaceId,
-  )) as BifrostComponentList | -1;
+  )) as ArrayBuffer | -1;
 
-  if (data === -1) return;
+  if (data === -1 ) return;
+
+  const components = decodeDocumentFromDB(data) as BifrostComponent[];
 
   await Promise.all(
-    data.components.map((c) =>
+    components.map((c) =>
       updateComputed(
         workspaceId,
         changeSetId,
@@ -2375,20 +2377,6 @@ const getReferences = async (
   }
 };
 
-const componentListSQL = `
-  select
-    id,
-    data->components [
-      select data from atoms where kind="Component" and id = 1
-      select data from atoms where kind="Component" and id = 2
-      select data from atoms where kind="Component" and id = 3
-    ]
-  from
-    atoms
-  where
-    kind = "ComponentList"
-`
-
 const get = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
@@ -2403,48 +2391,56 @@ const get = async (
   if (kind === EntityKind.ComponentList) {
     const sql = `
 select
-  json_group_array(resolved_components.atom_json)
-from
-(
-select
-  jsonb_extract(CAST(data as text), '$') as atom_json
-from
-  atoms 
-INNER JOIN
-(
-select
-  ref ->> '$.id' as args,
-  ref ->> '$.kind' as kind,
-  ref ->> '$.checksum' as checksum
+  json_group_array(resolved_components.atom_json),
+  json_group_array(atom_json -> '$.id')
 from
   (
     select
-      json_each.value as ref
+      jsonb_extract(CAST(data as text), '$') as atom_json
     from
-      atoms,
-      json_each(jsonb_extract(CAST(atoms.data as text), '$.components'))
+      atoms 
+    INNER JOIN
+      (
+      select
+        ref ->> '$.id' as args,
+        ref ->> '$.kind' as kind
+      from
+        (
+          select
+            json_each.value as ref
+          from
+            atoms,
+            json_each(jsonb_extract(CAST(atoms.data as text), '$.components'))
 
-      inner join index_mtm_atoms mtm
-        ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
-      inner join indexes ON mtm.index_checksum = indexes.checksum
-    ${
-      indexChecksum
-        ? ""
-        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+            inner join index_mtm_atoms mtm
+              ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+            inner join indexes ON mtm.index_checksum = indexes.checksum
+          ${indexChecksum
+              ? ""
+              : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+          }
+          where
+            ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+            AND atoms.kind = 'ComponentList'
+            AND atoms.args = ?
+        ) as components
+      ) component_refs
+    ON
+    atoms.args = component_refs.args
+    AND atoms.kind = component_refs.kind
+
+    inner join index_mtm_atoms mtm
+      ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+    inner join indexes ON mtm.index_checksum = indexes.checksum
+    ${indexChecksum
+      ? ""
+      : "inner join changesets ON changesets.index_checksum = indexes.checksum"
     }
     where
       ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
-      AND atoms.kind = 'ComponentList'
-      AND atoms.args = ?
-  ) as components
-) component_refs
-ON
-atoms.args = component_refs.args
-AND atoms.kind = component_refs.kind
-AND atoms.checksum = component_refs.checksum
-) as resolved_components
+  ) as resolved_components
 ;      `;
-    const bind = [indexChecksum ?? changeSetId, id];
+    const bind = [indexChecksum ?? changeSetId, id, indexChecksum ?? changeSetId];
     const start = Date.now();
     const atomData = db.exec({
       sql,
@@ -2463,7 +2459,19 @@ AND atoms.checksum = component_refs.checksum
     if (atomData.length === 0)
       return -1
     else {
-      return atomData;
+      const ids = atomData[0]![1] as string;
+      await clearWeakReferences(
+        changeSetId,
+        { kind: EntityKind.ComponentList, args: workspaceId },
+      );
+      await Promise.all((JSON.parse(ids) as Array<string>).map((id) => 
+        weakReference(
+          changeSetId,
+          { kind: EntityKind.ComponentList, args: workspaceId },
+          { kind: EntityKind.Component, args: id },
+        ),
+      ))
+      return atomData[0]![0] as Omit<SqlValue, 'null'>;
     }
   }
   
