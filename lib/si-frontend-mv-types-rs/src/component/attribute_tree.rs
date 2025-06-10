@@ -4,13 +4,16 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_events::workspace_snapshot::EntityKind;
 use si_id::{
     AttributeValueId,
+    ComponentId,
     PropId,
 };
 use strum::Display;
 
 use crate::{
+    reference::ReferenceKind,
     schema_variant::prop_tree::Prop,
     secret::Secret,
 };
@@ -86,12 +89,22 @@ pub struct AttributeValue {
     Eq,
     Clone,
     si_frontend_mv_types_macros::FrontendChecksum,
+    si_frontend_mv_types_macros::FrontendObject,
+    si_frontend_mv_types_macros::Refer,
+    si_frontend_mv_types_macros::MV,
 )]
 #[serde(rename_all = "camelCase")]
+#[mv(
+  trigger_entity = EntityKind::Component,
+  reference_kind = ReferenceKind::AttributeTree,
+)]
 pub struct AttributeTree {
+    pub id: ComponentId,
     pub attribute_values: HashMap<AttributeValueId, AttributeValue>,
     pub props: HashMap<PropId, Prop>,
     pub tree_info: HashMap<AttributeValueId, AvTreeInfo>,
+    pub component_name: String,
+    pub schema_name: String,
 }
 
 #[derive(

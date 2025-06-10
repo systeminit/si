@@ -194,11 +194,6 @@ async fn component(ctx: &DalContext) -> Result<()> {
 
     let sv_id = created_component.schema_variant(ctx).await?.id();
 
-    let attribute_tree = dal_materialized_views::component::attribute_tree::assemble(
-        ctx.clone(),
-        created_component.id(),
-    )
-    .await?;
     let is_secret_defining = SchemaVariant::is_secret_defining(ctx, sv_id).await?;
 
     assert_eq!(
@@ -219,7 +214,6 @@ async fn component(ctx: &DalContext) -> Result<()> {
             input_count: 0,
             diff_count: 0,
             resource_diff,
-            attribute_tree,
             is_secret_defining,
         }, // expected
         component // actual

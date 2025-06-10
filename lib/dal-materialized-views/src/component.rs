@@ -74,7 +74,6 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         schema_members: schema.id().into(),
         input_count,
         diff_count,
-        attribute_tree,
         resource_diff,
         is_secret_defining,
     })

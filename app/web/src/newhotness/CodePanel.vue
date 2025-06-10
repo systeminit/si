@@ -21,20 +21,24 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import { BifrostComponent } from "@/workers/types/entity_kind_types";
+import {
+  AttributeTree,
+  BifrostComponent,
+} from "@/workers/types/entity_kind_types";
 import CodeViewer from "@/components/CodeViewer.vue";
 import EmptyStateCard from "@/components/EmptyStateCard.vue";
 import { findAvsAtPropPath } from "./util";
 
 const props = defineProps<{
   component: BifrostComponent;
+  attributeTree?: AttributeTree;
 }>();
 
 const codes = computed(() => {
   const codes: { code: string; name: string | undefined }[] = [];
-  if (!props.component.attributeTree) return codes;
+  if (!props.attributeTree) return codes;
 
-  const data = findAvsAtPropPath(props.component.attributeTree, [
+  const data = findAvsAtPropPath(props.attributeTree, [
     "root",
     "code",
     "codeItem",
