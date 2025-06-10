@@ -4,7 +4,15 @@
     <div
       v-if="selectedComponent"
       id="selection"
-      class="absolute top-[110px] max-w-[350px] min-w-[300px] right-3 p-xs bg-action-800 border-2 border-action-700 scrollable"
+      :class="
+        clsx(
+          'absolute top-[110px] max-w-[350px] min-w-[300px] right-3 p-xs border-2 scrollable',
+          themeClasses(
+            'border-action-300 bg-action-200',
+            'border-action-700 bg-action-800',
+          ),
+        )
+      "
       style="max-height: calc(100vh - 115px)"
     >
       <!-- NOTE: 110 is the fixed size (nothing expands/dynamic) above, extra 5px on the bottom, unforuntately tailwind doesn't support that calc -->
@@ -28,7 +36,10 @@
       >
         <Icon name="minus" size="sm" />
       </div>
-      <div v-tooltip="'Current Zoom'" class="text-white">
+      <div
+        v-tooltip="'Current Zoom'"
+        :class="themeClasses('text-black', 'text-white')"
+      >
         {{ Math.round(zoomLevel * 100) }}%
       </div>
       <div
@@ -61,7 +72,10 @@
           height="1"
           patternUnits="objectBoundingBox"
         >
-          <IconNoWrapper :name="logo" class="text-white" />
+          <IconNoWrapper
+            :name="logo"
+            :class="clsx('text-black', 'text-white')"
+          />
         </pattern>
       </defs>
       <template v-for="icon in icons" :key="icon">
@@ -771,26 +785,44 @@ defineExpose({
 <style lang="less">
 #map > svg {
   rect.node {
-    fill: @colors-neutral-800;
+    fill: @colors-neutral-100;
     stroke: @colors-neutral-500;
     stroke-width: 2;
 
+    body.dark & {
+      fill: @colors-neutral-800;
+    }
+
     &.selected {
-      fill: @colors-action-800;
+      fill: @colors-action-200;
+      stroke: @colors-action-500;
+      body.dark & {
+        fill: @colors-action-800;
+        stroke: @colors-action-300;
+      }
     }
 
     &:hover {
-      fill: @colors-neutral-700;
+      fill: @colors-neutral-200;
+      body.dark & {
+        fill: @colors-neutral-700;
+      }
       cursor: pointer;
     }
 
     &.selected:hover {
-      fill: @colors-action-700;
+      fill: @colors-action-300;
+      body.dark & {
+        fill: @colors-action-300;
+      }
     }
   }
 
   text {
-    fill: white;
+    fill: black;
+    body.dark & {
+      fill: white;
+    }
     font-size: 1rem;
     &.name {
       font-weight: bold;

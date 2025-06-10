@@ -6,11 +6,25 @@
       v-bind="dynamicAttrs"
       :class="
         clsx(
-          'text-shade-0 bg-shade-100 z-100 fixed text-sm shadow-[0_4px_8px_0_rgba(0,0,0,0.75)] empty:hidden',
+          'z-100 fixed text-sm shadow-[0_4px_8px_0_rgba(0,0,0,0.75)] empty:hidden',
           'flex flex-col',
-          variant === 'editor'
-            ? 'rounded border border-neutral-600 min-w-[164px]'
-            : 'outline outline-offset-0 rounded-md outline-neutral-300 outline-0 dark:outline-1',
+          {
+            editor: 'rounded border border-neutral-600 min-w-[164px]',
+            contextmenu: [
+              'rounded border',
+              themeClasses('border-action-500', 'border-action-300'),
+            ],
+            classic:
+              'outline outline-offset-0 rounded-md outline-neutral-300 outline-0 dark:outline-1',
+            compact:
+              'outline outline-offset-0 rounded-md outline-neutral-300 outline-0 dark:outline-1',
+          }[variant],
+          variant === 'contextmenu'
+            ? themeClasses(
+                'bg-neutral-100 text-shade-100',
+                'bg-neutral-800 text-shade-0',
+              )
+            : 'text-shade-0 bg-shade-100',
           isRepositioning && 'opacity-0',
         )
       "
@@ -38,6 +52,7 @@
         <!-- items can be passed in via props -->
         <DropdownMenuItem
           v-for="item in items"
+          ref="menuItemRefs"
           :key="item.label"
           v-bind="item"
           :insideSubmenu="submenu"
@@ -98,18 +113,20 @@ import {
   unref,
 } from "vue";
 import DropdownMenuItem from "./DropdownMenuItem.vue";
-import { useThemeContainer } from "../utils/theme_tools";
+import { themeClasses, useThemeContainer } from "../utils/theme_tools";
 import SiSearch, { Filter } from "../general/SiSearch.vue";
 
 export type DropdownMenuItemObjectDef = InstanceType<
   typeof DropdownMenuItem
 >["$props"];
 
-export type DropdownMenuVariant = "classic" | "compact" | "editor";
+export type DropdownMenuVariant =
+  | "classic"
+  | "compact"
+  | "editor"
+  | "contextmenu";
 
 const MENU_EDGE_BUFFER = 10;
-
-useThemeContainer("dark");
 
 // For Submenus, the anchorTo prop holds an object with this info -
 interface SubmenuParent {
@@ -145,6 +162,7 @@ const props = defineProps({
   alignOutsideLeftEdge: Boolean, // aligns the menu's right edge with the left edge of the anchor element
   overlapAnchorOnAnchorTo: Boolean, // adjusts the menu position to cover the anchor element instead of positioning on its edge
   overlapAnchorOffset: { type: Number, default: 0 }, // adjust the overlap position with a fixed number
+  anchorXOffset: { type: Number, default: 0 }, // adjust the position of the menu on the x axis with a fixed number
 
   // SUBMENUS CAN BREAK BE AWARE OF HOW YOU USE THEM WITH A DYNAMIC NUMBER OF CHILD ELEMENTS
   submenu: Boolean, // If this is a submenu, the parent menu element is in the anchorTo prop!
@@ -157,6 +175,8 @@ const props = defineProps({
   matchWidthToAnchor: { type: Boolean }, // forces the width of the menu to match the anchorTo element's width
   minWidthToAnchor: { type: Boolean }, // forces the width of the menu to match or be bigger than the anchorTo element's width
 });
+
+useThemeContainer(props.variant !== "contextmenu" ? "dark" : undefined);
 
 const internalRef = ref<HTMLElement | null>(null);
 const scrollDivRef = ref();
@@ -282,8 +302,13 @@ function finishOpening() {
     selectSearch();
   }
 }
-function close(shouldNotClose = false, closeRecursively = true) {
+function close(
+  shouldNotClose = false,
+  closeRecursively = true,
+  forceClose = false,
+) {
   if (shouldNotClose) return;
+  if (props.noDefaultClose && closeRecursively && !forceClose) return;
   isOpen.value = false;
   if (oneTimeCloseListener.value) {
     window.removeEventListener("click", oneTimeCloseListener.value);
@@ -300,6 +325,9 @@ function close(shouldNotClose = false, closeRecursively = true) {
   ) {
     (props.anchorTo as SubmenuParent).close();
   }
+}
+function forceClose() {
+  close(false, true, true);
 }
 function closeOnResizeOrScroll(e: Event) {
   // because a scroll event in the DiagramOutline can be a side effect of opening the editor right click menu
@@ -370,6 +398,7 @@ function readjustMenuPosition() {
       posX.value = anchorRect.left - menuRect.width - 4;
     }
   }
+  posX.value += props.anchorXOffset;
 
   const overlapOffset = anchorRect.height + props.overlapAnchorOffset;
 
@@ -627,14 +656,30 @@ const deselectSearch = () => {
   searchSelected.value = false;
 };
 
-// this is what is exposed to the component usign this component (via template ref)
+// check if a given DOM Node is inside this DropdownMenu or any of its submenus
+const menuItemRefs = ref<InstanceType<typeof DropdownMenuItem>[]>();
+const elementIsInsideMenu = (el: Node) => {
+  if (internalRef.value?.contains(el)) return true;
+
+  if (menuItemRefs.value) {
+    for (const menuItem of menuItemRefs.value) {
+      if (menuItem && menuItem.elementIsInsideSubmenu(el)) return true;
+    }
+  }
+
+  return false;
+};
+
+// this is what is exposed to the component using this component (via template ref)
 defineExpose({
   isOpen: readOnlyIsOpen,
   open,
   close,
+  forceClose,
   hovered,
   searchFilteringActive,
   searchActiveFilters,
+  elementIsInsideMenu,
 });
 </script>
 

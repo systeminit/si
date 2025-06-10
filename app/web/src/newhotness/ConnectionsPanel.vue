@@ -3,8 +3,11 @@
     v-if="incoming.length > 0 || outgoing.length > 0"
     :class="
       clsx(
-        'border rounded bg-neutral-900 pb-sm',
-        themeClasses('border-neutral-400', 'border-neutral-600'),
+        'border rounded pb-sm',
+        themeClasses(
+          'border-neutral-400 bg-white',
+          'border-neutral-600 bg-neutral-900',
+        ),
       )
     "
   >

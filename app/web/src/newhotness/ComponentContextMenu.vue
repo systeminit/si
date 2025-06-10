@@ -6,12 +6,13 @@
       ref="contextMenuRef"
       :anchorTo="anchor"
       :items="rightClickMenuItems"
-      variant="editor"
+      variant="contextmenu"
       noDefaultClose
       disableKeyboardControls
       :alignOutsideRightEdge="onGrid"
       :alignOutsideLeftEdge="!onGrid"
       :overlapAnchorOffset="Y_OFFSET"
+      :anchorXOffset="4"
     />
     <EraseModal ref="eraseModalRef" @confirm="componentsFinishErase" />
   </div>
@@ -188,8 +189,10 @@ const rightClickMenuItems = computed(() => {
 
     if (submenuItems.length > 0) {
       items.push({
+        icon: "bullet-list",
         label: "Actions",
         submenuItems,
+        submenuVariant: "contextmenu",
       });
     }
   }
@@ -253,7 +256,7 @@ function open(
 
 function close() {
   ids.value = [];
-  contextMenuRef.value?.close();
+  contextMenuRef.value?.forceClose();
 }
 
 const isOpen = computed(() => contextMenuRef.value?.isOpen);
@@ -265,5 +268,6 @@ defineExpose({
   componentsStartErase,
   componentDuplicate,
   componentUpgrade,
+  contextMenuRef,
 });
 </script>
