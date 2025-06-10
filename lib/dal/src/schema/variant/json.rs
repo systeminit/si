@@ -98,6 +98,9 @@ pub struct SchemaVariantJson {
     /// the "doc_link_ref" field for a [`PropDefinition`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub doc_links: Option<HashMap<String, String>>,
+    /// Extra optional UI data we're just passing all the way through
+    #[serde(flatten)]
+    pub ui_optionals: serde_json::Value,
 }
 
 impl SchemaVariantJson {
@@ -107,19 +110,29 @@ impl SchemaVariantJson {
         identity_func_unique_id: &str,
         asset_func_spec_unique_id: &str,
     ) -> SchemaVariantResult<SchemaVariantSpec> {
+        let SchemaVariantMetadataJson {
+            schema_name: _, // we store this elsewhere
+            category: _,    // we store this elsewhere
+            version,
+            display_name,
+            color,
+            component_type,
+            link,
+            description,
+        } = metadata;
         let mut builder = SchemaVariantSpec::builder();
-        builder.version(metadata.version.clone());
+        builder.version(version.clone());
 
         let mut data_builder = SchemaVariantSpecData::builder();
 
-        data_builder.version(metadata.version.clone());
-        data_builder.display_name(metadata.display_name);
-        data_builder.color(metadata.color);
-        data_builder.component_type(metadata.component_type);
-        if let Some(link) = metadata.link {
+        data_builder.version(version.clone());
+        data_builder.display_name(display_name);
+        data_builder.color(color);
+        data_builder.component_type(component_type);
+        if let Some(link) = link {
             data_builder.try_link(link.as_str())?;
         }
-        data_builder.description(metadata.description);
+        data_builder.description(description);
 
         data_builder.func_unique_id(asset_func_spec_unique_id);
         builder.data(data_builder.build()?);
@@ -281,56 +294,103 @@ pub struct PropDefinition {
     pub default_value: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub map_key_funcs: Option<Vec<MapKeyFunc>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub suggest_sources: Option<Vec<PropSuggestion>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub suggest_as_source_for: Option<Vec<PropSuggestion>>,
+}
+
+/// Suggested property for suggestedSources and suggestAsSourceFor to link to
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PropSuggestion {
+    /// The name of the schema the property is on, e.g. "AWS::EC2::VPC"
+    pub schema: String,
+    /// The path to the property (e.g. "/resource_value/VpcId")
+    pub prop: String,
 }
 
 impl PropDefinition {
     pub fn to_spec(&self, identity_func_unique_id: &str) -> SchemaVariantResult<PropSpec> {
+        let PropDefinition {
+            name,
+            kind,
+            doc_link_ref: _, // TODO why is this not being copied
+            doc_link,
+            documentation,
+            children,
+            entry,
+            widget,
+            value_from,
+            hidden,
+            validation_format,
+            default_value,
+            map_key_funcs,
+            suggest_sources,
+            suggest_as_source_for,
+        } = self;
         let mut builder = PropSpec::builder();
-        builder.name(&self.name);
-        builder.kind(self.kind);
+        builder.name(name);
+        builder.kind(*kind);
         builder.has_data(true);
-        if let Some(doc_url) = &self.doc_link {
+        if let Some(doc_url) = doc_link {
             builder.try_doc_link(doc_url.as_str())?;
         }
-        if let Some(docs) = &self.documentation {
+        if let Some(docs) = documentation {
             builder.documentation(docs);
         }
-        if let Some(default_value) = &self.default_value {
+        if let Some(default_value) = &default_value {
             builder.default_value(default_value.to_owned());
         }
-        match self.kind {
+        match kind {
             PropKind::Array | PropKind::Map => {
-                if let Some(entry) = &self.entry {
+                if let Some(entry) = &entry {
                     builder.type_prop(entry.to_spec(identity_func_unique_id)?);
                 }
             }
             PropKind::Object => {
-                for child in &self.children {
+                for child in children {
                     builder.entry(child.to_spec(identity_func_unique_id)?);
                 }
             }
             _ => {}
         }
-        if let Some(widget) = &self.widget {
+        if let Some(widget) = widget {
             builder.widget_kind(widget.kind);
             if let Some(widget_options) = &widget.options {
                 builder.widget_options(widget_options.to_owned());
             }
         }
-        if let Some(value_from) = &self.value_from {
+        if let Some(value_from) = value_from {
             builder.func_unique_id(identity_func_unique_id);
             builder.input(value_from.to_spec());
         }
-        if let Some(hidden) = self.hidden {
-            builder.hidden(hidden);
+        if let Some(hidden) = hidden {
+            builder.hidden(*hidden);
         }
-        if let Some(map_key_funcs) = &self.map_key_funcs {
+        if let Some(map_key_funcs) = map_key_funcs {
             for map_key_func in map_key_funcs {
                 builder.map_key_func(map_key_func.to_spec(identity_func_unique_id)?);
             }
         }
-        if let Some(validation_format) = &self.validation_format {
+        if let Some(validation_format) = validation_format {
             builder.validation_format(validation_format);
+        }
+        let mut ui_optionals = HashMap::new();
+        if let Some(suggest_sources) = suggest_sources {
+            ui_optionals.insert(
+                "suggestSources".to_string(),
+                serde_json::to_value(suggest_sources)?,
+            );
+        }
+        if let Some(suggest_as_source_for) = suggest_as_source_for {
+            ui_optionals.insert(
+                "suggestAsSourceFor".to_string(),
+                serde_json::to_value(suggest_as_source_for)?,
+            );
+        }
+        if !ui_optionals.is_empty() {
+            builder.ui_optionals(ui_optionals);
         }
 
         Ok(builder.build()?)

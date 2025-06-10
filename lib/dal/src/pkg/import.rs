@@ -1789,34 +1789,51 @@ fn prop_kind_for_pkg_prop(pkg_prop: &SiPkgProp<'_>) -> PropKind {
 
 async fn create_dal_prop(
     ctx: &DalContext,
-    data: &SiPkgPropData,
+    SiPkgPropData {
+        name,
+        default_value: _,  // unused for some reason?
+        func_unique_id: _, // unused for some reason?
+        widget_kind,
+        widget_options,
+        doc_link,
+        hidden,
+        documentation,
+        validation_format,
+        ui_optionals,
+    }: &SiPkgPropData,
     kind: PropKind,
     schema_variant_id: SchemaVariantId,
     parent_prop_info: Option<ParentPropInfo>,
 ) -> PkgResult<Prop> {
+    let ui_optionals = ui_optionals
+        .iter()
+        .map(|(key, value)| (key.clone(), value.clone().into()))
+        .collect();
     let prop = match parent_prop_info {
         Some(parent_info) => Prop::new(
             ctx,
-            &data.name,
+            name.as_str(),
             kind,
-            data.hidden,
-            data.doc_link.as_ref().map(|l| l.to_string()),
-            data.documentation.clone(),
-            Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
-            data.validation_format.clone(),
+            *hidden,
+            doc_link.as_ref().map(|l| l.to_string()),
+            documentation.clone(),
+            Some((widget_kind.into(), widget_options.to_owned())),
+            validation_format.clone(),
+            ui_optionals,
             parent_info.prop_id,
         )
         .await
         .map_err(SiPkgError::visit_prop)?,
         None => Prop::new_root(
             ctx,
-            &data.name,
+            name.as_str(),
             kind,
-            data.hidden,
-            data.doc_link.as_ref().map(|l| l.to_string()),
-            data.documentation.clone(),
-            Some(((&data.widget_kind).into(), data.widget_options.to_owned())),
-            data.validation_format.clone(),
+            *hidden,
+            doc_link.as_ref().map(|l| l.to_string()),
+            documentation.clone(),
+            Some((widget_kind.into(), widget_options.to_owned())),
+            validation_format.clone(),
+            ui_optionals,
             schema_variant_id,
         )
         .await

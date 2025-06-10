@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     io::{
         BufRead,
         Write,
@@ -41,6 +42,7 @@ const KEY_HIDDEN_STR: &str = "hidden";
 const KEY_DOC_LINK_STR: &str = "doc_link";
 const KEY_DOCUMENTATION_STR: &str = "documentation";
 const KEY_VALIDATION_FORMAT_STR: &str = "validation_format";
+const KEY_UI_OPTIONALS_STR: &str = "ui_optionals";
 const KEY_UNIQUE_ID_STR: &str = "unique_id";
 const KEY_CHILD_ORDER_STR: &str = "child_order";
 
@@ -64,6 +66,7 @@ pub struct PropNodeData {
     pub hidden: bool,
     pub documentation: Option<String>,
     pub validation_format: Option<String>,
+    pub ui_optionals: HashMap<String, serde_json::Value>,
 }
 
 #[remain::sorted]
@@ -152,23 +155,75 @@ impl NameStr for PropNode {
 
 impl WriteBytes for PropNode {
     fn write_bytes<W: Write>(&self, writer: &mut W) -> Result<(), GraphError> {
-        write_key_value_line(writer, KEY_KIND_STR, self.kind_str())?;
-        write_key_value_line(writer, KEY_NAME_STR, self.name())?;
+        let (Self::String {
+            name,
+            data,
+            unique_id,
+            ..
+        }
+        | Self::Json {
+            name,
+            data,
+            unique_id,
+            ..
+        }
+        | Self::Float {
+            name,
+            data,
+            unique_id,
+            ..
+        }
+        | Self::Integer {
+            name,
+            data,
+            unique_id,
+            ..
+        }
+        | Self::Boolean {
+            name,
+            data,
+            unique_id,
+            ..
+        }
+        | Self::Map {
+            name,
+            data,
+            unique_id,
+            ..
+        }
+        | Self::Array {
+            name,
+            data,
+            unique_id,
+            ..
+        }
+        | Self::Object {
+            name,
+            data,
+            unique_id,
+            ..
+        }) = self;
 
-        if let Some(data) = match &self {
-            Self::String { data, .. }
-            | Self::Json { data, .. }
-            | Self::Float { data, .. }
-            | Self::Integer { data, .. }
-            | Self::Boolean { data, .. }
-            | Self::Map { data, .. }
-            | Self::Array { data, .. }
-            | Self::Object { data, .. } => data,
-        } {
+        write_key_value_line(writer, KEY_KIND_STR, self.kind_str())?;
+        write_key_value_line(writer, KEY_NAME_STR, name)?;
+
+        if let Some(PropNodeData {
+            name: _, // this is duplicate data from the top-level name
+            func_unique_id,
+            default_value,
+            widget_kind,
+            widget_options,
+            doc_link,
+            hidden,
+            documentation,
+            validation_format,
+            ui_optionals,
+        }) = data
+        {
             write_key_value_line(
                 writer,
                 KEY_FUNC_UNIQUE_ID_STR,
-                data.func_unique_id
+                func_unique_id
                     .as_ref()
                     .map(|fuid| fuid.to_owned())
                     .unwrap_or("".to_string()),
@@ -177,49 +232,49 @@ impl WriteBytes for PropNode {
             write_key_value_line(
                 writer,
                 KEY_DEFAULT_VALUE_STR,
-                match &data.default_value {
+                match default_value {
                     Some(dv) => serde_json::to_string(dv).map_err(GraphError::parse)?,
                     None => "".to_string(),
                 },
             )?;
 
-            write_key_value_line(writer, KEY_WIDGET_KIND_STR, data.widget_kind)?;
+            write_key_value_line(writer, KEY_WIDGET_KIND_STR, widget_kind)?;
 
             write_key_value_line(
                 writer,
                 KEY_WIDGET_OPTIONS_STR,
-                match &data.widget_options {
+                match &widget_options {
                     Some(options) => serde_json::to_string(options).map_err(GraphError::parse)?,
                     None => "".to_string(),
                 },
             )?;
 
-            write_key_value_line(writer, KEY_HIDDEN_STR, data.hidden)?;
+            write_key_value_line(writer, KEY_HIDDEN_STR, hidden)?;
 
             write_key_value_line(
                 writer,
                 KEY_DOC_LINK_STR,
-                data.doc_link.as_ref().map(|l| l.as_str()).unwrap_or(""),
+                doc_link.as_ref().map(|l| l.as_str()).unwrap_or(""),
             )?;
 
-            write_key_value_line_opt(writer, KEY_DOCUMENTATION_STR, data.documentation.as_ref())?;
+            write_key_value_line_opt(writer, KEY_DOCUMENTATION_STR, documentation.as_ref())?;
             write_key_value_line_opt(
                 writer,
                 KEY_VALIDATION_FORMAT_STR,
-                data.validation_format.as_ref(),
+                validation_format.as_ref(),
             )?;
+
+            // If it's a non-empty object, write it out
+            if !ui_optionals.is_empty() {
+                write_key_value_line(
+                    writer,
+                    KEY_UI_OPTIONALS_STR,
+                    serde_json::to_string(&ui_optionals).map_err(GraphError::parse)?,
+                )?;
+            }
         }
 
-        if let Some(unique_id) = match &self {
-            Self::String { unique_id, .. }
-            | Self::Float { unique_id, .. }
-            | Self::Integer { unique_id, .. }
-            | Self::Json { unique_id, .. }
-            | Self::Boolean { unique_id, .. }
-            | Self::Map { unique_id, .. }
-            | Self::Array { unique_id, .. }
-            | Self::Object { unique_id, .. } => unique_id.as_deref(),
-        } {
+        if let Some(unique_id) = unique_id.as_deref() {
             write_key_value_line(writer, KEY_UNIQUE_ID_STR, unique_id)?;
         }
 
@@ -286,6 +341,12 @@ impl ReadBytes for PropNode {
                 let documentation = read_key_value_line_opt(reader, KEY_DOCUMENTATION_STR)?;
                 let validation_format = read_key_value_line_opt(reader, KEY_VALIDATION_FORMAT_STR)?;
 
+                let ui_optionals = read_key_value_line_opt(reader, KEY_UI_OPTIONALS_STR)?
+                    .map(|ui_optionals_str| serde_json::from_str(&ui_optionals_str))
+                    .transpose()
+                    .map_err(GraphError::parse)?
+                    .unwrap_or_default();
+
                 Some(PropNodeData {
                     name: name.to_owned(),
                     func_unique_id,
@@ -296,6 +357,7 @@ impl ReadBytes for PropNode {
                     hidden,
                     documentation,
                     validation_format,
+                    ui_optionals,
                 })
             }
         };
@@ -421,7 +483,8 @@ impl NodeChild for PropSpec {
                          doc_link,
                          documentation,
                          validation_format,
-                         ..
+                         ui_optionals,
+                         inputs: _,
                      }| PropNodeData {
                         name,
                         default_value,
@@ -432,6 +495,7 @@ impl NodeChild for PropSpec {
                         doc_link,
                         documentation,
                         validation_format,
+                        ui_optionals,
                     },
                 ),
                 unique_id.to_owned(),

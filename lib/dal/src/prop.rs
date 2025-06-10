@@ -13,6 +13,7 @@ use serde::{
 };
 use serde_json::Value;
 use si_events::{
+    CasValue,
     ContentHash,
     Timestamp,
 };
@@ -62,7 +63,7 @@ use crate::{
     layer_db_types::{
         PropContent,
         PropContentDiscriminants,
-        PropContentV1,
+        PropContentV2,
     },
     property_editor::schema::WidgetKind,
     slow_rt,
@@ -172,7 +173,9 @@ pub type WidgetOptions = Vec<WidgetOption>;
 /// An individual "field" within the tree of a [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Prop {
+    /// Unique ID in the workspace for this [`Prop`].
     pub id: PropId,
+    /// Create/update timestamps
     #[serde(flatten)]
     pub timestamp: Timestamp,
     /// The name of the [`Prop`].
@@ -198,9 +201,15 @@ pub struct Prop {
     pub validation_format: Option<String>,
     /// Indicates whether this prop is a valid input for a function
     pub can_be_used_as_prototype_arg: bool,
+    /// Extra data for this prop that we don't need in Rust, but still need to carry through to
+    /// the frontend, such as suggestions and eventually documentation, docLinks, hidden, widgetKind,
+    /// widgetOptions, etc.
+    /// This allows us to carry more properties through without having to thread them through
+    /// all the Rust code.
+    pub ui_optionals: HashMap<String, CasValue>,
 }
 
-impl From<Prop> for PropContentV1 {
+impl From<Prop> for PropContentV2 {
     fn from(value: Prop) -> Self {
         Self {
             timestamp: value.timestamp,
@@ -214,6 +223,11 @@ impl From<Prop> for PropContentV1 {
             refers_to_prop_id: value.refers_to_prop_id,
             diff_func_id: value.diff_func_id,
             validation_format: value.validation_format,
+            ui_optionals: if value.ui_optionals.is_empty() {
+                None
+            } else {
+                Some(value.ui_optionals)
+            },
         }
     }
 }
@@ -460,21 +474,37 @@ impl Prop {
         Ok(())
     }
 
-    pub fn assemble(prop_node_weight: PropNodeWeight, inner: PropContentV1) -> Self {
+    pub fn assemble(prop_node_weight: PropNodeWeight, content: PropContent) -> Self {
+        // Destructure here to convince ourselves we are using all the fields
+        let PropContentV2 {
+            timestamp,
+            name,
+            kind,
+            widget_kind,
+            widget_options,
+            doc_link,
+            documentation,
+            hidden,
+            refers_to_prop_id,
+            diff_func_id,
+            validation_format,
+            ui_optionals,
+        } = PropContentV2::from(content);
         Self {
             id: prop_node_weight.id().into(),
-            timestamp: inner.timestamp,
-            name: inner.name,
-            kind: inner.kind,
-            widget_kind: inner.widget_kind,
-            widget_options: inner.widget_options,
-            doc_link: inner.doc_link,
-            documentation: inner.documentation,
-            hidden: inner.hidden,
-            refers_to_prop_id: inner.refers_to_prop_id,
-            diff_func_id: inner.diff_func_id,
-            validation_format: inner.validation_format,
+            timestamp,
+            name,
+            kind,
+            widget_kind,
+            widget_options,
+            doc_link,
+            documentation,
+            hidden,
+            refers_to_prop_id,
+            diff_func_id,
+            validation_format,
             can_be_used_as_prototype_arg: prop_node_weight.can_be_used_as_prototype_arg(),
+            ui_optionals: ui_optionals.unwrap_or_default(),
         }
     }
 
@@ -482,19 +512,20 @@ impl Prop {
     /// useful for [`Props`](Prop) that will be invisible to the user in the property editor.
     pub async fn new_without_ui_optionals(
         ctx: &DalContext,
-        name: impl AsRef<str>,
+        name: impl Into<String>,
         kind: PropKind,
         parent_prop_id: PropId,
     ) -> PropResult<Self> {
         Self::new(
             ctx,
-            name.as_ref(),
+            name,
             kind,
             false,
             None,
             None,
             None,
             None,
+            Default::default(),
             parent_prop_id,
         )
         .await
@@ -514,6 +545,7 @@ impl Prop {
         documentation: Option<String>,
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         validation_format: Option<String>,
+        ui_optionals: HashMap<String, CasValue>,
         parent_prop_id: PropId,
     ) -> PropResult<Self> {
         let prop = Self::new_inner(
@@ -525,6 +557,7 @@ impl Prop {
             documentation,
             widget_kind_and_options,
             validation_format,
+            ui_optionals,
         )
         .await?;
 
@@ -545,6 +578,7 @@ impl Prop {
         documentation: Option<String>,
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         validation_format: Option<String>,
+        ui_optionals: HashMap<String, CasValue>,
         schema_variant_id: SchemaVariantId,
     ) -> PropResult<Self> {
         let root_prop = Self::new_inner(
@@ -556,6 +590,7 @@ impl Prop {
             documentation,
             widget_kind_and_options,
             validation_format,
+            ui_optionals,
         )
         .await?;
 
@@ -586,6 +621,7 @@ impl Prop {
         documentation: Option<String>,
         widget_kind_and_options: Option<(WidgetKind, Option<Value>)>,
         validation_format: Option<String>,
+        ui_optionals: HashMap<String, CasValue>,
     ) -> PropResult<Self> {
         let ordered = kind.ordered();
         let name = name.into();
@@ -603,7 +639,7 @@ impl Prop {
                 None => (WidgetKind::from(kind), None),
             };
 
-        let content = PropContentV1 {
+        let content = PropContent::V2(PropContentV2 {
             timestamp,
             name: name.clone(),
             kind,
@@ -615,10 +651,15 @@ impl Prop {
             refers_to_prop_id: None,
             diff_func_id: None,
             validation_format,
-        };
+            ui_optionals: if ui_optionals.is_empty() {
+                None
+            } else {
+                Some(ui_optionals)
+            },
+        });
 
         let (hash, _) = ctx.layer_db().cas().write(
-            Arc::new(PropContent::V1(content.clone()).into()),
+            Arc::new(content.clone().into()),
             None,
             ctx.events_tenancy(),
             ctx.events_actor(),
@@ -813,10 +854,7 @@ impl Prop {
             .await?
             .ok_or(WorkspaceSnapshotError::MissingContentFromStore(id.into()))?;
 
-        // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-        let PropContent::V1(inner) = content;
-
-        Ok(Self::assemble(node_weight, inner))
+        Ok(Self::assemble(node_weight, content))
     }
 
     pub async fn node_weight(ctx: &DalContext, id: PropId) -> PropResult<PropNodeWeight> {
@@ -1116,10 +1154,7 @@ impl Prop {
         for node_weight in node_weights {
             match content_map.get(&node_weight.content_hash()) {
                 Some(content) => {
-                    // NOTE(nick,jacob,zack): if we had a v2, then there would be migration logic here.
-                    let PropContent::V1(inner) = content;
-
-                    props.push(Self::assemble(node_weight, inner.to_owned()));
+                    props.push(Self::assemble(node_weight, content.clone()));
                 }
                 None => Err(WorkspaceSnapshotError::MissingContentFromStore(
                     node_weight.id(),
@@ -1127,31 +1162,6 @@ impl Prop {
             }
         }
         Ok(props)
-    }
-
-    pub async fn modify<L>(self, ctx: &DalContext, lambda: L) -> PropResult<Self>
-    where
-        L: FnOnce(&mut Self) -> PropResult<()>,
-    {
-        let mut prop = self;
-
-        let before = PropContentV1::from(prop.clone());
-        lambda(&mut prop)?;
-        let updated = PropContentV1::from(prop.clone());
-
-        if updated != before {
-            let (hash, _) = ctx.layer_db().cas().write(
-                Arc::new(PropContent::V1(updated.clone()).into()),
-                None,
-                ctx.events_tenancy(),
-                ctx.events_actor(),
-            )?;
-
-            ctx.workspace_snapshot()?
-                .update_content(prop.id.into(), hash)
-                .await?;
-        }
-        Ok(prop)
     }
 
     // Gets child props, in order

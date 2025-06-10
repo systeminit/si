@@ -7,13 +7,17 @@ pub enum CasValueNumber {
     F64(f64),
 }
 
+// (Comment copied from serde_json::Number's equivalent "N" type)
+// Implementing Eq is fine since any float values are always finite.
+impl Eq for CasValueNumber {}
+
 /// A type that can be converted to and from serde_json::Value types infallibly,
 /// *so long as* arbitrary precision arithmetic is not enabled for serde_json.
 /// This is necessary because postcard will *not* deserialize serde_json's `Number`
 /// type, but we still want to store arbitrary payloads in our content store.
 /// The alternative is to serialize the value to a string and then serialize
 /// that string with postcard.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, Clone)]
 #[remain::sorted]
 pub enum CasValue {
     /// An array of values
