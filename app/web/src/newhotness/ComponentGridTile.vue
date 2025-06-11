@@ -42,16 +42,61 @@
           :status="qualificationSummary"
         />
         <div>Qualifications</div>
-        <PillCounter
-          :count="component.qualificationTotals.total"
-          size="sm"
-          class="ml-auto"
-        />
+        <TextPill
+          v-if="
+            component.qualificationTotals.failed === 0 &&
+            component.qualificationTotals.warned === 0
+          "
+          tighter
+          :class="
+            clsx(
+              'text-xs ml-auto',
+              themeClasses(
+                'border-success-500 bg-neutral-100 text-black',
+                'border-success-600 bg-neutral-900 text-white',
+              ),
+            )
+          "
+        >
+          All passed
+        </TextPill>
+        <TextPill
+          v-if="component.qualificationTotals.failed > 0"
+          tighter
+          :class="
+            clsx(
+              'text-xs ml-auto',
+              themeClasses(
+                'border-destructive-500 bg-destructive-100 text-black',
+                'border-destructive-600 bg-destructive-900 text-white',
+              ),
+            )
+          "
+        >
+          {{ component.qualificationTotals.failed }} Failed
+        </TextPill>
+        <TextPill
+          v-if="component.qualificationTotals.warned > 0"
+          tighter
+          :class="
+            clsx(
+              'text-xs ml-auto',
+              themeClasses(
+                'border-warning-500 bg-warning-100 text-black',
+                'border-warning-600 bg-warning-900 text-white',
+              ),
+            )
+          "
+        >
+          {{ component.qualificationTotals.warned }} Warning
+        </TextPill>
       </li>
       <li>
-        <Icon name="tilde" class="text-warning-500" size="sm" />
-        <div>Diff</div>
-        <PillCounter :count="component.diffCount" size="sm" class="ml-auto" />
+        <template v-if="component.diffCount > 0">
+          <Icon name="tilde" class="text-warning-500" size="sm" />
+          <div>Diff</div>
+          <PillCounter :count="component.diffCount" size="sm" class="ml-auto" />
+        </template>
       </li>
       <li>
         <template v-if="component.hasResource">
@@ -99,6 +144,7 @@
 import {
   Icon,
   PillCounter,
+  TextPill,
   themeClasses,
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
