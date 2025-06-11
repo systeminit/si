@@ -40,6 +40,7 @@ import {
   AtomMessage,
   AtomMeta,
   BustCacheFn,
+  CategorizedPossibleConnections,
   Checksum,
   DBInterface,
   Id,
@@ -1722,59 +1723,50 @@ const getPossibleConnections = (
   _workspaceId: string,
   changeSetId: string,
   destSchemaName: string,
-  destProp: Prop,
+  dest: Prop,
 ) => {
-  return categorizePossibleConnections(
-    Object.values(allPossibleConns.get(changeSetId)),
-    destSchemaName,
-    destProp,
-  );
-};
+  const possible = Object.values(allPossibleConns.get(changeSetId));
 
-const categorizePossibleConnections = (
-  possible: Array<PossibleConnection>,
-  destSchemaName: string,
-  destProp: Prop,
-) => {
-  const exactMatches: Array<PossibleConnection> = [];
-  const typeMatches: Array<PossibleConnection> = [];
-  const nonMatches: Array<PossibleConnection> = [];
+  const categories: CategorizedPossibleConnections = {
+    suggestedMatches: [],
+    typeAndNameMatches: [],
+    typeMatches: [],
+    nonMatches: [],
+  };
 
-  const destKind = destProp.kind;
   for (const source of possible) {
-    const sourceKind = source.kind;
-    if (
-      destProp.suggestSources?.some(
+    const isSuggested =
+      dest.suggestSources?.some(
         (s) => s.schema === source.schemaName && s.prop === source.path,
       ) ||
       source.suggestAsSourceFor?.some(
-        (s) => s.schema === destSchemaName && `root${s.prop}` === destProp.path,
-      )
+        (d) => d.schema === destSchemaName && `root${d.prop}` === dest.path,
+      );
+    if (isSuggested) {
+      categories.suggestedMatches.push(source);
+    } else if (
+      source.kind === dest.kind ||
+      (source.kind === "string" &&
+        !["string", "boolean", "object", "map", "integer"].includes(dest.kind))
     ) {
-      exactMatches.push(source);
-    }
-    // if we've got something like "VPC id" e.g. not one of the basic types
-    else if (
-      !["string", "boolean", "object", "map", "integer"].includes(destKind)
-    ) {
-      // look for type matches
-      if (sourceKind === destKind) typeMatches.push(source);
-      // otherwise, all string types match "exact" types
-      else if (destKind === "string") typeMatches.push(source);
-      else nonMatches.push(source);
+      // If the types match, sort name matches first
+      if (source.name === dest.name && source.schemaName !== destSchemaName) {
+        categories.typeAndNameMatches.push(source);
+      } else {
+        categories.typeMatches.push(source);
+      }
     } else {
-      if (sourceKind === destKind) typeMatches.push(source);
-      else nonMatches.push(source);
+      categories.nonMatches.push(source);
     }
   }
 
   const cmp = (a: PossibleConnection, b: PossibleConnection) =>
     `${a.name} ${a.path}`.localeCompare(`${b.name} ${b.path}`);
-  exactMatches.sort(cmp);
-  typeMatches.sort(cmp);
-  nonMatches.sort(cmp);
-
-  return { exactMatches, typeMatches, nonMatches };
+  categories.suggestedMatches.sort(cmp);
+  categories.typeAndNameMatches.sort(cmp);
+  categories.typeMatches.sort(cmp);
+  categories.nonMatches.sort(cmp);
+  return categories;
 };
 
 const getOutgoingConnectionsByComponentId = (

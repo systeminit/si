@@ -651,7 +651,6 @@ attributeEmitter.on("selectedPath", (selectedPath) => {
   }
 });
 
-const focusedProp = ref<Prop>();
 const focus = () => {
   attributeEmitter.emit("selectedPath", path.value);
   attributeEmitter.emit("selectedDocs", {
@@ -659,7 +658,6 @@ const focus = () => {
     docs: props.prop?.documentation ?? "",
   });
   inputOpen.value = true;
-  focusedProp.value = props.prop;
 };
 
 const selectConnection = (index: number) => {
@@ -932,24 +930,24 @@ const onTab = (e: KeyboardEvent) => {
 const connectingComponentId = ref<string | undefined>();
 const makeKey = useMakeKey();
 const makeArgs = useMakeArgs();
-const enabled = computed(() => !!focusedProp.value?.kind);
 const potentialConnQuery = useQuery({
-  queryKey: makeKey(EntityKind.PossibleConnections),
-  enabled,
+  queryKey: makeKey(EntityKind.PossibleConnections, undefined, props.prop),
+  enabled: inputOpen,
   queryFn: async () => {
-    if (focusedProp.value) {
+    if (props.prop) {
       return await getPossibleConnections({
         ...makeArgs(EntityKind.PossibleConnections),
         destSchemaName: props.component.schemaName,
-        destProp: focusedProp.value,
+        dest: props.prop,
       });
     }
   },
 });
+
 const filteredConnections = computed(() => {
   const output: UIPotentialConnection[] = [];
 
-  if (potentialConnQuery.data.value?.typeMatches) {
+  if (potentialConnQuery.data.value) {
     const addToOutput = (matches: PossibleConnection[]) => {
       // Node(victor): We know that secret props on secret defining schemas live on /secrets/kind name
       // This MAY match other secret props on random schemas, but we check the types match. Ideally the MVs at some
@@ -991,7 +989,8 @@ const filteredConnections = computed(() => {
       });
     };
 
-    addToOutput(potentialConnQuery.data.value.exactMatches);
+    addToOutput(potentialConnQuery.data.value.suggestedMatches);
+    addToOutput(potentialConnQuery.data.value.typeAndNameMatches);
     addToOutput(potentialConnQuery.data.value.typeMatches);
 
     // todo: rethink this for secrets

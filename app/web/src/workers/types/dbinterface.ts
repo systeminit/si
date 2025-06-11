@@ -57,12 +57,8 @@ export interface DBInterface {
     workspaceId: string,
     changeSetId: string,
     destSchemaName: string,
-    destProp: Prop,
-  ): {
-    exactMatches: Array<PossibleConnection>;
-    typeMatches: Array<PossibleConnection>;
-    nonMatches: Array<PossibleConnection>;
-  };
+    dest: Prop,
+  ): CategorizedPossibleConnections;
   getOutgoingConnectionsByComponentId(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -153,6 +149,13 @@ export type RowWithColumns = Record<Column, SqlValue>;
 export type RowID = Record<"id", number>;
 export type RowWithColumnsAndId = RowID & RowWithColumns;
 export type Records = (RowWithColumns | RowWithColumnsAndId)[];
+
+export interface CategorizedPossibleConnections {
+  suggestedMatches: Array<PossibleConnection>;
+  typeAndNameMatches: Array<PossibleConnection>;
+  typeMatches: Array<PossibleConnection>;
+  nonMatches: Array<PossibleConnection>;
+}
 
 export const interpolate = (columns: Columns, rows: SqlValue[][]): Records => {
   const results: Records = [];

@@ -150,14 +150,14 @@ export const getPossibleConnections = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
   destSchemaName: string;
-  destProp: Prop;
+  dest: Prop;
 }) => {
   return reactive(
     await db.getPossibleConnections(
       args.workspaceId,
       args.changeSetId,
-      toRaw(args.destSchemaName),
-      toRaw(args.destProp), // Can't send reactive stuff across the boundary, silently fails
+      args.destSchemaName,
+      toRaw(args.dest), // Can't send reactive stuff across the boundary, silently fails
     ),
   );
 };
@@ -266,21 +266,41 @@ export const changeSetExists = async (
   changeSetId: string,
 ) => await db.changeSetExists(workspaceId, changeSetId);
 
+/// Make a reactive query key that includes the workspace, changeSet, EntityKind and entity ID
+/// (if any).
+///
+/// @returns A computed reactive key suitable for use with tanstack useQuery() or useQueryClient().
+///
+/// @example
+/// const componentId = ref<ComponentId>();
+/// const makeKey = useMakeKey();
+/// const query = useQuery({ queryKey: makeKey(EntityKind.Component, componentId), ... });
+///
+/// You may also specify other reactive values that will be included in the key, so that the query
+/// will restart when those other values change:
+///
+/// @example
+/// const currentProp = ref<Prop>();
+/// const makeKey = useMakeKey();
+/// const query = useQuery({ queryKey: makeKey(EntityKind.PossibleConnections, undefined, currentProp), ... });
+///
 export const useMakeKey = () => {
   const ctx: Context | undefined = inject("CONTEXT");
 
-  return (
+  return <T extends unknown[]>(
     kind: ComputedRef<EntityKind> | EntityKind,
     id?: ComputedRef<string> | string,
+    ...extra: [...T]
   ) =>
-    computed(() => {
-      return [
-        ctx?.workspacePk.value,
-        ctx?.changeSetId.value,
-        kind,
-        unref(id) ?? ctx?.workspacePk.value,
-      ];
-    });
+    computed<
+      [string?, string?, (ComputedRef<EntityKind> | EntityKind)?, string?, ...T]
+    >(() => [
+      ctx?.workspacePk.value,
+      ctx?.changeSetId.value,
+      kind,
+      unref(id) ?? ctx?.workspacePk.value,
+      ...extra,
+    ]);
 };
 
 export const odin = async (changeSetId: string) => {
