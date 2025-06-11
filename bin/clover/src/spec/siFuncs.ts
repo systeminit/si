@@ -1,4 +1,3 @@
-import { ulid } from "https://deno.land/x/ulid@v0.3.0/mod.ts";
 import { FuncSpec } from "../bindings/FuncSpec.ts";
 import { FuncArgumentSpec } from "../bindings/FuncArgumentSpec.ts";
 import { FuncArgumentKind } from "../bindings/FuncArgumentKind.ts";

@@ -38,6 +38,7 @@ import {
 } from "../pipeline-steps/reportDeprecatedAssets.ts";
 import { removeBadDocLinks } from "../pipeline-steps/removeBadDocLinks.ts";
 import { reorderProps } from "../pipeline-steps/reorderProps.ts";
+import { createSuggestionsForPrimaryIdentifiers } from "../pipeline-steps/createSuggestionsAcrossAssets.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -106,6 +107,7 @@ export async function generateSiSpecs(
   specs = pruneCfAssets(specs);
 
   // These need everything to be complete
+  specs = createSuggestionsForPrimaryIdentifiers(specs);
   specs = reorderProps(specs);
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);

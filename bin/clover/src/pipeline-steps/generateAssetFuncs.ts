@@ -267,9 +267,10 @@ function generatePropBuilderString(
             JSON.stringify(prop.data.documentation)
           })\n`
           : ""
-      ) +
+      ) + (generateSuggestSourceString(prop, indent_level)) +
       inner +
       `${indent(indent_level)}.build()`;
+
     return result;
   }
 }
@@ -312,4 +313,19 @@ function generateWidgetString(
 function indent(count: number) {
   const spaces = count * 4;
   return " ".repeat(spaces);
+}
+
+function generateSuggestSourceString(
+  prop: ExpandedPropSpec,
+  indent_level: number,
+): string {
+  const suggestSources = prop.data?.uiOptionals?.suggestSources;
+  if (!suggestSources) return "";
+
+  return suggestSources.map((src: { schema: string; prop: string }) =>
+    `${indent(indent_level)}.suggestSource({\n` +
+    `${indent(indent_level + 1)}schema: ${JSON.stringify(src.schema)},\n` +
+    `${indent(indent_level + 1)}prop: ${JSON.stringify(src.prop)}\n` +
+    `${indent(indent_level)}})\n`
+  ).join("");
 }

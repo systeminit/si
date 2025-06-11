@@ -53,6 +53,11 @@ export type ExpandedPropSpecFor = {
 
 export type ExpandedPropSpec = ExpandedPropSpecFor[keyof ExpandedPropSpecFor];
 
+export interface PropSuggestion {
+  schema: string;
+  prop: string;
+}
+
 interface PropSpecOverrides {
   data: Extend<
     PropSpecData,
@@ -226,6 +231,7 @@ function createPropFromCf(
       ? createDocLink(cfSchema, cfProp.defName, name)
       : null,
     documentation: cfProp.description ?? null,
+    uiOptionals: null,
   };
   const partialProp: Partial<ExpandedPropSpec> = {
     name,
@@ -560,6 +566,7 @@ export function createObjectProp(
     hidden: false,
     docLink: null,
     documentation: null,
+    uiOptionals: null,
   };
 
   const prop: ExpandedPropSpec = {
@@ -610,6 +617,7 @@ export function createScalarProp(
     hidden: false,
     docLink: null,
     documentation: null,
+    uiOptionals: null,
   };
 
   const prop: ExpandedPropSpec = {
@@ -681,6 +689,21 @@ export function bfsPropTree(
       }
     }
   }
+}
+
+export function addPropSuggestSource(
+  prop: ExpandedPropSpec,
+  suggestion: PropSuggestion,
+): ExpandedPropSpec {
+  if (!prop.data.uiOptionals) {
+    prop.data.uiOptionals = {};
+  }
+
+  prop.data.uiOptionals.suggestSources = [
+    ...(prop.data.uiOptionals.suggestSources ?? []),
+    suggestion,
+  ];
+  return prop;
 }
 
 export function copyPropWithNewIds<T extends ExpandedPropSpec>(
