@@ -28,8 +28,13 @@ jobs:
       - name: Generate Diff
         run: |
           cd bin/hoist
+          cargo build
           printf '```\n' > diff.md
-          cargo run -- get-diff-summary -t ../clover/si-specs | tee -a diff.md
+          if cargo run -- get-diff-summary -t ../clover/si-specs > out.log 2> err.log; then
+            cat out.log | sed -r "s/\x1B\[[0-9;]*[mK]//g" >> diff.md
+          else
+            cat err.log | sed -r "s/\x1B\[[0-9;]*[mK]//g" >> diff.md
+          fi
           printf '```' >> diff.md
 
       - name: Post Diff to PR
