@@ -160,7 +160,7 @@ export const bifrostList = async <T>(args: {
   );
   const end = Date.now();
   // eslint-disable-next-line no-console
-  console.log("🌈 bifrost query", 'ComponentList', args.id, end - start, "ms");
+  console.log("🌈 bifrost listQuery", 'ComponentList', args.id, end - start, "ms");
   return list;
 };
 

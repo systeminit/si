@@ -2398,11 +2398,14 @@ const getList = async (
   ;
   `
   const bind = [indexChecksum ?? changeSetId, id];
+  const start = Date.now();
   const listData = db.exec({
     sql,
     bind,
     returnValue: "resultRows",
   });
+  const end = Date.now();
+  console.log("sql getList ComponentList", end-start, "ms")
   const data = listData.map(l => l[0]) as string[];
   return data
 };

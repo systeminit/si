@@ -86,6 +86,10 @@
           class="scrollable tilegrid grow"
           @scroll="onScroll"
         >
+          <span v-for="(component, _index) in componentVirtualItemsList">
+            C: {{ component.index }}
+            I: {{ filteredComponents[component.index] }}
+          </span>
           <ComponentGridTile
             v-for="(component, index) in componentVirtualItemsList"
             ref="componentGridTileRefs"
@@ -97,16 +101,16 @@
             @mouseleave="unhover(component.index)"
             @click.stop.left="
               (e) =>
-                componentClicked(e, filteredComponents[component.index]!.id)
+                componentClicked(e, filteredComponents[component.index]!)
             "
             @click.stop.right="
               (e) =>
-                componentClicked(e, filteredComponents[component.index]!.id)
+                componentClicked(e, filteredComponents[component.index]!)
             "
           />
           <div
             v-if="
-              componentList.length === 0 && componentListRaw.isSuccess.value
+              componentList.length === 0 && listQuery.isSuccess.value
             "
           >
             <em>No components in View</em>
@@ -262,7 +266,7 @@ const componentGridTileRefs = ref<InstanceType<typeof ComponentGridTile>[]>();
 
 const getGridTileIndexByComponentId = (id: ComponentId) => {
   return componentVirtualItemsList.value.findIndex(
-    (item) => filteredComponents[item.index]!.id === id,
+    (item) => filteredComponents[item.index] === id,
   );
 };
 const getGridTileByIndex = (idx: number) => {
@@ -364,7 +368,7 @@ const componentListRaw = useQuery<
 const filteredComponents = reactive<string[]>([]);
 
 const listQuery = useQuery<string[]>({
-  queryKey: key("ComponentListNew" as EntityKind, id),
+  queryKey: key(EntityKind.ComponentList, id),
   queryFn: async () => {
     const data = await bifrostList<string[]>(args(EntityKind.ComponentList));
     filteredComponents.splice(0, Infinity, ...data);
@@ -379,14 +383,13 @@ const componentList = computed(
 
 const scrollRef = ref<HTMLDivElement>();
 
-/*
-
 const searchString = ref("");
 const computedSearchString = computed(() => searchString.value);
 
 // send this down to any components that might use it
 provide("SEARCH", computedSearchString);
 
+/*
 watch(
   () => [searchString.value, componentList.value],
   () => {
@@ -468,9 +471,11 @@ const virtualizerOptions = computed(() => {
 
 const virtualList = useVirtualizer(virtualizerOptions);
 
-const componentVirtualItemsList = computed(() =>
-  virtualList.value.getVirtualItems(),
-);
+const componentVirtualItemsList = computed(() => {
+  const data = virtualList.value.getVirtualItems()
+  console.log("WTF", virtualizerOptions.value, virtualList.value)
+  return data;
+});
 
 const collapsingStyles = computed(() =>
   collapsingGridStyles([
@@ -483,7 +488,7 @@ const selectedComponentIds = reactive<Set<string>>(new Set());
 const selectorGridPosition = ref<number>(-1);
 const focusedComponentId = ref<string | undefined>();
 const hoveredComponentId = computed(
-  () => filteredComponents[selectorGridPosition.value]?.id,
+  () => filteredComponents[selectorGridPosition.value],
 );
 const interactionTargetComponentId = computed(
   () => focusedComponentId.value ?? hoveredComponentId.value,
@@ -498,7 +503,7 @@ const constrainPosition = () => {
   tile?.$el.scrollIntoView({ behavior: "smooth", block: "nearest" });
 };
 const isSelected = (idx: number) =>
-  selectedComponentIds.has(filteredComponents[idx]!.id);
+  selectedComponentIds.has(filteredComponents[idx]!);
 const isHovered = (idx: number) => selectorGridPosition.value === idx;
 const isFocused = (idx: number) =>
   focusGridPosition.value === idx && focusedComponentId.value;
@@ -646,13 +651,13 @@ const onU = (e: KeyDetails["u"]) => {
   if (showGrid.value) {
     if (!interactionTargetComponentId.value) return;
     const targetComponent = filteredComponents.find(
-      (comp) => comp.id === interactionTargetComponentId.value,
+      (comp) => comp === interactionTargetComponentId.value,
     );
-    if (targetComponent && targetComponent.canBeUpgraded) {
-      componentContextMenuRef.value?.componentUpgrade([
-        interactionTargetComponentId.value,
-      ]);
-    }
+    // if (targetComponent && false) {
+    //   componentContextMenuRef.value?.componentUpgrade([
+    //     interactionTargetComponentId.value,
+    //   ]);
+    // }
   } else {
     mapRef.value?.onU(e);
   }
@@ -723,7 +728,7 @@ const onEnter = (e: KeyDetails["Enter"]) => {
   if (!showGrid.value) return; // no enter behavior on the map yet
 
   if (selectorGridPosition.value !== -1) {
-    const componentId = filteredComponents[selectorGridPosition.value]?.id;
+    const componentId = filteredComponents[selectorGridPosition.value];
     if (!componentId) return;
     componentInteract(componentId);
   }
