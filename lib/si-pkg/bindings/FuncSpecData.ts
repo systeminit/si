@@ -11,5 +11,6 @@ export type FuncSpecData = {
   backendKind: FuncSpecBackendKind;
   responseType: FuncSpecBackendResponseType;
   hidden: boolean;
+  isTransformation: boolean;
   link: string | null;
 };

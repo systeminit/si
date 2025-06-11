@@ -113,7 +113,8 @@ export const QUALIFICATION_FUNC_SPECS = {
     backendKind: "jsAttribute",
     responseType: "qualification",
     displayName: "Qualification for checking Cloud Formation permissions",
-    path: "./src/cloud-control-funcs/qualifications/awsPermissionsSimulation.ts",
+    path:
+      "./src/cloud-control-funcs/qualifications/awsPermissionsSimulation.ts",
   },
 } as const satisfies Record<string, FuncSpecInfo>;
 
@@ -134,6 +135,7 @@ export function createFunc(
     backendKind,
     responseType,
     hidden: false,
+    isTransformation: false,
     link: null,
   };
 

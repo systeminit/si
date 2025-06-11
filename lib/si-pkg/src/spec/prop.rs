@@ -82,7 +82,7 @@ pub struct PropSpecData {
     pub hidden: Option<bool>,
     pub doc_link: Option<Url>,
     pub documentation: Option<String>,
-    pub ui_optionals: HashMap<String, serde_json::Value>,
+    pub ui_optionals: Option<HashMap<String, serde_json::Value>>,
 }
 
 #[remain::sorted]
@@ -288,7 +288,9 @@ impl PropSpec {
             if let &Some(hidden) = hidden {
                 builder.hidden(hidden);
             }
-            builder.ui_optionals(ui_optionals.to_owned());
+            if let Some(ui_optionals) = ui_optionals {
+                builder.ui_optionals(ui_optionals.to_owned());
+            }
         }
 
         if let PropSpec::Map {
@@ -783,7 +785,7 @@ impl PropSpecBuilder {
                 hidden: Some(self.hidden),
                 doc_link: self.doc_link.clone(),
                 documentation: self.documentation.clone(),
-                ui_optionals: self.ui_optionals.clone().unwrap_or_default(),
+                ui_optionals: Some(self.ui_optionals.clone().unwrap_or_default()),
             })
         } else {
             None

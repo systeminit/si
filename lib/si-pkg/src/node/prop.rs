@@ -495,7 +495,7 @@ impl NodeChild for PropSpec {
                         doc_link,
                         documentation,
                         validation_format,
-                        ui_optionals,
+                        ui_optionals: ui_optionals.unwrap_or(HashMap::new()),
                     },
                 ),
                 unique_id.to_owned(),
