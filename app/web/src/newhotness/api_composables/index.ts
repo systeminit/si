@@ -32,6 +32,7 @@ export enum routes {
   DeleteComponents = "DeleteComponents",
   DuplicateComponents = "DuplicateComponents",
   UpgradeComponents = "UpgradeComponents",
+  RunMgmtPrototype = "RunMgmtPrototype",
 }
 
 /**
@@ -62,6 +63,8 @@ const _routes: Record<routes, string> = {
   ActionCancel: "/action/<id>/cancel",
   ActionHold: "/action/<id>/put_on_hold",
   ActionRetry: "/action/<id>/retry",
+  RunMgmtPrototype:
+    "/management/prototype/<prototypeId>/<componentId>/<viewId>",
 } as const;
 
 // the mechanics

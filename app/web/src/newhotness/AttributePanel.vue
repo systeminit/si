@@ -1,5 +1,48 @@
 <template>
   <div v-if="root">
+    <div
+      v-if="showImportArea"
+      class="mt-xs grid grid-cols-2 pl-xs gap-2xs relative"
+    >
+      <div class="flex flex-row items-center gap-2xs">
+        <TruncateWithTooltip>{{
+          importing ? "Importing Attributes" : "Import"
+        }}</TruncateWithTooltip>
+      </div>
+      <input
+        ref="importInputRef"
+        v-model="resourceIdFormValue"
+        :class="
+          clsx(
+            'block w-full h-lg p-xs ml-auto text-sm border font-mono',
+            themeClasses(
+              'text-shade-100 bg-shade-0 border-neutral-400',
+              'text-shade-0 bg-shade-100 border-neutral-600',
+            ),
+          )
+        "
+        type="text"
+        placeholder="Resource Id"
+        @keydown.enter="doImport"
+      />
+      <Icon
+        v-if="importing || bifrostingResourceId"
+        class="absolute right-[54px] top-xs pointer-events-none"
+        name="loader"
+        size="sm"
+        tone="action"
+      />
+      <TextPill
+        class="absolute text-xs right-xs top-[7px] cursor-default"
+        :class="
+          clsx(!(importing || bifrostingResourceId) && 'hover:cursor-pointer')
+        "
+        @click.prevent="doImport"
+      >
+        Enter
+      </TextPill>
+    </div>
+
     <div class="py-xs">
       <!-- TODO(Wendy) - this doesn't work on the secrets tree yet -->
       <SiSearch
@@ -62,6 +105,7 @@
 <script lang="ts" setup>
 import {
   computed,
+  inject,
   onBeforeUnmount,
   onMounted,
   reactive,
@@ -70,17 +114,25 @@ import {
 } from "vue";
 import { Fzf } from "fzf";
 import { useRoute } from "vue-router";
-import { SiSearch, themeClasses } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  SiSearch,
+  themeClasses,
+  TruncateWithTooltip,
+} from "@si/vue-lib/design-system";
 import clsx from "clsx";
+import * as _ from "lodash-es";
 import {
   AttributeTree,
+  AttributeValue,
   BifrostComponent,
   Prop,
-  AttributeValue,
   Secret,
 } from "@/workers/types/entity_kind_types";
 import { PropKind } from "@/api/sdf/dal/prop";
-import { useApi, routes, componentTypes } from "./api_composables";
+import TextPill from "@/newhotness/layout_components/TextPill.vue";
+import { ExploreContext } from "@/newhotness/types";
+import { componentTypes, routes, useApi } from "./api_composables";
 import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
 import { keyEmitter } from "./logic_composables/emitters";
 import ComponentSecretAttribute from "./layout_components/ComponentSecretAttribute.vue";
@@ -90,7 +142,10 @@ const q = ref("");
 const props = defineProps<{
   component: BifrostComponent;
   attributeTree?: AttributeTree;
+  showImportArea: boolean;
 }>();
+
+const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
 
 export interface AttrTree {
   id: string;
@@ -248,7 +303,7 @@ watch(
   { immediate: true },
 );
 
-const api = useApi();
+const setAttrApi = useApi();
 
 const save = async (
   path: string,
@@ -257,7 +312,7 @@ const save = async (
   propKind: PropKind,
   connectingComponentId?: string,
 ) => {
-  const call = api.endpoint<{ success: boolean }>(
+  const call = setAttrApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
@@ -285,7 +340,7 @@ const save = async (
 
 const route = useRoute();
 const remove = async (path: string, _id: string) => {
-  const call = api.endpoint<{ success: boolean }>(
+  const call = setAttrApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
@@ -294,8 +349,8 @@ const remove = async (path: string, _id: string) => {
   payload[path] = { $source: null };
   const { req, newChangeSetId } =
     await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
-  if (newChangeSetId && api.ok(req)) {
-    api.navigateToNewChangeSet(
+  if (newChangeSetId && setAttrApi.ok(req)) {
+    setAttrApi.navigateToNewChangeSet(
       {
         name: "new-hotness-component",
         params: {
@@ -310,7 +365,7 @@ const remove = async (path: string, _id: string) => {
 };
 
 const removeSubscription = async (path: string, _id: string) => {
-  const call = api.endpoint<{ success: boolean }>(
+  const call = setAttrApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
@@ -327,7 +382,84 @@ const removeSubscription = async (path: string, _id: string) => {
 
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 
+// Import
+const resourceIdAttr = computed(() => {
+  const siTree = root.value.children.find((p) => p.prop?.name === "si");
+  return siTree?.children.find((p) => p.prop?.name === "resourceId");
+});
+
+const resourceIdValue = computed(
+  () => resourceIdAttr.value?.attributeValue.value ?? null,
+);
+const resourceIdFormValue = ref<string | undefined>();
+
+const importInputRef = ref<HTMLInputElement>();
+
+const bifrostingResourceId = ref(false);
+const resettingResourceId = ref(false);
+const saveResourceId = async () => {
+  if (!resourceIdFormValue.value) {
+    return;
+  }
+
+  bifrostingResourceId.value = true;
+
+  await save("/si/resourceId", "", resourceIdFormValue.value, PropKind.String);
+};
+
+watch(
+  resourceIdFormValue,
+  _.debounce(
+    () => {
+      if (resettingResourceId.value) {
+        resettingResourceId.value = false;
+        return;
+      }
+      saveResourceId();
+    },
+    500,
+    { leading: true },
+  ),
+);
+
+watch([resourceIdValue], () => {
+  if (resourceIdFormValue.value === resourceIdValue.value) {
+    bifrostingResourceId.value = false;
+  }
+});
+
+const runMgmtFuncApi = useApi();
+
+const doImport = async () => {
+  if (bifrostingResourceId.value) {
+    return;
+  }
+
+  const func = props.component.schemaVariant.mgmtFunctions.find(
+    (f) => f.kind === "import",
+  );
+  if (!func) return;
+
+  importing.value = true;
+
+  const call = runMgmtFuncApi.endpoint<{ success: boolean }>(
+    routes.RunMgmtPrototype,
+    {
+      prototypeId: func.id,
+      componentId: props.component.id,
+      viewId: explore?.viewId.value ?? "DEFAULT", // Should get the default view id
+    },
+  );
+
+  await call.post<componentTypes.UpdateComponentAttributesArgs>({});
+  importing.value = false;
+};
+
+const importing = ref(false);
+
 onMounted(() => {
+  resettingResourceId.value = true;
+  resourceIdFormValue.value = resourceIdValue.value ?? undefined;
   keyEmitter.on("Tab", (e) => {
     e.preventDefault();
     searchRef.value?.focusSearch();

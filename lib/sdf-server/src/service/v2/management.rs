@@ -1,11 +1,7 @@
 use axum::{
     Json,
     Router,
-    extract::{
-        Host,
-        OriginalUri,
-        Path,
-    },
+    extract::Path,
     http::StatusCode,
     response::{
         IntoResponse,
@@ -25,13 +21,20 @@ use dal::{
     ChangeSetError,
     ChangeSetId,
     ComponentId,
+    DalContext,
     FuncError,
     FuncId,
     SchemaVariantError,
     TransactionsError,
     WorkspacePk,
     WsEventError,
-    diagram::view::ViewId,
+    diagram::{
+        DiagramError,
+        view::{
+            View,
+            ViewId,
+        },
+    },
     func::authoring::FuncAuthoringError,
     management::{
         ManagementError,
@@ -43,6 +46,10 @@ use dal::{
     schema::variant::authoring::VariantAuthoringError,
 };
 use sdf_core::api_error::ApiError;
+use sdf_extract::{
+    PosthogEventTracker,
+    change_set::ChangeSetDalContext,
+};
 use serde::{
     Deserialize,
     Serialize,
@@ -60,14 +67,7 @@ use veritech_client::ManagementFuncStatus;
 use super::func::FuncAPIError;
 use crate::{
     AppState,
-    extract::{
-        HandlerContext,
-        PosthogClient,
-    },
-    service::{
-        force_change_set_response::ForceChangeSetResponse,
-        v2::AccessBuilder,
-    },
+    service::force_change_set_response::ForceChangeSetResponse,
     track,
 };
 
@@ -82,6 +82,8 @@ pub type ManagementApiResult<T> = Result<T, ManagementApiError>;
 pub enum ManagementApiError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("diagram error: {0}")]
+    Diagram(#[from] DiagramError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func api error: {0}")]
@@ -143,26 +145,16 @@ pub struct RunPrototypeResponse {
 
 const MAX_PENDING_DURATION: Duration = Duration::minutes(7);
 
-pub async fn run_prototype(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(access_builder): AccessBuilder,
-    PosthogClient(posthog_client): PosthogClient,
-    OriginalUri(original_uri): OriginalUri,
-    Host(host_name): Host,
-    Path((_workspace_pk, change_set_id, prototype_id, component_id, view_id)): Path<(
-        WorkspacePk,
-        ChangeSetId,
-        ManagementPrototypeId,
-        ComponentId,
-        ViewId,
-    )>,
-    Json(request): Json<RunPrototypeRequest>,
+pub async fn run_prototype_inner(
+    ctx: &mut DalContext,
+    prototype_id: ManagementPrototypeId,
+    component_id: ComponentId,
+    view_id: ViewId,
+    request: RunPrototypeRequest,
+    tracker: PosthogEventTracker,
 ) -> ManagementApiResult<ForceChangeSetResponse<RunPrototypeResponse>> {
-    let mut ctx = builder
-        .build(access_builder.build(change_set_id.into()))
-        .await?;
+    let force_change_set_id = ChangeSet::force_new(ctx).await?;
 
-    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
     let state_ctx = ctx.clone();
 
     // Is there already a pending run? if so fail it if it's too old, so that we can start a new one
@@ -181,7 +173,7 @@ pub async fn run_prototype(
         }
     }
 
-    if let Err(err) = ManagementFuncJobState::new_pending(&ctx, component_id, prototype_id).await {
+    if let Err(err) = ManagementFuncJobState::new_pending(ctx, component_id, prototype_id).await {
         match err {
             ManagementFuncExecutionError::CreationFailed => {
                 return Ok(ForceChangeSetResponse::new(
@@ -199,11 +191,8 @@ pub async fn run_prototype(
     ctx.enqueue_management_func(prototype_id, component_id, view_id, request.request_ulid)
         .await?;
 
-    track(
-        &posthog_client,
-        &ctx,
-        &original_uri,
-        &host_name,
+    tracker.track(
+        ctx,
         "run_prototype",
         serde_json::json!({
             "how": "/management/run_prototype",
@@ -224,8 +213,50 @@ pub async fn run_prototype(
     ))
 }
 
+pub async fn run_prototype(
+    ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
+    Path((_workspace_pk, _change_set_id, prototype_id, component_id, view_id)): Path<(
+        WorkspacePk,
+        ChangeSetId,
+        ManagementPrototypeId,
+        ComponentId,
+        ViewId,
+    )>,
+    Json(request): Json<RunPrototypeRequest>,
+) -> ManagementApiResult<ForceChangeSetResponse<RunPrototypeResponse>> {
+    run_prototype_inner(ctx, prototype_id, component_id, view_id, request, tracker).await
+}
+
+pub async fn run_prototype_for_default_view(
+    ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
+    Path((_workspace_pk, _change_set_id, prototype_id, component_id)): Path<(
+        WorkspacePk,
+        ChangeSetId,
+        ManagementPrototypeId,
+        ComponentId,
+    )>,
+    Json(request): Json<RunPrototypeRequest>,
+) -> ManagementApiResult<ForceChangeSetResponse<RunPrototypeResponse>> {
+    run_prototype_inner(
+        ctx,
+        prototype_id,
+        component_id,
+        View::get_id_for_default(ctx).await?,
+        request,
+        tracker,
+    )
+    .await
+}
+
 pub fn v2_routes() -> Router<AppState> {
     Router::new()
+        // TODO(Victor): rewrite these to use a viewId resolver instead of two endpoints
+        .route(
+            "/prototype/:prototypeId/:componentId/DEFAULT",
+            post(run_prototype_for_default_view),
+        )
         .route(
             "/prototype/:prototypeId/:componentId/:viewId",
             post(run_prototype),
