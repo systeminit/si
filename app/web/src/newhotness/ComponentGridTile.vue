@@ -1,5 +1,7 @@
 <template>
+  <!-- eslint-disable vue/no-multiple-template-root -->
   <div
+    v-if="component"
     :class="
       clsx(
         'component tile',
@@ -138,6 +140,9 @@
       </div>
     </footer> -->
   </div>
+  <div v-else>
+    <Icon name="loader" size="sm" />
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -152,20 +157,39 @@ import clsx from "clsx";
 import { computed } from "vue";
 import {
   BifrostComponent,
-  BifrostComponentInList,
+  EntityKind,
 } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon } from "./util";
+import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import { useQuery } from "@tanstack/vue-query";
 
 const props = defineProps<{
-  component: BifrostComponent | BifrostComponentInList;
+  // component: BifrostComponent | BifrostComponentInList;
+  componentId: string;
   hideConnections?: boolean;
 }>();
 
+const makeArgs = useMakeArgs();
+const makeKey = useMakeKey();
+const queryKey = makeKey(EntityKind.Component, props.componentId);
+const componentRaw = useQuery<BifrostComponent | null>({
+  queryKey,
+  queryFn: async () => {
+    const arg = makeArgs(EntityKind.Component, props.componentId)
+    return await bifrost<BifrostComponent>(arg);
+  },
+});
+
+const component = computed(() => {
+  return componentRaw.data.value;
+})
+
 const qualificationSummary = computed(() => {
-  if (props.component.qualificationTotals.failed > 0) return "failure";
-  if (props.component.qualificationTotals.running > 0) return "running";
-  if (props.component.qualificationTotals.warned > 0) return "warning";
+  if (!component.value) return "";
+  if (component.value.qualificationTotals.failed > 0) return "failure";
+  if (component.value.qualificationTotals.running > 0) return "running";
+  if (component.value.qualificationTotals.warned > 0) return "warning";
   return "success";
 });
 </script>

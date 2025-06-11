@@ -146,6 +146,24 @@ export const bifrost = async <T>(args: {
   return reactive(maybeAtomDoc);
 };
 
+export const bifrostList = async <T>(args: {
+  workspaceId: string;
+  changeSetId: ChangeSetId;
+  kind: EntityKind,
+  id: Id;
+}): Promise<string[]> => {
+  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  const start = Date.now();
+  const list = await db.getList(
+    args.changeSetId,
+    args.id,
+  );
+  const end = Date.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost query", 'ComponentList', args.id, end - start, "ms");
+  return list;
+};
+
 export const getPossibleConnections = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;

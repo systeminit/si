@@ -69,6 +69,11 @@ export interface DBInterface {
     kind: EntityKind,
     id: Id,
   ): Promise<typeof NOROW | AtomDocument>;
+  getList (
+  changeSetId: ChangeSetId,
+  id: Id,
+  indexChecksum?: string,
+  ): Promise<string[]>;
   mjolnirBulk(
     workspaceId: string,
     changeSetId: ChangeSetId,

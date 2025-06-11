@@ -2368,6 +2368,45 @@ const getReferences = async (
   }
 };
 
+const getList = async (
+  changeSetId: ChangeSetId,
+  id: Id,
+  indexChecksum?: string,
+) => {
+  const sql = `
+    select
+      ref ->> '$.id'
+    from
+      (
+        select
+          json_each.value as ref
+        from
+          atoms,
+          json_each(jsonb_extract(CAST(atoms.data as text), '$.components'))
+          inner join index_mtm_atoms mtm
+            ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+          inner join indexes ON mtm.index_checksum = indexes.checksum
+        ${indexChecksum
+            ? ""
+            : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+        }
+        where
+          ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+          AND atoms.kind = 'ComponentList'
+          AND atoms.args = ?
+    ) as components
+  ;
+  `
+  const bind = [indexChecksum ?? changeSetId, id];
+  const listData = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+  const data = listData.map(l => l[0]) as string[];
+  return data
+};
+
 const get = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
@@ -2789,6 +2828,7 @@ const dbInterface: DBInterface = {
   },
 
   get,
+  getList,
   getOutgoingConnectionsByComponentId,
   getPossibleConnections,
   partialKeyFromKindAndId: partialKeyFromKindAndArgs,

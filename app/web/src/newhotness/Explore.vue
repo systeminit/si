@@ -1,5 +1,5 @@
 <template>
-  <DelayedLoader v-if="componentListRaw.isLoading.value" :size="'full'" />
+  <DelayedLoader v-if="listQuery.isLoading.value" :size="'full'" />
   <section v-else :class="clsx('grid h-full', showGrid ? 'explore' : 'map')">
     <!-- Left column -->
     <!-- 12 pixel padding to align with the SI logo -->
@@ -89,10 +89,10 @@
           <ComponentGridTile
             v-for="(component, index) in componentVirtualItemsList"
             ref="componentGridTileRefs"
-            :key="filteredComponents[component.index]!.id"
+            :key="filteredComponents[component.index]!"
             :data-index="index"
             :class="clsx(tileClasses(component.index))"
-            :component="filteredComponents[component.index]!"
+            :componentId="filteredComponents[component.index]!"
             @mouseenter="hover(component.index)"
             @mouseleave="unhover(component.index)"
             @click.stop.left="
@@ -219,7 +219,7 @@ import { useQuery } from "@tanstack/vue-query";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import { Fzf } from "fzf";
 import { tw } from "@si/vue-lib";
-import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import { bifrost, bifrostList, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
   BifrostComponentList,
@@ -347,6 +347,7 @@ const id = computed(() =>
 );
 const componentQueryKey = key(kind, id);
 
+/*
 const componentListRaw = useQuery<
   BifrostComponentList | ViewComponentList | null
 >({
@@ -358,14 +359,27 @@ const componentListRaw = useQuery<
     return await bifrost<BifrostComponentList | ViewComponentList>(arg);
   },
 });
+*/
+
+const filteredComponents = reactive<string[]>([]);
+
+const listQuery = useQuery<string[]>({
+  queryKey: key("ComponentListNew" as EntityKind, id),
+  queryFn: async () => {
+    const data = await bifrostList<string[]>(args(EntityKind.ComponentList));
+    filteredComponents.splice(0, Infinity, ...data);
+    return data
+  }
+})
+
 
 const componentList = computed(
-  () => componentListRaw.data.value?.components ?? [],
+  () => listQuery.data.value ?? [],
 );
 
 const scrollRef = ref<HTMLDivElement>();
 
-const filteredComponents = reactive<BifrostComponentInList[]>([]);
+/*
 
 const searchString = ref("");
 const computedSearchString = computed(() => searchString.value);
@@ -392,6 +406,7 @@ watch(
   },
   { immediate: true },
 );
+*/
 
 function getScrollbarWidth(): number {
   const temp = document.createElement("div");
