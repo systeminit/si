@@ -6,6 +6,7 @@ use dal::ServicesContext;
 use edda_client::EddaClient;
 use frigg::FriggStore;
 use nats_multiplexer_client::MultiplexerClient;
+use sdf_core::nats_multiplexer::EddaUpdatesMultiplexerClient;
 use si_data_spicedb::SpiceDbClient;
 use si_jwt_public_key::JwtPublicSigningKeyChain;
 use si_posthog::PosthogClient;
@@ -35,7 +36,7 @@ impl AxumApp {
         auth_api_url: impl AsRef<str>,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
-        data_cache_multiplexer_client: MultiplexerClient,
+        edda_updates_multiplexer_client: EddaUpdatesMultiplexerClient,
         create_workspace_permissions: WorkspacePermissionsMode,
         create_workspace_allowlist: Vec<WorkspacePermissions>,
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
@@ -53,7 +54,7 @@ impl AxumApp {
             false,
             ws_multiplexer_client,
             crdt_multiplexer_client,
-            data_cache_multiplexer_client,
+            edda_updates_multiplexer_client,
             create_workspace_permissions,
             create_workspace_allowlist,
             application_runtime_mode,
@@ -78,7 +79,7 @@ impl AxumApp {
         for_tests: bool,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
-        data_cache_multiplexer_client: MultiplexerClient,
+        edda_updates_multiplexer_client: EddaUpdatesMultiplexerClient,
         create_workspace_permissions: WorkspacePermissionsMode,
         create_workspace_allowlist: Vec<WorkspacePermissions>,
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
@@ -96,7 +97,7 @@ impl AxumApp {
             for_tests,
             ws_multiplexer_client,
             crdt_multiplexer_client,
-            data_cache_multiplexer_client,
+            edda_updates_multiplexer_client,
             create_workspace_permissions,
             create_workspace_allowlist,
             application_runtime_mode,

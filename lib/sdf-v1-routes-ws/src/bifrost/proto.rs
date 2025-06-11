@@ -1,32 +1,32 @@
 use std::{
-    error::Error,
-    sync::Arc,
+    error::{
+        self,
+        Error as _,
+    },
+    string::FromUtf8Error,
 };
 
 use axum::extract::ws::{
     self,
     WebSocket,
 };
-use dal::WorkspacePk;
-use nats_multiplexer_client::{
-    MultiplexerClient,
-    MultiplexerClientError,
+use dal::{
+    DedicatedExecutor,
+    DedicatedExecutorError,
+    WorkspacePk,
 };
-use si_data_nats::{
-    NatsClient,
-    Subject,
+use miniz_oxide::inflate;
+use nats_std::header::{
+    self,
+    value::ContentEncoding,
 };
-use si_frontend_mv_types::object::patch::DATA_CACHE_SUBJECT_PREFIX;
+use sdf_core::nats_multiplexer::EddaUpdatesMultiplexerClient;
+use si_data_nats::NatsClient;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::{
-    Mutex,
-    broadcast,
-};
+use tokio::sync::broadcast;
 use tokio_tungstenite::tungstenite;
 use tokio_util::sync::CancellationToken;
-
-type Result<T> = std::result::Result<T, BifrostError>;
 
 #[remain::sorted]
 #[derive(Debug, Error)]
@@ -35,23 +35,37 @@ pub enum BifrostError {
     Axum(#[from] axum::Error),
     #[error("Broadcast channel receive error: {0}")]
     BroadcastReceive(#[from] tokio::sync::broadcast::error::RecvError),
-    #[error("Multiplexer client error: {0}")]
-    MultiplexerClient(#[from] MultiplexerClientError),
+    #[error("compute executor error: {0}")]
+    ComputeExecutor(#[from] DedicatedExecutorError),
+    #[error("message decompress error: {0}")]
+    Decompress(String),
+    #[error("edda updates multiplexer client error: {0}")]
+    EddaUpdatesMultiplexerClient(#[source] Box<dyn error::Error>),
     #[error("Nats error: {0}")]
     Nats(#[from] si_data_nats::Error),
+    #[error("error parsing payload as utf8 string: {0}")]
+    PayloadStringParse(#[source] FromUtf8Error),
     #[error("Token cancellation error: {0}")]
     TokenCancellation(#[from] tokio::task::JoinError),
-    #[error("TryLock error: {0}")]
-    TryLock(#[from] tokio::sync::TryLockError),
     #[error("Error closing websocket: {0}")]
     WsClose(#[source] axum::Error),
     #[error("Error sending websocket message: {0}")]
     WsSendIo(#[source] axum::Error),
 }
 
-pub fn run(nats: NatsClient, workspace_pk: WorkspacePk, token: CancellationToken) -> Bifrost {
+type Result<T> = std::result::Result<T, BifrostError>;
+
+type Error = BifrostError;
+
+pub fn run(
+    nats: NatsClient,
+    compute_executor: DedicatedExecutor,
+    workspace_pk: WorkspacePk,
+    token: CancellationToken,
+) -> Bifrost {
     Bifrost {
         nats,
+        compute_executor,
         workspace_pk,
         token,
     }
@@ -60,6 +74,7 @@ pub fn run(nats: NatsClient, workspace_pk: WorkspacePk, token: CancellationToken
 #[derive(Debug)]
 pub struct Bifrost {
     nats: NatsClient,
+    compute_executor: DedicatedExecutor,
     workspace_pk: WorkspacePk,
     token: CancellationToken,
 }
@@ -67,22 +82,17 @@ pub struct Bifrost {
 impl Bifrost {
     pub async fn start(
         self,
-        bifrost_multiplexer_client: Arc<Mutex<MultiplexerClient>>,
+        bifrost_multiplexer_client: EddaUpdatesMultiplexerClient,
     ) -> Result<BifrostStarted> {
-        // subject is wildcarded, but as of this moment could be either patch_message or index_update
-        // for now, just pass everything right along
-        let subject = Subject::from(format!(
-            "{}.workspace_id.{}.*",
-            DATA_CACHE_SUBJECT_PREFIX, self.workspace_pk
-        ));
         let receiver = bifrost_multiplexer_client
-            .try_lock()?
-            .receiver(subject)
-            .await?;
+            .receiver_for_workspace(self.nats.metadata().subject_prefix(), self.workspace_pk)
+            .await
+            .map_err(Error::EddaUpdatesMultiplexerClient)?;
 
         Ok(BifrostStarted {
             _workspace_pk: self.workspace_pk,
             _nats: self.nats.clone(),
+            compute_executor: self.compute_executor,
             receiver,
             token: self.token,
         })
@@ -93,6 +103,7 @@ impl Bifrost {
 pub struct BifrostStarted {
     _workspace_pk: WorkspacePk,
     _nats: NatsClient,
+    compute_executor: DedicatedExecutor,
     receiver: broadcast::Receiver<si_data_nats::Message>,
     token: CancellationToken,
 }
@@ -136,23 +147,43 @@ impl BifrostStarted {
                         None => return Ok(BifrostClosing { ws_is_closed: true }),
                     }
                 }
-                recv_result = self.receiver.recv() => {
-                    let nats_msg =  recv_result?;
-                    let msg = ws::Message::Text(String::from_utf8_lossy(nats_msg.payload()).to_string());
+                nats_msg_result = self.receiver.recv() => {
+                    match nats_msg_result {
+                        // We have a message
+                        Ok(nats_msg) => {
+                            let ws_msg = match self.build_ws_message(nats_msg).await {
+                                Ok(ws_msg) => ws_msg,
+                                Err(err) => {
+                                    warn!(
+                                        si.error.message = ?err,
+                                        "failed to forward a nats message to web socket; skipping",
+                                    );
+                                    continue;
+                                }
+                            };
 
-                    if let Err(err) = ws.send(msg).await {
-                        match err
-                            .source()
-                            .and_then(|err| err.downcast_ref::<tungstenite::Error>())
-                        {
-                                // If the websocket has cleanly closed, we should cleanly finish as
-                                // well--this is not an error condition
-                                Some(tungstenite::Error::ConnectionClosed)
-                                | Some(tungstenite::Error::AlreadyClosed) => {
-                                    trace!("websocket has cleanly closed, ending");
-                                    return Ok(BifrostClosing { ws_is_closed: true });
-                            },
-                            _ => return Err(BifrostError::WsSendIo(err)),
+                            if let Err(err) = ws.send(ws_msg).await {
+                                match err
+                                    .source()
+                                    .and_then(|err| err.downcast_ref::<tungstenite::Error>())
+                                {
+                                        // If the websocket has cleanly closed, we should cleanly finish as
+                                        // well--this is not an error condition
+                                        Some(tungstenite::Error::ConnectionClosed)
+                                        | Some(tungstenite::Error::AlreadyClosed) => {
+                                            trace!("websocket has cleanly closed, ending");
+                                            return Ok(BifrostClosing { ws_is_closed: true });
+                                    },
+                                    _ => return Err(BifrostError::WsSendIo(err)),
+                                }
+                            }
+                        }
+                        // We have a `RecvError`
+                        Err(err) => {
+                            warn!(
+                                si.error.message = ?err,
+                                "encountered a recv error on NATS subscription; skipping",
+                            );
                         }
                     }
                 }
@@ -163,6 +194,46 @@ impl BifrostStarted {
         Ok(BifrostClosing {
             ws_is_closed: false,
         })
+    }
+
+    #[instrument(
+        name = "build_ws_message",
+        level = "debug",
+        skip_all,
+        fields(
+            bytes.size.compressed = Empty,
+            bytes.size.uncompressed = Empty,
+        ),
+    )]
+    async fn build_ws_message(&self, msg: si_data_nats::Message) -> Result<ws::Message> {
+        let span = current_span_for_instrument_at!("debug");
+
+        let payload_buf = if header::content_encoding_is(msg.headers(), ContentEncoding::DEFLATE) {
+            span.record("bytes.size.compressed", msg.payload().len());
+            self.compute_executor
+                .spawn(async move {
+                    let compressed = msg.into_inner().payload;
+                    inflate::decompress_to_vec(&compressed)
+                })
+                .await?
+                .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?
+        } else if header::content_encoding_is(msg.headers(), ContentEncoding::ZLIB) {
+            span.record("bytes.size.compressed", msg.payload().len());
+            self.compute_executor
+                .spawn(async move {
+                    let compressed = msg.into_inner().payload;
+                    inflate::decompress_to_vec_zlib(&compressed)
+                })
+                .await?
+                .map_err(|decompress_err| Error::Decompress(decompress_err.to_string()))?
+        } else {
+            msg.into_inner().payload.into()
+        };
+
+        span.record("bytes.size.uncompressed", payload_buf.len());
+        let payload_str = String::from_utf8(payload_buf).map_err(Error::PayloadStringParse)?;
+
+        Ok(ws::Message::Text(payload_str))
     }
 }
 

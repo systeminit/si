@@ -9,7 +9,7 @@ use std::{
 use chrono::Utc;
 use futures::StreamExt;
 pub use kill::process_kill_request;
-use nats_std::headers;
+use nats_std::header;
 use naxum::{
     Message,
     extract::{
@@ -143,7 +143,7 @@ pub async fn process_request_inner(
     let span = Span::current();
 
     let reply_subject = match maybe_headers
-        .and_then(|headers| headers.get(headers::REPLY_INBOX).map(|v| v.to_string()))
+        .and_then(|headers| headers.get(header::REPLY_INBOX).map(|v| v.to_string()))
     {
         Some(header_value) => Subject::from_utf8(header_value)?,
         None => return Err(HandlerError::NoReplyInbox),

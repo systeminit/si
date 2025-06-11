@@ -177,3 +177,19 @@ impl FromRequestParts<AppState> for EddaClient {
         Ok(Self(state.edda_client().clone()))
     }
 }
+
+#[derive(Clone, Debug, Deref, Into)]
+pub struct ComputeExecutor(pub dal::DedicatedExecutor);
+
+#[async_trait]
+impl FromRequestParts<AppState> for ComputeExecutor {
+    type Rejection = ErrorResponse;
+
+    async fn from_request_parts(
+        _parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let compute_executor = state.services_context().compute_executor().clone();
+        Ok(Self(compute_executor))
+    }
+}

@@ -67,6 +67,9 @@ pub mod subject {
 
     const REQUESTS_SUBJECT_PREFIX: &str = "edda.requests";
     const TASKS_SUBJECT_PREFIX: &str = "edda.tasks";
+    const UPDATES_SUBJECT_PREFIX: &str = "edda.updates";
+
+    const ALL_UPDATES_SUBJECT: &str = "edda.updates.*.*";
 
     // Targetting subjects:
     // - `edda.tasks.$workspace_id.$change_set_id.$task_kind` (task for a change set)
@@ -108,6 +111,19 @@ pub mod subject {
                 "{TASKS_SUBJECT_PREFIX}.{}.{}.process",
                 workspace_id, change_set_id,
             ),
+        )
+    }
+
+    #[inline]
+    pub fn all_updates_for_all_workspace(prefix: Option<&str>) -> Subject {
+        nats_std::subject::prefixed(prefix, ALL_UPDATES_SUBJECT)
+    }
+
+    #[inline]
+    pub fn all_updates_for_workspace(prefix: Option<&str>, workspace_id: &str) -> Subject {
+        nats_std::subject::prefixed(
+            prefix,
+            format!("{UPDATES_SUBJECT_PREFIX}.{workspace_id}.*",),
         )
     }
 }

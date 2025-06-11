@@ -63,6 +63,7 @@ use self::app_state::AppState;
 use crate::{
     ServerMetadata,
     compressing_stream::CompressingStream,
+    updates::EddaUpdates,
 };
 
 mod materialized_view;
@@ -95,6 +96,7 @@ impl ChangeSetProcessorTask {
         nats: NatsClient,
         incoming: CompressingStream<push::Ordered>,
         frigg: FriggStore,
+        edda_updates: EddaUpdates,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         ctx_builder: DalContextBuilder,
@@ -114,6 +116,7 @@ impl ChangeSetProcessorTask {
             change_set_id,
             nats,
             frigg,
+            edda_updates,
             ctx_builder,
             server_tracker,
         );
@@ -321,7 +324,10 @@ mod handlers {
         app_state::AppState,
         materialized_view,
     };
-    use crate::compressed_request::CompressedRequest;
+    use crate::{
+        compressed_request::CompressedRequest,
+        updates::EddaUpdates,
+    };
 
     #[remain::sorted]
     #[derive(Debug, Error)]
@@ -373,6 +379,7 @@ mod handlers {
             change_set_id,
             nats: _,
             frigg,
+            edda_updates,
             ctx_builder,
             server_tracker: _,
         } = state;
@@ -396,7 +403,15 @@ mod handlers {
             return Ok(());
         }
 
-        handle_request(&ctx, &frigg, workspace_id, change_set_id, request).await
+        handle_request(
+            &ctx,
+            &frigg,
+            &edda_updates,
+            workspace_id,
+            change_set_id,
+            request,
+        )
+        .await
     }
 
     #[instrument(
@@ -413,6 +428,7 @@ mod handlers {
     async fn handle_request(
         ctx: &DalContext,
         frigg: &FriggStore,
+        edda_updates: &EddaUpdates,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         request: CompressedRequest,
@@ -428,6 +444,7 @@ mod handlers {
                 let index_was_copied = materialized_view::try_reuse_mv_index_for_new_change_set(
                     ctx,
                     frigg,
+                    edda_updates,
                     to_snapshot_address,
                 )
                 .await?;
@@ -436,6 +453,7 @@ mod handlers {
                     process_incremental_updates(
                         ctx,
                         frigg,
+                        edda_updates,
                         change_set_id,
                         to_snapshot_address, // both snapshot addrs will use `to`
                         to_snapshot_address, // both snapshot addrs will use `to`
@@ -448,6 +466,7 @@ mod handlers {
                     materialized_view::build_all_mv_for_change_set(
                         ctx,
                         frigg,
+                        edda_updates,
                         None,
                         "explicit rebuild",
                     )
@@ -457,9 +476,15 @@ mod handlers {
             }
             CompressedRequest::Rebuild { .. } => {
                 // Rebuild
-                materialized_view::build_all_mv_for_change_set(ctx, frigg, None, "explicit rebuild")
-                    .await
-                    .map_err(Into::into)
+                materialized_view::build_all_mv_for_change_set(
+                    ctx,
+                    frigg,
+                    edda_updates,
+                    None,
+                    "explicit rebuild",
+                )
+                .await
+                .map_err(Into::into)
             }
             CompressedRequest::Update {
                 src_requests_count: _,
@@ -477,6 +502,7 @@ mod handlers {
                     process_incremental_updates(
                         ctx,
                         frigg,
+                        edda_updates,
                         change_set_id,
                         from_snapshot_address,
                         to_snapshot_address,
@@ -496,6 +522,7 @@ mod handlers {
                     materialized_view::build_all_mv_for_change_set(
                         ctx,
                         frigg,
+                        edda_updates,
                         latest_index_checksum,
                         "snapshot moved",
                     )
@@ -509,6 +536,7 @@ mod handlers {
                     materialized_view::build_all_mv_for_change_set(
                         ctx,
                         frigg,
+                        edda_updates,
                         None,
                         "initial build",
                     )
@@ -522,6 +550,7 @@ mod handlers {
     async fn process_incremental_updates(
         ctx: &DalContext,
         frigg: &FriggStore,
+        edda_updates: &EddaUpdates,
         change_set_id: ChangeSetId,
         from_snapshot_address: WorkspaceSnapshotAddress,
         to_snapshot_address: WorkspaceSnapshotAddress,
@@ -545,6 +574,7 @@ mod handlers {
         materialized_view::build_mv_for_changes_in_change_set(
             ctx,
             frigg,
+            edda_updates,
             change_set_id,
             from_snapshot_address,
             to_snapshot_address,
@@ -587,6 +617,8 @@ mod app_state {
     };
     use tokio_util::task::TaskTracker;
 
+    use crate::updates::EddaUpdates;
+
     /// Application state.
     #[derive(Clone, Debug)]
     pub(crate) struct AppState {
@@ -599,6 +631,8 @@ mod app_state {
         pub(crate) nats: NatsClient,
         /// Frigg store
         pub(crate) frigg: FriggStore,
+        /// Publishes patch and index update messages
+        pub(crate) edda_updates: EddaUpdates,
         /// DAL context builder for each processing request
         pub(crate) ctx_builder: DalContextBuilder,
         /// A task tracker for server-level tasks that can outlive the lifetime of a change set
@@ -615,6 +649,7 @@ mod app_state {
             change_set_id: ChangeSetId,
             nats: NatsClient,
             frigg: FriggStore,
+            edda_updates: EddaUpdates,
             ctx_builder: DalContextBuilder,
             server_tracker: TaskTracker,
         ) -> Self {
@@ -623,6 +658,7 @@ mod app_state {
                 change_set_id,
                 nats,
                 frigg,
+                edda_updates,
                 ctx_builder,
                 server_tracker,
             }

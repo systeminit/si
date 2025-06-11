@@ -31,6 +31,7 @@ rust_library(
         "//third-party/rust:futures",
         "//third-party/rust:inventory",
         "//third-party/rust:json-patch",
+        "//third-party/rust:miniz_oxide",
         "//third-party/rust:pin-project-lite",
         "//third-party/rust:remain",
         "//third-party/rust:ringmap",

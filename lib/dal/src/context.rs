@@ -1199,6 +1199,11 @@ impl DalContext {
         &self.services_context.rebaser
     }
 
+    /// Gets a reference to the DAL context's compute executor.
+    pub fn compute_executor(&self) -> &DedicatedExecutor {
+        &self.services_context.compute_executor
+    }
+
     /// Gets a reference to the DAL context's encryption key.
     pub fn encryption_key(&self) -> &VeritechEncryptionKey {
         &self.services_context.encryption_key

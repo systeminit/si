@@ -1,5 +1,5 @@
-//! This module contains the ability to work with NATS message headers to specify the content type, message type and
-//! version type of an API type.
+//! This module contains the ability to work with NATS message headers to specify the content type,
+//! message type and version type of an API type.
 
 use core::fmt;
 use std::{
@@ -8,6 +8,7 @@ use std::{
     str::FromStr,
 };
 
+use nats_std::header;
 use si_data_nats::{
     HeaderMap,
     HeaderValue,
@@ -15,13 +16,6 @@ use si_data_nats::{
 use thiserror::Error;
 
 use crate::ApiWrapper;
-
-// X-CONTENT-TYPE: application/json
-const NATS_HEADER_CONTENT_TYPE_NAME: &str = "X-CONTENT-TYPE";
-// X-MESSAGE-TYPE: EnqueueRequest
-const NATS_HEADER_MESSAGE_TYPE_NAME: &str = "X-MESSAGE-TYPE";
-// X-MESSAGE-VERSION: 1
-const NATS_HEADER_MESSAGE_VERSION_NAME: &str = "X-MESSAGE-VERSION";
 
 #[allow(missing_docs)]
 #[derive(Debug, Error)]
@@ -46,12 +40,9 @@ pub struct ContentInfo<'a> {
 impl ContentInfo<'_> {
     /// Injects the content information into NATS message headers.
     pub fn inject_into_headers(&self, headers: &mut HeaderMap) {
-        headers.insert(NATS_HEADER_CONTENT_TYPE_NAME, self.content_type.as_str());
-        headers.insert(NATS_HEADER_MESSAGE_TYPE_NAME, self.message_type.as_str());
-        headers.insert(
-            NATS_HEADER_MESSAGE_VERSION_NAME,
-            self.message_version.to_string(),
-        );
+        headers.insert(header::CONTENT_TYPE, self.content_type.as_str());
+        headers.insert(header::MESSAGE_TYPE, self.message_type.as_str());
+        headers.insert(header::MESSAGE_VERSION, self.message_version.to_string());
     }
 }
 
@@ -59,17 +50,16 @@ impl TryFrom<&HeaderMap> for ContentInfo<'_> {
     type Error = HeaderMapParseMessageInfoError;
 
     fn try_from(map: &HeaderMap) -> Result<Self, Self::Error> {
-        let content_type = ContentType::from(map.get(NATS_HEADER_CONTENT_TYPE_NAME).ok_or(
-            HeaderMapParseMessageInfoError::MissingHeader(NATS_HEADER_CONTENT_TYPE_NAME),
+        let content_type = ContentType::from(map.get(header::CONTENT_TYPE).ok_or(
+            HeaderMapParseMessageInfoError::MissingHeader(header::CONTENT_TYPE),
         )?);
-        let message_type = MessageType::from(map.get(NATS_HEADER_MESSAGE_TYPE_NAME).ok_or(
-            HeaderMapParseMessageInfoError::MissingHeader(NATS_HEADER_MESSAGE_TYPE_NAME),
+        let message_type = MessageType::from(map.get(header::MESSAGE_TYPE).ok_or(
+            HeaderMapParseMessageInfoError::MissingHeader(header::MESSAGE_TYPE),
         )?);
-        let message_version =
-            MessageVersion::try_from(map.get(NATS_HEADER_MESSAGE_VERSION_NAME).ok_or(
-                HeaderMapParseMessageInfoError::MissingHeader(NATS_HEADER_MESSAGE_VERSION_NAME),
-            )?)
-            .map_err(HeaderMapParseMessageInfoError::ParseVersion)?;
+        let message_version = MessageVersion::try_from(map.get(header::MESSAGE_VERSION).ok_or(
+            HeaderMapParseMessageInfoError::MissingHeader(header::MESSAGE_VERSION),
+        )?)
+        .map_err(HeaderMapParseMessageInfoError::ParseVersion)?;
 
         Ok(Self {
             content_type,

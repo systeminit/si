@@ -16,6 +16,7 @@ dal = { path = "../../lib/dal" }
 dal-materialized-views = { path = "../../lib/dal-materialized-views" }
 si-db = { path = "../../lib/si-db" }
 edda-client = { path = "../../lib/edda-client" }
+edda-core = { path = "../../lib/edda-core" }
 innit-client = { path = "../../lib/innit-client" }
 frigg = { path = "../../lib/frigg" }
 module-index-client = { path = "../../lib/module-index-client" }

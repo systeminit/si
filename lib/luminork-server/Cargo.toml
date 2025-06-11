@@ -15,6 +15,7 @@ buck2-resources = { path = "../../lib/buck2-resources" }
 dal = { path = "../../lib/dal" }
 si-db = { path = "../../lib/si-db" }
 edda-client = { path = "../../lib/edda-client" }
+edda-core = { path = "../../lib/edda-core" }
 frigg = { path = "../../lib/frigg" }
 module-index-client = { path = "../../lib/module-index-client" }
 nats-multiplexer = { path = "../../lib/nats-multiplexer" }

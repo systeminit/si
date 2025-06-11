@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use axum::{
     extract::{
         State,
@@ -8,10 +6,16 @@ use axum::{
     },
     response::IntoResponse,
 };
-use dal::WorkspacePk;
-use nats_multiplexer_client::MultiplexerClient;
-use sdf_core::nats_multiplexer::NatsMultiplexerClients;
+use dal::{
+    DedicatedExecutor,
+    WorkspacePk,
+};
+use sdf_core::nats_multiplexer::{
+    EddaUpdatesMultiplexerClient,
+    NatsMultiplexerClients,
+};
 use sdf_extract::{
+    ComputeExecutor,
     request::TokenFromQueryParam,
     services::Nats,
     workspace::{
@@ -21,19 +25,20 @@ use sdf_extract::{
 };
 use si_data_nats::NatsClient;
 use telemetry::prelude::*;
-use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
 use crate::WsError;
 
 pub mod proto;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn bifrost_handler(
     wsu: WebSocketUpgrade,
     Nats(nats): Nats,
     _: TokenFromQueryParam,
     _: TargetWorkspaceIdFromToken,
     auth: WorkspaceAuthorization,
+    ComputeExecutor(compute_executor): ComputeExecutor,
     State(shutdown_token): State<CancellationToken>,
     State(channel_multiplexer_clients): State<NatsMultiplexerClients>,
 ) -> Result<impl IntoResponse, WsError> {
@@ -42,7 +47,8 @@ pub async fn bifrost_handler(
             socket,
             nats,
             auth.workspace_id,
-            channel_multiplexer_clients.data_cache,
+            channel_multiplexer_clients.edda_updates,
+            compute_executor,
             shutdown_token,
         )
     }))
@@ -52,10 +58,11 @@ async fn run_bifrost_proto(
     mut socket: WebSocket,
     nats: NatsClient,
     workspace_pk: WorkspacePk,
-    bifrost_multiplexer_client: Arc<Mutex<MultiplexerClient>>,
+    bifrost_multiplexer_client: EddaUpdatesMultiplexerClient,
+    compute_executor: DedicatedExecutor,
     shutdown_token: CancellationToken,
 ) {
-    let proto = match proto::run(nats, workspace_pk, shutdown_token)
+    let proto = match proto::run(nats, compute_executor, workspace_pk, shutdown_token)
         .start(bifrost_multiplexer_client)
         .await
     {
