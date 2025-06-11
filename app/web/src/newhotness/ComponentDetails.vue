@@ -90,7 +90,11 @@
     <div class="attrs flex flex-col">
       <CollapsingFlexItem ref="attrRef" :expandable="false" open>
         <template #header>Attributes</template>
-        <AttributePanel :component="component" />
+        <AttributePanel
+          v-if="attributeTree"
+          :component="component"
+          :attributeTree="attributeTree"
+        />
       </CollapsingFlexItem>
       <CollapsingFlexItem ref="actionRef" :expandable="false">
         <template #header>Actions</template>
@@ -144,7 +148,11 @@
           <PillCounter :count="component.qualificationTotals.total" />
           Qualifications
         </template>
-        <QualificationPanel :component="component" />
+        <QualificationPanel
+          v-if="attributeTree"
+          :component="component"
+          :attributeTree="attributeTree"
+        />
       </CollapsingFlexItem>
       <CollapsingFlexItem>
         <template #header>
@@ -157,14 +165,22 @@
           <Icon v-else name="refresh-hex-outline" size="sm" tone="shade" />
           Resource
         </template>
-        <ResourcePanel :component="component" />
+        <ResourcePanel
+          v-if="attributeTree"
+          :component="component"
+          :attributeTree="attributeTree"
+        />
       </CollapsingFlexItem>
       <CollapsingFlexItem>
         <template #header>
           <Icon name="brackets-curly" size="sm" />
           Generated Code
         </template>
-        <CodePanel :component="component" />
+        <CodePanel
+          v-if="attributeTree"
+          :component="component"
+          :attributeTree="attributeTree"
+        />
       </CollapsingFlexItem>
       <CollapsingFlexItem>
         <template #header>
@@ -199,6 +215,7 @@ import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
+  AttributeTree,
   BifrostComponent,
   BifrostComponentConnections,
   EntityKind,
@@ -243,6 +260,18 @@ const componentQuery = useQuery<BifrostComponent | null>({
     return component;
   },
 });
+
+const attributeTreeQuery = useQuery<AttributeTree | null>({
+  queryKey: key(EntityKind.AttributeTree, componentId.value),
+  queryFn: async () => {
+    const attributeTree = await bifrost<AttributeTree>(
+      args(EntityKind.AttributeTree, componentId.value),
+    );
+    return attributeTree;
+  },
+});
+const attributeTree = computed(() => attributeTreeQuery.data.value);
+
 const component = computed(() => componentQuery.data.value);
 
 const mgmtFuncs = computed(

@@ -15,18 +15,22 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import { BifrostComponent } from "@/workers/types/entity_kind_types";
+import {
+  AttributeTree,
+  BifrostComponent,
+} from "@/workers/types/entity_kind_types";
 import CodeViewer from "@/components/CodeViewer.vue";
 import EmptyStateCard from "@/components/EmptyStateCard.vue";
 import { findAvsAtPropPath } from "./util";
 
 const props = defineProps<{
   component: BifrostComponent;
+  attributeTree?: AttributeTree;
 }>();
 
 const resourcePayload = computed(() => {
-  if (!props.component.attributeTree) return;
-  const data = findAvsAtPropPath(props.component.attributeTree, [
+  if (!props.attributeTree) return;
+  const data = findAvsAtPropPath(props.attributeTree, [
     "root",
     "resource",
     "payload",

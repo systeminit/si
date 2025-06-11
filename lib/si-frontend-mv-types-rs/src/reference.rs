@@ -36,6 +36,7 @@ pub use weak::WeakReference;
 pub enum ReferenceKind {
     ActionPrototypeViewList,
     ActionViewList,
+    AttributeTree,
     ChangeSetList,
     ChangeSetRecord,
     Component,

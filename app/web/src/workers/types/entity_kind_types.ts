@@ -32,6 +32,7 @@ export enum EntityKind {
   SecretDefinition = "SecretDefinition",
   OutgoingConnections = "OutgoingConnections",
   PossibleConnections = "PossibleConnections",
+  AttributeTree = "AttributeTree",
 }
 /**
  * NOTE, if you want to narrow the type of a variable
@@ -258,7 +259,6 @@ export interface BifrostComponent {
     current?: string;
     diff?: string;
   };
-  attributeTree: AttributeTree;
 }
 
 // NOTE: when using `getMany` you don't end up with a BifrostComponent (b/c it doesnt have SchemaVariant)
@@ -343,9 +343,12 @@ export interface AVTree {
 }
 
 export interface AttributeTree {
+  id: ComponentId;
   attributeValues: Record<AttributeValueId, AttributeValue>;
   props: Record<PropId, Prop>;
   treeInfo: Record<AttributeValueId, AVTree>;
+  componentName: string;
+  schemaName: string;
 }
 
 // EntityKind.IncomingConnectionsList

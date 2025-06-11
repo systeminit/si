@@ -1,4 +1,3 @@
-use attribute_tree::AttributeTree;
 use serde::{
     Deserialize,
     Serialize,
@@ -85,7 +84,6 @@ pub struct Component {
     pub qualification_totals: ComponentQualificationStats,
     pub input_count: usize,
     pub diff_count: usize,
-    pub attribute_tree: AttributeTree,
     pub resource_diff: ComponentDiff,
     pub is_secret_defining: bool,
 }

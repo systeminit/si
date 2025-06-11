@@ -11,6 +11,7 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 import {
+  AttributeTree,
   AttributeValue,
   BifrostComponent,
   Prop,
@@ -29,9 +30,10 @@ export interface QualItem {
 
 const props = defineProps<{
   component: BifrostComponent;
+  attributeTree?: AttributeTree;
 }>();
 
-const root = computed(() => props.component.attributeTree);
+const root = computed(() => props.attributeTree);
 
 const qualItems = computed<QualItem[]>(() => {
   const items: QualItem[] = [];

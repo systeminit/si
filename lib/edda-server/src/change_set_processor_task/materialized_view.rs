@@ -41,6 +41,7 @@ use si_frontend_mv_types::{
         Component as ComponentMv,
         ComponentList as ComponentListMv,
         SchemaMembers,
+        attribute_tree::AttributeTree as AttributeTreeMv,
     },
     incoming_connections::{
         IncomingConnections as IncomingConnectionsMv,
@@ -826,6 +827,32 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                     workspace_mv_id,
                     ActionViewListMv,
                     dal_materialized_views::action_view_list::assemble(ctx.clone()),
+                );
+            } else {
+                return Ok(Some(QueuedBuildMvTask { change, mv_kind }));
+            }
+        }
+        ReferenceKind::AttributeTree => {
+            let entity_mv_id = change.entity_id.to_string();
+
+            let trigger_entity = <AttributeTreeMv as MaterializedView>::trigger_entity();
+            if change.entity_kind != trigger_entity {
+                return Ok(None);
+            }
+
+            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+                spawn_build_mv_task!(
+                    build_tasks,
+                    mv_task_ids,
+                    ctx,
+                    frigg,
+                    change,
+                    entity_mv_id,
+                    AttributeTreeMv,
+                    dal_materialized_views::component::attribute_tree::assemble(
+                        ctx.clone(),
+                        si_events::ulid::Ulid::from(change.entity_id).into(),
+                    ),
                 );
             } else {
                 return Ok(Some(QueuedBuildMvTask { change, mv_kind }));

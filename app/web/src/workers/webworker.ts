@@ -79,6 +79,7 @@ import {
   SchemaVariant,
   UninstalledVariant,
   View,
+  AttributeTree,
 } from "./types/entity_kind_types";
 import {
   bulkDone,
@@ -1562,7 +1563,7 @@ const weakReference = async (
  * COMPUTED IMPLEMENTATIONS
  */
 const COMPUTED_KINDS: EntityKind[] = [
-  EntityKind.Component,
+  EntityKind.AttributeTree,
   EntityKind.IncomingConnections,
 ];
 
@@ -1681,21 +1682,21 @@ const updateComputed = async (
         .get(incoming.fromComponent.id);
       conns[id] = outgoing;
     });
-  } else if (kind === EntityKind.Component) {
+  } else if (kind === EntityKind.AttributeTree) {
     const conns: Record<string, PossibleConnection> = {};
 
-    const component = doc as BifrostComponent;
-    Object.values(component.attributeTree.attributeValues).forEach((av) => {
-      const prop = component.attributeTree.props[av.propId ?? ""];
+    const attributeTree = doc as AttributeTree;
+    Object.values(attributeTree.attributeValues).forEach((av) => {
+      const prop = attributeTree.props[av.propId ?? ""];
       if (av.path && prop && prop.eligibleForConnection && !prop.hidden) {
         conns[av.id] = {
           attributeValueId: av.id,
           value: av.secret ? av.secret.name : av.value || "<computed>",
           path: av.path,
           name: prop.name,
-          componentId: component.id,
-          componentName: component.name,
-          schemaName: component.schemaName,
+          componentId: attributeTree.id,
+          componentName: attributeTree.componentName,
+          schemaName: attributeTree.schemaName,
           kind: prop.kind,
           suggestAsSourceFor: prop.suggestAsSourceFor,
         };

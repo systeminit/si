@@ -89,6 +89,7 @@ const q = ref("");
 
 const props = defineProps<{
   component: BifrostComponent;
+  attributeTree?: AttributeTree;
 }>();
 
 export interface AttrTree {
@@ -135,7 +136,7 @@ const root = computed<AttrTree>(() => {
     attributeValue: {} as AttributeValue,
     isBuildable: false,
   };
-  const raw = props.component.attributeTree;
+  const raw = props.attributeTree;
   if (!raw) return empty;
 
   // find the root node in the tree, the only one with parent null

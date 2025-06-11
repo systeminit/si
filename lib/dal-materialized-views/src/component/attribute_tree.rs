@@ -34,6 +34,7 @@ use crate::{
 pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Result<AttributeTree> {
     let ctx = &ctx;
 
+    let component = Component::get_by_id(ctx, component_id).await?;
     let root_av_id = Component::root_attribute_value_id(ctx, component_id).await?;
     let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
     let secrets_category_av_id =
@@ -206,8 +207,11 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
     }
 
     Ok(AttributeTree {
+        id: component_id,
         attribute_values,
         props,
         tree_info,
+        component_name: component.name(ctx).await?,
+        schema_name: component.schema(ctx).await?.name,
     })
 }
