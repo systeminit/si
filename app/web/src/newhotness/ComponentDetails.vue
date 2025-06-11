@@ -89,11 +89,42 @@
 
     <div class="attrs flex flex-col">
       <CollapsingFlexItem ref="attrRef" :expandable="false" open>
-        <template #header>Attributes</template>
+        <template #header>
+          <div class="flex place-content-between w-full">
+            <span>Attributes</span>
+            <template v-if="hasImportFunc">
+              <VButton
+                v-if="!showResourceInput"
+                size="sm"
+                tone="neutral"
+                label="Import a Resource"
+                class="ml-2xs mr-xs font-normal"
+                @click.stop="
+                  () => {
+                    showResourceInput = true;
+                  }
+                "
+              />
+              <VButton
+                v-else
+                size="sm"
+                tone="neutral"
+                label="Set attributes manually"
+                class="ml-2xs mr-xs font-normal"
+                @click.stop="
+                  () => {
+                    showResourceInput = false;
+                  }
+                "
+              />
+            </template>
+          </div>
+        </template>
         <AttributePanel
           v-if="attributeTree"
           :component="component"
           :attributeTree="attributeTree"
+          :showImportArea="showResourceInput"
         />
       </CollapsingFlexItem>
       <CollapsingFlexItem ref="actionRef" :expandable="false">
@@ -421,6 +452,13 @@ const blur = () => {
 // );
 
 // provide("ComponentPageContext", context);
+
+// Import
+const hasImportFunc = computed(
+  () => mgmtFuncs.value.find((f) => f.kind === "import") !== undefined,
+);
+
+const showResourceInput = ref(false);
 
 onMounted(() => {
   keyEmitter.on("Escape", () => {
