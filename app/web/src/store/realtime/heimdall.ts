@@ -1,5 +1,13 @@
 import * as Comlink from "comlink";
-import { computed, reactive, Reactive, inject, ComputedRef, unref } from "vue";
+import {
+  computed,
+  reactive,
+  Reactive,
+  inject,
+  ComputedRef,
+  unref,
+  toRaw,
+} from "vue";
 import { QueryClient } from "@tanstack/vue-query";
 import {
   DBInterface,
@@ -10,6 +18,7 @@ import {
 import {
   BifrostConnection,
   EntityKind,
+  Prop,
 } from "@/workers/types/entity_kind_types";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Context } from "@/newhotness/types";
@@ -140,16 +149,15 @@ export const bifrost = async <T>(args: {
 export const getPossibleConnections = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
-  annotation: string;
-  _direction?: "output" | "input";
+  destSchemaName: string;
+  destProp: Prop;
 }) => {
-  // If we end up looking for sockets... we need direction
-  // But sockets are gonna die... so... ???
   return reactive(
-    await db.getConnectionByAnnotation(
+    await db.getPossibleConnections(
       args.workspaceId,
       args.changeSetId,
-      args.annotation,
+      toRaw(args.destSchemaName),
+      toRaw(args.destProp), // Can't send reactive stuff across the boundary, silently fails
     ),
   );
 };

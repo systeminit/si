@@ -15,6 +15,7 @@ import {
   BifrostConnection,
   EntityKind,
   PossibleConnection,
+  Prop,
 } from "./entity_kind_types";
 
 export type Column = string;
@@ -52,10 +53,11 @@ export interface DBInterface {
     headChangeSetId: string,
     changeSetId: string,
   ): Promise<void>;
-  getConnectionByAnnotation(
+  getPossibleConnections(
     workspaceId: string,
     changeSetId: string,
-    annotation: string,
+    destSchemaName: string,
+    destProp: Prop,
   ): {
     exactMatches: Array<PossibleConnection>;
     typeMatches: Array<PossibleConnection>;

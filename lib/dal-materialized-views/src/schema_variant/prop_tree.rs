@@ -147,6 +147,11 @@ pub async fn assemble_prop(
                 || path.starts_with("root/secrets")
                 || path.starts_with("root/resource_value")
         },
+        ui_optionals: prop
+            .ui_optionals
+            .into_iter()
+            .map(|(key, value)| (key, value.into()))
+            .collect(),
     };
     Ok(prop_mv)
 }

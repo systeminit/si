@@ -416,13 +416,13 @@
                 <TruncateWithTooltip v-else>
                   <template
                     v-if="
-                      connection.annotation === 'array' ||
-                      connection.annotation === 'map' ||
-                      connection.annotation === 'object' ||
-                      connection.annotation === 'json'
+                      connection.kind === 'array' ||
+                      connection.kind === 'map' ||
+                      connection.kind === 'object' ||
+                      connection.kind === 'json'
                     "
                   >
-                    {{ connection.annotation }}
+                    {{ connection.kind }}
                   </template>
                   <template v-else> {{ connection.value }} </template>
                 </TruncateWithTooltip>
@@ -651,6 +651,7 @@ attributeEmitter.on("selectedPath", (selectedPath) => {
   }
 });
 
+const focusedProp = ref<Prop>();
 const focus = () => {
   attributeEmitter.emit("selectedPath", path.value);
   attributeEmitter.emit("selectedDocs", {
@@ -658,7 +659,7 @@ const focus = () => {
     docs: props.prop?.documentation ?? "",
   });
   inputOpen.value = true;
-  annotation.value = props.prop?.kind ?? null;
+  focusedProp.value = props.prop;
 };
 
 const selectConnection = (index: number) => {
@@ -929,20 +930,19 @@ const onTab = (e: KeyboardEvent) => {
 };
 
 const connectingComponentId = ref<string | undefined>();
-const annotation = ref<string | null>(null);
 const makeKey = useMakeKey();
 const makeArgs = useMakeArgs();
-const enabled = computed(() => !!annotation.value);
+const enabled = computed(() => !!focusedProp.value?.kind);
 const potentialConnQuery = useQuery({
   queryKey: makeKey(EntityKind.PossibleConnections),
   enabled,
   queryFn: async () => {
-    if (annotation.value) {
-      const conns = await getPossibleConnections({
+    if (focusedProp.value) {
+      return await getPossibleConnections({
         ...makeArgs(EntityKind.PossibleConnections),
-        annotation: annotation.value,
+        destSchemaName: props.component.schemaName,
+        destProp: focusedProp.value,
       });
-      return conns;
     }
   },
 });
