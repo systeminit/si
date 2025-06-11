@@ -30,6 +30,7 @@ export function generateAssetFuncs(
       backendKind: "jsSchemaVariantDefinition",
       responseType: "schemaVariantDefinition",
       hidden: false,
+      isTransformation: false,
       link: null,
     };
 
