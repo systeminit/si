@@ -14,4 +14,5 @@ export type PropSpecData = {
   hidden: boolean | null;
   docLink: string | null;
   documentation: string | null;
+  uiOptionals: { [key: string]: JsonValue } | null;
 };
