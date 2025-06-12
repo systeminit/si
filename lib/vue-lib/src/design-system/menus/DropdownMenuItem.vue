@@ -18,7 +18,7 @@
           editor: [header ? 'p-xs' : 'p-2xs pr-xs', 'h-7'],
           contextmenu: 'p-xs pr-sm',
         }[menuCtx.variant as DropdownMenuVariant],
-        isFocused && !header && themeClasses('bg-action-300', 'bg-action-500'),
+        isFocused && !header && !menuCtx.navigatingSubmenu.value && themeClasses('bg-action-300', 'bg-action-500'),
         (!menuCtx.isCheckable.value || disableCheckable) &&
           !icon &&
           !$slots.icon &&
@@ -92,7 +92,11 @@
         <Icon name="chevron--right" size="sm" />
         <DropdownMenu
           ref="submenuRef"
-          :anchorTo="{ $el: internalRef, close: menuCtx.close }"
+          :anchorTo="{
+            $el: internalRef,
+            close: menuCtx.close,
+            navigatingSubmenu: menuCtx.navigatingSubmenu,
+          }"
           :items="submenuItems"
           submenu
           :variant="submenuVariant ?? 'editor'"
@@ -336,7 +340,24 @@ const elementIsInsideSubmenu = (el: Node) => {
   else return false;
 };
 
-defineExpose({ domRef: internalRef, elementIsInsideSubmenu });
+const hasSubmenu = computed(
+  () => props.submenuItems && props.submenuItems.length > 0,
+);
+
+const focusFirstSubmenuItem = () => {
+  if (submenuRef.value) {
+    submenuRef.value.focusFirstItem();
+  }
+};
+
+defineExpose({
+  domRef: internalRef,
+  hasSubmenu: hasSubmenu.value,
+  elementIsInsideSubmenu,
+  openSubmenu,
+  closeSubmenu,
+  focusFirstSubmenuItem,
+});
 </script>
 
 <script lang="ts">

@@ -103,7 +103,10 @@ import ComponentDetails from "./ComponentDetails.vue";
 import FuncRunDetails from "./FuncRunDetails.vue";
 import LatestFuncRunDetails from "./LatestFuncRunDetails.vue";
 import { Context, FunctionKind } from "./types";
-import { startKeyEmitter } from "./logic_composables/emitters";
+import {
+  startKeyEmitter,
+  startWindowResizeEmitter,
+} from "./logic_composables/emitters";
 import { tokensByWorkspacePk } from "./logic_composables/tokens";
 
 const props = defineProps<{
@@ -137,6 +140,7 @@ const context = computed<Context>(() => {
 });
 
 startKeyEmitter(document);
+startWindowResizeEmitter(window);
 
 provide("CONTEXT", context.value);
 

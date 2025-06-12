@@ -72,6 +72,7 @@ type DropdownMenuContext = {
   isCheckable: Ref<boolean>;
   focusedItemId: Ref<string | undefined>;
   search: boolean;
+  navigatingSubmenu: Ref<boolean>;
 
   registerItem(id: string, component: ComponentInternalInstance): void;
   unregisterItem(id: string): void;
@@ -132,6 +133,7 @@ const MENU_EDGE_BUFFER = 10;
 interface SubmenuParent {
   $el: Element;
   close: (shouldNotClose?: boolean, closeRecursively?: boolean) => void;
+  navigatingSubmenu: Ref<boolean>;
 }
 
 // IMPORTANT NOTE - currently any DropdownMenu with a dynamic number of DropdownMenuItems cannot have submenus
@@ -255,14 +257,34 @@ const focusedItemEl = computed(() => {
   // some weird behaviour where things can be inconsistently wrapped in a ref...
   // TODO: figure this out and make some utility fns
   const domRef = unref(focusedItem.value?.exposed?.domRef);
-  const el = domRef.$el || domRef;
+  const el = domRef?.$el || domRef;
   return el;
 });
 
 function focusOnItem(id?: string) {
   if (id && itemsById[id]) focusedItemId.value = id;
   else focusedItemId.value = undefined;
+
+  if (id) {
+    navigatingSubmenu.value = false;
+    if (props.submenu && props.anchorTo) {
+      const parent = props.anchorTo as SubmenuParent;
+      parent.navigatingSubmenu.value = true;
+    }
+  }
 }
+
+// Submenu navigation booleans
+const navigatingSubmenu = ref(false);
+const navigatingParent = computed(() => {
+  if (props.submenu && props.anchorTo) {
+    const parent = props.anchorTo as SubmenuParent;
+    if (!parent.navigatingSubmenu.value) {
+      return true;
+    }
+  }
+  return false;
+});
 
 // Opening / closing / positioning ////////////////////////////////////////////////////////////////////
 const isOpen = ref(false);
@@ -290,6 +312,7 @@ function open(e?: MouseEvent, anchorToMouse?: boolean) {
 
   isRepositioning.value = true;
   isOpen.value = true;
+  navigatingSubmenu.value = false;
 
   focusOnItem();
   nextFrame(finishOpening);
@@ -548,16 +571,44 @@ function onWindowMousedown(e: MouseEvent) {
     close(props.noDefaultClose);
   }
 }
+function closeFocusedSubmenu() {
+  if (focusedItem.value?.exposed) {
+    focusedItem.value.exposed.closeSubmenu();
+  }
+}
 function onKeyboardEvent(e: KeyboardEvent) {
-  if (e.key === "ArrowUp") {
-    if (focusedItemIndex.value === undefined)
-      focusedItemIndex.value = sortedItemIds.value.length - 1;
-    else focusedItemIndex.value -= 1;
-    e.preventDefault();
-  } else if (e.key === "ArrowDown") {
-    if (focusedItemIndex.value === undefined) focusedItemIndex.value = 0;
-    else focusedItemIndex.value += 1;
-    e.preventDefault();
+  if (!navigatingSubmenu.value && !navigatingParent.value) {
+    if (e.key === "ArrowUp") {
+      closeFocusedSubmenu();
+      if (focusedItem.value?.exposed) {
+        focusedItem.value.exposed.closeSubmenu();
+      }
+      if (focusedItemIndex.value === undefined)
+        focusedItemIndex.value = sortedItemIds.value.length - 1;
+      else focusedItemIndex.value -= 1;
+      e.preventDefault();
+      focusedItem.value?.exposed?.openSubmenu();
+    } else if (e.key === "ArrowDown") {
+      closeFocusedSubmenu();
+      if (focusedItemIndex.value === undefined) focusedItemIndex.value = 0;
+      else focusedItemIndex.value += 1;
+      e.preventDefault();
+      focusedItem.value?.exposed?.openSubmenu();
+    }
+  }
+
+  if (
+    e.key === "ArrowRight" &&
+    focusedItem &&
+    focusedItem.value?.exposed?.hasSubmenu
+  ) {
+    navigatingSubmenu.value = true;
+    focusedItem.value.exposed.focusFirstSubmenuItem();
+  } else if (e.key === "ArrowLeft" && props.submenu && props.anchorTo) {
+    const parent = props.anchorTo as SubmenuParent;
+    parent.navigatingSubmenu.value = false;
+    closeFocusedSubmenu();
+    focusOnItem();
   }
 
   if (searchSelected.value) {
@@ -565,9 +616,13 @@ function onKeyboardEvent(e: KeyboardEvent) {
       deselectSearch();
     }
   } else if (e.key === "Enter" || e.key === " ") {
-    // TODO(WENDY) - how does this part conflict with using the search bar?
-    focusedItemEl.value.click();
-    e.preventDefault();
+    if (focusedItemEl.value) {
+      // TODO(WENDY) - how does this part conflict with using the search bar?
+      focusedItemEl.value.click();
+      e.preventDefault();
+    } else {
+      emit("enterPressedNoSelection");
+    }
   } else if (e.key === "Escape") {
     close();
   }
@@ -611,6 +666,7 @@ const context = {
   focusOnItem,
   openSubmenu,
   search: props.search,
+  navigatingSubmenu,
 };
 provide(DropdownMenuContextInjectionKey, context);
 
@@ -626,6 +682,7 @@ const clearHover = () => {
 const emit = defineEmits<{
   (e: "search", searchString: string): void;
   (e: "onClose"): void;
+  (e: "enterPressedNoSelection"): void;
 }>();
 
 function onSearch(searchString: string) {
@@ -670,6 +727,10 @@ const elementIsInsideMenu = (el: Node) => {
   return false;
 };
 
+const focusFirstItem = () => {
+  focusedItemIndex.value = 0;
+};
+
 // this is what is exposed to the component using this component (via template ref)
 defineExpose({
   isOpen: readOnlyIsOpen,
@@ -680,6 +741,7 @@ defineExpose({
   searchFilteringActive,
   searchActiveFilters,
   elementIsInsideMenu,
+  focusFirstItem,
 });
 </script>
 

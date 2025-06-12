@@ -160,6 +160,7 @@ import VimLogo from "~icons/raphael/vim";
 
 // carbon
 import Create from "~icons/carbon/intent-request-create";
+import CarbonEdit from "~icons/carbon/edit";
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -270,6 +271,7 @@ export const ICONS = Object.freeze({
   "double-arrow-left": MaterialSymbolsKeyboardDoubleArrowLeftRounded,
   download: Download,
   edit: Pencil,
+  edit2: CarbonEdit,
   "empty-square": EmptySquare,
   erase: Eraser,
   esc: MdiKeyboardEsc,

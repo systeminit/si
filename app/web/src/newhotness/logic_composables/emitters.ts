@@ -1,4 +1,5 @@
 import mitt, { Emitter } from "mitt";
+import { ref } from "vue";
 
 export interface KeyDetails {
   [key: string | symbol]: Pick<
@@ -49,3 +50,28 @@ type AttributeDetails = {
 
 export const attributeEmitter: Emitter<AttributeDetails> =
   mitt<AttributeDetails>();
+
+export const windowWidthReactive = ref<number>(window.innerWidth);
+export const windowHeightReactive = ref<number>(window.innerHeight);
+
+export interface ResizeDetails {
+  [resize: string | symbol]: Pick<Event, "preventDefault" | "target">;
+}
+
+export const windowResizeEmitter: Emitter<ResizeDetails> =
+  mitt<ResizeDetails>();
+
+let windowResizeEmitterStarted = false;
+
+const onResize = (event: Event) => {
+  windowWidthReactive.value = window.innerWidth;
+  windowHeightReactive.value = window.innerHeight;
+
+  windowResizeEmitter.emit("resize", event);
+};
+
+export const startWindowResizeEmitter = (window: Window) => {
+  if (windowResizeEmitterStarted) return;
+  windowResizeEmitterStarted = true;
+  window.addEventListener("resize", onResize);
+};
