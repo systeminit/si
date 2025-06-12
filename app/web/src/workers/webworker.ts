@@ -170,7 +170,7 @@ const initializeSQLite = async (testing: boolean) => {
   }
 };
 
-const dropTables = async () => {
+const dropTables = () => {
   const sql = `
   DROP TABLE IF EXISTS index_mtm_atoms;
   DROP TABLE IF EXISTS atoms;
@@ -183,8 +183,8 @@ const dropTables = async () => {
 
 // INTEGER is 8 bytes, not large enough to store ULIDs
 // we'll go with string, though reading that putting the bytes as BLOBs would save space
-const ensureTables = async (testing: boolean) => {
-  if (_START_FRESH || testing) await dropTables();
+const ensureTables = (testing: boolean) => {
+  if (_START_FRESH || testing) dropTables();
   /**
    * GOAL: persist only data that is readable, once blob data is no longer viewable, get rid of it
    * PROBLEM: Objects exist across multiple changesets, so we cannot ever UPDATE atom
@@ -320,7 +320,7 @@ const atomExistsOnIndexes = async (
   return rows.flat().filter(nonNullable) as Checksum[];
 };
 
-const newIndex = async (
+const newIndex = (
   meta: AtomMeta,
   fromIndexChecksum: string | undefined,
 ) => {
@@ -514,7 +514,7 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
       return; // noop
     } else {
       debug("HAMMER: Atom exists, MTM needed");
-      await insertAtomMTM(msg.atom, msg.atom.toIndexChecksum);
+      insertAtomMTM(msg.atom, msg.atom.toIndexChecksum);
       return;
     }
   }
@@ -561,14 +561,14 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     "index:",
     indexChecksum,
   );
-  await insertAtomMTM(msg.atom, indexChecksum);
+  insertAtomMTM(msg.atom, indexChecksum);
 
   await updateChangeSetWithNewIndex(msg.atom);
   await removeOldIndex();
 
   if (COMPUTED_KINDS.includes(msg.atom.kind)) {
     debug("🔨 HAMMER: Updating computed for:", msg.atom.kind, msg.atom.id);
-    await updateComputed(
+    updateComputed(
       msg.atom.workspaceId,
       msg.atom.changeSetId,
       msg.atom.kind,
@@ -584,7 +584,7 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     "checksum:",
     msg.atom.toChecksum,
   );
-  await bustCacheAndReferences(
+  bustCacheAndReferences(
     msg.atom.workspaceId,
     msg.atom.changeSetId,
     msg.atom.kind,
@@ -592,7 +592,7 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
   );
 };
 
-const insertAtomMTM = async (atom: Atom, indexChecksum: Checksum) => {
+const insertAtomMTM = (atom: Atom, indexChecksum: Checksum) => {
   try {
     const bind = [indexChecksum, atom.kind, atom.id, atom.toChecksum];
     const exists = db.exec({
@@ -982,7 +982,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
         "indexChecksum:",
         indexChecksum,
       );
-      const inserted = await insertAtomMTM(atom, indexChecksum);
+      const inserted = insertAtomMTM(atom, indexChecksum);
       span.setAttribute("insertedMTM", inserted);
       debug("🔧 MTM inserted:", inserted, "for:", atom.kind, atom.id);
     }
@@ -990,7 +990,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
 
     if (doc && COMPUTED_KINDS.includes(atom.kind)) {
       debug("🔧 Updating computed for:", atom.kind, atom.id);
-      await updateComputed(
+      updateComputed(
         atom.workspaceId,
         atom.changeSetId,
         atom.kind,
@@ -1623,7 +1623,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     true,
   );
 
-  const list = (await get(
+  const list = (get(
     workspaceId,
     changeSetId,
     EntityKind.IncomingConnectionsList,
@@ -1658,7 +1658,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
   );
 };
 
-const updateComputed = async (
+const updateComputed = (
   workspaceId: string,
   changeSetId: string,
   kind: EntityKind,
@@ -1670,7 +1670,7 @@ const updateComputed = async (
   if (!COMPUTED_KINDS.includes(kind)) return;
 
   if (followReferences) {
-    const result = await getReferences(
+    const result = getReferences(
       doc,
       workspaceId,
       changeSetId,
@@ -1890,7 +1890,7 @@ const flip = (i: BifrostConnection): BifrostConnection => {
  * If you are looking up a `Reference`
  * THOU SHALT make a `weakReference` on a miss (-1)
  */
-const getReferences = async (
+const getReferences = (
   atomDoc: AtomDocument,
   workspaceId: string,
   changeSetId: ChangeSetId,
@@ -1937,7 +1937,7 @@ const getReferences = async (
     const variantIds = data.categories.flatMap((c) =>
       c.schemaVariants.filter((c) => c.type === "installed").map((c) => c.id),
     );
-    const installedVariants = await getMany(
+    const installedVariants = getMany(
       workspaceId,
       changeSetId,
       EntityKind.SchemaVariant,
@@ -1989,7 +1989,7 @@ const getReferences = async (
     return [bifrost, hasReferenceError];
   } else if (kind === EntityKind.Component) {
     const data = atomDoc as EddaComponent;
-    const sv = (await get(
+    const sv = (get(
       workspaceId,
       changeSetId,
       data.schemaVariantId.kind,
@@ -2025,7 +2025,7 @@ const getReferences = async (
       );
     }
 
-    const sm = (await get(
+    const sm = (get(
       workspaceId,
       changeSetId,
       data.schemaMembers.kind,
@@ -2087,7 +2087,7 @@ const getReferences = async (
     const rawList = atomDoc as RawViewList;
 
     const viewIds = rawList.views.map((v) => v.id);
-    const viewResults: Record<Id, View> = await getMany(
+    const viewResults: Record<Id, View> = getMany(
       workspaceId,
       changeSetId,
       EntityKind.View,
@@ -2131,7 +2131,7 @@ const getReferences = async (
 
     // Use getMany to fetch all components in a single query
     const componentResults: Record<Id, BifrostComponentInList> | -1 =
-      await getMany(
+      getMany(
         workspaceId,
         changeSetId,
         EntityKind.Component,
@@ -2172,7 +2172,7 @@ const getReferences = async (
     return [list, hasReferenceError];
   } else if (kind === EntityKind.IncomingConnections) {
     const raw = atomDoc as EddaIncomingConnections;
-    const component = (await get(
+    const component = (get(
       workspaceId,
       changeSetId,
       EntityKind.Component,
@@ -2210,7 +2210,7 @@ const getReferences = async (
     else (component as BifrostComponent).outputCount = -1;
 
     const componentsToGet = raw.connections.map((c) => c.fromComponentId.id);
-    const results = await getMany(
+    const results = getMany(
       workspaceId,
       changeSetId,
       EntityKind.Component,
@@ -2260,7 +2260,7 @@ const getReferences = async (
     const rawList = atomDoc as EddaIncomingConnectionsList;
     const compIds = rawList.componentConnections.map((c) => c.id);
     const incomingResults: Record<Id, MaybeBifrostComponentConnections> =
-      await getMany(
+      getMany(
         workspaceId,
         changeSetId,
         EntityKind.IncomingConnections,
@@ -2458,7 +2458,7 @@ from
 };
 
 
-const get = async (
+const get = (
   workspaceId: string,
   changeSetId: ChangeSetId,
   kind: Gettable,
@@ -2467,7 +2467,7 @@ const get = async (
   indexChecksum?: string,
   followComputed = true,
   followReferences = true,
-): Promise<-1 | object> => {
+): -1 | object => {
   const sql = `
     select
       data
@@ -2514,7 +2514,7 @@ const get = async (
   if (!followReferences) return atomDoc;
 
   try {
-    const [docAndRefs, hasReferenceError] = await getReferences(
+    const [docAndRefs, hasReferenceError] = getReferences(
       atomDoc,
       workspaceId,
       changeSetId,
@@ -2539,13 +2539,13 @@ const get = async (
 /**
  * NOTE: getMany returns Edda types, not Bifrost types! Because it does not follow references
  */
-const getMany = async (
+const getMany = (
   workspaceId: string,
   changeSetId: ChangeSetId,
   kind: EntityKind,
   ids: Id[],
   indexChecksum?: string,
-): Promise<Record<Id, AtomDocument | -1>> => {
+): Record<Id, AtomDocument | -1> => {
   if (ids.length === 0) return {};
 
   const results: Record<Id, AtomDocument | -1> = {};
@@ -2575,7 +2575,7 @@ const getMany = async (
 
   const bind = [indexChecksum ?? changeSetId, kind, ...ids];
   const start = Date.now();
-  const atomData = await db.exec({
+  const atomData = db.exec({
     sql,
     bind,
     returnValue: "resultRows",
@@ -2617,7 +2617,7 @@ const getMany = async (
     // do a getMany for all the componentIds in connection
     const eddaIncConns = results as Record<Id, EddaIncomingConnections>;
     const componentIds: Id[] = Object.values(eddaIncConns).map((c) => c.id);
-    const components: Record<Id, BifrostComponentInList | -1> = await getMany(
+    const components: Record<Id, BifrostComponentInList | -1> = getMany(
       workspaceId,
       changeSetId,
       EntityKind.Component,

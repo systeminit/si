@@ -77,7 +77,7 @@ export interface DBInterface {
     changeSetId: ChangeSetId,
     kind: EntityKind,
     id: Id,
-  ): Promise<typeof NOROW | AtomDocument>;
+  ): typeof NOROW | AtomDocument;
   mjolnirBulk(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -122,12 +122,12 @@ export interface DBInterface {
         sql: FlexibleString;
       },
   ): SqlValue[][];
-  bobby(): Promise<void>;
+  bobby(): void;
   ragnarok(
     workspaceId: string,
     changeSetId: string,
     noColdStart?: boolean,
-  ): Promise<void>;
+  ): void;
   // show me everything
   odin(changeSetId: ChangeSetId): object;
 }
