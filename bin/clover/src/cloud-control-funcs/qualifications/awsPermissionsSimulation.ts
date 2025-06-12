@@ -17,7 +17,7 @@ async function main(component: Input): Promise<Output> {
 
   const identity = JSON.parse(identityChild.stdout);
   const userArn = convertAssumedRoleArnToRoleArn(identity.Arn);
-  
+
   // Let's only match on the root account
   // Not any permutation like `johnroot`
   if (userArn.endsWith(":root")) {

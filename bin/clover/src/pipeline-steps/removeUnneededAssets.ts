@@ -5,7 +5,7 @@ const IGNORED_CATEGORIES = [
   "AWS::IAM::",
   "AWS::QuickSight::",
   "AWS::CloudFormation::Stack",
-  "AWS::CloudFormation::StackSet"
+  "AWS::CloudFormation::StackSet",
 ];
 export function removeUnneededAssets(
   specs: ExpandedPkgSpec[],

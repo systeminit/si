@@ -295,7 +295,7 @@ export function removeInputSockets(
   if (!variant.sockets || !socketNamesToRemove.length) return 0;
 
   const initialCount = variant.sockets.length;
-  const normalizedNames = socketNamesToRemove.map(name => name.toLowerCase());
+  const normalizedNames = socketNamesToRemove.map((name) => name.toLowerCase());
 
   // Find and remove the sockets that match the criteria
   const socketsToRemove: number[] = [];
@@ -304,7 +304,7 @@ export function removeInputSockets(
   variant.sockets.forEach((socket, index) => {
     if (socket.data.kind === "input") {
       const socketNameLower = socket.name.toLowerCase();
-      if (normalizedNames.some(name => socketNameLower === name)) {
+      if (normalizedNames.some((name) => socketNameLower === name)) {
         socketsToRemove.push(index);
       }
     }
