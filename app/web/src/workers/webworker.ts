@@ -2364,10 +2364,104 @@ const getReferences = async (
   }
 };
 
+type Listable = EntityKind.ComponentList | EntityKind.ViewComponentList;
+type Gettable = Exclude<EntityKind, Listable>;
+const getList = async (
+  _workspaceId: string,
+  changeSetId: ChangeSetId,
+  kind: Listable,
+  id: Id,
+  indexChecksum?: string,
+  followComputed = true,
+  followReferences = true,
+): Promise<-1 | object> => {
+  let varname;
+  switch (kind) {
+    case EntityKind.ComponentList:
+    case EntityKind.ViewComponentList:
+      varname = "$.components"
+      break;
+    default:
+      throw new Error("Missing kind")
+  }
+
+  const sql = `
+select
+  json_group_array(resolved.atom_json),
+  json_group_array(atom_json -> '$.id')
+from
+  (
+    select
+      jsonb_extract(CAST(data as text), '$') as atom_json
+    from
+      atoms 
+    INNER JOIN
+      (
+      select
+        ref ->> '$.id' as args,
+        ref ->> '$.kind' as kind
+      from
+        (
+          select
+            json_each.value as ref
+          from
+            atoms,
+            json_each(jsonb_extract(CAST(atoms.data as text), '${varname}'))
+            inner join index_mtm_atoms mtm
+              ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+            inner join indexes ON mtm.index_checksum = indexes.checksum
+          ${indexChecksum
+              ? ""
+              : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+          }
+          where
+            ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+            AND atoms.kind = ?
+            AND atoms.args = ?
+        ) as items 
+      ) item_refs
+    ON
+    atoms.args = item_refs.args
+    AND atoms.kind = item_refs.kind
+    inner join index_mtm_atoms mtm
+      ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+    inner join indexes ON mtm.index_checksum = indexes.checksum
+    ${indexChecksum
+      ? ""
+      : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+    }
+    where
+      ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+  ) as resolved
+;      `;
+    const bind = [indexChecksum ?? changeSetId, kind, id, indexChecksum ?? changeSetId];
+    const start = Date.now();
+    const atomData = db.exec({
+      sql,
+      bind,
+      returnValue: "resultRows",
+    });
+    const end = Date.now();
+    debug(
+      "❓ sql getJSON",
+      `[${end - start}ms]`,
+      bind,
+      " returns ?",
+      !(atomData.length === 0),
+      atomData,
+    );
+    if (atomData.length === 0) {
+      return -1
+    } else {
+      return atomData[0]![0] as Omit<SqlValue, 'null'>;
+    }
+};
+
+
 const get = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
-  kind: EntityKind,
+  kind: Gettable,
   id: Id,
   checksum?: string, // intentionally not used in sql, putting it on the wire for consistency & observability purposes
   indexChecksum?: string,
