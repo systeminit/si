@@ -447,6 +447,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from "vue";
+import { debounce } from "lodash-es";
 import clsx from "clsx";
 import {
   Icon,
@@ -620,13 +621,12 @@ const maybeOptions = computed<{
   return { hasOptions: false, options: [] };
 });
 
-const filterStr = ref("");
+const filterStr = ref<string>("");
 const filteredOptions = reactive<LabelList<AttrOption>>([]);
 const resetFilteredOptions = () =>
   filteredOptions.splice(0, Infinity, ...maybeOptions.value.options);
 
-watch(
-  () => filterStr.value,
+const debouncedFilterStr = debounce(
   () => {
     if (!filterStr.value) {
       resetFilteredOptions();
@@ -641,6 +641,15 @@ watch(
     const results = fzf.find(filterStr.value);
     const items: LabelList<AttrOption> = results.map((fz) => fz.item);
     filteredOptions.splice(0, Infinity, ...items);
+  },
+  500,
+  { trailing: true, leading: false },
+);
+
+watch(
+  () => filterStr.value,
+  () => {
+    debouncedFilterStr();
   },
   { immediate: true },
 );
