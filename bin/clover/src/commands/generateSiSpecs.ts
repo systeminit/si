@@ -99,6 +99,10 @@ export async function generateSiSpecs(
   // alternatives
   specs = removeUnneededAssets(specs);
 
+  // this step will eventually replace all the socket stuff. Must come before
+  // overrides so it can be... overriden
+  specs = createSuggestionsForPrimaryIdentifiers(specs);
+
   // Our overrides right now only run after the prop tree and the sockets are generated
   specs = assetSpecificOverrides(specs);
 
@@ -107,7 +111,6 @@ export async function generateSiSpecs(
   specs = pruneCfAssets(specs);
 
   // These need everything to be complete
-  specs = createSuggestionsForPrimaryIdentifiers(specs);
   specs = reorderProps(specs);
   specs = generateAssetFuncs(specs);
   specs = updateSchemaIdsForExistingSpecs(existing_specs, specs);

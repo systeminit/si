@@ -187,4 +187,3 @@ function addSecretsToPayload(
     }
   }
 }
-
