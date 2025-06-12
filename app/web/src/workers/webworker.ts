@@ -1580,22 +1580,33 @@ const allOutgoingConns = new DefaultMap<
 >(() => new DefaultMap(() => ({})));
 
 const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
-  const data = (await get(
-    workspaceId,
-    changeSetId,
-    EntityKind.ComponentList,
-    workspaceId,
-  )) as BifrostComponentList | -1;
-
-  if (data === -1) return;
+  const sql = `
+    select
+      data
+    from
+      atoms
+      inner join index_mtm_atoms mtm
+        ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+      inner join indexes ON mtm.index_checksum = indexes.checksum
+      inner join changesets ON changesets.index_checksum = indexes.checksum
+    where
+      changesets.change_set_id = ?
+      AND atoms.kind = ?
+    ;`;
+  const bind = [changeSetId, EntityKind.AttributeTree];
+  const trees = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
 
   await Promise.all(
-    data.components.map((c) =>
+    trees.map((tree) =>
       updateComputed(
         workspaceId,
         changeSetId,
-        EntityKind.Component,
-        c,
+        EntityKind.AttributeTree,
+        decodeDocumentFromDB(tree[0] as ArrayBuffer) as AttributeTree,
         undefined,
         false,
         false,
