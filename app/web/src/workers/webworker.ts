@@ -2202,8 +2202,9 @@ const getReferences = (
       mjolnir(workspaceId, changeSetId, EntityKind.Component, raw.id);
       debug(`Connection ${raw.id} missing own component`);
       hasReferenceError = true;
-    } // explicitly setting this as a warning that these fields are not to be used
-    else (component as BifrostComponent).outputCount = -1;
+    }
+
+    const toComponent = component !== -1 ? {...component} : {}
 
     const componentsToGet = raw.connections.map((c) => c.fromComponentId.id);
     const results = getMany(
@@ -2237,7 +2238,7 @@ const getReferences = (
       const conn: BifrostConnection = {
         ...connRef,
         fromComponent: result as BifrostComponentInList,
-        toComponent: component as BifrostComponentInList,
+        toComponent: toComponent as BifrostComponentInList,
       };
       conns.push(conn);
     }
@@ -2246,7 +2247,7 @@ const getReferences = (
     return [
       {
         id: raw.id,
-        component,
+        component: toComponent as BifrostComponentInList,
         incoming: conns,
         outgoing: [] as BifrostConnection[],
       } as BifrostComponentConnections,
