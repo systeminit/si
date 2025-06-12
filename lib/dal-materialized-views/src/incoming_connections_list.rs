@@ -12,17 +12,13 @@ use telemetry::prelude::*;
 )]
 pub async fn assemble(ctx: DalContext) -> super::Result<IncomingConnectionsListMv> {
     let ctx = &ctx;
-    let component_ids = Component::list_ids(ctx).await?;
-    let mut component_connections = Vec::with_capacity(component_ids.len());
+    let mut component_ids = Component::list_ids(ctx).await?;
+    component_ids.sort();
 
-    for component_id in component_ids {
-        component_connections
-            .push(super::incoming_connections::assemble(ctx.clone(), component_id).await?);
-    }
     let workspace_mv_id = ctx.workspace_pk()?;
 
     Ok(IncomingConnectionsListMv {
         id: workspace_mv_id,
-        component_connections: component_connections.iter().map(Into::into).collect(),
+        component_connections: component_ids.iter().copied().map(Into::into).collect(),
     })
 }
