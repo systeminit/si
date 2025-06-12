@@ -450,7 +450,7 @@ export function useChangeSetsStore() {
                 ].includes(data.changeSet.status) &&
                 data.changeSet.id !== this.headChangeSetId
               ) {
-                if (featureFlagsStore.FRONTEND_ARCH_VIEWS)
+                if (featureFlagsStore.NEW_HOTNESS)
                   heimdall.prune(workspacePk, data.changeSet.id);
               }
               // If I'm the one who requested this change set - toast that it's been approved/rejected/etc.
@@ -488,7 +488,7 @@ export function useChangeSetsStore() {
             eventType: "ChangeSetAbandoned",
             callback: async (data) => {
               if (data.changeSetId !== this.headChangeSetId) {
-                if (featureFlagsStore.FRONTEND_ARCH_VIEWS)
+                if (featureFlagsStore.NEW_HOTNESS)
                   heimdall.prune(workspacePk, data.changeSetId);
               }
 
@@ -556,7 +556,7 @@ export function useChangeSetsStore() {
                 if (changeSet.id !== this.headChangeSetId) {
                   // never set HEAD to Applied
                   changeSet.status = ChangeSetStatus.Applied;
-                  if (featureFlagsStore.FRONTEND_ARCH_VIEWS)
+                  if (featureFlagsStore.NEW_HOTNESS)
                     heimdall.prune(workspacePk, changeSet.id);
                 }
                 if (this.selectedChangeSet?.id === changeSetId) {
