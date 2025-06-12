@@ -19,7 +19,10 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     BroadcastGroups,
-    nats_multiplexer::NatsMultiplexerClients,
+    nats_multiplexer::{
+        EddaUpdatesMultiplexerClient,
+        NatsMultiplexerClients,
+    },
     workspace_permissions::{
         WorkspacePermissions,
         WorkspacePermissionsMode,
@@ -62,7 +65,7 @@ impl AppState {
         for_tests: bool,
         ws_multiplexer_client: MultiplexerClient,
         crdt_multiplexer_client: MultiplexerClient,
-        data_cache_multiplexer_client: MultiplexerClient,
+        edda_updates_multiplexer_client: EddaUpdatesMultiplexerClient,
         create_workspace_permissions: WorkspacePermissionsMode,
         create_workspace_allowlist: Vec<WorkspacePermissions>,
         application_runtime_mode: Arc<RwLock<ApplicationRuntimeMode>>,
@@ -75,7 +78,7 @@ impl AppState {
         let nats_multiplexer_clients = NatsMultiplexerClients {
             ws: Arc::new(Mutex::new(ws_multiplexer_client)),
             crdt: Arc::new(Mutex::new(crdt_multiplexer_client)),
-            data_cache: Arc::new(Mutex::new(data_cache_multiplexer_client)),
+            edda_updates: edda_updates_multiplexer_client,
         };
 
         Self {

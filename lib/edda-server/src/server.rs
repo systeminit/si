@@ -79,6 +79,7 @@ use crate::{
     Result,
     app_state::AppState,
     handlers,
+    updates::EddaUpdates,
 };
 
 const TASKS_CONSUMER_NAME: &str = "edda-tasks";
@@ -197,6 +198,9 @@ impl Server {
 
         let frigg = FriggStore::new(nats.clone(), frigg_kv(&context, prefix.as_deref()).await?);
 
+        let edda_updates =
+            EddaUpdates::new(nats.clone(), services_context.compute_executor().clone());
+
         let ctx_builder = DalContext::builder(services_context, false);
 
         let server_tracker = TaskTracker::new();
@@ -204,6 +208,7 @@ impl Server {
             metadata.clone(),
             nats,
             frigg,
+            edda_updates,
             requests_stream,
             ctx_builder,
             quiescent_period,

@@ -4,7 +4,7 @@
 //! These should not be extracted into Naxum itself as the extractors related to custom ways we are
 //! using headers.
 
-use nats_std::headers;
+use nats_std::header;
 use naxum::{
     Head,
     Message,
@@ -46,7 +46,7 @@ impl<S> FromMessageHead<S> for HeaderReply {
     async fn from_message_head(head: &mut Head, _state: &S) -> Result<Self, Self::Rejection> {
         let maybe_value = head.headers.as_ref().and_then(|headers| {
             headers
-                .get(headers::REPLY_INBOX)
+                .get(header::REPLY_INBOX)
                 .map(|value| value.to_string())
         });
 

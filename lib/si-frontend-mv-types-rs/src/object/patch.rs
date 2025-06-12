@@ -3,6 +3,49 @@ use si_id::{
     ChangeSetId,
     WorkspacePk,
 };
+
+const PATCH_BATCH_KIND: &str = "PatchMessage";
+const INDEX_UPDATE_KIND: &str = "IndexUpdate";
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateMeta {
+    /// The workspace this patch batch is targeting.
+    pub workspace_id: WorkspacePk,
+    /// The change set this patch batch is targeting.
+    pub change_set_id: Option<ChangeSetId>,
+    /// The index checksum the patches will result in data for.
+    pub to_index_checksum: String,
+    /// The index checksum the patches the patches are being applied to.
+    /// Or in the case of rebuild or a brand new change set, will match the [`to_index_checksum`]
+    pub from_index_checksum: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PatchBatch {
+    /// Metadata about the patch batch.
+    pub meta: UpdateMeta,
+    /// The message kind for the front end.
+    kind: &'static str,
+    /// The list of patches to apply.
+    pub patches: Vec<ObjectPatch>,
+}
+
+impl PatchBatch {
+    pub fn new(meta: UpdateMeta, patches: Vec<ObjectPatch>) -> Self {
+        Self {
+            meta,
+            kind: PATCH_BATCH_KIND,
+            patches,
+        }
+    }
+
+    pub fn kind(&self) -> &'static str {
+        self.kind
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectPatch {
@@ -19,65 +62,27 @@ pub struct ObjectPatch {
     pub patch: json_patch::Patch,
 }
 
-pub const PATCH_BATCH_KIND: &str = "PatchMessage";
-pub const PATCH_BATCH_POST_FIX: &str = "patch_batch";
-pub const INDEX_UPDATE_KIND: &str = "IndexUpdate";
-pub const INDEX_UPDATE_POST_FIX: &str = "index_update";
-pub const DATA_CACHE_SUBJECT_PREFIX: &str = "data_cache";
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateMeta {
-    /// The workspace this patch batch is targeting.
-    pub workspace_id: WorkspacePk,
-    /// The change set this patch batch is targeting.
-    pub change_set_id: Option<ChangeSetId>,
-    /// The index checksum the patches will result in data for.
-    pub to_index_checksum: String,
-    /// The index checksum the patches the patches are being applied to.
-    /// Or in the case of rebuild or a brand new change set, will match the [`to_index_checksum`]
-    pub from_index_checksum: String,
-}
-
-impl UpdateMeta {
-    pub fn publish_subject(&self, post_fix: &'static str) -> String {
-        format!(
-            "{}.workspace_id.{}.{}",
-            DATA_CACHE_SUBJECT_PREFIX, self.workspace_id, post_fix
-        )
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PatchBatch {
-    /// Metadata about the patch batch.
-    pub meta: UpdateMeta,
-    /// The message kind for the front end.
-    pub kind: &'static str,
-    /// The list of patches to apply.
-    pub patches: Vec<ObjectPatch>,
-}
-
-impl PatchBatch {
-    pub fn publish_subject(&self) -> String {
-        self.meta.publish_subject(PATCH_BATCH_POST_FIX)
-    }
-}
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IndexUpdate {
     /// Metadata about the patch batch.
     pub meta: UpdateMeta,
     /// The message kind for the front end.
-    pub kind: &'static str,
+    kind: &'static str,
     /// Checksum
     pub index_checksum: String,
 }
 
 impl IndexUpdate {
-    pub fn publish_subject(&self) -> String {
-        self.meta.publish_subject(INDEX_UPDATE_POST_FIX)
+    pub fn new(meta: UpdateMeta, index_checksum: String) -> Self {
+        Self {
+            meta,
+            kind: INDEX_UPDATE_KIND,
+            index_checksum,
+        }
+    }
+
+    pub fn kind(&self) -> &'static str {
+        self.kind
     }
 }

@@ -20,6 +20,7 @@ frigg = { path = "../../lib/frigg" }
 futures = { workspace = true }
 inventory = { workspace = true }
 json-patch = { workspace = true }
+miniz_oxide = { workspace = true }
 nats-std = { path = "../../lib/nats-std" }
 naxum = { path = "../../lib/naxum" }
 pin-project-lite = { workspace = true }

@@ -3,6 +3,7 @@ load("@prelude-si//:macros.bzl", "rust_library")
 rust_library(
     name = "naxum-api-types",
     deps = [
+        "//lib/nats-std:nats-std",
         "//lib/si-data-nats:si-data-nats",
         "//lib/si-id:si-id",
         "//third-party/rust:ciborium",

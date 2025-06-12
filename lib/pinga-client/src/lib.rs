@@ -4,7 +4,7 @@ use futures::{
     StreamExt as _,
     future::BoxFuture,
 };
-use nats_std::headers;
+use nats_std::header;
 pub use pinga_core::{
     api_types,
     api_types::RequestId,
@@ -36,7 +36,6 @@ use si_data_nats::{
         self,
         jetstream::context::PublishError,
     },
-    header,
     jetstream::{
         self,
         Context,
@@ -307,8 +306,8 @@ impl Client {
         let mut headers = HeaderMap::new();
         propagation::inject_headers(&mut headers);
         info.inject_into_headers(&mut headers);
-        headers.insert(header::NATS_MESSAGE_ID, id.to_string());
-        headers::insert_maybe_reply_inbox(&mut headers, maybe_reply_inbox);
+        header::insert_nats_msg_id(&mut headers, id.to_string());
+        header::insert_maybe_reply_inbox(&mut headers, maybe_reply_inbox);
 
         self.context
             .publish_with_headers(requests_subject, headers, request.to_vec()?.into())

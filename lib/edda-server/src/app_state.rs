@@ -14,7 +14,10 @@ use tokio_util::{
     task::TaskTracker,
 };
 
-use crate::ServerMetadata;
+use crate::{
+    ServerMetadata,
+    updates::EddaUpdates,
+};
 
 /// Application state.
 #[derive(Clone, Debug)]
@@ -22,6 +25,7 @@ pub(crate) struct AppState {
     pub(crate) metadata: Arc<ServerMetadata>,
     pub(crate) nats: NatsClient,
     pub(crate) frigg: FriggStore,
+    pub(crate) edda_updates: EddaUpdates,
     pub(crate) requests_stream: jetstream::stream::Stream,
     pub(crate) ctx_builder: DalContextBuilder,
     pub(crate) quiescent_period: Duration,
@@ -36,6 +40,7 @@ impl AppState {
         metadata: Arc<ServerMetadata>,
         nats: NatsClient,
         frigg: FriggStore,
+        edda_updates: EddaUpdates,
         requests_stream: jetstream::stream::Stream,
         ctx_builder: DalContextBuilder,
         quiescent_period: Duration,
@@ -46,6 +51,7 @@ impl AppState {
             metadata,
             nats,
             frigg,
+            edda_updates,
             requests_stream,
             ctx_builder,
             quiescent_period,

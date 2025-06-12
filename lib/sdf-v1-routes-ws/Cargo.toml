@@ -17,7 +17,9 @@ edda-client = { path = "../edda-client" }
 frigg = { path = "../frigg" }
 futures = { workspace = true }
 futures-lite = { workspace = true }
+miniz_oxide = { workspace = true }
 nats-multiplexer-client = { path = "../nats-multiplexer-client" }
+nats-std = { path = "../nats-std" }
 nats-subscriber = { path = "../nats-subscriber" }
 remain = { workspace = true }
 sdf-core = { path = "../sdf-core" }

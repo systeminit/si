@@ -29,7 +29,7 @@ use futures::{
     StreamExt,
     TryStreamExt,
 };
-use nats_std::headers;
+use nats_std::header;
 use nats_subscriber::{
     Subscriber,
     SubscriberError,
@@ -349,7 +349,7 @@ impl Client {
             }
             RequestMode::Jetstream => {
                 let mut headers = propagation::empty_injected_headers();
-                headers::insert_reply_inbox(&mut headers, &reply_mailbox_root);
+                header::insert_reply_inbox(&mut headers, &reply_mailbox_root);
 
                 self.context
                     .publish_with_headers(subject, headers, msg.into())
