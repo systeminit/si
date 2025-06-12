@@ -8,11 +8,12 @@
       :items="rightClickMenuItems"
       variant="contextmenu"
       noDefaultClose
-      disableKeyboardControls
+      :disableKeyboardControls="!enableKeyboardControls"
       :alignOutsideRightEdge="onGrid"
       :alignOutsideLeftEdge="!onGrid"
       :overlapAnchorOffset="Y_OFFSET"
       :anchorXOffset="4"
+      @enterPressedNoSelection="emit('edit')"
     />
     <EraseModal ref="eraseModalRef" @confirm="componentsFinishErase" />
   </div>
@@ -43,6 +44,7 @@ import { assertIsDefined, ExploreContext } from "./types";
 const props = defineProps<{
   componentIds: string[];
   onGrid?: boolean;
+  enableKeyboardControls?: boolean;
 }>();
 
 // This number fixes the Y position to align with the ComponentGridTile
@@ -117,6 +119,13 @@ const removeActionApi = useApi();
 
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
+
+  items.push({
+    label: "Edit",
+    shortcut: "Enter",
+    icon: "edit2",
+    onSelect: () => emit("edit"),
+  });
 
   // can erase so long as you have not selected a view
   items.push({
@@ -260,6 +269,10 @@ function close() {
 }
 
 const isOpen = computed(() => contextMenuRef.value?.isOpen);
+
+const emit = defineEmits<{
+  (e: "edit"): void;
+}>();
 
 defineExpose({
   open,

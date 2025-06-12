@@ -53,7 +53,9 @@
               'border-neutral-600 hover:border-white',
             )
           "
-          :pills="['Up', 'Down', 'Left', 'Right']"
+          :pills="
+            CONTROL_SCHEME === 'v1' ? ['Up', 'Down', 'Left', 'Right'] : ['Tab']
+          "
           instructions="to navigate"
           @click="searchRef?.focus()"
         >
@@ -73,8 +75,8 @@
               @keydown.tab="(e: KeyboardEvent) => onTab(e, true)"
               @keydown.left="() => previousComponent()"
               @keydown.right="() => nextComponent()"
-              @keydown.up="() => onArrowUp"
-              @keydown.down="() => onArrowDown"
+              @keydown.up="onArrowUp"
+              @keydown.down="onArrowDown"
               @keydown.esc="onEscape"
             />
           </template>
@@ -185,9 +187,11 @@
     <ComponentContextMenu
       ref="componentContextMenuRef"
       onGrid
+      :enableKeyboardControls="CONTROL_SCHEME === 'v2'"
       :componentIds="
         interactionTargetComponentId ? [interactionTargetComponentId] : []
       "
+      @edit="openFocusedComponent"
     />
   </section>
 </template>
@@ -240,13 +244,20 @@ import ActionCard from "./ActionCard.vue";
 import FuncRunList from "./FuncRunList.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
 import DelayedLoader from "./layout_components/DelayedLoader.vue";
-import { KeyDetails, keyEmitter } from "./logic_composables/emitters";
+import {
+  KeyDetails,
+  keyEmitter,
+  windowResizeEmitter,
+  windowWidthReactive,
+} from "./logic_composables/emitters";
 import TabGroupToggle from "./layout_components/TabGroupToggle.vue";
 import { SelectionsInQueryString } from "./Workspace.vue";
 import AddComponentModal from "./AddComponentModal.vue";
 import AddViewModal from "./AddViewModal.vue";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
-import { windowWidthReactive } from "./logic_composables/window_info_reactive";
+
+type ControlScheme = "v1" | "v2";
+const CONTROL_SCHEME: ControlScheme = "v2" as ControlScheme;
 
 const router = useRouter();
 const route = useRoute();
@@ -259,6 +270,15 @@ const actionsRef = ref<typeof CollapsingGridItem>();
 const historyRef = ref<typeof CollapsingGridItem>();
 const mapRef = ref<InstanceType<typeof Map>>();
 const componentGridTileRefs = ref<InstanceType<typeof ComponentGridTile>[]>();
+const componentGridTileElsSorted = computed(() => {
+  if (!componentGridTileRefs.value) {
+    return [];
+  } else {
+    return componentGridTileRefs.value
+      .map((tileRef) => tileRef.$el)
+      .sort((a, b) => a.dataset.index - b.dataset.index);
+  }
+});
 
 const getGridTileIndexByComponentId = (id: ComponentId) => {
   return componentVirtualItemsList.value.findIndex(
@@ -408,7 +428,32 @@ function getScrollbarWidth(): number {
   return scrollbarWidth;
 }
 
+// This computes the rendered number of components in a row as seen directly in the DOM
 const lanes = computed(() => {
+  // We need to force a recompute of this value when the screen is resized
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  windowWidthReactive.value;
+
+  // Can't calculate the amount of grid tiles per row if we don't have any grid tiles loaded yet!
+  const componentGridTileYPositions = componentGridTileElsSorted.value.map(
+    (el) => el.getBoundingClientRect().y,
+  );
+  if (componentGridTileYPositions.length === 0) return 0;
+
+  let newLanes = 1;
+  const firstLaneY = componentGridTileYPositions[0];
+
+  while (
+    componentGridTileYPositions[newLanes] === firstLaneY &&
+    newLanes < componentGridTileYPositions.length
+  ) {
+    newLanes++;
+  }
+  return newLanes;
+});
+
+// This computes the expected number of components in a row based on the width of the scroll area
+const virtualizerLanes = computed(() => {
   // We need to force a recompute of this value when the screen is resized
   // eslint-disable-next-line @typescript-eslint/no-unused-expressions
   windowWidthReactive.value;
@@ -438,17 +483,18 @@ const lanes = computed(() => {
 });
 
 const virtualizerOptions = computed(() => {
-  return {
+  const options = {
     count: filteredComponents.length,
-    // `lanes` gives virtualizer a "second-dimension" (aka columns for vertical lists and rows for horizontal lists)
+    // `virtualizerLanes` gives virtualizer a "second-dimension" (aka columns for vertical lists and rows for horizontal lists)
     // https://tanstack.com/virtual/latest/docs/api/virtualizer#lanes
     // Our grid is based on a minimum 250px width tile... so how many tiles can we fit?
-    // thats the value of `lanes`
-    lanes: lanes.value,
+    // thats the value of `virtualizerLanes`
+    lanes: virtualizerLanes.value,
     getScrollElement: () => scrollRef.value!,
     estimateSize: () => 200,
     overscan: 3,
   };
+  return options;
 });
 
 const virtualList = useVirtualizer(virtualizerOptions);
@@ -532,8 +578,8 @@ const unfocus = () => {
 };
 
 const searchRef = ref<InstanceType<typeof VormInput>>();
-const mountKeyEmitters = () => {
-  removeKeyEmitters();
+const mountEmitters = () => {
+  removeEmitters();
   keyEmitter.on("k", onK);
   keyEmitter.on("n", onN);
   keyEmitter.on("e", onE);
@@ -546,8 +592,9 @@ const mountKeyEmitters = () => {
   keyEmitter.on("Enter", onEnter);
   keyEmitter.on("Tab", onTab);
   keyEmitter.on("Escape", onEscape);
+  windowResizeEmitter.on("resize", onResize);
 };
-const removeKeyEmitters = () => {
+const removeEmitters = () => {
   keyEmitter.off("k", onK);
   keyEmitter.off("n", onN);
   keyEmitter.off("e", onE);
@@ -560,6 +607,7 @@ const removeKeyEmitters = () => {
   keyEmitter.off("Enter", onEnter);
   keyEmitter.off("Tab", onTab);
   keyEmitter.off("Escape", onEscape);
+  windowResizeEmitter.off("resize", onResize);
 };
 const nextComponent = (wrap = false) => {
   if (!showGrid.value) return;
@@ -570,6 +618,9 @@ const nextComponent = (wrap = false) => {
     searchRef.value?.focus();
   }
   constrainPosition();
+  if (CONTROL_SCHEME === "v2" && hoveredComponentId.value) {
+    focus(hoveredComponentId.value);
+  }
 };
 const previousComponent = (wrap = false) => {
   if (!showGrid.value) return;
@@ -584,6 +635,9 @@ const previousComponent = (wrap = false) => {
     }
   }
   constrainPosition();
+  if (CONTROL_SCHEME === "v2" && hoveredComponentId.value) {
+    focus(hoveredComponentId.value);
+  }
 };
 
 const onK = (e: KeyDetails["k"]) => {
@@ -643,6 +697,7 @@ const onU = (e: KeyDetails["u"]) => {
   }
 };
 const onArrowUp = (e: KeyDetails["ArrowUp"]) => {
+  if (CONTROL_SCHEME === "v2" && showGrid.value) return;
   e.preventDefault();
   if (showGrid.value) {
     if (focusedComponentId.value) unfocus();
@@ -653,6 +708,7 @@ const onArrowUp = (e: KeyDetails["ArrowUp"]) => {
   }
 };
 const onArrowDown = (e: KeyDetails["ArrowDown"]) => {
+  if (CONTROL_SCHEME === "v2" && showGrid.value) return;
   e.preventDefault();
   if (showGrid.value) {
     if (focusedComponentId.value) unfocus();
@@ -667,6 +723,7 @@ const onArrowDown = (e: KeyDetails["ArrowDown"]) => {
   }
 };
 const onArrowLeft = () => {
+  if (CONTROL_SCHEME === "v2" && showGrid.value) return;
   if (showGrid.value) {
     previousComponent();
   } else {
@@ -674,6 +731,7 @@ const onArrowLeft = () => {
   }
 };
 const onArrowRight = () => {
+  if (CONTROL_SCHEME === "v2" && showGrid.value) return;
   if (showGrid.value) {
     nextComponent();
   } else {
@@ -704,6 +762,10 @@ const onTab = (e: KeyDetails["Tab"], blurSearch = false) => {
   }
 };
 const onEnter = (e: KeyDetails["Enter"]) => {
+  if (CONTROL_SCHEME === "v2" && focusedComponentId.value) {
+    // enter controls the context menu, not the grid tile
+    return;
+  }
   e.preventDefault();
   if (!showGrid.value) return; // no enter behavior on the map yet
 
@@ -715,6 +777,10 @@ const onEnter = (e: KeyDetails["Enter"]) => {
 };
 const onScroll = () => {
   if (focusedComponentId.value) unfocus();
+};
+const onResize = () => {
+  unfocus();
+  unhover();
 };
 const onClick = (e: MouseEvent) => {
   const inside =
@@ -729,16 +795,23 @@ const onClick = (e: MouseEvent) => {
   unhover();
 };
 onMounted(() => {
-  mountKeyEmitters();
+  mountEmitters();
   document.addEventListener("click", onClick);
 });
 onBeforeUnmount(() => {
-  removeKeyEmitters();
+  removeEmitters();
   document.removeEventListener("click", onClick);
 });
 
 const componentClicked = (e: MouseEvent, componentId: ComponentId) => {
   e.preventDefault();
+  if (CONTROL_SCHEME === "v1") {
+    componentClickedV1(e, componentId);
+  } else {
+    componentClickedV2(e, componentId);
+  }
+};
+const componentClickedV1 = (e: MouseEvent, componentId: ComponentId) => {
   if (
     focusedComponentId.value &&
     selectorGridPosition.value !== focusGridPosition.value
@@ -750,12 +823,25 @@ const componentClicked = (e: MouseEvent, componentId: ComponentId) => {
     componentInteract(componentId);
   }
 };
+const componentClickedV2 = (e: MouseEvent, componentId: ComponentId) => {
+  if (e.button === 0) {
+    componentNavigate(componentId);
+  } else {
+    componentClickedV1(e, componentId);
+  }
+};
 
 const componentInteract = (componentId: ComponentId) => {
   if (focusedComponentId.value) {
     componentNavigate(componentId);
   } else {
     focus(componentId);
+  }
+};
+
+const openFocusedComponent = () => {
+  if (focusedComponentId.value) {
+    componentNavigate(focusedComponentId.value);
   }
 };
 
