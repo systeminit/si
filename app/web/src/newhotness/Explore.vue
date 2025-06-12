@@ -221,7 +221,7 @@ import { useQuery } from "@tanstack/vue-query";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import { Fzf } from "fzf";
 import { tw } from "@si/vue-lib";
-import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import { bifrost, bifrostList, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
   BifrostComponentList,
@@ -258,6 +258,7 @@ import { elementIsScrolledIntoView } from "./logic_composables/dom_funcs";
 
 type ControlScheme = "v1" | "v2";
 const CONTROL_SCHEME: ControlScheme = "v2" as ControlScheme;
+import { Listable } from "@/workers/types/dbinterface";
 
 const router = useRouter();
 const route = useRoute();
@@ -373,9 +374,9 @@ const componentListRaw = useQuery<
   queryKey: componentQueryKey,
   queryFn: async () => {
     const arg = selectedView.value
-      ? args(EntityKind.ViewComponentList, selectedView.value)
-      : args(EntityKind.ComponentList);
-    return await bifrost<BifrostComponentList | ViewComponentList>(arg);
+      ? args<Listable>(EntityKind.ViewComponentList, selectedView.value)
+      : args<Listable>(EntityKind.ComponentList);
+    return await bifrostList<BifrostComponentList | ViewComponentList>(arg);
   },
 });
 

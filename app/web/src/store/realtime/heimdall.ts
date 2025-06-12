@@ -14,6 +14,8 @@ import {
   Id,
   BustCacheFn,
   LobbyExitFn,
+  Listable,
+  Gettable,
 } from "@/workers/types/dbinterface";
 import {
   BifrostConnection,
@@ -128,7 +130,7 @@ export const bifrostClose = async () => {
 export const bifrost = async <T>(args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
-  kind: EntityKind;
+  kind: Gettable;
   id: Id;
 }): Promise<Reactive<T> | null> => {
   if (!initCompleted.value) throw new Error("bifrost not initiated");
@@ -144,6 +146,27 @@ export const bifrost = async <T>(args: {
   console.log("🌈 bifrost query", args.kind, args.id, end - start, "ms");
   if (maybeAtomDoc === -1) return null;
   return reactive(maybeAtomDoc);
+};
+
+export const bifrostList = async <T>(args: {
+  workspaceId: string;
+  changeSetId: ChangeSetId;
+  kind: Listable;
+  id: Id;
+}): Promise<Reactive<T> | null> => {
+  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  const start = Date.now();
+  const maybeAtomDoc = await db.getList(
+    args.workspaceId,
+    args.changeSetId,
+    args.kind,
+    args.id,
+  );
+  const end = Date.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost queryList", args.kind, args.id, end - start, "ms");
+  if (!maybeAtomDoc) return null;
+  return reactive(JSON.parse(maybeAtomDoc));
 };
 
 export const getPossibleConnections = async (args: {
@@ -257,11 +280,11 @@ const workspaceId = computed(() => {
 });
 
 // this is for the old world!
-export const makeKey = (kind: string, id?: string) => {
+export const makeKey = <K = Gettable>(kind: string, id?: string) => {
   return [
     workspaceId.value,
     changeSetId.value,
-    kind as EntityKind,
+    kind as K,
     id ?? workspaceId.value,
   ];
 };
@@ -283,11 +306,11 @@ export const makeArgs = (kind: string, id?: string) => {
 export const useMakeArgs = () => {
   const ctx: Context | undefined = inject("CONTEXT");
 
-  return (kind: EntityKind, id?: string) => {
+  return <K = Gettable>(kind: EntityKind, id?: string) => {
     return {
       workspaceId: ctx?.workspacePk.value ?? "",
       changeSetId: ctx?.changeSetId.value ?? "",
-      kind,
+      kind: kind as K,
       id: id ?? ctx?.workspacePk.value ?? "",
     };
   };
