@@ -64,6 +64,9 @@ pub async fn assemble_in_list(
         qualification_totals: stats,
         input_count,
         diff_count,
+        to_delete: Component::is_set_to_delete(ctx, component_id)
+            .await?
+            .unwrap_or(false),
     })
 }
 

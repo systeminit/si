@@ -119,6 +119,7 @@ pub struct ComponentInList {
     pub qualification_totals: ComponentQualificationStats,
     pub input_count: usize,
     pub diff_count: usize,
+    pub to_delete: bool,
 }
 
 #[derive(
