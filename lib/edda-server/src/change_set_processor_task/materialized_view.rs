@@ -1,5 +1,4 @@
 use std::collections::{
-    HashMap,
     HashSet,
     VecDeque,
 };
@@ -11,13 +10,11 @@ use dal::{
     DalContext,
     SchemaVariantError,
     TransactionsError,
-    Ulid,
     WorkspaceSnapshotError,
     action::{
         ActionError,
         prototype::ActionPrototypeError,
     },
-    dependency_graph::DependencyGraph,
     diagram::DiagramError,
     prop::PropError,
     workspace_snapshot::WorkspaceSnapshotSelector,
@@ -48,10 +45,7 @@ use si_frontend_mv_types::{
         IncomingConnectionsList as IncomingConnectionsListMv,
     },
     index::MvIndex,
-    materialized_view::{
-        MaterializedViewInventoryItem,
-        materialized_view_definitions_checksum,
-    },
+    materialized_view::materialized_view_definitions_checksum,
     object::{
         FrontendObject,
         patch::{
@@ -447,22 +441,13 @@ pub async fn build_mv_for_changes_in_change_set(
 }
 
 macro_rules! spawn_build_mv_task {
-    ($build_tasks:expr, $mv_task_ids: expr, $ctx:expr, $frigg:expr, $change:expr, $mv_id:expr, $mv:ty, $build_fn:expr $(,)?) => {
-        let task_id = ::si_events::ulid::Ulid::new();
+    ($build_tasks:expr, $ctx:expr, $frigg:expr, $change:expr, $mv_id:expr, $mv:ty, $build_fn:expr $(,)?) => {
         let kind = <$mv as ::si_frontend_mv_types::materialized_view::MaterializedView>::kind();
-        // Record the task ID of the MV build task we're about to spawn so we can track when all of the build
-        // tasks for any given MV kind have finished.
-        $mv_task_ids
-            .entry(kind)
-            .and_modify(|task_ids| {
-                task_ids.insert(task_id);
-            })
-            .or_insert_with(|| [task_id].iter().copied().collect());
+
         // Record the currently running number of MV build tasks so we can see just how parallel this actually
         // ends up being.
         metric!(counter.edda.mv_build = 1);
         $build_tasks.spawn(build_mv_task(
-            task_id,
             $ctx.clone(),
             $frigg.clone(),
             $change,
@@ -489,24 +474,36 @@ async fn build_mv_inner(
     change_set_id: ChangeSetId,
     changes: &[Change],
 ) -> Result<(Vec<FrontendObject>, Vec<ObjectPatch>), MaterializedViewError> {
-    let mut mv_dependency_graph = mv_dependency_graph()?;
     let mut frontend_objects = Vec::new();
     let mut patches = Vec::new();
     let mut build_tasks = JoinSet::new();
-    let mut ready_to_start_mv_kinds: HashSet<ReferenceKind> =
-        mv_dependency_graph.independent_ids().into_iter().collect();
-    let mut mv_task_ids: HashMap<ReferenceKind, HashSet<Ulid>> = HashMap::new();
     let mut queued_mv_builds = VecDeque::new();
+
+    // We'll spawn up to the first `PARALLEL_BUILD_LIMIT` build tasks, and queue the rest to be spawned
+    // as other build tasks are completed.
+    for &change in changes {
+        for mv_kind in ReferenceKind::iter() {
+            if let Some(queued_build) = spawn_build_mv_task_for_change_and_mv_kind(
+                &mut build_tasks,
+                ctx,
+                frigg,
+                change,
+                mv_kind,
+                workspace_pk,
+            )
+            .await?
+            {
+                queued_mv_builds.push_back(queued_build);
+            }
+        }
+    }
+
     loop {
-        // If there aren't any ready to start MV kinds, there aren't any builds queued waiting
-        // for the concurrency limit, and there aren't any currently running MV build tasks,
-        // then we've finished everything we can and are able to send off the collected
+        // If there there aren't any queued builds waiting for the concurrency limit then
+        // we've finished everything and are able to send off the collected
         // FrontendObjects, and ObjectPatches to update the index & send patches out over the
         // websocket.
-        if ready_to_start_mv_kinds.is_empty()
-            && queued_mv_builds.is_empty()
-            && mv_task_ids.values().all(|tasks| tasks.is_empty())
-        {
+        if queued_mv_builds.is_empty() && build_tasks.is_empty() {
             break;
         }
 
@@ -521,7 +518,6 @@ async fn build_mv_inner(
             // forget about pending work.
             if let Some(queued_build) = spawn_build_mv_task_for_change_and_mv_kind(
                 &mut build_tasks,
-                &mut mv_task_ids,
                 ctx,
                 frigg,
                 change,
@@ -531,80 +527,12 @@ async fn build_mv_inner(
             .await?
             {
                 queued_mv_builds.push_back(queued_build);
-                break;
-            }
-        }
-
-        // If there aren't any ready_to start MV kinds, and there are currently building MVs,
-        // or if there are queued MV builds waiting on the concurrency limit, then we don't
-        // need to bother looping through the changes only to check against an empty list of
-        // ready to start MVs, or to grow the queue even more. We should jump straight to
-        // waiting for the next building MV to finish.
-        if !ready_to_start_mv_kinds.is_empty() && queued_mv_builds.is_empty() {
-            for &change in changes {
-                for &mv_kind in &ready_to_start_mv_kinds {
-                    if let Some(queued_build) = spawn_build_mv_task_for_change_and_mv_kind(
-                        &mut build_tasks,
-                        &mut mv_task_ids,
-                        ctx,
-                        frigg,
-                        change,
-                        mv_kind,
-                        workspace_pk,
-                    )
-                    .await?
-                    {
-                        queued_mv_builds.push_back(queued_build);
-                    }
-                }
-            }
-
-            // Now that these MV kinds have had their build tasks kicked off, we want to prevent kicking them off again
-            // as MV build tasks finish, and we also don't want to free up the things that depend on them until _all_
-            // of the started tasks for that MV kind have finished. Once the build tasks have finished, we'll remove the
-            // MV kind from the graph, which will let the downstream MVs start.
-
-            // We need to track which MV kinds actually started, as if an MV kind was ready, but no changes came in that
-            // the MV kind cares about, we should remove it from the graph now.
-            for &running_mv_kind in &ready_to_start_mv_kinds {
-                // if the task has been kicked off, or it's queued, let's cycle on self.
-                if mv_task_ids
-                    .clone()
-                    .into_keys()
-                    .any(|build| build == running_mv_kind)
-                    || queued_mv_builds
-                        .iter()
-                        .any(|build| build.mv_kind == running_mv_kind)
-                {
-                    mv_dependency_graph.cycle_on_self(running_mv_kind);
-                }
-                // otherwise, no work to do here, let's remove it and free up the downstream MV kinds
-                else {
-                    mv_dependency_graph.remove_id(running_mv_kind);
-                }
             }
         }
 
         if let Some(join_result) = build_tasks.join_next().await {
-            let (kind, mv_id, task_id, execution_result) = join_result?;
+            let (kind, mv_id, execution_result) = join_result?;
             metric!(counter.edda.mv_build = -1);
-
-            let std::collections::hash_map::Entry::Occupied(mut mv_kind_task_ids) =
-                mv_task_ids.entry(kind)
-            else {
-                error!(
-                    id = %mv_id,
-                    kind = %kind,
-                    si.error.message = "Got a build task that finished for a kind we didn't know had started any builds.",
-                );
-                continue;
-            };
-            mv_kind_task_ids.get_mut().remove(&task_id);
-            // If there are no more running tasks for this MV kind, then we can remove it from the dependency
-            // graph to free up the next batch of MVs to run.
-            if mv_kind_task_ids.get().is_empty() {
-                mv_dependency_graph.remove_id(kind);
-            }
 
             match execution_result {
                 Ok((maybe_patch, maybe_frontend_object)) => {
@@ -621,7 +549,6 @@ async fn build_mv_inner(
                 }
             }
         }
-        ready_to_start_mv_kinds = mv_dependency_graph.independent_ids().into_iter().collect();
     }
 
     frigg
@@ -634,12 +561,10 @@ async fn build_mv_inner(
 type BuildMvTaskResult = (
     ReferenceKind,
     String,
-    Ulid,
     Result<(Option<ObjectPatch>, Option<FrontendObject>), MaterializedViewError>,
 );
 
 async fn build_mv_task<F, T, E>(
-    task_id: Ulid,
     ctx: DalContext,
     frigg: FriggStore,
     change: Change,
@@ -665,7 +590,7 @@ where
     )
     .await;
 
-    (mv_kind, mv_id, task_id, result)
+    (mv_kind, mv_id, result)
 }
 
 type MvBuilderResult = Result<(Option<ObjectPatch>, Option<FrontendObject>), MaterializedViewError>;
@@ -736,34 +661,6 @@ where
     }
 }
 
-#[instrument(
-    name = "materialized_view.mv_dependency_graph",
-    level = "debug",
-    skip_all
-)]
-fn mv_dependency_graph() -> Result<DependencyGraph<ReferenceKind>, MaterializedViewError> {
-    let mut dependency_graph = DependencyGraph::new();
-
-    for mv in ::inventory::iter::<MaterializedViewInventoryItem>() {
-        for reference_kind in mv.reference_dependencies() {
-            dependency_graph.id_depends_on(mv.kind(), *reference_kind);
-        }
-    }
-
-    // The MvIndex depends on everything else, but doesn't define any
-    // `MaterializedView::reference_dependencies()` directly.
-    for reference_kind in ReferenceKind::iter() {
-        // MvIndex can't depend on itself.
-        if reference_kind == ReferenceKind::MvIndex {
-            continue;
-        }
-
-        dependency_graph.id_depends_on(ReferenceKind::MvIndex, reference_kind);
-    }
-
-    Ok(dependency_graph)
-}
-
 /// The [`Change`] of the trigger entity that would have spawned a build task for the
 /// `mv_kind`, if we hadn't already reached the concurrency limit for running build
 /// tasks.
@@ -775,7 +672,6 @@ struct QueuedBuildMvTask {
 
 async fn spawn_build_mv_task_for_change_and_mv_kind(
     build_tasks: &mut JoinSet<BuildMvTaskResult>,
-    mv_task_ids: &mut HashMap<ReferenceKind, HashSet<Ulid>>,
     ctx: &DalContext,
     frigg: &FriggStore,
     change: Change,
@@ -794,7 +690,6 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             if build_tasks.len() < PARALLEL_BUILD_LIMIT {
                 spawn_build_mv_task!(
                     build_tasks,
-                    mv_task_ids,
                     ctx,
                     frigg,
                     change,
@@ -820,7 +715,6 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             if build_tasks.len() < PARALLEL_BUILD_LIMIT {
                 spawn_build_mv_task!(
                     build_tasks,
-                    mv_task_ids,
                     ctx,
                     frigg,
                     change,
@@ -843,7 +737,6 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             if build_tasks.len() < PARALLEL_BUILD_LIMIT {
                 spawn_build_mv_task!(
                     build_tasks,
-                    mv_task_ids,
                     ctx,
                     frigg,
                     change,
@@ -869,7 +762,6 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             if build_tasks.len() < PARALLEL_BUILD_LIMIT {
                 spawn_build_mv_task!(
                     build_tasks,
-                    mv_task_ids,
                     ctx,
                     frigg,
                     change,
@@ -895,7 +787,6 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             if build_tasks.len() < PARALLEL_BUILD_LIMIT {
                 spawn_build_mv_task!(
                     build_tasks,
-                    mv_task_ids,
                     ctx,
                     frigg,
                     change,
@@ -918,7 +809,6 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             if build_tasks.len() < PARALLEL_BUILD_LIMIT {
                 spawn_build_mv_task!(
                     build_tasks,
-                    mv_task_ids,
                     ctx,
                     frigg,
                     change,
@@ -944,7 +834,6 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             if build_tasks.len() < PARALLEL_BUILD_LIMIT {
                 spawn_build_mv_task!(
                     build_tasks,
-                    mv_task_ids,
                     ctx,
                     frigg,
                     change,
@@ -967,7 +856,6 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             if build_tasks.len() < PARALLEL_BUILD_LIMIT {
                 spawn_build_mv_task!(
                     build_tasks,
-                    mv_task_ids,
                     ctx,
                     frigg,
                     change,
@@ -993,7 +881,6 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             if build_tasks.len() < PARALLEL_BUILD_LIMIT {
                 spawn_build_mv_task!(
                     build_tasks,
-                    mv_task_ids,
                     ctx,
                     frigg,
                     change,
@@ -1019,7 +906,6 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             if build_tasks.len() < PARALLEL_BUILD_LIMIT {
                 spawn_build_mv_task!(
                     build_tasks,
-                    mv_task_ids,
                     ctx,
                     frigg,
                     change,
@@ -1042,7 +928,6 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             if build_tasks.len() < PARALLEL_BUILD_LIMIT {
                 spawn_build_mv_task!(
                     build_tasks,
-                    mv_task_ids,
                     ctx,
                     frigg,
                     change,
@@ -1068,7 +953,6 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             if build_tasks.len() < PARALLEL_BUILD_LIMIT {
                 spawn_build_mv_task!(
                     build_tasks,
-                    mv_task_ids,
                     ctx,
                     frigg,
                     change,
@@ -1091,7 +975,6 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             if build_tasks.len() < PARALLEL_BUILD_LIMIT {
                 spawn_build_mv_task!(
                     build_tasks,
-                    mv_task_ids,
                     ctx,
                     frigg,
                     change,

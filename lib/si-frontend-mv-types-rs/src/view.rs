@@ -48,7 +48,6 @@ pub struct View {
 )]
 pub struct ViewList {
     pub id: WorkspacePk,
-    #[mv(reference_kind = ReferenceKind::View)]
     pub views: Vec<Reference<ViewId>>,
 }
 
