@@ -175,7 +175,7 @@
       <CollapsingFlexItem>
         <template #header>
           <PillCounter
-            :count="(component.inputCount ?? 0) + (component.outputCount ?? 0)"
+            :count="(component.inputCount ?? 0) + (outgoing ?? 0)"
           />
           Connections
         </template>
@@ -257,7 +257,7 @@ import {
   themeClasses,
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
-import { computed, ref, nextTick, onMounted, onBeforeUnmount } from "vue";
+import { computed, ref, nextTick, onMounted, onBeforeUnmount, inject } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
@@ -282,10 +282,14 @@ import ActionsPanel from "./ActionsPanel.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import DocumentationPanel from "./DocumentationPanel.vue";
 import EmptyState from "./EmptyState.vue";
+import { assertIsDefined, Context } from "./types";
 
 const props = defineProps<{
   componentId: string;
 }>();
+
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined(ctx);
 
 const docsOpen = ref(true);
 
@@ -293,6 +297,10 @@ const key = useMakeKey();
 const args = useMakeArgs();
 
 const componentId = computed(() => props.componentId);
+
+const outgoing = computed(
+  () => ctx.outgoingCounts.value[props.componentId] ?? 0,
+);
 
 const componentQuery = useQuery<BifrostComponent | null>({
   queryKey: key(EntityKind.Component, componentId),
