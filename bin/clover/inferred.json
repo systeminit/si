@@ -2091,6 +2091,12 @@
       "VOD"
     ]
   },
+  "The format the timestamp field in your JSON object is specified. This value should be one of EPOCHMILLI or ISO_8601. E.g. if your object type is MyType and source JSON is {\"generatedAt\": {\"timestamp\": \"2001-07-04T12:08:56.235Z\"}}, then TimestampFormat should be \"ISO_8601\".": {
+    "enum": [
+      "EPOCHMILLI",
+      "ISO_8601"
+    ]
+  },
   "If `ENABLED`, the Shield Response Team (SRT) will use email and phone to notify contacts about escalations to the SRT and to initiate proactive customer support.\nIf `DISABLED`, the SRT will not proactively notify contacts about escalations or to initiate proactive customer support.": {
     "enum": [
       "ENABLED",
@@ -4197,6 +4203,9 @@
   "An eventbridge rule template group's identifier. Can be either be its id or current name.": {
     "enum": null
   },
+  "An expression specifying the field in your JSON object from which the date should be parsed. The expression should follow the structure of \\\"{ObjectTypeName.<Location of timestamp field in JSON pointer format>}\\\". E.g. if your object type is MyType and source JSON is {\"generatedAt\": {\"timestamp\": \"1737587945945\"}}, then TimestampSource should be \"{MyType.generatedAt.timestamp}\".": {
+    "enum": null
+  },
   "An expression that denotes when to trigger the scheduled query run. This can be a cron expression or a rate expression.": {
     "enum": null
   },
@@ -4294,6 +4303,9 @@
     "enum": null
   },
   "Any ethical considerations that the author wants to provide.": {
+    "enum": null
+  },
+  "Any information pertaining to the status of the calculated attribute if required.": {
     "enum": null
   },
   "App Runner service endpoint IP address type": {
@@ -9726,6 +9738,9 @@
   "The TTL in seconds for a resolver that has caching activated.\n Valid values are 1–3,600 seconds.": {
     "enum": null
   },
+  "The Target Role Arn of the pod identity association.": {
+    "enum": null
+  },
   "The URI for your schema registry. The correct URI format depends on the type of schema registry you're using.": {
     "enum": null
   },
@@ -11094,6 +11109,9 @@
   "The end time in UTC of the scheduled action. After this time, the scheduled action does not trigger.": {
     "enum": null
   },
+  "The ending point for this range. Positive numbers indicate how many days in the past data should be included, and negative numbers indicate how many days in the future.": {
+    "enum": null
+  },
   "The endpoint URL for your index management page.": {
     "enum": null
   },
@@ -11998,6 +12016,9 @@
     "enum": null
   },
   "The maximum number of parallel training jobs when you create a solution version. The maximum value for maxParallelTrainingJobs is 10.": {
+    "enum": null
+  },
+  "The maximum number of profile objects for this object type": {
     "enum": null
   },
   "The maximum number of records in each batch that Lambda pulls from your stream or queue and sends to your function. Lambda passes all of the records in the batch to the function in a single call, up to the payload limit for synchronous invocation (6 MB).\n  +   *Amazon Kinesis* – Default 100. Max 10,000.\n  +   *Amazon DynamoDB Streams* – Default 100. Max 10,000.\n  +   *Amazon Simple Queue Service* – Default 10. For standard queues the max is 10,000. For FIFO queues the max is 10.\n  +   *Amazon Managed Streaming for Apache Kafka* – Default 100. Max 10,000.\n  +   *Self-managed Apache Kafka* – Default 100. Max 10,000.\n  +   *Amazon MQ (ActiveMQ and RabbitMQ)* – Default 100. Max 10,000.\n  +   *DocumentDB* – Default 100. Max 10,000.": {
@@ -14478,6 +14499,9 @@
   "The private key verification certificate.": {
     "enum": null
   },
+  "The progress percentage for including historical data in your calculated attribute.": {
+    "enum": null
+  },
   "The project ID metadata.": {
     "enum": null
   },
@@ -15037,6 +15061,9 @@
     "enum": null
   },
   "The starting Region or Availability Zone for metric to subscribe to.": {
+    "enum": null
+  },
+  "The starting point for this range. Positive numbers indicate how many days in the past data should be included, and negative numbers indicate how many days in the future.": {
     "enum": null
   },
   "The state in which a customer lives.": {
