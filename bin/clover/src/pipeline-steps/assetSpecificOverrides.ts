@@ -11,6 +11,7 @@ import {
 } from "../spec/sockets.ts";
 import { ExpandedPkgSpec } from "../spec/pkgs.ts";
 import {
+  addPropSuggestSource,
   createScalarProp,
   ExpandedPropSpec,
   ExpandedPropSpecFor,
@@ -599,6 +600,11 @@ const overrides = new Map<string, OverrideFn>([
     ], "Fargate Storage KMS Key Id");
     variant.sockets.push(fargateKmsSocket);
 
+    addPropSuggestSource(fargateKmsProp, {
+      schema: "AWS:KMS:Key",
+      prop: "/resource_value/KeyId",
+    });
+
     const kmsKeyIdProp = propForOverride(
       managedStorageConfigurationProp,
       "KmsKeyId",
@@ -611,6 +617,11 @@ const overrides = new Map<string, OverrideFn>([
       { tokens: ["KeyId", "string", "scalar"] },
     ], "Storage KMS Key Id");
     variant.sockets.push(kmsKeyIdSocket);
+
+    addPropSuggestSource(kmsKeyIdProp, {
+      schema: "AWS:KMS:Key",
+      prop: "/resource_value/KeyId",
+    });
   }],
   ["AWS::EC2::VPCPeeringConnection", (spec: ExpandedPkgSpec) => {
     const variant = spec.schemas[0].variants[0];
