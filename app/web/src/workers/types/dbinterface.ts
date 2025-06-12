@@ -53,7 +53,7 @@ export interface DBInterface {
     workspaceId: string,
     headChangeSetId: string,
     changeSetId: string,
-  ): Promise<void>;
+  ): void;
   getPossibleConnections(
     workspaceId: string,
     changeSetId: string,
@@ -78,6 +78,12 @@ export interface DBInterface {
     kind: EntityKind,
     id: Id,
   ): typeof NOROW | AtomDocument;
+  getList(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+    kind: EntityKind,
+    id: Id,
+  ): string;
   mjolnirBulk(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -103,7 +109,7 @@ export interface DBInterface {
   changeSetExists(
     workspaceId: string,
     changeSetId: ChangeSetId,
-  ): Promise<boolean>;
+  ): boolean;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<boolean>;
   pruneAtomsForClosedChangeSet(
     workspaceId: WorkspacePk,

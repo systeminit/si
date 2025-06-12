@@ -298,11 +298,11 @@ const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
  * INDEX LOGIC
  */
 
-const atomExistsOnIndexes = async (
+const atomExistsOnIndexes = (
   kind: EntityKind,
   id: string,
   checksum: Checksum,
-): Promise<Checksum[]> => {
+): Checksum[] => {
   const rows = db.exec({
     sql: `
     select
@@ -379,7 +379,7 @@ const newIndex = (
   }
 };
 
-const removeAtom = async (indexChecksum: Checksum, atom: Required<Atom>) => {
+const removeAtom = (indexChecksum: Checksum, atom: Required<Atom>) => {
   db.exec({
     sql: `
     DELETE FROM index_mtm_atoms
@@ -448,7 +448,7 @@ const bustOrQueue = (
   else bustQueueAdd(workspaceId, changeSetId, kind, id, bustCacheFn);
 };
 
-const bustCacheAndReferences = async (
+const bustCacheAndReferences = (
   workspaceId: string,
   changeSetId: string,
   kind: EntityKind,
@@ -497,7 +497,7 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
   }
 
   // in between throwing a hammer and receiving it, i might already have written the atom
-  const indexes = await atomExistsOnIndexes(
+  const indexes = atomExistsOnIndexes(
     msg.atom.kind,
     msg.atom.id,
     msg.atom.toChecksum,
@@ -519,7 +519,7 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     }
   }
 
-  const indexChecksum = await indexLogic(msg.atom, span);
+  const indexChecksum = indexLogic(msg.atom, span);
 
   // if the atom exists, i just need the MTM
   if (indexes.length === 0) {
@@ -563,7 +563,7 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
   );
   insertAtomMTM(msg.atom, indexChecksum);
 
-  await updateChangeSetWithNewIndex(msg.atom);
+  updateChangeSetWithNewIndex(msg.atom);
   await removeOldIndex();
 
   if (COMPUTED_KINDS.includes(msg.atom.kind)) {
@@ -623,7 +623,7 @@ const insertAtomMTM = (atom: Atom, indexChecksum: Checksum) => {
   return true;
 };
 
-const indexLogic = async (meta: AtomMeta, span?: Span) => {
+const indexLogic = (meta: AtomMeta, span?: Span) => {
   const { changeSetId, workspaceId, toIndexChecksum } = {
     ...meta,
   };
@@ -673,7 +673,7 @@ const indexLogic = async (meta: AtomMeta, span?: Span) => {
   }
 
   // Create index if needed - this is the new validation mechanism
-  if (indexExists === NOROW) await newIndex(meta, currentIndexChecksum);
+  if (indexExists === NOROW) newIndex(meta, currentIndexChecksum);
 
   if (!changeSetExists) {
     db.exec({
@@ -728,7 +728,7 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
 
   let indexChecksum: string;
   try {
-    indexChecksum = await indexLogic(data.meta, span);
+    indexChecksum = indexLogic(data.meta, span);
     debug("📦 Index logic completed, resolved checksum:", indexChecksum);
   } catch (err) {
     if (err instanceof Ragnarok) {
@@ -737,7 +737,7 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
         fromChecksumExpected: err.fromChecksumExpected,
         currentChecksum: err.currentChecksum,
       });
-      await ragnarok(err.workspaceId, err.changeSetId);
+      ragnarok(err.workspaceId, err.changeSetId);
       return;
     } else {
       throw err;
@@ -821,7 +821,7 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
     }),
   );
 
-  await updateChangeSetWithNewIndex(data.meta);
+  updateChangeSetWithNewIndex(data.meta);
   await removeOldIndex();
 
   debug(
@@ -877,7 +877,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
     );
 
     // Check if we actually have the atom data, not just the MTM relationship
-    const upToDateAtomIndexes = await atomExistsOnIndexes(
+    const upToDateAtomIndexes = atomExistsOnIndexes(
       atom.kind,
       atom.id,
       atom.toChecksum,
@@ -898,7 +898,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
     }
 
     // do we have an index with the fromChecksum (without we cannot patch)
-    const previousIndexes = await atomExistsOnIndexes(
+    const previousIndexes = atomExistsOnIndexes(
       atom.kind,
       atom.id,
       atom.fromChecksum,
@@ -932,7 +932,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
       if (exists) {
         debug("🔧 Removing atom:", atom.kind, atom.id);
         span.setAttribute("removeAtom", true);
-        await removeAtom(indexChecksum, atom);
+        removeAtom(indexChecksum, atom);
         bustCache = true;
       } else {
         debug("🔧 Atom already removed (noop):", atom.kind, atom.id);
@@ -1163,7 +1163,7 @@ const mjolnirBulk = async (
   bulkDone();
 };
 
-const mjolnir = async (
+const mjolnir = (
   workspaceId: string,
   changeSetId: ChangeSetId,
   kind: EntityKind,
@@ -1293,7 +1293,7 @@ const mjolnirJob = async (
   processMjolnirQueue.add(() => handleHammer(msg));
 };
 
-const updateChangeSetWithNewIndex = async (meta: AtomMeta) => {
+const updateChangeSetWithNewIndex = (meta: AtomMeta) => {
   db.exec({
     sql: "update changesets set index_checksum = ? where change_set_id = ?;",
     bind: [meta.toIndexChecksum, meta.changeSetId],
@@ -1503,7 +1503,7 @@ const ragnarok = async (
  * WEAK REFERENCE TRACKING
  */
 
-const clearAllWeakReferences = async (changeSetId: string) => {
+const clearAllWeakReferences = (changeSetId: string) => {
   const sql = `
     delete from weak_references
     where change_set_id = ?
@@ -1515,7 +1515,7 @@ const clearAllWeakReferences = async (changeSetId: string) => {
   });
 };
 
-const clearWeakReferences = async (
+const clearWeakReferences = (
   changeSetId: string,
   referrer: { kind: string; args: string },
 ) => {
@@ -1530,7 +1530,7 @@ const clearWeakReferences = async (
   });
 };
 
-const weakReference = async (
+const weakReference = (
   changeSetId: string,
   target: { kind: string; args: string },
   referrer: { kind: string; args: string },
@@ -2366,7 +2366,7 @@ const getReferences = (
 
 type Listable = EntityKind.ComponentList | EntityKind.ViewComponentList;
 type Gettable = Exclude<EntityKind, Listable>;
-const getList = async (
+const getList = (
   _workspaceId: string,
   changeSetId: ChangeSetId,
   kind: Listable,
@@ -2374,7 +2374,7 @@ const getList = async (
   indexChecksum?: string,
   followComputed = true,
   followReferences = true,
-): Promise<-1 | object> => {
+): string => {
   let varname;
   switch (kind) {
     case EntityKind.ComponentList:
@@ -2443,18 +2443,18 @@ from
     });
     const end = Date.now();
     debug(
-      "❓ sql getJSON",
+      "❓ sql getList",
       `[${end - start}ms]`,
       bind,
       " returns ?",
       !(atomData.length === 0),
       atomData,
     );
-    if (atomData.length === 0) {
-      return -1
-    } else {
-      return atomData[0]![0] as Omit<SqlValue, 'null'>;
-    }
+    if (atomData.length === 0) return ""; 
+
+    console.dir(atomData[0]![0])
+    return atomData[0]![0] as string;
+    
 };
 
 
@@ -2701,7 +2701,7 @@ const dbInterface: DBInterface = {
     return initializeSQLite(testing);
   },
 
-  async migrate(testing: boolean) {
+  migrate(testing: boolean) {
     const result = ensureTables(testing);
     debug("Migration completed");
     return result;
@@ -2823,11 +2823,11 @@ const dbInterface: DBInterface = {
   async initBifrost() {
     debug("🌈 Initializing Bifrost");
     await Promise.all([this.initDB(false), this.initSocket()]);
-    await this.migrate(false);
+    this.migrate(false);
     debug("🌈 Bifrost initialization complete");
   },
 
-  async bifrostClose() {
+  bifrostClose() {
     try {
       if (socket) socket.close();
     } catch (err) {
@@ -2835,7 +2835,7 @@ const dbInterface: DBInterface = {
     }
   },
 
-  async bifrostReconnect() {
+  bifrostReconnect() {
     try {
       if (socket) socket.reconnect();
     } catch (err) {
@@ -2843,22 +2843,23 @@ const dbInterface: DBInterface = {
     }
   },
 
-  async addListenerBustCache(cb: BustCacheFn) {
+  addListenerBustCache(cb: BustCacheFn) {
     bustCacheFn = cb;
   },
 
-  async addListenerInFlight(cb: RainbowFn) {
+  addListenerInFlight(cb: RainbowFn) {
     inFlight = cb;
   },
-  async addListenerReturned(cb: RainbowFn) {
+  addListenerReturned(cb: RainbowFn) {
     returned = cb;
   },
 
-  async addListenerLobbyExit(cb: LobbyExitFn) {
+  addListenerLobbyExit(cb: LobbyExitFn) {
     lobbyExitFn = cb;
   },
 
   get,
+  getList,
   getOutgoingConnectionsByComponentId,
   getOutgoingConnectionsCounts,
   getComponentNames,
@@ -2878,7 +2879,7 @@ const dbInterface: DBInterface = {
   handleHammer,
   bobby: dropTables,
   ragnarok,
-  changeSetExists: async (workspaceId: string, changeSetId: ChangeSetId) => {
+  changeSetExists: (workspaceId: string, changeSetId: ChangeSetId) => {
     const row = db.exec({
       sql: "select change_set_id from changesets where workspace_id = ? and change_set_id = ?",
       returnValue: "resultRows",
@@ -2888,13 +2889,13 @@ const dbInterface: DBInterface = {
     return cId === changeSetId;
   },
 
-  async odin(changeSetId: ChangeSetId): Promise<object> {
-    const c = db.exec({
+  odin(changeSetId: ChangeSetId): object {
+    const changesets = db.exec({
       sql: "select * from changesets where change_set_id=?;",
       bind: [changeSetId],
       returnValue: "resultRows",
     });
-    const i = db.exec({
+    const indexes = db.exec({
       sql: `select indexes.* from indexes
             inner join changesets
               on indexes.checksum = changesets.index_checksum
@@ -2903,7 +2904,7 @@ const dbInterface: DBInterface = {
       bind: [changeSetId],
       returnValue: "resultRows",
     });
-    const m = db.exec({
+    const mtm = db.exec({
       sql: `select index_mtm_atoms.* from index_mtm_atoms
             inner join changesets
               on index_mtm_atoms.index_checksum = changesets.index_checksum
@@ -2912,7 +2913,7 @@ const dbInterface: DBInterface = {
       bind: [changeSetId],
       returnValue: "resultRows",
     });
-    const a = db.exec({
+    const atoms = db.exec({
       sql: `select atoms.* from atoms
             inner join index_mtm_atoms
               on index_mtm_atoms.kind = atoms.kind
@@ -2925,14 +2926,13 @@ const dbInterface: DBInterface = {
       bind: [changeSetId],
       returnValue: "resultRows",
     });
-    const [changesets, indexes, atoms, mtm] = await Promise.all([c, i, a, m]);
     return { changesets, indexes, atoms, mtm };
   },
-  async linkNewChangeset(
+  linkNewChangeset(
     workspaceId,
     headChangeSet,
     changeSetId,
-  ): Promise<void> {
+  ) {
     try {
       const headRows = db.exec({
         sql: "select index_checksum from changesets where workspace_id = ? and change_set_id = ?;",
