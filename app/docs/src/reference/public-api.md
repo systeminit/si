@@ -658,6 +658,53 @@ Components management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
+## Complex search for components
+
+<a id="opIdsearch_components"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/components/search`
+
+> Body parameter
+
+```json
+{
+  "schemaName": "AWS::EC2::Instance"
+}
+```
+
+<h3 id="complex-search-for-components-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|body|body|[SearchComponentsV1Request](#schemasearchcomponentsv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "components": [
+    "01H9ZQD35JPMBGHH69BT0Q79AA",
+    "01H9ZQD35JPMBGHH69BT0Q79BB",
+    "01H9ZQD35JPMBGHH69BT0Q79CC"
+  ]
+}
+```
+
+<h3 id="complex-search-for-components-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Components retrieved successfully|[SearchComponentsV1Response](#schemasearchcomponentsv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
 ## Get a component by component Id
 
 <a id="opIdget_component"></a>
@@ -1015,7 +1062,10 @@ Components management endpoints
 
 ```json
 {
-  "funcRunId": "01H9ZQD35JPMBGHH69BT0Q79VY"
+  "funcRunId": "string",
+  "managementFuncJobStateId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+  "message": "enqueued",
+  "status": "Ok"
 }
 ```
 
@@ -1859,6 +1909,46 @@ Functions management endpoints
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Func retrieved successfully|[GetFuncV1Response](#schemagetfuncv1response)|
 |401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Func not found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+# [management_funcs](#system-initiative-api-management_funcs)
+
+Management functions endpoints
+
+## Get management funcs job state details
+
+<a id="opIdget_management_func_run_state"></a>
+
+> Request format
+
+`GET /v1/w/{workspace_id}/change-sets/{change_set_id}/management-funcs/{management_func_job_state_id}`
+
+<h3 id="get-management-funcs-job-state-details-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|management_func_job_state_id|path|string|true|Management Func Job identifier|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "funcRunId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+  "state": "Executing"
+}
+```
+
+<h3 id="get-management-funcs-job-state-details-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Management Func Job retrieved successfully|[GetManagementFuncJobStateV1Response](#schemagetmanagementfuncjobstatev1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Management Func Job not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 # [Schemas](#schemas)
@@ -2838,7 +2928,10 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 
 ```json
 {
-  "funcRunId": "01H9ZQD35JPMBGHH69BT0Q79VY"
+  "funcRunId": "string",
+  "managementFuncJobStateId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+  "message": "enqueued",
+  "status": "Ok"
 }
 
 ```
@@ -2848,6 +2941,9 @@ A prop path, starting from root/domain, with / instead of PROP_PATH_SEPARATOR as
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |funcRunId|string|true|none|none|
+|managementFuncJobStateId|string|true|none|none|
+|message|string|false|none|none|
+|status|string|true|none|none|
 
 ## [FindComponentV1Params](#tocS_FindComponentV1Params)
 
@@ -3357,6 +3453,28 @@ continued
 |link|string|true|none|none|
 |name|string|true|none|none|
 
+## [GetManagementFuncJobStateV1Response](#tocS_GetManagementFuncJobStateV1Response)
+
+<a id="schemagetmanagementfuncjobstatev1response"></a>
+<a id="schema_GetManagementFuncJobStateV1Response"></a>
+<a id="tocSgetmanagementfuncjobstatev1response"></a>
+<a id="tocsgetmanagementfuncjobstatev1response"></a>
+
+```json
+{
+  "funcRunId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+  "state": "Executing"
+}
+
+```
+
+### [Properties](#getmanagementfuncjobstatev1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|funcRunId|string|true|none|none|
+|state|string|true|none|none|
+
 ## [GetSchemaV1Response](#tocS_GetSchemaV1Response)
 
 <a id="schemagetschemav1response"></a>
@@ -3636,6 +3754,26 @@ continued
 |---|---|---|---|---|
 |componentId|string|true|none|none|
 |componentName|string|true|none|none|
+
+## [ManagementFuncJobStateV1RequestPath](#tocS_ManagementFuncJobStateV1RequestPath)
+
+<a id="schemamanagementfuncjobstatev1requestpath"></a>
+<a id="schema_ManagementFuncJobStateV1RequestPath"></a>
+<a id="tocSmanagementfuncjobstatev1requestpath"></a>
+<a id="tocsmanagementfuncjobstatev1requestpath"></a>
+
+```json
+{
+  "management_func_job_state_id": "string"
+}
+
+```
+
+### [Properties](#managementfuncjobstatev1requestpath-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|management_func_job_state_id|string|true|none|none|
 
 ## [ManagementFunctionReference](#tocS_ManagementFunctionReference)
 
@@ -4045,6 +4183,50 @@ Component details in action response
 |---|---|---|---|---|
 |schema_id|string|true|none|none|
 |schema_variant_id|string|true|none|none|
+
+## [SearchComponentsV1Request](#tocS_SearchComponentsV1Request)
+
+<a id="schemasearchcomponentsv1request"></a>
+<a id="schema_SearchComponentsV1Request"></a>
+<a id="tocSsearchcomponentsv1request"></a>
+<a id="tocssearchcomponentsv1request"></a>
+
+```json
+{
+  "schemaName": "AWS::EC2::Instance"
+}
+
+```
+
+### [Properties](#searchcomponentsv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|schemaName|string,null|false|none|none|
+
+## [SearchComponentsV1Response](#tocS_SearchComponentsV1Response)
+
+<a id="schemasearchcomponentsv1response"></a>
+<a id="schema_SearchComponentsV1Response"></a>
+<a id="tocSsearchcomponentsv1response"></a>
+<a id="tocssearchcomponentsv1response"></a>
+
+```json
+{
+  "components": [
+    "01H9ZQD35JPMBGHH69BT0Q79AA",
+    "01H9ZQD35JPMBGHH69BT0Q79BB",
+    "01H9ZQD35JPMBGHH69BT0Q79CC"
+  ]
+}
+
+```
+
+### [Properties](#searchcomponentsv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|components|[array]|true|none|none|
 
 ## [SecretDefinitionV1](#tocS_SecretDefinitionV1)
 

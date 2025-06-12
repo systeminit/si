@@ -783,8 +783,27 @@ export interface ExecuteManagementFunctionV1Response {
      * 
      * @type {string}
      * @memberof ExecuteManagementFunctionV1Response
+     * @deprecated
      */
     'funcRunId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ExecuteManagementFunctionV1Response
+     */
+    'managementFuncJobStateId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ExecuteManagementFunctionV1Response
+     */
+    'message'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ExecuteManagementFunctionV1Response
+     */
+    'status': string;
 }
 /**
  * 
@@ -1241,6 +1260,25 @@ export interface GetFuncV1Response {
 /**
  * 
  * @export
+ * @interface GetManagementFuncJobStateV1Response
+ */
+export interface GetManagementFuncJobStateV1Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetManagementFuncJobStateV1Response
+     */
+    'funcRunId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetManagementFuncJobStateV1Response
+     */
+    'state': string;
+}
+/**
+ * 
+ * @export
  * @interface GetSchemaV1Response
  */
 export interface GetSchemaV1Response {
@@ -1455,6 +1493,19 @@ export interface ManagedByConnectionViewV1 {
      * @memberof ManagedByConnectionViewV1
      */
     'componentName': string;
+}
+/**
+ * 
+ * @export
+ * @interface ManagementFuncJobStateV1RequestPath
+ */
+export interface ManagementFuncJobStateV1RequestPath {
+    /**
+     * 
+     * @type {string}
+     * @memberof ManagementFuncJobStateV1RequestPath
+     */
+    'management_func_job_state_id': string;
 }
 /**
  * @type ManagementFunctionReference
@@ -1802,6 +1853,32 @@ export interface SchemaVariantV1RequestPath {
      * @memberof SchemaVariantV1RequestPath
      */
     'schema_variant_id': string;
+}
+/**
+ * 
+ * @export
+ * @interface SearchComponentsV1Request
+ */
+export interface SearchComponentsV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof SearchComponentsV1Request
+     */
+    'schemaName'?: string | null;
+}
+/**
+ * 
+ * @export
+ * @interface SearchComponentsV1Response
+ */
+export interface SearchComponentsV1Response {
+    /**
+     * 
+     * @type {Array<Array<string>>}
+     * @memberof SearchComponentsV1Response
+     */
+    'components': Array<Array<string>>;
 }
 /**
  * 
@@ -3795,6 +3872,50 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Complex search for components
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {SearchComponentsV1Request} searchComponentsV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        searchComponents: async (workspaceId: string, changeSetId: string, searchComponentsV1Request: SearchComponentsV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('searchComponents', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('searchComponents', 'changeSetId', changeSetId)
+            // verify required parameter 'searchComponentsV1Request' is not null or undefined
+            assertParamExists('searchComponents', 'searchComponentsV1Request', searchComponentsV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/components/search`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(searchComponentsV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary Update a component
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -3962,6 +4083,21 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Complex search for components
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {SearchComponentsV1Request} searchComponentsV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async searchComponents(workspaceId: string, changeSetId: string, searchComponentsV1Request: SearchComponentsV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SearchComponentsV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.searchComponents(workspaceId, changeSetId, searchComponentsV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ComponentsApi.searchComponents']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary Update a component
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -4058,6 +4194,16 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Complex search for components
+         * @param {ComponentsApiSearchComponentsRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        searchComponents(requestParameters: ComponentsApiSearchComponentsRequest, options?: RawAxiosRequestConfig): AxiosPromise<SearchComponentsV1Response> {
+            return localVarFp.searchComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.searchComponentsV1Request, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary Update a component
          * @param {ComponentsApiUpdateComponentRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -4144,6 +4290,16 @@ export interface ComponentsApiInterface {
      * @memberof ComponentsApiInterface
      */
     listComponents(requestParameters: ComponentsApiListComponentsRequest, options?: RawAxiosRequestConfig): AxiosPromise<ListComponentsV1Response>;
+
+    /**
+     * 
+     * @summary Complex search for components
+     * @param {ComponentsApiSearchComponentsRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ComponentsApiInterface
+     */
+    searchComponents(requestParameters: ComponentsApiSearchComponentsRequest, options?: RawAxiosRequestConfig): AxiosPromise<SearchComponentsV1Response>;
 
     /**
      * 
@@ -4382,6 +4538,34 @@ export interface ComponentsApiListComponentsRequest {
 }
 
 /**
+ * Request parameters for searchComponents operation in ComponentsApi.
+ * @export
+ * @interface ComponentsApiSearchComponentsRequest
+ */
+export interface ComponentsApiSearchComponentsRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof ComponentsApiSearchComponents
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof ComponentsApiSearchComponents
+     */
+    readonly changeSetId: string
+
+    /**
+     * 
+     * @type {SearchComponentsV1Request}
+     * @memberof ComponentsApiSearchComponents
+     */
+    readonly searchComponentsV1Request: SearchComponentsV1Request
+}
+
+/**
  * Request parameters for updateComponent operation in ComponentsApi.
  * @export
  * @interface ComponentsApiUpdateComponentRequest
@@ -4505,6 +4689,18 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
      */
     public listComponents(requestParameters: ComponentsApiListComponentsRequest, options?: RawAxiosRequestConfig) {
         return ComponentsApiFp(this.configuration).listComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Complex search for components
+     * @param {ComponentsApiSearchComponentsRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ComponentsApi
+     */
+    public searchComponents(requestParameters: ComponentsApiSearchComponentsRequest, options?: RawAxiosRequestConfig) {
+        return ComponentsApiFp(this.configuration).searchComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.searchComponentsV1Request, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -4798,6 +4994,170 @@ export class FuncsApi extends BaseAPI implements FuncsApiInterface {
      */
     public getFuncRun(requestParameters: FuncsApiGetFuncRunRequest, options?: RawAxiosRequestConfig) {
         return FuncsApiFp(this.configuration).getFuncRun(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.funcRunId, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * ManagementFuncsApi - axios parameter creator
+ * @export
+ */
+export const ManagementFuncsApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * 
+         * @summary Get management funcs job state details
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} managementFuncJobStateId Management Func Job identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getManagementFuncRunState: async (workspaceId: string, changeSetId: string, managementFuncJobStateId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('getManagementFuncRunState', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('getManagementFuncRunState', 'changeSetId', changeSetId)
+            // verify required parameter 'managementFuncJobStateId' is not null or undefined
+            assertParamExists('getManagementFuncRunState', 'managementFuncJobStateId', managementFuncJobStateId)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/management-funcs/{management_func_job_state_id}`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"management_func_job_state_id"}}`, encodeURIComponent(String(managementFuncJobStateId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * ManagementFuncsApi - functional programming interface
+ * @export
+ */
+export const ManagementFuncsApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = ManagementFuncsApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * 
+         * @summary Get management funcs job state details
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} managementFuncJobStateId Management Func Job identifier
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getManagementFuncRunState(workspaceId: string, changeSetId: string, managementFuncJobStateId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetManagementFuncJobStateV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getManagementFuncRunState(workspaceId, changeSetId, managementFuncJobStateId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ManagementFuncsApi.getManagementFuncRunState']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * ManagementFuncsApi - factory interface
+ * @export
+ */
+export const ManagementFuncsApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = ManagementFuncsApiFp(configuration)
+    return {
+        /**
+         * 
+         * @summary Get management funcs job state details
+         * @param {ManagementFuncsApiGetManagementFuncRunStateRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getManagementFuncRunState(requestParameters: ManagementFuncsApiGetManagementFuncRunStateRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetManagementFuncJobStateV1Response> {
+            return localVarFp.getManagementFuncRunState(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.managementFuncJobStateId, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * ManagementFuncsApi - interface
+ * @export
+ * @interface ManagementFuncsApi
+ */
+export interface ManagementFuncsApiInterface {
+    /**
+     * 
+     * @summary Get management funcs job state details
+     * @param {ManagementFuncsApiGetManagementFuncRunStateRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ManagementFuncsApiInterface
+     */
+    getManagementFuncRunState(requestParameters: ManagementFuncsApiGetManagementFuncRunStateRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetManagementFuncJobStateV1Response>;
+
+}
+
+/**
+ * Request parameters for getManagementFuncRunState operation in ManagementFuncsApi.
+ * @export
+ * @interface ManagementFuncsApiGetManagementFuncRunStateRequest
+ */
+export interface ManagementFuncsApiGetManagementFuncRunStateRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof ManagementFuncsApiGetManagementFuncRunState
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof ManagementFuncsApiGetManagementFuncRunState
+     */
+    readonly changeSetId: string
+
+    /**
+     * Management Func Job identifier
+     * @type {string}
+     * @memberof ManagementFuncsApiGetManagementFuncRunState
+     */
+    readonly managementFuncJobStateId: string
+}
+
+/**
+ * ManagementFuncsApi - object-oriented interface
+ * @export
+ * @class ManagementFuncsApi
+ * @extends {BaseAPI}
+ */
+export class ManagementFuncsApi extends BaseAPI implements ManagementFuncsApiInterface {
+    /**
+     * 
+     * @summary Get management funcs job state details
+     * @param {ManagementFuncsApiGetManagementFuncRunStateRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ManagementFuncsApi
+     */
+    public getManagementFuncRunState(requestParameters: ManagementFuncsApiGetManagementFuncRunStateRequest, options?: RawAxiosRequestConfig) {
+        return ManagementFuncsApiFp(this.configuration).getManagementFuncRunState(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.managementFuncJobStateId, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

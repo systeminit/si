@@ -18,19 +18,17 @@ import re  # noqa: F401
 import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List
 from typing import Optional, Set
 from typing_extensions import Self
 
-class ExecuteManagementFunctionV1Response(BaseModel):
+class GetManagementFuncJobStateV1Response(BaseModel):
     """
-    ExecuteManagementFunctionV1Response
+    GetManagementFuncJobStateV1Response
     """ # noqa: E501
     func_run_id: StrictStr = Field(alias="funcRunId")
-    management_func_job_state_id: StrictStr = Field(alias="managementFuncJobStateId")
-    message: Optional[StrictStr] = None
-    status: StrictStr
-    __properties: ClassVar[List[str]] = ["funcRunId", "managementFuncJobStateId", "message", "status"]
+    state: StrictStr
+    __properties: ClassVar[List[str]] = ["funcRunId", "state"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -50,7 +48,7 @@ class ExecuteManagementFunctionV1Response(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of ExecuteManagementFunctionV1Response from a JSON string"""
+        """Create an instance of GetManagementFuncJobStateV1Response from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -75,7 +73,7 @@ class ExecuteManagementFunctionV1Response(BaseModel):
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of ExecuteManagementFunctionV1Response from a dict"""
+        """Create an instance of GetManagementFuncJobStateV1Response from a dict"""
         if obj is None:
             return None
 
@@ -84,9 +82,7 @@ class ExecuteManagementFunctionV1Response(BaseModel):
 
         _obj = cls.model_validate({
             "funcRunId": obj.get("funcRunId"),
-            "managementFuncJobStateId": obj.get("managementFuncJobStateId"),
-            "message": obj.get("message"),
-            "status": obj.get("status")
+            "state": obj.get("state")
         })
         return _obj
 
