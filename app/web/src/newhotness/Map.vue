@@ -324,11 +324,11 @@ const onD = (e: KeyDetails["d"]) => {
   }
 };
 const onU = (_e: KeyDetails["u"]) => {
-  if (selectedComponent.value && selectedComponent.value.canBeUpgraded) {
-    componentContextMenuRef.value?.componentUpgrade([
-      selectedComponent.value.id,
-    ]);
-  }
+  // if (selectedComponent.value && selectedComponent.value.canBeUpgraded) {
+  //   componentContextMenuRef.value?.componentUpgrade([
+  //     selectedComponent.value.id,
+  //   ]);
+  // }
 };
 const onBackspace = (_e: KeyDetails["Backspace"]) => {
   if (selectedComponent.value && !selectedComponent.value.toDelete) {
