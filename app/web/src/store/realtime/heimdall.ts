@@ -170,6 +170,38 @@ export const linkNewChangeset = async (
   await db.linkNewChangeset(workspaceId, headChangeSetId, changeSetId);
 };
 
+export const getOutgoingConnectionsCounts = async (args: {
+  workspaceId: string;
+  changeSetId: ChangeSetId;
+}) => {
+  if (!initCompleted.value) throw new Error("bifrost not initiated");
+
+  const connectionsCounts = await db.getOutgoingConnectionsCounts(
+    args.workspaceId,
+    args.changeSetId,
+  );
+  if (connectionsCounts) return reactive(connectionsCounts);
+  else return {};
+};
+
+export const getComponentNames = async (args: {
+  workspaceId: string;
+  changeSetId: ChangeSetId;
+}) => {
+  if (!initCompleted.value) throw new Error("bifrost not initiated");
+
+  const start = Date.now();
+  const componentNames = await db.getComponentNames(
+    args.workspaceId,
+    args.changeSetId,
+  );
+  const end = Date.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost query componentNames", end - start, "ms");
+  if (componentNames) return reactive(componentNames);
+  else return {};
+};
+
 export const getOutgoingConnections = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
