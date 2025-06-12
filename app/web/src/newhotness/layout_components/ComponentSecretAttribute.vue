@@ -59,7 +59,7 @@
                           'border-destructive-500 z-100',
                       )
                     "
-                    type="text"
+                    :type="getFormFieldType(fieldname)"
                     :value="field.state.value"
                     tabindex="0"
                     :placeholder="
@@ -294,6 +294,13 @@ const getPlaceholder = (fieldname: string) => {
   } else if (fieldname === "Description") {
     return props.attributeTree.secret.description;
   } else return "empty";
+};
+
+const getFormFieldType = (fieldname: string) => {
+  if (fieldname !== "Name" && fieldname !== "Description") {
+    return "password";
+  }
+  return "text";
 };
 
 const secretFormOpen = ref(false);
