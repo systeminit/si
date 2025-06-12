@@ -73,6 +73,8 @@
         :label="option.label"
         :checkable="checkable"
         :checked="option.value === modelValue"
+        :enableSettingsEdit="props.enableSettingsEdit"
+        @edit="editOption(option)"
         @select="selectOption(option)"
       />
       <slot name="afterOptions" />
@@ -116,6 +118,7 @@ const props = defineProps({
   minWidthToAnchor: { type: Boolean },
   noBorder: { type: Boolean },
   alignRightOnAnchor: { type: Boolean },
+  enableSettingsEdit: { type: Boolean },
 });
 
 const arrayOptionsFromProps = computed((): OptionsAsArray => {
@@ -218,9 +221,13 @@ const selectOption = (option: { value: unknown; label: string }) => {
   emit("select", option.value as string);
   emit("update:modelValue", option.value as string);
 };
+const editOption = (option: { value: unknown; label: string }) => {
+  emit("edit", option.value as string);
+};
 const emit = defineEmits<{
   (e: "select", value: string): void;
   (e: "update:modelValue", value: string): void;
+  (e: "edit", value: string): void;
 }>();
 
 defineExpose({
