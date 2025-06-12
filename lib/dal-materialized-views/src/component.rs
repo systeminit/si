@@ -76,6 +76,9 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         diff_count,
         resource_diff,
         is_secret_defining,
+        to_delete: Component::is_set_to_delete(ctx, component_id)
+            .await?
+            .unwrap_or(false),
     })
 }
 

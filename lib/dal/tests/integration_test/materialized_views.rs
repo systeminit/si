@@ -215,6 +215,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
             diff_count: 0,
             resource_diff,
             is_secret_defining,
+            to_delete: false,
         }, // expected
         component // actual
     );

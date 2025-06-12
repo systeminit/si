@@ -15,24 +15,26 @@ export * as funcRunTypes from "./func_run";
 const tracer = trace.getTracer("bifrost");
 
 export enum routes {
-  GetFuncRunsPaginated = "GetFuncRunsPaginated",
-  FuncRun = "FuncRun",
-  FuncRunByAv = "FuncRunByAv",
-  FuncRunLogs = "FuncRunLogs",
-  UpdateComponentAttributes = "UpdateComponentAttributes",
-  UpdateComponentName = "UpdateComponentName",
-  CreateComponent = "CreateComponent",
-  CreateView = "CreateView",
-  CreateSecret = "CreateSecret",
-  GetPublicKey = "GetPublicKey",
   ActionAdd = "ActionAdd",
   ActionCancel = "ActionCancel",
   ActionHold = "ActionHold",
   ActionRetry = "ActionRetry",
+  CreateComponent = "CreateComponent",
+  CreateSecret = "CreateSecret",
+  CreateView = "CreateView",
   DeleteComponents = "DeleteComponents",
   DuplicateComponents = "DuplicateComponents",
-  UpgradeComponents = "UpgradeComponents",
+  EraseComponentsFromView = "EraseComponentsFromView",
+  FuncRun = "FuncRun",
+  FuncRunByAv = "FuncRunByAv",
+  FuncRunLogs = "FuncRunLogs",
+  GetFuncRunsPaginated = "GetFuncRunsPaginated",
+  GetPublicKey = "GetPublicKey",
+  RestoreComponents = "RestoreComponents",
   RunMgmtPrototype = "RunMgmtPrototype",
+  UpdateComponentAttributes = "UpdateComponentAttributes",
+  UpdateComponentName = "UpdateComponentName",
+  UpgradeComponents = "UpgradeComponents",
 }
 
 /**
@@ -46,25 +48,27 @@ const CAN_MUTATE_ON_HEAD: readonly routes[] = [
 ] as const;
 
 const _routes: Record<routes, string> = {
-  DeleteComponents: "/components/delete",
-  GetFuncRunsPaginated: "/funcs/runs/paginated",
-  FuncRun: "/funcs/runs/<id>",
-  FuncRunByAv: "/funcs/runs/latest_av/<id>/logs",
-  FuncRunLogs: "/funcs/runs/<id>/logs",
-  UpdateComponentAttributes: "/components/<id>/attributes",
-  UpdateComponentName: "/components/<id>/name",
-  UpgradeComponents: "/components/upgrade",
-  CreateComponent: "/views/<viewId>/component",
-  DuplicateComponents: "/views/<viewId>/duplicate_components",
-  CreateView: "/views",
-  CreateSecret: "/components/<id>/secret",
-  GetPublicKey: "/components/<id>/secret/public_key",
   ActionAdd: "/action/add",
   ActionCancel: "/action/<id>/cancel",
   ActionHold: "/action/<id>/put_on_hold",
   ActionRetry: "/action/<id>/retry",
+  CreateComponent: "/views/<viewId>/component",
+  CreateSecret: "/components/<id>/secret",
+  CreateView: "/views",
+  DeleteComponents: "/components/delete",
+  DuplicateComponents: "/views/<viewId>/duplicate_components",
+  EraseComponentsFromView: "/views/<viewId>/erase_components",
+  FuncRun: "/funcs/runs/<id>",
+  FuncRunByAv: "/funcs/runs/latest_av/<id>/logs",
+  FuncRunLogs: "/funcs/runs/<id>/logs",
+  GetFuncRunsPaginated: "/funcs/runs/paginated",
+  GetPublicKey: "/components/<id>/secret/public_key",
+  RestoreComponents: "/components/restore",
   RunMgmtPrototype:
     "/management/prototype/<prototypeId>/<componentId>/<viewId>",
+  UpdateComponentAttributes: "/components/<id>/attributes",
+  UpdateComponentName: "/components/<id>/name",
+  UpgradeComponents: "/components/upgrade",
 } as const;
 
 // the mechanics

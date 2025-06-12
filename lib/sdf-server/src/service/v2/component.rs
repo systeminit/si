@@ -8,6 +8,7 @@ use axum::{
     routing::{
         delete,
         post,
+        put,
     },
 };
 use dal::{
@@ -25,6 +26,7 @@ use crate::app_state::AppState;
 pub mod attributes;
 pub mod delete_components;
 pub mod name;
+pub mod restore_components;
 pub mod secrets;
 pub mod upgrade_components;
 
@@ -101,6 +103,7 @@ pub fn v2_routes() -> Router<AppState> {
     Router::new()
         .route("/upgrade", post(upgrade_components::upgrade_components))
         .route("/delete", delete(delete_components::delete_components))
+        .route("/restore", put(restore_components::restore_components))
         .nest(
             "/:componentId",
             Router::new()

@@ -2573,8 +2573,8 @@ impl Component {
         )
     }
 
-    /// Simply gets the to_delete status for a component via the Node Weight
-    async fn is_set_to_delete(
+    /// Returns the value of the "to_delete" field using solely the graph node weight.
+    pub async fn is_set_to_delete(
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<Option<bool>> {

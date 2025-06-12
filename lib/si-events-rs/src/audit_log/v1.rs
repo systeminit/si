@@ -303,6 +303,15 @@ pub enum AuditLogKindV1 {
     RequestChangeSetApproval {
         from_status: ChangeSetStatus,
     },
+    RestoreComponent {
+        name: String,
+        component_id: ComponentId,
+        before_to_delete: bool,
+        schema_id: SchemaId,
+        schema_name: String,
+        schema_variant_id: SchemaVariantId,
+        schema_variant_name: String,
+    },
     RetryAction {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
@@ -749,6 +758,16 @@ pub enum AuditLogMetadataV1 {
     #[serde(rename_all = "camelCase")]
     RequestChangeSetApproval { from_status: ChangeSetStatus },
     #[serde(rename_all = "camelCase")]
+    RestoreComponent {
+        name: String,
+        component_id: ComponentId,
+        before_to_delete: bool,
+        schema_id: SchemaId,
+        schema_name: String,
+        schema_variant_id: SchemaVariantId,
+        schema_variant_name: String,
+    },
+    #[serde(rename_all = "camelCase")]
     RetryAction {
         prototype_id: ActionPrototypeId,
         action_kind: ActionKind,
@@ -988,6 +1007,7 @@ impl AuditLogMetadataV1 {
             MetadataDiscrim::RenameComponent => ("Renamed", Some("Component")),
             MetadataDiscrim::ReopenChangeSet => ("Reopened", Some("Change Set")),
             MetadataDiscrim::RequestChangeSetApproval => ("Requested to Apply", Some("Change Set")),
+            MetadataDiscrim::RestoreComponent => ("Restored", Some("Component")),
             MetadataDiscrim::RetryAction => ("Retried", Some("Action")),
             MetadataDiscrim::RunAction => ("Ran", Some("Action")),
             MetadataDiscrim::TestFunction => ("Tested", Some("Function")),
@@ -1411,6 +1431,23 @@ impl From<Kind> for Metadata {
                 user_id,
             },
             Kind::ReopenChangeSet { from_status } => Self::ReopenChangeSet { from_status },
+            Kind::RestoreComponent {
+                name,
+                component_id,
+                before_to_delete,
+                schema_id,
+                schema_name,
+                schema_variant_id,
+                schema_variant_name,
+            } => Self::RestoreComponent {
+                name,
+                component_id,
+                before_to_delete,
+                schema_id,
+                schema_name,
+                schema_variant_id,
+                schema_variant_name,
+            },
             Kind::RequestChangeSetApproval { from_status } => {
                 Self::RequestChangeSetApproval { from_status }
             }
