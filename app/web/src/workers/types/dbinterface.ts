@@ -11,6 +11,7 @@ import { Span } from "@opentelemetry/api";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
 import { DefaultMap } from "@/utils/defaultmap";
+import { ComponentId } from "@/api/sdf/dal/component";
 import {
   BifrostConnection,
   EntityKind,
@@ -63,6 +64,14 @@ export interface DBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): OutgoingConnections | undefined;
+  getOutgoingConnectionsCounts(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Record<ComponentId, number>;
+  getComponentNames(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Record<ComponentId, string>;
   get(
     workspaceId: string,
     changeSetId: ChangeSetId,

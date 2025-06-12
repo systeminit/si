@@ -89,7 +89,7 @@ import {
   watch,
 } from "vue";
 import { Icon } from "@si/vue-lib/design-system";
-import { useQueryClient } from "@tanstack/vue-query";
+import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import NavbarPanelLeft from "@/components/layout/navbar/NavbarPanelLeft.vue";
 import NavbarPanelRight from "@/components/layout/navbar/NavbarPanelRight.vue";
 import NavbarButton from "@/components/layout/navbar/NavbarButton.vue";
@@ -98,6 +98,11 @@ import * as heimdall from "@/store/realtime/heimdall";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
+import {
+  ComponentNames,
+  EntityKind,
+  OutgoingCounts,
+} from "@/workers/types/entity_kind_types";
 import Explore from "./Explore.vue";
 import ComponentDetails from "./ComponentDetails.vue";
 import FuncRunDetails from "./FuncRunDetails.vue";
@@ -126,6 +131,54 @@ const realtimeStore = useRealtimeStore();
 const workspacePk = computed(() => props.workspacePk);
 const changeSetId = computed(() => props.changeSetId);
 
+const enabled = ref(false);
+
+const countsQueryKey = computed(() => {
+  return [
+    workspacePk.value,
+    changeSetId.value,
+    EntityKind.OutgoingCounts,
+    workspacePk.value,
+  ];
+});
+const args = computed(() => {
+  return {
+    workspaceId: workspacePk.value,
+    changeSetId: changeSetId.value,
+  };
+});
+const countsQuery = useQuery<OutgoingCounts>({
+  queryKey: countsQueryKey,
+  enabled,
+  queryFn: async () => {
+    return await heimdall.getOutgoingConnectionsCounts(args.value);
+  },
+});
+
+const namesQueryKey = computed(() => {
+  return [
+    workspacePk.value,
+    changeSetId.value,
+    EntityKind.ComponentNames,
+    workspacePk.value,
+  ];
+});
+const namesQuery = useQuery<ComponentNames>({
+  queryKey: namesQueryKey,
+  enabled,
+  queryFn: async () => {
+    return await heimdall.getComponentNames(args.value);
+  },
+});
+
+const outgoingCounts = computed(() => {
+  return countsQuery.data.value ?? {};
+});
+
+const componentNames = computed(() => {
+  return namesQuery.data.value ?? {};
+});
+
 const context = computed<Context>(() => {
   return {
     workspacePk,
@@ -133,6 +186,8 @@ const context = computed<Context>(() => {
     user: authStore.user,
     onHead: computed(() => changeSetsStore.headSelected),
     headChangeSetId: computed(() => changeSetsStore.headChangeSetId ?? ""),
+    outgoingCounts,
+    componentNames,
   };
 });
 
@@ -210,6 +265,7 @@ onBeforeMount(async () => {
     props.changeSetId,
     true,
   );
+  enabled.value = true;
   if (success && lobby.value) {
     router.push({
       name: "new-hotness",

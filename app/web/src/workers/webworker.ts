@@ -1566,6 +1566,7 @@ const weakReference = async (
 const COMPUTED_KINDS: EntityKind[] = [
   EntityKind.AttributeTree,
   EntityKind.IncomingConnections,
+  EntityKind.Component,
 ];
 
 const allPossibleConns = new DefaultMap<
@@ -1670,7 +1671,16 @@ const updateComputed = async (
     doc = result[0];
   }
 
-  if (kind === EntityKind.IncomingConnections) {
+  if (kind === EntityKind.Component) {
+    if (bust) {
+      bustCacheFn(
+        workspaceId,
+        changeSetId,
+        EntityKind.ComponentNames,
+        workspaceId,
+      );
+    }
+  } else if (kind === EntityKind.IncomingConnections) {
     const data = doc as BifrostComponentConnections;
     data.incoming.forEach((incoming) => {
       const id =
@@ -1682,6 +1692,15 @@ const updateComputed = async (
         .get(changeSetId)
         .get(incoming.fromComponent.id);
       conns[id] = outgoing;
+
+      if (bust) {
+        bustCacheFn(
+          workspaceId,
+          changeSetId,
+          EntityKind.OutgoingCounts,
+          workspaceId,
+        );
+      }
     });
   } else if (kind === EntityKind.AttributeTree) {
     const conns: Record<string, PossibleConnection> = {};
@@ -1777,6 +1796,59 @@ const getOutgoingConnectionsByComponentId = (
   return allOutgoingConns.get(changeSetId);
 };
 
+const getOutgoingConnectionsCounts = (
+  _workspaceId: string,
+  changeSetId: string,
+) => {
+  const data = allOutgoingConns.get(changeSetId);
+  const counts: Record<ComponentId, number> = {};
+  [...data.entries()].forEach(([componentId, conns]) => {
+    counts[componentId] = Object.values(conns).length;
+  });
+  return counts;
+};
+
+const getComponentNames = (
+  _workspaceId: string,
+  changeSetId: string,
+  indexChecksum?: string,
+) => {
+  const sql = `
+    select
+      atoms.args,
+      replace(atoms.data -> '$.name', '"', '')
+    from
+      atoms
+      inner join index_mtm_atoms mtm
+        ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+      inner join indexes ON mtm.index_checksum = indexes.checksum
+    ${
+      indexChecksum
+        ? ""
+        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+    }
+    where
+      ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+      AND
+      atoms.kind = 'Component'
+    ;`;
+  const bind = [indexChecksum ?? changeSetId];
+  const start = Date.now();
+  const data = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+  const end = Date.now();
+  // eslint-disable-next-line no-console
+  console.log("sql get names", end - start, "ms");
+  const names: Record<string, string> = {};
+  data.forEach((row) => {
+    names[row[0] as string] = row[1] as string;
+  });
+  return names;
+};
+
 const flip = (i: BifrostConnection): BifrostConnection => {
   const o: BifrostConnection = {
     ...i,
@@ -1794,92 +1866,6 @@ const flip = (i: BifrostConnection): BifrostConnection => {
     o.toAttributeValuePath = i.fromAttributeValuePath;
   }
   return o;
-};
-
-/**
- *
- * FETCHING LOGIC
- *
- * EXAMPLE OF HOW WE MOVE FROM
- * - `get` (aka `bifrost`)
- * - `getReferences`
- * - `getComputed`
-
- * Looking at `get` where `kind="ComponentList"
- *
- * 1. get the atom, edda generates references for us
- * 2. That type is the `EddaComponentList`
- * 3. Call `getReferences`
- * 3. Look up the strong references and fill them in with the `Component` type
- * 4. This translates type to `BifrostComponentList`, which is what we are returning
- * 6. Call `getComputed`
- * 7. Create a map of outgoing connections based on the incoming connections
- * 8. Fill in the `Component.outputCount` connections with them
- * 9. return (we don't need to translate this type)
- */
-
-const getComputed = async (
-  atomDoc: AtomDocument,
-  workspaceId: string,
-  changeSetId: string,
-  kind: EntityKind,
-  id: string,
-) => {
-  // PSA: in general, any `get` you do in here, you're going to want to pass `followComputed=false`
-  // otherwise you're liable to run into an infinite recursion lookup
-  if (
-    ![
-      EntityKind.Component,
-      EntityKind.ViewComponentList,
-      EntityKind.ComponentList,
-    ].includes(kind)
-  ) {
-    return atomDoc;
-  }
-
-  const connectionsById = getOutgoingConnectionsByComponentId(
-    workspaceId,
-    changeSetId,
-  );
-  if (!connectionsById) {
-    debug("~ missing connections ~");
-    // making this, so when connections populate, we re-query
-    weakReference(
-      changeSetId,
-      { kind: EntityKind.OutgoingConnections, args: workspaceId },
-      { kind, args: id },
-    );
-    return atomDoc;
-  }
-
-  //  debug("🔗 computed operation", kind, id);
-
-  if (
-    kind === EntityKind.ViewComponentList ||
-    kind === EntityKind.ComponentList
-  ) {
-    const data = atomDoc as BifrostComponentList;
-    data.components.forEach((c) => {
-      c.outputCount = Object.values(connectionsById.get(c.id)).length;
-    });
-    clearWeakReferences(changeSetId, { kind, args: id });
-    weakReference(
-      changeSetId,
-      { kind: "OutgoingConnections", args: workspaceId },
-      { kind, args: id },
-    );
-    return data;
-  } else if (kind === EntityKind.Component) {
-    const data = atomDoc as BifrostComponent | EddaComponent;
-    data.outputCount = Object.values(connectionsById.get(id)).length;
-    clearWeakReferences(changeSetId, { kind, args: id });
-    weakReference(
-      changeSetId,
-      { kind: "OutgoingConnections", args: workspaceId },
-      { kind, args: id },
-    );
-    return data;
-  } else return atomDoc;
 };
 
 /**
@@ -2438,9 +2424,6 @@ const get = async (
     // for the possible side-effects
     if (hasReferenceError) return -1;
 
-    if (followComputed) {
-      return await getComputed(docAndRefs, workspaceId, changeSetId, kind, id);
-    }
     return docAndRefs;
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -2515,13 +2498,7 @@ const getMany = async (
 
     const atomDoc = decodeDocumentFromDB(data);
 
-    results[id] = await getComputed(
-      atomDoc,
-      workspaceId,
-      changeSetId,
-      kind,
-      id,
-    );
+    results[id] = atomDoc;
   }
 
   for (const id of ids) {
@@ -2543,17 +2520,6 @@ const getMany = async (
       componentIds,
       indexChecksum,
     );
-    Object.values(components).forEach((component) => {
-      if (component !== -1) {
-        getComputed(
-          component,
-          workspaceId,
-          changeSetId,
-          EntityKind.Component,
-          component.id,
-        );
-      }
-    });
 
     const bifrostConns: Record<Id, MaybeBifrostComponentConnections> = {};
     Object.entries(eddaIncConns).forEach(([id, eConn]) => {
@@ -2790,6 +2756,8 @@ const dbInterface: DBInterface = {
 
   get,
   getOutgoingConnectionsByComponentId,
+  getOutgoingConnectionsCounts,
+  getComponentNames,
   getPossibleConnections,
   partialKeyFromKindAndId: partialKeyFromKindAndArgs,
   kindAndIdFromKey: kindAndArgsFromKey,

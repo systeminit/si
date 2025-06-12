@@ -119,11 +119,7 @@
         <li>
           <Icon name="input-connection" size="sm" />
           <div>Outgoing</div>
-          <PillCounter
-            :count="component.outputCount"
-            size="sm"
-            class="ml-auto"
-          />
+          <PillCounter :count="outgoing" size="sm" class="ml-auto" />
         </li>
       </template>
     </ol>
@@ -149,18 +145,26 @@ import {
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { computed } from "vue";
+import { computed, inject } from "vue";
 import {
   BifrostComponent,
   BifrostComponentInList,
 } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon } from "./util";
+import { assertIsDefined, Context } from "./types";
 
 const props = defineProps<{
   component: BifrostComponent | BifrostComponentInList;
   hideConnections?: boolean;
 }>();
+
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined(ctx);
+
+const outgoing = computed(
+  () => ctx.outgoingCounts.value[props.component.id] ?? 0,
+);
 
 const qualificationSummary = computed(() => {
   if (props.component.qualificationTotals.failed > 0) return "failure";

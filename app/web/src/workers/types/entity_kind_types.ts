@@ -30,9 +30,11 @@ export enum EntityKind {
   SecretDefinitionList = "SecretDefinitionList",
   Secret = "Secret",
   SecretDefinition = "SecretDefinition",
-  OutgoingConnections = "OutgoingConnections",
-  PossibleConnections = "PossibleConnections",
   AttributeTree = "AttributeTree",
+  PossibleConnections = "PossibleConnections",
+  OutgoingConnections = "OutgoingConnections",
+  OutgoingCounts = "OutgoingCounts",
+  ComponentNames = "ComponentNames",
 }
 /**
  * NOTE, if you want to narrow the type of a variable
@@ -78,6 +80,9 @@ export type OutgoingConnections = DefaultMap<string, BifrostConnection[]>;
  *    (e.g. perform the full translation from Edda to Bifrost)
  * 7. `getReferences` SHALL set default/warning data that `getComputed` will write over
  */
+export type OutgoingCounts = Record<ComponentId, number>;
+export type ComponentNames = Record<ComponentId, string>;
+
 export type PossibleConnection = {
   attributeValueId: string;
   name: string;
