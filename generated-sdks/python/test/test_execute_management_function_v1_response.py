@@ -35,11 +35,16 @@ class TestExecuteManagementFunctionV1Response(unittest.TestCase):
         model = ExecuteManagementFunctionV1Response()
         if include_optional:
             return ExecuteManagementFunctionV1Response(
-                func_run_id = '01H9ZQD35JPMBGHH69BT0Q79VY'
+                func_run_id = '',
+                management_func_job_state_id = '01H9ZQD35JPMBGHH69BT0Q79VY',
+                message = 'enqueued',
+                status = 'Ok'
             )
         else:
             return ExecuteManagementFunctionV1Response(
-                func_run_id = '01H9ZQD35JPMBGHH69BT0Q79VY',
+                func_run_id = '',
+                management_func_job_state_id = '01H9ZQD35JPMBGHH69BT0Q79VY',
+                status = 'Ok',
         )
         """
 

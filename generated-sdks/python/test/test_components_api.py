@@ -75,6 +75,13 @@ class TestComponentsApi(unittest.TestCase):
         """
         pass
 
+    def test_search_components(self) -> None:
+        """Test case for search_components
+
+        Complex search for components
+        """
+        pass
+
     def test_update_component(self) -> None:
         """Test case for update_component
 
