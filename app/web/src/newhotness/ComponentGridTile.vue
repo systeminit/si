@@ -32,12 +32,12 @@
           component.schemaName
         }}</TruncateWithTooltip>
       </h3>
-      <Icon
+      <!-- <Icon
         v-if="component.canBeUpgraded"
         name="bolt-outline"
         size="lg"
         :class="clsx(themeClasses('text-success-500', 'text-success-400'))"
-      />
+      /> -->
       <!-- TODO(nick): center this vertically with the pill counters -->
       <Icon v-if="component.toDelete" name="hourglass" size="md" />
     </header>
@@ -157,14 +157,14 @@ import clsx from "clsx";
 import { computed, inject } from "vue";
 import {
   BifrostComponent,
-  BifrostComponentInList,
+  ComponentInList,
 } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon } from "./util";
 import { assertIsDefined, Context } from "./types";
 
 const props = defineProps<{
-  component: BifrostComponent | BifrostComponentInList;
+  component: BifrostComponent | ComponentInList;
   hideConnections?: boolean;
 }>();
 

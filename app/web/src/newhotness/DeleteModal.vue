@@ -73,12 +73,12 @@ import {
   Icon,
 } from "@si/vue-lib/design-system";
 import { onBeforeUnmount, onMounted, ref } from "vue";
-import { BifrostComponentInList } from "@/workers/types/entity_kind_types";
+import { ComponentInList } from "@/workers/types/entity_kind_types";
 import { getAssetIcon, getAssetColor } from "./util";
 
-const components = ref<BifrostComponentInList[]>([]);
+const components = ref<ComponentInList[]>([]);
 
-const borderStyle = (component: BifrostComponentInList) => {
+const borderStyle = (component: ComponentInList) => {
   const color = getAssetColor(component.schemaCategory);
   return `border-color: ${color}`;
 };
@@ -86,7 +86,7 @@ const borderStyle = (component: BifrostComponentInList) => {
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open: openModal, close: closeModal } = useModal(modalRef);
 
-function open(selectedComponents: BifrostComponentInList[]) {
+function open(selectedComponents: ComponentInList[]) {
   components.value = selectedComponents;
   openModal();
 }

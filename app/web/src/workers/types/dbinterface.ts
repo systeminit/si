@@ -13,7 +13,7 @@ import { WorkspacePk } from "@/store/workspaces.store";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
-  BifrostConnection,
+  Connection,
   EntityKind,
   PossibleConnection,
   Prop,
@@ -30,7 +30,7 @@ export type BustCacheFn = (
 
 export type OutgoingConnections = DefaultMap<
   string,
-  Record<string, BifrostConnection>
+  Record<string, Connection>
 >;
 
 export type RainbowFn = (changeSetId: ChangeSetId, label: string) => void;

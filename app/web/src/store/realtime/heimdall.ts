@@ -18,7 +18,7 @@ import {
   Gettable,
 } from "@/workers/types/dbinterface";
 import {
-  BifrostConnection,
+  Connection,
   EntityKind,
   Prop,
 } from "@/workers/types/entity_kind_types";
@@ -236,7 +236,7 @@ export const getOutgoingConnections = async (args: {
     args.changeSetId,
   );
   if (connectionsById) return reactive(connectionsById);
-  return new DefaultMap<string, Record<string, BifrostConnection>>(() => ({}));
+  return new DefaultMap<string, Record<string, Connection>>(() => ({}));
 };
 
 // cold start

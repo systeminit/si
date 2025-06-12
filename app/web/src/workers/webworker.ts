@@ -57,22 +57,15 @@ import {
 } from "./types/dbinterface";
 import {
   BifrostComponent,
-  BifrostComponentConnections,
-  BifrostComponentInList,
-  BifrostComponentList,
-  BifrostConnection,
-  BifrostIncomingConnectionsList,
+  Connection,
   BifrostSchemaVariantCategories,
   BifrostViewList,
   CategoryVariant,
   EddaComponent,
-  EddaComponentList,
-  EddaIncomingConnections,
-  EddaIncomingConnectionsList,
+  IncomingConnections,
+  IncomingConnectionsList,
   EddaSchemaVariantCategories,
   EntityKind,
-  MaybeBifrostComponentConnections,
-  MaybeBifrostConnection,
   PossibleConnection,
   Prop,
   RawViewList,
@@ -1574,7 +1567,7 @@ const allPossibleConns = new DefaultMap<
 // the `string` is `${toAttributeValueId}-${fromAttributeValueId}`
 const allOutgoingConns = new DefaultMap<
   ChangeSetId,
-  DefaultMap<ComponentId, Record<string, BifrostConnection>>
+  DefaultMap<ComponentId, Record<string, Connection>>
 >(() => new DefaultMap(() => ({})));
 
 const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
@@ -1620,20 +1613,17 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     true,
   );
 
-  const list = get(
+  const list = getList(
     workspaceId,
     changeSetId,
     EntityKind.IncomingConnectionsList,
     workspaceId,
     undefined,
-    undefined,
-    false, // don't compute
-  ) as BifrostIncomingConnectionsList | -1;
+  );
 
-  if (list === -1) return;
-
+  const listData = JSON.parse(list) as IncomingConnections[]
   await Promise.all(
-    list.componentConnections.map((c) =>
+    listData.flatMap(c =>
       updateComputed(
         workspaceId,
         changeSetId,
@@ -1689,16 +1679,16 @@ const updateComputed = (
       );
     }
   } else if (kind === EntityKind.IncomingConnections) {
-    const data = doc as BifrostComponentConnections;
-    data.incoming.forEach((incoming) => {
+    const data = doc as IncomingConnections;
+    data.connections.forEach((incoming) => {
       const id =
         incoming.kind === "management"
-          ? `mgmt-${incoming.toComponent.id}-${incoming.fromComponent.id}`
+          ? `mgmt-${incoming.toComponentId}-${incoming.fromComponentId}`
           : `${incoming.toAttributeValueId}-${incoming.fromAttributeValueId}`;
       const outgoing = flip(incoming);
       const conns = allOutgoingConns
         .get(changeSetId)
-        .get(incoming.fromComponent.id);
+        .get(incoming.fromComponentId);
       conns[id] = outgoing;
 
       if (bust) {
@@ -1857,11 +1847,11 @@ const getComponentNames = (
   return names;
 };
 
-const flip = (i: BifrostConnection): BifrostConnection => {
-  const o: BifrostConnection = {
+const flip = (i: Connection): Connection => {
+  const o: Connection = {
     ...i,
-    fromComponent: i.toComponent,
-    toComponent: i.fromComponent,
+    fromComponentId: i.toComponentId,
+    toComponentId: i.fromComponentId,
   };
   if ("toPropId" in i && o.kind === "prop") {
     o.fromPropId = i.toPropId;
@@ -1900,14 +1890,7 @@ const getReferences = (
     ![
       EntityKind.Component,
       EntityKind.ViewList,
-      EntityKind.ComponentList,
-      EntityKind.ViewComponentList,
-      EntityKind.IncomingConnections,
-      EntityKind.IncomingConnectionsList,
       EntityKind.SchemaVariantCategories,
-      EntityKind.SecretDefinitionList,
-      EntityKind.SecretList,
-      EntityKind.Secret,
     ].includes(kind)
   ) {
     return [atomDoc, false];
@@ -2117,7 +2100,7 @@ const getReferences = (
     };
     span.end();
     return [list, hasReferenceError];
-  } else if (
+  /* } else if (
     kind === EntityKind.ComponentList ||
     kind === EntityKind.ViewComponentList
   ) {
@@ -2355,13 +2338,15 @@ const getReferences = (
     };
     span.end();
     return [list, hasReferenceError];
+  */
   } else {
     span.end();
     return [atomDoc, hasReferenceError];
   }
 };
 
-type Listable = EntityKind.ComponentList | EntityKind.ViewComponentList;
+// TODO add the ViewList to Listable, but not right now, it will blow up the old UI typing
+type Listable = EntityKind.ComponentList | EntityKind.ViewComponentList | EntityKind.IncomingConnectionsList;
 type Gettable = Exclude<EntityKind, Listable>;
 const getList = (
   _workspaceId: string,
@@ -2376,6 +2361,12 @@ const getList = (
     case EntityKind.ViewComponentList:
       varname = "$.components";
       break;
+    case EntityKind.IncomingConnectionsList:
+      varname = "$.componentConnections";
+      break;
+    // case EntityKind.ViewList:
+    //   varname = "$.views";
+    //   break;
     default:
       throw new Error("Missing kind");
   }
@@ -2613,47 +2604,6 @@ const getMany = (
     if (!foundIds.has(id)) {
       results[id] = -1;
     }
-  }
-
-  // we're not generically following references, because that would re-introduce N+1 queries
-  // but IncomingConnectionsList cannot function without its components
-  if ([EntityKind.IncomingConnections].includes(kind)) {
-    // do a getMany for all the componentIds in connection
-    const eddaIncConns = results as Record<Id, EddaIncomingConnections>;
-    const componentIds: Id[] = Object.values(eddaIncConns).map((c) => c.id);
-    const components: Record<Id, BifrostComponentInList | -1> = getMany(
-      workspaceId,
-      changeSetId,
-      EntityKind.Component,
-      componentIds,
-      indexChecksum,
-    );
-
-    const bifrostConns: Record<Id, MaybeBifrostComponentConnections> = {};
-    Object.entries(eddaIncConns).forEach(([id, eConn]) => {
-      const component = components[id];
-      const bifrost: MaybeBifrostComponentConnections = {
-        id,
-        component: component ?? -1,
-        incoming: [],
-      };
-
-      eConn.connections.forEach((c) => {
-        const fromComponent = components[c.fromComponentId.id];
-        const toComponent = components[c.toComponentId.id];
-
-        const conn: MaybeBifrostConnection = {
-          ...c,
-          toComponent: toComponent ?? -1,
-          fromComponent: fromComponent ?? -1,
-        };
-        bifrost.incoming.push(conn);
-      });
-
-      bifrostConns[id] = bifrost;
-    });
-
-    return bifrostConns;
   }
 
   return results;

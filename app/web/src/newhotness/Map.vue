@@ -128,12 +128,11 @@ import * as _ from "lodash-es";
 import { Fzf } from "fzf";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
-  BifrostComponentConnections,
-  BifrostComponentInList,
-  BifrostIncomingConnectionsList,
+  IncomingConnections,
+  ComponentInList,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
-import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import { bifrost, bifrostList, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { SelectionsInQueryString } from "./Workspace.vue";
 import { KeyDetails } from "./logic_composables/emitters";
 import { assertIsDefined, Context, ExploreContext } from "./types";
@@ -149,7 +148,7 @@ const props = defineProps<{
 const componentContextMenuRef =
   ref<InstanceType<typeof ComponentContextMenu>>();
 
-const selectedComponent = ref<BifrostComponentInList | null>(null);
+const selectedComponent = ref<ComponentInList | null>(null);
 
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
@@ -378,11 +377,11 @@ const icons = reactive<IconNames[]>([
 ]);
 const tones = reactive<Tones[]>(["success", "destructive"]);
 
-const connections = useQuery<BifrostIncomingConnectionsList>({
+const connections = useQuery<IncomingConnections[]>({
   queryKey,
   enabled: () => active.value, // Only run query when map view is active
   queryFn: async () => {
-    const d = await bifrost<BifrostIncomingConnectionsList | null>(
+    const d = await bifrostList<IncomingConnections[] | null>(
       args(EntityKind.IncomingConnectionsList),
     );
 
@@ -390,11 +389,11 @@ const connections = useQuery<BifrostIncomingConnectionsList>({
       // this sets the component from the URL querystring on load, and then doesn't re-enter
       if (fillDefault.value) {
         nextTick(() => {
-          const c = d.componentConnections.find(
+          const c = d.find(
             (c) => c.id === fillDefault.value,
           );
-          if (c && c.component) {
-            selectComponent(c.component);
+          if (c && c.id) {
+            selectComponent(c.id);
           }
           fillDefault.value = undefined;
         });
@@ -402,61 +401,51 @@ const connections = useQuery<BifrostIncomingConnectionsList>({
 
       return d;
     } else
-      return {
-        id: unref(ctx.changeSetId),
-        componentConnections: [] as BifrostComponentConnections[],
-      };
+      return [];
   },
 });
 
 const mapData = computed(() => {
   const nodes = new Set<string>();
   const edges = new Set<string>();
-  const components: Record<string, BifrostComponentInList> = {};
+  const components: Record<string, ComponentInList> = {};
   if (!connections.data.value) {
     return { nodes, edges, components };
   }
 
   const matchingIds: string[] = [];
-  if (searchString?.value && searchString.value.trim().length > 0) {
-    const componentsMap: Record<string, BifrostComponentInList> = {};
-    connections.data.value.componentConnections.forEach((c) => {
-      componentsMap[c.id] = c.component;
-    });
+  // if (searchString?.value && searchString.value.trim().length > 0) {
+  //   const componentsMap: Record<string, BifrostComponentInList> = {};
+  //   connections.data.value.componentConnections.forEach((c) => {
+  //     componentsMap[c.id] = c.component;
+  //   });
 
-    const fzf = new Fzf(Object.values(componentsMap), {
-      casing: "case-insensitive",
-      selector: (c) =>
-        `${c.name} ${c.schemaVariantName} ${c.schemaName} ${c.schemaCategory} ${c.schemaId} ${c.id}`,
-    });
+  //   const fzf = new Fzf(Object.values(componentsMap), {
+  //     casing: "case-insensitive",
+  //     selector: (c) =>
+  //       `${c.name} ${c.schemaVariantName} ${c.schemaName} ${c.schemaCategory} ${c.schemaId} ${c.id}`,
+  //   });
 
-    const results = fzf.find(searchString.value);
-    if (results.length === 0) return { nodes, edges, components };
-    else matchingIds.push(...results.map((c) => c.item.id));
-  }
+  //   const results = fzf.find(searchString.value);
+  //   if (results.length === 0) return { nodes, edges, components };
+  //   else matchingIds.push(...results.map((c) => c.item.id));
+  // }
 
-  connections.data.value.componentConnections.forEach((c) => {
+  connections.data.value.forEach((c) => {
     if (searchString?.value && !matchingIds.includes(c.id)) return;
 
     nodes.add(c.id);
-    components[c.id] = c.component;
-    c.incoming.forEach((e) => {
+    // components[c.id] = c.component;
+    c.connections.forEach((e) => {
       // incoming, so "to" is me, always start with "me"
-      if (
-        searchString?.value &&
-        (!matchingIds.includes(e.toComponent.id) ||
-          !matchingIds.includes(e.fromComponent.id))
-      )
-        return;
+      // if (
+      //   searchString?.value &&
+      //   (!matchingIds.includes(e.toComponent.id) ||
+      //     !matchingIds.includes(e.fromComponent.id))
+      // )
+      //   return;
 
-      // TODO(nick): found this... technically isn't possible anymore, but I'm leaving until we get
-      // weak references working... Original comment continues below:
-      //
-      // in case of problems with the data, filter out undefined
-      // if they're left in the graph won't render
-      if (!e.toComponent.id || !e.fromComponent.id) return;
-
-      const edge = `${e.toComponent.id}-${e.fromComponent.id}`;
+      const edge = `${e.toComponentId}-${e.fromComponentId}`;
       edges.add(edge);
     });
   });
@@ -468,7 +457,7 @@ type node = {
   id: string;
   width: number;
   height: number;
-  component: BifrostComponentInList;
+  component: ComponentInList;
   icons: [string | null];
 };
 
@@ -522,7 +511,7 @@ const clickedNode = (e: MouseEvent, n: layoutNode) => {
 };
 
 const selectComponent = (
-  component: BifrostComponentInList,
+  component: ComponentInList,
   componentEl?: Element,
 ) => {
   selectedComponent.value = component;

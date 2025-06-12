@@ -233,7 +233,7 @@ import {
   BifrostViewList,
   ViewComponentList,
   EntityKind,
-  BifrostComponentInList,
+  ComponentInList,
 } from "@/workers/types/entity_kind_types";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -373,13 +373,13 @@ const id = computed(() =>
 );
 const componentQueryKey = key(kind, id);
 
-const componentListRaw = useQuery<BifrostComponentInList[]>({
+const componentListRaw = useQuery<ComponentInList[]>({
   queryKey: componentQueryKey,
   queryFn: async () => {
     const arg = selectedView.value
       ? args<Listable>(EntityKind.ViewComponentList, selectedView.value)
       : args<Listable>(EntityKind.ComponentList);
-    const list = await bifrostList<BifrostComponentInList[]>(arg);
+    const list = await bifrostList<ComponentInList[]>(arg);
     return list ?? [];
   },
 });
@@ -393,7 +393,7 @@ const componentsById = computed(() =>
 
 const scrollRef = ref<HTMLDivElement>();
 
-const filteredComponents = reactive<BifrostComponentInList[]>([]);
+const filteredComponents = reactive<ComponentInList[]>([]);
 
 const searchString = ref("");
 const computedSearchString = computed(() => searchString.value);

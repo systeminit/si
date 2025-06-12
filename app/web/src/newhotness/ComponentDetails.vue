@@ -180,6 +180,7 @@
           Connections
         </template>
         <ConnectionsPanel
+          v-if="componentConnections && component"
           :component="component"
           :connections="componentConnections ?? undefined"
         />
@@ -263,8 +264,8 @@ import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   AttributeTree,
   BifrostComponent,
-  BifrostComponentConnections,
   EntityKind,
+  IncomingConnections,
 } from "@/workers/types/entity_kind_types";
 import AttributePanel from "./AttributePanel.vue";
 import { attributeEmitter, keyEmitter } from "./logic_composables/emitters";
@@ -325,10 +326,10 @@ const mgmtFuncs = computed(
   () => component.value?.schemaVariant.mgmtFunctions ?? [],
 );
 
-const componentConnectionsQuery = useQuery<BifrostComponentConnections | null>({
+const componentConnectionsQuery = useQuery<IncomingConnections | null>({
   queryKey: key(EntityKind.IncomingConnections, componentId),
   queryFn: async () => {
-    const incomingConnections = await bifrost<BifrostComponentConnections>(
+    const incomingConnections = await bifrost<IncomingConnections>(
       args(EntityKind.IncomingConnections, componentId.value),
     );
     return incomingConnections;
