@@ -136,7 +136,12 @@
           />
         </footer>
       </template>
-      <Map v-else ref="mapRef" :active="!showGrid" />
+      <Map
+        v-else
+        ref="mapRef"
+        :active="!showGrid"
+        :components="componentList"
+      />
     </div>
     <!-- Right column -->
     <div

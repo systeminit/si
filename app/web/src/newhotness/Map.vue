@@ -143,7 +143,15 @@ import ComponentContextMenu from "./ComponentContextMenu.vue";
 
 const props = defineProps<{
   active: boolean;
+  components: ComponentInList[];
 }>();
+
+const componentsById = computed<Record<ComponentId, ComponentInList>>(() => {
+  return props.components.reduce((obj, component) => {
+    obj[component.id] = component;
+    return obj;
+  }, {} as Record<ComponentId, ComponentInList>)
+})
 
 const componentContextMenuRef =
   ref<InstanceType<typeof ComponentContextMenu>>();
@@ -393,7 +401,7 @@ const connections = useQuery<IncomingConnections[]>({
             (c) => c.id === fillDefault.value,
           );
           if (c && c.id) {
-            selectComponent(c.id);
+            selectComponent(componentsById.value[c.id]!);
           }
           fillDefault.value = undefined;
         });
@@ -414,36 +422,32 @@ const mapData = computed(() => {
   }
 
   const matchingIds: string[] = [];
-  // if (searchString?.value && searchString.value.trim().length > 0) {
-  //   const componentsMap: Record<string, BifrostComponentInList> = {};
-  //   connections.data.value.componentConnections.forEach((c) => {
-  //     componentsMap[c.id] = c.component;
-  //   });
+  if (searchString?.value && searchString.value.trim().length > 0) {
 
-  //   const fzf = new Fzf(Object.values(componentsMap), {
-  //     casing: "case-insensitive",
-  //     selector: (c) =>
-  //       `${c.name} ${c.schemaVariantName} ${c.schemaName} ${c.schemaCategory} ${c.schemaId} ${c.id}`,
-  //   });
+    const fzf = new Fzf(Object.values(componentsById.value), {
+      casing: "case-insensitive",
+      selector: (c) =>
+        `${c.name} ${c.schemaVariantName} ${c.schemaName} ${c.schemaCategory} ${c.schemaId} ${c.id}`,
+    });
 
-  //   const results = fzf.find(searchString.value);
-  //   if (results.length === 0) return { nodes, edges, components };
-  //   else matchingIds.push(...results.map((c) => c.item.id));
-  // }
+    const results = fzf.find(searchString.value);
+    if (results.length === 0) return { nodes, edges, components };
+    else matchingIds.push(...results.map((c) => c.item.id));
+  }
 
   connections.data.value.forEach((c) => {
     if (searchString?.value && !matchingIds.includes(c.id)) return;
 
     nodes.add(c.id);
-    // components[c.id] = c.component;
+    components[c.id] = componentsById.value[c.id]!;
     c.connections.forEach((e) => {
       // incoming, so "to" is me, always start with "me"
-      // if (
-      //   searchString?.value &&
-      //   (!matchingIds.includes(e.toComponent.id) ||
-      //     !matchingIds.includes(e.fromComponent.id))
-      // )
-      //   return;
+      if (
+        searchString?.value &&
+        (!matchingIds.includes(e.toComponentId) ||
+          !matchingIds.includes(e.fromComponentId))
+      )
+        return;
 
       const edge = `${e.toComponentId}-${e.fromComponentId}`;
       edges.add(edge);
