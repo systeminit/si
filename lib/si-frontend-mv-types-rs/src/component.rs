@@ -1,8 +1,20 @@
-use serde::{Deserialize, Serialize};
-use si_events::{ComponentId, SchemaId, SchemaVariantId, workspace_snapshot::EntityKind};
+use serde::{
+    Deserialize,
+    Serialize,
+};
+use si_events::{
+    ComponentId,
+    SchemaId,
+    SchemaVariantId,
+    workspace_snapshot::EntityKind,
+};
 use si_id::WorkspacePk;
 
-use crate::reference::{ReferenceKind, WeakReference, weak};
+use crate::reference::{
+    ReferenceKind,
+    WeakReference,
+    weak,
+};
 
 pub mod attribute_tree;
 
