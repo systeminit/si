@@ -373,20 +373,19 @@ const id = computed(() =>
 );
 const componentQueryKey = key(kind, id);
 
-const componentListRaw = useQuery<
-  BifrostComponentList | ViewComponentList | null
->({
+const componentListRaw = useQuery<BifrostComponentInList[]>({
   queryKey: componentQueryKey,
   queryFn: async () => {
     const arg = selectedView.value
       ? args<Listable>(EntityKind.ViewComponentList, selectedView.value)
       : args<Listable>(EntityKind.ComponentList);
-    return await bifrostList<BifrostComponentList | ViewComponentList>(arg);
+    const list = await bifrostList<BifrostComponentInList[]>(arg);
+    return list ?? [];
   },
 });
 
 const componentList = computed(
-  () => componentListRaw.data.value?.components ?? [],
+  () => componentListRaw.data.value ?? [],
 );
 const componentsById = computed(() =>
   Object.fromEntries(componentList.value.map((c) => [c.id, c])),
@@ -702,11 +701,11 @@ const onU = (e: KeyDetails["u"]) => {
     const targetComponent = filteredComponents.find(
       (comp) => comp.id === interactionTargetComponentId.value,
     );
-    if (targetComponent && targetComponent.canBeUpgraded) {
-      componentContextMenuRef.value?.componentUpgrade([
-        interactionTargetComponentId.value,
-      ]);
-    }
+    // if (targetComponent && targetComponent.canBeUpgraded) {
+    //   componentContextMenuRef.value?.componentUpgrade([
+    //     interactionTargetComponentId.value,
+    //   ]);
+    // }
   } else {
     mapRef.value?.onU(e);
   }
@@ -735,11 +734,11 @@ const onR = (e: KeyDetails["r"]) => {
     const targetComponent = filteredComponents.find(
       (comp) => comp.id === interactionTargetComponentId.value,
     );
-    if (targetComponent && targetComponent.canBeUpgraded) {
-      componentContextMenuRef.value?.componentsRestore([
-        interactionTargetComponentId.value,
-      ]);
-    }
+    // if (targetComponent && targetComponent.canBeUpgraded) {
+    //   componentContextMenuRef.value?.componentsRestore([
+    //     interactionTargetComponentId.value,
+    //   ]);
+    // }
   } else {
     mapRef.value?.onR(e);
   }
