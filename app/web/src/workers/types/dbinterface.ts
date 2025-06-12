@@ -41,6 +41,9 @@ export type MjolnirBulk = Array<{
   id: Id;
   checksum?: Checksum;
 }>;
+
+export type Listable = EntityKind.ViewComponentList | EntityKind.ComponentList;
+export type Gettable = Exclude<EntityKind, Listable>;
 export interface DBInterface {
   initDB: (testing: boolean) => Promise<void>;
   migrate: (testing: boolean) => void;
@@ -106,10 +109,7 @@ export interface DBInterface {
   atomChecksumsFor(
     changeSetId: ChangeSetId,
   ): Promise<Record<QueryKey, Checksum>>;
-  changeSetExists(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): boolean;
+  changeSetExists(workspaceId: string, changeSetId: ChangeSetId): boolean;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<boolean>;
   pruneAtomsForClosedChangeSet(
     workspaceId: WorkspacePk,

@@ -221,7 +221,12 @@ import { useQuery } from "@tanstack/vue-query";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import { Fzf } from "fzf";
 import { tw } from "@si/vue-lib";
-import { bifrost, bifrostList, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import {
+  bifrost,
+  bifrostList,
+  useMakeArgs,
+  useMakeKey,
+} from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
   BifrostComponentList,
@@ -232,6 +237,7 @@ import {
 } from "@/workers/types/entity_kind_types";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { Listable } from "@/workers/types/dbinterface";
 import Map from "./Map.vue";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
@@ -258,7 +264,6 @@ import { elementIsScrolledIntoView } from "./logic_composables/dom_funcs";
 
 type ControlScheme = "v1" | "v2";
 const CONTROL_SCHEME: ControlScheme = "v2" as ControlScheme;
-import { Listable } from "@/workers/types/dbinterface";
 
 const router = useRouter();
 const route = useRoute();

@@ -320,10 +320,7 @@ const atomExistsOnIndexes = (
   return rows.flat().filter(nonNullable) as Checksum[];
 };
 
-const newIndex = (
-  meta: AtomMeta,
-  fromIndexChecksum: string | undefined,
-) => {
+const newIndex = (meta: AtomMeta, fromIndexChecksum: string | undefined) => {
   db.exec({
     sql: `INSERT INTO indexes (checksum) VALUES (?);`,
     bind: [meta.toIndexChecksum],
@@ -1623,7 +1620,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     true,
   );
 
-  const list = (get(
+  const list = get(
     workspaceId,
     changeSetId,
     EntityKind.IncomingConnectionsList,
@@ -1631,7 +1628,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     undefined,
     undefined,
     false, // don't compute
-  )) as BifrostIncomingConnectionsList | -1;
+  ) as BifrostIncomingConnectionsList | -1;
 
   if (list === -1) return;
 
@@ -1989,7 +1986,7 @@ const getReferences = (
     return [bifrost, hasReferenceError];
   } else if (kind === EntityKind.Component) {
     const data = atomDoc as EddaComponent;
-    const sv = (get(
+    const sv = get(
       workspaceId,
       changeSetId,
       data.schemaVariantId.kind,
@@ -1997,7 +1994,7 @@ const getReferences = (
       undefined,
       indexChecksum,
       followComputed,
-    )) as SchemaVariant | -1;
+    ) as SchemaVariant | -1;
 
     if (sv === -1) {
       hasReferenceError = true;
@@ -2025,7 +2022,7 @@ const getReferences = (
       );
     }
 
-    const sm = (get(
+    const sm = get(
       workspaceId,
       changeSetId,
       data.schemaMembers.kind,
@@ -2033,7 +2030,7 @@ const getReferences = (
       undefined,
       indexChecksum,
       followComputed,
-    )) as SchemaMembers | -1;
+    ) as SchemaMembers | -1;
 
     if (sm === -1) {
       hasReferenceError = true;
@@ -2130,14 +2127,13 @@ const getReferences = (
     const componentIds = rawList.components.map((c) => c.id);
 
     // Use getMany to fetch all components in a single query
-    const componentResults: Record<Id, BifrostComponentInList> | -1 =
-      getMany(
-        workspaceId,
-        changeSetId,
-        EntityKind.Component,
-        componentIds,
-        indexChecksum,
-      );
+    const componentResults: Record<Id, BifrostComponentInList> | -1 = getMany(
+      workspaceId,
+      changeSetId,
+      EntityKind.Component,
+      componentIds,
+      indexChecksum,
+    );
 
     // Process results and handle missing components
     clearWeakReferences(changeSetId, { kind, args: rawList.id });
@@ -2172,7 +2168,7 @@ const getReferences = (
     return [list, hasReferenceError];
   } else if (kind === EntityKind.IncomingConnections) {
     const raw = atomDoc as EddaIncomingConnections;
-    const component = (get(
+    const component = get(
       workspaceId,
       changeSetId,
       EntityKind.Component,
@@ -2181,7 +2177,7 @@ const getReferences = (
       indexChecksum,
       false,
       false,
-    )) as BifrostComponent | -1;
+    ) as BifrostComponent | -1;
 
     clearWeakReferences(changeSetId, {
       kind: EntityKind.IncomingConnections,
@@ -2372,17 +2368,15 @@ const getList = (
   kind: Listable,
   id: Id,
   indexChecksum?: string,
-  followComputed = true,
-  followReferences = true,
 ): string => {
   let varname;
   switch (kind) {
     case EntityKind.ComponentList:
     case EntityKind.ViewComponentList:
-      varname = "$.components"
+      varname = "$.components";
       break;
     default:
-      throw new Error("Missing kind")
+      throw new Error("Missing kind");
   }
 
   const sql = `
@@ -2410,12 +2404,17 @@ from
             inner join index_mtm_atoms mtm
               ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
             inner join indexes ON mtm.index_checksum = indexes.checksum
-          ${indexChecksum
+          ${
+            indexChecksum
               ? ""
               : "inner join changesets ON changesets.index_checksum = indexes.checksum"
           }
           where
-            ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+            ${
+              indexChecksum
+                ? "indexes.checksum = ?"
+                : "changesets.change_set_id = ?"
+            }
             AND atoms.kind = ?
             AND atoms.args = ?
         ) as items 
@@ -2426,37 +2425,43 @@ from
     inner join index_mtm_atoms mtm
       ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
     inner join indexes ON mtm.index_checksum = indexes.checksum
-    ${indexChecksum
-      ? ""
-      : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+    ${
+      indexChecksum
+        ? ""
+        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
     }
     where
       ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
   ) as resolved
 ;      `;
-    const bind = [indexChecksum ?? changeSetId, kind, id, indexChecksum ?? changeSetId];
-    const start = Date.now();
-    const atomData = db.exec({
-      sql,
-      bind,
-      returnValue: "resultRows",
-    });
-    const end = Date.now();
-    debug(
-      "❓ sql getList",
-      `[${end - start}ms]`,
-      bind,
-      " returns ?",
-      !(atomData.length === 0),
-      atomData,
-    );
-    if (atomData.length === 0) return ""; 
+  const bind = [
+    indexChecksum ?? changeSetId,
+    kind,
+    id,
+    indexChecksum ?? changeSetId,
+  ];
+  const start = Date.now();
+  const atomData = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+  const end = Date.now();
+  debug(
+    "❓ sql getList",
+    `[${end - start}ms]`,
+    bind,
+    " returns ?",
+    !(atomData.length === 0),
+    atomData,
+  );
+  if (atomData.length === 0) return "";
 
-    console.dir(atomData[0]![0])
-    return atomData[0]![0] as string;
-    
+  console.dir(atomData[0]![0]);
+
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return atomData[0]![0] as string;
 };
-
 
 const get = (
   workspaceId: string,
@@ -2928,11 +2933,7 @@ const dbInterface: DBInterface = {
     });
     return { changesets, indexes, atoms, mtm };
   },
-  linkNewChangeset(
-    workspaceId,
-    headChangeSet,
-    changeSetId,
-  ) {
+  linkNewChangeset(workspaceId, headChangeSet, changeSetId) {
     try {
       const headRows = db.exec({
         sql: "select index_checksum from changesets where workspace_id = ? and change_set_id = ?;",
