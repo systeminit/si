@@ -1,29 +1,9 @@
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use si_events::{
-    Timestamp,
-    workspace_snapshot::EntityKind,
-};
-use si_frontend_mv_types_macros::{
-    FrontendChecksum,
-    FrontendObject,
-    MV,
-    Refer,
-};
-use si_id::{
-    ComponentId,
-    ViewId,
-    WorkspacePk,
-};
+use serde::{Deserialize, Serialize};
+use si_events::{Timestamp, workspace_snapshot::EntityKind};
+use si_frontend_mv_types_macros::{FrontendChecksum, FrontendObject, MV, Refer};
+use si_id::{ComponentId, ViewId, WorkspacePk};
 
-use crate::reference::{
-    Reference,
-    ReferenceKind,
-    WeakReference,
-    weak,
-};
+use crate::reference::{Reference, ReferenceKind, WeakReference, weak};
 
 #[derive(
     Clone, Debug, Deserialize, Serialize, Eq, PartialEq, FrontendChecksum, FrontendObject, Refer, MV,
@@ -68,5 +48,5 @@ pub struct ViewList {
 )]
 pub struct ViewComponentList {
     pub id: ViewId,
-    pub components: Vec<WeakReference<ComponentId, weak::markers::Component>>,
+    pub components: Vec<WeakReference<ComponentId, weak::markers::ComponentInList>>,
 }

@@ -1,16 +1,7 @@
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use si_events::workspace_snapshot::{
-    Checksum,
-    ChecksumHasher,
-};
+use serde::{Deserialize, Serialize};
+use si_events::workspace_snapshot::{Checksum, ChecksumHasher};
 
-use crate::{
-    checksum::FrontendChecksum,
-    object::FrontendObject,
-};
+use crate::{checksum::FrontendChecksum, object::FrontendObject};
 
 pub mod weak;
 
@@ -40,6 +31,7 @@ pub enum ReferenceKind {
     ChangeSetList,
     ChangeSetRecord,
     Component,
+    ComponentInList,
     ComponentList,
     IncomingConnections,
     IncomingConnectionsList,

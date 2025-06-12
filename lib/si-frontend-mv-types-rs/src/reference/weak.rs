@@ -1,18 +1,9 @@
 use std::marker::PhantomData;
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
-use si_events::workspace_snapshot::{
-    Checksum,
-    ChecksumHasher,
-};
+use serde::{Deserialize, Serialize};
+use si_events::workspace_snapshot::{Checksum, ChecksumHasher};
 
-use super::{
-    ReferenceId,
-    ReferenceKind,
-};
+use super::{ReferenceId, ReferenceKind};
 use crate::checksum::FrontendChecksum;
 
 /// A marker trait used for ensuring that weak references are strongly typed at compile time and
@@ -102,6 +93,13 @@ pub mod markers {
 
     impl ReferenceKindMarker for IncomingConnections {
         const REFERENCE_KIND: ReferenceKind = ReferenceKind::IncomingConnections;
+    }
+    /// A weak reference marker for [`ReferenceKind::Component`].
+    #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
+    pub struct ComponentInList;
+
+    impl ReferenceKindMarker for ComponentInList {
+        const REFERENCE_KIND: ReferenceKind = ReferenceKind::ComponentInList;
     }
 
     /// A weak reference marker for [`ReferenceKind::SchemaVariant`].
