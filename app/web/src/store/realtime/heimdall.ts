@@ -280,11 +280,11 @@ const workspaceId = computed(() => {
 });
 
 // this is for the old world!
-export const makeKey = <K = Gettable>(kind: string, id?: string) => {
+export const makeKey = (kind: string, id?: string) => {
   return [
     workspaceId.value,
     changeSetId.value,
-    kind as K,
+    kind,
     id ?? workspaceId.value,
   ];
 };
@@ -298,7 +298,7 @@ export const makeArgs = (kind: string, id?: string) => {
   return {
     workspaceId: workspaceId.value,
     changeSetId: changeSetId.value,
-    kind: kind as EntityKind,
+    kind: kind as Gettable,
     id: id ?? changeSetId.value,
   };
 };
@@ -342,17 +342,17 @@ export const changeSetExists = async (
 export const useMakeKey = () => {
   const ctx: Context | undefined = inject("CONTEXT");
 
-  return <T extends unknown[]>(
-    kind: ComputedRef<EntityKind> | EntityKind,
+  return <T extends unknown[], K = Gettable>(
+    kind: ComputedRef<K> | K,
     id?: ComputedRef<string> | string,
     ...extra: [...T]
   ) =>
     computed<
-      [string?, string?, (ComputedRef<EntityKind> | EntityKind)?, string?, ...T]
+      [string?, string?, (ComputedRef<K> | K)?, string?, ...T]
     >(() => [
       ctx?.workspacePk.value,
       ctx?.changeSetId.value,
-      kind,
+      kind as K,
       unref(id) ?? ctx?.workspacePk.value,
       ...extra,
     ]);

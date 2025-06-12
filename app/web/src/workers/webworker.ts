@@ -2457,8 +2457,6 @@ from
   );
   if (atomData.length === 0) return "";
 
-  console.dir(atomData[0]![0]);
-
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return atomData[0]![0] as string;
 };
