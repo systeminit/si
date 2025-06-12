@@ -299,7 +299,7 @@ const urlGridOrMap = computed(() => {
   if (keys.includes("map")) return "map";
   return "grid";
 });
-const showGrid = computed(() => groupRef.value?.isA);
+const showGrid = computed(() => (groupRef.value ? groupRef.value.isA : true));
 watch(showGrid, () => {
   unfocus();
   unhover();
