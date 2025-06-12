@@ -8,7 +8,8 @@ outline:
 This how-to assumes:
 
 - Basic [familiarity with System Initiative](../tutorials/getting-started)
-- Have generated a [workspace scoped API token](../explanation/generate-a-workspace-api-token)
+- Have generated a
+  [workspace scoped API token](../explanation/generate-a-workspace-api-token)
 
 It will teach you how to use the
 [System Initiative Public API](../reference/public-api) to manage your
@@ -349,9 +350,6 @@ properties required to expand the component parts of the template.
             template_options)
         template_component_id = template_component_data["component"]["id"]
         print(f'Template Component created with ID: {template_component_id}')
-
-        print('6.5. Waiting for DVU to run...')
-        time.sleep(5)
 ```
 
 ### Expanding the template
@@ -391,8 +389,8 @@ We can use this function as follows:
             }
         }
         func_run_data = execute_management_function(change_set_id, template_component_id, expansion_options)
-        func_run_id = func_run_data["funcRunId"]
-        print(f'Template Func running with func run ID: {func_run_id}')
+        management_func_job_state_id = func_run_data["managementFuncJobStateId"]
+        print(f'Template Func running with management func job state ID: {management_func_job_state_id}')
 ```
 
 When we execute the application, we get the output as follows:
@@ -411,7 +409,7 @@ Region created with ID: 01JWAVDK6T7TP47H33PJZFXA90
 6. Creating AWS Standard VPC Template
 Template Component created with ID: 01JWAVDKYRK5CEJ3XCT8F55DXC
 7. Expanding Template
-Template Func running with func run ID: 01JWAVDST3701864MFYQMXR4CH
+Template Func running with management func job state ID: 01JWAVDST3701864MFYQMXR4CH
 (venv)
 ```
 
@@ -426,7 +424,6 @@ of the create actions required to deploy the VPC infrastructure.
 ```python
 import os
 import requests
-import time
 
 API_TOKEN = os.environ.get('SI_API_TOKEN')
 WORKSPACE_ID = os.environ.get("SI_WORKSPACE_ID")
@@ -586,9 +583,6 @@ def main():
         template_component_id = template_component_data["component"]["id"]
         print(f'Template Component created with ID: {template_component_id}')
 
-        print('6.5. Waiting for DVU to run...')
-        time.sleep(5)
-
         print('7. Expanding Template')
         expansion_options = {
             "managementFunction": {
@@ -596,8 +590,8 @@ def main():
             }
         }
         func_run_data = execute_management_function(change_set_id, template_component_id, expansion_options)
-        func_run_id = func_run_data["funcRunId"]
-        print(f'Template Func running with func run ID: {func_run_id}')
+        management_func_job_state_id = func_run_data["managementFuncJobStateId"]
+        print(f'Template Func running with management func job state ID: {management_func_job_state_id}')
 
     except requests.exceptions.HTTPError as err:
         print(f'HTTP Error: {err}')
@@ -784,10 +778,6 @@ async function createSecret(
   return response.json() as Promise<any>;
 }
 
-async function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 async function main(): Promise<void> {
   try {
     console.log("Creating change set...");
@@ -873,9 +863,6 @@ async function main(): Promise<void> {
     const templateComponentId = templateComponentData.component.id;
     console.log(`Template Component created with ID: ${templateComponentId}`);
 
-    console.log("6.5 Waiting for DVU to land");
-    await sleep(5000)
-
     console.log("7. Expanding Template");
     const expansionOptions: ManagementFunctionOptions = {
       managementFunction: {
@@ -887,8 +874,8 @@ async function main(): Promise<void> {
       templateComponentId,
       expansionOptions,
     );
-    const funcRunId = funcRunData.funcRunId;
-    console.log(`Template Func running with func run ID: ${funcRunId}`);
+    const managementFuncJobStateId = funcRunData.managementFuncJobStateId;
+    console.log(`Template Func running with management func job state ID: ${managementFuncJobStateId}`);
   } catch (error: any) {
     if (error.message.includes("HTTP Error")) {
       console.log(`HTTP Error: ${error.message}`);
