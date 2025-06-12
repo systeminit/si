@@ -92,6 +92,8 @@ import {
   processPatchQueue,
 } from "./mjolnir_queue";
 
+const WORKER_LOCK_KEY = "BIFROST_LOCK";
+
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
 if (!otelEndpoint) otelEndpoint = "http://localhost:8080";
 const exporter = new OTLPTraceExporter({
@@ -147,15 +149,18 @@ const getDbName = (testing: boolean) => {
 
 const start = async (sqlite3: Sqlite3Static, testing: boolean) => {
   const dbname = getDbName(testing);
-  db =
-    "opfs" in sqlite3
-      ? new sqlite3.oo1.OpfsDb(`/${dbname}`)
-      : new sqlite3.oo1.DB(`/${dbname}`, "c");
-  debug(
-    "opfs" in sqlite3
-      ? `OPFS is available, created persisted database at ${db.filename}`
-      : `OPFS is not available, created transient database ${db.filename}`,
-  );
+
+  if ("opfs" in sqlite3) {
+    const poolUtil = await sqlite3.installOpfsSAHPoolVfs({});
+    db = new poolUtil.OpfsSAHPoolDb(`/${dbname}`);
+    debug(
+      `OPFS is available, created persisted database in SAH Pool VFS at ${db.filename}`,
+    );
+  } else {
+    db = new sqlite3.oo1.DB(`/${dbname}`, "c");
+    debug(`OPFS is not available, created transient database ${db.filename}`);
+  }
+
   db.exec({ sql: "PRAGMA foreign_keys = ON;" });
 };
 
@@ -263,13 +268,13 @@ const ensureTables = async (testing: boolean) => {
 };
 
 // NOTE: this is just for external test usage, do not use this within this file
-const exec = (
+const exec = async (
   opts: ExecBaseOptions &
     ExecRowModeArrayOptions &
     ExecReturnResultRowsOptions & {
       sql: FlexibleString;
     },
-): SqlValue[][] => db.exec(opts);
+): Promise<SqlValue[][]> => db.exec(opts);
 
 /**
  * A few small utilities
@@ -614,7 +619,7 @@ const insertAtomMTM = async (atom: Atom, indexChecksum: Checksum) => {
       ;`,
       bind,
     });
-  } catch (err) {
+  } catch {
     // should be resolved with the previous SELECT
     // even with the unique constraint ON CONFLICT REPLACE
     // if the checksum is identical, it will error
@@ -1720,7 +1725,7 @@ const updateComputed = async (
   }
 };
 
-const getPossibleConnections = (
+const getPossibleConnections = async (
   _workspaceId: string,
   changeSetId: string,
   destSchemaName: string,
@@ -1770,7 +1775,7 @@ const getPossibleConnections = (
   return categories;
 };
 
-const getOutgoingConnectionsByComponentId = (
+const getOutgoingConnectionsByComponentId = async (
   _workspaceId: string,
   changeSetId: string,
 ) => {
@@ -1837,7 +1842,7 @@ const getComputed = async (
     return atomDoc;
   }
 
-  const connectionsById = getOutgoingConnectionsByComponentId(
+  const connectionsById = await getOutgoingConnectionsByComponentId(
     workspaceId,
     changeSetId,
   );
@@ -2597,6 +2602,8 @@ let inFlight: RainbowFn;
 let returned: RainbowFn;
 let lobbyExitFn: LobbyExitFn;
 
+let abortController: AbortController | undefined;
+
 const dbInterface: DBInterface = {
   setBearer(token) {
     bearerToken = token;
@@ -2750,11 +2757,37 @@ const dbInterface: DBInterface = {
     });
   },
 
-  async initBifrost() {
-    debug("🌈 Initializing Bifrost");
-    await Promise.all([this.initDB(false), this.initSocket()]);
-    await this.migrate(false);
-    debug("🌈 Bifrost initialization complete");
+  async setRemote(_remote: Comlink.Remote<DBInterface>) {
+    debug("this should only be called on the shared webworker");
+  },
+
+  async initBifrost(gotLockPort: MessagePort) {
+    debug("initializing bifrost in tabWorker");
+    if (abortController) {
+      debug("already initialized bifrost");
+      return;
+    }
+
+    abortController = new AbortController();
+    navigator.locks.request(
+      WORKER_LOCK_KEY,
+      { mode: "exclusive", signal: abortController.signal },
+      async () => {
+        debug("lock acquired! 🌈 Initializing sqlite3 bifrost for real");
+        await Promise.all([this.initDB(false), this.initSocket()]);
+        this.migrate(false);
+        debug("🌈 Bifrost initialization complete");
+
+        gotLockPort.postMessage("lock acquired");
+
+        return new Promise((_, reject) => {
+          abortController?.signal.addEventListener("abort", () => {
+            this.bifrostClose();
+            reject(abortController?.signal.reason);
+          });
+        });
+      },
+    );
   },
 
   async bifrostClose() {

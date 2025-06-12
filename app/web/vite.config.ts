@@ -1,6 +1,6 @@
 import path from "path";
-import {existsSync, readFileSync} from "fs";
-import {loadEnv, defineConfig} from "vite";
+import { existsSync, readFileSync } from "fs";
+import { loadEnv, defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import checkerPlugin from "vite-plugin-checker";
 import svgLoaderPlugin from "vite-svg-loader";
@@ -55,22 +55,22 @@ export default (opts: { mode: string }) => {
       IconsPlugin({compiler: "raw"}),
 
       process.env.NODE_ENV !== "production" &&
-      checkerPlugin({
-        vueTsc: true,
-        eslint: {
-          lintCommand: packageJson.scripts.lint,
-          // I _think_ we only want to pop up an error on the screen for proper errors
-          // otherwise we can get a lot of unused var errors when you comment something out temporarily
-          dev: {logLevel: ["error"]},
-        },
-      }),
+        checkerPlugin({
+          vueTsc: true,
+          eslint: {
+            lintCommand: packageJson.scripts.lint,
+            // I _think_ we only want to pop up an error on the screen for proper errors
+            // otherwise we can get a lot of unused var errors when you comment something out temporarily
+            dev: { logLevel: ["error"] },
+          },
+        }),
 
       ViteGitRevisionPlugin({}),
     ],
     css: {
       postcss,
       preprocessorOptions: {
-        less: {additionalData: lessVars},
+        less: { additionalData: lessVars },
       },
     },
     server: {
@@ -88,12 +88,12 @@ export default (opts: { mode: string }) => {
         },
       },
       headers: {
-        'Cross-Origin-Opener-Policy': 'same-origin',
-        'Cross-Origin-Embedder-Policy': 'credentialless',
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "credentialless",
       },
     },
     optimizeDeps: {
-      exclude: ['@sqlite.org/sqlite-wasm'],
+      exclude: ["@sqlite.org/sqlite-wasm"],
     },
     preview: {
       proxy: {
@@ -109,7 +109,7 @@ export default (opts: { mode: string }) => {
           find: "@",
           replacement: path.resolve(__dirname, "src"),
         },
-        {find: "util", replacement: "util-browser"},
+        { find: "util", replacement: "util-browser" },
       ],
     },
     build: {
@@ -118,11 +118,18 @@ export default (opts: { mode: string }) => {
         input: {
           main: path.resolve(__dirname, "index.html"),
           worker: path.resolve(__dirname, "src/workers/webworker.ts"), // Add worker as an entry point
+          sharedWorker: path.resolve(
+            __dirname,
+            "src/workers/shared_webworker.ts",
+          ),
         },
         output: {
           entryFileNames: (chunk) => {
             if (chunk.name === "worker") {
               return "assets/webworker.js"; // Specify output path for web worker
+            }
+            if (chunk.name === "sharedWorker") {
+              return "assets/shared_webworker.js";
             }
             return "assets/[name]-[hash].js";
           },

@@ -1,4 +1,6 @@
+import * as Comlink from "comlink";
 import {
+  Database,
   ExecBaseOptions,
   ExecReturnResultRowsOptions,
   ExecReturnThisOptions,
@@ -42,12 +44,13 @@ export type MjolnirBulk = Array<{
 }>;
 export interface DBInterface {
   initDB: (testing: boolean) => Promise<void>;
-  migrate: (testing: boolean) => void;
+  migrate: (testing: boolean) => Promise<Database>;
   setBearer: (token: string) => void;
   initSocket(): Promise<void>;
-  initBifrost(): void;
-  bifrostClose(): void;
-  bifrostReconnect(): void;
+  setRemote(remote: Comlink.Remote<DBInterface>): Promise<void>;
+  initBifrost(gotLockPort: MessagePort): Promise<void>;
+  bifrostClose(): Promise<void>;
+  bifrostReconnect(): Promise<void>;
   linkNewChangeset(
     workspaceId: string,
     headChangeSetId: string,
@@ -58,11 +61,11 @@ export interface DBInterface {
     changeSetId: string,
     destSchemaName: string,
     dest: Prop,
-  ): CategorizedPossibleConnections;
+  ): Promise<CategorizedPossibleConnections>;
   getOutgoingConnectionsByComponentId(
     workspaceId: string,
     changeSetId: ChangeSetId,
-  ): OutgoingConnections | undefined;
+  ): Promise<OutgoingConnections | undefined>;
   get(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -74,14 +77,14 @@ export interface DBInterface {
     changeSetId: ChangeSetId,
     objs: MjolnirBulk,
     indexChecksum: string,
-  ): void;
+  ): Promise<void>;
   mjolnir(
     workspaceId: string,
     changeSetId: ChangeSetId,
     kind: EntityKind,
     id: Id,
     checksum?: Checksum,
-  ): void;
+  ): Promise<void>;
   partialKeyFromKindAndId(kind: EntityKind, id: Id): QueryKey;
   kindAndIdFromKey(key: QueryKey): { kind: EntityKind; id: Id };
   addListenerBustCache(fn: BustCacheFn): void;
@@ -112,7 +115,7 @@ export interface DBInterface {
       (ExecReturnThisOptions | ExecReturnResultRowsOptions) & {
         sql: FlexibleString;
       },
-  ): SqlValue[][];
+  ): Promise<SqlValue[][]>;
   bobby(): Promise<void>;
   ragnarok(
     workspaceId: string,
@@ -120,7 +123,7 @@ export interface DBInterface {
     noColdStart?: boolean,
   ): Promise<void>;
   // show me everything
-  odin(changeSetId: ChangeSetId): object;
+  odin(changeSetId: ChangeSetId): Promise<object>;
 }
 
 export class Ragnarok extends Error {

@@ -35,8 +35,22 @@ export const init = async (bearerToken: string, _queryClient: QueryClient) => {
     // eslint-disable-next-line no-console
     console.log("🌈 initializing bifrost...");
     const start = Date.now();
-    await db.setBearer(bearerToken);
-    await db.initBifrost();
+    await tabDb.setBearer(bearerToken);
+    const { port1, port2 } = new MessageChannel();
+
+    // This message fires when the lock has been acquired for this tab
+    port1.onmessage = () => {
+      tabDb.addListenerBustCache(Comlink.proxy(bustTanStackCache));
+      tabDb.addListenerInFlight(Comlink.proxy(inFlight));
+      tabDb.addListenerReturned(Comlink.proxy(returned));
+      tabDb.addListenerLobbyExit(Comlink.proxy(lobbyExit));
+
+      db.setRemote(Comlink.proxy(tabDb));
+    };
+
+    // We are deliberately not awaiting this promise, since it blocks forever on the tabs that do not get the lock
+    tabDb.initBifrost(Comlink.proxy(port2));
+
     const end = Date.now();
     token = bearerToken;
     queryClient = _queryClient;
@@ -59,30 +73,35 @@ const bustTanStackCache: BustCacheFn = (
   queryClient.invalidateQueries({ queryKey });
 };
 
+const sharedWebWorkerUrl =
+  import.meta.env.VITE_SI_ENV === "local"
+    ? "../../workers/shared_webworker.ts"
+    : "shared_webworker.js";
+
+const sharedWorker = new SharedWorker(
+  new URL(sharedWebWorkerUrl, import.meta.url),
+  { type: "module", name: "si-db-multiplexer" },
+);
+
+const db: Comlink.Remote<DBInterface> = Comlink.wrap(sharedWorker.port);
+
 const workerUrl =
   import.meta.env.VITE_SI_ENV === "local"
     ? "../../workers/webworker.ts"
     : "webworker.js";
 
-const worker = new Worker(new URL(workerUrl, import.meta.url), {
+const tabWorker = new Worker(new URL(workerUrl, import.meta.url), {
   type: "module",
 });
-const db: Comlink.Remote<DBInterface> = Comlink.wrap(worker);
-
-// PSA: these are not await'd
-// but stuff happens in here we do need to wait for
-// figure that out :sweat:
-db.addListenerBustCache(Comlink.proxy(bustTanStackCache));
+const tabDb: Comlink.Remote<DBInterface> = Comlink.wrap(tabWorker);
 
 const inFlight = (changeSetId: ChangeSetId, label: string) => {
   rainbow.add(changeSetId, label);
 };
-db.addListenerInFlight(Comlink.proxy(inFlight));
 
 const returned = (changeSetId: ChangeSetId, label: string) => {
   rainbow.remove(changeSetId, label);
 };
-db.addListenerReturned(Comlink.proxy(returned));
 
 const lobbyExit: LobbyExitFn = async (workspaceId, changeSetId) => {
   // Only navigate away from lobby if user is currently in the lobby
@@ -109,8 +128,6 @@ const lobbyExit: LobbyExitFn = async (workspaceId, changeSetId) => {
     },
   });
 };
-
-db.addListenerLobbyExit(Comlink.proxy(lobbyExit));
 
 export const bifrostReconnect = async () => {
   await db.bifrostReconnect();
