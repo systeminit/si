@@ -10,11 +10,65 @@ use dal::{
 use si_frontend_mv_types::component::{
     Component as ComponentMv,
     ComponentDiff,
+    ComponentInList as ComponentInListMv,
     SchemaMembers,
 };
 use telemetry::prelude::*;
 
 pub mod attribute_tree;
+
+#[instrument(
+    name = "dal_materialized_views.component_in_list",
+    level = "debug",
+    skip_all
+)]
+pub async fn assemble_in_list(
+    ctx: DalContext,
+    component_id: ComponentId,
+) -> crate::Result<ComponentInListMv> {
+    let ctx = &ctx;
+    let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
+    let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id).await?;
+    let schema = SchemaVariant::schema_for_schema_variant_id(ctx, schema_variant_id).await?;
+    let has_resource = Component::resource_by_id(ctx, component_id)
+        .await?
+        .is_some();
+    let stats = QualificationSummary::individual_stats(ctx, component_id)
+        .await?
+        .into();
+
+    let diff_count = Component::get_diff_count(ctx, component_id).await?;
+    let color = Component::color_by_id(ctx, component_id).await?;
+
+    let attribute_tree = attribute_tree::assemble(ctx.to_owned(), component_id).await?;
+    let mut input_count = attribute_tree
+        .attribute_values
+        .values()
+        .filter(|value| match value.external_sources.as_ref() {
+            Some(sources) => !sources.is_empty(),
+            None => false,
+        })
+        .count();
+    input_count += Component::managers_by_id(ctx, component_id).await?.len();
+
+    Ok(ComponentInListMv {
+        id: component_id,
+        name: Component::name_by_id(ctx, component_id).await?,
+        color,
+        schema_name: schema.name.to_owned(),
+        schema_id: schema.id(),
+        schema_variant_id,
+        schema_variant_name: schema_variant.display_name().to_owned(),
+        schema_category: schema_variant.category().to_owned(),
+        has_resource,
+        qualification_totals: stats,
+        input_count,
+        diff_count,
+        to_delete: Component::is_set_to_delete(ctx, component_id)
+            .await?
+            .unwrap_or(false),
+    })
+}
 
 #[instrument(name = "dal_materialized_views.component", level = "debug", skip_all)]
 pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Result<ComponentMv> {

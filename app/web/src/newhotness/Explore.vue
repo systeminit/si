@@ -172,6 +172,7 @@
         v-else
         ref="mapRef"
         :active="!showGrid"
+        :components="componentList"
         @deselect="onMapDeselect"
         @help="openShortcutModal"
       />
@@ -224,7 +225,7 @@
     <AddComponentModal ref="addComponentModalRef" />
     <AddViewModal
       ref="addViewModalRef"
-      :views="viewListQuery.data.value?.views"
+      :views="viewListQuery.data.value ?? []"
     />
     <!-- For the edit view modals, upon delete, change back to "All Views" -->
     <EditViewModal
@@ -267,17 +268,21 @@ import { useQuery } from "@tanstack/vue-query";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import { Fzf } from "fzf";
 import { tw } from "@si/vue-lib";
-import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import {
+  bifrost,
+  bifrostList,
+  useMakeArgs,
+  useMakeKey,
+} from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
-  BifrostComponentList,
-  BifrostViewList,
-  ViewComponentList,
   EntityKind,
-  BifrostComponentInList,
+  ComponentInList,
+  View,
 } from "@/workers/types/entity_kind_types";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { Listable } from "@/workers/types/dbinterface";
 import Map from "./Map.vue";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
@@ -303,6 +308,7 @@ import ComponentContextMenu from "./ComponentContextMenu.vue";
 import EmptyState from "./EmptyState.vue";
 import { elementIsScrolledIntoView } from "./logic_composables/dom_funcs";
 import ShortcutModal from "./ShortcutModal.vue";
+import { useUpgrade } from "./logic_composables/upgrade";
 
 type ControlScheme = "v1" | "v2";
 const CONTROL_SCHEME: ControlScheme = "v2" as ControlScheme;
@@ -367,28 +373,30 @@ watch(showGrid, () => {
 const key = useMakeKey();
 const args = useMakeArgs();
 
-const viewListQuery = useQuery<BifrostViewList | null>({
+const viewListQuery = useQuery<View[]>({
   queryKey: key(EntityKind.ViewList),
-  queryFn: async () =>
-    await bifrost<BifrostViewList>(args(EntityKind.ViewList)),
+  queryFn: async () => {
+    const views = await bifrostList<View[]>(args(EntityKind.ViewList));
+    if (!views) return [];
+    else return views;
+  },
 });
 const viewListOptions = computed(() => {
-  const list = viewListQuery.data.value?.views || [];
+  const list = viewListQuery.data.value ?? [];
   return list.map((l) => {
-    return {
-      value: l.id,
-      label: l.name,
-    };
+    return { value: l.id, label: l.name };
   });
 });
 
 const defaultView = computed(() =>
-  viewListQuery.data.value?.views.find((v) => v.isDefault),
+  viewListQuery.data.value?.find((v) => v.isDefault),
 );
 const selectedViewOrDefaultId = computed(() => {
   if (selectedView.value) return selectedView.value;
-  if (!defaultView.value) return "";
-  return defaultView.value.id;
+  if (!viewListQuery.data.value) return "";
+  const view = viewListQuery.data.value.find((v) => v.isDefault);
+  if (!view) return "";
+  return view.id;
 });
 
 const exploreContext = computed<ExploreContext>(() => {
@@ -416,28 +424,25 @@ const id = computed(() =>
 );
 const componentQueryKey = key(kind, id);
 
-const componentListRaw = useQuery<
-  BifrostComponentList | ViewComponentList | null
->({
+const componentListRaw = useQuery<ComponentInList[]>({
   queryKey: componentQueryKey,
   queryFn: async () => {
     const arg = selectedView.value
-      ? args(EntityKind.ViewComponentList, selectedView.value)
-      : args(EntityKind.ComponentList);
-    return await bifrost<BifrostComponentList | ViewComponentList>(arg);
+      ? args<Listable>(EntityKind.ViewComponentList, selectedView.value)
+      : args<Listable>(EntityKind.ComponentList);
+    const list = await bifrostList<ComponentInList[]>(arg);
+    return list ?? [];
   },
 });
 
-const componentList = computed(
-  () => componentListRaw.data.value?.components ?? [],
-);
+const componentList = computed(() => componentListRaw.data.value ?? []);
 const componentsById = computed(() =>
   Object.fromEntries(componentList.value.map((c) => [c.id, c])),
 );
 
 const scrollRef = ref<HTMLDivElement>();
 
-const filteredComponents = reactive<BifrostComponentInList[]>([]);
+const filteredComponents = reactive<ComponentInList[]>([]);
 
 const searchString = ref("");
 const computedSearchString = computed(() => searchString.value);
@@ -464,7 +469,7 @@ watch(
 
     mapRef.value?.deselect();
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 );
 
 function getScrollbarWidth(): number {
@@ -753,6 +758,8 @@ const onD = (e: KeyDetails["d"]) => {
     mapRef.value?.onD(e);
   }
 };
+
+const upgrade = useUpgrade();
 const onU = (e: KeyDetails["u"]) => {
   e.preventDefault();
 
@@ -761,7 +768,10 @@ const onU = (e: KeyDetails["u"]) => {
     const targetComponent = filteredComponents.find(
       (comp) => comp.id === interactionTargetComponentId.value,
     );
-    if (targetComponent && targetComponent.canBeUpgraded) {
+    if (
+      targetComponent &&
+      upgrade(targetComponent.schemaId, targetComponent.schemaVariantId)
+    ) {
       componentContextMenuRef.value?.componentUpgrade([
         interactionTargetComponentId.value,
       ]);
@@ -1024,7 +1034,7 @@ const openEditViewModal = (viewId: string) => {
     editViewModalRef.value?.open(viewId, false, true);
   } else {
     const canDeleteView = componentListRaw.data.value
-      ? componentListRaw.data.value.components.length < 1
+      ? componentListRaw.data.value.length < 1
       : false;
     editViewModalRef.value?.open(viewId, canDeleteView, false);
   }

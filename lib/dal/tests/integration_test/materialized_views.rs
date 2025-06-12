@@ -355,24 +355,24 @@ async fn incoming_connections(ctx: &mut DalContext) -> Result<()> {
         assert_eq!(
             vec![
                 Connection::Prop {
-                    from_component_id: alpha.id().into(),
+                    from_component_id: alpha.id(),
                     from_attribute_value_id: alpha_si_name_attribute_value_id,
                     from_attribute_value_path: alpha_si_name_attribute_value_path,
                     from_prop_id: alpha_si_name_prop_id,
                     from_prop_path: alpha_si_name_prop_path.with_replaced_sep_and_prefix("/"),
-                    to_component_id: charlie.id().into(),
+                    to_component_id: charlie.id(),
                     to_attribute_value_id: charlie_si_name_attribute_value_id,
                     to_attribute_value_path: charlie_si_name_attribute_value_path,
                     to_prop_id: charlie_si_name_prop_id,
                     to_prop_path: charlie_si_name_prop_path.with_replaced_sep_and_prefix("/"),
                 },
                 Connection::Prop {
-                    from_component_id: beta.id().into(),
+                    from_component_id: beta.id(),
                     from_attribute_value_id: beta_domain_name_attribute_value_id,
                     from_attribute_value_path: beta_domain_name_attribute_value_path,
                     from_prop_id: beta_domain_name_prop_id,
                     from_prop_path: beta_domain_name_prop_path.with_replaced_sep_and_prefix("/"),
-                    to_component_id: charlie.id().into(),
+                    to_component_id: charlie.id(),
                     to_attribute_value_id: charlie_domain_name_attribute_value_id,
                     to_attribute_value_path: charlie_domain_name_attribute_value_path,
                     to_prop_id: charlie_domain_name_prop_id,

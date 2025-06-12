@@ -11,16 +11,22 @@ import {
 import { QueryClient } from "@tanstack/vue-query";
 import { monotonicFactory } from "ulid";
 import {
-  DBInterface,
+  TabDBInterface,
+  SharedDBInterface,
   Id,
   BustCacheFn,
   LobbyExitFn,
   SHARED_BROADCAST_CHANNEL_NAME,
+  Listable,
+  Gettable,
+  AtomDocument,
+  UpdateFn,
 } from "@/workers/types/dbinterface";
 import {
-  BifrostConnection,
+  Connection,
   EntityKind,
   Prop,
+  SchemaMembers,
 } from "@/workers/types/entity_kind_types";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Context } from "@/newhotness/types";
@@ -93,7 +99,7 @@ const sharedWorker = new SharedWorker(
   { type: "module", name: "si-db-multiplexer" },
 );
 
-const db: Comlink.Remote<DBInterface> = Comlink.wrap(sharedWorker.port);
+const db: Comlink.Remote<SharedDBInterface> = Comlink.wrap(sharedWorker.port);
 
 const workerUrl =
   import.meta.env.VITE_SI_ENV === "local"
@@ -103,7 +109,7 @@ const workerUrl =
 const tabWorker = new Worker(new URL(workerUrl, import.meta.url), {
   type: "module",
 });
-const tabDb: Comlink.Remote<DBInterface> = Comlink.wrap(tabWorker);
+const tabDb: Comlink.Remote<TabDBInterface> = Comlink.wrap(tabWorker);
 
 const onSharedWorkerBootBroadcastChannel = new BroadcastChannel(
   SHARED_BROADCAST_CHANNEL_NAME,
@@ -140,6 +146,90 @@ const returned = (
     db.broadcastMessage({
       messageKind: "listenerReturned",
       arguments: { changeSetId, label },
+    });
+  }
+};
+
+const updateCache = (
+  queryKey: string[],
+  id: string,
+  data: AtomDocument,
+  removed = false,
+  add = false,
+) => {
+  // there is always more data attached, but we only care about accessing the ID
+  // so thats all we need to type!
+  const cachedData = queryClient.getQueryData(queryKey) as { id: string }[];
+  if (!cachedData) return;
+  // TODO removal
+  const idx = cachedData.findIndex((d) => d.id === id);
+  let dirty = false;
+  if (idx !== -1) {
+    if (removed) cachedData.splice(idx, 1);
+    else cachedData.splice(idx, 1, data);
+    dirty = true;
+  } else if (add) {
+    // added to the list
+    cachedData.push(data);
+    dirty = true;
+  }
+  if (dirty) {
+    queryClient.setQueryData(queryKey, cachedData);
+    // NOTE: no need to call invalidate
+    // tanstack keeps the query data reactive all by itself
+  }
+};
+
+const atomUpdated: UpdateFn = (
+  workspaceId: string,
+  changeSetId: string,
+  kind: EntityKind,
+  id: string,
+  data: AtomDocument,
+  listIds: string[],
+  removed: boolean,
+  noBroadcast?: boolean,
+) => {
+  if (kind === EntityKind.View) {
+    const queryKey = [
+      workspaceId,
+      changeSetId,
+      EntityKind.ViewList,
+      workspaceId,
+    ];
+    updateCache(queryKey, id, data, removed, true);
+  } else if (kind === EntityKind.IncomingConnections) {
+    const queryKey = [
+      workspaceId,
+      changeSetId,
+      EntityKind.IncomingConnectionsList,
+      workspaceId,
+    ];
+    updateCache(queryKey, id, data, removed, true);
+  } else if (kind === EntityKind.ComponentInList) {
+    const queryKey = [
+      workspaceId,
+      changeSetId,
+      EntityKind.ComponentList,
+      workspaceId,
+    ];
+    updateCache(queryKey, id, data, removed, true);
+    if (listIds.length > 0) {
+      listIds.forEach((viewId) => {
+        const queryKey = [
+          workspaceId,
+          changeSetId,
+          EntityKind.ViewComponentList,
+          viewId,
+        ];
+        updateCache(queryKey, id, removed, data);
+      });
+    }
+  }
+  if (!noBroadcast) {
+    db.broadcastMessage({
+      messageKind: "atomUpdated",
+      arguments: { workspaceId, changeSetId, kind, id, data, listIds, removed },
     });
   }
 };
@@ -185,6 +275,7 @@ tabDb.addListenerBustCache(Comlink.proxy(bustTanStackCache));
 tabDb.addListenerInFlight(Comlink.proxy(inFlight));
 tabDb.addListenerReturned(Comlink.proxy(returned));
 tabDb.addListenerLobbyExit(Comlink.proxy(lobbyExit));
+tabDb.addAtomUpdated(Comlink.proxy(atomUpdated));
 
 export const bifrostReconnect = async () => {
   await db.bifrostReconnect();
@@ -202,7 +293,7 @@ export const bifrostClose = async () => {
 export const bifrost = async <T>(args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
-  kind: EntityKind;
+  kind: Gettable;
   id: Id;
 }): Promise<Reactive<T> | null> => {
   if (!initCompleted.value) throw new Error("bifrost not initiated");
@@ -218,6 +309,27 @@ export const bifrost = async <T>(args: {
   console.log("🌈 bifrost query", args.kind, args.id, end - start, "ms");
   if (maybeAtomDoc === -1) return null;
   return reactive(maybeAtomDoc);
+};
+
+export const bifrostList = async <T>(args: {
+  workspaceId: string;
+  changeSetId: ChangeSetId;
+  kind: Listable;
+  id: Id;
+}): Promise<Reactive<T> | null> => {
+  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  const start = Date.now();
+  const maybeAtomDoc = await db.getList(
+    args.workspaceId,
+    args.changeSetId,
+    args.kind,
+    args.id,
+  );
+  const end = Date.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost queryList", args.kind, args.id, end - start, "ms");
+  if (!maybeAtomDoc) return null;
+  return reactive(JSON.parse(maybeAtomDoc));
 };
 
 export const getPossibleConnections = async (args: {
@@ -244,6 +356,64 @@ export const linkNewChangeset = async (
   await db.linkNewChangeset(workspaceId, headChangeSetId, changeSetId);
 };
 
+export const getOutgoingConnectionsCounts = async (args: {
+  workspaceId: string;
+  changeSetId: ChangeSetId;
+}) => {
+  if (!initCompleted.value) throw new Error("bifrost not initiated");
+
+  const start = Date.now();
+  const connectionsCounts = await db.getOutgoingConnectionsCounts(
+    args.workspaceId,
+    args.changeSetId,
+  );
+  const end = Date.now();
+  // eslint-disable-next-line no-console
+  console.log(
+    "🌈 bifrost query getOutgoingConnectionsCounts",
+    end - start,
+    "ms",
+  );
+  if (connectionsCounts) return reactive(connectionsCounts);
+  else return {};
+};
+
+export const getComponentNames = async (args: {
+  workspaceId: string;
+  changeSetId: ChangeSetId;
+}) => {
+  if (!initCompleted.value) throw new Error("bifrost not initiated");
+
+  const start = Date.now();
+  const componentNames = await db.getComponentNames(
+    args.workspaceId,
+    args.changeSetId,
+  );
+  const end = Date.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost query componentNames", end - start, "ms");
+  if (componentNames) return reactive(componentNames);
+  else return {};
+};
+
+export const getSchemaMembers = async (args: {
+  workspaceId: string;
+  changeSetId: ChangeSetId;
+}): Promise<SchemaMembers[]> => {
+  if (!initCompleted.value) throw new Error("bifrost not initiated");
+
+  const start = Date.now();
+  const schemaMembers = await db.getSchemaMembers(
+    args.workspaceId,
+    args.changeSetId,
+  );
+  const end = Date.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost query getSchemaMembers", end - start, "ms");
+  if (schemaMembers) return reactive(JSON.parse(schemaMembers));
+  else return [];
+};
+
 export const getOutgoingConnections = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
@@ -255,7 +425,7 @@ export const getOutgoingConnections = async (args: {
     args.changeSetId,
   );
   if (connectionsById) return reactive(connectionsById);
-  return new DefaultMap<string, Record<string, BifrostConnection>>(() => ({}));
+  return new DefaultMap<string, Record<string, Connection>>(() => ({}));
 };
 
 // cold start
@@ -300,12 +470,7 @@ const workspaceId = computed(() => {
 
 // this is for the old world!
 export const makeKey = (kind: string, id?: string) => {
-  return [
-    workspaceId.value,
-    changeSetId.value,
-    kind as EntityKind,
-    id ?? workspaceId.value,
-  ];
+  return [workspaceId.value, changeSetId.value, kind, id ?? workspaceId.value];
 };
 
 export const prune = async (workspaceId: string, changeSetId: string) => {
@@ -317,7 +482,7 @@ export const makeArgs = (kind: string, id?: string) => {
   return {
     workspaceId: workspaceId.value,
     changeSetId: changeSetId.value,
-    kind: kind as EntityKind,
+    kind: kind as Gettable,
     id: id ?? changeSetId.value,
   };
 };
@@ -325,11 +490,11 @@ export const makeArgs = (kind: string, id?: string) => {
 export const useMakeArgs = () => {
   const ctx: Context | undefined = inject("CONTEXT");
 
-  return (kind: EntityKind, id?: string) => {
+  return <K = Gettable>(kind: EntityKind, id?: string) => {
     return {
       workspaceId: ctx?.workspacePk.value ?? "",
       changeSetId: ctx?.changeSetId.value ?? "",
-      kind,
+      kind: kind as K,
       id: id ?? ctx?.workspacePk.value ?? "",
     };
   };
@@ -361,17 +526,15 @@ export const changeSetExists = async (
 export const useMakeKey = () => {
   const ctx: Context | undefined = inject("CONTEXT");
 
-  return <T extends unknown[]>(
-    kind: ComputedRef<EntityKind> | EntityKind,
+  return <T extends unknown[], K = Gettable>(
+    kind: ComputedRef<K> | K,
     id?: ComputedRef<string> | string,
     ...extra: [...T]
   ) =>
-    computed<
-      [string?, string?, (ComputedRef<EntityKind> | EntityKind)?, string?, ...T]
-    >(() => [
+    computed<[string?, string?, (ComputedRef<K> | K)?, string?, ...T]>(() => [
       ctx?.workspacePk.value,
       ctx?.changeSetId.value,
-      kind,
+      kind as K,
       unref(id) ?? ctx?.workspacePk.value,
       ...extra,
     ]);

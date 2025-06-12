@@ -103,12 +103,12 @@ async fn prop_to_prop(ctx: &DalContext, component_id: ComponentId) -> Result<Vec
             ) in in_progress
             {
                 connections.push(Connection::Prop {
-                    from_component_id: from_component_id.into(),
+                    from_component_id,
                     from_attribute_value_id,
                     from_attribute_value_path,
                     from_prop_id,
                     from_prop_path,
-                    to_component_id: component_id.into(),
+                    to_component_id: component_id,
                     to_prop_id: prop_id,
                     to_prop_path: prop_path.clone(),
                     to_attribute_value_id: attribute_value_id,
@@ -126,8 +126,8 @@ async fn management(ctx: &DalContext, component_id: ComponentId) -> Result<Vec<C
 
     for manager_component_id in Component::managers_by_id(ctx, component_id).await? {
         connections.push(Connection::Management {
-            from_component_id: manager_component_id.into(),
-            to_component_id: component_id.into(),
+            from_component_id: manager_component_id,
+            to_component_id: component_id,
         })
     }
 

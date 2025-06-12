@@ -6,18 +6,15 @@ import {
   FlexibleString,
   SqlValue,
 } from "@sqlite.org/sqlite-wasm";
-import { Span } from "@opentelemetry/api";
 import {
-  BustCacheFn,
-  DBInterface,
-  LobbyExitFn,
-  RainbowFn,
+  SharedDBInterface,
+  TabDBInterface,
   NOROW,
-  PatchBatch,
-  AtomMessage,
   AtomDocument,
   BroadcastMessage,
   SHARED_BROADCAST_CHANNEL_NAME,
+  Gettable,
+  Listable,
 } from "./types/dbinterface";
 import { EntityKind } from "./types/entity_kind_types";
 
@@ -36,13 +33,13 @@ function debug(...args: any | any[]) {
 }
 
 let bearerToken: string;
-let currentRemote: Comlink.Remote<DBInterface> | undefined;
+let currentRemote: Comlink.Remote<TabDBInterface> | undefined;
 let currentRemoteId: string | undefined;
-const remotes: { [key: string]: Comlink.Remote<DBInterface> } = {};
+const remotes: { [key: string]: Comlink.Remote<TabDBInterface> } = {};
 
 const hasRemoteChannel = new MessageChannel();
 
-const getRemote = (): Promise<Comlink.Remote<DBInterface>> => {
+const getRemote = (): Promise<Comlink.Remote<TabDBInterface>> => {
   return new Promise((resolve, reject) => {
     if (currentRemote) {
       resolve(currentRemote);
@@ -58,13 +55,13 @@ const getRemote = (): Promise<Comlink.Remote<DBInterface>> => {
 };
 
 async function withRemote<R>(
-  cb: (remote: Comlink.Remote<DBInterface>) => Promise<R>,
+  cb: (remote: Comlink.Remote<TabDBInterface>) => Promise<R>,
 ): Promise<R> {
   const remote = await getRemote();
   return cb(remote);
 }
 
-const dbInterface: DBInterface = {
+const dbInterface: SharedDBInterface = {
   async broadcastMessage(message: BroadcastMessage) {
     Object.keys(remotes).forEach((remoteId) => {
       if (remoteId !== currentRemoteId) {
@@ -76,14 +73,12 @@ const dbInterface: DBInterface = {
       }
     });
   },
-  async receiveBroadcast(_message) {
-    debug("shared worker received a broadcast?");
-  },
+
   unregisterRemote(id: string) {
     debug("unregister remote in shared", id);
     delete remotes[id];
   },
-  registerRemote(id: string, remote: Comlink.Remote<DBInterface>) {
+  registerRemote(id: string, remote: Comlink.Remote<TabDBInterface>) {
     debug("register remote in shared", id);
     remotes[id] = remote;
   },
@@ -170,11 +165,23 @@ const dbInterface: DBInterface = {
   async get(
     workspaceId: string,
     changeSetId: string,
-    kind: EntityKind,
+    kind: Gettable,
     id: string,
   ): Promise<typeof NOROW | AtomDocument> {
     return await withRemote(
       async (remote) => await remote.get(workspaceId, changeSetId, kind, id),
+    );
+  },
+
+  async getList(
+    workspaceId: string,
+    changeSetId: string,
+    kind: Listable,
+    id: string,
+  ): Promise<string> {
+    return await withRemote(
+      async (remote) =>
+        await remote.getList(workspaceId, changeSetId, kind, id),
     );
   },
 
@@ -195,15 +202,23 @@ const dbInterface: DBInterface = {
     );
   },
 
-  async mjolnirBulk(
-    workspaceId: string,
-    changeSetId: string,
-    objs: Array<{ kind: string; id: string; checksum?: string }>,
-    indexChecksum: string,
-  ) {
-    await withRemote(
+  async getOutgoingConnectionsCounts(workspaceId: string, changeSetId: string) {
+    return await withRemote(
       async (remote) =>
-        await remote.mjolnirBulk(workspaceId, changeSetId, objs, indexChecksum),
+        await remote.getOutgoingConnectionsCounts(workspaceId, changeSetId),
+    );
+  },
+
+  async getComponentNames(workspaceId: string, changeSetId: string) {
+    return await withRemote(
+      async (remote) =>
+        await remote.getComponentNames(workspaceId, changeSetId),
+    );
+  },
+
+  async getSchemaMembers(workspaceId: string, changeSetId: string) {
+    return await withRemote(
+      async (remote) => await remote.getSchemaMembers(workspaceId, changeSetId),
     );
   },
 
@@ -217,34 +232,6 @@ const dbInterface: DBInterface = {
     await withRemote(
       async (remote) =>
         await remote.mjolnir(workspaceId, changeSetId, kind, id, checksum),
-    );
-  },
-
-  partialKeyFromKindAndId(kind: EntityKind, id: string): string {
-    return `${kind}|${id}`;
-  },
-
-  kindAndIdFromKey(key: string): { kind: EntityKind; id: string } {
-    const pieces = key.split("|", 2);
-    if (pieces.length !== 2) throw new Error(`Bad key ${key} -> ${pieces}`);
-    if (!pieces[0] || !pieces[1])
-      throw new Error(`Missing key ${key} -> ${pieces}`);
-    const kind = pieces[0] as EntityKind;
-    const id = pieces[1];
-    return { kind, id };
-  },
-
-  addListenerBustCache(_fn: BustCacheFn): void {},
-
-  addListenerInFlight(_fn: RainbowFn): void {},
-
-  addListenerReturned(_fn: RainbowFn): void {},
-
-  addListenerLobbyExit(_fn: LobbyExitFn): void {},
-
-  async atomChecksumsFor(changeSetId: string): Promise<Record<string, string>> {
-    return await withRemote(
-      async (remote) => await remote.atomChecksumsFor(changeSetId),
     );
   },
 
@@ -268,35 +255,6 @@ const dbInterface: DBInterface = {
       async (remote) =>
         await remote.pruneAtomsForClosedChangeSet(workspaceId, changeSetId),
     );
-  },
-
-  oneInOne(rows: SqlValue[][]): SqlValue | typeof NOROW {
-    const first = rows[0];
-    if (first) {
-      const id = first[0];
-      if (id || id === 0) return id;
-    }
-    return NOROW;
-  },
-
-  async encodeDocumentForDB(doc: object): Promise<ArrayBuffer> {
-    return await new Blob([JSON.stringify(doc)]).arrayBuffer();
-  },
-
-  decodeDocumentFromDB(doc: ArrayBuffer): AtomDocument {
-    const s = new TextDecoder().decode(doc);
-    const j = JSON.parse(s);
-    return j;
-  },
-
-  async handlePatchMessage(data: PatchBatch, span?: Span): Promise<void> {
-    await withRemote(
-      async (remote) => await remote.handlePatchMessage(data, span),
-    );
-  },
-
-  async handleHammer(msg: AtomMessage, span?: Span): Promise<void> {
-    await withRemote(async (remote) => await remote.handleHammer(msg, span));
   },
 
   async exec(

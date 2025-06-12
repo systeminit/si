@@ -103,6 +103,39 @@ pub struct Component {
 )]
 #[serde(rename_all = "camelCase")]
 #[mv(
+    trigger_entity = EntityKind::Component,
+    reference_kind = ReferenceKind::ComponentInList,
+)]
+pub struct ComponentInList {
+    pub id: ComponentId,
+    pub name: String,
+    pub color: Option<String>,
+    pub schema_name: String,
+    pub schema_id: SchemaId,
+    pub schema_variant_id: SchemaVariantId,
+    pub schema_variant_name: String,
+    pub schema_category: String,
+    pub has_resource: bool,
+    pub qualification_totals: ComponentQualificationStats,
+    pub input_count: usize,
+    pub diff_count: usize,
+    pub to_delete: bool,
+}
+
+#[derive(
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    Clone,
+    si_frontend_mv_types_macros::FrontendChecksum,
+    si_frontend_mv_types_macros::FrontendObject,
+    si_frontend_mv_types_macros::Refer,
+    si_frontend_mv_types_macros::MV,
+)]
+#[serde(rename_all = "camelCase")]
+#[mv(
     trigger_entity = EntityKind::Schema,
     reference_kind = ReferenceKind::SchemaMembers,
 )]

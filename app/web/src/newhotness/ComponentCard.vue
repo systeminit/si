@@ -31,14 +31,14 @@ import {
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { BifrostComponentInList } from "@/workers/types/entity_kind_types";
+import { ComponentInList } from "@/workers/types/entity_kind_types";
 import { getAssetIcon, getAssetColor } from "./util";
 
 defineProps<{
-  component: BifrostComponentInList;
+  component: ComponentInList;
 }>();
 
-const borderStyle = (component: BifrostComponentInList) => {
+const borderStyle = (component: ComponentInList) => {
   const color = getAssetColor(component.schemaCategory);
   return `border-color: ${color}`;
 };

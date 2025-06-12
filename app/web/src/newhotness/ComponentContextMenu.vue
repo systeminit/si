@@ -37,7 +37,7 @@ import { ComponentId } from "@/api/sdf/dal/component";
 import {
   BifrostActionViewList,
   ActionPrototypeViewList,
-  BifrostComponentInList,
+  ComponentInList,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
 import { ActionId, ActionPrototypeId } from "@/api/sdf/dal/action";
@@ -62,7 +62,7 @@ const args = useMakeArgs();
 const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
 assertIsDefined<ExploreContext>(explore);
 
-const components = ref<BifrostComponentInList[]>([]);
+const components = ref<ComponentInList[]>([]);
 
 const atLeastOneGhostedComponent = computed(() =>
   components.value.some((c) => c.toDelete),
@@ -76,9 +76,7 @@ const atLeastOneNormalComponent = computed(() =>
 const component = computed(() =>
   components.value.length === 1 ? components.value[0] : undefined,
 );
-const schemaVariantId = computed(
-  () => component.value?.schemaVariantId.id ?? "",
-);
+const schemaVariantId = computed(() => component.value?.schemaVariantId ?? "");
 const actionPrototypes = computed(
   () => actionPrototypesQuery.data.value?.actionPrototypes ?? [],
 );
@@ -172,14 +170,14 @@ const rightClickMenuItems = computed(() => {
     onSelect: () => componentDuplicate(components.value.map((c) => c.id)),
   });
 
-  if (component.value?.canBeUpgraded) {
-    items.push({
-      label: "Upgrade",
-      shortcut: "U",
-      icon: "bolt-outline",
-      onSelect: () => componentUpgrade(components.value.map((c) => c.id)),
-    });
-  }
+  // if (component.value?.canBeUpgraded) {
+  //   items.push({
+  //     label: "Upgrade",
+  //     shortcut: "U",
+  //     icon: "bolt-outline",
+  //     onSelect: () => componentUpgrade(components.value.map((c) => c.id)),
+  //   });
+  // }
 
   // Only enable actions if we are working with a single component.
   if (component.value && schemaVariantId.value) {
@@ -277,7 +275,7 @@ const deleteEraseFromViewApi = useApi();
 const deleteComponentIds = ref<ComponentId[]>([]);
 const deleteModalRef = ref<InstanceType<typeof DeleteModal>>();
 
-const componentsStartDelete = (components: BifrostComponentInList[]) => {
+const componentsStartDelete = (components: ComponentInList[]) => {
   deleteComponentIds.value = components.map((c) => c.id);
   deleteModalRef.value?.open(components);
   close();
@@ -332,7 +330,7 @@ const anchor = ref<Object | undefined>(undefined);
 function open(
   // eslint-disable-next-line @typescript-eslint/ban-types
   anchorTo: Object,
-  componentsForMenu: BifrostComponentInList[],
+  componentsForMenu: ComponentInList[],
 ) {
   anchor.value = anchorTo;
   components.value = componentsForMenu;

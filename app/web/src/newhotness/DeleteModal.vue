@@ -65,15 +65,15 @@ import {
   VormInputOption,
 } from "@si/vue-lib/design-system";
 import { onBeforeUnmount, onMounted, ref } from "vue";
-import { BifrostComponentInList } from "@/workers/types/entity_kind_types";
+import { ComponentInList } from "@/workers/types/entity_kind_types";
 import ComponentCard from "./ComponentCard.vue";
 
-const components = ref<BifrostComponentInList[]>([]);
+const components = ref<ComponentInList[]>([]);
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open: openModal, close: closeModal } = useModal(modalRef);
 
-function open(selectedComponents: BifrostComponentInList[]) {
+function open(selectedComponents: ComponentInList[]) {
   components.value = selectedComponents;
   openModal();
 }

@@ -40,6 +40,7 @@ pub enum ReferenceKind {
     ChangeSetList,
     ChangeSetRecord,
     Component,
+    ComponentInList,
     ComponentList,
     IncomingConnections,
     IncomingConnectionsList,

@@ -20,8 +20,7 @@
         :lineClamp="2"
         @click="() => navigate(conn.componentId)"
       >
-        {{ conn.component.schemaName }}
-        {{ conn.component.name }}
+        {{ ctx.componentNames.value[conn.componentId] }}
       </TruncateWithTooltip>
       <!-- negative margin pulls things together -->
       <p
@@ -49,15 +48,18 @@
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import { themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
-import { BifrostComponentInList } from "@/workers/types/entity_kind_types";
+import { inject } from "vue";
+import { assertIsDefined, Context } from "../types";
 
 export interface SimpleConnection {
   key: string;
   componentId: string;
-  component: BifrostComponentInList;
   self: string;
   other: string;
 }
+
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined<Context>(ctx);
 
 const props = defineProps<{
   label: string;
