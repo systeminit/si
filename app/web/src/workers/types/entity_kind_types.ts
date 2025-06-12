@@ -34,6 +34,7 @@ export enum EntityKind {
   PossibleConnections = "PossibleConnections",
   AttributeTree = "AttributeTree",
 }
+
 /**
  * NOTE, if you want to narrow the type of a variable
  * that maybe an entity kind, use this fn
@@ -48,6 +49,7 @@ export const isEntityKind = (maybeEntityKind: any): EntityKind | null => {
   }
   return null;
 };
+
 interface Reference<T extends EntityKind> {
   id: string;
   checksum: string;
@@ -112,6 +114,7 @@ export interface BifrostSchemaVariantCategories {
   id: string; // workspace id
   categories: Categories;
 }
+
 export interface EddaSchemaVariantCategories {
   id: string; // workspace id
   categories: Array<{
@@ -198,6 +201,16 @@ export interface PropTree {
   props: Record<PropId, Prop>;
   treeInfo: Record<PropId, { parent?: PropId; children: PropId[] }>;
 }
+
+export interface MgmtFunction {
+  id: string;
+  funcId: FuncId;
+  description?: string;
+  prototypeName: string;
+  name: string;
+  kind: string;
+}
+
 export interface SchemaVariant {
   id: string;
   schemaVariantId: string;
@@ -222,14 +235,7 @@ export interface SchemaVariant {
   canCreateNewComponents: boolean;
 
   canContribute: boolean;
-  mgmtFunctions: {
-    id: string;
-    funcId: FuncId;
-    description?: string;
-    prototypeName: string;
-    name: string;
-    kind: string;
-  }[];
+  mgmtFunctions: MgmtFunction[];
 }
 
 export interface BifrostComponent {
@@ -438,6 +444,7 @@ export type MaybeBifrostComponentConnections = Omit<
   component: BifrostComponentInList | -1;
   incoming: MaybeBifrostConnection[];
 };
+
 export interface SecretFormDataView {
   name: string;
   kind: string;
