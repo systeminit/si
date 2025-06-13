@@ -15,6 +15,7 @@ use si_data_nats::{
 use si_frontend_mv_types::object::patch::{
     IndexUpdate,
     PatchBatch,
+    StreamingPatch,
 };
 use si_id::WorkspacePk;
 use telemetry::prelude::*;
@@ -74,6 +75,30 @@ impl EddaUpdates {
                 patch_batch.kind(),
             ),
             patch_batch,
+            true,
+        )
+        .await
+    }
+
+    #[instrument(
+        name = "edda_updates.publish_streaming_patch",
+        level = "debug",
+        skip_all,
+        fields()
+    )]
+    pub(crate) async fn publish_streaming_patch(
+        &self,
+        streaming_patch: StreamingPatch,
+    ) -> Result<()> {
+        let mut id_buf = WorkspacePk::array_to_str_buf();
+
+        self.serialize_compress_publish(
+            subject::update_for(
+                self.subject_prefix.as_deref(),
+                streaming_patch.workspace_id.array_to_str(&mut id_buf),
+                streaming_patch.message_kind(),
+            ),
+            streaming_patch,
             true,
         )
         .await
