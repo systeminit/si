@@ -38,35 +38,36 @@
     <div
       :class="
         clsx(
-          'name items-center flex flex-row gap-xs p-xs',
+          'name flex flex-row items-center gap-xs p-xs',
           themeClasses('bg-neutral-200', 'bg-neutral-800'),
         )
       "
     >
       <VButton
         v-tooltip="'Back (Esc)'"
-        class="border-0 mr-2em"
+        class="border-0 mr-2em flex-none"
         icon="arrow--left"
         size="sm"
         tone="shade"
         variant="ghost"
         @click="back"
       />
-      <span>{{ component.schemaVariantName }}</span>
-      <span>/</span>
-      <span class="grow">
+      <div class="flex-none">{{ component.schemaVariantName }}</div>
+      <div class="flex-none">/</div>
+      <div class="flex-1 min-w-0">
         <EditInPlace ref="editInPlaceRef" @hidden="reset" @showing="focus">
           <template #trigger>
             <VButton
               :label="component.name"
               :loading="wForm.bifrosting.value"
               :loadingText="component.name"
-              class="border-0 font-normal"
+              class="border-0 font-normal max-w-full"
               iconRight="edit"
               loadingIcon="loader"
               size="sm"
               tone="shade"
               variant="ghost"
+              truncateText
               @click="editInPlaceRef?.toggle"
             />
           </template>
@@ -96,7 +97,7 @@
             </nameForm.Field>
           </template>
         </EditInPlace>
-      </span>
+      </div>
     </div>
 
     <div class="attrs flex flex-col gap-sm">

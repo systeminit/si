@@ -3,6 +3,7 @@
     :class="
       clsx(
         'flex flex-row items-center gap-xs border w-fit px-3xs rounded-sm',
+        'max-w-full',
         themeClasses(
           'text-neutral-600 border-neutral-400 bg-neutral-100',
           'text-neutral-400 border-neutral-600 bg-neutral-900',

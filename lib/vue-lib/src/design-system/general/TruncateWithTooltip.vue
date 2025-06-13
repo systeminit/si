@@ -138,5 +138,5 @@ onBeforeUnmount(() => {
   clearInterval(lineClampRefresh.value);
 });
 
-defineExpose({ tooltipActive });
+defineExpose({ tooltipActive, tooltip });
 </script>

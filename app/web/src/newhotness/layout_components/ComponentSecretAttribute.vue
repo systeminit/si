@@ -34,7 +34,7 @@
             :key="fieldname"
             :class="
               clsx(
-                'flex flex-col items-center gap-3xs font-sm [&>*]:w-full',
+                'flex flex-col items-center gap-3xs font-sm [&>*]:w-full relative',
                 index === Object.keys(secretFormData).length - 1
                   ? 'mb-xs'
                   : 'mb-[-1px]',
@@ -47,29 +47,11 @@
                   <TruncateWithTooltip class="py-2xs">{{
                     fieldname
                   }}</TruncateWithTooltip>
-                  <input
-                    :class="
-                      clsx(
-                        'block h-lg w-full ml-auto border font-sm font-mono disabled:bg-neutral-900 focus:z-100',
-                        themeClasses(
-                          'text-black bg-white border-neutral-400',
-                          'text-white bg-black border-neutral-600',
-                        ),
-                        field.state.meta.errors.length > 0 &&
-                          'border-destructive-500 z-100',
-                      )
-                    "
-                    :type="getFormFieldType(fieldname)"
-                    :value="field.state.value"
-                    tabindex="0"
+                  <SecretInput
+                    :field="field"
+                    :fieldname="fieldname"
                     :placeholder="
-                      props.attributeTree.secret
-                        ? getPlaceholder(fieldname)
-                        : ''
-                    "
-                    @input="
-                      (e) =>
-                        field.handleChange((e.target as HTMLInputElement).value)
+                      attributeTree.secret ? getPlaceholder(fieldname) : ''
                     "
                   />
                 </div>
@@ -138,6 +120,7 @@ import AttributeInput from "./AttributeInput.vue";
 import { AttrTree } from "../AttributePanel.vue";
 import { useApi, routes, componentTypes } from "../api_composables";
 import { useWatchedForm } from "../logic_composables/watched_form";
+import SecretInput from "./SecretInput.vue";
 
 const props = defineProps<{
   component: BifrostComponent;
@@ -294,13 +277,6 @@ const getPlaceholder = (fieldname: string) => {
   } else if (fieldname === "Description") {
     return props.attributeTree.secret.description;
   } else return "empty";
-};
-
-const getFormFieldType = (fieldname: string) => {
-  if (fieldname !== "Name" && fieldname !== "Description") {
-    return "password";
-  }
-  return "text";
 };
 
 const secretFormOpen = ref(false);
