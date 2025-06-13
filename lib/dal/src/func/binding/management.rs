@@ -129,6 +129,7 @@ impl ManagementBinding {
                             {{
                                 kind: {json_name},
                                 properties?: {sv_type},
+                                attributes?: {{ [path: string]: ValueOrSource }},
                                 geometry?: Geometry | {{ [key: string]: Geometry }},
                                 connect?: Connection[],
                                 parent?: string,
@@ -170,6 +171,7 @@ impl ManagementBinding {
                             {{
                                 kind: {kinds},
                                 properties?: {{ [key: string]: any }},
+                                attributes?: {{ [path: string]: ValueOrSource }},
                                 geometry?: Geometry | {{ [key: string]: Geometry }},
                                 connect?: Connection[],
                                 parent?: string,
@@ -210,6 +212,18 @@ impl ManagementBinding {
 
         Ok(format!(
             r#"
+type ValueSource =
+  | {{ component: string; path: string }}
+  | {{ value?: JsonValue }}
+  | null;
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | {{ string: JsonValue }}
+  | JsonValue[];
+type ValueOrSource = JsonValue | {{ $source: ValueSource }};
 type Geometry = {{
     x?: number,
     y?: number,
@@ -238,6 +252,7 @@ type Output = {{
     create?: {{ [name: string]: {component_create_type} }},
     update?: {{ [name: string]: {{
         properties?: {{ [name: string]: unknown }},
+        attributes?: {{ [path: string]: ValueOrSource }},
         geometry?: {{ [view: string]: Geometry }},
         connect?: {{
             add?: Connection[],

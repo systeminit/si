@@ -212,6 +212,7 @@ pub async fn generate_template(
         let create = ManagementCreateOperation {
             kind: Some(kind),
             properties,
+            attributes: None,
             geometry: geometry.map(ManagementCreateGeometry::CurrentView),
             connect,
             parent,

@@ -57,6 +57,10 @@ use crate::{
         },
     },
     attribute::{
+        attributes::{
+            AttributeValueIdent,
+            ValueOrSourceSpec,
+        },
         prototype::argument::{
             AttributePrototypeArgument,
             AttributePrototypeArgumentError,
@@ -117,6 +121,8 @@ pub enum ManagementError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("attributes error: {0}")]
+    Attributes(#[from] crate::attribute::attributes::Error),
     #[error("cannot create component with 'self' as a placeholder")]
     CannotCreateComponentWithSelfPlaceholder,
     #[error("component error: {0}")]
@@ -174,7 +180,7 @@ const DEFAULT_FRAME_HEIGHT: f64 = 750.0;
 
 /// Geometry type for deserialization lang-js, so even if we should only care about integers,
 /// until we implement custom deserialization we can't merge it with [RawGeometry](RawGeometry)
-#[derive(Clone, Debug, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ManagementGeometry {
     pub x: Option<f64>,
     pub y: Option<f64>,
@@ -261,23 +267,24 @@ pub enum ManagementConnection {
     Output { from: String, to: SocketRef },
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementUpdateConnections {
     add: Option<Vec<ManagementConnection>>,
     remove: Option<Vec<ManagementConnection>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementUpdateOperation {
     properties: Option<serde_json::Value>,
+    attributes: Option<HashMap<AttributeValueIdent, ValueOrSourceSpec>>,
     geometry: Option<HashMap<String, ManagementGeometry>>,
     connect: Option<ManagementUpdateConnections>,
     parent: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum ManagementCreateGeometry {
     #[serde(rename_all = "camelCase")]
@@ -286,17 +293,19 @@ pub enum ManagementCreateGeometry {
     CurrentView(ManagementGeometry),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementCreateOperation {
     kind: Option<String>,
     properties: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    attributes: Option<HashMap<AttributeValueIdent, ValueOrSourceSpec>>,
     geometry: Option<ManagementCreateGeometry>,
     connect: Option<Vec<ManagementConnection>>,
     parent: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct ActionIdentifier {
     pub kind: ActionKind,
     pub manual_func_name: Option<String>,
@@ -329,7 +338,7 @@ impl From<&str> for ActionIdentifier {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ManagementActionOperation {
     add: Option<Vec<String>>,
     remove: Option<Vec<String>>,
@@ -339,14 +348,14 @@ pub type ManagementCreateOperations = HashMap<String, ManagementCreateOperation>
 pub type ManagementUpdateOperations = HashMap<String, ManagementUpdateOperation>;
 pub type ManagementActionOperations = HashMap<String, ManagementActionOperation>;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementViewOperations {
     create: Option<Vec<String>>,
     remove: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementOperations {
     create: Option<ManagementCreateOperations>,
@@ -363,7 +372,7 @@ pub struct ManagementOperations {
     views: Option<ManagementViewOperations>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagementFuncReturn {
     pub status: ManagementFuncStatus,
@@ -993,23 +1002,21 @@ impl<'a> ManagementOperator<'a> {
 
         let mut pending_operations = vec![];
 
-        if let Some(creates) = &creates {
+        if let Some(creates) = creates {
             for (placeholder, operation) in creates {
                 if placeholder == SELF_ID {
                     return Err(ManagementError::CannotCreateComponentWithSelfPlaceholder);
                 }
 
-                if self.component_id_placeholders.contains_key(placeholder) {
-                    return Err(ManagementError::DuplicateComponentPlaceholder(
-                        placeholder.to_owned(),
-                    ));
+                if self.component_id_placeholders.contains_key(&placeholder) {
+                    return Err(ManagementError::DuplicateComponentPlaceholder(placeholder));
                 }
 
                 let CreatedComponent {
                     component,
                     geometry,
                     schema_id,
-                } = self.create_component(placeholder, operation).await?;
+                } = self.create_component(&placeholder, &operation).await?;
 
                 let component_id = component.id();
 
@@ -1022,7 +1029,16 @@ impl<'a> ManagementOperator<'a> {
                 self.component_id_placeholders
                     .insert(placeholder.to_owned(), component_id);
 
-                if let Some(properties) = &operation.properties {
+                // Break out the operation so we own properties, attributes, etc.
+                let ManagementCreateOperation {
+                    kind: _,
+                    properties,
+                    attributes,
+                    geometry: _,
+                    connect,
+                    parent: _,
+                } = operation;
+                if let Some(properties) = properties {
                     update_component(
                         self.ctx,
                         component_id,
@@ -1032,8 +1048,11 @@ impl<'a> ManagementOperator<'a> {
                     )
                     .await?;
                 }
+                if let Some(attributes) = attributes {
+                    crate::update_attributes(self.ctx, component_id, attributes).await?;
+                }
 
-                if let Some(connections) = &operation.connect {
+                if let Some(connections) = connect {
                     for create in connections {
                         pending_operations.push(PendingOperation::Connect(PendingConnect {
                             component_id,
@@ -1044,7 +1063,7 @@ impl<'a> ManagementOperator<'a> {
 
                 self.last_component_geometry.extend(geometry);
 
-                if let Some(parent) = &operation.parent {
+                if let Some(parent) = operation.parent {
                     pending_operations.push(PendingOperation::Parent(PendingParent {
                         child_component_id: component_id,
                         parent: parent.to_owned(),
@@ -1090,18 +1109,24 @@ impl<'a> ManagementOperator<'a> {
         let mut pending = vec![];
 
         let updates = self.operations.update.take();
-        let Some(updates) = &updates else {
+        let Some(updates) = updates else {
             return Ok(pending);
         };
 
         for (placeholder, operation) in updates {
-            let component_id = self.get_managed_component_id(placeholder)?;
+            let ManagementUpdateOperation {
+                properties,
+                attributes,
+                geometry,
+                connect,
+                parent,
+            } = operation;
+            let component_id = self.get_managed_component_id(&placeholder)?;
             let mut component = Component::get_by_id(self.ctx, component_id).await?;
             let mut view_ids = HashSet::new();
 
             let will_be_frame =
-                component_will_be_frame(self.ctx, &component, operation.properties.as_ref())
-                    .await?;
+                component_will_be_frame(self.ctx, &component, properties.as_ref()).await?;
 
             for geometry_id in Geometry::list_ids_by_component(self.ctx, component_id).await? {
                 let view_id = Geometry::get_view_id_by_id(self.ctx, geometry_id).await?;
@@ -1110,8 +1135,7 @@ impl<'a> ManagementOperator<'a> {
 
             // we have to ensure frames get a size
             let geometries = if will_be_frame
-                && operation
-                    .geometry
+                && geometry
                     .as_ref()
                     .is_none_or(|geometries| geometries.is_empty())
             {
@@ -1125,13 +1149,13 @@ impl<'a> ManagementOperator<'a> {
                     }
                 }
                 geometries
-            } else if let Some(update_geometries) = &operation.geometry {
+            } else if let Some(update_geometries) = geometry {
                 let mut geometries = HashMap::new();
 
-                for (view_name, &geometry) in update_geometries {
+                for (view_name, geometry) in update_geometries {
                     let view_id = self
                         .view_placeholders
-                        .get(view_name)
+                        .get(&view_name)
                         .copied()
                         .ok_or(ManagementError::NoSuchView(view_name.to_owned()))?;
                     geometries.insert(view_id, (geometry, false));
@@ -1189,11 +1213,14 @@ impl<'a> ManagementOperator<'a> {
             }
             let controlling_avs =
                 Component::list_av_controlling_func_ids_for_id(self.ctx, component_id).await?;
-            if let Some(properties) = &operation.properties {
+            if let Some(properties) = properties {
                 update_component(self.ctx, component_id, properties, &[], controlling_avs).await?;
             }
+            if let Some(attributes) = attributes {
+                crate::update_attributes(self.ctx, component_id, attributes).await?;
+            }
 
-            if let Some(update_conns) = &operation.connect {
+            if let Some(update_conns) = connect {
                 if let Some(remove_conns) = &update_conns.remove {
                     for to_remove in remove_conns {
                         pending.push(PendingOperation::RemoveConnection(PendingConnect {
@@ -1213,7 +1240,7 @@ impl<'a> ManagementOperator<'a> {
                 }
             }
 
-            if let Some(new_parent) = &operation.parent {
+            if let Some(new_parent) = parent {
                 pending.push(PendingOperation::Parent(PendingParent {
                     child_component_id: component_id,
                     parent: new_parent.to_owned(),
@@ -1735,7 +1762,7 @@ const ROOT_SI_TYPE_PATH: &[&str] = &["root", "si", "type"];
 async fn update_component(
     ctx: &DalContext,
     component_id: ComponentId,
-    properties: &serde_json::Value,
+    properties: serde_json::Value,
     extra_ignore_paths: &[&[&str]],
     controlling_avs: HashMap<AttributeValueId, ControllingFuncData>,
 ) -> ManagementResult<()> {
@@ -1804,13 +1831,8 @@ async fn update_component(
                     .await?
                     .view(ctx)
                     .await?;
-                if Some(current_val) != view.as_ref() {
-                    AttributeValue::update(
-                        ctx,
-                        path_attribute_value_id,
-                        Some(current_val.to_owned()),
-                    )
-                    .await?;
+                if Some(&current_val) != view.as_ref() {
+                    AttributeValue::update(ctx, path_attribute_value_id, Some(current_val)).await?;
                 }
             }
             PropKind::Object => {
@@ -1820,7 +1842,7 @@ async fn update_component(
 
                 for (key, value) in obj {
                     let mut new_path = path.clone();
-                    new_path.push(key.to_owned());
+                    new_path.push(key);
                     work_queue.push_back((new_path, value));
                 }
             }
@@ -1846,7 +1868,7 @@ async fn update_component(
                 // We do not descend below a map. Instead we update the *entire*
                 // child tree of each map key
                 for (key, value) in map {
-                    match map_children.get(key) {
+                    match map_children.get(&key) {
                         Some(child_id) => {
                             if AttributeValue::is_set_by_dependent_function(ctx, *child_id).await? {
                                 continue;
@@ -1855,17 +1877,16 @@ async fn update_component(
                                 .await?
                                 .view(ctx)
                                 .await?;
-                            if Some(value) != view.as_ref() {
-                                AttributeValue::update(ctx, *child_id, Some(value.to_owned()))
-                                    .await?;
+                            if Some(&value) != view.as_ref() {
+                                AttributeValue::update(ctx, *child_id, Some(value)).await?;
                             }
                         }
                         None => {
                             AttributeValue::insert(
                                 ctx,
                                 path_attribute_value_id,
-                                Some(value.to_owned()),
-                                Some(key.to_owned()),
+                                Some(value),
+                                Some(key),
                             )
                             .await?;
                         }
@@ -1879,14 +1900,10 @@ async fn update_component(
                         .view(ctx)
                         .await?;
 
-                    if Some(current_val) != view.as_ref() {
+                    if Some(&current_val) != view.as_ref() {
                         // Just update the entire array whole cloth
-                        AttributeValue::update(
-                            ctx,
-                            path_attribute_value_id,
-                            Some(current_val.to_owned()),
-                        )
-                        .await?;
+                        AttributeValue::update(ctx, path_attribute_value_id, Some(current_val))
+                            .await?;
                     }
                 }
             }

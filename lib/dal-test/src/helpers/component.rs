@@ -76,9 +76,10 @@ pub async fn create(
 /// Execute a the management function and apply the result to the component
 pub async fn execute_management_func(
     ctx: &DalContext,
-    component_id: ComponentId,
+    component: impl ComponentKey,
     func_id: FuncId,
 ) -> Result<()> {
+    let component_id = component.lookup_component(ctx).await?;
     let mut prototype_ids = ManagementPrototype::list_ids_for_func_id(ctx, func_id)
         .await?
         .into_iter();

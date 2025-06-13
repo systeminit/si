@@ -69,6 +69,7 @@ pub mod ws_event;
 
 pub use action::ActionPrototypeId;
 pub use attribute::{
+    attributes::update_attributes,
     prototype::{
         AttributePrototype,
         AttributePrototypeId,
