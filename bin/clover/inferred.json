@@ -2127,6 +2127,12 @@
       "DISABLED"
     ]
   },
+  "Sets whether you can access the domain in Amazon SageMaker Studio:\n\nENABLED\nYou can access the domain in Amazon SageMaker Studio. If you migrate the domain to Amazon SageMaker Unified Studio, you can access it in both studio interfaces.\nDISABLED\nYou can't access the domain in Amazon SageMaker Studio. If you migrate the domain to Amazon SageMaker Unified Studio, you can access it only in that studio interface.\n": {
+    "enum": [
+      "ENABLED",
+      "DISABLED"
+    ]
+  },
   "The scoring status of the evaluation form.\n  *Allowed values*: ``ENABLED`` | ``DISABLED``": {
     "enum": [
       "ENABLED",
@@ -7836,6 +7842,9 @@
   "The AWS Region that the API Gateway proxy endpoint was created in. This parameter is required for SPEKE encryption and is not valid for static key encryption.": {
     "enum": null
   },
+  "The AWS Region where the domain is located in Amazon SageMaker Unified Studio. The default value, if you don't specify a Region, is the Region where the Amazon SageMaker AI domain is located.": {
+    "enum": null
+  },
   "The AWS Region which contains the source DB cluster when replicating a DB cluster. For example, ``us-east-1``. \n Valid for: Aurora DB clusters only": {
     "enum": null
   },
@@ -8886,6 +8895,9 @@
   "The ID of the AWS Verified Access instance.": {
     "enum": null
   },
+  "The ID of the AWS account that has the Amazon SageMaker Unified Studio domain. The default value, if you don't specify an ID, is the ID of the account that has the Amazon SageMaker AI domain.": {
+    "enum": null
+  },
   "The ID of the AWS account that owns the Amazon S3 bucket.": {
     "enum": null
   },
@@ -8923,6 +8935,12 @@
     "enum": null
   },
   "The ID of the Amazon Machine Image (AMI) that AWS PCS uses to launch instances. If not provided, AWS PCS uses the AMI ID specified in the custom launch template.": {
+    "enum": null
+  },
+  "The ID of the Amazon SageMaker Unified Studio domain associated with this domain.": {
+    "enum": null
+  },
+  "The ID of the Amazon SageMaker Unified Studio project that corresponds to the domain.": {
     "enum": null
   },
   "The ID of the Amazon Virtual Private Cloud (Amazon VPC) to associate with the Studio.": {
@@ -9145,6 +9163,9 @@
     "enum": null
   },
   "The ID of the environment profile with which the Amazon DataZone environment would be created.": {
+    "enum": null
+  },
+  "The ID of the environment that Amazon SageMaker Unified Studio associates with the domain.": {
     "enum": null
   },
   "The ID of the experiment template.": {
@@ -11791,6 +11812,9 @@
     "enum": null
   },
   "The location of the database (for example, an HDFS path).": {
+    "enum": null
+  },
+  "The location where Amazon S3 stores temporary execution data and other artifacts for the project that corresponds to the domain.": {
     "enum": null
   },
   "The location's URI": {
