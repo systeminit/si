@@ -57,12 +57,11 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, onMounted, onBeforeUnmount, inject } from "vue";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/vue-query";
+import { computed, ref, inject } from "vue";
+import { useInfiniteQuery } from "@tanstack/vue-query";
 import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import { useRouter, useRoute } from "vue-router";
 import clsx from "clsx";
-import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import FuncRunCard from "./FuncRunCard.vue";
 import { funcRunTypes, useApi, routes } from "./api_composables";
 import { assertIsDefined, Context } from "./types";
@@ -79,12 +78,6 @@ assertIsDefined(ctx);
 // Router setup
 const router = useRouter();
 const route = useRoute();
-
-// Query client for cache management
-const queryClient = useQueryClient();
-
-// Realtime store for WSEvents
-const realtimeStore = useRealtimeStore();
 
 // Configure page size with default fallback
 const pageSize = computed(() => props.limit || 50);
@@ -159,34 +152,6 @@ const navigateToFuncRunDetails = (funcRunId: string) => {
     },
   });
 };
-
-// WSEvents subscription to invalidate cache when function runs are updated
-let executionKey: string | undefined;
-
-// Set up subscription on mount
-onMounted(async () => {
-  executionKey = "paginatedFuncRuns";
-  realtimeStore.subscribe(executionKey, `changeset/${ctx.changeSetId.value}`, [
-    {
-      eventType: "FuncRunLogUpdated",
-      callback: async (payload) => {
-        if (payload.funcRunId) {
-          queryClient.invalidateQueries({
-            queryKey: [ctx.changeSetId, "paginatedFuncRuns"],
-          });
-        }
-      },
-    },
-  ]);
-});
-
-// Clean up on unmount
-onBeforeUnmount(() => {
-  if (executionKey) {
-    realtimeStore.unsubscribe(executionKey);
-    executionKey = undefined;
-  }
-});
 </script>
 
 <style>

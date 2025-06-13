@@ -141,16 +141,13 @@
       <CollapsingFlexItem ref="mgmtRef" :expandable="false">
         <template #header>Management Functions</template>
         <ul v-if="mgmtFuncs.length > 0" class="p-xs flex flex-col gap-xs">
-          <li
+          <ManagementFuncCard
             v-for="func in mgmtFuncs"
             :key="func.id"
-            class="rounded border border-neutral-600 p-xs h-12 flex flex-row items-center"
-          >
-            <IconButton disabled size="md" icon="play" iconTone="action" />
-            <TruncateWithTooltip
-              >{{ func.prototypeName }} {{ func }}</TruncateWithTooltip
-            >
-          </li>
+            :componentId="componentId"
+            :func="func"
+            :funcRun="latestFuncRuns[func.id]"
+          />
         </ul>
         <EmptyState
           v-else
@@ -247,16 +244,21 @@
 
 <!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
-import { useQuery } from "@tanstack/vue-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/vue-query";
 import {
   VButton,
   PillCounter,
   Icon,
-  IconButton,
   themeClasses,
-  TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
-import { computed, ref, nextTick, onMounted, onBeforeUnmount } from "vue";
+import {
+  computed,
+  ref,
+  nextTick,
+  onMounted,
+  onBeforeUnmount,
+  inject,
+} from "vue";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
@@ -266,12 +268,20 @@ import {
   BifrostComponentConnections,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
+import { Context } from "@/newhotness/types";
+import { FuncRun } from "@/newhotness/api_composables/func_run";
+import ManagementFuncCard from "@/newhotness/ManagementFuncCard.vue";
 import AttributePanel from "./AttributePanel.vue";
 import { attributeEmitter, keyEmitter } from "./logic_composables/emitters";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
 import DelayedLoader from "./layout_components/DelayedLoader.vue";
 import EditInPlace from "./layout_components/EditInPlace.vue";
-import { useApi, routes, componentTypes } from "./api_composables";
+import {
+  useApi,
+  routes,
+  componentTypes,
+  funcRunTypes,
+} from "./api_composables";
 import { useWatchedForm } from "./logic_composables/watched_form";
 import QualificationPanel from "./QualificationPanel.vue";
 import ResourcePanel from "./ResourcePanel.vue";
@@ -475,6 +485,67 @@ const hasImportFunc = computed(
 );
 
 const showResourceInput = ref(false);
+
+// MGMT funcs
+const ctx = inject<Context>("CONTEXT");
+
+const funcRunQuery = useInfiniteQuery({
+  queryKey: [ctx?.changeSetId, "paginatedFuncRuns"],
+  queryFn: async ({
+    pageParam = undefined,
+  }): Promise<funcRunTypes.GetFuncRunsPaginatedResponse> => {
+    const call = api.endpoint<funcRunTypes.GetFuncRunsPaginatedResponse>(
+      routes.GetFuncRunsPaginated,
+    );
+    const params = new URLSearchParams();
+    params.append("limit", "10");
+    if (pageParam) {
+      params.append("cursor", pageParam);
+    }
+    const req = await call.get(params);
+    if (api.ok(req)) {
+      return req.data;
+    }
+    return {
+      funcRuns: [],
+      nextCursor: null,
+    };
+  },
+  initialPageParam: undefined,
+  getNextPageParam: (lastPage: funcRunTypes.GetFuncRunsPaginatedResponse) => {
+    return lastPage.nextCursor ?? undefined;
+  },
+});
+
+const funcRuns = computed<FuncRun[]>(() => {
+  if (!funcRunQuery.data.value) return [];
+  return funcRunQuery.data.value.pages.flatMap((page) => page.funcRuns);
+});
+
+// The latest funcrun for this each mgmt prototype of this component, keyed bu the prototypeId
+const latestFuncRuns = computed(() => {
+  const runs = {} as Record<string, FuncRun>;
+
+  if (!componentId.value) return runs;
+
+  for (const funcRun of funcRuns.value) {
+    if (funcRun.functionKind !== "Management") continue;
+    if (funcRun.componentId !== componentId.value) continue;
+    if (!funcRun.actionPrototypeId) continue;
+
+    const maybeRun = runs[funcRun.actionPrototypeId];
+
+    if (!maybeRun) {
+      runs[funcRun.actionPrototypeId] = funcRun;
+    } else {
+      if (maybeRun.createdAt < funcRun.createdAt) {
+        runs[funcRun.actionPrototypeId] = funcRun;
+      }
+    }
+  }
+
+  return runs;
+});
 
 onMounted(() => {
   keyEmitter.on("Escape", () => {

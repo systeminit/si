@@ -129,7 +129,7 @@ const realtimeStore = useRealtimeStore();
 const workspacePk = computed(() => props.workspacePk);
 const changeSetId = computed(() => props.changeSetId);
 
-const context = computed<Context>(() => {
+const ctx = computed<Context>(() => {
   return {
     workspacePk,
     changeSetId,
@@ -142,7 +142,7 @@ const context = computed<Context>(() => {
 startKeyEmitter(document);
 startWindowResizeEmitter(window);
 
-provide("CONTEXT", context.value);
+provide("CONTEXT", ctx.value);
 
 export type SelectionsInQueryString = Partial<{
   map: string;
@@ -251,11 +251,11 @@ realtimeStore.subscribe(
     {
       eventType: "ChangeSetCreated",
       callback: async (data) => {
-        if (context.value.headChangeSetId.value) {
+        if (ctx.value.headChangeSetId.value) {
           await heimdall.linkNewChangeset(
             props.workspacePk,
             data.changeSetId,
-            context.value.headChangeSetId.value,
+            ctx.value.headChangeSetId.value,
           );
         }
       },
@@ -280,12 +280,33 @@ const windowResizeHandler = () => {
   windowWidth.value = window.innerWidth;
 };
 
+const funcRunKey = "paginatedFuncRuns";
+
 onMounted(() => {
   windowResizeHandler();
   window.addEventListener("resize", windowResizeHandler);
+  realtimeStore.subscribe(
+    funcRunKey,
+    `changeset/${ctx.value.changeSetId.value}`,
+    [
+      {
+        eventType: "FuncRunLogUpdated",
+        callback: async (payload) => {
+          if (payload.funcRunId) {
+            setTimeout(() => {
+              queryClient.invalidateQueries({
+                queryKey: [ctx.value.changeSetId, "paginatedFuncRuns"],
+              });
+            }, 500);
+          }
+        },
+      },
+    ],
+  );
 });
 onBeforeUnmount(() => {
   window.removeEventListener("resize", windowResizeHandler);
+  realtimeStore.unsubscribe(funcRunKey);
 });
 </script>
 
