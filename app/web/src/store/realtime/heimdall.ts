@@ -243,7 +243,6 @@ export const getSchemaMembers = async (args: {
     "🌈 bifrost query getSchemaMembers",
     end - start,
     "ms",
-    JSON.parse(schemaMembers),
   );
   if (schemaMembers) return reactive(JSON.parse(schemaMembers));
   else return [];

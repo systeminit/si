@@ -2567,7 +2567,7 @@ const getSchemaMembers = (
   });
   const end = Date.now();
 
-  debug("❓ sql getSchemaMembers", `[${end - start}ms]`, atomData);
+  debug("❓ sql getSchemaMembers", `[${end - start}ms]`);
   if (atomData.length === 0) return "";
   else return oneInOne(atomData) as string;
 };
