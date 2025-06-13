@@ -62,7 +62,6 @@ export function useFeatureFlagsStore() {
       actions: {
         setDependentFlags() {
           if (this.NEW_HOTNESS) {
-            this.FRONTEND_ARCH_VIEWS = true;
             this.FLOATING_CONNECTION_MENU = true;
             this.SIMPLE_SOCKET_UI = true;
             this.PROPS_TO_PROPS_CONNECTIONS = true;
