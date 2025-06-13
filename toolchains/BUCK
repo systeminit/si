@@ -17,6 +17,7 @@ load("@prelude-si//deno:toolchain.bzl", "deno_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
 load("@prelude-si//e2e:toolchain.bzl", "e2e_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
+load("@prelude-si//mise:toolchain.bzl", "mise_toolchain")
 load("@prelude-si//nix:toolchain.bzl", "nix_toolchain")
 load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
 load("@prelude-si//python:toolchain.bzl", "si_python_toolchain")
@@ -123,6 +124,11 @@ artifact_toolchain(
 
 git_toolchain(
     name = "git",
+    visibility = ["PUBLIC"],
+)
+
+mise_toolchain(
+    name = "mise",
     visibility = ["PUBLIC"],
 )
 
