@@ -40,6 +40,7 @@ pub struct ComponentViewWithGeometry {
     // This is not component kind. Instead it's a schema name
     pub kind: Option<String>,
     pub properties: Value,
+    pub sources: Value,
     pub geometry: Value,
     pub incoming_connections: Value,
 }
@@ -49,6 +50,7 @@ impl Default for ComponentViewWithGeometry {
         Self {
             kind: None,
             properties: serde_json::json!({}),
+            sources: serde_json::json!({}),
             geometry: serde_json::json!({}),
             incoming_connections: serde_json::json!({}),
         }

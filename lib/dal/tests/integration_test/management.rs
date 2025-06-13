@@ -37,12 +37,16 @@ use dal_test::{
         ChangeSetTestHelpers,
         attribute::value,
         change_set,
-        component,
+        component::{
+            self,
+            ComponentKey,
+        },
         create_component_for_default_schema_name_in_default_view,
         schema::variant,
     },
     test,
 };
+use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 use si_db::{
     ManagementFuncJobState,
@@ -1524,6 +1528,7 @@ async fn add_subscriptions(ctx: &mut DalContext) -> Result<()> {
                 return {
                     props: [
                         { name: "Value", kind: "string" },
+                        { name: "Sources", kind: "json" },
                     ],
                 };
             }
@@ -1558,20 +1563,62 @@ async fn add_subscriptions(ctx: &mut DalContext) -> Result<()> {
         "##,
     )
     .await?;
+    let save_subscriptions = variant::create_management_func(
+        ctx,
+        "testy",
+        r##"
+            async function main({ thisComponent, components }: Input): Promise<Output> {
+                return {
+                    status: "ok",
+                    ops: {
+                        update: {
+                            self: {
+                                attributes: {
+                                    "/domain/Sources": thisComponent.sources,
+                                }
+                            },
+                            NewComponent: {
+                                attributes: {
+                                    "/domain/Sources": Object.values(components)[0].sources,
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+        "##,
+    )
+    .await?;
 
     // Create source and target components
     component::create(ctx, "testy", "source").await?;
-    component::create(ctx, "testy", "target").await?;
-
-    // Call management function to subscribe source -> NewComponent -> target
-    component::execute_management_func(ctx, "target", subscribe_to_source).await?;
-
-    // Set source's Value and make sure it flows to target
     value::set(ctx, ("source", "/domain/Value"), "value from source").await?;
+    component::create(ctx, "testy", "target").await?;
+    change_set::commit(ctx).await?;
+
+    // Use management function to subscribe source -> NewComponent -> target
+    component::execute_management_func(ctx, "target", subscribe_to_source).await?;
     change_set::commit(ctx).await?;
     assert_eq!(
         value::get(ctx, ("target", "/domain/Value")).await?,
         "value from source"
+    );
+
+    // Use management function to check existing subscriptions
+    component::execute_management_func(ctx, "target", save_subscriptions).await?;
+    let new_component_id = "NewComponent".lookup_component(ctx).await?;
+    let source_id = "source".lookup_component(ctx).await?;
+    assert_eq!(
+        value::get(ctx, ("target", "/domain/Sources")).await?,
+        json!({
+            "/domain/Value": { "component": new_component_id.to_string(), "path": "/domain/Value" }
+        })
+    );
+    assert_eq!(
+        value::get(ctx, ("NewComponent", "/domain/Sources")).await?,
+        json!({
+            "/domain/Value": { "component": source_id.to_string(), "path": "/domain/Value" }
+        })
     );
 
     Ok(())
