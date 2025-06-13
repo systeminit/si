@@ -1,9 +1,10 @@
 load("@prelude-si//:macros.bzl", "mise_install")
 
 mise_install(
-    name = "rust_compiler",
+    name = "ripgrep_tools",
     packages = [
-        "rust@1.87.0",
+        "aqua:BurntSushi/ripgrep",
+        "aqua:sharkdp/fd",
     ],
     visibility = ["PUBLIC"],
 )
