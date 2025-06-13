@@ -35,7 +35,7 @@
                 themeClasses('text-neutral-600', 'text-neutral-400'),
               ]
             : themeClasses('text-shade-100', 'text-shade-0'),
-          'w-full h-lg p-xs ml-auto text-sm border font-mono cursor-text flex flex-row items-center',
+          'w-full h-lg p-xs ml-auto text-sm border font-mono cursor-text flex flex-row items-center gap-3xs',
           themeClasses(
             'bg-shade-0 border-neutral-400',
             'bg-shade-100 border-neutral-600',
@@ -54,20 +54,36 @@
         >
           <template v-if="isSecret">
             <!-- TODO: Paul make this an actual tailwind color! -->
-            <div :class="themeClasses('text-[#3b8e48]', 'text-[#B2DFB9]')">
-              {{ props.externalSources[0]?.componentName }} /
-              {{ attrData.value }}
+            <div
+              :class="
+                clsx(
+                  'max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit',
+                  themeClasses('text-[#3b8e48]', 'text-[#B2DFB9]'),
+                )
+              "
+            >
+              <TruncateWithTooltip>{{
+                props.externalSources[0]?.componentName
+              }}</TruncateWithTooltip>
+              <div class="flex-none">/</div>
+              <TruncateWithTooltip>{{ attrData.value }}</TruncateWithTooltip>
             </div>
           </template>
-          <template v-else>
+          <div
+            v-else
+            class="max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit"
+          >
             <!-- TODO: Paul make this an actual tailwind color! -->
-            <div class="text-[#D4B4FE]">
+            <TruncateWithTooltip class="text-[#D4B4FE]">
               {{ props.externalSources[0]?.componentName }}
-            </div>
-            <div :class="themeClasses('text-neutral-600', 'text-neutral-400')">
+            </TruncateWithTooltip>
+            <div class="flex-none">/</div>
+            <TruncateWithTooltip
+              :class="themeClasses('text-neutral-600', 'text-neutral-400')"
+            >
               {{ attrData.value }}
-            </div>
-          </template>
+            </TruncateWithTooltip>
+          </div>
         </AttributeValueBox>
         <!-- TODO(Wendy) make this an actual tailwind color! -->
         <AttributeValueBox
@@ -164,6 +180,7 @@
                 )
               "
               type="text"
+              data-1p-ignore
               :value="isMap ? mapKey : field.state.value"
               :disabled="wForm.bifrosting.value || bifrostingTrash"
               @input="(e) => onInputChange(e)"

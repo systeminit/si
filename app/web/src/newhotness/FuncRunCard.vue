@@ -26,7 +26,7 @@
       </div>
 
       <!-- Function info -->
-      <div class="flex-grow">
+      <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between">
           <div
             :class="
@@ -47,22 +47,26 @@
           </div>
         </div>
 
-        <div class="grow flex items-center text-xs gap-xs">
+        <div class="grow flex flex-row items-center text-xs gap-xs">
           <!-- Kind badge -->
           <span
-            class="px-2xs py-3xs rounded-full text-2xs inline-flex items-center justify-center"
+            class="px-2xs py-3xs rounded-full text-2xs inline-flex items-center justify-center flex-none"
             :class="functionKindClass(funcRun.functionKind)"
           >
             {{ funcRun.functionKind }}
           </span>
 
-          <span v-if="funcRun.componentId && funcRun.componentName">
-            {{ funcRun.componentName }}
-          </span>
+          <div class="flex-1 min-w-0">
+            <TruncateWithTooltip
+              v-if="funcRun.componentId && funcRun.componentName"
+            >
+              {{ funcRun.componentName }}
+            </TruncateWithTooltip>
+          </div>
 
           <span
             v-if="funcRun.actionId"
-            class="flex items-center text-action-400"
+            class="flex flex-row items-center text-action-400"
           >
             <Icon name="bolt" size="xs" />
             Action
@@ -76,7 +80,11 @@
 <script lang="ts" setup>
 import clsx from "clsx";
 import { computed } from "vue";
-import { Icon, themeClasses } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  themeClasses,
+  TruncateWithTooltip,
+} from "@si/vue-lib/design-system";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { funcRunStatus, FuncRun } from "./api_composables/func_run";
 

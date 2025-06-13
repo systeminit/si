@@ -3,6 +3,7 @@
     :is="htmlTagOrComponentType"
     v-bind="dynamicAttrs"
     ref="component"
+    v-tooltip="truncateRef?.tooltipActive ? truncateRef.tooltip : undefined"
     class="vbutton"
     :tabindex="tabIndex"
     :class="computedClasses"
@@ -30,7 +31,18 @@
             :name="icon"
           />
         </slot>
-        <span class="vbutton__text">
+        <TruncateWithTooltip v-if="truncateText" ref="truncateRef">
+          <slot v-if="confirmClick && confirmFirstClickAt" name="confirm-click">
+            |
+            {{
+              confirmClick === true
+                ? "You sure? Click again to confirm"
+                : confirmClick
+            }}
+          </slot>
+          <slot v-else>{{ label }}</slot>
+        </TruncateWithTooltip>
+        <span v-else class="vbutton__text">
           <slot v-if="confirmClick && confirmFirstClickAt" name="confirm-click">
             |
             {{
@@ -65,6 +77,7 @@ import { IconNames } from "../icons/icon_set";
 import { Tones } from "../utils/color_utils";
 import { useTheme } from "../utils/theme_tools";
 import TextPill from "./TextPill.vue";
+import TruncateWithTooltip from "./TruncateWithTooltip.vue";
 
 const SHOW_SUCCESS_DELAY = 2000;
 
@@ -109,9 +122,13 @@ const props = defineProps({
   rounded: { type: Boolean },
   pill: { type: String, required: false },
 
+  truncateText: { type: Boolean },
+
   hoverGlow: Boolean,
   tabIndex: Number,
 });
+
+const truncateRef = ref<InstanceType<typeof TruncateWithTooltip>>();
 
 const emit = defineEmits(["click"]);
 
