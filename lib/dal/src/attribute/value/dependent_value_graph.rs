@@ -372,6 +372,8 @@ impl DependentValueGraph {
             // Find the values that are set by the prototype for the relevant
             // AttributePrototypeArguments, and declare that these values depend
             // on the value of the current value
+            //
+            // TODO: This code is very expensive, especially as the graph grows.
             for apa in relevant_apas {
                 let prototype_id =
                     AttributePrototypeArgument::prototype_id(ctx, apa.id().into()).await?;

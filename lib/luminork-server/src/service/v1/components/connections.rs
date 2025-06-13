@@ -57,30 +57,22 @@ pub enum Connection {
     Outgoing { from: String, to: ConnectionPoint },
 }
 
-/// Returns the component ID if found, or appropriate error if not found or if duplicate names exist
+/// Returns the component ID if found, or appropriate error if not found. If a duplicate exists, it
+/// picks the "first" one it sees.
 pub async fn find_component_id_by_name(
     ctx: &dal::DalContext,
     component_list: &[ComponentId],
     component_name: &str,
 ) -> Result<ComponentId, ComponentsError> {
-    let mut matching_components = Vec::new();
-
     for component_id in component_list {
         let name = Component::name_by_id(ctx, *component_id).await?;
         if name == component_name {
-            matching_components.push(*component_id);
+            return Ok(*component_id);
         }
     }
-
-    match matching_components.len() {
-        0 => Err(ComponentsError::ComponentNotFound(
-            component_name.to_string(),
-        )),
-        1 => Ok(matching_components[0]),
-        _ => Err(ComponentsError::DuplicateComponentName(
-            component_name.to_string(),
-        )),
-    }
+    Err(ComponentsError::ComponentNotFound(
+        component_name.to_string(),
+    ))
 }
 
 /// Helper function to resolve a component reference to a component ID

@@ -610,8 +610,6 @@ impl Component {
         )
         .await?;
 
-        let mut dvu_roots = vec![];
-
         // Create attribute values for all socket corresponding to input and output sockets.
         for input_socket_id in
             InputSocket::list_ids_for_schema_variant(ctx, schema_variant_id).await?
@@ -619,7 +617,11 @@ impl Component {
             let attribute_value =
                 AttributeValue::new(ctx, input_socket_id, Some(id.into()), None, None).await?;
 
-            dvu_roots.push(DependentValueRoot::Unfinished(attribute_value.id().into()));
+            DependentValueRoot::add_dependent_value_root(
+                ctx,
+                DependentValueRoot::Unfinished(attribute_value.id().into()),
+            )
+            .await?;
         }
         for output_socket_id in
             OutputSocket::list_ids_for_schema_variant(ctx, schema_variant_id).await?
@@ -627,7 +629,11 @@ impl Component {
             let attribute_value =
                 AttributeValue::new(ctx, output_socket_id, Some(id.into()), None, None).await?;
 
-            dvu_roots.push(DependentValueRoot::Unfinished(attribute_value.id().into()));
+            DependentValueRoot::add_dependent_value_root(
+                ctx,
+                DependentValueRoot::Unfinished(attribute_value.id().into()),
+            )
+            .await?;
         }
 
         // Walk all the props for the schema variant and create attribute values for all of them
@@ -655,8 +661,6 @@ impl Component {
                 key,
             )
             .await?;
-
-            dvu_roots.push(DependentValueRoot::Unfinished(attribute_value.id().into()));
             if ValidationOutput::get_format_for_attribute_value_id(ctx, attribute_value.id())
                 .await?
                 .is_some()
@@ -695,8 +699,21 @@ impl Component {
                             }
                         }
                     }
-                    _ => {}
+                    // We want to only add leaves to the DVU roots
+                    _ => {
+                        DependentValueRoot::add_dependent_value_root(
+                            ctx,
+                            DependentValueRoot::Unfinished(attribute_value.id().into()),
+                        )
+                        .await?;
+                    }
                 }
+            } else {
+                DependentValueRoot::add_dependent_value_root(
+                    ctx,
+                    DependentValueRoot::Unfinished(attribute_value.id().into()),
+                )
+                .await?;
             }
         }
 
@@ -722,10 +739,6 @@ impl Component {
         if let Some(sv_type) = sv_type {
             component.set_type(ctx, sv_type).await?;
         }
-
-        let component_graph = DependentValueGraph::new(ctx, dvu_roots).await?;
-        let leaf_value_ids = component_graph.independent_values();
-        ctx.add_dependent_values_and_enqueue(leaf_value_ids).await?;
 
         // Find all create action prototypes for the variant and create actions for them.
         for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
@@ -1770,7 +1783,9 @@ impl Component {
 
         let name_av = AttributeValue::get_by_id(ctx, name_value_id).await?;
 
-        Ok(match name_av.view(ctx).await? {
+        let view_result = name_av.view(ctx).await?;
+
+        Ok(match view_result {
             Some(serde_value) => serde_json::from_value(serde_value)?,
             None => "".into(),
         })
@@ -1954,12 +1969,14 @@ impl Component {
         maybe_root_attribute_value_id
             .ok_or(ComponentError::RootAttributeValueNotFound(component_id))
     }
+
     pub async fn output_socket_attribute_values(
         &self,
         ctx: &DalContext,
     ) -> ComponentResult<Vec<AttributeValueId>> {
         ComponentOutputSocket::attribute_values_for_component_id(ctx, self.id()).await
     }
+
     pub async fn input_socket_attribute_values(
         &self,
         ctx: &DalContext,
@@ -1997,22 +2014,26 @@ impl Component {
         prop_id: PropId,
     ) -> ComponentResult<Vec<AttributeValueId>> {
         let mut result = vec![];
-        for attribute_value_id in
-            Prop::all_attribute_values_everywhere_for_prop_id(ctx, prop_id).await?
-        {
-            if let Some(value_component_id) =
-                match AttributeValue::component_id(ctx, attribute_value_id).await {
-                    Ok(component_id) => Some(component_id),
-                    // If there's a deleted component in the workspace for the same Schema Variant
-                    // that hasn't been cleaned up yet, we might detect an orphaned value.
-                    // We don't want to error, as the component_id is gone so we know it
-                    // isn't the one we're looking for.
-                    Err(AttributeValueError::OrphanedAttributeValue(_)) => None,
-                    Err(other_err) => Err(other_err)?,
-                }
-            {
-                if value_component_id == component_id {
-                    result.push(attribute_value_id)
+        let all_relevant_prop_ids = Prop::all_parent_prop_ids_from_prop_id(ctx, prop_id).await?;
+        let root_attribute_value_id = Component::root_attribute_value_id(ctx, component_id).await?;
+
+        let mut work_queue = VecDeque::from([root_attribute_value_id]);
+        let mut early_return = false;
+        while let Some(attribute_value_id) = work_queue.pop_front() {
+            let working_prop_id = AttributeValue::prop_id(ctx, attribute_value_id).await?;
+
+            // We found one! But we might have more. This should ensure we finish everything
+            // at the current rank, but don't descend.
+            if prop_id == working_prop_id {
+                early_return = true;
+                result.push(attribute_value_id);
+            }
+
+            if !early_return && all_relevant_prop_ids.contains(&working_prop_id) {
+                let children =
+                    AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id).await?;
+                if !children.is_empty() {
+                    work_queue.extend(children);
                 }
             }
         }
@@ -2047,9 +2068,13 @@ impl Component {
         prop_path: &[&str],
     ) -> ComponentResult<AttributeValueId> {
         let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
+
         let prop_id =
             Prop::find_prop_id_by_path(ctx, schema_variant_id, &PropPath::new(prop_path)).await?;
-        Self::attribute_value_for_prop_id(ctx, component_id, prop_id).await
+
+        let result = Self::attribute_value_for_prop_id(ctx, component_id, prop_id).await?;
+
+        Ok(result)
     }
 
     pub async fn domain_prop_attribute_value(

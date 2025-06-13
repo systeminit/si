@@ -933,6 +933,21 @@ impl Prop {
         }
     }
 
+    // Return all the parent prop ids from a given prop id
+    pub async fn all_parent_prop_ids_from_prop_id(
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<Vec<PropId>> {
+        let mut cursor = prop_id;
+        let mut result = vec![];
+
+        while let Some(parent) = Self::parent_prop_id_by_id(ctx, cursor).await? {
+            result.push(parent);
+            cursor = parent;
+        }
+        Ok(result)
+    }
+
     /// Walk the prop tree up, finding the root prop for the passed in `prop_id`
     pub async fn root_prop_for_prop_id(ctx: &DalContext, prop_id: PropId) -> PropResult<PropId> {
         let mut cursor = prop_id;

@@ -2425,25 +2425,7 @@ impl AttributeValue {
                 let mut av_prop_map = HashMap::with_capacity(child_ids.len());
                 for &child_id in &child_ids {
                     let child_prop_id = Self::prop_id(ctx, child_id).await?;
-                    if av_prop_map.insert(child_prop_id, child_id).is_some() {
-                        // If the prop showed up in more than one AV, something is wrong.
-                        // Due to a bug, this sometimes happens in the wild; we're investigating.
-                        let component =
-                            Component::get_by_id(ctx, Self::component_id(ctx, child_id).await?)
-                                .await?;
-                        debug!(
-                            "Multiple AVs for prop {} in component {}, schema {}",
-                            Prop::path_by_id(ctx, child_prop_id).await?,
-                            component.name(ctx).await?,
-                            component.schema(ctx).await?.name
-                        );
-                        // TODO error instead when this bug is fixed
-                        // return Err(AttributeValueError::MultipleAttributeValuesSameProp(
-                        //     old_child_id,
-                        //     child_id,
-                        //     child_prop_id,
-                        // ));
-                    }
+                    av_prop_map.insert(child_prop_id, child_id);
                 }
 
                 // For each PropId (in schema order), look up the AttributeValueId
@@ -2456,23 +2438,6 @@ impl AttributeValue {
                 if child_ids_in_prop_order.len() != child_ids.len() {
                     for &child_id in &child_ids {
                         if !child_ids_in_prop_order.contains(&child_id) {
-                            let child_prop_id = Self::prop_id(ctx, child_id).await?;
-                            // If the prop wasn't a duplicate (caught earlier)
-                            // TODO this appears when the above bug happens; reenable this
-                            // when said bug is fixed
-                            // return Err(AttributeValueError::FieldNotChildOfObject(child_id));
-                            let component =
-                                Component::get_by_id(ctx, Self::component_id(ctx, child_id).await?)
-                                    .await?;
-                            debug!(
-                                "Child AV with prop {} (parent ID {:?}) not found in corresponding parent prop {} (ID {}) in component {}, schema {}",
-                                Prop::path_by_id(ctx, child_prop_id).await?,
-                                Prop::parent_prop_id_by_id(ctx, child_prop_id).await?,
-                                Prop::path_by_id(ctx, prop.id).await?,
-                                prop.id,
-                                component.name(ctx).await?,
-                                component.schema(ctx).await?.name
-                            );
                             child_ids_in_prop_order.push(child_id);
                         }
                     }

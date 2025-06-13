@@ -170,6 +170,7 @@ pub async fn create_component(
     let after_value = serde_json::to_value(after_domain_tree)?;
 
     let component_list = Component::list_ids(ctx).await?;
+
     let added_connection_summary =
         super::connections::summarise_connections(ctx, &payload.connections, &component_list)
             .await?;
