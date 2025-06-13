@@ -12,6 +12,7 @@ use axum::{
 };
 use dal::{
     ActionPrototypeId,
+    AttributeValueId,
     Component,
     ComponentId,
     Func,
@@ -49,6 +50,7 @@ pub mod find_component;
 pub mod get_component;
 pub mod list_components;
 pub mod search_components;
+pub mod subscriptions;
 pub mod update_component;
 
 #[remain::sorted]
@@ -64,6 +66,8 @@ pub enum ComponentsError {
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] dal::attribute::value::AttributeValueError),
+    #[error("attribute value {0} not from component {1}")]
+    AttributeValueNotFromComponent(AttributeValueId, ComponentId),
     #[error("cached module error: {0}")]
     CachedModule(#[from] dal::cached_module::CachedModuleError),
     #[error("component error: {0}")]
@@ -124,6 +128,8 @@ pub enum ComponentsError {
     Validation(String),
     #[error("view not found: {0}")]
     ViewNotFound(String),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] dal::WsEventError),
 }
@@ -344,6 +350,62 @@ pub struct SecretPropPath(pub String);
 impl SecretPropPath {
     pub fn to_prop_path(&self) -> PropPath {
         PropPath::new(["root", "secrets"]).join(&self.0.replace("/", PROP_PATH_SEPARATOR).into())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+#[serde(untagged)]
+#[schema(example = json!({"component": "ComponentName"}))]
+#[schema(example = json!({"componentId": "01H9ZQD35JPMBGHH69BT0Q79VY"}))]
+pub enum ComponentReference {
+    ByName {
+        component: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    ById {
+        #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VY")]
+        component_id: ComponentId,
+    },
+}
+
+/// Helper function to resolve a component reference to a component ID
+pub async fn resolve_component_reference(
+    ctx: &dal::DalContext,
+    component_ref: &ComponentReference,
+    component_list: &[ComponentId],
+) -> Result<ComponentId, ComponentsError> {
+    match component_ref {
+        ComponentReference::ById { component_id } => Ok(*component_id),
+        ComponentReference::ByName { component } => {
+            find_component_id_by_name(ctx, component_list, component).await
+        }
+    }
+}
+
+/// Returns the component ID if found, or appropriate error if not found or if duplicate names exist
+async fn find_component_id_by_name(
+    ctx: &dal::DalContext,
+    component_list: &[ComponentId],
+    component_name: &str,
+) -> Result<ComponentId, ComponentsError> {
+    let mut matching_components = Vec::new();
+
+    for component_id in component_list {
+        let name = Component::name_by_id(ctx, *component_id).await?;
+        if name == component_name {
+            matching_components.push(*component_id);
+        }
+    }
+
+    match matching_components.len() {
+        0 => Err(ComponentsError::ComponentNotFound(
+            component_name.to_string(),
+        )),
+        1 => Ok(matching_components[0]),
+        _ => Err(ComponentsError::DuplicateComponentName(
+            component_name.to_string(),
+        )),
     }
 }
 

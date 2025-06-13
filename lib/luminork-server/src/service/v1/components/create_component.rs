@@ -32,6 +32,11 @@ use super::{
         handle_connection,
     },
     resolve_secret_id,
+    subscriptions::{
+        AttributeValueIdent,
+        Subscription,
+        handle_subscription,
+    },
 };
 use crate::{
     extract::{
@@ -130,6 +135,7 @@ pub async fn create_component(
     )
     .await?;
 
+    let component_list = Component::list_ids(ctx).await?;
     if let Some(resource_id) = payload.resource_id {
         let resource_prop_path = ["root", "si", "resourceId"];
         let resource_prop_id =
@@ -153,6 +159,10 @@ pub async fn create_component(
         AttributeValue::update(ctx, attribute_value_id, Some(value.clone())).await?;
     }
 
+    for (av_to_set, sub) in payload.subscriptions.clone().into_iter() {
+        handle_subscription(ctx, av_to_set, &sub, component.id(), &component_list).await?;
+    }
+
     for (key, value) in payload.secrets.clone().into_iter() {
         let prop_id = key.prop_id(ctx, variant_id).await?;
 
@@ -169,12 +179,6 @@ pub async fn create_component(
         .view(ctx)
         .await?;
     let after_value = serde_json::to_value(after_domain_tree)?;
-
-    let component_list = Component::list_ids(ctx).await?;
-
-    let added_connection_summary =
-        super::connections::summarise_connections(ctx, &payload.connections, &component_list)
-            .await?;
 
     if !payload.connections.is_empty() {
         for connection in payload.connections.iter() {
@@ -249,7 +253,12 @@ pub struct CreateComponentV1Request {
 
     #[serde(default)]
     #[deprecated]
+    #[schema(example = json!({}))]
     pub connections: Vec<Connection>,
+
+    #[serde(default)]
+    #[schema(example = json!({"/prop/path/on/this/component": {"component": "OtherComponentName", "propPath": "/prop/path/on/other/component"}}))]
+    pub subscriptions: HashMap<AttributeValueIdent, Subscription>,
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema)]

@@ -15,8 +15,10 @@ use serde::{
 use utoipa::ToSchema;
 
 use super::{
+    ComponentReference,
     ComponentsError,
     ComponentsResult,
+    resolve_component_reference,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
@@ -30,22 +32,6 @@ pub struct ConnectionPoint {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-#[serde(untagged)]
-#[schema(example = json!({"component": "ComponentName"}))]
-#[schema(example = json!({"componentId": "01H9ZQD35JPMBGHH69BT0Q79VY"}))]
-pub enum ComponentReference {
-    ByName {
-        component: String,
-    },
-    #[serde(rename_all = "camelCase")]
-    ById {
-        #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VY")]
-        component_id: ComponentId,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(untagged)]
 #[serde(rename_all = "camelCase")]
 pub enum Connection {
@@ -55,38 +41,6 @@ pub enum Connection {
     #[schema(example = json!({"from": "ThisComponentOutputSocketName", "to": {"component": "OtherComponentName", "socketName": "InputSocketName"}}))]
     #[schema(example = json!({"from": "ThisComponentOutputSocketName", "to": {"componentId": "01H9ZQD35JPMBGHH69BT0Q79VY", "socketName": "InputSocketName"}}))]
     Outgoing { from: String, to: ConnectionPoint },
-}
-
-/// Returns the component ID if found, or appropriate error if not found. If a duplicate exists, it
-/// picks the "first" one it sees.
-pub async fn find_component_id_by_name(
-    ctx: &dal::DalContext,
-    component_list: &[ComponentId],
-    component_name: &str,
-) -> Result<ComponentId, ComponentsError> {
-    for component_id in component_list {
-        let name = Component::name_by_id(ctx, *component_id).await?;
-        if name == component_name {
-            return Ok(*component_id);
-        }
-    }
-    Err(ComponentsError::ComponentNotFound(
-        component_name.to_string(),
-    ))
-}
-
-/// Helper function to resolve a component reference to a component ID
-pub async fn resolve_component_reference(
-    ctx: &dal::DalContext,
-    component_ref: &ComponentReference,
-    component_list: &[ComponentId],
-) -> Result<ComponentId, ComponentsError> {
-    match component_ref {
-        ComponentReference::ById { component_id } => Ok(*component_id),
-        ComponentReference::ByName { component } => {
-            find_component_id_by_name(ctx, component_list, component).await
-        }
-    }
 }
 
 /// Helper function to find an input socket ID by name for a given schema variant

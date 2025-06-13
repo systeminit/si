@@ -31,6 +31,11 @@ use super::{
         handle_connection,
     },
     resolve_secret_id,
+    subscriptions::{
+        AttributeValueIdent,
+        Subscription,
+        handle_subscription,
+    },
 };
 use crate::{
     api_types::component::v1::ComponentViewV1,
@@ -184,6 +189,10 @@ pub async fn update_component(
         }
     };
 
+    for (av_to_set, sub) in payload.subscriptions.clone().into_iter() {
+        handle_subscription(ctx, av_to_set, &sub, component_id, &component_list).await?;
+    }
+
     // Send a websocket event about the component update
     let updated_component = Component::get_by_id(ctx, component_id).await?;
     let new_name = updated_component.name(ctx).await?;
@@ -254,15 +263,23 @@ pub struct UpdateComponentV1Request {
     #[serde(default)]
     #[deprecated]
     pub connection_changes: ConnectionDetails,
+
+    #[serde(default)]
+    #[schema(example = json!({"/prop/path/on/this/component": {"component": "OtherComponentName", "propPath": "/prop/path/on/other/component", "keepOtherSubscriptions": true}}))]
+    pub subscriptions: HashMap<AttributeValueIdent, Subscription>,
 }
 
 #[derive(Deserialize, Serialize, Debug, ToSchema, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionDetails {
     #[serde(default)]
+    #[deprecated]
+    #[schema(example = json!({}))]
     pub add: Vec<Connection>,
 
     #[serde(default)]
+    #[deprecated]
+    #[schema(example = json!({}))]
     pub remove: Vec<Connection>,
 }
 
