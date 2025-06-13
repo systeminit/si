@@ -448,6 +448,9 @@ const bustCacheAndReferences = (
   // bust me
   bustOrQueue(workspaceId, changeSetId, kind, id, skipQueue);
 
+  // if we know it doesnt have references, dont even run the sql
+  if (!HAVE_REFERENCES.includes(kind)) return
+
   // bust everyone who refers to me
   const sql = `
     select referrer_kind, referrer_args from weak_references where target_kind = ? and target_args = ? and change_set_id = ?;
@@ -1877,6 +1880,11 @@ const flip = (i: Connection): Connection => {
  * If you are looking up a `Reference`
  * THOU SHALT make a `weakReference` on a miss (-1)
  */
+const HAVE_REFERENCES = [
+  EntityKind.Component,
+  EntityKind.ViewList,
+  EntityKind.SchemaVariantCategories,
+]
 const getReferences = (
   atomDoc: AtomDocument,
   workspaceId: string,
@@ -1887,11 +1895,7 @@ const getReferences = (
   followComputed?: boolean,
 ) => {
   if (
-    ![
-      EntityKind.Component,
-      EntityKind.ViewList,
-      EntityKind.SchemaVariantCategories,
-    ].includes(kind)
+    !HAVE_REFERENCES.includes(kind)
   ) {
     return [atomDoc, false];
   }
