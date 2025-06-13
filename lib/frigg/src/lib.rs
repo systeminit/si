@@ -24,6 +24,7 @@ use si_data_nats::{
             },
             kv::{
                 self,
+                CreateErrorKind,
                 Watch,
             },
             stream::ConsumerError,
@@ -142,7 +143,11 @@ impl FriggStore {
             &object.checksum,
         );
         let value = serde_json::to_vec(&object).map_err(Error::Serialize)?;
-        self.store.put(key.as_str(), value.into()).await?;
+        if let Err(err) = self.store.create(key.as_str(), value.into()).await {
+            if !matches!(err.kind(), CreateErrorKind::AlreadyExists) {
+                return Err(Error::Create(err));
+            }
+        };
 
         Ok(key)
     }
