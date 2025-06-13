@@ -1,8 +1,8 @@
 <template>
-  <div v-if="root">
+  <div v-if="root" class="p-xs flex flex-col gap-xs">
     <div
       v-if="showImportArea"
-      class="mt-xs grid grid-cols-2 pl-xs gap-2xs relative"
+      class="grid grid-cols-2 gap-2xs relative text-sm h-lg"
     >
       <div class="flex flex-row items-center gap-2xs">
         <TruncateWithTooltip>{{
@@ -43,31 +43,79 @@
       </TextPill>
     </div>
 
-    <div class="py-xs">
+    <div class="grid grid-cols-2 items-center gap-2xs text-sm h-lg">
+      <nameForm.Field
+        :validators="{
+          onChange: required,
+          onBlur: required,
+        }"
+        name="name"
+      >
+        <template #default="{ field }">
+          <div>Name</div>
+          <input
+            ref="nameInputRef"
+            :value="field.state.value"
+            :placeholder="namePlaceholder"
+            :class="
+              clsx(
+                'h-lg p-xs text-sm border font-mono cursor-text',
+                themeClasses(
+                  'text-shade-100 bg-white border-neutral-400',
+                  'text-shade-0 bg-black border-neutral-600',
+                ),
+              )
+            "
+            type="text"
+            @blur="blurNameInput"
+            @input="
+              (e) =>
+                field.handleChange((e.target as HTMLInputElement).value)
+            "
+            @keydown.enter.stop.prevent="blurNameInput"
+            @keydown.esc.stop.prevent="resetNameInput"
+            @keydown.tab.prevent="onNameInputTab"
+          />
+        </template>
+      </nameForm.Field>
+    </div>
+
+    <div>
       <!-- TODO(Wendy) - this doesn't work on the secrets tree yet -->
       <SiSearch
         ref="searchRef"
         v-model="q"
         placeholder="filter attributes..."
         :tabIndex="0"
-        @keydown.tab="onTab"
+        :borderBottom="false"
+        @keydown.tab="onSearchInputTab"
       />
     </div>
-    <template
+    <div
       v-if="'children' in filtered.tree && filtered.tree.children.length > 0"
     >
       <h3
         :class="
           clsx(
             'p-xs border-l',
-            themeClasses('bg-neutral-200', 'bg-neutral-800'),
+            themeClasses(
+              'bg-neutral-200 border-neutral-200',
+              'bg-neutral-800 border-neutral-800',
+            ),
           )
         "
       >
         domain
       </h3>
       <!-- this is _really_ a type guard for "i am not an empty object" -->
-      <ul class="border-l">
+      <ul
+        :class="
+          clsx(
+            'border-l border-r',
+            themeClasses('border-neutral-200', 'border-neutral-800'),
+          )
+        "
+      >
         <ComponentAttribute
           v-for="child in filtered.tree.children"
           :key="child.id"
@@ -78,19 +126,38 @@
           @remove-subscription="removeSubscription"
         />
       </ul>
-    </template>
-    <template v-if="secrets && secrets.children.length > 0">
+      <div
+        :class="
+          clsx(
+            'w-full border-b',
+            themeClasses('border-neutral-200', 'border-neutral-800'),
+          )
+        "
+      />
+    </div>
+    <div v-if="secrets && secrets.children.length > 0">
       <h3
         :class="
           clsx(
             'p-xs border-l',
-            themeClasses('bg-neutral-200', 'bg-neutral-800'),
+            themeClasses(
+              'bg-neutral-200 border-neutral-200',
+              'bg-neutral-800 border-neutral-800',
+            ),
           )
         "
       >
         secrets
       </h3>
-      <ul v-if="'children' in secrets" class="border-l">
+      <ul
+        v-if="'children' in secrets"
+        :class="
+          clsx(
+            'border-l',
+            themeClasses('border-neutral-200', 'border-neutral-800'),
+          )
+        "
+      >
         <ComponentSecretAttribute
           v-for="secret in secrets.children"
           :key="secret.id"
@@ -98,7 +165,15 @@
           :attributeTree="secret"
         />
       </ul>
-    </template>
+      <div
+        :class="
+          clsx(
+            'w-full border-b',
+            themeClasses('border-neutral-200', 'border-neutral-800'),
+          )
+        "
+      />
+    </div>
   </div>
 </template>
 
@@ -136,6 +211,8 @@ import { componentTypes, routes, useApi } from "./api_composables";
 import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
 import { keyEmitter } from "./logic_composables/emitters";
 import ComponentSecretAttribute from "./layout_components/ComponentSecretAttribute.vue";
+import { useWatchedForm } from "./logic_composables/watched_form";
+import { NameFormData } from "./ComponentDetails.vue";
 
 const q = ref("");
 
@@ -380,6 +457,7 @@ const removeSubscription = async (path: string, _id: string) => {
   await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
 };
 
+const nameInputRef = ref<HTMLInputElement>();
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 
 // Import
@@ -462,17 +540,25 @@ onMounted(() => {
   resourceIdFormValue.value = resourceIdValue.value ?? undefined;
   keyEmitter.on("Tab", (e) => {
     e.preventDefault();
-    searchRef.value?.focusSearch();
+    focusNameInput();
   });
-  searchRef.value?.focusSearch();
+  if (nameIsDefault.value) focusNameInput();
+  else focusSearch();
 });
+
+const focusSearch = () => {
+  searchRef.value?.focusSearch();
+};
+
+const focusNameInput = () => {
+  nameInputRef.value?.focus();
+};
 
 onBeforeUnmount(() => {
   keyEmitter.off("Tab");
 });
 
-const onTab = (e: KeyboardEvent) => {
-  // This allows the user to Shift+Tab backwards to the last attribute from the fuzzy search bar
+const onNameInputTab = (e: KeyboardEvent) => {
   if (e.shiftKey) {
     e.preventDefault();
     const focusable = Array.from(
@@ -481,6 +567,80 @@ const onTab = (e: KeyboardEvent) => {
     if (focusable) {
       focusable[focusable.length - 1]?.focus();
     }
+  } else {
+    focusSearch();
   }
 };
+
+const onSearchInputTab = (e: KeyboardEvent) => {
+  if (e.shiftKey) {
+    e.preventDefault();
+    focusNameInput();
+  }
+};
+
+const api = useApi();
+
+const required = ({ value }: { value: string | undefined }) => {
+  const len = value?.trim().length ?? 0;
+  return len > 0 ? undefined : "Name required";
+};
+
+const resetNameInput = () => {
+  if (nameForm.state.isSubmitted || nameForm.state.isDirty)
+    nameForm.reset(nameFormData.value);
+};
+
+const blurNameInput = () => {
+  if (nameForm.fieldInfo.name.instance?.state.meta.isDirty) {
+    // don't double submit if you were `select()'d'`
+    if (!nameForm.baseStore.state.isSubmitted) nameForm.handleSubmit();
+  } else {
+    resetNameInput();
+  }
+};
+
+const nameIsDefault = computed(() => props.component.name.startsWith("si-"));
+const namePlaceholder = computed(() =>
+  nameIsDefault.value
+    ? props.component.name
+    : "You must give the component a name!",
+);
+
+const wForm = useWatchedForm<NameFormData>(
+  `component.name.${props.component.id}`,
+);
+
+const nameFormData = computed<NameFormData>(() => {
+  return { name: nameIsDefault.value ? "" : props.component.name };
+});
+
+const nameForm = wForm.newForm({
+  data: nameFormData,
+  onSubmit: async ({ value }) => {
+    const name = value.name;
+    // i wish the validator narrowed this type to always be a string
+    if (name) {
+      const id = props.component.id;
+      const call = api.endpoint(routes.UpdateComponentName, { id });
+      const { req, newChangeSetId } =
+        await call.put<componentTypes.UpdateComponentNameArgs>({
+          name,
+        });
+      if (newChangeSetId && api.ok(req)) {
+        api.navigateToNewChangeSet(
+          {
+            name: "new-hotness-component",
+            params: {
+              workspacePk: route.params.workspacePk,
+              changeSetId: newChangeSetId,
+              componentId: props.component.id,
+            },
+          },
+          newChangeSetId,
+        );
+      }
+    }
+  },
+});
 </script>

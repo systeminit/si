@@ -1,9 +1,8 @@
 <template>
-  <EmptyStateCard
+  <EmptyState
     v-if="actionPrototypeViews.length === 0"
-    iconName="no-changes"
-    primaryText="No Actions Available"
-    secondaryText="This component does not have any available actions to run."
+    text="No actions available"
+    icon="tools"
   />
   <div v-else class="flex flex-col">
     <div
@@ -31,9 +30,9 @@ import {
   BifrostComponent,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
-import EmptyStateCard from "@/components/EmptyStateCard.vue";
 import { ActionId, ActionPrototypeId } from "@/api/sdf/dal/action";
 import ActionWidget from "./ActionWidget.vue";
+import EmptyState from "./EmptyState.vue";
 
 const props = defineProps<{
   component: BifrostComponent;

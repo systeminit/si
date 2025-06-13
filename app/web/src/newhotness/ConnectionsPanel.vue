@@ -18,6 +18,8 @@
       <ConnectionLayout label="Outputs" :connections="outgoing" />
     </template>
   </div>
+  <!-- TODO(Wendy) - separate empty states for input and output connections? -->
+  <EmptyState v-else icon="input-connection" text="No connections yet" />
 </template>
 
 <script setup lang="ts">
@@ -40,6 +42,7 @@ import {
 import ConnectionLayout, {
   SimpleConnection,
 } from "./layout_components/ConnectionLayout.vue";
+import EmptyState from "./EmptyState.vue";
 
 const props = defineProps<{
   component: BifrostComponentInList;

@@ -54,7 +54,7 @@
         >
           <template v-if="isSecret">
             <!-- TODO: Paul make this an actual tailwind color! -->
-            <div class="text-[#B2DFB9]">
+            <div :class="themeClasses('text-[#3b8e48]', 'text-[#B2DFB9]')">
               {{ props.externalSources[0]?.componentName }} /
               {{ attrData.value }}
             </div>
@@ -72,7 +72,7 @@
         <!-- TODO(Wendy) make this an actual tailwind color! -->
         <AttributeValueBox
           v-else-if="isSecret && attrData.value"
-          class="text-[#B2DFB9]"
+          :class="themeClasses('text-[#3b8e48]', 'text-[#B2DFB9]')"
         >
           {{ attrData.value }}
         </AttributeValueBox>
@@ -104,10 +104,10 @@
         size="sm"
         :class="
           clsx(
-            'cursor-pointer hover:scale-110 active:scale-100 bg-neutral-800',
+            'cursor-pointer hover:scale-110 active:scale-100 text-neutral-400',
             themeClasses(
-              'text-neutral-600 hover:text-shade-100',
-              'text-neutral-400 hover:text-shade-0',
+              'bg-neutral-200 hover:text-shade-100 hover:bg-neutral-300',
+              'bg-neutral-800 hover:text-shade-0 hover:bg-neutral-700',
             ),
           )
         "

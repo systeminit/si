@@ -4,12 +4,7 @@
       v-if="resourcePayload"
       :code="JSON.stringify(resourcePayload, null, 2)"
     />
-    <EmptyStateCard
-      v-else
-      iconName="no-changes"
-      primaryText="No Resource"
-      secondaryText="This component does not have a resource associated with it."
-    />
+    <EmptyState v-else icon="check-hex" text="This component has no resource" />
   </ul>
 </template>
 
@@ -20,8 +15,8 @@ import {
   BifrostComponent,
 } from "@/workers/types/entity_kind_types";
 import CodeViewer from "@/components/CodeViewer.vue";
-import EmptyStateCard from "@/components/EmptyStateCard.vue";
 import { findAvsAtPropPath } from "./util";
+import EmptyState from "./EmptyState.vue";
 
 const props = defineProps<{
   component: BifrostComponent;

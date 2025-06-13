@@ -37,7 +37,7 @@
       tooltipPlacement="top"
       :class="
         clsx(
-          'absolute z-100 right-xs',
+          'absolute z-10 right-xs',
           mainDivTallEnoughForCopyIconPadding ? 'top-xs' : 'top-0',
         )
       "

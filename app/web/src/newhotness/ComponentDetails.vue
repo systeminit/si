@@ -32,17 +32,14 @@
   <section
     v-else
     :class="
-      clsx(
-        'grid gap-md h-full p-md pb-0',
-        docsOpen ? 'docs-open' : 'docs-closed',
-      )
+      clsx('grid gap-sm h-full p-sm', docsOpen ? 'docs-open' : 'docs-closed')
     "
   >
     <div
       :class="
         clsx(
           'name items-center flex flex-row gap-xs p-xs',
-          themeClasses('bg-neutral-100', 'bg-neutral-900'),
+          themeClasses('bg-neutral-200', 'bg-neutral-800'),
         )
       "
     >
@@ -102,33 +99,24 @@
       </span>
     </div>
 
-    <div class="attrs flex flex-col">
+    <div class="attrs flex flex-col gap-sm">
       <CollapsingFlexItem ref="attrRef" :expandable="false" open>
         <template #header>
           <div class="flex place-content-between w-full">
             <span>Attributes</span>
             <template v-if="hasImportFunc">
               <VButton
-                v-if="!showResourceInput"
                 size="sm"
                 tone="neutral"
-                label="Import a Resource"
-                class="ml-2xs mr-xs font-normal"
-                @click.stop="
-                  () => {
-                    showResourceInput = true;
-                  }
+                :label="
+                  showResourceInput
+                    ? 'Set attributes manually'
+                    : 'Import a Resource'
                 "
-              />
-              <VButton
-                v-else
-                size="sm"
-                tone="neutral"
-                label="Set attributes manually"
                 class="ml-2xs mr-xs font-normal"
                 @click.stop="
                   () => {
-                    showResourceInput = false;
+                    showResourceInput = !showResourceInput;
                   }
                 "
               />
@@ -141,6 +129,7 @@
           :attributeTree="attributeTree"
           :showImportArea="showResourceInput"
         />
+        <EmptyState v-else text="No attributes to display" icon="code-circle" />
       </CollapsingFlexItem>
       <CollapsingFlexItem ref="actionRef" :expandable="false">
         <template #header>Actions</template>
@@ -151,16 +140,23 @@
       </CollapsingFlexItem>
       <CollapsingFlexItem ref="mgmtRef" :expandable="false">
         <template #header>Management Functions</template>
-        <ul class="p-xs">
+        <ul v-if="mgmtFuncs.length > 0" class="p-xs flex flex-col gap-xs">
           <li
             v-for="func in mgmtFuncs"
             :key="func.id"
             class="rounded border border-neutral-600 p-xs h-12 flex flex-row items-center"
           >
             <IconButton disabled size="md" icon="play" iconTone="action" />
-            {{ func.prototypeName }} {{ func }}
+            <TruncateWithTooltip
+              >{{ func.prototypeName }} {{ func }}</TruncateWithTooltip
+            >
           </li>
         </ul>
+        <EmptyState
+          v-else
+          text="No management functions available"
+          icon="tools"
+        />
       </CollapsingFlexItem>
     </div>
 
@@ -184,9 +180,8 @@
           Connections
         </template>
         <ConnectionsPanel
-          v-if="componentConnections"
           :component="component"
-          :connections="componentConnections"
+          :connections="componentConnections ?? undefined"
         />
       </CollapsingFlexItem>
       <CollapsingFlexItem open>
@@ -198,6 +193,11 @@
           v-if="attributeTree"
           :component="component"
           :attributeTree="attributeTree"
+        />
+        <EmptyState
+          v-else
+          icon="question-circle"
+          text="No qualifications to display"
         />
       </CollapsingFlexItem>
       <CollapsingFlexItem>
@@ -212,9 +212,8 @@
           Resource
         </template>
         <ResourcePanel
-          v-if="attributeTree"
           :component="component"
-          :attributeTree="attributeTree"
+          :attributeTree="attributeTree ?? undefined"
         />
       </CollapsingFlexItem>
       <CollapsingFlexItem>
@@ -255,6 +254,7 @@ import {
   Icon,
   IconButton,
   themeClasses,
+  TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import { computed, ref, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -280,6 +280,7 @@ import DiffPanel from "./DiffPanel.vue";
 import ActionsPanel from "./ActionsPanel.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import DocumentationPanel from "./DocumentationPanel.vue";
+import EmptyState from "./EmptyState.vue";
 
 const props = defineProps<{
   componentId: string;
@@ -373,7 +374,7 @@ const back = () => {
 
 const api = useApi();
 
-type NameFormData = {
+export type NameFormData = {
   name: string;
 };
 
