@@ -749,7 +749,6 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
             if build_tasks.len() < PARALLEL_BUILD_LIMIT {
                 spawn_build_mv_task!(
                     build_tasks,
-                    mv_task_ids,
                     ctx,
                     frigg,
                     change,

@@ -18,6 +18,8 @@ use si_id::{
 
 use crate::reference::{
     ReferenceKind,
+    WeakReference,
+    weak,
 };
 
 #[derive(
