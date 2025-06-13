@@ -32,12 +32,12 @@
           component.schemaName
         }}</TruncateWithTooltip>
       </h3>
-      <!-- <Icon
-        v-if="component.canBeUpgraded"
+      <Icon
+        v-if="canBeUpgraded"
         name="bolt-outline"
         size="lg"
         :class="clsx(themeClasses('text-success-500', 'text-success-400'))"
-      /> -->
+      />
       <!-- TODO(nick): center this vertically with the pill counters -->
       <Icon v-if="component.toDelete" name="hourglass" size="md" />
     </header>
@@ -162,6 +162,7 @@ import {
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon } from "./util";
 import { assertIsDefined, Context } from "./types";
+import { useUpgrade } from "./logic_composables/upgrade";
 
 const props = defineProps<{
   component: BifrostComponent | ComponentInList;
@@ -174,6 +175,16 @@ assertIsDefined(ctx);
 const outgoing = computed(
   () => ctx.outgoingCounts.value[props.component.id] ?? 0,
 );
+
+const upgrade = useUpgrade();
+const schemaVariantId = computed(() => {
+  if (typeof props.component.schemaVariantId === "string") {
+    return props.component.schemaVariantId
+  } else {
+    return props.component.schemaVariantId.id
+  }
+})
+const canBeUpgraded = computed(() => upgrade(props.component.schemaId, schemaVariantId.value))
 
 const qualificationSummary = computed(() => {
   if (props.component.qualificationTotals.failed > 0) return "failure";

@@ -21,6 +21,7 @@ import {
   Connection,
   EntityKind,
   Prop,
+  SchemaMembers,
 } from "@/workers/types/entity_kind_types";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Context } from "@/newhotness/types";
@@ -223,6 +224,24 @@ export const getComponentNames = async (args: {
   console.log("🌈 bifrost query componentNames", end - start, "ms");
   if (componentNames) return reactive(componentNames);
   else return {};
+};
+
+export const getSchemaMembers = async (args: {
+  workspaceId: string;
+  changeSetId: ChangeSetId;
+}): Promise<SchemaMembers[]> => {
+  if (!initCompleted.value) throw new Error("bifrost not initiated");
+
+  const start = Date.now();
+  const schemaMembers = await db.getSchemaMembers(
+    args.workspaceId,
+    args.changeSetId,
+  );
+  const end = Date.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost query getSchemaMembers", end - start, "ms", JSON.parse(schemaMembers));
+  if (schemaMembers) return reactive(JSON.parse(schemaMembers));
+  else return [];
 };
 
 export const getOutgoingConnections = async (args: {

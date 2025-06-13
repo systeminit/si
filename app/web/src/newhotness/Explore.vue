@@ -266,6 +266,7 @@ import AddViewModal from "./AddViewModal.vue";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
 import EmptyState from "./EmptyState.vue";
 import { elementIsScrolledIntoView } from "./logic_composables/dom_funcs";
+import { useUpgrade } from "./logic_composables/upgrade";
 
 type ControlScheme = "v1" | "v2";
 const CONTROL_SCHEME: ControlScheme = "v2" as ControlScheme;
@@ -698,6 +699,8 @@ const onD = (e: KeyDetails["d"]) => {
     mapRef.value?.onD(e);
   }
 };
+
+const upgrade = useUpgrade();
 const onU = (e: KeyDetails["u"]) => {
   e.preventDefault();
 
@@ -706,11 +709,11 @@ const onU = (e: KeyDetails["u"]) => {
     const targetComponent = filteredComponents.find(
       (comp) => comp.id === interactionTargetComponentId.value,
     );
-    // if (targetComponent && targetComponent.canBeUpgraded) {
-    //   componentContextMenuRef.value?.componentUpgrade([
-    //     interactionTargetComponentId.value,
-    //   ]);
-    // }
+    if (targetComponent && upgrade(targetComponent.schemaId, targetComponent.schemaVariantId)) {
+      componentContextMenuRef.value?.componentUpgrade([
+        interactionTargetComponentId.value,
+      ]);
+    }
   } else {
     mapRef.value?.onU(e);
   }
@@ -739,11 +742,11 @@ const onR = (e: KeyDetails["r"]) => {
     const targetComponent = filteredComponents.find(
       (comp) => comp.id === interactionTargetComponentId.value,
     );
-    // if (targetComponent && targetComponent.canBeUpgraded) {
-    //   componentContextMenuRef.value?.componentsRestore([
-    //     interactionTargetComponentId.value,
-    //   ]);
-    // }
+    if (targetComponent && upgrade(targetComponent.schemaId, targetComponent.schemaVariantId)) {
+      componentContextMenuRef.value?.componentsRestore([
+        interactionTargetComponentId.value,
+      ]);
+    }
   } else {
     mapRef.value?.onR(e);
   }

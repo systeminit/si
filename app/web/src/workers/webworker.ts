@@ -2110,7 +2110,7 @@ const getReferences = (
     const componentIds = rawList.components.map((c) => c.id);
 
     // Use getMany to fetch all components in a single query
-    const componentResults: Record<Id, BifrostComponentInList> | -1 = getMany(
+    const componentResults: Record<Id, ComponentInList> | -1 = getMany(
       workspaceId,
       changeSetId,
       EntityKind.Component,
@@ -2120,7 +2120,7 @@ const getReferences = (
 
     // Process results and handle missing components
     clearWeakReferences(changeSetId, { kind, args: rawList.id });
-    const components: BifrostComponentInList[] = [];
+    const components: ComponentInList[] = [];
     for (const componentRef of rawList.components) {
       const result = componentResults[componentRef.id];
       if (result) {
@@ -2220,8 +2220,8 @@ const getReferences = (
 
       const conn: BifrostConnection = {
         ...connRef,
-        fromComponent: result as BifrostComponentInList,
-        toComponent: toComponent as BifrostComponentInList,
+        fromComponent: result as ComponentInList,
+        toComponent: toComponent as ComponentInList,
       };
       conns.push(conn);
     }
@@ -2230,7 +2230,7 @@ const getReferences = (
     return [
       {
         id: raw.id,
-        component: toComponent as BifrostComponentInList,
+        component: toComponent as ComponentInList,
         incoming: conns,
         outgoing: [] as BifrostConnection[],
       } as BifrostComponentConnections,
@@ -2373,8 +2373,7 @@ const getList = (
 
   const sql = `
 select
-  json_group_array(resolved.atom_json),
-  json_group_array(atom_json -> '$.id')
+  json_group_array(resolved.atom_json)
 from
   (
     select
@@ -2530,6 +2529,49 @@ const get = (
     return -1;
   }
 };
+
+const getSchemaMembers = (
+  _workspaceId: string,
+  changeSetId: ChangeSetId,
+  indexChecksum?: string,
+): string => {
+const sql = `
+    select
+      json_group_array(jsonb_extract(CAST(data as text), '$'))
+    from
+      atoms
+      inner join index_mtm_atoms mtm
+        ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+      inner join indexes ON mtm.index_checksum = indexes.checksum
+    ${
+      indexChecksum
+        ? ""
+        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+    }
+    where
+      ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+      AND
+      atoms.kind = ?
+    ;`;
+
+  const bind = [indexChecksum ?? changeSetId, EntityKind.SchemaMembers];
+  const start = Date.now();
+  const atomData = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+  const end = Date.now();
+
+  debug(
+    "❓ sql getSchemaMembers",
+    `[${end - start}ms]`,
+    atomData,
+  );
+  if (atomData.length === 0) return ""
+  else
+    return oneInOne(atomData) as string;
+}
 
 /**
  * NOTE: getMany returns Edda types, not Bifrost types! Because it does not follow references
@@ -2817,6 +2859,7 @@ const dbInterface: DBInterface = {
   getOutgoingConnectionsByComponentId,
   getOutgoingConnectionsCounts,
   getComponentNames,
+  getSchemaMembers,
   getPossibleConnections,
   partialKeyFromKindAndId: partialKeyFromKindAndArgs,
   kindAndIdFromKey: kindAndArgsFromKey,

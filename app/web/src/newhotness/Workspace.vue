@@ -102,6 +102,7 @@ import {
   ComponentNames,
   EntityKind,
   OutgoingCounts,
+  SchemaMembers,
 } from "@/workers/types/entity_kind_types";
 import Explore from "./Explore.vue";
 import ComponentDetails from "./ComponentDetails.vue";
@@ -113,6 +114,7 @@ import {
   startWindowResizeEmitter,
 } from "./logic_composables/emitters";
 import { tokensByWorkspacePk } from "./logic_composables/tokens";
+import { SchemaId } from "@/api/sdf/dal/schema";
 
 const props = defineProps<{
   workspacePk: string;
@@ -173,6 +175,25 @@ const namesQuery = useQuery<ComponentNames>({
     return await heimdall.getComponentNames(args.value);
   },
 });
+const schemaQueryKey = computed(() => {
+  return [
+    workspacePk.value,
+    changeSetId.value,
+    EntityKind.SchemaMembers,
+    workspacePk.value,
+  ];
+});
+const schemaQuery = useQuery<Record<SchemaId, SchemaMembers>>({
+  queryKey: schemaQueryKey,
+  enabled,
+  queryFn: async () => {
+    const data = await heimdall.getSchemaMembers(args.value);
+    return data.reduce((obj, s) => {
+      obj[s.id] = s
+      return obj
+    }, {} as Record<SchemaId, SchemaMembers>)
+  },
+});
 
 const outgoingCounts = computed(() => {
   return countsQuery.data.value ?? {};
@@ -180,6 +201,10 @@ const outgoingCounts = computed(() => {
 
 const componentNames = computed(() => {
   return namesQuery.data.value ?? {};
+});
+
+const schemaMembers = computed(() => {
+  return schemaQuery.data.value ?? {};
 });
 
 const context = computed<Context>(() => {
@@ -191,6 +216,7 @@ const context = computed<Context>(() => {
     headChangeSetId: computed(() => changeSetsStore.headChangeSetId ?? ""),
     outgoingCounts,
     componentNames,
+    schemaMembers,
   };
 });
 
