@@ -338,7 +338,7 @@
           </div>
 
           <!-- select potential connection area -->
-          <template v-if="!isMap">
+          <template v-if="!isMap && filteredConnections.length > 0">
             <div
               v-if="!isSecret"
               :class="
@@ -350,82 +350,120 @@
             >
               Or connect to an existing prop
             </div>
+            <!--
+              Attach the virtualizer to this element. It will use the width and height of
+              this element, and will own the scrollbar.
+
+              This will allow us to only create HTML elements for visible items, and speeds up
+              the rendering and initialization of the list.
+            -->
             <div
+              ref="filteredConnectionsListRef"
               :class="
                 clsx(
                   'scrollable',
                   selectedIndex > filteredOptions.length || selectedIndex === 0
-                    ? 'max-h-[10rem]'
+                    ? 'h-[10rem]'
                     : 'hidden',
                 )
               "
             >
+              <!-- Create a relative-positioned container so that children are relative to its (0,0) -->
               <div
-                v-for="(connection, index) in filteredConnections"
-                :key="connection.attributeValueId"
-                :class="
-                  clsx(
-                    'possible-connections grid gap-xs cursor-pointer border border-transparent',
-                    'px-xs py-2xs h-[30px]',
-                    isConnectionSelected(index) && [
-                      'input-selected-item',
-                      themeClasses('bg-action-200', 'bg-action-900'),
-                    ],
-                    themeClasses(
-                      'hover:border-action-500',
-                      'hover:border-action-300',
-                    ),
-                    false && themeClasses('bg-action-200', 'bg-action-900'),
-                  )
-                "
-                @click.left="selectConnection(index)"
+                :class="clsx('relative w-full')"
+                :style="{
+                  height: `${filteredConnectionsList.getTotalSize()}px`,
+                }"
               >
-                <TruncateWithTooltip>
-                  {{ connection.componentName }}
-                </TruncateWithTooltip>
-                <div class="flex flex-row gap-2xs items-center">
-                  <template
-                    v-for="(item, itemIndex) in connection.pathArray"
-                    :key="item"
-                  >
-                    <TruncateWithTooltip
-                      class="flex-1 max-w-fit"
-                      :style="`flex-basis: ${
-                        100 / connection.pathArray.length
-                      }%`"
-                    >
-                      {{ item }}
-                    </TruncateWithTooltip>
-                    <div v-if="itemIndex !== connection.pathArray.length - 1">
-                      /
-                    </div>
-                  </template>
-                </div>
+                <!-- position this item exactly where the virtualizer tells it to go -->
                 <div
-                  v-if="isConnectionSelected(index)"
+                  v-for="virtualItem in filteredConnectionsList.getVirtualItems()"
+                  :key="
+                    filteredConnections[virtualItem.index]?.attributeValueId
+                  "
                   :class="
                     clsx(
-                      'text-xs pt-3xs ml-auto',
-                      themeClasses('text-neutral-900', 'text-neutral-200'),
+                      `absolute top-0 left-0 w-full h-[${virtualItem.size}px]`,
+                      'possible-connections grid gap-xs cursor-pointer border border-transparent',
+                      'px-xs py-2xs',
+                      isConnectionSelected(virtualItem.index) && [
+                        'input-selected-item',
+                        themeClasses('bg-action-200', 'bg-action-900'),
+                      ],
+                      themeClasses(
+                        'hover:border-action-500',
+                        'hover:border-action-300',
+                      ),
                     )
                   "
+                  :style="{
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }"
+                  @click.left="selectConnection(virtualItem.index)"
                 >
-                  <TextPill>Enter</TextPill>
-                  to select
-                </div>
-                <TruncateWithTooltip v-else>
-                  <template
-                    v-if="
-                      connection.kind === 'array' ||
-                      connection.kind === 'map' ||
-                      connection.kind === 'object' ||
-                      connection.kind === 'json'
+                  <TruncateWithTooltip>
+                    {{ filteredConnections[virtualItem.index]?.componentName }}
+                  </TruncateWithTooltip>
+                  <div class="flex flex-row gap-2xs items-center">
+                    <template
+                      v-for="(item, itemIndex) in filteredConnections[
+                        virtualItem.index
+                      ]?.pathArray"
+                      :key="item"
+                    >
+                      <TruncateWithTooltip
+                        class="flex-1 max-w-fit"
+                        :style="`flex-basis: ${
+                          100 /
+                          (filteredConnections[virtualItem.index]?.pathArray
+                            .length ?? 0)
+                        }%`"
+                      >
+                        {{ item }}
+                      </TruncateWithTooltip>
+                      <div
+                        v-if="
+                          itemIndex !==
+                          (filteredConnections[virtualItem.index]?.pathArray
+                            .length ?? 0) -
+                            1
+                        "
+                      >
+                        /
+                      </div>
+                    </template>
+                  </div>
+                  <div
+                    v-if="isConnectionSelected(virtualItem.index)"
+                    :class="
+                      clsx(
+                        'text-xs pt-3xs ml-auto',
+                        themeClasses('text-neutral-900', 'text-neutral-200'),
+                      )
                     "
                   >
-                    {{ connection.kind }}
-                  </template>
-                  <template v-else> {{ connection.value }} </template>
-                </TruncateWithTooltip>
+                    <TextPill>Enter</TextPill>
+                    to select
+                  </div>
+                  <TruncateWithTooltip v-else>
+                    <template
+                      v-if="
+                        filteredConnections[virtualItem.index]?.kind ===
+                          'array' ||
+                        filteredConnections[virtualItem.index]?.kind ===
+                          'map' ||
+                        filteredConnections[virtualItem.index]?.kind ===
+                          'object' ||
+                        filteredConnections[virtualItem.index]?.kind === 'json'
+                      "
+                    >
+                      {{ filteredConnections[virtualItem.index]?.kind }}
+                    </template>
+                    <template v-else>
+                      {{ filteredConnections[virtualItem.index]?.value }}
+                    </template>
+                  </TruncateWithTooltip>
+                </div>
               </div>
             </div>
           </template>
@@ -457,6 +495,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { Fzf } from "fzf";
 import { useQuery } from "@tanstack/vue-query";
+import { useVirtualizer } from "@tanstack/vue-virtual";
 import {
   PropertyEditorPropWidgetKind,
   PropertyEditorPropWidgetKindComboBox,
@@ -757,6 +796,15 @@ const emit = defineEmits<{
 const mapKey = ref("");
 const mapKeyError = ref(false);
 const defaultSelectedIndex = () => (props.isSecret ? 1 : 0);
+/**
+ * The index of the selected option or connection.
+ *
+ * This is an index into an imagined concatenated list containing both filteredOptions and filteredConnections.
+ *
+ * - If this is 0, nothing is selected.
+ * - If this is > 0 and <= filteredOptions.length, it references filteredOptions[selectedIndex - 1].
+ * - If this is > filteredOptions.length, it references filteredConnetions[selectedIndex - 1 - filteredOptions.length].
+ */
 const selectedIndex = ref(defaultSelectedIndex());
 const inputRef = ref<InstanceType<typeof HTMLInputElement>>();
 const inputWindowRef = ref<InstanceType<typeof HTMLDivElement>>();
@@ -1021,6 +1069,21 @@ watch(
       }
     });
   },
+);
+
+// Virtualized list for potential connections
+const filteredConnectionsListRef = ref<HTMLDivElement>();
+const filteredConnectionsList = useVirtualizer(
+  computed(() => {
+    return {
+      count: filteredConnections.value.length,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      getScrollElement: () => filteredConnectionsListRef.value!,
+      // getItemKey: (index: number) => filteredConnections.value[index]?.attributeValueId ?? "<unknown>",
+      estimateSize: () => 30,
+      overscan: 3,
+    };
+  }),
 );
 
 const isOptionSelected = (index: number) =>
