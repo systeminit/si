@@ -4,7 +4,7 @@
     :class="
       clsx(
         'flex flex-row items-center gap-xs p-2xs border-x border-b',
-        themeClasses('border-neutral-200', 'border-neutral-600'),
+        themeClasses('border-neutral-400', 'border-neutral-600'),
       )
     "
     @click="clickHandler"

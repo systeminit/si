@@ -87,6 +87,7 @@
           ref="scrollRef"
           class="scrollable tilegrid grow"
           @scroll="onScroll"
+          @scrollend="fixContextMenuAfterScroll"
         >
           <ComponentGridTile
             v-for="(component, index) in componentVirtualItemsList"
@@ -106,13 +107,13 @@
                 componentClicked(e, filteredComponents[component.index]!.id)
             "
           />
-          <div
+          <EmptyState
             v-if="
               componentList.length === 0 && componentListRaw.isSuccess.value
             "
-          >
-            <em>No components in View</em>
-          </div>
+            icon="component"
+            text="No components in view"
+          />
         </div>
         <footer
           :class="
@@ -252,6 +253,8 @@ import { SelectionsInQueryString } from "./Workspace.vue";
 import AddComponentModal from "./AddComponentModal.vue";
 import AddViewModal from "./AddViewModal.vue";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
+import EmptyState from "./EmptyState.vue";
+import { elementIsScrolledIntoView } from "./logic_composables/dom_funcs";
 
 type ControlScheme = "v1" | "v2";
 const CONTROL_SCHEME: ControlScheme = "v2" as ControlScheme;
@@ -525,8 +528,7 @@ const constrainPosition = () => {
     filteredComponents.length - 1,
     Math.max(-1, selectorGridPosition.value),
   );
-  const tile = getGridTileByIndex(selectorGridPosition.value);
-  tile?.$el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  scrollCurrentTileIntoView();
 };
 const isSelected = (idx: number) =>
   selectedComponentIds.has(filteredComponents[idx]!.id);
@@ -716,6 +718,10 @@ const onBackspace = (e: KeyDetails["Backspace"]) => {
   }
 };
 const onR = (e: KeyDetails["r"]) => {
+  if (e.metaKey || e.ctrlKey) {
+    // This is the chrome hotkey combo for refreshing the page! Let it happen!
+    return;
+  }
   e.preventDefault();
 
   if (showGrid.value) {
@@ -812,7 +818,29 @@ const onEnter = (e: KeyDetails["Enter"]) => {
   }
 };
 const onScroll = () => {
-  if (focusedComponentId.value) unfocus();
+  if (focusedComponentId.value && CONTROL_SCHEME === "v1") {
+    unfocus();
+  } else {
+    // for the v2 interface, close the menu while scrolling
+    componentContextMenuRef.value?.close();
+  }
+};
+const fixContextMenuAfterScroll = () => {
+  // For the v2 control scheme, we need to fix the context menu after scrolling
+  // If the element is scrolled into view, show the menu
+  // If the element is scrolled offscreen, unfocus/unhover as per v1
+  if (CONTROL_SCHEME === "v1") return;
+  else if (focusedComponentId.value) {
+    const tileIndex = getGridTileIndexByComponentId(focusedComponentId.value);
+    const tile = getGridTileByIndex(tileIndex);
+    const el = tile?.$el;
+    if (el && elementIsScrolledIntoView(el)) {
+      focus(focusedComponentId.value);
+    } else {
+      unfocus();
+      unhover();
+    }
+  }
 };
 const onResize = () => {
   unfocus();
@@ -904,6 +932,11 @@ const openViewModal = () => {
 
 const componentContextMenuRef =
   ref<InstanceType<typeof ComponentContextMenu>>();
+
+const scrollCurrentTileIntoView = () => {
+  const tile = getGridTileByIndex(selectorGridPosition.value);
+  tile?.$el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+};
 </script>
 
 <style lang="css" scoped>

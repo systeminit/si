@@ -1,6 +1,6 @@
 <template>
   <ul class="p-xs flex flex-col gap-xs">
-    <template v-if="component.id && codes">
+    <template v-if="component.id && codes && codes.length > 0">
       <CodeViewer
         v-for="(item, index) in codes"
         :key="item.name ?? index"
@@ -10,12 +10,7 @@
         titleClasses="text-sm font-bold h-8"
       />
     </template>
-    <EmptyStateCard
-      v-else
-      iconName="no-changes"
-      primaryText="No Code"
-      secondaryText="This component has not generated any code yet."
-    />
+    <EmptyState v-else icon="code-transform" text="No code was generated yet" />
   </ul>
 </template>
 
@@ -26,8 +21,8 @@ import {
   BifrostComponent,
 } from "@/workers/types/entity_kind_types";
 import CodeViewer from "@/components/CodeViewer.vue";
-import EmptyStateCard from "@/components/EmptyStateCard.vue";
 import { findAvsAtPropPath } from "./util";
+import EmptyState from "./EmptyState.vue";
 
 const props = defineProps<{
   component: BifrostComponent;

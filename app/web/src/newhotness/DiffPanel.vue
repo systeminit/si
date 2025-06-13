@@ -1,20 +1,15 @@
 <template>
   <ul class="p-xs flex flex-col gap-xs">
     <CodeViewer v-if="diff" :code="diff" codeLanguage="diff" />
-    <EmptyStateCard
-      v-else
-      iconName="no-components"
-      primaryText="No diff to display."
-      secondaryText="No diff was found for this component"
-    />
+    <EmptyState v-else icon="diff" text="No diff information yet" />
   </ul>
 </template>
 
 <script lang="ts" setup>
 import { computed } from "vue";
 import CodeViewer from "@/components/CodeViewer.vue";
-import EmptyStateCard from "@/components/EmptyStateCard.vue";
 import { BifrostComponent } from "@/workers/types/entity_kind_types";
+import EmptyState from "./EmptyState.vue";
 
 const component = defineProps<{
   component: BifrostComponent;

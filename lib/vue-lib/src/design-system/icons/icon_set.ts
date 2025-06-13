@@ -162,6 +162,10 @@ import VimLogo from "~icons/raphael/vim";
 import Create from "~icons/carbon/intent-request-create";
 import CarbonEdit from "~icons/carbon/edit";
 import Hourglass from "~icons/carbon/hourglass";
+import CarbonCompare from "~icons/carbon/compare";
+// TODO(Wendy) - for some reason this one specific icon fails to import? Not sure why.
+// import CarbonTransformCode from '~icons/carbon/transform-code';
+import CarbonTransformCode from "~icons/carbon/code"; // using this one as a placeholder for now
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -256,6 +260,7 @@ export const ICONS = Object.freeze({
   "code-deployed": CodeDeployed,
   "code-pop": CodePop,
   "code-pop-square": CodePopSquare,
+  "code-transform": CarbonTransformCode,
   "collapse-row": CollapseAll,
   command: MaterialSymbolsKeyboardCommandKey,
   component: Cube,
@@ -266,6 +271,7 @@ export const ICONS = Object.freeze({
   cursor: PhCursorTextBold,
   "cursor-array-rays": CursorArrayRays,
   diagram: Diagram,
+  diff: CarbonCompare,
   docs: Docs,
   "dots-horizontal": DotsHorizontal,
   "dots-vertical": DotsVertical,

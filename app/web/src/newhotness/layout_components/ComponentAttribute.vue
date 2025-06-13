@@ -1,5 +1,8 @@
 <template>
-  <li :class="clsx('flex flex-col', !showingChildren && 'mb-[-1px]')">
+  <li
+    v-if="showingChildren || !props.attributeTree.prop?.hidden"
+    :class="clsx('flex flex-col', !showingChildren && 'mb-[-1px]')"
+  >
     <template v-if="showingChildren">
       <AttributeChildLayout>
         <template #header>

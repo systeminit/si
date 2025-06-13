@@ -13,7 +13,15 @@
       <nameForm.Field name="name">
         <template #default="{ field }">
           <input
-            class="block w-72 ml-auto text-white bg-black border-2 border-neutral-300 disabled:bg-neutral-900"
+            :class="
+              clsx(
+                'block w-72 ml-auto border',
+                themeClasses(
+                  'text-black bg-white border-neutral-600 disabled:bg-neutral-100',
+                  'text-white bg-black border-neutral-400 disabled:bg-neutral-900',
+                ),
+              )
+            "
             :value="field.state.value"
             type="text"
             :disabled="wForm.bifrosting.value"
@@ -33,9 +41,10 @@
 </template>
 
 <script setup lang="ts">
-import { Modal, Icon } from "@si/vue-lib/design-system";
+import { Modal, Icon, themeClasses } from "@si/vue-lib/design-system";
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import clsx from "clsx";
 import { View } from "@/workers/types/entity_kind_types";
 import { useApi, routes } from "./api_composables";
 import { useWatchedForm } from "./logic_composables/watched_form";

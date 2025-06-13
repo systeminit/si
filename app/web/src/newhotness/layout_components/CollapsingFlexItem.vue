@@ -5,26 +5,36 @@
     :class="
       clsx(
         'collapsing-flex-item', // identifying class
-        'border-2 basis-0', // basis-0 makes items take equal size when multiple are open
-        themeClasses('border-neutral-200', 'border-neutral-900'),
+        'border basis-0 mb-[-1px]', // basis-0 makes items take equal size when multiple are open
+        themeClasses('border-neutral-300', 'border-neutral-700'),
         openState.open.value ? 'scrollable grow' : 'shrink',
       )
     "
   >
+    <!-- TODO(Wendy) - fix this so that the scrollbar doesn't include the header -->
     <h3
       :class="
         clsx(
-          'flex flex-row items-center gap-xs p-2xs z-30',
-          'sticky top-0 cursor-pointer text-lg font-bold',
-          themeClasses('bg-neutral-200', 'bg-neutral-900'),
           h3class,
+          'group/header',
+          'sticky top-0 cursor-pointer text-lg font-bold',
+          themeClasses(
+            'bg-neutral-200 hover:bg-neutral-300',
+            'bg-neutral-800 hover:bg-neutral-700',
+          ),
         )
       "
       @click="toggleOpen"
     >
+      <Icon
+        class="group-hover/header:scale-125"
+        :name="openState.open.value ? 'chevron--down' : 'chevron--right'"
+      />
       <slot name="header" />
       <template v-if="expandable">
         <IconButton
+          tooltip="Expand"
+          tooltipPlacement="top"
           class="ml-auto"
           size="xs"
           icon="arrows-out"
@@ -38,7 +48,9 @@
 
     <Modal ref="modalRef" size="4xl">
       <template #title>
-        <slot name="header" />
+        <div :class="h3class">
+          <slot name="header" />
+        </div>
       </template>
       <slot />
     </Modal>
@@ -46,7 +58,12 @@
 </template>
 
 <script lang="ts" setup>
-import { themeClasses, IconButton, Modal } from "@si/vue-lib/design-system";
+import {
+  themeClasses,
+  IconButton,
+  Modal,
+  Icon,
+} from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { onMounted, ref } from "vue";
 import { tw } from "@si/vue-lib";
@@ -67,7 +84,7 @@ const props = withDefaults(
     expandable?: boolean;
   }>(),
   {
-    h3class: tw`flex flex-row items-center`,
+    h3class: tw`flex flex-row items-center gap-xs p-2xs z-30`,
     expandable: true,
   },
 );
