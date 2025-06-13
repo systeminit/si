@@ -52,6 +52,7 @@ use si_frontend_mv_types::{
             IndexUpdate,
             ObjectPatch,
             PatchBatch,
+            StreamingPatch,
             UpdateMeta,
         },
     },
@@ -280,6 +281,7 @@ pub async fn build_all_mv_for_change_set(
     let (frontend_objects, patches) = build_mv_inner(
         ctx,
         frigg,
+        edda_updates,
         ctx.workspace_pk()?,
         ctx.change_set_id(),
         &changes,
@@ -367,8 +369,15 @@ pub async fn build_mv_for_changes_in_change_set(
             change_set_id,
         })?;
     let from_index_checksum = index_frontend_object.checksum;
-    let (frontend_objects, patches) =
-        build_mv_inner(ctx, frigg, workspace_id, change_set_id, changes).await?;
+    let (frontend_objects, patches) = build_mv_inner(
+        ctx,
+        frigg,
+        edda_updates,
+        workspace_id,
+        change_set_id,
+        changes,
+    )
+    .await?;
     let mv_index: MvIndex = serde_json::from_value(index_frontend_object.data)?;
     let removal_checksum = "0".to_string();
     let removed_items: HashSet<(String, String)> = patches
@@ -456,6 +465,7 @@ macro_rules! spawn_build_mv_task {
 async fn build_mv_inner(
     ctx: &DalContext,
     frigg: &FriggStore,
+    edda_updates: &EddaUpdates,
     workspace_pk: si_id::WorkspacePk,
     change_set_id: ChangeSetId,
     changes: &[Change],
@@ -522,12 +532,29 @@ async fn build_mv_inner(
 
             match execution_result {
                 Ok((maybe_patch, maybe_frontend_object)) => {
+                    // We need to make sure the frontend object is inserted into the store first so that
+                    // a client can directly fetch it without racing against the object's insertion if the
+                    // client does not already have the base object to apply the streaming patch to.
+                    if let Some(frontend_object) = maybe_frontend_object {
+                        frigg.insert_object(workspace_pk, &frontend_object).await?;
+                        frontend_objects.push(frontend_object);
+                    }
                     if let Some(patch) = maybe_patch {
+                        let streaming_patch = StreamingPatch::new(
+                            workspace_pk,
+                            change_set_id,
+                            kind,
+                            mv_id,
+                            patch.from_checksum.clone(),
+                            patch.to_checksum.clone(),
+                            patch.patch.clone(),
+                        );
+                        edda_updates
+                            .publish_streaming_patch(streaming_patch)
+                            .await?;
+
                         debug!("Patch!: {:?}", patch);
                         patches.push(patch);
-                    }
-                    if let Some(frontend_object) = maybe_frontend_object {
-                        frontend_objects.push(frontend_object);
                     }
                 }
                 Err(err) => {
@@ -536,10 +563,6 @@ async fn build_mv_inner(
             }
         }
     }
-
-    frigg
-        .insert_objects(workspace_pk, frontend_objects.iter())
-        .await?;
 
     Ok((frontend_objects, patches))
 }
