@@ -27,6 +27,7 @@ export type BustCacheFn = (
   changeSetId: string,
   kind: EntityKind,
   id: string,
+  noBroadcast?: boolean,
 ) => void;
 
 export type OutgoingConnections = DefaultMap<
@@ -34,20 +35,58 @@ export type OutgoingConnections = DefaultMap<
   Record<string, BifrostConnection>
 >;
 
-export type RainbowFn = (changeSetId: ChangeSetId, label: string) => void;
-export type LobbyExitFn = (workspacePk: string, changeSetId: string) => void;
+export type RainbowFn = (
+  changeSetId: ChangeSetId,
+  label: string,
+  noBroadcast?: boolean,
+) => void;
+export type LobbyExitFn = (
+  workspacePk: string,
+  changeSetId: string,
+  noBroadcast?: boolean,
+) => void;
 
 export type MjolnirBulk = Array<{
   kind: string;
   id: Id;
   checksum?: Checksum;
 }>;
+
+export const SHARED_BROADCAST_CHANNEL_NAME = "SHAREDWORKER_BROADCAST";
+
+export type BroadcastMessage =
+  | {
+      messageKind: "cacheBust";
+      arguments: {
+        workspaceId: string;
+        changeSetId: string;
+        kind: EntityKind;
+        id: string;
+      };
+    }
+  | {
+      messageKind: "listenerInFlight";
+      arguments: { changeSetId: ChangeSetId; label: string };
+    }
+  | {
+      messageKind: "listenerReturned";
+      arguments: { changeSetId: ChangeSetId; label: string };
+    }
+  | {
+      messageKind: "lobbyExit";
+      arguments: { workspaceId: string; changeSetId: string };
+    };
+
 export interface DBInterface {
   initDB: (testing: boolean) => Promise<void>;
   migrate: (testing: boolean) => Promise<Database>;
   setBearer: (token: string) => void;
   initSocket(): Promise<void>;
-  setRemote(remote: Comlink.Remote<DBInterface>): Promise<void>;
+  unregisterRemote(id: string): void;
+  registerRemote(id: string, remote: Comlink.Remote<DBInterface>): void;
+  broadcastMessage(message: BroadcastMessage): Promise<void>;
+  receiveBroadcast(message: BroadcastMessage): Promise<void>;
+  setRemote(remoteId: string): Promise<void>;
   initBifrost(gotLockPort: MessagePort): Promise<void>;
   bifrostClose(): Promise<void>;
   bifrostReconnect(): Promise<void>;

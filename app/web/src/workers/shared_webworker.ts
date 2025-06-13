@@ -16,6 +16,8 @@ import {
   PatchBatch,
   AtomMessage,
   AtomDocument,
+  BroadcastMessage,
+  SHARED_BROADCAST_CHANNEL_NAME,
 } from "./types/dbinterface";
 import { EntityKind } from "./types/entity_kind_types";
 
@@ -35,6 +37,8 @@ function debug(...args: any | any[]) {
 
 let bearerToken: string;
 let currentRemote: Comlink.Remote<DBInterface> | undefined;
+let currentRemoteId: string | undefined;
+const remotes: { [key: string]: Comlink.Remote<DBInterface> } = {};
 
 const hasRemoteChannel = new MessageChannel();
 
@@ -61,9 +65,37 @@ async function withRemote<R>(
 }
 
 const dbInterface: DBInterface = {
-  async setRemote(newRemote: Comlink.Remote<DBInterface>) {
+  async broadcastMessage(message: BroadcastMessage) {
+    Object.keys(remotes).forEach((remoteId) => {
+      if (remoteId !== currentRemoteId) {
+        try {
+          remotes[remoteId]?.receiveBroadcast(message);
+        } catch (err) {
+          debug("failed to send to remote", remoteId, err);
+        }
+      }
+    });
+  },
+  async receiveBroadcast(_message) {
+    debug("shared worker received a broadcast?");
+  },
+  unregisterRemote(id: string) {
+    debug("unregister remote in shared", id);
+    delete remotes[id];
+  },
+  registerRemote(id: string, remote: Comlink.Remote<DBInterface>) {
+    debug("register remote in shared", id);
+    remotes[id] = remote;
+  },
+  async setRemote(remoteId: string) {
     debug("setting remote in shared web worker");
-    currentRemote = newRemote;
+
+    currentRemote = remotes[remoteId];
+    if (!currentRemote) {
+      throw new Error(`remote {$remoteId} not registered`);
+    }
+
+    currentRemoteId = remoteId;
     hasRemoteChannel.port2.postMessage("got remote");
     if (bearerToken) {
       currentRemote.setBearer(bearerToken);
@@ -289,7 +321,10 @@ const dbInterface: DBInterface = {
   },
 };
 
+const onConnectBroadcast = new BroadcastChannel(SHARED_BROADCAST_CHANNEL_NAME);
+
 // eslint-disable-next-line no-restricted-globals
 self.onconnect = (event: MessageEvent) => {
   Comlink.expose(dbInterface, event.ports[0]);
+  onConnectBroadcast.postMessage("booted");
 };

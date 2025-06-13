@@ -39,6 +39,7 @@ import {
   AtomDocument,
   AtomMessage,
   AtomMeta,
+  BroadcastMessage,
   BustCacheFn,
   CategorizedPossibleConnections,
   Checksum,
@@ -1079,7 +1080,7 @@ const mjolnirBulk = async (
   let req: undefined | AxiosResponse<BulkResponse, any>;
 
   objs.forEach((o) => {
-    inFlight(changeSetId, `${o.kind}.${o.id}`);
+    inFlightFn(changeSetId, `${o.kind}.${o.id}`);
   });
 
   await tracer.startActiveSpan(`GET ${desc}`, async (span) => {
@@ -1136,7 +1137,7 @@ const mjolnirBulk = async (
   };
   // doing this first, by itself, await'd, because its going to make the new index, etc
   // and we dont want that to race across multiple patches
-  returned(
+  returnedFn(
     changeSetId,
     `${first.frontEndObject.kind}.${first.frontEndObject.id}`,
   );
@@ -1157,7 +1158,7 @@ const mjolnirBulk = async (
         },
         data: obj.frontEndObject.data,
       };
-      returned(
+      returnedFn(
         changeSetId,
         `${obj.frontEndObject.kind}.${obj.frontEndObject.id}`,
       );
@@ -1180,7 +1181,7 @@ const mjolnir = async (
 
   maybeMjolnir({ workspaceId, changeSetId, kind, id }, async () => {
     debug("🔨 MJOLNIR FIRING:", atomKey);
-    inFlight(changeSetId, `${kind}.${id}`);
+    inFlightFn(changeSetId, `${kind}.${id}`);
     // NOTE: since we're moving to all weak refs
     // storing the index becomes useful here, we can lookup the
     // checksum we would expect to be returned, and see if we have it already
@@ -1241,7 +1242,7 @@ const mjolnirJob = async (
     }
   });
 
-  returned(changeSetId, `${kind}.${id}`);
+  returnedFn(changeSetId, `${kind}.${id}`);
   hasReturned({
     workspaceId,
     changeSetId,
@@ -2595,16 +2596,46 @@ const getMany = async (
  */
 
 let socket: ReconnectingWebSocket;
-let bustCacheFn: BustCacheFn;
 let bearerToken: string;
 
-let inFlight: RainbowFn;
-let returned: RainbowFn;
+let bustCacheFn: BustCacheFn;
+let inFlightFn: RainbowFn;
+let returnedFn: RainbowFn;
 let lobbyExitFn: LobbyExitFn;
 
 let abortController: AbortController | undefined;
 
 const dbInterface: DBInterface = {
+  async broadcastMessage(_message) {
+    debug("only sharedworker should be sent broadcasts directly");
+  },
+  async receiveBroadcast(message: BroadcastMessage) {
+    if (message.messageKind === "cacheBust") {
+      bustCacheFn(
+        message.arguments.workspaceId,
+        message.arguments.changeSetId,
+        message.arguments.kind,
+        message.arguments.id,
+        true,
+      );
+    } else if (message.messageKind === "listenerInFlight") {
+      inFlightFn(message.arguments.changeSetId, message.arguments.label, true);
+    } else if (message.messageKind === "listenerReturned") {
+      returnedFn(message.arguments.changeSetId, message.arguments.label, true);
+    } else if (message.messageKind === "lobbyExit") {
+      lobbyExitFn(
+        message.arguments.workspaceId,
+        message.arguments.changeSetId,
+        true,
+      );
+    }
+  },
+  registerRemote(_id, _remote) {
+    debug("register remote called in tab worker");
+  },
+  unregisterRemote(_id) {
+    debug("unregister remote called in tab worker");
+  },
   setBearer(token) {
     bearerToken = token;
     let apiUrl: string;
@@ -2713,7 +2744,7 @@ const dbInterface: DBInterface = {
                 "toChecksum:",
                 data.atom.toChecksum,
               );
-              returned(
+              returnedFn(
                 data.atom.changeSetId,
                 `${data.atom.kind}.${data.atom.id}`,
               );
@@ -2757,7 +2788,7 @@ const dbInterface: DBInterface = {
     });
   },
 
-  async setRemote(_remote: Comlink.Remote<DBInterface>) {
+  async setRemote(_remote: string) {
     debug("this should only be called on the shared webworker");
   },
 
@@ -2811,10 +2842,10 @@ const dbInterface: DBInterface = {
   },
 
   async addListenerInFlight(cb: RainbowFn) {
-    inFlight = cb;
+    inFlightFn = cb;
   },
   async addListenerReturned(cb: RainbowFn) {
-    returned = cb;
+    returnedFn = cb;
   },
 
   async addListenerLobbyExit(cb: LobbyExitFn) {

@@ -9,11 +9,13 @@ import {
   toRaw,
 } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
+import { monotonicFactory } from "ulid";
 import {
   DBInterface,
   Id,
   BustCacheFn,
   LobbyExitFn,
+  SHARED_BROADCAST_CHANNEL_NAME,
 } from "@/workers/types/dbinterface";
 import {
   BifrostConnection,
@@ -28,24 +30,25 @@ import router from "@/router";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useWorkspacesStore } from "../workspaces.store";
 
+// We want an id right away, not later. But ulid fails if run in this context (something about crypto randomValues).
+// we do not need crypto-secure ulids. We just want every tab to have a different one. Which this will get us.
+const ulid = monotonicFactory(() => Math.random());
+
 let token: string | undefined;
 let queryClient: QueryClient;
+const tabDbId = ulid();
+
 export const init = async (bearerToken: string, _queryClient: QueryClient) => {
   if (!token) {
     // eslint-disable-next-line no-console
     console.log("🌈 initializing bifrost...");
     const start = Date.now();
     await tabDb.setBearer(bearerToken);
-    const { port1, port2 } = new MessageChannel();
 
+    const { port1, port2 } = new MessageChannel();
     // This message fires when the lock has been acquired for this tab
     port1.onmessage = () => {
-      tabDb.addListenerBustCache(Comlink.proxy(bustTanStackCache));
-      tabDb.addListenerInFlight(Comlink.proxy(inFlight));
-      tabDb.addListenerReturned(Comlink.proxy(returned));
-      tabDb.addListenerLobbyExit(Comlink.proxy(lobbyExit));
-
-      db.setRemote(Comlink.proxy(tabDb));
+      db.setRemote(tabDbId);
     };
 
     // We are deliberately not awaiting this promise, since it blocks forever on the tabs that do not get the lock
@@ -64,13 +67,20 @@ export const initCompleted = computed(() => !!token);
 const bustTanStackCache: BustCacheFn = (
   workspaceId: string,
   changeSetId: string,
-  kind: string,
+  kind: EntityKind,
   id: string,
+  noBroadcast?: boolean,
 ) => {
   const queryKey = [workspaceId, changeSetId, kind, id];
   // eslint-disable-next-line no-console
   console.log("💥 bust tanstack cache for", queryKey);
   queryClient.invalidateQueries({ queryKey });
+  if (!noBroadcast) {
+    db.broadcastMessage({
+      messageKind: "cacheBust",
+      arguments: { workspaceId, changeSetId, kind, id },
+    });
+  }
 };
 
 const sharedWebWorkerUrl =
@@ -95,15 +105,50 @@ const tabWorker = new Worker(new URL(workerUrl, import.meta.url), {
 });
 const tabDb: Comlink.Remote<DBInterface> = Comlink.wrap(tabWorker);
 
-const inFlight = (changeSetId: ChangeSetId, label: string) => {
+const onSharedWorkerBootBroadcastChannel = new BroadcastChannel(
+  SHARED_BROADCAST_CHANNEL_NAME,
+);
+onSharedWorkerBootBroadcastChannel.onmessage = () => {
+  db.registerRemote(tabDbId, Comlink.proxy(tabDb));
+};
+window.onbeforeunload = () => {
+  db.unregisterRemote(tabDbId);
+};
+
+const inFlight = (
+  changeSetId: ChangeSetId,
+  label: string,
+  noBroadcast?: boolean,
+) => {
   rainbow.add(changeSetId, label);
+  if (!noBroadcast) {
+    db.broadcastMessage({
+      messageKind: "listenerInFlight",
+      arguments: { changeSetId, label },
+    });
+  }
 };
 
-const returned = (changeSetId: ChangeSetId, label: string) => {
+const returned = (
+  changeSetId: ChangeSetId,
+  label: string,
+  noBroadcast?: boolean,
+) => {
   rainbow.remove(changeSetId, label);
+
+  if (!noBroadcast) {
+    db.broadcastMessage({
+      messageKind: "listenerReturned",
+      arguments: { changeSetId, label },
+    });
+  }
 };
 
-const lobbyExit: LobbyExitFn = async (workspaceId, changeSetId) => {
+const lobbyExit: LobbyExitFn = async (
+  workspaceId: string,
+  changeSetId: string,
+  noBroadcast?: boolean,
+) => {
   // Only navigate away from lobby if user is currently in the lobby
   // for this workspace and change set
   if (router.currentRoute.value.name !== "new-hotness-lobby") {
@@ -119,6 +164,13 @@ const lobbyExit: LobbyExitFn = async (workspaceId, changeSetId) => {
       return;
   }
 
+  if (!noBroadcast) {
+    db.broadcastMessage({
+      messageKind: "lobbyExit",
+      arguments: { workspaceId, changeSetId },
+    });
+  }
+
   await niflheim(workspaceId, changeSetId, true);
   router.push({
     name: "new-hotness",
@@ -128,6 +180,11 @@ const lobbyExit: LobbyExitFn = async (workspaceId, changeSetId) => {
     },
   });
 };
+
+tabDb.addListenerBustCache(Comlink.proxy(bustTanStackCache));
+tabDb.addListenerInFlight(Comlink.proxy(inFlight));
+tabDb.addListenerReturned(Comlink.proxy(returned));
+tabDb.addListenerLobbyExit(Comlink.proxy(lobbyExit));
 
 export const bifrostReconnect = async () => {
   await db.bifrostReconnect();
