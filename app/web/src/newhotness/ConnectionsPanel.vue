@@ -28,10 +28,11 @@ import { useQuery } from "@tanstack/vue-query";
 import clsx from "clsx";
 import { themeClasses } from "@si/vue-lib/design-system";
 import {
-  BifrostComponentConnections,
-  BifrostComponentInList,
-  BifrostConnection,
+  IncomingConnections,
+  ComponentInList,
+  Connection,
   EntityKind,
+  BifrostComponent,
 } from "@/workers/types/entity_kind_types";
 import {
   bifrost,
@@ -45,8 +46,8 @@ import ConnectionLayout, {
 import EmptyState from "./EmptyState.vue";
 
 const props = defineProps<{
-  component: BifrostComponentInList;
-  connections?: BifrostComponentConnections;
+  component: ComponentInList | BifrostComponent;
+  connections?: IncomingConnections;
 }>();
 
 const key = useMakeKey();
@@ -57,18 +58,18 @@ const enableLookup = computed(
   () => !(props.connections && "id" in props.connections),
 );
 
-const componentConnectionsQuery = useQuery<BifrostComponentConnections | null>({
+const componentConnectionsQuery = useQuery<IncomingConnections | null>({
   enabled: enableLookup,
   queryKey: key(EntityKind.IncomingConnections, componentId),
   queryFn: async () => {
-    const componentConnections = await bifrost<BifrostComponentConnections>(
+    const componentConnections = await bifrost<IncomingConnections>(
       args(EntityKind.IncomingConnections, componentId.value),
     );
     return componentConnections;
   },
 });
 
-const outgoingQuery = useQuery<BifrostConnection[]>({
+const outgoingQuery = useQuery<Connection[]>({
   queryKey: key(EntityKind.OutgoingConnections),
   queryFn: async () => {
     const byComponents = await getOutgoingConnections(
@@ -82,14 +83,14 @@ const outgoingQuery = useQuery<BifrostConnection[]>({
 
 const componentConnections = computed(() => {
   if (enableLookup.value && componentConnectionsQuery.data.value) {
-    const { incoming } = componentConnectionsQuery.data.value;
+    const { connections: incoming } = componentConnectionsQuery.data.value;
     return { incoming };
   } else if (props.connections) {
-    const { incoming } = props.connections;
+    const { connections: incoming } = props.connections;
     return { incoming };
   } else {
     return {
-      incoming: [] as BifrostConnection[],
+      incoming: [] as Connection[],
     };
   }
 });
@@ -100,17 +101,15 @@ const incoming = computed(
     componentConnections.value.incoming.map((conn) => {
       if (conn.kind === "management") {
         return {
-          key: `mgmt-${conn.toComponent.id}-${conn.fromComponent.id}`,
-          component: conn.fromComponent,
-          componentId: conn.fromComponent.id,
+          key: `mgmt-${conn.toComponentId}-${conn.fromComponentId}`,
+          componentId: conn.fromComponentId,
           self: "Management",
           other: "-",
         };
       } else {
         return {
-          key: `${conn.toAttributeValueId}-${conn.toComponent.id}-${conn.fromComponent.id}-${conn.fromAttributeValueId}`,
-          component: conn.fromComponent,
-          componentId: conn.fromComponent.id,
+          key: `${conn.toAttributeValueId}-${conn.toComponentId}-${conn.fromComponentId}-${conn.fromAttributeValueId}`,
+          componentId: conn.fromComponentId,
           self: conn.toAttributeValuePath,
           other: conn.fromAttributeValuePath,
         };
@@ -123,17 +122,15 @@ const outgoing = computed<SimpleConnection[]>(() => {
   return outgoing.map((conn) => {
     if (conn.kind === "management") {
       return {
-        key: `mgmt-${conn.toComponent.id}-${conn.fromComponent.id}`,
-        component: conn.fromComponent,
-        componentId: conn.fromComponent.id,
+        key: `mgmt-${conn.toComponentId}-${conn.fromComponentId}`,
+        componentId: conn.fromComponentId,
         self: "Management",
         other: "-",
       };
     } else {
       return {
-        key: `${conn.toAttributeValueId}-${conn.toComponent.id}-${conn.fromComponent.id}-${conn.fromAttributeValueId}`,
-        component: conn.fromComponent,
-        componentId: conn.fromComponent.id,
+        key: `${conn.toAttributeValueId}-${conn.toComponentId}-${conn.fromComponentId}-${conn.fromAttributeValueId}`,
+        componentId: conn.fromComponentId,
         self: conn.toAttributeValuePath,
         other: conn.fromAttributeValuePath,
       };

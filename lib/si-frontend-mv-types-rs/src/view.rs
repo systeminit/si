@@ -68,5 +68,5 @@ pub struct ViewList {
 )]
 pub struct ViewComponentList {
     pub id: ViewId,
-    pub components: Vec<WeakReference<ComponentId, weak::markers::Component>>,
+    pub components: Vec<WeakReference<ComponentId, weak::markers::ComponentInList>>,
 }

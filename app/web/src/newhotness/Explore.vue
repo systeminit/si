@@ -136,7 +136,12 @@
           />
         </footer>
       </template>
-      <Map v-else ref="mapRef" :active="!showGrid" />
+      <Map
+        v-else
+        ref="mapRef"
+        :active="!showGrid"
+        :components="componentList"
+      />
     </div>
     <!-- Right column -->
     <div
@@ -221,17 +226,21 @@ import { useQuery } from "@tanstack/vue-query";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import { Fzf } from "fzf";
 import { tw } from "@si/vue-lib";
-import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import {
+  bifrost,
+  bifrostList,
+  useMakeArgs,
+  useMakeKey,
+} from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
-  BifrostComponentList,
   BifrostViewList,
-  ViewComponentList,
   EntityKind,
-  BifrostComponentInList,
+  ComponentInList,
 } from "@/workers/types/entity_kind_types";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { Listable } from "@/workers/types/dbinterface";
 import Map from "./Map.vue";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
@@ -255,6 +264,7 @@ import AddViewModal from "./AddViewModal.vue";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
 import EmptyState from "./EmptyState.vue";
 import { elementIsScrolledIntoView } from "./logic_composables/dom_funcs";
+import { useUpgrade } from "./logic_composables/upgrade";
 
 type ControlScheme = "v1" | "v2";
 const CONTROL_SCHEME: ControlScheme = "v2" as ControlScheme;
@@ -367,28 +377,25 @@ const id = computed(() =>
 );
 const componentQueryKey = key(kind, id);
 
-const componentListRaw = useQuery<
-  BifrostComponentList | ViewComponentList | null
->({
+const componentListRaw = useQuery<ComponentInList[]>({
   queryKey: componentQueryKey,
   queryFn: async () => {
     const arg = selectedView.value
-      ? args(EntityKind.ViewComponentList, selectedView.value)
-      : args(EntityKind.ComponentList);
-    return await bifrost<BifrostComponentList | ViewComponentList>(arg);
+      ? args<Listable>(EntityKind.ViewComponentList, selectedView.value)
+      : args<Listable>(EntityKind.ComponentList);
+    const list = await bifrostList<ComponentInList[]>(arg);
+    return list ?? [];
   },
 });
 
-const componentList = computed(
-  () => componentListRaw.data.value?.components ?? [],
-);
+const componentList = computed(() => componentListRaw.data.value ?? []);
 const componentsById = computed(() =>
   Object.fromEntries(componentList.value.map((c) => [c.id, c])),
 );
 
 const scrollRef = ref<HTMLDivElement>();
 
-const filteredComponents = reactive<BifrostComponentInList[]>([]);
+const filteredComponents = reactive<ComponentInList[]>([]);
 
 const searchString = ref("");
 const computedSearchString = computed(() => searchString.value);
@@ -688,6 +695,8 @@ const onD = (e: KeyDetails["d"]) => {
     mapRef.value?.onD(e);
   }
 };
+
+const upgrade = useUpgrade();
 const onU = (e: KeyDetails["u"]) => {
   e.preventDefault();
 
@@ -696,7 +705,10 @@ const onU = (e: KeyDetails["u"]) => {
     const targetComponent = filteredComponents.find(
       (comp) => comp.id === interactionTargetComponentId.value,
     );
-    if (targetComponent && targetComponent.canBeUpgraded) {
+    if (
+      targetComponent &&
+      upgrade(targetComponent.schemaId, targetComponent.schemaVariantId)
+    ) {
       componentContextMenuRef.value?.componentUpgrade([
         interactionTargetComponentId.value,
       ]);
@@ -729,7 +741,10 @@ const onR = (e: KeyDetails["r"]) => {
     const targetComponent = filteredComponents.find(
       (comp) => comp.id === interactionTargetComponentId.value,
     );
-    if (targetComponent && targetComponent.canBeUpgraded) {
+    if (
+      targetComponent &&
+      upgrade(targetComponent.schemaId, targetComponent.schemaVariantId)
+    ) {
       componentContextMenuRef.value?.componentsRestore([
         interactionTargetComponentId.value,
       ]);

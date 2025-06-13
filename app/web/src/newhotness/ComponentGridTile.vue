@@ -33,7 +33,7 @@
         }}</TruncateWithTooltip>
       </h3>
       <Icon
-        v-if="component.canBeUpgraded"
+        v-if="canBeUpgraded"
         name="bolt-outline"
         size="lg"
         :class="clsx(themeClasses('text-success-500', 'text-success-400'))"
@@ -128,11 +128,7 @@
         <li>
           <Icon name="input-connection" size="sm" />
           <div>Outgoing</div>
-          <PillCounter
-            :count="component.outputCount"
-            size="sm"
-            class="ml-auto"
-          />
+          <PillCounter :count="outgoing" size="sm" class="ml-auto" />
         </li>
       </template>
     </ol>
@@ -158,18 +154,39 @@ import {
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { computed } from "vue";
+import { computed, inject } from "vue";
 import {
   BifrostComponent,
-  BifrostComponentInList,
+  ComponentInList,
 } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon } from "./util";
+import { assertIsDefined, Context } from "./types";
+import { useUpgrade } from "./logic_composables/upgrade";
 
 const props = defineProps<{
-  component: BifrostComponent | BifrostComponentInList;
+  component: BifrostComponent | ComponentInList;
   hideConnections?: boolean;
 }>();
+
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined(ctx);
+
+const outgoing = computed(
+  () => ctx.outgoingCounts.value[props.component.id] ?? 0,
+);
+
+const upgrade = useUpgrade();
+const schemaVariantId = computed(() => {
+  if (typeof props.component.schemaVariantId === "string") {
+    return props.component.schemaVariantId;
+  } else {
+    return props.component.schemaVariantId.id;
+  }
+});
+const canBeUpgraded = computed(() =>
+  upgrade(props.component.schemaId, schemaVariantId.value),
+);
 
 const qualificationSummary = computed(() => {
   if (props.component.qualificationTotals.failed > 0) return "failure";

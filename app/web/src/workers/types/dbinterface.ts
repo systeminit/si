@@ -11,8 +11,9 @@ import { Span } from "@opentelemetry/api";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
 import { DefaultMap } from "@/utils/defaultmap";
+import { ComponentId } from "@/api/sdf/dal/component";
 import {
-  BifrostConnection,
+  Connection,
   EntityKind,
   PossibleConnection,
   Prop,
@@ -29,7 +30,7 @@ export type BustCacheFn = (
 
 export type OutgoingConnections = DefaultMap<
   string,
-  Record<string, BifrostConnection>
+  Record<string, Connection>
 >;
 
 export type RainbowFn = (changeSetId: ChangeSetId, label: string) => void;
@@ -40,6 +41,9 @@ export type MjolnirBulk = Array<{
   id: Id;
   checksum?: Checksum;
 }>;
+
+export type Listable = EntityKind.ViewComponentList | EntityKind.ComponentList;
+export type Gettable = Exclude<EntityKind, Listable>;
 export interface DBInterface {
   initDB: (testing: boolean) => Promise<void>;
   migrate: (testing: boolean) => void;
@@ -52,7 +56,7 @@ export interface DBInterface {
     workspaceId: string,
     headChangeSetId: string,
     changeSetId: string,
-  ): Promise<void>;
+  ): void;
   getPossibleConnections(
     workspaceId: string,
     changeSetId: string,
@@ -63,12 +67,27 @@ export interface DBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): OutgoingConnections | undefined;
+  getOutgoingConnectionsCounts(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Record<ComponentId, number>;
+  getComponentNames(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Record<ComponentId, string>;
+  getSchemaMembers(workspaceId: string, changeSetId: ChangeSetId): string;
   get(
     workspaceId: string,
     changeSetId: ChangeSetId,
     kind: EntityKind,
     id: Id,
-  ): Promise<typeof NOROW | AtomDocument>;
+  ): typeof NOROW | AtomDocument;
+  getList(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+    kind: EntityKind,
+    id: Id,
+  ): string;
   mjolnirBulk(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -91,10 +110,7 @@ export interface DBInterface {
   atomChecksumsFor(
     changeSetId: ChangeSetId,
   ): Promise<Record<QueryKey, Checksum>>;
-  changeSetExists(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<boolean>;
+  changeSetExists(workspaceId: string, changeSetId: ChangeSetId): boolean;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<boolean>;
   pruneAtomsForClosedChangeSet(
     workspaceId: WorkspacePk,
@@ -113,12 +129,12 @@ export interface DBInterface {
         sql: FlexibleString;
       },
   ): SqlValue[][];
-  bobby(): Promise<void>;
+  bobby(): void;
   ragnarok(
     workspaceId: string,
     changeSetId: string,
     noColdStart?: boolean,
-  ): Promise<void>;
+  ): void;
   // show me everything
   odin(changeSetId: ChangeSetId): object;
 }
