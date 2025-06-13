@@ -1,9 +1,4 @@
-use std::collections::HashSet;
-
-use darling::{
-    FromAttributes,
-    util::path_to_string,
-};
+use darling::FromAttributes;
 use manyhow::{
     bail,
     emit,
@@ -28,12 +23,6 @@ struct MaterializedViewOptions {
     reference_kind: Option<Path>,
 }
 
-#[derive(Debug, Default, FromAttributes)]
-#[darling(attributes(mv))]
-struct MaterializedViewReferenceOptions {
-    reference_kind: Option<Path>,
-}
-
 pub fn derive_materialized_view(
     input: proc_macro::TokenStream,
     errors: &mut manyhow::Emitter,
@@ -52,13 +41,7 @@ pub fn derive_materialized_view(
     };
 
     let mut definition_checksum_updates: Vec<TokenStream> = Vec::new();
-    let mut reference_kinds: HashSet<Path> = HashSet::new();
     for field in &struct_data.fields {
-        let field_attrs = MaterializedViewReferenceOptions::from_attributes(&field.attrs)?;
-        if let Some(reference_kind) = &field_attrs.reference_kind {
-            reference_kinds.insert(reference_kind.clone());
-        }
-
         let maybe_checksum_field_name = field.ident.as_ref().map(|i| i.to_string());
         let checksum_field_type = ty_to_string(&field.ty);
 
@@ -97,10 +80,6 @@ pub fn derive_materialized_view(
             hasher.finalize()
         }
     };
-
-    let mut sorted_reference_kinds: Vec<Path> = reference_kinds.into_iter().collect();
-    sorted_reference_kinds.sort_by_cached_key(path_to_string);
-
     let checksum_static_ident = format_ident!(
         "{}_MATERIALIZED_VIEW_DEFINITION_CHECKSUM",
         ident.to_string().to_uppercase()
@@ -110,10 +89,6 @@ pub fn derive_materialized_view(
         impl crate::MaterializedView for #ident {
             fn kind() -> crate::reference::ReferenceKind {
                 #self_reference_kind
-            }
-
-            fn reference_dependencies() -> &'static [crate::reference::ReferenceKind] {
-                &[#(#sorted_reference_kinds),*]
             }
 
             fn trigger_entity() -> ::si_events::workspace_snapshot::EntityKind {
@@ -133,7 +108,6 @@ pub fn derive_materialized_view(
         ::inventory::submit! {
             crate::materialized_view::MaterializedViewInventoryItem::new(
                 #self_reference_kind,
-                &[#(#sorted_reference_kinds),*],
                 #trigger_entity,
                 &#checksum_static_ident,
             )

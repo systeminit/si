@@ -96,6 +96,14 @@ pub mod markers {
         const REFERENCE_KIND: ReferenceKind = ReferenceKind::Component;
     }
 
+    /// A weak reference marker for [`ReferenceKind::IncomingConnections`].
+    #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
+    pub struct IncomingConnections;
+
+    impl ReferenceKindMarker for IncomingConnections {
+        const REFERENCE_KIND: ReferenceKind = ReferenceKind::IncomingConnections;
+    }
+
     /// A weak reference marker for [`ReferenceKind::SchemaVariant`].
     #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
     pub struct SchemaVariant;

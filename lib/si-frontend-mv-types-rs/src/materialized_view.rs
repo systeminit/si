@@ -11,7 +11,6 @@ use crate::{
 
 pub trait MaterializedView {
     fn kind() -> ReferenceKind;
-    fn reference_dependencies() -> &'static [ReferenceKind];
     fn trigger_entity() -> EntityKind;
     fn definition_checksum() -> Checksum;
 }
@@ -19,7 +18,6 @@ pub trait MaterializedView {
 #[derive(Debug, Clone)]
 pub struct MaterializedViewInventoryItem {
     kind: ReferenceKind,
-    reference_dependencies: &'static [ReferenceKind],
     trigger_entity: EntityKind,
     definition_checksum: &'static ::std::sync::LazyLock<Checksum>,
 }
@@ -27,13 +25,11 @@ pub struct MaterializedViewInventoryItem {
 impl MaterializedViewInventoryItem {
     pub const fn new(
         kind: ReferenceKind,
-        reference_dependencies: &'static [ReferenceKind],
         trigger_entity: EntityKind,
         definition_checksum: &'static ::std::sync::LazyLock<Checksum>,
     ) -> Self {
         MaterializedViewInventoryItem {
             kind,
-            reference_dependencies,
             trigger_entity,
             definition_checksum,
         }
@@ -41,10 +37,6 @@ impl MaterializedViewInventoryItem {
 
     pub fn kind(&self) -> ReferenceKind {
         self.kind
-    }
-
-    pub fn reference_dependencies(&self) -> &'static [ReferenceKind] {
-        self.reference_dependencies
     }
 
     pub fn trigger_entity(&self) -> EntityKind {

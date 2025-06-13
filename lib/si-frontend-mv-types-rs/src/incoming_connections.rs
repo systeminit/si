@@ -17,7 +17,6 @@ use si_id::{
 };
 
 use crate::reference::{
-    Reference,
     ReferenceKind,
     WeakReference,
     weak,
@@ -72,6 +71,5 @@ pub struct IncomingConnections {
 )]
 pub struct IncomingConnectionsList {
     pub id: WorkspacePk,
-    #[mv(reference_kind = ReferenceKind::IncomingConnections)]
-    pub component_connections: Vec<Reference<ComponentId>>,
+    pub component_connections: Vec<WeakReference<ComponentId, weak::markers::IncomingConnections>>,
 }
