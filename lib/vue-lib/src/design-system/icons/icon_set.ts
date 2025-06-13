@@ -166,6 +166,7 @@ import CarbonCompare from "~icons/carbon/compare";
 // TODO(Wendy) - for some reason this one specific icon fails to import? Not sure why.
 // import CarbonTransformCode from '~icons/carbon/transform-code';
 import CarbonTransformCode from "~icons/carbon/code"; // using this one as a placeholder for now
+import SettingsEdit from "~icons/carbon/settings-edit";
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -354,6 +355,7 @@ export const ICONS = Object.freeze({
   search: Search,
   selector: Selector,
   settings: Gear,
+  "settings-edit": SettingsEdit,
   shift: MaterialSymbolsShiftLockOutline,
   show: Eye,
   slash: SlashForward,

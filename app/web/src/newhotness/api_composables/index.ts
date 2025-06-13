@@ -23,6 +23,7 @@ export enum routes {
   CreateSecret = "CreateSecret",
   CreateView = "CreateView",
   DeleteComponents = "DeleteComponents",
+  DeleteView = "DeleteView",
   DuplicateComponents = "DuplicateComponents",
   EraseComponentsFromView = "EraseComponentsFromView",
   FuncRun = "FuncRun",
@@ -34,6 +35,7 @@ export enum routes {
   RunMgmtPrototype = "RunMgmtPrototype",
   UpdateComponentAttributes = "UpdateComponentAttributes",
   UpdateComponentName = "UpdateComponentName",
+  UpdateView = "UpdateView",
   UpgradeComponents = "UpgradeComponents",
 }
 
@@ -56,6 +58,7 @@ const _routes: Record<routes, string> = {
   CreateSecret: "/components/<id>/secret",
   CreateView: "/views",
   DeleteComponents: "/components/delete",
+  DeleteView: "/views/<viewId>",
   DuplicateComponents: "/views/<viewId>/duplicate_components",
   EraseComponentsFromView: "/views/<viewId>/erase_components",
   FuncRun: "/funcs/runs/<id>",
@@ -68,6 +71,7 @@ const _routes: Record<routes, string> = {
     "/management/prototype/<prototypeId>/<componentId>/<viewId>",
   UpdateComponentAttributes: "/components/<id>/attributes",
   UpdateComponentName: "/components/<id>/name",
+  UpdateView: "/views/<viewId>",
   UpgradeComponents: "/components/upgrade",
 } as const;
 

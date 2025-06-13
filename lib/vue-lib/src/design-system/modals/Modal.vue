@@ -87,6 +87,7 @@
                   v-if="type === 'save' && !noWrapper"
                   class="py-3 flex flex-row justify-between gap-sm"
                 >
+                  <slot name="leftButton" />
                   <VButton
                     buttonRank="tertiary"
                     icon="x"

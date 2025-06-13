@@ -8,7 +8,7 @@
       clsx(
         'flex gap-xs items-center group select-none',
         noInteract ? 'text-neutral-500' : 'cursor-pointer',
-        !endLinkTo && 'children:pointer-events-none',
+        !endLinkTo && !enableSettingsEdit && 'children:pointer-events-none',
         header
           ? 'font-bold [&:not(:last-child)]:border-b [&:not(:first-child)]:border-t border-neutral-600'
           : 'rounded-sm',
@@ -18,7 +18,10 @@
           editor: [header ? 'p-xs' : 'p-2xs pr-xs', 'h-7'],
           contextmenu: 'p-xs pr-sm',
         }[menuCtx.variant as DropdownMenuVariant],
-        isFocused && !header && !menuCtx.navigatingSubmenu.value && themeClasses('bg-action-300', 'bg-action-500'),
+        isFocused &&
+          !header &&
+          !menuCtx.navigatingSubmenu.value &&
+          themeClasses('bg-action-300', 'bg-action-500'),
         (!menuCtx.isCheckable.value || disableCheckable) &&
           !icon &&
           !$slots.icon &&
@@ -85,7 +88,10 @@
     <div
       v-else-if="!(centerHeader && header)"
       :class="
-        clsx('ml-auto shrink-0', shortcut && !endLinkTo && 'capsize text-xs')
+        clsx(
+          'ml-auto shrink-0',
+          shortcut && !endLinkTo && !enableSettingsEdit && 'capsize text-xs',
+        )
       "
     >
       <template v-if="submenuItems && submenuItems.length > 0">
@@ -123,9 +129,27 @@
           <Icon v-else name="link" />
         </slot>
       </div>
+
       <template v-else-if="shortcut">
         {{ shortcut }}
       </template>
+
+      <div
+        v-else-if="enableSettingsEdit"
+        :class="
+          clsx(
+            themeClasses(
+              'group-hover:hover:text-action-500 group-hover:text-shade-0',
+              'group-hover:hover:text-action-300 group-hover:text-shade-0',
+            ),
+          )
+        "
+        @mousedown="emit('edit')"
+        @mouseenter="onMouseEnterEndLink"
+        @mouseleave="onMouseLeaveEndLink"
+      >
+        <Icon name="settings-edit" size="xs" />
+      </div>
     </div>
   </component>
 </template>
@@ -178,6 +202,8 @@ export interface DropdownMenuItemProps {
   endLinkLabel?: string;
   endLinkTo?: string | RouteLocationRaw;
 
+  enableSettingsEdit?: boolean;
+
   insideSubmenu?: boolean;
   submenuItems?: DropdownMenuItemProps[];
 
@@ -192,7 +218,10 @@ useThemeContainer(props.submenuVariant !== "contextmenu" ? "dark" : undefined);
 
 const noInteract = computed(() => props.disabled || props.header);
 
-const emit = defineEmits<{ (e: "select"): void }>();
+const emit = defineEmits<{
+  (e: "select"): void;
+  (e: "edit"): void;
+}>();
 
 const internalRef = ref<HTMLElement | null>(null);
 const menuCtx = useDropdownMenuContext();
