@@ -19,6 +19,13 @@ def main():
     mise_tools_dir = Path(args.mise_tools_dir)
     mise_bootstrap_path = Path(args.mise_bootstrap)
     
+    # Parse rust version from packages
+    rust_version = None
+    for package in args.packages:
+        if package.startswith('rust@'):
+            rust_version = package.split('@', 1)[1]
+            break
+    
     # Create the output directories
     mise_tools_dir.mkdir(parents=True, exist_ok=True)
     mise_bootstrap_path.parent.mkdir(parents=True, exist_ok=True)
@@ -40,6 +47,15 @@ __mise_bootstrap() {
     export MISE_INSTALL_PATH="$localized_dir/mise-2025.6.2"
     export MISE_TRUSTED_CONFIG_PATHS="$project_dir${MISE_TRUSTED_CONFIG_PATHS:+:$MISE_TRUSTED_CONFIG_PATHS}"
     export MISE_IGNORED_CONFIG_PATHS="$HOME/.config/mise${MISE_IGNORED_CONFIG_PATHS:+:$MISE_IGNORED_CONFIG_PATHS}"
+    
+    # Set isolated rustup and cargo homes
+    export MISE_RUSTUP_HOME="$localized_dir/rustup"
+    export MISE_CARGO_HOME="$localized_dir/cargo"
+    
+    # These will be set by mise when using rust tools
+    export RUSTUP_HOME="$MISE_RUSTUP_HOME"
+    export CARGO_HOME="$MISE_CARGO_HOME"
+    RUST_TOOLCHAIN_PLACEHOLDER
     install() {
         #!/bin/sh
         set -eu
@@ -343,6 +359,15 @@ __mise_bootstrap
 exec "$MISE_INSTALL_PATH" "$@"
 '''
     
+    # Add RUST_TOOLCHAIN environment variable if rust version is specified
+    if rust_version:
+        rust_toolchain_line = f'\n    # Set rust toolchain version\n    export RUST_TOOLCHAIN="{rust_version}"'
+    else:
+        rust_toolchain_line = ""
+    
+    # Replace placeholder with actual rust toolchain export
+    bootstrap_content = bootstrap_content.replace("RUST_TOOLCHAIN_PLACEHOLDER", rust_toolchain_line)
+    
     # Write the bootstrap script
     with open(mise_bootstrap_path, 'w') as f:
         f.write(bootstrap_content)
@@ -353,6 +378,13 @@ exec "$MISE_INSTALL_PATH" "$@"
     # Set up environment for mise
     env = os.environ.copy()
     project_dir = mise_bootstrap_path.parent.parent
+    
+    # Create isolated rustup and cargo directories
+    rustup_home = mise_tools_dir / 'rustup'
+    cargo_home = mise_tools_dir / 'cargo'
+    rustup_home.mkdir(parents=True, exist_ok=True)
+    cargo_home.mkdir(parents=True, exist_ok=True)
+    
     env.update({
         'MISE_BOOTSTRAP_PROJECT_DIR': str(project_dir),
         'MISE_DATA_DIR': str(mise_tools_dir),
@@ -362,7 +394,16 @@ exec "$MISE_INSTALL_PATH" "$@"
         'MISE_INSTALL_PATH': str(mise_tools_dir / 'mise-2025.6.2'),
         'MISE_TRUSTED_CONFIG_PATHS': str(project_dir),
         'MISE_INSTALL_HELP': '0',
+        # Set isolated rustup and cargo homes
+        'MISE_RUSTUP_HOME': str(rustup_home),
+        'MISE_CARGO_HOME': str(cargo_home),
+        'RUSTUP_HOME': str(rustup_home),
+        'CARGO_HOME': str(cargo_home),
     })
+    
+    # Add RUST_TOOLCHAIN if rust version is specified
+    if rust_version:
+        env['RUST_TOOLCHAIN'] = rust_version
     
     # Ensure mise is installed first
     print("Installing mise...", file=sys.stderr)

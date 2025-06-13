@@ -4,11 +4,19 @@ load("//mise:toolchain.bzl", "MiseToolchainInfo")
 MiseInfo = provider(fields = {
     "mise_tools_dir": provider_field(typing.Any, default = None),  # [Artifact]
     "shims_dir": provider_field(typing.Any, default = None),  # [Artifact]
+    "rust_version": provider_field(typing.Any, default = None),  # [str | None]
 })
 
 def mise_install_impl(ctx: AnalysisContext) -> list[[DefaultInfo, MiseInfo]]:
     mise_tools_dir = ctx.actions.declare_output("mise-tools", dir = True)
     mise_bootstrap = ctx.actions.declare_output("bin/mise")
+    
+    # Extract rust version from packages
+    rust_version = None
+    for package in ctx.attrs.packages:
+        if package.startswith("rust@"):
+            rust_version = package.split("@", 1)[1]
+            break
     
     mise_toolchain = ctx.attrs._mise_toolchain[MiseToolchainInfo]
     
@@ -39,6 +47,7 @@ def mise_install_impl(ctx: AnalysisContext) -> list[[DefaultInfo, MiseInfo]]:
         MiseInfo(
             mise_tools_dir = mise_tools_dir,
             shims_dir = mise_tools_dir,  # shims are within mise_tools_dir/shims
+            rust_version = rust_version,
         ),
     ]
 
