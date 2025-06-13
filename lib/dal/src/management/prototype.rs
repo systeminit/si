@@ -171,7 +171,7 @@ pub struct ManagementPrototypeExecution {
     pub managed_component_placeholders: HashMap<String, ComponentId>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagedComponent {
     kind: String,

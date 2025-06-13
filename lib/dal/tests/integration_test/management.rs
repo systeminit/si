@@ -35,6 +35,8 @@ use dal_test::{
     },
     helpers::{
         ChangeSetTestHelpers,
+        attribute::value,
+        change_set,
         component,
         create_component_for_default_schema_name_in_default_view,
         schema::variant,
@@ -1270,7 +1272,7 @@ async fn get_input_socket_values(ctx: &mut DalContext) -> Result<()> {
 
     // Create empty lego
     manager.create_and_connect_to_inputs(ctx).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?; // wait for dvu
+    change_set::commit(ctx).await?; // wait for dvu
     assert_eq!(manager.get_input_values(ctx).await?, json!({ "one": [] }));
 
     // Connect all sockets
@@ -1278,7 +1280,7 @@ async fn get_input_socket_values(ctx: &mut DalContext) -> Result<()> {
     three.connect(ctx, manager.one).await;
     five.connect(ctx, manager.one).await;
     manager.connect_to_inputs(ctx).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?; // wait for dvu
+    change_set::commit(ctx).await?; // wait for dvu
     assert_eq!(
         manager.get_input_values(ctx).await?,
         json!({ "arity_one": "one", "one": ["five", "three"] })
@@ -1287,7 +1289,7 @@ async fn get_input_socket_values(ctx: &mut DalContext) -> Result<()> {
     // Connect one socket redundantly
     one.connect(ctx, manager.one).await;
     manager.connect_to_inputs(ctx).await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?; // wait for dvu
+    change_set::commit(ctx).await?; // wait for dvu
     assert_eq!(
         manager.get_input_values(ctx).await?,
         json!({ "arity_one": "one", "one": ["five", "one", "three"] })
@@ -1311,7 +1313,7 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
         )
         .await?,
     );
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    change_set::commit(ctx).await?;
     let runme = variant::create_management_func(
         ctx,
         original_variant.id(),
@@ -1329,7 +1331,7 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
             "#,
     )
     .await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    change_set::commit(ctx).await?;
 
     // Create manager component and run management function to create managed component
     let manager = original_variant.create_component_on_default_view(ctx).await;
@@ -1344,10 +1346,10 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
     );
 
     // Regenerate the schema variant and ensure both components got upgraded
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    change_set::commit(ctx).await?;
     let new_variant = original_variant.regenerate(ctx).await;
     assert_ne!(new_variant, original_variant);
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    change_set::commit(ctx).await?;
     assert_eq!(manager.schema_variant(ctx).await, new_variant);
     assert_eq!(created.schema_variant(ctx).await, new_variant);
 
@@ -1512,6 +1514,69 @@ async fn component_incoming_connections_inferred_from_parent(ctx: DalContext) ->
     Ok(())
 }
 
+#[test]
+async fn add_subscriptions(ctx: &mut DalContext) -> Result<()> {
+    variant::create(
+        ctx,
+        "testy",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        { name: "Value", kind: "string" },
+                    ],
+                };
+            }
+        "#,
+    )
+    .await?;
+    let subscribe_to_source = variant::create_management_func(
+        ctx,
+        "testy",
+        r##"
+            async function main({ thisComponent }: Input): Promise<Output> {
+                return {
+                    status: "ok",
+                    ops: {
+                        create: {
+                            NewComponent: {
+                                attributes: {
+                                    "/domain/Value": { $source: { component: "source", path: "/domain/Value" } },
+                                }
+                            }
+                        },
+                        update: {
+                            self: {
+                                attributes: {
+                                    "/domain/Value": { $source: { component: "NewComponent", path: "/domain/Value" } },
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+        "##,
+    )
+    .await?;
+
+    // Create source and target components
+    component::create(ctx, "testy", "source").await?;
+    component::create(ctx, "testy", "target").await?;
+
+    // Call management function to subscribe source -> NewComponent -> target
+    component::execute_management_func(ctx, "target", subscribe_to_source).await?;
+
+    // Set source's Value and make sure it flows to target
+    value::set(ctx, ("source", "/domain/Value"), "value from source").await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(
+        value::get(ctx, ("target", "/domain/Value")).await?,
+        "value from source"
+    );
+
+    Ok(())
+}
+
 pub mod connection_test {
     use dal::{
         ComponentType,
@@ -1525,7 +1590,7 @@ pub mod connection_test {
             ExpectSchemaVariant,
         },
         helpers::{
-            ChangeSetTestHelpers,
+            change_set,
             component,
             schema::variant,
         },
@@ -1767,33 +1832,28 @@ pub mod connection_test {
         }
 
         pub async fn commit(&mut self) -> Result<()> {
-            ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(&mut self.ctx).await?;
+            change_set::commit(&mut self.ctx).await?;
             Ok(())
         }
     }
 }
 
 #[test]
-async fn management_execution_state_db_test(ctx: &mut DalContext) {
+async fn management_execution_state_db_test(ctx: &mut DalContext) -> Result<()> {
     let small_odd_lego = create_component_for_default_schema_name_in_default_view(
         ctx,
         "small odd lego",
         "small odd lego",
     )
-    .await
-    .expect("create small odd lego");
+    .await?;
 
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
-        .await
-        .expect("commit");
+    change_set::commit(ctx).await?;
 
     let prototype_id = find_mgmt_prototype(ctx, small_odd_lego.id(), "Clone")
-        .await
-        .expect("get prototype for management func")
+        .await?
         .id();
     let prototype_2_id = find_mgmt_prototype(ctx, small_odd_lego.id(), "Update")
-        .await
-        .expect("get prototype for management func")
+        .await?
         .id();
 
     let ctx_clone = ctx.clone();
@@ -1831,16 +1891,13 @@ async fn management_execution_state_db_test(ctx: &mut DalContext) {
 
     let latest_execution =
         ManagementFuncJobState::get_latest_by_keys(&ctx_clone, small_odd_lego_id, prototype_id)
-            .await
-            .expect("get latest execution")
+            .await?
             .expect("exists");
 
     assert_eq!(execution, latest_execution);
 
     let other_execution =
-        ManagementFuncJobState::new_pending(&ctx_clone, small_odd_lego_id, prototype_2_id)
-            .await
-            .expect("should not fail");
+        ManagementFuncJobState::new_pending(&ctx_clone, small_odd_lego_id, prototype_2_id).await?;
 
     assert_ne!(execution.id(), other_execution.id());
 
@@ -1859,10 +1916,9 @@ async fn management_execution_state_db_test(ctx: &mut DalContext) {
         ManagementState::Executing,
         Some(Ulid::new().into()),
     )
-    .await
-    .expect("should transition state");
+    .await?;
 
-    ctx_clone.commit_no_rebase().await.expect("commit");
+    ctx_clone.commit_no_rebase().await?;
     let ctx_clone = ctx.clone();
 
     ManagementFuncJobState::new_pending(&ctx_clone, small_odd_lego_id, prototype_id)
@@ -1871,8 +1927,7 @@ async fn management_execution_state_db_test(ctx: &mut DalContext) {
 
     let latest_execution =
         ManagementFuncJobState::get_latest_by_keys(&ctx_clone, small_odd_lego_id, prototype_id)
-            .await
-            .expect("get latest execution")
+            .await?
             .expect("exists");
 
     assert_eq!(new_state, latest_execution);
@@ -1884,8 +1939,7 @@ async fn management_execution_state_db_test(ctx: &mut DalContext) {
         ManagementState::Operating,
         Some(Ulid::new().into()),
     )
-    .await
-    .expect("should transition state");
+    .await?;
 
     ManagementFuncJobState::new_pending(&ctx_clone, small_odd_lego_id, prototype_id)
         .await
@@ -1897,27 +1951,24 @@ async fn management_execution_state_db_test(ctx: &mut DalContext) {
         ManagementState::Success,
         Some(Ulid::new().into()),
     )
-    .await
-    .expect("should transition state");
+    .await?;
 
     let latest_execution =
         ManagementFuncJobState::get_latest_by_keys(&ctx_clone, small_odd_lego_id, prototype_id)
-            .await
-            .expect("get latest execution")
+            .await?
             .expect("exists");
 
     assert_eq!(new_state, latest_execution);
     assert_eq!(ManagementState::Success, new_state.state());
 
     let new_pending =
-        ManagementFuncJobState::new_pending(&ctx_clone, small_odd_lego_id, prototype_id)
-            .await
-            .expect("should allow new pending");
+        ManagementFuncJobState::new_pending(&ctx_clone, small_odd_lego_id, prototype_id).await?;
 
     let pending = ManagementFuncJobState::get_pending(ctx, small_odd_lego_id, prototype_id)
-        .await
-        .expect("should get pending")
+        .await?
         .expect("pending should exist");
 
     assert_eq!(new_pending, pending);
+
+    Ok(())
 }

@@ -12,7 +12,6 @@ use axum::{
     },
 };
 use dal::{
-    AttributeValueId,
     KeyPairError,
     func::authoring::FuncAuthoringError,
     prop::PropError,
@@ -35,14 +34,10 @@ pub mod upgrade_components;
 pub enum Error {
     #[error("action error: {0}")]
     Action(#[from] dal::action::ActionError),
-    #[error("attribute $source: {0} has extra fields: {1}")]
-    AttributeSourceHasExtraFields(serde_json::Value, serde_json::Value),
-    #[error("invalid attribute $source: {0}")]
-    AttributeSourceInvalid(serde_json::Value),
+    #[error("attributes error: {0}")]
+    Attributes(#[from] dal::attribute::attributes::Error),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] dal::attribute::value::AttributeValueError),
-    #[error("attribute value {0} not from component {1}")]
-    AttributeValueNotFromComponent(AttributeValueId, ComponentId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("component error: {0}")]
@@ -67,16 +62,12 @@ pub enum Error {
     SchemaVariantUpgradeSkipped,
     #[error("serde json error: {0}")]
     SerdeJsonError(#[from] serde_json::Error),
-    #[error("source component not found: {0}")]
-    SourceComponentNotFound(String),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("component upgrade skipped due to running or dispatched actions")]
     UpgradeSkippedDueToActions,
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
-    #[error("ws event error: {0}")]
-    WsEvent(#[from] dal::WsEventError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -84,10 +75,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let status_code = match self {
-            Error::AttributeSourceHasExtraFields(..)
-            | Error::AttributeSourceInvalid(..)
-            | Error::NoValueToSet(..)
-            | Error::SourceComponentNotFound(..) => StatusCode::BAD_REQUEST,
+            Error::NoValueToSet(..) => StatusCode::BAD_REQUEST,
             Error::SchemaVariantUpgradeSkipped | Error::UpgradeSkippedDueToActions => {
                 StatusCode::NOT_MODIFIED
             }
