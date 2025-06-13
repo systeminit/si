@@ -83,30 +83,46 @@
         </InstructiveVormInput>
       </div>
       <template v-if="showGrid">
-        <div
-          ref="scrollRef"
-          class="scrollable tilegrid grow"
-          @scroll="onScroll"
-          @scrollend="fixContextMenuAfterScroll"
-        >
-          <ComponentGridTile
-            v-for="(component, index) in componentVirtualItemsList"
-            ref="componentGridTileRefs"
-            :key="filteredComponents[component.index]!.id"
-            :data-index="index"
-            :class="clsx(tileClasses(component.index))"
-            :component="filteredComponents[component.index]!"
-            @mouseenter="hover(component.index)"
-            @mouseleave="unhover(component.index)"
-            @click.stop.left="
-              (e) =>
-                componentClicked(e, filteredComponents[component.index]!.id)
-            "
-            @click.stop.right="
-              (e) =>
-                componentClicked(e, filteredComponents[component.index]!.id)
-            "
-          />
+        <div ref="scrollRef" class="scrollable" style="overflow-anchor: none">
+          <div
+            :style="{
+              ['overflow-anchor']: 'none',
+              height: `${virtualListHeight}px`,
+              width: '100%',
+              position: 'relative',
+            }"
+          >
+            <div
+              v-for="(component, index) in componentVirtualItemsList"
+              :key="filteredComponents[component.index]!.id"
+              :style="{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: `50px`,
+                transform: `translateY(${component.start}px)`,
+              }"
+            >
+              <ComponentGridTile
+                ref="componentGridTileRefs"
+                :key="filteredComponents[component.index]!.id"
+                :data-index="index"
+                :class="clsx(tileClasses(component.index))"
+                :component="filteredComponents[component.index]!"
+                @mouseenter="hover(component.index)"
+                @mouseleave="unhover(component.index)"
+                @click.stop.left="
+                (e) =>
+                  componentClicked(e, filteredComponents[component.index]!.id)
+              "
+                @click.stop.right="
+                (e) =>
+                  componentClicked(e, filteredComponents[component.index]!.id)
+              "
+              />
+            </div>
+          </div>
           <EmptyState
             v-if="
               componentList.length === 0 && componentListRaw.isSuccess.value
@@ -200,6 +216,7 @@
 import {
   computed,
   inject,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   provide,
@@ -492,15 +509,16 @@ const virtualizerOptions = computed(() => {
     // https://tanstack.com/virtual/latest/docs/api/virtualizer#lanes
     // Our grid is based on a minimum 250px width tile... so how many tiles can we fit?
     // thats the value of `virtualizerLanes`
-    lanes: virtualizerLanes.value,
     getScrollElement: () => scrollRef.value!,
-    estimateSize: () => 200,
-    overscan: 3,
+    estimateSize: () => 232.4,
+    overscan: 1,
   };
   return options;
 });
 
 const virtualList = useVirtualizer(virtualizerOptions);
+
+const virtualListHeight = computed(() => virtualList.value.getTotalSize());
 
 const componentVirtualItemsList = computed(() =>
   virtualList.value.getVirtualItems(),
