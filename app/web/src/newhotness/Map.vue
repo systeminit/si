@@ -116,7 +116,6 @@ import {
   onMounted,
   reactive,
   ref,
-  unref,
   watch,
 } from "vue";
 import ELK from "elkjs/lib/elk.bundled.js";
@@ -132,7 +131,11 @@ import {
   ComponentInList,
   EntityKind,
 } from "@/workers/types/entity_kind_types";
-import { bifrost, bifrostList, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import {
+  bifrostList,
+  useMakeArgs,
+  useMakeKey,
+} from "@/store/realtime/heimdall";
 import { SelectionsInQueryString } from "./Workspace.vue";
 import { KeyDetails } from "./logic_composables/emitters";
 import { assertIsDefined, Context, ExploreContext } from "./types";
@@ -150,8 +153,8 @@ const componentsById = computed<Record<ComponentId, ComponentInList>>(() => {
   return props.components.reduce((obj, component) => {
     obj[component.id] = component;
     return obj;
-  }, {} as Record<ComponentId, ComponentInList>)
-})
+  }, {} as Record<ComponentId, ComponentInList>);
+});
 
 const componentContextMenuRef =
   ref<InstanceType<typeof ComponentContextMenu>>();
@@ -397,10 +400,9 @@ const connections = useQuery<IncomingConnections[]>({
       // this sets the component from the URL querystring on load, and then doesn't re-enter
       if (fillDefault.value) {
         nextTick(() => {
-          const c = d.find(
-            (c) => c.id === fillDefault.value,
-          );
+          const c = d.find((c) => c.id === fillDefault.value);
           if (c && c.id) {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             selectComponent(componentsById.value[c.id]!);
           }
           fillDefault.value = undefined;
@@ -408,8 +410,7 @@ const connections = useQuery<IncomingConnections[]>({
       }
 
       return d;
-    } else
-      return [];
+    } else return [];
   },
 });
 
@@ -423,7 +424,6 @@ const mapData = computed(() => {
 
   const matchingIds: string[] = [];
   if (searchString?.value && searchString.value.trim().length > 0) {
-
     const fzf = new Fzf(Object.values(componentsById.value), {
       casing: "case-insensitive",
       selector: (c) =>
@@ -439,6 +439,7 @@ const mapData = computed(() => {
     if (searchString?.value && !matchingIds.includes(c.id)) return;
 
     nodes.add(c.id);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     components[c.id] = componentsById.value[c.id]!;
     c.connections.forEach((e) => {
       // incoming, so "to" is me, always start with "me"
@@ -514,10 +515,7 @@ const clickedNode = (e: MouseEvent, n: layoutNode) => {
   }
 };
 
-const selectComponent = (
-  component: ComponentInList,
-  componentEl?: Element,
-) => {
+const selectComponent = (component: ComponentInList, componentEl?: Element) => {
   selectedComponent.value = component;
 
   nextTick(() => {

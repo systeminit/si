@@ -387,7 +387,6 @@ export interface BifrostIncomingConnections {
   connections: Connection[];
 }
 
-
 export type Connection =
   | {
       kind: "management";

@@ -76,9 +76,7 @@ const atLeastOneNormalComponent = computed(() =>
 const component = computed(() =>
   components.value.length === 1 ? components.value[0] : undefined,
 );
-const schemaVariantId = computed(
-  () => component.value?.schemaVariantId ?? "",
-);
+const schemaVariantId = computed(() => component.value?.schemaVariantId ?? "");
 const actionPrototypes = computed(
   () => actionPrototypesQuery.data.value?.actionPrototypes ?? [],
 );

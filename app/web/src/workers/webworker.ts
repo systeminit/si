@@ -63,7 +63,6 @@ import {
   CategoryVariant,
   EddaComponent,
   IncomingConnections,
-  IncomingConnectionsList,
   EddaSchemaVariantCategories,
   EntityKind,
   PossibleConnection,
@@ -449,7 +448,7 @@ const bustCacheAndReferences = (
   bustOrQueue(workspaceId, changeSetId, kind, id, skipQueue);
 
   // if we know it doesnt have references, dont even run the sql
-  if (!HAVE_REFERENCES.includes(kind)) return
+  if (!HAVE_REFERENCES.includes(kind)) return;
 
   // bust everyone who refers to me
   const sql = `
@@ -1624,9 +1623,9 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     undefined,
   );
 
-  const listData = JSON.parse(list) as IncomingConnections[]
+  const listData = JSON.parse(list) as IncomingConnections[];
   await Promise.all(
-    listData.flatMap(c =>
+    listData.flatMap((c) =>
       updateComputed(
         workspaceId,
         changeSetId,
@@ -1884,7 +1883,7 @@ const HAVE_REFERENCES = [
   EntityKind.Component,
   EntityKind.ViewList,
   EntityKind.SchemaVariantCategories,
-]
+];
 const getReferences = (
   atomDoc: AtomDocument,
   workspaceId: string,
@@ -1894,9 +1893,7 @@ const getReferences = (
   indexChecksum?: string,
   followComputed?: boolean,
 ) => {
-  if (
-    !HAVE_REFERENCES.includes(kind)
-  ) {
+  if (!HAVE_REFERENCES.includes(kind)) {
     return [atomDoc, false];
   }
 
@@ -2104,7 +2101,7 @@ const getReferences = (
     };
     span.end();
     return [list, hasReferenceError];
-  /* } else if (
+    /* } else if (
     kind === EntityKind.ComponentList ||
     kind === EntityKind.ViewComponentList
   ) {
@@ -2350,7 +2347,10 @@ const getReferences = (
 };
 
 // TODO add the ViewList to Listable, but not right now, it will blow up the old UI typing
-type Listable = EntityKind.ComponentList | EntityKind.ViewComponentList | EntityKind.IncomingConnectionsList;
+type Listable =
+  | EntityKind.ComponentList
+  | EntityKind.ViewComponentList
+  | EntityKind.IncomingConnectionsList;
 type Gettable = Exclude<EntityKind, Listable>;
 const getList = (
   _workspaceId: string,
@@ -2539,7 +2539,7 @@ const getSchemaMembers = (
   changeSetId: ChangeSetId,
   indexChecksum?: string,
 ): string => {
-const sql = `
+  const sql = `
     select
       json_group_array(jsonb_extract(CAST(data as text), '$'))
     from
@@ -2567,15 +2567,10 @@ const sql = `
   });
   const end = Date.now();
 
-  debug(
-    "❓ sql getSchemaMembers",
-    `[${end - start}ms]`,
-    atomData,
-  );
-  if (atomData.length === 0) return ""
-  else
-    return oneInOne(atomData) as string;
-}
+  debug("❓ sql getSchemaMembers", `[${end - start}ms]`, atomData);
+  if (atomData.length === 0) return "";
+  else return oneInOne(atomData) as string;
+};
 
 /**
  * NOTE: getMany returns Edda types, not Bifrost types! Because it does not follow references

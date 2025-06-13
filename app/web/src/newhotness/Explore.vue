@@ -234,9 +234,7 @@ import {
 } from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
-  BifrostComponentList,
   BifrostViewList,
-  ViewComponentList,
   EntityKind,
   ComponentInList,
 } from "@/workers/types/entity_kind_types";
@@ -390,9 +388,7 @@ const componentListRaw = useQuery<ComponentInList[]>({
   },
 });
 
-const componentList = computed(
-  () => componentListRaw.data.value ?? [],
-);
+const componentList = computed(() => componentListRaw.data.value ?? []);
 const componentsById = computed(() =>
   Object.fromEntries(componentList.value.map((c) => [c.id, c])),
 );
@@ -709,7 +705,10 @@ const onU = (e: KeyDetails["u"]) => {
     const targetComponent = filteredComponents.find(
       (comp) => comp.id === interactionTargetComponentId.value,
     );
-    if (targetComponent && upgrade(targetComponent.schemaId, targetComponent.schemaVariantId)) {
+    if (
+      targetComponent &&
+      upgrade(targetComponent.schemaId, targetComponent.schemaVariantId)
+    ) {
       componentContextMenuRef.value?.componentUpgrade([
         interactionTargetComponentId.value,
       ]);
@@ -742,7 +741,10 @@ const onR = (e: KeyDetails["r"]) => {
     const targetComponent = filteredComponents.find(
       (comp) => comp.id === interactionTargetComponentId.value,
     );
-    if (targetComponent && upgrade(targetComponent.schemaId, targetComponent.schemaVariantId)) {
+    if (
+      targetComponent &&
+      upgrade(targetComponent.schemaId, targetComponent.schemaVariantId)
+    ) {
       componentContextMenuRef.value?.componentsRestore([
         interactionTargetComponentId.value,
       ]);

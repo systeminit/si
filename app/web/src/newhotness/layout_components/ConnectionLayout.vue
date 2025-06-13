@@ -47,8 +47,8 @@
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import { themeClasses } from "@si/vue-lib/design-system";
-import { assertIsDefined, Context } from "../types";
 import { inject } from "vue";
+import { assertIsDefined, Context } from "../types";
 
 export interface SimpleConnection {
   key: string;
@@ -59,7 +59,6 @@ export interface SimpleConnection {
 
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined<Context>(ctx);
-
 
 const props = defineProps<{
   label: string;

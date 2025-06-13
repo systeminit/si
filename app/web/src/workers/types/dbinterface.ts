@@ -75,10 +75,7 @@ export interface DBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): Record<ComponentId, string>;
-  getSchemaMembers(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): string;
+  getSchemaMembers(workspaceId: string, changeSetId: ChangeSetId): string;
   get(
     workspaceId: string,
     changeSetId: ChangeSetId,

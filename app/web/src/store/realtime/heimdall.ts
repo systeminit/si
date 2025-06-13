@@ -239,7 +239,12 @@ export const getSchemaMembers = async (args: {
   );
   const end = Date.now();
   // eslint-disable-next-line no-console
-  console.log("🌈 bifrost query getSchemaMembers", end - start, "ms", JSON.parse(schemaMembers));
+  console.log(
+    "🌈 bifrost query getSchemaMembers",
+    end - start,
+    "ms",
+    JSON.parse(schemaMembers),
+  );
   if (schemaMembers) return reactive(JSON.parse(schemaMembers));
   else return [];
 };
@@ -300,12 +305,7 @@ const workspaceId = computed(() => {
 
 // this is for the old world!
 export const makeKey = (kind: string, id?: string) => {
-  return [
-    workspaceId.value,
-    changeSetId.value,
-    kind,
-    id ?? workspaceId.value,
-  ];
+  return [workspaceId.value, changeSetId.value, kind, id ?? workspaceId.value];
 };
 
 export const prune = async (workspaceId: string, changeSetId: string) => {
@@ -366,9 +366,7 @@ export const useMakeKey = () => {
     id?: ComputedRef<string> | string,
     ...extra: [...T]
   ) =>
-    computed<
-      [string?, string?, (ComputedRef<K> | K)?, string?, ...T]
-    >(() => [
+    computed<[string?, string?, (ComputedRef<K> | K)?, string?, ...T]>(() => [
       ctx?.workspacePk.value,
       ctx?.changeSetId.value,
       kind as K,

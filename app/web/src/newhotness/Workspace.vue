@@ -104,6 +104,7 @@ import {
   OutgoingCounts,
   SchemaMembers,
 } from "@/workers/types/entity_kind_types";
+import { SchemaId } from "@/api/sdf/dal/schema";
 import Explore from "./Explore.vue";
 import ComponentDetails from "./ComponentDetails.vue";
 import FuncRunDetails from "./FuncRunDetails.vue";
@@ -114,7 +115,6 @@ import {
   startWindowResizeEmitter,
 } from "./logic_composables/emitters";
 import { tokensByWorkspacePk } from "./logic_composables/tokens";
-import { SchemaId } from "@/api/sdf/dal/schema";
 
 const props = defineProps<{
   workspacePk: string;
@@ -189,9 +189,9 @@ const schemaQuery = useQuery<Record<SchemaId, SchemaMembers>>({
   queryFn: async () => {
     const data = await heimdall.getSchemaMembers(args.value);
     return data.reduce((obj, s) => {
-      obj[s.id] = s
-      return obj
-    }, {} as Record<SchemaId, SchemaMembers>)
+      obj[s.id] = s;
+      return obj;
+    }, {} as Record<SchemaId, SchemaMembers>);
   },
 });
 

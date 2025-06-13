@@ -174,9 +174,7 @@
     <div class="right flex flex-col">
       <CollapsingFlexItem>
         <template #header>
-          <PillCounter
-            :count="(component.inputCount ?? 0) + (outgoing ?? 0)"
-          />
+          <PillCounter :count="(component.inputCount ?? 0) + (outgoing ?? 0)" />
           Connections
         </template>
         <ConnectionsPanel
@@ -257,7 +255,14 @@ import {
   themeClasses,
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
-import { computed, ref, nextTick, onMounted, onBeforeUnmount, inject } from "vue";
+import {
+  computed,
+  ref,
+  nextTick,
+  onMounted,
+  onBeforeUnmount,
+  inject,
+} from "vue";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";

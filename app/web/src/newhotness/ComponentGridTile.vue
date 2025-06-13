@@ -179,12 +179,14 @@ const outgoing = computed(
 const upgrade = useUpgrade();
 const schemaVariantId = computed(() => {
   if (typeof props.component.schemaVariantId === "string") {
-    return props.component.schemaVariantId
+    return props.component.schemaVariantId;
   } else {
-    return props.component.schemaVariantId.id
+    return props.component.schemaVariantId.id;
   }
-})
-const canBeUpgraded = computed(() => upgrade(props.component.schemaId, schemaVariantId.value))
+});
+const canBeUpgraded = computed(() =>
+  upgrade(props.component.schemaId, schemaVariantId.value),
+);
 
 const qualificationSummary = computed(() => {
   if (props.component.qualificationTotals.failed > 0) return "failure";
