@@ -54,6 +54,7 @@ import {
   QueryKey,
   Ragnarok,
   RainbowFn,
+  UpdateFn,
 } from "./types/dbinterface";
 import {
   BifrostComponent,
@@ -443,7 +444,13 @@ const bustCacheAndReferences = (
   kind: EntityKind,
   id: string,
   skipQueue = false,
+  force = false,
 ) => {
+
+  // don't bust lists in the whole, we're using atomUpdatedFn to update the contents of lists
+  // unless its a hammer b/c i am missing a list
+  if (LISTABLE.includes(kind) && !force) return;
+
   // bust me
   bustOrQueue(workspaceId, changeSetId, kind, id, skipQueue);
 
@@ -558,13 +565,14 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
   updateChangeSetWithNewIndex(msg.atom);
   await removeOldIndex();
 
-  if (COMPUTED_KINDS.includes(msg.atom.kind)) {
+  if (COMPUTED_KINDS.includes(msg.atom.kind) || LISTABLE_ITEMS.includes(msg.atom.kind)) {
     debug("🔨 HAMMER: Updating computed for:", msg.atom.kind, msg.atom.id);
-    updateComputed(
+    postProcess(
       msg.atom.workspaceId,
       msg.atom.changeSetId,
       msg.atom.kind,
       msg.data,
+      msg.atom.id,
       indexChecksum,
     );
   }
@@ -581,6 +589,8 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     msg.atom.changeSetId,
     msg.atom.kind,
     msg.atom.id,
+    false,
+    true
   );
 };
 
@@ -908,6 +918,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
     let needToInsertMTM = false;
     let bustCache = false;
     let doc;
+    let removed = false;
     if (atom.fromChecksum === "0") {
       if (!exists) {
         // if i already have it, this is a NOOP
@@ -926,6 +937,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
         span.setAttribute("removeAtom", true);
         removeAtom(indexChecksum, atom);
         bustCache = true;
+        removed = true;
       } else {
         debug("🔧 Atom already removed (noop):", atom.kind, atom.id);
       }
@@ -980,14 +992,16 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
     }
     span.end();
 
-    if (doc && COMPUTED_KINDS.includes(atom.kind)) {
+    if ((COMPUTED_KINDS.includes(atom.kind) || LISTABLE_ITEMS.includes(atom.kind))) {
       debug("🔧 Updating computed for:", atom.kind, atom.id);
-      updateComputed(
+      postProcess(
         atom.workspaceId,
         atom.changeSetId,
         atom.kind,
+        atom.id,
         doc,
         indexChecksum,
+        removed,
       );
     }
 
@@ -1181,7 +1195,7 @@ const mjolnir = (
     if (exists.length === 0) {
       return mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
     } // if i have it, bust!
-    else bustCacheAndReferences(workspaceId, changeSetId, kind, id);
+    else bustCacheAndReferences(workspaceId, changeSetId, kind, id, false, true);
   });
 };
 
@@ -1594,17 +1608,20 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
   });
 
   await Promise.all(
-    trees.map((tree) =>
-      updateComputed(
+    trees.map((tree) => {
+      const doc = decodeDocumentFromDB(tree[0] as ArrayBuffer) as AttributeTree;
+      return postProcess(
         workspaceId,
         changeSetId,
         EntityKind.AttributeTree,
-        decodeDocumentFromDB(tree[0] as ArrayBuffer) as AttributeTree,
+        doc,
+        doc.id,
         undefined,
         false,
         false,
-      ),
-    ),
+        false,
+      );
+    }),
   );
   // bust everything all at once on cold start
   await bustCacheAndReferences(
@@ -1612,6 +1629,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     changeSetId,
     EntityKind.PossibleConnections,
     workspaceId,
+    true,
     true,
   );
 
@@ -1626,12 +1644,14 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
   const listData = JSON.parse(list) as IncomingConnections[];
   await Promise.all(
     listData.flatMap((c) =>
-      updateComputed(
+      postProcess(
         workspaceId,
         changeSetId,
         EntityKind.IncomingConnections,
         c,
+        c.id,
         undefined,
+        false,
         false,
         false,
       ),
@@ -1644,27 +1664,93 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     EntityKind.OutgoingConnections,
     workspaceId,
     true,
+    true,
   );
 };
 
-const updateComputed = (
+const postProcess = (
   workspaceId: string,
   changeSetId: string,
   kind: EntityKind,
   doc: AtomDocument,
+  id: Id,
   indexChecksum?: string,
+  removed = false,
   bust = true,
   followReferences = true,
 ) => {
+
+  /** TODO
+   * if we're adding a component to a view, and the patch for the
+   * component comes before the patch for the list, we won't know
+   * to add the component to the view
+   * This also means DEFAULT view could fail to be populated now
+   */
+  if (LISTABLE_ITEMS.includes(kind)) {
+    // push updates over the thread boundary
+    const listIds: string[] = [];
+    if (kind === EntityKind.ComponentInList) {
+      const sql = `
+      select
+        viewId
+      FROM
+        (select
+          id as viewId,
+          json_each.value as ref
+        from
+          atoms
+          json_each(jsonb_extract(CAST(atoms.data as text), '$.components'))
+          inner join index_mtm_atoms mtm
+            ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+          inner join indexes ON mtm.index_checksum = indexes.checksum
+        ${
+          indexChecksum
+            ? ""
+            : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+        }
+        where
+          ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+          AND
+          atoms.kind = ?
+        )
+      WHERE
+        ref ->> '$.id' = ?
+      `
+        const bind = [
+          indexChecksum ?? changeSetId,
+          EntityKind.ViewComponentList,
+          id,
+        ];
+        const rows = db.exec({
+          sql,
+          bind,
+          returnValue: "resultRows",
+        });
+        rows.forEach(r => {
+          listIds.push(r[0] as string)
+        })
+    }
+
+    atomUpdatedFn(
+      workspaceId,
+      changeSetId,
+      kind,
+      id,
+      doc,
+      listIds,
+      removed,
+    )
+  }
+
   if (!COMPUTED_KINDS.includes(kind)) return;
 
-  if (followReferences) {
+  if (followReferences && !removed) {
     const result = getReferences(
       doc,
       workspaceId,
       changeSetId,
       kind,
-      doc.id,
+      id,
       indexChecksum,
       false,
     );
@@ -2346,6 +2432,8 @@ const getReferences = (
   }
 };
 
+const LISTABLE_ITEMS = [EntityKind.ComponentInList, EntityKind.IncomingConnections];
+const LISTABLE = [EntityKind.ComponentList, EntityKind.ViewComponentList, EntityKind.IncomingConnectionsList];
 // TODO add the ViewList to Listable, but not right now, it will blow up the old UI typing
 type Listable =
   | EntityKind.ComponentList
@@ -2661,6 +2749,7 @@ let bearerToken: string;
 let inFlight: RainbowFn;
 let returned: RainbowFn;
 let lobbyExitFn: LobbyExitFn;
+let atomUpdatedFn: UpdateFn;
 
 const dbInterface: DBInterface = {
   setBearer(token) {
@@ -2847,6 +2936,9 @@ const dbInterface: DBInterface = {
   },
   addListenerReturned(cb: RainbowFn) {
     returned = cb;
+  },
+  addAtomUpdated(cb: UpdateFn) {
+    atomUpdatedFn = cb;
   },
 
   addListenerLobbyExit(cb: LobbyExitFn) {

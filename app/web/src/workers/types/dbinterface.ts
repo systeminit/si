@@ -33,6 +33,7 @@ export type OutgoingConnections = DefaultMap<
   Record<string, Connection>
 >;
 
+export type UpdateFn = (workspaceId: string, changeSetId: string, kind: EntityKind, id: string, doc: AtomDocument, listIds: string[], removed: boolean) => void;
 export type RainbowFn = (changeSetId: ChangeSetId, label: string) => void;
 export type LobbyExitFn = (workspacePk: string, changeSetId: string) => void;
 
@@ -107,6 +108,7 @@ export interface DBInterface {
   addListenerInFlight(fn: RainbowFn): void;
   addListenerReturned(fn: RainbowFn): void;
   addListenerLobbyExit(fn: LobbyExitFn): void;
+  addAtomUpdated(fn: UpdateFn): void;
   atomChecksumsFor(
     changeSetId: ChangeSetId,
   ): Promise<Record<QueryKey, Checksum>>;

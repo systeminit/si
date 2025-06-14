@@ -16,10 +16,13 @@ import {
   LobbyExitFn,
   Listable,
   Gettable,
+  AtomDocument,
+  UpdateFn,
 } from "@/workers/types/dbinterface";
 import {
   Connection,
   EntityKind,
+  IncomingConnections,
   Prop,
   SchemaMembers,
 } from "@/workers/types/entity_kind_types";
@@ -86,6 +89,63 @@ const returned = (changeSetId: ChangeSetId, label: string) => {
   rainbow.remove(changeSetId, label);
 };
 db.addListenerReturned(Comlink.proxy(returned));
+
+const updateCache = (
+  queryKey: string[],
+  id:string,
+  data: AtomDocument,
+  removed = false,
+  add = false,
+) => {
+     // there is always more data attached, but we only care about accessing the ID
+    // so thats all we need to type!
+    const cachedData = queryClient.getQueryData(queryKey) as {id: string}[]
+    if (!cachedData) return;
+    // TODO removal
+    const idx = cachedData.findIndex(d => d.id === id)
+    let dirty = false;
+    if (idx !== -1) {
+      if (removed)
+        cachedData.splice(idx, 1)
+      else
+        cachedData.splice(idx, 1, data)
+      dirty = true
+    } else if (add) {
+      // added to the list
+      cachedData.push(data)
+      dirty = true
+    }
+    if (dirty) {
+      queryClient.setQueryData(queryKey, cachedData);
+      queryClient.invalidateQueries({ queryKey });
+    }
+}
+
+const atomUpdated: UpdateFn = (
+  workspaceId: string,
+  changeSetId: string,
+  kind: EntityKind,
+  id: string,
+  data: AtomDocument,
+  listIds: string[],
+  removed: boolean,
+) => {
+  if (kind === EntityKind.IncomingConnections) {
+    const queryKey = [workspaceId, changeSetId, EntityKind.IncomingConnectionsList, workspaceId];
+    updateCache(queryKey, id, data, removed, true)
+  } else if (kind === EntityKind.ComponentInList) {
+    const queryKey = [workspaceId, changeSetId, EntityKind.ComponentList, workspaceId];
+    updateCache(queryKey, id, data, removed, true)
+    if (listIds.length > 0) {
+      listIds.forEach((viewId) => {
+        const queryKey = [workspaceId, changeSetId, EntityKind.ViewComponentList, viewId];
+        updateCache(queryKey, id, removed, data)
+      })
+    }
+  }
+
+}
+db.addAtomUpdated(Comlink.proxy(atomUpdated))
 
 const lobbyExit: LobbyExitFn = async (workspaceId, changeSetId) => {
   // Only navigate away from lobby if user is currently in the lobby

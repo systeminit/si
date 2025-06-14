@@ -15,6 +15,7 @@ import { DefaultMap } from "@/utils/defaultmap";
 
 export enum EntityKind {
   Component = "Component",
+  ComponentInList = "ComponentInList",
   View = "View",
   ViewList = "ViewList",
   ComponentList = "ComponentList",
