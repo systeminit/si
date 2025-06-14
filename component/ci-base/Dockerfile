@@ -32,6 +32,7 @@ RUN set -eux; \
         containerd.io \
         docker-buildx-plugin \
         docker-compose-plugin \
+        wget \
     ; \
     rm -rf /var/lib/apt/lists/*
 
@@ -62,17 +63,13 @@ RUN apt-get update; \
     ; \
     rm -rf /var/lib/apt/lists/*
 
-RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
-    && apt-get update \
-    && apt-get install -y google-chrome-stable libxss1 \
-      --no-install-recommends \
-
 RUN set -eux; \
     useradd --create-home --shell /bin/bash --uid "${USER_UID}" ci; \
     echo 'ci ALL=(ALL:ALL) NOPASSWD: ALL' >/etc/sudoers.d/ci; \
     mkdir -p /workdir; \
     chown -R ci:ci /workdir
+
+RUN groupadd -f docker && usermod -aG docker ci
 
 ENV USER=ci
 USER ci:ci
