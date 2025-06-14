@@ -1,0 +1,9 @@
+load("@prelude-si//:macros.bzl", "mise_install")
+
+mise_install(
+    name = "rust_compiler",
+    packages = [
+        "rust@1.87.0",
+    ],
+    visibility = ["PUBLIC"],
+)

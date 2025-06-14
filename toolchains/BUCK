@@ -11,12 +11,14 @@ load(
     "remote_test_execution_toolchain",
 )
 load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
+load("@prelude-si//:rust_toolchain.bzl", "mise_rust_toolchain")
 load("@prelude-si//artifact:toolchain.bzl", "artifact_toolchain")
 load("@prelude-si//build_context:toolchain.bzl", "build_context_toolchain")
 load("@prelude-si//deno:toolchain.bzl", "deno_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
 load("@prelude-si//e2e:toolchain.bzl", "e2e_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
+load("@prelude-si//mise:toolchain.bzl", "mise_toolchain")
 load("@prelude-si//nix:toolchain.bzl", "nix_toolchain")
 load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
 load("@prelude-si//python:toolchain.bzl", "si_python_toolchain")
@@ -87,6 +89,49 @@ system_rust_toolchain(
     ],
 )
 
+mise_rust_toolchain(
+    name = "mise_rust_release",
+    mise_install = "root//example/mise:rust_compiler",
+    default_edition = "2024",
+    clippy_toml = "root//:clippy.toml",
+    visibility = ["PUBLIC"],
+    rustc_flags = [
+        "-Copt-level=3",
+        # https://doc.rust-lang.org/cargo/reference/profiles.html#debug
+        "-Cdebuginfo=line-tables-only",
+        # https://doc.rust-lang.org/cargo/reference/profiles.html#strip
+        "-Cstrip=none",
+        "-Cdebug-assertions=false",
+        "-Coverflow-checks=false",
+        "-Clto=false",
+        "-Ccodegen-units=16",
+    ],
+)
+
+mise_rust_toolchain(
+    name = "mise_rust_debug",
+    mise_install = "root//example/mise:rust_compiler",
+    default_edition = "2024",
+    clippy_toml = "root//:clippy.toml",
+    visibility = ["PUBLIC"],
+    rustc_flags = [
+        "-Copt-level=0",
+        "-Cdebuginfo=full",
+        "-Ccodegen-units=256",
+        "-Cdebug-assertions=true",
+        "-Coverflow-checks=true",
+    ],
+)
+
+toolchain_alias(
+    name = "mise_rust",
+    actual = select({
+        "root//config:build_debug": ":mise_rust_debug",
+        "root//config:build_release": ":mise_rust_release",
+    }),
+    visibility = ["PUBLIC"],
+)
+
 toolchain_alias(
     name = "rust",
     actual = select({
@@ -123,6 +168,11 @@ artifact_toolchain(
 
 git_toolchain(
     name = "git",
+    visibility = ["PUBLIC"],
+)
+
+mise_toolchain(
+    name = "mise",
     visibility = ["PUBLIC"],
 )
 
