@@ -39,6 +39,7 @@ import {
   AtomDocument,
   AtomMessage,
   AtomMeta,
+  BroadcastMessage,
   BustCacheFn,
   CategorizedPossibleConnections,
   Checksum,
@@ -91,6 +92,8 @@ import {
   processMjolnirQueue,
   processPatchQueue,
 } from "./mjolnir_queue";
+
+const WORKER_LOCK_KEY = "BIFROST_LOCK";
 
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
 if (!otelEndpoint) otelEndpoint = "http://localhost:8080";
@@ -147,15 +150,18 @@ const getDbName = (testing: boolean) => {
 
 const start = async (sqlite3: Sqlite3Static, testing: boolean) => {
   const dbname = getDbName(testing);
-  db =
-    "opfs" in sqlite3
-      ? new sqlite3.oo1.OpfsDb(`/${dbname}`)
-      : new sqlite3.oo1.DB(`/${dbname}`, "c");
-  debug(
-    "opfs" in sqlite3
-      ? `OPFS is available, created persisted database at ${db.filename}`
-      : `OPFS is not available, created transient database ${db.filename}`,
-  );
+
+  if ("opfs" in sqlite3) {
+    const poolUtil = await sqlite3.installOpfsSAHPoolVfs({});
+    db = new poolUtil.OpfsSAHPoolDb(`/${dbname}`);
+    debug(
+      `OPFS is available, created persisted database in SAH Pool VFS at ${db.filename}`,
+    );
+  } else {
+    db = new sqlite3.oo1.DB(`/${dbname}`, "c");
+    debug(`OPFS is not available, created transient database ${db.filename}`);
+  }
+
   db.exec({ sql: "PRAGMA foreign_keys = ON;" });
 };
 
@@ -263,13 +269,13 @@ const ensureTables = async (testing: boolean) => {
 };
 
 // NOTE: this is just for external test usage, do not use this within this file
-const exec = (
+const exec = async (
   opts: ExecBaseOptions &
     ExecRowModeArrayOptions &
     ExecReturnResultRowsOptions & {
       sql: FlexibleString;
     },
-): SqlValue[][] => db.exec(opts);
+): Promise<SqlValue[][]> => db.exec(opts);
 
 /**
  * A few small utilities
@@ -614,7 +620,7 @@ const insertAtomMTM = async (atom: Atom, indexChecksum: Checksum) => {
       ;`,
       bind,
     });
-  } catch (err) {
+  } catch {
     // should be resolved with the previous SELECT
     // even with the unique constraint ON CONFLICT REPLACE
     // if the checksum is identical, it will error
@@ -1074,7 +1080,7 @@ const mjolnirBulk = async (
   let req: undefined | AxiosResponse<BulkResponse, any>;
 
   objs.forEach((o) => {
-    inFlight(changeSetId, `${o.kind}.${o.id}`);
+    inFlightFn(changeSetId, `${o.kind}.${o.id}`);
   });
 
   await tracer.startActiveSpan(`GET ${desc}`, async (span) => {
@@ -1131,7 +1137,7 @@ const mjolnirBulk = async (
   };
   // doing this first, by itself, await'd, because its going to make the new index, etc
   // and we dont want that to race across multiple patches
-  returned(
+  returnedFn(
     changeSetId,
     `${first.frontEndObject.kind}.${first.frontEndObject.id}`,
   );
@@ -1152,7 +1158,7 @@ const mjolnirBulk = async (
         },
         data: obj.frontEndObject.data,
       };
-      returned(
+      returnedFn(
         changeSetId,
         `${obj.frontEndObject.kind}.${obj.frontEndObject.id}`,
       );
@@ -1175,7 +1181,7 @@ const mjolnir = async (
 
   maybeMjolnir({ workspaceId, changeSetId, kind, id }, async () => {
     debug("🔨 MJOLNIR FIRING:", atomKey);
-    inFlight(changeSetId, `${kind}.${id}`);
+    inFlightFn(changeSetId, `${kind}.${id}`);
     // NOTE: since we're moving to all weak refs
     // storing the index becomes useful here, we can lookup the
     // checksum we would expect to be returned, and see if we have it already
@@ -1236,7 +1242,7 @@ const mjolnirJob = async (
     }
   });
 
-  returned(changeSetId, `${kind}.${id}`);
+  returnedFn(changeSetId, `${kind}.${id}`);
   hasReturned({
     workspaceId,
     changeSetId,
@@ -1731,7 +1737,7 @@ const updateComputed = async (
   }
 };
 
-const getPossibleConnections = (
+const getPossibleConnections = async (
   _workspaceId: string,
   changeSetId: string,
   destSchemaName: string,
@@ -1781,7 +1787,7 @@ const getPossibleConnections = (
   return categories;
 };
 
-const getOutgoingConnectionsByComponentId = (
+const getOutgoingConnectionsByComponentId = async (
   _workspaceId: string,
   changeSetId: string,
 ) => {
@@ -1848,7 +1854,7 @@ const getComputed = async (
     return atomDoc;
   }
 
-  const connectionsById = getOutgoingConnectionsByComponentId(
+  const connectionsById = await getOutgoingConnectionsByComponentId(
     workspaceId,
     changeSetId,
   );
@@ -2600,14 +2606,46 @@ const getMany = async (
  */
 
 let socket: ReconnectingWebSocket;
-let bustCacheFn: BustCacheFn;
 let bearerToken: string;
 
-let inFlight: RainbowFn;
-let returned: RainbowFn;
+let bustCacheFn: BustCacheFn;
+let inFlightFn: RainbowFn;
+let returnedFn: RainbowFn;
 let lobbyExitFn: LobbyExitFn;
 
+let abortController: AbortController | undefined;
+
 const dbInterface: DBInterface = {
+  async broadcastMessage(_message) {
+    debug("only sharedworker should be sent broadcasts directly");
+  },
+  async receiveBroadcast(message: BroadcastMessage) {
+    if (message.messageKind === "cacheBust") {
+      bustCacheFn(
+        message.arguments.workspaceId,
+        message.arguments.changeSetId,
+        message.arguments.kind,
+        message.arguments.id,
+        true,
+      );
+    } else if (message.messageKind === "listenerInFlight") {
+      inFlightFn(message.arguments.changeSetId, message.arguments.label, true);
+    } else if (message.messageKind === "listenerReturned") {
+      returnedFn(message.arguments.changeSetId, message.arguments.label, true);
+    } else if (message.messageKind === "lobbyExit") {
+      lobbyExitFn(
+        message.arguments.workspaceId,
+        message.arguments.changeSetId,
+        true,
+      );
+    }
+  },
+  registerRemote(_id, _remote) {
+    debug("register remote called in tab worker");
+  },
+  unregisterRemote(_id) {
+    debug("unregister remote called in tab worker");
+  },
   setBearer(token) {
     bearerToken = token;
     let apiUrl: string;
@@ -2716,7 +2754,7 @@ const dbInterface: DBInterface = {
                 "toChecksum:",
                 data.atom.toChecksum,
               );
-              returned(
+              returnedFn(
                 data.atom.changeSetId,
                 `${data.atom.kind}.${data.atom.id}`,
               );
@@ -2760,11 +2798,37 @@ const dbInterface: DBInterface = {
     });
   },
 
-  async initBifrost() {
-    debug("🌈 Initializing Bifrost");
-    await Promise.all([this.initDB(false), this.initSocket()]);
-    await this.migrate(false);
-    debug("🌈 Bifrost initialization complete");
+  async setRemote(_remote: string) {
+    debug("this should only be called on the shared webworker");
+  },
+
+  async initBifrost(gotLockPort: MessagePort) {
+    debug("initializing bifrost in tabWorker");
+    if (abortController) {
+      debug("already initialized bifrost");
+      return;
+    }
+
+    abortController = new AbortController();
+    navigator.locks.request(
+      WORKER_LOCK_KEY,
+      { mode: "exclusive", signal: abortController.signal },
+      async () => {
+        debug("lock acquired! 🌈 Initializing sqlite3 bifrost for real");
+        await Promise.all([this.initDB(false), this.initSocket()]);
+        this.migrate(false);
+        debug("🌈 Bifrost initialization complete");
+
+        gotLockPort.postMessage("lock acquired");
+
+        return new Promise((_, reject) => {
+          abortController?.signal.addEventListener("abort", () => {
+            this.bifrostClose();
+            reject(abortController?.signal.reason);
+          });
+        });
+      },
+    );
   },
 
   async bifrostClose() {
@@ -2788,10 +2852,10 @@ const dbInterface: DBInterface = {
   },
 
   async addListenerInFlight(cb: RainbowFn) {
-    inFlight = cb;
+    inFlightFn = cb;
   },
   async addListenerReturned(cb: RainbowFn) {
-    returned = cb;
+    returnedFn = cb;
   },
 
   async addListenerLobbyExit(cb: LobbyExitFn) {
