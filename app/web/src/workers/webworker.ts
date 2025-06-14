@@ -750,13 +750,14 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
    * Patches are not coming over the wire in any meaningful
    * order, which means they can be inter-dependent e.g. an item in
    * a list can be _after_ the list that wants it.
-   * This causes an unnecessary hammer by the list when it doesn't have
-   * the item.
-   *
-   * We can at least do anything with "list" *after* everything else
-   * Its the 20% that gets us 80% until patches can be ordered by
-   * graph dependency.
+   * This causes an unnecessary hammer by the list when its cache busts
+   * it doesn't have the item on the read.
+   * 
+   * BUT NOW, we're not busting on a list (other than a hammer)
+   * So we can do the lists first, which fixes the add/remove behavior
+   * for postProcessing
    */
+
   const atoms = data.patches
     .map((rawAtom) => {
       const atom: Atom = {
@@ -773,10 +774,26 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
     throw new Error(`Expected index checksum for ${data.meta.toIndexChecksum}`);
   }
 
+  // lists first now
+  const listAtoms = atoms.filter((a) => LISTABLE.includes(a.kind));
+  debug(
+    "📦 Processing list atoms:",
+    listAtoms.length,
+    listAtoms.map(
+      (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
+    ),
+  );
+  // not busting these
+  await Promise.all(
+    listAtoms.map(async (atom) => {
+      return applyPatch(atom, indexChecksum);
+    }),
+  );
+
   // non-list atoms
   // non-connections (e.g. components need to go before connections)
   const nonListAtoms = atoms.filter(
-    (a) => !a.kind.includes("List") && !a.kind.includes("IncomingConnection"),
+    (a) => !LISTABLE.includes(a.kind) && a.kind !== EntityKind.IncomingConnections,
   );
   debug(
     "📦 Processing non-list atoms:",
@@ -791,9 +808,8 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
     }),
   );
 
-  // connections (but NOT lists - avoid double processing IncomingConnectionsList)
   const connectionAtoms = atoms.filter(
-    (a) => a.kind.includes("IncomingConnection") && !a.kind.includes("List"),
+    (a) => a.kind === EntityKind.IncomingConnections,
   );
   debug(
     "📦 Processing connection atoms:",
@@ -808,27 +824,12 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
     }),
   );
 
-  // list items (all lists, including IncomingConnectionsList)
-  const listAtoms = atoms.filter((a) => a.kind.includes("List"));
-  debug(
-    "📦 Processing list atoms:",
-    listAtoms.length,
-    listAtoms.map(
-      (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
-    ),
-  );
-  const listAtomsToBust = await Promise.all(
-    listAtoms.map(async (atom) => {
-      return applyPatch(atom, indexChecksum);
-    }),
-  );
-
   updateChangeSetWithNewIndex(data.meta);
   await removeOldIndex();
 
   debug(
     "🧹 Busting cache for atoms:",
-    atomsToBust.length + connAtomsToBust.length + listAtomsToBust.length,
+    atomsToBust.length + connAtomsToBust.length,
   );
 
   atomsToBust.forEach((atom) => {
@@ -845,17 +846,6 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
   connAtomsToBust.forEach((atom) => {
     if (atom) {
       debug("🧹 Busting cache for connection:", atom.kind, atom.id);
-      bustCacheAndReferences(
-        atom.workspaceId,
-        atom.changeSetId,
-        atom.kind,
-        atom.id,
-      );
-    }
-  });
-  listAtomsToBust.forEach((atom) => {
-    if (atom) {
-      debug("🧹 Busting cache for list:", atom.kind, atom.id);
       bustCacheAndReferences(
         atom.workspaceId,
         atom.changeSetId,
@@ -1680,12 +1670,10 @@ const postProcess = (
   followReferences = true,
 ) => {
 
-  /** TODO
-   * if we're adding a component to a view, and the patch for the
-   * component comes before the patch for the list, we won't know
-   * to add the component to the view
-   * This also means DEFAULT view could fail to be populated now
-   */
+  // NOTE: patch ordering matters for us, we need to have list patched
+  // prior to doing this work
+  // So when we move to streaming patches, we have to do something else
+  // to support adding & removing items from lists
   if (LISTABLE_ITEMS.includes(kind)) {
     // push updates over the thread boundary
     const listIds: string[] = [];
