@@ -1448,6 +1448,7 @@ mod tests {
             this_component: ComponentViewWithGeometry {
                 kind: None,
                 properties: serde_json::json!({"it": "is", "a": "principle", "of": "music", "to": "repeat the theme"}),
+                sources: serde_json::json!({}),
                 geometry: serde_json::json!({"x": "1", "y": "2"}),
                 incoming_connections: serde_json::json!({}),
             },
@@ -1541,6 +1542,7 @@ mod tests {
             this_component: ComponentViewWithGeometry {
                 kind: None,
                 properties: serde_json::json!({"it": "is", "a": "principle", "of": "music", "to": "repeat the theme"}),
+                sources: serde_json::json!({}),
                 geometry: serde_json::json!({"x": "1", "y": "2"}),
                 incoming_connections: serde_json::json!({}),
             },

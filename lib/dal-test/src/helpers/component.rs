@@ -23,6 +23,7 @@ use super::schema::variant::SchemaVariantKey;
 use crate::{
     Result,
     expected::ExpectComponent,
+    helpers::attribute::value,
 };
 
 ///
@@ -125,8 +126,14 @@ pub async fn execute_management_func(
     Ok(())
 }
 
+/// Get the value of the component's domain attribute
+pub async fn domain(ctx: &DalContext, component: impl ComponentKey) -> Result<serde_json::Value> {
+    value::get(ctx, (component, "domain")).await
+}
+
 /// Get the single view id for the component
-pub async fn view_id(ctx: &DalContext, component_id: ComponentId) -> Result<ViewId> {
+pub async fn view_id(ctx: &DalContext, component: impl ComponentKey) -> Result<ViewId> {
+    let component_id = component.lookup_component(ctx).await?;
     let mut geometry_ids = Geometry::list_ids_by_component(ctx, component_id)
         .await?
         .into_iter();

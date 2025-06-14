@@ -274,6 +274,7 @@ type Input = {{
   currentView: string,
   thisComponent: {{
     properties: {this_component_iface},
+    sources: {{ [path: string]: {{ component: string; path: string; func?: string; }} }},
     geometry: {{ [view: string]: Geometry }},
     incomingConnections: {this_incoming_connections},
   }},

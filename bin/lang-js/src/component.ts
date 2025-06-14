@@ -14,6 +14,7 @@ export interface Geometry {
 
 export interface ComponentWithGeometry {
   properties: Record<string, unknown>;
+  sources: Record<string, { component: string; path: string; func?: string }>;
   geometry: { [key: string]: Geometry };
   incomingConnections?: {
     [key: SocketName]: SocketRefAndValue[] | SocketRefAndValue | undefined;

@@ -25,6 +25,7 @@ use super::{
     SocketRef,
 };
 use crate::{
+    AttributePrototype,
     AttributeValue,
     Component,
     ComponentError,
@@ -52,6 +53,18 @@ use crate::{
     WsEventError,
     WsEventResult,
     WsPayload,
+    attribute::{
+        attributes::{
+            AttributeValueIdent,
+            Source,
+        },
+        path::AttributePath,
+        prototype::argument::{
+            AttributePrototypeArgument,
+            value_source::ValueSource,
+        },
+        value::subscription::ValueSubscription,
+    },
     cached_module::{
         CachedModule,
         CachedModuleError,
@@ -65,10 +78,13 @@ use crate::{
             ViewId,
         },
     },
-    func::runner::{
-        FuncRunner,
-        FuncRunnerError,
-        FuncRunnerValueChannel,
+    func::{
+        intrinsics::IntrinsicFunc,
+        runner::{
+            FuncRunner,
+            FuncRunnerError,
+            FuncRunnerValueChannel,
+        },
     },
     implement_add_edge_to,
     layer_db_types::{
@@ -84,6 +100,12 @@ use crate::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ManagementPrototypeError {
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] crate::attribute::prototype::AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(
+        #[from] crate::attribute::prototype::argument::AttributePrototypeArgumentError,
+    ),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] crate::attribute::value::AttributeValueError),
     #[error("cached module error: {0}")]
@@ -171,11 +193,12 @@ pub struct ManagementPrototypeExecution {
     pub managed_component_placeholders: HashMap<String, ComponentId>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ManagedComponent {
     kind: String,
     properties: Option<serde_json::Value>,
+    sources: HashMap<AttributeValueIdent, Source>,
     geometry: HashMap<String, ManagementGeometry>,
     incoming_connections: HashMap<String, SocketRefsAndValues>,
 }
@@ -195,6 +218,56 @@ pub struct SocketRefAndValue {
     #[serde(flatten)]
     socket_ref: SocketRef,
     pub value: Option<serde_json::Value>,
+}
+
+async fn build_sources(
+    ctx: &DalContext,
+    component_id: ComponentId,
+) -> ManagementPrototypeResult<HashMap<AttributeValueIdent, Source>> {
+    let mut sources = HashMap::new();
+    for (dest_av_id, _) in AttributeValue::tree_for_component(ctx, component_id).await? {
+        // Make sure it's a prototype with exactly one subscription argument
+        let Some(prototype_id) = AttributeValue::component_prototype_id(ctx, dest_av_id).await?
+        else {
+            continue;
+        };
+        let mut args =
+            AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
+        if args.len() != 1 {
+            continue;
+        }
+        let Some(apa_id) = args.pop() else {
+            continue;
+        };
+        // Get source component and path if it's a subscription
+        let ValueSource::ValueSubscription(ValueSubscription {
+            attribute_value_id: source_av_id,
+            path,
+        }) = AttributePrototypeArgument::value_source(ctx, apa_id).await?
+        else {
+            continue;
+        };
+        let source_component_id = AttributeValue::component_id(ctx, source_av_id).await?;
+        let AttributePath::JsonPointer(path) = path;
+        let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+        let func = match Func::get_intrinsic_kind_by_id(ctx, func_id).await? {
+            Some(IntrinsicFunc::Identity) => None,
+            _ => Some(func_id.into()),
+        };
+
+        let (_, dest_path) = AttributeValue::path_from_root(ctx, dest_av_id).await?;
+
+        sources.insert(
+            dest_path.into(),
+            Source::Subscription {
+                component: source_component_id.into(),
+                path,
+                keep_existing_subscriptions: None,
+                func,
+            },
+        );
+    }
+    Ok(sources)
 }
 
 async fn build_management_geometry_map(
@@ -284,12 +357,14 @@ impl ManagedComponent {
     ) -> ManagementPrototypeResult<Self> {
         let component = Component::get_by_id(ctx, component_id).await?;
         let properties = component.view(ctx).await?;
+        let sources = build_sources(ctx, component_id).await?;
         let geometry = build_management_geometry_map(ctx, component_id, views).await?;
         let incoming_connections = build_incoming_connections(ctx, component_id).await?;
 
         Ok(Self {
             kind: kind.to_owned(),
             properties,
+            sources,
             geometry,
             incoming_connections,
         })

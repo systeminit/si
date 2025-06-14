@@ -312,7 +312,7 @@ async fn parent_prop_is_map_or_array(ctx: &DalContext, av_id: AttributeValueId) 
 /// The source for a value
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-enum Source {
+pub enum Source {
     // { value: <value> } - set value (null is a valid value to set it to)
     Value(serde_json::Value),
 
@@ -394,9 +394,15 @@ impl TryFrom<ValueOrSourceSpec> for Option<Source> {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, derive_more::From)]
 #[serde(rename_all = "camelCase")]
-struct ComponentIdent(String);
+pub struct ComponentIdent(String);
+
+impl From<ComponentId> for ComponentIdent {
+    fn from(id: ComponentId) -> Self {
+        Self(id.to_string())
+    }
+}
 
 impl ComponentIdent {
     async fn resolve(&self, ctx: &DalContext) -> Result<Option<ComponentId>> {
@@ -423,9 +429,15 @@ impl ComponentIdent {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, derive_more::From)]
 #[serde(rename_all = "camelCase")]
-struct FuncIdent(String);
+pub struct FuncIdent(String);
+
+impl From<FuncId> for FuncIdent {
+    fn from(id: FuncId) -> Self {
+        Self(id.to_string())
+    }
+}
 
 impl FuncIdent {
     #[allow(unused)]
@@ -456,9 +468,15 @@ impl FuncIdent {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, derive_more::From)]
 #[serde(rename = "camelCase")]
 pub struct AttributeValueIdent(String);
+
+impl From<AttributeValueId> for AttributeValueIdent {
+    fn from(id: AttributeValueId) -> Self {
+        Self(id.to_string())
+    }
+}
 
 impl AttributeValueIdent {
     async fn resolve(
