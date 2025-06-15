@@ -22,7 +22,6 @@ import {
 import {
   Connection,
   EntityKind,
-  IncomingConnections,
   Prop,
   SchemaMembers,
 } from "@/workers/types/entity_kind_types";
@@ -92,34 +91,32 @@ db.addListenerReturned(Comlink.proxy(returned));
 
 const updateCache = (
   queryKey: string[],
-  id:string,
+  id: string,
   data: AtomDocument,
   removed = false,
   add = false,
 ) => {
-     // there is always more data attached, but we only care about accessing the ID
-    // so thats all we need to type!
-    const cachedData = queryClient.getQueryData(queryKey) as {id: string}[]
-    if (!cachedData) return;
-    // TODO removal
-    const idx = cachedData.findIndex(d => d.id === id)
-    let dirty = false;
-    if (idx !== -1) {
-      if (removed)
-        cachedData.splice(idx, 1)
-      else
-        cachedData.splice(idx, 1, data)
-      dirty = true
-    } else if (add) {
-      // added to the list
-      cachedData.push(data)
-      dirty = true
-    }
-    if (dirty) {
-      queryClient.setQueryData(queryKey, cachedData);
-      queryClient.invalidateQueries({ queryKey });
-    }
-}
+  // there is always more data attached, but we only care about accessing the ID
+  // so thats all we need to type!
+  const cachedData = queryClient.getQueryData(queryKey) as { id: string }[];
+  if (!cachedData) return;
+  // TODO removal
+  const idx = cachedData.findIndex((d) => d.id === id);
+  let dirty = false;
+  if (idx !== -1) {
+    if (removed) cachedData.splice(idx, 1);
+    else cachedData.splice(idx, 1, data);
+    dirty = true;
+  } else if (add) {
+    // added to the list
+    cachedData.push(data);
+    dirty = true;
+  }
+  if (dirty) {
+    queryClient.setQueryData(queryKey, cachedData);
+    queryClient.invalidateQueries({ queryKey });
+  }
+};
 
 const atomUpdated: UpdateFn = (
   workspaceId: string,
@@ -130,22 +127,44 @@ const atomUpdated: UpdateFn = (
   listIds: string[],
   removed: boolean,
 ) => {
-  if (kind === EntityKind.IncomingConnections) {
-    const queryKey = [workspaceId, changeSetId, EntityKind.IncomingConnectionsList, workspaceId];
-    updateCache(queryKey, id, data, removed, true)
+  if (kind === EntityKind.View) {
+    const queryKey = [
+      workspaceId,
+      changeSetId,
+      EntityKind.ViewList,
+      workspaceId,
+    ];
+    updateCache(queryKey, id, data, removed, true);
+  } else if (kind === EntityKind.IncomingConnections) {
+    const queryKey = [
+      workspaceId,
+      changeSetId,
+      EntityKind.IncomingConnectionsList,
+      workspaceId,
+    ];
+    updateCache(queryKey, id, data, removed, true);
   } else if (kind === EntityKind.ComponentInList) {
-    const queryKey = [workspaceId, changeSetId, EntityKind.ComponentList, workspaceId];
-    updateCache(queryKey, id, data, removed, true)
+    const queryKey = [
+      workspaceId,
+      changeSetId,
+      EntityKind.ComponentList,
+      workspaceId,
+    ];
+    updateCache(queryKey, id, data, removed, true);
     if (listIds.length > 0) {
       listIds.forEach((viewId) => {
-        const queryKey = [workspaceId, changeSetId, EntityKind.ViewComponentList, viewId];
-        updateCache(queryKey, id, removed, data)
-      })
+        const queryKey = [
+          workspaceId,
+          changeSetId,
+          EntityKind.ViewComponentList,
+          viewId,
+        ];
+        updateCache(queryKey, id, removed, data);
+      });
     }
   }
-
-}
-db.addAtomUpdated(Comlink.proxy(atomUpdated))
+};
+db.addAtomUpdated(Comlink.proxy(atomUpdated));
 
 const lobbyExit: LobbyExitFn = async (workspaceId, changeSetId) => {
   // Only navigate away from lobby if user is currently in the lobby
@@ -299,11 +318,7 @@ export const getSchemaMembers = async (args: {
   );
   const end = Date.now();
   // eslint-disable-next-line no-console
-  console.log(
-    "🌈 bifrost query getSchemaMembers",
-    end - start,
-    "ms",
-  );
+  console.log("🌈 bifrost query getSchemaMembers", end - start, "ms");
   if (schemaMembers) return reactive(JSON.parse(schemaMembers));
   else return [];
 };

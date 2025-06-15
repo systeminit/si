@@ -43,9 +43,11 @@ import {
   CategorizedPossibleConnections,
   Checksum,
   DBInterface,
+  Gettable,
   Id,
   IndexObjectMeta,
   IndexUpdate,
+  Listable,
   LobbyExitFn,
   MessageKind,
   MjolnirBulk,
@@ -446,7 +448,6 @@ const bustCacheAndReferences = (
   skipQueue = false,
   force = false,
 ) => {
-
   // don't bust lists in the whole, we're using atomUpdatedFn to update the contents of lists
   // unless its a hammer b/c i am missing a list
   if (LISTABLE.includes(kind) && !force) return;
@@ -565,7 +566,10 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
   updateChangeSetWithNewIndex(msg.atom);
   await removeOldIndex();
 
-  if (COMPUTED_KINDS.includes(msg.atom.kind) || LISTABLE_ITEMS.includes(msg.atom.kind)) {
+  if (
+    COMPUTED_KINDS.includes(msg.atom.kind) ||
+    LISTABLE_ITEMS.includes(msg.atom.kind)
+  ) {
     debug("🔨 HAMMER: Updating computed for:", msg.atom.kind, msg.atom.id);
     postProcess(
       msg.atom.workspaceId,
@@ -590,7 +594,7 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     msg.atom.kind,
     msg.atom.id,
     false,
-    true
+    true,
   );
 };
 
@@ -752,7 +756,7 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
    * a list can be _after_ the list that wants it.
    * This causes an unnecessary hammer by the list when its cache busts
    * it doesn't have the item on the read.
-   * 
+   *
    * BUT NOW, we're not busting on a list (other than a hammer)
    * So we can do the lists first, which fixes the add/remove behavior
    * for postProcessing
@@ -793,7 +797,8 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
   // non-list atoms
   // non-connections (e.g. components need to go before connections)
   const nonListAtoms = atoms.filter(
-    (a) => !LISTABLE.includes(a.kind) && a.kind !== EntityKind.IncomingConnections,
+    (a) =>
+      !LISTABLE.includes(a.kind) && a.kind !== EntityKind.IncomingConnections,
   );
   debug(
     "📦 Processing non-list atoms:",
@@ -982,7 +987,10 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
     }
     span.end();
 
-    if ((COMPUTED_KINDS.includes(atom.kind) || LISTABLE_ITEMS.includes(atom.kind))) {
+    if (
+      COMPUTED_KINDS.includes(atom.kind) ||
+      LISTABLE_ITEMS.includes(atom.kind)
+    ) {
       debug("🔧 Updating computed for:", atom.kind, atom.id);
       postProcess(
         atom.workspaceId,
@@ -1185,7 +1193,8 @@ const mjolnir = (
     if (exists.length === 0) {
       return mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
     } // if i have it, bust!
-    else bustCacheAndReferences(workspaceId, changeSetId, kind, id, false, true);
+    else
+      bustCacheAndReferences(workspaceId, changeSetId, kind, id, false, true);
   });
 };
 
@@ -1669,7 +1678,6 @@ const postProcess = (
   bust = true,
   followReferences = true,
 ) => {
-
   // NOTE: patch ordering matters for us, we need to have list patched
   // prior to doing this work
   // So when we move to streaming patches, we have to do something else
@@ -1697,37 +1705,33 @@ const postProcess = (
             : "inner join changesets ON changesets.index_checksum = indexes.checksum"
         }
         where
-          ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+          ${
+            indexChecksum
+              ? "indexes.checksum = ?"
+              : "changesets.change_set_id = ?"
+          }
           AND
           atoms.kind = ?
         )
       WHERE
         ref ->> '$.id' = ?
-      `
-        const bind = [
-          indexChecksum ?? changeSetId,
-          EntityKind.ViewComponentList,
-          id,
-        ];
-        const rows = db.exec({
-          sql,
-          bind,
-          returnValue: "resultRows",
-        });
-        rows.forEach(r => {
-          listIds.push(r[0] as string)
-        })
+      `;
+      const bind = [
+        indexChecksum ?? changeSetId,
+        EntityKind.ViewComponentList,
+        id,
+      ];
+      const rows = db.exec({
+        sql,
+        bind,
+        returnValue: "resultRows",
+      });
+      rows.forEach((r) => {
+        listIds.push(r[0] as string);
+      });
     }
 
-    atomUpdatedFn(
-      workspaceId,
-      changeSetId,
-      kind,
-      id,
-      doc,
-      listIds,
-      removed,
-    )
+    atomUpdatedFn(workspaceId, changeSetId, kind, id, doc, listIds, removed);
   }
 
   if (!COMPUTED_KINDS.includes(kind)) return;
@@ -2420,14 +2424,17 @@ const getReferences = (
   }
 };
 
-const LISTABLE_ITEMS = [EntityKind.ComponentInList, EntityKind.IncomingConnections];
-const LISTABLE = [EntityKind.ComponentList, EntityKind.ViewComponentList, EntityKind.IncomingConnectionsList];
-// TODO add the ViewList to Listable, but not right now, it will blow up the old UI typing
-type Listable =
-  | EntityKind.ComponentList
-  | EntityKind.ViewComponentList
-  | EntityKind.IncomingConnectionsList;
-type Gettable = Exclude<EntityKind, Listable>;
+const LISTABLE_ITEMS = [
+  EntityKind.ComponentInList,
+  EntityKind.IncomingConnections,
+  EntityKind.View,
+];
+const LISTABLE = [
+  EntityKind.ComponentList,
+  EntityKind.ViewComponentList,
+  EntityKind.IncomingConnectionsList,
+  EntityKind.ViewList,
+];
 const getList = (
   _workspaceId: string,
   changeSetId: ChangeSetId,
@@ -2444,9 +2451,9 @@ const getList = (
     case EntityKind.IncomingConnectionsList:
       varname = "$.componentConnections";
       break;
-    // case EntityKind.ViewList:
-    //   varname = "$.views";
-    //   break;
+    case EntityKind.ViewList:
+      varname = "$.views";
+      break;
     default:
       throw new Error("Missing kind");
   }

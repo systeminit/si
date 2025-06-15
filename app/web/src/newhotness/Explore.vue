@@ -188,7 +188,7 @@
     <AddComponentModal ref="addComponentModalRef" />
     <AddViewModal
       ref="addViewModalRef"
-      :views="viewListQuery.data.value?.views"
+      :views="viewListQuery.data.value ?? []"
     />
     <ComponentContextMenu
       ref="componentContextMenuRef"
@@ -237,6 +237,7 @@ import {
   BifrostViewList,
   EntityKind,
   ComponentInList,
+  View,
 } from "@/workers/types/entity_kind_types";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -329,13 +330,16 @@ watch(showGrid, () => {
 const key = useMakeKey();
 const args = useMakeArgs();
 
-const viewListQuery = useQuery<BifrostViewList | null>({
+const viewListQuery = useQuery<View[]>({
   queryKey: key(EntityKind.ViewList),
-  queryFn: async () =>
-    await bifrost<BifrostViewList>(args(EntityKind.ViewList)),
+  queryFn: async () => {
+    const views = await bifrostList<View[]>(args(EntityKind.ViewList));
+    if (!views) return [];
+    else return views;
+  },
 });
 const viewListOptions = computed(() => {
-  const list = viewListQuery.data.value?.views || [];
+  const list = viewListQuery.data.value ?? [];
   const options = [{ value: "", label: "All Views" }];
   return options.concat(
     list.map((l) => {
@@ -347,7 +351,7 @@ const viewListOptions = computed(() => {
 const selectedViewOrDefaultId = computed(() => {
   if (selectedView.value) return selectedView.value;
   if (!viewListQuery.data.value) return "";
-  const view = viewListQuery.data.value.views.find((v) => v.isDefault);
+  const view = viewListQuery.data.value.find((v) => v.isDefault);
   if (!view) return "";
   return view.id;
 });

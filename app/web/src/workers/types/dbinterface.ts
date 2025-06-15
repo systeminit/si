@@ -33,7 +33,15 @@ export type OutgoingConnections = DefaultMap<
   Record<string, Connection>
 >;
 
-export type UpdateFn = (workspaceId: string, changeSetId: string, kind: EntityKind, id: string, doc: AtomDocument, listIds: string[], removed: boolean) => void;
+export type UpdateFn = (
+  workspaceId: string,
+  changeSetId: string,
+  kind: EntityKind,
+  id: string,
+  doc: AtomDocument,
+  listIds: string[],
+  removed: boolean,
+) => void;
 export type RainbowFn = (changeSetId: ChangeSetId, label: string) => void;
 export type LobbyExitFn = (workspacePk: string, changeSetId: string) => void;
 
@@ -43,7 +51,11 @@ export type MjolnirBulk = Array<{
   checksum?: Checksum;
 }>;
 
-export type Listable = EntityKind.ViewComponentList | EntityKind.ComponentList;
+export type Listable =
+  | EntityKind.ViewComponentList
+  | EntityKind.ComponentList
+  | EntityKind.IncomingConnectionsList
+  | EntityKind.ViewList;
 export type Gettable = Exclude<EntityKind, Listable>;
 export interface DBInterface {
   initDB: (testing: boolean) => Promise<void>;
@@ -80,13 +92,13 @@ export interface DBInterface {
   get(
     workspaceId: string,
     changeSetId: ChangeSetId,
-    kind: EntityKind,
+    kind: Gettable,
     id: Id,
   ): typeof NOROW | AtomDocument;
   getList(
     workspaceId: string,
     changeSetId: ChangeSetId,
-    kind: EntityKind,
+    kind: Listable,
     id: Id,
   ): string;
   mjolnirBulk(
