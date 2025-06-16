@@ -40,13 +40,7 @@
       />
     </label>
     <template #leftButton>
-      <div
-        v-tooltip="
-          canDeleteView
-            ? undefined
-            : 'Views containing one or more components cannot be deleted. To delete a view, first remove all components from it.'
-        "
-      >
+      <div v-tooltip="tooltipText">
         <VButton
           label="Delete View"
           :disabled="!canDeleteView"
@@ -68,6 +62,17 @@ import { useWatchedForm } from "./logic_composables/watched_form";
 
 const viewId = ref<ViewId>("");
 const canDeleteView = ref<boolean>(false);
+const isDefaultView = ref<boolean>(false);
+
+const tooltipText = computed(() => {
+  if (isDefaultView.value) {
+    return "Cannot delete the default View.";
+  }
+  if (canDeleteView.value) {
+    return undefined;
+  }
+  return "Views containing one or more components cannot be deleted. To delete a view, first remove all components from it.";
+});
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const deleteViewApi = useApi();
@@ -112,14 +117,20 @@ const emit = defineEmits<{
   (e: "deleted"): void;
 }>();
 
-const open = (openViewId: string, openCanDeleteView: boolean) => {
+const open = (
+  openViewId: string,
+  openCanDeleteView: boolean,
+  openIsDefaultView: boolean,
+) => {
   viewId.value = openViewId;
   canDeleteView.value = openCanDeleteView;
+  isDefaultView.value = openIsDefaultView;
   modalRef.value?.open();
 };
 const close = () => {
   viewId.value = "";
   canDeleteView.value = false;
+  isDefaultView.value = false;
   modalRef.value?.close();
 };
 defineExpose({ open, close });

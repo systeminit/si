@@ -161,6 +161,8 @@ pub enum WorkspaceSnapshotError {
     CorrectTransformsSplit(#[from] split_snapshot::corrections::CorrectTransformsError),
     #[error("Action would create a graph cycle")]
     CreateGraphCycle,
+    #[error("cannot delete the default view")]
+    DefaultViewDeletionAttempt,
     #[error("InferredConnectionGraph error: {0}")]
     InferredConnectionGraph(#[from] Box<InferredConnectionGraphError>),
     #[error("InputSocket error: {0}")]
