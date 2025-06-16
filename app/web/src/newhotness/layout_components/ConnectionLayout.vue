@@ -7,7 +7,7 @@
       :key="`${conn.key}`"
       class="p-xs border-neutral-600 border"
     >
-      <p
+      <TruncateWithTooltip
         :class="
           clsx(
             'text-sm cursor-pointer hover:underline',
@@ -17,11 +17,12 @@
             ),
           )
         "
+        :lineClamp="2"
         @click="() => navigate(conn.componentId)"
       >
         {{ conn.component.schemaName }}
         {{ conn.component.name }}
-      </p>
+      </TruncateWithTooltip>
       <!-- negative margin pulls things together -->
       <p
         :class="
@@ -47,7 +48,7 @@
 <script setup lang="ts">
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
-import { themeClasses } from "@si/vue-lib/design-system";
+import { themeClasses, TruncateWithTooltip } from "@si/vue-lib/design-system";
 import { BifrostComponentInList } from "@/workers/types/entity_kind_types";
 
 export interface SimpleConnection {
