@@ -139,6 +139,7 @@ async fn executes_simple_management_function() {
         this_component: ComponentViewWithGeometry {
             kind: None,
             properties: serde_json::json!({ "foo": "bar", "baz": "quux", "bar": "foo" }),
+            sources: serde_json::json!({}),
             geometry: serde_json::json!({"x": "1", "y": "1"}),
             incoming_connections: serde_json::json!({}),
         },
