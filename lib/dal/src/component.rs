@@ -97,6 +97,10 @@ use crate::{
         },
     },
     attribute::{
+        attributes::{
+            AttributeValueIdent,
+            Source,
+        },
         path::AttributePath,
         prototype::{
             AttributePrototypeError,
@@ -133,6 +137,7 @@ use crate::{
     func::{
         argument::FuncArgumentError,
         binding::FuncBindingError,
+        intrinsics::IntrinsicFunc,
     },
     implement_add_edge_to,
     layer_db_types::{
@@ -1335,6 +1340,57 @@ impl Component {
         }
 
         Ok(input_socket_ids)
+    }
+
+    pub async fn sources(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<HashMap<AttributeValueIdent, Source>> {
+        let mut sources = HashMap::new();
+        for (dest_av_id, _) in AttributeValue::tree_for_component(ctx, component_id).await? {
+            // Make sure it's a prototype with exactly one subscription argument
+            let Some(prototype_id) =
+                AttributeValue::component_prototype_id(ctx, dest_av_id).await?
+            else {
+                continue;
+            };
+            let mut args =
+                AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
+            if args.len() != 1 {
+                continue;
+            }
+            let Some(apa_id) = args.pop() else {
+                continue;
+            };
+            // Get source component and path if it's a subscription
+            let ValueSource::ValueSubscription(ValueSubscription {
+                attribute_value_id: source_av_id,
+                path,
+            }) = AttributePrototypeArgument::value_source(ctx, apa_id).await?
+            else {
+                continue;
+            };
+            let source_component_id = AttributeValue::component_id(ctx, source_av_id).await?;
+            let AttributePath::JsonPointer(path) = path;
+            let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+            let func = match Func::get_intrinsic_kind_by_id(ctx, func_id).await? {
+                Some(IntrinsicFunc::Identity) => None,
+                _ => Some(func_id.into()),
+            };
+
+            let (_, dest_path) = AttributeValue::path_from_root(ctx, dest_av_id).await?;
+
+            sources.insert(
+                dest_path.into(),
+                Source::Subscription {
+                    component: source_component_id.into(),
+                    path,
+                    keep_existing_subscriptions: None,
+                    func,
+                },
+            );
+        }
+        Ok(sources)
     }
 
     /// Gets the list of subscriptions pointing at this root AV, returning the subscriber AV
