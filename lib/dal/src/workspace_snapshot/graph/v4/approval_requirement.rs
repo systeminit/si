@@ -138,8 +138,7 @@ impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
                 // If we did not find any explicit requirements, check if we need to create virtual
                 // requirements.
                 if explicit_approval_requirement_definition_ids.is_empty() {
-                    if let Some(virtual_rule) = new_virtual_requirement_rule(workspace_id, change)?
-                    {
+                    if let Some(virtual_rule) = new_virtual_requirement_rule(workspace_id, change) {
                         virtual_approval_requirement_rules.push(virtual_rule);
                     }
                 }
@@ -240,10 +239,10 @@ impl ApprovalRequirementExt for WorkspaceSnapshotGraphV4 {
     }
 }
 
-fn new_virtual_requirement_rule(
+pub fn new_virtual_requirement_rule(
     workspace_id: WorkspacePk,
     change: &Change,
-) -> WorkspaceSnapshotGraphResult<Option<ApprovalRequirementRule>> {
+) -> Option<ApprovalRequirementRule> {
     match change.entity_kind {
         // Default approval requirement rule for actions, funcs, schemas, schema variants,
         // and views until we get proper fallback logic for who should be approving what.
@@ -251,7 +250,7 @@ fn new_virtual_requirement_rule(
         | EntityKind::Func
         | EntityKind::Schema
         | EntityKind::SchemaVariant
-        | EntityKind::View => Ok(Some(ApprovalRequirementRule {
+        | EntityKind::View => Some(ApprovalRequirementRule {
             entity_id: change.entity_id,
             entity_kind: change.entity_kind,
             minimum: 1,
@@ -262,10 +261,10 @@ fn new_virtual_requirement_rule(
                     permission: "approve".to_string(),
                 },
             )]),
-        })),
+        }),
         // For any changes to explicit approval requirements, we need approvals from
         // workspace approvers.
-        EntityKind::ApprovalRequirementDefinition => Ok(Some(ApprovalRequirementRule {
+        EntityKind::ApprovalRequirementDefinition => Some(ApprovalRequirementRule {
             entity_id: change.entity_id,
             entity_kind: change.entity_kind,
             minimum: 1,
@@ -276,7 +275,7 @@ fn new_virtual_requirement_rule(
                     permission: "approve".to_string(),
                 },
             )]),
-        })),
-        _ => Ok(None),
+        }),
+        _ => None,
     }
 }
