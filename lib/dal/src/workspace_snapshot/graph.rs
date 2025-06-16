@@ -81,6 +81,8 @@ pub enum WorkspaceSnapshotGraphError {
     ContentMissingForContentHash,
     #[error("Action would create a graph cycle")]
     CreateGraphCycle,
+    #[error("cannot delete the default view")]
+    DefaultViewDeletionAttempt,
     #[error("could not find the newly imported subgraph when performing updates")]
     DestinationNotUpdatedWhenImportingSubgraph,
     #[error("Edge does not exist for EdgeIndex: {0:?}")]

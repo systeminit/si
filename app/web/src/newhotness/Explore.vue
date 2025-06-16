@@ -357,12 +357,13 @@ const viewListOptions = computed(() => {
   });
 });
 
+const defaultView = computed(() =>
+  viewListQuery.data.value?.views.find((v) => v.isDefault),
+);
 const selectedViewOrDefaultId = computed(() => {
   if (selectedView.value) return selectedView.value;
-  if (!viewListQuery.data.value) return "";
-  const view = viewListQuery.data.value.views.find((v) => v.isDefault);
-  if (!view) return "";
-  return view.id;
+  if (!defaultView.value) return "";
+  return defaultView.value.id;
 });
 
 const exploreContext = computed<ExploreContext>(() => {
@@ -962,10 +963,16 @@ const openEditViewModal = (viewId: string) => {
   // calls), but I scrapped it since the query would never load properly. Ideally, you should be able to
   // delete a view or edit it without switching to it. For now, we will survive.
   selectedView.value = viewId;
-  const canDeleteView = componentListRaw.data.value
-    ? componentListRaw.data.value.components.length < 1
-    : false;
-  editViewModalRef.value?.open(viewId, canDeleteView);
+
+  // Handle if we are dealing with the default view first.
+  if (viewId === defaultView.value?.id) {
+    editViewModalRef.value?.open(viewId, false, true);
+  } else {
+    const canDeleteView = componentListRaw.data.value
+      ? componentListRaw.data.value.components.length < 1
+      : false;
+    editViewModalRef.value?.open(viewId, canDeleteView, false);
+  }
 };
 
 const componentContextMenuRef =

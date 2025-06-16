@@ -277,6 +277,10 @@ TILT_HOST=0.0.0.0 DEV_HOST=0.0.0.0 buck2 run dev:up
 > [!CAUTION]
 > _The user is responsible for maintaining secure access (local, remote, etc.) to their local instance._
 
+> [!NOTE]
+> Unless you are using "localhost", your remote workspace must be accessible using SSL.
+> For example, if you are using [Tailscale](https://tailscale.com/) and running SI on a remote instance without SSL, you may want to port foward over SSH and use a local development workspace instead.
+
 # Using LocalStack for Secrets and Credentials
 
 This section contains information related to using [LocalStack](https://github.com/localstack/localstack) when working on the System Initiative software.

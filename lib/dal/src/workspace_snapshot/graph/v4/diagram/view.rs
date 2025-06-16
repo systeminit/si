@@ -4,6 +4,7 @@ use petgraph::prelude::*;
 use si_id::ComponentId;
 
 use crate::{
+    EdgeWeightKind,
     EdgeWeightKindDiscriminants,
     NodeWeightDiscriminants,
     diagram::view::ViewId,
@@ -20,6 +21,19 @@ impl ViewExt for WorkspaceSnapshotGraphV4 {
         // If there are any Components remaining in the View, this View _CANNOT_ be the only View they
         // are in. If this View is the only View _ANY_ of the items are in, we do not allow removal
         // of the View.
+        let view_node_idx = self.get_node_index_by_id(view_id)?;
+
+        // Do not allow deletion of the default view. We will likely need to get rid of this when
+        // we change what views do.
+        for (edge_weight, _, _) in self.edges_directed_for_edge_weight_kind(
+            view_node_idx,
+            Incoming,
+            EdgeWeightKindDiscriminants::Use,
+        ) {
+            if *edge_weight.kind() == EdgeWeightKind::new_use_default() {
+                return Err(WorkspaceSnapshotGraphError::DefaultViewDeletionAttempt);
+            }
+        }
 
         // View --Use--> Geometry --Represents-->
         //   {Component, DiagramObject <--DiagramObject-- View (on canvas)}
@@ -27,7 +41,6 @@ impl ViewExt for WorkspaceSnapshotGraphV4 {
         // Component <--Represents-- Geometry <--Use-- View
         //
         // View (on canvas) --DiagramObject--> DiagramObject <--Represents-- Geometry <--Use-- View
-        let view_node_idx = self.get_node_index_by_id(view_id)?;
         let mut would_be_orphaned_component_ids = Vec::new();
         for (_edge_weight, _view_node_idx, geometry_node_idx) in self
             .edges_directed_for_edge_weight_kind(

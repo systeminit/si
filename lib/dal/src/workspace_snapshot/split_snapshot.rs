@@ -1691,6 +1691,19 @@ impl ViewExt for SplitSnapshot {
 
         let view_id: Ulid = view_id.into();
 
+        // Do not allow deletion of the default view. We will likely need to get rid of this when
+        // we change what views do.
+        for edge_ref in working_copy.edges_directed_for_edge_weight_kind(
+            view_id,
+            Incoming,
+            EdgeWeightKindDiscriminants::Use,
+        )? {
+            let edge_weight = edge_ref.weight();
+            if *edge_weight.kind() == EdgeWeightKind::new_use_default() {
+                return Err(WorkspaceSnapshotError::DefaultViewDeletionAttempt);
+            }
+        }
+
         // Find all geometries used by this view
         for view_use_edge_ref in working_copy.edges_directed_for_edge_weight_kind(
             view_id,
