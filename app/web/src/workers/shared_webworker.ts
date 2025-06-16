@@ -90,12 +90,20 @@ const dbInterface: DBInterface = {
   async setRemote(remoteId: string) {
     debug("setting remote in shared web worker");
 
+    const wasConnected = !!currentRemote;
+
     currentRemote = remotes[remoteId];
     if (!currentRemote) {
       throw new Error(`remote {$remoteId} not registered`);
     }
-
     currentRemoteId = remoteId;
+
+    // Ensure we reconnect the websocket if we already had a remote
+    // (otherwise we let heimdall decide when to connect the websocket)
+    if (wasConnected) {
+      currentRemote.bifrostReconnect();
+    }
+
     hasRemoteChannel.port2.postMessage("got remote");
     if (bearerToken) {
       currentRemote.setBearer(bearerToken);
