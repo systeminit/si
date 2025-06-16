@@ -180,7 +180,6 @@
 <script lang="ts" setup>
 import {
   computed,
-  inject,
   onBeforeUnmount,
   onMounted,
   reactive,
@@ -206,7 +205,6 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { PropKind } from "@/api/sdf/dal/prop";
 import TextPill from "@/newhotness/layout_components/TextPill.vue";
-import { ExploreContext } from "@/newhotness/types";
 import { componentTypes, routes, useApi } from "./api_composables";
 import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
 import { keyEmitter } from "./logic_composables/emitters";
@@ -221,8 +219,6 @@ const props = defineProps<{
   attributeTree?: AttributeTree;
   showImportArea: boolean;
 }>();
-
-const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
 
 export interface AttrTree {
   id: string;
@@ -525,7 +521,7 @@ const doImport = async () => {
     {
       prototypeId: func.id,
       componentId: props.component.id,
-      viewId: explore?.viewId.value ?? "DEFAULT", // Should get the default view id
+      viewId: "DEFAULT", // Should get the default view id
     },
   );
 
