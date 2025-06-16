@@ -6,28 +6,38 @@
       id="selection"
       :class="
         clsx(
-          'absolute top-[110px] max-w-[350px] min-w-[300px] right-3 p-xs border-2 scrollable',
-          themeClasses(
-            'border-action-300 bg-action-200',
-            'border-action-700 bg-action-800',
-          ),
+          'absolute top-[110px] max-w-[350px] min-w-[300px] right-3',
+          'flex flex-col gap-xs',
         )
       "
       style="max-height: calc(100vh - 115px)"
     >
-      <!-- NOTE: 110 is the fixed size (nothing expands/dynamic) above, extra 5px on the bottom, unforuntately tailwind doesn't support that calc -->
-      <ComponentGridTile
-        ref="selectedGridTileRef"
-        :component="selectedComponent"
-        hideConnections
-        @click="componentNavigate(selectedComponent.id)"
-      />
-      <ConnectionsPanel :component="selectedComponent" />
+      <div
+        :class="
+          clsx(
+            'flex-none p-xs border-2',
+            themeClasses(
+              'border-action-300 bg-action-200',
+              'border-action-700 bg-action-800',
+            ),
+          )
+        "
+      >
+        <ComponentGridTile
+          ref="selectedGridTileRef"
+          :component="selectedComponent"
+          hideConnections
+          @click="navigateToSelectedComponent"
+        />
+      </div>
+      <div class="scrollable grow">
+        <ConnectionsPanel :component="selectedComponent" noEmptyState />
+      </div>
     </div>
 
     <div
       id="controls"
-      class="absolute left-0 bottom-0 flex flex-row gap-sm m-sm items-center"
+      class="absolute left-0 bottom-0 flex flex-row gap-xs m-sm items-center"
     >
       <div
         v-tooltip="'Zoom Out'"
@@ -38,7 +48,15 @@
       </div>
       <div
         v-tooltip="'Current Zoom'"
-        :class="themeClasses('text-black', 'text-white')"
+        :class="
+          clsx(
+            'border p-2xs rounded select-none',
+            themeClasses(
+              'text-black border-black bg-white',
+              'text-white border-white bg-black',
+            ),
+          )
+        "
       >
         {{ Math.round(zoomLevel * 100) }}%
       </div>
@@ -51,6 +69,13 @@
       </div>
       <div v-tooltip="'Reset'" :class="getButtonClasses(false)" @click="reset">
         <Icon name="empty-square" size="sm" />
+      </div>
+      <div
+        v-tooltip="'Help'"
+        :class="getButtonClasses(false)"
+        @click="emit('help')"
+      >
+        <Icon name="question-circle" size="sm" />
       </div>
     </div>
 
@@ -74,7 +99,7 @@
         >
           <IconNoWrapper
             :name="logo"
-            :class="clsx('text-black', 'text-white')"
+            :class="themeClasses('text-black', 'text-white')"
           />
         </pattern>
       </defs>
@@ -94,7 +119,11 @@
       <circle :cx="origCenter" :cy="origCenter" r="5" fill="yellow" />
     </svg>
 
-    <ComponentContextMenu ref="componentContextMenuRef" onGrid />
+    <ComponentContextMenu
+      ref="componentContextMenuRef"
+      onGrid
+      @edit="navigateToSelectedComponent"
+    />
   </section>
 </template>
 
@@ -141,6 +170,9 @@ import ComponentGridTile from "./ComponentGridTile.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import { getAssetIcon } from "./util";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
+import { truncateString } from "./logic_composables/string_funcs";
+
+const MAX_STRING_LENGTH = 18;
 
 const props = defineProps<{
   active: boolean;
@@ -277,13 +309,20 @@ const reset = () => {
   transformMatrix.splice(0, 6, 1, 0, 0, 1, 0, 0);
 };
 
+const clickWithNoDrag = ref(false);
+
 const mousedown = () => {
   // NOTE: the .prevent on the handler above stops text selection within the svg
   mouseDown.value = true;
+  clickWithNoDrag.value = true;
 };
 
 const mouseup = () => {
   mouseDown.value = false;
+  if (clickWithNoDrag.value) {
+    deselect();
+    emit("deselect");
+  }
 };
 
 const active = computed(() => props.active);
@@ -351,6 +390,7 @@ onMounted(() => {
 });
 
 const mousemove = (event: MouseEvent) => {
+  clickWithNoDrag.value = false;
   const current: xy = { x: event.clientX, y: event.clientY };
   if (!mouseDown.value || !lastPos.value) {
     lastPos.value = { ...current };
@@ -515,7 +555,7 @@ const clickedNode = (e: MouseEvent, n: layoutNode) => {
   e.stopPropagation();
 
   if (selectedComponent.value?.id === n.component.id) {
-    deselect();
+    navigateToSelectedComponent();
   } else {
     selectComponent(n.component, e.target as Element);
   }
@@ -692,10 +732,9 @@ watch(
           return `url(#${icon})`;
         });
 
-      // TODO ellipsis / truncation
       groups
         .append("text")
-        .text((d) => d.component.name)
+        .text((d) => truncateString(d.component.name, MAX_STRING_LENGTH))
         .attr("dx", "45")
         .attr("dy", "25")
         .attr("class", "name")
@@ -704,7 +743,9 @@ watch(
 
       groups
         .append("text")
-        .text((d) => d.component.schemaVariantName)
+        .text((d) =>
+          truncateString(d.component.schemaVariantName, MAX_STRING_LENGTH),
+        )
         .attr("dx", "45")
         .attr("dy", "45")
         .attr("alignment-baseline", "middle")
@@ -780,7 +821,20 @@ const componentNavigate = (componentId: ComponentId) => {
   });
 };
 
+const navigateToSelectedComponent = () => {
+  if (selectedComponent.value?.id) {
+    componentNavigate(selectedComponent.value.id);
+  }
+};
+
+const emit = defineEmits<{
+  (e: "deselect"): void;
+  (e: "help"): void;
+}>();
+
 defineExpose({
+  deselect,
+  navigateToSelectedComponent,
   onArrowUp,
   onArrowDown,
   onArrowLeft,

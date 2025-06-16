@@ -19,7 +19,11 @@
     </template>
   </div>
   <!-- TODO(Wendy) - separate empty states for input and output connections? -->
-  <EmptyState v-else icon="input-connection" text="No connections yet" />
+  <EmptyState
+    v-else-if="!noEmptyState"
+    icon="input-connection"
+    text="No connections yet"
+  />
 </template>
 
 <script setup lang="ts">
@@ -47,6 +51,7 @@ import EmptyState from "./EmptyState.vue";
 const props = defineProps<{
   component: BifrostComponentInList;
   connections?: BifrostComponentConnections;
+  noEmptyState?: boolean;
 }>();
 
 const key = useMakeKey();

@@ -69,9 +69,13 @@
             )
           "
           :pills="
-            CONTROL_SCHEME === 'v1' ? ['Up', 'Down', 'Left', 'Right'] : ['Tab']
+            showGrid
+              ? CONTROL_SCHEME === 'v1'
+                ? ['Up', 'Down', 'Left', 'Right']
+                : ['Tab']
+              : undefined
           "
-          instructions="to navigate"
+          :instructions="showGrid ? 'to navigate' : undefined"
           @click="searchRef?.focus()"
         >
           <template #left>
@@ -85,7 +89,12 @@
               :class="slotProps.class"
               noStyles
               placeholder="Search components"
-              @focus="slotProps.focus"
+              @focus="
+                () => {
+                  slotProps.focus();
+                  mapRef?.deselect();
+                }
+              "
               @blur="slotProps.blur"
               @keydown.tab="(e: KeyboardEvent) => onTab(e, true)"
               @keydown.left="() => previousComponent()"
@@ -133,7 +142,8 @@
         <footer
           :class="
             clsx(
-              'flex-none h-12 p-2xs border-t flex flex-row justify-end items-center',
+              'flex-none h-12 px-xs border-t flex flex-row items-center',
+              'justify-between',
               themeClasses(
                 'bg-neutral-100 border-neutral-400',
                 'bg-neutral-800 border-neutral-600',
@@ -143,6 +153,13 @@
         >
           <!-- footer -->
           <VButton
+            label="See keyboard shortcuts"
+            pill="?"
+            tone="neutral"
+            size="sm"
+            @click="openShortcutModal"
+          />
+          <VButton
             label="Add a component"
             pill="N"
             tone="action"
@@ -151,7 +168,13 @@
           />
         </footer>
       </template>
-      <Map v-else ref="mapRef" :active="!showGrid" />
+      <Map
+        v-else
+        ref="mapRef"
+        :active="!showGrid"
+        @deselect="onMapDeselect"
+        @help="openShortcutModal"
+      />
     </div>
     <!-- Right column -->
     <div
@@ -197,6 +220,7 @@
     </div>
 
     <!-- MODALS -->
+    <ShortcutModal ref="shortcutModalRef" />
     <AddComponentModal ref="addComponentModalRef" />
     <AddViewModal
       ref="addViewModalRef"
@@ -278,6 +302,7 @@ import EditViewModal from "./EditViewModal.vue";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
 import EmptyState from "./EmptyState.vue";
 import { elementIsScrolledIntoView } from "./logic_composables/dom_funcs";
+import ShortcutModal from "./ShortcutModal.vue";
 
 type ControlScheme = "v1" | "v2";
 const CONTROL_SCHEME: ControlScheme = "v2" as ControlScheme;
@@ -436,6 +461,8 @@ watch(
 
     const results = fzf.find(searchString.value);
     filteredComponents.splice(0, Infinity, ...results.map((fz) => fz.item));
+
+    mapRef.value?.deselect();
   },
   { immediate: true },
 );
@@ -623,6 +650,9 @@ const mountEmitters = () => {
   keyEmitter.on("Tab", onTab);
   keyEmitter.on("Escape", onEscape);
   keyEmitter.on("Backspace", onBackspace);
+  keyEmitter.on("Delete", onBackspace);
+  keyEmitter.on("/", openShortcutModal);
+  keyEmitter.on("?", openShortcutModal);
   windowResizeEmitter.on("resize", onResize);
 };
 const removeEmitters = () => {
@@ -640,6 +670,9 @@ const removeEmitters = () => {
   keyEmitter.off("Tab", onTab);
   keyEmitter.off("Escape", onEscape);
   keyEmitter.off("Backspace", onBackspace);
+  keyEmitter.off("Delete", onBackspace);
+  keyEmitter.off("/", openShortcutModal);
+  keyEmitter.off("?", openShortcutModal);
   windowResizeEmitter.off("resize", onResize);
 };
 const nextComponent = (wrap = false) => {
@@ -675,6 +708,14 @@ const previousComponent = (wrap = false) => {
 
 const onK = (e: KeyDetails["k"]) => {
   e.preventDefault();
+
+  // Deselect the current selection based on which screen you are on
+  if (showGrid.value) {
+    unfocus();
+    unhover();
+  } else {
+    mapRef.value?.deselect();
+  }
 
   // same behavior on the grid and map!
   searchRef.value?.focus();
@@ -729,7 +770,7 @@ const onU = (e: KeyDetails["u"]) => {
     mapRef.value?.onU(e);
   }
 };
-const onBackspace = (e: KeyDetails["Backspace"]) => {
+const onBackspace = (e: KeyDetails["Backspace"] | KeyDetails["Delete"]) => {
   e.preventDefault();
 
   if (showGrid.value) {
@@ -753,7 +794,7 @@ const onR = (e: KeyDetails["r"]) => {
     const targetComponent = filteredComponents.find(
       (comp) => comp.id === interactionTargetComponentId.value,
     );
-    if (targetComponent && targetComponent.canBeUpgraded) {
+    if (targetComponent && targetComponent.toDelete) {
       componentContextMenuRef.value?.componentsRestore([
         interactionTargetComponentId.value,
       ]);
@@ -807,7 +848,8 @@ const onArrowRight = () => {
 const onEscape = () => {
   if (showGrid.value) {
     searchRef.value?.blur();
-    selectorGridPosition.value = -1;
+    unfocus();
+    unhover();
   } else {
     mapRef.value?.onEscape();
   }
@@ -833,7 +875,12 @@ const onEnter = (e: KeyDetails["Enter"]) => {
     return;
   }
   e.preventDefault();
-  if (!showGrid.value) return; // no enter behavior on the map yet
+  if (!showGrid.value) {
+    if (mapRef.value) {
+      mapRef.value.navigateToSelectedComponent();
+    }
+    return;
+  }
 
   if (selectorGridPosition.value !== -1) {
     const componentId = filteredComponents[selectorGridPosition.value]?.id;
@@ -871,16 +918,18 @@ const onResize = () => {
   unhover();
 };
 const onClick = (e: MouseEvent) => {
-  const inside =
-    componentContextMenuRef.value?.contextMenuRef?.elementIsInsideMenu;
-  if (inside && e.target instanceof Node && inside(e.target)) {
-    return;
-  }
+  if (showGrid.value) {
+    const inside =
+      componentContextMenuRef.value?.contextMenuRef?.elementIsInsideMenu;
+    if (inside && e.target instanceof Node && inside(e.target)) {
+      return;
+    }
 
-  // general click handler for the whole page
-  // any click which doesn't do this behavior should have .stop on it!
-  unfocus();
-  unhover();
+    // general click handler for the whole page
+    // any click which doesn't do this behavior should have .stop on it!
+    unfocus();
+    unhover();
+  }
 };
 onMounted(() => {
   mountEmitters();
@@ -899,7 +948,7 @@ const componentClicked = (e: MouseEvent, componentId: ComponentId) => {
     componentClickedV2(e, componentId);
   }
 };
-const componentClickedV1 = (e: MouseEvent, componentId: ComponentId) => {
+const componentClickedV1 = (_e: MouseEvent, componentId: ComponentId) => {
   if (
     focusedComponentId.value &&
     selectorGridPosition.value !== focusGridPosition.value
@@ -920,7 +969,7 @@ const componentClickedV2 = (e: MouseEvent, componentId: ComponentId) => {
 };
 
 const componentInteract = (componentId: ComponentId) => {
-  if (focusedComponentId.value) {
+  if (focusedComponentId.value && CONTROL_SCHEME === "v1") {
     componentNavigate(componentId);
   } else {
     focus(componentId);
@@ -946,6 +995,12 @@ const addComponentModalRef = ref<InstanceType<typeof AddComponentModal>>();
 
 const openAddComponentModal = () => {
   addComponentModalRef.value?.open();
+};
+
+const shortcutModalRef = ref<InstanceType<typeof ShortcutModal>>();
+
+const openShortcutModal = () => {
+  shortcutModalRef.value?.open();
 };
 
 const addViewModalRef = ref<InstanceType<typeof AddViewModal>>();
@@ -981,6 +1036,10 @@ const componentContextMenuRef =
 const scrollCurrentTileIntoView = () => {
   const tile = getGridTileByIndex(selectorGridPosition.value);
   tile?.$el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+};
+
+const onMapDeselect = () => {
+  searchRef.value?.blur();
 };
 </script>
 

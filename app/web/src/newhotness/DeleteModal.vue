@@ -4,18 +4,11 @@
       <div class="pb-xs">Are you sure you want to delete this component?</div>
 
       <!-- NOTE(nick): we should consider splitting this out into its own component... potentially to use with Map view too -->
-      <div
+      <ComponentCard
         v-for="component in components"
         :key="component.id"
-        :style="borderStyle(component)"
-        class="flex items-center bg-neutral-700 rounded-sm border-l-2 p-xs space-x-sm"
-      >
-        <Icon :name="getAssetIcon(component.schemaCategory)" size="lg" />
-        <div>
-          <div class="text-sm font-semibold">{{ component.name }}</div>
-          <div class="text-xs text-neutral-300">{{ component.schemaName }}</div>
-        </div>
-      </div>
+        :component="component"
+      />
 
       <div class="px-2xs py-xs">
         <VormInput v-model="mode" noLabel type="radio">
@@ -70,18 +63,12 @@ import {
   VButton,
   VormInput,
   VormInputOption,
-  Icon,
 } from "@si/vue-lib/design-system";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { BifrostComponentInList } from "@/workers/types/entity_kind_types";
-import { getAssetIcon, getAssetColor } from "./util";
+import ComponentCard from "./ComponentCard.vue";
 
 const components = ref<BifrostComponentInList[]>([]);
-
-const borderStyle = (component: BifrostComponentInList) => {
-  const color = getAssetColor(component.schemaCategory);
-  return `border-color: ${color}`;
-};
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open: openModal, close: closeModal } = useModal(modalRef);
