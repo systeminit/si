@@ -20,12 +20,10 @@ use utoipa::{
 };
 
 use super::{
+    ComponentReference,
     ComponentsError,
-    connections::{
-        ComponentReference,
-        resolve_component_reference,
-    },
     get_component::GetComponentV1Response,
+    resolve_component_reference,
 };
 use crate::{
     extract::{

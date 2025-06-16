@@ -38,6 +38,7 @@ pub use change_sets::{
 };
 pub use components::{
     ComponentPropKey,
+    ComponentReference,
     ComponentV1RequestPath,
     ComponentsError,
     ComponentsResult,
@@ -50,7 +51,6 @@ pub use components::{
         AddActionV1Response,
     },
     connections::{
-        ComponentReference,
         Connection,
         ConnectionPoint,
     },
