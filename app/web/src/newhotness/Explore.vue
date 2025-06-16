@@ -31,14 +31,29 @@
           class="rounded min-w-[128px]"
           :options="viewListOptions"
           :modelValue="selectedView"
+          minWidthToAnchor
           placeholder="All Views"
+          checkable
+          enableSettingsEdit
+          @edit="openEditViewModal"
           @update:modelValue="(val) => (selectedView = val)"
         >
+          <template #beforeOptions>
+            <DropdownMenuItem
+              label="All Views"
+              value="''"
+              checkable
+              :checked="selectedView === ''"
+              @select="() => (selectedView = '')"
+            />
+          </template>
           <template #afterOptions>
             <DropdownMenuItem
+              class="border-t"
               label="Add a View"
               icon="plus"
-              @select="openViewModal"
+              disableCheckable
+              @select="openAddViewModal"
             />
           </template>
         </DropdownMenuButton>
@@ -180,10 +195,17 @@
         <RealtimeStatusPageState />
       </div>
     </div>
+
+    <!-- MODALS -->
     <AddComponentModal ref="addComponentModalRef" />
     <AddViewModal
       ref="addViewModalRef"
       :views="viewListQuery.data.value?.views"
+    />
+    <!-- For the edit view modals, upon delete, change back to "All Views" -->
+    <EditViewModal
+      ref="editViewModalRef"
+      @deleted="() => (selectedView = '')"
     />
     <ComponentContextMenu
       ref="componentContextMenuRef"
@@ -252,6 +274,7 @@ import TabGroupToggle from "./layout_components/TabGroupToggle.vue";
 import { SelectionsInQueryString } from "./Workspace.vue";
 import AddComponentModal from "./AddComponentModal.vue";
 import AddViewModal from "./AddViewModal.vue";
+import EditViewModal from "./EditViewModal.vue";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
 import EmptyState from "./EmptyState.vue";
 import { elementIsScrolledIntoView } from "./logic_composables/dom_funcs";
@@ -326,12 +349,12 @@ const viewListQuery = useQuery<BifrostViewList | null>({
 });
 const viewListOptions = computed(() => {
   const list = viewListQuery.data.value?.views || [];
-  const options = [{ value: "", label: "All Views" }];
-  return options.concat(
-    list.map((l) => {
-      return { value: l.id, label: l.name };
-    }),
-  );
+  return list.map((l) => {
+    return {
+      value: l.id,
+      label: l.name,
+    };
+  });
 });
 
 const selectedViewOrDefaultId = computed(() => {
@@ -926,8 +949,23 @@ const openAddComponentModal = () => {
 
 const addViewModalRef = ref<InstanceType<typeof AddViewModal>>();
 
-const openViewModal = () => {
+const openAddViewModal = () => {
   addViewModalRef.value?.open();
+};
+
+const editViewModalRef = ref<InstanceType<typeof EditViewModal>>();
+
+const openEditViewModal = (viewId: string) => {
+  // FIXME(nick): right now, we need to switch the current view to edit it because we need the query data.
+  // Why? The current view may differ than the one wishing to be edited. I had a version of this where the
+  // modal had an inner query to account for this scenario (essentially two different "view component list"
+  // calls), but I scrapped it since the query would never load properly. Ideally, you should be able to
+  // delete a view or edit it without switching to it. For now, we will survive.
+  selectedView.value = viewId;
+  const canDeleteView = componentListRaw.data.value
+    ? componentListRaw.data.value.components.length < 1
+    : false;
+  editViewModalRef.value?.open(viewId, canDeleteView);
 };
 
 const componentContextMenuRef =
