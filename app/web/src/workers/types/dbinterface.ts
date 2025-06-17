@@ -116,6 +116,7 @@ export interface SharedDBInterface {
   registerRemote(id: string, remote: Comlink.Remote<TabDBInterface>): void;
   broadcastMessage(message: BroadcastMessage): Promise<void>;
   setRemote(remoteId: string): Promise<void>;
+  hasRemote(): Promise<boolean>;
   initBifrost(gotLockPort: MessagePort): Promise<void>;
   bifrostClose(): Promise<void>;
   bifrostReconnect(): Promise<void>;
