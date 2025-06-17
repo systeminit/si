@@ -219,6 +219,30 @@ const ctx = computed<Context>(() => {
   };
 });
 
+watch(
+  () => changeSetsStore.changeSetsById,
+  () => {
+    const ids = Object.keys(changeSetsStore.changeSetsById);
+    if (ids.length > 0 && !ids.includes(props.changeSetId))
+      if (changeSetsStore.headChangeSetId)
+        router.push({
+          name: "new-hotness",
+          params: {
+            workspacePk: props.workspacePk,
+            changeSetId: changeSetsStore.headChangeSetId,
+          },
+        });
+      else
+        router.push({
+          name: "new-hotness-workspace",
+          params: {
+            workspacePk: props.workspacePk,
+          },
+        });
+  },
+  { immediate: true },
+);
+
 startKeyEmitter(document);
 startWindowResizeEmitter(window);
 
