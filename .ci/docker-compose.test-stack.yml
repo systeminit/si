@@ -68,8 +68,6 @@ services:
     ports:
       - "4222:4222"
       - "8222:8222"
-    depends_on:
-      - postgres
 
   jaeger:
     image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/jaeger:stable
