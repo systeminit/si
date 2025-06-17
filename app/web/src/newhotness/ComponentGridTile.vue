@@ -195,3 +195,8 @@ const qualificationSummary = computed(() => {
   return "success";
 });
 </script>
+
+<script lang="ts">
+// Grid tiles need to have a fixed height - make sure this number matches its total height!
+export const GRID_TILE_HEIGHT = 233;
+</script>

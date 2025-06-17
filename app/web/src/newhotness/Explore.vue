@@ -93,6 +93,8 @@
                 () => {
                   slotProps.focus();
                   mapRef?.deselect();
+                  unfocus();
+                  unhover();
                 }
               "
               @blur="slotProps.blur"
@@ -107,37 +109,68 @@
         </InstructiveVormInput>
       </div>
       <template v-if="showGrid">
+        <EmptyState
+          v-if="componentList.length === 0 && componentListRaw.isSuccess.value"
+          icon="component"
+          text="No components in view"
+        />
         <div
+          v-else
           ref="scrollRef"
-          class="scrollable tilegrid grow"
+          class="scrollable grow"
+          style="overflow-anchor: none"
           @scroll="onScroll"
           @scrollend="fixContextMenuAfterScroll"
         >
-          <ComponentGridTile
-            v-for="(component, index) in componentVirtualItemsList"
-            ref="componentGridTileRefs"
-            :key="filteredComponents[component.index]!.id"
-            :data-index="index"
-            :class="clsx(tileClasses(component.index))"
-            :component="filteredComponents[component.index]!"
-            @mouseenter="hover(component.index)"
-            @mouseleave="unhover(component.index)"
-            @click.stop.left="
-              (e) =>
-                componentClicked(e, filteredComponents[component.index]!.id)
-            "
-            @click.stop.right="
-              (e) =>
-                componentClicked(e, filteredComponents[component.index]!.id)
-            "
-          />
-          <EmptyState
-            v-if="
-              componentList.length === 0 && componentListRaw.isSuccess.value
-            "
-            icon="component"
-            text="No components in view"
-          />
+          <div
+            class="w-full relative flex flex-col"
+            :style="{
+              ['overflow-anchor']: 'none',
+              height: `${virtualListHeight}px`,
+            }"
+          >
+            <div
+              v-for="row in componentRowsVirtualItemsList"
+              :key="`${row.key}`"
+              :data-index="row.index"
+              :class="
+                clsx(
+                  'flex flex-row items-center gap-sm',
+                  'absolute top-0 left-0 w-full',
+                )
+              "
+              :style="{
+                height: `${GRID_TILE_HEIGHT}px`,
+                transform: `translateY(${row.start}px)`,
+              }"
+            >
+              <ComponentGridTile
+                v-for="(component, columnIndex) in filteredComponentRows[
+                  row.index
+                ]"
+                ref="componentGridTileRefs"
+                :key="component.id"
+                :data-index="row.index * virtualizerLanes + columnIndex"
+                :component="component"
+                class="flex-1"
+                :class="
+                  clsx(tileClasses(row.index * virtualizerLanes + columnIndex))
+                "
+                @mouseenter="hover(row.index * virtualizerLanes + columnIndex)"
+                @mouseleave="
+                  unhover(row.index * virtualizerLanes + columnIndex)
+                "
+                @click.stop.left="(e) => componentClicked(e, component.id)"
+                @click.stop.right="(e) => componentClicked(e, component.id)"
+              />
+              <!-- this fills in any extra spots in the last row -->
+              <div
+                v-for="emptySpot in virtualizerLanes - filteredComponentRows[row.index]!.length"
+                :key="emptySpot"
+                class="flex-1"
+              />
+            </div>
+          </div>
         </div>
         <footer
           :class="
@@ -243,6 +276,7 @@
 <script lang="ts" setup>
 // TODO(Wendy) - we should clean up these non-null assertions!
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import * as _ from "lodash-es";
 import {
   computed,
   inject,
@@ -286,7 +320,7 @@ import Map from "./Map.vue";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
-import ComponentGridTile from "./ComponentGridTile.vue";
+import ComponentGridTile, { GRID_TILE_HEIGHT } from "./ComponentGridTile.vue";
 import ActionCard from "./ActionCard.vue";
 import FuncRunList from "./FuncRunList.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
@@ -307,6 +341,10 @@ import EmptyState from "./EmptyState.vue";
 import { elementIsScrolledIntoView } from "./logic_composables/dom_funcs";
 import ShortcutModal from "./ShortcutModal.vue";
 import { useUpgrade } from "./logic_composables/upgrade";
+
+// MAKE SURE THESE NUMBERS STAY ACCURATE IF YOU CHANGE THE GRID!
+const MIN_GRID_TILE_WIDTH = 250;
+const GRID_TILE_GAP = 16;
 
 type ControlScheme = "v1" | "v2";
 const CONTROL_SCHEME: ControlScheme = "v2" as ControlScheme;
@@ -333,9 +371,7 @@ const componentGridTileElsSorted = computed(() => {
 });
 
 const getGridTileIndexByComponentId = (id: ComponentId) => {
-  return componentVirtualItemsList.value.findIndex(
-    (item) => filteredComponents[item.index]!.id === id,
-  );
+  return filteredComponents.findIndex((component) => component.id === id);
 };
 const getGridTileByIndex = (idx: number) => {
   if (componentGridTileRefs.value) {
@@ -346,6 +382,8 @@ const getGridTileByIndex = (idx: number) => {
   }
   return undefined;
 };
+const getRowIndexByGridTileIndex = (idx: number) =>
+  Math.floor(idx / virtualizerLanes.value);
 
 const urlGridOrMap = computed(() => {
   const q: SelectionsInQueryString = router.currentRoute.value?.query;
@@ -466,6 +504,8 @@ watch(
     filteredComponents.splice(0, Infinity, ...results.map((fz) => fz.item));
 
     mapRef.value?.deselect();
+    unfocus();
+    unhover();
   },
   { immediate: true, deep: true },
 );
@@ -519,7 +559,7 @@ const virtualizerLanes = computed(() => {
   // eslint-disable-next-line @typescript-eslint/no-unused-expressions
   componentGridTileRefs.value;
 
-  // Our grid is based on a minimum 250px width tile... so how many tiles can we fit?
+  // Our grid is based on the minimum tile width... so how many tiles can we fit?
   let newLanes = 0;
   let availableSpace = scrollRef.value?.getBoundingClientRect().width ?? 0;
   if (
@@ -530,25 +570,28 @@ const virtualizerLanes = computed(() => {
     availableSpace -= getScrollbarWidth();
   }
   while (availableSpace > 0) {
-    availableSpace -= 250; // width of one grid tile
+    availableSpace -= MIN_GRID_TILE_WIDTH; // width of one grid tile
     if (availableSpace > 0) {
       newLanes++;
     }
-    availableSpace -= 16; // gap between grid tiles
+    availableSpace -= GRID_TILE_GAP; // gap between grid tiles
   }
   return newLanes;
 });
 
+const filteredComponentRows = computed(() =>
+  _.chunk(filteredComponents, virtualizerLanes.value),
+);
+
 const virtualizerOptions = computed(() => {
   const options = {
-    count: filteredComponents.length,
+    count: filteredComponentRows.value.length,
     // `virtualizerLanes` gives virtualizer a "second-dimension" (aka columns for vertical lists and rows for horizontal lists)
     // https://tanstack.com/virtual/latest/docs/api/virtualizer#lanes
-    // Our grid is based on a minimum 250px width tile... so how many tiles can we fit?
+    // Our grid is based on the minimum tile width... so how many tiles can we fit?
     // thats the value of `virtualizerLanes`
-    lanes: virtualizerLanes.value,
     getScrollElement: () => scrollRef.value!,
-    estimateSize: () => 200,
+    estimateSize: () => MIN_GRID_TILE_WIDTH,
     overscan: 3,
   };
   return options;
@@ -556,9 +599,11 @@ const virtualizerOptions = computed(() => {
 
 const virtualList = useVirtualizer(virtualizerOptions);
 
-const componentVirtualItemsList = computed(() =>
+const componentRowsVirtualItemsList = computed(() =>
   virtualList.value.getVirtualItems(),
 );
+
+const virtualListHeight = computed(() => virtualList.value.getTotalSize());
 
 const collapsingStyles = computed(() =>
   collapsingGridStyles([
@@ -1042,8 +1087,19 @@ const componentContextMenuRef =
   ref<InstanceType<typeof ComponentContextMenu>>();
 
 const scrollCurrentTileIntoView = () => {
-  const tile = getGridTileByIndex(selectorGridPosition.value);
-  tile?.$el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  // don't scroll if the index is out of bounds
+  if (
+    selectorGridPosition.value < 0 ||
+    selectorGridPosition.value > filteredComponents.length - 1
+  )
+    return;
+  // otherwise use the virtualizer to scroll
+  // so that even if the DOM element doesn't exist
+  // it will still work!
+  virtualList.value.scrollToIndex(
+    getRowIndexByGridTileIndex(selectorGridPosition.value),
+    { behavior: "smooth" },
+  );
 };
 
 const onMapDeselect = () => {
