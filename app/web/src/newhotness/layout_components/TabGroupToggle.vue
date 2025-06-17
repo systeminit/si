@@ -41,7 +41,14 @@ const _aOrB = computed(() => (openState.open.value ? A : B));
 const isA = computed(() => _aOrB.value === A);
 const isB = computed(() => _aOrB.value === B);
 
-const toggle = (e?: Event) => openState.toggle(e);
+const toggle = (e?: Event) => {
+  emit("toggle");
+  openState.toggle(e);
+};
+
+const emit = defineEmits<{
+  (e: "toggle"): void;
+}>();
 
 defineExpose({
   aOrB: _aOrB,
