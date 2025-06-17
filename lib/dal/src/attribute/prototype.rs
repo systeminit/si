@@ -747,6 +747,12 @@ impl AttributePrototype {
         {
             apas.push(snap.get_node_weight(idx).await?.id().into())
         }
+        // Whenever we're dealing with the arguments, we always want them to have stable
+        // ordering. For function execution, we want the arguments to have the same relative
+        // order from run to run. For use when generating checksums and other lists we also
+        // want them to have consistent order to avoid unnecessary churn in the data sent to
+        // & used by the front end.
+        apas.sort();
 
         Ok(apas)
     }
