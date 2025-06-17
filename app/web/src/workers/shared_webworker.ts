@@ -79,11 +79,16 @@ const dbInterface: SharedDBInterface = {
     delete remotes[id];
   },
   registerRemote(id: string, remote: Comlink.Remote<TabDBInterface>) {
-    debug("register remote in shared", id);
-    remotes[id] = remote;
+    if (!remotes[id]) {
+      debug("register remote in shared", id);
+      remotes[id] = remote;
+    }
+  },
+  async hasRemote() {
+    return !!currentRemote;
   },
   async setRemote(remoteId: string) {
-    debug("setting remote in shared web worker");
+    debug("setting remote in shared web worker to", remoteId);
 
     const wasConnected = !!currentRemote;
 

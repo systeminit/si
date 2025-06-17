@@ -46,6 +46,11 @@ let queryClient: QueryClient;
 const tabDbId = ulid();
 const lockAcquired = ref(false);
 
+const lockAcquiredBroadcastChannel = new BroadcastChannel("DB_LOCK_ACQUIRED");
+lockAcquiredBroadcastChannel.onmessage = () => {
+  lockAcquired.value = true;
+};
+
 export const init = async (bearerToken: string, _queryClient: QueryClient) => {
   if (!token) {
     // eslint-disable-next-line no-console
@@ -58,6 +63,7 @@ export const init = async (bearerToken: string, _queryClient: QueryClient) => {
     port1.onmessage = () => {
       db.setRemote(tabDbId);
       lockAcquired.value = true;
+      lockAcquiredBroadcastChannel.postMessage("acquired");
     };
 
     // We are deliberately not awaiting this promise, since it blocks forever on the tabs that do not get the lock
@@ -68,6 +74,10 @@ export const init = async (bearerToken: string, _queryClient: QueryClient) => {
     queryClient = _queryClient;
     // eslint-disable-next-line no-console
     console.log(`...initialization completed [${end - start}ms] 🌈`);
+  }
+
+  if (await db.hasRemote()) {
+    lockAcquired.value = true;
   }
 };
 
