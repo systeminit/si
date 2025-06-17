@@ -40,31 +40,32 @@
         <div class="flex-none">{{ component.schemaVariantName }}</div>
         <div class="flex-none">/</div>
         <div class="flex-1 min-w-0">
-          <EditInPlace ref="editInPlaceRef" @hidden="reset" @showing="focus">
-            <template #trigger>
-              <VButton
-                :label="component.name"
-                :loading="wForm.bifrosting.value"
-                :loadingText="component.name"
-                class="border-0 font-normal max-w-full"
-                iconRight="edit"
-                loadingIcon="loader"
-                size="sm"
-                tone="shade"
-                variant="ghost"
-                truncateText
-                @click="editInPlaceRef?.toggle"
-              />
-            </template>
-            <template #input>
-              <nameForm.Field
-                :validators="{
-                  onChange: required,
-                  onBlur: required,
-                }"
-                name="name"
+          <nameForm.Field
+            :validators="{
+              onChange: required,
+              onBlur: required,
+            }"
+            name="name"
+          >
+            <template #default="{ field }">
+              <EditInPlace
+                ref="editInPlaceRef"
+                @hidden="reset"
+                @showing="focus"
               >
-                <template #default="{ field }">
+                <template #trigger>
+                  <VButton
+                    :label="field.state.value"
+                    class="border-0 font-normal max-w-full"
+                    iconRight="edit"
+                    size="sm"
+                    tone="shade"
+                    variant="ghost"
+                    truncateText
+                    @click="editInPlaceRef?.toggle"
+                  />
+                </template>
+                <template #input>
                   <input
                     ref="nameRef"
                     :value="field.state.value"
@@ -79,9 +80,9 @@
                     @keydown.esc.stop.prevent="reset"
                   />
                 </template>
-              </nameForm.Field>
+              </EditInPlace>
             </template>
-          </EditInPlace>
+          </nameForm.Field>
         </div>
       </template>
     </div>
