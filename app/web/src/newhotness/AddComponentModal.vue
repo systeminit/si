@@ -231,6 +231,7 @@ import {
   UninstalledVariant,
   BifrostComponent,
   EddaComponent,
+  AttributeTree,
 } from "@/workers/types/entity_kind_types";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import FilterTile from "./layout_components/FilterTile.vue";
@@ -354,6 +355,7 @@ const onEnter = async () => {
   const call = api.endpoint<{
     componentId: string;
     materializedView: EddaComponent;
+    attributeTreeMaterializedView: AttributeTree;
     schemaVariantMaterializedView: SchemaVariant;
   }>(routes.CreateComponent, {
     viewId: explore.viewId.value,
@@ -363,10 +365,27 @@ const onEnter = async () => {
     await call.post<componentTypes.CreateComponentPayload>(payload);
 
   if (api.ok(req)) {
+    // Set the new component and attribute tree in the query cache
     const componentQueryKey = makeKey(
       EntityKind.Component,
       req.data.componentId,
-    );
+    ).value;
+    const attributeTreeQueryKey = makeKey(
+      EntityKind.AttributeTree,
+      req.data.componentId,
+    ).value;
+    // replace old change set id with new one for the query key
+    if (newChangeSetId) {
+      componentQueryKey.forEach((v, idx) => {
+        if (v === route.params.changeSetId)
+          componentQueryKey[idx] = newChangeSetId;
+      });
+      attributeTreeQueryKey.forEach((v, idx) => {
+        if (v === route.params.changeSetId)
+          attributeTreeQueryKey[idx] = newChangeSetId;
+      });
+    }
+
     const eddaComponent = req.data.materializedView;
     const bifrostComponent: BifrostComponent = {
       ...eddaComponent,
@@ -374,14 +393,12 @@ const onEnter = async () => {
       canBeUpgraded: false,
       schemaVariant: req.data.schemaVariantMaterializedView,
     };
+    queryClient.setQueryData(componentQueryKey, bifrostComponent);
 
-    const keyValue = componentQueryKey.value;
-    // replace old change set id with new one for the query key
-    if (newChangeSetId)
-      keyValue.forEach((v, idx) => {
-        if (v === route.params.changeSetId) keyValue[idx] = newChangeSetId;
-      });
-    queryClient.setQueryData(keyValue, () => bifrostComponent);
+    queryClient.setQueryData(
+      attributeTreeQueryKey,
+      req.data.attributeTreeMaterializedView,
+    );
 
     const to = {
       name: "new-hotness-component",
