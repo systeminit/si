@@ -23,7 +23,7 @@ export default defineConfig({
     chromeWebSecurity: false,
     viewportHeight: 1000,
     viewportWidth: 1500,
-    retries: process.env.VITE_SI_CYPRESS_MULTIPLIER ? Number(process.env.VITE_SI_CYPRESS_MULTIPLIER) : 1,
+    retries: process.env.VITE_SI_CYPRESS_MULTIPLIER ? Number(process.env.VITE_SI_CYPRESS_MULTIPLIER) : 0,
     screenshotsFolder: 'cypress/screenshots',
     videosFolder: 'cypress/videos',
   },
