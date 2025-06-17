@@ -7,6 +7,7 @@ import {
   ComputedRef,
   unref,
   toRaw,
+  ref,
 } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
 import { monotonicFactory } from "ulid";
@@ -37,6 +38,7 @@ const ulid = monotonicFactory(() => Math.random());
 let token: string | undefined;
 let queryClient: QueryClient;
 const tabDbId = ulid();
+const lockAcquired = ref(false);
 
 export const init = async (bearerToken: string, _queryClient: QueryClient) => {
   if (!token) {
@@ -49,6 +51,7 @@ export const init = async (bearerToken: string, _queryClient: QueryClient) => {
     // This message fires when the lock has been acquired for this tab
     port1.onmessage = () => {
       db.setRemote(tabDbId);
+      lockAcquired.value = true;
     };
 
     // We are deliberately not awaiting this promise, since it blocks forever on the tabs that do not get the lock
@@ -62,7 +65,7 @@ export const init = async (bearerToken: string, _queryClient: QueryClient) => {
   }
 };
 
-export const initCompleted = computed(() => !!token);
+export const initCompleted = computed(() => !!token && lockAcquired.value);
 
 const bustTanStackCache: BustCacheFn = (
   workspaceId: string,
