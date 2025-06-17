@@ -25,7 +25,9 @@
             :value="field.state.value"
             type="text"
             :disabled="wForm.bifrosting.value"
-            @input="(e) => field.handleChange((e.target as HTMLInputElement).value)"
+            @input="
+              (e) => field.handleChange((e.target as HTMLInputElement).value)
+            "
           />
         </template>
       </nameForm.Field>
@@ -77,7 +79,7 @@ const nameForm = wForm.newForm({
       if (newChangeSetId) {
         api.navigateToNewChangeSet(
           {
-            name: "new-hotness-view",
+            name: "new-hotness",
             params: {
               workspacePk: route.params.workspacePk,
               changeSetId: newChangeSetId,

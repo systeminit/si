@@ -95,6 +95,8 @@ const removeAction = async () => {
     const call = removeApi.endpoint(routes.ActionCancel, {
       id: funcRun.value.actionId,
     });
+
+    // This route can mutate head, so we do not need to handle new change set semantics.
     await call.put({});
     router.push({
       name: "new-hotness",
@@ -112,6 +114,8 @@ const retryAction = async () => {
     const call = retryApi.endpoint(routes.ActionRetry, {
       id: funcRun.value.actionId,
     });
+
+    // This route can mutate head, so we do not need to handle new change set semantics.
     await call.put({});
   }
 };
