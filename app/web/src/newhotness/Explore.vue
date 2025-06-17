@@ -214,7 +214,6 @@
           )
         "
       >
-        <Breadcrumbs class="text-xs" />
         <RealtimeStatusPageState />
       </div>
     </div>
@@ -283,7 +282,6 @@ import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
 import ComponentGridTile from "./ComponentGridTile.vue";
-import Breadcrumbs from "./layout_components/Breadcrumbs.vue";
 import ActionCard from "./ActionCard.vue";
 import FuncRunList from "./FuncRunList.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
