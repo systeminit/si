@@ -174,7 +174,7 @@ const rightClickMenuItems = computed(() => {
   if (
     components.value
       .map((c) => upgrade(c.schemaId, c.schemaVariantId))
-      .every((c) => c === true)
+      .every((c) => c.value === true)
   ) {
     items.push({
       label: "Upgrade",

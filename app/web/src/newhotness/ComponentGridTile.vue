@@ -184,8 +184,8 @@ const schemaVariantId = computed(() => {
     return props.component.schemaVariantId.id;
   }
 });
-const canBeUpgraded = computed(() =>
-  upgrade(props.component.schemaId, schemaVariantId.value),
+const canBeUpgraded = computed(
+  () => upgrade(props.component.schemaId, schemaVariantId.value).value,
 );
 
 const qualificationSummary = computed(() => {
