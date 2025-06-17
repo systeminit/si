@@ -322,14 +322,17 @@ const reset = () => {
 const clickWithNoDrag = ref(false);
 
 const mousedown = () => {
-  // NOTE: the .prevent on the handler above stops text selection within the svg
   mouseDown.value = true;
   clickWithNoDrag.value = true;
 };
 
-const mouseup = () => {
+const mouseup = (e: MouseEvent) => {
   mouseDown.value = false;
-  if (clickWithNoDrag.value) {
+  const target = e.target;
+  if (target instanceof SVGRectElement && target.classList.contains("node")) {
+    // don't deselect if you clicked on a node!
+    return;
+  } else if (clickWithNoDrag.value) {
     deselect();
     emit("deselect");
   }

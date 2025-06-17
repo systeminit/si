@@ -1,38 +1,13 @@
 <template>
   <DelayedLoader v-if="componentQuery.isLoading.value" :size="'full'" />
-  <section v-else-if="!component">
-    <h3 class="text-destructive-500">
-      This component does not exist on this change set
-    </h3>
-    <VButton
-      v-tooltip="'Back (Esc)'"
-      class="border-0 mr-2em"
-      icon="arrow--left"
-      size="sm"
-      tone="shade"
-      variant="ghost"
-      @click="back"
-    />
-  </section>
-  <!-- TODO(nick): replace this with a "read-only" view of the page and a banner -->
-  <section v-else-if="component.toDelete">
-    <h3 class="text-warning-500">
-      This component has been marked for deletion.
-    </h3>
-    <VButton
-      v-tooltip="'Back (Esc)'"
-      class="border-0 mr-2em"
-      icon="arrow--left"
-      size="sm"
-      tone="shade"
-      variant="ghost"
-      @click="back"
-    />
-  </section>
   <section
     v-else
     :class="
-      clsx('grid gap-sm h-full p-sm', docsOpen ? 'docs-open' : 'docs-closed')
+      clsx(
+        component && !component.toDelete && 'grid',
+        'gap-sm h-full p-sm',
+        docsOpen ? 'docs-open' : 'docs-closed',
+      )
     "
   >
     <div
@@ -43,202 +18,221 @@
         )
       "
     >
-      <VButton
-        v-tooltip="'Back (Esc)'"
-        class="border-0 mr-2em flex-none"
-        icon="arrow--left"
+      <IconButton
+        tooltip="Close (Esc)"
+        tooltipPlacement="top"
+        class="border-0 mr-2em"
+        icon="x"
         size="sm"
-        tone="shade"
-        variant="ghost"
-        @click="back"
+        iconIdleTone="shade"
+        iconTone="shade"
+        @click="close"
       />
-      <div class="flex-none">{{ component.schemaVariantName }}</div>
-      <div class="flex-none">/</div>
-      <div class="flex-1 min-w-0">
-        <EditInPlace ref="editInPlaceRef" @hidden="reset" @showing="focus">
-          <template #trigger>
-            <VButton
-              :label="component.name"
-              :loading="wForm.bifrosting.value"
-              :loadingText="component.name"
-              class="border-0 font-normal max-w-full"
-              iconRight="edit"
-              loadingIcon="loader"
-              size="sm"
-              tone="shade"
-              variant="ghost"
-              truncateText
-              @click="editInPlaceRef?.toggle"
-            />
-          </template>
-          <template #input>
-            <nameForm.Field
-              :validators="{
-                onChange: required,
-                onBlur: required,
-              }"
-              name="name"
-            >
-              <template #default="{ field }">
-                <input
-                  ref="nameRef"
-                  :value="field.state.value"
-                  class="block w-full text-white bg-black border border-neutral-300 disabled:bg-neutral-900"
-                  type="text"
-                  @blur="blur"
-                  @input="
-                    (e) =>
-                      field.handleChange((e.target as HTMLInputElement).value)
-                  "
-                  @keydown.enter.stop.prevent="blur"
-                  @keydown.esc.stop.prevent="reset"
-                />
-              </template>
-            </nameForm.Field>
-          </template>
-        </EditInPlace>
-      </div>
-    </div>
 
-    <div class="attrs flex flex-col gap-sm">
-      <CollapsingFlexItem ref="attrRef" :expandable="false" open>
-        <template #header>
-          <div class="flex place-content-between w-full">
-            <span>Attributes</span>
-            <template v-if="hasImportFunc">
+      <div v-if="!component" class="text-destructive-500">
+        This component does not exist on this change set.
+      </div>
+      <!-- TODO(nick): replace this with a "read-only" view of the page and a banner -->
+      <div v-else-if="component.toDelete" class="text-warning-500">
+        This component has been marked for deletion.
+      </div>
+      <template v-else>
+        <div class="flex-none">{{ component.schemaVariantName }}</div>
+        <div class="flex-none">/</div>
+        <div class="flex-1 min-w-0">
+          <EditInPlace ref="editInPlaceRef" @hidden="reset" @showing="focus">
+            <template #trigger>
               <VButton
+                :label="component.name"
+                :loading="wForm.bifrosting.value"
+                :loadingText="component.name"
+                class="border-0 font-normal max-w-full"
+                iconRight="edit"
+                loadingIcon="loader"
                 size="sm"
-                tone="neutral"
-                :label="
-                  showResourceInput
-                    ? 'Set attributes manually'
-                    : 'Import a Resource'
-                "
-                class="ml-2xs mr-xs font-normal"
-                @click.stop="
-                  () => {
-                    showResourceInput = !showResourceInput;
-                  }
-                "
+                tone="shade"
+                variant="ghost"
+                truncateText
+                @click="editInPlaceRef?.toggle"
               />
             </template>
-          </div>
-        </template>
-        <AttributePanel
-          v-if="attributeTree"
-          :component="component"
-          :attributeTree="attributeTree"
-          :showImportArea="showResourceInput"
-        />
-        <EmptyState v-else text="No attributes to display" icon="code-circle" />
-      </CollapsingFlexItem>
-      <CollapsingFlexItem ref="actionRef" :expandable="false">
-        <template #header>Actions</template>
-        <ActionsPanel
-          :component="component"
-          :attributeValueId="component.rootAttributeValueId"
-        />
-      </CollapsingFlexItem>
-      <CollapsingFlexItem ref="mgmtRef" :expandable="false">
-        <template #header>Management Functions</template>
-        <ul v-if="mgmtFuncs.length > 0" class="p-xs flex flex-col gap-xs">
-          <ManagementFuncCard
-            v-for="func in mgmtFuncs"
-            :key="func.id"
-            :componentId="componentId"
-            :func="func"
-            :funcRun="latestFuncRuns[func.id]"
-          />
-        </ul>
-        <EmptyState
-          v-else
-          text="No management functions available"
-          icon="tools"
-        />
-      </CollapsingFlexItem>
+            <template #input>
+              <nameForm.Field
+                :validators="{
+                  onChange: required,
+                  onBlur: required,
+                }"
+                name="name"
+              >
+                <template #default="{ field }">
+                  <input
+                    ref="nameRef"
+                    :value="field.state.value"
+                    class="block w-full text-white bg-black border border-neutral-300 disabled:bg-neutral-900"
+                    type="text"
+                    @blur="blur"
+                    @input="
+                      (e) =>
+                        field.handleChange((e.target as HTMLInputElement).value)
+                    "
+                    @keydown.enter.stop.prevent="blur"
+                    @keydown.esc.stop.prevent="reset"
+                  />
+                </template>
+              </nameForm.Field>
+            </template>
+          </EditInPlace>
+        </div>
+      </template>
     </div>
 
-    <div v-if="docsOpen" class="docs flex flex-col">
-      <DocumentationPanel
-        :component="component"
-        :docs="docs"
-        :docLink="docLink"
-        open
-        @toggle="() => (docsOpen = false)"
-        @cleardocs="() => (docs = '')"
-      />
-    </div>
-
-    <div class="right flex flex-col">
-      <CollapsingFlexItem>
-        <template #header>
-          <PillCounter :count="(component.inputCount ?? 0) + (outgoing ?? 0)" />
-          Connections
-        </template>
-        <ConnectionsPanel
-          v-if="componentConnections && component"
-          :component="component"
-          :connections="componentConnections ?? undefined"
-        />
-      </CollapsingFlexItem>
-      <CollapsingFlexItem open>
-        <template #header>
-          <PillCounter :count="component.qualificationTotals.total" />
-          Qualifications
-        </template>
-        <QualificationPanel
-          v-if="attributeTree"
-          :component="component"
-          :attributeTree="attributeTree"
-        />
-        <EmptyState
-          v-else
-          icon="question-circle"
-          text="No qualifications to display"
-        />
-      </CollapsingFlexItem>
-      <CollapsingFlexItem>
-        <template #header>
-          <Icon
-            v-if="component.hasResource"
-            name="check-hex"
-            size="sm"
-            tone="success"
+    <template v-if="component && !component.toDelete">
+      <div class="attrs flex flex-col gap-sm">
+        <CollapsingFlexItem ref="attrRef" :expandable="false" open>
+          <template #header>
+            <div class="flex place-content-between w-full">
+              <span>Attributes</span>
+              <template v-if="hasImportFunc">
+                <VButton
+                  size="sm"
+                  tone="neutral"
+                  :label="
+                    showResourceInput
+                      ? 'Set attributes manually'
+                      : 'Import a Resource'
+                  "
+                  class="ml-2xs mr-xs font-normal"
+                  @click.stop="
+                    () => {
+                      showResourceInput = !showResourceInput;
+                    }
+                  "
+                />
+              </template>
+            </div>
+          </template>
+          <AttributePanel
+            v-if="attributeTree"
+            :component="component"
+            :attributeTree="attributeTree"
+            :showImportArea="showResourceInput"
           />
-          <Icon v-else name="refresh-hex-outline" size="sm" tone="shade" />
-          Resource
-        </template>
-        <ResourcePanel
+          <EmptyState
+            v-else
+            text="No attributes to display"
+            icon="code-circle"
+          />
+        </CollapsingFlexItem>
+        <CollapsingFlexItem ref="actionRef" :expandable="false">
+          <template #header>Actions</template>
+          <ActionsPanel
+            :component="component"
+            :attributeValueId="component.rootAttributeValueId"
+          />
+        </CollapsingFlexItem>
+        <CollapsingFlexItem ref="mgmtRef" :expandable="false">
+          <template #header>Management Functions</template>
+          <ul v-if="mgmtFuncs.length > 0" class="p-xs flex flex-col gap-xs">
+            <ManagementFuncCard
+              v-for="func in mgmtFuncs"
+              :key="func.id"
+              :componentId="componentId"
+              :func="func"
+              :funcRun="latestFuncRuns[func.id]"
+            />
+          </ul>
+          <EmptyState
+            v-else
+            text="No management functions available"
+            icon="tools"
+          />
+        </CollapsingFlexItem>
+      </div>
+
+      <div v-if="docsOpen" class="docs flex flex-col">
+        <DocumentationPanel
           :component="component"
-          :attributeTree="attributeTree ?? undefined"
+          :docs="docs"
+          :docLink="docLink"
+          open
+          @toggle="() => (docsOpen = false)"
+          @cleardocs="() => (docs = '')"
         />
-      </CollapsingFlexItem>
-      <CollapsingFlexItem>
-        <template #header>
-          <Icon name="brackets-curly" size="sm" />
-          Generated Code
-        </template>
-        <CodePanel
-          v-if="attributeTree"
+      </div>
+
+      <div class="right flex flex-col">
+        <CollapsingFlexItem>
+          <template #header>
+            <PillCounter
+              :count="(component.inputCount ?? 0) + (outgoing ?? 0)"
+            />
+            Connections
+          </template>
+          <ConnectionsPanel
+            v-if="componentConnections && component"
+            :component="component"
+            :connections="componentConnections ?? undefined"
+          />
+        </CollapsingFlexItem>
+        <CollapsingFlexItem open>
+          <template #header>
+            <PillCounter :count="component.qualificationTotals.total" />
+            Qualifications
+          </template>
+          <QualificationPanel
+            v-if="attributeTree"
+            :component="component"
+            :attributeTree="attributeTree"
+          />
+          <EmptyState
+            v-else
+            icon="question-circle"
+            text="No qualifications to display"
+          />
+        </CollapsingFlexItem>
+        <CollapsingFlexItem>
+          <template #header>
+            <Icon
+              v-if="component.hasResource"
+              name="check-hex"
+              size="sm"
+              tone="success"
+            />
+            <Icon v-else name="refresh-hex-outline" size="sm" tone="shade" />
+            Resource
+          </template>
+          <ResourcePanel
+            :component="component"
+            :attributeTree="attributeTree ?? undefined"
+          />
+        </CollapsingFlexItem>
+        <CollapsingFlexItem>
+          <template #header>
+            <Icon name="brackets-curly" size="sm" />
+            Generated Code
+          </template>
+          <CodePanel
+            v-if="attributeTree"
+            :component="component"
+            :attributeTree="attributeTree"
+          />
+        </CollapsingFlexItem>
+        <CollapsingFlexItem>
+          <template #header>
+            <Icon name="tilde" size="sm" />
+            Diff
+          </template>
+          <DiffPanel :component="component" />
+        </CollapsingFlexItem>
+        <DocumentationPanel
+          v-if="!docsOpen"
           :component="component"
-          :attributeTree="attributeTree"
+          :docs="docs"
+          :docLink="docLink"
+          @toggle="() => (docsOpen = true)"
         />
-      </CollapsingFlexItem>
-      <CollapsingFlexItem>
-        <template #header>
-          <Icon name="tilde" size="sm" />
-          Diff
-        </template>
-        <DiffPanel :component="component" />
-      </CollapsingFlexItem>
-      <DocumentationPanel
-        v-if="!docsOpen"
-        :component="component"
-        :docs="docs"
-        :docLink="docLink"
-        @toggle="() => (docsOpen = true)"
-      />
-    </div>
+      </div>
+    </template>
   </section>
 </template>
 
@@ -250,6 +244,7 @@ import {
   PillCounter,
   Icon,
   themeClasses,
+  IconButton,
 } from "@si/vue-lib/design-system";
 import {
   computed,
@@ -381,8 +376,9 @@ const editInPlaceRef = ref<typeof EditInPlace>();
 
 const router = useRouter();
 
-const back = () => {
+const close = () => {
   const params = router.currentRoute?.value.params ?? {};
+  delete params.componentId;
   router.push({
     name: "new-hotness",
     params,
@@ -553,7 +549,7 @@ const latestFuncRuns = computed(() => {
 
 onMounted(() => {
   keyEmitter.on("Escape", () => {
-    back();
+    close();
   });
 });
 onBeforeUnmount(() => {

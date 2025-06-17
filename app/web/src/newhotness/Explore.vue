@@ -7,7 +7,11 @@
       class="main pt-xs flex flex-col gap-xs items-stretch [&>div]:mx-[12px]"
     >
       <div class="flex-none flex flex-row items-center gap-xs">
-        <TabGroupToggle ref="groupRef" :aOrB="urlGridOrMap === 'grid'">
+        <TabGroupToggle
+          ref="groupRef"
+          :aOrB="urlGridOrMap === 'grid'"
+          @toggle="storeViewMode"
+        >
           <template #a="{ selected, toggle }">
             <VButton
               label="Grid"
@@ -109,11 +113,12 @@
         </InstructiveVormInput>
       </div>
       <template v-if="showGrid">
-        <EmptyState
+        <div
           v-if="componentList.length === 0 && componentListRaw.isSuccess.value"
-          icon="component"
-          text="No components in view"
-        />
+          class="flex-1 overflow-hidden flex flex-row items-center justify-center"
+        >
+          <EmptyState icon="component" text="No components in view" />
+        </div>
         <div
           v-else
           ref="scrollRef"
@@ -354,6 +359,10 @@ const route = useRoute();
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
 
+const VIEW_MODE_LOCAL_STORAGE_KEY = "newhotness-view-mode";
+const viewModeStorageKey = () =>
+  `${VIEW_MODE_LOCAL_STORAGE_KEY}: ${ctx.changeSetId}`;
+
 const selectedView = ref("");
 const groupRef = ref<InstanceType<typeof TabGroupToggle>>();
 const actionsRef = ref<typeof CollapsingGridItem>();
@@ -390,7 +399,12 @@ const urlGridOrMap = computed(() => {
   const keys = Object.keys(q);
   if (keys.includes("grid")) return "grid";
   if (keys.includes("map")) return "map";
-  return "grid";
+  const mode = localStorage.getItem(viewModeStorageKey());
+  if (mode) {
+    return mode;
+  } else {
+    return "grid";
+  }
 });
 const showGrid = computed(() => (groupRef.value ? groupRef.value.isA : true));
 watch(showGrid, () => {
@@ -984,6 +998,7 @@ const onClick = (e: MouseEvent) => {
     unhover();
   }
 };
+
 onMounted(() => {
   mountEmitters();
   document.addEventListener("click", onClick);
@@ -1104,6 +1119,18 @@ const scrollCurrentTileIntoView = () => {
 
 const onMapDeselect = () => {
   searchRef.value?.blur();
+};
+
+const storeViewMode = () => {
+  if (!groupRef.value) return;
+
+  const key = viewModeStorageKey();
+
+  if (groupRef.value.isB) {
+    localStorage.setItem(key, "grid");
+  } else {
+    localStorage.setItem(key, "map");
+  }
 };
 </script>
 
