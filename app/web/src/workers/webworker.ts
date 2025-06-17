@@ -458,6 +458,12 @@ const bustCacheAndReferences = (
   // bust me
   bustOrQueue(workspaceId, changeSetId, kind, id, skipQueue);
 
+  // we're being "special" in that there is no MV for the list of SchemaMembers, b/c we don't even need it
+  // but we're using a QueryKey of "all the schema members", under the workspaceId
+  if (kind === EntityKind.SchemaMembers) {
+    bustOrQueue(workspaceId, changeSetId, kind, workspaceId, skipQueue);
+  }
+
   // if we know it doesnt have references, dont even run the sql
   if (!HAVE_REFERENCES.includes(kind)) return;
 
