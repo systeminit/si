@@ -45,6 +45,7 @@ import EraseModal from "./EraseModal.vue";
 import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
 import { useApi, routes } from "./api_composables";
 import { assertIsDefined, ExploreContext } from "./types";
+import { useUpgrade } from "./logic_composables/upgrade";
 
 const props = defineProps<{
   onGrid?: boolean;
@@ -116,6 +117,7 @@ const actionByPrototype = computed(() => {
 });
 // ================================================================================================
 
+const upgrade = useUpgrade();
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
 
@@ -169,14 +171,18 @@ const rightClickMenuItems = computed(() => {
     onSelect: () => componentDuplicate(components.value.map((c) => c.id)),
   });
 
-  // if (component.value?.canBeUpgraded) {
-  //   items.push({
-  //     label: "Upgrade",
-  //     shortcut: "U",
-  //     icon: "bolt-outline",
-  //     onSelect: () => componentUpgrade(components.value.map((c) => c.id)),
-  //   });
-  // }
+  if (
+    components.value
+      .map((c) => upgrade(c.schemaId, c.schemaVariantId))
+      .every((c) => c === true)
+  ) {
+    items.push({
+      label: "Upgrade",
+      shortcut: "U",
+      icon: "bolt-outline",
+      onSelect: () => componentUpgrade(components.value.map((c) => c.id)),
+    });
+  }
 
   // Only enable actions if we are working with a single component.
   if (component.value && schemaVariantId.value) {
