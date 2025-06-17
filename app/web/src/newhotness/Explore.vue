@@ -827,7 +827,7 @@ const onU = (e: KeyDetails["u"]) => {
     );
     if (
       targetComponent &&
-      upgrade(targetComponent.schemaId, targetComponent.schemaVariantId)
+      upgrade(targetComponent.schemaId, targetComponent.schemaVariantId).value
     ) {
       componentContextMenuRef.value?.componentUpgrade([
         interactionTargetComponentId.value,
