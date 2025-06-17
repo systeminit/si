@@ -152,15 +152,14 @@ const secretFormData = computed(() => {
   } else return {};
 });
 
-const api = useApi();
-
+const saveApi = useApi();
 const save = async (
   path: string,
   _id: string,
   value: string,
   connectingComponentId?: string,
 ) => {
-  const call = api.endpoint<{ success: boolean }>(
+  const call = saveApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
@@ -172,11 +171,26 @@ const save = async (
       $source: { component: connectingComponentId, path: value },
     };
   }
-  await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  const { req, newChangeSetId } =
+    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  if (saveApi.ok(req) && newChangeSetId) {
+    saveApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness-component",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+          componentId: props.component.id,
+        },
+      },
+      newChangeSetId,
+    );
+  }
 };
 
+const removeSubscriptionApi = useApi();
 const removeSubscription = async (path: string, _id: string) => {
-  const call = api.endpoint<{ success: boolean }>(
+  const call = removeSubscriptionApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
@@ -188,7 +202,21 @@ const removeSubscription = async (path: string, _id: string) => {
     $source: null,
   };
 
-  await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  const { req, newChangeSetId } =
+    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  if (removeSubscriptionApi.ok(req) && newChangeSetId) {
+    removeSubscriptionApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness-component",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+          componentId: props.component.id,
+        },
+      },
+      newChangeSetId,
+    );
+  }
 };
 
 const route = useRoute();

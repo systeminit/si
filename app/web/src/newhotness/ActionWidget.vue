@@ -57,6 +57,8 @@ const clickHandler = async () => {
       id: props.actionId,
     });
     removeApi.setWatchFn(() => props.actionId);
+
+    // This route can mutate head, so we do not need to handle new change set semantics.
     await call.put({});
   } else {
     const call = addApi.endpoint(routes.ActionAdd);

@@ -31,7 +31,7 @@ import {
 } from "@si/vue-lib/design-system";
 import { useQuery } from "@tanstack/vue-query";
 import { computed, inject, nextTick, ref } from "vue";
-import { RouteLocationRaw } from "vue-router";
+import { RouteLocationRaw, useRoute } from "vue-router";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
@@ -50,6 +50,8 @@ const props = defineProps<{
   onGrid?: boolean;
   enableKeyboardControls?: boolean;
 }>();
+
+const route = useRoute();
 
 // This number fixes the Y position to align with the ComponentGridTile
 const Y_OFFSET = 4;
@@ -115,9 +117,6 @@ const actionByPrototype = computed(() => {
   return result;
 });
 // ================================================================================================
-
-const addActionApi = useApi();
-const removeActionApi = useApi();
 
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
@@ -195,27 +194,9 @@ const rightClickMenuItems = computed(() => {
         checked: existingActionId !== undefined,
         onSelect: () => {
           if (existingActionId) {
-            const call = removeActionApi.endpoint(routes.ActionCancel, {
-              id: existingActionId,
-            });
-
-            // TODO(nick): I am not sure that this is needed?
-            removeActionApi.setWatchFn(() => existingActionId);
-
-            call.put({});
+            removeAction(existingActionId);
           } else {
-            const call = addActionApi.endpoint(routes.ActionAdd);
-
-            // TODO(nick): I am not sure that this is needed?
-            addActionApi.setWatchFn(() => existingActionId);
-
-            call.post<{
-              componentId: string;
-              prototypeId: string;
-            }>({
-              componentId,
-              prototypeId: actionPrototype.id,
-            });
+            addAction(componentId, actionPrototype.id);
           }
         },
         endLinkTo: {
@@ -241,12 +222,61 @@ const rightClickMenuItems = computed(() => {
   return items;
 });
 
+const addActionApi = useApi();
+const removeActionApi = useApi();
+const addAction = async (
+  componentId: ComponentId,
+  actionPrototypeId: ActionPrototypeId,
+) => {
+  const call = addActionApi.endpoint(routes.ActionAdd);
+
+  const { req, newChangeSetId } = await call.post<{
+    componentId: string;
+    prototypeId: string;
+  }>({
+    componentId,
+    prototypeId: actionPrototypeId,
+  });
+  if (restoreApi.ok(req) && newChangeSetId) {
+    addActionApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+        },
+      },
+      newChangeSetId,
+    );
+  }
+};
+const removeAction = (actionId: ActionId) => {
+  const call = removeActionApi.endpoint(routes.ActionCancel, {
+    id: actionId,
+  });
+
+  // This route can mutate head, so we do not need to handle new change set semantics.
+  call.put({});
+};
+
 const restoreApi = useApi();
 const componentsRestore = async (componentIds: ComponentId[]) => {
   const call = restoreApi.endpoint(routes.RestoreComponents);
-  await call.put({
+  const { req, newChangeSetId } = await call.put({
     componentIds,
   });
+  if (restoreApi.ok(req) && newChangeSetId) {
+    restoreApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+        },
+      },
+      newChangeSetId,
+    );
+  }
 };
 
 const eraseApi = useApi();
@@ -262,13 +292,26 @@ const componentsFinishErase = async () => {
   if (!eraseComponentIds.value || eraseComponentIds.value.length === 0) return;
 
   const call = eraseApi.endpoint(routes.DeleteComponents);
-  const { req } = await call.delete({
+  const { req, newChangeSetId } = await call.delete({
     componentIds: eraseComponentIds.value,
     forceErase: true,
   });
 
+  eraseModalRef.value?.close();
+
   if (eraseApi.ok(req)) {
-    eraseModalRef.value?.close();
+    if (newChangeSetId) {
+      eraseApi.navigateToNewChangeSet(
+        {
+          name: "new-hotness",
+          params: {
+            workspacePk: route.params.workspacePk,
+            changeSetId: newChangeSetId,
+          },
+        },
+        newChangeSetId,
+      );
+    }
   }
 };
 
@@ -287,43 +330,91 @@ const componentsFinishDelete = async (mode: DeleteMode) => {
 
   if (mode === DeleteMode.Delete) {
     const call = deleteDeleteApi.endpoint(routes.DeleteComponents);
-    const { req } = await call.delete({
+    const { req, newChangeSetId } = await call.delete({
       componentIds: deleteComponentIds.value,
       forceErase: false,
     });
     if (deleteDeleteApi.ok(req)) {
       deleteModalRef.value?.close();
+      if (newChangeSetId) {
+        deleteDeleteApi.navigateToNewChangeSet(
+          {
+            name: "new-hotness",
+            params: {
+              workspacePk: route.params.workspacePk,
+              changeSetId: newChangeSetId,
+            },
+          },
+          newChangeSetId,
+        );
+      }
     }
   } else {
     const call = deleteEraseFromViewApi.endpoint(
       routes.EraseComponentsFromView,
       { viewId: explore.viewId.value },
     );
-    const { req } = await call.delete({
+    const { req, newChangeSetId } = await call.delete({
       componentIds: deleteComponentIds.value,
     });
     if (deleteEraseFromViewApi.ok(req)) {
       deleteModalRef.value?.close();
+      if (newChangeSetId) {
+        deleteEraseFromViewApi.navigateToNewChangeSet(
+          {
+            name: "new-hotness",
+            params: {
+              workspacePk: route.params.workspacePk,
+              changeSetId: newChangeSetId,
+            },
+          },
+          newChangeSetId,
+        );
+      }
     }
   }
 };
 
-const duplicateActionApi = useApi();
+const duplicateComponentApi = useApi();
 const componentDuplicate = async (componentIds: ComponentId[]) => {
-  const call = duplicateActionApi.endpoint(routes.DuplicateComponents, {
+  const call = duplicateComponentApi.endpoint(routes.DuplicateComponents, {
     viewId: explore.viewId.value,
   });
-  await call.post({
+  const { req, newChangeSetId } = await call.post({
     components: componentIds,
   });
+  if (duplicateComponentApi.ok(req) && newChangeSetId) {
+    duplicateComponentApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+        },
+      },
+      newChangeSetId,
+    );
+  }
 };
 
-const upgradeActionApi = useApi();
+const upgradeComponentApi = useApi();
 const componentUpgrade = async (componentIds: ComponentId[]) => {
-  const call = upgradeActionApi.endpoint(routes.UpgradeComponents);
-  await call.post({
+  const call = upgradeComponentApi.endpoint(routes.UpgradeComponents);
+  const { req, newChangeSetId } = await call.post({
     componentIds,
   });
+  if (upgradeComponentApi.ok(req) && newChangeSetId) {
+    upgradeComponentApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+        },
+      },
+      newChangeSetId,
+    );
+  }
 };
 
 // eslint-disable-next-line @typescript-eslint/ban-types

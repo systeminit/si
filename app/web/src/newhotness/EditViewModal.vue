@@ -56,6 +56,7 @@
 import { VButton, Modal, Icon, themeClasses } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import clsx from "clsx";
+import { useRoute } from "vue-router";
 import { ViewId } from "@/api/sdf/dal/views";
 import { useApi, routes } from "./api_composables";
 import { useWatchedForm } from "./logic_composables/watched_form";
@@ -75,6 +76,9 @@ const tooltipText = computed(() => {
 });
 
 const modalRef = ref<InstanceType<typeof Modal>>();
+
+const route = useRoute();
+
 const deleteViewApi = useApi();
 const updateViewApi = useApi();
 
@@ -82,10 +86,25 @@ const deleteView = async () => {
   const call = deleteViewApi.endpoint<{ id: string }>(routes.DeleteView, {
     viewId: viewId.value,
   });
-  const { req } = await call.delete({});
+  const { req, newChangeSetId } = await call.delete({});
   if (deleteViewApi.ok(req)) {
     close();
     emit("deleted");
+    if (newChangeSetId) {
+      // TODO(nick): when we make editing a view not require switching to that view, make sure that
+      // we re-route to what the user had selected, whether that be "all views" or their
+      // previously selected view.
+      deleteViewApi.navigateToNewChangeSet(
+        {
+          name: "new-hotness",
+          params: {
+            workspacePk: route.params.workspacePk,
+            changeSetId: newChangeSetId,
+          },
+        },
+        newChangeSetId,
+      );
+    }
   }
 };
 
@@ -100,11 +119,26 @@ const nameForm = wForm.newForm({
     const call = updateViewApi.endpoint<{ id: string }>(routes.UpdateView, {
       viewId: viewId.value,
     });
-    const { req } = await call.put<{ name: string }>({
+    const { req, newChangeSetId } = await call.put<{ name: string }>({
       name: value.name,
     });
     if (updateViewApi.ok(req)) {
       close();
+      if (newChangeSetId) {
+        // TODO(nick): when we make editing a view not require switching to that view, make sure that
+        // we re-route to what the user had selected, whether that be "all views" or their
+        // previously selected view.
+        updateViewApi.navigateToNewChangeSet(
+          {
+            name: "new-hotness",
+            params: {
+              workspacePk: route.params.workspacePk,
+              changeSetId: newChangeSetId,
+            },
+          },
+          newChangeSetId,
+        );
+      }
     }
   },
   validators: {

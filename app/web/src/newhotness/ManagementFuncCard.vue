@@ -70,12 +70,26 @@ const runMgmtFunc = async (funcId: string) => {
     },
   );
 
-  await call.post({});
+  const { req, newChangeSetId } = await call.post({});
 
   dispatchedFunc.value = true;
   setTimeout(() => {
     dispatchedFunc.value = false;
   }, 2000);
+
+  // NOTE(nick): need to make sure this makes sense after the timeout.
+  if (mgmtRunApi.ok(req) && newChangeSetId) {
+    mgmtRunApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+        },
+      },
+      newChangeSetId,
+    );
+  }
 };
 
 const dispatchedFunc = ref(false);

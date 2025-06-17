@@ -233,6 +233,8 @@ const hold = () => {
 const holdApi = useApi();
 const finishHold = async () => {
   const call = holdApi.endpoint(routes.ActionHold, { id: props.action.id });
+
+  // This route can mutate head, so we do not need to handle new change set semantics.
   await call.put({});
   confirmRef.value?.close();
 };
@@ -240,12 +242,16 @@ const finishHold = async () => {
 const retryApi = useApi();
 const retry = async () => {
   const call = retryApi.endpoint(routes.ActionRetry, { id: props.action.id });
+
+  // This route can mutate head, so we do not need to handle new change set semantics.
   await call.put({});
 };
 
 const removeApi = useApi();
 const remove = async () => {
   const call = removeApi.endpoint(routes.ActionCancel, { id: props.action.id });
+
+  // This route can mutate head, so we do not need to handle new change set semantics.
   await call.put({});
 };
 </script>

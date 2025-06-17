@@ -69,8 +69,7 @@
             type="text"
             @blur="blurNameInput"
             @input="
-              (e) =>
-                field.handleChange((e.target as HTMLInputElement).value)
+              (e) => field.handleChange((e.target as HTMLInputElement).value)
             "
             @keydown.enter.stop.prevent="blurNameInput"
             @keydown.esc.stop.prevent="resetNameInput"
@@ -376,7 +375,9 @@ watch(
   { immediate: true },
 );
 
-const setAttrApi = useApi();
+const route = useRoute();
+
+const saveApi = useApi();
 
 const save = async (
   path: string,
@@ -385,7 +386,7 @@ const save = async (
   propKind: PropKind,
   connectingComponentId?: string,
 ) => {
-  const call = setAttrApi.endpoint<{ success: boolean }>(
+  const call = saveApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
@@ -408,22 +409,11 @@ const save = async (
       $source: { component: connectingComponentId, path: coercedVal },
     };
   }
-  await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
-};
 
-const route = useRoute();
-const remove = async (path: string, _id: string) => {
-  const call = setAttrApi.endpoint<{ success: boolean }>(
-    routes.UpdateComponentAttributes,
-    { id: props.component.id },
-  );
-  const payload: componentTypes.UpdateComponentAttributesArgs = {};
-  path = path.replace("root", ""); // endpoint doesn't want it
-  payload[path] = { $source: null };
   const { req, newChangeSetId } =
     await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
-  if (newChangeSetId && setAttrApi.ok(req)) {
-    setAttrApi.navigateToNewChangeSet(
+  if (saveApi.ok(req) && newChangeSetId) {
+    saveApi.navigateToNewChangeSet(
       {
         name: "new-hotness-component",
         params: {
@@ -437,8 +427,37 @@ const remove = async (path: string, _id: string) => {
   }
 };
 
+const removeApi = useApi();
+
+const remove = async (path: string, _id: string) => {
+  const call = removeApi.endpoint<{ success: boolean }>(
+    routes.UpdateComponentAttributes,
+    { id: props.component.id },
+  );
+  const payload: componentTypes.UpdateComponentAttributesArgs = {};
+  path = path.replace("root", ""); // endpoint doesn't want it
+  payload[path] = { $source: null };
+  const { req, newChangeSetId } =
+    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  if (removeApi.ok(req) && newChangeSetId) {
+    removeApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness-component",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+          componentId: props.component.id,
+        },
+      },
+      newChangeSetId,
+    );
+  }
+};
+
+const removeSubscriptionApi = useApi();
+
 const removeSubscription = async (path: string, _id: string) => {
-  const call = setAttrApi.endpoint<{ success: boolean }>(
+  const call = removeSubscriptionApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
@@ -450,7 +469,21 @@ const removeSubscription = async (path: string, _id: string) => {
     $source: null,
   };
 
-  await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  const { req, newChangeSetId } =
+    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  if (removeSubscriptionApi.ok(req) && newChangeSetId) {
+    removeSubscriptionApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness-component",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+          componentId: props.component.id,
+        },
+      },
+      newChangeSetId,
+    );
+  }
 };
 
 const nameInputRef = ref<HTMLInputElement>();
@@ -525,8 +558,24 @@ const doImport = async () => {
     },
   );
 
-  await call.post<componentTypes.UpdateComponentAttributesArgs>({});
+  const { req, newChangeSetId } =
+    await call.post<componentTypes.UpdateComponentAttributesArgs>({});
+
   importing.value = false;
+
+  if (runMgmtFuncApi.ok(req) && newChangeSetId) {
+    runMgmtFuncApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness-component",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+          componentId: props.component.id,
+        },
+      },
+      newChangeSetId,
+    );
+  }
 };
 
 const importing = ref(false);
