@@ -13,6 +13,10 @@ from typing import List
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--deno-executable",
+                        required=False,
+                        type=pathlib.Path,
+                        help="The location of the deno exe")
     parser.add_argument("--input",
                         required=True,
                         type=pathlib.Path,
@@ -50,7 +54,8 @@ def parse_unstable_flags(flags: List[str]) -> List[str]:
 def run(input_path: str, output_path: str, permissions: List[str],
         flags: List[str]) -> None:
     """Run deno compile with the specified arguments."""
-    cmd = ["deno", "run"]
+    deno_bin = os.environ.get("DENO_BIN", "deno")
+    cmd = [deno_bin, "run"]
 
     if permissions:
         cmd.extend(permissions)

@@ -1,4 +1,5 @@
 DenoToolchainInfo = provider(fields = {
+    "deno_bin": provider_field(typing.Any, default = None),
     "deno_cache": provider_field(typing.Any, default = None),
     "deno_compile": provider_field(typing.Any, default = None),
     "deno_format": provider_field(typing.Any, default = None),
@@ -14,6 +15,7 @@ def deno_toolchain_impl(ctx) -> list[[DefaultInfo, DenoToolchainInfo]]:
     return [
         DefaultInfo(default_outputs = []),
         DenoToolchainInfo(
+            deno_bin = ctx.attrs.deno_bin,
             deno_cache = ctx.attrs._deno_cache,
             deno_compile = ctx.attrs._deno_compile,
             deno_format = ctx.attrs._deno_format,
@@ -26,6 +28,7 @@ def deno_toolchain_impl(ctx) -> list[[DefaultInfo, DenoToolchainInfo]]:
 deno_toolchain = rule(
     impl = deno_toolchain_impl,
     attrs = {
+       "deno_bin": attrs.string(),
        "_deno_cache": attrs.dep(
             default = "prelude-si//deno:deno_cache.py",
             providers = [DefaultInfo],

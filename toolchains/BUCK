@@ -10,7 +10,6 @@ load(
     "@prelude//toolchains:remote_test_execution.bzl",
     "remote_test_execution_toolchain",
 )
-load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
 load("@prelude-si//artifact:toolchain.bzl", "artifact_toolchain")
 load("@prelude-si//build_context:toolchain.bzl", "build_context_toolchain")
 load("@prelude-si//deno:toolchain.bzl", "deno_toolchain")
@@ -24,6 +23,61 @@ load("@prelude-si//rootfs:toolchain.bzl", "rootfs_toolchain")
 load("@prelude-si//rust:toolchain.bzl", "si_rust_toolchain")
 load("@prelude-si//shell:toolchain.bzl", "shell_toolchain")
 load(":toolchain.bzl", "toolchain_alias")
+load(":rust_toolchain.bzl", "nix_rust_toolchain")
+
+sh_binary(
+    name = "rustc_wrapper",
+    main = "rustc_wrapper.sh",
+    visibility = ["PUBLIC"],
+)
+
+nix_rust_toolchain(
+    name = "rust_release",
+    default_edition = "2024",
+    clippy_toml = "root//:clippy.toml",
+    visibility = ["PUBLIC"],
+    rustc_path = read_root_config("toolchains", "rust.rustc"),
+    cargo_path = read_root_config("toolchains", "rust.cargo"),
+    clippy_path = read_root_config("toolchains", "rust.clippy"),
+    rustfmt_path = read_root_config("toolchains", "rust.rustfmt"),
+    c_compiler = read_root_config("toolchains", "c.compiler"),
+    cxx_compiler = read_root_config("toolchains", "cxx.compiler"),
+    rustc_flags = [
+        "-Copt-level=3",
+        "-Cdebuginfo=line-tables-only",
+        "-Cstrip=none",
+        "-Cdebug-assertions=false",
+        "-Coverflow-checks=false",
+        "-Clto=false",
+        "-Ccodegen-units=16",
+        "-Clink-arg=-fuse-ld=",
+        "-Clinker=" + read_root_config("toolchains", "c.compiler"),
+    ],
+)
+
+nix_rust_toolchain(
+    name = "rust_debug",
+    default_edition = "2024",
+    clippy_toml = "root//:clippy.toml",
+    visibility = ["PUBLIC"],
+    rustc_path = read_root_config("toolchains", "rust.rustc"),
+    cargo_path = read_root_config("toolchains", "rust.cargo"),
+    clippy_path = read_root_config("toolchains", "rust.clippy"),
+    rustfmt_path = read_root_config("toolchains", "rust.rustfmt"),
+    c_compiler = read_root_config("toolchains", "c.compiler"),
+    cxx_compiler = read_root_config("toolchains", "cxx.compiler"),
+    rustc_flags = [
+        "-Copt-level=3",
+        "-Cdebuginfo=line-tables-only",
+        "-Cstrip=none",
+        "-Cdebug-assertions=false",
+        "-Coverflow-checks=false",
+        "-Clto=false",
+        "-Ccodegen-units=16",
+        "-Clink-arg=-fuse-ld=",
+        "-Clinker=" + read_root_config("toolchains", "c.compiler"),
+    ],
+)
 
 remote_test_execution_toolchain(
     name = "remote_test_execution",
@@ -37,6 +91,9 @@ noop_test_toolchain(
 
 system_cxx_toolchain(
     name = "cxx",
+    compiler = read_root_config("toolchains", "c.compiler"),
+    cxx_compiler = read_root_config("toolchains", "cxx.compiler"),
+    linker = read_root_config("toolchains", "cxx.linker"),
     visibility = ["PUBLIC"],
 )
 
@@ -47,44 +104,14 @@ system_genrule_toolchain(
 
 system_python_toolchain(
     name = "python",
+    interpreter = read_root_config("toolchains", "python"),
     visibility = ["PUBLIC"],
 )
 
 system_python_bootstrap_toolchain(
     name = "python_bootstrap",
+    interpreter = read_root_config("toolchains", "python"),
     visibility = ["PUBLIC"],
-)
-
-system_rust_toolchain(
-    name = "rust_release",
-    default_edition = "2024",
-    clippy_toml = "root//:clippy.toml",
-    visibility = ["PUBLIC"],
-    rustc_flags = [
-        "-Copt-level=3",
-        # https://doc.rust-lang.org/cargo/reference/profiles.html#debug
-        "-Cdebuginfo=line-tables-only",
-        # https://doc.rust-lang.org/cargo/reference/profiles.html#strip
-        "-Cstrip=none",
-        "-Cdebug-assertions=false",
-        "-Coverflow-checks=false",
-        "-Clto=false",
-        "-Ccodegen-units=16",
-    ],
-)
-
-system_rust_toolchain(
-    name = "rust_debug",
-    default_edition = "2024",
-    clippy_toml = "root//:clippy.toml",
-    visibility = ["PUBLIC"],
-    rustc_flags = [
-        "-Copt-level=0",
-        "-Cdebuginfo=full",
-        "-Ccodegen-units=256",
-        "-Cdebug-assertions=true",
-        "-Coverflow-checks=true",
-    ],
 )
 
 toolchain_alias(
@@ -103,6 +130,7 @@ build_context_toolchain(
 
 deno_toolchain(
     name = "deno",
+    deno_bin = read_root_config("toolchains", "deno"),
     visibility = ["PUBLIC"],
 )
 
@@ -134,6 +162,7 @@ nix_toolchain(
 pnpm_toolchain(
     name = "pnpm",
     editorconfig = "root//:.editorconfig",
+    pnpm_bin = read_root_config("toolchains", "pnpm"),
     visibility = ["PUBLIC"],
 )
 

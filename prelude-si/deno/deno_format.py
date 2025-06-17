@@ -32,7 +32,8 @@ def parse_args() -> argparse.Namespace:
 def run_format(input_paths: List[str], check_only: bool,
                ignore_paths: List[str]) -> None:
     """Run deno fmt with the specified arguments."""
-    cmd = ["deno", "fmt"]
+    deno_bin = os.environ.get("DENO_BIN", "deno")
+    cmd = [deno_bin, "fmt"]
 
     if check_only:
         cmd.append("--check")

@@ -38,6 +38,8 @@
         nodejs = pkgs.nodejs_20;
       };
 
+      SI_RBE_TOKEN = builtins.getEnv "SI_RBE_TOKEN";
+
       buck2NativeBuildInputs = with pkgs;
         [
           b3sum
@@ -128,6 +130,45 @@
         deno
       ];
 
+      generateBuckconfig = {
+          system,
+          pkgs,
+          buck2NativeBuildInputs,
+          buck2BuildInputs,
+          rust-toolchain,
+          rustfmt-nightly,
+        }: let
+          # Helper to get binary paths
+          binPath = pkg: name: "${pkg}/bin/${name}";
+        in ''
+          [toolchains]
+            rust.rustc = ${binPath rust-toolchain "rustc"}
+            rust.cargo = ${binPath rust-toolchain "cargo"}
+            rust.clippy = ${binPath rust-toolchain "clippy-driver"}
+            rust.rustfmt = ${binPath rustfmt-nightly "rustfmt"}
+            c.compiler = ${binPath pkgs.clang "clang"}
+            cxx.compiler = ${binPath pkgs.clang "clang++"}
+            cxx.linker = ${binPath pkgs.clang "clang"}
+            protoc = ${binPath pkgs.protobuf "protoc"}
+            nodejs = ${binPath pkgs.nodejs "node"}
+            python = ${binPath pkgs.python3 "python3"}
+            deno = ${binPath pkgs.deno "deno"}
+            pnpm = ${binPath pkgs.nodePackages.pnpm "pnpm"}
+            bash = ${binPath pkgs.bash "bash"}
+            git = ${binPath pkgs.gitMinimal "git"}
+            '';
+
+      writeBuckconfig = { pkgs, config }: pkgs.writeText "10-nix.buckconfig" config;
+
+      buckconfigContent = generateBuckconfig {
+        inherit system pkgs buck2NativeBuildInputs buck2BuildInputs rust-toolchain rustfmt-nightly;
+      };
+
+      buckconfigFile = writeBuckconfig {
+        inherit pkgs;
+        config = buckconfigContent;
+      };
+
       standaloneBinaryDerivation = {
         pkgName,
         fromPkg,
@@ -139,6 +180,7 @@
           src = ./.;
           buildInputs = [fromPkg];
           installPhase = ''
+            export SI_RBE_TOKEN=${SI_RBE_TOKEN}
             install -Dv "${fromPkg}/bin/${bin}" "$out/bin/${bin}"
           '';
           postFixup =
@@ -221,6 +263,7 @@
           '';
           buildPhase =
             ''
+              export SI_RBE_TOKEN=${SI_RBE_TOKEN}
               export HOME="$(dirname $(pwd))/home"
               mkdir -p build
             ''
@@ -279,6 +322,8 @@
       with pkgs; rec {
         packages = {
           auth-api = binDerivation {pkgName = "auth-api";};
+
+          buckconfig = buckconfigFile;
 
           cyclone = binDerivation {pkgName = "cyclone";};
 
@@ -381,9 +426,17 @@
           };
         };
 
+
         devShells.default = mkShell {
           # Env Vars so bindgen can find libclang
           shellHook = ''
+            mkdir -p .buckconfig.d
+            if [ -f .buckconfig.d/10-nix.buckconfig ]; then
+              chmod +w .buckconfig.d/10-nix.buckconfig
+            fi
+            echo "${buckconfigContent}" > .buckconfig.d/10-nix.buckconfig
+            chmod 644 .buckconfig.d/10-nix.buckconfig
+
             export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
             export BINDGEN_EXTRA_CLANG_ARGS="\
               $(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \

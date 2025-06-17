@@ -28,6 +28,8 @@ generated-sdks/typescript/dist/
 
 bin/lang-js/docs/
 
+.buckconfig.d/
+
 .turbo
 .netlify
 CLAUDE.md

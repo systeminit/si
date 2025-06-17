@@ -70,7 +70,8 @@ def run_tests(
     watch: bool,
 ) -> None:
     """Run deno test with the specified arguments."""
-    cmd = ["deno", "test"]
+    deno_bin = os.environ.get("DENO_BIN", "deno")
+    cmd = [deno_bin, "test"]
 
     if filter_pattern:
         cmd.extend(["--filter", filter_pattern])

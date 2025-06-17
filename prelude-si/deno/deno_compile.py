@@ -52,7 +52,8 @@ def run_compile(input_path: str, output_path: str, permissions: List[str],
                 flags: List[str]) -> None:
     """Run deno compile with the specified arguments."""
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    cmd = ["deno", "compile", "--output", output_path]
+    deno_bin = os.environ.get("DENO_BIN", "deno")
+    cmd = [deno_bin, "compile", "--output", output_path]
 
     if permissions:
         cmd.extend(permissions)

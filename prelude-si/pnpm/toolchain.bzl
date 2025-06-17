@@ -1,4 +1,5 @@
 PnpmToolchainInfo = provider(fields = {
+    "pnpm_bin": provider_field(typing.Any, default = None),
     "build_npm_bin": typing.Any,
     "build_package_node_modules": typing.Any,
     "build_pkg_bin": typing.Any,
@@ -23,6 +24,7 @@ def pnpm_toolchain_impl(ctx) -> list[[DefaultInfo, PnpmToolchainInfo]]:
     return [
         DefaultInfo(),
         PnpmToolchainInfo(
+            pnpm_bin = ctx.attrs.pnpm_bin,
             build_npm_bin = ctx.attrs._build_npm_bin,
             build_package_node_modules = ctx.attrs._build_package_node_modules,
             build_pkg_bin = ctx.attrs._build_pkg_bin,
@@ -39,6 +41,7 @@ def pnpm_toolchain_impl(ctx) -> list[[DefaultInfo, PnpmToolchainInfo]]:
 pnpm_toolchain = rule(
     impl = pnpm_toolchain_impl,
     attrs = {
+        "pnpm_bin": attrs.string(),
         "editorconfig": attrs.option(
             attrs.dep(providers = [DefaultInfo]),
             default = None,
