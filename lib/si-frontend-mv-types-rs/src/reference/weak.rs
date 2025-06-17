@@ -103,6 +103,13 @@ pub mod markers {
     impl ReferenceKindMarker for IncomingConnections {
         const REFERENCE_KIND: ReferenceKind = ReferenceKind::IncomingConnections;
     }
+    /// A weak reference marker for [`ReferenceKind::Component`].
+    #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
+    pub struct ComponentInList;
+
+    impl ReferenceKindMarker for ComponentInList {
+        const REFERENCE_KIND: ReferenceKind = ReferenceKind::ComponentInList;
+    }
 
     /// A weak reference marker for [`ReferenceKind::SchemaVariant`].
     #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]

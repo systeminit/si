@@ -15,6 +15,7 @@ import { DefaultMap } from "@/utils/defaultmap";
 
 export enum EntityKind {
   Component = "Component",
+  ComponentInList = "ComponentInList",
   View = "View",
   ViewList = "ViewList",
   ComponentList = "ComponentList",
@@ -26,13 +27,12 @@ export enum EntityKind {
   SchemaMembers = "SchemaMembers",
   ActionViewList = "ActionViewList",
   ActionPrototypeViewList = "ActionPrototypeViewList",
-  SecretList = "SecretList",
-  SecretDefinitionList = "SecretDefinitionList",
-  Secret = "Secret",
   SecretDefinition = "SecretDefinition",
-  OutgoingConnections = "OutgoingConnections",
-  PossibleConnections = "PossibleConnections",
   AttributeTree = "AttributeTree",
+  PossibleConnections = "PossibleConnections",
+  OutgoingConnections = "OutgoingConnections",
+  OutgoingCounts = "OutgoingCounts",
+  ComponentNames = "ComponentNames",
 }
 
 /**
@@ -61,7 +61,7 @@ interface WeakReference<T extends EntityKind> {
   kind: T;
 }
 
-export type OutgoingConnections = DefaultMap<string, BifrostConnection[]>;
+export type OutgoingConnections = DefaultMap<string, Connection[]>;
 
 /**
  * NAMING RULES
@@ -80,6 +80,9 @@ export type OutgoingConnections = DefaultMap<string, BifrostConnection[]>;
  *    (e.g. perform the full translation from Edda to Bifrost)
  * 7. `getReferences` SHALL set default/warning data that `getComputed` will write over
  */
+export type OutgoingCounts = Record<ComponentId, number>;
+export type ComponentNames = Record<ComponentId, string>;
+
 export type PossibleConnection = {
   attributeValueId: string;
   name: string;
@@ -273,16 +276,31 @@ export interface BifrostComponent {
 
 // NOTE: when using `getMany` you don't end up with a BifrostComponent (b/c it doesnt have SchemaVariant)
 // You end up with a BifrostComponentInList
-export type BifrostComponentInList = Omit<BifrostComponent, "schemaVariant">;
+export interface ComponentInList {
+  id: ComponentId;
+  name: string;
+  color?: string;
+  schemaName: string;
+  schemaId: SchemaId;
+  // Needed for "BifrostComponentInList" usage where the "SchemaVariant" is dropped.
+  schemaVariantId: SchemaVariantId;
+  schemaVariantName: string;
+  schemaCategory: string;
+  hasResource: boolean;
+  qualificationTotals: ComponentQualificationTotals;
+  inputCount: number;
+  diffCount: number;
+  toDelete: boolean;
+}
 
 export interface BifrostComponentList {
   id: ChangeSetId;
-  components: BifrostComponentInList[];
+  components: ComponentInList[];
 }
 
 export interface ViewComponentList {
   id: ViewId;
-  components: BifrostComponentInList[];
+  components: ComponentInList[];
 }
 
 export interface EddaComponentList {
@@ -361,89 +379,40 @@ export interface AttributeTree {
   schemaName: string;
 }
 
-// EntityKind.IncomingConnectionsList
-export interface EddaIncomingConnectionsList {
+export interface IncomingConnectionsList {
   id: ChangeSetId;
-  componentConnections: Reference<EntityKind.IncomingConnections>[];
+  componentConnections: WeakReference<EntityKind.IncomingConnections>[];
 }
 
-// EntityKind.IncomingConnections
-export interface EddaIncomingConnections {
+export interface IncomingConnections {
   id: ComponentId;
-  connections: EddaConnection[];
+  connections: Connection[];
 }
 
-// EntityKind.IncomingConnectionsList
-export interface BifrostIncomingConnectionsList {
-  id: ChangeSetId;
-  componentConnections: BifrostComponentConnections[];
-}
-
-// EntityKind.IncomingConnections
-export interface BifrostComponentConnections {
+export interface BifrostIncomingConnections {
   id: ComponentId;
-  component: BifrostComponentInList;
-  incoming: BifrostConnection[];
-  // note: outgoing connections cannot be computed right now
+  connections: Connection[];
 }
 
-export type EddaConnection =
+export type Connection =
   | {
       kind: "management";
-      fromComponentId: WeakReference<EntityKind.Component>;
-      toComponentId: WeakReference<EntityKind.Component>;
+      fromComponentId: ComponentId;
+      toComponentId: ComponentId;
     }
   | {
       kind: "prop";
-      fromComponentId: WeakReference<EntityKind.Component>;
+      fromComponentId: ComponentId;
       fromAttributeValueId: AttributeValueId;
       fromAttributeValuePath: string;
       fromPropId: PropId;
       fromPropPath: string;
-      toComponentId: WeakReference<EntityKind.Component>;
+      toComponentId: ComponentId;
       toPropId: PropId;
       toPropPath: string;
       toAttributeValueId: AttributeValueId;
       toAttributeValuePath: string;
     };
-
-export type BifrostConnection =
-  | {
-      kind: "management";
-      fromComponentId: WeakReference<EntityKind.Component>;
-      fromComponent: BifrostComponentInList;
-      toComponent: BifrostComponentInList;
-    }
-  | {
-      kind: "prop";
-      fromComponentId: WeakReference<EntityKind.Component>;
-      fromComponent: BifrostComponentInList;
-      fromAttributeValueId: AttributeValueId;
-      fromAttributeValuePath: string;
-      fromPropId: PropId;
-      fromPropPath: string;
-      toComponent: BifrostComponentInList;
-      toPropId: PropId;
-      toPropPath: string;
-      toAttributeValueId: AttributeValueId;
-      toAttributeValuePath: string;
-    };
-
-export type MaybeBifrostConnection = Omit<
-  BifrostConnection,
-  "toComponent" | "fromComponent"
-> & {
-  toComponent: BifrostComponentInList | -1;
-  fromComponent: BifrostComponentInList | -1;
-};
-
-export type MaybeBifrostComponentConnections = Omit<
-  BifrostComponentConnections,
-  "component" | "incoming"
-> & {
-  component: BifrostComponentInList | -1;
-  incoming: MaybeBifrostConnection[];
-};
 
 export interface SecretFormDataView {
   name: string;

@@ -13,8 +13,9 @@ import { Span } from "@opentelemetry/api";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { WorkspacePk } from "@/store/workspaces.store";
 import { DefaultMap } from "@/utils/defaultmap";
+import { ComponentId } from "@/api/sdf/dal/component";
 import {
-  BifrostConnection,
+  Connection,
   EntityKind,
   PossibleConnection,
   Prop,
@@ -32,9 +33,19 @@ export type BustCacheFn = (
 
 export type OutgoingConnections = DefaultMap<
   string,
-  Record<string, BifrostConnection>
+  Record<string, Connection>
 >;
 
+export type UpdateFn = (
+  workspaceId: string,
+  changeSetId: string,
+  kind: EntityKind,
+  id: string,
+  doc: AtomDocument,
+  listIds: string[],
+  removed: boolean,
+  noBroadcast?: boolean,
+) => void;
 export type RainbowFn = (
   changeSetId: ChangeSetId,
   label: string,
@@ -65,6 +76,18 @@ export type BroadcastMessage =
       };
     }
   | {
+      messageKind: "atomUpdated";
+      arguments: {
+        workspaceId: string;
+        changeSetId: string;
+        kind: EntityKind;
+        id: string;
+        data: AtomDocument;
+        listIds: string[];
+        removed: boolean;
+      };
+    }
+  | {
       messageKind: "listenerInFlight";
       arguments: { changeSetId: ChangeSetId; label: string };
     }
@@ -77,15 +100,21 @@ export type BroadcastMessage =
       arguments: { workspaceId: string; changeSetId: string };
     };
 
-export interface DBInterface {
+export type Listable =
+  | EntityKind.ViewComponentList
+  | EntityKind.ComponentList
+  | EntityKind.IncomingConnectionsList
+  | EntityKind.ViewList;
+export type Gettable = Exclude<EntityKind, Listable>;
+
+export interface SharedDBInterface {
   initDB: (testing: boolean) => Promise<void>;
   migrate: (testing: boolean) => Promise<Database>;
   setBearer: (token: string) => void;
   initSocket(): Promise<void>;
   unregisterRemote(id: string): void;
-  registerRemote(id: string, remote: Comlink.Remote<DBInterface>): void;
+  registerRemote(id: string, remote: Comlink.Remote<TabDBInterface>): void;
   broadcastMessage(message: BroadcastMessage): Promise<void>;
-  receiveBroadcast(message: BroadcastMessage): Promise<void>;
   setRemote(remoteId: string): Promise<void>;
   initBifrost(gotLockPort: MessagePort): Promise<void>;
   bifrostClose(): Promise<void>;
@@ -105,12 +134,110 @@ export interface DBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): Promise<OutgoingConnections | undefined>;
+  getOutgoingConnectionsCounts(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Promise<Record<ComponentId, number>>;
+  getComponentNames(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Promise<Record<ComponentId, string>>;
+  getSchemaMembers(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Promise<string>;
   get(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+    kind: Gettable,
+    id: Id,
+  ): Promise<typeof NOROW | AtomDocument>;
+  getList(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+    kind: Listable,
+    id: Id,
+  ): Promise<string>;
+  mjolnir(
     workspaceId: string,
     changeSetId: ChangeSetId,
     kind: EntityKind,
     id: Id,
-  ): Promise<typeof NOROW | AtomDocument>;
+    checksum?: Checksum,
+  ): Promise<void>;
+
+  changeSetExists(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Promise<boolean>;
+  niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<boolean>;
+  exec(
+    opts: ExecBaseOptions &
+      ExecRowModeArrayOptions &
+      (ExecReturnThisOptions | ExecReturnResultRowsOptions) & {
+        sql: FlexibleString;
+      },
+  ): Promise<SqlValue[][]>;
+  pruneAtomsForClosedChangeSet(
+    workspaceId: WorkspacePk,
+    changeSetId: ChangeSetId,
+  ): Promise<void>;
+  bobby(): Promise<void>;
+  ragnarok(
+    workspaceId: string,
+    changeSetId: string,
+    noColdStart?: boolean,
+  ): Promise<void>;
+  // show me everything
+  odin(changeSetId: ChangeSetId): Promise<object>;
+}
+
+export interface TabDBInterface {
+  initDB: (testing: boolean) => Promise<void>;
+  migrate: (testing: boolean) => Database;
+  setBearer: (token: string) => void;
+  initSocket(): Promise<void>;
+  receiveBroadcast(message: BroadcastMessage): Promise<void>;
+  setRemote(remoteId: string): Promise<void>;
+  initBifrost(gotLockPort: MessagePort): Promise<void>;
+  bifrostClose(): void;
+  bifrostReconnect(): void;
+  linkNewChangeset(
+    workspaceId: string,
+    headChangeSetId: string,
+    changeSetId: string,
+  ): void;
+  getPossibleConnections(
+    workspaceId: string,
+    changeSetId: string,
+    destSchemaName: string,
+    dest: Prop,
+  ): CategorizedPossibleConnections;
+  getOutgoingConnectionsByComponentId(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): OutgoingConnections;
+  getOutgoingConnectionsCounts(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Record<ComponentId, number>;
+  getComponentNames(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Record<ComponentId, string>;
+  getSchemaMembers(workspaceId: string, changeSetId: ChangeSetId): string;
+  get(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+    kind: Gettable,
+    id: Id,
+  ): typeof NOROW | AtomDocument;
+  getList(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+    kind: Listable,
+    id: Id,
+  ): string;
   mjolnirBulk(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -123,20 +250,18 @@ export interface DBInterface {
     kind: EntityKind,
     id: Id,
     checksum?: Checksum,
-  ): Promise<void>;
+  ): void;
   partialKeyFromKindAndId(kind: EntityKind, id: Id): QueryKey;
   kindAndIdFromKey(key: QueryKey): { kind: EntityKind; id: Id };
   addListenerBustCache(fn: BustCacheFn): void;
   addListenerInFlight(fn: RainbowFn): void;
   addListenerReturned(fn: RainbowFn): void;
   addListenerLobbyExit(fn: LobbyExitFn): void;
+  addAtomUpdated(fn: UpdateFn): void;
   atomChecksumsFor(
     changeSetId: ChangeSetId,
   ): Promise<Record<QueryKey, Checksum>>;
-  changeSetExists(
-    workspaceId: string,
-    changeSetId: ChangeSetId,
-  ): Promise<boolean>;
+  changeSetExists(workspaceId: string, changeSetId: ChangeSetId): boolean;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<boolean>;
   pruneAtomsForClosedChangeSet(
     workspaceId: WorkspacePk,
@@ -154,15 +279,15 @@ export interface DBInterface {
       (ExecReturnThisOptions | ExecReturnResultRowsOptions) & {
         sql: FlexibleString;
       },
-  ): Promise<SqlValue[][]>;
-  bobby(): Promise<void>;
+  ): SqlValue[][];
+  bobby(): void;
   ragnarok(
     workspaceId: string,
     changeSetId: string,
     noColdStart?: boolean,
-  ): Promise<void>;
+  ): void;
   // show me everything
-  odin(changeSetId: ChangeSetId): Promise<object>;
+  odin(changeSetId: ChangeSetId): object;
 }
 
 export class Ragnarok extends Error {

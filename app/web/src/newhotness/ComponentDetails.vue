@@ -172,12 +172,11 @@
     <div class="right flex flex-col">
       <CollapsingFlexItem>
         <template #header>
-          <PillCounter
-            :count="(component.inputCount ?? 0) + (component.outputCount ?? 0)"
-          />
+          <PillCounter :count="(component.inputCount ?? 0) + (outgoing ?? 0)" />
           Connections
         </template>
         <ConnectionsPanel
+          v-if="componentConnections && component"
           :component="component"
           :connections="componentConnections ?? undefined"
         />
@@ -266,10 +265,10 @@ import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   AttributeTree,
   BifrostComponent,
-  BifrostComponentConnections,
   EntityKind,
+  IncomingConnections,
 } from "@/workers/types/entity_kind_types";
-import { Context } from "@/newhotness/types";
+import { Context, assertIsDefined } from "@/newhotness/types";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
 import ManagementFuncCard from "@/newhotness/ManagementFuncCard.vue";
 import AttributePanel from "./AttributePanel.vue";
@@ -297,12 +296,19 @@ const props = defineProps<{
   componentId: string;
 }>();
 
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined(ctx);
+
 const docsOpen = ref(true);
 
 const key = useMakeKey();
 const args = useMakeArgs();
 
 const componentId = computed(() => props.componentId);
+
+const outgoing = computed(
+  () => ctx.outgoingCounts.value[props.componentId] ?? 0,
+);
 
 const componentQuery = useQuery<BifrostComponent | null>({
   queryKey: key(EntityKind.Component, componentId),
@@ -336,10 +342,10 @@ const mgmtFuncs = computed(
   () => component.value?.schemaVariant.mgmtFunctions ?? [],
 );
 
-const componentConnectionsQuery = useQuery<BifrostComponentConnections | null>({
+const componentConnectionsQuery = useQuery<IncomingConnections | null>({
   queryKey: key(EntityKind.IncomingConnections, componentId),
   queryFn: async () => {
-    const incomingConnections = await bifrost<BifrostComponentConnections>(
+    const incomingConnections = await bifrost<IncomingConnections>(
       args(EntityKind.IncomingConnections, componentId.value),
     );
     return incomingConnections;
@@ -487,11 +493,8 @@ const hasImportFunc = computed(
 
 const showResourceInput = ref(false);
 
-// MGMT funcs
-const ctx = inject<Context>("CONTEXT");
-
 const funcRunQuery = useInfiniteQuery({
-  queryKey: [ctx?.changeSetId, "paginatedFuncRuns"],
+  queryKey: [ctx.changeSetId, "paginatedFuncRuns"],
   queryFn: async ({
     pageParam = undefined,
   }): Promise<funcRunTypes.GetFuncRunsPaginatedResponse> => {

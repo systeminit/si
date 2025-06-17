@@ -1,6 +1,6 @@
 import * as Comlink from "comlink";
 import {
-  DBInterface,
+  TabDBInterface,
   BustCacheFn,
   PatchBatch,
   MessageKind,
@@ -53,7 +53,7 @@ const done = () => {
  * THE TEST
  */
 
-const fullDiagnosticTest = async (db: Comlink.Remote<DBInterface>) => {
+const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   log("~~ DIAGNOSTIC STARTED ~~");
   const head = "HEAD";
   const workspace = "W";
@@ -498,7 +498,7 @@ async function go() {
   const worker = new Worker(new URL(workerUrl, import.meta.url), {
     type: "module",
   });
-  const db: Comlink.Remote<DBInterface> = Comlink.wrap(worker);
+  const db: Comlink.Remote<TabDBInterface> = Comlink.wrap(worker);
   db.addListenerBustCache(Comlink.proxy(bustTanStackCache));
   await db.initDB(true);
   await db.migrate(true);

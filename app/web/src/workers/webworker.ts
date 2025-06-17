@@ -43,10 +43,11 @@ import {
   BustCacheFn,
   CategorizedPossibleConnections,
   Checksum,
-  DBInterface,
+  Gettable,
   Id,
   IndexObjectMeta,
   IndexUpdate,
+  Listable,
   LobbyExitFn,
   MessageKind,
   MjolnirBulk,
@@ -55,32 +56,23 @@ import {
   QueryKey,
   Ragnarok,
   RainbowFn,
+  TabDBInterface,
+  UpdateFn,
 } from "./types/dbinterface";
 import {
   BifrostComponent,
-  BifrostComponentConnections,
-  BifrostComponentInList,
-  BifrostComponentList,
-  BifrostConnection,
-  BifrostIncomingConnectionsList,
+  Connection,
   BifrostSchemaVariantCategories,
-  BifrostViewList,
   CategoryVariant,
   EddaComponent,
-  EddaComponentList,
-  EddaIncomingConnections,
-  EddaIncomingConnectionsList,
+  IncomingConnections,
   EddaSchemaVariantCategories,
   EntityKind,
-  MaybeBifrostComponentConnections,
-  MaybeBifrostConnection,
   PossibleConnection,
   Prop,
-  RawViewList,
   SchemaMembers,
   SchemaVariant,
   UninstalledVariant,
-  View,
   AttributeTree,
 } from "./types/entity_kind_types";
 import {
@@ -176,7 +168,7 @@ const initializeSQLite = async (testing: boolean) => {
   }
 };
 
-const dropTables = async () => {
+const dropTables = () => {
   const sql = `
   DROP TABLE IF EXISTS index_mtm_atoms;
   DROP TABLE IF EXISTS atoms;
@@ -189,8 +181,8 @@ const dropTables = async () => {
 
 // INTEGER is 8 bytes, not large enough to store ULIDs
 // we'll go with string, though reading that putting the bytes as BLOBs would save space
-const ensureTables = async (testing: boolean) => {
-  if (_START_FRESH || testing) await dropTables();
+const ensureTables = (testing: boolean) => {
+  if (_START_FRESH || testing) dropTables();
   /**
    * GOAL: persist only data that is readable, once blob data is no longer viewable, get rid of it
    * PROBLEM: Objects exist across multiple changesets, so we cannot ever UPDATE atom
@@ -269,13 +261,13 @@ const ensureTables = async (testing: boolean) => {
 };
 
 // NOTE: this is just for external test usage, do not use this within this file
-const exec = async (
+const exec = (
   opts: ExecBaseOptions &
     ExecRowModeArrayOptions &
     ExecReturnResultRowsOptions & {
       sql: FlexibleString;
     },
-): Promise<SqlValue[][]> => db.exec(opts);
+): SqlValue[][] => db.exec(opts);
 
 /**
  * A few small utilities
@@ -304,11 +296,11 @@ const oneInOne = (rows: SqlValue[][]): SqlValue | typeof NOROW => {
  * INDEX LOGIC
  */
 
-const atomExistsOnIndexes = async (
+const atomExistsOnIndexes = (
   kind: EntityKind,
   id: string,
   checksum: Checksum,
-): Promise<Checksum[]> => {
+): Checksum[] => {
   const rows = db.exec({
     sql: `
     select
@@ -326,10 +318,7 @@ const atomExistsOnIndexes = async (
   return rows.flat().filter(nonNullable) as Checksum[];
 };
 
-const newIndex = async (
-  meta: AtomMeta,
-  fromIndexChecksum: string | undefined,
-) => {
+const newIndex = (meta: AtomMeta, fromIndexChecksum: string | undefined) => {
   db.exec({
     sql: `INSERT INTO indexes (checksum) VALUES (?);`,
     bind: [meta.toIndexChecksum],
@@ -385,7 +374,7 @@ const newIndex = async (
   }
 };
 
-const removeAtom = async (indexChecksum: Checksum, atom: Required<Atom>) => {
+const removeAtom = (indexChecksum: Checksum, atom: Required<Atom>) => {
   db.exec({
     sql: `
     DELETE FROM index_mtm_atoms
@@ -454,15 +443,23 @@ const bustOrQueue = (
   else bustQueueAdd(workspaceId, changeSetId, kind, id, bustCacheFn);
 };
 
-const bustCacheAndReferences = async (
+const bustCacheAndReferences = (
   workspaceId: string,
   changeSetId: string,
   kind: EntityKind,
   id: string,
   skipQueue = false,
+  force = false,
 ) => {
+  // don't bust lists in the whole, we're using atomUpdatedFn to update the contents of lists
+  // unless its a hammer b/c i am missing a list
+  if (LISTABLE.includes(kind) && !force) return;
+
   // bust me
   bustOrQueue(workspaceId, changeSetId, kind, id, skipQueue);
+
+  // if we know it doesnt have references, dont even run the sql
+  if (!HAVE_REFERENCES.includes(kind)) return;
 
   // bust everyone who refers to me
   const sql = `
@@ -503,7 +500,7 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
   }
 
   // in between throwing a hammer and receiving it, i might already have written the atom
-  const indexes = await atomExistsOnIndexes(
+  const indexes = atomExistsOnIndexes(
     msg.atom.kind,
     msg.atom.id,
     msg.atom.toChecksum,
@@ -520,12 +517,12 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
       return; // noop
     } else {
       debug("HAMMER: Atom exists, MTM needed");
-      await insertAtomMTM(msg.atom, msg.atom.toIndexChecksum);
+      insertAtomMTM(msg.atom, msg.atom.toIndexChecksum);
       return;
     }
   }
 
-  const indexChecksum = await indexLogic(msg.atom, span);
+  const indexChecksum = indexLogic(msg.atom, span);
 
   // if the atom exists, i just need the MTM
   if (indexes.length === 0) {
@@ -567,18 +564,22 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     "index:",
     indexChecksum,
   );
-  await insertAtomMTM(msg.atom, indexChecksum);
+  insertAtomMTM(msg.atom, indexChecksum);
 
-  await updateChangeSetWithNewIndex(msg.atom);
+  updateChangeSetWithNewIndex(msg.atom);
   await removeOldIndex();
 
-  if (COMPUTED_KINDS.includes(msg.atom.kind)) {
+  if (
+    COMPUTED_KINDS.includes(msg.atom.kind) ||
+    LISTABLE_ITEMS.includes(msg.atom.kind)
+  ) {
     debug("🔨 HAMMER: Updating computed for:", msg.atom.kind, msg.atom.id);
-    await updateComputed(
+    postProcess(
       msg.atom.workspaceId,
       msg.atom.changeSetId,
       msg.atom.kind,
       msg.data,
+      msg.atom.id,
       indexChecksum,
     );
   }
@@ -590,15 +591,17 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     "checksum:",
     msg.atom.toChecksum,
   );
-  await bustCacheAndReferences(
+  bustCacheAndReferences(
     msg.atom.workspaceId,
     msg.atom.changeSetId,
     msg.atom.kind,
     msg.atom.id,
+    false,
+    true,
   );
 };
 
-const insertAtomMTM = async (atom: Atom, indexChecksum: Checksum) => {
+const insertAtomMTM = (atom: Atom, indexChecksum: Checksum) => {
   try {
     const bind = [indexChecksum, atom.kind, atom.id, atom.toChecksum];
     const exists = db.exec({
@@ -629,7 +632,7 @@ const insertAtomMTM = async (atom: Atom, indexChecksum: Checksum) => {
   return true;
 };
 
-const indexLogic = async (meta: AtomMeta, span?: Span) => {
+const indexLogic = (meta: AtomMeta, span?: Span) => {
   const { changeSetId, workspaceId, toIndexChecksum } = {
     ...meta,
   };
@@ -679,7 +682,7 @@ const indexLogic = async (meta: AtomMeta, span?: Span) => {
   }
 
   // Create index if needed - this is the new validation mechanism
-  if (indexExists === NOROW) await newIndex(meta, currentIndexChecksum);
+  if (indexExists === NOROW) newIndex(meta, currentIndexChecksum);
 
   if (!changeSetExists) {
     db.exec({
@@ -734,7 +737,7 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
 
   let indexChecksum: string;
   try {
-    indexChecksum = await indexLogic(data.meta, span);
+    indexChecksum = indexLogic(data.meta, span);
     debug("📦 Index logic completed, resolved checksum:", indexChecksum);
   } catch (err) {
     if (err instanceof Ragnarok) {
@@ -743,7 +746,7 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
         fromChecksumExpected: err.fromChecksumExpected,
         currentChecksum: err.currentChecksum,
       });
-      await ragnarok(err.workspaceId, err.changeSetId);
+      ragnarok(err.workspaceId, err.changeSetId);
       return;
     } else {
       throw err;
@@ -754,13 +757,14 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
    * Patches are not coming over the wire in any meaningful
    * order, which means they can be inter-dependent e.g. an item in
    * a list can be _after_ the list that wants it.
-   * This causes an unnecessary hammer by the list when it doesn't have
-   * the item.
+   * This causes an unnecessary hammer by the list when its cache busts
+   * it doesn't have the item on the read.
    *
-   * We can at least do anything with "list" *after* everything else
-   * Its the 20% that gets us 80% until patches can be ordered by
-   * graph dependency.
+   * BUT NOW, we're not busting on a list (other than a hammer)
+   * So we can do the lists first, which fixes the add/remove behavior
+   * for postProcessing
    */
+
   const atoms = data.patches
     .map((rawAtom) => {
       const atom: Atom = {
@@ -777,10 +781,27 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
     throw new Error(`Expected index checksum for ${data.meta.toIndexChecksum}`);
   }
 
+  // lists first now
+  const listAtoms = atoms.filter((a) => LISTABLE.includes(a.kind));
+  debug(
+    "📦 Processing list atoms:",
+    listAtoms.length,
+    listAtoms.map(
+      (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
+    ),
+  );
+  // not busting these
+  await Promise.all(
+    listAtoms.map(async (atom) => {
+      return applyPatch(atom, indexChecksum);
+    }),
+  );
+
   // non-list atoms
   // non-connections (e.g. components need to go before connections)
   const nonListAtoms = atoms.filter(
-    (a) => !a.kind.includes("List") && !a.kind.includes("IncomingConnection"),
+    (a) =>
+      !LISTABLE.includes(a.kind) && a.kind !== EntityKind.IncomingConnections,
   );
   debug(
     "📦 Processing non-list atoms:",
@@ -795,9 +816,8 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
     }),
   );
 
-  // connections (but NOT lists - avoid double processing IncomingConnectionsList)
   const connectionAtoms = atoms.filter(
-    (a) => a.kind.includes("IncomingConnection") && !a.kind.includes("List"),
+    (a) => a.kind === EntityKind.IncomingConnections,
   );
   debug(
     "📦 Processing connection atoms:",
@@ -812,27 +832,12 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
     }),
   );
 
-  // list items (all lists, including IncomingConnectionsList)
-  const listAtoms = atoms.filter((a) => a.kind.includes("List"));
-  debug(
-    "📦 Processing list atoms:",
-    listAtoms.length,
-    listAtoms.map(
-      (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
-    ),
-  );
-  const listAtomsToBust = await Promise.all(
-    listAtoms.map(async (atom) => {
-      return applyPatch(atom, indexChecksum);
-    }),
-  );
-
-  await updateChangeSetWithNewIndex(data.meta);
+  updateChangeSetWithNewIndex(data.meta);
   await removeOldIndex();
 
   debug(
     "🧹 Busting cache for atoms:",
-    atomsToBust.length + connAtomsToBust.length + listAtomsToBust.length,
+    atomsToBust.length + connAtomsToBust.length,
   );
 
   atomsToBust.forEach((atom) => {
@@ -857,17 +862,6 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
       );
     }
   });
-  listAtomsToBust.forEach((atom) => {
-    if (atom) {
-      debug("🧹 Busting cache for list:", atom.kind, atom.id);
-      bustCacheAndReferences(
-        atom.workspaceId,
-        atom.changeSetId,
-        atom.kind,
-        atom.id,
-      );
-    }
-  });
 
   debug("📦 BATCH COMPLETE:", batchId);
 };
@@ -883,7 +877,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
     );
 
     // Check if we actually have the atom data, not just the MTM relationship
-    const upToDateAtomIndexes = await atomExistsOnIndexes(
+    const upToDateAtomIndexes = atomExistsOnIndexes(
       atom.kind,
       atom.id,
       atom.toChecksum,
@@ -904,7 +898,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
     }
 
     // do we have an index with the fromChecksum (without we cannot patch)
-    const previousIndexes = await atomExistsOnIndexes(
+    const previousIndexes = atomExistsOnIndexes(
       atom.kind,
       atom.id,
       atom.fromChecksum,
@@ -922,6 +916,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
     let needToInsertMTM = false;
     let bustCache = false;
     let doc;
+    let removed = false;
     if (atom.fromChecksum === "0") {
       if (!exists) {
         // if i already have it, this is a NOOP
@@ -938,8 +933,9 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
       if (exists) {
         debug("🔧 Removing atom:", atom.kind, atom.id);
         span.setAttribute("removeAtom", true);
-        await removeAtom(indexChecksum, atom);
+        removeAtom(indexChecksum, atom);
         bustCache = true;
+        removed = true;
       } else {
         debug("🔧 Atom already removed (noop):", atom.kind, atom.id);
       }
@@ -988,20 +984,25 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
         "indexChecksum:",
         indexChecksum,
       );
-      const inserted = await insertAtomMTM(atom, indexChecksum);
+      const inserted = insertAtomMTM(atom, indexChecksum);
       span.setAttribute("insertedMTM", inserted);
       debug("🔧 MTM inserted:", inserted, "for:", atom.kind, atom.id);
     }
     span.end();
 
-    if (doc && COMPUTED_KINDS.includes(atom.kind)) {
+    if (
+      COMPUTED_KINDS.includes(atom.kind) ||
+      LISTABLE_ITEMS.includes(atom.kind)
+    ) {
       debug("🔧 Updating computed for:", atom.kind, atom.id);
-      await updateComputed(
+      postProcess(
         atom.workspaceId,
         atom.changeSetId,
         atom.kind,
         doc,
+        atom.id,
         indexChecksum,
+        removed,
       );
     }
 
@@ -1169,7 +1170,7 @@ const mjolnirBulk = async (
   bulkDone();
 };
 
-const mjolnir = async (
+const mjolnir = (
   workspaceId: string,
   changeSetId: ChangeSetId,
   kind: EntityKind,
@@ -1191,11 +1192,12 @@ const mjolnir = async (
 
     // these are sent after patches are completed
     // double check that i am still necessary!
-    const exists = await atomExistsOnIndexes(kind, id, checksum);
+    const exists = atomExistsOnIndexes(kind, id, checksum);
     if (exists.length === 0) {
       return mjolnirJob(workspaceId, changeSetId, kind, id, checksum);
     } // if i have it, bust!
-    else bustCacheAndReferences(workspaceId, changeSetId, kind, id);
+    else
+      bustCacheAndReferences(workspaceId, changeSetId, kind, id, false, true);
   });
 };
 
@@ -1299,7 +1301,7 @@ const mjolnirJob = async (
   processMjolnirQueue.add(() => handleHammer(msg));
 };
 
-const updateChangeSetWithNewIndex = async (meta: AtomMeta) => {
+const updateChangeSetWithNewIndex = (meta: AtomMeta) => {
   db.exec({
     sql: "update changesets set index_checksum = ? where change_set_id = ?;",
     bind: [meta.toIndexChecksum, meta.changeSetId],
@@ -1509,7 +1511,7 @@ const ragnarok = async (
  * WEAK REFERENCE TRACKING
  */
 
-const clearAllWeakReferences = async (changeSetId: string) => {
+const clearAllWeakReferences = (changeSetId: string) => {
   const sql = `
     delete from weak_references
     where change_set_id = ?
@@ -1521,7 +1523,7 @@ const clearAllWeakReferences = async (changeSetId: string) => {
   });
 };
 
-const clearWeakReferences = async (
+const clearWeakReferences = (
   changeSetId: string,
   referrer: { kind: string; args: string },
 ) => {
@@ -1536,7 +1538,7 @@ const clearWeakReferences = async (
   });
 };
 
-const weakReference = async (
+const weakReference = (
   changeSetId: string,
   target: { kind: string; args: string },
   referrer: { kind: string; args: string },
@@ -1572,6 +1574,7 @@ const weakReference = async (
 const COMPUTED_KINDS: EntityKind[] = [
   EntityKind.AttributeTree,
   EntityKind.IncomingConnections,
+  EntityKind.Component,
 ];
 
 const allPossibleConns = new DefaultMap<
@@ -1582,7 +1585,7 @@ const allPossibleConns = new DefaultMap<
 // the `string` is `${toAttributeValueId}-${fromAttributeValueId}`
 const allOutgoingConns = new DefaultMap<
   ChangeSetId,
-  DefaultMap<ComponentId, Record<string, BifrostConnection>>
+  DefaultMap<ComponentId, Record<string, Connection>>
 >(() => new DefaultMap(() => ({})));
 
 const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
@@ -1607,17 +1610,20 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
   });
 
   await Promise.all(
-    trees.map((tree) =>
-      updateComputed(
+    trees.map((tree) => {
+      const doc = decodeDocumentFromDB(tree[0] as ArrayBuffer) as AttributeTree;
+      return postProcess(
         workspaceId,
         changeSetId,
         EntityKind.AttributeTree,
-        decodeDocumentFromDB(tree[0] as ArrayBuffer) as AttributeTree,
+        doc,
+        doc.id,
         undefined,
         false,
         false,
-      ),
-    ),
+        false,
+      );
+    }),
   );
   // bust everything all at once on cold start
   await bustCacheAndReferences(
@@ -1626,28 +1632,28 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     EntityKind.PossibleConnections,
     workspaceId,
     true,
+    true,
   );
 
-  const list = (await get(
+  const list = getList(
     workspaceId,
     changeSetId,
     EntityKind.IncomingConnectionsList,
     workspaceId,
     undefined,
-    undefined,
-    false, // don't compute
-  )) as BifrostIncomingConnectionsList | -1;
+  );
 
-  if (list === -1) return;
-
+  const listData = JSON.parse(list) as IncomingConnections[];
   await Promise.all(
-    list.componentConnections.map((c) =>
-      updateComputed(
+    listData.flatMap((c) =>
+      postProcess(
         workspaceId,
         changeSetId,
         EntityKind.IncomingConnections,
         c,
+        c.id,
         undefined,
+        false,
         false,
         false,
       ),
@@ -1660,70 +1666,182 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     EntityKind.OutgoingConnections,
     workspaceId,
     true,
+    true,
   );
 };
 
-const updateComputed = async (
+const postProcess = (
   workspaceId: string,
   changeSetId: string,
   kind: EntityKind,
   doc: AtomDocument,
+  id: Id,
   indexChecksum?: string,
+  removed = false,
   bust = true,
   followReferences = true,
 ) => {
+  // NOTE: patch ordering matters for us, we need to have list patched
+  // prior to doing this work
+  // So when we move to streaming patches, we have to do something else
+  // to support adding & removing items from lists
+  if (LISTABLE_ITEMS.includes(kind)) {
+    // push updates over the thread boundary
+    const listIds: string[] = [];
+    if (kind === EntityKind.ComponentInList) {
+      const sql = `
+      select
+        viewId
+      FROM
+        (select
+          id as viewId,
+          json_each.value as ref
+        from
+          atoms,
+          json_each(jsonb_extract(CAST(atoms.data as text), '$.components'))
+          inner join index_mtm_atoms mtm
+            ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+          inner join indexes ON mtm.index_checksum = indexes.checksum
+        ${
+          indexChecksum
+            ? ""
+            : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+        }
+        where
+          ${
+            indexChecksum
+              ? "indexes.checksum = ?"
+              : "changesets.change_set_id = ?"
+          }
+          AND
+          atoms.kind = ?
+        )
+      WHERE
+        ref ->> '$.id' = ?
+      `;
+      const bind = [
+        indexChecksum ?? changeSetId,
+        EntityKind.ViewComponentList,
+        id,
+      ];
+      const rows = db.exec({
+        sql,
+        bind,
+        returnValue: "resultRows",
+      });
+      rows.forEach((r) => {
+        listIds.push(r[0] as string);
+      });
+    }
+
+    atomUpdatedFn(workspaceId, changeSetId, kind, id, doc, listIds, removed);
+  }
+
   if (!COMPUTED_KINDS.includes(kind)) return;
 
-  if (followReferences) {
-    const result = await getReferences(
+  if (followReferences && !removed) {
+    const result = getReferences(
       doc,
       workspaceId,
       changeSetId,
       kind,
-      doc.id,
+      id,
       indexChecksum,
       false,
     );
     doc = result[0];
   }
 
-  if (kind === EntityKind.IncomingConnections) {
-    const data = doc as BifrostComponentConnections;
-    data.incoming.forEach((incoming) => {
-      const id =
-        incoming.kind === "management"
-          ? `mgmt-${incoming.toComponent.id}-${incoming.fromComponent.id}`
-          : `${incoming.toAttributeValueId}-${incoming.fromAttributeValueId}`;
-      const outgoing = flip(incoming);
-      const conns = allOutgoingConns
-        .get(changeSetId)
-        .get(incoming.fromComponent.id);
-      conns[id] = outgoing;
-    });
+  if (kind === EntityKind.Component) {
+    if (bust) {
+      bustCacheFn(
+        workspaceId,
+        changeSetId,
+        EntityKind.ComponentNames,
+        workspaceId,
+      );
+    }
+  } else if (kind === EntityKind.IncomingConnections) {
+    const data = doc as IncomingConnections;
+
+    if (removed) {
+      // delete the outgoing conns for the deleted component
+      const conns = allOutgoingConns.get(changeSetId);
+      conns.delete(id);
+      // remove the outgoing conns TO (which means FROMS) the deleted component
+      for (const componentId of conns.keys()) {
+        const incoming = conns.get(componentId);
+        Object.entries(incoming).forEach(([incomingId, conn]) => {
+          if (conn.fromComponentId === id) {
+            delete incoming[incomingId];
+          }
+        });
+      }
+    } else {
+      data.connections.forEach((incoming) => {
+        const id =
+          incoming.kind === "management"
+            ? `mgmt-${incoming.toComponentId}-${incoming.fromComponentId}`
+            : `${incoming.toAttributeValueId}-${incoming.fromAttributeValueId}`;
+        const outgoing = flip(incoming);
+        const conns = allOutgoingConns
+          .get(changeSetId)
+          .get(incoming.fromComponentId);
+        conns[id] = outgoing;
+      });
+    }
+    if (bust) {
+      bustCacheFn(
+        workspaceId,
+        changeSetId,
+        EntityKind.OutgoingCounts,
+        workspaceId,
+      );
+
+      bustCacheFn(
+        workspaceId,
+        changeSetId,
+        EntityKind.OutgoingConnections,
+        workspaceId,
+      );
+    }
   } else if (kind === EntityKind.AttributeTree) {
     const conns: Record<string, PossibleConnection> = {};
 
-    const attributeTree = doc as AttributeTree;
-    Object.values(attributeTree.attributeValues).forEach((av) => {
-      const prop = attributeTree.props[av.propId ?? ""];
-      if (av.path && prop && prop.eligibleForConnection && !prop.hidden) {
-        conns[av.id] = {
-          attributeValueId: av.id,
-          value: av.secret ? av.secret.name : av.value || "<computed>",
-          path: av.path,
-          name: prop.name,
-          componentId: attributeTree.id,
-          componentName: attributeTree.componentName,
-          schemaName: attributeTree.schemaName,
-          kind: prop.kind,
-          suggestAsSourceFor: prop.suggestAsSourceFor,
-        };
-      }
-    });
+    if (!removed && !doc)
+      throw new Error("Atom is not removed, but no data for post processing");
 
     const existing = allPossibleConns.get(changeSetId);
-    // TODO what if AVs get removed?
-    allPossibleConns.set(changeSetId, { ...existing, ...conns });
+
+    const attributeTree = doc as AttributeTree;
+    if (doc) {
+      Object.values(attributeTree.attributeValues).forEach((av) => {
+        const prop = attributeTree.props[av.propId ?? ""];
+        if (av.path && prop && prop.eligibleForConnection && !prop.hidden) {
+          conns[av.id] = {
+            attributeValueId: av.id,
+            value: av.secret ? av.secret.name : av.value || "<computed>",
+            path: av.path,
+            name: prop.name,
+            componentId: attributeTree.id,
+            componentName: attributeTree.componentName,
+            schemaName: attributeTree.schemaName,
+            kind: prop.kind,
+            suggestAsSourceFor: prop.suggestAsSourceFor,
+          };
+        }
+      });
+      // TODO what if individual AVs get removed?
+      allPossibleConns.set(changeSetId, { ...existing, ...conns });
+    }
+    if (removed) {
+      Object.values(existing).forEach((av) => {
+        if (av.componentId === id) {
+          delete existing[av.attributeValueId];
+        }
+      });
+      allPossibleConns.set(changeSetId, { ...existing });
+    }
 
     // dont bust individually on cold start
     if (bust) {
@@ -1737,7 +1855,7 @@ const updateComputed = async (
   }
 };
 
-const getPossibleConnections = async (
+const getPossibleConnections = (
   _workspaceId: string,
   changeSetId: string,
   destSchemaName: string,
@@ -1787,18 +1905,71 @@ const getPossibleConnections = async (
   return categories;
 };
 
-const getOutgoingConnectionsByComponentId = async (
+const getOutgoingConnectionsByComponentId = (
   _workspaceId: string,
   changeSetId: string,
 ) => {
   return allOutgoingConns.get(changeSetId);
 };
 
-const flip = (i: BifrostConnection): BifrostConnection => {
-  const o: BifrostConnection = {
+const getOutgoingConnectionsCounts = (
+  _workspaceId: string,
+  changeSetId: string,
+) => {
+  const data = allOutgoingConns.get(changeSetId);
+  const counts: Record<ComponentId, number> = {};
+  [...data.entries()].forEach(([componentId, conns]) => {
+    counts[componentId] = Object.values(conns).length;
+  });
+  return counts;
+};
+
+const getComponentNames = (
+  _workspaceId: string,
+  changeSetId: string,
+  indexChecksum?: string,
+) => {
+  const sql = `
+    select
+      atoms.args,
+      replace(atoms.data -> '$.name', '"', '')
+    from
+      atoms
+      inner join index_mtm_atoms mtm
+        ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+      inner join indexes ON mtm.index_checksum = indexes.checksum
+    ${
+      indexChecksum
+        ? ""
+        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+    }
+    where
+      ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+      AND
+      atoms.kind = 'Component'
+    ;`;
+  const bind = [indexChecksum ?? changeSetId];
+  const start = Date.now();
+  const data = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+  const end = Date.now();
+  // eslint-disable-next-line no-console
+  console.log("sql get names", end - start, "ms");
+  const names: Record<string, string> = {};
+  data.forEach((row) => {
+    names[row[0] as string] = row[1] as string;
+  });
+  return names;
+};
+
+const flip = (i: Connection): Connection => {
+  const o: Connection = {
     ...i,
-    fromComponent: i.toComponent,
-    toComponent: i.fromComponent,
+    fromComponentId: i.toComponentId,
+    toComponentId: i.fromComponentId,
   };
   if ("toPropId" in i && o.kind === "prop") {
     o.fromPropId = i.toPropId;
@@ -1814,92 +1985,6 @@ const flip = (i: BifrostConnection): BifrostConnection => {
 };
 
 /**
- *
- * FETCHING LOGIC
- *
- * EXAMPLE OF HOW WE MOVE FROM
- * - `get` (aka `bifrost`)
- * - `getReferences`
- * - `getComputed`
-
- * Looking at `get` where `kind="ComponentList"
- *
- * 1. get the atom, edda generates references for us
- * 2. That type is the `EddaComponentList`
- * 3. Call `getReferences`
- * 3. Look up the strong references and fill them in with the `Component` type
- * 4. This translates type to `BifrostComponentList`, which is what we are returning
- * 6. Call `getComputed`
- * 7. Create a map of outgoing connections based on the incoming connections
- * 8. Fill in the `Component.outputCount` connections with them
- * 9. return (we don't need to translate this type)
- */
-
-const getComputed = async (
-  atomDoc: AtomDocument,
-  workspaceId: string,
-  changeSetId: string,
-  kind: EntityKind,
-  id: string,
-) => {
-  // PSA: in general, any `get` you do in here, you're going to want to pass `followComputed=false`
-  // otherwise you're liable to run into an infinite recursion lookup
-  if (
-    ![
-      EntityKind.Component,
-      EntityKind.ViewComponentList,
-      EntityKind.ComponentList,
-    ].includes(kind)
-  ) {
-    return atomDoc;
-  }
-
-  const connectionsById = await getOutgoingConnectionsByComponentId(
-    workspaceId,
-    changeSetId,
-  );
-  if (!connectionsById) {
-    debug("~ missing connections ~");
-    // making this, so when connections populate, we re-query
-    weakReference(
-      changeSetId,
-      { kind: EntityKind.OutgoingConnections, args: workspaceId },
-      { kind, args: id },
-    );
-    return atomDoc;
-  }
-
-  //  debug("🔗 computed operation", kind, id);
-
-  if (
-    kind === EntityKind.ViewComponentList ||
-    kind === EntityKind.ComponentList
-  ) {
-    const data = atomDoc as BifrostComponentList;
-    data.components.forEach((c) => {
-      c.outputCount = Object.values(connectionsById.get(c.id)).length;
-    });
-    clearWeakReferences(changeSetId, { kind, args: id });
-    weakReference(
-      changeSetId,
-      { kind: "OutgoingConnections", args: workspaceId },
-      { kind, args: id },
-    );
-    return data;
-  } else if (kind === EntityKind.Component) {
-    const data = atomDoc as BifrostComponent | EddaComponent;
-    data.outputCount = Object.values(connectionsById.get(id)).length;
-    clearWeakReferences(changeSetId, { kind, args: id });
-    weakReference(
-      changeSetId,
-      { kind: "OutgoingConnections", args: workspaceId },
-      { kind, args: id },
-    );
-    return data;
-  } else return atomDoc;
-};
-
-/**
  * RULES FOR REFERENCES
  * When you look up a reference with a `get` call
  * you must check for missing data (-1)
@@ -1910,7 +1995,12 @@ const getComputed = async (
  * If you are looking up a `Reference`
  * THOU SHALT make a `weakReference` on a miss (-1)
  */
-const getReferences = async (
+const HAVE_REFERENCES = [
+  EntityKind.Component,
+  EntityKind.ViewList,
+  EntityKind.SchemaVariantCategories,
+];
+const getReferences = (
   atomDoc: AtomDocument,
   workspaceId: string,
   changeSetId: ChangeSetId,
@@ -1919,20 +2009,7 @@ const getReferences = async (
   indexChecksum?: string,
   followComputed?: boolean,
 ) => {
-  if (
-    ![
-      EntityKind.Component,
-      EntityKind.ViewList,
-      EntityKind.ComponentList,
-      EntityKind.ViewComponentList,
-      EntityKind.IncomingConnections,
-      EntityKind.IncomingConnectionsList,
-      EntityKind.SchemaVariantCategories,
-      EntityKind.SecretDefinitionList,
-      EntityKind.SecretList,
-      EntityKind.Secret,
-    ].includes(kind)
-  ) {
+  if (!HAVE_REFERENCES.includes(kind)) {
     return [atomDoc, false];
   }
 
@@ -1957,7 +2034,7 @@ const getReferences = async (
     const variantIds = data.categories.flatMap((c) =>
       c.schemaVariants.filter((c) => c.type === "installed").map((c) => c.id),
     );
-    const installedVariants = await getMany(
+    const installedVariants = getMany(
       workspaceId,
       changeSetId,
       EntityKind.SchemaVariant,
@@ -2009,7 +2086,7 @@ const getReferences = async (
     return [bifrost, hasReferenceError];
   } else if (kind === EntityKind.Component) {
     const data = atomDoc as EddaComponent;
-    const sv = (await get(
+    const sv = get(
       workspaceId,
       changeSetId,
       data.schemaVariantId.kind,
@@ -2017,7 +2094,7 @@ const getReferences = async (
       undefined,
       indexChecksum,
       followComputed,
-    )) as SchemaVariant | -1;
+    ) as SchemaVariant | -1;
 
     if (sv === -1) {
       hasReferenceError = true;
@@ -2045,7 +2122,7 @@ const getReferences = async (
       );
     }
 
-    const sm = (await get(
+    const sm = get(
       workspaceId,
       changeSetId,
       data.schemaMembers.kind,
@@ -2053,7 +2130,7 @@ const getReferences = async (
       undefined,
       indexChecksum,
       followComputed,
-    )) as SchemaMembers | -1;
+    ) as SchemaMembers | -1;
 
     if (sm === -1) {
       hasReferenceError = true;
@@ -2103,297 +2180,137 @@ const getReferences = async (
     };
     span.end();
     return [component, hasReferenceError];
-  } else if (kind === EntityKind.ViewList) {
-    const rawList = atomDoc as RawViewList;
-
-    const viewIds = rawList.views.map((v) => v.id);
-    const viewResults: Record<Id, View> = await getMany(
-      workspaceId,
-      changeSetId,
-      EntityKind.View,
-      viewIds,
-      indexChecksum,
-    );
-    const maybeViews: View[] = [];
-    clearWeakReferences(changeSetId, {
-      kind: EntityKind.ViewList,
-      args: rawList.id,
-    });
-    for (const viewRef of rawList.views) {
-      const result = viewResults[viewRef.id];
-      if (result) {
-        maybeViews.push(result);
-      } else {
-        hasReferenceError = true;
-        mjolnir(workspaceId, changeSetId, EntityKind.View, viewRef.id);
-      }
-      weakReference(
-        changeSetId,
-        { kind: viewRef.kind, args: viewRef.id },
-        { kind, args: rawList.id },
-      );
-    }
-    const views = maybeViews.filter((v): v is View => v && "id" in v);
-    const list: BifrostViewList = {
-      id: rawList.id,
-      views,
-    };
-    span.end();
-    return [list, hasReferenceError];
-  } else if (
-    kind === EntityKind.ComponentList ||
-    kind === EntityKind.ViewComponentList
-  ) {
-    const rawList = atomDoc as EddaComponentList;
-
-    // Extract all component IDs for batch fetching
-    const componentIds = rawList.components.map((c) => c.id);
-
-    // Use getMany to fetch all components in a single query
-    const componentResults: Record<Id, BifrostComponentInList> | -1 =
-      await getMany(
-        workspaceId,
-        changeSetId,
-        EntityKind.Component,
-        componentIds,
-        indexChecksum,
-      );
-
-    // Process results and handle missing components
-    clearWeakReferences(changeSetId, { kind, args: rawList.id });
-    const components: BifrostComponentInList[] = [];
-    for (const componentRef of rawList.components) {
-      const result = componentResults[componentRef.id];
-      if (result) {
-        components.push(result);
-      } else {
-        hasReferenceError = true;
-        mjolnir(
-          workspaceId,
-          changeSetId,
-          EntityKind.Component,
-          componentRef.id,
-        );
-      }
-      weakReference(
-        changeSetId,
-        { kind: componentRef.kind, args: componentRef.id },
-        { kind, args: rawList.id },
-      );
-    }
-
-    // NOTE: this is either a bifrost component list or a view component list
-    // FUTURE: improve this with some typing magic
-    const list: BifrostComponentList = {
-      id: rawList.id,
-      components,
-    };
-    span.end();
-    return [list, hasReferenceError];
-  } else if (kind === EntityKind.IncomingConnections) {
-    const raw = atomDoc as EddaIncomingConnections;
-    const component = (await get(
-      workspaceId,
-      changeSetId,
-      EntityKind.Component,
-      raw.id,
-      undefined,
-      indexChecksum,
-      false,
-      false,
-    )) as BifrostComponent | -1;
-
-    clearWeakReferences(changeSetId, {
-      kind: EntityKind.IncomingConnections,
-      args: raw.id,
-    });
-
-    weakReference(
-      changeSetId,
-      { kind: EntityKind.Component, args: raw.id },
-      { kind: EntityKind.IncomingConnections, args: raw.id },
-    );
-
-    if (component === -1) {
-      span.addEvent("mjolnir", {
-        workspaceId,
-        changeSetId,
-        kind: EntityKind.Component,
-        id: raw.id,
-        source: "getReferences",
-        sourceKind: kind,
-      });
-      mjolnir(workspaceId, changeSetId, EntityKind.Component, raw.id);
-      debug(`Connection ${raw.id} missing own component`);
-      hasReferenceError = true;
-    } // explicitly setting this as a warning that these fields are not to be used
-    else (component as BifrostComponent).outputCount = -1;
-
-    const componentsToGet = raw.connections.map((c) => c.fromComponentId.id);
-    const results = await getMany(
-      workspaceId,
-      changeSetId,
-      EntityKind.Component,
-      componentsToGet,
-      indexChecksum,
-    );
-    const conns: BifrostConnection[] = [];
-    for (const connRef of raw.connections) {
-      weakReference(
-        changeSetId,
-        {
-          kind: connRef.fromComponentId.kind,
-          args: connRef.fromComponentId.id,
-        },
-        { kind: EntityKind.IncomingConnections, args: raw.id },
-      );
-      const result = results[connRef.fromComponentId.id];
-      if (result === -1) {
-        mjolnir(
-          workspaceId,
-          changeSetId,
-          EntityKind.Component,
-          connRef.fromComponentId.id,
-        );
-        hasReferenceError = true;
-      } else (result as BifrostComponent).outputCount = -1;
-
-      const conn: BifrostConnection = {
-        ...connRef,
-        fromComponent: result as BifrostComponentInList,
-        toComponent: component as BifrostComponentInList,
-      };
-      conns.push(conn);
-    }
-
-    span.end();
-    return [
-      {
-        id: raw.id,
-        component,
-        incoming: conns,
-        outgoing: [] as BifrostConnection[],
-      } as BifrostComponentConnections,
-      hasReferenceError,
-    ];
-  } else if (kind === EntityKind.IncomingConnectionsList) {
-    const rawList = atomDoc as EddaIncomingConnectionsList;
-    const compIds = rawList.componentConnections.map((c) => c.id);
-    const incomingResults: Record<Id, MaybeBifrostComponentConnections> =
-      await getMany(
-        workspaceId,
-        changeSetId,
-        EntityKind.IncomingConnections,
-        compIds,
-        indexChecksum,
-      );
-    const maybeIncomingConnections: MaybeBifrostComponentConnections[] = [];
-    for (const connRef of rawList.componentConnections) {
-      const result = incomingResults[connRef.id];
-      if (result) {
-        weakReference(
-          changeSetId,
-          {
-            kind: EntityKind.IncomingConnections,
-            args: result.id,
-          },
-          { kind: EntityKind.IncomingConnectionsList, args: workspaceId },
-        );
-        weakReference(
-          changeSetId,
-          {
-            kind: EntityKind.Component,
-            args: result.id, // the toComponent
-          },
-          { kind: EntityKind.IncomingConnections, args: result.id },
-        );
-        weakReference(
-          changeSetId,
-          {
-            kind: EntityKind.Component,
-            args: result.id, // the toComponent
-          },
-          { kind: EntityKind.IncomingConnectionsList, args: workspaceId },
-        );
-        if (result.component === -1) {
-          hasReferenceError = true;
-          mjolnir(workspaceId, changeSetId, EntityKind.Component, result.id);
-        }
-        maybeIncomingConnections.push(result);
-        const missing = result.incoming.map((inc: MaybeBifrostConnection) => {
-          weakReference(
-            changeSetId,
-            {
-              kind: EntityKind.Component,
-              args: inc.fromComponentId.id,
-            },
-            { kind: EntityKind.IncomingConnections, args: result.id },
-          );
-          weakReference(
-            changeSetId,
-            {
-              kind: EntityKind.Component,
-              args: inc.fromComponentId.id,
-            },
-            { kind: EntityKind.IncomingConnectionsList, args: workspaceId },
-          );
-          if (inc.fromComponent === -1) {
-            mjolnir(
-              workspaceId,
-              changeSetId,
-              EntityKind.Component,
-              inc.fromComponentId.id,
-            );
-            return true;
-          }
-          return false;
-        });
-        // if any are missing, note the reference error
-        if (missing.some((t) => !!t)) hasReferenceError = true;
-      } else {
-        hasReferenceError = true;
-        weakReference(
-          changeSetId,
-          {
-            kind: EntityKind.IncomingConnections,
-            args: connRef.id,
-          },
-          { kind: EntityKind.IncomingConnectionsList, args: workspaceId },
-        );
-        mjolnir(
-          workspaceId,
-          changeSetId,
-          EntityKind.IncomingConnections,
-          connRef.id,
-        );
-      }
-    }
-
-    const componentConnections = maybeIncomingConnections.filter(
-      (c): c is BifrostComponentConnections => c && "id" in c,
-    );
-    const list: BifrostIncomingConnectionsList = {
-      id: rawList.id,
-      componentConnections,
-    };
-    span.end();
-    return [list, hasReferenceError];
   } else {
     span.end();
     return [atomDoc, hasReferenceError];
   }
 };
 
-const get = async (
+const LISTABLE_ITEMS = [
+  EntityKind.ComponentInList,
+  EntityKind.IncomingConnections,
+  EntityKind.View,
+];
+const LISTABLE = [
+  EntityKind.ComponentList,
+  EntityKind.ViewComponentList,
+  EntityKind.IncomingConnectionsList,
+  EntityKind.ViewList,
+];
+const getList = (
+  _workspaceId: string,
+  changeSetId: ChangeSetId,
+  kind: Listable,
+  id: Id,
+  indexChecksum?: string,
+): string => {
+  let varname;
+  switch (kind) {
+    case EntityKind.ComponentList:
+    case EntityKind.ViewComponentList:
+      varname = "$.components";
+      break;
+    case EntityKind.IncomingConnectionsList:
+      varname = "$.componentConnections";
+      break;
+    case EntityKind.ViewList:
+      varname = "$.views";
+      break;
+    default:
+      throw new Error("Missing kind");
+  }
+
+  const sql = `
+select
+  json_group_array(resolved.atom_json)
+from
+  (
+    select
+      jsonb_extract(CAST(data as text), '$') as atom_json
+    from
+      atoms 
+    INNER JOIN
+      (
+      select
+        ref ->> '$.id' as args,
+        ref ->> '$.kind' as kind
+      from
+        (
+          select
+            json_each.value as ref
+          from
+            atoms,
+            json_each(jsonb_extract(CAST(atoms.data as text), '${varname}'))
+            inner join index_mtm_atoms mtm
+              ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+            inner join indexes ON mtm.index_checksum = indexes.checksum
+          ${
+            indexChecksum
+              ? ""
+              : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+          }
+          where
+            ${
+              indexChecksum
+                ? "indexes.checksum = ?"
+                : "changesets.change_set_id = ?"
+            }
+            AND atoms.kind = ?
+            AND atoms.args = ?
+        ) as items 
+      ) item_refs
+    ON
+    atoms.args = item_refs.args
+    AND atoms.kind = item_refs.kind
+    inner join index_mtm_atoms mtm
+      ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+    inner join indexes ON mtm.index_checksum = indexes.checksum
+    ${
+      indexChecksum
+        ? ""
+        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+    }
+    where
+      ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+  ) as resolved
+;      `;
+  const bind = [
+    indexChecksum ?? changeSetId,
+    kind,
+    id,
+    indexChecksum ?? changeSetId,
+  ];
+  const start = Date.now();
+  const atomData = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+  const end = Date.now();
+  debug(
+    "❓ sql getList",
+    `[${end - start}ms]`,
+    bind,
+    " returns ?",
+    !(atomData.length === 0),
+    atomData,
+  );
+  if (atomData.length === 0) return "";
+
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return atomData[0]![0] as string;
+};
+
+const get = (
   workspaceId: string,
   changeSetId: ChangeSetId,
-  kind: EntityKind,
+  kind: Gettable,
   id: Id,
   checksum?: string, // intentionally not used in sql, putting it on the wire for consistency & observability purposes
   indexChecksum?: string,
   followComputed = true,
   followReferences = true,
-): Promise<-1 | object> => {
+): -1 | object => {
   const sql = `
     select
       data
@@ -2440,7 +2357,7 @@ const get = async (
   if (!followReferences) return atomDoc;
 
   try {
-    const [docAndRefs, hasReferenceError] = await getReferences(
+    const [docAndRefs, hasReferenceError] = getReferences(
       atomDoc,
       workspaceId,
       changeSetId,
@@ -2454,9 +2371,6 @@ const get = async (
     // for the possible side-effects
     if (hasReferenceError) return -1;
 
-    if (followComputed) {
-      return await getComputed(docAndRefs, workspaceId, changeSetId, kind, id);
-    }
     return docAndRefs;
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -2465,16 +2379,54 @@ const get = async (
   }
 };
 
+const getSchemaMembers = (
+  _workspaceId: string,
+  changeSetId: ChangeSetId,
+  indexChecksum?: string,
+): string => {
+  const sql = `
+    select
+      json_group_array(jsonb_extract(CAST(data as text), '$'))
+    from
+      atoms
+      inner join index_mtm_atoms mtm
+        ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+      inner join indexes ON mtm.index_checksum = indexes.checksum
+    ${
+      indexChecksum
+        ? ""
+        : "inner join changesets ON changesets.index_checksum = indexes.checksum"
+    }
+    where
+      ${indexChecksum ? "indexes.checksum = ?" : "changesets.change_set_id = ?"}
+      AND
+      atoms.kind = ?
+    ;`;
+
+  const bind = [indexChecksum ?? changeSetId, EntityKind.SchemaMembers];
+  const start = Date.now();
+  const atomData = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+  const end = Date.now();
+
+  debug("❓ sql getSchemaMembers", `[${end - start}ms]`);
+  if (atomData.length === 0) return "";
+  else return oneInOne(atomData) as string;
+};
+
 /**
  * NOTE: getMany returns Edda types, not Bifrost types! Because it does not follow references
  */
-const getMany = async (
+const getMany = (
   workspaceId: string,
   changeSetId: ChangeSetId,
   kind: EntityKind,
   ids: Id[],
   indexChecksum?: string,
-): Promise<Record<Id, AtomDocument | -1>> => {
+): Record<Id, AtomDocument | -1> => {
   if (ids.length === 0) return {};
 
   const results: Record<Id, AtomDocument | -1> = {};
@@ -2504,7 +2456,7 @@ const getMany = async (
 
   const bind = [indexChecksum ?? changeSetId, kind, ...ids];
   const start = Date.now();
-  const atomData = await db.exec({
+  const atomData = db.exec({
     sql,
     bind,
     returnValue: "resultRows",
@@ -2531,71 +2483,13 @@ const getMany = async (
 
     const atomDoc = decodeDocumentFromDB(data);
 
-    results[id] = await getComputed(
-      atomDoc,
-      workspaceId,
-      changeSetId,
-      kind,
-      id,
-    );
+    results[id] = atomDoc;
   }
 
   for (const id of ids) {
     if (!foundIds.has(id)) {
       results[id] = -1;
     }
-  }
-
-  // we're not generically following references, because that would re-introduce N+1 queries
-  // but IncomingConnectionsList cannot function without its components
-  if ([EntityKind.IncomingConnections].includes(kind)) {
-    // do a getMany for all the componentIds in connection
-    const eddaIncConns = results as Record<Id, EddaIncomingConnections>;
-    const componentIds: Id[] = Object.values(eddaIncConns).map((c) => c.id);
-    const components: Record<Id, BifrostComponentInList | -1> = await getMany(
-      workspaceId,
-      changeSetId,
-      EntityKind.Component,
-      componentIds,
-      indexChecksum,
-    );
-    Object.values(components).forEach((component) => {
-      if (component !== -1) {
-        getComputed(
-          component,
-          workspaceId,
-          changeSetId,
-          EntityKind.Component,
-          component.id,
-        );
-      }
-    });
-
-    const bifrostConns: Record<Id, MaybeBifrostComponentConnections> = {};
-    Object.entries(eddaIncConns).forEach(([id, eConn]) => {
-      const component = components[id];
-      const bifrost: MaybeBifrostComponentConnections = {
-        id,
-        component: component ?? -1,
-        incoming: [],
-      };
-
-      eConn.connections.forEach((c) => {
-        const fromComponent = components[c.fromComponentId.id];
-        const toComponent = components[c.toComponentId.id];
-
-        const conn: MaybeBifrostConnection = {
-          ...c,
-          toComponent: toComponent ?? -1,
-          fromComponent: fromComponent ?? -1,
-        };
-        bifrost.incoming.push(conn);
-      });
-
-      bifrostConns[id] = bifrost;
-    });
-
-    return bifrostConns;
   }
 
   return results;
@@ -2612,39 +2506,64 @@ let bustCacheFn: BustCacheFn;
 let inFlightFn: RainbowFn;
 let returnedFn: RainbowFn;
 let lobbyExitFn: LobbyExitFn;
+let atomUpdatedFn: UpdateFn;
 
 let abortController: AbortController | undefined;
 
-const dbInterface: DBInterface = {
-  async broadcastMessage(_message) {
-    debug("only sharedworker should be sent broadcasts directly");
-  },
+/**
+ * This enforces that `receiveBroadcast` handles
+ * each discriminant of `BroadcastMessage`
+ */
+const assertNever = (_foo: never) => {};
+
+const dbInterface: TabDBInterface = {
   async receiveBroadcast(message: BroadcastMessage) {
-    if (message.messageKind === "cacheBust") {
-      bustCacheFn(
-        message.arguments.workspaceId,
-        message.arguments.changeSetId,
-        message.arguments.kind,
-        message.arguments.id,
-        true,
-      );
-    } else if (message.messageKind === "listenerInFlight") {
-      inFlightFn(message.arguments.changeSetId, message.arguments.label, true);
-    } else if (message.messageKind === "listenerReturned") {
-      returnedFn(message.arguments.changeSetId, message.arguments.label, true);
-    } else if (message.messageKind === "lobbyExit") {
-      lobbyExitFn(
-        message.arguments.workspaceId,
-        message.arguments.changeSetId,
-        true,
-      );
+    switch (message.messageKind) {
+      case "cacheBust":
+        bustCacheFn(
+          message.arguments.workspaceId,
+          message.arguments.changeSetId,
+          message.arguments.kind,
+          message.arguments.id,
+          true,
+        );
+        break;
+      case "listenerInFlight":
+        inFlightFn(
+          message.arguments.changeSetId,
+          message.arguments.label,
+          true,
+        );
+        break;
+      case "listenerReturned":
+        returnedFn(
+          message.arguments.changeSetId,
+          message.arguments.label,
+          true,
+        );
+        break;
+      case "atomUpdated":
+        atomUpdatedFn(
+          message.arguments.workspaceId,
+          message.arguments.changeSetId,
+          message.arguments.kind,
+          message.arguments.id,
+          message.arguments.data,
+          message.arguments.listIds,
+          message.arguments.removed,
+          true,
+        );
+        break;
+      case "lobbyExit":
+        lobbyExitFn(
+          message.arguments.workspaceId,
+          message.arguments.changeSetId,
+          true,
+        );
+        break;
+      default:
+        assertNever(message);
     }
-  },
-  registerRemote(_id, _remote) {
-    debug("register remote called in tab worker");
-  },
-  unregisterRemote(_id) {
-    debug("unregister remote called in tab worker");
   },
   setBearer(token) {
     bearerToken = token;
@@ -2679,7 +2598,7 @@ const dbInterface: DBInterface = {
     return initializeSQLite(testing);
   },
 
-  async migrate(testing: boolean) {
+  migrate(testing: boolean) {
     const result = ensureTables(testing);
     debug("Migration completed");
     return result;
@@ -2831,7 +2750,7 @@ const dbInterface: DBInterface = {
     );
   },
 
-  async bifrostClose() {
+  bifrostClose() {
     try {
       if (socket) socket.close();
     } catch (err) {
@@ -2839,7 +2758,7 @@ const dbInterface: DBInterface = {
     }
   },
 
-  async bifrostReconnect() {
+  bifrostReconnect() {
     try {
       // don't re-connect if you're already connected!
       if (socket && socket.readyState !== WebSocket.OPEN) socket.reconnect();
@@ -2848,7 +2767,7 @@ const dbInterface: DBInterface = {
     }
   },
 
-  async addListenerBustCache(cb: BustCacheFn) {
+  addListenerBustCache(cb: BustCacheFn) {
     bustCacheFn = cb;
   },
 
@@ -2858,13 +2777,20 @@ const dbInterface: DBInterface = {
   async addListenerReturned(cb: RainbowFn) {
     returnedFn = cb;
   },
+  addAtomUpdated(cb: UpdateFn) {
+    atomUpdatedFn = cb;
+  },
 
-  async addListenerLobbyExit(cb: LobbyExitFn) {
+  addListenerLobbyExit(cb: LobbyExitFn) {
     lobbyExitFn = cb;
   },
 
   get,
+  getList,
   getOutgoingConnectionsByComponentId,
+  getOutgoingConnectionsCounts,
+  getComponentNames,
+  getSchemaMembers,
   getPossibleConnections,
   partialKeyFromKindAndId: partialKeyFromKindAndArgs,
   kindAndIdFromKey: kindAndArgsFromKey,
@@ -2881,7 +2807,7 @@ const dbInterface: DBInterface = {
   handleHammer,
   bobby: dropTables,
   ragnarok,
-  changeSetExists: async (workspaceId: string, changeSetId: ChangeSetId) => {
+  changeSetExists: (workspaceId: string, changeSetId: ChangeSetId) => {
     const row = db.exec({
       sql: "select change_set_id from changesets where workspace_id = ? and change_set_id = ?",
       returnValue: "resultRows",
@@ -2891,13 +2817,13 @@ const dbInterface: DBInterface = {
     return cId === changeSetId;
   },
 
-  async odin(changeSetId: ChangeSetId): Promise<object> {
-    const c = db.exec({
+  odin(changeSetId: ChangeSetId): object {
+    const changesets = db.exec({
       sql: "select * from changesets where change_set_id=?;",
       bind: [changeSetId],
       returnValue: "resultRows",
     });
-    const i = db.exec({
+    const indexes = db.exec({
       sql: `select indexes.* from indexes
             inner join changesets
               on indexes.checksum = changesets.index_checksum
@@ -2906,7 +2832,7 @@ const dbInterface: DBInterface = {
       bind: [changeSetId],
       returnValue: "resultRows",
     });
-    const m = db.exec({
+    const mtm = db.exec({
       sql: `select index_mtm_atoms.* from index_mtm_atoms
             inner join changesets
               on index_mtm_atoms.index_checksum = changesets.index_checksum
@@ -2915,7 +2841,7 @@ const dbInterface: DBInterface = {
       bind: [changeSetId],
       returnValue: "resultRows",
     });
-    const a = db.exec({
+    const atoms = db.exec({
       sql: `select atoms.* from atoms
             inner join index_mtm_atoms
               on index_mtm_atoms.kind = atoms.kind
@@ -2928,14 +2854,9 @@ const dbInterface: DBInterface = {
       bind: [changeSetId],
       returnValue: "resultRows",
     });
-    const [changesets, indexes, atoms, mtm] = await Promise.all([c, i, a, m]);
     return { changesets, indexes, atoms, mtm };
   },
-  async linkNewChangeset(
-    workspaceId,
-    headChangeSet,
-    changeSetId,
-  ): Promise<void> {
+  linkNewChangeset(workspaceId, headChangeSet, changeSetId) {
     try {
       const headRows = db.exec({
         sql: "select index_checksum from changesets where workspace_id = ? and change_set_id = ?;",
