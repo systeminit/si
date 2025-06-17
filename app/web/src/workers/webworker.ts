@@ -2841,7 +2841,8 @@ const dbInterface: DBInterface = {
 
   async bifrostReconnect() {
     try {
-      if (socket) socket.reconnect();
+      // don't re-connect if you're already connected!
+      if (socket && socket.readyState !== WebSocket.OPEN) socket.reconnect();
     } catch (err) {
       error(err);
     }

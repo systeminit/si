@@ -195,9 +195,9 @@ onBeforeMount(async () => {
   // Activate the norse stack, which is explicitly NOT flagged for the job-specific UI.
   await heimdall.init(workspaceAuthToken, queryClient);
   watch(
-    connectionShouldBeEnabled,
+    [connectionShouldBeEnabled.value, heimdall.initCompleted],
     async () => {
-      if (connectionShouldBeEnabled.value) {
+      if (connectionShouldBeEnabled.value && heimdall.initCompleted.value) {
         // NOTE(nick,wendy): this says "reconnect", but it must run once on startup.
         await heimdall.bifrostReconnect();
       } else {
