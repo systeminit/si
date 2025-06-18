@@ -92,7 +92,7 @@
           <template #header>
             <div class="flex place-content-between w-full">
               <span>Attributes</span>
-              <template v-if="hasImportFunc">
+              <template v-if="importFunc">
                 <VButton
                   size="sm"
                   tone="neutral"
@@ -115,7 +115,8 @@
             v-if="attributeTree"
             :component="component"
             :attributeTree="attributeTree"
-            :showImportArea="showResourceInput"
+            :importFunc="importFunc"
+            :importFuncRun="latestFuncRuns[importFunc?.id ?? '']"
           />
           <EmptyState
             v-else
@@ -238,7 +239,7 @@
 
 <!-- eslint-disable vue/component-tags-order,import/first -->
 <script lang="ts" setup>
-import { useInfiniteQuery, useQuery } from "@tanstack/vue-query";
+import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import {
   VButton,
   PillCounter,
@@ -253,6 +254,7 @@ import {
   onMounted,
   onBeforeUnmount,
   inject,
+  watch,
 } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
@@ -266,17 +268,13 @@ import {
 import { Context, assertIsDefined } from "@/newhotness/types";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
 import ManagementFuncCard from "@/newhotness/ManagementFuncCard.vue";
+import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import AttributePanel from "./AttributePanel.vue";
 import { attributeEmitter, keyEmitter } from "./logic_composables/emitters";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
 import DelayedLoader from "./layout_components/DelayedLoader.vue";
 import EditInPlace from "./layout_components/EditInPlace.vue";
-import {
-  useApi,
-  routes,
-  componentTypes,
-  funcRunTypes,
-} from "./api_composables";
+import { useApi, routes, componentTypes } from "./api_composables";
 import { useWatchedForm } from "./logic_composables/watched_form";
 import QualificationPanel from "./QualificationPanel.vue";
 import ResourcePanel from "./ResourcePanel.vue";
@@ -291,13 +289,15 @@ const props = defineProps<{
   componentId: string;
 }>();
 
+const realtimeStore = useRealtimeStore();
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
 
-const docsOpen = ref(true);
-
 const key = useMakeKey();
 const args = useMakeArgs();
+const queryClient = useQueryClient();
+
+const docsOpen = ref(true);
 
 const componentId = computed(() => props.componentId);
 
@@ -483,43 +483,28 @@ const blur = () => {
 // provide("ComponentPageContext", context);
 
 // Import
-const hasImportFunc = computed(
-  () => mgmtFuncs.value.find((f) => f.kind === "import") !== undefined,
+const importFunc = computed(() =>
+  mgmtFuncs.value.find((f) => f.kind === "import"),
 );
 
 const showResourceInput = ref(false);
 
-const funcRunQuery = useInfiniteQuery({
-  queryKey: [ctx.changeSetId, "paginatedFuncRuns"],
-  queryFn: async ({
-    pageParam = undefined,
-  }): Promise<funcRunTypes.GetFuncRunsPaginatedResponse> => {
-    const call = api.endpoint<funcRunTypes.GetFuncRunsPaginatedResponse>(
-      routes.GetFuncRunsPaginated,
-    );
-    const params = new URLSearchParams();
-    params.append("limit", "10");
-    if (pageParam) {
-      params.append("cursor", pageParam);
-    }
-    const req = await call.get(params);
-    if (api.ok(req)) {
-      return req.data;
-    }
-    return {
-      funcRuns: [],
-      nextCursor: null,
-    };
-  },
-  initialPageParam: undefined,
-  getNextPageParam: (lastPage: funcRunTypes.GetFuncRunsPaginatedResponse) => {
-    return lastPage.nextCursor ?? undefined;
-  },
+// MGMT funcs
+const MGMT_RUN_KEY = "latestMgmtFuncRuns";
+
+const funcRunQuery = useQuery({
+  queryKey: [ctx?.changeSetId, MGMT_RUN_KEY],
+  queryFn: async () =>
+    api
+      .endpoint<FuncRun[]>(routes.MgmtFuncGetLatest, {
+        componentId: componentId.value,
+      })
+      .get(),
 });
 
 const funcRuns = computed<FuncRun[]>(() => {
   if (!funcRunQuery.data.value) return [];
-  return funcRunQuery.data.value.pages.flatMap((page) => page.funcRuns);
+  return funcRunQuery.data.value.data;
 });
 
 // The latest funcrun for this each mgmt prototype of this component, keyed bu the prototypeId
@@ -547,13 +532,41 @@ const latestFuncRuns = computed(() => {
   return runs;
 });
 
+// If any mgmt func for this component is running, query the status every 5 seconds
+// Ideally the websocket requests will give us faster updates, but this is a failsafe
+watch([funcRuns], () => {
+  if (funcRuns.value.find((run) => run.state === "Running")) {
+    setTimeout(() => {
+      queryClient.invalidateQueries({
+        queryKey: [ctx?.changeSetId, MGMT_RUN_KEY],
+      });
+    }, 5000);
+  }
+});
+
 onMounted(() => {
   keyEmitter.on("Escape", () => {
     close();
   });
+
+  realtimeStore.subscribe(MGMT_RUN_KEY, `changeset/${ctx?.changeSetId.value}`, [
+    {
+      eventType: "FuncRunLogUpdated",
+      callback: async (payload) => {
+        if (mgmtFuncs.value.find((m) => m.funcId === payload.actionId)) {
+          setTimeout(() => {
+            queryClient.invalidateQueries({
+              queryKey: [ctx?.changeSetId, MGMT_RUN_KEY],
+            });
+          }, 500);
+        }
+      },
+    },
+  ]);
 });
 onBeforeUnmount(() => {
   keyEmitter.off("Escape");
+  realtimeStore.unsubscribe(MGMT_RUN_KEY);
 });
 </script>
 

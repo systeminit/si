@@ -20,6 +20,7 @@ use dal::{
     ChangeSet,
     ChangeSetError,
     ChangeSetId,
+    ComponentError,
     ComponentId,
     DalContext,
     FuncError,
@@ -82,6 +83,8 @@ pub type ManagementApiResult<T> = Result<T, ManagementApiError>;
 pub enum ManagementApiError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
     #[error("diagram error: {0}")]
     Diagram(#[from] DiagramError),
     #[error("func error: {0}")]
@@ -264,6 +267,10 @@ pub fn v2_routes() -> Router<AppState> {
         .route(
             "/prototype/:prototypeId/:componentId/latest",
             get(latest::latest),
+        )
+        .route(
+            "/component/:componentId/latest",
+            get(latest::all_latest_for_component),
         )
         .route("/history", get(history::history))
         .route(

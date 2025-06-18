@@ -1,7 +1,7 @@
 <template>
   <div v-if="root" class="p-xs flex flex-col gap-xs">
     <div
-      v-if="showImportArea"
+      v-if="importFunc"
       class="grid grid-cols-2 gap-2xs relative text-sm h-lg"
     >
       <div class="flex flex-row items-center gap-2xs">
@@ -199,11 +199,13 @@ import {
   AttributeTree,
   AttributeValue,
   BifrostComponent,
+  MgmtFunction,
   Prop,
   Secret,
 } from "@/workers/types/entity_kind_types";
 import { PropKind } from "@/api/sdf/dal/prop";
 import TextPill from "@/newhotness/layout_components/TextPill.vue";
+import { FuncRun } from "@/newhotness/api_composables/func_run";
 import { componentTypes, routes, useApi } from "./api_composables";
 import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
 import { keyEmitter } from "./logic_composables/emitters";
@@ -216,7 +218,8 @@ const q = ref("");
 const props = defineProps<{
   component: BifrostComponent;
   attributeTree?: AttributeTree;
-  showImportArea: boolean;
+  importFunc?: MgmtFunction;
+  importFuncRun?: FuncRun;
 }>();
 
 export interface AttrTree {
@@ -542,26 +545,26 @@ const doImport = async () => {
     return;
   }
 
-  const func = props.component.schemaVariant.mgmtFunctions.find(
-    (f) => f.kind === "import",
-  );
+  const func = props.importFunc;
   if (!func) return;
 
-  importing.value = true;
+  spawningFunc.value = true;
 
   const call = runMgmtFuncApi.endpoint<{ success: boolean }>(
-    routes.RunMgmtPrototype,
+    routes.MgmtFuncRun,
     {
       prototypeId: func.id,
       componentId: props.component.id,
-      viewId: "DEFAULT", // Should get the default view id
+      viewId: "DEFAULT",
     },
   );
 
   const { req, newChangeSetId } =
     await call.post<componentTypes.UpdateComponentAttributesArgs>({});
 
-  importing.value = false;
+  setTimeout(() => {
+    spawningFunc.value = false;
+  }, 2000);
 
   if (runMgmtFuncApi.ok(req) && newChangeSetId) {
     runMgmtFuncApi.navigateToNewChangeSet(
@@ -578,7 +581,14 @@ const doImport = async () => {
   }
 };
 
-const importing = ref(false);
+const spawningFunc = ref(false);
+const importing = computed(
+  () =>
+    spawningFunc.value ||
+    ["Created", "Dispatched", "Running", "Postprocessing"].includes(
+      props.importFuncRun?.state ?? "",
+    ),
+);
 
 onMounted(() => {
   resettingResourceId.value = true;
