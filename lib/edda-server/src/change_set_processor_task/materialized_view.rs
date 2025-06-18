@@ -92,10 +92,6 @@ use crate::updates::{
     EddaUpdatesError,
 };
 
-/// Limit for how many spawned MV build tasks can exist before
-/// waiting for existing tasks to finish before spawning another one.
-const PARALLEL_BUILD_LIMIT: usize = 50;
-
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum MaterializedViewError {
@@ -223,6 +219,7 @@ pub async fn reuse_or_rebuild_index_for_new_change_set(
     ctx: &DalContext,
     frigg: &FriggStore,
     edda_updates: &EddaUpdates,
+    parallel_build_limit: usize,
     to_snapshot_address: WorkspaceSnapshotAddress,
 ) -> Result<(), MaterializedViewError> {
     let span = current_span_for_instrument_at!("info");
@@ -238,15 +235,29 @@ pub async fn reuse_or_rebuild_index_for_new_change_set(
                 return Ok(());
             } else {
                 // we did not copy anything, so we must rebuild from scratch (no from_snapshot_address this time)
-                self::build_all_mv_for_change_set(ctx, frigg, edda_updates, None, "initial build")
-                    .await?
+                self::build_all_mv_for_change_set(
+                    ctx,
+                    frigg,
+                    edda_updates,
+                    parallel_build_limit,
+                    None,
+                    "initial build",
+                )
+                .await?
             }
         }
         Err(err) => {
             error!(si.error.message = ?err, "error copying existing index");
             // we did not copy anything, so we must rebuild from scratch (no from_snapshot_address this time)
-            self::build_all_mv_for_change_set(ctx, frigg, edda_updates, None, "initial build")
-                .await?
+            self::build_all_mv_for_change_set(
+                ctx,
+                frigg,
+                edda_updates,
+                parallel_build_limit,
+                None,
+                "initial build",
+            )
+            .await?
         }
     }
     Ok(())
@@ -275,6 +286,7 @@ pub async fn build_all_mv_for_change_set(
     ctx: &DalContext,
     frigg: &FriggStore,
     edda_updates: &EddaUpdates,
+    parallel_build_limit: usize,
     from_index_checksum: Option<String>,
     reason_message: &'static str,
 ) -> Result<(), MaterializedViewError> {
@@ -298,6 +310,7 @@ pub async fn build_all_mv_for_change_set(
     ) = build_mv_inner(
         ctx,
         frigg,
+        parallel_build_limit,
         ctx.workspace_pk()?,
         ctx.change_set_id(),
         &changes,
@@ -378,10 +391,12 @@ pub async fn map_all_nodes_to_change_objects(
         si.edda.mv.slowest_kind = Empty,
     )
 )]
+#[allow(clippy::too_many_arguments)]
 pub async fn build_mv_for_changes_in_change_set(
     ctx: &DalContext,
     frigg: &FriggStore,
     edda_updates: &EddaUpdates,
+    parallel_build_limit: usize,
     change_set_id: ChangeSetId,
     from_snapshot_address: WorkspaceSnapshotAddress,
     to_snapshot_address: WorkspaceSnapshotAddress,
@@ -406,7 +421,15 @@ pub async fn build_mv_for_changes_in_change_set(
         build_total_elapsed,
         build_max_elapsed,
         build_slowest_mv_kind,
-    ) = build_mv_inner(ctx, frigg, workspace_id, change_set_id, changes).await?;
+    ) = build_mv_inner(
+        ctx,
+        frigg,
+        parallel_build_limit,
+        workspace_id,
+        change_set_id,
+        changes,
+    )
+    .await?;
     span.record("si.edda.mv.count", build_count);
     span.record(
         "si.edda.mv.avg_build_elapsed_ms",
@@ -514,6 +537,7 @@ type BuildMvInnerReturn = (
 async fn build_mv_inner(
     ctx: &DalContext,
     frigg: &FriggStore,
+    parallel_build_limit: usize,
     workspace_pk: si_id::WorkspacePk,
     change_set_id: ChangeSetId,
     changes: &[Change],
@@ -523,7 +547,7 @@ async fn build_mv_inner(
     let mut build_tasks = JoinSet::new();
     let mut queued_mv_builds = VecDeque::new();
 
-    // We'll spawn up to the first `PARALLEL_BUILD_LIMIT` build tasks, and queue the rest to be spawned
+    // We'll spawn up to the first `parallel_build_limit` build tasks, and queue the rest to be spawned
     // as other build tasks are completed.
     for &change in changes {
         for mv_kind in ReferenceKind::iter() {
@@ -531,6 +555,7 @@ async fn build_mv_inner(
                 &mut build_tasks,
                 ctx,
                 frigg,
+                parallel_build_limit,
                 change,
                 mv_kind,
                 workspace_pk,
@@ -557,7 +582,7 @@ async fn build_mv_inner(
         }
 
         // Spawn as many of the queued build tasks as we can, up to the concurrency limit.
-        while !queued_mv_builds.is_empty() && build_tasks.len() < PARALLEL_BUILD_LIMIT {
+        while !queued_mv_builds.is_empty() && build_tasks.len() < parallel_build_limit {
             let Some(QueuedBuildMvTask { change, mv_kind }) = queued_mv_builds.pop_front() else {
                 // This _really_ shouldn't ever return `None` as we just checked that
                 // `queued_mv_builds` is not empty.
@@ -569,6 +594,7 @@ async fn build_mv_inner(
                 &mut build_tasks,
                 ctx,
                 frigg,
+                parallel_build_limit,
                 change,
                 mv_kind,
                 workspace_pk,
@@ -738,6 +764,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
     build_tasks: &mut JoinSet<BuildMvTaskResult>,
     ctx: &DalContext,
     frigg: &FriggStore,
+    parallel_build_limit: usize,
     change: Change,
     mv_kind: ReferenceKind,
     workspace_pk: si_id::WorkspacePk,
@@ -751,7 +778,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(None);
             }
 
-            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+            if build_tasks.len() < parallel_build_limit {
                 spawn_build_mv_task!(
                     build_tasks,
                     ctx,
@@ -776,7 +803,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(None);
             }
 
-            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+            if build_tasks.len() < parallel_build_limit {
                 spawn_build_mv_task!(
                     build_tasks,
                     ctx,
@@ -798,7 +825,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(None);
             }
 
-            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+            if build_tasks.len() < parallel_build_limit {
                 spawn_build_mv_task!(
                     build_tasks,
                     ctx,
@@ -823,7 +850,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(None);
             }
 
-            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+            if build_tasks.len() < parallel_build_limit {
                 spawn_build_mv_task!(
                     build_tasks,
                     ctx,
@@ -848,7 +875,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(None);
             }
 
-            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+            if build_tasks.len() < parallel_build_limit {
                 spawn_build_mv_task!(
                     build_tasks,
                     ctx,
@@ -873,7 +900,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(None);
             }
 
-            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+            if build_tasks.len() < parallel_build_limit {
                 spawn_build_mv_task!(
                     build_tasks,
                     ctx,
@@ -895,7 +922,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(None);
             }
 
-            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+            if build_tasks.len() < parallel_build_limit {
                 spawn_build_mv_task!(
                     build_tasks,
                     ctx,
@@ -920,7 +947,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(None);
             }
 
-            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+            if build_tasks.len() < parallel_build_limit {
                 spawn_build_mv_task!(
                     build_tasks,
                     ctx,
@@ -942,7 +969,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(None);
             }
 
-            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+            if build_tasks.len() < parallel_build_limit {
                 spawn_build_mv_task!(
                     build_tasks,
                     ctx,
@@ -967,7 +994,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(None);
             }
 
-            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+            if build_tasks.len() < parallel_build_limit {
                 spawn_build_mv_task!(
                     build_tasks,
                     ctx,
@@ -992,7 +1019,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(None);
             }
 
-            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+            if build_tasks.len() < parallel_build_limit {
                 spawn_build_mv_task!(
                     build_tasks,
                     ctx,
@@ -1014,7 +1041,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(None);
             }
 
-            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+            if build_tasks.len() < parallel_build_limit {
                 spawn_build_mv_task!(
                     build_tasks,
                     ctx,
@@ -1039,7 +1066,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(None);
             }
 
-            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+            if build_tasks.len() < parallel_build_limit {
                 spawn_build_mv_task!(
                     build_tasks,
                     ctx,
@@ -1061,7 +1088,7 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 return Ok(None);
             }
 
-            if build_tasks.len() < PARALLEL_BUILD_LIMIT {
+            if build_tasks.len() < parallel_build_limit {
                 spawn_build_mv_task!(
                     build_tasks,
                     ctx,

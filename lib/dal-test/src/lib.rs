@@ -786,6 +786,7 @@ pub async fn edda_server(
     let server = edda_server::Server::from_services(
         config.instance_id(),
         config.concurrency_limit(),
+        config.parallel_build_limit(),
         services_context,
         config.quiescent_period(),
         shutdown_token,

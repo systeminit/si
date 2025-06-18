@@ -160,6 +160,7 @@ impl Server {
         Self::from_services(
             config.instance_id().to_string(),
             config.concurrency_limit(),
+            config.parallel_build_limit(),
             services_context,
             config.quiescent_period(),
             shutdown_token,
@@ -172,6 +173,7 @@ impl Server {
     pub async fn from_services(
         instance_id: impl Into<String>,
         concurrency_limit: Option<usize>,
+        parallel_build_limit: usize,
         services_context: ServicesContext,
         quiescent_period: Duration,
         shutdown_token: CancellationToken,
@@ -209,6 +211,7 @@ impl Server {
             nats,
             frigg,
             edda_updates,
+            parallel_build_limit,
             requests_stream,
             ctx_builder,
             quiescent_period,
