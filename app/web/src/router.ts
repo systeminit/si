@@ -74,11 +74,11 @@ const routes: RouteRecordRaw[] = [
     props: true,
     component: () => import("@/newhotness/Workspace.vue"),
     children: [
-      {
-        name: "new-hotness-lobby",
-        path: "lobby",
-        component: () => import("@/newhotness/Workspace.vue"),
-      },
+      // {
+      //   name: "new-hotness-lobby",
+      //   path: "lobby",
+      //   component: () => import("@/newhotness/Workspace.vue"),
+      // },
       {
         name: "new-hotness-view",
         path: ":viewId/v/edit",

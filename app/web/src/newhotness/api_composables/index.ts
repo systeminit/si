@@ -3,7 +3,7 @@ import { AxiosResponse } from "axios";
 import { trace, Span } from "@opentelemetry/api";
 import { RouteLocationRaw } from "vue-router";
 import { sdfApiInstance as sdf } from "@/store/apis.web";
-import { changeSetExists } from "@/store/realtime/heimdall";
+import { changeSetExists, muspelheimStatuses } from "@/store/realtime/heimdall";
 import router from "@/router";
 import { assertIsDefined, Context } from "../types";
 import * as rainbow from "../logic_composables/rainbow_counter";
@@ -237,7 +237,7 @@ export const useApi = () => {
         path = path.replace(`<${k}>`, v);
       });
     const canMutateHead = CAN_MUTATE_ON_HEAD.includes(key);
-    const argList = args ? [...Object.entries(args)].flatMap((m) => m) : [];
+    const argList = args ? Object.entries(args).flatMap((m) => m) : [];
     const desc = `${key} ${argList.join(": ")} by ${
       ctx.user?.name
     } on ${new Date().toLocaleDateString()}`;
@@ -287,15 +287,14 @@ export const useApi = () => {
         );
         if (exists) {
           clearInterval(interval);
+          muspelheimStatuses.value[newChangeSetId] = true;
           resolve();
         }
         retry += 1;
       }, INTERVAL);
     });
     if (apiCall.lobbyRequired) {
-      if (typeof to === "string") to = "new-hotness-lobby";
-      else if ("name" in to) to.name = "new-hotness-lobby";
-      else throw new Error("Thanks, router");
+      muspelheimStatuses.value[newChangeSetId] = false;
     }
     await router.push(to);
     reset();
