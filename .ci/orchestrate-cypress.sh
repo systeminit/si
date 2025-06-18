@@ -24,7 +24,7 @@ while [ "$attempt" -lt "$max_attempts" ]; do
     ((attempt++))
     echo "Starting bedrock (attempt $attempt)..."
 
-    bedrock &
+    bedrock --nats-url 0.0.0.0:4222 -vvvv &
     pid=$!
 
     sleep 5
