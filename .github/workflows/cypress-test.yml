@@ -13,14 +13,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Nix
-        run: |
-          curl -L https://nixos.org/nix/install | sh -s -- --daemon
-          source ~/.bashrc
-
-      - name: Run nix develop
-        run: |
-          nix develop
+        uses: cachix/install-nix-action@v24
 
       - name: Launch development environment
         run: |
-          DEV_HOST=0.0.0.0 TILT_HOST=0.0.0.0 buck2 run dev:up
+          nix develop --command bash -c 'DEV_HOST=0.0.0.0 TILT_HOST=0.0.0.0 buck2 run dev:up'
