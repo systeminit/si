@@ -774,6 +774,13 @@
       "verify"
     ]
   },
+  "The mode of VPC BPA. Options here are off, block-bidirectional, block-ingress ": {
+    "enum": [
+      "off",
+      "block-bidirectional",
+      "block-ingress"
+    ]
+  },
   "The method that you want to use to restrict distribution of your content by country:\n  +   ``none``: No geo restriction is enabled, meaning access to content is not restricted by client geo location.\n  +   ``blacklist``: The ``Location`` elements specify the countries in which you don't want CloudFront to distribute your content.\n  +   ``whitelist``: The ``Location`` elements specify the countries in which you want CloudFront to distribute your content.": {
     "enum": [
       "none",
@@ -6342,6 +6349,9 @@
   "Provide detailed information about how to use the images in the repository. This provides context, support information, and additional usage details for users of the repository.": {
     "enum": null
   },
+  "Provide ephemeralStorage available for canary in MB": {
+    "enum": null
+  },
   "Provide maximum canary timeout per run in seconds": {
     "enum": null
   },
@@ -10638,6 +10648,9 @@
   "The description of a fleet metric": {
     "enum": null
   },
+  "The description of a traffic mirror filter.": {
+    "enum": null
+  },
   "The description of an egress (outbound) security group rule.\n Constraints: Up to 255 characters in length. Allowed characters are a-z, A-Z, 0-9, spaces, and ._-:/()#,@[]+=;{}!$*": {
     "enum": null
   },
@@ -14317,6 +14330,9 @@
     "enum": null
   },
   "The percentage of remaining budget over total budget that you want to get warnings for. If you omit this parameter, the default of 50.0 is used.": {
+    "enum": null
+  },
+  "The percentage of session logs that MediaTailor sends to your CloudWatch Logs account. For example, if your playback configuration has 1000 sessions and percentEnabled is set to 60, MediaTailor sends logs for 600 of the sessions to CloudWatch Logs. MediaTailor decides at random which of the playback configuration sessions to send logs for. If you want to view logs for a specific session, you can use the debug log mode.": {
     "enum": null
   },
   "The percentage of targets to receive a deployed configuration during each interval.": {
