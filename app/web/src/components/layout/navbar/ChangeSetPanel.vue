@@ -194,8 +194,8 @@ onMounted(() => {
   checkFirstLoad();
 });
 
-// The name for a new change set
-const createChangeSetName = ref(changeSetsStore.getGeneratedChangesetName());
+// We don't add a change set name
+const createChangeSetName = ref("");
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
@@ -239,7 +239,11 @@ const createChangeSetReqStatus =
   changeSetsStore.getRequestStatus("CREATE_CHANGE_SET");
 
 function openCreateModal() {
-  createChangeSetName.value = changeSetsStore.getGeneratedChangesetName();
+  if (createModalRef.value?.isOpen) return;
+  // Reset the name on new open of the modal
+  createChangeSetName.value = "";
   createModalRef.value?.open();
 }
+
+defineExpose({ openCreateModal });
 </script>

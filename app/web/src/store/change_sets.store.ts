@@ -399,16 +399,6 @@ export function useChangeSetsStore() {
 
           return this.headChangeSetId ?? false;
         },
-        getGeneratedChangesetName() {
-          let latestNum = 0;
-          _.each(this.allChangeSets, (cs) => {
-            const labelNum = Number(cs.name.split(" ").pop());
-            if (!_.isNaN(labelNum) && labelNum > latestNum) {
-              latestNum = labelNum;
-            }
-          });
-          return `Change Set ${latestNum + 1}`;
-        },
 
         registerRequestsBegin(requestUlid: string, actionName: string) {
           realtimeStore.inflightRequests.set(requestUlid, actionName);

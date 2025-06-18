@@ -37,7 +37,7 @@
       class="mt-[14px] flex-none"
     />
 
-    <ChangeSetPanel />
+    <ChangeSetPanel ref="changeSetPanelRef" />
 
     <div v-if="rainbowCount > 0" class="mt-xs ml-xs relative">
       <span
@@ -66,6 +66,7 @@ import ChangeSetPanel from "./ChangeSetPanel.vue";
 const workspacesStore = useWorkspacesStore();
 
 const dropdownMenuRef = ref<InstanceType<typeof DropdownMenuButton>>();
+const changeSetPanelRef = ref<InstanceType<typeof ChangeSetPanel>>();
 
 const selectedWorkspacePk = ref<string | null>(null);
 watch(
@@ -110,4 +111,9 @@ const searchFilteredWorkspaceDropdownOptions = computed(() => {
       option.value.toLocaleLowerCase().includes(searchString),
   );
 });
+
+const openCreateModal = () => {
+  changeSetPanelRef.value?.openCreateModal();
+};
+defineExpose({ openCreateModal });
 </script>
