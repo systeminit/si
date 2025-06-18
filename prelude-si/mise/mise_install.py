@@ -13,23 +13,23 @@ def main():
     parser.add_argument("--mise-tools-dir", required=True, help="Output directory for mise tools")
     parser.add_argument("--mise-bootstrap", required=True, help="Output path for mise bootstrap script")
     parser.add_argument("--package", action="append", dest="packages", default=[], help="Package to install")
-    
+
     args = parser.parse_args()
-    
+
     mise_tools_dir = Path(args.mise_tools_dir)
     mise_bootstrap_path = Path(args.mise_bootstrap)
-    
+
     # Parse rust version from packages
     rust_version = None
     for package in args.packages:
         if package.startswith('rust@'):
             rust_version = package.split('@', 1)[1]
             break
-    
+
     # Create the output directories
     mise_tools_dir.mkdir(parents=True, exist_ok=True)
     mise_bootstrap_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Create the mise bootstrap script based on the working example
     bootstrap_content = '''#!/usr/bin/env bash
 set -eu
@@ -47,11 +47,11 @@ __mise_bootstrap() {
     export MISE_INSTALL_PATH="$localized_dir/mise-2025.6.2"
     export MISE_TRUSTED_CONFIG_PATHS="$project_dir${MISE_TRUSTED_CONFIG_PATHS:+:$MISE_TRUSTED_CONFIG_PATHS}"
     export MISE_IGNORED_CONFIG_PATHS="$HOME/.config/mise${MISE_IGNORED_CONFIG_PATHS:+:$MISE_IGNORED_CONFIG_PATHS}"
-    
+
     # Set isolated rustup and cargo homes
     export MISE_RUSTUP_HOME="$localized_dir/rustup"
     export MISE_CARGO_HOME="$localized_dir/cargo"
-    
+
     # These will be set by mise when using rust tools
     export RUSTUP_HOME="$MISE_RUSTUP_HOME"
     export CARGO_HOME="$MISE_CARGO_HOME"
@@ -358,33 +358,33 @@ __mise_bootstrap() {
 __mise_bootstrap
 exec "$MISE_INSTALL_PATH" "$@"
 '''
-    
+
     # Add RUST_TOOLCHAIN environment variable if rust version is specified
     if rust_version:
         rust_toolchain_line = f'\n    # Set rust toolchain version\n    export RUST_TOOLCHAIN="{rust_version}"'
     else:
         rust_toolchain_line = ""
-    
+
     # Replace placeholder with actual rust toolchain export
     bootstrap_content = bootstrap_content.replace("RUST_TOOLCHAIN_PLACEHOLDER", rust_toolchain_line)
-    
+
     # Write the bootstrap script
     with open(mise_bootstrap_path, 'w') as f:
         f.write(bootstrap_content)
-    
+
     # Make it executable
     os.chmod(mise_bootstrap_path, 0o755)
-    
+
     # Set up environment for mise
     env = os.environ.copy()
     project_dir = mise_bootstrap_path.parent.parent
-    
+
     # Create isolated rustup and cargo directories
     rustup_home = mise_tools_dir / 'rustup'
     cargo_home = mise_tools_dir / 'cargo'
     rustup_home.mkdir(parents=True, exist_ok=True)
     cargo_home.mkdir(parents=True, exist_ok=True)
-    
+
     env.update({
         'MISE_BOOTSTRAP_PROJECT_DIR': str(project_dir),
         'MISE_DATA_DIR': str(mise_tools_dir),
@@ -399,22 +399,32 @@ exec "$MISE_INSTALL_PATH" "$@"
         'MISE_CARGO_HOME': str(cargo_home),
         'RUSTUP_HOME': str(rustup_home),
         'CARGO_HOME': str(cargo_home),
+        'CC': str(mise_tools_dir / 'shim' / 'clang'),
+        'CXX': str(mise_tools_dir / 'shim' / 'clang'),
     })
-    
+
     # Add RUST_TOOLCHAIN if rust version is specified
     if rust_version:
         env['RUST_TOOLCHAIN'] = rust_version
-    
+
     # Ensure mise is installed first
     print("Installing mise...", file=sys.stderr)
     subprocess.run([str(mise_bootstrap_path), '--version'], env=env, check=True)
-    
+
     # Install each requested package
     for package in args.packages:
         print(f"Installing {package}...", file=sys.stderr)
         subprocess.run([str(mise_bootstrap_path), 'install', package], env=env, check=True)
-    
+
+    shims_dir = Path(mise_tools_dir) / "shims"
+    clang_path = shims_dir / "clang"
+    if clang_path.exists():
+        target = os.path.realpath(clang_path)
+        os.symlink(target, shims_dir / "clang++")
+        print("Created clang++ symlink", file=sys.stderr)
+
     print("Mise installation completed successfully", file=sys.stderr)
+
 
 
 if __name__ == "__main__":
