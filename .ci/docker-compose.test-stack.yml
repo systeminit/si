@@ -1,52 +1,6 @@
 ---
 services:
-  app:
-    image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/ci-base:stable
-    environment:
-      - "USE_CI_PG_SETUP=true"
-      - "SI_TEST_PG_HOSTNAME=postgres-test"
-      # NOTE: We want to set this to the default postgres port as the tests run
-      # in *this* container and we're accessing postgres in a peer container
-      # and not using the external port mapping.
-      - "SI_TEST_PG_PORT=5432"
-      - "SI_TEST_NATS_URL=nats"
-      - "SI_TEST_SPICEDB_URL=http://spicedb:50051"
-      - "SI_TEST_LOCALSTACK_URL=http://localstack:4566"
-      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
-    ulimits:
-      nofile:
-        soft: 1024000
-        hard: 1024000
-    depends_on:
-      - postgres-test
-      - nats
-      - spicedb
-      - jaeger
-      - otelcol
-      - localstack
-
-  # This is the same as the pgbouncer test setup in our dev environment
-  postgres-test:
-    image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/pgbouncer:stable
-    environment:
-      - "DB_USER=si_test"
-      - "DB_PASSWORD=bugbear"
-      - "DB_HOST=db-test"
-      - "ADMIN_USERS=postgres,dbuser,si_test"
-      - "AUTH_TYPE=scram-sha-256"
-      - "MAX_CLIENT_CONN=100000"
-      - "DEFAULT_POOL_SIZE=10"
-      - "SERVER_IDLE_TIMEOUT=10"
-      - "POOL_MODE=transaction"
-      - "MAX_PREPARED_STATEMENTS=10000"
-    depends_on:
-      - db-test
-
-  # NOTE: this db is the same configuration as `db-test` under
-  # `dev/docker-compose.platform.yml`. In the CI environment, there should be
-  # *no* need for the `postgres` service as we aren't running the full service
-  # stack.
-  db-test:
+  postgres:
     image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/postgres:stable
     environment:
       - "POSTGRES_PASSWORD=bugbear"
@@ -59,6 +13,8 @@ services:
       - "fsync=off"
       - "-c"
       - "full_page_writes=off"
+    ports:
+      - "5432:5432"
 
   nats:
     image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/nats:stable
@@ -69,16 +25,8 @@ services:
       - "4222:4222"
       - "8222:8222"
 
-  jaeger:
-    image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/jaeger:stable
-
   otelcol:
     image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/otelcol:stable
-    depends_on:
-      - jaeger
-
-  localstack:
-    image: localstack/localstack:3
 
   spicedb:
     build: ../component/spicedb
