@@ -170,7 +170,8 @@
               />
               <!-- this fills in any extra spots in the last row -->
               <div
-                v-for="emptySpot in virtualizerLanes - filteredComponentRows[row.index]!.length"
+                v-for="emptySpot in virtualizerLanes -
+                filteredComponentRows[row.index]!.length"
                 :key="emptySpot"
                 class="flex-1"
               />
@@ -698,6 +699,7 @@ const unfocus = () => {
 const searchRef = ref<InstanceType<typeof VormInput>>();
 const mountEmitters = () => {
   removeEmitters();
+  keyEmitter.on("c", onC);
   keyEmitter.on("k", onK);
   keyEmitter.on("n", onN);
   keyEmitter.on("e", onE);
@@ -718,6 +720,7 @@ const mountEmitters = () => {
   windowResizeEmitter.on("resize", onResize);
 };
 const removeEmitters = () => {
+  keyEmitter.off("c", onC);
   keyEmitter.off("k", onK);
   keyEmitter.off("n", onN);
   keyEmitter.off("e", onE);
@@ -766,6 +769,12 @@ const previousComponent = (wrap = false) => {
   if (CONTROL_SCHEME === "v2" && hoveredComponentId.value) {
     focus(hoveredComponentId.value);
   }
+};
+
+const onC = (e: KeyDetails["c"]) => {
+  e.preventDefault();
+
+  emit("openChangesetModal");
 };
 
 const onK = (e: KeyDetails["k"]) => {
@@ -1132,6 +1141,10 @@ const storeViewMode = () => {
     localStorage.setItem(key, "map");
   }
 };
+
+const emit = defineEmits<{
+  (e: "openChangesetModal"): void;
+}>();
 </script>
 
 <style lang="css" scoped>

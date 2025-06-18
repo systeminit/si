@@ -11,7 +11,7 @@
       "
     >
       <!-- Left side -->
-      <NavbarPanelLeft />
+      <NavbarPanelLeft ref="navbarPanelLeftRef" />
 
       <!-- Center -->
       <div
@@ -70,7 +70,7 @@
         />
       </template>
       <template v-else>
-        <Explore />
+        <Explore @openChangesetModal="openChangesetModal" />
       </template>
     </main>
   </div>
@@ -115,6 +115,8 @@ import {
   startWindowResizeEmitter,
 } from "./logic_composables/emitters";
 import { tokensByWorkspacePk } from "./logic_composables/tokens";
+
+const navbarPanelLeftRef = ref<InstanceType<typeof NavbarPanelLeft>>();
 
 const props = defineProps<{
   workspacePk: string;
@@ -383,6 +385,10 @@ const windowWidth = ref(window.innerWidth);
 
 const windowResizeHandler = () => {
   windowWidth.value = window.innerWidth;
+};
+
+const openChangesetModal = () => {
+  navbarPanelLeftRef.value?.openCreateModal();
 };
 
 const funcRunKey = "paginatedFuncRuns";
