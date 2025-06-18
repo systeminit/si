@@ -305,29 +305,26 @@ const outgoing = computed(
   () => ctx.outgoingCounts.value[props.componentId] ?? 0,
 );
 
-const componentQuery = useQuery<BifrostComponent | null>({
+const componentQuery = useQuery<BifrostComponent | undefined>({
   queryKey: key(EntityKind.Component, componentId),
-  queryFn: async (queryContext) => {
-    const component = await bifrost<BifrostComponent>(
+  queryFn: async (queryContext) =>
+    (await bifrost<BifrostComponent>(
       args(EntityKind.Component, componentId.value),
-    );
-    if (!component) {
-      return queryContext.client.getQueryData(
-        key(EntityKind.Component, componentId).value,
-      ) as BifrostComponent | null;
-    }
-    return component;
-  },
+    )) ??
+    queryContext.client.getQueryData(
+      key(EntityKind.Component, componentId).value,
+    ),
 });
 
-const attributeTreeQuery = useQuery<AttributeTree | null>({
+const attributeTreeQuery = useQuery<AttributeTree | undefined>({
   queryKey: key(EntityKind.AttributeTree, componentId.value),
-  queryFn: async () => {
-    const attributeTree = await bifrost<AttributeTree>(
+  queryFn: async (queryContext) =>
+    (await bifrost<AttributeTree>(
       args(EntityKind.AttributeTree, componentId.value),
-    );
-    return attributeTree;
-  },
+    )) ??
+    queryContext.client.getQueryData(
+      key(EntityKind.AttributeTree, componentId).value,
+    ),
 });
 const attributeTree = computed(() => attributeTreeQuery.data.value);
 

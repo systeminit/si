@@ -34,7 +34,10 @@ use serde::{
 };
 use si_events::audit_log::AuditLogKind;
 use si_frontend_mv_types::{
-    component::Component as ComponentMv,
+    component::{
+        Component as ComponentMv,
+        attribute_tree::AttributeTree as AttributeTreeMv,
+    },
     schema_variant::SchemaVariant as SchemaVariantMv,
 };
 use si_frontend_types::SchemaVariant as FrontendVariant;
@@ -79,6 +82,7 @@ pub struct CreateComponentRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CreateComponentResponse {
     pub materialized_view: ComponentMv,
+    pub attribute_tree_materialized_view: AttributeTreeMv,
     pub schema_variant_materialized_view: SchemaVariantMv,
     pub component_id: ComponentId,
     pub installed_variant: Option<FrontendVariant>,
@@ -235,35 +239,28 @@ pub async fn create_component(
 
     ctx.commit().await?;
 
-    // Construct the two materialized views in parallel
-    let component_id = component.id();
-    let variant_id = variant.id();
-    let ctx_clone = ctx.clone();
-    let ctx_clone2 = ctx.clone();
-
-    let component_mv_task = tokio::spawn(async move {
-        dal_materialized_views::component::assemble(ctx_clone, component_id)
-            .await
-            .map_err(Box::new)
-    });
-
-    let schema_variant_mv_task = tokio::spawn(async move {
-        dal_materialized_views::schema_variant::assemble(ctx_clone2, variant_id)
-            .await
-            .map_err(Box::new)
-    });
-
-    let (component_mv_result, schema_variant_mv_result) =
-        tokio::join!(component_mv_task, schema_variant_mv_task);
-
-    let materialized_view = component_mv_result??;
-    let schema_variant_materialized_view = schema_variant_mv_result??;
+    // Construct the materialized views in parallel
+    let (component_mv_result, attribute_tree_mv_result, schema_variant_mv_result) = tokio::join!(
+        tokio::spawn(dal_materialized_views::component::assemble(
+            ctx.clone(),
+            component.id(),
+        )),
+        tokio::spawn(dal_materialized_views::component::attribute_tree::assemble(
+            ctx.clone(),
+            component.id()
+        )),
+        tokio::spawn(dal_materialized_views::schema_variant::assemble(
+            ctx.clone(),
+            variant.id(),
+        ))
+    );
 
     Ok(ForceChangeSetResponse::new(
         force_change_set_id,
         CreateComponentResponse {
-            materialized_view,
-            schema_variant_materialized_view,
+            materialized_view: component_mv_result??,
+            attribute_tree_materialized_view: attribute_tree_mv_result??,
+            schema_variant_materialized_view: schema_variant_mv_result??,
             component_id: component.id(),
             installed_variant,
         },

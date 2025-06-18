@@ -139,6 +139,12 @@ impl IntoResponse for ViewError {
     }
 }
 
+impl From<dal_materialized_views::Error> for ViewError {
+    fn from(error: dal_materialized_views::Error) -> Self {
+        Box::new(error).into()
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ViewNodeGeometry {
