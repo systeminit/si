@@ -31,6 +31,7 @@ pub use weak::WeakReference;
     strum::Display,
     strum::EnumIter,
     strum::EnumString,
+    strum::IntoStaticStr,
 )]
 #[serde(rename_all = "PascalCase")]
 pub enum ReferenceKind {

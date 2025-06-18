@@ -1,6 +1,9 @@
-use std::collections::{
-    HashSet,
-    VecDeque,
+use std::{
+    collections::{
+        HashSet,
+        VecDeque,
+    },
+    time::Duration,
 };
 
 use dal::{
@@ -79,7 +82,10 @@ use strum::IntoEnumIterator;
 use telemetry::prelude::*;
 use telemetry_utils::metric;
 use thiserror::Error;
-use tokio::task::JoinSet;
+use tokio::{
+    task::JoinSet,
+    time::Instant,
+};
 
 use crate::updates::{
     EddaUpdates,
@@ -259,6 +265,10 @@ pub async fn reuse_or_rebuild_index_for_new_change_set(
         si.workspace.id = Empty,
         si.change_set.id = %ctx.change_set_id(),
         si.materialized_view.reason = reason_message,
+        si.edda.mv.count = Empty,
+        si.edda.mv.avg_build_elapsed_ms = Empty,
+        si.edda.mv.max_build_elapsed_ms = Empty,
+        si.edda.mv.slowest_kind = Empty,
     ),
 )]
 pub async fn build_all_mv_for_change_set(
@@ -278,7 +288,14 @@ pub async fn build_all_mv_for_change_set(
         ))
         .await?;
 
-    let (frontend_objects, patches) = build_mv_inner(
+    let (
+        frontend_objects,
+        patches,
+        build_count,
+        build_total_elapsed,
+        build_max_elapsed,
+        build_slowest_mv_kind,
+    ) = build_mv_inner(
         ctx,
         frigg,
         ctx.workspace_pk()?,
@@ -286,6 +303,16 @@ pub async fn build_all_mv_for_change_set(
         &changes,
     )
     .await?;
+    span.record("si.edda.mv.count", build_count);
+    span.record(
+        "si.edda.mv.avg_build_elapsed_ms",
+        build_total_elapsed.as_millis() / build_count,
+    );
+    span.record(
+        "si.edda.mv.max_build_elapsed_ms",
+        build_max_elapsed.as_millis(),
+    );
+    span.record("si.edda.mv.slowest_kind", build_slowest_mv_kind);
 
     let mut index_entries: Vec<_> = frontend_objects.into_iter().map(Into::into).collect();
     index_entries.sort();
@@ -345,6 +372,10 @@ pub async fn map_all_nodes_to_change_objects(
         si.snapshot_from_address = %from_snapshot_address,
         si.snapshot_to_address = %to_snapshot_address,
         si.edda_request.changes.count = changes.len(),
+        si.edda.mv.count = Empty,
+        si.edda.mv.avg_build_elapsed_ms = Empty,
+        si.edda.mv.max_build_elapsed_ms = Empty,
+        si.edda.mv.slowest_kind = Empty,
     )
 )]
 pub async fn build_mv_for_changes_in_change_set(
@@ -368,8 +399,25 @@ pub async fn build_mv_for_changes_in_change_set(
             change_set_id,
         })?;
     let from_index_checksum = index_frontend_object.checksum;
-    let (frontend_objects, patches) =
-        build_mv_inner(ctx, frigg, workspace_id, change_set_id, changes).await?;
+    let (
+        frontend_objects,
+        patches,
+        build_count,
+        build_total_elapsed,
+        build_max_elapsed,
+        build_slowest_mv_kind,
+    ) = build_mv_inner(ctx, frigg, workspace_id, change_set_id, changes).await?;
+    span.record("si.edda.mv.count", build_count);
+    span.record(
+        "si.edda.mv.avg_build_elapsed_ms",
+        build_total_elapsed.as_millis() / build_count,
+    );
+    span.record(
+        "si.edda.mv.max_build_elapsed_ms",
+        build_max_elapsed.as_millis(),
+    );
+    span.record("si.edda.mv.slowest_kind", build_slowest_mv_kind);
+
     let mv_index: MvIndex = serde_json::from_value(index_frontend_object.data)?;
     let removal_checksum = "0".to_string();
     let removed_items: HashSet<(String, String)> = patches
@@ -445,6 +493,15 @@ macro_rules! spawn_build_mv_task {
     };
 }
 
+type BuildMvInnerReturn = (
+    Vec<FrontendObject>,
+    Vec<ObjectPatch>,
+    u128,
+    Duration,
+    Duration,
+    &'static str,
+);
+
 #[instrument(
     name = "materialized_view.build_mv_inner",
     level = "debug",
@@ -460,7 +517,7 @@ async fn build_mv_inner(
     workspace_pk: si_id::WorkspacePk,
     change_set_id: ChangeSetId,
     changes: &[Change],
-) -> Result<(Vec<FrontendObject>, Vec<ObjectPatch>), MaterializedViewError> {
+) -> Result<BuildMvInnerReturn, MaterializedViewError> {
     let mut frontend_objects = Vec::new();
     let mut patches = Vec::new();
     let mut build_tasks = JoinSet::new();
@@ -484,6 +541,11 @@ async fn build_mv_inner(
             }
         }
     }
+
+    let mut build_total_elapsed = Duration::from_nanos(0);
+    let mut build_count: u128 = 0;
+    let mut build_max_elapsed = Duration::from_nanos(0);
+    let mut build_slowest_mv_kind: &str = "N/A";
 
     loop {
         // If there there aren't any queued builds waiting for the concurrency limit then
@@ -518,7 +580,7 @@ async fn build_mv_inner(
         }
 
         if let Some(join_result) = build_tasks.join_next().await {
-            let (kind, mv_id, execution_result) = join_result?;
+            let (kind, mv_id, build_duration, execution_result) = join_result?;
             metric!(counter.edda.mv_build = -1);
 
             match execution_result {
@@ -530,6 +592,12 @@ async fn build_mv_inner(
                     if let Some(frontend_object) = maybe_frontend_object {
                         frontend_objects.push(frontend_object);
                     }
+                    build_count += 1;
+                    if build_duration > build_max_elapsed {
+                        build_max_elapsed = build_duration;
+                        build_slowest_mv_kind = kind.into();
+                    }
+                    build_total_elapsed += build_duration;
                 }
                 Err(err) => {
                     warn!(name = "mv_build_error", si.error.message = err.to_string(), kind = %kind, id = %mv_id);
@@ -542,12 +610,20 @@ async fn build_mv_inner(
         .insert_objects(workspace_pk, frontend_objects.iter())
         .await?;
 
-    Ok((frontend_objects, patches))
+    Ok((
+        frontend_objects,
+        patches,
+        build_count,
+        build_total_elapsed,
+        build_max_elapsed,
+        build_slowest_mv_kind,
+    ))
 }
 
 type BuildMvTaskResult = (
     ReferenceKind,
     String,
+    Duration,
     Result<(Option<ObjectPatch>, Option<FrontendObject>), MaterializedViewError>,
 );
 
@@ -567,6 +643,7 @@ where
     MaterializedViewError: From<<T as TryInto<FrontendObject>>::Error>,
 {
     debug!(kind = %mv_kind, id = %mv_id, "Building MV");
+    let start = Instant::now();
     let result = build_mv_task_inner(
         &ctx,
         &frigg,
@@ -577,7 +654,7 @@ where
     )
     .await;
 
-    (mv_kind, mv_id, result)
+    (mv_kind, mv_id, start.elapsed(), result)
 }
 
 type MvBuilderResult = Result<(Option<ObjectPatch>, Option<FrontendObject>), MaterializedViewError>;
