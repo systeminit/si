@@ -5,16 +5,16 @@ services:
     environment:
       - "POSTGRES_PASSWORD=bugbear"
       - "PGPASSWORD=bugbear"
-      - "POSTGRES_USER=si_test"
-      - "POSTGRES_DB=si_test"
-      - "POSTGRES_MULTIPLE_DBS=si_test_dal,si_test_sdf_server,si_test_layer_db,si_test_audit"
-    command:
-      - "-c"
-      - "fsync=off"
-      - "-c"
-      - "full_page_writes=off"
+      - "POSTGRES_USER=si"
+      - "POSTGRES_DB=si"
+      - "POSTGRES_MULTIPLE_DBS=si_layer_db,si_auth,si_auth_prisma_shadow_db,si_module_index,si_audit"
     ports:
       - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "[ -f /tmp/ready ]" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
 
   nats:
     image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/nats:stable
@@ -24,9 +24,20 @@ services:
     ports:
       - "4222:4222"
       - "8222:8222"
+    depends_on:
+      - postgres
 
   otelcol:
     image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/otelcol:stable
+    # If you'd like to ship to honeycomb from your local machine, you need these two variables in the otelcol
+    #environment:
+    #  - "SI_OTEL_COL__HONEYCOMB_API_KEY=SOE2nL"
+    #  - "SI_OTEL_COL__CONFIG_PATH=/etc/otelcol/honeycomb-config.yaml"
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "9090:9090"
+      - "55679:55679"
 
   spicedb:
     build: ../component/spicedb
@@ -35,3 +46,5 @@ services:
       - "SPICEDB_GRPC_PRESHARED_KEY=hobgoblin"
       - "SPICEDB_DATASTORE_ENGINE=memory"
       - "ZED_KEYRING_PASSWORD=orc"
+    ports:
+      - "50051:50051"
