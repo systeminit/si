@@ -259,7 +259,7 @@ impl LeafBinding {
         for attribute_value_id in
             AttributePrototype::attribute_value_ids(ctx, attribute_prototype_id).await?
         {
-            AttributeValue::remove_by_id(ctx, attribute_value_id).await?;
+            AttributeValue::remove(ctx, attribute_value_id).await?;
         }
         AttributePrototype::remove(ctx, attribute_prototype_id).await?;
 

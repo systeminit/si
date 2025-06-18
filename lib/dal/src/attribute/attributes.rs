@@ -267,7 +267,7 @@ pub async fn update_attributes(
                 if let Some(target_av_id) = av_to_set.resolve(ctx, component_id).await? {
                     if parent_prop_is_map_or_array(ctx, target_av_id).await? {
                         // If the parent is a map or array, remove the value
-                        AttributeValue::remove_by_id(ctx, target_av_id).await?;
+                        AttributeValue::remove(ctx, target_av_id).await?;
                     } else {
                         // Otherwise, just set it to its default value
                         if AttributeValue::component_prototype_id(ctx, target_av_id)

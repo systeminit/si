@@ -1861,7 +1861,7 @@ async fn update_component(
                             continue;
                         }
 
-                        AttributeValue::remove_by_id(ctx, *child_id).await?;
+                        AttributeValue::remove(ctx, *child_id).await?;
                     }
                 }
 

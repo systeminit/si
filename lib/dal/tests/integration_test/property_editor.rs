@@ -188,7 +188,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     // ======================================================
 
     // Remove an item from the array prop
-    AttributeValue::remove_by_id(ctx, parrot_names_third_item.id())
+    AttributeValue::remove(ctx, parrot_names_third_item.id())
         .await
         .expect("remove the third item in parrot_names array");
     let parrot_names_child_ids =
@@ -240,7 +240,7 @@ async fn array_map_manipulation(ctx: &DalContext) {
     // ======================================================
 
     // Remove an item from the map prop
-    AttributeValue::remove_by_id(ctx, treasure_second_item.id())
+    AttributeValue::remove(ctx, treasure_second_item.id())
         .await
         .expect("remove the second item in treasure map");
     let treasure_child_ids = AttributeValue::get_child_av_ids_in_order(ctx, treasure_map_value_id)

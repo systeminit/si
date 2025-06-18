@@ -103,7 +103,7 @@ async fn fix_issue(ctx: &DalContext, issue: &ValidationIssue) -> Result<bool> {
         &ValidationIssue::DuplicateAttributeValue { duplicate, .. }
         | &ValidationIssue::DuplicateAttributeValueWithDifferentValues { duplicate, .. } => {
             // These are extra, so we remove them (which will also enqueue subscribers to DVU!)
-            AttributeValue::remove_by_id(ctx, duplicate).await?;
+            AttributeValue::remove(ctx, duplicate).await?;
             true
         }
         ValidationIssue::MultipleValues { .. }
