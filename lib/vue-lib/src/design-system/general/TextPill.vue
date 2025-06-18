@@ -2,33 +2,37 @@
   <span
     :class="
       clsx(
+        'text-pill',
         'border rounded-sm font-normal',
         tighter ? 'leading-snug tracking-tighter px-3xs' : 'py-3xs px-2xs',
-        computedClasses,
+        mono && 'font-mono pt-3xs',
+        variant === 'key' &&
+          themeClasses(
+            'border-neutral-400 bg-neutral-100',
+            'border-neutral-500 bg-neutral-800',
+          ),
+        variant === 'key2' &&
+          themeClasses(
+            'border-neutral-600 bg-neutral-100',
+            'border-neutral-400 bg-neutral-800',
+          ),
       )
     "
-    ><slot
-  /></span>
+  >
+    <slot />
+  </span>
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType } from "vue";
+import { PropType } from "vue";
 import clsx from "clsx";
-import { useTheme } from "../utils/theme_tools";
-import { Tones } from "../utils/color_utils";
+import { themeClasses } from "../utils/theme_tools";
 
-const containerTheme = useTheme();
+export type TextPillVariant = "simple" | "key" | "key2";
 
-const props = defineProps({
+defineProps({
   tighter: { type: Boolean },
-  tone: { type: String as PropType<Tones>, default: "action" },
-  mono: { type: Boolean, default: false, required: false },
+  variant: { type: String as PropType<TextPillVariant>, default: "simple" },
+  mono: { type: Boolean },
 });
-
-const computedClasses = computed(() => ({
-  ...(props.tone && { [`--tone-${props.tone}`]: true }),
-  "--within-dark": containerTheme.theme.value === "dark",
-  "--within-light": containerTheme.theme.value === "light",
-  "font-mono pt-3xs": props.mono,
-}));
 </script>

@@ -201,9 +201,11 @@
               tone="action"
             />
             <TextPill
+              variant="key2"
               class="absolute text-xs right-xs top-[7px] pointer-events-none"
-              >Tab</TextPill
             >
+              Tab
+            </TextPill>
           </div>
 
           <!-- raw value selection area -->
@@ -231,7 +233,10 @@
               "
             >
               Navigate
-              <span><TextPill>Up</TextPill> <TextPill>Down</TextPill></span>
+              <span
+                ><TextPill variant="key2">Up</TextPill>
+                <TextPill variant="key2">Down</TextPill></span
+              >
             </div>
           </div>
           <div
@@ -284,7 +289,7 @@
                 )
               "
             >
-              <TextPill>Enter</TextPill>
+              <TextPill variant="key2">Enter</TextPill>
               to select
             </div>
           </div>
@@ -345,7 +350,7 @@
                     )
                   "
                 >
-                  <TextPill>Enter</TextPill>
+                  <TextPill variant="key2">Enter</TextPill>
                   to select
                 </div>
               </li>
@@ -460,7 +465,7 @@
                       )
                     "
                   >
-                    <TextPill>Enter</TextPill>
+                    <TextPill variant="key2">Enter</TextPill>
                     to select
                   </div>
                   <TruncateWithTooltip v-else>
@@ -510,6 +515,7 @@ import {
   IconButton,
   themeClasses,
   TruncateWithTooltip,
+  TextPill,
 } from "@si/vue-lib/design-system";
 import { Fzf } from "fzf";
 import { useQuery } from "@tanstack/vue-query";
@@ -537,7 +543,6 @@ import CodeViewer from "@/components/CodeViewer.vue";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { attributeEmitter } from "../logic_composables/emitters";
 import { useWatchedForm } from "../logic_composables/watched_form";
-import TextPill from "./TextPill.vue";
 import AttributeValueBox from "../AttributeValueBox.vue";
 
 type UIPotentialConnection = PossibleConnection & {

@@ -498,16 +498,17 @@ const scrollRef = ref<HTMLDivElement>();
 
 const filteredComponents = reactive<ComponentInList[]>([]);
 
-const searchString = ref("");
-const computedSearchString = computed(() => searchString.value);
+const searchString = ref<string>("");
+const debouncedSearchString = ref<string>("");
+const computedSearchString = computed(() => debouncedSearchString.value);
 
 // send this down to any components that might use it
 provide("SEARCH", computedSearchString);
 
 watch(
-  () => [searchString.value, componentList.value],
+  () => [debouncedSearchString.value, componentList.value],
   () => {
-    if (!searchString.value) {
+    if (!debouncedSearchString.value) {
       filteredComponents.splice(0, Infinity, ...componentList.value);
       return;
     }
@@ -518,15 +519,28 @@ watch(
         `${c.name} ${c.schemaVariantName} ${c.schemaName} ${c.schemaCategory} ${c.schemaId} ${c.id}`,
     });
 
-    const results = fzf.find(searchString.value);
+    const results = fzf.find(debouncedSearchString.value);
     filteredComponents.splice(0, Infinity, ...results.map((fz) => fz.item));
-
-    mapRef.value?.deselect();
-    unfocus();
-    unhover();
   },
   { immediate: true, deep: true },
 );
+
+// Debounce the search string updates to avoid expensive filtering on every keystroke
+const updateDebouncedSearch = _.debounce(
+  (value: string) => {
+    debouncedSearchString.value = value;
+  },
+  500,
+  { trailing: true, leading: false },
+);
+
+// Watch for changes to fuzzySearchString and update the debounced version
+watch(searchString, (newValue) => {
+  updateDebouncedSearch(newValue);
+  mapRef.value?.deselect();
+  unfocus();
+  unhover();
+});
 
 function getScrollbarWidth(): number {
   const temp = document.createElement("div");

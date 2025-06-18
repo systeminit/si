@@ -34,6 +34,7 @@
       />
       <TextPill
         class="absolute text-xs right-xs top-[7px] cursor-default"
+        variant="key2"
         :class="
           clsx(!(importing || bifrostingResourceId) && 'hover:cursor-pointer')
         "
@@ -192,6 +193,7 @@ import {
   SiSearch,
   themeClasses,
   TruncateWithTooltip,
+  TextPill,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import * as _ from "lodash-es";
@@ -204,7 +206,6 @@ import {
   Secret,
 } from "@/workers/types/entity_kind_types";
 import { PropKind } from "@/api/sdf/dal/prop";
-import TextPill from "@/newhotness/layout_components/TextPill.vue";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
 import { componentTypes, routes, useApi } from "./api_composables";
 import ComponentAttribute from "./layout_components/ComponentAttribute.vue";

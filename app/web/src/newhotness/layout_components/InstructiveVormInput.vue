@@ -24,7 +24,9 @@
       v-if="show"
       class="flex flex-row flex-none gap-3xs items-center text-2xs"
     >
-      <TextPill v-for="p in pills" :key="p" tighter>{{ p }}</TextPill>
+      <TextPill v-for="p in pills" :key="p" tighter variant="key">{{
+        p
+      }}</TextPill>
       <span class="leading-snug">{{ instructions }}</span>
     </div>
   </div>
@@ -33,9 +35,8 @@
 <script lang="ts" setup>
 import { ref } from "vue";
 import { clsx } from "clsx";
-import { themeClasses } from "@si/vue-lib/design-system";
+import { themeClasses, TextPill } from "@si/vue-lib/design-system";
 import { tw } from "@si/vue-lib";
-import TextPill from "@/components/TextPill.vue";
 
 const props = withDefaults(
   defineProps<{
