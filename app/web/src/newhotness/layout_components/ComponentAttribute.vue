@@ -97,14 +97,9 @@
         :externalSources="props.attributeTree.attributeValue.externalSources"
         :isArray="props.attributeTree.prop?.kind === 'array'"
         :isMap="props.attributeTree.prop?.kind === 'map'"
-        @save="
-          (path, id, value, propKind, connectingComponentId) =>
-            emit('save', path, id, value, propKind, connectingComponentId)
-        "
-        @delete="(path, id) => emit('delete', path, id)"
-        @remove-subscription="
-          (path, id) => emit('removeSubscription', path, id)
-        "
+        @save="(...args) => emit('save', ...args)"
+        @delete="(...args) => emit('delete', ...args)"
+        @remove-subscription="(...args) => emit('removeSubscription', ...args)"
         @add="add"
       />
     </template>

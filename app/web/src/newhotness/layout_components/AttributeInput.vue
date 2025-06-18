@@ -1,143 +1,144 @@
 <template>
-  <!-- eslint-disable vue/no-multiple-template-root -->
-  <label
-    ref="anchorRef"
-    :class="
-      clsx(
-        'grid grid-cols-2 items-center gap-xs relative text-sm font-normal',
-        inputOpen && 'hidden',
-        isSecret && 'mb-[-1px]',
-      )
-    "
-  >
-    <div class="flex flex-row items-center gap-2xs pl-xs">
-      <TruncateWithTooltip>{{ displayName }}</TruncateWithTooltip>
-      <div class="flex flex-row items-cetner ml-auto gap-2xs">
-        <IconButton
-          v-if="canDelete"
-          icon="trash"
-          iconTone="destructive"
-          iconIdleTone="shade"
-          size="sm"
-          loadingIcon="loader"
-          :loading="bifrostingTrash"
-          @click.left="remove"
-        />
-      </div>
-    </div>
-    <div
-      ref="inputFocusDivRef"
-      :class="
-        clsx(
-          isArray || isMap
-            ? [
-                'flex flex-row items-center',
-                themeClasses('text-neutral-600', 'text-neutral-400'),
-              ]
-            : themeClasses('text-shade-100', 'text-shade-0'),
-          'w-full h-lg p-xs ml-auto text-sm border font-mono cursor-text flex flex-row items-center gap-3xs',
-          themeClasses(
-            'bg-shade-0 border-neutral-400',
-            'bg-shade-100 border-neutral-600',
-          ),
-        )
-      "
-      tabindex="0"
-      @focus="openInput"
-      @click.left="openInput"
-    >
-      <TruncateWithTooltip>
-        <template v-if="isArray"> Set manually or connect to a prop </template>
-        <template v-else-if="isMap"> Enter a key </template>
-        <AttributeValueBox
-          v-else-if="isSetByConnection && props.externalSources"
-        >
-          <template v-if="isSecret">
-            <!-- TODO: Paul make this an actual tailwind color! -->
-            <div
-              :class="
-                clsx(
-                  'max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit',
-                  themeClasses('text-[#3b8e48]', 'text-[#B2DFB9]'),
-                )
-              "
-            >
-              <TruncateWithTooltip>{{
-                props.externalSources[0]?.componentName
-              }}</TruncateWithTooltip>
-              <div class="flex-none">/</div>
-              <TruncateWithTooltip>{{ attrData.value }}</TruncateWithTooltip>
-            </div>
-          </template>
-          <div
-            v-else
-            class="max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit"
-          >
-            <!-- TODO: Paul make this an actual tailwind color! -->
-            <TruncateWithTooltip class="text-[#D4B4FE]">
-              {{ props.externalSources[0]?.componentName }}
-            </TruncateWithTooltip>
-            <div class="flex-none">/</div>
-            <TruncateWithTooltip
-              :class="themeClasses('text-neutral-600', 'text-neutral-400')"
-            >
-              {{ attrData.value }}
-            </TruncateWithTooltip>
-          </div>
-        </AttributeValueBox>
-        <!-- TODO(Wendy) make this an actual tailwind color! -->
-        <AttributeValueBox
-          v-else-if="isSecret && attrData.value"
-          :class="themeClasses('text-[#3b8e48]', 'text-[#B2DFB9]')"
-        >
-          {{ attrData.value }}
-        </AttributeValueBox>
-        <template v-else>
-          {{
-            maybeOptions.options?.find((o) => o.value === attrData.value)
-              ?.label ?? attrData.value
-          }}
-        </template>
-      </TruncateWithTooltip>
-      <div class="ml-auto" />
-      <!-- This pushes all the icons to the right side! -->
-      <Icon v-if="isArray" name="chevron--down" />
-      <Icon
-        v-if="wForm.bifrosting.value"
-        name="loader"
-        size="sm"
-        tone="action"
-      />
-      <!-- NOTE(nick): you need "click.stop" here to prevent the outer click -->
-      <Icon
-        v-if="props.externalSources && props.externalSources.length > 0"
-        v-tooltip="
-          props.isSecret
-            ? 'Remove subscription to Secret'
-            : 'Remove subscription'
-        "
-        name="x"
-        size="sm"
+  <valueForm.Field name="value">
+    <template #default="{ field }">
+      <!-- eslint-disable vue/no-multiple-template-root -->
+      <label
+        ref="anchorRef"
         :class="
           clsx(
-            'cursor-pointer hover:scale-110 active:scale-100 text-neutral-400',
-            themeClasses(
-              'bg-neutral-200 hover:text-shade-100 hover:bg-neutral-300',
-              'bg-neutral-800 hover:text-shade-0 hover:bg-neutral-700',
-            ),
+            'grid grid-cols-2 items-center gap-xs relative text-sm font-normal',
+            inputOpen && 'hidden',
+            isSecret && 'mb-[-1px]',
           )
         "
-        tabindex="-1"
-        @click.stop="removeSubscription"
-      />
-    </div>
-    <!-- `relative` on label just to "float" this loader above the form input -->
-  </label>
+      >
+        <!-- Attribute name -->
+        <div class="flex flex-row items-center gap-2xs pl-xs">
+          <TruncateWithTooltip>{{ displayName }}</TruncateWithTooltip>
+          <div class="flex flex-row items-center ml-auto gap-2xs">
+            <IconButton
+              v-if="canDelete"
+              icon="trash"
+              iconTone="destructive"
+              iconIdleTone="shade"
+              size="sm"
+              loadingIcon="loader"
+              :loading="bifrostingTrash"
+              @click.left="remove"
+            />
+          </div>
+        </div>
 
-  <!-- floating input window, shows when this attribute is selected -->
-  <template v-if="inputOpen">
-    <valueForm.Field name="value">
-      <template #default="{ field }">
+        <!-- Display / edit the value -->
+        <div
+          ref="inputFocusDivRef"
+          :class="
+            clsx(
+              isArray || isMap
+                ? [
+                    'flex flex-row items-center',
+                    themeClasses('text-neutral-600', 'text-neutral-400'),
+                  ]
+                : themeClasses('text-shade-100', 'text-shade-0'),
+              'w-full h-lg p-xs ml-auto text-sm border font-mono cursor-text flex flex-row items-center gap-3xs',
+              themeClasses(
+                'bg-shade-0 border-neutral-400',
+                'bg-shade-100 border-neutral-600',
+              ),
+            )
+          "
+          tabindex="0"
+          @focus="openInput"
+          @click.left="openInput"
+        >
+          <TruncateWithTooltip>
+            <template v-if="isArray">
+              Set manually or connect to a prop
+            </template>
+            <template v-else-if="isMap"> Enter a key </template>
+            <AttributeValueBox
+              v-else-if="isSetByConnection && props.externalSources"
+            >
+              <template v-if="isSecret">
+                <!-- TODO: Paul make this an actual tailwind color! -->
+                <div
+                  :class="
+                    clsx(
+                      'max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit',
+                      themeClasses('text-[#3b8e48]', 'text-[#B2DFB9]'),
+                    )
+                  "
+                >
+                  <TruncateWithTooltip>{{
+                    props.externalSources[0]?.componentName
+                  }}</TruncateWithTooltip>
+                  <div class="flex-none">/</div>
+                  <TruncateWithTooltip>{{
+                    field.state.value
+                  }}</TruncateWithTooltip>
+                </div>
+              </template>
+              <div
+                v-else
+                class="max-w-full flex flex-row items-center [&>*]:min-w-0 [&>*]:flex-1 [&>*]:max-w-fit"
+              >
+                <!-- TODO: Paul make this an actual tailwind color! -->
+                <TruncateWithTooltip class="text-[#D4B4FE]">
+                  {{ props.externalSources[0]?.componentName }}
+                </TruncateWithTooltip>
+                <div class="flex-none">/</div>
+                <TruncateWithTooltip
+                  :class="themeClasses('text-neutral-600', 'text-neutral-400')"
+                >
+                  {{ field.state.value }}
+                </TruncateWithTooltip>
+              </div>
+            </AttributeValueBox>
+            <!-- TODO(Wendy) make this an actual tailwind color! -->
+            <AttributeValueBox
+              v-else-if="isSecret && field.state.value"
+              :class="themeClasses('text-[#3b8e48]', 'text-[#B2DFB9]')"
+            >
+              {{ field.state.value }}
+            </AttributeValueBox>
+            <template v-else>
+              {{
+                maybeOptions.options?.find((o) => o.value === field.state.value)
+                  ?.label ?? field.state.value
+              }}
+            </template>
+          </TruncateWithTooltip>
+          <div class="ml-auto" />
+          <!-- This pushes all the icons to the right side! -->
+          <Icon v-if="isArray" name="chevron--down" />
+          <!-- NOTE(nick): you need "click.stop" here to prevent the outer click -->
+          <Icon
+            v-if="props.externalSources && props.externalSources.length > 0"
+            v-tooltip="
+              props.isSecret
+                ? 'Remove subscription to Secret'
+                : 'Remove subscription'
+            "
+            name="x"
+            size="sm"
+            :class="
+              clsx(
+                'cursor-pointer hover:scale-110 active:scale-100 text-neutral-400',
+                themeClasses(
+                  'bg-neutral-200 hover:text-shade-100 hover:bg-neutral-300',
+                  'bg-neutral-800 hover:text-shade-0 hover:bg-neutral-700',
+                ),
+              )
+            "
+            tabindex="-1"
+            @click.stop="removeSubscription"
+          />
+        </div>
+        <!-- `relative` on label just to "float" this loader above the form input -->
+      </label>
+
+      <!-- floating input window, shows when this attribute is selected -->
+      <template v-if="inputOpen">
         <div
           ref="inputWindowRef"
           :class="
@@ -496,8 +497,8 @@
           </div>
         </div>
       </template>
-    </valueForm.Field>
-  </template>
+    </template>
+  </valueForm.Field>
 </template>
 
 <script setup lang="ts">

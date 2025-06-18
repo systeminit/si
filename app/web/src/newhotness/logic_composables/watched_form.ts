@@ -1,6 +1,13 @@
-import { ref, unref, watch, Ref, ComputedRef, inject } from "vue";
+import {
+  ref,
+  watch,
+  inject,
+  MaybeRefOrGetter,
+  toValue,
+  WatchSource,
+} from "vue";
 import { useForm, formOptions } from "@tanstack/vue-form";
-import { Span, trace } from "@opentelemetry/api";
+import { trace } from "@opentelemetry/api";
 import { assertIsDefined, Context } from "../types";
 import * as rainbow from "./rainbow_counter";
 
@@ -67,69 +74,70 @@ export const useWatchedForm = <Data>(label: string) => {
     watchFn,
     validators,
   }: {
-    data: Ref<Data> | ComputedRef<Data>;
+    data: MaybeRefOrGetter<Data>;
     // NOTE: props also contains `formApi`, but I can't realistically type it here
-    onSubmit: (props: { value: Data }) => void;
+    onSubmit: (props: { value: Data }) => Promise<void> | void;
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-    watchFn?: () => any;
+    watchFn?: WatchSource<unknown>;
     validators?: Validators;
   }) => {
-    let start: number;
-    let span: Span;
-
     const opts = formOptions({
-      defaultValues: unref(data),
+      defaultValues: toValue(data),
     });
     const wForm = useForm({
       ...opts,
-      onSubmit: (props) => {
-        span = tracer.startSpan("watchedForm");
+      onSubmit: async (props) => {
+        // Set up the rainbow spinner and bifrosting
+        const start = Date.now();
+        const span = tracer.startSpan("watchedForm");
         span.setAttributes({
           workspaceId: ctx.workspacePk.value,
           changeSetId: ctx.changeSetId.value,
           form: label,
         });
-        start = Date.now();
-        onSubmit(props);
         bifrosting.value = true;
         rainbow.add(ctx.changeSetId.value, label);
+
+        // Mark submission as complete and remove the rainbow spinner
+        const markComplete = () => {
+          bifrosting.value = false;
+          rainbow.remove(ctx.changeSetId.value, label);
+          if (span) {
+            span.setAttribute("measured_time", Date.now() - start);
+            span.end();
+          }
+        };
+
+        // Submit the form
+        try {
+          await onSubmit(props);
+          // Set the form data optimistically
+          wForm.reset(props.value);
+        } catch (e) {
+          // TODO report errors and display on caller forms
+          // Cancel the spinner and bifrosting on failure
+          markComplete();
+        }
+
+        if (watchFn) {
+          watch(watchFn, markComplete);
+        } else {
+          watch(() => toValue(data), markComplete);
+          // there are cases in which we don't have a watched value
+          // so this will never get removed, this is just a UI fallback
+          setTimeout(() => {
+            rainbow.remove(ctx.changeSetId.value, label);
+          }, 750);
+        }
       },
       validators,
     });
 
-    let observed = false;
-    const observe = (time: number) => {
-      if (observed) return;
-      observed = true;
-      if (span) {
-        span.setAttribute("measured_time", time);
-        span.end();
-      }
-    };
-
-    if (watchFn) {
-      watch(watchFn, () => {
-        bifrosting.value = false;
-        rainbow.remove(ctx.changeSetId.value, label);
-        const end = Date.now();
-        observe(end - start);
-        wForm.reset(unref(data));
-      });
-    } else {
-      watch(data, () => {
-        bifrosting.value = false;
-        rainbow.remove(ctx.changeSetId.value, label);
-        const end = Date.now();
-        observe(end - start);
-        wForm.reset(unref(data));
-      });
-
-      // there are cases in which we don't have a watched value
-      // so this will never get removed, this is just a UI fallback
-      setTimeout(() => {
-        rainbow.remove(ctx.changeSetId.value, label);
-      }, 750);
-    }
+    // Update form data as data changes
+    watch(
+      () => toValue(data),
+      (newData) => wForm.reset(newData),
+    );
 
     return wForm;
   };
