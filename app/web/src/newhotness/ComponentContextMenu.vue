@@ -84,7 +84,7 @@ const actionPrototypes = computed(
   () => actionPrototypesQuery.data.value?.actionPrototypes ?? [],
 );
 const actionPrototypesQuery = useQuery<ActionPrototypeViewList | null>({
-  enabled: schemaVariantId.value !== "",
+  enabled: () => schemaVariantId.value !== "",
   queryKey: key(EntityKind.ActionPrototypeViewList, schemaVariantId),
   queryFn: async () =>
     await bifrost<ActionPrototypeViewList>(
@@ -92,7 +92,7 @@ const actionPrototypesQuery = useQuery<ActionPrototypeViewList | null>({
     ),
 });
 const actionsQuery = useQuery<BifrostActionViewList | null>({
-  enabled: component.value !== undefined,
+  enabled: () => component.value !== undefined,
   queryKey: key(EntityKind.ActionViewList),
   queryFn: async () =>
     await bifrost<BifrostActionViewList>(args(EntityKind.ActionViewList)),
