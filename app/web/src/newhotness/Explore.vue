@@ -92,7 +92,7 @@
               autocomplete="off"
               :class="slotProps.class"
               noStyles
-              placeholder="Search components"
+              :placeholder="placeholderSearchText"
               @focus="
                 () => {
                   slotProps.focus();
@@ -485,6 +485,9 @@ const componentListRaw = useQuery<ComponentInList[]>({
   },
 });
 
+const placeholderSearchText = computed(
+  () => `Search across ${componentListRaw.data.value?.length ?? 0} Components`,
+);
 const componentList = computed(() => componentListRaw.data.value ?? []);
 const componentsById = computed(() =>
   Object.fromEntries(componentList.value.map((c) => [c.id, c])),
