@@ -2,6 +2,8 @@
 services:
   postgres:
     image: systeminit/postgres:stable
+    networks:
+      - si_net
     environment:
       - "POSTGRES_PASSWORD=bugbear"
       - "PGPASSWORD=bugbear"
@@ -18,6 +20,8 @@ services:
 
   nats:
     image: systeminit/nats:stable
+    networks:
+      - si_net
     command:
       - "--config"
       - "nats-server.conf"
@@ -29,6 +33,8 @@ services:
 
   otelcol:
     image: systeminit/otelcol:stable
+    networks:
+      - si_net
     # If you'd like to ship to honeycomb from your local machine, you need these two variables in the otelcol
     #environment:
     #  - "SI_OTEL_COL__HONEYCOMB_API_KEY=SOE2nL"
@@ -41,6 +47,8 @@ services:
 
   spicedb:
     build: ../component/spicedb
+    networks:
+      - si_net
     environment:
       - "SPICEDB_LOG_FORMAT=console"
       - "SPICEDB_GRPC_PRESHARED_KEY=hobgoblin"
@@ -48,3 +56,7 @@ services:
       - "ZED_KEYRING_PASSWORD=orc"
     ports:
       - "50051:50051"
+
+networks:
+  si_net:
+    driver: bridge
