@@ -41,7 +41,7 @@ import { useWorkspacesStore } from "../workspaces.store";
 // we do not need crypto-secure ulids. We just want every tab to have a different one. Which this will get us.
 const ulid = monotonicFactory(() => Math.random());
 
-let token: string | undefined;
+const token = ref<string | undefined>(undefined);
 let queryClient: QueryClient;
 const tabDbId = ulid();
 const lockAcquired = ref(false);
@@ -52,7 +52,7 @@ lockAcquiredBroadcastChannel.onmessage = () => {
 };
 
 export const init = async (bearerToken: string, _queryClient: QueryClient) => {
-  if (!token) {
+  if (!token.value) {
     // eslint-disable-next-line no-console
     console.log("🌈 initializing bifrost...");
     const start = Date.now();
@@ -70,7 +70,7 @@ export const init = async (bearerToken: string, _queryClient: QueryClient) => {
     tabDb.initBifrost(Comlink.proxy(port2));
 
     const end = Date.now();
-    token = bearerToken;
+    token.value = bearerToken;
     queryClient = _queryClient;
     // eslint-disable-next-line no-console
     console.log(`...initialization completed [${end - start}ms] 🌈`);
@@ -81,7 +81,9 @@ export const init = async (bearerToken: string, _queryClient: QueryClient) => {
   }
 };
 
-export const initCompleted = computed(() => !!token && lockAcquired.value);
+export const initCompleted = computed(
+  () => !!token.value && lockAcquired.value,
+);
 
 const bustTanStackCache: BustCacheFn = (
   workspaceId: string,
