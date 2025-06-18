@@ -82,8 +82,8 @@
                     )
                   "
                 >
-                  <TextPill tighter>Up</TextPill>
-                  <TextPill tighter>Down</TextPill>
+                  <TextPill tighter variant="key2">Up</TextPill>
+                  <TextPill tighter variant="key2">Down</TextPill>
                   <div class="leading-snug">to navigate</div>
                 </div>
               </template>
@@ -167,7 +167,7 @@
                         )
                       "
                     >
-                      <TextPill tighter>Enter</TextPill> to add
+                      <TextPill tighter variant="key2">Enter</TextPill> to add
                     </div>
                   </template>
                 </TreeNode>
@@ -211,6 +211,7 @@ import {
   themeClasses,
   TreeNode,
   TruncateWithTooltip,
+  TextPill,
 } from "@si/vue-lib/design-system";
 import { computed, inject, nextTick, ref, watch } from "vue";
 import clsx from "clsx";
@@ -219,7 +220,6 @@ import { Fzf } from "fzf";
 import { useRoute, useRouter } from "vue-router";
 import { debounce } from "lodash-es";
 import VueMarkdown from "vue-markdown-render";
-import TextPill from "@/components/TextPill.vue";
 import EditingPill from "@/components/EditingPill.vue";
 import {
   BifrostSchemaVariantCategories,

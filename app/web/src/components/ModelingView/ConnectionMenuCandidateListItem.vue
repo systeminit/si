@@ -89,9 +89,9 @@
         )
       "
     >
-      <TextPill tighter>{{
-        controlScheme === "arrows" ? "Right" : "Tab"
-      }}</TextPill>
+      <TextPill tighter variant="key">
+        {{ controlScheme === "arrows" ? "Right" : "Tab" }}
+      </TextPill>
       <div class="leading-snug">to select</div>
     </div>
   </div>
@@ -104,9 +104,9 @@ import {
   Icon,
   themeClasses,
   TruncateWithTooltip,
+  TextPill,
 } from "@si/vue-lib/design-system";
 import { VirtualItem } from "@tanstack/vue-virtual";
-import TextPill from "../TextPill.vue";
 import {
   ConnectionCandidateListEntry,
   candidateIsSocket,

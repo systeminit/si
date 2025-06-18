@@ -32,8 +32,8 @@
         v-if="active"
         class="flex flex-row flex-none gap-3xs items-center text-2xs"
       >
-        <TextPill tighter>Up</TextPill>
-        <TextPill tighter>Down</TextPill>
+        <TextPill tighter variant="key">Up</TextPill>
+        <TextPill tighter variant="key">Down</TextPill>
         <div class="leading-snug">to navigate</div>
       </div>
     </div>
@@ -42,9 +42,8 @@
 
 <script lang="ts" setup>
 import { clsx } from "clsx";
-import { themeClasses, VormInput } from "@si/vue-lib/design-system";
+import { themeClasses, VormInput, TextPill } from "@si/vue-lib/design-system";
 import { ref } from "vue";
-import TextPill from "../TextPill.vue";
 
 const inputRef = ref<InstanceType<typeof VormInput>>();
 

@@ -10,7 +10,7 @@
   >
     <template #titleIcons>
       <div class="text-xs cursor-pointer" @click="modalRef?.close()">
-        <TextPill>ESC</TextPill> to exit
+        <TextPill variant="key">ESC</TextPill> to exit
       </div>
     </template>
     <div
@@ -101,8 +101,8 @@
       </div>
       <div class="flex gap-sm">
         <div class="flex gap-2xs items-center">
-          <TextPill>Up</TextPill>
-          <TextPill>Down</TextPill>
+          <TextPill variant="key">Up</TextPill>
+          <TextPill variant="key">Down</TextPill>
           <div>to navigate</div>
         </div>
         <div
@@ -114,12 +114,12 @@
           "
         />
         <div class="flex flex-row gap-2xs items-center">
-          <TextPill>{{
-            controlScheme === "arrows" ? "Right" : "Tab"
-          }}</TextPill>
+          <TextPill variant="key">
+            {{ controlScheme === "arrows" ? "Right" : "Tab" }}
+          </TextPill>
           <template v-if="controlScheme === 'arrows'">
             <div>or</div>
-            <TextPill>Enter</TextPill>
+            <TextPill variant="key">Enter</TextPill>
           </template>
           <div>to select</div>
         </div>
@@ -132,9 +132,9 @@
           "
         />
         <div class="flex flex-row gap-2xs items-center">
-          <TextPill>{{
-            controlScheme === "arrows" ? "Left" : "Shift + Tab"
-          }}</TextPill>
+          <TextPill variant="key">
+            {{ controlScheme === "arrows" ? "Left" : "Shift + Tab" }}
+          </TextPill>
           <div>to switch back to the list on the left</div>
         </div>
         <template v-if="controlScheme !== 'arrows'">
@@ -147,7 +147,7 @@
             "
           />
           <div class="flex flex-row gap-2xs items-center">
-            <TextPill>Enter</TextPill>
+            <TextPill variant="key">Enter</TextPill>
             <div>to create a connection</div>
           </div>
         </template>
@@ -163,6 +163,7 @@ import {
   themeClasses,
   Icon,
   IconButton,
+  TextPill,
 } from "@si/vue-lib/design-system";
 import {
   computed,
@@ -188,7 +189,6 @@ import {
   DiagramSocketData,
   DiagramSocketEdgeData,
 } from "@/components/ModelingDiagram/diagram_types";
-import TextPill from "@/components/TextPill.vue";
 import { useViewsStore } from "@/store/views.store";
 import { useComponentAttributesStore } from "@/store/component_attributes.store";
 import { PropertyEditorSchema } from "@/api/sdf/dal/property_editor";
