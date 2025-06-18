@@ -8,9 +8,11 @@ import {
   unref,
   toRaw,
   ref,
+  watch,
 } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
 import { monotonicFactory } from "ulid";
+import PQueue from "p-queue";
 import {
   TabDBInterface,
   SharedDBInterface,
@@ -174,7 +176,7 @@ const updateCache = (
 ) => {
   // there is always more data attached, but we only care about accessing the ID
   // so thats all we need to type!
-  const cachedData = queryClient.getQueryData(queryKey) as { id: string }[];
+  const cachedData = queryClient?.getQueryData(queryKey) as { id: string }[];
   if (!cachedData) return;
   // TODO removal
   const idx = cachedData.findIndex((d) => d.id === id);
@@ -277,13 +279,7 @@ const lobbyExit: LobbyExitFn = async (
   }
 
   await niflheim(workspaceId, changeSetId, true);
-  router.push({
-    name: "new-hotness",
-    params: {
-      workspacePk: workspaceId,
-      changeSetId,
-    },
-  });
+  muspelheimStatuses.value[changeSetId] = true;
 };
 
 tabDb.addListenerBustCache(Comlink.proxy(bustTanStackCache));
@@ -311,7 +307,7 @@ export const bifrost = async <T>(args: {
   kind: Gettable;
   id: Id;
 }): Promise<Reactive<T> | null> => {
-  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  await waitForInitCompletion();
   const start = Date.now();
   const maybeAtomDoc = await db.get(
     args.workspaceId,
@@ -332,7 +328,7 @@ export const bifrostList = async <T>(args: {
   kind: Listable;
   id: Id;
 }): Promise<Reactive<T> | null> => {
-  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  await waitForInitCompletion();
   const start = Date.now();
   const maybeAtomDoc = await db.getList(
     args.workspaceId,
@@ -375,7 +371,7 @@ export const getOutgoingConnectionsCounts = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
 }) => {
-  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  await waitForInitCompletion();
 
   const start = Date.now();
   const connectionsCounts = await db.getOutgoingConnectionsCounts(
@@ -415,7 +411,7 @@ export const getSchemaMembers = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
 }): Promise<SchemaMembers[]> => {
-  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  await waitForInitCompletion();
 
   const start = Date.now();
   const schemaMembers = await db.getSchemaMembers(
@@ -443,17 +439,60 @@ export const getOutgoingConnections = async (args: {
   return new DefaultMap<string, Record<string, Connection>>(() => ({}));
 };
 
+const waitForInitCompletion = (): Promise<void> => {
+  return new Promise((resolve) => {
+    if (initCompleted.value) {
+      resolve();
+      return;
+    }
+
+    const unwatch = watch(initCompleted, (newValue) => {
+      if (newValue) {
+        unwatch();
+        resolve();
+      }
+    });
+  });
+};
+
+const MUSPELHEIM_CONCURRENCY = 3;
+
+export const muspelheimStatuses = ref<{ [key: string]: boolean }>({});
+
+export const muspelheim = async (workspaceId: string, force?: boolean) => {
+  await waitForInitCompletion();
+  // eslint-disable-next-line no-console
+  console.log("🔥 MUSPELHEIM 🔥");
+  const niflheimQueue = new PQueue({ concurrency: MUSPELHEIM_CONCURRENCY });
+  const changeSetStore = useChangeSetsStore();
+  for (const changeSetId of changeSetStore.changeSetIds) {
+    muspelheimStatuses.value[changeSetId] = false;
+    niflheimQueue.add(async () => {
+      muspelheimStatuses.value[changeSetId] = await niflheim(
+        workspaceId,
+        changeSetId,
+        force,
+      );
+    });
+  }
+
+  await niflheimQueue.onEmpty();
+  // eslint-disable-next-line no-console
+  console.log("🔥 DONE 🔥");
+  return true;
+};
+
 // cold start
 export const niflheim = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
   force?: boolean,
-) => {
-  if (!initCompleted.value) return null;
+): Promise<boolean> => {
+  await waitForInitCompletion();
   const coldstart = !(await db.changeSetExists(workspaceId, changeSetId));
   if (coldstart || force) {
     // eslint-disable-next-line no-console
-    console.log("❄️ NIFLHEIM ❄️");
+    console.log("❄️ NIFLHEIM ❄️", changeSetId);
     const success = await db.niflheim(workspaceId, changeSetId);
     // eslint-disable-next-line no-console
     console.log("❄️ DONE ❄️");
@@ -461,15 +500,11 @@ export const niflheim = async (
     // If niflheim returned false (202 response), navigate to lobby
     // Index is being rebuilt and is not ready yet.
     if (!success) {
-      router.push({
-        name: "new-hotness-lobby",
-        params: {
-          workspacePk: workspaceId,
-          changeSetId,
-        },
-      });
-    } else return true;
+      muspelheimStatuses.value[changeSetId] = false;
+      return false;
+    }
   }
+  return true;
 };
 
 export const changeSetId = computed(() => {

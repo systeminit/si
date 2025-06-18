@@ -51,12 +51,9 @@
      min-h-0 prevents the main container from being *larger* than the max it can grow, no matter its contents -->
     <main class="grow min-h-0">
       <div v-if="tokenFail">Bad Token</div>
-      <div v-else-if="lobby" class="w-[50svh] mx-auto mt-[15svh]">
-        <h1 class="text-center text-2xl">Welcome!</h1>
-        <h2 class="text-center text-xl">Have a seat in our lobby</h2>
-        <h3 class="text-center text-lg">We are loading your workspace now</h3>
-        <Icon class="mx-auto" name="loader" size="full" />
-      </div>
+      <template v-else-if="lobby">
+        <Lobby />
+      </template>
       <template v-else-if="componentId">
         <ComponentDetails :componentId="componentId" />
       </template>
@@ -88,7 +85,6 @@ import {
   provide,
   watch,
 } from "vue";
-import { Icon } from "@si/vue-lib/design-system";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import NavbarPanelLeft from "@/components/layout/navbar/NavbarPanelLeft.vue";
 import NavbarPanelRight from "@/components/layout/navbar/NavbarPanelRight.vue";
@@ -105,6 +101,7 @@ import {
   SchemaMembers,
 } from "@/workers/types/entity_kind_types";
 import { SchemaId } from "@/api/sdf/dal/schema";
+import Lobby from "./Lobby.vue";
 import Explore from "./Explore.vue";
 import ComponentDetails from "./ComponentDetails.vue";
 import FuncRunDetails from "./FuncRunDetails.vue";
@@ -128,7 +125,19 @@ const props = defineProps<{
   actionId?: string;
 }>();
 
-const lobby = computed(() => route.name === "new-hotness-lobby");
+const lobby = computed(() => {
+  const muspelheimStates = heimdall.muspelheimStatuses.value;
+  if (Object.keys(muspelheimStates).length === 0) {
+    return true;
+  }
+
+  for (const changeSetId in muspelheimStates) {
+    if (!muspelheimStates[changeSetId]) {
+      return true;
+    }
+  }
+  return false;
+});
 
 const authStore = useAuthStore();
 const featureFlagsStore = useFeatureFlagsStore();
@@ -315,21 +324,8 @@ onBeforeMount(async () => {
 
   // NOTE: onBeforeMount doesn't wait on promises
   // the page will load before execution finishes
-  const success = await heimdall.niflheim(
-    props.workspacePk,
-    props.changeSetId,
-    true,
-  );
+  await heimdall.muspelheim(props.workspacePk, true);
   queriesEnabled.value = true;
-  if (success && lobby.value) {
-    router.push({
-      name: "new-hotness",
-      params: {
-        workspacePk: props.workspacePk,
-        changeSetId: props.changeSetId,
-      },
-    });
-  }
 });
 
 watch(
@@ -338,17 +334,18 @@ watch(
     const success = await heimdall.niflheim(
       props.workspacePk,
       props.changeSetId,
-      true,
+      false, // we should have prefetched this, so only force if the change set is not in the list
     );
-    if (success && lobby.value) {
-      router.push({
-        name: "new-hotness",
-        params: {
-          workspacePk: props.workspacePk,
-          changeSetId: props.changeSetId,
-        },
-      });
+    if (!success) {
+      heimdall.muspelheimStatuses.value[props.changeSetId] = false;
     }
+    router.push({
+      name: "new-hotness",
+      params: {
+        workspacePk: props.workspacePk,
+        changeSetId: props.changeSetId,
+      },
+    });
   },
 );
 realtimeStore.subscribe(
