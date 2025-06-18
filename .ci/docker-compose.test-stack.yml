@@ -1,7 +1,7 @@
 ---
 services:
   postgres:
-    image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/postgres:stable
+    image: systeminit/postgres:stable
     environment:
       - "POSTGRES_PASSWORD=bugbear"
       - "PGPASSWORD=bugbear"
@@ -17,7 +17,7 @@ services:
       retries: 5
 
   nats:
-    image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/nats:stable
+    image: systeminit/nats:stable
     command:
       - "--config"
       - "nats-server.conf"
@@ -28,7 +28,7 @@ services:
       - postgres
 
   otelcol:
-    image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/otelcol:stable
+    image: systeminit/otelcol:stable
     # If you'd like to ship to honeycomb from your local machine, you need these two variables in the otelcol
     #environment:
     #  - "SI_OTEL_COL__HONEYCOMB_API_KEY=SOE2nL"
