@@ -163,5 +163,5 @@ pub struct SchemaMembers {
 )]
 pub struct ComponentList {
     pub id: WorkspacePk,
-    pub components: Vec<WeakReference<ComponentId, weak::markers::Component>>,
+    pub components: Vec<WeakReference<ComponentId, weak::markers::ComponentInList>>,
 }
