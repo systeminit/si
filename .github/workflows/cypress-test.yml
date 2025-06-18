@@ -2,6 +2,8 @@ name: Dev Environment Setup
 
 on:
   workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   setup-dev-env:
