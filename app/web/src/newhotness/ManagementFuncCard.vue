@@ -42,10 +42,9 @@
 <script setup lang="ts">
 import { Icon, IconNames, VButton } from "@si/vue-lib/design-system";
 import { useRoute, useRouter } from "vue-router";
-import { inject, ref } from "vue";
+import { ref } from "vue";
 import { routes, useApi } from "@/newhotness/api_composables";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
-import { ExploreContext } from "@/newhotness/types";
 import { MgmtFunction } from "@/workers/types/entity_kind_types";
 
 const props = defineProps<{
@@ -54,21 +53,16 @@ const props = defineProps<{
   funcRun?: FuncRun;
 }>();
 
-const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
-
 const router = useRouter();
 const route = useRoute();
 
 const mgmtRunApi = useApi();
 const runMgmtFunc = async (funcId: string) => {
-  const call = mgmtRunApi.endpoint<{ success: boolean }>(
-    routes.RunMgmtPrototype,
-    {
-      prototypeId: funcId,
-      componentId: props.componentId,
-      viewId: explore?.viewId.value ?? "DEFAULT", // Should get the default view id
-    },
-  );
+  const call = mgmtRunApi.endpoint<{ success: boolean }>(routes.MgmtFuncRun, {
+    prototypeId: funcId,
+    componentId: props.componentId,
+    viewId: "DEFAULT",
+  });
 
   const { req, newChangeSetId } = await call.post({});
 
