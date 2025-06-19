@@ -94,8 +94,6 @@ services:
     command:
       - --path.rootfs=/host
     pid: host
-    ports:
-      - 9000:9100
     volumes:
       - /:/host:ro,rslave
 
@@ -165,6 +163,7 @@ services:
     volumes:
       - "./prometheus-config/config.yml:/etc/prometheus/prometheus.yml"
     depends_on:
+      - node_exporter
       - otelcol
 
   spicedb:
