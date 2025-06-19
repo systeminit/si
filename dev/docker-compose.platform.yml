@@ -156,10 +156,8 @@ services:
   prometheus:
     #<<: *loki-logged-service
     image: prom/prometheus
-    ports:
-      - "9091:9090"
     volumes:
-      - "./prometheus-config/config.yml:/etc/prometheus/prometheus.yml"
+      - "./config/prometheus/config.yml:/etc/prometheus/prometheus.yml"
     depends_on:
       - node_exporter
       - otelcol
