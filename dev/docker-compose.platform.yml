@@ -41,15 +41,14 @@ services:
   grafana:
     #<<: *loki-logged-service
     image: grafana/grafana-enterprise
-    container_name: grafana
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./datasources:/etc/grafana/provisioning/datasources
     environment:
       - "GF_AUTH_ANONYMOUS_ENABLED=true"
       - "GF_AUTH_ANONYMOUS_ORG_ROLE=Admin"
       - "GF_AUTH_DISABLE_LOGIN_FORM=true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
 
   jaeger:
     #<<: *loki-logged-service
