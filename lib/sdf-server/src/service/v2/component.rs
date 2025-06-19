@@ -24,6 +24,7 @@ use crate::app_state::AppState;
 
 pub mod attributes;
 pub mod delete_components;
+pub mod manage;
 pub mod name;
 pub mod restore_components;
 pub mod secrets;
@@ -97,7 +98,8 @@ pub fn v2_routes() -> Router<AppState> {
             Router::new()
                 .nest("/attributes", attributes::v2_routes())
                 .nest("/name", name::v2_routes())
-                .nest("/secret", secrets::v2_routes()),
+                .nest("/secret", secrets::v2_routes())
+                .nest("/manage", manage::v2_routes()),
         )
 }
 
