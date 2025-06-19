@@ -100,10 +100,10 @@ services:
     #<<: *loki-logged-service
     image: systeminit/otelcol:stable
     ports:
+      # receiver: grpc
       - "4317:4317"
+      # receiver: http
       - "4318:4318"
-      - "9090:9090"
-      - "55679:55679"
     depends_on:
       - jaeger
 
