@@ -39,6 +39,7 @@ import {
 import { removeBadDocLinks } from "../pipeline-steps/removeBadDocLinks.ts";
 import { reorderProps } from "../pipeline-steps/reorderProps.ts";
 import { createSuggestionsForPrimaryIdentifiers } from "../pipeline-steps/createSuggestionsAcrossAssets.ts";
+import { createAwsRegionSpecificSuggestion } from "../pipeline-steps/awsRegionSpecificSuggestions.ts";
 
 const logger = _logger.ns("siSpecs").seal();
 const SI_SPEC_DIR = "si-specs";
@@ -102,6 +103,7 @@ export async function generateSiSpecs(
   // this step will eventually replace all the socket stuff. Must come before
   // overrides so it can be... overriden
   specs = createSuggestionsForPrimaryIdentifiers(specs);
+  specs = createAwsRegionSpecificSuggestion(specs);
 
   // Our overrides right now only run after the prop tree and the sockets are generated
   specs = assetSpecificOverrides(specs);
