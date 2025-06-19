@@ -281,6 +281,18 @@
       "ra3.16xlarge"
     ]
   },
+  "The type of policy to create. You can specify one of the following values: AISERVICES_OPT_OUT_POLICY, BACKUP_POLICY, SERVICE_CONTROL_POLICY, TAG_POLICY, CHATBOT_POLICY, RESOURCE_CONTROL_POLICY,DECLARATIVE_POLICY_EC2, SECURITYHUB_POLICY": {
+    "enum": [
+      "AISERVICES_OPT_OUT_POLICY",
+      "BACKUP_POLICY",
+      "SERVICE_CONTROL_POLICY",
+      "TAG_POLICY",
+      "CHATBOT_POLICY",
+      "RESOURCE_CONTROL_POLICY",
+      "DECLARATIVE_POLICY_EC2",
+      "SECURITYHUB_POLICY"
+    ]
+  },
   "The volume type. This parameter can be one of the following values:\n  +  General Purpose SSD: ``gp2`` | ``gp3``\n  +  Provisioned IOPS SSD: ``io1`` | ``io2``\n  +  Throughput Optimized HDD: ``st1``\n  +  Cold HDD: ``sc1``\n  +  Magnetic: ``standard``\n  \n For more information, see [Amazon EBS volume types](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-volume-types.html).\n Default: ``gp2``": {
     "enum": [
       "gp2",
