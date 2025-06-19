@@ -258,8 +258,6 @@ pub enum AttributeValueError {
     PropMoreThanOneChild(PropId),
     #[error("prop not found for attribute value: {0}")]
     PropNotFound(AttributeValueId),
-    #[error("trying to delete av that's not related to child of map or array: {0}")]
-    RemovingWhenNotChildOrMapOrArray(AttributeValueId),
     #[error("secret error: {0}")]
     Secret(#[from] Box<SecretError>),
     #[error("serde_json: {0}")]
@@ -1451,14 +1449,14 @@ impl AttributeValue {
                 warn!(
                     "Removing child AV {child_av_id} (no prop) parent object AV {parent_av_id} (parent prop {parent_prop_id})"
                 );
-                AttributeValue::remove_by_id(ctx, child_av_id).await?;
+                AttributeValue::remove(ctx, child_av_id).await?;
                 continue;
             };
             if let Some(duplicate_av_id) = existing_children.insert(child_prop_id, child_av_id) {
                 warn!(
                     "Removing duplicate child AV {duplicate_av_id} (prop {child_prop_id}) from parent object AV {parent_av_id} (parent prop {parent_prop_id})"
                 );
-                AttributeValue::remove_by_id(ctx, duplicate_av_id).await?;
+                AttributeValue::remove(ctx, duplicate_av_id).await?;
                 continue;
             }
         }
@@ -1476,7 +1474,7 @@ impl AttributeValue {
             warn!(
                 "Removing extra child AV {child_av_id} with (prop {child_prop_id}) from parent object AV {parent_av_id} (prop {parent_prop_id})"
             );
-            Self::remove_by_id(ctx, child_av_id).await?;
+            Self::remove(ctx, child_av_id).await?;
         }
 
         Ok(())
@@ -1578,7 +1576,7 @@ impl AttributeValue {
 
         // Remove unused child AVs that are not in the JSON array
         for extra_element in existing_elements {
-            AttributeValue::remove_by_id(ctx, extra_element).await?;
+            AttributeValue::remove(ctx, extra_element).await?;
         }
 
         Ok(new_children)
@@ -1619,14 +1617,14 @@ impl AttributeValue {
             let child_av_id = AttributeValueId::from(target_id);
             let Some(key) = key else {
                 warn!("Removing non-map edge {child_av_id} from parent map AV {parent_av_id}");
-                Self::remove_by_id(ctx, child_av_id).await?;
+                Self::remove(ctx, child_av_id).await?;
                 continue;
             };
             if let Some(duplicate_av_id) = existing_entries.insert(key, child_av_id) {
                 warn!(
                     "Removing duplicate map entry AV {duplicate_av_id} for parent map AV {parent_av_id}"
                 );
-                Self::remove_by_id(ctx, duplicate_av_id).await?;
+                Self::remove(ctx, duplicate_av_id).await?;
                 continue;
             }
         }
@@ -2536,36 +2534,55 @@ impl AttributeValue {
         Ok(pairs)
     }
 
-    pub async fn remove_by_id(ctx: &DalContext, id: AttributeValueId) -> AttributeValueResult<()> {
-        let parent_av_id = Self::parent_id(ctx, id)
-            .await?
-            .ok_or(AttributeValueError::RemovingWhenNotChildOrMapOrArray(id))?;
+    /// Remove this AV.
+    pub async fn remove(ctx: &DalContext, id: AttributeValueId) -> AttributeValueResult<()> {
+        let parent_av_id = Self::parent_id(ctx, id).await?;
+
+        // If there are *direct* subscribers to this AV, they are no longer valid subscriptions
+        // and should be treated the same as if the subscription existed but lead nowhere.
+        // To do this, we remove the subscribing APA entirely
+        //
+        // NOTE: this makes the system behave slightly differently if the subscriber is passing
+        // multiple subscriptions to a single argument. If the transform function is called
+        // with multiple missing subscriptions, they will be passed as nulls in an array, and
+        // removing the APA will remove the null. e.g. if we remove one of the subscriptions,
+        // instead of calling si:normalizeToArray([null, null]), the caller will call
+        // si:normalizeToArray(null). For now, we're not worrying about this distinction, as
+        // the new UI never creates multiple arguments for a single subscription, and we don't
+        // know if we ever want to add it back.
+        for (_, subscriber_apa_id) in Self::subscribers(ctx, id).await? {
+            AttributePrototypeArgument::remove(ctx, subscriber_apa_id).await?;
+        }
 
         ctx.workspace_snapshot()?.remove_node_by_id(id).await?;
 
-        let (root_av_id, parent_path) = Self::path_from_root(ctx, parent_av_id).await?;
-        let parent_path = AttributePath::JsonPointer(parent_path);
+        if let Some(parent_av_id) = parent_av_id {
+            let (root_av_id, parent_path) = Self::path_from_root(ctx, parent_av_id).await?;
+            let parent_path = AttributePath::JsonPointer(parent_path);
 
-        let mut dependent_value_ids = vec![parent_av_id];
+            let mut dependent_value_ids = vec![parent_av_id];
 
-        for (subscription_path, apa_id) in Self::subscribers(ctx, root_av_id).await? {
-            // If the subscription path IS the parent path, or the path to the parent's child, it's gonna be affected by the deletion of the arg.
-            // We need to enqueue all the siblings of the removed too item since ordering changes on an array can affect multiple subscriptions
-            if subscription_path.is_under(&parent_path) {
-                let prototype_id = AttributePrototypeArgument::prototype_id(ctx, apa_id).await?;
+            for (subscription_path, apa_id) in Self::subscribers(ctx, root_av_id).await? {
+                // If the subscription path IS the parent path, or the path to the parent's child, it's gonna be affected by the deletion of the arg.
+                // We need to enqueue all the siblings of the removed too item since ordering changes on an array can affect multiple subscriptions
+                if subscription_path.is_under(&parent_path) {
+                    let prototype_id =
+                        AttributePrototypeArgument::prototype_id(ctx, apa_id).await?;
 
-                let Some(subscriber_av_id) =
-                    AttributePrototype::attribute_value_id(ctx, prototype_id).await?
-                else {
-                    continue;
-                };
+                    let Some(subscriber_av_id) =
+                        AttributePrototype::attribute_value_id(ctx, prototype_id).await?
+                    else {
+                        continue;
+                    };
 
-                dependent_value_ids.push(subscriber_av_id);
+                    dependent_value_ids.push(subscriber_av_id);
+                }
             }
+
+            ctx.add_dependent_values_and_enqueue(dependent_value_ids)
+                .await?;
         }
 
-        ctx.add_dependent_values_and_enqueue(dependent_value_ids)
-            .await?;
         Ok(())
     }
 

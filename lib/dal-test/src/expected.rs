@@ -852,7 +852,7 @@ impl ExpectAttributeValue {
     }
 
     pub async fn remove(self, ctx: &DalContext) {
-        dal::AttributeValue::remove_by_id(ctx, self.0)
+        dal::AttributeValue::remove(ctx, self.0)
             .await
             .expect("remove prop value by id failed")
     }

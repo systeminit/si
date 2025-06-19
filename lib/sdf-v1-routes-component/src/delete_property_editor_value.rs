@@ -43,7 +43,7 @@ pub async fn delete_property_editor_value(
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    AttributeValue::remove_by_id(&ctx, request.attribute_value_id).await?;
+    AttributeValue::remove(&ctx, request.attribute_value_id).await?;
 
     let component = Component::get_by_id(&ctx, request.component_id).await?;
     let mut socket_map = HashMap::new();

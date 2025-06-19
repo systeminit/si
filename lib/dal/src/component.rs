@@ -2771,9 +2771,9 @@ impl Component {
             .await?;
 
         // Deleting the root attribute value will remove all ValueSubscription edges that point to it.
-        ctx.workspace_snapshot()?
-            .remove_node_by_id(root_attribute_value_id)
-            .await?;
+        AttributeValue::remove(ctx, root_attribute_value_id).await?;
+
+        // Remove the component itself
         ctx.workspace_snapshot()?.remove_node_by_id(id).await?;
 
         Ok(())
