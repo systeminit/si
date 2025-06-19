@@ -54,7 +54,7 @@ services:
     #<<: *loki-logged-service
     image: systeminit/jaeger:stable
     ports:
-      - "5317:4317"
+      # jaeger ui
       - "16686:16686"
 
   localstack:

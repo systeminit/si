@@ -176,13 +176,9 @@ compose_services = {
             link("http://localhost:4566", "localstack-api"),
         ],
     },
-    "node_exporter": {
-        "links": [
-            link("http://localhost:9100", "node-exporter"),
-        ],
-    },
     "loki": {},
     "nats": {},
+    "node_exporter": {},
     "otelcol": {},
     "postgres": {},
     "postgres-test": {},
