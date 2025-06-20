@@ -154,8 +154,14 @@
           @scroll="onScroll"
           @scrollend="fixContextMenuAfterScroll"
         >
+          <span class="text-bold py-xs"> WHAT'S GOOD GROUP TWO??</span>
           <ExploreComponentGrid
-            :components="filteredComponents"
+            :components="halved[0]!"
+            :scrollRef="scrollRef"
+          />
+          <span class="text-bold py-xs">NOTHIN MUCH GROUP ONE</span>
+          <ExploreComponentGrid
+            :components="halved[1]!"
             :scrollRef="scrollRef"
           />
         </div>
@@ -454,6 +460,9 @@ const componentsById = computed(() =>
 const scrollRef = ref<HTMLDivElement>();
 
 const filteredComponents = reactive<ComponentInList[]>([]);
+const halved = computed(() => {
+  return _.chunk(filteredComponents, Math.ceil(filteredComponents.length / 2));
+});
 
 const searchString = ref("");
 const computedSearchString = computed(() => searchString.value);
