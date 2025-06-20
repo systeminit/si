@@ -3217,6 +3217,9 @@
   "A description of the application.": {
     "enum": null
   },
+  "A description of the automation rule": {
+    "enum": null
+  },
   "A description of the bot alias. Use the description to help identify the bot alias in lists.": {
     "enum": null
   },
@@ -5465,6 +5468,9 @@
     "enum": null
   },
   "Indicates the version number in the schema to update.": {
+    "enum": null
+  },
+  "Indicates to link a list of included Regions": {
     "enum": null
   },
   "Indicates whether AWS or the customer owns and manages the CC rule.\n  CC Managed Rules are predefined rules owned by AWS. For more information, see [Managed Rules](https://docs.aws.amazon.com/config/latest/developerguide/evaluate-config_use-managed-rules.html) in the *developer guide*.\n  CC Custom Rules are rules that you can develop either with Guard (``CUSTOM_POLICY``) or LAMlong (``CUSTOM_LAMBDA``). For more information, see [Custom Rules](https://docs.aws.amazon.com/config/latest/developerguide/evaluate-config_develop-rules.html) in the *developer guide*.": {
@@ -11875,6 +11881,9 @@
   "The logical name of an AWS media resource.": {
     "enum": null
   },
+  "The logical operator used to combine multiple conditions": {
+    "enum": null
+  },
   "The longitude.": {
     "enum": null
   },
@@ -12869,6 +12878,9 @@
     "enum": null
   },
   "The name of the authorizer.": {
+    "enum": null
+  },
+  "The name of the automation rule": {
     "enum": null
   },
   "The name of the base inference component": {
@@ -15214,6 +15226,9 @@
   "The status of the TopicRuleDestination.": {
     "enum": null
   },
+  "The status of the automation rule": {
+    "enum": null
+  },
   "The status of the creation or deletion of the data catalog. LAMBDA, GLUE, and HIVE data catalog types are created synchronously. Their status is either CREATE_COMPLETE or CREATE_FAILED. The FEDERATED data catalog type is created asynchronously.": {
     "enum": null
   },
@@ -15986,6 +16001,9 @@
     "enum": null
   },
   "The value against which the specified statistic is compared.": {
+    "enum": null
+  },
+  "The value for the rule priority": {
     "enum": null
   },
   "The value for the tag. You can specify a value that is 0 to 256 Unicode characters in length and cannot be prefixed with aws:.": {
