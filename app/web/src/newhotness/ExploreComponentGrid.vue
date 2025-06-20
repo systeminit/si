@@ -79,8 +79,7 @@ const GRID_TILE_GAP = 16;
 
 const props = defineProps<{
   components: ComponentInList[];
-  scrollRef: HTMLDivElement; // Reference to parent element
-  enableKeyboardControls?: boolean;
+  scrollRef: HTMLDivElement | undefined; // Reference to parent element
 }>();
 
 const componentsById = computed(() =>
@@ -122,22 +121,6 @@ const getGridTileByIndex = (idx: number) => {
   return undefined;
 };
 
-const virtualizerOptions = computed(() => {
-  const options = {
-    count: filteredComponentRows.value.length,
-    // `virtualizerLanes` gives virtualizer a "second-dimension" (aka columns for vertical lists and rows for horizontal lists)
-    // https://tanstack.com/virtual/latest/docs/api/virtualizer#lanes
-    // Our grid is based on the minimum tile width... so how many tiles can we fit?
-    // thats the value of `virtualizerLanes`
-    getScrollElement: () => props.scrollRef!,
-    estimateSize: () => MIN_GRID_TILE_WIDTH,
-    overscan: 3,
-  };
-  return options;
-});
-
-const virtualList = useVirtualizer(virtualizerOptions);
-
 // This computes the expected number of components in a row based on the width of the scroll area
 const virtualizerLanes = computed(() => {
   // We need to force a recompute of this value when the screen is resized
@@ -175,6 +158,22 @@ const filteredComponentRows = computed(() =>
 const componentRowsVirtualItemsList = computed(() =>
   virtualList.value.getVirtualItems(),
 );
+
+const virtualizerOptions = computed(() => {
+  const options = {
+    count: filteredComponentRows.value.length,
+    // `virtualizerLanes` gives virtualizer a "second-dimension" (aka columns for vertical lists and rows for horizontal lists)
+    // https://tanstack.com/virtual/latest/docs/api/virtualizer#lanes
+    // Our grid is based on the minimum tile width... so how many tiles can we fit?
+    // thats the value of `virtualizerLanes`
+    getScrollElement: () => props.scrollRef!,
+    estimateSize: () => MIN_GRID_TILE_WIDTH,
+    overscan: 3,
+  };
+  return options;
+});
+
+const virtualList = useVirtualizer(virtualizerOptions);
 
 const virtualListHeight = computed(() => virtualList.value.getTotalSize());
 
