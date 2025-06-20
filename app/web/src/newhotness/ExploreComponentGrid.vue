@@ -1,48 +1,53 @@
 <template>
-  <div
-    class="w-full relative flex flex-col"
-    :style="{
-      ['overflow-anchor']: 'none',
-      height: `${virtualListHeight}px`,
-    }"
-  >
+  <section>
+    <div v-if="title" class="text-bold text-xl border-2 py-xs my-xs">
+      {{ title }} - {{ components.length }}
+    </div>
     <div
-      v-for="row in componentRowsVirtualItemsList"
-      :key="`${row.key}`"
-      :data-index="row.index"
-      :class="
-        clsx(
-          'flex flex-row items-center gap-sm',
-          'absolute top-0 left-0 w-full',
-        )
-      "
+      class="w-full relative flex flex-col"
       :style="{
-        height: `${GRID_TILE_HEIGHT}px`,
-        transform: `translateY(${row.start}px)`,
+        ['overflow-anchor']: 'none',
+        height: `${virtualListHeight}px`,
       }"
     >
-      <ComponentGridTile
-        v-for="(component, columnIndex) in filteredComponentRows[row.index]"
-        ref="componentGridTileRefs"
-        :key="component.id"
-        :data-index="row.index * virtualizerLanes + columnIndex"
-        :component="component"
-        class="flex-1"
-        :class="clsx(tileClasses(row.index * virtualizerLanes + columnIndex))"
-        @mouseenter="hover(row.index * virtualizerLanes + columnIndex)"
-        @mouseleave="unhover(row.index * virtualizerLanes + columnIndex)"
-        @click.stop.left="(e) => componentClicked(e, component.id)"
-        @click.stop.right="(e) => componentClicked(e, component.id)"
-      />
-      <!-- this fills in any extra spots in the last row -->
       <div
-        v-for="emptySpot in virtualizerLanes -
-        filteredComponentRows[row.index]!.length"
-        :key="emptySpot"
-        class="flex-1"
-      />
+        v-for="row in componentRowsVirtualItemsList"
+        :key="`${row.key}`"
+        :data-index="row.index"
+        :class="
+          clsx(
+            'flex flex-row items-center gap-sm',
+            'absolute top-0 left-0 w-full',
+          )
+        "
+        :style="{
+          height: `${GRID_TILE_HEIGHT}px`,
+          transform: `translateY(${row.start}px)`,
+        }"
+      >
+        <ComponentGridTile
+          v-for="(component, columnIndex) in filteredComponentRows[row.index]"
+          ref="componentGridTileRefs"
+          :key="component.id"
+          :data-index="row.index * virtualizerLanes + columnIndex"
+          :component="component"
+          class="flex-1"
+          :class="clsx(tileClasses(row.index * virtualizerLanes + columnIndex))"
+          @mouseenter="hover(row.index * virtualizerLanes + columnIndex)"
+          @mouseleave="unhover(row.index * virtualizerLanes + columnIndex)"
+          @click.stop.left="(e) => componentClicked(e, component.id)"
+          @click.stop.right="(e) => componentClicked(e, component.id)"
+        />
+        <!-- this fills in any extra spots in the last row -->
+        <div
+          v-for="emptySpot in virtualizerLanes -
+          filteredComponentRows[row.index]!.length"
+          :key="emptySpot"
+          class="flex-1"
+        />
+      </div>
     </div>
-  </div>
+  </section>
 </template>
 
 <script lang="ts" setup>
@@ -78,13 +83,17 @@ const MIN_GRID_TILE_WIDTH = 250;
 const GRID_TILE_GAP = 16;
 
 const props = defineProps<{
+  title?: string;
   components: ComponentInList[];
   scrollRef: HTMLDivElement | undefined; // Reference to parent element
 }>();
 
-const componentsById = computed(() =>
-  Object.fromEntries(props.components.map((c) => [c.id, c])),
-);
+const componentsById = computed(() => {
+  for (const c of props.components) {
+    console.log(c.name);
+  }
+  return Object.fromEntries(props.components.map((c) => [c.id, c]));
+});
 
 function getScrollbarWidth(): number {
   const temp = document.createElement("div");
@@ -151,9 +160,11 @@ const virtualizerLanes = computed(() => {
   return newLanes;
 });
 
-const filteredComponentRows = computed(() =>
-  _.chunk(props.components, virtualizerLanes.value),
-);
+const filteredComponentRows = computed(() => {
+  console.log("FUCK", props.components);
+  console.log("YOU", virtualizerLanes.value);
+  return _.chunk(props.components, virtualizerLanes.value);
+});
 
 const componentRowsVirtualItemsList = computed(() =>
   virtualList.value.getVirtualItems(),

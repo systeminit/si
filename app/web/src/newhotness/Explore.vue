@@ -145,7 +145,22 @@
         >
           <EmptyState icon="component" text="No components in view" />
         </div>
-        <div v-else-if="groupBySelection" class="scrollable grow">Test</div>
+        <div
+          v-else-if="groupBySelection"
+          ref="scrollRef"
+          class="scrollable grow"
+          style="overflow-anchor: none"
+          @scroll="onScroll"
+          @scrollend="fixContextMenuAfterScroll"
+        >
+          <ExploreComponentGrid
+            v-for="(components, title) in groupedComponents"
+            :key="title"
+            :title="title"
+            :components="components"
+            :scrollRef="scrollRef"
+          />
+        </div>
         <div
           v-else
           ref="scrollRef"
@@ -154,14 +169,8 @@
           @scroll="onScroll"
           @scrollend="fixContextMenuAfterScroll"
         >
-          <span class="text-bold py-xs"> WHAT'S GOOD GROUP TWO??</span>
           <ExploreComponentGrid
-            :components="halved[0]!"
-            :scrollRef="scrollRef"
-          />
-          <span class="text-bold py-xs">NOTHIN MUCH GROUP ONE</span>
-          <ExploreComponentGrid
-            :components="halved[1]!"
+            :components="filteredComponents"
             :scrollRef="scrollRef"
           />
         </div>
@@ -311,7 +320,10 @@ import Map from "./Map.vue";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
-import ComponentGridTile, { GRID_TILE_HEIGHT } from "./ComponentGridTile.vue";
+import ComponentGridTile, {
+  getQualificationSummary,
+  GRID_TILE_HEIGHT,
+} from "./ComponentGridTile.vue";
 import ActionCard from "./ActionCard.vue";
 import FuncRunList from "./FuncRunList.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
@@ -460,8 +472,18 @@ const componentsById = computed(() =>
 const scrollRef = ref<HTMLDivElement>();
 
 const filteredComponents = reactive<ComponentInList[]>([]);
-const halved = computed(() => {
-  return _.chunk(filteredComponents, Math.ceil(filteredComponents.length / 2));
+const groupedComponents = computed(() => {
+  const groups: Record<string, ComponentInList[]> = {};
+
+  if (groupBySelection.value === "Qualification Status") {
+    for (const component of filteredComponents) {
+      const title = getQualificationSummary(component);
+      groups[title] ??= [];
+      groups[title]?.push(component);
+    }
+  }
+
+  return groups;
 });
 
 const searchString = ref("");

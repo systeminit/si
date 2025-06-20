@@ -188,15 +188,21 @@ const canBeUpgraded = computed(
   () => upgrade(props.component.schemaId, schemaVariantId.value).value,
 );
 
-const qualificationSummary = computed(() => {
-  if (props.component.qualificationTotals.failed > 0) return "failure";
-  if (props.component.qualificationTotals.running > 0) return "running";
-  if (props.component.qualificationTotals.warned > 0) return "warning";
-  return "success";
-});
+const qualificationSummary = computed(() =>
+  getQualificationSummary(props.component),
+);
 </script>
 
 <script lang="ts">
 // Grid tiles need to have a fixed height - make sure this number matches its total height!
 export const GRID_TILE_HEIGHT = 233;
+
+export function getQualificationSummary(
+  component: BifrostComponent | ComponentInList,
+) {
+  if (component.qualificationTotals.failed > 0) return "failure";
+  if (component.qualificationTotals.running > 0) return "running";
+  if (component.qualificationTotals.warned > 0) return "warning";
+  return "success";
+}
 </script>
