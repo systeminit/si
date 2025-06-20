@@ -1,0 +1,18 @@
+load("@prelude-si//:macros.bzl", "rust_library", "rust_test")
+
+rust_library(
+    name = "test_lib",
+    srcs = ["src/lib.rs"],
+    deps = [],
+    visibility = ["PUBLIC"],
+    # Use the mise-provided rust toolchain
+    _rust_toolchain = "toolchains//:mise_rust",
+)
+
+rust_test(
+    name = "test_lib_test",
+    srcs = ["src/lib.rs"],
+    deps = [],
+    # Use the mise-provided rust toolchain
+    _rust_toolchain = "toolchains//:mise_rust",
+)
