@@ -70,6 +70,10 @@ pub use components::{
         GetComponentV1ResponseManagementFunction,
     },
     list_components::ListComponentsV1Response,
+    manage_component::{
+        ManageComponentV1Request,
+        ManageComponentV1Response,
+    },
     search_components::{
         SearchComponentsV1Request,
         SearchComponentsV1Response,
@@ -149,6 +153,7 @@ pub use crate::api_types::{
         components::delete_component::delete_component,
         components::execute_management_function::execute_management_function,
         components::add_action::add_action,
+        components::manage_component::manage_component,
         schemas::list_schemas::list_schemas,
         schemas::find_schema::find_schema,
         schemas::get_schema::get_schema,
@@ -184,6 +189,8 @@ pub use crate::api_types::{
             GetComponentV1ResponseManagementFunction,
             CreateComponentV1Request,
             CreateComponentV1Response,
+            ManageComponentV1Request,
+            ManageComponentV1Response,
             Connection,
             AddActionV1Response,
             AddActionV1Request,
