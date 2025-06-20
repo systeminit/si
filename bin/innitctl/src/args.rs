@@ -66,6 +66,14 @@ pub(crate) struct Args {
     )]
     pub(crate) log_json: bool,
 
+    /// Additionally appends logging to rolling files under the given directory.
+    #[arg(
+        long = "log-file-directory",
+        env = "SI_LOG_FILE_DIRECTORY",
+        hide_env_values = true
+    )]
+    pub(crate) log_file_directory: Option<PathBuf>,
+
     /// Directory containing the config files to templatize
     #[arg(long)]
     pub(crate) configs: Option<PathBuf>,

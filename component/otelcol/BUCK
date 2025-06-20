@@ -11,14 +11,12 @@ docker_image(
         "docker-entrypoint.sh": ".",
     },
     build_args = {
-        "BASE_VERSION": "0.102.1",
+        "BASE_VERSION": "0.128.0",
     },
     run_docker_args = [
         "--publish",
         "4317:4317",
         "--publish",
         "4318:4318",
-        "--publish",
-        "55679:55679",
     ],
 )

@@ -168,7 +168,7 @@ async fn component(ctx: &DalContext) -> Result<()> {
         .ok_or_eyre("no components found")?;
     assert_eq!(
         ReferenceKind::ComponentInList, // expected
-        reference.kind,           // actual
+        reference.kind,                 // actual
     );
     assert_eq!(
         created_component.id(), // expected

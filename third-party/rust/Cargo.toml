@@ -116,6 +116,7 @@ jwt-simple = { version = "0.12.11", default-features = false, features = [
 krata-loopdev = "0.0.21"
 lazy_static = "1.5.0"
 log = "0.4"
+logroller = "0.1.9"
 manyhow = { version = "0.11.4", features = ["darling"] }
 mime_guess = { version = "=2.0.4" } # TODO(fnichol): 2.0.5 sets an env var in build.rs which needs to be tracked, required by reqwest
 miniz_oxide = { version = "0.8.0", features = ["simd"] }
@@ -221,6 +222,7 @@ tower-http = { version = "0.4.4", features = [
     "trace",
 ] } # todo: pinning back to 0.4.4, upgrade this alongside hyper/http/axum/tokio-tungstenite
 tracing = { version = "0.1.41" }
+tracing-appender = "0.2.3"
 tracing-opentelemetry = "0.27.0"
 tracing-subscriber = { version = "0.3.19", features = [
     "env-filter",
