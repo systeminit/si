@@ -1,8 +1,5 @@
 <template>
   <section>
-    <div v-if="title" class="text-bold text-xl border-2 py-xs my-xs">
-      {{ title }} - {{ components.length }}
-    </div>
     <div
       class="w-full relative flex flex-col"
       :style="{
@@ -16,34 +13,19 @@
         :data-index="row.index"
         :class="
           clsx(
-            'flex flex-row items-center gap-sm',
             'absolute top-0 left-0 w-full',
           )
         "
         :style="{
-          height: `${GRID_TILE_HEIGHT}px`,
+          height: `${gridRows[row.index]?.type === 'header' ? GROUP_HEADER_HEIGHT : GRID_TILE_HEIGHT }px`,
           transform: `translateY(${row.start}px)`,
         }"
       >
-        <ComponentGridTile
-          v-for="(component, columnIndex) in filteredComponentRows[row.index]"
-          ref="componentGridTileRefs"
-          :key="component.id"
-          :data-index="row.index * virtualizerLanes + columnIndex"
-          :component="component"
-          class="flex-1"
-          :class="clsx(tileClasses(row.index * virtualizerLanes + columnIndex))"
-          @mouseenter="hover(row.index * virtualizerLanes + columnIndex)"
-          @mouseleave="unhover(row.index * virtualizerLanes + columnIndex)"
-          @click.stop.left="(e) => componentClicked(e, component.id)"
-          @click.stop.right="(e) => componentClicked(e, component.id)"
-        />
-        <!-- this fills in any extra spots in the last row -->
-        <div
-          v-for="emptySpot in virtualizerLanes -
-          filteredComponentRows[row.index]!.length"
-          :key="emptySpot"
-          class="flex-1"
+        <ExploreGridRow
+          :lanesCount="virtualizerLanes"
+          :row="gridRows[row.index]!"
+          focusedId=""
+          hoverId=""
         />
       </div>
     </div>
@@ -52,7 +34,8 @@
 
 <script lang="ts" setup>
 import clsx from "clsx";
-import ComponentGridTile, { GRID_TILE_HEIGHT } from "./ComponentGridTile.vue";
+import ComponentGridTile, { GRID_TILE_HEIGHT } from "../ComponentGridTile.vue";
+import ExploreGridRow, { ExploreGridRowData } from "./ExploreGridRow.vue";
 import { computed, ref, reactive } from "vue";
 import * as _ from "lodash-es";
 import { ComponentInList } from "@/workers/types/entity_kind_types";
@@ -61,7 +44,7 @@ import {
   keyEmitter,
   windowResizeEmitter,
   windowWidthReactive,
-} from "./logic_composables/emitters";
+} from "../logic_composables/emitters";
 import {
   themeClasses,
   VormInput,
@@ -70,7 +53,7 @@ import {
   DropdownMenuItem,
   Icon,
 } from "@si/vue-lib/design-system";
-import ComponentContextMenu from "./ComponentContextMenu.vue";
+import ComponentContextMenu from "../ComponentContextMenu.vue";
 import { tw } from "@si/vue-lib";
 import { useRouter, useRoute } from "vue-router";
 import { useVirtualizer } from "@tanstack/vue-virtual";
@@ -83,17 +66,22 @@ const MIN_GRID_TILE_WIDTH = 250;
 const GRID_TILE_GAP = 16;
 
 const props = defineProps<{
-  title?: string;
-  components: ComponentInList[];
+  components: Record<string, ComponentInList[]>;
   scrollRef: HTMLDivElement | undefined; // Reference to parent element
 }>();
 
-const componentsById = computed(() => {
-  for (const c of props.components) {
-    console.log(c.name);
+const allComponents = computed(() => {
+  let components: ComponentInList[] = [];
+  for (const title in props.components) {
+    const newComponents = props.components[title] ?? [];
+    components = [...components, ...newComponents]
   }
-  return Object.fromEntries(props.components.map((c) => [c.id, c]));
-});
+
+  return components;
+})
+
+const componentsById = computed(() =>
+   Object.fromEntries(allComponents.value.map((c) => [c.id, c])));
 
 function getScrollbarWidth(): number {
   const temp = document.createElement("div");
@@ -160,29 +148,67 @@ const virtualizerLanes = computed(() => {
   return newLanes;
 });
 
+// Grid rows
+
+
+const gridRows = computed(() => {
+  const rows: ExploreGridRowData[] = [];
+  let chunkIndex = 0;
+  for (const groupName in props.components) {
+    const components = props.components[groupName];
+    if (!components) continue;
+
+    const count = components.length;
+
+    rows.push({
+      type: "header",
+      title: groupName,
+      count,
+    });
+
+    const componentChunks = _.chunk(components, virtualizerLanes.value)
+
+    for(const components of componentChunks) {
+      rows.push({
+        type: "contentRow",
+        components,
+        chunkIndex: chunkIndex++,
+      });
+    }
+
+  }
+
+  return rows;
+})
+
+
 const filteredComponentRows = computed(() => {
-  console.log("FUCK", props.components);
-  console.log("YOU", virtualizerLanes.value);
-  return _.chunk(props.components, virtualizerLanes.value);
+  return _.chunk(allComponents.value, virtualizerLanes.value);
 });
 
 const componentRowsVirtualItemsList = computed(() =>
   virtualList.value.getVirtualItems(),
 );
 
-const virtualizerOptions = computed(() => {
-  const options = {
-    count: filteredComponentRows.value.length,
+const GROUP_HEADER_HEIGHT = 50;
+
+const virtualizerOptions = computed(() => ({
+    count: gridRows.value.length,
     // `virtualizerLanes` gives virtualizer a "second-dimension" (aka columns for vertical lists and rows for horizontal lists)
     // https://tanstack.com/virtual/latest/docs/api/virtualizer#lanes
     // Our grid is based on the minimum tile width... so how many tiles can we fit?
     // thats the value of `virtualizerLanes`
     getScrollElement: () => props.scrollRef!,
-    estimateSize: () => MIN_GRID_TILE_WIDTH,
-    overscan: 3,
-  };
-  return options;
-});
+    estimateSize: (i: number) => {
+      const row = gridRows.value[i];
+      if (row && "title" in row) {
+        return GROUP_HEADER_HEIGHT;
+      } else {
+        return GRID_TILE_HEIGHT;
+      }
+    },
+    overscan: 1,
+  }));
 
 const virtualList = useVirtualizer(virtualizerOptions);
 
@@ -225,14 +251,14 @@ const componentContextMenuRef =
 const router = useRouter();
 const route = useRoute();
 
-const isSelected = (idx: number) =>
-  selectedComponentIds.has(props.components[idx]!.id);
+// const isSelected = (idx: number) =>
+//   selectedComponentIds.has(props.components[idx]!.id);
 const isHovered = (idx: number) => selectorGridPosition.value === idx;
 const isFocused = (idx: number) =>
   focusGridPosition.value === idx && focusedComponentId.value;
 
 const getGridTileIndexByComponentId = (id: ComponentId) => {
-  return props.components.findIndex((component) => component.id === id);
+  return allComponents.value.findIndex((component) => component.id === id);
 };
 
 const hoverByComponentId = (id: ComponentId) => {
@@ -268,18 +294,6 @@ const unfocus = () => {
   selectorGridPosition.value = focusGridPosition.value;
   focusGridPosition.value = -1;
   componentContextMenuRef.value?.close();
-};
-
-const tileClasses = (idx: number) => {
-  const selected = isSelected(idx);
-  const hovered = isHovered(idx);
-  const focused = isFocused(idx);
-  if (focused)
-    return themeClasses(tw`border-action-500`, tw`border-action-300`);
-  else if (hovered) return themeClasses(tw`border-black`, tw`border-white`);
-  // TODO(WENDY) - not using selected yet!
-  else if (selected) return "";
-  else return "";
 };
 
 const componentClicked = (e: MouseEvent, componentId: ComponentId) => {

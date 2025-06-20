@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- TODO(WENDY) - we might want keyboard controls back in this DropdownMenu at some point? -->
-    <!-- for now they are disabled to avoid conflicts with the keyboard controls in Explore! -->
+    <!-- for now they are disabled to avoid conflicts with the keyboard controls in explore_grid! -->
     <DropdownMenu
       ref="contextMenuRef"
       :anchorTo="anchor"

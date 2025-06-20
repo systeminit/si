@@ -153,11 +153,8 @@
           @scroll="onScroll"
           @scrollend="fixContextMenuAfterScroll"
         >
-          <ExploreComponentGrid
-            v-for="(components, title) in groupedComponents"
-            :key="title"
-            :title="title"
-            :components="components"
+          <ExploreGrid
+            :components="groupedComponents"
             :scrollRef="scrollRef"
           />
         </div>
@@ -169,8 +166,8 @@
           @scroll="onScroll"
           @scrollend="fixContextMenuAfterScroll"
         >
-          <ExploreComponentGrid
-            :components="filteredComponents"
+          <ExploreGrid
+            :components="groupedComponents"
             :scrollRef="scrollRef"
           />
         </div>
@@ -344,7 +341,7 @@ import EmptyState from "./EmptyState.vue";
 import { elementIsScrolledIntoView } from "./logic_composables/dom_funcs";
 import ShortcutModal from "./ShortcutModal.vue";
 import { useUpgrade } from "./logic_composables/upgrade";
-import ExploreComponentGrid from "./ExploreComponentGrid.vue";
+import ExploreGrid from "./explore_grid/ExploreGrid.vue";
 
 // MAKE SURE THESE NUMBERS STAY ACCURATE IF YOU CHANGE THE GRID!
 const MIN_GRID_TILE_WIDTH = 250;
@@ -481,6 +478,8 @@ const groupedComponents = computed(() => {
       groups[title] ??= [];
       groups[title]?.push(component);
     }
+  } else {
+    groups[""] = filteredComponents
   }
 
   return groups;

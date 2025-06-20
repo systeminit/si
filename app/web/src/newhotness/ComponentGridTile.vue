@@ -195,7 +195,7 @@ const qualificationSummary = computed(() =>
 
 <script lang="ts">
 // Grid tiles need to have a fixed height - make sure this number matches its total height!
-export const GRID_TILE_HEIGHT = 233;
+export const GRID_TILE_HEIGHT = 233 + (2*8);
 
 export function getQualificationSummary(
   component: BifrostComponent | ComponentInList,
