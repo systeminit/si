@@ -1,0 +1,303 @@
+<template>
+  <!--
+    NOTE(nick,victor,wendy): we need both divs here for the virtualizer. The first div is the
+    scrolling area itself (it will be whatever height fills the spot in the overall UI, which,
+    at the time of writing, is a CSS grid). The second div is a wrapper that maintains the height
+    of all of the virtualized rows, so that even when only a few rows are rendering, the scrollable
+    area will not change. If you mess with this, it will break in ways YOU MAY OR MAY NOT NOTICE.
+    BUYER BEWARE.
+  -->
+  <div ref="scrollRef" class="scrollable grow" style="overflow-anchor: none">
+    <div
+      class="w-full relative flex flex-col"
+      :style="{
+        ['overflow-anchor']: 'none',
+        height: `${virtualListHeight}px`,
+      }"
+    >
+      <ExploreGridRow
+        v-for="row in componentRowsVirtualItemsList"
+        :key="`${row.key}`"
+        ref="exploreGridRowRefs"
+        :data-index="row.index"
+        :class="clsx('absolute top-0 left-0 w-full')"
+        :style="{
+          height: `${rowHeight(row.index)}px`,
+          transform: `translateY(${row.start}px)`,
+        }"
+        :lanesCount="virtualizerLanes"
+        :row="gridRows[row.index]!"
+        :focusedComponentId="focusedComponent?.id"
+        @childClicked="(e, c, idx) => $emit('childClicked', e, c, idx)"
+      />
+    </div>
+  </div>
+</template>
+
+<script lang="ts" setup>
+import clsx from "clsx";
+import { computed, ref, watch } from "vue";
+import * as _ from "lodash-es";
+import { useVirtualizer } from "@tanstack/vue-virtual";
+import { ComponentInList } from "@/workers/types/entity_kind_types";
+import { ComponentId } from "@/api/sdf/dal/component";
+import { windowWidthReactive } from "../logic_composables/emitters";
+import ExploreGridRow, { ExploreGridRowData } from "./ExploreGridRow.vue";
+import ExploreGridTile, { GRID_TILE_HEIGHT } from "./ExploreGridTile.vue";
+
+const MIN_GRID_TILE_WIDTH = 250;
+const GRID_TILE_GAP = 16; // this is being used for both the X and Y gap
+
+const scrollRef = ref<HTMLDivElement>();
+const exploreGridRowRefs = ref<InstanceType<typeof ExploreGridRow>[]>();
+
+const componentGridTileRefs = computed(() => {
+  if (!exploreGridRowRefs.value) return [];
+
+  const tiles: InstanceType<typeof ExploreGridTile>[] = [];
+
+  for (const row of exploreGridRowRefs.value) {
+    if (!row.exploreGridTileRefs) continue;
+
+    tiles.push(...row.exploreGridTileRefs);
+  }
+
+  return tiles;
+});
+
+const props = defineProps<{
+  components: Record<string, ComponentInList[]>;
+  focusedComponentIdx?: number;
+}>();
+
+defineEmits<{
+  (
+    e: "childClicked",
+    event: MouseEvent,
+    componentId: ComponentId,
+    componentIdx: number,
+  ): void;
+}>();
+
+const allComponents = computed(() => {
+  let components: ComponentInList[] = [];
+  for (const title in props.components) {
+    const newComponents = props.components[title] ?? [];
+    components = [...components, ...newComponents];
+  }
+
+  return components;
+});
+
+const focusedComponent = computed(
+  () => allComponents.value[props.focusedComponentIdx ?? -1],
+);
+
+const GROUP_HEADER_HEIGHT = 50;
+const GROUP_FOOTER_HEIGHT = 10;
+
+const rowHeight = (rowIndex: number) => {
+  const row = gridRows.value[rowIndex];
+  if (!row) return 0;
+
+  switch (row.type) {
+    case "header":
+      return GROUP_HEADER_HEIGHT;
+    case "contentRow":
+      if (!hasMultipleSections.value && rowIndex === gridRows.value.length - 1)
+        return GRID_TILE_HEIGHT;
+      else return GRID_TILE_HEIGHT + GRID_TILE_GAP;
+    case "footer":
+    default:
+      return GROUP_FOOTER_HEIGHT;
+  }
+};
+
+function getScrollbarWidth(): number {
+  const temp = document.createElement("div");
+  const inner = document.createElement("div");
+
+  temp.style.visibility = "hidden";
+  temp.style.overflow = "scroll";
+  document.body.appendChild(temp);
+  temp.appendChild(inner);
+
+  const scrollbarWidth = temp.offsetWidth - inner.offsetWidth;
+  temp.parentNode?.removeChild(temp);
+
+  return scrollbarWidth;
+}
+
+const getGridTileByIndex = (idx: number) => {
+  if (!componentGridTileRefs.value) return undefined;
+
+  return componentGridTileRefs.value.find(
+    (t) => Number(t.$el.dataset.index) === idx,
+  );
+};
+
+// The expected number of components in a row based on the width of the scroll area
+const virtualizerLanes = computed(() => {
+  // We need to force a recompute of this value when the screen is resized
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  windowWidthReactive.value;
+
+  // We also need to force a recompute of this value if the number of tiles changes
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  componentGridTileRefs.value;
+
+  // Our grid is based on the minimum tile width... so how many tiles can we fit?
+  let newLanes = 0;
+  let availableSpace = scrollRef.value?.getBoundingClientRect().width ?? 0;
+  if (
+    scrollRef.value &&
+    scrollRef.value.scrollHeight > scrollRef.value.clientHeight
+  ) {
+    // need to account for the width of the scrollbar!
+    availableSpace -= getScrollbarWidth();
+  }
+  while (availableSpace > 0) {
+    availableSpace -= MIN_GRID_TILE_WIDTH; // width of one grid tile
+    if (availableSpace > 0) {
+      newLanes++;
+    }
+    availableSpace -= GRID_TILE_GAP; // gap between grid tiles
+  }
+  return newLanes;
+});
+
+// This is how we show no headers when "group by" functionality is in use. This relies on the
+// fact that using "group by" will create at least two groups. If you find yourself working on
+// "group by", but only wanting to show one group, this is why you're not seeing any headers.
+const hasMultipleSections = computed(() => _.keys(props.components).length > 1);
+
+const gridRows = computed(() => {
+  const rows: ExploreGridRowData[] = [];
+  let chunkInitialId = 0;
+
+  for (const groupName in props.components) {
+    const components = props.components[groupName];
+    if (!components) continue;
+
+    const count = components.length;
+
+    if (hasMultipleSections.value) {
+      rows.push({
+        type: "header",
+        title: groupName,
+        count,
+      });
+    }
+
+    const componentChunks = _.chunk(components, virtualizerLanes.value);
+
+    for (const components of componentChunks) {
+      rows.push({
+        type: "contentRow",
+        components,
+        chunkInitialId,
+        insideSection: hasMultipleSections.value,
+      });
+
+      chunkInitialId += components.length;
+    }
+
+    if (hasMultipleSections.value) {
+      rows.push({
+        type: "footer",
+      });
+    }
+  }
+
+  // Remove the last footer when dealing with "group by" functionality.
+  if (hasMultipleSections.value) rows.pop();
+
+  return rows;
+});
+
+const componentRowsVirtualItemsList = computed(() =>
+  virtualList.value.getVirtualItems(),
+);
+
+const virtualizerOptions = computed(() => ({
+  count: gridRows.value.length,
+  // `virtualizerLanes` gives virtualizer a "second-dimension" (aka columns for vertical lists and rows for horizontal lists)
+  // https://tanstack.com/virtual/latest/docs/api/virtualizer#lanes
+  // Our grid is based on the minimum tile width... so how many tiles can we fit?
+  // thats the value of `virtualizerLanes`
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  getScrollElement: () => scrollRef.value!,
+  estimateSize: (i: number) => rowHeight(i),
+  overscan: 4,
+}));
+
+const virtualList = useVirtualizer(virtualizerOptions);
+
+const virtualListHeight = computed(() => virtualList.value.getTotalSize());
+
+// Got through all the rows, save the id of the latest contentRow.
+// If it's initialId is bigger than the id we're looking for, the previous one was the target row,
+// otherwise, contentRow idx is the target.
+// This is extra  complicated sinc ewe need to skip headers and footerss
+const getRowIndexByGridTileIndex = (idx: number) => {
+  let lastValidRowIndex = 0;
+
+  for (let rowIndex = 0; rowIndex < gridRows.value.length; rowIndex++) {
+    const row = gridRows.value[rowIndex];
+
+    if (row?.type === "contentRow") {
+      if (row.chunkInitialId > idx) {
+        return lastValidRowIndex;
+      } else {
+        lastValidRowIndex = rowIndex;
+      }
+    }
+  }
+
+  return lastValidRowIndex;
+};
+
+// SCROLL BEHAVIOR
+const scrollCurrentTileIntoView = () => {
+  // don't scroll if the index is out of bounds
+  if (
+    props.focusedComponentIdx === undefined ||
+    props.focusedComponentIdx < 0 ||
+    props.focusedComponentIdx > allComponents.value.length - 1
+  )
+    return;
+
+  // otherwise use the virtualizer to scroll
+  // so that even if the DOM element doesn't exist
+  // it will still work!
+  virtualList.value.scrollToIndex(
+    getRowIndexByGridTileIndex(props.focusedComponentIdx),
+    { behavior: "smooth" },
+  );
+};
+
+watch([() => props.focusedComponentIdx], scrollCurrentTileIntoView);
+
+defineExpose({ getGridTileByIndex, focusedComponent });
+</script>
+
+<style lang="css" scoped>
+section.grid.explore {
+  grid-template-columns: minmax(0, 70%) minmax(0, 30%);
+  grid-template-rows: 100%;
+  grid-template-areas: "main right";
+}
+
+section.grid.map {
+  grid-template-columns: 100%;
+  grid-template-rows: 100%;
+  grid-template-areas: "main";
+}
+
+div.main {
+  grid-area: "main";
+}
+div.right {
+  grid-area: "right";
+}
+</style>

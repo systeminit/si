@@ -149,7 +149,7 @@ const router = useRouter();
 const route = useRoute();
 const logsContainer = ref<InstanceType<typeof CodeViewer> | null>(null);
 
-// Navigate back to Explore view
+// Navigate back to explore_grid view
 const navigateBack = () => {
   router.push({
     name: "new-hotness",

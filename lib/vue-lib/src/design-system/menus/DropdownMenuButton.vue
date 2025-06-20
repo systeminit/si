@@ -6,6 +6,7 @@
         'flex flex-row items-center p-2xs mb-[-1px] h-7',
         'font-mono text-[13px] text-left truncate relative',
         !noBorder && 'border',
+        highlightWhenModelValue && modelValueLabel && 'bg-action-900',
         variant === 'navbar' && 'flex-1 font-bold min-w-[80px] max-w-fit',
         disabled
           ? [
@@ -36,9 +37,15 @@
     @click="open"
   >
     <div
-      :class="clsx('flex-1 truncate py-2xs', variant === 'navbar' && 'px-2xs')"
+      :class="
+        clsx('flex-1 truncate py-2xs pr-xs', variant === 'navbar' && 'px-2xs')
+      "
     >
-      <template v-if="modelValue">{{ modelValueLabel }}</template>
+      <template v-if="modelValue && alwaysShowPlaceholder">
+        <span class="text-neutral-400">{{ placeholder }}</span>
+        {{ modelValueLabel }}
+      </template>
+      <template v-else-if="modelValue">{{ modelValueLabel }}</template>
       <template v-else>{{ placeholder }}</template>
     </div>
     <Icon
@@ -47,6 +54,7 @@
           isFocus
             ? themeClasses('text-action-500', 'text-action-300')
             : themeClasses('text-neutral-400', 'text-neutral-600'),
+          highlightWhenModelValue && modelValueLabel && 'text-neutral-200',
         )
       "
       name="input-type-select"
@@ -119,6 +127,8 @@ const props = defineProps({
   noBorder: { type: Boolean },
   alignRightOnAnchor: { type: Boolean },
   enableSettingsEdit: { type: Boolean },
+  alwaysShowPlaceholder: { type: Boolean },
+  highlightWhenModelValue: { type: Boolean },
 });
 
 const arrayOptionsFromProps = computed((): OptionsAsArray => {
