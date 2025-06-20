@@ -47,6 +47,7 @@
               label="All Views"
               value="''"
               checkable
+              sizeClass="h-lg px-xs pr-xs"
               :checked="selectedView === ''"
               @select="() => (selectedView = '')"
             />
@@ -56,6 +57,7 @@
               class="border-t"
               label="Add a View"
               icon="plus"
+              sizeClass="h-lg px-xs pr-xs"
               disableCheckable
               @select="openAddViewModal"
             />
@@ -434,9 +436,11 @@ const viewListQuery = useQuery<View[]>({
 });
 const viewListOptions = computed(() => {
   const list = viewListQuery.data.value ?? [];
-  return list.map((l) => {
-    return { value: l.id, label: l.name };
-  });
+
+  // This is ID-sorted in the backend, not name-sorted.
+  return list
+    .map((l) => ({ value: l.id, label: l.name }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 });
 
 const defaultView = computed(() =>
@@ -1106,22 +1110,8 @@ const openAddViewModal = () => {
 const editViewModalRef = ref<InstanceType<typeof EditViewModal>>();
 
 const openEditViewModal = (viewId: string) => {
-  // FIXME(nick): right now, we need to switch the current view to edit it because we need the query data.
-  // Why? The current view may differ than the one wishing to be edited. I had a version of this where the
-  // modal had an inner query to account for this scenario (essentially two different "view component list"
-  // calls), but I scrapped it since the query would never load properly. Ideally, you should be able to
-  // delete a view or edit it without switching to it. For now, we will survive.
-  selectedView.value = viewId;
-
-  // Handle if we are dealing with the default view first.
-  if (viewId === defaultView.value?.id) {
-    editViewModalRef.value?.open(viewId, false, true);
-  } else {
-    const canDeleteView = componentListRaw.data.value
-      ? componentListRaw.data.value.length < 1
-      : false;
-    editViewModalRef.value?.open(viewId, canDeleteView, false);
-  }
+  const isDefaultView = viewId === defaultView.value?.id;
+  editViewModalRef.value?.open(viewId, isDefaultView);
 };
 
 const componentContextMenuRef =

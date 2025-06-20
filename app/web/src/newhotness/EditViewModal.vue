@@ -43,8 +43,9 @@
       <div v-tooltip="tooltipText">
         <VButton
           label="Delete View"
-          :disabled="!canDeleteView"
-          :tone="canDeleteView ? 'destructive' : 'neutral'"
+          :disabled="canDeleteView !== 'yes'"
+          :loading="canDeleteView === 'loading'"
+          :tone="canDeleteView === 'yes' ? 'destructive' : 'neutral'"
           @click="deleteView"
         />
       </div>
@@ -57,22 +58,48 @@ import { VButton, Modal, Icon, themeClasses } from "@si/vue-lib/design-system";
 import { computed, ref } from "vue";
 import clsx from "clsx";
 import { useRoute } from "vue-router";
+import { useQuery } from "@tanstack/vue-query";
 import { ViewId } from "@/api/sdf/dal/views";
-import { useApi, routes } from "./api_composables";
+import { ComponentInList, EntityKind } from "@/workers/types/entity_kind_types";
+import { Listable } from "@/workers/types/dbinterface";
+import {
+  bifrostList,
+  useMakeArgs,
+  useMakeKey,
+} from "@/store/realtime/heimdall";
 import { useWatchedForm } from "./logic_composables/watched_form";
+import { useApi, routes } from "./api_composables";
 
 const viewId = ref<ViewId>("");
-const canDeleteView = ref<boolean>(false);
 const isDefaultView = ref<boolean>(false);
 
 const tooltipText = computed(() => {
-  if (isDefaultView.value) {
-    return "Cannot delete the default View.";
-  }
-  if (canDeleteView.value) {
-    return undefined;
-  }
+  if (isDefaultView.value) return "Cannot delete the default view.";
+  if (canDeleteView.value === "yes") return undefined;
+  if (canDeleteView.value === "loading")
+    return "Determining if the view can be deleted...";
   return "Views containing one or more components cannot be deleted. To delete a view, first remove all components from it.";
+});
+
+const key = useMakeKey();
+const args = useMakeArgs();
+const keyViewId = computed(() => viewId.value);
+const componentListRaw = useQuery<ComponentInList[]>({
+  // NOTE(nick): @britmyerss saved my life here. You need the "() =>" to evaluate this as a function
+  // The first PR would've done this, but I ripped it out. NOW, IT WORKS. YES.
+  enabled: () => keyViewId.value !== "",
+  queryKey: key(EntityKind.ViewComponentList, keyViewId),
+  queryFn: async () => {
+    const arg = args<Listable>(EntityKind.ViewComponentList, keyViewId.value);
+    const list = await bifrostList<ComponentInList[]>(arg);
+    return list ?? [];
+  },
+});
+const canDeleteView = computed(() => {
+  if (isDefaultView.value) return "no";
+  if (!componentListRaw.data.value) return "loading";
+  if (componentListRaw.data.value.length < 1) return "yes";
+  return "no";
 });
 
 const modalRef = ref<InstanceType<typeof Modal>>();
@@ -151,19 +178,13 @@ const emit = defineEmits<{
   (e: "deleted"): void;
 }>();
 
-const open = (
-  openViewId: string,
-  openCanDeleteView: boolean,
-  openIsDefaultView: boolean,
-) => {
+const open = (openViewId: string, openIsDefaultView: boolean) => {
   viewId.value = openViewId;
-  canDeleteView.value = openCanDeleteView;
   isDefaultView.value = openIsDefaultView;
   modalRef.value?.open();
 };
 const close = () => {
   viewId.value = "";
-  canDeleteView.value = false;
   isDefaultView.value = false;
   modalRef.value?.close();
 };

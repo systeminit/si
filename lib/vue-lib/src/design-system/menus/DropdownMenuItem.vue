@@ -7,17 +7,12 @@
     :class="
       clsx(
         'flex gap-xs items-center group select-none',
+        sizeClass,
         noInteract ? 'text-neutral-500' : 'cursor-pointer',
         !endLinkTo && !enableSettingsEdit && 'children:pointer-events-none',
         header
           ? 'font-bold [&:not(:last-child)]:border-b [&:not(:first-child)]:border-t border-neutral-600'
           : 'rounded-sm',
-        {
-          classic: 'p-xs pr-sm',
-          compact: 'px-xs py-2xs pr-xs',
-          editor: [header ? 'p-xs' : 'p-2xs pr-xs', 'h-7'],
-          contextmenu: 'p-xs pr-sm',
-        }[menuCtx.variant as DropdownMenuVariant],
         isFocused &&
           !header &&
           !menuCtx.navigatingSubmenu.value &&
@@ -48,7 +43,12 @@
     <Icon
       v-else-if="menuCtx.isCheckable.value && !disableCheckable"
       :name="checked ? 'check' : 'none'"
-      class="mr-2xs shrink-0 pointer-events-none"
+      :class="
+        clsx(
+          'mr-2xs shrink-0 pointer-events-none',
+          enableSettingsEdit && 'ml-xs',
+        )
+      "
       size="xs"
     />
     <slot name="icon">
@@ -91,6 +91,7 @@
         clsx(
           'ml-auto shrink-0',
           shortcut && !endLinkTo && !enableSettingsEdit && 'capsize text-xs',
+          enableSettingsEdit && 'h-full',
         )
       "
     >
@@ -138,9 +139,10 @@
         v-else-if="enableSettingsEdit"
         :class="
           clsx(
+            'h-full flex items-center p-2xs px-2xs',
             themeClasses(
-              'group-hover:hover:text-action-500 group-hover:text-shade-0',
-              'group-hover:hover:text-action-300 group-hover:text-shade-0',
+              'group-hover:hover:bg-action-300 group-hover:text-shade-0',
+              'group-hover:hover:bg-action-500 group-hover:text-shade-0',
             ),
           )
         "
@@ -148,7 +150,7 @@
         @mouseenter="onMouseEnterEndLink"
         @mouseleave="onMouseLeaveEndLink"
       >
-        <Icon name="settings-edit" size="xs" />
+        <Icon name="settings-edit" class="h-full" size="sm" />
       </div>
     </div>
   </component>
@@ -202,6 +204,7 @@ export interface DropdownMenuItemProps {
   endLinkLabel?: string;
   endLinkTo?: string | RouteLocationRaw;
 
+  sizeClass?: string;
   enableSettingsEdit?: boolean;
 
   insideSubmenu?: boolean;
@@ -234,6 +237,22 @@ const submenuRef = ref<InstanceType<typeof DropdownMenu> | null>(null);
 const submenuTimeout = ref();
 
 const router = useRouter();
+
+// NOTE(nick): I'm so sorry. There was not a clean way to add a new variant that would handle the
+// settings edit option without changing sizing in general. Here's the problem: the menu context
+// requires the "beforeOptions" and "afterOptions" to follow the variant. We don't always want
+// that as some options don't need a settings edit option. I piled another class option on top of
+// the class option pile for the component attribute. Please forgive me.
+const sizeClass = computed(() => {
+  if (props.sizeClass) return props.sizeClass;
+  if (props.enableSettingsEdit) return "h-lg";
+  return {
+    classic: "p-xs pr-sm",
+    compact: "px-xs py-2xs pr-xs",
+    editor: [props.header ? "p-xs" : "p-2xs pr-xs", "h-7"],
+    contextmenu: "p-xs pr-sm",
+  }[menuCtx.variant as DropdownMenuVariant];
+});
 
 const noCloseOnClick = computed(
   () =>
