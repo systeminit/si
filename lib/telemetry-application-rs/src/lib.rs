@@ -20,8 +20,13 @@ use std::{
         IsTerminal,
     },
     ops::Deref,
+    path::{
+        Path,
+        PathBuf,
+    },
     pin::Pin,
     result,
+    sync::Arc,
     thread,
     time::{
         Duration,
@@ -31,6 +36,12 @@ use std::{
 
 use console_subscriber::ConsoleLayer;
 use derive_builder::Builder;
+use logroller::{
+    LogRoller,
+    LogRollerBuilder,
+    Rotation,
+    RotationSize,
+};
 use opentelemetry_sdk::{
     Resource,
     metrics::SdkMeterProvider,
@@ -65,7 +76,11 @@ use telemetry::{
         },
     },
     prelude::*,
-    tracing::Subscriber,
+    tracing::{
+        Event,
+        Subscriber,
+        subscriber::Interest,
+    },
 };
 use thiserror::Error;
 use tokio::{
@@ -84,6 +99,10 @@ use tokio_util::{
     task::TaskTracker,
 };
 use tracing::Metadata;
+use tracing_appender::non_blocking::{
+    self,
+    NonBlocking,
+};
 use tracing_opentelemetry::MetricsLayer;
 use tracing_subscriber::{
     EnvFilter,
@@ -93,11 +112,22 @@ use tracing_subscriber::{
         FilterExt,
         ParseError,
     },
-    fmt::format::FmtSpan,
+    fmt::{
+        self,
+        format::{
+            DefaultFields,
+            FmtSpan,
+            Format,
+            Json,
+            JsonFields,
+        },
+    },
     layer::{
+        Context,
         Filter,
         SubscriberExt,
     },
+    registry::LookupSpan,
     reload,
     util::{
         SubscriberInitExt,
@@ -113,7 +143,7 @@ pub mod prelude {
     };
 
     pub use super::{
-        ConsoleLogFormat,
+        LogFormat,
         TelemetryConfig,
     };
 }
@@ -127,6 +157,8 @@ const DEFAULT_NEVER_MODULES: &[&str] = &["h2", "hyper"];
 pub enum Error {
     #[error(transparent)]
     DirectivesParse(#[from] ParseError),
+    #[error("file appender error: {0}")]
+    FileAppender(#[from] logroller::LogRollerError),
     #[error("metrics error {0}")]
     Metrics(#[from] MetricsError),
     #[error("error creating signal handler: {0}")]
@@ -205,7 +237,10 @@ pub struct TelemetryConfig {
     force_color: Option<bool>,
 
     #[builder(setter(into), default)]
-    console_log_format: ConsoleLogFormat,
+    log_format: LogFormat,
+
+    #[builder(setter(into), default = "None")]
+    log_file_directory: Option<PathBuf>,
 
     #[builder(setter(into), default = "false")]
     tokio_console: bool,
@@ -397,48 +432,80 @@ fn fmt_span_from_str(value: &str) -> Result<FmtSpan> {
         .fold(FmtSpan::NONE, |acc, filter| filter | acc))
 }
 
+#[inline]
+fn file_appender(config: &TelemetryConfig, directory: &Path) -> Result<LogRoller> {
+    let filename = format!("{}.log", config.service_name);
+
+    LogRollerBuilder::new(directory, Path::new(&filename))
+        .rotation(Rotation::SizeBased(RotationSize::MB(128)))
+        .build()
+        .map_err(Into::into)
+}
+
 fn tracing_subscriber(
     config: &TelemetryConfig,
     tracing_level: &TracingLevel,
     span_events_fmt: FmtSpan,
 ) -> Result<(impl Subscriber + Send + Sync + use<>, TelemetryHandles)> {
     let directives = TracingDirectives::from(tracing_level);
+    let shared_env_filter = SharedEnvFilter::try_new(directives.as_str())?;
 
-    let (console_log_layer, console_log_filter_reload) = {
-        let layer: Box<dyn Layer<Registry> + Send + Sync> = match config.console_log_format {
-            ConsoleLogFormat::Json => Box::new(
-                tracing_subscriber::fmt::layer()
-                    .json()
-                    .with_thread_ids(true)
-                    .with_span_events(span_events_fmt),
-            ),
-            ConsoleLogFormat::Text => Box::new(
-                tracing_subscriber::fmt::layer()
-                    .with_thread_ids(true)
-                    .with_ansi(should_add_ansi(config))
-                    .with_span_events(span_events_fmt),
-            ),
-        };
+    let (console_writer, console_non_blocking_guard) =
+        tracing_appender::non_blocking(std::io::stdout());
 
-        let env_filter = EnvFilter::try_new(directives.as_str())?;
-        let (filter, handle) = reload::Layer::new(env_filter);
+    // We can save on boxing everything by using `Option`s and register them unconditionally--very
+    // cool trick!
+    //
+    // See: https://users.rust-lang.org/t/type-hell-in-tracing-multiple-output-layers/126764/13
+    // See: https://github.com/MaterializeInc/materialize/blob/bcba457395c7b79cad9ac1cca7c8b4ad02508821/src/ore/src/tracing.rs#L511-L526
 
+    let console_text = if matches!(config.log_format, LogFormat::Text) {
+        let layer = text_layer(console_writer.clone(), span_events_fmt.clone())
+            .with_ansi(should_add_ansi(config));
+        let (filter, handle) = reload::Layer::new(shared_env_filter.clone());
         let layer = layer.with_filter(filter.and(ExcludeMetricsFilter));
+        let reloader: ReloadHandle =
+            Box::new(move |updated: SharedEnvFilter| handle.reload(updated).map_err(Into::into));
 
-        let reloader =
-            Box::new(move |updated: EnvFilter| handle.reload(updated).map_err(Into::into));
+        (Some(layer), Some(reloader))
+    } else {
+        (None, None)
+    };
 
-        (layer, reloader)
+    let console_json = if matches!(config.log_format, LogFormat::Json) {
+        let layer = json_layer(console_writer.clone(), span_events_fmt.clone());
+        let (filter, handle) = reload::Layer::new(shared_env_filter.clone());
+        let layer = layer.with_filter(filter.and(ExcludeMetricsFilter));
+        let reloader: ReloadHandle =
+            Box::new(move |updated: SharedEnvFilter| handle.reload(updated).map_err(Into::into));
+
+        (Some(layer), Some(reloader))
+    } else {
+        (None, None)
+    };
+
+    let file_json = if let Some(directory) = config.log_file_directory.as_deref() {
+        let (file_writer, file_non_blocking_guard) =
+            tracing_appender::non_blocking(file_appender(config, directory)?);
+
+        let layer = json_layer(file_writer, span_events_fmt);
+        let (filter, handle) = reload::Layer::new(shared_env_filter.clone());
+        let layer = layer.with_filter(filter.and(ExcludeMetricsFilter));
+        let reloader: ReloadHandle =
+            Box::new(move |updated: SharedEnvFilter| handle.reload(updated).map_err(Into::into));
+
+        (Some(layer), Some(reloader), Some(file_non_blocking_guard))
+    } else {
+        (None, None, None)
     };
 
     let (otel_layer, otel_filter_reload) = {
         let layer = tracing_opentelemetry::layer().with_tracer(otel_tracer(config)?);
-        let env_filter = EnvFilter::try_new(directives.as_str())?;
-        let (filter, handle) = reload::Layer::new(env_filter);
+        let (filter, handle) = reload::Layer::new(shared_env_filter.clone());
         let layer = layer.with_filter(filter.and(ExcludeMetricsFilter));
 
         let reloader =
-            Box::new(move |updated: EnvFilter| handle.reload(updated).map_err(Into::into));
+            Box::new(move |updated: SharedEnvFilter| handle.reload(updated).map_err(Into::into));
 
         (layer, reloader)
     };
@@ -447,21 +514,15 @@ fn tracing_subscriber(
         let metrics_provider = otel_metrics(config)?;
         global::set_meter_provider(metrics_provider.clone());
         let layer = MetricsLayer::new(metrics_provider);
-        let env_filter = EnvFilter::try_new(directives.as_str())?;
-        let (filter, handle) = reload::Layer::new(env_filter);
+        let (filter, handle) = reload::Layer::new(shared_env_filter.clone());
         let layer = layer.with_filter(filter.and(IncludeMetricsFilter));
 
         let reloader =
-            Box::new(move |updated: EnvFilter| handle.reload(updated).map_err(Into::into));
+            Box::new(move |updated: SharedEnvFilter| handle.reload(updated).map_err(Into::into));
 
         (layer, reloader)
     };
 
-    // `registry.with()` accepts an `Option<L: Layer>` which let's us unconditionally create a
-    // layer type that itself is optional.
-    //
-    // Thanks to:
-    // https://github.com/MaterializeInc/materialize/blob/bcba457395c7b79cad9ac1cca7c8b4ad02508821/src/ore/src/tracing.rs#L511-L526
     let tokio_console_layer = if config.tokio_console {
         let builder = ConsoleLayer::builder().with_default_env();
         let layer = builder.spawn();
@@ -471,16 +532,22 @@ fn tracing_subscriber(
         None
     };
 
-    let registry = Registry::default();
-    let registry = registry.with(console_log_layer);
-    let registry = registry.with(otel_layer);
-    let registry = registry.with(metrics_layer);
-    let registry = registry.with(tokio_console_layer);
+    let registry = Registry::default()
+        .with(console_text.0)
+        .with(console_json.0)
+        .with(file_json.0)
+        .with(otel_layer)
+        .with(metrics_layer)
+        .with(tokio_console_layer);
 
     let handles = TelemetryHandles {
-        console_log_filter_reload,
+        console_text_filter_reload: console_text.1,
+        console_json_filter_reload: console_json.1,
+        file_json_filter_reload: file_json.1,
         otel_filter_reload,
         metrics_filter_reload,
+        _console_non_blocking_guard: console_non_blocking_guard,
+        _file_non_blocking_guard: file_json.2,
     };
 
     Ok((registry, handles))
@@ -511,6 +578,33 @@ fn otel_metrics(config: &TelemetryConfig) -> result::Result<SdkMeterProvider, Me
         .with_period(Duration::from_secs(1))
         .with_timeout(Duration::from_secs(10))
         .build()
+}
+
+fn text_layer<S>(
+    writer: NonBlocking,
+    span_events_fmt: FmtSpan,
+) -> fmt::Layer<S, DefaultFields, Format, NonBlocking>
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+{
+    tracing_subscriber::fmt::layer::<S>()
+        .with_thread_ids(true)
+        .with_span_events(span_events_fmt)
+        .with_writer(writer)
+}
+
+fn json_layer<S>(
+    writer: NonBlocking,
+    span_events_fmt: FmtSpan,
+) -> fmt::Layer<S, JsonFields, Format<Json>, NonBlocking>
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+{
+    tracing_subscriber::fmt::layer::<S>()
+        .json()
+        .with_thread_ids(true)
+        .with_span_events(span_events_fmt)
+        .with_writer(writer)
 }
 
 fn telemetry_resource(config: &TelemetryConfig) -> Resource {
@@ -578,16 +672,11 @@ fn should_add_ansi(config: &TelemetryConfig) -> bool {
 }
 
 #[remain::sorted]
-#[derive(Copy, Clone, Debug)]
-pub enum ConsoleLogFormat {
+#[derive(Copy, Clone, Debug, Default)]
+pub enum LogFormat {
     Json,
+    #[default]
     Text,
-}
-
-impl Default for ConsoleLogFormat {
-    fn default() -> Self {
-        Self::Text
-    }
 }
 
 #[must_use]
@@ -616,12 +705,16 @@ impl IntoFuture for TelemetryShutdownGuard {
     }
 }
 
-type ReloadHandle = Box<dyn Fn(EnvFilter) -> Result<()> + Send + Sync>;
+type ReloadHandle = Box<dyn Fn(SharedEnvFilter) -> Result<()> + Send + Sync>;
 
 struct TelemetryHandles {
-    console_log_filter_reload: ReloadHandle,
+    console_text_filter_reload: Option<ReloadHandle>,
+    console_json_filter_reload: Option<ReloadHandle>,
+    file_json_filter_reload: Option<ReloadHandle>,
     otel_filter_reload: ReloadHandle,
     metrics_filter_reload: ReloadHandle,
+    _console_non_blocking_guard: non_blocking::WorkerGuard,
+    _file_non_blocking_guard: Option<non_blocking::WorkerGuard>,
 }
 
 struct TelemetrySignalHandlerTask {
@@ -769,10 +862,20 @@ impl TelemetryUpdateTask {
 
     fn update_tracing_level(&self, tracing_level: TracingLevel) -> Result<()> {
         let directives = TracingDirectives::from(tracing_level);
+        let shared_env_filter = SharedEnvFilter::try_new(directives.as_str())?;
 
-        (self.handles.console_log_filter_reload)(EnvFilter::try_new(directives.as_str())?)?;
-        (self.handles.otel_filter_reload)(EnvFilter::try_new(directives.as_str())?)?;
-        (self.handles.metrics_filter_reload)(EnvFilter::try_new(directives.as_str())?)?;
+        if let Some(reload) = &self.handles.console_text_filter_reload {
+            (reload)(shared_env_filter.clone())?;
+        }
+        if let Some(reload) = &self.handles.console_json_filter_reload {
+            (reload)(shared_env_filter.clone())?;
+        }
+        if let Some(reload) = &self.handles.file_json_filter_reload {
+            (reload)(shared_env_filter.clone())?;
+        }
+
+        (self.handles.otel_filter_reload)(shared_env_filter.clone())?;
+        (self.handles.metrics_filter_reload)(shared_env_filter.clone())?;
 
         info!(
             task = Self::NAME,
@@ -979,6 +1082,60 @@ impl Deref for TracingDirectives {
 
     fn deref(&self) -> &Self::Target {
         self.as_str()
+    }
+}
+
+#[derive(Clone, Debug)]
+struct SharedEnvFilter(Arc<EnvFilter>);
+
+impl SharedEnvFilter {
+    fn try_new<S>(dirs: S) -> result::Result<Self, ParseError>
+    where
+        S: AsRef<str>,
+    {
+        let env_filter = EnvFilter::try_new(dirs)?;
+        Ok(Self(Arc::new(env_filter)))
+    }
+}
+
+impl<S> Filter<S> for SharedEnvFilter
+where
+    S: Subscriber + for<'span> LookupSpan<'span>,
+{
+    fn enabled(&self, meta: &Metadata<'_>, cx: &Context<'_, S>) -> bool {
+        <EnvFilter as Filter<S>>::enabled(&self.0, meta, cx)
+    }
+
+    fn callsite_enabled(&self, meta: &'static Metadata<'static>) -> Interest {
+        <EnvFilter as Filter<S>>::callsite_enabled(&self.0, meta)
+    }
+
+    fn event_enabled(&self, event: &Event<'_>, cx: &Context<'_, S>) -> bool {
+        <EnvFilter as Filter<S>>::event_enabled(&self.0, event, cx)
+    }
+
+    fn max_level_hint(&self) -> Option<tracing::level_filters::LevelFilter> {
+        <EnvFilter as Filter<S>>::max_level_hint(&self.0)
+    }
+
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
+        <EnvFilter as Filter<S>>::on_new_span(&self.0, attrs, id, ctx);
+    }
+
+    fn on_record(&self, id: &span::Id, values: &span::Record<'_>, ctx: Context<'_, S>) {
+        <EnvFilter as Filter<S>>::on_record(&self.0, id, values, ctx);
+    }
+
+    fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
+        <EnvFilter as Filter<S>>::on_enter(&self.0, id, ctx);
+    }
+
+    fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
+        <EnvFilter as Filter<S>>::on_exit(&self.0, id, ctx);
+    }
+
+    fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
+        <EnvFilter as Filter<S>>::on_close(&self.0, id, ctx);
     }
 }
 

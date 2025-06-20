@@ -24,11 +24,8 @@ async fn main() -> Result<()> {
         let config = TelemetryConfig::builder()
             .force_color(args.force_color.then_some(true))
             .no_color(args.no_color.then_some(true))
-            .console_log_format(
-                args.log_json
-                    .then_some(ConsoleLogFormat::Json)
-                    .unwrap_or_default(),
-            )
+            .log_format(args.log_json.then_some(LogFormat::Json).unwrap_or_default())
+            .log_file_directory(args.log_file_directory.clone())
             .service_name(BIN_NAME)
             .service_namespace("si")
             .log_env_var_prefix("SI")

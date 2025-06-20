@@ -62,6 +62,14 @@ pub(crate) struct Args {
     )]
     pub(crate) log_json: bool,
 
+    /// Additionally appends logging to rolling files under the given directory.
+    #[arg(
+        long = "log-file-directory",
+        env = "SI_LOG_FILE_DIRECTORY",
+        hide_env_values = true
+    )]
+    pub(crate) log_file_directory: Option<PathBuf>,
+
     /// The address and port to bind the HTTP server to [example: 0.0.0.0:80]
     #[arg(long, env)]
     pub(crate) socket_addr: Option<String>,
