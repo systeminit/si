@@ -8,9 +8,11 @@ import {
   unref,
   toRaw,
   ref,
+  watch,
 } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
 import { monotonicFactory } from "ulid";
+import PQueue from "p-queue";
 import {
   TabDBInterface,
   SharedDBInterface,
@@ -33,7 +35,6 @@ import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Context } from "@/newhotness/types";
 import { DefaultMap } from "@/utils/defaultmap";
 import * as rainbow from "@/newhotness/logic_composables/rainbow_counter";
-import router from "@/router";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useWorkspacesStore } from "../workspaces.store";
 
@@ -174,7 +175,7 @@ const updateCache = (
 ) => {
   // there is always more data attached, but we only care about accessing the ID
   // so thats all we need to type!
-  const cachedData = queryClient.getQueryData(queryKey) as { id: string }[];
+  const cachedData = queryClient?.getQueryData(queryKey) as { id: string }[];
   if (!cachedData) return;
   // TODO removal
   const idx = cachedData.findIndex((d) => d.id === id);
@@ -255,18 +256,9 @@ const lobbyExit: LobbyExitFn = async (
   noBroadcast?: boolean,
 ) => {
   // Only navigate away from lobby if user is currently in the lobby
-  // for this workspace and change set
-  if (router.currentRoute.value.name !== "new-hotness-lobby") {
+  // for this change set
+  if (muspelheimStatuses.value[changeSetId] === true) {
     return;
-  } else {
-    const params = router.currentRoute.value.params;
-    if (!params || Object.keys(params).length === 0)
-      throw new Error("Params expected");
-    if (
-      params.workspaceId !== workspaceId ||
-      params.changeSetId !== changeSetId
-    )
-      return;
   }
 
   if (!noBroadcast) {
@@ -277,13 +269,7 @@ const lobbyExit: LobbyExitFn = async (
   }
 
   await niflheim(workspaceId, changeSetId, true);
-  router.push({
-    name: "new-hotness",
-    params: {
-      workspacePk: workspaceId,
-      changeSetId,
-    },
-  });
+  muspelheimStatuses.value[changeSetId] = true;
 };
 
 tabDb.addListenerBustCache(Comlink.proxy(bustTanStackCache));
@@ -311,7 +297,7 @@ export const bifrost = async <T>(args: {
   kind: Gettable;
   id: Id;
 }): Promise<Reactive<T> | null> => {
-  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  await waitForInitCompletion();
   const start = Date.now();
   const maybeAtomDoc = await db.get(
     args.workspaceId,
@@ -332,7 +318,7 @@ export const bifrostList = async <T>(args: {
   kind: Listable;
   id: Id;
 }): Promise<Reactive<T> | null> => {
-  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  await waitForInitCompletion();
   const start = Date.now();
   const maybeAtomDoc = await db.getList(
     args.workspaceId,
@@ -375,7 +361,7 @@ export const getOutgoingConnectionsCounts = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
 }) => {
-  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  await waitForInitCompletion();
 
   const start = Date.now();
   const connectionsCounts = await db.getOutgoingConnectionsCounts(
@@ -415,7 +401,7 @@ export const getSchemaMembers = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
 }): Promise<SchemaMembers[]> => {
-  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  await waitForInitCompletion();
 
   const start = Date.now();
   const schemaMembers = await db.getSchemaMembers(
@@ -443,33 +429,68 @@ export const getOutgoingConnections = async (args: {
   return new DefaultMap<string, Record<string, Connection>>(() => ({}));
 };
 
+const waitForInitCompletion = (): Promise<void> => {
+  return new Promise((resolve) => {
+    if (initCompleted.value) {
+      resolve();
+      return;
+    }
+
+    const unwatch = watch(initCompleted, (newValue) => {
+      if (newValue) {
+        unwatch();
+        resolve();
+      }
+    });
+  });
+};
+
+const MUSPELHEIM_CONCURRENCY = 4;
+
+export const muspelheimStatuses = ref<{ [key: string]: boolean }>({});
+
+export const muspelheim = async (workspaceId: string, force?: boolean) => {
+  await waitForInitCompletion();
+  // eslint-disable-next-line no-console
+  console.log("🔥 MUSPELHEIM 🔥");
+  const niflheimQueue = new PQueue({ concurrency: MUSPELHEIM_CONCURRENCY });
+  const changeSetStore = useChangeSetsStore();
+  // We cannot rely on the change set store having already fetched
+  await changeSetStore.FETCH_CHANGE_SETS();
+  for (const changeSetId of changeSetStore.openChangeSetIds) {
+    muspelheimStatuses.value[changeSetId] = false;
+    niflheimQueue.add(async () => {
+      await niflheim(workspaceId, changeSetId, force);
+    });
+  }
+
+  await niflheimQueue.onEmpty();
+  // eslint-disable-next-line no-console
+  console.log("🔥 DONE 🔥");
+  return true;
+};
+
 // cold start
 export const niflheim = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
   force?: boolean,
-) => {
-  if (!initCompleted.value) return null;
-  const coldstart = !(await db.changeSetExists(workspaceId, changeSetId));
-  if (coldstart || force) {
+): Promise<boolean> => {
+  await waitForInitCompletion();
+  const changeSetExists = await db.changeSetExists(workspaceId, changeSetId);
+  if (!changeSetExists || force) {
     // eslint-disable-next-line no-console
-    console.log("❄️ NIFLHEIM ❄️");
+    console.log("❄️ NIFLHEIM ❄️", changeSetId);
     const success = await db.niflheim(workspaceId, changeSetId);
     // eslint-disable-next-line no-console
     console.log("❄️ DONE ❄️");
 
     // If niflheim returned false (202 response), navigate to lobby
     // Index is being rebuilt and is not ready yet.
-    if (!success) {
-      router.push({
-        name: "new-hotness-lobby",
-        params: {
-          workspacePk: workspaceId,
-          changeSetId,
-        },
-      });
-    } else return true;
+    muspelheimStatuses.value[changeSetId] = success;
+    return success;
   }
+  return true;
 };
 
 export const changeSetId = computed(() => {
@@ -489,6 +510,7 @@ export const makeKey = (kind: string, id?: string) => {
 };
 
 export const prune = async (workspaceId: string, changeSetId: string) => {
+  delete muspelheimStatuses.value[changeSetId];
   await db.pruneAtomsForClosedChangeSet(workspaceId, changeSetId);
 };
 

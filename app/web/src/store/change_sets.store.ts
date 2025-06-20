@@ -108,6 +108,9 @@ export function useChangeSetsStore() {
         changeSetsApprovalData: {} as Record<ChangeSetId, ApprovalData>,
       }),
       getters: {
+        openChangeSetIds(): ChangeSetId[] {
+          return this.openChangeSets.map((changeSet) => changeSet.id);
+        },
         currentUserIsDefaultApprover(): boolean {
           const userPk = authStore.user?.pk;
           if (!userPk) return false;
@@ -256,7 +259,7 @@ export function useChangeSetsStore() {
               const headkey = `${this.headChangeSetId}_selected_component`;
               window.localStorage.removeItem(headkey);
             },
-            onSuccess: (response) => {
+            onSuccess: (_response) => {
               // this.changeSetsById[response.changeSet.pk] = response.changeSet;
               const statusStore = useStatusStore();
               statusStore.resetWhenChangingChangeset();

@@ -651,15 +651,15 @@ const insertAtomMTM = (atom: Atom, indexChecksum: Checksum) => {
       sql: `insert into index_mtm_atoms
         (index_checksum, kind, args, checksum)
           VALUES
-        (?, ?, ?, ?)
+        (?, ?, ?, ?) on conflict do nothing
       ;`,
       bind,
     });
-  } catch {
+  } catch (err) {
     // should be resolved with the previous SELECT
     // even with the unique constraint ON CONFLICT REPLACE
     // if the checksum is identical, it will error
-    error("createMTM failed", atom);
+    error("createMTM failed", atom, err);
   }
   return true;
 };
@@ -1450,6 +1450,21 @@ const atomChecksumsFor = async (
  * LIFECYCLE EVENTS
  */
 
+export const CHANGE_SET_INDEX_URL = (
+  workspaceId: string,
+  changeSetId: string,
+) =>
+  [
+    "v2",
+    "workspaces",
+    { workspaceId },
+    "change-sets",
+    { changeSetId },
+    "index",
+  ] as URLPattern;
+
+export const STATUS_INDEX_IN_PROGRESS = 202;
+
 const niflheim = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
@@ -1463,14 +1478,7 @@ const niflheim = async (
     // clear out references, no queries have been performed yet
     clearAllWeakReferences(changeSetId);
 
-    const pattern = [
-      "v2",
-      "workspaces",
-      { workspaceId },
-      "change-sets",
-      { changeSetId },
-      "index",
-    ] as URLPattern;
+    const pattern = CHANGE_SET_INDEX_URL(workspaceId, changeSetId);
 
     const [url, desc] = describePattern(pattern);
     const frigg = tracer.startSpan(`GET ${desc}`);
@@ -1482,8 +1490,8 @@ const niflheim = async (
     const [req, _p] = await Promise.all([reqPromise, computedPromise]);
 
     // Check for 202 status - user needs to go to lobby
-    if (req.status === 202) {
-      frigg.setAttribute("status", 202);
+    if (req.status === STATUS_INDEX_IN_PROGRESS) {
+      frigg.setAttribute("status", STATUS_INDEX_IN_PROGRESS);
       frigg.setAttribute("shouldNavigateToLobby", true);
       frigg.end();
       span.end();
@@ -1493,6 +1501,7 @@ const niflheim = async (
     // Use index checksum for validation - this is more reliable than snapshot addresses
     const indexChecksum = req.data.indexChecksum;
     const atoms = req.data.frontEndObject.data.mvList;
+    debug("niflheim atom count", atoms.length);
     frigg.setAttribute("numEntries", atoms.length);
     frigg.setAttribute("indexChecksum", indexChecksum);
     frigg.end();
@@ -2276,7 +2285,7 @@ from
     select
       jsonb_extract(CAST(data as text), '$') as atom_json
     from
-      atoms 
+      atoms
     INNER JOIN
       (
       select
@@ -2305,7 +2314,7 @@ from
             }
             AND atoms.kind = ?
             AND atoms.args = ?
-        ) as items 
+        ) as items
       ) item_refs
     ON
     atoms.args = item_refs.args
@@ -2918,7 +2927,7 @@ const dbInterface: TabDBInterface = {
       const currentIndexChecksum = headRow;
 
       db.exec({
-        sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?);",
+        sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?) on conflict do nothing",
         bind: [changeSetId, workspaceId, currentIndexChecksum],
       });
     } catch (err) {
