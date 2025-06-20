@@ -7,30 +7,6 @@
       class="main pt-xs flex flex-col gap-xs items-stretch [&>div]:mx-[12px]"
     >
       <div class="flex-none flex flex-row items-center gap-xs">
-        <TabGroupToggle
-          ref="groupRef"
-          :aOrB="urlGridOrMap === 'grid'"
-          @toggle="storeViewMode"
-        >
-          <template #a="{ selected, toggle }">
-            <VButton
-              label="Grid"
-              size="sm"
-              variant="ghost"
-              :tone="selected ? 'action' : 'shade'"
-              @click.stop="toggle"
-            />
-          </template>
-          <template #b="{ selected, toggle }">
-            <VButton
-              label="Map"
-              size="sm"
-              variant="ghost"
-              :tone="selected ? 'action' : 'shade'"
-              @click.stop="toggle"
-            />
-          </template>
-        </TabGroupToggle>
         <DropdownMenuButton
           class="rounded min-w-[128px]"
           :options="viewListOptions"
@@ -112,12 +88,70 @@
           </template>
         </InstructiveVormInput>
       </div>
+      <div class="flex-none flex flex-row items-center gap-xs justify-between">
+        <TabGroupToggle
+          ref="groupRef"
+          :aOrB="urlGridOrMap === 'grid'"
+          @toggle="storeViewMode"
+        >
+          <template #a="{ selected, toggle }">
+            <VButton
+              label="Grid"
+              size="sm"
+              variant="ghost"
+              :tone="selected ? 'action' : 'shade'"
+              @click.stop="toggle"
+            />
+          </template>
+          <template #b="{ selected, toggle }">
+            <VButton
+              label="Map"
+              size="sm"
+              variant="ghost"
+              :tone="selected ? 'action' : 'shade'"
+              @click.stop="toggle"
+            />
+          </template>
+        </TabGroupToggle>
+        <div>
+          <DropdownMenuButton
+            :class="clsx(
+              'rounded'
+              )"
+            :options="groupByOptions"
+            :modelValue="groupBySelection"
+            placeholder="Group by"
+            minWidthToAnchor
+            checkable
+            alwaysShowPlaceholder
+            highlightWhenModelValue
+            @update:modelValue="(val) => (groupBySelection = val)"
+          >
+            <template #beforeOptions>
+              <DropdownMenuItem
+                label="None"
+                value="''"
+                checkable
+                :checked="groupBySelection === ''"
+                @select="() => (groupBySelection = '')"
+              />
+            </template>
+          </DropdownMenuButton>
+        </div>
+      </div>
       <template v-if="showGrid">
         <div
           v-if="componentList.length === 0 && componentListRaw.isSuccess.value"
           class="flex-1 overflow-hidden flex flex-row items-center justify-center"
         >
           <EmptyState icon="component" text="No components in view" />
+        </div>
+        <div
+          v-else-if="groupBySelection"
+          class="scrollable grow"
+        >
+          Test
+
         </div>
         <div
           v-else
@@ -127,55 +161,7 @@
           @scroll="onScroll"
           @scrollend="fixContextMenuAfterScroll"
         >
-          <div
-            class="w-full relative flex flex-col"
-            :style="{
-              ['overflow-anchor']: 'none',
-              height: `${virtualListHeight}px`,
-            }"
-          >
-            <div
-              v-for="row in componentRowsVirtualItemsList"
-              :key="`${row.key}`"
-              :data-index="row.index"
-              :class="
-                clsx(
-                  'flex flex-row items-center gap-sm',
-                  'absolute top-0 left-0 w-full',
-                )
-              "
-              :style="{
-                height: `${GRID_TILE_HEIGHT}px`,
-                transform: `translateY(${row.start}px)`,
-              }"
-            >
-              <ComponentGridTile
-                v-for="(component, columnIndex) in filteredComponentRows[
-                  row.index
-                ]"
-                ref="componentGridTileRefs"
-                :key="component.id"
-                :data-index="row.index * virtualizerLanes + columnIndex"
-                :component="component"
-                class="flex-1"
-                :class="
-                  clsx(tileClasses(row.index * virtualizerLanes + columnIndex))
-                "
-                @mouseenter="hover(row.index * virtualizerLanes + columnIndex)"
-                @mouseleave="
-                  unhover(row.index * virtualizerLanes + columnIndex)
-                "
-                @click.stop.left="(e) => componentClicked(e, component.id)"
-                @click.stop.right="(e) => componentClicked(e, component.id)"
-              />
-              <!-- this fills in any extra spots in the last row -->
-              <div
-                v-for="emptySpot in virtualizerLanes - filteredComponentRows[row.index]!.length"
-                :key="emptySpot"
-                class="flex-1"
-              />
-            </div>
-          </div>
+
         </div>
         <footer
           :class="
@@ -368,31 +354,10 @@ const groupRef = ref<InstanceType<typeof TabGroupToggle>>();
 const actionsRef = ref<typeof CollapsingGridItem>();
 const historyRef = ref<typeof CollapsingGridItem>();
 const mapRef = ref<InstanceType<typeof Map>>();
-const componentGridTileRefs = ref<InstanceType<typeof ComponentGridTile>[]>();
-const componentGridTileElsSorted = computed(() => {
-  if (!componentGridTileRefs.value) {
-    return [];
-  } else {
-    return componentGridTileRefs.value
-      .map((tileRef) => tileRef.$el)
-      .sort((a, b) => a.dataset.index - b.dataset.index);
-  }
-});
 
 const getGridTileIndexByComponentId = (id: ComponentId) => {
   return filteredComponents.findIndex((component) => component.id === id);
 };
-const getGridTileByIndex = (idx: number) => {
-  if (componentGridTileRefs.value) {
-    const tile = componentGridTileRefs.value.find((t) => {
-      return Number(t.$el.dataset.index) === idx;
-    });
-    return tile;
-  }
-  return undefined;
-};
-const getRowIndexByGridTileIndex = (idx: number) =>
-  Math.floor(idx / virtualizerLanes.value);
 
 const urlGridOrMap = computed(() => {
   const q: SelectionsInQueryString = router.currentRoute.value?.query;
@@ -523,101 +488,6 @@ watch(
   },
   { immediate: true, deep: true },
 );
-
-function getScrollbarWidth(): number {
-  const temp = document.createElement("div");
-  const inner = document.createElement("div");
-
-  temp.style.visibility = "hidden";
-  temp.style.overflow = "scroll";
-  document.body.appendChild(temp);
-  temp.appendChild(inner);
-
-  const scrollbarWidth = temp.offsetWidth - inner.offsetWidth;
-  temp.parentNode?.removeChild(temp);
-
-  return scrollbarWidth;
-}
-
-// This computes the rendered number of components in a row as seen directly in the DOM
-const lanes = computed(() => {
-  // We need to force a recompute of this value when the screen is resized
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  windowWidthReactive.value;
-
-  // Can't calculate the amount of grid tiles per row if we don't have any grid tiles loaded yet!
-  const componentGridTileYPositions = componentGridTileElsSorted.value.map(
-    (el) => el.getBoundingClientRect().y,
-  );
-  if (componentGridTileYPositions.length === 0) return 0;
-
-  let newLanes = 1;
-  const firstLaneY = componentGridTileYPositions[0];
-
-  while (
-    componentGridTileYPositions[newLanes] === firstLaneY &&
-    newLanes < componentGridTileYPositions.length
-  ) {
-    newLanes++;
-  }
-  return newLanes;
-});
-
-// This computes the expected number of components in a row based on the width of the scroll area
-const virtualizerLanes = computed(() => {
-  // We need to force a recompute of this value when the screen is resized
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  windowWidthReactive.value;
-
-  // We also need to force a recompute of this value if the number of tiles changes
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  componentGridTileRefs.value;
-
-  // Our grid is based on the minimum tile width... so how many tiles can we fit?
-  let newLanes = 0;
-  let availableSpace = scrollRef.value?.getBoundingClientRect().width ?? 0;
-  if (
-    scrollRef.value &&
-    scrollRef.value.scrollHeight > scrollRef.value.clientHeight
-  ) {
-    // need to account for the width of the scrollbar!
-    availableSpace -= getScrollbarWidth();
-  }
-  while (availableSpace > 0) {
-    availableSpace -= MIN_GRID_TILE_WIDTH; // width of one grid tile
-    if (availableSpace > 0) {
-      newLanes++;
-    }
-    availableSpace -= GRID_TILE_GAP; // gap between grid tiles
-  }
-  return newLanes;
-});
-
-const filteredComponentRows = computed(() =>
-  _.chunk(filteredComponents, virtualizerLanes.value),
-);
-
-const virtualizerOptions = computed(() => {
-  const options = {
-    count: filteredComponentRows.value.length,
-    // `virtualizerLanes` gives virtualizer a "second-dimension" (aka columns for vertical lists and rows for horizontal lists)
-    // https://tanstack.com/virtual/latest/docs/api/virtualizer#lanes
-    // Our grid is based on the minimum tile width... so how many tiles can we fit?
-    // thats the value of `virtualizerLanes`
-    getScrollElement: () => scrollRef.value!,
-    estimateSize: () => MIN_GRID_TILE_WIDTH,
-    overscan: 3,
-  };
-  return options;
-});
-
-const virtualList = useVirtualizer(virtualizerOptions);
-
-const componentRowsVirtualItemsList = computed(() =>
-  virtualList.value.getVirtualItems(),
-);
-
-const virtualListHeight = computed(() => virtualList.value.getTotalSize());
 
 const collapsingStyles = computed(() =>
   collapsingGridStyles([
@@ -870,31 +740,32 @@ const onR = (e: KeyDetails["r"]) => {
     mapRef.value?.onR(e);
   }
 };
+// TODO bring back arrow controls before merging
 const onArrowUp = (e: KeyDetails["ArrowUp"]) => {
-  if (CONTROL_SCHEME === "v2" && showGrid.value) return;
-  e.preventDefault();
-  if (showGrid.value) {
-    if (focusedComponentId.value) unfocus();
-    selectorGridPosition.value -= lanes.value;
-    constrainPosition();
-  } else {
-    mapRef.value?.onArrowUp();
-  }
+//   if (CONTROL_SCHEME === "v2" && showGrid.value) return;
+//   e.preventDefault();
+//   if (showGrid.value) {
+//     if (focusedComponentId.value) unfocus();
+//     selectorGridPosition.value -= lanes.value;
+//     constrainPosition();
+//   } else {
+//     mapRef.value?.onArrowUp();
+//   }
 };
 const onArrowDown = (e: KeyDetails["ArrowDown"]) => {
-  if (CONTROL_SCHEME === "v2" && showGrid.value) return;
-  e.preventDefault();
-  if (showGrid.value) {
-    if (focusedComponentId.value) unfocus();
-    if (selectorGridPosition.value === -1) {
-      selectorGridPosition.value = 0;
-    } else {
-      selectorGridPosition.value += lanes.value;
-    }
-    constrainPosition();
-  } else {
-    mapRef.value?.onArrowDown();
-  }
+//   if (CONTROL_SCHEME === "v2" && showGrid.value) return;
+//   e.preventDefault();
+//   if (showGrid.value) {
+//     if (focusedComponentId.value) unfocus();
+//     if (selectorGridPosition.value === -1) {
+//       selectorGridPosition.value = 0;
+//     } else {
+//       selectorGridPosition.value += lanes.value;
+//     }
+//     constrainPosition();
+//   } else {
+//     mapRef.value?.onArrowDown();
+//   }
 };
 const onArrowLeft = () => {
   if (CONTROL_SCHEME === "v2" && showGrid.value) return;
@@ -1132,6 +1003,13 @@ const storeViewMode = () => {
     localStorage.setItem(key, "map");
   }
 };
+
+// Group By
+const groupBySelection = ref();
+const groupByOptions = [
+  {value: "Qualification Status", label: "Qualification Status"},
+  {value: "Change Status", label: "Change Status"},
+]
 </script>
 
 <style lang="css" scoped>
