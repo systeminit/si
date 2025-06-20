@@ -2,47 +2,42 @@
   <div
     class="w-full relative flex flex-col"
     :style="{
-              ['overflow-anchor']: 'none',
-              height: `${virtualListHeight}px`,
-            }"
+      ['overflow-anchor']: 'none',
+      height: `${virtualListHeight}px`,
+    }"
   >
     <div
       v-for="row in componentRowsVirtualItemsList"
       :key="`${row.key}`"
       :data-index="row.index"
       :class="
-                clsx(
-                  'flex flex-row items-center gap-sm',
-                  'absolute top-0 left-0 w-full',
-                )
-              "
+        clsx(
+          'flex flex-row items-center gap-sm',
+          'absolute top-0 left-0 w-full',
+        )
+      "
       :style="{
-                height: `${GRID_TILE_HEIGHT}px`,
-                transform: `translateY(${row.start}px)`,
-              }"
+        height: `${GRID_TILE_HEIGHT}px`,
+        transform: `translateY(${row.start}px)`,
+      }"
     >
       <ComponentGridTile
-        v-for="(component, columnIndex) in filteredComponentRows[
-                  row.index
-                ]"
+        v-for="(component, columnIndex) in filteredComponentRows[row.index]"
         ref="componentGridTileRefs"
         :key="component.id"
         :data-index="row.index * virtualizerLanes + columnIndex"
         :component="component"
         class="flex-1"
-        :class="
-                  clsx(tileClasses(row.index * virtualizerLanes + columnIndex))
-                "
+        :class="clsx(tileClasses(row.index * virtualizerLanes + columnIndex))"
         @mouseenter="hover(row.index * virtualizerLanes + columnIndex)"
-        @mouseleave="
-                  unhover(row.index * virtualizerLanes + columnIndex)
-                "
+        @mouseleave="unhover(row.index * virtualizerLanes + columnIndex)"
         @click.stop.left="(e) => componentClicked(e, component.id)"
         @click.stop.right="(e) => componentClicked(e, component.id)"
       />
       <!-- this fills in any extra spots in the last row -->
       <div
-        v-for="emptySpot in virtualizerLanes - filteredComponentRows[row.index]!.length"
+        v-for="emptySpot in virtualizerLanes -
+        filteredComponentRows[row.index]!.length"
         :key="emptySpot"
         class="flex-1"
       />
@@ -53,16 +48,31 @@
 <script lang="ts" setup>
 import clsx from "clsx";
 import ComponentGridTile, { GRID_TILE_HEIGHT } from "./ComponentGridTile.vue";
-import {computed, ref} from "vue";
+import { computed, ref, reactive } from "vue";
 import * as _ from "lodash-es";
-import {ComponentInList} from "@/workers/types/entity_kind_types";
+import { ComponentInList } from "@/workers/types/entity_kind_types";
 import {
   KeyDetails,
   keyEmitter,
   windowResizeEmitter,
   windowWidthReactive,
 } from "./logic_composables/emitters";
-import {useVirtualizer} from "@tanstack/vue-virtual";
+import {
+  themeClasses,
+  VormInput,
+  VButton,
+  DropdownMenuButton,
+  DropdownMenuItem,
+  Icon,
+} from "@si/vue-lib/design-system";
+import ComponentContextMenu from "./ComponentContextMenu.vue";
+import { tw } from "@si/vue-lib";
+import { useRouter, useRoute } from "vue-router";
+import { useVirtualizer } from "@tanstack/vue-virtual";
+import { ComponentId } from "@/api/sdf/dal/component";
+
+type ControlScheme = "v1" | "v2";
+const CONTROL_SCHEME: ControlScheme = "v2" as ControlScheme;
 
 const MIN_GRID_TILE_WIDTH = 250;
 const GRID_TILE_GAP = 16;
@@ -72,6 +82,10 @@ const props = defineProps<{
   scrollRef: HTMLDivElement; // Reference to parent element
   enableKeyboardControls?: boolean;
 }>();
+
+const componentsById = computed(() =>
+  Object.fromEntries(props.components.map((c) => [c.id, c])),
+);
 
 function getScrollbarWidth(): number {
   const temp = document.createElement("div");
@@ -108,7 +122,6 @@ const getGridTileByIndex = (idx: number) => {
   return undefined;
 };
 
-
 const virtualizerOptions = computed(() => {
   const options = {
     count: filteredComponentRows.value.length,
@@ -124,7 +137,6 @@ const virtualizerOptions = computed(() => {
 });
 
 const virtualList = useVirtualizer(virtualizerOptions);
-
 
 // This computes the expected number of components in a row based on the width of the scroll area
 const virtualizerLanes = computed(() => {
@@ -156,17 +168,13 @@ const virtualizerLanes = computed(() => {
   return newLanes;
 });
 
-
 const filteredComponentRows = computed(() =>
   _.chunk(props.components, virtualizerLanes.value),
 );
 
-
 const componentRowsVirtualItemsList = computed(() =>
   virtualList.value.getVirtualItems(),
 );
-
-
 
 const virtualListHeight = computed(() => virtualList.value.getTotalSize());
 
@@ -191,15 +199,121 @@ const lanes = computed(() => {
   while (
     componentGridTileYPositions[newLanes] === firstLaneY &&
     newLanes < componentGridTileYPositions.length
-    ) {
+  ) {
     newLanes++;
   }
   return newLanes;
 });
 
+const selectedComponentIds = reactive<Set<string>>(new Set());
+const selectorGridPosition = ref<number>(-1);
+const focusedComponentId = ref<string | undefined>();
+const focusGridPosition = ref<number>(-1);
+const componentContextMenuRef =
+  ref<InstanceType<typeof ComponentContextMenu>>();
 
+const router = useRouter();
+const route = useRoute();
 
+const isSelected = (idx: number) =>
+  selectedComponentIds.has(props.components[idx]!.id);
+const isHovered = (idx: number) => selectorGridPosition.value === idx;
+const isFocused = (idx: number) =>
+  focusGridPosition.value === idx && focusedComponentId.value;
 
+const getGridTileIndexByComponentId = (id: ComponentId) => {
+  return props.components.findIndex((component) => component.id === id);
+};
+
+const hoverByComponentId = (id: ComponentId) => {
+  const index = getGridTileIndexByComponentId(id);
+
+  if (index !== -1) selectorGridPosition.value = index;
+};
+const hover = (index: number) => {
+  selectorGridPosition.value = index;
+};
+const unhover = (index?: number) => {
+  if (!index || selectorGridPosition.value === index) {
+    selectorGridPosition.value = -1;
+  }
+};
+const focus = (componentId: ComponentId) => {
+  if (!componentGridTileRefs.value) return;
+  hoverByComponentId(componentId);
+  focusedComponentId.value = componentId;
+  focusGridPosition.value = selectorGridPosition.value;
+  const gridTileIndex = getGridTileIndexByComponentId(componentId);
+  const gridTile = getGridTileByIndex(gridTileIndex);
+  if (gridTile) {
+    const component = componentsById.value[componentId];
+    if (component) {
+      componentContextMenuRef.value?.open(gridTile, [component]);
+    }
+  }
+};
+const unfocus = () => {
+  focusedComponentId.value = undefined;
+
+  selectorGridPosition.value = focusGridPosition.value;
+  focusGridPosition.value = -1;
+  componentContextMenuRef.value?.close();
+};
+
+const tileClasses = (idx: number) => {
+  const selected = isSelected(idx);
+  const hovered = isHovered(idx);
+  const focused = isFocused(idx);
+  if (focused)
+    return themeClasses(tw`border-action-500`, tw`border-action-300`);
+  else if (hovered) return themeClasses(tw`border-black`, tw`border-white`);
+  // TODO(WENDY) - not using selected yet!
+  else if (selected) return "";
+  else return "";
+};
+
+const componentClicked = (e: MouseEvent, componentId: ComponentId) => {
+  e.preventDefault();
+  if (CONTROL_SCHEME === "v1") {
+    componentClickedV1(e, componentId);
+  } else {
+    componentClickedV2(e, componentId);
+  }
+};
+const componentClickedV1 = (_e: MouseEvent, componentId: ComponentId) => {
+  if (
+    focusedComponentId.value &&
+    selectorGridPosition.value !== focusGridPosition.value
+  ) {
+    unfocus();
+    focus(componentId);
+  } else {
+    hoverByComponentId(componentId); // should already be hovered but let's make sure!
+    componentInteract(componentId);
+  }
+};
+const componentClickedV2 = (e: MouseEvent, componentId: ComponentId) => {
+  if (e.button === 0) {
+    componentNavigate(componentId);
+  } else {
+    componentClickedV1(e, componentId);
+  }
+};
+const componentNavigate = (componentId: ComponentId) => {
+  const params = { ...route.params };
+  params.componentId = componentId;
+  router.push({
+    name: "new-hotness-component",
+    params,
+  });
+};
+const componentInteract = (componentId: ComponentId) => {
+  if (focusedComponentId.value && CONTROL_SCHEME === "v1") {
+    componentNavigate(componentId);
+  } else {
+    focus(componentId);
+  }
+};
 </script>
 
 <style lang="css" scoped>

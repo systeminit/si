@@ -115,9 +115,7 @@
         </TabGroupToggle>
         <div>
           <DropdownMenuButton
-            :class="clsx(
-              'rounded'
-              )"
+            :class="clsx('rounded')"
             :options="groupByOptions"
             :modelValue="groupBySelection"
             placeholder="Group by"
@@ -146,13 +144,7 @@
         >
           <EmptyState icon="component" text="No components in view" />
         </div>
-        <div
-          v-else-if="groupBySelection"
-          class="scrollable grow"
-        >
-          Test
-
-        </div>
+        <div v-else-if="groupBySelection" class="scrollable grow">Test</div>
         <div
           v-else
           ref="scrollRef"
@@ -161,7 +153,10 @@
           @scroll="onScroll"
           @scrollend="fixContextMenuAfterScroll"
         >
-
+          <ExploreComponentGrid
+            :components="filteredComponents"
+            :scrollRef="scrollRef"
+          />
         </div>
         <footer
           :class="
@@ -289,9 +284,7 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
-import { useVirtualizer } from "@tanstack/vue-virtual";
 import { Fzf } from "fzf";
-import { tw } from "@si/vue-lib";
 import {
   bifrost,
   bifrostList,
@@ -332,6 +325,7 @@ import EmptyState from "./EmptyState.vue";
 import { elementIsScrolledIntoView } from "./logic_composables/dom_funcs";
 import ShortcutModal from "./ShortcutModal.vue";
 import { useUpgrade } from "./logic_composables/upgrade";
+import { ExploreComponentGrid } from "./ExploreComponentGrid.vue";
 
 // MAKE SURE THESE NUMBERS STAY ACCURATE IF YOU CHANGE THE GRID!
 const MIN_GRID_TILE_WIDTH = 250;
@@ -496,73 +490,18 @@ const collapsingStyles = computed(() =>
   ]),
 );
 
-const selectedComponentIds = reactive<Set<string>>(new Set());
-const selectorGridPosition = ref<number>(-1);
-const focusedComponentId = ref<string | undefined>();
 const hoveredComponentId = computed(
   () => filteredComponents[selectorGridPosition.value]?.id,
 );
 const interactionTargetComponentId = computed(
   () => focusedComponentId.value ?? hoveredComponentId.value,
 );
-const focusGridPosition = ref<number>(-1);
 const constrainPosition = () => {
   selectorGridPosition.value = Math.min(
     filteredComponents.length - 1,
     Math.max(-1, selectorGridPosition.value),
   );
   scrollCurrentTileIntoView();
-};
-const isSelected = (idx: number) =>
-  selectedComponentIds.has(filteredComponents[idx]!.id);
-const isHovered = (idx: number) => selectorGridPosition.value === idx;
-const isFocused = (idx: number) =>
-  focusGridPosition.value === idx && focusedComponentId.value;
-const tileClasses = (idx: number) => {
-  const selected = isSelected(idx);
-  const hovered = isHovered(idx);
-  const focused = isFocused(idx);
-  if (focused)
-    return themeClasses(tw`border-action-500`, tw`border-action-300`);
-  else if (hovered) return themeClasses(tw`border-black`, tw`border-white`);
-  // TODO(WENDY) - not using selected yet!
-  else if (selected) return "";
-  else return "";
-};
-const hoverByComponentId = (id: ComponentId) => {
-  const index = getGridTileIndexByComponentId(id);
-
-  if (index !== -1) selectorGridPosition.value = index;
-};
-const hover = (index: number) => {
-  selectorGridPosition.value = index;
-};
-const unhover = (index?: number) => {
-  if (!index || selectorGridPosition.value === index) {
-    selectorGridPosition.value = -1;
-  }
-};
-
-const focus = (componentId: ComponentId) => {
-  if (!componentGridTileRefs.value) return;
-  hoverByComponentId(componentId);
-  focusedComponentId.value = componentId;
-  focusGridPosition.value = selectorGridPosition.value;
-  const gridTileIndex = getGridTileIndexByComponentId(componentId);
-  const gridTile = getGridTileByIndex(gridTileIndex);
-  if (gridTile) {
-    const component = componentsById.value[componentId];
-    if (component) {
-      componentContextMenuRef.value?.open(gridTile, [component]);
-    }
-  }
-};
-const unfocus = () => {
-  focusedComponentId.value = undefined;
-
-  selectorGridPosition.value = focusGridPosition.value;
-  focusGridPosition.value = -1;
-  componentContextMenuRef.value?.close();
 };
 
 const searchRef = ref<InstanceType<typeof VormInput>>();
@@ -742,30 +681,30 @@ const onR = (e: KeyDetails["r"]) => {
 };
 // TODO bring back arrow controls before merging
 const onArrowUp = (e: KeyDetails["ArrowUp"]) => {
-//   if (CONTROL_SCHEME === "v2" && showGrid.value) return;
-//   e.preventDefault();
-//   if (showGrid.value) {
-//     if (focusedComponentId.value) unfocus();
-//     selectorGridPosition.value -= lanes.value;
-//     constrainPosition();
-//   } else {
-//     mapRef.value?.onArrowUp();
-//   }
+  //   if (CONTROL_SCHEME === "v2" && showGrid.value) return;
+  //   e.preventDefault();
+  //   if (showGrid.value) {
+  //     if (focusedComponentId.value) unfocus();
+  //     selectorGridPosition.value -= lanes.value;
+  //     constrainPosition();
+  //   } else {
+  //     mapRef.value?.onArrowUp();
+  //   }
 };
 const onArrowDown = (e: KeyDetails["ArrowDown"]) => {
-//   if (CONTROL_SCHEME === "v2" && showGrid.value) return;
-//   e.preventDefault();
-//   if (showGrid.value) {
-//     if (focusedComponentId.value) unfocus();
-//     if (selectorGridPosition.value === -1) {
-//       selectorGridPosition.value = 0;
-//     } else {
-//       selectorGridPosition.value += lanes.value;
-//     }
-//     constrainPosition();
-//   } else {
-//     mapRef.value?.onArrowDown();
-//   }
+  //   if (CONTROL_SCHEME === "v2" && showGrid.value) return;
+  //   e.preventDefault();
+  //   if (showGrid.value) {
+  //     if (focusedComponentId.value) unfocus();
+  //     if (selectorGridPosition.value === -1) {
+  //       selectorGridPosition.value = 0;
+  //     } else {
+  //       selectorGridPosition.value += lanes.value;
+  //     }
+  //     constrainPosition();
+  //   } else {
+  //     mapRef.value?.onArrowDown();
+  //   }
 };
 const onArrowLeft = () => {
   if (CONTROL_SCHEME === "v2" && showGrid.value) return;
@@ -879,34 +818,6 @@ onBeforeUnmount(() => {
   document.removeEventListener("click", onClick);
 });
 
-const componentClicked = (e: MouseEvent, componentId: ComponentId) => {
-  e.preventDefault();
-  if (CONTROL_SCHEME === "v1") {
-    componentClickedV1(e, componentId);
-  } else {
-    componentClickedV2(e, componentId);
-  }
-};
-const componentClickedV1 = (_e: MouseEvent, componentId: ComponentId) => {
-  if (
-    focusedComponentId.value &&
-    selectorGridPosition.value !== focusGridPosition.value
-  ) {
-    unfocus();
-    focus(componentId);
-  } else {
-    hoverByComponentId(componentId); // should already be hovered but let's make sure!
-    componentInteract(componentId);
-  }
-};
-const componentClickedV2 = (e: MouseEvent, componentId: ComponentId) => {
-  if (e.button === 0) {
-    componentNavigate(componentId);
-  } else {
-    componentClickedV1(e, componentId);
-  }
-};
-
 const componentInteract = (componentId: ComponentId) => {
   if (focusedComponentId.value && CONTROL_SCHEME === "v1") {
     componentNavigate(componentId);
@@ -1007,9 +918,9 @@ const storeViewMode = () => {
 // Group By
 const groupBySelection = ref();
 const groupByOptions = [
-  {value: "Qualification Status", label: "Qualification Status"},
-  {value: "Change Status", label: "Change Status"},
-]
+  { value: "Qualification Status", label: "Qualification Status" },
+  { value: "Change Status", label: "Change Status" },
+];
 </script>
 
 <style lang="css" scoped>
