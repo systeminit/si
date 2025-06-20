@@ -49,6 +49,7 @@ pub mod execute_management_function;
 pub mod find_component;
 pub mod get_component;
 pub mod list_components;
+pub mod manage_component;
 pub mod search_components;
 pub mod subscriptions;
 pub mod update_component;
@@ -425,6 +426,7 @@ pub fn routes() -> Router<AppState> {
                     "/execute-management-function",
                     post(execute_management_function::execute_management_function),
                 )
-                .route("/action", post(add_action::add_action)),
+                .route("/action", post(add_action::add_action))
+                .route("/manage", post(manage_component::manage_component)),
         )
 }
