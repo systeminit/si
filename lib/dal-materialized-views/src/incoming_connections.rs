@@ -124,10 +124,10 @@ async fn prop_to_prop(ctx: &DalContext, component_id: ComponentId) -> Result<Vec
 async fn management(ctx: &DalContext, component_id: ComponentId) -> Result<Vec<Connection>> {
     let mut connections = Vec::new();
 
-    for manager_component_id in Component::managers_by_id(ctx, component_id).await? {
+    for managed_component_id in Component::get_managed_by_id(ctx, component_id).await? {
         connections.push(Connection::Management {
-            from_component_id: manager_component_id,
-            to_component_id: component_id,
+            from_component_id: component_id,
+            to_component_id: managed_component_id,
         })
     }
 
