@@ -15,6 +15,7 @@
     >
       <!-- Back button (smaller with no border) -->
       <button
+        tabindex="-1"
         class="text-neutral-400 hover:text-white mr-xs flex flex-row items-center justify-center"
         aria-label="Back to actions list"
         @click="navigateBack"

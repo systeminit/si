@@ -105,8 +105,8 @@
               "
               @blur="slotProps.blur"
               @keydown.tab="(e: KeyboardEvent) => onTab(e, true)"
-              @keydown.left="() => previousComponent()"
-              @keydown.right="() => nextComponent()"
+              @keydown.left="onArrowLeft"
+              @keydown.right="onArrowRight"
               @keydown.up="onArrowUp"
               @keydown.down="onArrowDown"
               @keydown.esc="onEscape"
@@ -233,7 +233,12 @@
       <div class="grow grid grid-rows-subgrid" :style="collapsingStyles">
         <CollapsingGridItem ref="actionsRef">
           <template #header>Actions ({{ actionViewList.length }})</template>
-          <ul class="actions list">
+          <EmptyState
+            v-if="actionViewList.length === 0"
+            icon="tools"
+            text="No actions to display"
+          />
+          <ul v-else class="actions list">
             <ActionCard
               v-for="action in actionViewList"
               :key="action.id"
@@ -539,7 +544,11 @@ const updateDebouncedSearch = _.debounce(
 );
 
 // Watch for changes to fuzzySearchString and update the debounced version
-watch(searchString, (newValue) => {
+watch(searchString, (newValue, oldValue) => {
+  if (oldValue === "" && newValue === null) {
+    // this is not a real change in the search string!
+    return;
+  }
   updateDebouncedSearch(newValue);
   mapRef.value?.deselect();
   unfocus();
@@ -711,7 +720,6 @@ const focus = (componentId: ComponentId) => {
 };
 const unfocus = () => {
   focusedComponentId.value = undefined;
-
   selectorGridPosition.value = focusGridPosition.value;
   focusGridPosition.value = -1;
   componentContextMenuRef.value?.close();

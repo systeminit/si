@@ -46,12 +46,12 @@
       </div>
 
       <!-- Empty state -->
-      <div
+      <EmptyState
         v-if="funcRuns.length === 0 && !isLoading"
-        class="py-4 text-center text-neutral-500"
-      >
-        No function runs found
-      </div>
+        text="No function runs found"
+        icon="func"
+        class="m-xs"
+      />
     </div>
   </div>
 </template>
@@ -66,6 +66,7 @@ import FuncRunCard from "./FuncRunCard.vue";
 import { funcRunTypes, useApi, routes } from "./api_composables";
 import { assertIsDefined, Context } from "./types";
 import { FuncRun } from "./api_composables/func_run";
+import EmptyState from "./EmptyState.vue";
 
 // Component props
 const props = defineProps<{

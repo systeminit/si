@@ -174,9 +174,10 @@
               :class="
                 clsx(
                   'block w-full h-lg p-xs ml-auto text-sm border font-mono',
+                  'focus:outline-none focus:ring-0 focus:z-10',
                   themeClasses(
-                    'text-shade-100 bg-shade-0 border-neutral-400',
-                    'text-shade-0 bg-shade-100 border-neutral-600',
+                    'text-shade-100 bg-shade-0 border-neutral-400 focus:border-action-500',
+                    'text-shade-0 bg-shade-100 border-neutral-600 focus:border-action-300',
                   ),
                 )
               "
