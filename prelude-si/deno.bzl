@@ -26,7 +26,14 @@ def deno_cache_impl(ctx: AnalysisContext) -> list[Provider]:
     for src in ctx.attrs.srcs:
         cmd.add("--input", src)
 
-    ctx.actions.run(cmd, category = "deno", identifier = "deno_cache")
+    ctx.actions.run(
+        cmd,
+        category = "deno",
+        identifier = "deno_cache",
+        env = {
+            "DENO_BIN": deno_toolchain.deno_bin,
+        },
+    )
 
     return [
         DefaultInfo(default_output = out),
@@ -76,7 +83,14 @@ def deno_compile_impl(ctx: AnalysisContext) -> list[Provider]:
         cmd.add("--unstable-flags")
         cmd.add(ctx.attrs.unstable_flags)
 
-    ctx.actions.run(cmd, category = "deno", identifier = "deno_compile")
+    ctx.actions.run(
+        cmd,
+        category = "deno",
+        identifier = "deno_compile",
+        env = {
+            "DENO_BIN": deno_toolchain.deno_bin,
+        },
+    )
 
     return [
         DefaultInfo(default_output = out),
@@ -193,7 +207,14 @@ def deno_run_impl(ctx: AnalysisContext) -> list[Provider]:
         cmd.add(ctx.attrs.unstable_flags)
 
 
-    ctx.actions.run(cmd, category = "deno", identifier = "deno_run")
+    ctx.actions.run(
+        cmd,
+        category = "deno",
+        identifier = "deno_run",
+        env = {
+            "DENO_BIN": deno_toolchain.deno_bin,
+        },
+    )
 
     return [
         DefaultInfo(default_output = out),
