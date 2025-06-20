@@ -27,6 +27,7 @@ use thiserror::Error;
 use ulid::Ulid;
 
 const DEFAULT_CONCURRENCY_LIMIT: Option<usize> = None;
+const DEFAULT_PARALLEL_BUILD_LIMIT: usize = 50;
 
 const DEFAULT_QUIESCENT_PERIOD_SECS: u64 = 60 * 10;
 const DEFAULT_QUIESCENT_PERIOD: Duration = Duration::from_secs(DEFAULT_QUIESCENT_PERIOD_SECS);
@@ -63,6 +64,9 @@ pub struct Config {
     #[builder(default = "default_concurrency_limit()")]
     concurrency_limit: Option<usize>,
 
+    #[builder(default = "default_parallel_build_limit()")]
+    parallel_build_limit: usize,
+
     #[builder(default = "PgPoolConfig::default()")]
     pg_pool: PgPoolConfig,
 
@@ -90,6 +94,11 @@ impl Config {
     /// Gets the config's concurrency limit.
     pub fn concurrency_limit(&self) -> Option<usize> {
         self.concurrency_limit
+    }
+
+    /// Gets the config's parallel build limit.
+    pub fn parallel_build_limit(&self) -> usize {
+        self.parallel_build_limit
     }
 
     /// Gets the config's instance ID.
@@ -146,6 +155,8 @@ pub struct ConfigFile {
     // all service types
     #[serde(default = "default_concurrency_limit")]
     edda_concurrency_limit: Option<usize>,
+    #[serde(default = "default_parallel_build_limit")]
+    edda_parallel_build_limit: usize,
     #[serde(default)]
     pg: PgPoolConfig,
     #[serde(default)]
@@ -165,6 +176,7 @@ impl Default for ConfigFile {
         Self {
             instance_id: random_instance_id(),
             edda_concurrency_limit: default_concurrency_limit(),
+            edda_parallel_build_limit: default_parallel_build_limit(),
             pg: Default::default(),
             nats: Default::default(),
             crypto: Default::default(),
@@ -192,6 +204,7 @@ impl TryFrom<ConfigFile> for Config {
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.layer_db_config(value.layer_db_config);
         config.concurrency_limit(value.edda_concurrency_limit);
+        config.parallel_build_limit(value.edda_parallel_build_limit);
         config.instance_id(value.instance_id);
         config.quiescent_period(Duration::from_secs(value.quiescent_period_secs));
         config.build().map_err(Into::into)
@@ -204,6 +217,10 @@ fn random_instance_id() -> String {
 
 fn default_concurrency_limit() -> Option<usize> {
     DEFAULT_CONCURRENCY_LIMIT
+}
+
+fn default_parallel_build_limit() -> usize {
+    DEFAULT_PARALLEL_BUILD_LIMIT
 }
 
 fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {

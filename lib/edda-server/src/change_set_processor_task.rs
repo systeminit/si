@@ -97,6 +97,7 @@ impl ChangeSetProcessorTask {
         incoming: CompressingStream<push::Ordered>,
         frigg: FriggStore,
         edda_updates: EddaUpdates,
+        parallel_build_limit: usize,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         ctx_builder: DalContextBuilder,
@@ -117,6 +118,7 @@ impl ChangeSetProcessorTask {
             nats,
             frigg,
             edda_updates,
+            parallel_build_limit,
             ctx_builder,
             server_tracker,
         );
@@ -380,6 +382,7 @@ mod handlers {
             nats: _,
             frigg,
             edda_updates,
+            parallel_build_limit,
             ctx_builder,
             server_tracker: _,
         } = state;
@@ -407,6 +410,7 @@ mod handlers {
             &ctx,
             &frigg,
             &edda_updates,
+            parallel_build_limit,
             workspace_id,
             change_set_id,
             request,
@@ -429,6 +433,7 @@ mod handlers {
         ctx: &DalContext,
         frigg: &FriggStore,
         edda_updates: &EddaUpdates,
+        parallel_build_limit: usize,
         workspace_id: WorkspacePk,
         change_set_id: ChangeSetId,
         request: CompressedRequest,
@@ -454,6 +459,7 @@ mod handlers {
                         ctx,
                         frigg,
                         edda_updates,
+                        parallel_build_limit,
                         change_set_id,
                         to_snapshot_address, // both snapshot addrs will use `to`
                         to_snapshot_address, // both snapshot addrs will use `to`
@@ -467,6 +473,7 @@ mod handlers {
                         ctx,
                         frigg,
                         edda_updates,
+                        parallel_build_limit,
                         None,
                         "explicit rebuild",
                     )
@@ -480,6 +487,7 @@ mod handlers {
                     ctx,
                     frigg,
                     edda_updates,
+                    parallel_build_limit,
                     None,
                     "explicit rebuild",
                 )
@@ -503,6 +511,7 @@ mod handlers {
                         ctx,
                         frigg,
                         edda_updates,
+                        parallel_build_limit,
                         change_set_id,
                         from_snapshot_address,
                         to_snapshot_address,
@@ -523,6 +532,7 @@ mod handlers {
                         ctx,
                         frigg,
                         edda_updates,
+                        parallel_build_limit,
                         latest_index_checksum,
                         "snapshot moved",
                     )
@@ -537,6 +547,7 @@ mod handlers {
                         ctx,
                         frigg,
                         edda_updates,
+                        parallel_build_limit,
                         None,
                         "initial build",
                     )
@@ -547,10 +558,12 @@ mod handlers {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn process_incremental_updates(
         ctx: &DalContext,
         frigg: &FriggStore,
         edda_updates: &EddaUpdates,
+        parallel_build_limit: usize,
         change_set_id: ChangeSetId,
         from_snapshot_address: WorkspaceSnapshotAddress,
         to_snapshot_address: WorkspaceSnapshotAddress,
@@ -575,6 +588,7 @@ mod handlers {
             ctx,
             frigg,
             edda_updates,
+            parallel_build_limit,
             change_set_id,
             from_snapshot_address,
             to_snapshot_address,
@@ -633,6 +647,8 @@ mod app_state {
         pub(crate) frigg: FriggStore,
         /// Publishes patch and index update messages
         pub(crate) edda_updates: EddaUpdates,
+        /// Parallelism limit for materialized view builds
+        pub(crate) parallel_build_limit: usize,
         /// DAL context builder for each processing request
         pub(crate) ctx_builder: DalContextBuilder,
         /// A task tracker for server-level tasks that can outlive the lifetime of a change set
@@ -650,6 +666,7 @@ mod app_state {
             nats: NatsClient,
             frigg: FriggStore,
             edda_updates: EddaUpdates,
+            parallel_build_limit: usize,
             ctx_builder: DalContextBuilder,
             server_tracker: TaskTracker,
         ) -> Self {
@@ -659,6 +676,7 @@ mod app_state {
                 nats,
                 frigg,
                 edda_updates,
+                parallel_build_limit,
                 ctx_builder,
                 server_tracker,
             }
