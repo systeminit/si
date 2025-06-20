@@ -59,7 +59,10 @@ for arg in cfg.get("to-run", []):
 config.set_enabled_resources(enabled_resources)
 
 RUST_RESOURCE_ARGS = {
-    "serve_env": {"SI_FORCE_COLOR": "true"},
+    "serve_env": {
+        "SI_FORCE_COLOR": "true",
+        "SI_LOG_FILE_DIRECTORY": "../log",
+    },
     "trigger_mode": TRIGGER_MODE_MANUAL,
 }
 
@@ -102,7 +105,6 @@ def si_buck2_resource(
         name = None,
         allow_parallel = True,
         buck2_serve_args = None,
-        tee = True,
         **kwargs):
     # Figure name from build command: //app/web:dev -> web
     if name == None:
@@ -116,10 +118,6 @@ def si_buck2_resource(
     serve_cmd = "buck2 run {}".format(mode_and_targets)
     if buck2_serve_args != None:
         serve_cmd += " -- {}".format(buck2_serve_args)
-    if tee and mode_and_targets != target:
-        # TODO different resources currently tee differently depending on mode. Seems like copypasta
-        # error but ask around to see if it's intended.
-        serve_cmd += " | tee /tmp/si-logs/{}".format(name)
 
     # Compute Buck2 source inputs to populate Tilt local_resource/deps
     deps = buck2_build_deps([target])
@@ -358,7 +356,6 @@ si_buck2_resource(
 si_buck2_resource(
     "//bin/module-index:module-index",
     auto_init = False,
-    tee = False,
     resource_deps = [
         "otelcol",
         "postgres",

@@ -9,6 +9,7 @@ kubeconfig.yml
 vendor/automerge
 *.ignore
 /.env
+/log/
 /support/dev/k8s/**/*.env
 /support/dev/k8s/**/dockerconfig.json
 /support/dev/k8s/**/web-htpasswd

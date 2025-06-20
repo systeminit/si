@@ -147,11 +147,11 @@ services:
   promtail:
     #<<: *loki-logged-service
     image: grafana/promtail:latest
-    container_name: promtail
+    command:
+      - "-config.file=/etc/promtail/config.yml"
     volumes:
-      - /tmp/si-logs:/logs
-      - ./promtail-config/config.yml:/etc/promtail/config.yml
-    command: -config.file=/etc/promtail/config.yml
+      - ../log:/var/log/services:ro
+      - ./config/promtail/config.yml:/etc/promtail/config.yml
 
   prometheus:
     #<<: *loki-logged-service
