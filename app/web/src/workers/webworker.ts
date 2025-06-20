@@ -318,12 +318,27 @@ const atomExistsOnIndexes = (
   return rows.flat().filter(nonNullable) as Checksum[];
 };
 
+/**
+ * Create a new index, as a copy of an existing index (fromIndexChecksum) if we have it.
+ *
+ * This assumes no index exists for the given checksum, and that the index for fromIndexChecksum
+ * is complete (i.e. associated with a changeset record).
+ *
+ * @param meta the new and previous indexes for the changeset.
+ * @param fromIndexChecksum the checksum the changeset currently has in the frontend
+ */
 const newIndex = (meta: AtomMeta, fromIndexChecksum: string | undefined) => {
+  //
+  // Create a new empty index
+  //
   db.exec({
     sql: `INSERT INTO indexes (checksum) VALUES (?);`,
     bind: [meta.toIndexChecksum],
   });
 
+  //
+  // Copy atoms from the previous index
+  //
   const rows = db.exec({
     sql: `SELECT index_checksum FROM changesets WHERE change_set_id = ?`,
     bind: [meta.changeSetId],
@@ -335,6 +350,7 @@ const newIndex = (meta: AtomMeta, fromIndexChecksum: string | undefined) => {
     | typeof NOROW;
 
   if (fromIndexChecksum && fromIndexChecksum !== meta.toIndexChecksum) {
+    // Copy the index from the previous changeset if one exists
     db.exec({
       sql: `INSERT INTO index_mtm_atoms
         SELECT
@@ -346,6 +362,9 @@ const newIndex = (meta: AtomMeta, fromIndexChecksum: string | undefined) => {
       bind: [meta.toIndexChecksum, fromIndexChecksum],
     });
   } else if (lastKnownFromChecksum && lastKnownFromChecksum !== NOROW) {
+    // Copy the index from the previous changeset if one exists
+    // TODO may be redundant; the only caller (indexLogic()) already gets fromIndexChecksum
+    // from the same place.
     debug(`HIT ELSE BRANCH NEW FROM CHECKSUM SHIT`);
     db.exec({
       sql: `INSERT INTO index_mtm_atoms
@@ -361,6 +380,12 @@ const newIndex = (meta: AtomMeta, fromIndexChecksum: string | undefined) => {
     // we have a new change set and a patch at the same time
     // which means that the change set record did not exist, no from in the DB
     // but we have the from in the payload
+    //
+    // NOTE: this could be incomplete! Cannot be sure an index/atoms are complete unless
+    // they are associated with a change_sets record, and we're not checking that here.
+    debug(
+      `New changeset and patch at the same time! Copying index atoms from edda's changeset ${meta.fromIndexChecksum}`,
+    );
     db.exec({
       sql: `INSERT INTO index_mtm_atoms
         SELECT
@@ -505,6 +530,9 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     debug("🔨 handling hammer with index checksum", msg.atom.toIndexChecksum);
   }
 
+  // Make sure the index exists before we try to insert atoms into it
+  const indexChecksum = initIndexAndChangeSet(msg.atom, span);
+
   // in between throwing a hammer and receiving it, i might already have written the atom
   const indexes = atomExistsOnIndexes(
     msg.atom.kind,
@@ -527,8 +555,6 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
       return;
     }
   }
-
-  const indexChecksum = indexLogic(msg.atom, span);
 
   // if the atom exists, i just need the MTM
   if (indexes.length === 0) {
@@ -638,7 +664,13 @@ const insertAtomMTM = (atom: Atom, indexChecksum: Checksum) => {
   return true;
 };
 
-const indexLogic = (meta: AtomMeta, span?: Span) => {
+/**
+ * Create an index and changeset if they don't exist, and copy the previous index if we have it.
+ *
+ * @param meta new (and previous) index for the changeset
+ * @param span tracing span to work with
+ */
+const initIndexAndChangeSet = (meta: AtomMeta, span?: Span) => {
   const { changeSetId, workspaceId, toIndexChecksum } = {
     ...meta,
   };
@@ -649,6 +681,9 @@ const indexLogic = (meta: AtomMeta, span?: Span) => {
     toIndexChecksum,
   });
 
+  //
+  // Figure out what index the change set has right now
+  //
   const changeSetQuery = db.exec({
     sql: `select change_set_id, index_checksum from changesets where change_set_id = ?`,
     returnValue: "resultRows",
@@ -687,9 +722,16 @@ const indexLogic = (meta: AtomMeta, span?: Span) => {
     // );
   }
 
-  // Create index if needed - this is the new validation mechanism
+  //
+  // Create the index if it doesn't exist--and copy the previous index if we have them
+  //
   if (indexExists === NOROW) newIndex(meta, currentIndexChecksum);
 
+  //
+  // Create the changeset record if it doesn't exist
+  //
+  // TODO this is the wrong place to do this, or at least it shouldn't use the toIndexChecksum;
+  // in general, we don't associate a changeset with a specific index until that index is complete!
   if (!changeSetExists) {
     db.exec({
       sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?);",
@@ -743,7 +785,7 @@ const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
 
   let indexChecksum: string;
   try {
-    indexChecksum = indexLogic(data.meta, span);
+    indexChecksum = initIndexAndChangeSet(data.meta, span);
     debug("📦 Index logic completed, resolved checksum:", indexChecksum);
   } catch (err) {
     if (err instanceof Ragnarok) {
