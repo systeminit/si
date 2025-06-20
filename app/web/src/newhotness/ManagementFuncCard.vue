@@ -1,9 +1,21 @@
 <template>
   <li
     v-if="func.kind !== 'import'"
-    class="rounded border border-neutral-600 flex flex-col"
+    :class="
+      clsx(
+        'rounded border flex flex-col',
+        themeClasses('border-neutral-400', 'border-neutral-600'),
+      )
+    "
   >
-    <div class="border-b border-neutral-600 w-full p-xs">
+    <div
+      :class="
+        clsx(
+          'border-b w-full p-xs',
+          themeClasses('border-neutral-400', 'border-neutral-600'),
+        )
+      "
+    >
       {{ func.name }}
     </div>
     <div class="w-full flex place-content-between items-center p-sm">
@@ -22,7 +34,12 @@
     </div>
     <div
       v-if="funcRun"
-      class="m-sm bg-neutral-600 flex items-center gap-xs px-xs py-sm rounded"
+      :class="
+        clsx(
+          'm-sm flex items-center gap-xs px-xs py-sm rounded',
+          themeClasses('bg-neutral-300', 'bg-neutral-700'),
+        )
+      "
     >
       <Icon :name="getIconNameFromFuncRun(funcRun)" class="shrink-0" />
       <span class="grow">
@@ -40,9 +57,15 @@
 </template>
 
 <script setup lang="ts">
-import { Icon, IconNames, VButton } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  IconNames,
+  themeClasses,
+  VButton,
+} from "@si/vue-lib/design-system";
 import { useRoute, useRouter } from "vue-router";
 import { ref } from "vue";
+import clsx from "clsx";
 import { routes, useApi } from "@/newhotness/api_composables";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
 import { MgmtFunction } from "@/workers/types/entity_kind_types";
