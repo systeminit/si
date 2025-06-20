@@ -35,7 +35,6 @@ import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Context } from "@/newhotness/types";
 import { DefaultMap } from "@/utils/defaultmap";
 import * as rainbow from "@/newhotness/logic_composables/rainbow_counter";
-import router from "@/router";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useWorkspacesStore } from "../workspaces.store";
 
@@ -257,18 +256,9 @@ const lobbyExit: LobbyExitFn = async (
   noBroadcast?: boolean,
 ) => {
   // Only navigate away from lobby if user is currently in the lobby
-  // for this workspace and change set
-  if (router.currentRoute.value.name !== "new-hotness-lobby") {
+  // for this change set
+  if (muspelheimStatuses.value[changeSetId] === true) {
     return;
-  } else {
-    const params = router.currentRoute.value.params;
-    if (!params || Object.keys(params).length === 0)
-      throw new Error("Params expected");
-    if (
-      params.workspaceId !== workspaceId ||
-      params.changeSetId !== changeSetId
-    )
-      return;
   }
 
   if (!noBroadcast) {
@@ -455,7 +445,7 @@ const waitForInitCompletion = (): Promise<void> => {
   });
 };
 
-const MUSPELHEIM_CONCURRENCY = 3;
+const MUSPELHEIM_CONCURRENCY = 4;
 
 export const muspelheimStatuses = ref<{ [key: string]: boolean }>({});
 
@@ -465,14 +455,12 @@ export const muspelheim = async (workspaceId: string, force?: boolean) => {
   console.log("🔥 MUSPELHEIM 🔥");
   const niflheimQueue = new PQueue({ concurrency: MUSPELHEIM_CONCURRENCY });
   const changeSetStore = useChangeSetsStore();
-  for (const changeSetId of changeSetStore.changeSetIds) {
+  // We cannot rely on the change set store having already fetched
+  await changeSetStore.FETCH_CHANGE_SETS();
+  for (const changeSetId of changeSetStore.openChangeSetIds) {
     muspelheimStatuses.value[changeSetId] = false;
     niflheimQueue.add(async () => {
-      muspelheimStatuses.value[changeSetId] = await niflheim(
-        workspaceId,
-        changeSetId,
-        force,
-      );
+      await niflheim(workspaceId, changeSetId, force);
     });
   }
 
@@ -489,8 +477,8 @@ export const niflheim = async (
   force?: boolean,
 ): Promise<boolean> => {
   await waitForInitCompletion();
-  const coldstart = !(await db.changeSetExists(workspaceId, changeSetId));
-  if (coldstart || force) {
+  const changeSetExists = await db.changeSetExists(workspaceId, changeSetId);
+  if (!changeSetExists || force) {
     // eslint-disable-next-line no-console
     console.log("❄️ NIFLHEIM ❄️", changeSetId);
     const success = await db.niflheim(workspaceId, changeSetId);
@@ -499,10 +487,8 @@ export const niflheim = async (
 
     // If niflheim returned false (202 response), navigate to lobby
     // Index is being rebuilt and is not ready yet.
-    if (!success) {
-      muspelheimStatuses.value[changeSetId] = false;
-      return false;
-    }
+    muspelheimStatuses.value[changeSetId] = success;
+    return success;
   }
   return true;
 };
@@ -524,6 +510,7 @@ export const makeKey = (kind: string, id?: string) => {
 };
 
 export const prune = async (workspaceId: string, changeSetId: string) => {
+  delete muspelheimStatuses.value[changeSetId];
   await db.pruneAtomsForClosedChangeSet(workspaceId, changeSetId);
 };
 

@@ -108,8 +108,8 @@ export function useChangeSetsStore() {
         changeSetsApprovalData: {} as Record<ChangeSetId, ApprovalData>,
       }),
       getters: {
-        changeSetIds(): ChangeSetId[] {
-          return Object.keys(this.changeSetsById);
+        openChangeSetIds(): ChangeSetId[] {
+          return this.openChangeSets.map((changeSet) => changeSet.id);
         },
         currentUserIsDefaultApprover(): boolean {
           const userPk = authStore.user?.pk;

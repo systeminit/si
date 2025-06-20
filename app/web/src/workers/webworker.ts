@@ -625,15 +625,15 @@ const insertAtomMTM = (atom: Atom, indexChecksum: Checksum) => {
       sql: `insert into index_mtm_atoms
         (index_checksum, kind, args, checksum)
           VALUES
-        (?, ?, ?, ?)
+        (?, ?, ?, ?) on conflict do nothing
       ;`,
       bind,
     });
-  } catch {
+  } catch (err) {
     // should be resolved with the previous SELECT
     // even with the unique constraint ON CONFLICT REPLACE
     // if the checksum is identical, it will error
-    error("createMTM failed", atom);
+    error("createMTM failed", atom, err);
   }
   return true;
 };
@@ -2885,7 +2885,7 @@ const dbInterface: TabDBInterface = {
       const currentIndexChecksum = headRow;
 
       db.exec({
-        sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?);",
+        sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?) on conflict do nothing",
         bind: [changeSetId, workspaceId, currentIndexChecksum],
       });
     } catch (err) {

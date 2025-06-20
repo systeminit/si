@@ -286,6 +286,7 @@ export const useApi = () => {
         );
         if (exists) {
           clearInterval(interval);
+          muspelheimStatuses.value[newChangeSetId] = true;
           resolve();
         }
         retry += 1;

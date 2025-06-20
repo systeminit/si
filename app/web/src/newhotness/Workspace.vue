@@ -310,12 +310,13 @@ onBeforeMount(async () => {
   // Activate the norse stack, which is explicitly NOT flagged for the job-specific UI.
   await heimdall.init(workspaceAuthToken, queryClient);
   watch(
-    [connectionShouldBeEnabled.value, heimdall.initCompleted],
+    [connectionShouldBeEnabled, heimdall.initCompleted],
     async () => {
       if (connectionShouldBeEnabled.value && heimdall.initCompleted.value) {
         // NOTE(nick,wendy): this says "reconnect", but it must run once on startup.
+        console.log("recon");
         await heimdall.bifrostReconnect();
-      } else {
+      } else if (!connectionShouldBeEnabled.value) {
         await heimdall.bifrostClose();
       }
     },
@@ -330,24 +331,19 @@ onBeforeMount(async () => {
 
 watch(
   () => props.changeSetId,
-  async () => {
-    const success = await heimdall.niflheim(
-      props.workspacePk,
-      props.changeSetId,
-      false, // we should have prefetched this, so only force if the change set is not in the list
-    );
-    if (!success) {
-      heimdall.muspelheimStatuses.value[props.changeSetId] = false;
+  async (newValue, _) => {
+    const exists = await heimdall.changeSetExists(props.workspacePk, newValue);
+    if (!exists) {
+      heimdall.muspelheimStatuses.value[newValue] = false;
     }
-    router.push({
-      name: "new-hotness",
-      params: {
-        workspacePk: props.workspacePk,
-        changeSetId: props.changeSetId,
-      },
-    });
+
+    const success = await heimdall.niflheim(props.workspacePk, newValue, false);
+    if (!success) {
+      heimdall.muspelheimStatuses.value[newValue] = false;
+    }
   },
 );
+
 realtimeStore.subscribe(
   "TOP_LEVEL_WORKSPACE",
   `workspace/${props.workspacePk}`,
