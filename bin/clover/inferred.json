@@ -403,6 +403,16 @@
       "60"
     ]
   },
+  "The type of the analyzer, must be one of ACCOUNT, ORGANIZATION, ACCOUNT_INTERNAL_ACCESS, ORGANIZATION_INTERNAL_ACCESS, ACCOUNT_UNUSED_ACCESS and ORGANIZATION_UNUSED_ACCESS": {
+    "enum": [
+      "ACCOUNT",
+      "ORGANIZATION",
+      "ACCOUNT_INTERNAL_ACCESS",
+      "ORGANIZATION_INTERNAL_ACCESS",
+      "ACCOUNT_UNUSED_ACCESS",
+      "ORGANIZATION_UNUSED_ACCESS"
+    ]
+  },
   "Determines whether any HTTP headers are included in requests that CloudFront sends to the origin. Valid values are:\n  +   ``none`` – No HTTP headers in viewer requests are included in requests that CloudFront sends to the origin. Even when this field is set to ``none``, any headers that are listed in a ``CachePolicy`` *are* included in origin requests.\n  +   ``whitelist`` – Only the HTTP headers that are listed in the ``Headers`` type are included in requests that CloudFront sends to the origin.\n  +   ``allViewer`` – All HTTP headers in viewer requests are included in requests that CloudFront sends to the origin.\n  +   ``allViewerAndWhitelistCloudFront`` – All HTTP headers in viewer requests and the additional CloudFront headers that are listed in the ``Headers`` type are included in requests that CloudFront sends to the origin. The additional headers are added by CloudFront.\n  +   ``allExcept`` – All HTTP headers in viewer requests are included in requests that CloudFront sends to the origin, *except* for those listed in the ``Headers`` type, which are not included.": {
     "enum": [
       "none",
@@ -16010,6 +16020,9 @@
     "enum": null
   },
   "The value for the tag. You can specify a value that is 0 to 256 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.": {
+    "enum": null
+  },
+  "The value for the tag. You can specify a value that is 0 to 256 Unicode characters in length.": {
     "enum": null
   },
   "The value for the tag. You can specify a value that is 1 to 255 Unicode characters in length and cannot be prefixed with aws:. You can use any of the following characters: the set of Unicode letters, digits, whitespace, _, ., /, =, +, and -.": {
