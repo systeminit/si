@@ -398,7 +398,7 @@ export const getComponentNames = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
 }) => {
-  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  await waitForInitCompletion();
 
   const start = Date.now();
   const componentNames = await db.getComponentNames(
@@ -434,8 +434,7 @@ export const getOutgoingConnections = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
 }) => {
-  if (!initCompleted.value) throw new Error("bifrost not initiated");
-
+  await waitForInitCompletion();
   const connectionsById = await db.getOutgoingConnectionsByComponentId(
     args.workspaceId,
     args.changeSetId,
@@ -447,12 +446,18 @@ export const getOutgoingConnections = async (args: {
 const waitForInitCompletion = (): Promise<void> => {
   return new Promise((resolve) => {
     if (initCompleted.value) {
+      // eslint-disable-next-line no-console
+      console.debug("init already completed");
       resolve();
       return;
     }
 
+    // eslint-disable-next-line no-console
+    console.debug("waiting for init completion");
     const unwatch = watch(initCompleted, (newValue) => {
       if (newValue) {
+        // eslint-disable-next-line no-console
+        console.debug("init completed in watcher");
         unwatch();
         resolve();
       }
