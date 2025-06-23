@@ -4264,12 +4264,23 @@ impl Component {
 
     /// Return the ids of all the components managed by this component
     pub async fn get_managed(&self, ctx: &DalContext) -> ComponentResult<Vec<ComponentId>> {
+        Self::get_managed_by_id(ctx, self.id()).await
+    }
+
+    /// Return the ids of all the components managed by this component
+    pub async fn get_managed_by_id(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<Vec<ComponentId>> {
         let mut result = vec![];
 
         let snapshot = ctx.workspace_snapshot()?;
 
         for target_idx in snapshot
-            .outgoing_targets_for_edge_weight_kind(self.id, EdgeWeightKindDiscriminants::Manages)
+            .outgoing_targets_for_edge_weight_kind(
+                component_id,
+                EdgeWeightKindDiscriminants::Manages,
+            )
             .await?
         {
             let node_weight = snapshot.get_node_weight(target_idx).await?;
