@@ -459,6 +459,22 @@ const selectedViewOrDefaultId = computed(() => {
   return view.id;
 });
 
+// We need to check if the change set has been changed
+// and if it has and the selected view doesn't exist in that
+// new change set, then we default back to 'All Views'
+watch(
+  ctx?.changeSetId,
+  () => {
+    if (
+      !viewListQuery.data.value ||
+      !viewListQuery.data.value.find((v) => v.id === selectedView.value)
+    ) {
+      selectedView.value = "";
+    }
+  },
+  { immediate: true },
+);
+
 const exploreContext = computed<ExploreContext>(() => {
   return {
     viewId: selectedViewOrDefaultId,
