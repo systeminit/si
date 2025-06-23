@@ -21,16 +21,14 @@ use utoipa::{
 
 use super::{
     ComponentReference,
+    ComponentViewV1,
     ComponentsError,
     get_component::GetComponentV1Response,
     resolve_component_reference,
 };
-use crate::{
-    extract::{
-        PosthogEventTracker,
-        change_set::ChangeSetDalContext,
-    },
-    service::v1::ComponentViewV1,
+use crate::extract::{
+    PosthogEventTracker,
+    change_set::ChangeSetDalContext,
 };
 
 #[derive(Deserialize, Serialize, Debug, IntoParams, ToSchema)]

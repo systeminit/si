@@ -405,7 +405,7 @@ impl From<ComponentId> for ComponentIdent {
 }
 
 impl ComponentIdent {
-    async fn resolve(&self, ctx: &DalContext) -> Result<Option<ComponentId>> {
+    pub async fn resolve(&self, ctx: &DalContext) -> Result<Option<ComponentId>> {
         if let Some(id) = self.resolve_as_id(ctx).await? {
             return Ok(Some(id));
         }
@@ -441,7 +441,7 @@ impl From<FuncId> for FuncIdent {
 
 impl FuncIdent {
     #[allow(unused)]
-    async fn resolve(&self, ctx: &DalContext) -> Result<Option<FuncId>> {
+    pub async fn resolve(&self, ctx: &DalContext) -> Result<Option<FuncId>> {
         if let Some(id) = self.resolve_as_id(ctx).await? {
             return Ok(Some(id));
         }
@@ -479,7 +479,11 @@ impl From<AttributeValueId> for AttributeValueIdent {
 }
 
 impl AttributeValueIdent {
-    async fn resolve(
+    pub fn path(&self) -> &str {
+        &self.0
+    }
+
+    pub async fn resolve(
         self,
         ctx: &DalContext,
         component_id: ComponentId,

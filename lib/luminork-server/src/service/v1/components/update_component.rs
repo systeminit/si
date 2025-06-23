@@ -25,6 +25,7 @@ use utoipa::{
 use super::{
     ComponentPropKey,
     ComponentV1RequestPath,
+    ComponentViewV1,
     SecretPropKey,
     connections::{
         Connection,
@@ -38,7 +39,6 @@ use super::{
     },
 };
 use crate::{
-    api_types::component::v1::ComponentViewV1,
     extract::{
         PosthogEventTracker,
         change_set::ChangeSetDalContext,
@@ -298,7 +298,8 @@ pub struct UpdateComponentV1Response {
         "toDelete": false,
         "canBeUpgraded": true,
         "connections": [{"incoming": {"fromComponentId": "01H9ZQD35JPMBGHH69BT0Q79BB", "fromComponentName": "Other Component", "from": "output1", "to": "input1"}}],
-        "views": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YEE", "name": "Default View", "isDefault": true}]
+        "views": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YEE", "name": "Default View", "isDefault": true}],
+        "sources": {"/domain/RouteTableId": {"component": "demo-component","propPath": "/resource_value/RouteTableId"}}
     }))]
     pub component: ComponentViewV1,
 }

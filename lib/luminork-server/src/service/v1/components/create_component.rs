@@ -276,7 +276,8 @@ pub struct CreateComponentV1Response {
         "toDelete": false,
         "canBeUpgraded": true,
         "connections": [],
-        "views": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YEE", "name": "Default View", "isDefault": true}]
+        "views": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YEE", "name": "Default View", "isDefault": true}],
+        "sources": {"/domain/RouteTableId": {"component": "demo-component","propPath": "/resource_value/RouteTableId"}}
     }))]
     pub component: ComponentViewV1,
 }
