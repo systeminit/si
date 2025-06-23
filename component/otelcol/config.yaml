@@ -2,7 +2,9 @@ receivers:
   otlp:
     protocols:
       grpc:
+        endpoint: otelcol:4317
       http:
+        endpoint: otelcol:4318
         cors:
           allowed_origins:
             - "*"
@@ -199,25 +201,25 @@ processors:
           "@opentelemetry/instrumentation-fetch"
 
 exporters:
-  logging:
+  debug:
     verbosity: normal
   otlp:
     endpoint: jaeger:4317
     tls:
       insecure: true
   prometheus:
-    endpoint: 0.0.0.0:9090
+    endpoint: otelcol:9090
 
 extensions:
-  zpages:
   health_check:
+    endpoint: 127.0.0.1:13133
 
 service:
   pipelines:
     logs:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, otlp]
+      exporters: [debug, otlp]
     traces:
       receivers: [otlp]
       processors:
@@ -225,9 +227,9 @@ service:
         - transform/spanevent
         - filter/spanevent
         - batch
-      exporters: [logging, otlp]
+      exporters: [debug, otlp]
     metrics:
       receivers: [otlp]
       processors: [batch]
       exporters: [prometheus]
-  extensions: [zpages, health_check]
+  extensions: [health_check]

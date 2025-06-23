@@ -77,6 +77,14 @@ pub(crate) struct Args {
     )]
     pub(crate) log_json: bool,
 
+    /// Additionally appends logging to rolling files under the given directory.
+    #[arg(
+        long = "log-file-directory",
+        env = "SI_LOG_FILE_DIRECTORY",
+        hide_env_values = true
+    )]
+    pub(crate) log_file_directory: Option<PathBuf>,
+
     /// Enables support for emitting async runtime data to `tokio-console`.
     ///
     /// For more details, visit: <https://github.com/tokio-rs/console>.

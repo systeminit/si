@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{
     ArgAction,
     Parser,
@@ -59,6 +61,14 @@ pub(crate) struct Args {
         hide_env_values = true
     )]
     pub(crate) log_json: bool,
+
+    /// Additionally appends logging to rolling files under the given directory.
+    #[arg(
+        long = "log-file-directory",
+        env = "SI_LOG_FILE_DIRECTORY",
+        hide_env_values = true
+    )]
+    pub(crate) log_file_directory: Option<PathBuf>,
 
     /// ARN for a Private Cert Authority in AWS
     /// Can be specified multiple times for multiple CAs

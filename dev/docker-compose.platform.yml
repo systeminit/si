@@ -11,44 +11,9 @@ x-loki-logged-service: &loki-logged-service
       max-file: "2"
       max-size: "10m"
 
+# Note: ensure services are sorted alphabetically
+
 services:
-  postgres:
-    # uncomment below to get these logs in grafana
-    #<<: *loki-logged-service
-    image: systeminit/postgres:stable
-    environment:
-      - "POSTGRES_PASSWORD=bugbear"
-      - "PGPASSWORD=bugbear"
-      - "POSTGRES_USER=si"
-      - "POSTGRES_DB=si"
-      - "POSTGRES_MULTIPLE_DBS=si_layer_db,si_auth,si_auth_prisma_shadow_db,si_module_index,si_audit"
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: [ "CMD-SHELL", "[ -f /tmp/ready ]" ]
-      interval: 5s
-      timeout: 10s
-      retries: 5
-
-  promtail:
-    #<<: *loki-logged-service
-    image: grafana/promtail:latest
-    container_name: promtail
-    volumes:
-      - /tmp/si-logs:/logs
-      - ./promtail-config/config.yml:/etc/promtail/config.yml
-    command: -config.file=/etc/promtail/config.yml
-
-  loki:
-    #<<: *loki-logged-service
-    image: grafana/loki
-    container_name: loki
-    volumes:
-      - ./loki-config/config.yml:/etc/loki/config.yml
-    ports:
-      - "3100:3100"
-    command: -config.file=/etc/loki/config.yml
-
   db-test:
     #<<: *loki-logged-service
     image: systeminit/postgres:stable
@@ -66,7 +31,96 @@ services:
     ports:
       - "8432:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "[ -f /tmp/ready ]" ]
+      test:
+        - "CMD-SHELL"
+        - "[ -f /tmp/ready ]"
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  grafana:
+    #<<: *loki-logged-service
+    image: grafana/grafana-enterprise
+    environment:
+      - "GF_AUTH_ANONYMOUS_ENABLED=true"
+      - "GF_AUTH_ANONYMOUS_ORG_ROLE=Admin"
+      - "GF_AUTH_DISABLE_LOGIN_FORM=true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+
+  jaeger:
+    #<<: *loki-logged-service
+    image: systeminit/jaeger:stable
+    ports:
+      # jaeger ui
+      - "16686:16686"
+
+  localstack:
+    #<<: *loki-logged-service
+    image: localstack/localstack
+    ports:
+      - "4566:4566"
+
+  loki:
+    #<<: *loki-logged-service
+    image: grafana/loki
+    ports:
+      # http listen port (external for host-run servers)
+      - "3100:3100"
+    volumes:
+      - ./config/loki/config.yml:/etc/loki/local-config.yaml
+
+  nats:
+    #<<: *loki-logged-service
+    image: systeminit/nats:stable
+    command:
+      - "--config"
+      - "nats-server.conf"
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    # We can't have the docker-compose finish before postgres is ready, this is
+    # a workaround to allow the rest of the tilt file continue to create sdf etc
+    # so that the start doesn't fail as the databases don't exist
+    depends_on:
+      - postgres
+
+  node_exporter:
+    image: prom/node-exporter
+    command:
+      - --path.rootfs=/host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+
+  otelcol:
+    #<<: *loki-logged-service
+    image: systeminit/otelcol:stable
+    ports:
+      # receiver: grpc (external for host-run servers)
+      - "4317:4317"
+      # receiver: http (external for host-run servers)
+      - "4318:4318"
+    depends_on:
+      - jaeger
+
+  postgres:
+    #<<: *loki-logged-service
+    image: systeminit/postgres:stable
+    environment:
+      - "POSTGRES_PASSWORD=bugbear"
+      - "PGPASSWORD=bugbear"
+      - "POSTGRES_USER=si"
+      - "POSTGRES_DB=si"
+      - "POSTGRES_MULTIPLE_DBS=si_layer_db,si_auth,si_auth_prisma_shadow_db,si_module_index,si_audit"
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "[ -f /tmp/ready ]"
       interval: 5s
       timeout: 10s
       retries: 5
@@ -90,71 +144,23 @@ services:
     depends_on:
       - db-test
 
-  nats:
+  promtail:
     #<<: *loki-logged-service
-    image: systeminit/nats:stable
+    image: grafana/promtail:latest
     command:
-      - "--config"
-      - "nats-server.conf"
-    ports:
-      - "4222:4222"
-      - "8222:8222"
-    # We can't have the docker-compose finish before postgres is ready, this is
-    # a workaround to allow the rest of the tilt file continue to create sdf etc
-    # so that the start doesn't fail as the databases don't exist
-    depends_on:
-      - postgres
-
-  jaeger:
-    #<<: *loki-logged-service
-    image: systeminit/jaeger:stable
-    ports:
-      - "5317:4317"
-      - "16686:16686"
-
-  grafana:
-    #<<: *loki-logged-service
-    image: grafana/grafana-enterprise
-    container_name: grafana
-    ports:
-      - "3000:3000"
+      - "-config.file=/etc/promtail/config.yml"
     volumes:
-      - ./datasources:/etc/grafana/provisioning/datasources
-    environment:
-      - "GF_AUTH_ANONYMOUS_ENABLED=true"
-      - "GF_AUTH_ANONYMOUS_ORG_ROLE=Admin"
-      - "GF_AUTH_DISABLE_LOGIN_FORM=true"
-
-  otelcol:
-    #<<: *loki-logged-service
-    image: systeminit/otelcol:stable
-    # If you'd like to ship to honeycomb from your local machine, you need these two variables in the otelcol
-    #environment:
-    #  - "SI_OTEL_COL__HONEYCOMB_API_KEY=SOE2nLJba2Fe1xU0pR3zMG"
-    #  - "SI_OTEL_COL__CONFIG_PATH=/etc/otelcol/honeycomb-config.yaml"
-    ports:
-      - "4317:4317"
-      - "4318:4318"
-      - "9090:9090"
-      - "55679:55679"
-    depends_on:
-      - jaeger
+      - ../log:/var/log/services:ro
+      - ./config/promtail/config.yml:/etc/promtail/config.yml
 
   prometheus:
     #<<: *loki-logged-service
     image: prom/prometheus
-    ports:
-      - "9091:9090"
     volumes:
-      - "./prometheus-config/config.yml:/etc/prometheus/prometheus.yml"
+      - "./config/prometheus/config.yml:/etc/prometheus/prometheus.yml"
     depends_on:
+      - node_exporter
       - otelcol
-
-  localstack:
-    #<<: *loki-logged-service
-    image: localstack/localstack
-    ports:
-      - "4566:4566"
 
   spicedb:
     #<<: *loki-logged-service
@@ -166,19 +172,3 @@ services:
       - "ZED_KEYRING_PASSWORD=orc"
     ports:
       - "50051:50051"
-
-  node_exporter:
-    container_name: node_exporter
-    image: prom/node-exporter:v1.7.0
-    command:
-      - --path.procfs=/host/proc
-      - --path.sysfs=/host/sys
-      - --path.rootfs=/rootfs
-      - --collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)
-    ports:
-      - 9000:9100
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket:ro
