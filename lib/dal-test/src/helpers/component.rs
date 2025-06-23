@@ -128,7 +128,7 @@ pub async fn execute_management_func(
 
 /// Get the value of the component's domain attribute
 pub async fn domain(ctx: &DalContext, component: impl ComponentKey) -> Result<serde_json::Value> {
-    value::get(ctx, (component, "domain")).await
+    value::get(ctx, (component, "/domain")).await
 }
 
 /// Get the single view id for the component
