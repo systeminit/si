@@ -25,6 +25,9 @@ rust_binary(
 docker_image(
     name = "image",
     image_name = "edda",
+    build_args = {
+        "SI_RBE_TOKEN": ""
+    },
     build_deps = ["//bin/edda:edda"],
 )
 

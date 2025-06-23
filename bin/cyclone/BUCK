@@ -62,6 +62,9 @@ docker_image(
     name = "image",
     image_name = "cyclone",
     flake_lock = "//:flake.lock",
+    build_args = {
+        "SI_RBE_TOKEN": ""
+    },
     build_deps = [
         "//bin/cyclone:docker-entrypoint.sh",
         "//bin/cyclone:cyclone",
