@@ -18,14 +18,12 @@ use utoipa::{
 
 use super::{
     ComponentV1RequestPath,
+    ComponentViewV1,
     ComponentsError,
 };
-use crate::{
-    api_types::component::v1::ComponentViewV1,
-    extract::{
-        PosthogEventTracker,
-        change_set::ChangeSetDalContext,
-    },
+use crate::extract::{
+    PosthogEventTracker,
+    change_set::ChangeSetDalContext,
 };
 
 #[derive(Serialize, Debug, ToSchema)]
@@ -43,7 +41,8 @@ pub struct GetComponentV1Response {
         "toDelete": false,
         "canBeUpgraded": true,
         "connections": [],
-        "views": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YEE", "name": "Default View", "isDefault": true}]
+        "views": [{"id": "01HAXYZF3GC9CYA6ZVSM3E4YEE", "name": "Default View", "isDefault": true}],
+        "sources": {"/domain/RouteTableId": {"component": "demo-component","propPath": "/resource_value/RouteTableId"}}
     }))]
     pub component: ComponentViewV1,
     #[schema(example = json!([

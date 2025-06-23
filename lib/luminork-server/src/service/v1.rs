@@ -38,13 +38,17 @@ pub use change_sets::{
 };
 pub use components::{
     ComponentPropKey,
+    ComponentPropViewV1,
     ComponentReference,
     ComponentV1RequestPath,
+    ComponentViewV1,
     ComponentsError,
     ComponentsResult,
+    ConnectionViewV1,
     DomainPropPath,
     SecretPropKey,
     SecretPropPath,
+    SourceViewV1,
     add_action::{
         ActionReference,
         AddActionV1Request,
@@ -111,17 +115,10 @@ pub use schemas::{
 };
 pub use workspaces::WorkspaceError;
 
-pub use crate::api_types::{
-    component::v1::{
-        ComponentPropViewV1,
-        ComponentViewV1,
-        ConnectionViewV1,
-    },
-    func_run::v1::{
-        FuncRunLogViewV1,
-        FuncRunViewV1,
-        OutputLineViewV1,
-    },
+pub use crate::api_types::func_run::v1::{
+    FuncRunLogViewV1,
+    FuncRunViewV1,
+    OutputLineViewV1,
 };
 
 /// OpenAPI documentation for v1 API
@@ -214,6 +211,7 @@ pub use crate::api_types::{
             ComponentViewV1,
             ComponentPropViewV1,
             ConnectionViewV1,
+            SourceViewV1,
             ListComponentsV1Response,
             FindComponentV1Params,
             FuncRunV1RequestPath,
