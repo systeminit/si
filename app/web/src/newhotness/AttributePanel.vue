@@ -61,12 +61,14 @@
             :class="
               clsx(
                 'h-lg p-xs text-sm border font-mono cursor-text',
+                'focus:outline-none focus:ring-0 focus:z-10',
                 themeClasses(
-                  'text-shade-100 bg-white border-neutral-400',
-                  'text-shade-0 bg-black border-neutral-600',
+                  'text-shade-100 bg-white border-neutral-400 focus:border-action-500',
+                  'text-shade-0 bg-black border-neutral-600 focus:border-action-300',
                 ),
               )
             "
+            tabindex="0"
             type="text"
             @blur="blurNameInput"
             @input="
@@ -643,8 +645,10 @@ const required = ({ value }: { value: string | undefined }) => {
 };
 
 const resetNameInput = () => {
-  if (nameForm.state.isSubmitted || nameForm.state.isDirty)
+  if (nameForm.state.isSubmitted || nameForm.state.isDirty) {
     nameForm.reset(nameFormData.value);
+  }
+  nameInputRef.value?.blur();
 };
 
 const blurNameInput = () => {

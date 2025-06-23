@@ -73,7 +73,11 @@
         "
         class="text-right"
       >
-        <button class="underline text-action-400" @click="toggleHidden">
+        <button
+          tabindex="-1"
+          class="underline text-action-400"
+          @click="toggleHidden"
+        >
           {{ showDetails ? "Hide" : "View" }} Details
         </button>
       </div>

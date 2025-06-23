@@ -133,20 +133,11 @@
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem ref="mgmtRef" :expandable="false">
-          <template #header>Management Functions</template>
-          <ul v-if="mgmtFuncs.length > 0" class="p-xs flex flex-col gap-xs">
-            <ManagementFuncCard
-              v-for="func in mgmtFuncs"
-              :key="func.id"
-              :componentId="componentId"
-              :func="func"
-              :funcRun="latestFuncRuns[func.id]"
-            />
-          </ul>
-          <EmptyState
-            v-else
-            text="No management functions available"
-            icon="tools"
+          <template #header>Management</template>
+          <ManagementPanel
+            :component="component"
+            :latestFuncRuns="latestFuncRuns"
+            :connections="componentConnections ?? undefined"
           />
         </CollapsingFlexItem>
       </div>
@@ -268,7 +259,6 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { Context, assertIsDefined } from "@/newhotness/types";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
-import ManagementFuncCard from "@/newhotness/ManagementFuncCard.vue";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import AttributePanel from "./AttributePanel.vue";
 import { attributeEmitter, keyEmitter } from "./logic_composables/emitters";
@@ -285,6 +275,7 @@ import ActionsPanel from "./ActionsPanel.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import DocumentationPanel from "./DocumentationPanel.vue";
 import EmptyState from "./EmptyState.vue";
+import ManagementPanel from "./ManagementPanel.vue";
 
 const props = defineProps<{
   componentId: string;
