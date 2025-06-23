@@ -8,6 +8,7 @@ import {
   unref,
   toRaw,
   ref,
+  watch,
 } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
 import { monotonicFactory } from "ulid";
@@ -311,7 +312,7 @@ export const bifrost = async <T>(args: {
   kind: Gettable;
   id: Id;
 }): Promise<Reactive<T> | null> => {
-  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  await waitForInitCompletion();
   const start = Date.now();
   const maybeAtomDoc = await db.get(
     args.workspaceId,
@@ -332,7 +333,7 @@ export const bifrostList = async <T>(args: {
   kind: Listable;
   id: Id;
 }): Promise<Reactive<T> | null> => {
-  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  await waitForInitCompletion();
   const start = Date.now();
   const maybeAtomDoc = await db.getList(
     args.workspaceId,
@@ -375,7 +376,7 @@ export const getOutgoingConnectionsCounts = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
 }) => {
-  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  await waitForInitCompletion();
 
   const start = Date.now();
   const connectionsCounts = await db.getOutgoingConnectionsCounts(
@@ -415,7 +416,7 @@ export const getSchemaMembers = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
 }): Promise<SchemaMembers[]> => {
-  if (!initCompleted.value) throw new Error("bifrost not initiated");
+  await waitForInitCompletion();
 
   const start = Date.now();
   const schemaMembers = await db.getSchemaMembers(
@@ -443,17 +444,33 @@ export const getOutgoingConnections = async (args: {
   return new DefaultMap<string, Record<string, Connection>>(() => ({}));
 };
 
+const waitForInitCompletion = (): Promise<void> => {
+  return new Promise((resolve) => {
+    if (initCompleted.value) {
+      resolve();
+      return;
+    }
+
+    const unwatch = watch(initCompleted, (newValue) => {
+      if (newValue) {
+        unwatch();
+        resolve();
+      }
+    });
+  });
+};
+
 // cold start
 export const niflheim = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
   force?: boolean,
 ) => {
-  if (!initCompleted.value) return null;
+  await waitForInitCompletion();
   const coldstart = !(await db.changeSetExists(workspaceId, changeSetId));
   if (coldstart || force) {
     // eslint-disable-next-line no-console
-    console.log("❄️ NIFLHEIM ❄️");
+    console.log("❄️ NIFLHEIM ❄️", changeSetId);
     const success = await db.niflheim(workspaceId, changeSetId);
     // eslint-disable-next-line no-console
     console.log("❄️ DONE ❄️");
