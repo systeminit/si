@@ -539,6 +539,7 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     msg.atom.id,
     msg.atom.toChecksum,
   );
+  let noop = false;
   if (indexes.length > 0) {
     if (indexes.includes(msg.atom.toIndexChecksum)) {
       debug(
@@ -548,11 +549,11 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
         msg.atom.toChecksum,
         indexes,
       );
-      return; // noop
+      noop = true;
     } else {
       debug("HAMMER: Atom exists, MTM needed");
       insertAtomMTM(msg.atom, msg.atom.toIndexChecksum);
-      return;
+      noop = true;
     }
   }
 
@@ -587,16 +588,18 @@ const handleHammer = async (msg: AtomMessage, span?: Span) => {
     throw new Error(`Expected index checksum for ${msg.atom.toIndexChecksum}`);
   }
 
-  debug(
-    "🔨 HAMMER: Inserting MTM for:",
-    msg.atom.kind,
-    msg.atom.id,
-    "checksum:",
-    msg.atom.toChecksum,
-    "index:",
-    indexChecksum,
-  );
-  insertAtomMTM(msg.atom, indexChecksum);
+  if (!noop) {
+    debug(
+      "🔨 HAMMER: Inserting MTM for:",
+      msg.atom.kind,
+      msg.atom.id,
+      "checksum:",
+      msg.atom.toChecksum,
+      "index:",
+      indexChecksum,
+    );
+    insertAtomMTM(msg.atom, indexChecksum);
+  }
 
   updateChangeSetWithNewIndex(msg.atom);
   await removeOldIndex();
