@@ -147,6 +147,7 @@ export class APICall<Response> {
       url: this.url(),
       params,
       data,
+      validateStatus: (_status) => true, // don't throw exception on 4/5xxx
     });
     this.obs.inFlight.value = false;
     if (!this.obs.isWatched)
