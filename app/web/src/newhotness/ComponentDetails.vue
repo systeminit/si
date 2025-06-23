@@ -116,7 +116,7 @@
             v-if="attributeTree"
             :component="component"
             :attributeTree="attributeTree"
-            :importFunc="importFunc"
+            :importFunc="showResourceInput ? importFunc : undefined"
             :importFuncRun="latestFuncRuns[importFunc?.id ?? '']"
           />
           <EmptyState
