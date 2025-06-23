@@ -2,6 +2,7 @@ mod action;
 mod asset;
 mod attribute_prototype;
 mod attribute_value;
+mod attributes;
 mod audit_logging;
 mod change_set;
 mod component;

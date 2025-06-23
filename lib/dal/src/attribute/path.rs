@@ -173,7 +173,7 @@ async fn vivify_json_pointer(
             .await?
             .is_none()
         {
-            AttributeValue::update(ctx, parent_id, prop.kind.empty_value()).await?;
+            AttributeValue::set_value(ctx, parent_id, prop.kind.empty_value()).await?;
         }
         // Find or create the child!
         parent_id =

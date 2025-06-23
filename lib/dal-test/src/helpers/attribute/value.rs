@@ -178,6 +178,16 @@ pub async fn set(
     Ok(())
 }
 
+/// Check whether the value exists and is set
+pub async fn is_set(ctx: &DalContext, av: impl AttributeValueKey) -> Result<bool> {
+    match av.resolve_attribute_value(ctx).await? {
+        Some(av_id) => Ok(AttributeValue::component_prototype_id(ctx, av_id)
+            .await?
+            .is_some()),
+        None => Ok(false),
+    }
+}
+
 /// Unset a value (creates it if it doesn't exist)
 pub async fn unset(ctx: &DalContext, av: impl AttributeValueKey) -> Result<()> {
     let av_id = av.vivify_attribute_value(ctx).await?;
