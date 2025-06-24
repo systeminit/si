@@ -345,6 +345,32 @@ watch(
   },
 );
 
+const hiddenAt = ref<Date | undefined>(undefined);
+
+// Force muspelheim if the window has been hidden for 12 hours
+const FORCE_MUSPELHEIM_AFTER_MS = 12 * 60 * 60 * 1000;
+
+// We have put this in a watch, instead of in the event
+// listener, in order to ensure we are reactive to the prop
+watch(hiddenAt, (newValue, oldValue) => {
+  if (!newValue && oldValue) {
+    const now = new Date();
+    const timeDiff = now.getTime() - oldValue.getTime();
+
+    if (timeDiff >= FORCE_MUSPELHEIM_AFTER_MS) {
+      heimdall.muspelheim(props.workspacePk, true);
+    }
+  }
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    hiddenAt.value = new Date();
+  } else {
+    hiddenAt.value = undefined;
+  }
+});
+
 realtimeStore.subscribe(
   "TOP_LEVEL_WORKSPACE",
   `workspace/${props.workspacePk}`,
