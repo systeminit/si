@@ -179,6 +179,7 @@ pub struct SchemaVariantsByCategory {
 #[mv(
     trigger_entity = EntityKind::CategorySchema,
     reference_kind = ReferenceKind::SchemaVariantCategories,
+    build_priority = "List",
 )]
 pub struct SchemaVariantCategories {
     pub id: WorkspacePk,

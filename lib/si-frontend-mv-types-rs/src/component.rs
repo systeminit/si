@@ -160,6 +160,7 @@ pub struct SchemaMembers {
 #[mv(
   trigger_entity = EntityKind::CategoryComponent,
   reference_kind = ReferenceKind::ComponentList,
+  build_priority = "List",
 )]
 pub struct ComponentList {
     pub id: WorkspacePk,
