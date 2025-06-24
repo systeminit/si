@@ -446,22 +446,16 @@ export const getOutgoingConnections = async (args: {
 const waitForInitCompletion = (): Promise<void> => {
   return new Promise((resolve) => {
     if (initCompleted.value) {
-      // eslint-disable-next-line no-console
-      console.debug("init already completed");
       resolve();
       return;
     }
 
-    // eslint-disable-next-line no-console
-    console.debug("waiting for init completion");
-    const unwatch = watch(initCompleted, (newValue) => {
+    const unwatch = watch(() => initCompleted.value, (newValue) => {
       if (newValue) {
-        // eslint-disable-next-line no-console
-        console.debug("init completed in watcher");
         unwatch();
         resolve();
       }
-    });
+    }, { immediate: true });
   });
 };
 
