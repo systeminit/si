@@ -14,10 +14,10 @@
 
 import unittest
 
-from system_initiative_api_client.models.update_component_v1_response import UpdateComponentV1Response
+from system_initiative_api_client.models.manage_component_v1_response import ManageComponentV1Response
 
-class TestUpdateComponentV1Response(unittest.TestCase):
-    """UpdateComponentV1Response unit test stubs"""
+class TestManageComponentV1Response(unittest.TestCase):
+    """ManageComponentV1Response unit test stubs"""
 
     def setUp(self):
         pass
@@ -25,16 +25,16 @@ class TestUpdateComponentV1Response(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def make_instance(self, include_optional) -> UpdateComponentV1Response:
-        """Test UpdateComponentV1Response
+    def make_instance(self, include_optional) -> ManageComponentV1Response:
+        """Test ManageComponentV1Response
             include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
-        # uncomment below to create an instance of `UpdateComponentV1Response`
+        # uncomment below to create an instance of `ManageComponentV1Response`
         """
-        model = UpdateComponentV1Response()
+        model = ManageComponentV1Response()
         if include_optional:
-            return UpdateComponentV1Response(
+            return ManageComponentV1Response(
                 component = system_initiative_api_client.models.component_view_v1.ComponentViewV1(
                     can_be_upgraded = True, 
                     connections = [
@@ -81,7 +81,7 @@ class TestUpdateComponentV1Response(unittest.TestCase):
                         ], )
             )
         else:
-            return UpdateComponentV1Response(
+            return ManageComponentV1Response(
                 component = system_initiative_api_client.models.component_view_v1.ComponentViewV1(
                     can_be_upgraded = True, 
                     connections = [
@@ -129,8 +129,8 @@ class TestUpdateComponentV1Response(unittest.TestCase):
         )
         """
 
-    def testUpdateComponentV1Response(self):
-        """Test UpdateComponentV1Response"""
+    def testManageComponentV1Response(self):
+        """Test ManageComponentV1Response"""
         # inst_req_only = self.make_instance(include_optional=False)
         # inst_req_and_optional = self.make_instance(include_optional=True)
 

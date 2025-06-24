@@ -14,10 +14,10 @@
 
 import unittest
 
-from system_initiative_api_client.models.connection_details import ConnectionDetails
+from system_initiative_api_client.models.source_view_v1 import SourceViewV1
 
-class TestConnectionDetails(unittest.TestCase):
-    """ConnectionDetails unit test stubs"""
+class TestSourceViewV1(unittest.TestCase):
+    """SourceViewV1 unit test stubs"""
 
     def setUp(self):
         pass
@@ -25,26 +25,28 @@ class TestConnectionDetails(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def make_instance(self, include_optional) -> ConnectionDetails:
-        """Test ConnectionDetails
+    def make_instance(self, include_optional) -> SourceViewV1:
+        """Test SourceViewV1
             include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
-        # uncomment below to create an instance of `ConnectionDetails`
+        # uncomment below to create an instance of `SourceViewV1`
         """
-        model = ConnectionDetails()
+        model = SourceViewV1()
         if include_optional:
-            return ConnectionDetails(
-                add = {},
-                remove = {}
+            return SourceViewV1(
+                component = '',
+                prop_path = ''
             )
         else:
-            return ConnectionDetails(
+            return SourceViewV1(
+                component = '',
+                prop_path = '',
         )
         """
 
-    def testConnectionDetails(self):
-        """Test ConnectionDetails"""
+    def testSourceViewV1(self):
+        """Test SourceViewV1"""
         # inst_req_only = self.make_instance(include_optional=False)
         # inst_req_and_optional = self.make_instance(include_optional=True)
 

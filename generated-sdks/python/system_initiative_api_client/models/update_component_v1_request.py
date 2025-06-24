@@ -20,6 +20,7 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from system_initiative_api_client.models.connection_details import ConnectionDetails
+from system_initiative_api_client.models.subscription import Subscription
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -32,8 +33,9 @@ class UpdateComponentV1Request(BaseModel):
     name: Optional[StrictStr] = None
     resource_id: Optional[StrictStr] = Field(default=None, alias="resourceId")
     secrets: Optional[Dict[str, Any]] = None
+    subscriptions: Optional[Dict[str, Subscription]] = None
     unset: Optional[List[StrictStr]] = None
-    __properties: ClassVar[List[str]] = ["connectionChanges", "domain", "name", "resourceId", "secrets", "unset"]
+    __properties: ClassVar[List[str]] = ["connectionChanges", "domain", "name", "resourceId", "secrets", "subscriptions", "unset"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -77,6 +79,13 @@ class UpdateComponentV1Request(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of connection_changes
         if self.connection_changes:
             _dict['connectionChanges'] = self.connection_changes.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of each value in subscriptions (dict)
+        _field_dict = {}
+        if self.subscriptions:
+            for _key_subscriptions in self.subscriptions:
+                if self.subscriptions[_key_subscriptions]:
+                    _field_dict[_key_subscriptions] = self.subscriptions[_key_subscriptions].to_dict()
+            _dict['subscriptions'] = _field_dict
         # set to None if name (nullable) is None
         # and model_fields_set contains the field
         if self.name is None and "name" in self.model_fields_set:
@@ -104,6 +113,12 @@ class UpdateComponentV1Request(BaseModel):
             "name": obj.get("name"),
             "resourceId": obj.get("resourceId"),
             "secrets": obj.get("secrets"),
+            "subscriptions": dict(
+                (_k, Subscription.from_dict(_v))
+                for _k, _v in obj["subscriptions"].items()
+            )
+            if obj.get("subscriptions") is not None
+            else None,
             "unset": obj.get("unset")
         })
         return _obj

@@ -14,10 +14,10 @@
 
 import unittest
 
-from system_initiative_api_client.models.connection_details import ConnectionDetails
+from system_initiative_api_client.models.manage_component_v1_request import ManageComponentV1Request
 
-class TestConnectionDetails(unittest.TestCase):
-    """ConnectionDetails unit test stubs"""
+class TestManageComponentV1Request(unittest.TestCase):
+    """ManageComponentV1Request unit test stubs"""
 
     def setUp(self):
         pass
@@ -25,26 +25,26 @@ class TestConnectionDetails(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def make_instance(self, include_optional) -> ConnectionDetails:
-        """Test ConnectionDetails
+    def make_instance(self, include_optional) -> ManageComponentV1Request:
+        """Test ManageComponentV1Request
             include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
-        # uncomment below to create an instance of `ConnectionDetails`
+        # uncomment below to create an instance of `ManageComponentV1Request`
         """
-        model = ConnectionDetails()
+        model = ManageComponentV1Request()
         if include_optional:
-            return ConnectionDetails(
-                add = {},
-                remove = {}
+            return ManageComponentV1Request(
+                component_id = ''
             )
         else:
-            return ConnectionDetails(
+            return ManageComponentV1Request(
+                component_id = '',
         )
         """
 
-    def testConnectionDetails(self):
-        """Test ConnectionDetails"""
+    def testManageComponentV1Request(self):
+        """Test ManageComponentV1Request"""
         # inst_req_only = self.make_instance(include_optional=False)
         # inst_req_and_optional = self.make_instance(include_optional=True)
 

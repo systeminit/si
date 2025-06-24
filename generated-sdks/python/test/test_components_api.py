@@ -75,6 +75,13 @@ class TestComponentsApi(unittest.TestCase):
         """
         pass
 
+    def test_manage_component(self) -> None:
+        """Test case for manage_component
+
+        Putting a component under the management of another component
+        """
+        pass
+
     def test_search_components(self) -> None:
         """Test case for search_components
 

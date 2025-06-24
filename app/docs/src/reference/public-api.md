@@ -437,36 +437,7 @@ Components management endpoints
 
 ```json
 {
-  "connections": [
-    {
-      "from": {
-        "component": "OtherComponentName",
-        "socketName": "SocketName"
-      },
-      "to": "ThisComponentInputSocketName"
-    },
-    {
-      "from": {
-        "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
-        "socketName": "SocketName"
-      },
-      "to": "ThisComponentInputSocketName"
-    },
-    {
-      "from": "ThisComponentOutputSocketName",
-      "to": {
-        "component": "OtherComponentName",
-        "socketName": "InputSocketName"
-      }
-    },
-    {
-      "from": "ThisComponentOutputSocketName",
-      "to": {
-        "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
-        "socketName": "InputSocketName"
-      }
-    }
-  ],
+  "connections": {},
   "domain": {
     "propId1": "value1",
     "path/to/prop": "value2"
@@ -476,6 +447,12 @@ Components management endpoints
   "schemaName": "AWS::EC2::Instance",
   "secrets": {
     "secretDefinitionName": "secretName"
+  },
+  "subscriptions": {
+    "/prop/path/on/this/component": {
+      "component": "OtherComponentName",
+      "propPath": "/prop/path/on/other/component"
+    }
   },
   "viewName": "MyView"
 }
@@ -537,6 +514,16 @@ Components management endpoints
         "value": {}
       }
     ],
+    "sources": {
+      "property1": {
+        "component": "string",
+        "propPath": "string"
+      },
+      "property2": {
+        "component": "string",
+        "propPath": "string"
+      }
+    },
     "toDelete": true,
     "views": [
       {
@@ -631,6 +618,16 @@ Components management endpoints
         "value": {}
       }
     ],
+    "sources": {
+      "property1": {
+        "component": "string",
+        "propPath": "string"
+      },
+      "property2": {
+        "component": "string",
+        "propPath": "string"
+      }
+    },
     "toDelete": true,
     "views": [
       {
@@ -775,6 +772,16 @@ Components management endpoints
         "value": {}
       }
     ],
+    "sources": {
+      "property1": {
+        "component": "string",
+        "propPath": "string"
+      },
+      "property2": {
+        "component": "string",
+        "propPath": "string"
+      }
+    },
     "toDelete": true,
     "views": [
       {
@@ -815,38 +822,8 @@ Components management endpoints
 ```json
 {
   "connectionChanges": {
-    "add": [
-      {
-        "from": {
-          "component": "OtherComponentName",
-          "socketName": "output"
-        },
-        "to": "ThisComponentInputSocketName"
-      },
-      {
-        "from": "ThisComponentOutputSocketName",
-        "to": {
-          "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
-          "socketName": "InputSocketName"
-        }
-      }
-    ],
-    "remove": [
-      {
-        "from": {
-          "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
-          "socketName": "output"
-        },
-        "to": "ThisComponentInputSocketName"
-      },
-      {
-        "from": "ThisComponentOutputSocketName",
-        "to": {
-          "component": "OtherComponentName",
-          "socketName": "InputSocketName"
-        }
-      }
-    ]
+    "add": {},
+    "remove": {}
   },
   "domain": {
     "propId1": "value1",
@@ -856,6 +833,13 @@ Components management endpoints
   "resourceId": "i-12345678",
   "secrets": {
     "secretDefinitionName": "secretName"
+  },
+  "subscriptions": {
+    "/prop/path/on/this/component": {
+      "component": "OtherComponentName",
+      "propPath": "/prop/path/on/other/component",
+      "keepOtherSubscriptions": true
+    }
   },
   "unset": [
     "propId1",
@@ -921,6 +905,16 @@ Components management endpoints
         "value": {}
       }
     ],
+    "sources": {
+      "property1": {
+        "component": "string",
+        "propPath": "string"
+      },
+      "property2": {
+        "component": "string",
+        "propPath": "string"
+      }
+    },
     "toDelete": true,
     "views": [
       {
@@ -1078,6 +1072,110 @@ Components management endpoints
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component or function not found|None|
 |412|[Precondition Failed](https://tools.ietf.org/html/rfc7232#section-4.2)|Precondition Failed - View not found or duplicate function name|[ApiError](#schemaapierror)|
 |422|[Unprocessable Entity](https://tools.ietf.org/html/rfc2518#section-10.3)|Validation error - Invalid request data|[ApiError](#schemaapierror)|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
+
+## Putting a component under the management of another component
+
+<a id="opIdmanage_component"></a>
+
+> Request format
+
+`POST /v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/manage`
+
+> Body parameter
+
+```json
+{
+  "componentId": "string"
+}
+```
+
+<h3 id="putting-a-component-under-the-management-of-another-component-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|workspace_id|path|string|true|Workspace identifier|
+|change_set_id|path|string|true|Change Set identifier|
+|component_id|path|string|true|Component identifier|
+|body|body|[ManageComponentV1Request](#schemamanagecomponentv1request)|true|none|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "component": {
+    "canBeUpgraded": true,
+    "connections": [
+      {
+        "incoming": {
+          "from": "string",
+          "fromComponentId": "string",
+          "fromComponentName": "string",
+          "to": "string"
+        }
+      }
+    ],
+    "domainProps": [
+      {
+        "id": "string",
+        "path": "path/to/prop",
+        "propId": "string",
+        "value": {}
+      }
+    ],
+    "id": "string",
+    "name": "string",
+    "resourceId": "string",
+    "resourceProps": [
+      {
+        "id": "string",
+        "path": "path/to/prop",
+        "propId": "string",
+        "value": {}
+      }
+    ],
+    "schemaId": "string",
+    "schemaVariantId": "string",
+    "sockets": [
+      {
+        "arity": "one",
+        "direction": "input",
+        "id": "string",
+        "name": "string",
+        "value": {}
+      }
+    ],
+    "sources": {
+      "property1": {
+        "component": "string",
+        "propPath": "string"
+      },
+      "property2": {
+        "component": "string",
+        "propPath": "string"
+      }
+    },
+    "toDelete": true,
+    "views": [
+      {
+        "id": "string",
+        "isDefault": true,
+        "name": "string"
+      }
+    ]
+  }
+}
+```
+
+<h3 id="putting-a-component-under-the-management-of-another-component-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Component successfully under management|[ManageComponentV1Response](#schemamanagecomponentv1response)|
+|401|[Unauthorized](https://tools.ietf.org/html/rfc7235#section-3.1)|Unauthorized - Invalid or missing token|None|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Component not found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal server error|[ApiError](#schemaapierror)|
 
 # [schemas](#system-initiative-api-schemas)
@@ -2331,6 +2429,16 @@ xor
       "value": {}
     }
   ],
+  "sources": {
+    "property1": {
+      "component": "string",
+      "propPath": "string"
+    },
+    "property2": {
+      "component": "string",
+      "propPath": "string"
+    }
+  },
   "toDelete": true,
   "views": [
     {
@@ -2357,6 +2465,8 @@ xor
 |schemaId|string|true|none|none|
 |schemaVariantId|string|true|none|none|
 |sockets|[[SocketViewV1](#schemasocketviewv1)]|true|none|none|
+|sources|object|true|none|none|
+|» **additionalProperties**|[SourceViewV1](#schemasourceviewv1)|false|none|none|
 |toDelete|boolean|true|none|none|
 |views|[[ViewV1](#schemaviewv1)]|true|none|none|
 
@@ -2405,38 +2515,8 @@ xor
 
 ```json
 {
-  "add": [
-    {
-      "from": {
-        "component": "OtherComponentName",
-        "socketName": "output"
-      },
-      "to": "ThisComponentInputSocketName"
-    },
-    {
-      "from": "ThisComponentOutputSocketName",
-      "to": {
-        "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
-        "socketName": "InputSocketName"
-      }
-    }
-  ],
-  "remove": [
-    {
-      "from": {
-        "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
-        "socketName": "output"
-      },
-      "to": "ThisComponentInputSocketName"
-    },
-    {
-      "from": "ThisComponentOutputSocketName",
-      "to": {
-        "component": "OtherComponentName",
-        "socketName": "InputSocketName"
-      }
-    }
-  ]
+  "add": {},
+  "remove": {}
 }
 
 ```
@@ -2581,36 +2661,7 @@ xor
 
 ```json
 {
-  "connections": [
-    {
-      "from": {
-        "component": "OtherComponentName",
-        "socketName": "SocketName"
-      },
-      "to": "ThisComponentInputSocketName"
-    },
-    {
-      "from": {
-        "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
-        "socketName": "SocketName"
-      },
-      "to": "ThisComponentInputSocketName"
-    },
-    {
-      "from": "ThisComponentOutputSocketName",
-      "to": {
-        "component": "OtherComponentName",
-        "socketName": "InputSocketName"
-      }
-    },
-    {
-      "from": "ThisComponentOutputSocketName",
-      "to": {
-        "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
-        "socketName": "InputSocketName"
-      }
-    }
-  ],
+  "connections": {},
   "domain": {
     "propId1": "value1",
     "path/to/prop": "value2"
@@ -2620,6 +2671,12 @@ xor
   "schemaName": "AWS::EC2::Instance",
   "secrets": {
     "secretDefinitionName": "secretName"
+  },
+  "subscriptions": {
+    "/prop/path/on/this/component": {
+      "component": "OtherComponentName",
+      "propPath": "/prop/path/on/other/component"
+    }
   },
   "viewName": "MyView"
 }
@@ -2638,6 +2695,8 @@ xor
 |schemaName|string|true|none|none|
 |secrets|object|false|none|none|
 |» **additionalProperties**|any|false|none|none|
+|subscriptions|object|false|none|none|
+|» **additionalProperties**|[Subscription](#schemasubscription)|false|none|none|
 |viewName|string,null|false|none|none|
 
 ## [CreateComponentV1Response](#tocS_CreateComponentV1Response)
@@ -2691,6 +2750,16 @@ xor
         "value": {}
       }
     ],
+    "sources": {
+      "property1": {
+        "component": "string",
+        "propPath": "string"
+      },
+      "property2": {
+        "component": "string",
+        "propPath": "string"
+      }
+    },
     "toDelete": true,
     "views": [
       {
@@ -3303,6 +3372,16 @@ continued
         "value": {}
       }
     ],
+    "sources": {
+      "property1": {
+        "component": "string",
+        "propPath": "string"
+      },
+      "property2": {
+        "component": "string",
+        "propPath": "string"
+      }
+    },
     "toDelete": true,
     "views": [
       {
@@ -3732,6 +3811,106 @@ continued
 |---|---|---|---|---|
 |nextCursor|string,null|false|none|none|
 |schemas|[[SchemaResponse](#schemaschemaresponse)]|true|none|none|
+
+## [ManageComponentV1Request](#tocS_ManageComponentV1Request)
+
+<a id="schemamanagecomponentv1request"></a>
+<a id="schema_ManageComponentV1Request"></a>
+<a id="tocSmanagecomponentv1request"></a>
+<a id="tocsmanagecomponentv1request"></a>
+
+```json
+{
+  "componentId": "string"
+}
+
+```
+
+### [Properties](#managecomponentv1request-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|componentId|string|true|none|none|
+
+## [ManageComponentV1Response](#tocS_ManageComponentV1Response)
+
+<a id="schemamanagecomponentv1response"></a>
+<a id="schema_ManageComponentV1Response"></a>
+<a id="tocSmanagecomponentv1response"></a>
+<a id="tocsmanagecomponentv1response"></a>
+
+```json
+{
+  "component": {
+    "canBeUpgraded": true,
+    "connections": [
+      {
+        "incoming": {
+          "from": "string",
+          "fromComponentId": "string",
+          "fromComponentName": "string",
+          "to": "string"
+        }
+      }
+    ],
+    "domainProps": [
+      {
+        "id": "string",
+        "path": "path/to/prop",
+        "propId": "string",
+        "value": {}
+      }
+    ],
+    "id": "string",
+    "name": "string",
+    "resourceId": "string",
+    "resourceProps": [
+      {
+        "id": "string",
+        "path": "path/to/prop",
+        "propId": "string",
+        "value": {}
+      }
+    ],
+    "schemaId": "string",
+    "schemaVariantId": "string",
+    "sockets": [
+      {
+        "arity": "one",
+        "direction": "input",
+        "id": "string",
+        "name": "string",
+        "value": {}
+      }
+    ],
+    "sources": {
+      "property1": {
+        "component": "string",
+        "propPath": "string"
+      },
+      "property2": {
+        "component": "string",
+        "propPath": "string"
+      }
+    },
+    "toDelete": true,
+    "views": [
+      {
+        "id": "string",
+        "isDefault": true,
+        "name": "string"
+      }
+    ]
+  }
+}
+
+```
+
+### [Properties](#managecomponentv1response-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|component|[ComponentViewV1](#schemacomponentviewv1)|true|none|none|
 
 ## [ManagedByConnectionViewV1](#tocS_ManagedByConnectionViewV1)
 
@@ -4404,6 +4583,62 @@ xor
 |name|string|true|none|none|
 |value|object|true|none|none|
 
+## [SourceViewV1](#tocS_SourceViewV1)
+
+<a id="schemasourceviewv1"></a>
+<a id="schema_SourceViewV1"></a>
+<a id="tocSsourceviewv1"></a>
+<a id="tocssourceviewv1"></a>
+
+```json
+{
+  "component": "string",
+  "propPath": "string"
+}
+
+```
+
+### [Properties](#sourceviewv1-properties)
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|component|string|true|none|none|
+|propPath|string|true|none|none|
+
+## [Subscription](#tocS_Subscription)
+
+<a id="schemasubscription"></a>
+<a id="schema_Subscription"></a>
+<a id="tocSsubscription"></a>
+<a id="tocssubscription"></a>
+
+```json
+{
+  "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+  "function": "string",
+  "keepExistingSubscriptions": true,
+  "propPath": "string"
+}
+
+```
+
+### [Properties](#subscription-properties)
+
+allOf
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|*anonymous*|[ComponentReference](#schemacomponentreference)|false|none|none|
+
+and
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|*anonymous*|object|false|none|none|
+|» function|string|false|none|none|
+|» keepExistingSubscriptions|boolean,null|false|none|none|
+|» propPath|string|true|none|none|
+
 ## [SystemStatusResponse](#tocS_SystemStatusResponse)
 
 <a id="schemasystemstatusresponse"></a>
@@ -4434,38 +4669,8 @@ xor
 ```json
 {
   "connectionChanges": {
-    "add": [
-      {
-        "from": {
-          "component": "OtherComponentName",
-          "socketName": "output"
-        },
-        "to": "ThisComponentInputSocketName"
-      },
-      {
-        "from": "ThisComponentOutputSocketName",
-        "to": {
-          "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
-          "socketName": "InputSocketName"
-        }
-      }
-    ],
-    "remove": [
-      {
-        "from": {
-          "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
-          "socketName": "output"
-        },
-        "to": "ThisComponentInputSocketName"
-      },
-      {
-        "from": "ThisComponentOutputSocketName",
-        "to": {
-          "component": "OtherComponentName",
-          "socketName": "InputSocketName"
-        }
-      }
-    ]
+    "add": {},
+    "remove": {}
   },
   "domain": {
     "propId1": "value1",
@@ -4475,6 +4680,13 @@ xor
   "resourceId": "i-12345678",
   "secrets": {
     "secretDefinitionName": "secretName"
+  },
+  "subscriptions": {
+    "/prop/path/on/this/component": {
+      "component": "OtherComponentName",
+      "propPath": "/prop/path/on/other/component",
+      "keepOtherSubscriptions": true
+    }
   },
   "unset": [
     "propId1",
@@ -4495,6 +4707,8 @@ xor
 |resourceId|string,null|false|none|none|
 |secrets|object|false|none|none|
 |» **additionalProperties**|any|false|none|none|
+|subscriptions|object|false|none|none|
+|» **additionalProperties**|[Subscription](#schemasubscription)|false|none|none|
 |unset|[string]|false|none|none|
 
 ## [UpdateComponentV1Response](#tocS_UpdateComponentV1Response)
@@ -4548,6 +4762,16 @@ xor
         "value": {}
       }
     ],
+    "sources": {
+      "property1": {
+        "component": "string",
+        "propPath": "string"
+      },
+      "property2": {
+        "component": "string",
+        "propPath": "string"
+      }
+    },
     "toDelete": true,
     "views": [
       {

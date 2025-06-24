@@ -388,6 +388,12 @@ export interface ComponentViewV1 {
     'sockets': Array<SocketViewV1>;
     /**
      * 
+     * @type {{ [key: string]: SourceViewV1; }}
+     * @memberof ComponentViewV1
+     */
+    'sources': { [key: string]: SourceViewV1; };
+    /**
+     * 
      * @type {boolean}
      * @memberof ComponentViewV1
      */
@@ -613,6 +619,12 @@ export interface CreateComponentV1Request {
      * @memberof CreateComponentV1Request
      */
     'secrets'?: { [key: string]: any; };
+    /**
+     * 
+     * @type {{ [key: string]: Subscription; }}
+     * @memberof CreateComponentV1Request
+     */
+    'subscriptions'?: { [key: string]: Subscription; };
     /**
      * 
      * @type {string}
@@ -1478,6 +1490,32 @@ export interface ListSchemaV1Response {
 /**
  * 
  * @export
+ * @interface ManageComponentV1Request
+ */
+export interface ManageComponentV1Request {
+    /**
+     * 
+     * @type {string}
+     * @memberof ManageComponentV1Request
+     */
+    'componentId': string;
+}
+/**
+ * 
+ * @export
+ * @interface ManageComponentV1Response
+ */
+export interface ManageComponentV1Response {
+    /**
+     * 
+     * @type {ComponentViewV1}
+     * @memberof ManageComponentV1Response
+     */
+    'component': ComponentViewV1;
+}
+/**
+ * 
+ * @export
  * @interface ManagedByConnectionViewV1
  */
 export interface ManagedByConnectionViewV1 {
@@ -2009,6 +2047,62 @@ export interface SocketViewV1 {
 /**
  * 
  * @export
+ * @interface SourceViewV1
+ */
+export interface SourceViewV1 {
+    /**
+     * 
+     * @type {string}
+     * @memberof SourceViewV1
+     */
+    'component': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SourceViewV1
+     */
+    'propPath': string;
+}
+/**
+ * 
+ * @export
+ * @interface Subscription
+ */
+export interface Subscription {
+    /**
+     * 
+     * @type {string}
+     * @memberof Subscription
+     */
+    'component': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof Subscription
+     */
+    'componentId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof Subscription
+     */
+    'function'?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof Subscription
+     */
+    'keepExistingSubscriptions'?: boolean | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof Subscription
+     */
+    'propPath': string;
+}
+/**
+ * 
+ * @export
  * @interface SystemStatusResponse
  */
 export interface SystemStatusResponse {
@@ -2055,6 +2149,12 @@ export interface UpdateComponentV1Request {
      * @memberof UpdateComponentV1Request
      */
     'secrets'?: { [key: string]: any; };
+    /**
+     * 
+     * @type {{ [key: string]: Subscription; }}
+     * @memberof UpdateComponentV1Request
+     */
+    'subscriptions'?: { [key: string]: Subscription; };
     /**
      * 
      * @type {Array<string>}
@@ -3872,6 +3972,54 @@ export const ComponentsApiAxiosParamCreator = function (configuration?: Configur
         },
         /**
          * 
+         * @summary Putting a component under the management of another component
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} componentId Component identifier
+         * @param {ManageComponentV1Request} manageComponentV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        manageComponent: async (workspaceId: string, changeSetId: string, componentId: string, manageComponentV1Request: ManageComponentV1Request, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'workspaceId' is not null or undefined
+            assertParamExists('manageComponent', 'workspaceId', workspaceId)
+            // verify required parameter 'changeSetId' is not null or undefined
+            assertParamExists('manageComponent', 'changeSetId', changeSetId)
+            // verify required parameter 'componentId' is not null or undefined
+            assertParamExists('manageComponent', 'componentId', componentId)
+            // verify required parameter 'manageComponentV1Request' is not null or undefined
+            assertParamExists('manageComponent', 'manageComponentV1Request', manageComponentV1Request)
+            const localVarPath = `/v1/w/{workspace_id}/change-sets/{change_set_id}/components/{component_id}/manage`
+                .replace(`{${"workspace_id"}}`, encodeURIComponent(String(workspaceId)))
+                .replace(`{${"change_set_id"}}`, encodeURIComponent(String(changeSetId)))
+                .replace(`{${"component_id"}}`, encodeURIComponent(String(componentId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(manageComponentV1Request, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary Complex search for components
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -4083,6 +4231,22 @@ export const ComponentsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary Putting a component under the management of another component
+         * @param {string} workspaceId Workspace identifier
+         * @param {string} changeSetId Change Set identifier
+         * @param {string} componentId Component identifier
+         * @param {ManageComponentV1Request} manageComponentV1Request 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async manageComponent(workspaceId: string, changeSetId: string, componentId: string, manageComponentV1Request: ManageComponentV1Request, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ManageComponentV1Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.manageComponent(workspaceId, changeSetId, componentId, manageComponentV1Request, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ComponentsApi.manageComponent']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @summary Complex search for components
          * @param {string} workspaceId Workspace identifier
          * @param {string} changeSetId Change Set identifier
@@ -4194,6 +4358,16 @@ export const ComponentsApiFactory = function (configuration?: Configuration, bas
         },
         /**
          * 
+         * @summary Putting a component under the management of another component
+         * @param {ComponentsApiManageComponentRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        manageComponent(requestParameters: ComponentsApiManageComponentRequest, options?: RawAxiosRequestConfig): AxiosPromise<ManageComponentV1Response> {
+            return localVarFp.manageComponent(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, requestParameters.manageComponentV1Request, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @summary Complex search for components
          * @param {ComponentsApiSearchComponentsRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -4290,6 +4464,16 @@ export interface ComponentsApiInterface {
      * @memberof ComponentsApiInterface
      */
     listComponents(requestParameters: ComponentsApiListComponentsRequest, options?: RawAxiosRequestConfig): AxiosPromise<ListComponentsV1Response>;
+
+    /**
+     * 
+     * @summary Putting a component under the management of another component
+     * @param {ComponentsApiManageComponentRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ComponentsApiInterface
+     */
+    manageComponent(requestParameters: ComponentsApiManageComponentRequest, options?: RawAxiosRequestConfig): AxiosPromise<ManageComponentV1Response>;
 
     /**
      * 
@@ -4538,6 +4722,41 @@ export interface ComponentsApiListComponentsRequest {
 }
 
 /**
+ * Request parameters for manageComponent operation in ComponentsApi.
+ * @export
+ * @interface ComponentsApiManageComponentRequest
+ */
+export interface ComponentsApiManageComponentRequest {
+    /**
+     * Workspace identifier
+     * @type {string}
+     * @memberof ComponentsApiManageComponent
+     */
+    readonly workspaceId: string
+
+    /**
+     * Change Set identifier
+     * @type {string}
+     * @memberof ComponentsApiManageComponent
+     */
+    readonly changeSetId: string
+
+    /**
+     * Component identifier
+     * @type {string}
+     * @memberof ComponentsApiManageComponent
+     */
+    readonly componentId: string
+
+    /**
+     * 
+     * @type {ManageComponentV1Request}
+     * @memberof ComponentsApiManageComponent
+     */
+    readonly manageComponentV1Request: ManageComponentV1Request
+}
+
+/**
  * Request parameters for searchComponents operation in ComponentsApi.
  * @export
  * @interface ComponentsApiSearchComponentsRequest
@@ -4689,6 +4908,18 @@ export class ComponentsApi extends BaseAPI implements ComponentsApiInterface {
      */
     public listComponents(requestParameters: ComponentsApiListComponentsRequest, options?: RawAxiosRequestConfig) {
         return ComponentsApiFp(this.configuration).listComponents(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.limit, requestParameters.cursor, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Putting a component under the management of another component
+     * @param {ComponentsApiManageComponentRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ComponentsApi
+     */
+    public manageComponent(requestParameters: ComponentsApiManageComponentRequest, options?: RawAxiosRequestConfig) {
+        return ComponentsApiFp(this.configuration).manageComponent(requestParameters.workspaceId, requestParameters.changeSetId, requestParameters.componentId, requestParameters.manageComponentV1Request, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

@@ -20,6 +20,7 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from system_initiative_api_client.models.connection import Connection
+from system_initiative_api_client.models.subscription import Subscription
 from typing import Optional, Set
 from typing_extensions import Self
 
@@ -33,8 +34,9 @@ class CreateComponentV1Request(BaseModel):
     resource_id: Optional[StrictStr] = Field(default=None, alias="resourceId")
     schema_name: StrictStr = Field(alias="schemaName")
     secrets: Optional[Dict[str, Any]] = None
+    subscriptions: Optional[Dict[str, Subscription]] = None
     view_name: Optional[StrictStr] = Field(default=None, alias="viewName")
-    __properties: ClassVar[List[str]] = ["connections", "domain", "name", "resourceId", "schemaName", "secrets", "viewName"]
+    __properties: ClassVar[List[str]] = ["connections", "domain", "name", "resourceId", "schemaName", "secrets", "subscriptions", "viewName"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -82,6 +84,13 @@ class CreateComponentV1Request(BaseModel):
                 if _item_connections:
                     _items.append(_item_connections.to_dict())
             _dict['connections'] = _items
+        # override the default output from pydantic by calling `to_dict()` of each value in subscriptions (dict)
+        _field_dict = {}
+        if self.subscriptions:
+            for _key_subscriptions in self.subscriptions:
+                if self.subscriptions[_key_subscriptions]:
+                    _field_dict[_key_subscriptions] = self.subscriptions[_key_subscriptions].to_dict()
+            _dict['subscriptions'] = _field_dict
         # set to None if resource_id (nullable) is None
         # and model_fields_set contains the field
         if self.resource_id is None and "resource_id" in self.model_fields_set:
@@ -110,6 +119,12 @@ class CreateComponentV1Request(BaseModel):
             "resourceId": obj.get("resourceId"),
             "schemaName": obj.get("schemaName"),
             "secrets": obj.get("secrets"),
+            "subscriptions": dict(
+                (_k, Subscription.from_dict(_v))
+                for _k, _v in obj["subscriptions"].items()
+            )
+            if obj.get("subscriptions") is not None
+            else None,
             "viewName": obj.get("viewName")
         })
         return _obj
