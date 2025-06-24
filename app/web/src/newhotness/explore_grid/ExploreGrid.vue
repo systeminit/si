@@ -22,13 +22,14 @@
         :data-index="row.index"
         :class="clsx('absolute top-0 left-0 w-full')"
         :style="{
-          height: `${rowHeight(row.index)}px`,
+          height: `${rowHeights[row.index]}px`,
           transform: `translateY(${row.start}px)`,
         }"
         :lanesCount="virtualizerLanes"
         :row="gridRows[row.index]!"
         :focusedComponentId="focusedComponent?.id"
         @childClicked="(e, c, idx) => $emit('childClicked', e, c, idx)"
+        @clickCollapse="clickCollapse"
       />
     </div>
   </div>
@@ -92,9 +93,6 @@ const allComponents = computed(() => {
 const focusedComponent = computed(
   () => allComponents.value[props.focusedComponentIdx ?? -1],
 );
-
-const GROUP_HEADER_HEIGHT = 50;
-const GROUP_FOOTER_HEIGHT = 10;
 
 function getScrollbarWidth(): number {
   const temp = document.createElement("div");
@@ -163,28 +161,49 @@ const gridRows = computed(() => {
     if (!components) continue;
 
     const count = components.length;
+    let collapsed = collapseTracker.value[groupName];
+
+    // Handle the very first time everything is loaded. We want empty sections to begin collapsed
+    // and non-empty sections to be expanded by default.
+    if (collapsed === undefined) {
+      collapsed = count === 0;
+    }
 
     if (hasMultipleSections.value) {
       rows.push({
         type: "header",
         title: groupName,
         count,
+        collapsed,
       });
     }
 
-    const componentChunks = _.chunk(components, virtualizerLanes.value);
+    // Only populate the component rows if the header is not collapsed. Note that this removes them
+    // from the virtualizer. We may eventually want to "hide" components instead to keep them
+    // virtualized (e.g. "zero height").
+    if (!collapsed) {
+      const componentChunks = _.chunk(components, virtualizerLanes.value);
 
-    for (const components of componentChunks) {
-      rows.push({
-        type: "contentRow",
-        components,
-        chunkInitialId,
-        insideSection: hasMultipleSections.value,
-      });
+      if (componentChunks.length) {
+        for (const components of componentChunks) {
+          rows.push({
+            type: "contentRow",
+            components,
+            chunkInitialId,
+            insideSection: hasMultipleSections.value,
+          });
 
-      chunkInitialId += components.length;
+          chunkInitialId += components.length;
+        }
+      } else {
+        rows.push({
+          type: "emptyRow",
+          groupName,
+        });
+      }
     }
 
+    // Whether or not we collapse the group, we need the footer.
     if (hasMultipleSections.value) {
       rows.push({
         type: "footer",
@@ -197,6 +216,11 @@ const gridRows = computed(() => {
 
   return rows;
 });
+
+const collapseTracker = ref<Record<string, boolean>>({});
+const clickCollapse = (title: string, collapsed: boolean) => {
+  collapseTracker.value[title] = collapsed;
+};
 
 const componentRowsVirtualItemsList = computed(() =>
   virtualList.value.getVirtualItems(),
@@ -213,31 +237,36 @@ const getItemKey = (rowIndex: number) => {
     case "contentRow":
       if (!hasMultipleSections.value && rowIndex === gridRows.value.length - 1)
         return `contentRow-final-${rowIndex}`;
-      else return `contentRow-final-${rowIndex}`;
-
+      else return `contentRow-${rowIndex}`;
+    case "emptyRow":
+      return `emptyContentRow-${rowIndex}`;
     case "footer":
     default:
       return `footer-${rowIndex}`;
   }
 };
 
-// headers and title have fixed heights, content rows have a size + gap, excepts when they're the last row
-const rowHeight = (rowIndex: number) => {
-  const row = gridRows.value[rowIndex];
-  if (!row) return 0;
+const GROUP_HEADER_HEIGHT = 50;
+const GROUP_FOOTER_HEIGHT = 10;
 
-  switch (row.type) {
-    case "header":
-      return GROUP_HEADER_HEIGHT;
-    case "contentRow":
-      if (!hasMultipleSections.value && rowIndex === gridRows.value.length - 1)
+const rowHeights = computed(() => {
+  return gridRows.value.map((row, index) => {
+    switch (row.type) {
+      case "header":
+        return GROUP_HEADER_HEIGHT;
+      case "contentRow":
+        if (!hasMultipleSections.value && index === gridRows.value.length - 1) {
+          return GRID_TILE_HEIGHT;
+        } else {
+          return GRID_TILE_HEIGHT + GRID_TILE_GAP;
+        }
+      case "emptyRow":
         return GRID_TILE_HEIGHT;
-      else return GRID_TILE_HEIGHT + GRID_TILE_GAP;
-    case "footer":
-    default:
-      return GROUP_FOOTER_HEIGHT;
-  }
-};
+      default:
+        return GROUP_FOOTER_HEIGHT;
+    }
+  });
+});
 
 const virtualizerOptions = computed(() => ({
   count: gridRows.value.length,
@@ -247,7 +276,7 @@ const virtualizerOptions = computed(() => ({
   // thats the value of `virtualizerLanes`
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   getScrollElement: () => scrollRef.value!,
-  estimateSize: (i: number) => rowHeight(i),
+  estimateSize: (i: number) => rowHeights.value[i] ?? 0,
   getItemKey: (i: number) => getItemKey(i),
   overscan: 4,
 }));

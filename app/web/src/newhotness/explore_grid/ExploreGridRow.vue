@@ -2,13 +2,15 @@
   <div
     v-if="row.type === 'header'"
     class="flex flex-row items-center bg-neutral-900 px-xs gap-xs"
+    @click="emit('clickCollapse', row.title, !row.collapsed)"
   >
+    <Icon :name="row.collapsed ? 'chevron--right' : 'chevron--down'" />
     <Icon
       v-if="titleIcon"
       :name="titleIcon.iconName"
       :tone="titleIcon.iconTone"
     />
-    <span>
+    <span class="select-none">
       {{ row.title }}
     </span>
     <PillCounter :count="row.count" class="text-xs" />
@@ -48,6 +50,24 @@
       class="flex-1"
     />
   </div>
+  <div
+    v-else-if="row.type === 'emptyRow'"
+    class="flex items-center justify-center bg-neutral-900 pb-xs px-xs"
+  >
+    <div
+      class="flex flex-col items-center justify-center gap-md bg-neutral-800 border border-neutral-600 grow h-full"
+    >
+      <div class="bg-neutral-700 p-sm rounded-full">
+        <Icon name="check-circle-outline" />
+      </div>
+      <span>
+        {{ emptyAreaData?.message ?? "Nothing to see here!" }}
+      </span>
+    </div>
+  </div>
+  <div v-else>
+    <!-- footer area -->
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -81,6 +101,7 @@ const emit = defineEmits<{
     componentId: ComponentId,
     componentIdx: number,
   ): void;
+  (e: "clickCollapse", title: string, collapsed: boolean): void;
 }>();
 
 interface TitleIcon {
@@ -92,15 +113,70 @@ const titleIcon = computed((): TitleIcon | null => {
   if (props.row.type !== "header") return null;
 
   switch (props.row.title) {
-    case "Passed":
+    case "Failed qualifications":
+      return {
+        iconName: "x-hex-outline",
+        iconTone: "destructive",
+      };
+    case "Warnings":
+      return {
+        iconName: "alert-triangle-outline",
+        iconTone: "warning",
+      };
+    case "Passed qualifications":
       return {
         iconName: "check-hex-outline",
         iconTone: "success",
       };
-    case "Failed":
+    case "Running qualifications":
       return {
-        iconName: "x-hex-outline",
-        iconTone: "destructive",
+        iconName: "loader",
+        iconTone: "neutral",
+      };
+    default:
+      return null;
+  }
+});
+
+interface EmptyAreaData {
+  message: string;
+}
+
+const emptyAreaData = computed((): EmptyAreaData | null => {
+  if (props.row.type !== "emptyRow") return null;
+
+  switch (props.row.groupName) {
+    case "Failed qualifications":
+      return {
+        message: "No failed qualifications",
+      };
+    case "Warnings":
+      return {
+        message: "No warnings on qualifications",
+      };
+    case "Passed qualifications":
+      return {
+        message: "No passing qualifications",
+      };
+    case "Running qualifications":
+      return {
+        message: "There are no qualifications running right now",
+      };
+    case "With Diffs":
+      return {
+        message: "No components have been changed so far",
+      };
+    case "Without Diffs":
+      return {
+        message: "All components have been changed!",
+      };
+    case "Upgradable":
+      return {
+        message: "No components ready for an upgrade so far",
+      };
+    case "Up to date":
+      return {
+        message: "All components are upgradable right now",
       };
     default:
       return null;
@@ -150,9 +226,14 @@ export type ExploreGridRowData =
       type: "header";
       title: string;
       count: number;
+      collapsed: boolean;
     }
   | {
       type: "footer";
+    }
+  | {
+      type: "emptyRow";
+      groupName: string;
     };
 </script>
 

@@ -106,15 +106,18 @@
         </TabGroupToggle>
         <div>
           <DropdownMenuButton
-            :class="clsx('rounded')"
-            :options="groupByOptions"
+            v-if="showGrid"
+            class="rounded"
+            :options="groupByDropDownOptions"
             :modelValue="groupBySelection"
             placeholder="Group by"
             minWidthToAnchor
             checkable
             alwaysShowPlaceholder
             highlightWhenModelValue
-            @update:modelValue="(val) => (groupBySelection = val)"
+            @update:modelValue="
+              (val) => (groupBySelection = groupByFromString(val))
+            "
           >
             <template #beforeOptions>
               <DropdownMenuItem
@@ -122,7 +125,7 @@
                 value="''"
                 checkable
                 :checked="groupBySelection === ''"
-                @select="() => (groupBySelection = '')"
+                @select="() => (groupBySelection = GroupByCriteria.None)"
               />
             </template>
           </DropdownMenuButton>
@@ -486,8 +489,9 @@ const groupedComponents = computed(() => {
     }
   } else if (groupBySelection.value === "Qualification Status") {
     groups = {
-      Failed: [],
-      Passed: [],
+      "Failed qualifications": [],
+      Warnings: [],
+      "Passed qualifications": [],
     };
     for (const component of filteredComponents) {
       const title = getQualificationStatusTitle(component);
@@ -870,12 +874,38 @@ const onClick = (e: MouseEvent) => {
 
 onMounted(() => {
   mountEmitters();
+
   document.addEventListener("click", onClick);
+
+  // Upon mount, set the group by selection accordingly.
+  setGroupByFromQuery();
 });
 onBeforeUnmount(() => {
   removeEmitters();
   document.removeEventListener("click", onClick);
 });
+
+const setGroupByFromQuery = () => {
+  const query: SelectionsInQueryString = router.currentRoute.value?.query;
+
+  switch (query.groupBy) {
+    case "diff":
+      groupBySelection.value = GroupByCriteria.Diff;
+      break;
+    case "upgr":
+      groupBySelection.value = GroupByCriteria.Upgrade;
+      break;
+    case "qual":
+      groupBySelection.value = GroupByCriteria.Qualification;
+      break;
+    case undefined:
+    default:
+      groupBySelection.value = GroupByCriteria.None;
+      break;
+  }
+};
+
+watch([router.currentRoute], setGroupByFromQuery);
 
 const navigateToFocusedComponent = () => {
   if (focusedComponent.value) {
@@ -927,24 +957,63 @@ const storeViewMode = () => {
 };
 
 // Group By
-const groupBySelection = ref("");
-const groupByOptions = [
-  { value: "Diff Status", label: "Diff Status" },
-  { value: "Qualification Status", label: "Qualification Status" },
-  { value: "Upgradeable", label: "Upgradeable" },
+enum GroupByCriteria {
+  Diff = "Diff Status",
+  Upgrade = "Upgradeable",
+  Qualification = "Qualification Status",
+  None = "",
+}
+
+const groupByFromString = (s: string): GroupByCriteria => {
+  const key = (
+    _.keys(GroupByCriteria) as (keyof typeof GroupByCriteria)[]
+  ).find((k) => GroupByCriteria[k] === s);
+
+  if (!key) return GroupByCriteria.None;
+  else return GroupByCriteria[key];
+};
+
+const groupBySelection = ref<GroupByCriteria>(GroupByCriteria.None);
+const groupByDropDownOptions = [
+  { value: GroupByCriteria.Diff, label: "Diff Status" },
+  { value: GroupByCriteria.Qualification, label: "Qualification Status" },
+  { value: GroupByCriteria.Upgrade, label: "Upgradeable" },
 ];
+
+// Update the hash of the route (allowing for URL links) when the group by selection changes.
+watch([groupBySelection], () => {
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  delete query.map;
+  delete query.groupBy;
+
+  query.grid = "1";
+
+  if (groupBySelection.value === GroupByCriteria.Diff) {
+    query.groupBy = "diff";
+  } else if (groupBySelection.value === GroupByCriteria.Qualification) {
+    query.groupBy = "qual";
+  } else if (groupBySelection.value === GroupByCriteria.Upgrade) {
+    query.groupBy = "upgr";
+  }
+
+  router.push({
+    query,
+  });
+});
 
 const getQualificationStatusTitle = (component: ComponentInList) => {
   const status = getQualificationStatus(component);
   switch (status) {
     case "success":
-      return "Passed";
+      return "Passed qualifications";
     case "running":
-      return "Running";
+      return "Running qualifications";
     case "warning":
-      return "Warning";
+      return "Warnings";
     default:
-      return "Failed";
+      return "Failed qualifications";
   }
 };
 
