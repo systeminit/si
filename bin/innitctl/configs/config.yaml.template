@@ -8,7 +8,7 @@ processors:
   batch:
 
 exporters:
-  logging:
+  debug:
     verbosity: normal
   otlp:
     endpoint: "api.honeycomb.io:443"
@@ -25,7 +25,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, otlp]
+      exporters: [debug, otlp]
     metrics:
       receivers: [otlp]
       processors: [batch]
