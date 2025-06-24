@@ -2907,6 +2907,12 @@ const dbInterface: TabDBInterface = {
     });
     return { changesets, indexes, atoms, mtm };
   },
+  /**
+   * This fn needs to be idempotent. Every tab will listen for "ChangeSetCreated"
+   * Every tab will call the one active web worker to run this fn
+   * The change set table has `change_set_id` as its primary key
+   * So we add "on conflict do nothing" to the insert.
+   */
   linkNewChangeset(workspaceId, headChangeSet, changeSetId) {
     try {
       const headRows = db.exec({
@@ -2921,7 +2927,7 @@ const dbInterface: TabDBInterface = {
       const currentIndexChecksum = headRow;
 
       db.exec({
-        sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?);",
+        sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?) on conflict do nothing;",
         bind: [changeSetId, workspaceId, currentIndexChecksum],
       });
     } catch (err) {
