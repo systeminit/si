@@ -84,6 +84,8 @@ import {
   ref,
   provide,
   watch,
+  Ref,
+  inject,
 } from "vue";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import NavbarPanelLeft from "@/components/layout/navbar/NavbarPanelLeft.vue";
@@ -286,7 +288,14 @@ const tokenFail = ref(false);
 const queryClient = useQueryClient();
 queryClient.setDefaultOptions({ queries: { staleTime: Infinity } });
 
+const container = inject<{ loadingGuard: Ref<boolean> }>("LOADINGGUARD");
 onBeforeMount(async () => {
+  if (container && container.loadingGuard.value) {
+    return;
+  }
+  if (container) {
+    container.loadingGuard.value = true;
+  }
   // NOTE(nick,wendy): if you do not have the flag enabled, you will be re-directed. This will be
   // true for all of the new hotness routes, provided that they are all children of the parent
   // route that uses this component. This is wrapped in a "setTimeout" to ensure that the feature
