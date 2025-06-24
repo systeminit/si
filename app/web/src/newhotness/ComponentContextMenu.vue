@@ -1,7 +1,5 @@
 <template>
   <div>
-    <!-- TODO(WENDY) - we might want keyboard controls back in this DropdownMenu at some point? -->
-    <!-- for now they are disabled to avoid conflicts with the keyboard controls in Explore! -->
     <DropdownMenu
       ref="contextMenuRef"
       :anchorTo="anchor"
@@ -24,7 +22,6 @@
 </template>
 
 <script lang="ts" setup>
-import * as _ from "lodash-es";
 import {
   DropdownMenu,
   DropdownMenuItemObjectDef,
@@ -45,16 +42,15 @@ import EraseModal from "./EraseModal.vue";
 import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
 import { useApi, routes } from "./api_composables";
 import { assertIsDefined, ExploreContext } from "./types";
-import { useUpgrade } from "./logic_composables/upgrade";
 
-const props = defineProps<{
+defineProps<{
   onGrid?: boolean;
   enableKeyboardControls?: boolean;
 }>();
 
 const route = useRoute();
 
-// This number fixes the Y position to align with the ComponentGridTile
+// This number fixes the Y position to align with the ExploreGridTile
 const Y_OFFSET = 4;
 
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
@@ -117,7 +113,6 @@ const actionByPrototype = computed(() => {
 });
 // ================================================================================================
 
-const upgrade = useUpgrade();
 const rightClickMenuItems = computed(() => {
   const items: DropdownMenuItemObjectDef[] = [];
 
@@ -171,10 +166,10 @@ const rightClickMenuItems = computed(() => {
     onSelect: () => componentDuplicate(components.value.map((c) => c.id)),
   });
 
+  const upgradeableComponents = explore.upgradeableComponents.value;
+
   if (
-    components.value
-      .map((c) => upgrade(c.schemaId, c.schemaVariantId))
-      .every((c) => c.value === true)
+    components.value.map((c) => upgradeableComponents.has(c.id)).every((b) => b)
   ) {
     items.push({
       label: "Upgrade",

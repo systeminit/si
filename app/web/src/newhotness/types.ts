@@ -23,6 +23,7 @@ export function assertIsDefined<T>(value: T | undefined): asserts value is T {
 
 export interface ExploreContext {
   viewId: ComputedRef<string>;
+  upgradeableComponents: ComputedRef<Set<string>>;
 }
 
 // Define an enum for function kinds

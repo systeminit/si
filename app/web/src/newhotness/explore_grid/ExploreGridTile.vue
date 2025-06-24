@@ -48,7 +48,7 @@
         <StatusIndicatorIcon
           type="qualification"
           size="sm"
-          :status="qualificationSummary"
+          :status="qualificationStatus"
         />
         <div>Qualifications</div>
         <TextPill
@@ -160,9 +160,8 @@ import {
   ComponentInList,
 } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
-import { getAssetIcon } from "./util";
-import { assertIsDefined, Context } from "./types";
-import { useUpgrade } from "./logic_composables/upgrade";
+import { getAssetIcon } from "../util";
+import { assertIsDefined, Context, ExploreContext } from "../types";
 
 const props = defineProps<{
   component: BifrostComponent | ComponentInList;
@@ -172,31 +171,32 @@ const props = defineProps<{
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
 
+const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
+assertIsDefined<ExploreContext>(explore);
+
 const outgoing = computed(
   () => ctx.outgoingCounts.value[props.component.id] ?? 0,
 );
 
-const upgrade = useUpgrade();
-const schemaVariantId = computed(() => {
-  if (typeof props.component.schemaVariantId === "string") {
-    return props.component.schemaVariantId;
-  } else {
-    return props.component.schemaVariantId.id;
-  }
-});
-const canBeUpgraded = computed(
-  () => upgrade(props.component.schemaId, schemaVariantId.value).value,
+const canBeUpgraded = computed(() =>
+  explore.upgradeableComponents.value.has(props.component.id),
 );
 
-const qualificationSummary = computed(() => {
-  if (props.component.qualificationTotals.failed > 0) return "failure";
-  if (props.component.qualificationTotals.running > 0) return "running";
-  if (props.component.qualificationTotals.warned > 0) return "warning";
-  return "success";
-});
+const qualificationStatus = computed(() =>
+  getQualificationStatus(props.component),
+);
 </script>
 
 <script lang="ts">
 // Grid tiles need to have a fixed height - make sure this number matches its total height!
 export const GRID_TILE_HEIGHT = 233;
+
+export function getQualificationStatus(
+  component: BifrostComponent | ComponentInList,
+) {
+  if (component.qualificationTotals.failed > 0) return "failure";
+  if (component.qualificationTotals.running > 0) return "running";
+  if (component.qualificationTotals.warned > 0) return "warning";
+  return "success";
+}
 </script>

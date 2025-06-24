@@ -7,30 +7,6 @@
       class="main pt-xs flex flex-col gap-xs items-stretch [&>div]:mx-[12px]"
     >
       <div class="flex-none flex flex-row items-center gap-xs">
-        <TabGroupToggle
-          ref="groupRef"
-          :aOrB="urlGridOrMap === 'grid'"
-          @toggle="storeViewMode"
-        >
-          <template #a="{ selected, toggle }">
-            <VButton
-              label="Grid"
-              size="sm"
-              variant="ghost"
-              :tone="selected ? 'action' : 'shade'"
-              @click.stop="toggle"
-            />
-          </template>
-          <template #b="{ selected, toggle }">
-            <VButton
-              label="Map"
-              size="sm"
-              variant="ghost"
-              :tone="selected ? 'action' : 'shade'"
-              @click.stop="toggle"
-            />
-          </template>
-        </TabGroupToggle>
         <DropdownMenuButton
           class="rounded min-w-[128px]"
           :options="viewListOptions"
@@ -74,13 +50,7 @@
               'border-neutral-600 hover:border-white',
             )
           "
-          :pills="
-            showGrid
-              ? CONTROL_SCHEME === 'v1'
-                ? ['Up', 'Down', 'Left', 'Right']
-                : ['Tab']
-              : undefined
-          "
+          :pills="showGrid ? ['Tab'] : undefined"
           :instructions="showGrid ? 'to navigate' : undefined"
           @click="searchRef?.focus()"
         >
@@ -100,19 +70,63 @@
                   slotProps.focus();
                   mapRef?.deselect();
                   unfocus();
-                  unhover();
                 }
               "
               @blur="slotProps.blur"
               @keydown.tab="(e: KeyboardEvent) => onTab(e, true)"
-              @keydown.left="onArrowLeft"
-              @keydown.right="onArrowRight"
-              @keydown.up="onArrowUp"
-              @keydown.down="onArrowDown"
               @keydown.esc="onEscape"
             />
           </template>
         </InstructiveVormInput>
+      </div>
+      <div class="flex-none flex flex-row items-center gap-xs justify-between">
+        <TabGroupToggle
+          ref="groupRef"
+          :aOrB="urlGridOrMap === 'grid'"
+          @toggle="storeViewMode"
+        >
+          <template #a="{ selected, toggle }">
+            <VButton
+              label="Grid"
+              size="sm"
+              variant="ghost"
+              :tone="selected ? 'action' : 'shade'"
+              @click.stop="toggle"
+            />
+          </template>
+          <template #b="{ selected, toggle }">
+            <VButton
+              label="Map"
+              size="sm"
+              variant="ghost"
+              :tone="selected ? 'action' : 'shade'"
+              @click.stop="toggle"
+            />
+          </template>
+        </TabGroupToggle>
+        <div>
+          <DropdownMenuButton
+            :class="clsx('rounded')"
+            :options="groupByOptions"
+            :modelValue="groupBySelection"
+            placeholder="Group by"
+            minWidthToAnchor
+            checkable
+            alwaysShowPlaceholder
+            highlightWhenModelValue
+            @update:modelValue="(val) => (groupBySelection = val)"
+          >
+            <template #beforeOptions>
+              <DropdownMenuItem
+                label="None"
+                value="''"
+                checkable
+                :checked="groupBySelection === ''"
+                @select="() => (groupBySelection = '')"
+              />
+            </template>
+          </DropdownMenuButton>
+        </div>
       </div>
       <template v-if="showGrid">
         <div
@@ -121,65 +135,15 @@
         >
           <EmptyState icon="component" text="No components in view" />
         </div>
-        <div
+        <ExploreGrid
           v-else
-          ref="scrollRef"
-          class="scrollable grow"
-          style="overflow-anchor: none"
-          @scroll="onScroll"
+          ref="exploreGridRef"
+          :components="groupedComponents"
+          :focusedComponentIdx="focusedComponentIdx"
+          @childClicked="componentClicked"
           @scrollend="fixContextMenuAfterScroll"
-        >
-          <div
-            class="w-full relative flex flex-col"
-            :style="{
-              ['overflow-anchor']: 'none',
-              height: `${virtualListHeight}px`,
-            }"
-          >
-            <div
-              v-for="row in componentRowsVirtualItemsList"
-              :key="`${row.key}`"
-              :data-index="row.index"
-              :class="
-                clsx(
-                  'flex flex-row items-center gap-sm',
-                  'absolute top-0 left-0 w-full',
-                )
-              "
-              :style="{
-                height: `${GRID_TILE_HEIGHT}px`,
-                transform: `translateY(${row.start}px)`,
-              }"
-            >
-              <ComponentGridTile
-                v-for="(component, columnIndex) in filteredComponentRows[
-                  row.index
-                ]"
-                ref="componentGridTileRefs"
-                :key="component.id"
-                :data-index="row.index * virtualizerLanes + columnIndex"
-                :component="component"
-                class="flex-1"
-                :class="
-                  clsx(tileClasses(row.index * virtualizerLanes + columnIndex))
-                "
-                @mouseenter="hover(row.index * virtualizerLanes + columnIndex)"
-                @mouseleave="
-                  unhover(row.index * virtualizerLanes + columnIndex)
-                "
-                @click.stop.left="(e) => componentClicked(e, component.id)"
-                @click.stop.right="(e) => componentClicked(e, component.id)"
-              />
-              <!-- this fills in any extra spots in the last row -->
-              <div
-                v-for="emptySpot in virtualizerLanes -
-                filteredComponentRows[row.index]!.length"
-                :key="emptySpot"
-                class="flex-1"
-              />
-            </div>
-          </div>
-        </div>
+          @scroll="onScroll"
+        />
         <footer
           :class="
             clsx(
@@ -280,15 +244,13 @@
     <ComponentContextMenu
       ref="componentContextMenuRef"
       onGrid
-      :enableKeyboardControls="CONTROL_SCHEME === 'v2'"
-      @edit="openFocusedComponent"
+      enableKeyboardControls
+      @edit="navigateToFocusedComponent"
     />
   </section>
 </template>
 
 <script lang="ts" setup>
-// TODO(Wendy) - we should clean up these non-null assertions!
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import * as _ from "lodash-es";
 import {
   computed,
@@ -311,9 +273,7 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
-import { useVirtualizer } from "@tanstack/vue-virtual";
 import { Fzf } from "fzf";
-import { tw } from "@si/vue-lib";
 import {
   bifrost,
   bifrostList,
@@ -329,11 +289,12 @@ import {
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { Listable } from "@/workers/types/dbinterface";
+import { elementIsScrolledIntoView } from "@/newhotness/logic_composables/dom_funcs";
 import Map from "./Map.vue";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
-import ComponentGridTile, { GRID_TILE_HEIGHT } from "./ComponentGridTile.vue";
+import { getQualificationStatus } from "./explore_grid/ExploreGridTile.vue";
 import ActionCard from "./ActionCard.vue";
 import FuncRunList from "./FuncRunList.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
@@ -342,7 +303,6 @@ import {
   KeyDetails,
   keyEmitter,
   windowResizeEmitter,
-  windowWidthReactive,
 } from "./logic_composables/emitters";
 import TabGroupToggle from "./layout_components/TabGroupToggle.vue";
 import { SelectionsInQueryString } from "./Workspace.vue";
@@ -351,16 +311,9 @@ import AddViewModal from "./AddViewModal.vue";
 import EditViewModal from "./EditViewModal.vue";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
 import EmptyState from "./EmptyState.vue";
-import { elementIsScrolledIntoView } from "./logic_composables/dom_funcs";
 import ShortcutModal from "./ShortcutModal.vue";
 import { useUpgrade } from "./logic_composables/upgrade";
-
-// MAKE SURE THESE NUMBERS STAY ACCURATE IF YOU CHANGE THE GRID!
-const MIN_GRID_TILE_WIDTH = 250;
-const GRID_TILE_GAP = 16;
-
-type ControlScheme = "v1" | "v2";
-const CONTROL_SCHEME: ControlScheme = "v2" as ControlScheme;
+import ExploreGrid from "./explore_grid/ExploreGrid.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -376,31 +329,16 @@ const groupRef = ref<InstanceType<typeof TabGroupToggle>>();
 const actionsRef = ref<typeof CollapsingGridItem>();
 const historyRef = ref<typeof CollapsingGridItem>();
 const mapRef = ref<InstanceType<typeof Map>>();
-const componentGridTileRefs = ref<InstanceType<typeof ComponentGridTile>[]>();
-const componentGridTileElsSorted = computed(() => {
-  if (!componentGridTileRefs.value) {
-    return [];
-  } else {
-    return componentGridTileRefs.value
-      .map((tileRef) => tileRef.$el)
-      .sort((a, b) => a.dataset.index - b.dataset.index);
-  }
-});
+const exploreGridRef = ref<InstanceType<typeof ExploreGrid>>();
+const componentContextMenuRef =
+  ref<InstanceType<typeof ComponentContextMenu>>();
 
-const getGridTileIndexByComponentId = (id: ComponentId) => {
-  return filteredComponents.findIndex((component) => component.id === id);
-};
-const getGridTileByIndex = (idx: number) => {
-  if (componentGridTileRefs.value) {
-    const tile = componentGridTileRefs.value.find((t) => {
-      return Number(t.$el.dataset.index) === idx;
-    });
-    return tile;
-  }
-  return undefined;
-};
-const getRowIndexByGridTileIndex = (idx: number) =>
-  Math.floor(idx / virtualizerLanes.value);
+const collapsingStyles = computed(() =>
+  collapsingGridStyles([
+    actionsRef.value?.openState,
+    historyRef.value?.openState,
+  ]),
+);
 
 const urlGridOrMap = computed(() => {
   const q: SelectionsInQueryString = router.currentRoute.value?.query;
@@ -417,7 +355,6 @@ const urlGridOrMap = computed(() => {
 const showGrid = computed(() => (groupRef.value ? groupRef.value.isA : true));
 watch(showGrid, () => {
   unfocus();
-  unhover();
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
   };
@@ -431,6 +368,7 @@ watch(showGrid, () => {
 const key = useMakeKey();
 const args = useMakeArgs();
 
+// Views
 const viewListQuery = useQuery<View[]>({
   queryKey: key(EntityKind.ViewList),
   queryFn: async () => {
@@ -475,9 +413,21 @@ watch(
   { immediate: true },
 );
 
+const upgrade = useUpgrade();
+const upgradeableComponents = computed(() => {
+  const set: Set<ComponentId> = new Set();
+  for (const component of filteredComponents) {
+    if (upgrade(component.schemaId, component.schemaVariantId).value) {
+      set.add(component.id);
+    }
+  }
+  return set;
+});
+
 const exploreContext = computed<ExploreContext>(() => {
   return {
     viewId: selectedViewOrDefaultId,
+    upgradeableComponents,
   };
 });
 
@@ -515,13 +465,48 @@ const placeholderSearchText = computed(
   () => `Search across ${componentListRaw.data.value?.length ?? 0} Components`,
 );
 const componentList = computed(() => componentListRaw.data.value ?? []);
-const componentsById = computed(() =>
-  Object.fromEntries(componentList.value.map((c) => [c.id, c])),
-);
-
-const scrollRef = ref<HTMLDivElement>();
 
 const filteredComponents = reactive<ComponentInList[]>([]);
+
+const groupedComponents = computed(() => {
+  let groups: Record<string, ComponentInList[]> = {};
+
+  if (groupBySelection.value === "Diff Status") {
+    groups = {
+      "With Diffs": [],
+      "No Diffs": [],
+    };
+    for (const component of filteredComponents) {
+      const title = component.diffCount === 0 ? "No Diffs" : "With Diffs";
+      groups[title]?.push(component);
+    }
+  } else if (groupBySelection.value === "Qualification Status") {
+    groups = {
+      Failed: [],
+      Passed: [],
+    };
+    for (const component of filteredComponents) {
+      const title = getQualificationStatusTitle(component);
+      groups[title] ??= [];
+      groups[title]?.push(component);
+    }
+  } else if (groupBySelection.value === "Upgradeable") {
+    groups = {
+      Upgradeable: [],
+      "Up to date": [],
+    };
+    for (const component of filteredComponents) {
+      const title = upgradeableComponents.value.has(component.id)
+        ? "Upgradeable"
+        : "Up to date";
+      groups[title]?.push(component);
+    }
+  } else {
+    groups[""] = filteredComponents;
+  }
+
+  return groups;
+});
 
 const searchString = ref<string>("");
 const debouncedSearchString = ref<string>("");
@@ -546,6 +531,9 @@ watch(
 
     const results = fzf.find(debouncedSearchString.value);
     filteredComponents.splice(0, Infinity, ...results.map((fz) => fz.item));
+
+    mapRef.value?.deselect();
+    unfocus();
   },
   { immediate: true, deep: true },
 );
@@ -568,178 +556,100 @@ watch(searchString, (newValue, oldValue) => {
   updateDebouncedSearch(newValue);
   mapRef.value?.deselect();
   unfocus();
-  unhover();
 });
 
-function getScrollbarWidth(): number {
-  const temp = document.createElement("div");
-  const inner = document.createElement("div");
+const focusedComponentIdx = ref<number>(-1);
+const focusedComponent = computed(() => exploreGridRef.value?.focusedComponent);
 
-  temp.style.visibility = "hidden";
-  temp.style.overflow = "scroll";
-  document.body.appendChild(temp);
-  temp.appendChild(inner);
+const nextComponent = (wrap = false) => {
+  if (!showGrid.value) return;
 
-  const scrollbarWidth = temp.offsetWidth - inner.offsetWidth;
-  temp.parentNode?.removeChild(temp);
-
-  return scrollbarWidth;
-}
-
-// This computes the rendered number of components in a row as seen directly in the DOM
-const lanes = computed(() => {
-  // We need to force a recompute of this value when the screen is resized
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  windowWidthReactive.value;
-
-  // Can't calculate the amount of grid tiles per row if we don't have any grid tiles loaded yet!
-  const componentGridTileYPositions = componentGridTileElsSorted.value.map(
-    (el) => el.getBoundingClientRect().y,
-  );
-  if (componentGridTileYPositions.length === 0) return 0;
-
-  let newLanes = 1;
-  const firstLaneY = componentGridTileYPositions[0];
-
-  while (
-    componentGridTileYPositions[newLanes] === firstLaneY &&
-    newLanes < componentGridTileYPositions.length
-  ) {
-    newLanes++;
+  if (focusedComponentIdx.value === undefined) {
+    focusedComponentIdx.value = -1;
+    return;
   }
-  return newLanes;
-});
 
-// This computes the expected number of components in a row based on the width of the scroll area
-const virtualizerLanes = computed(() => {
-  // We need to force a recompute of this value when the screen is resized
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  windowWidthReactive.value;
+  focusedComponentIdx.value += 1;
 
-  // We also need to force a recompute of this value if the number of tiles changes
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  componentGridTileRefs.value;
-
-  // Our grid is based on the minimum tile width... so how many tiles can we fit?
-  let newLanes = 0;
-  let availableSpace = scrollRef.value?.getBoundingClientRect().width ?? 0;
-  if (
-    scrollRef.value &&
-    scrollRef.value.scrollHeight > scrollRef.value.clientHeight
-  ) {
-    // need to account for the width of the scrollbar!
-    availableSpace -= getScrollbarWidth();
-  }
-  while (availableSpace > 0) {
-    availableSpace -= MIN_GRID_TILE_WIDTH; // width of one grid tile
-    if (availableSpace > 0) {
-      newLanes++;
+  if (focusedComponentIdx.value > filteredComponents.length - 1) {
+    if (wrap) {
+      focusedComponentIdx.value = -1;
+    } else {
+      focusedComponentIdx.value = filteredComponents.length - 1;
     }
-    availableSpace -= GRID_TILE_GAP; // gap between grid tiles
-  }
-  return newLanes;
-});
-
-const filteredComponentRows = computed(() =>
-  _.chunk(filteredComponents, virtualizerLanes.value),
-);
-
-const virtualizerOptions = computed(() => {
-  const options = {
-    count: filteredComponentRows.value.length,
-    // `virtualizerLanes` gives virtualizer a "second-dimension" (aka columns for vertical lists and rows for horizontal lists)
-    // https://tanstack.com/virtual/latest/docs/api/virtualizer#lanes
-    // Our grid is based on the minimum tile width... so how many tiles can we fit?
-    // thats the value of `virtualizerLanes`
-    getScrollElement: () => scrollRef.value!,
-    estimateSize: () => MIN_GRID_TILE_WIDTH,
-    overscan: 3,
-  };
-  return options;
-});
-
-const virtualList = useVirtualizer(virtualizerOptions);
-
-const componentRowsVirtualItemsList = computed(() =>
-  virtualList.value.getVirtualItems(),
-);
-
-const virtualListHeight = computed(() => virtualList.value.getTotalSize());
-
-const collapsingStyles = computed(() =>
-  collapsingGridStyles([
-    actionsRef.value?.openState,
-    historyRef.value?.openState,
-  ]),
-);
-
-const selectedComponentIds = reactive<Set<string>>(new Set());
-const selectorGridPosition = ref<number>(-1);
-const focusedComponentId = ref<string | undefined>();
-const hoveredComponentId = computed(
-  () => filteredComponents[selectorGridPosition.value]?.id,
-);
-const interactionTargetComponentId = computed(
-  () => focusedComponentId.value ?? hoveredComponentId.value,
-);
-const focusGridPosition = ref<number>(-1);
-const constrainPosition = () => {
-  selectorGridPosition.value = Math.min(
-    filteredComponents.length - 1,
-    Math.max(-1, selectorGridPosition.value),
-  );
-  scrollCurrentTileIntoView();
-};
-const isSelected = (idx: number) =>
-  selectedComponentIds.has(filteredComponents[idx]!.id);
-const isHovered = (idx: number) => selectorGridPosition.value === idx;
-const isFocused = (idx: number) =>
-  focusGridPosition.value === idx && focusedComponentId.value;
-const tileClasses = (idx: number) => {
-  const selected = isSelected(idx);
-  const hovered = isHovered(idx);
-  const focused = isFocused(idx);
-  if (focused)
-    return themeClasses(tw`border-action-500`, tw`border-action-300`);
-  else if (hovered) return themeClasses(tw`border-black`, tw`border-white`);
-  // TODO(WENDY) - not using selected yet!
-  else if (selected) return "";
-  else return "";
-};
-const hoverByComponentId = (id: ComponentId) => {
-  const index = getGridTileIndexByComponentId(id);
-
-  if (index !== -1) selectorGridPosition.value = index;
-};
-const hover = (index: number) => {
-  selectorGridPosition.value = index;
-};
-const unhover = (index?: number) => {
-  if (!index || selectorGridPosition.value === index) {
-    selectorGridPosition.value = -1;
   }
 };
+const previousComponent = (wrap = false) => {
+  if (!showGrid.value) return;
 
-const focus = (componentId: ComponentId) => {
-  if (!componentGridTileRefs.value) return;
-  hoverByComponentId(componentId);
-  focusedComponentId.value = componentId;
-  focusGridPosition.value = selectorGridPosition.value;
-  const gridTileIndex = getGridTileIndexByComponentId(componentId);
-  const gridTile = getGridTileByIndex(gridTileIndex);
-  if (gridTile) {
-    const component = componentsById.value[componentId];
-    if (component) {
-      componentContextMenuRef.value?.open(gridTile, [component]);
+  if (focusedComponentIdx.value === undefined) {
+    focusedComponentIdx.value = -1;
+    return;
+  }
+
+  let desiredIdx = focusedComponentIdx.value - 1;
+
+  if (desiredIdx < -1) {
+    if (wrap) {
+      desiredIdx = filteredComponents.length - 1;
+    } else {
+      desiredIdx = -1;
     }
+  }
+
+  focusedComponentIdx.value = desiredIdx;
+};
+
+watch([focusedComponentIdx], () => {
+  if (focusedComponentIdx.value === -1) {
+    searchRef.value?.focus();
+  }
+});
+
+const focusedGridTile = computed(() =>
+  focusedComponentIdx.value > -1
+    ? exploreGridRef.value?.getGridTileByIndex(focusedComponentIdx.value)
+    : undefined,
+);
+
+const onFocus = () => {
+  if (focusedGridTile.value && focusedComponent.value) {
+    componentContextMenuRef.value?.open(focusedGridTile.value, [
+      focusedComponent.value,
+    ]);
   }
 };
 const unfocus = () => {
-  focusedComponentId.value = undefined;
-  selectorGridPosition.value = focusGridPosition.value;
-  focusGridPosition.value = -1;
+  focusedComponentIdx.value = -1;
   componentContextMenuRef.value?.close();
 };
+
+const componentClicked = (
+  e: MouseEvent,
+  componentId: ComponentId,
+  componentIdx: number,
+) => {
+  e.preventDefault();
+  if (e.button === 0) {
+    componentNavigate(componentId);
+  } else if (e.button === 2) {
+    focusedComponentIdx.value = componentIdx;
+  }
+};
+const componentNavigate = (componentId: ComponentId) => {
+  const params = { ...route.params };
+  params.componentId = componentId;
+  router.push({
+    name: "new-hotness-component",
+    params,
+  });
+};
+
+watch([focusedComponent], () => {
+  if (!focusedComponent.value) return;
+
+  onFocus();
+});
 
 const searchRef = ref<InstanceType<typeof VormInput>>();
 const mountEmitters = () => {
@@ -751,10 +661,6 @@ const mountEmitters = () => {
   keyEmitter.on("d", onD);
   keyEmitter.on("u", onU);
   keyEmitter.on("r", onR);
-  keyEmitter.on("ArrowDown", onArrowDown);
-  keyEmitter.on("ArrowUp", onArrowUp);
-  keyEmitter.on("ArrowLeft", onArrowLeft);
-  keyEmitter.on("ArrowRight", onArrowRight);
   keyEmitter.on("Enter", onEnter);
   keyEmitter.on("Tab", onTab);
   keyEmitter.on("Escape", onEscape);
@@ -772,10 +678,6 @@ const removeEmitters = () => {
   keyEmitter.off("d", onD);
   keyEmitter.off("u", onU);
   keyEmitter.off("r", onR);
-  keyEmitter.off("ArrowDown", onArrowDown);
-  keyEmitter.off("ArrowUp", onArrowUp);
-  keyEmitter.off("ArrowLeft", onArrowLeft);
-  keyEmitter.off("ArrowRight", onArrowRight);
   keyEmitter.off("Enter", onEnter);
   keyEmitter.off("Tab", onTab);
   keyEmitter.off("Escape", onEscape);
@@ -784,36 +686,6 @@ const removeEmitters = () => {
   keyEmitter.off("/", openShortcutModal);
   keyEmitter.off("?", openShortcutModal);
   windowResizeEmitter.off("resize", onResize);
-};
-const nextComponent = (wrap = false) => {
-  if (!showGrid.value) return;
-  if (focusedComponentId.value) unfocus();
-  selectorGridPosition.value += 1;
-  if (wrap && selectorGridPosition.value > filteredComponents.length - 1) {
-    selectorGridPosition.value = -1;
-    searchRef.value?.focus();
-  }
-  constrainPosition();
-  if (CONTROL_SCHEME === "v2" && hoveredComponentId.value) {
-    focus(hoveredComponentId.value);
-  }
-};
-const previousComponent = (wrap = false) => {
-  if (!showGrid.value) return;
-  if (focusedComponentId.value) unfocus();
-  selectorGridPosition.value -= 1;
-  if (wrap) {
-    if (selectorGridPosition.value < -1) {
-      selectorGridPosition.value = filteredComponents.length - 1;
-    } else if (selectorGridPosition.value < 0) {
-      selectorGridPosition.value = -1;
-      searchRef.value?.focus();
-    }
-  }
-  constrainPosition();
-  if (CONTROL_SCHEME === "v2" && hoveredComponentId.value) {
-    focus(hoveredComponentId.value);
-  }
 };
 
 const onC = (e: KeyDetails["c"]) => {
@@ -828,7 +700,6 @@ const onK = (e: KeyDetails["k"]) => {
   // Deselect the current selection based on which screen you are on
   if (showGrid.value) {
     unfocus();
-    unhover();
   } else {
     mapRef.value?.deselect();
   }
@@ -845,12 +716,11 @@ const onN = (e: KeyDetails["n"]) => {
 const onE = (e: KeyDetails["e"]) => {
   e.preventDefault();
   if (showGrid.value) {
-    if (selectorGridPosition.value !== -1) {
-      if (!interactionTargetComponentId.value) return;
-      componentContextMenuRef.value?.componentsStartErase([
-        interactionTargetComponentId.value,
-      ]);
-    }
+    if (!focusedComponent.value) return;
+
+    componentContextMenuRef.value?.componentsStartErase([
+      focusedComponent.value?.id,
+    ]);
   } else {
     mapRef.value?.onE(e);
   }
@@ -860,9 +730,9 @@ const onD = (e: KeyDetails["d"]) => {
 
   if (showGrid.value) {
     if (e.metaKey || e.ctrlKey) {
-      if (!interactionTargetComponentId.value) return;
+      if (!focusedComponent.value) return;
       componentContextMenuRef.value?.componentDuplicate([
-        interactionTargetComponentId.value,
+        focusedComponent.value.id,
       ]);
     }
   } else {
@@ -870,21 +740,15 @@ const onD = (e: KeyDetails["d"]) => {
   }
 };
 
-const upgrade = useUpgrade();
 const onU = (e: KeyDetails["u"]) => {
   e.preventDefault();
 
   if (showGrid.value) {
-    if (!interactionTargetComponentId.value) return;
-    const targetComponent = filteredComponents.find(
-      (comp) => comp.id === interactionTargetComponentId.value,
-    );
-    if (
-      targetComponent &&
-      upgrade(targetComponent.schemaId, targetComponent.schemaVariantId).value
-    ) {
+    if (!focusedComponent.value) return;
+
+    if (upgradeableComponents.value.has(focusedComponent.value.id)) {
       componentContextMenuRef.value?.componentUpgrade([
-        interactionTargetComponentId.value,
+        focusedComponent.value.id,
       ]);
     }
   } else {
@@ -895,14 +759,15 @@ const onBackspace = (e: KeyDetails["Backspace"] | KeyDetails["Delete"]) => {
   e.preventDefault();
 
   if (showGrid.value) {
-    if (!interactionTargetComponentId.value) return;
-    const component = componentsById.value[interactionTargetComponentId.value];
-    if (!component) return;
-    componentContextMenuRef.value?.componentsStartDelete([component]);
+    if (!focusedComponent.value) return;
+    componentContextMenuRef.value?.componentsStartDelete([
+      focusedComponent.value,
+    ]);
   } else {
     mapRef.value?.onBackspace(e);
   }
 };
+
 const onR = (e: KeyDetails["r"]) => {
   if (e.metaKey || e.ctrlKey) {
     // This is the chrome hotkey combo for refreshing the page! Let it happen!
@@ -911,71 +776,27 @@ const onR = (e: KeyDetails["r"]) => {
   e.preventDefault();
 
   if (showGrid.value) {
-    if (!interactionTargetComponentId.value) return;
-    const targetComponent = filteredComponents.find(
-      (comp) => comp.id === interactionTargetComponentId.value,
-    );
-    if (targetComponent && targetComponent.toDelete) {
+    if (!focusedComponent.value) return;
+    if (focusedComponent.value.toDelete) {
       componentContextMenuRef.value?.componentsRestore([
-        interactionTargetComponentId.value,
+        focusedComponent.value.id,
       ]);
     }
   } else {
     mapRef.value?.onR(e);
   }
 };
-const onArrowUp = (e: KeyDetails["ArrowUp"]) => {
-  if (CONTROL_SCHEME === "v2" && showGrid.value) return;
-  e.preventDefault();
-  if (showGrid.value) {
-    if (focusedComponentId.value) unfocus();
-    selectorGridPosition.value -= lanes.value;
-    constrainPosition();
-  } else {
-    mapRef.value?.onArrowUp();
-  }
-};
-const onArrowDown = (e: KeyDetails["ArrowDown"]) => {
-  if (CONTROL_SCHEME === "v2" && showGrid.value) return;
-  e.preventDefault();
-  if (showGrid.value) {
-    if (focusedComponentId.value) unfocus();
-    if (selectorGridPosition.value === -1) {
-      selectorGridPosition.value = 0;
-    } else {
-      selectorGridPosition.value += lanes.value;
-    }
-    constrainPosition();
-  } else {
-    mapRef.value?.onArrowDown();
-  }
-};
-const onArrowLeft = () => {
-  if (CONTROL_SCHEME === "v2" && showGrid.value) return;
-  if (showGrid.value) {
-    previousComponent();
-  } else {
-    mapRef.value?.onArrowLeft();
-  }
-};
-const onArrowRight = () => {
-  if (CONTROL_SCHEME === "v2" && showGrid.value) return;
-  if (showGrid.value) {
-    nextComponent();
-  } else {
-    mapRef.value?.onArrowRight();
-  }
-};
 const onEscape = () => {
   if (showGrid.value) {
     searchRef.value?.blur();
     unfocus();
-    unhover();
   } else {
     mapRef.value?.onEscape();
   }
 };
+
 const onTab = (e: KeyDetails["Tab"], blurSearch = false) => {
+  // FIXME(victor) Don't execute this if a modal is open
   e.preventDefault();
   if (!showGrid.value) return; // no tab behavior on the map yet
 
@@ -984,14 +805,18 @@ const onTab = (e: KeyDetails["Tab"], blurSearch = false) => {
   else if (blurSearch) {
     searchRef.value.blur();
     pageFunc(true);
-  } else if (selectorGridPosition.value === -1 && !searchRef.value.isFocus) {
+  } else if (focusedComponentIdx.value === -1 && !searchRef.value.isFocus) {
     searchRef.value.focus();
   } else {
     pageFunc(true);
   }
 };
+
 const onEnter = (e: KeyDetails["Enter"]) => {
-  if (CONTROL_SCHEME === "v2" && focusedComponentId.value) {
+  if (
+    focusedComponentIdx.value !== undefined &&
+    focusedComponentIdx.value !== -1
+  ) {
     // enter controls the context menu, not the grid tile
     return;
   }
@@ -1003,41 +828,30 @@ const onEnter = (e: KeyDetails["Enter"]) => {
     return;
   }
 
-  if (selectorGridPosition.value !== -1) {
-    const componentId = filteredComponents[selectorGridPosition.value]?.id;
-    if (!componentId) return;
-    componentInteract(componentId);
-  }
+  navigateToFocusedComponent();
 };
+
 const onScroll = () => {
-  if (focusedComponentId.value && CONTROL_SCHEME === "v1") {
-    unfocus();
-  } else {
-    // for the v2 interface, close the menu while scrolling
-    componentContextMenuRef.value?.close();
-  }
+  componentContextMenuRef.value?.close();
 };
+
 const fixContextMenuAfterScroll = () => {
-  // For the v2 control scheme, we need to fix the context menu after scrolling
+  // We need to fix the context menu after scrolling!
   // If the element is scrolled into view, show the menu
-  // If the element is scrolled offscreen, unfocus/unhover as per v1
-  if (CONTROL_SCHEME === "v1") return;
-  else if (focusedComponentId.value) {
-    const tileIndex = getGridTileIndexByComponentId(focusedComponentId.value);
-    const tile = getGridTileByIndex(tileIndex);
-    const el = tile?.$el;
-    if (el && elementIsScrolledIntoView(el)) {
-      focus(focusedComponentId.value);
-    } else {
-      unfocus();
-      unhover();
-    }
+  // If the element is scrolled offscreen, unfocus and reset selected component index
+  const el = focusedGridTile.value?.$el;
+  if (el && elementIsScrolledIntoView(el)) {
+    onFocus();
+  } else {
+    unfocus();
   }
 };
 const onResize = () => {
   unfocus();
-  unhover();
 };
+
+// general click handler for the whole page
+// any click which doesn't do this behavior should have .stop on it!
 const onClick = (e: MouseEvent) => {
   if (showGrid.value) {
     const inside =
@@ -1046,10 +860,7 @@ const onClick = (e: MouseEvent) => {
       return;
     }
 
-    // general click handler for the whole page
-    // any click which doesn't do this behavior should have .stop on it!
     unfocus();
-    unhover();
   }
 };
 
@@ -1062,55 +873,10 @@ onBeforeUnmount(() => {
   document.removeEventListener("click", onClick);
 });
 
-const componentClicked = (e: MouseEvent, componentId: ComponentId) => {
-  e.preventDefault();
-  if (CONTROL_SCHEME === "v1") {
-    componentClickedV1(e, componentId);
-  } else {
-    componentClickedV2(e, componentId);
+const navigateToFocusedComponent = () => {
+  if (focusedComponent.value) {
+    componentNavigate(focusedComponent.value.id);
   }
-};
-const componentClickedV1 = (_e: MouseEvent, componentId: ComponentId) => {
-  if (
-    focusedComponentId.value &&
-    selectorGridPosition.value !== focusGridPosition.value
-  ) {
-    unfocus();
-    focus(componentId);
-  } else {
-    hoverByComponentId(componentId); // should already be hovered but let's make sure!
-    componentInteract(componentId);
-  }
-};
-const componentClickedV2 = (e: MouseEvent, componentId: ComponentId) => {
-  if (e.button === 0) {
-    componentNavigate(componentId);
-  } else {
-    componentClickedV1(e, componentId);
-  }
-};
-
-const componentInteract = (componentId: ComponentId) => {
-  if (focusedComponentId.value && CONTROL_SCHEME === "v1") {
-    componentNavigate(componentId);
-  } else {
-    focus(componentId);
-  }
-};
-
-const openFocusedComponent = () => {
-  if (focusedComponentId.value) {
-    componentNavigate(focusedComponentId.value);
-  }
-};
-
-const componentNavigate = (componentId: ComponentId) => {
-  const params = { ...route.params };
-  params.componentId = componentId;
-  router.push({
-    name: "new-hotness-component",
-    params,
-  });
 };
 
 const addComponentModalRef = ref<InstanceType<typeof AddComponentModal>>();
@@ -1138,25 +904,6 @@ const openEditViewModal = (viewId: string) => {
   editViewModalRef.value?.open(viewId, isDefaultView);
 };
 
-const componentContextMenuRef =
-  ref<InstanceType<typeof ComponentContextMenu>>();
-
-const scrollCurrentTileIntoView = () => {
-  // don't scroll if the index is out of bounds
-  if (
-    selectorGridPosition.value < 0 ||
-    selectorGridPosition.value > filteredComponents.length - 1
-  )
-    return;
-  // otherwise use the virtualizer to scroll
-  // so that even if the DOM element doesn't exist
-  // it will still work!
-  virtualList.value.scrollToIndex(
-    getRowIndexByGridTileIndex(selectorGridPosition.value),
-    { behavior: "smooth" },
-  );
-};
-
 const onMapDeselect = () => {
   searchRef.value?.blur();
 };
@@ -1170,6 +917,28 @@ const storeViewMode = () => {
     localStorage.setItem(key, "grid");
   } else {
     localStorage.setItem(key, "map");
+  }
+};
+
+// Group By
+const groupBySelection = ref("");
+const groupByOptions = [
+  { value: "Diff Status", label: "Diff Status" },
+  { value: "Qualification Status", label: "Qualification Status" },
+  { value: "Upgradeable", label: "Upgradeable" },
+];
+
+const getQualificationStatusTitle = (component: ComponentInList) => {
+  const status = getQualificationStatus(component);
+  switch (status) {
+    case "success":
+      return "Passed";
+    case "running":
+      return "Running";
+    case "warning":
+      return "Warning";
+    default:
+      return "Failed";
   }
 };
 

@@ -23,7 +23,7 @@
           )
         "
       >
-        <ComponentGridTile
+        <ExploreGridTile
           ref="selectedGridTileRef"
           :component="selectedComponent"
           hideConnections
@@ -168,7 +168,7 @@ import {
 import { SelectionsInQueryString } from "./Workspace.vue";
 import { KeyDetails } from "./logic_composables/emitters";
 import { assertIsDefined, Context, ExploreContext } from "./types";
-import ComponentGridTile from "./ComponentGridTile.vue";
+import ExploreGridTile from "./explore_grid/ExploreGridTile.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import { getAssetIcon } from "./util";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
@@ -544,7 +544,7 @@ const dataAsGraph = ref<unknown>();
 const WIDTH = 250;
 const HEIGHT = 75;
 
-const selectedGridTileRef = ref<InstanceType<typeof ComponentGridTile>>();
+const selectedGridTileRef = ref<InstanceType<typeof ExploreGridTile>>();
 
 const router = useRouter();
 const clickedNode = (e: MouseEvent, n: layoutNode) => {
