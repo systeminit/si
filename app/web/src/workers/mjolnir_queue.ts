@@ -55,6 +55,7 @@ export const processMjolnirQueue = new PQueue({
 const bustQueue = new PQueue({ concurrency: 10, autoStart: true });
 
 // de-dupe queue busting!
+// except... we're never waiting to bust, so it doesnt really de-dupe
 const _bustQueue = new Set<string>();
 export const bustQueueAdd = (
   workspaceId: string,

@@ -282,10 +282,11 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     returnValue: "resultRows",
   });
   const count_atoms_one_more = await db.oneInOne(confirm6);
-  // 3 original atoms, 1 patched atom
+  // the 4th atom that existed on the change set just moved to head
+  // so the OG head atom was pruned off
   assert(
-    count_atoms_one_more === 4,
-    `payload2 atoms ${String(count_atoms_one_more)} === 4`,
+    count_atoms_one_more === 3,
+    `payload2 atoms ${String(count_atoms_one_more)} === 3`,
   );
 
   log("~~ SECOND PAYLOAD SUCCESS ~~");
@@ -302,8 +303,8 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
   });
   const before = await db.oneInOne(removed_record_before);
 
-  // there is only 1 mtm for the altered atom
-  assert(before === 1, `Before state wrong ${removed_record_before}`);
+  // altered atom exists on both HEAD and the change set
+  assert(before === 2, `Before state wrong ${removed_record_before}`);
 
   await db.pruneAtomsForClosedChangeSet("W", "new_change_set");
   const confirm7 = await db.exec({
@@ -323,21 +324,21 @@ const fullDiagnosticTest = async (db: Comlink.Remote<TabDBInterface>) => {
     returnValue: "resultRows",
   });
   const count_atoms_after_purge = await db.oneInOne(confirm8);
-  // back to 3 atoms, like original
+  // still 3 atoms, haven't gained or lost anything
   assert(
     count_atoms_after_purge === 3,
     `purge atoms ${String(count_atoms_after_purge)} === 3`,
   );
 
-  const removed_record = await db.exec({
+  const count_after_purge = await db.exec({
     sql: `SELECT COUNT(index_checksum) FROM index_mtm_atoms WHERE checksum = ?`,
     bind: ["tr1-new-name"],
     returnValue: "resultRows",
   });
-  const removed = await db.oneInOne(removed_record);
+  const after_purge = await db.oneInOne(count_after_purge);
   assert(
-    removed === 0,
-    `Expected removed is still here: ${removed?.toString()}`,
+    after_purge === 1,
+    `After purge should be 1 === ${after_purge?.toString()}`,
   );
 
   log("~~ PURGE SUCCESS ~~");

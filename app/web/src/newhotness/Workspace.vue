@@ -291,6 +291,7 @@ queryClient.setDefaultOptions({ queries: { staleTime: Infinity } });
 const container = inject<{ loadingGuard: Ref<boolean> }>("LOADINGGUARD");
 onBeforeMount(async () => {
   if (container && container.loadingGuard.value) {
+    queriesEnabled.value = true;
     return;
   }
   if (container) {
