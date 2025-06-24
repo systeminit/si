@@ -417,7 +417,11 @@ const upgrade = useUpgrade();
 const upgradeableComponents = computed(() => {
   const set: Set<ComponentId> = new Set();
   for (const component of filteredComponents) {
-    if (upgrade(component.schemaId, component.schemaVariantId).value) {
+    const canUpgrade = upgrade(
+      component.schemaId,
+      component.schemaVariantId,
+    ).value;
+    if (canUpgrade) {
       set.add(component.id);
     }
   }
