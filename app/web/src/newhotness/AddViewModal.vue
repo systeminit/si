@@ -8,43 +8,45 @@
     saveLabel="Create"
     @save="() => nameForm.handleSubmit()"
   >
-    <label class="flex flex-row items-center relative">
-      <span>View Name</span>
-      <nameForm.Field name="name">
-        <template #default="{ field }">
-          <input
-            :class="
-              clsx(
-                'block w-72 ml-auto border',
-                themeClasses(
-                  'text-black bg-white border-neutral-600 disabled:bg-neutral-100',
-                  'text-white bg-black border-neutral-400 disabled:bg-neutral-900',
-                ),
-              )
-            "
-            :value="field.state.value"
-            type="text"
-            :disabled="wForm.bifrosting.value"
-            @input="
-              (e) => field.handleChange((e.target as HTMLInputElement).value)
-            "
-          />
-        </template>
-      </nameForm.Field>
-      <Icon
-        v-if="wForm.bifrosting.value"
-        class="absolute right-2xs"
-        name="loader"
-        size="sm"
-        tone="action"
-      />
-    </label>
+    <form @submit.prevent="nameForm.handleSubmit()">
+      <label class="flex flex-row items-center relative">
+        <span>View Name</span>
+        <nameForm.Field name="name">
+          <template #default="{ field }">
+            <input
+              :class="
+                clsx(
+                  'block w-72 ml-auto border',
+                  themeClasses(
+                    'text-black bg-white border-neutral-600 disabled:bg-neutral-100',
+                    'text-white bg-black border-neutral-400 disabled:bg-neutral-900',
+                  ),
+                )
+              "
+              :value="field.state.value"
+              type="text"
+              :disabled="wForm.bifrosting.value"
+              @input="
+                (e) => field.handleChange((e.target as HTMLInputElement).value)
+                "
+            />
+          </template>
+        </nameForm.Field>
+        <Icon
+          v-if="wForm.bifrosting.value"
+          class="absolute right-2xs"
+          name="loader"
+          size="sm"
+          tone="action"
+        />
+      </label>
+    </form>
   </Modal>
 </template>
 
 <script setup lang="ts">
 import { Modal, Icon, themeClasses } from "@si/vue-lib/design-system";
-import { computed, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
 import clsx from "clsx";
 import { View } from "@/workers/types/entity_kind_types";
@@ -74,8 +76,7 @@ const nameForm = wForm.newForm({
       name: value.name,
     });
     if (api.ok(req)) {
-      // right now, we don't want to push people to the new view
-      // because they won't see components, and won't be able to add any to the view
+      modalRef.value?.close();
       if (newChangeSetId) {
         api.navigateToNewChangeSet(
           {
@@ -88,13 +89,6 @@ const nameForm = wForm.newForm({
           newChangeSetId,
         );
       }
-      watch(
-        () => wForm.bifrosting,
-        () => {
-          modalRef.value?.close();
-        },
-        { once: true },
-      );
     }
   },
   validators: {
@@ -106,6 +100,7 @@ const nameForm = wForm.newForm({
 
 const open = () => {
   modalRef.value?.open();
+  nameForm.reset();
 };
 defineExpose({ open });
 </script>

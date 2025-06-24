@@ -899,9 +899,11 @@ const openAddViewModal = () => {
 
 const editViewModalRef = ref<InstanceType<typeof EditViewModal>>();
 
-const openEditViewModal = (viewId: string) => {
+const openEditViewModal = (option: { value: string; label: string }) => {
+  const viewId = option.value;
+  const viewName = option.label;
   const isDefaultView = viewId === defaultView.value?.id;
-  editViewModalRef.value?.open(viewId, isDefaultView);
+  editViewModalRef.value?.open(viewId, viewName, isDefaultView);
 };
 
 const onMapDeselect = () => {

@@ -178,10 +178,16 @@ const emit = defineEmits<{
   (e: "deleted"): void;
 }>();
 
-const open = (openViewId: string, openIsDefaultView: boolean) => {
+const open = (
+  openViewId: string,
+  openViewName: string,
+  openIsDefaultView: boolean,
+) => {
   viewId.value = openViewId;
   isDefaultView.value = openIsDefaultView;
   modalRef.value?.open();
+  nameForm.reset();
+  nameForm.setFieldValue("name", openViewName);
 };
 const close = () => {
   viewId.value = "";
