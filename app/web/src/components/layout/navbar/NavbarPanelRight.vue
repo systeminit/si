@@ -16,11 +16,7 @@
             icon="niflheim"
             label="Re-do Cold Start"
             @click="
-              heimdall.niflheim(
-                changeSetsStore.selectedWorkspacePk,
-                changeSetsStore.selectedChangeSetId,
-                true,
-              )
+              heimdall.muspelheim(changeSetsStore.selectedWorkspacePk, true)
             "
           />
           <DropdownMenuItem
