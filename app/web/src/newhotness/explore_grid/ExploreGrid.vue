@@ -96,23 +96,6 @@ const focusedComponent = computed(
 const GROUP_HEADER_HEIGHT = 50;
 const GROUP_FOOTER_HEIGHT = 10;
 
-const rowHeight = (rowIndex: number) => {
-  const row = gridRows.value[rowIndex];
-  if (!row) return 0;
-
-  switch (row.type) {
-    case "header":
-      return GROUP_HEADER_HEIGHT;
-    case "contentRow":
-      if (!hasMultipleSections.value && rowIndex === gridRows.value.length - 1)
-        return GRID_TILE_HEIGHT;
-      else return GRID_TILE_HEIGHT + GRID_TILE_GAP;
-    case "footer":
-    default:
-      return GROUP_FOOTER_HEIGHT;
-  }
-};
-
 function getScrollbarWidth(): number {
   const temp = document.createElement("div");
   const inner = document.createElement("div");
@@ -219,6 +202,43 @@ const componentRowsVirtualItemsList = computed(() =>
   virtualList.value.getVirtualItems(),
 );
 
+// Rows need a unique item key, so the virtualizer internal watcher knows when to recompute sizes
+const getItemKey = (rowIndex: number) => {
+  const row = gridRows.value[rowIndex];
+  if (!row) return rowIndex;
+
+  switch (row.type) {
+    case "header":
+      return `header-${row.title}`;
+    case "contentRow":
+      if (!hasMultipleSections.value && rowIndex === gridRows.value.length - 1)
+        return `contentRow-final-${rowIndex}`;
+      else return `contentRow-final-${rowIndex}`;
+
+    case "footer":
+    default:
+      return `footer-${rowIndex}`;
+  }
+};
+
+// headers and title have fixed heights, content rows have a size + gap, excepts when they're the last row
+const rowHeight = (rowIndex: number) => {
+  const row = gridRows.value[rowIndex];
+  if (!row) return 0;
+
+  switch (row.type) {
+    case "header":
+      return GROUP_HEADER_HEIGHT;
+    case "contentRow":
+      if (!hasMultipleSections.value && rowIndex === gridRows.value.length - 1)
+        return GRID_TILE_HEIGHT;
+      else return GRID_TILE_HEIGHT + GRID_TILE_GAP;
+    case "footer":
+    default:
+      return GROUP_FOOTER_HEIGHT;
+  }
+};
+
 const virtualizerOptions = computed(() => ({
   count: gridRows.value.length,
   // `virtualizerLanes` gives virtualizer a "second-dimension" (aka columns for vertical lists and rows for horizontal lists)
@@ -228,6 +248,7 @@ const virtualizerOptions = computed(() => ({
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   getScrollElement: () => scrollRef.value!,
   estimateSize: (i: number) => rowHeight(i),
+  getItemKey: (i: number) => getItemKey(i),
   overscan: 4,
 }));
 
