@@ -338,10 +338,6 @@ onBeforeMount(async () => {
 watch(
   () => props.changeSetId,
   async (newValue, _) => {
-    if (heimdall.muspelheimStatuses.value[newValue] === false) {
-      return;
-    }
-
     const exists = await heimdall.changeSetExists(props.workspacePk, newValue);
     if (!exists) {
       heimdall.muspelheimStatuses.value[newValue] = false;
