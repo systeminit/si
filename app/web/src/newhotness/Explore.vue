@@ -694,7 +694,7 @@ const removeEmitters = () => {
 
 const onC = (e: KeyDetails["c"]) => {
   e.preventDefault();
-
+  if (e.metaKey || e.ctrlKey) return;
   emit("openChangesetModal");
 };
 
