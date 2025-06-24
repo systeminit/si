@@ -128,6 +128,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import AbandonChangeSetModal from "@/components/AbandonChangeSetModal.vue";
 import { reset } from "@/newhotness/logic_composables/navigation_stack";
+import * as heimdall from "../../../store/realtime/heimdall";
 
 const CHANGE_SET_NAME_REGEX = /^(?!head).*$/i;
 
@@ -230,7 +231,9 @@ async function onCreateChangeSet() {
 
   if (createReq.result.success) {
     // reusing above to navigate to new change set... will probably clean this all up later
-    onSelectChangeSet(createReq.result.data.changeSet.id);
+    const newChangeSetId = createReq.result.data.changeSet.id;
+    heimdall.muspelheimStatuses.value[newChangeSetId] = false;
+    onSelectChangeSet(newChangeSetId);
     createModalRef.value?.close();
   }
 }
