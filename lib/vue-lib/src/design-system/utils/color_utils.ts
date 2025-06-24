@@ -8,7 +8,7 @@ export const COLOR_PALETTE = colorsJson;
 export const BRAND_COLOR_FILTER_HEX_CODES = {
   AWS: "#FF9900",
   Docker: "#1D63ED",
-  Azure: "#89C402",
+  Azure: "#104581",
   "Google Cloud": "#EF6255",
   Github: "#9467EC",
   Netlify: "#05BDBA",

@@ -6,7 +6,7 @@
     v-tooltip="truncateRef?.tooltipActive ? truncateRef.tooltip : undefined"
     class="vbutton"
     :tabindex="tabIndex"
-    :class="computedClasses"
+    :class="clsx(computedClasses, computedTextSize)"
     @click="clickHandler($event)"
   >
     <div class="vbutton__inner">
@@ -31,7 +31,11 @@
             :name="icon"
           />
         </slot>
-        <TruncateWithTooltip v-if="truncateText" ref="truncateRef">
+        <TruncateWithTooltip
+          v-if="truncateText"
+          ref="truncateRef"
+          class="py-xs"
+        >
           <slot v-if="confirmClick && confirmFirstClickAt" name="confirm-click">
             |
             {{
@@ -78,6 +82,7 @@ import { Tones } from "../utils/color_utils";
 import { useTheme } from "../utils/theme_tools";
 import TextPill from "./TextPill.vue";
 import TruncateWithTooltip from "./TruncateWithTooltip.vue";
+import { tw } from "../../utils/tw-utils";
 
 const SHOW_SUCCESS_DELAY = 2000;
 
@@ -87,6 +92,7 @@ type ButtonTones = Tones;
 
 const props = defineProps({
   size: { type: String as PropType<ButtonSizes>, default: "md" },
+  textSize: { type: String as PropType<ButtonSizes> },
   iconClass: { type: String },
 
   variant: { type: String as PropType<ButtonVariants>, default: "solid" },
@@ -258,11 +264,34 @@ onBeforeUnmount(() => {
 
 const containerTheme = useTheme();
 
+const computedTextSize = computed(() => {
+  if (props.textSize) {
+    return {
+      "2xs": tw`text-2xs`,
+      xs: tw`text-xs`,
+      sm: tw`text-sm`,
+      md: tw`text-md`,
+      lg: tw`text-lg`,
+      xl: tw`text-xl`,
+    }[props.textSize];
+  } else {
+    return {
+      "2xs": tw`text-[8px]`,
+      xs: tw`text-[12px]`,
+      sm: tw`text-[14px]`,
+      md: tw`text-[14px]`,
+      lg: tw`text-[18px]`,
+      xl: tw`text-[20px]`,
+    }[props.size];
+  }
+});
+
 const computedClasses = computed(() => ({
   "--disabled": !!props.disabled,
   "--loading": !!computedLoading.value,
   ...(props.variant && { [`--variant-${props.variant}`]: true }),
   ...(props.size && { [`--size-${props.size}`]: true }),
+  ...(props.textSize && { [`--text-size-${props.textSize}`]: true }),
   ...(props.tone && { [`--tone-${props.tone}`]: true }),
   "--rounded": !!props.rounded,
   "--hover-glow": !!props.hoverGlow,
@@ -285,7 +314,7 @@ const computedClasses = computed(() => ({
   border-color: rgba(0, 0, 0, 0);
   // margin-right: 4px;
   // margin-bottom: 1px;
-  font-size: 14px;
+  // font-size: 14px;
   // font-family: @fancy-font;
   // text-transform: uppercase;
   text-decoration: none;
@@ -333,7 +362,7 @@ const computedClasses = computed(() => ({
 
   // Size options (medium is default)
   &.--size-2xs {
-    font-size: 8px;
+    // font-size: 8px;
     padding: 1px 1px;
     // border-radius: 8px;
     .vbutton__icon {
@@ -348,7 +377,7 @@ const computedClasses = computed(() => ({
     }
   }
   &.--size-xs {
-    font-size: 12px;
+    // font-size: 12px;
     padding: 2px 2px;
     // border-radius: 8px;
     .vbutton__icon {
@@ -363,7 +392,7 @@ const computedClasses = computed(() => ({
     }
   }
   &.--size-sm {
-    font-size: 14px;
+    // font-size: 14px;
     padding: 2px 4px;
     .vbutton__inner {
       gap: 2px;
@@ -387,7 +416,7 @@ const computedClasses = computed(() => ({
   &.--size-lg {
     padding: 14px 24px;
     border-width: 2px;
-    font-size: 18px;
+    // font-size: 18px;
     .vbutton__inner {
       gap: 8px;
     }
@@ -401,7 +430,7 @@ const computedClasses = computed(() => ({
 
   &.--size-xl {
     max-width: 100%;
-    font-size: 20px;
+    // font-size: 20px;
     padding: 22px 36px;
     border-width: 2px;
     .vbutton__inner {

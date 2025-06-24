@@ -39,7 +39,7 @@
       <template v-else>
         <div class="flex-none">{{ component.schemaVariantName }}</div>
         <div class="flex-none">/</div>
-        <div class="flex-1 min-w-0">
+        <div class="flex-1 min-w-0 m-[-4px]">
           <nameForm.Field
             :validators="{
               onChange: required,
@@ -59,6 +59,7 @@
                     class="border-0 font-normal max-w-full"
                     iconRight="edit"
                     size="sm"
+                    textSize="md"
                     tone="shade"
                     variant="ghost"
                     truncateText
