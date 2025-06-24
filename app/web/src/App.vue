@@ -34,6 +34,7 @@ import {
   onMounted,
   ref,
   onErrorCaptured,
+  provide,
 } from "vue";
 import "floating-vue/dist/style.css";
 
@@ -90,6 +91,11 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
   window.removeEventListener("resize", windowResizeHandler);
+});
+
+const loadingGuard = ref(false);
+provide("LOADINGGUARD", {
+  loadingGuard,
 });
 
 useHead(
