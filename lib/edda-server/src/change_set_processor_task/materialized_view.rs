@@ -188,7 +188,7 @@ pub async fn try_reuse_mv_index_for_new_change_set(
                     pointer.clone(),
                 )
                 .await?;
-            span.record("si.from_change_set.id", change_set_mv_id);
+            span.record("si.from_change_set.id", change_set.id.to_string());
             let meta = UpdateMeta {
                 workspace_id,
                 change_set_id: Some(change_set_id),
