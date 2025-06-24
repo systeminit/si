@@ -232,12 +232,12 @@ const selectOption = (option: { value: unknown; label: string }) => {
   emit("update:modelValue", option.value as string);
 };
 const editOption = (option: { value: unknown; label: string }) => {
-  emit("edit", option.value as string);
+  emit("edit", option as { value: string; label: string });
 };
 const emit = defineEmits<{
   (e: "select", value: string): void;
   (e: "update:modelValue", value: string): void;
-  (e: "edit", value: string): void;
+  (e: "edit", option: { value: string; label: string }): void;
 }>();
 
 defineExpose({
