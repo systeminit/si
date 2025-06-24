@@ -317,15 +317,17 @@ pub async fn build_all_mv_for_change_set(
     )
     .await?;
     span.record("si.edda.mv.count", build_count);
-    span.record(
-        "si.edda.mv.avg_build_elapsed_ms",
-        build_total_elapsed.as_millis() / build_count,
-    );
-    span.record(
-        "si.edda.mv.max_build_elapsed_ms",
-        build_max_elapsed.as_millis(),
-    );
-    span.record("si.edda.mv.slowest_kind", build_slowest_mv_kind);
+    if build_count > 0 {
+        span.record(
+            "si.edda.mv.avg_build_elapsed_ms",
+            build_total_elapsed.as_millis() / build_count,
+        );
+        span.record(
+            "si.edda.mv.max_build_elapsed_ms",
+            build_max_elapsed.as_millis(),
+        );
+        span.record("si.edda.mv.slowest_kind", build_slowest_mv_kind);
+    }
 
     let mut index_entries: Vec<_> = frontend_objects.into_iter().map(Into::into).collect();
     index_entries.sort();
@@ -431,15 +433,17 @@ pub async fn build_mv_for_changes_in_change_set(
     )
     .await?;
     span.record("si.edda.mv.count", build_count);
-    span.record(
-        "si.edda.mv.avg_build_elapsed_ms",
-        build_total_elapsed.as_millis() / build_count,
-    );
-    span.record(
-        "si.edda.mv.max_build_elapsed_ms",
-        build_max_elapsed.as_millis(),
-    );
-    span.record("si.edda.mv.slowest_kind", build_slowest_mv_kind);
+    if build_count > 0 {
+        span.record(
+            "si.edda.mv.avg_build_elapsed_ms",
+            build_total_elapsed.as_millis() / build_count,
+        );
+        span.record(
+            "si.edda.mv.max_build_elapsed_ms",
+            build_max_elapsed.as_millis(),
+        );
+        span.record("si.edda.mv.slowest_kind", build_slowest_mv_kind);
+    }
 
     let mv_index: MvIndex = serde_json::from_value(index_frontend_object.data)?;
     let removal_checksum = "0".to_string();
