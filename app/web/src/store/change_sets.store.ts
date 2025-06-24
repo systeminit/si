@@ -586,7 +586,7 @@ export function useChangeSetsStore() {
                     name: route.name,
                     params: {
                       ...route.params,
-                      changeSetId: "head",
+                      changeSetId: this.headChangeSetId,
                     },
                   });
                   if (
