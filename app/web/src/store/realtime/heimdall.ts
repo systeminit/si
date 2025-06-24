@@ -175,10 +175,11 @@ const updateCache = (
 ) => {
   // there is always more data attached, but we only care about accessing the ID
   // so thats all we need to type!
+  if (!removed && !data) return;
   const cachedData = queryClient.getQueryData(queryKey) as { id: string }[];
-  if (!cachedData) return;
+  if (!cachedData || cachedData.length === 0) return;
   // TODO removal
-  const idx = cachedData.findIndex((d) => d.id === id);
+  const idx = cachedData.findIndex((d) => d && d.id === id);
   let dirty = false;
   if (idx !== -1) {
     if (removed) cachedData.splice(idx, 1);
