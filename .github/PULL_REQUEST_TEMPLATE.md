@@ -16,7 +16,7 @@
 ## How was it tested?
 
 <!-- Does it have automated tests? What manual tests did you do? -->
-<--Sometimes it's nice to use this as a mini "test plan" for manual testing, too--write them down and check them
+<!-- Sometimes it's nice to use this as a mini "test plan" for manual testing, too--write them down and check them
 off :)-->
 
 - [X] Integration tests pass
