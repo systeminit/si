@@ -412,6 +412,7 @@ rust_build_targets = [
     "//bin/rebaser:rebaser",
     "//bin/sdf:sdf",
     "//bin/veritech:veritech",
+    "//bin/luminork:luminork",
 ]
 local_resource(
     "rust-initial-build",
