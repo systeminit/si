@@ -84,12 +84,13 @@ export function useChangeSetsStore() {
   const realtimeStore = useRealtimeStore();
   const featureFlagsStore = useFeatureFlagsStore();
 
-  const BASE_API = [
-    "v2",
-    "workspaces",
-    { workspacePk },
-    "change-sets",
-  ] as URLPattern;
+  const BASE_API = () =>
+    [
+      "v2",
+      "workspaces",
+      { workspacePk: workspacesStore.selectedWorkspacePk },
+      "change-sets",
+    ] as URLPattern;
 
   return addStoreHooks(
     workspacePk,
@@ -201,7 +202,7 @@ export function useChangeSetsStore() {
         async FETCH_APPROVAL_STATUS(changeSetId: ChangeSetId) {
           return new ApiRequest<ApprovalData>({
             method: "get",
-            url: BASE_API.concat([{ changeSetId }, "approval_status"]),
+            url: BASE_API().concat([{ changeSetId }, "approval_status"]),
             onSuccess: (response) => {
               this.changeSetsApprovalData[changeSetId] = response;
             },
@@ -211,7 +212,7 @@ export function useChangeSetsStore() {
         async FETCH_CHANGE_SETS() {
           return new ApiRequest<WorkspaceMetadata>({
             method: "get",
-            url: BASE_API,
+            url: BASE_API(),
             onSuccess: (response) => {
               this.headChangeSetId = response.defaultChangeSetId;
               this.changeSetsById = _.keyBy(response.changeSets, "id");
@@ -271,7 +272,10 @@ export function useChangeSetsStore() {
           const selectedChangeSetId = this.selectedChangeSetId;
           return new ApiRequest({
             method: "post",
-            url: BASE_API.concat([{ selectedChangeSetId }, "request_approval"]),
+            url: BASE_API().concat([
+              { selectedChangeSetId },
+              "request_approval",
+            ]),
           });
         },
         async APPROVE_CHANGE_SET_FOR_APPLY(id?: ChangeSetId) {
@@ -281,7 +285,7 @@ export function useChangeSetsStore() {
 
           return new ApiRequest({
             method: "post",
-            url: BASE_API.concat([{ changeSetId }, "approve"]),
+            url: BASE_API().concat([{ changeSetId }, "approve"]),
             params: {
               status: "Approved",
             },
@@ -294,7 +298,7 @@ export function useChangeSetsStore() {
 
           return new ApiRequest({
             method: "post",
-            url: BASE_API.concat([{ changeSetId }, "approve"]),
+            url: BASE_API().concat([{ changeSetId }, "approve"]),
             params: {
               status: "Rejected",
             },
@@ -305,7 +309,7 @@ export function useChangeSetsStore() {
           const selectedChangeSetId = this.selectedChangeSetId;
           return new ApiRequest({
             method: "post",
-            url: BASE_API.concat([
+            url: BASE_API().concat([
               { selectedChangeSetId },
               "cancel_approval_request",
             ]),
@@ -316,7 +320,7 @@ export function useChangeSetsStore() {
           const selectedChangeSetId = this.selectedChangeSetId;
           return new ApiRequest({
             method: "post",
-            url: BASE_API.concat([{ selectedChangeSetId }, "reopen"]),
+            url: BASE_API().concat([{ selectedChangeSetId }, "reopen"]),
           });
         },
         async APPLY_CHANGE_SET(username: string) {
@@ -325,7 +329,7 @@ export function useChangeSetsStore() {
 
           return new ApiRequest({
             method: "post",
-            url: BASE_API.concat([{ selectedChangeSetId }, "apply"]),
+            url: BASE_API().concat([{ selectedChangeSetId }, "apply"]),
             optimistic: () => {
               toast({
                 component: IncomingChangesMerging,
@@ -365,7 +369,7 @@ export function useChangeSetsStore() {
         async RENAME_CHANGE_SET(changeSetId: ChangeSetId, newName: string) {
           return new ApiRequest({
             method: "post",
-            url: BASE_API.concat([{ changeSetId }, "rename"]),
+            url: BASE_API().concat([{ changeSetId }, "rename"]),
             params: { newName },
             optimistic: () => {
               const changeSet = this.changeSetsById[changeSetId];
