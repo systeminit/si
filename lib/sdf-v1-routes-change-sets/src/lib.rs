@@ -26,6 +26,7 @@ use dal::{
     },
 };
 use sdf_core::{
+    EddaClientError,
     api_error::ApiError,
     app_state::AppState,
 };
@@ -56,6 +57,8 @@ pub enum ChangeSetError {
     DalChangeSetApply(#[from] DalChangeSetApplyError),
     #[error("dvu roots are not empty for change set: {0}")]
     DvuRootsNotEmpty(ChangeSetId),
+    #[error("edda client error: {0}")]
+    EddaClient(#[from] EddaClientError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("invalid header name {0}")]

@@ -280,7 +280,7 @@ pub async fn create_index_for_new_change_set_and_watch(
 
 #[instrument(
     level = "info",
-    name = "sdf.change_set.create_index_for_new_change_set_and_watch",
+    name = "sdf.change_set.create_index_for_new_change_set",
     skip_all,
     fields(
         si.edda_request.id = Empty

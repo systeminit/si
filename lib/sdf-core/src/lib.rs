@@ -16,6 +16,11 @@ pub mod nats_multiplexer;
 pub mod tracking;
 pub mod workspace_permissions;
 
+pub use edda_client::{
+    ClientError as EddaClientError,
+    EddaClient,
+};
+
 /// CRDT broadcast group type, moved here because it's used in AppState
 pub type BroadcastGroups = Arc<Mutex<HashMap<String, Arc<y_sync::net::BroadcastGroup>>>>;
 
