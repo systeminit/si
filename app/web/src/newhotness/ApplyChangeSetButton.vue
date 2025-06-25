@@ -34,7 +34,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed, inject, ref } from "vue";
 import * as _ from "lodash-es";
 import { VButton, PillCounter } from "@si/vue-lib/design-system";
 import { useQuery } from "@tanstack/vue-query";
@@ -47,9 +47,12 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import ApprovalFlowModal from "./ApprovalFlowModal.vue";
+import { assertIsDefined, Context } from "./types";
 
 const changeSetsStore = useChangeSetsStore();
 const statusStore = useStatusStore();
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined(ctx);
 
 const applyChangeSetReqStatus =
   changeSetsStore.getRequestStatus("APPLY_CHANGE_SET");
@@ -80,6 +83,7 @@ const actionsRaw = useQuery<BifrostActionViewList | null>({
   queryKey: key(EntityKind.ActionViewList),
   queryFn: async () =>
     await bifrost<BifrostActionViewList>(args(EntityKind.ActionViewList)),
+  enabled: ctx.queriesEnabled,
 });
 const actions = computed(() => actionsRaw.data.value?.actions ?? []);
 </script>

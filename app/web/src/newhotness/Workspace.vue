@@ -229,6 +229,7 @@ const ctx = computed<Context>(() => {
     outgoingCounts,
     componentNames,
     schemaMembers,
+    queriesEnabled,
   };
 });
 
