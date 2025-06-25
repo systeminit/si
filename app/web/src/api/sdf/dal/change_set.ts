@@ -22,7 +22,7 @@ export interface ChangeSet {
   mergeRequestedAt?: IsoDateString;
   mergeRequestedByUserId?: UserId;
   mergeRequestedByUser?: string;
-  baseChangeSetId: ChangeSetId;
+  baseChangeSetId: ChangeSetId | null;
   reviewedByUserId?: UserId;
   reviewedByUser?: string;
   reviewedAt?: IsoDateString;

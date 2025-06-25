@@ -469,38 +469,57 @@ const waitForInitCompletion = (): Promise<void> => {
   });
 };
 
-const MUSPELHEIM_CONCURRENCY = 10;
+const MUSPELHEIM_CONCURRENCY = 1;
 
 export const muspelheimStatuses = ref<{ [key: string]: boolean }>({});
+
+const fetchOpenChangeSets = async (workspaceId: string) => {
+  const resp = await sdf<WorkspaceMetadata>({
+    method: "GET",
+    url: `v2/workspaces/${workspaceId}/change-sets`,
+  });
+  return resp.data.changeSets.filter((cs) =>
+    [
+      ChangeSetStatus.Open,
+      ChangeSetStatus.NeedsApproval,
+      ChangeSetStatus.NeedsAbandonApproval,
+      ChangeSetStatus.Rejected,
+      ChangeSetStatus.Approved,
+    ].includes(cs.status),
+  );
+};
 
 export const muspelheim = async (workspaceId: string, force?: boolean) => {
   await waitForInitCompletion();
   // eslint-disable-next-line no-console
   console.log("🔥 MUSPELHEIM 🔥");
   const niflheimQueue = new PQueue({ concurrency: MUSPELHEIM_CONCURRENCY });
-  const resp = await sdf<WorkspaceMetadata>({
-    method: "GET",
-    url: `v2/workspaces/${workspaceId}/change-sets`,
-  });
-  const openChangeSetIds = resp.data.changeSets
-    .filter((cs) =>
-      [
-        ChangeSetStatus.Open,
-        ChangeSetStatus.NeedsApproval,
-        ChangeSetStatus.NeedsAbandonApproval,
-        ChangeSetStatus.Rejected,
-        ChangeSetStatus.Approved,
-      ].includes(cs.status),
-    )
-    .map((cs) => cs.id);
-  for (const changeSetId of openChangeSetIds) {
-    muspelheimStatuses.value[changeSetId] = false;
+  const openChangeSets = await fetchOpenChangeSets(workspaceId);
+  const baseChangeSet = openChangeSets.find((cs) => !cs.baseChangeSetId);
+  if (!baseChangeSet) {
+    throw new Error("No HEAD changeset found");
+  }
+
+  // Mark as pending in advance
+  for (const changeSet of openChangeSets) {
+    muspelheimStatuses.value[changeSet.id] = false;
+  }
+
+  const baseChangeSetId = baseChangeSet.id;
+  await niflheim(workspaceId, baseChangeSetId, force);
+
+  for (const changeSet of openChangeSets) {
+    if (changeSet.id === baseChangeSetId) {
+      continue;
+    }
+
     niflheimQueue.add(async () => {
-      await niflheim(workspaceId, changeSetId, force);
+      await niflheim(workspaceId, changeSet.id, force);
     });
   }
 
   await niflheimQueue.onEmpty();
+
   // eslint-disable-next-line no-console
   console.log("🔥 DONE 🔥");
   return true;
@@ -526,6 +545,7 @@ export const niflheim = async (
     muspelheimStatuses.value[changeSetId] = success;
     return success;
   }
+
   return true;
 };
 

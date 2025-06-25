@@ -346,8 +346,8 @@ watch(
       heimdall.muspelheimStatuses.value[newValue] = false;
     }
 
-    const success = await heimdall.niflheim(props.workspacePk, newValue, true);
-    if (!success) {
+    const result = await heimdall.niflheim(props.workspacePk, newValue, true);
+    if (!result) {
       heimdall.muspelheimStatuses.value[newValue] = false;
     }
   },
