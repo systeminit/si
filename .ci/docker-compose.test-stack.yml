@@ -1,0 +1,7 @@
+services:
+  app:
+    image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/ci-base:stable
+    ulimits:
+      nofile:
+        soft: 1024000
+        hard: 1024000
