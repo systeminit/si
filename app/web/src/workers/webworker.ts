@@ -1432,6 +1432,21 @@ const pruneAtomsForClosedChangeSet = async (
   });
 };
 
+const atomChecksumsByKindAndId = (kind: EntityKind, id: string) => {
+  const result = [];
+  const rows = db.exec({
+    sql: `select atoms.checksum from atoms where atoms.kind = ? AND atoms.args = ?;`,
+    bind: [kind, id],
+    returnValue: "resultRows",
+  });
+
+  for (const row of rows) {
+    result.push(row[0]);
+  }
+
+  return result;
+};
+
 const atomChecksumsFor = async (
   changeSetId: ChangeSetId,
 ): Promise<Record<QueryKey, Checksum>> => {
@@ -1526,23 +1541,53 @@ const niflheim = async (
     local.end();
 
     let numHammers = 0;
+
     // Compare each atom checksum from the index with local checksums
-    const objs: MjolnirBulk = [];
-    atoms.forEach(({ kind, id, checksum }) => {
+    const hammerObjs: MjolnirBulk = [];
+    for (const { kind, id, checksum } of atoms) {
       const key = partialKeyFromKindAndArgs(kind, id);
       const local = localChecksums[key];
       if (!local || local !== checksum) {
+        // Attempt to find an existing atom, since it might already exist in the database with this checksum
         const { kind, id } = kindAndArgsFromKey(key);
-        objs.push({ kind, id, checksum });
+        const existingChecksums = atomChecksumsByKindAndId(kind, id);
+        if (existingChecksums.includes(checksum)) {
+          insertAtomMTM(
+            {
+              kind,
+              id,
+              toChecksum: checksum,
+              workspaceId,
+              changeSetId,
+              // These are not used in the insert, but the type requires them. So the values here may not be correct
+              fromIndexChecksum: indexChecksum,
+              toIndexChecksum: checksum,
+            },
+            indexChecksum,
+          );
 
-        numHammers++;
+          bustCacheAndReferences(
+            workspaceId,
+            changeSetId,
+            kind,
+            id,
+            false,
+            true,
+          );
+        } else {
+          // Otherwise, throw a hammer
+          hammerObjs.push({ kind, id, checksum });
+
+          numHammers++;
+        }
       }
-    });
+    }
+
     span.setAttribute("numHammers", numHammers);
     span.setAttribute("indexChecksum", indexChecksum);
 
-    if (objs.length > 0) {
-      await mjolnirBulk(workspaceId, changeSetId, objs, indexChecksum);
+    if (hammerObjs.length > 0) {
+      await mjolnirBulk(workspaceId, changeSetId, hammerObjs, indexChecksum);
     } else {
       bulkDone(true);
       span.setAttribute("noop", true);
