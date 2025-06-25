@@ -74,6 +74,7 @@ export default (opts: { mode: string }) => {
       },
     },
     server: {
+      hmr: false,
       host: config.DEV_HOST,
       allowedHosts: true,
       port: parseInt(config.DEV_PORT),
