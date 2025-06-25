@@ -298,7 +298,8 @@ export const bifrost = async <T>(args: {
   kind: Gettable;
   id: Id;
 }): Promise<Reactive<T> | null> => {
-  await waitForInitCompletion();
+  if (!initCompleted.value) throw new Error("You must wait for initialization");
+
   const start = Date.now();
   const maybeAtomDoc = await db.get(
     args.workspaceId,
@@ -319,7 +320,8 @@ export const bifrostList = async <T>(args: {
   kind: Listable;
   id: Id;
 }): Promise<Reactive<T> | null> => {
-  await waitForInitCompletion();
+  if (!initCompleted.value) throw new Error("You must wait for initialization");
+
   const start = Date.now();
   const maybeAtomDoc = await db.getList(
     args.workspaceId,
@@ -363,7 +365,7 @@ export const getOutgoingConnectionsCounts = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
 }) => {
-  await waitForInitCompletion();
+  if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = Date.now();
   const connectionsCounts = await db.getOutgoingConnectionsCounts(
@@ -385,7 +387,7 @@ export const getComponentNames = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
 }) => {
-  await waitForInitCompletion();
+  if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = Date.now();
   const componentNames = await db.getComponentNames(
@@ -403,7 +405,7 @@ export const getSchemaMembers = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
 }): Promise<SchemaMembers[]> => {
-  await waitForInitCompletion();
+  if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = Date.now();
   const schemaMembers = await db.getSchemaMembers(
@@ -421,7 +423,8 @@ export const getOutgoingConnections = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
 }) => {
-  await waitForInitCompletion();
+  if (!initCompleted.value) throw new Error("You must wait for initialization");
+
   const connectionsById = await db.getOutgoingConnectionsByComponentId(
     args.workspaceId,
     args.changeSetId,
