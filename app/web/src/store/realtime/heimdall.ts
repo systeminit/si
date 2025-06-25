@@ -9,6 +9,8 @@ import {
   toRaw,
   ref,
   watch,
+  onScopeDispose,
+  getCurrentScope,
 } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
 import { monotonicFactory } from "ulid";
@@ -454,6 +456,16 @@ const waitForInitCompletion = (): Promise<void> => {
         resolve();
       }
     });
+    // If this happens in a disposable scope, we want to warn if the scope gets cancelled
+    // (because the watch will be cancelled as well)
+    if (getCurrentScope()) {
+      onScopeDispose(() => {
+        if (!initCompleted.value) {
+          // eslint-disable-next-line no-console
+          console.warn("waiting for init cancelled");
+        }
+      });
+    }
   });
 };
 
