@@ -266,6 +266,7 @@ export type SelectionsInQueryString = Partial<{
   map: string;
   grid: string;
   c: string;
+  groupBy: "diff" | "qual" | "upgr";
 }>;
 
 const compositionLink = computed(() => {

@@ -9,6 +9,7 @@ import SlashForward from "~icons/mdi/slash-forward";
 import BookOpen from "~icons/heroicons/book-open-20-solid";
 import Check from "~icons/heroicons/check-20-solid";
 import CheckCircle from "~icons/heroicons/check-circle-20-solid";
+import CheckCircleOutline from "~icons/carbon/checkmark-outline";
 import CheckSquare from "./custom-icons/check-square.svg?raw";
 import CloudUpload from "~icons/mdi/cloud-upload";
 import CloudDownload from "~icons/mdi/cloud-download";
@@ -167,6 +168,7 @@ import CarbonCompare from "~icons/carbon/compare";
 // import CarbonTransformCode from '~icons/carbon/transform-code';
 import CarbonTransformCode from "~icons/carbon/code"; // using this one as a placeholder for now
 import SettingsEdit from "~icons/carbon/settings-edit";
+import CarbonWarningAlt from "~icons/carbon/warning-alt";
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -225,6 +227,7 @@ export const ICONS = Object.freeze({
   "alert-circle": AlertCircle,
   "alert-square": AlertSquare,
   "alert-triangle": AlertTriangle,
+  "alert-triangle-outline": CarbonWarningAlt,
   "arrows-out": PhArrowsOutCardinal,
   backspace: MaterialSymbolsBackspaceOutline,
   beaker: Beaker,
@@ -242,6 +245,7 @@ export const ICONS = Object.freeze({
   check: Check,
   "check-badge": CheckBadge,
   "check-circle": CheckCircle,
+  "check-circle-outline": CheckCircleOutline,
   "check-hex": CheckHex,
   "check-hex-outline": CheckHexOutline,
   "check-square": CheckSquare,
