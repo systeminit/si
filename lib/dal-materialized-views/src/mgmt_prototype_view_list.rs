@@ -36,12 +36,18 @@ pub async fn assemble(
             }
         };
 
+        let name = if let Some(display_name) = func.display_name {
+            display_name
+        } else {
+            func.name
+        };
+
         views.push(MgmtPrototypeView {
             id: p.id,
             func_id,
             description: p.description,
             prototype_name: p.name,
-            name: func.name,
+            name,
             kind,
         });
     }
