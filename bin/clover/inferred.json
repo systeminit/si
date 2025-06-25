@@ -1118,6 +1118,13 @@
       "AES256"
     ]
   },
+  "Indicates whether the Resolver endpoint allows inbound or outbound DNS queries:\n- INBOUND: allows DNS queries to your VPC from your network \n- OUTBOUND: allows DNS queries from your VPC to your network \n- INBOUND_DELEGATION: allows DNS queries to your VPC from your network with authoritative answers from private hosted zones": {
+    "enum": [
+      "INBOUND",
+      "OUTBOUND",
+      "INBOUND_DELEGATION"
+    ]
+  },
   "[HTTP/HTTPS protocol] The protocol version. The possible values are GRPC, HTTP1, and HTTP2.": {
     "enum": [
       "GRPC",
@@ -4997,6 +5004,9 @@
   "Enum specifying whether the profile is local or associated with a trading partner.": {
     "enum": null
   },
+  "Enumeration of Instance Limits handling in a Campaign": {
+    "enum": null
+  },
   "Environment role arn for custom aws environment permissions": {
     "enum": null
   },
@@ -5607,6 +5617,9 @@
     "enum": null
   },
   "Introduce CidrEndpointsCustomSubDomain property to represent the domain (say, ava.my-company.com)": {
+    "enum": null
+  },
+  "Investigation Group policy": {
     "enum": null
   },
   "Invocation type for direct lambda integrations.": {
@@ -8231,6 +8244,9 @@
   "The Amazon Resource Name (ARN) of the IPAM Resource Discovery Association.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the KMS key that encrypts data in the cluster.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the KMS key to use when encrypting log data.\n To associate an KMS key with the log group, specify the ARN of that KMS key here. If you do so, ingested data is encrypted using this key. This association is stored as long as the data encrypted with the KMS key is still within CWL. This enables CWL to decrypt this data whenever it is requested.\n If you attempt to associate a KMS key with the log group but the KMS key doesn't exist or is deactivated, you will receive an ``InvalidParameterException`` error.\n Log group data is always encrypted in CWL. If you omit this key, the encryption does not use KMS. For more information, see [Encrypt log data in using](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/encrypt-log-data-kms.html)": {
     "enum": null
   },
@@ -8343,6 +8359,9 @@
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the function's execution role.": {
+    "enum": null
+  },
+  "The Amazon Resource Name (ARN) of the guardrail profile": {
     "enum": null
   },
   "The Amazon Resource Name (ARN) of the hierarchy level.": {
@@ -9581,6 +9600,9 @@
   "The Id of this pool's source. If set, all space provisioned in this pool must be free space provisioned in the parent pool.": {
     "enum": null
   },
+  "The Investigation Role's ARN.": {
+    "enum": null
+  },
   "The JDBC URL of the Amazon Redshift cluster.": {
     "enum": null
   },
@@ -9630,6 +9652,9 @@
     "enum": null
   },
   "The KMS key of the data integration.": {
+    "enum": null
+  },
+  "The KMS key that encrypts data on the cluster.": {
     "enum": null
   },
   "The KMS key that is used by Rekognition to encrypt any intermediate customer metadata and store in the customer's S3 bucket.": {
@@ -14087,6 +14112,9 @@
   "The number of days to retain newly copied snapshots in the destination AWS Region after they are copied from the source AWS Region. If the value is -1, the manual snapshot is retained indefinitely.\n\nThe value must be either -1 or an integer between 1 and 3,653.": {
     "enum": null
   },
+  "The number of days to retain the investigation group": {
+    "enum": null
+  },
   "The number of days, weeks, or months a single rotation lasts.": {
     "enum": null
   },
@@ -15227,6 +15255,9 @@
   "The status of enabling the Kinesis stream as a destination for export.": {
     "enum": null
   },
+  "The status of encryption for the cluster.": {
+    "enum": null
+  },
   "The status of the Amazon SNS notification topic. Notifications are sent only if the status is enabled.": {
     "enum": null
   },
@@ -15648,6 +15679,9 @@
     "enum": null
   },
   "The type of encryption in transit to the Kafka cluster.": {
+    "enum": null
+  },
+  "The type of encryption that protects data in the cluster.": {
     "enum": null
   },
   "The type of endpoint.\n Default: Gateway": {
@@ -16485,6 +16519,9 @@
     "enum": null
   },
   "User friendly name for Datastore.": {
+    "enum": null
+  },
+  "User friendly name for resources.": {
     "enum": null
   },
   "User provided identifier for integration, unique to the user account.": {
