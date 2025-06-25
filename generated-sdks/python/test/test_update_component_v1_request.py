@@ -36,12 +36,13 @@ class TestUpdateComponentV1Request(unittest.TestCase):
         if include_optional:
             return UpdateComponentV1Request(
                 connection_changes = system_initiative_api_client.models.connection_details.ConnectionDetails(
-                    add = [{from={component=OtherComponentName, socketName=output}, to=ThisComponentInputSocketName}, {from=ThisComponentOutputSocketName, to={componentId=01H9ZQD35JPMBGHH69BT0Q79VY, socketName=InputSocketName}}], 
-                    remove = [{from={componentId=01H9ZQD35JPMBGHH69BT0Q79VY, socketName=output}, to=ThisComponentInputSocketName}, {from=ThisComponentOutputSocketName, to={component=OtherComponentName, socketName=InputSocketName}}], ),
+                    add = {}, 
+                    remove = {}, ),
                 domain = {propId1=value1, path/to/prop=value2},
                 name = 'MyUpdatedComponentName',
                 resource_id = 'i-12345678',
                 secrets = {secretDefinitionName=secretName},
+                subscriptions = {/prop/path/on/this/component={component=OtherComponentName, propPath=/prop/path/on/other/component, keepOtherSubscriptions=true}},
                 unset = [propId1, path/to/prop]
             )
         else:

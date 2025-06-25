@@ -14,10 +14,10 @@
 
 import unittest
 
-from system_initiative_api_client.models.connection_details import ConnectionDetails
+from system_initiative_api_client.models.subscription import Subscription
 
-class TestConnectionDetails(unittest.TestCase):
-    """ConnectionDetails unit test stubs"""
+class TestSubscription(unittest.TestCase):
+    """Subscription unit test stubs"""
 
     def setUp(self):
         pass
@@ -25,26 +25,32 @@ class TestConnectionDetails(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def make_instance(self, include_optional) -> ConnectionDetails:
-        """Test ConnectionDetails
+    def make_instance(self, include_optional) -> Subscription:
+        """Test Subscription
             include_optional is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
-        # uncomment below to create an instance of `ConnectionDetails`
+        # uncomment below to create an instance of `Subscription`
         """
-        model = ConnectionDetails()
+        model = Subscription()
         if include_optional:
-            return ConnectionDetails(
-                add = {},
-                remove = {}
+            return Subscription(
+                component = '',
+                component_id = '01H9ZQD35JPMBGHH69BT0Q79VY',
+                function = '',
+                keep_existing_subscriptions = True,
+                prop_path = ''
             )
         else:
-            return ConnectionDetails(
+            return Subscription(
+                component = '',
+                component_id = '01H9ZQD35JPMBGHH69BT0Q79VY',
+                prop_path = '',
         )
         """
 
-    def testConnectionDetails(self):
-        """Test ConnectionDetails"""
+    def testSubscription(self):
+        """Test Subscription"""
         # inst_req_only = self.make_instance(include_optional=False)
         # inst_req_and_optional = self.make_instance(include_optional=True)
 
