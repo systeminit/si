@@ -31,10 +31,12 @@ import {
   Prop,
   SchemaMembers,
 } from "@/workers/types/entity_kind_types";
-import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { Context } from "@/newhotness/types";
 import { DefaultMap } from "@/utils/defaultmap";
 import * as rainbow from "@/newhotness/logic_composables/rainbow_counter";
+import { sdfApiInstance as sdf } from "@/store/apis.web";
+import { WorkspaceMetadata } from "@/api/sdf/dal/workspace";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useWorkspacesStore } from "../workspaces.store";
 
@@ -464,10 +466,22 @@ export const muspelheim = async (workspaceId: string, force?: boolean) => {
   // eslint-disable-next-line no-console
   console.log("🔥 MUSPELHEIM 🔥");
   const niflheimQueue = new PQueue({ concurrency: MUSPELHEIM_CONCURRENCY });
-  const changeSetStore = useChangeSetsStore();
-  // We cannot rely on the change set store having already fetched
-  await changeSetStore.FETCH_CHANGE_SETS();
-  for (const changeSetId of changeSetStore.openChangeSetIds) {
+  const resp = await sdf<WorkspaceMetadata>({
+    method: "GET",
+    url: `v2/workspaces/${workspaceId}/change-sets`,
+  });
+  const openChangeSetIds = resp.data.changeSets
+    .filter((cs) =>
+      [
+        ChangeSetStatus.Open,
+        ChangeSetStatus.NeedsApproval,
+        ChangeSetStatus.NeedsAbandonApproval,
+        ChangeSetStatus.Rejected,
+        ChangeSetStatus.Approved,
+      ].includes(cs.status),
+    )
+    .map((cs) => cs.id);
+  for (const changeSetId of openChangeSetIds) {
     muspelheimStatuses.value[changeSetId] = false;
     niflheimQueue.add(async () => {
       await niflheim(workspaceId, changeSetId, force);
@@ -503,17 +517,20 @@ export const niflheim = async (
   return true;
 };
 
+// deprecated
 export const changeSetId = computed(() => {
   const changeSetsStore = useChangeSetsStore();
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return changeSetsStore.selectedChangeSetId!;
 });
+// deprecated
 const workspaceId = computed(() => {
   const workspaceStore = useWorkspacesStore();
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return workspaceStore.selectedWorkspacePk!;
 });
 
+// deprecated
 // this is for the old world!
 export const makeKey = (kind: string, id?: string) => {
   return [workspaceId.value, changeSetId.value, kind, id ?? workspaceId.value];
