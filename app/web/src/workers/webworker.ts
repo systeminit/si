@@ -710,20 +710,20 @@ const initIndexAndChangeSet = (meta: AtomMeta, span?: Span) => {
     throw new Error("Null value from SQL, impossible");
   }
 
-  if (
-    changeSetExists &&
-    meta.fromIndexChecksum &&
-    meta.fromIndexChecksum !== currentIndexChecksum
-  ) {
-    debug("🔥🔥 RAGNAROK", meta.fromIndexChecksum, currentIndexChecksum);
-    // throw new Ragnarok(
-    //   "From Checksum Doesn't Exist",
-    //   workspaceId,
-    //   changeSetId,
-    //   meta.fromIndexChecksum,
-    //   currentIndexChecksum,
-    // );
-  }
+  // if (
+  //   changeSetExists &&
+  //   meta.fromIndexChecksum &&
+  //   meta.fromIndexChecksum !== currentIndexChecksum
+  // ) {
+  //   debug("🔥🔥 RAGNAROK", meta.fromIndexChecksum, currentIndexChecksum);
+  //   // throw new Ragnarok(
+  //   //   "From Checksum Doesn't Exist",
+  //   //   workspaceId,
+  //   //   changeSetId,
+  //   //   meta.fromIndexChecksum,
+  //   //   currentIndexChecksum,
+  //   // );
+  // }
 
   //
   // Create the index if it doesn't exist--and copy the previous index if we have them
@@ -1361,7 +1361,9 @@ const mjolnirJob = async (
   processMjolnirQueue.add(() => handleHammer(msg));
 };
 
-const updateChangeSetWithNewIndex = (meta: AtomMeta) => {
+const updateChangeSetWithNewIndex = (
+  meta: Omit<AtomMeta, "fromIndexChecksum" | "workspaceId">,
+) => {
   db.exec({
     sql: "update changesets set index_checksum = ? where change_set_id = ?;",
     bind: [meta.toIndexChecksum, meta.changeSetId],
@@ -1430,6 +1432,85 @@ const pruneAtomsForClosedChangeSet = async (
     await removeOldIndex();
     span.end();
   });
+};
+
+const reuseExistingAtom = (
+  workspaceId: string,
+  changeSetId: string,
+  indexChecksum: string,
+  kind: EntityKind,
+  id: string,
+  checksum: string,
+  data: AtomDocument,
+  updateChangesetIndex?: boolean,
+) => {
+  insertAtomMTM(
+    {
+      kind,
+      id,
+      toChecksum: checksum,
+      workspaceId,
+      changeSetId,
+      // These are not used in the insert, but the type requires them. So the values here may not be correct
+      fromIndexChecksum: "ignore me",
+      toIndexChecksum: "not real",
+    },
+    indexChecksum,
+  );
+
+  postProcess(workspaceId, changeSetId, kind, data, id, indexChecksum);
+
+  if (updateChangesetIndex) {
+    updateChangeSetWithNewIndex({
+      toIndexChecksum: indexChecksum,
+      changeSetId,
+    });
+  }
+
+  bustCacheAndReferences(workspaceId, changeSetId, kind, id, false, true);
+};
+
+const decodedAtomCache: { [key: string]: AtomDocument } = {};
+
+const getCachedDocument = (kind: EntityKind, id: string, checksum: string) => {
+  const cacheKey = `${id}-${kind}-${checksum}`;
+  return decodedAtomCache[cacheKey];
+};
+
+const setCachedDocument = (
+  kind: EntityKind,
+  id: string,
+  checksum: string,
+  data: AtomDocument,
+) => {
+  const cacheKey = `${id}-${kind}-${checksum}`;
+  decodedAtomCache[cacheKey] = data;
+};
+
+const atomDocumentForChecksum = (
+  kind: EntityKind,
+  id: string,
+  checksum: string,
+): AtomDocument | undefined => {
+  const maybeCachedAtom = getCachedDocument(kind, id, checksum);
+  if (maybeCachedAtom) {
+    return maybeCachedAtom;
+  }
+
+  const rows = db.exec({
+    sql: `select atoms.data from atoms where atoms.kind = ? AND atoms.args = ? and atoms.checksum = ? limit 1;`,
+    bind: [kind, id, checksum],
+    returnValue: "resultRows",
+  });
+
+  const atomData = rows[0]?.[0];
+  if (atomData) {
+    const decoded = decodeDocumentFromDB(atomData as ArrayBuffer);
+    setCachedDocument(kind, id, checksum, decoded);
+    return decoded;
+  }
+
+  return undefined;
 };
 
 const atomChecksumsFor = async (
@@ -1513,6 +1594,15 @@ const niflheim = async (
     // Use index checksum for validation - this is more reliable than snapshot addresses
     const indexChecksum = req.data.indexChecksum;
     const atoms = req.data.frontEndObject.data.mvList;
+    initIndexAndChangeSet(
+      {
+        changeSetId,
+        workspaceId,
+        toIndexChecksum: indexChecksum,
+        fromIndexChecksum: indexChecksum,
+      },
+      frigg,
+    );
     debug("niflheim atom count", atoms.length);
     frigg.setAttribute("numEntries", atoms.length);
     frigg.setAttribute("indexChecksum", indexChecksum);
@@ -1526,23 +1616,45 @@ const niflheim = async (
     local.end();
 
     let numHammers = 0;
+    let updateIndex = true;
+
     // Compare each atom checksum from the index with local checksums
-    const objs: MjolnirBulk = [];
-    atoms.forEach(({ kind, id, checksum }) => {
+    const hammerObjs: MjolnirBulk = [];
+    for (const { kind, id, checksum } of atoms) {
       const key = partialKeyFromKindAndArgs(kind, id);
       const local = localChecksums[key];
       if (!local || local !== checksum) {
-        const { kind, id } = kindAndArgsFromKey(key);
-        objs.push({ kind, id, checksum });
+        // Attempt to find an existing atom, since it might already exist in the database with this checksum
+        const existingDataForChecksum = atomDocumentForChecksum(
+          kind,
+          id,
+          checksum,
+        );
+        if (existingDataForChecksum) {
+          reuseExistingAtom(
+            workspaceId,
+            changeSetId,
+            indexChecksum,
+            kind,
+            id,
+            existingDataForChecksum,
+            updateIndex,
+          );
+          updateIndex = false;
+        } else {
+          // Otherwise, throw a hammer
+          hammerObjs.push({ kind, id, checksum });
 
-        numHammers++;
+          numHammers++;
+        }
       }
-    });
+    }
+
     span.setAttribute("numHammers", numHammers);
     span.setAttribute("indexChecksum", indexChecksum);
 
-    if (objs.length > 0) {
-      await mjolnirBulk(workspaceId, changeSetId, objs, indexChecksum);
+    if (hammerObjs.length > 0) {
+      await mjolnirBulk(workspaceId, changeSetId, hammerObjs, indexChecksum);
     } else {
       bulkDone(true);
       span.setAttribute("noop", true);
@@ -1695,7 +1807,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     }),
   );
   // bust everything all at once on cold start
-  await bustCacheAndReferences(
+  bustCacheAndReferences(
     workspaceId,
     changeSetId,
     EntityKind.PossibleConnections,
@@ -1729,7 +1841,7 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     ),
   );
   // bust everything all at once on cold start
-  await bustCacheAndReferences(
+  bustCacheAndReferences(
     workspaceId,
     changeSetId,
     EntityKind.OutgoingConnections,
