@@ -115,6 +115,7 @@ export default (opts: { mode: string }) => {
     },
     build: {
       manifest: "manifest.json",
+      sourcemap: "inline",
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, "index.html"),
@@ -134,7 +135,6 @@ export default (opts: { mode: string }) => {
             }
             return "assets/[name]-[hash].js";
           },
-          sourcemap: "inline",
           format: "es",
           globals: {
             react: "React",
