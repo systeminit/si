@@ -67,6 +67,12 @@ jobs:
         with:
           dir-path: app/web/dist
           s3-bucket: ${{ vars.WEB_HOSTING_BUCKET }}
+          cache-control-merge-policy: replace
+          cache-control: >
+            {
+              "assets/webworker.js": "public,max-age=60,stale-while-revalidate=2592000",
+              "assets/shared_webworker.js": "public,max-age=60,stale-while-revalidate=2592000"
+            }
 
       - name: Invalidate web cache
         run: |
