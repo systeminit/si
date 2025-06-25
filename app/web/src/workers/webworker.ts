@@ -928,6 +928,12 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
       `${atom.fromChecksum} -> ${atom.toChecksum}`,
     );
 
+    let needToInsertMTM = false;
+    let bustCache = false;
+    let doc;
+    let removed = false;
+    let patchRequired = true;
+
     // Check if we actually have the atom data, not just the MTM relationship
     const upToDateAtomIndexes = atomExistsOnIndexes(
       atom.kind,
@@ -935,8 +941,9 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
       atom.toChecksum,
     );
     if (upToDateAtomIndexes.length > 0) {
+      patchRequired = false;
       debug(
-        "🔧 No Op!",
+        "🔧 No Op Patch!",
         atom.kind,
         atom.id,
         atom.toChecksum,
@@ -946,82 +953,83 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
         upToDateAtomIndexes: JSON.stringify(upToDateAtomIndexes),
       });
       span.end();
-      return;
+      if (!upToDateAtomIndexes.includes(indexChecksum)) {
+        needToInsertMTM = true;
+        bustCache = true;
+      }
     }
 
-    // do we have an index with the fromChecksum (without we cannot patch)
-    const previousIndexes = atomExistsOnIndexes(
-      atom.kind,
-      atom.id,
-      atom.fromChecksum,
-    );
-    span.setAttribute("previousIndexes", JSON.stringify(previousIndexes));
-    const exists = previousIndexes.length > 0;
-    span.setAttribute("exists", exists);
-    debug(
-      "🔧 Previous indexes exist:",
-      exists,
-      "fromChecksum:",
-      atom.fromChecksum,
-    );
+    if (patchRequired) {
+      // do we have an index with the fromChecksum (without we cannot patch)
+      const previousIndexes = atomExistsOnIndexes(
+        atom.kind,
+        atom.id,
+        atom.fromChecksum,
+      );
+      span.setAttribute("previousIndexes", JSON.stringify(previousIndexes));
+      const exists = previousIndexes.length > 0;
+      span.setAttribute("exists", exists);
+      debug(
+        "🔧 Previous indexes exist:",
+        exists,
+        "fromChecksum:",
+        atom.fromChecksum,
+      );
 
-    let needToInsertMTM = false;
-    let bustCache = false;
-    let doc;
-    let removed = false;
-    if (atom.fromChecksum === "0") {
-      if (!exists) {
-        // if i already have it, this is a NOOP
-        debug("🔧 Creating new atom from patch:", atom.kind, atom.id);
-        span.setAttribute("createAtomFromPatch", true);
-        doc = await createAtomFromPatch(atom, span);
-        needToInsertMTM = true;
-        bustCache = true;
+      if (atom.fromChecksum === "0") {
+        if (!exists) {
+          // if i already have it, this is a NOOP
+          debug("🔧 Creating new atom from patch:", atom.kind, atom.id);
+          span.setAttribute("createAtomFromPatch", true);
+          doc = await createAtomFromPatch(atom, span);
+          needToInsertMTM = true;
+          bustCache = true;
+        } else {
+          debug("🔧 New atom already exists (noop):", atom.kind, atom.id);
+        }
+      } else if (atom.toChecksum === "0") {
+        // if i've already removed it, this is a NOOP
+        if (exists) {
+          debug("🔧 Removing atom:", atom.kind, atom.id);
+          span.setAttribute("removeAtom", true);
+          removeAtom(indexChecksum, atom);
+          bustCache = true;
+          removed = true;
+        } else {
+          debug("🔧 Atom already removed (noop):", atom.kind, atom.id);
+        }
       } else {
-        debug("🔧 New atom already exists (noop):", atom.kind, atom.id);
-      }
-    } else if (atom.toChecksum === "0") {
-      // if i've already removed it, this is a NOOP
-      if (exists) {
-        debug("🔧 Removing atom:", atom.kind, atom.id);
-        span.setAttribute("removeAtom", true);
-        removeAtom(indexChecksum, atom);
-        bustCache = true;
-        removed = true;
-      } else {
-        debug("🔧 Atom already removed (noop):", atom.kind, atom.id);
-      }
-    } else {
-      // patch it if I can
-      if (exists) {
-        debug("🔧 Patching existing atom:", atom.kind, atom.id);
-        span.setAttribute("patchAtom", true);
-        doc = await patchAtom(atom);
-        needToInsertMTM = true;
-        bustCache = true;
-      } // otherwise, fire the small hammer to get the full object
-      else {
-        debug(
-          "🔨 MJOLNIR RACE: Missing fromChecksum data, firing hammer:",
-          atom.kind,
-          atom.id,
-          "fromChecksum:",
-          atom.fromChecksum,
-        );
-        span.addEvent("mjolnir", {
-          atom: JSON.stringify(atom),
-          previousIndexes: JSON.stringify(previousIndexes),
-          toChecksumIndexes: JSON.stringify([]), // indexes variable was removed
-          source: "applyPatch",
-        });
-        debug("applyPatch mjolnir", atom.kind, atom.id);
-        mjolnir(
-          atom.workspaceId,
-          atom.changeSetId,
-          atom.kind,
-          atom.id,
-          atom.toChecksum,
-        );
+        // patch it if I can
+        if (exists) {
+          debug("🔧 Patching existing atom:", atom.kind, atom.id);
+          span.setAttribute("patchAtom", true);
+          doc = await patchAtom(atom);
+          needToInsertMTM = true;
+          bustCache = true;
+        } // otherwise, fire the small hammer to get the full object
+        else {
+          debug(
+            "🔨 MJOLNIR RACE: Missing fromChecksum data, firing hammer:",
+            atom.kind,
+            atom.id,
+            "fromChecksum:",
+            atom.fromChecksum,
+          );
+          span.addEvent("mjolnir", {
+            atom: JSON.stringify(atom),
+            previousIndexes: JSON.stringify(previousIndexes),
+            toChecksumIndexes: JSON.stringify([]), // indexes variable was removed
+            source: "applyPatch",
+          });
+          debug("applyPatch mjolnir", atom.kind, atom.id);
+          mjolnir(
+            atom.workspaceId,
+            atom.changeSetId,
+            atom.kind,
+            atom.id,
+            atom.toChecksum,
+          );
+        }
       }
     }
 
