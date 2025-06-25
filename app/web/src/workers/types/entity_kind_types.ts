@@ -12,6 +12,7 @@ import {
 import { ViewId } from "@/api/sdf/dal/views";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { DefaultMap } from "@/utils/defaultmap";
+import { ComponentInfo } from "./dbinterface";
 
 export enum EntityKind {
   Component = "Component",
@@ -32,7 +33,7 @@ export enum EntityKind {
   PossibleConnections = "PossibleConnections",
   OutgoingConnections = "OutgoingConnections",
   OutgoingCounts = "OutgoingCounts",
-  ComponentNames = "ComponentNames",
+  ComponentDetails = "ComponentDetails",
 }
 
 /**
@@ -81,7 +82,7 @@ export type OutgoingConnections = DefaultMap<string, Connection[]>;
  * 7. `getReferences` SHALL set default/warning data that `getComputed` will write over
  */
 export type OutgoingCounts = Record<ComponentId, number>;
-export type ComponentNames = Record<ComponentId, string>;
+export type ComponentDetails = Record<ComponentId, ComponentInfo>;
 
 export type PossibleConnection = {
   attributeValueId: string;

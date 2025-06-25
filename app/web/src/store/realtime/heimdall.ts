@@ -383,14 +383,14 @@ export const getOutgoingConnectionsCounts = async (args: {
   else return {};
 };
 
-export const getComponentNames = async (args: {
+export const getComponentDetails = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
 }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = Date.now();
-  const componentNames = await db.getComponentNames(
+  const componentNames = await db.getComponentDetails(
     args.workspaceId,
     args.changeSetId,
   );

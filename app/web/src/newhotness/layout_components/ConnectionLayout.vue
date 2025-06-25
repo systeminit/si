@@ -20,7 +20,7 @@
         :lineClamp="2"
         @click="() => navigate(conn.componentId)"
       >
-        {{ ctx.componentNames.value[conn.componentId] }}
+        {{ ctx.componentDetails.value[conn.componentId]?.name }}
       </TruncateWithTooltip>
       <!-- negative margin pulls things together -->
       <p

@@ -55,7 +55,7 @@
         <Lobby />
       </template>
       <template v-else-if="componentId">
-        <ComponentDetails :componentId="componentId" />
+        <ComponentPage :componentId="componentId" />
       </template>
       <template v-else-if="funcRunId">
         <FuncRunDetails :funcRunId="funcRunId" />
@@ -97,7 +97,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import {
-  ComponentNames,
+  ComponentDetails,
   EntityKind,
   OutgoingCounts,
   SchemaMembers,
@@ -105,7 +105,6 @@ import {
 import { SchemaId } from "@/api/sdf/dal/schema";
 import Lobby from "./Lobby.vue";
 import Explore from "./Explore.vue";
-import ComponentDetails from "./ComponentDetails.vue";
 import FuncRunDetails from "./FuncRunDetails.vue";
 import LatestFuncRunDetails from "./LatestFuncRunDetails.vue";
 import { Context, FunctionKind } from "./types";
@@ -114,6 +113,7 @@ import {
   startWindowResizeEmitter,
 } from "./logic_composables/emitters";
 import { tokensByWorkspacePk } from "./logic_composables/tokens";
+import ComponentPage from "./ComponentDetails.vue";
 
 const navbarPanelLeftRef = ref<InstanceType<typeof NavbarPanelLeft>>();
 
@@ -176,15 +176,15 @@ const namesQueryKey = computed(() => {
   return [
     workspacePk.value,
     changeSetId.value,
-    EntityKind.ComponentNames,
+    EntityKind.ComponentDetails,
     workspacePk.value,
   ];
 });
-const namesQuery = useQuery<ComponentNames>({
+const namesQuery = useQuery<ComponentDetails>({
   queryKey: namesQueryKey,
   enabled: queriesEnabled,
   queryFn: async () => {
-    return await heimdall.getComponentNames(args.value);
+    return await heimdall.getComponentDetails(args.value);
   },
 });
 const schemaQueryKey = computed(() => {
@@ -211,7 +211,7 @@ const outgoingCounts = computed(() => {
   return countsQuery.data.value ?? {};
 });
 
-const componentNames = computed(() => {
+const componentDetails = computed(() => {
   return namesQuery.data.value ?? {};
 });
 
@@ -227,7 +227,7 @@ const ctx = computed<Context>(() => {
     onHead: computed(() => changeSetsStore.headSelected),
     headChangeSetId: computed(() => changeSetsStore.headChangeSetId ?? ""),
     outgoingCounts,
-    componentNames,
+    componentDetails,
     schemaMembers,
     queriesEnabled,
   };
@@ -554,4 +554,17 @@ body.light .scrollable {
 }
 
 // other cards may look differently, can be defined globally, or piecemeal
+
+/* TODO(Wendy) - temporary color classes for the new UI */
+.text-purple {
+  color: #d4b4fe;
+}
+
+.text-green-light-mode {
+  color: #3b8e48;
+}
+
+.text-green-dark-mode {
+  color: #b2dfb9;
+}
 </style>
