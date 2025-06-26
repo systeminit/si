@@ -6,6 +6,7 @@ use dal::{
     WsEvent,
     change_set::ChangeSet,
 };
+use sdf_extract::EddaClient as EddaClientExtractor;
 use serde::{
     Deserialize,
     Serialize,
@@ -41,6 +42,7 @@ use crate::{
 )]
 pub async fn create_change_set(
     WorkspaceDalContext(ref ctx): WorkspaceDalContext,
+    EddaClientExtractor(edda_client): EddaClientExtractor,
     tracker: PosthogEventTracker,
     payload: Result<Json<CreateChangeSetV1Request>, JsonRejection>,
 ) -> ChangeSetResult<Json<CreateChangeSetV1Response>> {
@@ -62,6 +64,15 @@ pub async fn create_change_set(
     WsEvent::change_set_created(ctx, change_set.id, change_set.workspace_snapshot_address)
         .await?
         .publish_on_commit(ctx)
+        .await?;
+
+    edda_client
+        .new_change_set(
+            ctx.workspace_pk()?,
+            change_set.id,
+            ctx.change_set_id(),
+            change_set.workspace_snapshot_address,
+        )
         .await?;
 
     ctx.commit_no_rebase().await?;
