@@ -27,4 +27,5 @@ serde_with      = { workspace = true }
 strum           = { workspace = true }
 thiserror       = { workspace = true }
 tokio           = { workspace = true }
+tracing         = { workspace = true }
 ulid            = { workspace = true }

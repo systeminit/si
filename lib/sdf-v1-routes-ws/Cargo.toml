@@ -39,4 +39,5 @@ tokio = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-tungstenite = { workspace = true }
 tokio-util = { workspace = true }
+tracing = { workspace = true }
 y-sync = { workspace = true }

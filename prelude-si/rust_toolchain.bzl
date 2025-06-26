@@ -31,11 +31,8 @@ def _mise_rust_toolchain_impl(ctx):
     mise_info = ctx.attrs.mise_install[MiseInfo]
     mise_binary = cmd_args(mise_info.mise_bootstrap)
     shims = cmd_args(mise_info.mise_tools_dir, "/shims", delimiter="")
-    clang = cmd_args(mise_info.mise_tools_dir, "/installs/vfox-mise-plugins-vfox-clang/latest/bin/clang", delimiter="")
-    wrapper_tool = ctx.attrs._rustc_wrapper[RunInfo]
+    wrapper_tool = ctx.attrs._wrapper[RunInfo]
     compiler_args = cmd_args(wrapper_tool)
-    compiler_args.add(clang)
-    compiler_args.add(clang)
     compiler_args.add(shims)
 
     rustc_cmd = cmd_args(
@@ -47,9 +44,6 @@ def _mise_rust_toolchain_impl(ctx):
     rustdoc_cmd = cmd_args(
         [compiler_args, mise_binary, "exec", "rust",  "--", "rustdoc"]
     )
-
-    clang_str = str(clang)
-    linker_flag = "-Clinker=" + clang_str
 
     return [
         DefaultInfo(),
@@ -65,7 +59,7 @@ def _mise_rust_toolchain_impl(ctx):
             nightly_features = ctx.attrs.nightly_features,
             report_unused_deps = ctx.attrs.report_unused_deps,
             rustc_binary_flags = ctx.attrs.rustc_binary_flags,
-            rustc_flags = ctx.attrs.rustc_flags + [linker_flag],
+            rustc_flags = ctx.attrs.rustc_flags,
             rustc_target_triple = ctx.attrs.rustc_target_triple,
             rustc_test_flags = ctx.attrs.rustc_test_flags,
             rustdoc = RunInfo(args = rustdoc_cmd),
@@ -94,7 +88,7 @@ mise_rust_toolchain = rule(
         "rustc_test_flags": attrs.list(attrs.arg(), default = []),
         "rustdoc_flags": attrs.list(attrs.arg(), default = []),
         "warn_lints": attrs.list(attrs.string(), default = []),
-        "_rustc_wrapper": attrs.default_only(attrs.dep(providers = [RunInfo], default = "toolchains//:rustc_wrapper")),
+        "_wrapper": attrs.default_only(attrs.dep(providers = [RunInfo], default = "toolchains//:mise_wrapper")),
     },
     is_toolchain_rule = True,
 )

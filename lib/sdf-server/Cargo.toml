@@ -92,6 +92,7 @@ tokio-util = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
 tracing-tunnel = { workspace = true }
+tracing = { workspace = true }
 ulid = { workspace = true }
 url = { workspace = true }
 y-sync = { workspace = true }

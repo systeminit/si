@@ -9,6 +9,7 @@ rust_library(
         "//third-party/rust:base64",
         "//third-party/rust:remain",
         "//third-party/rust:thiserror",
+        "//third-party/rust:tracing",
     ],
     srcs = glob([
         "src/**/*.rs",

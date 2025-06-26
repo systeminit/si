@@ -384,6 +384,7 @@ exec "$MISE_INSTALL_PATH" "$@"
     cargo_home = mise_tools_dir / 'cargo'
     rustup_home.mkdir(parents=True, exist_ok=True)
     cargo_home.mkdir(parents=True, exist_ok=True)
+    shims_dir = mise_tools_dir / 'shims'
 
     env.update({
         'MISE_BOOTSTRAP_PROJECT_DIR': str(project_dir),
@@ -399,8 +400,6 @@ exec "$MISE_INSTALL_PATH" "$@"
         'MISE_CARGO_HOME': str(cargo_home),
         'RUSTUP_HOME': str(rustup_home),
         'CARGO_HOME': str(cargo_home),
-        'CC': str(mise_tools_dir / 'shim' / 'clang'),
-        'CXX': str(mise_tools_dir / 'shim' / 'clang'),
     })
 
     # Add RUST_TOOLCHAIN if rust version is specified
@@ -414,14 +413,7 @@ exec "$MISE_INSTALL_PATH" "$@"
     # Install each requested package
     for package in args.packages:
         print(f"Installing {package}...", file=sys.stderr)
-        subprocess.run([str(mise_bootstrap_path), 'install', package], env=env, check=True)
-
-    shims_dir = Path(mise_tools_dir) / "shims"
-    clang_path = shims_dir / "clang"
-    if clang_path.exists():
-        target = os.path.realpath(clang_path)
-        os.symlink(target, shims_dir / "clang++")
-        print("Created clang++ symlink", file=sys.stderr)
+        subprocess.run([str(mise_bootstrap_path), 'use', "-g", package], env=env, check=True)
 
     print("Mise installation completed successfully", file=sys.stderr)
 

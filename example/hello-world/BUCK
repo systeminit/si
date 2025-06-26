@@ -4,6 +4,4 @@ rust_binary(
     name = "hello_world",
     srcs = ["src/main.rs"],
     deps = [],
-    # Use the mise-provided rust toolchain
-    _rust_toolchain = "toolchains//:mise_rust",
 )
