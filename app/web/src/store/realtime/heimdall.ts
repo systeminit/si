@@ -173,32 +173,34 @@ const returned = (
 const updateCache = (
   queryKey: string[],
   id: string,
-  data: AtomDocument,
-  removed = false,
-  add = false,
-) => {
   // there is always more data attached, but we only care about accessing the ID
   // so thats all we need to type!
+  // TODO if we're being told to add an undefined value, that seems like an upstream error
+  data: { id: string } | undefined,
+  removed = false,
+) => {
   if (!removed && !data) return;
-  const cachedData = queryClient.getQueryData(queryKey) as { id: string }[];
-  if (!cachedData || cachedData.length === 0) return;
-  // TODO removal
-  const idx = cachedData.findIndex((d) => d && d.id === id);
-  let dirty = false;
-  if (idx !== -1) {
-    if (removed) cachedData.splice(idx, 1);
-    else cachedData.splice(idx, 1, data);
-    dirty = true;
-  } else if (add) {
-    // added to the list
-    cachedData.push(data);
-    dirty = true;
-  }
-  if (dirty) {
-    queryClient.setQueryData(queryKey, cachedData);
-    // NOTE: no need to call invalidate
-    // tanstack keeps the query data reactive all by itself
-  }
+
+  queryClient.setQueryData(queryKey, (cachedData: { id: string }[]) => {
+    // Don't mutate if we haven't got any data yet
+    // TODO it seems wrong not to add items to an empty list ...
+    if (!cachedData || cachedData.length === 0) {
+      return cachedData;
+    }
+
+    if (removed) {
+      // Filter out the item if it is removed
+      return cachedData.filter((d) => d?.id !== id);
+    } else {
+      // If the data is already in the map, replace the existing entry
+      if (cachedData.some((d) => d?.id === id)) {
+        return cachedData.map((d) => (d?.id === id ? data : d));
+      } else {
+        // If the data is not already in the map, add it to the end
+        return [...cachedData, data];
+      }
+    }
+  });
 };
 
 const atomUpdated: UpdateFn = (
@@ -218,7 +220,7 @@ const atomUpdated: UpdateFn = (
       EntityKind.ViewList,
       workspaceId,
     ];
-    updateCache(queryKey, id, data, removed, true);
+    updateCache(queryKey, id, data, removed);
   } else if (kind === EntityKind.IncomingConnections) {
     const queryKey = [
       workspaceId,
@@ -226,7 +228,7 @@ const atomUpdated: UpdateFn = (
       EntityKind.IncomingConnectionsList,
       workspaceId,
     ];
-    updateCache(queryKey, id, data, removed, true);
+    updateCache(queryKey, id, data, removed);
   } else if (kind === EntityKind.ComponentInList) {
     const queryKey = [
       workspaceId,
@@ -234,7 +236,7 @@ const atomUpdated: UpdateFn = (
       EntityKind.ComponentList,
       workspaceId,
     ];
-    updateCache(queryKey, id, data, removed, true);
+    updateCache(queryKey, id, data, removed);
     if (listIds.length > 0) {
       listIds.forEach((viewId) => {
         const queryKey = [
@@ -243,7 +245,7 @@ const atomUpdated: UpdateFn = (
           EntityKind.ViewComponentList,
           viewId,
         ];
-        updateCache(queryKey, id, removed, data);
+        updateCache(queryKey, id, data, removed);
       });
     }
   }
