@@ -1638,6 +1638,7 @@ const niflheim = async (
             indexChecksum,
             kind,
             id,
+            checksum,
             existingDataForChecksum,
             updateIndex,
           );
