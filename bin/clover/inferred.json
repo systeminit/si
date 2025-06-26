@@ -1767,6 +1767,12 @@
       "LoRa"
     ]
   },
+  "The setting that controls whether players can use stitched or guided ad insertion. The default, STITCHED_ONLY, forces all player sessions to use stitched (server-side) ad insertion. Choosing PLAYER_SELECT allows players to select either stitched or guided ad insertion at session-initialization time. The default for players that do not specify an insertion mode is stitched.": {
+    "enum": [
+      "STITCHED_ONLY",
+      "PLAYER_SELECT"
+    ]
+  },
   "Provide START or STOP action to apply on a launch": {
     "enum": [
       "START",
@@ -3523,6 +3529,9 @@
     "enum": null
   },
   "A name for the model. If you don't specify a name, CFN generates a unique physical ID and uses that ID for the model name. For more information, see [Name Type](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-name.html).\n  If you specify a name, you cannot perform updates that require replacement of this resource. You can perform updates that require no or some interruption. If you must replace the resource, specify a new name.": {
+    "enum": null
+  },
+  "A name for the namespace.": {
     "enum": null
   },
   "A name for the observability configuration. When you use it for the first time in an AWS Region, App Runner creates revision number 1 of this name. When you use the same name in subsequent calls, App Runner creates incremental revisions of the configuration.": {
@@ -5307,6 +5316,12 @@
   "ID of the account used as the master account.": {
     "enum": null
   },
+  "ID of the volume to attach to the workspace instance": {
+    "enum": null
+  },
+  "ID of the workspace instance to associate with the volume": {
+    "enum": null
+  },
   "IP Address type.": {
     "enum": null
   },
@@ -5896,6 +5911,9 @@
     "enum": null
   },
   "Mode in which data transfer should be enabled. Private connection mode is currently enabled for Salesforce, Snowflake, Trendmicro and Singular": {
+    "enum": null
+  },
+  "Mode to use when disassociating the volume": {
     "enum": null
   },
   "MongoDB Atlas endpoint service name.": {
@@ -8457,6 +8475,9 @@
   "The Amazon Resource Name (ARN) of the specified resource.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the specified table bucket.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the subnet that the device is located in.": {
     "enum": null
   },
@@ -8644,6 +8665,9 @@
     "enum": null
   },
   "The Availability Zone in which to allocate the Dedicated Host.": {
+    "enum": null
+  },
+  "The Availability Zone in which to create the volume": {
     "enum": null
   },
   "The Availability Zone in which to create your instance. Use the following format: us-east-2a (case sensitive). Be sure to add the include Availability Zones parameter to your request.": {
@@ -11052,6 +11076,9 @@
   "The device name (for example, ``/dev/sdh`` or ``xvdh``).": {
     "enum": null
   },
+  "The device name for the volume attachment": {
+    "enum": null
+  },
   "The device name. String of 6 to 50 alphabetical, numeric, dash, and underscore characters.": {
     "enum": null
   },
@@ -11578,6 +11605,9 @@
     "enum": null
   },
   "The identifier of the API.": {
+    "enum": null
+  },
+  "The identifier of the AWS Key Management Service (AWS KMS) customer master key (CMK) to use for Amazon EBS encryption": {
     "enum": null
   },
   "The identifier of the AWS Key Management Service (AWS KMS) customer master key (CMK) to use for MWAA data encryption.\n\n    You can specify the CMK using any of the following:\n\n    Key ID. For example, key/1234abcd-12ab-34cd-56ef-1234567890ab.\n\n    Key alias. For example, alias/ExampleAlias.\n\n    Key ARN. For example, arn:aws:kms:us-east-1:012345678910:key/abcd1234-a123-456a-a12b-a123b4cd56ef.\n\n    Alias ARN. For example, arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.\n\n    AWS authenticates the CMK asynchronously. Therefore, if you specify an ID, alias, or ARN that is not valid, the action can appear to complete, but eventually fails.": {
@@ -13992,6 +14022,9 @@
   "The number of DPUs to request to be allocated to the reservation.": {
     "enum": null
   },
+  "The number of I/O operations per second (IOPS)": {
+    "enum": null
+  },
   "The number of I/O operations per second (IOPS) that the database provisions. The value must be equal to or greater than 1000. \n If you specify this property, you must follow the range of allowed ratios of your requested IOPS rate to the amount of storage that you allocate (IOPS to allocated storage). For example, you can provision an Oracle database instance with 1000 IOPS and 200 GiB of storage (a ratio of 5:1), or specify 2000 IOPS with 200 GiB of storage (a ratio of 10:1). For more information, see [Amazon RDS Provisioned IOPS Storage to Improve Performance](https://docs.aws.amazon.com/AmazonRDS/latest/DeveloperGuide/CHAP_Storage.html#USER_PIOPS) in the *Amazon RDS User Guide*.\n  If you specify ``io1`` for the ``StorageType`` property, then you must also specify the ``Iops`` property.\n  Constraints:\n  +  For RDS for Db2, MariaDB, MySQL, Oracle, and PostgreSQL - Must be a multiple between .5 and 50 of the storage amount for the DB instance.\n  +  For RDS for SQL Server - Must be a multiple between 1 and 50 of the storage amount for the DB instance.": {
     "enum": null
   },
@@ -15087,6 +15120,9 @@
   "The size of the stage's cache cluster. For more information, see [cacheClusterSize](https://docs.aws.amazon.com/apigateway/latest/api/API_CreateStage.html#apigw-CreateStage-request-cacheClusterSize) in the *API Gateway API Reference*.": {
     "enum": null
   },
+  "The size of the volume, in GiBs": {
+    "enum": null
+  },
   "The size of the volume, in GiBs. You must specify either a snapshot ID or a volume size. If you specify a snapshot, the default is the snapshot size. You can specify a volume size that is equal to or larger than the snapshot size.\n The following are the supported volumes sizes for each volume type:\n  +   ``gp2`` and ``gp3``: 1 - 16,384 GiB\n  +   ``io1``: 4 - 16,384 GiB\n  +   ``io2``: 4 - 65,536 GiB\n  +   ``st1`` and ``sc1``: 125 - 16,384 GiB\n  +   ``standard``: 1 - 1024 GiB": {
     "enum": null
   },
@@ -15097,6 +15133,9 @@
     "enum": null
   },
   "The smoothing max bitrate for RIST, RTP, and RTP-FEC streams.": {
+    "enum": null
+  },
+  "The snapshot from which to create the volume": {
     "enum": null
   },
   "The snapshot from which to create the volume. You must specify either a snapshot ID or a volume size.": {
@@ -15496,6 +15535,9 @@
     "enum": null
   },
   "The threshold value to compare with the specified statistic.": {
+    "enum": null
+  },
+  "The throughput to provision for a volume, with a maximum of 1,000 MiB/s": {
     "enum": null
   },
   "The throughput to provision for a volume, with a maximum of 1,000 MiB/s.\n This parameter is valid only for ``gp3`` volumes. The default value is 125.\n Valid Range: Minimum value of 125. Maximum value of 1000.": {
@@ -16246,6 +16288,9 @@
     "enum": null
   },
   "The view content hash to be checked.": {
+    "enum": null
+  },
+  "The volume type": {
     "enum": null
   },
   "The wait time before terminating the old endpoint during a blue/green deployment.": {
