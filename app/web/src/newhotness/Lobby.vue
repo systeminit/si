@@ -1,18 +1,30 @@
 <template>
   <div class="w-[50svh] mx-auto mt-[15svh]">
-    <h1 class="text-center text-2xl">Welcome!</h1>
-    <h2 class="text-center text-xl">Take a load off</h2>
-    <h3 v-if="niflheimTotal > 0" class="text-center text-lg">
-      {{ niflheimComplete }} change set(s) loaded of {{ niflheimTotal }}
-    </h3>
-    <Icon class="mx-auto" name="loader" size="full" />
+    <template v-if="show">
+      <h1 class="text-center text-2xl">Welcome!</h1>
+      <h2 class="text-center text-xl">Take a load off</h2>
+      <h3 v-if="niflheimTotal > 0" class="text-center text-lg">
+        {{ niflheimComplete }} change set(s) loaded of {{ niflheimTotal }}
+      </h3>
+      <Icon class="mx-auto" name="loader" size="full" />
+    </template>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { Icon } from "@si/vue-lib/design-system";
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { muspelheimStatuses } from "@/store/realtime/heimdall";
+
+const DELAY_MS = 400;
+
+const show = ref(false);
+
+onMounted(() => {
+  setTimeout(() => {
+    show.value = true;
+  }, DELAY_MS);
+});
 
 const niflheimTotal = computed(
   () => Object.keys(muspelheimStatuses.value).length,
