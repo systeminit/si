@@ -96,7 +96,8 @@ export const useWatchedForm = <Data>(label: string) => {
           form: label,
         });
         bifrosting.value = true;
-        rainbow.add(ctx.changeSetId.value, label);
+        if (ctx.changeSetId.value !== ctx.headChangeSetId.value)
+          rainbow.add(ctx.changeSetId.value, label);
 
         // Mark submission as complete and remove the rainbow spinner
         const markComplete = () => {

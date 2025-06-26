@@ -39,10 +39,10 @@
 
     <ChangeSetPanel ref="changeSetPanelRef" />
 
-    <div v-if="rainbowCount > 0" class="mt-xs ml-xs relative">
+    <div v-if="unref(rainbow.count) > 0" class="mt-xs ml-xs relative">
       <span
         class="text-action-400 text-xs font-bold absolute w-[32px] top-[9px] text-center"
-        >{{ rainbowCount }}</span
+        >{{ rainbow.count }}</span
       >
       <Icon size="lg" name="loader" tone="action" />
     </div>
@@ -58,7 +58,7 @@ import {
   DropdownMenuItem,
   Icon,
 } from "@si/vue-lib/design-system";
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, unref } from "vue";
 import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useRainbow } from "@/newhotness/logic_composables/rainbow_counter";
 import ChangeSetPanel from "./ChangeSetPanel.vue";
@@ -77,7 +77,7 @@ watch(
   { immediate: true },
 );
 
-const { rainbowCount } = useRainbow();
+const rainbow = useRainbow();
 
 const updateRoute = (newWorkspacePk: string) => {
   if (selectedWorkspacePk.value === newWorkspacePk) return;
