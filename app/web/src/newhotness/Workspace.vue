@@ -109,8 +109,10 @@ import FuncRunDetails from "./FuncRunDetails.vue";
 import LatestFuncRunDetails from "./LatestFuncRunDetails.vue";
 import { Context, FunctionKind } from "./types";
 import {
+  startMouseEmitters,
   startKeyEmitter,
   startWindowResizeEmitter,
+  windowResizeEmitter,
 } from "./logic_composables/emitters";
 import { tokensByWorkspacePk } from "./logic_composables/tokens";
 import ComponentPage from "./ComponentDetails.vue";
@@ -258,6 +260,7 @@ watch(
 );
 
 startKeyEmitter(document);
+startMouseEmitters(window);
 startWindowResizeEmitter(window);
 
 provide("CONTEXT", ctx.value);
@@ -423,7 +426,7 @@ const funcRunKey = "paginatedFuncRuns";
 
 onMounted(() => {
   windowResizeHandler();
-  window.addEventListener("resize", windowResizeHandler);
+  windowResizeEmitter.on("resize", windowResizeHandler);
   realtimeStore.subscribe(
     funcRunKey,
     `changeset/${ctx.value.changeSetId.value}`,
@@ -444,7 +447,7 @@ onMounted(() => {
   );
 });
 onBeforeUnmount(() => {
-  window.removeEventListener("resize", windowResizeHandler);
+  windowResizeEmitter.off("resize", windowResizeHandler);
   realtimeStore.unsubscribe(funcRunKey);
 });
 </script>

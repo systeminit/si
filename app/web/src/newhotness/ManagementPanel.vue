@@ -21,6 +21,7 @@
       titleText="Managing Components"
       selectComponent
       :parentComponentName="component.name"
+      :parentComponentId="componentId"
     />
   </div>
   <EmptyState v-else text="No management information available" icon="tools" />

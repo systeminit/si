@@ -34,7 +34,7 @@
             :key="fieldname"
             :class="
               clsx(
-                'flex flex-col items-center gap-3xs font-sm [&>*]:w-full relative',
+                'flex flex-col items-center gap-3xs text-sm [&>*]:w-full relative',
                 index === Object.keys(secretFormData).length - 1
                   ? 'mb-xs'
                   : 'mb-[-1px]',
@@ -121,6 +121,7 @@ import { AttrTree } from "../AttributePanel.vue";
 import { useApi, routes, componentTypes } from "../api_composables";
 import { useWatchedForm } from "../logic_composables/watched_form";
 import SecretInput from "./SecretInput.vue";
+import { MouseDetails, mouseEmitter } from "../logic_composables/emitters";
 
 const props = defineProps<{
   component: BifrostComponent;
@@ -322,30 +323,33 @@ const openSecretForm = () => {
     }
   });
 };
+const closeSecretForm = () => {
+  secretFormOpen.value = false;
+  removeListeners();
+};
 
 const secretFormRef = ref<HTMLDivElement>();
 
-const onClick = (e: MouseEvent) => {
+const onMouseDown = (e: MouseDetails["mousedown"]) => {
   const target = e.target;
   if (!(target instanceof Element)) {
     return;
   }
   const el = secretFormRef.value;
   if (el && !el.contains(target)) {
-    secretFormOpen.value = false;
-    removeListeners();
+    closeSecretForm();
   }
 };
 
 const addListeners = () => {
-  window.addEventListener("mousedown", onClick);
+  mouseEmitter.on("mousedown", onMouseDown);
 };
 const removeListeners = () => {
-  window.removeEventListener("mousedown", onClick);
+  mouseEmitter.off("mousedown", onMouseDown);
 };
 
 const submitSecretForm = async () => {
   await secretForm.handleSubmit();
-  secretFormOpen.value = false;
+  closeSecretForm();
 };
 </script>

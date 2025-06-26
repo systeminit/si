@@ -305,6 +305,8 @@ import DelayedLoader from "./layout_components/DelayedLoader.vue";
 import {
   KeyDetails,
   keyEmitter,
+  MouseDetails,
+  mouseEmitter,
   windowResizeEmitter,
 } from "./logic_composables/emitters";
 import TabGroupToggle from "./layout_components/TabGroupToggle.vue";
@@ -860,7 +862,7 @@ const onResize = () => {
 
 // general click handler for the whole page
 // any click which doesn't do this behavior should have .stop on it!
-const onClick = (e: MouseEvent) => {
+const onClick = (e: MouseDetails["click"]) => {
   if (showGrid.value) {
     const inside =
       componentContextMenuRef.value?.contextMenuRef?.elementIsInsideMenu;
@@ -875,14 +877,14 @@ const onClick = (e: MouseEvent) => {
 onMounted(() => {
   mountEmitters();
 
-  document.addEventListener("click", onClick);
+  mouseEmitter.on("click", onClick);
 
   // Upon mount, set the group by selection accordingly.
   setGroupByFromQuery();
 });
 onBeforeUnmount(() => {
   removeEmitters();
-  document.removeEventListener("click", onClick);
+  mouseEmitter.off("click", onClick);
 });
 
 const setGroupByFromQuery = () => {

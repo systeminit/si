@@ -547,7 +547,11 @@ import {
 } from "@/store/realtime/heimdall";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { PropKind } from "@/api/sdf/dal/prop";
-import { attributeEmitter } from "../logic_composables/emitters";
+import {
+  attributeEmitter,
+  MouseDetails,
+  mouseEmitter,
+} from "../logic_composables/emitters";
 import { useWatchedForm } from "../logic_composables/watched_form";
 import AttributeValueBox from "../AttributeValueBox.vue";
 
@@ -915,13 +919,13 @@ const closeInput = () => {
 };
 
 const addListeners = () => {
-  window.addEventListener("mousedown", onClick);
+  mouseEmitter.on("mousedown", onMouseDown);
   // TODO(Wendy) - come back to this code when we wanna make the input float again
   // window.addEventListener("resize", closeOnResizeOrScroll);
   // window.addEventListener("scroll", closeOnResizeOrScroll, true);
 };
 const removeListeners = () => {
-  window.removeEventListener("mousedown", onClick);
+  mouseEmitter.off("mousedown", onMouseDown);
   // TODO(Wendy) - come back to this code when we wanna make the input float again
   // window.removeEventListener("resize", closeOnResizeOrScroll);
   // window.addEventListener("scroll", closeOnResizeOrScroll, true);
@@ -938,7 +942,7 @@ const onInputChange = (e: Event) => {
   filterStr.value = v;
   selectedIndex.value = defaultSelectedIndex();
 };
-const onClick = (e: MouseEvent) => {
+const onMouseDown = (e: MouseDetails["mousedown"]) => {
   const target = e.target;
   if (!(target instanceof Element)) {
     return;
