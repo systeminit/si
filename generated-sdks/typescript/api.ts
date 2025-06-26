@@ -597,6 +597,12 @@ export interface CreateComponentV1Request {
     'domain'?: { [key: string]: any; };
     /**
      * 
+     * @type {ComponentReference}
+     * @memberof CreateComponentV1Request
+     */
+    'managedBy'?: ComponentReference;
+    /**
+     * 
      * @type {string}
      * @memberof CreateComponentV1Request
      */

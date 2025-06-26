@@ -37,6 +37,7 @@ class TestCreateComponentV1Request(unittest.TestCase):
             return CreateComponentV1Request(
                 connections = {},
                 domain = {propId1=value1, path/to/prop=value2},
+                managed_by = {component=ComponentName},
                 name = 'MyComponentName',
                 resource_id = 'i-12345678',
                 schema_name = 'AWS::EC2::Instance',
