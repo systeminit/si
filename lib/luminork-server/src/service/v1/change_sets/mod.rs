@@ -7,6 +7,7 @@ use axum::{
     },
 };
 use dal::ChangeSetId;
+use sdf_core::EddaClientError;
 use thiserror::Error;
 
 pub mod create;
@@ -37,6 +38,8 @@ pub enum ChangeSetError {
     ChangeSetNotFound(ChangeSetId),
     #[error("component error: {0}")]
     Component(#[from] dal::ComponentError),
+    #[error("edda client error: {0}")]
+    EddaClient(#[from] EddaClientError),
     #[error("func error: {0}")]
     Func(#[from] dal::FuncError),
     #[error("schema error: {0}")]
