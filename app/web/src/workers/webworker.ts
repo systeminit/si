@@ -1,4 +1,5 @@
 import * as Comlink from "comlink";
+import QuickLRU from "quick-lru";
 import { applyPatch as applyOperations } from "fast-json-patch";
 import sqlite3InitModule, {
   Database,
@@ -273,13 +274,38 @@ const exec = (
 /**
  * A few small utilities
  */
-const encodeDocumentForDB = async (doc: object) => {
+
+export interface DocumentCacheKey {
+  kind: EntityKind;
+  id: string;
+  checksum: string;
+}
+
+const encodeDocumentForDB = async (
+  doc: object,
+  cacheKey?: DocumentCacheKey,
+) => {
+  if (cacheKey) {
+    setCachedDocument(cacheKey, doc);
+  }
   return await new Blob([JSON.stringify(doc)]).arrayBuffer();
 };
 
-const decodeDocumentFromDB = (doc: ArrayBuffer): AtomDocument => {
+const decodeDocumentFromDB = (
+  doc: ArrayBuffer,
+  cacheKey?: DocumentCacheKey,
+): AtomDocument => {
+  if (cacheKey) {
+    const maybeCached = getCachedDocument(cacheKey);
+    if (maybeCached) {
+      return maybeCached;
+    }
+  }
   const s = new TextDecoder().decode(doc);
   const j = JSON.parse(s);
+  if (cacheKey) {
+    setCachedDocument(cacheKey, j);
+  }
   return j;
 };
 
@@ -424,7 +450,11 @@ const createAtomFromPatch = async (atom: Atom, span?: Span) => {
 const createAtom = async (atom: Atom, doc: object, _span?: Span) => {
   debug("createAtom", atom, doc);
 
-  const encodedDoc = await encodeDocumentForDB(doc);
+  const encodedDoc = await encodeDocumentForDB(doc, {
+    kind: atom.kind,
+    id: atom.id,
+    checksum: atom.toChecksum,
+  });
   try {
     db.exec({
       sql: `insert into atoms
@@ -1093,7 +1123,11 @@ const patchAtom = async (atom: Required<Atom>) => {
   const atomRow = atomRows[0]!;
 
   const _doc = atomRow[3] as ArrayBuffer;
-  const doc = decodeDocumentFromDB(_doc);
+  const doc = decodeDocumentFromDB(_doc, {
+    kind: atom.kind,
+    id: atom.id,
+    checksum: atom.fromChecksum,
+  });
   let afterDoc = doc;
   if (atom.operations) {
     const applied = applyOperations(doc, atom.operations);
@@ -1112,7 +1146,11 @@ const patchAtom = async (atom: Required<Atom>) => {
       atom.kind,
       atom.id,
       atom.toChecksum,
-      await encodeDocumentForDB(afterDoc),
+      await encodeDocumentForDB(afterDoc, {
+        kind: atom.kind,
+        id: atom.id,
+        checksum: atom.toChecksum,
+      }),
     ],
   });
   return afterDoc;
@@ -1435,7 +1473,7 @@ const pruneAtomsForClosedChangeSet = async (
   });
 };
 
-const reuseExistingAtom = (
+const processAtom = (
   workspaceId: string,
   changeSetId: string,
   indexChecksum: string,
@@ -1471,47 +1509,84 @@ const reuseExistingAtom = (
   bustCacheAndReferences(workspaceId, changeSetId, kind, id, false, true);
 };
 
-const decodedAtomCache: { [key: string]: AtomDocument } = {};
+const MAX_CACHE_SIZE = 65536 * 2;
+const decodedAtomCache = new QuickLRU({ maxSize: MAX_CACHE_SIZE });
 
-const getCachedDocument = (kind: EntityKind, id: string, checksum: string) => {
-  const cacheKey = `${id}-${kind}-${checksum}`;
-  return decodedAtomCache[cacheKey];
+const getCachedDocument = (cacheKey: DocumentCacheKey) => {
+  const key = JSON.stringify(cacheKey);
+  return decodedAtomCache.get(key);
 };
 
-const setCachedDocument = (
-  kind: EntityKind,
-  id: string,
-  checksum: string,
-  data: AtomDocument,
-) => {
-  const cacheKey = `${id}-${kind}-${checksum}`;
-  decodedAtomCache[cacheKey] = data;
+const setCachedDocument = (cacheKey: DocumentCacheKey, data: AtomDocument) => {
+  const key = JSON.stringify(cacheKey);
+  decodedAtomCache.set(key, data);
 };
 
-const atomDocumentForChecksum = (
-  kind: EntityKind,
-  id: string,
-  checksum: string,
-): AtomDocument | undefined => {
-  const maybeCachedAtom = getCachedDocument(kind, id, checksum);
-  if (maybeCachedAtom) {
-    return maybeCachedAtom;
+const atomDocumentsForChecksums = (
+  inputs: Array<{ kind: EntityKind; id: string; checksum: string }>,
+): Map<string, AtomDocument> => {
+  const results = new Map<string, AtomDocument>();
+
+  const uncachedInputs: Array<{
+    kind: EntityKind;
+    id: string;
+    checksum: string;
+  }> = [];
+
+  for (const input of inputs) {
+    const cacheKey = {
+      kind: input.kind,
+      id: input.id,
+      checksum: input.checksum,
+    };
+    const maybeCachedAtom = getCachedDocument(cacheKey);
+    if (maybeCachedAtom) {
+      const resultKey = `${input.kind}|${input.id}|${input.checksum}`;
+      results.set(resultKey, maybeCachedAtom);
+    } else {
+      uncachedInputs.push(input);
+    }
   }
 
+  if (uncachedInputs.length === 0) {
+    return results;
+  }
+
+  const placeholders = uncachedInputs.map(() => "(?, ?, ?)").join(", ");
+  const bindings: string[] = [];
+
+  for (const input of uncachedInputs) {
+    bindings.push(input.kind, input.id, input.checksum);
+  }
+
+  const sql = `
+    select atoms.kind, atoms.args, atoms.checksum, atoms.data
+    from atoms
+    where (atoms.kind, atoms.args, atoms.checksum) in (${placeholders})
+  `;
+
   const rows = db.exec({
-    sql: `select atoms.data from atoms where atoms.kind = ? AND atoms.args = ? and atoms.checksum = ? limit 1;`,
-    bind: [kind, id, checksum],
+    sql,
+    bind: bindings,
     returnValue: "resultRows",
   });
 
-  const atomData = rows[0]?.[0];
-  if (atomData) {
-    const decoded = decodeDocumentFromDB(atomData as ArrayBuffer);
-    setCachedDocument(kind, id, checksum, decoded);
-    return decoded;
+  // Process results
+  for (const row of rows) {
+    const [kind, id, checksum, data] = row;
+    if (data) {
+      const cacheKey = {
+        kind: kind as EntityKind,
+        id: id as string,
+        checksum: checksum as string,
+      };
+      const decoded = decodeDocumentFromDB(data as ArrayBuffer, cacheKey);
+      const resultKey = `${kind}|${id}|${checksum}`;
+      results.set(resultKey, decoded);
+    }
   }
 
-  return undefined;
+  return results;
 };
 
 const atomChecksumsFor = async (
@@ -1567,7 +1642,7 @@ const niflheim = async (
     // build connections list based on data we have in the DB
     // connections list will rebuild as data comes in
     bulkInflight();
-    const computedPromise = coldStartComputed(workspaceId, changeSetId);
+    // const computedPromise = coldStartComputed(workspaceId, changeSetId);
 
     // clear out references, no queries have been performed yet
     clearAllWeakReferences(changeSetId);
@@ -1581,7 +1656,8 @@ const niflheim = async (
       method: "get",
       url,
     });
-    const [req, _p] = await Promise.all([reqPromise, computedPromise]);
+    // const [req, _p] = await Promise.all([reqPromise, computedPromise]);
+    const req = await reqPromise;
 
     // Check for 202 status - user needs to go to lobby
     if (req.status === STATUS_INDEX_IN_PROGRESS) {
@@ -1611,28 +1687,33 @@ const niflheim = async (
 
     debug("🔍 Index checksum validation", indexChecksum);
 
-    const local = tracer.startSpan("localChecksums");
-    const localChecksums = await atomChecksumsFor(changeSetId);
-    local.setAttribute("numEntries", Object.keys(localChecksums).length);
-    local.end();
+    // const local = tracer.startSpan("localChecksums");
+    // // const localChecksums = await atomChecksumsFor(changeSetId);
+    // // local.setAttribute("numEntries", Object.keys(localChecksums).length);
+    // local.end();
 
     let numHammers = 0;
     let updateIndex = true;
 
     // Compare each atom checksum from the index with local checksums
     const hammerObjs: MjolnirBulk = [];
-    for (const { kind, id, checksum } of atoms) {
-      const key = partialKeyFromKindAndArgs(kind, id);
-      const local = localChecksums[key];
-      if (!local || local !== checksum) {
+
+    // Process atoms in chunks of 1000 for bulk operations
+    const chunkSize = 1000;
+    for (let i = 0; i < atoms.length; i += chunkSize) {
+      const chunk = atoms.slice(i, i + chunkSize);
+
+      // Bulk check for existing atoms with matching checksums for this chunk
+      const existingDocuments = atomDocumentsForChecksums(chunk);
+
+      for (const { kind, id, checksum } of chunk) {
+        // const local = localChecksums[key];
         // Attempt to find an existing atom, since it might already exist in the database with this checksum
-        const existingDataForChecksum = atomDocumentForChecksum(
-          kind,
-          id,
-          checksum,
-        );
+        const resultKey = `${kind}|${id}|${checksum}`;
+        const existingDataForChecksum = existingDocuments.get(resultKey);
+
         if (existingDataForChecksum) {
-          reuseExistingAtom(
+          processAtom(
             workspaceId,
             changeSetId,
             indexChecksum,
@@ -1771,87 +1852,99 @@ const allOutgoingConns = new DefaultMap<
   DefaultMap<ComponentId, Record<string, Connection>>
 >(() => new DefaultMap(() => ({})));
 
-const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
-  const sql = `
-    select
-      data
-    from
-      atoms
-      inner join index_mtm_atoms mtm
-        ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
-      inner join indexes ON mtm.index_checksum = indexes.checksum
-      inner join changesets ON changesets.index_checksum = indexes.checksum
-    where
-      changesets.change_set_id = ?
-      AND atoms.kind = ?
-    ;`;
-  const bind = [changeSetId, EntityKind.AttributeTree];
-  const trees = db.exec({
-    sql,
-    bind,
-    returnValue: "resultRows",
-  });
+// const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
+//   const sql = `
+//     select
+//       atoms.data,
+//       atoms.kind,
+//       atoms.args,
+//       atoms.checksum
+//     from
+//       atoms
+//       inner join index_mtm_atoms mtm
+//         ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+//       inner join indexes ON mtm.index_checksum = indexes.checksum
+//       inner join changesets ON changesets.index_checksum = indexes.checksum
+//     where
+//       changesets.change_set_id = ?
+//       AND atoms.kind = ?
+//     ;`;
+//   const bind = [changeSetId, EntityKind.AttributeTree];
+//   const trees = db.exec({
+//     sql,
+//     bind,
+//     returnValue: "resultRows",
+//   });
 
-  await Promise.all(
-    trees.map((tree) => {
-      const doc = decodeDocumentFromDB(tree[0] as ArrayBuffer) as AttributeTree;
-      return postProcess(
-        workspaceId,
-        changeSetId,
-        EntityKind.AttributeTree,
-        doc,
-        doc.id,
-        undefined,
-        false,
-        false,
-        false,
-      );
-    }),
-  );
-  // bust everything all at once on cold start
-  bustCacheAndReferences(
-    workspaceId,
-    changeSetId,
-    EntityKind.PossibleConnections,
-    workspaceId,
-    true,
-    true,
-  );
+//   await Promise.all(
+//     trees.map((tree) => {
+//       const data = tree[0] as ArrayBuffer;
+//       const kind = tree[1] as EntityKind;
+//       const id = tree[2] as string;
+//       const checksum = tree[3] as string;
 
-  const list = getList(
-    workspaceId,
-    changeSetId,
-    EntityKind.IncomingConnectionsList,
-    workspaceId,
-    undefined,
-  );
+//       const doc = decodeDocumentFromDB(data, {
+//         kind,
+//         id,
+//         checksum,
+//       }) as AttributeTree;
+//       return postProcess(
+//         workspaceId,
+//         changeSetId,
+//         EntityKind.AttributeTree,
+//         doc,
+//         doc.id,
+//         undefined,
+//         false,
+//         false,
+//         false,
+//       );
+//     }),
+//   );
+//   // bust everything all at once on cold start
+//   bustCacheAndReferences(
+//     workspaceId,
+//     changeSetId,
+//     EntityKind.PossibleConnections,
+//     workspaceId,
+//     true,
+//     true,
+//   );
 
-  const listData = JSON.parse(list) as IncomingConnections[];
-  await Promise.all(
-    listData.flatMap((c) =>
-      postProcess(
-        workspaceId,
-        changeSetId,
-        EntityKind.IncomingConnections,
-        c,
-        c.id,
-        undefined,
-        false,
-        false,
-        false,
-      ),
-    ),
-  );
-  // bust everything all at once on cold start
-  bustCacheAndReferences(
-    workspaceId,
-    changeSetId,
-    EntityKind.OutgoingConnections,
-    workspaceId,
-    true,
-    true,
-  );
-};
+//   const list = getList(
+//     workspaceId,
+//     changeSetId,
+//     EntityKind.IncomingConnectionsList,
+//     workspaceId,
+//     undefined,
+//   );
+
+//   const listData = JSON.parse(list) as IncomingConnections[];
+//   await Promise.all(
+//     listData.flatMap((c) =>
+//       postProcess(
+//         workspaceId,
+//         changeSetId,
+//         EntityKind.IncomingConnections,
+//         c,
+//         c.id,
+//         undefined,
+//         false,
+//         false,
+//         false,
+//       ),
+//     ),
+//   );
+//   // bust everything all at once on cold start
+//   bustCacheAndReferences(
+//     workspaceId,
+//     changeSetId,
+//     EntityKind.OutgoingConnections,
+//     workspaceId,
+//     true,
+//     true,
+//   );
+// };
 
 const postProcess = (
   workspaceId: string,
@@ -2500,7 +2593,8 @@ const get = (
 ): -1 | object => {
   const sql = `
     select
-      data
+      atoms.data,
+      atoms.checksum
     from
       atoms
       inner join index_mtm_atoms mtm
@@ -2537,7 +2631,13 @@ const get = (
     mjolnir(workspaceId, changeSetId, kind, id, checksum);
     return -1;
   }
-  const atomDoc = decodeDocumentFromDB(data as ArrayBuffer);
+
+  checksum = atomData[0]?.[1] as string;
+
+  const atomDoc = decodeDocumentFromDB(
+    data as ArrayBuffer,
+    checksum ? { kind, id, checksum } : undefined,
+  );
   // debug("📄 atom doc", atomDoc);
 
   // THIS GETS REPLACED WITH AUTO-GEN CODE
@@ -2623,7 +2723,9 @@ const getMany = (
   const sql = `
     select
       atoms.args as id,
-      atoms.data
+      atoms.data,
+      atoms.kind,
+      atoms.checksum
     from
       atoms
       inner join index_mtm_atoms mtm
@@ -2666,9 +2768,11 @@ const getMany = (
   for (const row of atomData) {
     const id = row[0] as Id;
     const data = row[1] as ArrayBuffer;
+    const kind = row[2] as EntityKind;
+    const checksum = row[3] as string;
     foundIds.add(id);
 
-    const atomDoc = decodeDocumentFromDB(data);
+    const atomDoc = decodeDocumentFromDB(data, { kind, id, checksum });
 
     results[id] = atomDoc;
   }
