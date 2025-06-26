@@ -83,6 +83,7 @@ type Obs = {
   isWatched: boolean;
   span?: Span;
   label?: string;
+  changeSetIdExecutedAgainst?: string;
 };
 
 type LabeledObs = Obs & Required<Pick<Obs, "label">>;
@@ -135,12 +136,13 @@ export class APICall<Response> {
   ) {
     this.obs.inFlight.value = true;
     this.obs.bifrosting.value = true;
-    rainbow.add(this.ctx.changeSetId.value, this.obs.label);
     if (this.obs.isWatched) this.obs.span = tracer.startSpan("watchedApi");
     let newChangeSetId;
     if (!this.canMutateHead && this.ctx.onHead.value) {
       newChangeSetId = await this.makeChangeSet();
     }
+    rainbow.add(this.changeSetId, this.obs.label);
+    this.obs.changeSetIdExecutedAgainst = this.changeSetId;
 
     const req = await sdf<Response>({
       method,
@@ -150,8 +152,7 @@ export class APICall<Response> {
       validateStatus: (_status) => true, // don't throw exception on 4/5xxx
     });
     this.obs.inFlight.value = false;
-    if (!this.obs.isWatched)
-      rainbow.remove(this.ctx.changeSetId.value, this.obs.label);
+    if (!this.obs.isWatched) rainbow.remove(this.changeSetId, this.obs.label);
     return { req, newChangeSetId };
   }
 
@@ -260,7 +261,10 @@ export const useApi = () => {
       fn,
       () => {
         labeledObs.bifrosting.value = false;
-        rainbow.remove(ctx.changeSetId.value, labeledObs.label);
+        rainbow.remove(
+          labeledObs.changeSetIdExecutedAgainst ?? ctx.changeSetId.value,
+          labeledObs.label,
+        );
         if (labeledObs.span) labeledObs.span.end();
       },
       { once: true },
