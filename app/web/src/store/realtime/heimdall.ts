@@ -182,9 +182,7 @@ const updateCache = (
   if (!removed && !data) return;
 
   queryClient.setQueryData(queryKey, (cachedData: { id: string }[]) => {
-    // Don't mutate if we haven't got any data yet
-    // TODO it seems wrong not to add items to an empty list ...
-    if (!cachedData || cachedData.length === 0) {
+    if (!cachedData) {
       return cachedData;
     }
 
