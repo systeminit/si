@@ -19,6 +19,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
+from system_initiative_api_client.models.component_reference import ComponentReference
 from system_initiative_api_client.models.connection import Connection
 from system_initiative_api_client.models.subscription import Subscription
 from typing import Optional, Set
@@ -30,13 +31,14 @@ class CreateComponentV1Request(BaseModel):
     """ # noqa: E501
     connections: Optional[List[Connection]] = None
     domain: Optional[Dict[str, Any]] = None
+    managed_by: Optional[ComponentReference] = Field(default=None, alias="managedBy")
     name: StrictStr
     resource_id: Optional[StrictStr] = Field(default=None, alias="resourceId")
     schema_name: StrictStr = Field(alias="schemaName")
     secrets: Optional[Dict[str, Any]] = None
     subscriptions: Optional[Dict[str, Subscription]] = None
     view_name: Optional[StrictStr] = Field(default=None, alias="viewName")
-    __properties: ClassVar[List[str]] = ["connections", "domain", "name", "resourceId", "schemaName", "secrets", "subscriptions", "viewName"]
+    __properties: ClassVar[List[str]] = ["connections", "domain", "managedBy", "name", "resourceId", "schemaName", "secrets", "subscriptions", "viewName"]
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -84,6 +86,9 @@ class CreateComponentV1Request(BaseModel):
                 if _item_connections:
                     _items.append(_item_connections.to_dict())
             _dict['connections'] = _items
+        # override the default output from pydantic by calling `to_dict()` of managed_by
+        if self.managed_by:
+            _dict['managedBy'] = self.managed_by.to_dict()
         # override the default output from pydantic by calling `to_dict()` of each value in subscriptions (dict)
         _field_dict = {}
         if self.subscriptions:
@@ -115,6 +120,7 @@ class CreateComponentV1Request(BaseModel):
         _obj = cls.model_validate({
             "connections": [Connection.from_dict(_item) for _item in obj["connections"]] if obj.get("connections") is not None else None,
             "domain": obj.get("domain"),
+            "managedBy": ComponentReference.from_dict(obj["managedBy"]) if obj.get("managedBy") is not None else None,
             "name": obj.get("name"),
             "resourceId": obj.get("resourceId"),
             "schemaName": obj.get("schemaName"),

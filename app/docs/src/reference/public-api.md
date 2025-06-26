@@ -442,6 +442,9 @@ Components management endpoints
     "propId1": "value1",
     "path/to/prop": "value2"
   },
+  "managedBy": {
+    "component": "ComponentName"
+  },
   "name": "MyComponentName",
   "resourceId": "i-12345678",
   "schemaName": "AWS::EC2::Instance",
@@ -2338,7 +2341,7 @@ xor
 
 ```json
 {
-  "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY"
+  "component": "ComponentName"
 }
 
 ```
@@ -2666,6 +2669,9 @@ xor
     "propId1": "value1",
     "path/to/prop": "value2"
   },
+  "managedBy": {
+    "component": "ComponentName"
+  },
   "name": "MyComponentName",
   "resourceId": "i-12345678",
   "schemaName": "AWS::EC2::Instance",
@@ -2690,6 +2696,7 @@ xor
 |connections|[[Connection](#schemaconnection)]|false|none|none|
 |domain|object|false|none|none|
 |» **additionalProperties**|any|false|none|none|
+|managedBy|[ComponentReference](#schemacomponentreference)|false|none|none|
 |name|string|true|none|none|
 |resourceId|string,null|false|none|none|
 |schemaName|string|true|none|none|
@@ -4614,7 +4621,7 @@ xor
 
 ```json
 {
-  "componentId": "01H9ZQD35JPMBGHH69BT0Q79VY",
+  "component": "ComponentName",
   "function": "string",
   "keepExistingSubscriptions": true,
   "propPath": "string"
