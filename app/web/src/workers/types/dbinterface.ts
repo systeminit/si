@@ -139,10 +139,10 @@ export interface SharedDBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): Promise<Record<ComponentId, number>>;
-  getComponentNames(
+  getComponentDetails(
     workspaceId: string,
     changeSetId: ChangeSetId,
-  ): Promise<Record<ComponentId, string>>;
+  ): Promise<Record<ComponentId, ComponentInfo>>;
   getSchemaMembers(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -222,10 +222,10 @@ export interface TabDBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): Record<ComponentId, number>;
-  getComponentNames(
+  getComponentDetails(
     workspaceId: string,
     changeSetId: ChangeSetId,
-  ): Record<ComponentId, string>;
+  ): Record<ComponentId, ComponentInfo>;
   getSchemaMembers(workspaceId: string, changeSetId: ChangeSetId): string;
   get(
     workspaceId: string,
@@ -409,3 +409,8 @@ export interface IndexObjectMeta {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AtomDocument = any;
+
+export type ComponentInfo = {
+  name: string;
+  schemaVariantName: string;
+};

@@ -1,25 +1,28 @@
 <template>
-  <ul
-    v-if="componentId && latestFuncRuns && managementData"
+  <div
+    v-if="component && componentId && latestFuncRuns && managementData"
     class="p-xs flex flex-col gap-xs"
   >
-    <li v-if="mgmtFuncs.length > 0" class="text-lg font-bold">Functions:</li>
-    <ManagementFuncCard
-      v-for="func in mgmtFuncs"
-      :key="func.id"
-      :componentId="componentId"
-      :func="func"
-      :funcRun="latestFuncRuns[func.id]"
+    <ul class="flex flex-col gap-xs">
+      <ManagementFuncCard
+        v-for="func in mgmtFuncs"
+        :key="func.id"
+        :componentId="componentId"
+        :func="func"
+        :funcRun="latestFuncRuns[func.id]"
+      />
+    </ul>
+    <ManagementConnectionsList
+      :edges="incoming"
+      titleText="Managed By Components"
     />
-    <li v-if="incoming.length > 0" class="text-lg font-bold">
-      Managed By Components:
-    </li>
-    <ManagementEdgeCard v-for="edge in incoming" :key="edge.key" :edge="edge" />
-    <li v-if="outgoing.length > 0" class="text-lg font-bold">
-      Managing Components:
-    </li>
-    <ManagementEdgeCard v-for="edge in outgoing" :key="edge.key" :edge="edge" />
-  </ul>
+    <ManagementConnectionsList
+      :edges="outgoing"
+      titleText="Managing Components"
+      selectComponent
+      :parentComponentName="component.name"
+    />
+  </div>
   <EmptyState v-else text="No management information available" icon="tools" />
 </template>
 
@@ -42,7 +45,7 @@ import {
 import EmptyState from "./EmptyState.vue";
 import ManagementFuncCard from "./ManagementFuncCard.vue";
 import { SimpleConnection } from "./layout_components/ConnectionLayout.vue";
-import ManagementEdgeCard from "./ManagementEdgeCard.vue";
+import ManagementConnectionsList from "./ManagementConnectionsList.vue";
 
 const props = defineProps({
   component: { type: Object as PropType<BifrostComponent> },
@@ -103,7 +106,7 @@ const componentConnections = computed(() => {
 const incoming = computed(
   () =>
     componentConnections.value.incoming
-      .filter((conn) => conn.kind === "management")
+      .filter((conn) => conn.kind === "management") // && conn.fromComponentId !== componentId.value
       .map((conn) => {
         return {
           key: `mgmt-${conn.toComponentId}-${conn.fromComponentId}`,

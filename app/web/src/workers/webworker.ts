@@ -43,6 +43,7 @@ import {
   BustCacheFn,
   CategorizedPossibleConnections,
   Checksum,
+  ComponentInfo,
   Gettable,
   Id,
   IndexObjectMeta,
@@ -1826,7 +1827,7 @@ const postProcess = (
       bustCacheFn(
         workspaceId,
         changeSetId,
-        EntityKind.ComponentNames,
+        EntityKind.ComponentDetails,
         workspaceId,
       );
     }
@@ -1993,7 +1994,7 @@ const getOutgoingConnectionsCounts = (
   return counts;
 };
 
-const getComponentNames = (
+const getComponentDetails = (
   _workspaceId: string,
   changeSetId: string,
   indexChecksum?: string,
@@ -2001,7 +2002,8 @@ const getComponentNames = (
   const sql = `
     select
       atoms.args,
-      replace(atoms.data -> '$.name', '"', '')
+      replace(atoms.data -> '$.name', '"', ''),
+      replace(atoms.data -> '$.schemaVariantName', '"', '')
     from
       atoms
       inner join index_mtm_atoms mtm
@@ -2027,11 +2029,14 @@ const getComponentNames = (
   const end = Date.now();
   // eslint-disable-next-line no-console
   console.log("sql get names", end - start, "ms");
-  const names: Record<string, string> = {};
+  const details: Record<string, ComponentInfo> = {};
   data.forEach((row) => {
-    names[row[0] as string] = row[1] as string;
+    details[row[0] as string] = {
+      name: row[1] as string,
+      schemaVariantName: row[2] as string,
+    };
   });
-  return names;
+  return details;
 };
 
 const flip = (i: Connection): Connection => {
@@ -2858,7 +2863,7 @@ const dbInterface: TabDBInterface = {
   getList,
   getOutgoingConnectionsByComponentId,
   getOutgoingConnectionsCounts,
-  getComponentNames,
+  getComponentDetails,
   getSchemaMembers,
   getPossibleConnections,
   partialKeyFromKindAndId: partialKeyFromKindAndArgs,

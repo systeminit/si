@@ -214,10 +214,10 @@ const dbInterface: SharedDBInterface = {
     );
   },
 
-  async getComponentNames(workspaceId: string, changeSetId: string) {
+  async getComponentDetails(workspaceId: string, changeSetId: string) {
     return await withRemote(
       async (remote) =>
-        await remote.getComponentNames(workspaceId, changeSetId),
+        await remote.getComponentDetails(workspaceId, changeSetId),
     );
   },
 
