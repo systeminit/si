@@ -27,7 +27,10 @@ use dal_test::{
     test,
 };
 use itertools::Itertools;
-use pretty_assertions_sorted::assert_eq;
+use pretty_assertions_sorted::{
+    assert_eq,
+    assert_ne,
+};
 use si_id::ActionId;
 
 #[test]
@@ -203,9 +206,11 @@ async fn auto_queue_update(ctx: &mut DalContext) -> Result<()> {
 
     ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
 
-    // ======================================================
-    // Updating values in a component that has a resource should enqueue an update action
-    // ======================================================
+    let mut jack_actions = Action::find_for_component_id(ctx, component_jack.id()).await?;
+    assert_eq!(1, jack_actions.len());
+    let jack_action_id = jack_actions.pop().expect("no action found");
+    let jack_action = Action::get_by_id(ctx, jack_action_id).await?;
+    assert_eq!(ActionState::Failed, jack_action.state());
 
     let name_path = &["root", "si", "name"];
     let av_id = component_jack
@@ -214,30 +219,69 @@ async fn auto_queue_update(ctx: &mut DalContext) -> Result<()> {
         .pop()
         .expect("there should only be one value id");
 
+    // ======================================================
+    // Updating values in a Component that has a Failed action should not enqueue an update
+    // ======================================================
+
+    // Note: we're updating the root/si/name - which propagates to root/domain/name
+    // and as this component has a resource, DVU should be enqueuing the update func!
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!("nope"))).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let action_ids = Action::find_for_component_id(ctx, component_jack.id()).await?;
+    assert!(!action_ids.is_empty());
+    let mut found_failed_action = false;
+    for action_id in action_ids {
+        let action = Action::get_by_id(ctx, action_id).await?;
+        assert_ne!(
+            ActionKind::Update,
+            Action::prototype(ctx, action.id()).await?.kind
+        );
+        if action.state() == ActionState::Failed {
+            found_failed_action = true;
+        }
+    }
+    assert!(found_failed_action);
+
+    // ======================================================
+    // Updating values in a Component that has a Queued action should not enqueue an update
+    // ======================================================
+    for action_id in Action::find_for_component_id(ctx, component_jack.id()).await? {
+        Action::set_state(ctx, action_id, ActionState::Queued).await?;
+    }
+
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!("still no"))).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let action_ids = Action::find_for_component_id(ctx, component_jack.id()).await?;
+    assert!(!action_ids.is_empty());
+    for action_id in action_ids {
+        let action = Action::get_by_id(ctx, action_id).await?;
+        assert_ne!(
+            ActionKind::Update,
+            Action::prototype(ctx, action.id()).await?.kind
+        );
+    }
+
+    // ======================================================
+    // Updating values in a component that has a resource should enqueue an update action
+    // ======================================================
+    Action::remove_all_for_component_id(ctx, component_jack.id()).await?;
+
     // Note: we're updating the root/si/name - which propagates to root/domain/name
     // and as this component has a resource, DVU should be enqueuing the update func!
     AttributeValue::update(ctx, av_id, Some(serde_json::json!("whomever"))).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-    let action_ids = Action::list_topologically(ctx).await?;
-
-    let mut update_action_count = 0;
-
-    for action_id in action_ids {
-        let action = Action::get_by_id(ctx, action_id).await?;
-
-        if action.state() == ActionState::Queued {
-            let prototype_id = Action::prototype_id(ctx, action_id).await?;
-            let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
-            let component_id = Action::component_id(ctx, action_id)
-                .await?
-                .expect("is some");
-            if prototype.kind == ActionKind::Update && component_id == component_jack.id() {
-                update_action_count += 1;
-            };
-        }
-    }
-    assert_eq!(update_action_count, 1);
+    let mut action_ids = Action::find_for_component_id(ctx, component_jack.id()).await?;
+    assert_eq!(1, action_ids.len());
+    let action_id = action_ids.pop().expect("no actions found for jack");
+    let action = Action::get_by_id(ctx, action_id).await?;
+    assert_eq!(
+        ActionKind::Update,
+        Action::prototype(ctx, action.id()).await?.kind
+    );
+    assert_eq!(ActionState::Queued, action.state());
 
     // ======================================================
     // Updating values in a component that has a resource should not enqueue an update
@@ -250,6 +294,7 @@ async fn auto_queue_update(ctx: &mut DalContext) -> Result<()> {
         .pop()
         .expect("there should only be one value id");
 
+    Action::remove_all_for_component_id(ctx, component_swift.id()).await?;
     AttributeValue::update(ctx, av_id, Some(serde_json::json!("taylor swift"))).await?;
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 

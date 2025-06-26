@@ -2919,7 +2919,7 @@ impl Component {
     }
 
     /// If the attribute value is somewhere in 'root/domain', the component has a resource, and a single update function,
-    /// and there isn't an update func already enqueued for this component, enqueue it!
+    /// and there isn't any action already enqueued for this component, enqueue it!
     pub async fn enqueue_update_action_if_applicable(
         ctx: &DalContext,
         modified_attribute_value_id: AttributeValueId,
@@ -2952,10 +2952,10 @@ impl Component {
                         return Ok(None);
                     }
                     if let Some(prototype_id) = prototypes_for_variant.pop() {
-                        // don't enqueue the same action twice!
-                        if Action::find_equivalent(ctx, prototype_id, Some(component_id))
+                        // Don't enqueue an update if there is already an Action of any kind enqueued for this Component.
+                        if Action::find_for_component_id(ctx, component_id)
                             .await?
-                            .is_none()
+                            .is_empty()
                         {
                             let new_action =
                                 Action::new(ctx, prototype_id, Some(component_id)).await?;
