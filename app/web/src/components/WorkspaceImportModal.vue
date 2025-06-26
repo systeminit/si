@@ -223,7 +223,7 @@
             <LoadingMessage>
               Importing your workspace!
               <template #moreContent>
-                <p class="italic font-sm">
+                <p class="italic text-sm">
                   Please do not refresh while this in progress.
                 </p>
               </template>

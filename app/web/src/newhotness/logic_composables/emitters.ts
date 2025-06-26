@@ -75,3 +75,36 @@ export const startWindowResizeEmitter = (window: Window) => {
   windowResizeEmitterStarted = true;
   window.addEventListener("resize", onResize);
 };
+
+export interface MouseDetails {
+  [key: string | symbol]: Pick<
+    MouseEvent,
+    | "button"
+    | "clientX"
+    | "clientY"
+    | "altKey"
+    | "ctrlKey"
+    | "metaKey"
+    | "shiftKey"
+    | "preventDefault"
+    | "target"
+  >;
+}
+
+const onClick = (event: MouseEvent) => {
+  mouseEmitter.emit("click", event);
+};
+const onMouseDown = (event: MouseEvent) => {
+  mouseEmitter.emit("mousedown", event);
+};
+
+export const mouseEmitter: Emitter<MouseDetails> = mitt<MouseDetails>();
+
+let mouseEmitterStarted = false;
+
+export const startMouseEmitters = (window: Window) => {
+  if (mouseEmitterStarted) return;
+  mouseEmitterStarted = true;
+  window.addEventListener("click", onClick);
+  window.addEventListener("mousedown", onMouseDown);
+};

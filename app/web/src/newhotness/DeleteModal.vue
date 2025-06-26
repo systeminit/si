@@ -67,6 +67,7 @@ import {
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { ComponentInList } from "@/workers/types/entity_kind_types";
 import ComponentCard from "./ComponentCard.vue";
+import { KeyDetails, keyEmitter } from "./logic_composables/emitters";
 
 const components = ref<ComponentInList[]>([]);
 
@@ -90,14 +91,14 @@ async function onConfirm() {
 }
 
 onMounted(() => {
-  window.addEventListener("keydown", onKeyDown);
+  keyEmitter.on("Enter", onKeyDown);
 });
 onBeforeUnmount(() => {
-  window.removeEventListener("keydown", onKeyDown);
+  keyEmitter.off("Enter", onKeyDown);
 });
 
-const onKeyDown = async (e: KeyboardEvent) => {
-  if (e.key === "Enter" && modalRef.value?.isOpen) {
+const onKeyDown = async (e: KeyDetails["Enter"]) => {
+  if (modalRef.value?.isOpen) {
     onConfirm();
   }
 };

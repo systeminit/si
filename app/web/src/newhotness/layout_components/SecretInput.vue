@@ -14,7 +14,7 @@
       ref="inputRef"
       :class="
         clsx(
-          'block h-lg w-full ml-auto font-sm font-mono',
+          'block h-lg w-full ml-auto text-sm font-mono',
           'border-transparent focus:outline-none focus:border-transparent focus:ring-0 focus:z-10',
           themeClasses(
             'text-black bg-white disabled:bg-neutral-100',

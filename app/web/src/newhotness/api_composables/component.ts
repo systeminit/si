@@ -61,6 +61,10 @@ export type UpdateComponentNameArgs = {
   name: string;
 };
 
+export type UpdateComponentManageArgs = {
+  componentId: string;
+};
+
 export enum SecretVersion {
   V1 = "v1",
 }
