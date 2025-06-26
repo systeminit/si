@@ -389,7 +389,6 @@ impl SecretPropPath {
 #[serde(rename_all = "camelCase")]
 #[serde(untagged)]
 #[schema(example = json!({"component": "ComponentName"}))]
-#[schema(example = json!({"componentId": "01H9ZQD35JPMBGHH69BT0Q79VY"}))]
 pub enum ComponentReference {
     ByName {
         component: String,
@@ -399,6 +398,23 @@ pub enum ComponentReference {
         #[schema(value_type = String, example = "01H9ZQD35JPMBGHH69BT0Q79VY")]
         component_id: ComponentId,
     },
+}
+
+impl Default for ComponentReference {
+    fn default() -> Self {
+        ComponentReference::ByName {
+            component: String::new(),
+        }
+    }
+}
+
+impl ComponentReference {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            ComponentReference::ByName { component } => component.is_empty(),
+            ComponentReference::ById { component_id: _ } => false, // IDs are never considered "empty"
+        }
+    }
 }
 
 /// Helper function to resolve a component reference to a component ID
