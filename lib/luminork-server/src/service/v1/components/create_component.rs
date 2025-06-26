@@ -26,11 +26,13 @@ use utoipa::{
 
 use super::{
     ComponentPropKey,
+    ComponentReference,
     SecretPropKey,
     connections::{
         Connection,
         handle_connection,
     },
+    resolve_component_reference,
     resolve_secret_id,
     subscriptions::{
         AttributeValueIdent,
@@ -194,6 +196,13 @@ pub async fn create_component(
         }
     }
 
+    if !payload.managed_by.is_empty() {
+        let manager_component_id =
+            resolve_component_reference(ctx, &payload.managed_by, &component_list).await?;
+
+        Component::manage_component(ctx, manager_component_id, component.id()).await?;
+    }
+
     ctx.write_audit_log(
         AuditLogKind::UpdateComponent {
             component_id: component.id(),
@@ -255,6 +264,10 @@ pub struct CreateComponentV1Request {
     #[deprecated]
     #[schema(example = json!({}))]
     pub connections: Vec<Connection>,
+
+    #[serde(default)]
+    #[schema(example = json!({"component": "ComponentName"}), required = false)]
+    pub managed_by: ComponentReference,
 
     #[serde(default)]
     #[schema(example = json!({"/prop/path/on/this/component": {"component": "OtherComponentName", "propPath": "/prop/path/on/other/component"}}))]
