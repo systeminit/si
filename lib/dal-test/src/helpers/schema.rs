@@ -12,6 +12,11 @@ use crate::{
 /// Test helpers for schema variants
 pub mod variant;
 
+/// Lookup a schema by name or id
+pub async fn id(ctx: &DalContext, key: impl SchemaKey) -> Result<SchemaId> {
+    SchemaKey::id(ctx, key).await
+}
+
 ///
 /// Things that you can pass as schema ids
 ///
@@ -20,25 +25,25 @@ pub trait SchemaKey {
     ///
     /// Turn this into a real SchemaId
     ///
-    async fn lookup_schema(self, ctx: &DalContext) -> Result<SchemaId>;
+    async fn id(ctx: &DalContext, key: Self) -> Result<SchemaId>;
 }
 impl SchemaKey for SchemaId {
-    async fn lookup_schema(self, _: &DalContext) -> Result<SchemaId> {
-        Ok(self)
+    async fn id(_: &DalContext, key: Self) -> Result<SchemaId> {
+        Ok(key)
     }
 }
 impl SchemaKey for ExpectSchema {
-    async fn lookup_schema(self, _: &DalContext) -> Result<SchemaId> {
-        Ok(self.id())
+    async fn id(_: &DalContext, key: Self) -> Result<SchemaId> {
+        Ok(key.id())
     }
 }
 impl SchemaKey for Schema {
-    async fn lookup_schema(self, _: &DalContext) -> Result<SchemaId> {
-        Ok(self.id())
+    async fn id(_: &DalContext, key: Self) -> Result<SchemaId> {
+        Ok(key.id())
     }
 }
 impl SchemaKey for &str {
-    async fn lookup_schema(self, ctx: &DalContext) -> Result<SchemaId> {
-        Ok(Schema::get_by_name(ctx, self).await?.id())
+    async fn id(ctx: &DalContext, key: Self) -> Result<SchemaId> {
+        Ok(Schema::get_by_name(ctx, key).await?.id())
     }
 }

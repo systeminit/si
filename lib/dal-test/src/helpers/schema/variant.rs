@@ -13,39 +13,9 @@ use crate::{
     expected::ExpectSchemaVariant,
 };
 
-// NOTE Most of these should just be in VariantAuthoringClient
-
-///
-/// Things that you can pass as schema variants (schema name or variant id)
-///
-#[allow(async_fn_in_trait)]
-pub trait SchemaVariantKey {
-    ///
-    /// Turn this into a real SchemaVariantId
-    ///
-    async fn lookup_schema_variant(self, ctx: &DalContext) -> Result<SchemaVariantId>;
-}
-impl SchemaVariantKey for SchemaVariantId {
-    async fn lookup_schema_variant(self, _: &DalContext) -> Result<SchemaVariantId> {
-        Ok(self)
-    }
-}
-// "SchemaName" resolves to the default variant for the schema
-impl SchemaVariantKey for &str {
-    async fn lookup_schema_variant(self, ctx: &DalContext) -> Result<SchemaVariantId> {
-        let schema = Schema::get_by_name(ctx, self).await?;
-        Ok(SchemaVariant::default_id_for_schema(ctx, schema.id()).await?)
-    }
-}
-impl SchemaVariantKey for ExpectSchemaVariant {
-    async fn lookup_schema_variant(self, _: &DalContext) -> Result<SchemaVariantId> {
-        Ok(self.id())
-    }
-}
-impl SchemaVariantKey for SchemaVariant {
-    async fn lookup_schema_variant(self, _: &DalContext) -> Result<SchemaVariantId> {
-        Ok(self.id())
-    }
+/// Lookup a schema variant by name or id
+pub async fn id(ctx: &DalContext, key: impl SchemaVariantKey) -> Result<SchemaVariantId> {
+    SchemaVariantKey::id(ctx, key).await
 }
 
 /// Create a schema + schema variant with the given name and asset function
@@ -67,10 +37,12 @@ pub async fn create(
 pub async fn create_management_func(
     ctx: &DalContext,
     variant: impl SchemaVariantKey,
+    name: impl Into<String>,
     code: impl Into<String>,
 ) -> Result<FuncId> {
-    let variant_id = variant.lookup_schema_variant(ctx).await?;
-    let func = FuncAuthoringClient::create_new_management_func(ctx, None, variant_id).await?;
+    let variant_id = id(ctx, variant).await?;
+    let func =
+        FuncAuthoringClient::create_new_management_func(ctx, Some(name.into()), variant_id).await?;
     FuncAuthoringClient::save_code(ctx, func.id, code.into()).await?;
     Ok(func.id)
 }
@@ -81,7 +53,7 @@ pub async fn update_asset_func(
     variant: impl SchemaVariantKey,
     asset_func: impl Into<String>,
 ) -> Result<()> {
-    let variant_id = variant.lookup_schema_variant(ctx).await?;
+    let variant_id = id(ctx, variant).await?;
     let schema = SchemaVariant::schema_for_schema_variant_id(ctx, variant_id).await?;
     let variant = SchemaVariant::get_by_id(ctx, variant_id).await?;
     VariantAuthoringClient::save_variant_content(
@@ -99,4 +71,37 @@ pub async fn update_asset_func(
     .await?;
     VariantAuthoringClient::regenerate_variant(ctx, variant.id).await?;
     Ok(())
+}
+
+///
+/// Things that you can pass as schema variants (schema name or variant id)
+///
+#[allow(async_fn_in_trait)]
+pub trait SchemaVariantKey {
+    ///
+    /// Turn this into a real SchemaVariantId
+    ///
+    async fn id(ctx: &DalContext, key: Self) -> Result<SchemaVariantId>;
+}
+impl SchemaVariantKey for SchemaVariantId {
+    async fn id(_: &DalContext, key: Self) -> Result<SchemaVariantId> {
+        Ok(key)
+    }
+}
+// "SchemaName" resolves to the default variant for the schema
+impl SchemaVariantKey for &str {
+    async fn id(ctx: &DalContext, key: Self) -> Result<SchemaVariantId> {
+        let schema = Schema::get_by_name(ctx, key).await?;
+        Ok(SchemaVariant::default_id_for_schema(ctx, schema.id()).await?)
+    }
+}
+impl SchemaVariantKey for ExpectSchemaVariant {
+    async fn id(_: &DalContext, key: Self) -> Result<SchemaVariantId> {
+        Ok(key.id())
+    }
+}
+impl SchemaVariantKey for SchemaVariant {
+    async fn id(_: &DalContext, key: Self) -> Result<SchemaVariantId> {
+        Ok(key.id())
+    }
 }

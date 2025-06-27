@@ -15,113 +15,20 @@ use si_id::{
 
 use crate::{
     Result,
-    helpers::component::ComponentKey,
+    helpers::component::{
+        self,
+        ComponentKey,
+    },
 };
 
-///
-/// Things that you can pass as attribute values (id, or (component, path))
-///
-#[allow(async_fn_in_trait)]
-pub trait AttributeValueKey {
-    ///
-    /// Get the AttributeValueId for this key
-    ///
-    async fn lookup_attribute_value(self, ctx: &DalContext) -> Result<AttributeValueId>;
-    ///
-    /// Get the AttributeValueId for this key, or None if it doesn't exist
-    ///
-    async fn resolve_attribute_value(self, ctx: &DalContext) -> Result<Option<AttributeValueId>>;
-    ///
-    /// Get the AttributeValueId for this key, *or create it* if it doesn't exist
-    ///
-    async fn vivify_attribute_value(self, ctx: &DalContext) -> Result<AttributeValueId>;
-    ///
-    /// Turn this into a subscription (resolves component but not av)
-    ///
-    async fn to_subscription(self, ctx: &DalContext) -> Result<ValueSubscription>;
+/// Lookup an attribute value by its key (component, path) pair
+pub async fn id(ctx: &DalContext, key: impl AttributeValueKey) -> Result<AttributeValueId> {
+    AttributeValueKey::id(ctx, key).await
 }
-impl AttributeValueKey for AttributeValueId {
-    async fn lookup_attribute_value(self, _: &DalContext) -> Result<AttributeValueId> {
-        Ok(self)
-    }
-    async fn resolve_attribute_value(self, _: &DalContext) -> Result<Option<AttributeValueId>> {
-        Ok(Some(self))
-    }
-    async fn vivify_attribute_value(self, _: &DalContext) -> Result<AttributeValueId> {
-        Ok(self)
-    }
-    async fn to_subscription(self, ctx: &DalContext) -> Result<ValueSubscription> {
-        let (root, path) = AttributeValue::path_from_root(ctx, self).await?;
-        let path: &str = &path;
-        (root, path).to_subscription(ctx).await
-    }
-}
-impl AttributeValueKey for ValueSubscription {
-    async fn lookup_attribute_value(self, ctx: &DalContext) -> Result<AttributeValueId> {
-        self.resolve(ctx)
-            .await?
-            .ok_or(eyre!("Attribute value not found"))
-    }
-    async fn resolve_attribute_value(self, ctx: &DalContext) -> Result<Option<AttributeValueId>> {
-        Ok(self.resolve(ctx).await?)
-    }
-    async fn vivify_attribute_value(self, ctx: &DalContext) -> Result<AttributeValueId> {
-        Ok(self.path.vivify(ctx, self.attribute_value_id).await?)
-    }
-    async fn to_subscription(self, _: &DalContext) -> Result<ValueSubscription> {
-        Ok(self)
-    }
-}
-impl AttributeValueKey for (AttributeValueId, &str) {
-    async fn lookup_attribute_value(self, ctx: &DalContext) -> Result<AttributeValueId> {
-        self.to_subscription(ctx)
-            .await?
-            .lookup_attribute_value(ctx)
-            .await
-    }
-    async fn resolve_attribute_value(self, ctx: &DalContext) -> Result<Option<AttributeValueId>> {
-        self.to_subscription(ctx)
-            .await?
-            .resolve_attribute_value(ctx)
-            .await
-    }
-    async fn vivify_attribute_value(self, ctx: &DalContext) -> Result<AttributeValueId> {
-        self.to_subscription(ctx)
-            .await?
-            .vivify_attribute_value(ctx)
-            .await
-    }
-    async fn to_subscription(self, _: &DalContext) -> Result<ValueSubscription> {
-        Ok(ValueSubscription {
-            attribute_value_id: self.0,
-            path: AttributePath::from_json_pointer(self.1),
-        })
-    }
-}
-impl<T: ComponentKey> AttributeValueKey for (T, &str) {
-    async fn lookup_attribute_value(self, ctx: &DalContext) -> Result<AttributeValueId> {
-        self.to_subscription(ctx)
-            .await?
-            .lookup_attribute_value(ctx)
-            .await
-    }
-    async fn resolve_attribute_value(self, ctx: &DalContext) -> Result<Option<AttributeValueId>> {
-        self.to_subscription(ctx)
-            .await?
-            .resolve_attribute_value(ctx)
-            .await
-    }
-    async fn vivify_attribute_value(self, ctx: &DalContext) -> Result<AttributeValueId> {
-        self.to_subscription(ctx)
-            .await?
-            .vivify_attribute_value(ctx)
-            .await
-    }
-    async fn to_subscription(self, ctx: &DalContext) -> Result<ValueSubscription> {
-        let component_id = self.0.lookup_component(ctx).await?;
-        let root_id = Component::root_attribute_value_id(ctx, component_id).await?;
-        (root_id, self.1).to_subscription(ctx).await
-    }
+
+/// Get or create an attribute value by its key (component, path) pair
+pub async fn vivify(ctx: &DalContext, key: impl AttributeValueKey) -> Result<AttributeValueId> {
+    AttributeValueKey::vivify(ctx, key).await
 }
 
 /// Set the subscriptions on a value
@@ -140,10 +47,10 @@ pub async fn subscribe_with_custom_function<S: AttributeValueKey>(
     subscriptions: impl IntoIterator<Item = S>,
     func_id: Option<FuncId>,
 ) -> Result<()> {
-    let subscriber = subscriber.vivify_attribute_value(ctx).await?;
+    let subscriber = vivify(ctx, subscriber).await?;
     let mut converted_subscriptions = vec![];
     for subscription in subscriptions {
-        converted_subscriptions.push(subscription.to_subscription(ctx).await?);
+        converted_subscriptions.push(AttributeValueKey::to_subscription(ctx, subscription).await?);
     }
     AttributeValue::set_to_subscriptions(ctx, subscriber, converted_subscriptions, func_id).await?;
     Ok(())
@@ -153,7 +60,7 @@ pub async fn subscribe_with_custom_function<S: AttributeValueKey>(
 
 /// Get the value
 pub async fn get(ctx: &DalContext, av: impl AttributeValueKey) -> Result<serde_json::Value> {
-    let av_id = av.lookup_attribute_value(ctx).await?;
+    let av_id = id(ctx, av).await?;
     AttributeValue::view_by_id(ctx, av_id)
         .await?
         .ok_or(eyre!("Attribute missing value"))
@@ -161,7 +68,7 @@ pub async fn get(ctx: &DalContext, av: impl AttributeValueKey) -> Result<serde_j
 
 /// Check whether the value exists and is set
 pub async fn has_value(ctx: &DalContext, av: impl AttributeValueKey) -> Result<bool> {
-    match av.resolve_attribute_value(ctx).await? {
+    match AttributeValueKey::resolve(ctx, av).await? {
         Some(av_id) => Ok(AttributeValue::view_by_id(ctx, av_id).await?.is_some()),
         None => Ok(false),
     }
@@ -173,14 +80,14 @@ pub async fn set(
     av: impl AttributeValueKey,
     value: impl Into<serde_json::Value>,
 ) -> Result<()> {
-    let av_id = av.vivify_attribute_value(ctx).await?;
+    let av_id = vivify(ctx, av).await?;
     AttributeValue::update(ctx, av_id, Some(value.into())).await?;
     Ok(())
 }
 
 /// Check whether the value exists and is set
 pub async fn is_set(ctx: &DalContext, av: impl AttributeValueKey) -> Result<bool> {
-    match av.resolve_attribute_value(ctx).await? {
+    match AttributeValueKey::resolve(ctx, av).await? {
         Some(av_id) => Ok(AttributeValue::component_prototype_id(ctx, av_id)
             .await?
             .is_some()),
@@ -190,7 +97,101 @@ pub async fn is_set(ctx: &DalContext, av: impl AttributeValueKey) -> Result<bool
 
 /// Unset a value (creates it if it doesn't exist)
 pub async fn unset(ctx: &DalContext, av: impl AttributeValueKey) -> Result<()> {
-    let av_id = av.vivify_attribute_value(ctx).await?;
+    let av_id = vivify(ctx, av).await?;
     AttributeValue::update(ctx, av_id, None).await?;
     Ok(())
+}
+
+///
+/// Things that you can pass as attribute values (id, or (component, path))
+///
+#[allow(async_fn_in_trait)]
+pub trait AttributeValueKey {
+    ///
+    /// Get the AttributeValueId for this key
+    ///
+    async fn id(ctx: &DalContext, key: Self) -> Result<AttributeValueId>;
+    ///
+    /// Get the AttributeValueId for this key, or None if it doesn't exist
+    ///
+    async fn resolve(ctx: &DalContext, key: Self) -> Result<Option<AttributeValueId>>;
+    ///
+    /// Get the AttributeValueId for this key, *or create it* if it doesn't exist
+    ///
+    async fn vivify(ctx: &DalContext, key: Self) -> Result<AttributeValueId>;
+    ///
+    /// Turn this into a subscription (resolves component but not av)
+    ///
+    async fn to_subscription(ctx: &DalContext, key: Self) -> Result<ValueSubscription>;
+}
+impl AttributeValueKey for AttributeValueId {
+    async fn id(_: &DalContext, key: Self) -> Result<AttributeValueId> {
+        Ok(key)
+    }
+    async fn resolve(_: &DalContext, key: Self) -> Result<Option<AttributeValueId>> {
+        Ok(Some(key))
+    }
+    async fn vivify(_: &DalContext, key: Self) -> Result<AttributeValueId> {
+        Ok(key)
+    }
+    async fn to_subscription(ctx: &DalContext, key: Self) -> Result<ValueSubscription> {
+        let (root, path) = AttributeValue::path_from_root(ctx, key).await?;
+        let path: &str = &path;
+        AttributeValueKey::to_subscription(ctx, (root, path)).await
+    }
+}
+impl AttributeValueKey for ValueSubscription {
+    async fn id(ctx: &DalContext, key: Self) -> Result<AttributeValueId> {
+        key.resolve(ctx)
+            .await?
+            .ok_or(eyre!("Attribute value not found"))
+    }
+    async fn resolve(ctx: &DalContext, key: Self) -> Result<Option<AttributeValueId>> {
+        Ok(key.resolve(ctx).await?)
+    }
+    async fn vivify(ctx: &DalContext, key: Self) -> Result<AttributeValueId> {
+        Ok(key.path.vivify(ctx, key.attribute_value_id).await?)
+    }
+    async fn to_subscription(_: &DalContext, key: Self) -> Result<ValueSubscription> {
+        Ok(key)
+    }
+}
+impl AttributeValueKey for (AttributeValueId, &str) {
+    async fn id(ctx: &DalContext, key: Self) -> Result<AttributeValueId> {
+        let sub = AttributeValueKey::to_subscription(ctx, key).await?;
+        AttributeValueKey::id(ctx, sub).await
+    }
+    async fn resolve(ctx: &DalContext, key: Self) -> Result<Option<AttributeValueId>> {
+        let sub = AttributeValueKey::to_subscription(ctx, key).await?;
+        AttributeValueKey::resolve(ctx, sub).await
+    }
+    async fn vivify(ctx: &DalContext, key: Self) -> Result<AttributeValueId> {
+        let sub = AttributeValueKey::to_subscription(ctx, key).await?;
+        AttributeValueKey::vivify(ctx, sub).await
+    }
+    async fn to_subscription(_: &DalContext, key: Self) -> Result<ValueSubscription> {
+        Ok(ValueSubscription {
+            attribute_value_id: key.0,
+            path: AttributePath::from_json_pointer(key.1),
+        })
+    }
+}
+impl<T: ComponentKey> AttributeValueKey for (T, &str) {
+    async fn id(ctx: &DalContext, key: Self) -> Result<AttributeValueId> {
+        let sub = AttributeValueKey::to_subscription(ctx, key).await?;
+        AttributeValueKey::id(ctx, sub).await
+    }
+    async fn resolve(ctx: &DalContext, key: Self) -> Result<Option<AttributeValueId>> {
+        let sub = AttributeValueKey::to_subscription(ctx, key).await?;
+        AttributeValueKey::resolve(ctx, sub).await
+    }
+    async fn vivify(ctx: &DalContext, key: Self) -> Result<AttributeValueId> {
+        let sub = AttributeValueKey::to_subscription(ctx, key).await?;
+        AttributeValueKey::vivify(ctx, sub).await
+    }
+    async fn to_subscription(ctx: &DalContext, key: Self) -> Result<ValueSubscription> {
+        let component_id = component::id(ctx, key.0).await?;
+        let root_id = Component::root_attribute_value_id(ctx, component_id).await?;
+        AttributeValueKey::to_subscription(ctx, (root_id, key.1)).await
+    }
 }

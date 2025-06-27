@@ -1003,6 +1003,9 @@ impl<'a> ManagementOperator<'a> {
         let mut pending_operations = vec![];
 
         if let Some(creates) = creates {
+            // Create the components in a separate pass from update, so we can make connections
+            // between the created components.
+            let mut created = vec![];
             for (placeholder, operation) in creates {
                 if placeholder == SELF_ID {
                     return Err(ManagementError::CannotCreateComponentWithSelfPlaceholder);
@@ -1018,27 +1021,36 @@ impl<'a> ManagementOperator<'a> {
                     schema_id,
                 } = self.create_component(&placeholder, &operation).await?;
 
-                let component_id = component.id();
-
-                let controlling_funcs =
-                    Component::list_av_controlling_func_ids_for_id(self.ctx, component_id).await?;
-
                 self.created_components
-                    .insert(component_id, geometry.keys().copied().collect());
+                    .insert(component.id(), geometry.keys().copied().collect());
 
                 self.component_id_placeholders
-                    .insert(placeholder.to_owned(), component_id);
+                    .insert(placeholder, component.id());
 
-                // Break out the operation so we own properties, attributes, etc.
-                let ManagementCreateOperation {
+                created.push((component.id(), geometry, schema_id, operation))
+            }
+
+            // Now that all components have been created, handle properties, attributes and
+            // connections between them.
+            for (
+                component_id,
+                geometry,
+                schema_id,
+                ManagementCreateOperation {
                     kind: _,
                     properties,
                     attributes,
                     geometry: _,
                     connect,
-                    parent: _,
-                } = operation;
+                    parent,
+                },
+            ) in created
+            {
                 if let Some(properties) = properties {
+                    let controlling_funcs =
+                        Component::list_av_controlling_func_ids_for_id(self.ctx, component_id)
+                            .await?;
+
                     update_component(
                         self.ctx,
                         component_id,
@@ -1063,12 +1075,13 @@ impl<'a> ManagementOperator<'a> {
 
                 self.last_component_geometry.extend(geometry);
 
-                if let Some(parent) = operation.parent {
+                if let Some(parent) = parent {
                     pending_operations.push(PendingOperation::Parent(PendingParent {
                         child_component_id: component_id,
-                        parent: parent.to_owned(),
+                        parent,
                     }));
                 }
+
                 pending_operations.push(PendingOperation::Manage(PendingManage {
                     managed_component_id: component_id,
                     managed_component_schema_id: schema_id,

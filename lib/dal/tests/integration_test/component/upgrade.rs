@@ -1067,7 +1067,7 @@ async fn update_schema_variant_component_type(
     variant: impl SchemaVariantKey,
     component_type: ComponentType,
 ) -> Result<ExpectSchemaVariant> {
-    let variant = SchemaVariant::get_by_id(ctx, variant.lookup_schema_variant(ctx).await?).await?;
+    let variant = SchemaVariant::get_by_id(ctx, variant::id(ctx, variant).await?).await?;
     VariantAuthoringClient::save_variant_content(
         ctx,
         variant.id(),
@@ -1090,7 +1090,7 @@ async fn update_schema_variant_description(
     variant: impl SchemaVariantKey,
     description: impl Into<String>,
 ) -> Result<ExpectSchemaVariant> {
-    let variant = SchemaVariant::get_by_id(ctx, variant.lookup_schema_variant(ctx).await?).await?;
+    let variant = SchemaVariant::get_by_id(ctx, variant::id(ctx, variant).await?).await?;
     VariantAuthoringClient::save_variant_content(
         ctx,
         variant.id(),

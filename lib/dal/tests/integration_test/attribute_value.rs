@@ -8,10 +8,7 @@ use dal_test::{
     expected::ExpectComponent,
     helpers::{
         ChangeSetTestHelpers,
-        attribute::value::{
-            self,
-            AttributeValueKey,
-        },
+        attribute::value,
         change_set,
         component,
         schema::variant,
@@ -200,7 +197,7 @@ async fn update_object_multiplayer(ctx: &mut DalContext) -> Result<()> {
     ctx.update_snapshot_to_visibility().await?;
     for &attr in &attrs {
         // The object must have exactly 4 child AVs and the value should be the merged value
-        let av_id = attr.lookup_attribute_value(ctx).await?;
+        let av_id = value::id(ctx, attr).await?;
         assert_eq!(4, AttributeValue::child_av_ids(ctx, av_id).await?.len(),);
         assert_eq!(
             json!({ "b": "b", "both": "b", "a": "a" }),

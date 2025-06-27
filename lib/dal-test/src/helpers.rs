@@ -49,6 +49,8 @@ pub mod attribute;
 pub mod change_set;
 /// Test helpers for components
 pub mod component;
+/// Test helpers for funcs
+pub mod func;
 /// Test helpers for schemas
 pub mod schema;
 /// Test helpers for secrets
