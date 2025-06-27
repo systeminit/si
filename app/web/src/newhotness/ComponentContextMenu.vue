@@ -36,6 +36,7 @@ import {
   ActionPrototypeViewList,
   ComponentInList,
   EntityKind,
+  SchemaVariant,
 } from "@/workers/types/entity_kind_types";
 import { ActionId, ActionPrototypeId } from "@/api/sdf/dal/action";
 import EraseModal from "./EraseModal.vue";
@@ -111,6 +112,17 @@ const actionByPrototype = computed(() => {
   }
   return result;
 });
+const schemaVariantQuery = useQuery<SchemaVariant | null>({
+  enabled: () => component.value !== undefined,
+  queryKey: key(EntityKind.SchemaVariant, component.value?.schemaVariantId),
+  queryFn: async () =>
+    await bifrost<SchemaVariant>(
+      args(EntityKind.SchemaVariant, component.value?.schemaVariantId),
+    ),
+});
+const managementFunctions = computed(
+  () => schemaVariantQuery.data.value?.mgmtFunctions ?? [],
+);
 // ================================================================================================
 
 const rightClickMenuItems = computed(() => {
@@ -183,11 +195,10 @@ const rightClickMenuItems = computed(() => {
   if (component.value && schemaVariantId.value) {
     const componentId = component.value.id;
 
-    const submenuItems: DropdownMenuItemObjectDef[] = [];
-
+    const actionsSubmenuItems: DropdownMenuItemObjectDef[] = [];
     for (const actionPrototype of actionPrototypes.value) {
       const existingActionId = actionByPrototype.value[actionPrototype.id];
-      submenuItems.push({
+      actionsSubmenuItems.push({
         label: actionPrototype.displayName || actionPrototype.name,
         toggleIcon: true,
         checked: existingActionId !== undefined,
@@ -208,11 +219,30 @@ const rightClickMenuItems = computed(() => {
       });
     }
 
-    if (submenuItems.length > 0) {
+    if (actionsSubmenuItems.length > 0) {
       items.push({
         icon: "bullet-list",
         label: "Actions",
-        submenuItems,
+        submenuItems: actionsSubmenuItems,
+        submenuVariant: "contextmenu",
+      });
+    }
+
+    const mgmtFuncsSubmenuItems: DropdownMenuItemObjectDef[] = [];
+    for (const mgmtFunction of managementFunctions.value) {
+      mgmtFuncsSubmenuItems.push({
+        label: mgmtFunction.name,
+        onSelect: () => {
+          runMgmtFunc(mgmtFunction.id);
+        },
+      });
+    }
+
+    if (mgmtFuncsSubmenuItems.length > 0) {
+      items.push({
+        icon: "func",
+        label: "Mmgt Funcs",
+        submenuItems: mgmtFuncsSubmenuItems,
         submenuVariant: "contextmenu",
       });
     }
@@ -256,6 +286,31 @@ const removeAction = (actionId: ActionId) => {
 
   // This route can mutate head, so we do not need to handle new change set semantics.
   call.put({});
+};
+
+const mgmtRunApi = useApi();
+const runMgmtFunc = async (funcId: string) => {
+  if (!component.value?.id) return;
+  const call = mgmtRunApi.endpoint<{ success: boolean }>(routes.MgmtFuncRun, {
+    prototypeId: funcId,
+    componentId: component.value?.id,
+    viewId: "DEFAULT",
+  });
+
+  const { req, newChangeSetId } = await call.post({});
+
+  if (mgmtRunApi.ok(req) && newChangeSetId) {
+    mgmtRunApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+        },
+      },
+      newChangeSetId,
+    );
+  }
 };
 
 const restoreApi = useApi();
