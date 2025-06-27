@@ -65,6 +65,7 @@ pub struct AttributeUpdateCounts {
 ///
 /// - SET constant attribute values by putting the path to the attribute you want to set as the key,
 ///   and the value you want to set it to on the right.
+///   NOTE: This will also enqueue update actions for the component if the preconditions are met
 ///
 ///       {
 ///         "/si/name": "Baby's First Subnet",
@@ -202,7 +203,17 @@ pub async fn update_attributes(
 
                 match value {
                     Source::Value(value) => {
-                        AttributeValue::update(ctx, target_av_id, value.into()).await?
+                        let before_value = AttributeValue::get_by_id(ctx, target_av_id)
+                            .await?
+                            .value(ctx)
+                            .await?;
+                        AttributeValue::update(ctx, target_av_id, value.to_owned().into()).await?;
+                        if before_value != value.into() {
+                            // If the values have changed then we should enqueue an update action
+                            // if the values haven't changed then we can skip this update action as it is usually a no-op
+                            Component::enqueue_update_action_if_applicable(ctx, target_av_id)
+                                .await?;
+                        }
                     }
                     Source::Subscription {
                         component: source_component,
