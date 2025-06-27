@@ -1,9 +1,9 @@
 <template>
   <ul class="p-xs flex flex-col gap-xs">
     <QualificationView
-      v-for="item in items"
-      :key="item.avId"
-      :qualification="item"
+      v-for="qualification in qualifications"
+      :key="qualification.avId"
+      :qualification="qualification"
     />
   </ul>
 </template>
@@ -18,13 +18,15 @@ import {
 } from "@/workers/types/entity_kind_types";
 import QualificationView from "@/newhotness/QualificationView.vue";
 import { AttributeValueId } from "@/store/status.store";
-import { QualificationStatus } from "@/store/qualifications.store";
+import { ValidationOutputStatus } from "@/api/sdf/dal/property_editor";
 import { findAvsAtPropPath } from "./util";
 
-export interface QualItem {
+export type QualificationStatus = "success" | "failure" | "warning";
+
+export interface Qualification {
   name?: string;
   message?: string;
-  result?: QualificationStatus;
+  status?: QualificationStatus;
   avId?: AttributeValueId;
 }
 
@@ -35,8 +37,8 @@ const props = defineProps<{
 
 const root = computed(() => props.attributeTree);
 
-const qualItems = computed<QualItem[]>(() => {
-  const items: QualItem[] = [];
+const qualificationsWithoutValidations = computed<Qualification[]>(() => {
+  const items: Qualification[] = [];
   if (!root.value) return items;
   const r = root.value;
   const data = findAvsAtPropPath(r, [
@@ -49,18 +51,18 @@ const qualItems = computed<QualItem[]>(() => {
   attributeValues.forEach((av) => {
     const name = av.key;
     const children = r.treeInfo[av.id]?.children ?? [];
-    let result;
+    let status;
     let message;
     children.forEach((avId) => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const child = r.attributeValues[avId]!;
-      if (child.path?.endsWith("result")) result = child.value;
+      if (child.path?.endsWith("result")) status = child.value;
       else if (child.path?.endsWith("message")) message = child.value;
     });
     items.push({
       avId: av.id,
       name,
-      result,
+      status,
       message,
     });
   });
@@ -82,34 +84,34 @@ const validations = computed(() => {
   return avsWithValidation;
 });
 
-// TODO(Wendy) - this is very annoying!
-// Why are statuses sometimes capitalized and sometimes not?!?!?!
-const fixStatus = (status: string): QualificationStatus => {
+const convertValidationStatusToQualificationStatus = (
+  status: ValidationOutputStatus,
+): QualificationStatus => {
   switch (status) {
-    case "Success":
-      return "success";
     case "Failure":
       return "failure";
     case "Error":
       return "failure";
     default:
-      return "running";
+      return "success";
   }
 };
 
-const items = computed<QualItem[]>(() => {
-  const items = [...qualItems.value];
+const qualifications = computed<Qualification[]>(() => {
+  const results = [...qualificationsWithoutValidations.value];
 
   validations.value.forEach(({ attributeValue, prop }) => {
     if (attributeValue.validation && prop) {
-      items.push({
+      results.push({
         name: prop.name,
         message: attributeValue.validation.message || "",
-        result: fixStatus(attributeValue.validation.status),
+        status: convertValidationStatusToQualificationStatus(
+          attributeValue.validation.status,
+        ),
       });
     }
   });
 
-  return items;
+  return results;
 });
 </script>

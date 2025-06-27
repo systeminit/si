@@ -33,7 +33,6 @@ pub struct ComponentQualificationStats {
     pub warned: u64,
     pub succeeded: u64,
     pub failed: u64,
-    pub running: u64,
 }
 
 #[derive(

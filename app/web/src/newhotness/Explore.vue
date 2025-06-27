@@ -444,6 +444,8 @@ const upgrade = useUpgrade();
 const upgradeableComponents = computed(() => {
   const set: Set<ComponentId> = new Set();
   for (const component of filteredComponents) {
+    // This needs to be split out into a variable for reactivity. Keep this here or drown in
+    // sorrow and suffering. Relevant pull request: https://github.com/systeminit/si/pull/6483
     const canUpgrade = upgrade(
       component.schemaId,
       component.schemaVariantId,
@@ -473,23 +475,25 @@ const actionViewList = computed(
   () => actionViewListRaw.data.value?.actions ?? [],
 );
 
-const componentsWithFailedActions = computed(() => {
-  const componentIds: Set<ComponentId> = new Set();
+interface ComponentsHaveActionsWithState {
+  failed: Set<ComponentId>;
+  running: Set<ComponentId>;
+}
+
+const componentsHaveActionsWithState = computed(() => {
+  const results: ComponentsHaveActionsWithState = {
+    failed: new Set(),
+    running: new Set(),
+  };
   for (const action of actionViewList.value) {
-    if (action.componentId && action.state === ActionState.Failed) {
-      componentIds.add(action.componentId);
+    if (!action.componentId) continue;
+    if (action.state === ActionState.Failed) {
+      results.failed.add(action.componentId);
+    } else if (action.state === ActionState.Running) {
+      results.running.add(action.componentId);
     }
   }
-  return componentIds;
-});
-const componentsWithRunningActions = computed(() => {
-  const componentIds: Set<ComponentId> = new Set();
-  for (const action of actionViewList.value) {
-    if (action.componentId && action.state === ActionState.Running) {
-      componentIds.add(action.componentId);
-    }
-  }
-  return componentIds;
+  return results;
 });
 
 const kind = computed(() =>
@@ -531,7 +535,7 @@ const groupedComponents = computed(() => {
     const failed = [];
     const theRest = [];
     for (const component of components) {
-      if (componentsWithFailedActions.value.has(component.id)) {
+      if (componentsHaveActionsWithState.value.failed.has(component.id)) {
         failed.push(component);
       } else {
         theRest.push(component);
@@ -542,7 +546,7 @@ const groupedComponents = computed(() => {
     const running = [];
     const theRest = [];
     for (const component of components) {
-      if (componentsWithRunningActions.value.has(component.id)) {
+      if (componentsHaveActionsWithState.value.running.has(component.id)) {
         running.push(component);
       } else {
         theRest.push(component);
@@ -1094,14 +1098,12 @@ watch([groupBySelection], () => {
 const getQualificationStatusTitle = (component: ComponentInList) => {
   const status = getQualificationStatus(component);
   switch (status) {
-    case "success":
-      return "Passed qualifications";
-    case "running":
-      return "Running qualifications";
+    case "failure":
+      return "Failed qualifications";
     case "warning":
       return "Warnings";
     default:
-      return "Failed qualifications";
+      return "Success qualifications";
   }
 };
 

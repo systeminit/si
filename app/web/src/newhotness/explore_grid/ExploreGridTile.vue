@@ -214,7 +214,6 @@ export function getQualificationStatus(
   component: BifrostComponent | ComponentInList,
 ) {
   if (component.qualificationTotals.failed > 0) return "failure";
-  if (component.qualificationTotals.running > 0) return "running";
   if (component.qualificationTotals.warned > 0) return "warning";
   return "success";
 }

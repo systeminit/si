@@ -158,10 +158,6 @@ const emptyAreaData = computed((): EmptyAreaData | null => {
       return {
         message: "No passing qualifications",
       };
-    case "Running qualifications":
-      return {
-        message: "There are no qualifications running right now",
-      };
     case "With Diffs":
       return {
         message: "No components have been changed so far",
