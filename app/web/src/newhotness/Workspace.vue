@@ -318,7 +318,9 @@ onBeforeMount(async () => {
     tokenFail.value = true;
     return;
   }
-  const workspaceAuthToken = tokensByWorkspacePk[workspacePk.value];
+
+  const thisWorkspacePk = workspacePk.value;
+  const workspaceAuthToken = tokensByWorkspacePk[thisWorkspacePk];
   if (!workspaceAuthToken) {
     tokenFail.value = true;
     return;
@@ -339,7 +341,7 @@ onBeforeMount(async () => {
 
   // NOTE: onBeforeMount doesn't wait on promises
   // the page will load before execution finishes
-  await heimdall.muspelheim(props.workspacePk, true);
+  await heimdall.muspelheim(thisWorkspacePk, true);
   queriesEnabled.value = true;
 });
 
