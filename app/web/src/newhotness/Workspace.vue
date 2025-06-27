@@ -105,7 +105,7 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { SchemaId } from "@/api/sdf/dal/schema";
 import Lobby from "./Lobby.vue";
-import Explore from "./Explore.vue";
+import Explore, { GroupByUrlQuery, SortByUrlQuery } from "./Explore.vue";
 import FuncRunDetails from "./FuncRunDetails.vue";
 import LatestFuncRunDetails from "./LatestFuncRunDetails.vue";
 import { Context, FunctionKind } from "./types";
@@ -270,7 +270,8 @@ export type SelectionsInQueryString = Partial<{
   map: string;
   grid: string;
   c: string;
-  groupBy: "diff" | "qual" | "upgr";
+  groupBy: GroupByUrlQuery;
+  sortBy: SortByUrlQuery;
 }>;
 
 const compositionLink = computed(() => {

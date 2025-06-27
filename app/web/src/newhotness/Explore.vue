@@ -104,9 +104,8 @@
             />
           </template>
         </TabGroupToggle>
-        <div>
+        <div v-if="showGrid" class="flex flex-row gap-xs">
           <DropdownMenuButton
-            v-if="showGrid"
             class="rounded"
             :options="groupByDropDownOptions"
             :modelValue="groupBySelection"
@@ -129,6 +128,28 @@
               />
             </template>
           </DropdownMenuButton>
+          <!--
+          Something subtle here... we dynamically change highlighting for model value because we
+          want the default state to be "latest to oldest" and we want it to be obvious to the user.
+          Therefore, we don't highlight when it is "latest to oldest" _and_ we don't use an empty
+          string for the default. Why not the latter? We want the button to also show "latest to
+          oldest" next to the placeholder.
+          -->
+          <DropdownMenuButton
+            class="rounded"
+            :options="sortByDropDownOptions"
+            :modelValue="sortBySelection"
+            placeholder="Sort by"
+            minWidthToAnchor
+            checkable
+            alwaysShowPlaceholder
+            :highlightWhenModelValue="
+              sortBySelection !== SortByCriteria.LatestToOldest
+            "
+            @update:modelValue="
+              (val) => (sortBySelection = sortByFromString(val))
+            "
+          />
         </div>
       </div>
       <template v-if="showGrid">
@@ -293,6 +314,7 @@ import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { Listable } from "@/workers/types/dbinterface";
 import { elementIsScrolledIntoView } from "@/newhotness/logic_composables/dom_funcs";
+import { ActionState } from "@/api/sdf/dal/action";
 import Map from "./Map.vue";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
@@ -451,6 +473,25 @@ const actionViewList = computed(
   () => actionViewListRaw.data.value?.actions ?? [],
 );
 
+const componentsWithFailedActions = computed(() => {
+  const componentIds: Set<ComponentId> = new Set();
+  for (const action of actionViewList.value) {
+    if (action.componentId && action.state === ActionState.Failed) {
+      componentIds.add(action.componentId);
+    }
+  }
+  return componentIds;
+});
+const componentsWithRunningActions = computed(() => {
+  const componentIds: Set<ComponentId> = new Set();
+  for (const action of actionViewList.value) {
+    if (action.componentId && action.state === ActionState.Running) {
+      componentIds.add(action.componentId);
+    }
+  }
+  return componentIds;
+});
+
 const kind = computed(() =>
   selectedView.value ? EntityKind.ViewComponentList : EntityKind.ComponentList,
 );
@@ -480,12 +521,43 @@ const filteredComponents = reactive<ComponentInList[]>([]);
 const groupedComponents = computed(() => {
   let groups: Record<string, ComponentInList[]> = {};
 
+  // First, always sort by latest to oldest. This relies on the fact ULIDs are time-based.
+  let components = filteredComponents;
+  components.sort((a, b) => b.id.localeCompare(a.id));
+
+  // Second, perform any secondary sorts, if applicable. This relies on the fact that the
+  // components are already sorted.
+  if (sortBySelection.value === SortByCriteria.FailingActions) {
+    const failed = [];
+    const theRest = [];
+    for (const component of components) {
+      if (componentsWithFailedActions.value.has(component.id)) {
+        failed.push(component);
+      } else {
+        theRest.push(component);
+      }
+    }
+    components = [...failed, ...theRest];
+  } else if (sortBySelection.value === SortByCriteria.RunningActions) {
+    const running = [];
+    const theRest = [];
+    for (const component of components) {
+      if (componentsWithRunningActions.value.has(component.id)) {
+        running.push(component);
+      } else {
+        theRest.push(component);
+      }
+    }
+    components = [...running, ...theRest];
+  }
+
+  // Third, separate the components into groups. There will always be at least one group.
   if (groupBySelection.value === "Diff Status") {
     groups = {
       "With Diffs": [],
       "No Diffs": [],
     };
-    for (const component of filteredComponents) {
+    for (const component of components) {
       const title = component.diffCount === 0 ? "No Diffs" : "With Diffs";
       groups[title]?.push(component);
     }
@@ -495,7 +567,7 @@ const groupedComponents = computed(() => {
       Warnings: [],
       "Passed qualifications": [],
     };
-    for (const component of filteredComponents) {
+    for (const component of components) {
       const title = getQualificationStatusTitle(component);
       groups[title] ??= [];
       groups[title]?.push(component);
@@ -505,14 +577,14 @@ const groupedComponents = computed(() => {
       Upgradeable: [],
       "Up to date": [],
     };
-    for (const component of filteredComponents) {
+    for (const component of components) {
       const title = upgradeableComponents.value.has(component.id)
         ? "Upgradeable"
         : "Up to date";
       groups[title]?.push(component);
     }
   } else {
-    groups[""] = filteredComponents;
+    groups[""] = components;
   }
 
   return groups;
@@ -876,29 +948,39 @@ const onClick = (e: MouseDetails["click"]) => {
 
 onMounted(() => {
   mountEmitters();
-
   mouseEmitter.on("click", onClick);
-
-  // Upon mount, set the group by selection accordingly.
-  setGroupByFromQuery();
+  setSelectionsFromQuery(); // sort by, group by, etc. on mount
 });
 onBeforeUnmount(() => {
   removeEmitters();
   mouseEmitter.off("click", onClick);
 });
 
-const setGroupByFromQuery = () => {
+const setSelectionsFromQuery = () => {
   const query: SelectionsInQueryString = router.currentRoute.value?.query;
 
+  switch (query.sortBy) {
+    case "failingactions":
+      sortBySelection.value = SortByCriteria.FailingActions;
+      break;
+    case "runningactions":
+      sortBySelection.value = SortByCriteria.RunningActions;
+      break;
+    case undefined:
+    default:
+      sortBySelection.value = SortByCriteria.LatestToOldest;
+      break;
+  }
+
   switch (query.groupBy) {
-    case "diff":
+    case "diffstatus":
       groupBySelection.value = GroupByCriteria.Diff;
       break;
-    case "upgr":
-      groupBySelection.value = GroupByCriteria.Upgrade;
-      break;
-    case "qual":
+    case "qualificationstatus":
       groupBySelection.value = GroupByCriteria.Qualification;
+      break;
+    case "upgradeable":
+      groupBySelection.value = GroupByCriteria.Upgrade;
       break;
     case undefined:
     default:
@@ -907,7 +989,7 @@ const setGroupByFromQuery = () => {
   }
 };
 
-watch([router.currentRoute], setGroupByFromQuery);
+watch([router.currentRoute], setSelectionsFromQuery);
 
 const navigateToFocusedComponent = () => {
   if (focusedComponent.value) {
@@ -958,7 +1040,11 @@ const storeViewMode = () => {
   }
 };
 
-// Group By
+export type GroupByUrlQuery =
+  | "diffstatus"
+  | "qualificationstatus"
+  | "upgradeable";
+
 enum GroupByCriteria {
   Diff = "Diff Status",
   Upgrade = "Upgradeable",
@@ -982,7 +1068,7 @@ const groupByDropDownOptions = [
   { value: GroupByCriteria.Upgrade, label: "Upgradeable" },
 ];
 
-// Update the hash of the route (allowing for URL links) when the group by selection changes.
+// Update the query of the route (allowing for URL links) when the group by selection changes.
 watch([groupBySelection], () => {
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
@@ -993,11 +1079,11 @@ watch([groupBySelection], () => {
   query.grid = "1";
 
   if (groupBySelection.value === GroupByCriteria.Diff) {
-    query.groupBy = "diff";
+    query.groupBy = "diffstatus";
   } else if (groupBySelection.value === GroupByCriteria.Qualification) {
-    query.groupBy = "qual";
+    query.groupBy = "qualificationstatus";
   } else if (groupBySelection.value === GroupByCriteria.Upgrade) {
-    query.groupBy = "upgr";
+    query.groupBy = "upgradeable";
   }
 
   router.push({
@@ -1018,6 +1104,51 @@ const getQualificationStatusTitle = (component: ComponentInList) => {
       return "Failed qualifications";
   }
 };
+
+export type SortByUrlQuery = "failingactions" | "runningactions";
+
+enum SortByCriteria {
+  FailingActions = "Failing actions",
+  RunningActions = "Running actions",
+  LatestToOldest = "Latest to oldest",
+}
+
+const sortByFromString = (s: string): SortByCriteria => {
+  const key = (_.keys(SortByCriteria) as (keyof typeof SortByCriteria)[]).find(
+    (k) => SortByCriteria[k] === s,
+  );
+
+  if (!key) return SortByCriteria.LatestToOldest;
+  else return SortByCriteria[key];
+};
+
+const sortBySelection = ref<SortByCriteria>(SortByCriteria.LatestToOldest);
+const sortByDropDownOptions = [
+  { value: SortByCriteria.LatestToOldest, label: "Latest to oldest" },
+  { value: SortByCriteria.FailingActions, label: "Failing actions" },
+  { value: SortByCriteria.RunningActions, label: "Running actions" },
+];
+
+// Update the query of the route (allowing for URL links) when the sort by selection changes.
+watch([sortBySelection], () => {
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  delete query.map;
+  delete query.sortBy;
+
+  query.grid = "1";
+
+  if (sortBySelection.value === SortByCriteria.FailingActions) {
+    query.sortBy = "failingactions";
+  } else if (sortBySelection.value === SortByCriteria.RunningActions) {
+    query.sortBy = "runningactions";
+  }
+
+  router.push({
+    query,
+  });
+});
 
 const emit = defineEmits<{
   (e: "openChangesetModal"): void;
