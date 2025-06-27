@@ -54,6 +54,25 @@
         <TextPill
           v-if="
             component.qualificationTotals.failed === 0 &&
+            component.qualificationTotals.warned === 0 &&
+            component.qualificationTotals.succeeded === 0
+          "
+          tighter
+          :class="
+            clsx(
+              'text-xs ml-auto',
+              themeClasses(
+                'border-neutral-500 bg-neutral-100 text-black',
+                'border-neutral-600 bg-neutral-900 text-white',
+              ),
+            )
+          "
+        >
+          Unknown
+        </TextPill>
+        <TextPill
+          v-else-if="
+            component.qualificationTotals.failed === 0 &&
             component.qualificationTotals.warned === 0
           "
           tighter
@@ -70,7 +89,7 @@
           All passed
         </TextPill>
         <TextPill
-          v-if="component.qualificationTotals.failed > 0"
+          v-else-if="component.qualificationTotals.failed > 0"
           tighter
           :class="
             clsx(
@@ -85,7 +104,7 @@
           {{ component.qualificationTotals.failed }} Failed
         </TextPill>
         <TextPill
-          v-if="component.qualificationTotals.warned > 0"
+          v-else-if="component.qualificationTotals.warned > 0"
           tighter
           :class="
             clsx(
