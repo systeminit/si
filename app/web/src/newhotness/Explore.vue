@@ -1103,7 +1103,7 @@ const getQualificationStatusTitle = (component: ComponentInList) => {
     case "warning":
       return "Warnings";
     default:
-      return "Success qualifications";
+      return "Passed qualifications";
   }
 };
 
