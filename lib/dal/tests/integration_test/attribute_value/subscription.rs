@@ -10,10 +10,7 @@ use dal_test::{
     Result,
     helpers::{
         ChangeSetTestHelpers,
-        attribute::{
-            value,
-            value::AttributeValueKey,
-        },
+        attribute::value,
         change_set,
         component,
         schema::variant,
@@ -543,13 +540,7 @@ async fn delete_subscribed_to_array_item(ctx: &mut DalContext) -> Result<()> {
     );
 
     // Delete source array item and validated that the null value has been propagated
-    AttributeValue::remove(
-        ctx,
-        ("input", "/domain/Values/0")
-            .lookup_attribute_value(ctx)
-            .await?,
-    )
-    .await?;
+    AttributeValue::remove(ctx, value::id(ctx, ("input", "/domain/Values/0")).await?).await?;
     change_set::commit(ctx).await?;
 
     // Make sure that the DVU set the right new values to the subscriber props
@@ -651,9 +642,7 @@ async fn remove_subscribed_component(ctx: &mut DalContext) -> Result<()> {
 
     // Make sure the graph looks like what we want: the subscriber has a prototype with zero
     // arguments.
-    let av_id = ("subscriber", "/domain/Value")
-        .lookup_attribute_value(ctx)
-        .await?;
+    let av_id = value::id(ctx, ("subscriber", "/domain/Value")).await?;
     let prototype_id = AttributeValue::component_prototype_id(ctx, av_id)
         .await?
         .expect("should still have a prototype after subscription is removed");
