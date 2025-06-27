@@ -60,7 +60,7 @@ export const init = async (bearerToken: string, _queryClient: QueryClient) => {
   if (!token.value) {
     // eslint-disable-next-line no-console
     console.log("🌈 initializing bifrost...");
-    const start = Date.now();
+    const start = performance.now();
     await tabDb.setBearer(bearerToken);
 
     const { port1, port2 } = new MessageChannel();
@@ -74,7 +74,7 @@ export const init = async (bearerToken: string, _queryClient: QueryClient) => {
     // We are deliberately not awaiting this promise, since it blocks forever on the tabs that do not get the lock
     tabDb.initBifrost(Comlink.proxy(port2));
 
-    const end = Date.now();
+    const end = performance.now();
     token.value = bearerToken;
     queryClient = _queryClient;
     // eslint-disable-next-line no-console
@@ -304,14 +304,14 @@ export const bifrost = async <T>(args: {
 }): Promise<Reactive<T> | null> => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
-  const start = Date.now();
+  const start = performance.now();
   const maybeAtomDoc = await db.get(
     args.workspaceId,
     args.changeSetId,
     args.kind,
     args.id,
   );
-  const end = Date.now();
+  const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost query", args.kind, args.id, end - start, "ms");
   if (maybeAtomDoc === -1) return null;
@@ -326,14 +326,14 @@ export const bifrostList = async <T>(args: {
 }): Promise<Reactive<T> | null> => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
-  const start = Date.now();
+  const start = performance.now();
   const maybeAtomDoc = await db.getList(
     args.workspaceId,
     args.changeSetId,
     args.kind,
     args.id,
   );
-  const end = Date.now();
+  const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost queryList", args.kind, args.id, end - start, "ms");
   if (!maybeAtomDoc) return null;
@@ -371,12 +371,12 @@ export const getOutgoingConnectionsCounts = async (args: {
 }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
-  const start = Date.now();
+  const start = performance.now();
   const connectionsCounts = await db.getOutgoingConnectionsCounts(
     args.workspaceId,
     args.changeSetId,
   );
-  const end = Date.now();
+  const end = performance.now();
   // eslint-disable-next-line no-console
   console.log(
     "🌈 bifrost query getOutgoingConnectionsCounts",
@@ -393,12 +393,12 @@ export const getComponentDetails = async (args: {
 }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
-  const start = Date.now();
+  const start = performance.now();
   const componentNames = await db.getComponentDetails(
     args.workspaceId,
     args.changeSetId,
   );
-  const end = Date.now();
+  const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost query componentNames", end - start, "ms");
   if (componentNames) return reactive(componentNames);
@@ -411,12 +411,12 @@ export const getSchemaMembers = async (args: {
 }): Promise<SchemaMembers[]> => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
-  const start = Date.now();
+  const start = performance.now();
   const schemaMembers = await db.getSchemaMembers(
     args.workspaceId,
     args.changeSetId,
   );
-  const end = Date.now();
+  const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost query getSchemaMembers", end - start, "ms");
   if (schemaMembers) return reactive(JSON.parse(schemaMembers));
