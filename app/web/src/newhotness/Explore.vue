@@ -14,8 +14,8 @@
           minWidthToAnchor
           placeholder="All Views"
           checkable
-          enableSettingsEdit
-          @edit="openEditViewModal"
+          enableSecondaryAction
+          @secondaryAction="openEditViewModal"
           @update:modelValue="(val) => (selectedView = val)"
         >
           <template #beforeOptions>

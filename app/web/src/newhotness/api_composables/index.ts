@@ -19,6 +19,7 @@ export enum routes {
   ActionCancel = "ActionCancel",
   ActionHold = "ActionHold",
   ActionRetry = "ActionRetry",
+  ChangeSetRename = "ChangeSetRename",
   CreateComponent = "CreateComponent",
   CreateSecret = "CreateSecret",
   CreateView = "CreateView",
@@ -49,6 +50,7 @@ const CAN_MUTATE_ON_HEAD: readonly routes[] = [
   routes.ActionCancel,
   routes.ActionHold,
   routes.ActionRetry,
+  routes.ChangeSetRename,
 ] as const;
 
 const _routes: Record<routes, string> = {
@@ -56,6 +58,7 @@ const _routes: Record<routes, string> = {
   ActionCancel: "/action/<id>/cancel",
   ActionHold: "/action/<id>/put_on_hold",
   ActionRetry: "/action/<id>/retry",
+  ChangeSetRename: "/rename",
   CreateComponent: "/views/<viewId>/component",
   CreateSecret: "/components/<id>/secret",
   CreateView: "/views",
@@ -113,10 +116,11 @@ export class APICall<Response> {
     canMutateHead: boolean,
     description: string,
     obs: LabeledObs,
+    changesetId?: string,
   ) {
     this.ctx = ctx;
     const workspaceId = unref(ctx.workspacePk);
-    const changeSetId = unref(ctx.changeSetId);
+    const changeSetId = changesetId ?? unref(ctx.changeSetId);
     this.workspaceId = workspaceId;
     this.changeSetId = changeSetId;
     this.path = path;
@@ -155,7 +159,25 @@ export class APICall<Response> {
     });
     this.obs.inFlight.value = false;
     if (!this.obs.isWatched) rainbow.remove(this.changeSetId, this.obs.label);
-    return { req, newChangeSetId };
+
+    // We have two shapes of errors from sdf: data.error as a string and data.error.message as a string
+    // This code extracts both of those as an errorMessage value for the caller.
+    let errorMessage;
+    const err =
+      req.data instanceof Object && "error" in req.data
+        ? req.data.error
+        : undefined;
+    if (typeof err === "string") {
+      errorMessage = err;
+    } else if (
+      err instanceof Object &&
+      "message" in err &&
+      typeof err.message === "string"
+    ) {
+      errorMessage = err.message;
+    }
+
+    return { req, newChangeSetId, errorMessage };
   }
 
   async delete<D = Record<string, unknown>>(data: D, params?: URLSearchParams) {
@@ -235,8 +257,14 @@ export const useApi = () => {
     if (!args && needsArgs)
       throw new Error(`Endpoint ${key}, ${path} requires arguments`);
 
+    // There are some endpoints that can operate on a changeset even if a user is not using it.
+    // Sending changesetId as an arg will override the changesetId for this request.
+    let changesetId;
     if (args)
       Object.entries(args).forEach(([k, v]) => {
+        if (k === "changesetId") {
+          changesetId = v;
+        }
         path = path.replace(`<${k}>`, v);
       });
     const canMutateHead = CAN_MUTATE_ON_HEAD.includes(key);
@@ -251,6 +279,7 @@ export const useApi = () => {
       canMutateHead,
       desc,
       labeledObs,
+      changesetId,
     );
     apiCall = call;
     return call;

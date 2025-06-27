@@ -1,5 +1,6 @@
 // ./forms
 export { default as VormInput } from "./forms/VormInput.vue";
+export type { InputOptions } from "./forms/VormInput.vue";
 export { default as VormInputOption } from "./forms/VormInputOption.vue";
 export { default as ColorPicker } from "./forms/ColorPicker.vue";
 export * from "./forms/helpers/form-disabling";
