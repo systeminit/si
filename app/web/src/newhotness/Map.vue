@@ -375,6 +375,9 @@ const onD = (e: KeyDetails["d"]) => {
     ]);
   }
 };
+const onP = (_e: KeyDetails["p"]) => {
+  // Do nothing! Pinning is unsupported in the map view.
+};
 const onU = (_e: KeyDetails["u"]) => {
   // if (selectedComponent.value && selectedComponent.value.canBeUpgraded) {
   //   componentContextMenuRef.value?.componentUpgrade([
@@ -836,6 +839,7 @@ defineExpose({
   onEscape,
   onE,
   onD,
+  onP,
   onU,
   onBackspace,
   onR,

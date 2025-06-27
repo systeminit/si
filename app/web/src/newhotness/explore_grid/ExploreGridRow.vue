@@ -15,6 +15,61 @@
     </span>
     <PillCounter :count="row.count" class="text-xs" />
   </div>
+  <div v-else-if="row.type === 'pinnedContentRow'">
+    <!-- We need an outer div because the card uses borders for the asset color. -->
+    <div
+      :class="
+        clsx(
+          'border rounded-sm cursor-pointer',
+          pinnedBorderClasses(row.component.id),
+        )
+      "
+    >
+      <ComponentCard
+        ref="exploreGridPinnedRef"
+        :component="row.component"
+        :data-index="row.dataIndex"
+        @hoverPin="
+          (hovered) =>
+            row.type === 'pinnedContentRow' && hover(row.component.id, !hovered)
+        "
+        @mouseenter="hover(row.component.id, true)"
+        @mouseleave="hover(row.component.id, false)"
+        @unpin="emit('unpin', row.component.id)"
+        @click.stop.left="
+          (e) =>
+            row.type === 'pinnedContentRow' &&
+            emit('childClicked', e, row.component.id, row.dataIndex)
+        "
+        @click.stop.right="
+          (e) =>
+            row.type === 'pinnedContentRow' &&
+            emit('childClicked', e, row.component.id, row.dataIndex)
+        "
+      >
+        <template #endItems>
+          <div
+            :class="
+              clsx(
+                'bg-neutral-600 border border-neutral-600 rounded p-2xs',
+                hoveredPinId === row.component.id &&
+                  themeClasses(
+                    'border-black bg-black',
+                    'border-white bg-white',
+                  ),
+              )
+            "
+            @mouseenter="hoverPin(row.component.id, true)"
+            @mouseleave="hoverPin(row.component.id, false)"
+            @click.stop.left="emit('unpin', row.component.id)"
+            @click.stop.right="emit('unpin', row.component.id)"
+          >
+            <Icon name="pin" size="sm" />
+          </div>
+        </template>
+      </ComponentCard>
+    </div>
+  </div>
   <div
     v-else-if="row.type === 'contentRow'"
     :class="
@@ -28,19 +83,29 @@
       v-for="(component, columnIndex) in row.components"
       ref="exploreGridTileRefs"
       :key="component.id"
-      :data-index="computeIdx(row, columnIndex)"
+      :data-index="dataIndexForTileInRow(row, columnIndex)"
       :component="component"
       class="flex-1"
-      :class="clsx(tileClasses(component.id))"
+      :class="tileBorderClasses(component.id)"
       @mouseenter="hover(component.id, true)"
       @mouseleave="hover(component.id, false)"
       @click.stop.left="
         (e) =>
-          emit('childClicked', e, component.id, computeIdx(row, columnIndex))
+          emit(
+            'childClicked',
+            e,
+            component.id,
+            dataIndexForTileInRow(row, columnIndex),
+          )
       "
       @click.stop.right="
         (e) =>
-          emit('childClicked', e, component.id, computeIdx(row, columnIndex))
+          emit(
+            'childClicked',
+            e,
+            component.id,
+            dataIndexForTileInRow(row, columnIndex),
+          )
       "
     />
     <!--this fills in any extra spots in an unfilled row-->
@@ -65,6 +130,7 @@
       </span>
     </div>
   </div>
+  <!-- This is subtle, but important. We need a div here, even if empty. -->
   <div v-else>
     <!-- footer area -->
   </div>
@@ -84,24 +150,13 @@ import {
 import { tw } from "@si/vue-lib";
 import { ComponentInList } from "@/workers/types/entity_kind_types";
 import { ComponentId } from "@/api/sdf/dal/component";
+import ComponentCard from "../ComponentCard.vue";
 import ExploreGridTile from "./ExploreGridTile.vue";
 
 const props = defineProps<{
   row: ExploreGridRowData;
   lanesCount: number;
   focusedComponentId?: ComponentId;
-}>();
-
-const emit = defineEmits<{
-  (e: "childHover", componentId: ComponentId): void;
-  (e: "childUnhover", componentId: ComponentId): void;
-  (
-    e: "childClicked",
-    event: MouseEvent,
-    componentId: ComponentId,
-    componentIdx: number,
-  ): void;
-  (e: "clickCollapse", title: string, collapsed: boolean): void;
 }>();
 
 interface TitleIcon {
@@ -127,11 +182,6 @@ const titleIcon = computed((): TitleIcon | null => {
       return {
         iconName: "check-hex-outline",
         iconTone: "success",
-      };
-    case "Running qualifications":
-      return {
-        iconName: "loader",
-        iconTone: "neutral",
       };
     case "Unknown qualification status":
       return {
@@ -188,9 +238,14 @@ const emptyAreaData = computed((): EmptyAreaData | null => {
   }
 });
 
+// You can only have one card in a row, but you have can multiple tiles in a row.
+const exploreGridPinnedRef = ref<InstanceType<typeof ComponentCard>>();
 const exploreGridTileRefs = ref<InstanceType<typeof ExploreGridTile>[]>();
+const exploreGridComponentRefs = computed(() =>
+  _.compact([exploreGridPinnedRef.value, ...(exploreGridTileRefs.value ?? [])]),
+);
 
-const computeIdx = (row: ExploreGridRowData, idx: number) => {
+const dataIndexForTileInRow = (row: ExploreGridRowData, idx: number) => {
   if (row.type !== "contentRow") return -1;
 
   return row.chunkInitialId + idx;
@@ -207,7 +262,37 @@ const hover = (componentId: ComponentId, hovered: boolean) => {
   }
 };
 
-const tileClasses = (componentId: string) => {
+// NOTE(nick): at the time of writing, you could only pin one component at a time. However, the
+// hover detection was written to handle multiple pinned components. That is why it works with a
+// "componentId" rather than "boolean" for the pin hovering logic.
+const hoveredPinId = ref<ComponentId | undefined>(undefined);
+const hoverPin = (pinnedComponentId: ComponentId, hovered: boolean) => {
+  if (hovered) {
+    hoveredPinId.value = pinnedComponentId;
+  } else if (hoveredPinId.value === pinnedComponentId) {
+    hoveredPinId.value = undefined;
+  }
+
+  // Invert the hover state for the entire component. If you are hovering the pin, you are not
+  // hovering the component and vice versa.
+  hover(pinnedComponentId, !hovered);
+};
+
+// Provide a background color because we need to fill the empty space between the div's border and
+// the inner border for the asset color.
+const pinnedBorderClasses = (componentId: string) => {
+  const focused = props.focusedComponentId === componentId;
+  if (focused)
+    return themeClasses(
+      tw`border-action-500 bg-action-500`,
+      tw`border-action-300 bg-action-300`,
+    );
+  else if (hoveredId.value === componentId)
+    return themeClasses(tw`border-black bg-black`, tw`border-white bg-white`);
+  else return "border-neutral-600 bg-neutral-600";
+};
+
+const tileBorderClasses = (componentId: string) => {
   const focused = props.focusedComponentId === componentId;
   if (focused)
     return themeClasses(tw`border-action-500`, tw`border-action-300`);
@@ -216,7 +301,20 @@ const tileClasses = (componentId: string) => {
   else return "";
 };
 
-defineExpose({ exploreGridTileRefs });
+const emit = defineEmits<{
+  (e: "unpin", componentId: ComponentId): void;
+  (e: "childHover", componentId: ComponentId): void;
+  (e: "childUnhover", componentId: ComponentId): void;
+  (
+    e: "childClicked",
+    event: MouseEvent,
+    componentId: ComponentId,
+    componentIdx: number,
+  ): void;
+  (e: "clickCollapse", title: string, collapsed: boolean): void;
+}>();
+
+defineExpose({ exploreGridComponentRefs });
 </script>
 
 <script lang="ts">
@@ -226,6 +324,11 @@ export type ExploreGridRowData =
       components: ComponentInList[];
       chunkInitialId: number;
       insideSection: boolean;
+    }
+  | {
+      type: "pinnedContentRow";
+      component: ComponentInList;
+      dataIndex: number;
     }
   | {
       type: "header";

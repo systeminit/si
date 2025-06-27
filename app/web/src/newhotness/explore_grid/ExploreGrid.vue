@@ -30,6 +30,7 @@
         :focusedComponentId="focusedComponent?.id"
         @childClicked="(e, c, idx) => $emit('childClicked', e, c, idx)"
         @clickCollapse="clickCollapse"
+        @unpin="(componentId) => $emit('unpin', componentId)"
       />
     </div>
   </div>
@@ -44,7 +45,13 @@ import { ComponentInList } from "@/workers/types/entity_kind_types";
 import { ComponentId } from "@/api/sdf/dal/component";
 import { windowWidthReactive } from "../logic_composables/emitters";
 import ExploreGridRow, { ExploreGridRowData } from "./ExploreGridRow.vue";
+import ComponentCard from "../ComponentCard.vue";
 import ExploreGridTile, { GRID_TILE_HEIGHT } from "./ExploreGridTile.vue";
+
+const props = defineProps<{
+  components: Record<string, ComponentInList[]>;
+  focusedComponentIdx?: number;
+}>();
 
 const MIN_GRID_TILE_WIDTH = 250;
 const GRID_TILE_GAP = 16; // this is being used for both the X and Y gap
@@ -52,33 +59,21 @@ const GRID_TILE_GAP = 16; // this is being used for both the X and Y gap
 const scrollRef = ref<HTMLDivElement>();
 const exploreGridRowRefs = ref<InstanceType<typeof ExploreGridRow>[]>();
 
-const componentGridTileRefs = computed(() => {
+const exploreGridComponentRefs = computed(() => {
   if (!exploreGridRowRefs.value) return [];
 
-  const tiles: InstanceType<typeof ExploreGridTile>[] = [];
+  const componentRefs: InstanceType<
+    typeof ComponentCard | typeof ExploreGridTile
+  >[] = [];
 
   for (const row of exploreGridRowRefs.value) {
-    if (!row.exploreGridTileRefs) continue;
+    if (!row.exploreGridComponentRefs) continue;
 
-    tiles.push(...row.exploreGridTileRefs);
+    componentRefs.push(...row.exploreGridComponentRefs);
   }
 
-  return tiles;
+  return componentRefs;
 });
-
-const props = defineProps<{
-  components: Record<string, ComponentInList[]>;
-  focusedComponentIdx?: number;
-}>();
-
-defineEmits<{
-  (
-    e: "childClicked",
-    event: MouseEvent,
-    componentId: ComponentId,
-    componentIdx: number,
-  ): void;
-}>();
 
 const allComponents = computed(() => {
   let components: ComponentInList[] = [];
@@ -109,10 +104,10 @@ function getScrollbarWidth(): number {
   return scrollbarWidth;
 }
 
-const getGridTileByIndex = (idx: number) => {
-  if (!componentGridTileRefs.value) return undefined;
+const getGridComponentByIndex = (idx: number) => {
+  if (!exploreGridComponentRefs.value) return undefined;
 
-  return componentGridTileRefs.value.find(
+  return exploreGridComponentRefs.value.find(
     (t) => Number(t.$el.dataset.index) === idx,
   );
 };
@@ -125,7 +120,7 @@ const virtualizerLanes = computed(() => {
 
   // We also need to force a recompute of this value if the number of tiles changes
   // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  componentGridTileRefs.value;
+  exploreGridComponentRefs.value;
 
   // Our grid is based on the minimum tile width... so how many tiles can we fit?
   let newLanes = 0;
@@ -154,11 +149,30 @@ const hasMultipleSections = computed(() => _.keys(props.components).length > 1);
 
 const gridRows = computed(() => {
   const rows: ExploreGridRowData[] = [];
-  let chunkInitialId = 0;
+  let dataIndex = 0;
 
   for (const groupName in props.components) {
     const components = props.components[groupName];
     if (!components) continue;
+
+    // First, handle pinned components. They take up and entire row, so we can handle them upfront
+    // without having to worry about chunking. We'll add a footer for each one.
+    if (groupName === "Pinned") {
+      for (const component of components) {
+        rows.push({
+          type: "pinnedContentRow",
+          component,
+          dataIndex,
+        });
+        dataIndex += 1;
+        rows.push({
+          type: "footer",
+        });
+      }
+
+      // Move on after dealing with the pinned group.
+      continue;
+    }
 
     const count = components.length;
     let collapsed = collapseTracker.value[groupName];
@@ -189,11 +203,12 @@ const gridRows = computed(() => {
           rows.push({
             type: "contentRow",
             components,
-            chunkInitialId,
+            chunkInitialId: dataIndex,
             insideSection: hasMultipleSections.value,
           });
 
-          chunkInitialId += components.length;
+          // We need to increase the current index by the length of the row for the next iteration.
+          dataIndex += components.length;
         }
       } else {
         rows.push({
@@ -260,8 +275,10 @@ const rowHeights = computed(() => {
         } else {
           return GRID_TILE_HEIGHT + GRID_TILE_GAP;
         }
+      case "pinnedContentRow":
+        return GROUP_HEADER_HEIGHT;
       case "emptyRow":
-        return GRID_TILE_HEIGHT;
+        return GRID_TILE_HEIGHT + GRID_TILE_GAP;
       default:
         return GROUP_FOOTER_HEIGHT;
     }
@@ -328,7 +345,17 @@ const scrollCurrentTileIntoView = () => {
 
 watch([() => props.focusedComponentIdx], scrollCurrentTileIntoView);
 
-defineExpose({ getGridTileByIndex, focusedComponent });
+defineEmits<{
+  (e: "unpin", componentId: ComponentId): void;
+  (
+    e: "childClicked",
+    event: MouseEvent,
+    componentId: ComponentId,
+    componentIdx: number,
+  ): void;
+}>();
+
+defineExpose({ getGridComponentByIndex, focusedComponent });
 </script>
 
 <style lang="css" scoped>

@@ -44,7 +44,7 @@ import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
 import { useApi, routes } from "./api_composables";
 import { assertIsDefined, ExploreContext } from "./types";
 
-defineProps<{
+const props = defineProps<{
   onGrid?: boolean;
   enableKeyboardControls?: boolean;
 }>();
@@ -177,6 +177,17 @@ const rightClickMenuItems = computed(() => {
     icon: "clipboard-copy",
     onSelect: () => componentDuplicate(components.value.map((c) => c.id)),
   });
+
+  // Only enable pinning if we are working with a single component on the grid.
+  if (props.onGrid && component.value) {
+    const componentId = component.value.id;
+    items.push({
+      label: "Pin",
+      shortcut: "P",
+      icon: "pin",
+      onSelect: () => emit("pin", componentId),
+    });
+  }
 
   const upgradeableComponents = explore.upgradeableComponents.value;
 
@@ -493,6 +504,7 @@ const isOpen = computed(() => contextMenuRef.value?.isOpen);
 
 const emit = defineEmits<{
   (e: "edit"): void;
+  (e: "pin", componentId: ComponentId): void;
 }>();
 
 defineExpose({

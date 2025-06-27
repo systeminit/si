@@ -114,6 +114,7 @@
             checkable
             alwaysShowPlaceholder
             highlightWhenModelValue
+            :disabled="pinnedComponentId !== undefined"
             @update:modelValue="
               (val) => (groupBySelection = groupByFromString(val))
             "
@@ -165,6 +166,7 @@
           :components="groupedComponents"
           :focusedComponentIdx="focusedComponentIdx"
           @childClicked="componentClicked"
+          @unpin="() => (pinnedComponentId = undefined)"
           @scrollend="fixContextMenuAfterScroll"
           @scroll="onScroll"
         />
@@ -270,6 +272,7 @@
       onGrid
       enableKeyboardControls
       @edit="navigateToFocusedComponent"
+      @pin="(c) => (pinnedComponentId = c)"
     />
   </section>
 </template>
@@ -296,19 +299,22 @@ import {
   Icon,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { useQuery } from "@tanstack/vue-query";
+import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { Fzf } from "fzf";
 import {
   bifrost,
   bifrostList,
   useMakeArgs,
   useMakeKey,
+  getOutgoingConnections,
 } from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
   EntityKind,
   ComponentInList,
   View,
+  Connection,
+  IncomingConnections,
 } from "@/workers/types/entity_kind_types";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -319,7 +325,7 @@ import Map from "./Map.vue";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
-import { getQualificationStatus } from "./explore_grid/ExploreGridTile.vue";
+import { getQualificationStatus } from "./ComponentQualificationStatus.vue";
 import ActionCard from "./ActionCard.vue";
 import FuncRunList from "./FuncRunList.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
@@ -346,6 +352,8 @@ const router = useRouter();
 const route = useRoute();
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
+
+const queryClient = useQueryClient();
 
 const VIEW_MODE_LOCAL_STORAGE_KEY = "newhotness-view-mode";
 const viewModeStorageKey = () =>
@@ -457,6 +465,37 @@ const upgradeableComponents = computed(() => {
   return set;
 });
 
+// You might wonder why the entire component isn't the ref. It was originally. The component
+// context menu emitted the entire object. The problem is that it's possible to have a pinned
+// component in the query string that no longer exists or has been filtered out. Therefore, we need
+// to compute the component from the ID rather than the other way around.
+const pinnedComponentId = ref<ComponentId | undefined>(undefined);
+const pinnedComponent = computed(() =>
+  filteredComponents.find((c) => c.id === pinnedComponentId.value),
+);
+
+watch([pinnedComponentId], () => {
+  // First, make sure we unfocus.
+  unfocus();
+
+  // Update the query of the route (allowing for URL links) when the pinned component changes.
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  delete query.map;
+  delete query.pinned;
+
+  query.grid = "1";
+
+  if (pinnedComponentId.value !== undefined) {
+    query.pinned = pinnedComponentId.value;
+  }
+
+  router.push({
+    query,
+  });
+});
+
 const exploreContext = computed<ExploreContext>(() => {
   return {
     viewId: selectedViewOrDefaultId,
@@ -522,6 +561,82 @@ const componentList = computed(() => componentListRaw.data.value ?? []);
 
 const filteredComponents = reactive<ComponentInList[]>([]);
 
+const pinnedComponentIncomingQuery = useQuery<IncomingConnections | null>({
+  // Make sure we have the entire component and not just the ID. Why? The URL could contain a query
+  // for a pinned component that no longer exists.
+  enabled: () => pinnedComponent.value !== undefined,
+  queryKey: key(EntityKind.IncomingConnections, pinnedComponentId.value),
+  queryFn: async () => {
+    return await bifrost<IncomingConnections>(
+      args(EntityKind.IncomingConnections, pinnedComponentId.value),
+    );
+  },
+});
+const pinnedComponentOutgoingQuery = useQuery<Connection[]>({
+  // Make sure we have the entire component and not just the ID. Why? The URL could contain a query
+  // for a pinned component that no longer exists.
+  enabled: () => pinnedComponent.value !== undefined,
+  queryKey: key(EntityKind.OutgoingConnections),
+  queryFn: async () => {
+    if (!pinnedComponentId.value) return [];
+    const byComponents = await getOutgoingConnections(
+      args(EntityKind.OutgoingConnections),
+    );
+    const mine = byComponents.get(pinnedComponentId.value);
+    if (!mine) return [];
+    return Object.values(mine);
+  },
+});
+const pinnedComponentConnectionSets = computed(() => {
+  const incoming = new Set(
+    pinnedComponentIncomingQuery.data.value?.connections.map(
+      (c) => c.fromComponentId,
+    ),
+  );
+  const outgoing = new Set(
+    pinnedComponentOutgoingQuery.data.value?.map((c) => c.toComponentId),
+  );
+  return {
+    incoming,
+    outgoing,
+  };
+});
+watch([pinnedComponentId], () => {
+  invalidateIncomingQuery();
+  // FIXME(nick): we technically do not have to perform the query again since it is a global query
+  // for all components.
+  invalidateOutgoingQuery();
+});
+const invalidateIncomingQuery = _.debounce(() => {
+  const queryKey = [
+    ctx.workspacePk,
+    ctx.changeSetId,
+    EntityKind.IncomingConnections,
+    pinnedComponentId.value,
+  ];
+  // If the query took longer than 500ms, invalidating would cancel it, and we might never
+  // actually finish! We'll just requeue later when it's done.
+  if (queryClient.isFetching({ queryKey }) > 0) {
+    invalidateIncomingQuery();
+    return;
+  }
+  queryClient.invalidateQueries({ queryKey });
+}, 500);
+const invalidateOutgoingQuery = _.debounce(() => {
+  const queryKey = [
+    ctx.workspacePk,
+    ctx.changeSetId,
+    EntityKind.OutgoingConnections,
+  ];
+  // If the query took longer than 500ms, invalidating would cancel it, and we might never
+  // actually finish! We'll just requeue later when it's done.
+  if (queryClient.isFetching({ queryKey }) > 0) {
+    invalidateOutgoingQuery();
+    return;
+  }
+  queryClient.invalidateQueries({ queryKey });
+}, 500);
+
 const groupedComponents = computed(() => {
   let groups: Record<string, ComponentInList[]> = {};
 
@@ -556,7 +671,25 @@ const groupedComponents = computed(() => {
   }
 
   // Third, separate the components into groups. There will always be at least one group.
-  if (groupBySelection.value === "Diff Status") {
+  if (pinnedComponent.value) {
+    groups = {
+      Pinned: [pinnedComponent.value],
+      "Incoming connections": [],
+      "Outgoing connections": [],
+    };
+    for (const component of components) {
+      // This is subtle, but we do not use "else-if". This should have no opinion on whether or not
+      // something can be both an input or an output.
+      if (pinnedComponentConnectionSets.value.incoming.has(component.id)) {
+        groups["Incoming connections"] ??= [];
+        groups["Incoming connections"].push(component);
+      }
+      if (pinnedComponentConnectionSets.value.outgoing.has(component.id)) {
+        groups["Outgoing connections"] ??= [];
+        groups["Outgoing connections"].push(component);
+      }
+    }
+  } else if (groupBySelection.value === "Diff Status") {
     groups = {
       "With Diffs": [],
       "No Diffs": [],
@@ -647,6 +780,10 @@ watch(searchString, (newValue, oldValue) => {
 
 const focusedComponentIdx = ref<number>(-1);
 const focusedComponent = computed(() => exploreGridRef.value?.focusedComponent);
+const focusedComponentIsPinned = computed(() => {
+  if (!focusedComponent.value) return false;
+  return focusedComponent.value.id === pinnedComponentId.value;
+});
 
 const nextComponent = (wrap = false) => {
   if (!showGrid.value) return;
@@ -693,15 +830,20 @@ watch([focusedComponentIdx], () => {
   }
 });
 
-const focusedGridTile = computed(() =>
+const focusedGridComponent = computed(() =>
   focusedComponentIdx.value > -1
-    ? exploreGridRef.value?.getGridTileByIndex(focusedComponentIdx.value)
+    ? exploreGridRef.value?.getGridComponentByIndex(focusedComponentIdx.value)
     : undefined,
 );
 
 const onFocus = () => {
-  if (focusedGridTile.value && focusedComponent.value) {
-    componentContextMenuRef.value?.open(focusedGridTile.value, [
+  // If we focus on the pinned component, do not bring up the context menu.
+  if (
+    focusedGridComponent.value &&
+    focusedComponent.value &&
+    !focusedComponentIsPinned.value
+  ) {
+    componentContextMenuRef.value?.open(focusedGridComponent.value, [
       focusedComponent.value,
     ]);
   }
@@ -748,6 +890,7 @@ const mountEmitters = () => {
   keyEmitter.on("d", onD);
   keyEmitter.on("u", onU);
   keyEmitter.on("r", onR);
+  keyEmitter.on("p", onP);
   keyEmitter.on("Enter", onEnter);
   keyEmitter.on("Tab", onTab);
   keyEmitter.on("Escape", onEscape);
@@ -765,6 +908,7 @@ const removeEmitters = () => {
   keyEmitter.off("d", onD);
   keyEmitter.off("u", onU);
   keyEmitter.off("r", onR);
+  keyEmitter.off("p", onP);
   keyEmitter.off("Enter", onEnter);
   keyEmitter.off("Tab", onTab);
   keyEmitter.off("Escape", onEscape);
@@ -826,7 +970,21 @@ const onD = (e: KeyDetails["d"]) => {
     mapRef.value?.onD(e);
   }
 };
+const onP = (e: KeyDetails["p"]) => {
+  e.preventDefault();
+  if (showGrid.value) {
+    if (!focusedComponent.value) return;
 
+    // We do not need the context menu to pin and unpin.
+    if (focusedComponentIsPinned.value) {
+      pinnedComponentId.value = undefined;
+    } else {
+      pinnedComponentId.value = focusedComponent.value.id;
+    }
+  } else {
+    mapRef.value?.onP(e);
+  }
+};
 const onU = (e: KeyDetails["u"]) => {
   e.preventDefault();
 
@@ -900,14 +1058,19 @@ const onTab = (e: KeyDetails["Tab"], blurSearch = false) => {
 };
 
 const onEnter = (e: KeyDetails["Enter"]) => {
-  if (
-    focusedComponentIdx.value !== undefined &&
-    focusedComponentIdx.value !== -1
-  ) {
-    // enter controls the context menu, not the grid tile
-    return;
+  // If there is a focused component, we know we may have to ignore the "ENTER" key press.
+  if (focusedComponentIdx.value !== undefined) {
+    // If the focused component is actually a component (and not the search bar), and it is not a
+    // pinned component, then we ignore the "ENTER" key press since the component context menu will
+    // pop up.
+    if (focusedComponentIdx.value !== -1 && !focusedComponentIsPinned.value) {
+      return;
+    }
   }
+
   e.preventDefault();
+
+  // If dealing with the map view, use its navigation and return immediately.
   if (!showGrid.value) {
     if (mapRef.value) {
       mapRef.value.navigateToSelectedComponent();
@@ -926,7 +1089,7 @@ const fixContextMenuAfterScroll = () => {
   // We need to fix the context menu after scrolling!
   // If the element is scrolled into view, show the menu
   // If the element is scrolled offscreen, unfocus and reset selected component index
-  const el = focusedGridTile.value?.$el;
+  const el = focusedGridComponent.value?.$el;
   if (el && elementIsScrolledIntoView(el)) {
     onFocus();
   } else {
@@ -950,16 +1113,6 @@ const onClick = (e: MouseDetails["click"]) => {
     unfocus();
   }
 };
-
-onMounted(() => {
-  mountEmitters();
-  mouseEmitter.on("click", onClick);
-  setSelectionsFromQuery(); // sort by, group by, etc. on mount
-});
-onBeforeUnmount(() => {
-  removeEmitters();
-  mouseEmitter.off("click", onClick);
-});
 
 const setSelectionsFromQuery = () => {
   const query: SelectionsInQueryString = router.currentRoute.value?.query;
@@ -992,8 +1145,21 @@ const setSelectionsFromQuery = () => {
       groupBySelection.value = GroupByCriteria.None;
       break;
   }
+
+  if (query.pinned !== undefined) {
+    pinnedComponentId.value = query.pinned;
+  }
 };
 
+onMounted(() => {
+  mountEmitters();
+  mouseEmitter.on("click", onClick);
+  setSelectionsFromQuery(); // sort by, group by, pinning, etc. on mount
+});
+onBeforeUnmount(() => {
+  removeEmitters();
+  mouseEmitter.off("click", onClick);
+});
 watch([router.currentRoute], setSelectionsFromQuery);
 
 const navigateToFocusedComponent = () => {
@@ -1073,8 +1239,11 @@ const groupByDropDownOptions = [
   { value: GroupByCriteria.Upgrade, label: "Upgradeable" },
 ];
 
-// Update the query of the route (allowing for URL links) when the group by selection changes.
 watch([groupBySelection], () => {
+  // First, make sure we unfocus.
+  unfocus();
+
+  // Update the query of the route (allowing for URL links) when the group by selection change.
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
   };
@@ -1134,8 +1303,11 @@ const sortByDropDownOptions = [
   { value: SortByCriteria.RunningActions, label: "Running actions" },
 ];
 
-// Update the query of the route (allowing for URL links) when the sort by selection changes.
 watch([sortBySelection], () => {
+  // First, make sure we unfocus.
+  unfocus();
+
+  // Update the query of the route (allowing for URL links) when the sort by selection changes.
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
   };
