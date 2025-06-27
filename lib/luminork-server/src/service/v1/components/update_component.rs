@@ -120,7 +120,16 @@ pub async fn update_component(
         let prop_id = key.prop_id(ctx, variant_id).await?;
         let attribute_value_id =
             Component::attribute_value_for_prop_id(ctx, component_id, prop_id).await?;
+        let existing_value = AttributeValue::get_by_id(ctx, attribute_value_id)
+            .await?
+            .value(ctx)
+            .await?;
         AttributeValue::update(ctx, attribute_value_id, Some(value.clone())).await?;
+        if existing_value != value.into() {
+            // If the values have changed then we should enqueue an update action
+            // if the values haven't changed then we can skip this update action as it is usually a no-op
+            Component::enqueue_update_action_if_applicable(ctx, attribute_value_id).await?;
+        }
     }
 
     for (key, value) in payload.secrets.clone().into_iter() {
