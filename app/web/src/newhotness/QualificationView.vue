@@ -5,12 +5,22 @@
     </div>
 
     <div class="flex flex-col gap-xs text-sm">
-      <StatusMessageBox :status="qualificationStatus" class="break-all">
+      <StatusMessageBox
+        :status="qualificationStatus ?? 'unknown'"
+        class="break-all"
+      >
         <template v-if="qualificationStatus === 'success'"> Passed! </template>
-        <template v-else-if="qualificationStatus === 'failure'">
+        <template
+          v-else-if="
+            qualificationStatus === 'failure' ||
+            qualificationStatus === 'warning'
+          "
+        >
           {{ qualification.message }}
         </template>
-        <template v-else> Qualification running, standby...</template>
+        <template v-else>
+          The qualification has not yet ran or is actively running. Standby...
+        </template>
       </StatusMessageBox>
 
       <template v-if="showDetails && qualification.avId">
@@ -52,13 +62,13 @@ import * as _ from "lodash-es";
 import { LoadingMessage } from "@si/vue-lib/design-system";
 import StatusMessageBox from "@/components/StatusMessageBox.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
-import { QualItem } from "@/newhotness/QualificationPanel.vue";
+import { Qualification } from "@/newhotness/QualificationPanel.vue";
 import { routes, useApi, funcRunTypes } from "@/newhotness/api_composables";
 
 const api = useApi();
 
 const props = defineProps<{
-  qualification: QualItem;
+  qualification: Qualification;
 }>();
 
 const showDetails = ref(false);
@@ -66,8 +76,8 @@ const showDetails = ref(false);
 const qualification = toRef(props, "qualification");
 
 const qualificationStatus = computed(() => {
-  if (_.isNil(props.qualification.result)) return "running";
-  return props.qualification.result;
+  if (_.isNil(props.qualification.status)) return undefined;
+  return props.qualification.status;
 });
 
 const toggleHidden = async () => {

@@ -127,8 +127,10 @@ export interface PropertyEditorSchema {
   };
 }
 
+export type ValidationOutputStatus = "Error" | "Failure" | "Success";
+
 export interface ValidationOutput {
-  status: "Error" | "Failure" | "Success";
+  status: ValidationOutputStatus;
   message?: string;
 }
 

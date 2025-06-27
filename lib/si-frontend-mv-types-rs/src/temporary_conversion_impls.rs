@@ -16,12 +16,14 @@ use crate::{
 
 impl From<DeprecatedComponentQualificationStats> for ComponentQualificationStats {
     fn from(value: DeprecatedComponentQualificationStats) -> Self {
+        // NOTE(nick): notice how "value.running" isn't called... we need it in the deprecated type
+        // for the old UI, but we don't need it in the new UI. It actually shouldn't be in either,
+        // but we do not want to regress the old UI by accident.
         Self {
             total: value.total,
             warned: value.warned,
             succeeded: value.succeeded,
             failed: value.failed,
-            running: value.running,
         }
     }
 }

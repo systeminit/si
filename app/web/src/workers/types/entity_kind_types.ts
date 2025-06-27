@@ -141,7 +141,6 @@ export interface ComponentQualificationTotals {
   warned: number;
   succeeded: number;
   failed: number;
-  running: number;
 }
 
 export interface EddaComponent {

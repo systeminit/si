@@ -134,8 +134,7 @@ impl QualificationSummary {
             }
         }
 
-        // TODO(nick): this was ported from the frontend. It is an assumption... but is hasn't been
-        // wrong for us... yet... let's keep an eye on it.
+        // FIXME(nick): delete this when we switch to the new UI.
         let running = total
             .checked_sub(warned)
             .and_then(|v| v.checked_sub(succeeded))
