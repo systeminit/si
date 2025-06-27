@@ -203,10 +203,13 @@ const schemaQuery = useQuery<Record<SchemaId, SchemaMembers>>({
   enabled: queriesEnabled,
   queryFn: async () => {
     const data = await heimdall.getSchemaMembers(args.value);
-    return data.reduce((obj, s) => {
-      obj[s.id] = s;
-      return obj;
-    }, {} as Record<SchemaId, SchemaMembers>);
+    return data.reduce(
+      (obj, s) => {
+        obj[s.id] = s;
+        return obj;
+      },
+      {} as Record<SchemaId, SchemaMembers>,
+    );
   },
 });
 
@@ -272,6 +275,7 @@ export type SelectionsInQueryString = Partial<{
   c: string;
   groupBy: GroupByUrlQuery;
   sortBy: SortByUrlQuery;
+  pinned: string;
 }>;
 
 const compositionLink = computed(() => {
@@ -279,8 +283,8 @@ const compositionLink = computed(() => {
   const name = props.componentId
     ? "new-hotness-component"
     : props.viewId
-    ? "new-hotness-view"
-    : "new-hotness";
+      ? "new-hotness-view"
+      : "new-hotness";
   return {
     name,
     params: props,

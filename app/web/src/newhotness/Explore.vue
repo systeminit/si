@@ -114,6 +114,7 @@
             checkable
             alwaysShowPlaceholder
             highlightWhenModelValue
+            :disabled="pinnedComponentId !== undefined"
             @update:modelValue="
               (val) => (groupBySelection = groupByFromString(val))
             "
@@ -270,6 +271,8 @@
       onGrid
       enableKeyboardControls
       @edit="navigateToFocusedComponent"
+      @pin="(c) => (pinnedComponentId = c)"
+      @unpin="() => (pinnedComponentId = undefined)"
     />
   </section>
 </template>
@@ -296,19 +299,22 @@ import {
   Icon,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { useQuery } from "@tanstack/vue-query";
+import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { Fzf } from "fzf";
 import {
   bifrost,
   bifrostList,
   useMakeArgs,
   useMakeKey,
+  getOutgoingConnections,
 } from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
   EntityKind,
   ComponentInList,
   View,
+  Connection,
+  IncomingConnections,
 } from "@/workers/types/entity_kind_types";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -346,6 +352,8 @@ const router = useRouter();
 const route = useRoute();
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
+
+const queryClient = useQueryClient();
 
 const VIEW_MODE_LOCAL_STORAGE_KEY = "newhotness-view-mode";
 const viewModeStorageKey = () =>
@@ -457,10 +465,44 @@ const upgradeableComponents = computed(() => {
   return set;
 });
 
+// You might wonder why the entire component isn't the ref. It was originally. The component
+// context menu emitted the entire object. The problem is that it's possible to have a pinned
+// component in the query string that no longer exists or has been filtered out. Therefore, we need
+// to compute the component from the ID rather than the other way around.
+const pinnedComponentId = ref<ComponentId | undefined>(undefined);
+const pinnedComponent = computed(() =>
+  filteredComponents.find((c) => c.id === pinnedComponentId.value),
+);
+
+// We need a computed ID for the explore context. Pain.
+const pinnedComponentIdForExploreContext = computed(
+  () => pinnedComponentId.value,
+);
+
+// Update the query of the route (allowing for URL links) when the pinned component changes.
+watch([pinnedComponentId], () => {
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  delete query.map;
+  delete query.pinned;
+
+  query.grid = "1";
+
+  if (pinnedComponentId.value !== undefined) {
+    query.pinned = pinnedComponentId.value;
+  }
+
+  router.push({
+    query,
+  });
+});
+
 const exploreContext = computed<ExploreContext>(() => {
   return {
     viewId: selectedViewOrDefaultId,
     upgradeableComponents,
+    pinnedComponentId: pinnedComponentIdForExploreContext,
   };
 });
 
@@ -522,6 +564,80 @@ const componentList = computed(() => componentListRaw.data.value ?? []);
 
 const filteredComponents = reactive<ComponentInList[]>([]);
 
+const pinnedComponentIncomingQuery = useQuery<IncomingConnections | null>({
+  // Make sure we have the entire component and not just the ID.
+  enabled: () => pinnedComponent.value !== undefined,
+  queryKey: key(EntityKind.IncomingConnections, pinnedComponentId.value),
+  queryFn: async () => {
+    return await bifrost<IncomingConnections>(
+      args(EntityKind.IncomingConnections, pinnedComponentId.value),
+    );
+  },
+});
+const pinnedComponentOutgoingQuery = useQuery<Connection[]>({
+  // Make sure we have the entire component and not just the ID.
+  enabled: () => pinnedComponent.value !== undefined,
+  queryKey: key(EntityKind.OutgoingConnections),
+  queryFn: async () => {
+    if (!pinnedComponentId.value) return [];
+    const byComponents = await getOutgoingConnections(
+      args(EntityKind.OutgoingConnections),
+    );
+    const mine = byComponents.get(pinnedComponentId.value);
+    if (!mine) return [];
+    return Object.values(mine);
+  },
+});
+const pinnedComponentConnectionSets = computed(() => {
+  const incoming = new Set(
+    pinnedComponentIncomingQuery.data.value?.connections.map(
+      (c) => c.fromComponentId,
+    ),
+  );
+  const outgoing = new Set(
+    pinnedComponentOutgoingQuery.data.value?.map((c) => c.toComponentId),
+  );
+  return {
+    incoming,
+    outgoing,
+  };
+});
+watch([pinnedComponentId], () => {
+  invalidateIncomingQuery();
+  // FIXME(nick): we technically do not have to perform the query again since it is a global query
+  // for all components.
+  invalidateOutgoingQuery();
+});
+const invalidateIncomingQuery = _.debounce(() => {
+  const queryKey = [
+    ctx.workspacePk,
+    ctx.changeSetId,
+    EntityKind.IncomingConnections,
+    pinnedComponentId.value,
+  ];
+  // If the query took longer than 500ms, invalidating would cancel it, and we might never
+  // actually finish! We'll just requeue later when it's done.
+  if (queryClient.isFetching({ queryKey }) > 0) {
+    invalidateIncomingQuery();
+    return;
+  }
+  queryClient.invalidateQueries({ queryKey });
+}, 500);
+const invalidateOutgoingQuery = _.debounce(() => {
+  const queryKey = [
+    ctx.workspacePk,
+    ctx.changeSetId,
+    EntityKind.OutgoingConnections,
+  ];
+  // If the query took longer than 500ms, invalidating would cancel it, and we might never
+  // actually finish! We'll just requeue later when it's done.
+  if (queryClient.isFetching({ queryKey }) > 0) {
+    invalidateOutgoingQuery();
+    return;
+  }
+  queryClient.invalidateQueries({ queryKey });
+}, 500);
+
 const groupedComponents = computed(() => {
   let groups: Record<string, ComponentInList[]> = {};
 
@@ -556,7 +672,26 @@ const groupedComponents = computed(() => {
   }
 
   // Third, separate the components into groups. There will always be at least one group.
-  if (groupBySelection.value === "Diff Status") {
+  if (pinnedComponent.value) {
+    groups = {
+      Pinned: [pinnedComponent.value],
+      "Incoming connections": [],
+      "Outgoing connections": [],
+    };
+    console.log(pinnedComponent.value.id, pinnedComponentConnectionSets.value);
+    for (const component of components) {
+      // This is subtle, but we do not use "else-if". This should have no opinion on whether or not
+      // something can be both an input or an output.
+      if (pinnedComponentConnectionSets.value.incoming.has(component.id)) {
+        groups["Incoming connections"] ??= [];
+        groups["Incoming connections"].push(component);
+      }
+      if (pinnedComponentConnectionSets.value.outgoing.has(component.id)) {
+        groups["Outgoing connections"] ??= [];
+        groups["Outgoing connections"].push(component);
+      }
+    }
+  } else if (groupBySelection.value === "Diff Status") {
     groups = {
       "With Diffs": [],
       "No Diffs": [],
@@ -747,6 +882,7 @@ const mountEmitters = () => {
   keyEmitter.on("d", onD);
   keyEmitter.on("u", onU);
   keyEmitter.on("r", onR);
+  keyEmitter.on("p", onP);
   keyEmitter.on("Enter", onEnter);
   keyEmitter.on("Tab", onTab);
   keyEmitter.on("Escape", onEscape);
@@ -764,6 +900,7 @@ const removeEmitters = () => {
   keyEmitter.off("d", onD);
   keyEmitter.off("u", onU);
   keyEmitter.off("r", onR);
+  keyEmitter.off("p", onP);
   keyEmitter.off("Enter", onEnter);
   keyEmitter.off("Tab", onTab);
   keyEmitter.off("Escape", onEscape);
@@ -825,7 +962,22 @@ const onD = (e: KeyDetails["d"]) => {
     mapRef.value?.onD(e);
   }
 };
+const onP = (e: KeyDetails["p"]) => {
+  e.preventDefault();
+  if (showGrid.value) {
+    if (!focusedComponent.value) return;
 
+    // This works a little differently than the others. The component context menu will just emit
+    // for pinning and unpinning. We can just handle it here as a result.
+    if (focusedComponent.value.id === pinnedComponentId.value) {
+      pinnedComponentId.value = undefined;
+    } else {
+      pinnedComponentId.value = focusedComponent.value.id;
+    }
+  } else {
+    mapRef.value?.onP(e);
+  }
+};
 const onU = (e: KeyDetails["u"]) => {
   e.preventDefault();
 
@@ -950,16 +1102,6 @@ const onClick = (e: MouseDetails["click"]) => {
   }
 };
 
-onMounted(() => {
-  mountEmitters();
-  mouseEmitter.on("click", onClick);
-  setSelectionsFromQuery(); // sort by, group by, etc. on mount
-});
-onBeforeUnmount(() => {
-  removeEmitters();
-  mouseEmitter.off("click", onClick);
-});
-
 const setSelectionsFromQuery = () => {
   const query: SelectionsInQueryString = router.currentRoute.value?.query;
 
@@ -991,8 +1133,21 @@ const setSelectionsFromQuery = () => {
       groupBySelection.value = GroupByCriteria.None;
       break;
   }
+
+  if (query.pinned !== undefined) {
+    pinnedComponentId.value = query.pinned;
+  }
 };
 
+onMounted(() => {
+  mountEmitters();
+  mouseEmitter.on("click", onClick);
+  setSelectionsFromQuery(); // sort by, group by, pinning, etc. on mount
+});
+onBeforeUnmount(() => {
+  removeEmitters();
+  mouseEmitter.off("click", onClick);
+});
 watch([router.currentRoute], setSelectionsFromQuery);
 
 const navigateToFocusedComponent = () => {

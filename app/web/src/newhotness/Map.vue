@@ -182,10 +182,13 @@ const props = defineProps<{
 }>();
 
 const componentsById = computed<Record<ComponentId, ComponentInList>>(() => {
-  return props.components.reduce((obj, component) => {
-    obj[component.id] = component;
-    return obj;
-  }, {} as Record<ComponentId, ComponentInList>);
+  return props.components.reduce(
+    (obj, component) => {
+      obj[component.id] = component;
+      return obj;
+    },
+    {} as Record<ComponentId, ComponentInList>,
+  );
 });
 
 const componentContextMenuRef =
@@ -374,6 +377,9 @@ const onD = (e: KeyDetails["d"]) => {
       selectedComponent.value.id,
     ]);
   }
+};
+const onP = (_e: KeyDetails["p"]) => {
+  // Do nothing! Pinning is unsupported in the map view.
 };
 const onU = (_e: KeyDetails["u"]) => {
   // if (selectedComponent.value && selectedComponent.value.canBeUpgraded) {
@@ -836,6 +842,7 @@ defineExpose({
   onEscape,
   onE,
   onD,
+  onP,
   onU,
   onBackspace,
   onR,

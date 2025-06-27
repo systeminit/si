@@ -169,6 +169,8 @@ import CarbonCompare from "~icons/carbon/compare";
 import CarbonTransformCode from "~icons/carbon/code"; // using this one as a placeholder for now
 import SettingsEdit from "~icons/carbon/settings-edit";
 import CarbonWarningAlt from "~icons/carbon/warning-alt";
+import Pin from "~icons/carbon/pin-filled";
+import PinOutline from "~icons/carbon/pin";
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -339,6 +341,8 @@ export const ICONS = Object.freeze({
   "output-connection": OutputConnection,
   "output-socket": OutputSocket,
   password: Password,
+  pin: Pin,
+  "pin-outline": PinOutline,
   play: Play,
   plug: Plug,
   plus: Plus,
