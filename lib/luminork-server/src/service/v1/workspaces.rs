@@ -18,7 +18,7 @@ use super::common::ErrorIntoResponse;
 use crate::{
     AppState,
     extract::{
-        change_set::TargetChangeSetIdFromPath,
+        change_set::TargetChangeSetIdentFromPath,
         workspace::{
             AuthorizedForAutomationRole,
             TargetWorkspaceIdFromPath,
@@ -89,7 +89,9 @@ pub fn routes(state: AppState) -> Router<AppState> {
                                 "/merge_status",
                                 get(super::change_sets::merge_status::merge_status),
                             )
-                            .route_layer(middleware::from_extractor::<TargetChangeSetIdFromPath>()),
+                            .route_layer(
+                                middleware::from_extractor::<TargetChangeSetIdentFromPath>(),
+                            ),
                     ),
             )
             .route_layer(middleware::from_extractor_with_state::<

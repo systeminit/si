@@ -11,7 +11,7 @@ use crate::{
     AppState,
     extract::{
         ErrorResponse,
-        change_set::TargetChangeSetIdFromPath,
+        change_set::TargetChangeSetIdentFromPath,
         workspace::{
             TargetWorkspaceIdFromPath,
             WorkspaceAuthorization,
@@ -60,7 +60,7 @@ fn workspace_routes(state: AppState) -> Router<AppState> {
                     "/approval-requirement-definitions",
                     approval_requirement_definition::v2_routes(),
                 )
-                .route_layer(middleware::from_extractor::<TargetChangeSetIdFromPath>()),
+                .route_layer(middleware::from_extractor::<TargetChangeSetIdentFromPath>()),
         )
         .nest("/fs", fs::fs_routes(state.clone()))
         .nest("/integrations", integrations::v2_routes())

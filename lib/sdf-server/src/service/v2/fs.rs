@@ -102,7 +102,7 @@ use super::{
 use crate::extract::{
     HandlerContext,
     PosthogEventTracker,
-    change_set::TargetChangeSetIdFromPath,
+    change_set::TargetChangeSetIdentFromPath,
     workspace::{
         AuthorizedForAutomationRole,
         TargetWorkspaceIdFromPath,
@@ -1564,7 +1564,7 @@ pub fn fs_routes(state: AppState) -> Router<AppState> {
                 .route("/schemas/:schema_id/funcs/:kind", get(list_variant_funcs))
                 .route("/schemas/:schema_id/funcs/:kind/create", post(create_func))
                 .route("/schemas/:schema_id/install", post(install_schema))
-                .route_layer(middleware::from_extractor::<TargetChangeSetIdFromPath>()),
+                .route_layer(middleware::from_extractor::<TargetChangeSetIdentFromPath>()),
         )
         .route_layer(middleware::from_extractor_with_state::<
             AuthorizedForAutomationRole,

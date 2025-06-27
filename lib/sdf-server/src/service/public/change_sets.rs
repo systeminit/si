@@ -46,7 +46,7 @@ use crate::{
         PosthogEventTracker,
         change_set::{
             ChangeSetDalContext,
-            TargetChangeSetIdFromPath,
+            TargetChangeSetIdentFromPath,
         },
         workspace::{
             WorkspaceAuthorization,
@@ -73,7 +73,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
                 )),
             )
             .route("/merge_status", get(merge_status))
-            .route_layer(middleware::from_extractor::<TargetChangeSetIdFromPath>()),
+            .route_layer(middleware::from_extractor::<TargetChangeSetIdentFromPath>()),
     )
 }
 
