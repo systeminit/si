@@ -1,27 +1,19 @@
 use axum::{
     Json,
-    extract::{
-        Host,
-        OriginalUri,
-        Path,
-    },
+    extract::Path,
 };
 use dal::{
     ChangeSet,
     ChangeSetId,
     WorkspacePk,
 };
+use sdf_extract::{
+    PosthogEventTracker,
+    change_set::ChangeSetDalContext,
+};
 use serde::Deserialize;
 
 use super::Result;
-use crate::{
-    extract::{
-        HandlerContext,
-        PosthogClient,
-    },
-    service::v2::AccessBuilder,
-    track,
-};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -30,27 +22,17 @@ pub struct RenameChangeSetRequest {
 }
 
 pub async fn rename(
-    HandlerContext(builder): HandlerContext,
-    AccessBuilder(request_ctx): AccessBuilder,
-    PosthogClient(posthog_client): PosthogClient,
-    OriginalUri(original_uri): OriginalUri,
-    Host(host_name): Host,
+    ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
     Path((_workspace_pk, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
     Json(request): Json<RenameChangeSetRequest>,
 ) -> Result<()> {
-    let ctx = builder
-        .build(request_ctx.build(change_set_id.into()))
-        .await?;
+    ChangeSet::get_by_id(ctx, ctx.visibility().change_set_id).await?;
 
-    ChangeSet::get_by_id(&ctx, ctx.visibility().change_set_id).await?;
+    ChangeSet::rename_change_set(ctx, change_set_id, &request.new_name).await?;
 
-    ChangeSet::rename_change_set(&ctx, change_set_id, &request.new_name).await?;
-
-    track(
-        &posthog_client,
-        &ctx,
-        &original_uri,
-        &host_name,
+    tracker.track(
+        ctx,
         "rename_change_set",
         serde_json::json!({
             "change_set": change_set_id,

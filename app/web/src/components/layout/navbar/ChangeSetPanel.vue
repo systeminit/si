@@ -16,7 +16,10 @@
         placeholder="-- select a change set --"
         checkable
         variant="navbar"
+        :enableSecondaryAction="enableChangesetRename"
+        secondaryActionIcon="edit2"
         @select="onSelectChangeSet"
+        @secondaryAction="openRenameModal"
       >
         <template #afterOptions>
           <DropdownMenuItem
@@ -107,11 +110,12 @@
       </form>
     </Modal>
     <AbandonChangeSetModal ref="abandonModalRef" />
+    <ChangesetRenameModal v-if="enableChangesetRename" ref="renameModalRef" />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { onMounted, computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import * as _ from "lodash-es";
 import { useRoute, useRouter } from "vue-router";
 import {
@@ -128,6 +132,7 @@ import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import AbandonChangeSetModal from "@/components/AbandonChangeSetModal.vue";
 import { reset } from "@/newhotness/logic_composables/navigation_stack";
+import ChangesetRenameModal from "@/components/ChangesetRenameModal.vue";
 import * as heimdall from "../../../store/realtime/heimdall";
 
 const CHANGE_SET_NAME_REGEX = /^(?!head).*$/i;
@@ -141,13 +146,10 @@ const selectedChangeSetName = computed(
 
 const dropdownMenuRef = ref<InstanceType<typeof DropdownMenuButton>>();
 
-const changeSetDropdownOptions = computed(() => {
-  const options = [
-    ..._.map(openChangeSets.value, (cs) => ({ value: cs.id, label: cs.name })),
-    // { value: "NEW", label: "+ Create new change set" },
-  ];
-  return options;
-});
+const changeSetDropdownOptions = computed(() => [
+  ..._.map(openChangeSets.value, (cs) => ({ value: cs.id, label: cs.name })),
+  // { value: "NEW", label: "+ Create new change set" },
+]);
 
 const changeSetSearchFilteredOptions = computed(() => {
   const searchString = dropdownMenuRef.value?.searchString;
@@ -166,12 +168,25 @@ const changeSetSearchFilteredOptions = computed(() => {
 const router = useRouter();
 const route = useRoute();
 
+// NOTE(victor): The changeset modal uses the new api lib, so we're not enabling the rename on the old ui
+// TODO: Remove this when the old ui is deprecated
+const enableChangesetRename = computed(() =>
+  route.name?.toString().startsWith("new-hotness"),
+);
+
 const abandonModalRef = ref<InstanceType<typeof AbandonChangeSetModal> | null>(
   null,
 );
 const openAbandonConfirmationModal = () => {
   abandonModalRef.value?.open();
 };
+
+const renameModalRef = ref<InstanceType<typeof ChangesetRenameModal> | null>(
+  null,
+);
+function openRenameModal(option: { value: string; label: string }) {
+  renameModalRef.value?.open(option.value, option.label);
+}
 
 const createModalRef = ref<InstanceType<typeof Modal>>();
 

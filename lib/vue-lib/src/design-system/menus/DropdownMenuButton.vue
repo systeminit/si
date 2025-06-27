@@ -81,8 +81,9 @@
         :label="option.label"
         :checkable="checkable"
         :checked="option.value === modelValue"
-        :enableSettingsEdit="props.enableSettingsEdit"
-        @edit="editOption(option)"
+        :enableSecondaryAction="enableSecondaryAction"
+        :secondaryActionIcon="secondaryActionIcon"
+        @secondaryAction="secondaryAction(option)"
         @select="selectOption(option)"
       />
       <slot name="afterOptions" />
@@ -100,6 +101,7 @@ import { themeClasses } from "../utils/theme_tools";
 import { Filter } from "../general/SiSearch.vue";
 import { InputOptions, OptionsAsArray } from "../forms/VormInput.vue";
 import DropdownMenuItem from "./DropdownMenuItem.vue";
+import { IconNames } from "../icons/icon_set";
 
 export type DropdownMenuButtonVariant = "standard" | "navbar";
 
@@ -126,7 +128,8 @@ const props = defineProps({
   minWidthToAnchor: { type: Boolean },
   noBorder: { type: Boolean },
   alignRightOnAnchor: { type: Boolean },
-  enableSettingsEdit: { type: Boolean },
+  enableSecondaryAction: { type: Boolean },
+  secondaryActionIcon: { type: String as PropType<IconNames> },
   alwaysShowPlaceholder: { type: Boolean },
   highlightWhenModelValue: { type: Boolean },
 });
@@ -231,13 +234,13 @@ const selectOption = (option: { value: unknown; label: string }) => {
   emit("select", option.value as string);
   emit("update:modelValue", option.value as string);
 };
-const editOption = (option: { value: unknown; label: string }) => {
-  emit("edit", option as { value: string; label: string });
+const secondaryAction = (option: { value: unknown; label: string }) => {
+  emit("secondaryAction", option as { value: string; label: string });
 };
 const emit = defineEmits<{
   (e: "select", value: string): void;
   (e: "update:modelValue", value: string): void;
-  (e: "edit", option: { value: string; label: string }): void;
+  (e: "secondaryAction", option: { value: string; label: string }): void;
 }>();
 
 defineExpose({

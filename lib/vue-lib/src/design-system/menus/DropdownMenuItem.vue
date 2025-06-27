@@ -9,7 +9,7 @@
         'flex gap-xs items-center group select-none',
         sizeClass,
         noInteract ? 'text-neutral-500' : 'cursor-pointer',
-        !endLinkTo && !enableSettingsEdit && 'children:pointer-events-none',
+        !endLinkTo && !showSecondaryAction && 'children:pointer-events-none',
         header
           ? 'font-bold [&:not(:last-child)]:border-b [&:not(:first-child)]:border-t border-neutral-600'
           : 'rounded-sm',
@@ -43,12 +43,7 @@
     <Icon
       v-else-if="menuCtx.isCheckable.value && !disableCheckable"
       :name="checked ? 'check' : 'none'"
-      :class="
-        clsx(
-          'mr-2xs shrink-0 pointer-events-none',
-          enableSettingsEdit && 'ml-xs',
-        )
-      "
+      :class="clsx('mr-2xs shrink-0 pointer-events-none', checkable && 'ml-xs')"
       size="xs"
     />
     <slot name="icon">
@@ -90,8 +85,8 @@
       :class="
         clsx(
           'ml-auto shrink-0',
-          shortcut && !endLinkTo && !enableSettingsEdit && 'capsize text-xs',
-          enableSettingsEdit && 'h-full',
+          shortcut && !endLinkTo && !showSecondaryAction && 'capsize text-xs',
+          showSecondaryAction && 'h-full',
         )
       "
     >
@@ -134,23 +129,28 @@
       <template v-else-if="shortcut">
         {{ shortcut }}
       </template>
-
+      <!-- Note(victor) this is rendered transparently when enableSecondaryAction is true,
+      so we can get adequate sizes for the items -->
       <div
-        v-else-if="enableSettingsEdit"
+        v-else-if="enableSecondaryAction"
         :class="
           clsx(
-            'h-full flex items-center p-2xs px-2xs',
+            'h-full flex items-center p-2xs px-xs',
             themeClasses(
               'group-hover:hover:bg-action-300 group-hover:text-shade-0',
               'group-hover:hover:bg-action-500 group-hover:text-shade-0',
             ),
           )
         "
-        @mousedown="emit('edit')"
+        @click.stop="onSecondaryActionClick"
         @mouseenter="onMouseEnterEndLink"
         @mouseleave="onMouseLeaveEndLink"
       >
-        <Icon name="settings-edit" class="h-full" size="sm" />
+        <Icon
+          :name="secondaryActionIcon ?? 'settings-edit'"
+          :class="clsx('h-full', !showSecondaryAction && 'text-transparent')"
+          size="sm"
+        />
       </div>
     </div>
   </component>
@@ -175,6 +175,7 @@ import DropdownMenu, {
 import TruncateWithTooltip from "../general/TruncateWithTooltip.vue";
 import Toggle from "../general/Toggle.vue";
 import { themeClasses, useThemeContainer } from "../utils/theme_tools";
+import { tw } from "../../utils/tw-utils";
 
 export interface DropdownMenuItemProps {
   icon?: IconNames;
@@ -205,7 +206,8 @@ export interface DropdownMenuItemProps {
   endLinkTo?: string | RouteLocationRaw;
 
   sizeClass?: string;
-  enableSettingsEdit?: boolean;
+  enableSecondaryAction?: boolean;
+  secondaryActionIcon?: IconNames;
 
   insideSubmenu?: boolean;
   submenuItems?: DropdownMenuItemProps[];
@@ -223,7 +225,7 @@ const noInteract = computed(() => props.disabled || props.header);
 
 const emit = defineEmits<{
   (e: "select"): void;
-  (e: "edit"): void;
+  (e: "secondaryAction"): void;
 }>();
 
 const internalRef = ref<HTMLElement | null>(null);
@@ -238,6 +240,12 @@ const submenuTimeout = ref();
 
 const router = useRouter();
 
+const itemIsHovered = ref(false);
+
+const showSecondaryAction = computed(
+  () => props.enableSecondaryAction && (itemIsHovered.value || props.checked),
+);
+
 // NOTE(nick): I'm so sorry. There was not a clean way to add a new variant that would handle the
 // settings edit option without changing sizing in general. Here's the problem: the menu context
 // requires the "beforeOptions" and "afterOptions" to follow the variant. We don't always want
@@ -245,23 +253,21 @@ const router = useRouter();
 // the class option pile for the component attribute. Please forgive me.
 const sizeClass = computed(() => {
   if (props.sizeClass) return props.sizeClass;
-  if (props.enableSettingsEdit) return "h-lg";
+  if (props.enableSecondaryAction) return tw`h-lg`;
   return {
-    classic: "p-xs pr-sm",
-    compact: "px-xs py-2xs pr-xs",
-    editor: [props.header ? "p-xs" : "p-2xs pr-xs", "h-7"],
-    contextmenu: "p-xs pr-sm",
+    classic: tw`p-xs pr-sm`,
+    compact: tw`px-xs py-2xs pr-xs`,
+    editor: [props.header ? tw`p-xs` : tw`p-2xs pr-xs`, tw`h-7`],
+    contextmenu: tw`p-xs pr-sm`,
   }[menuCtx.variant as DropdownMenuVariant];
 });
 
 const noCloseOnClick = computed(
   () =>
-    !!(
-      props.doNotCloseMenuOnClick ||
-      props.header ||
-      props.toggleIcon ||
-      (props.submenuItems && props.submenuItems.length > 0)
-    ),
+    props.doNotCloseMenuOnClick ||
+    props.header ||
+    props.toggleIcon ||
+    (props.submenuItems && props.submenuItems.length > 0),
 );
 
 onMounted(() => {
@@ -310,7 +316,12 @@ function onClick(event: MouseEvent) {
     menuCtx.close(props.doNotCloseMenuOnClick);
   }
 }
+function onSecondaryActionClick(event: MouseEvent) {
+  menuCtx.close(props.doNotCloseMenuOnClick);
+  emit("secondaryAction");
+}
 function onMouseEnter() {
+  itemIsHovered.value = true;
   if (noInteract.value) return;
   if (props.submenuItems && props.submenuItems.length > 0) {
     clearTimeout(submenuTimeout.value);
@@ -319,6 +330,7 @@ function onMouseEnter() {
   menuCtx.focusOnItem(id);
 }
 function onMouseLeave() {
+  itemIsHovered.value = false;
   if (noInteract.value) return;
   if (
     props.submenuItems &&
