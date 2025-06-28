@@ -12,6 +12,8 @@ publish.workspace = true
 proc-macro = true
 
 [dependencies]
+si-events = { path = "../../lib/si-events-rs" }
+
 darling     = { workspace = true }
 manyhow     = { workspace = true }
 proc-macro2 = { workspace = true }

@@ -28,6 +28,7 @@ mod func;
 mod func_execution;
 mod func_run;
 mod func_run_log;
+pub mod materialized_view;
 mod resource_metadata;
 mod schema;
 mod schema_variant;

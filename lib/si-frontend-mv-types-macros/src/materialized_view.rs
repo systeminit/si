@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use darling::FromAttributes;
 use manyhow::{
     bail,
@@ -8,6 +10,7 @@ use quote::{
     format_ident,
     quote,
 };
+use si_events::materialized_view::BuildPriority;
 use syn::{
     Data,
     DeriveInput,
@@ -21,6 +24,7 @@ use crate::ty_to_string;
 struct MaterializedViewOptions {
     trigger_entity: Option<Path>,
     reference_kind: Option<Path>,
+    build_priority: Option<String>,
 }
 
 pub fn derive_materialized_view(
@@ -66,6 +70,23 @@ pub fn derive_materialized_view(
     let Some(self_reference_kind) = struct_options.reference_kind else {
         bail!(input, "MV must have a reference_kind attribute");
     };
+    let build_priority = {
+        let priority = match struct_options.build_priority {
+            Some(priority_string) => {
+                if let Ok(priority) = BuildPriority::from_str(&priority_string) {
+                    priority
+                } else {
+                    bail!(
+                        input,
+                        "Invalid build_priority; must be one of the ::si_events::materialized_view::BuildPriority variants."
+                    );
+                }
+            }
+            None => BuildPriority::default(),
+        }
+        .to_string();
+        format_ident!("{}", priority)
+    };
 
     let definition_checksum = {
         let mut hash_updates = TokenStream::new();
@@ -98,6 +119,10 @@ pub fn derive_materialized_view(
             fn definition_checksum() -> ::si_events::workspace_snapshot::Checksum {
                 *#checksum_static_ident
             }
+
+            fn build_priority() -> ::si_events::materialized_view::BuildPriority {
+                ::si_events::materialized_view::BuildPriority::#build_priority
+            }
         }
 
         static #checksum_static_ident: ::std::sync::LazyLock<::si_events::workspace_snapshot::Checksum> =
@@ -109,6 +134,7 @@ pub fn derive_materialized_view(
             crate::materialized_view::MaterializedViewInventoryItem::new(
                 #self_reference_kind,
                 #trigger_entity,
+                ::si_events::materialized_view::BuildPriority::#build_priority,
                 &#checksum_static_ident,
             )
         };

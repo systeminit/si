@@ -787,6 +787,7 @@ pub async fn edda_server(
         config.instance_id(),
         config.concurrency_limit(),
         config.parallel_build_limit(),
+        config.streaming_patches(),
         services_context,
         config.quiescent_period(),
         shutdown_token,

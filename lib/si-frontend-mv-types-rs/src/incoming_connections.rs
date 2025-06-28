@@ -66,8 +66,9 @@ pub struct IncomingConnections {
 )]
 #[serde(rename_all = "camelCase")]
 #[mv(
-  trigger_entity = EntityKind::CategoryComponent,
-  reference_kind = ReferenceKind::IncomingConnectionsList,
+    trigger_entity = EntityKind::CategoryComponent,
+    reference_kind = ReferenceKind::IncomingConnectionsList,
+    build_priority = "List",
 )]
 pub struct IncomingConnectionsList {
     pub id: WorkspacePk,

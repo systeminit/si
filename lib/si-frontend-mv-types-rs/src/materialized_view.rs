@@ -1,7 +1,11 @@
-use si_events::workspace_snapshot::{
-    Checksum,
-    ChecksumHasher,
-    EntityKind,
+use si_events::{
+    materialized_view::BuildPriority,
+    workspace_snapshot::{
+        Change,
+        Checksum,
+        ChecksumHasher,
+        EntityKind,
+    },
 };
 
 use crate::{
@@ -13,12 +17,14 @@ pub trait MaterializedView {
     fn kind() -> ReferenceKind;
     fn trigger_entity() -> EntityKind;
     fn definition_checksum() -> Checksum;
+    fn build_priority() -> BuildPriority;
 }
 
 #[derive(Debug, Clone)]
 pub struct MaterializedViewInventoryItem {
     kind: ReferenceKind,
     trigger_entity: EntityKind,
+    build_priority: BuildPriority,
     definition_checksum: &'static ::std::sync::LazyLock<Checksum>,
 }
 
@@ -26,11 +32,13 @@ impl MaterializedViewInventoryItem {
     pub const fn new(
         kind: ReferenceKind,
         trigger_entity: EntityKind,
+        build_priority: BuildPriority,
         definition_checksum: &'static ::std::sync::LazyLock<Checksum>,
     ) -> Self {
         MaterializedViewInventoryItem {
             kind,
             trigger_entity,
+            build_priority,
             definition_checksum,
         }
     }
@@ -42,8 +50,17 @@ impl MaterializedViewInventoryItem {
     pub fn trigger_entity(&self) -> EntityKind {
         self.trigger_entity
     }
+
+    pub fn build_priority(&self) -> BuildPriority {
+        self.build_priority
+    }
+
     pub fn definition_checksum(&self) -> Checksum {
         **self.definition_checksum
+    }
+
+    pub fn should_build_for_change(&self, change: Change) -> bool {
+        change.entity_kind == self.trigger_entity
     }
 }
 
