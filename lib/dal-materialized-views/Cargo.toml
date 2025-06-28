@@ -17,6 +17,7 @@ telemetry = { path = "../../lib/telemetry-rs" }
 remain = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+tracing = { workspace = true }
 
 [dev-dependencies]
 dal-test = { path = "../../lib/dal-test" }

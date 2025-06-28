@@ -60,7 +60,10 @@ use si_events::{
     WorkspacePk,
     WorkspaceSnapshotAddress,
 };
-use telemetry::prelude::*;
+use telemetry::prelude::{
+    instrument,
+    *,
+};
 use telemetry_nats::propagation;
 use thiserror::Error;
 

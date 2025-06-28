@@ -53,6 +53,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 tracing-opentelemetry = { workspace = true }
+tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 ulid = { workspace = true }
 uuid = { workspace = true }

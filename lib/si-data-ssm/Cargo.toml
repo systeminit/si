@@ -16,3 +16,4 @@ aws-sdk-ssm = { workspace = true }
 remain = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tracing = { workspace = true }
