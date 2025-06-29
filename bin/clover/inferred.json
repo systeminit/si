@@ -1537,6 +1537,12 @@
       "internal"
     ]
   },
+  "The direction of traffic (ingress/egress).": {
+    "enum": [
+      "ingress",
+      "egress"
+    ]
+  },
   "Used only for alarms based on percentiles. If ``ignore``, the alarm state does not change during periods with too few data points to be statistically significant. If ``evaluate`` or this parameter is not used, the alarm is always evaluated and possibly changes state no matter how many data points are available.": {
     "enum": [
       "ignore",
@@ -1715,6 +1721,12 @@
     "enum": [
       "all_storage_classes_128K",
       "varies_by_storage_class"
+    ]
+  },
+  "The action to take on the filtered traffic (accept/reject).": {
+    "enum": [
+      "accept",
+      "reject"
     ]
   },
   "The API protocol. Valid values are ``WEBSOCKET`` or ``HTTP``. Required unless you specify an OpenAPI definition for ``Body`` or ``S3BodyLocation``.": {
@@ -3038,6 +3050,9 @@
     "enum": null
   },
   "A DB subnet group to associate with the DB instance. If you update this value, the new subnet group must be a subnet group in a new VPC. \n If you don't specify a DB subnet group, RDS uses the default DB subnet group if one exists. If a default DB subnet group does not exist, and you don't specify a ``DBSubnetGroupName``, the DB instance fails to launch. \n For more information about using Amazon RDS in a VPC, see [Amazon VPC and Amazon RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_VPC.html) in the *Amazon RDS User Guide*. \n This setting doesn't apply to Amazon Aurora DB instances. The DB subnet group is managed by the DB cluster. If specified, the setting must match the DB cluster setting.": {
+    "enum": null
+  },
+  "A DB subnet group to associate with the DB instance. If you update this value, the new subnet group must be a subnet group in a new virtual private cloud (VPC).": {
     "enum": null
   },
   "A IPAddressType": {
@@ -4648,7 +4663,13 @@
   "Contact ID for the AWS SSM Incident Manager Contact to associate the plan.": {
     "enum": null
   },
+  "Contains a user-supplied database identifier. This identifier is the unique key that identifies a DB instance.": {
+    "enum": null
+  },
   "Contains a user-supplied name for the Graph. \n\nIf you don't specify a name, we generate a unique Graph Name using a combination of Stack Name and a UUID comprising of 4 characters.\n\n_Important_: If you specify a name, you cannot perform updates that require replacement of this resource. You can perform updates that require no or some interruption. If you must replace the resource, specify a new name.": {
+    "enum": null
+  },
+  "Contains the name of the compute and memory capacity class of the DB instance.\n\nIf you update this property, some interruptions may occur.": {
     "enum": null
   },
   "Contains the reason a monitoring job failed, if it failed.": {
@@ -4961,6 +4982,9 @@
     "enum": null
   },
   "Determines what DocumentDB sends to your event stream during document update operations. If set to UpdateLookup, DocumentDB sends a delta describing the changes, along with a copy of the entire document. Otherwise, DocumentDB sends only a partial document that contains the changes.": {
+    "enum": null
+  },
+  "Determines when and how to apply fleet or location capacities. If you choose ON_CREATE_AND_UPDATE_WITH_AUTOSCALING, MinSize and MaxSize will still be applied on creation and on updates, but DesiredEC2Instances will only be applied once on fleet creation and will be ignored during updates to prevent conflicts with auto-scaling.": {
     "enum": null
   },
   "Determines whether CloudFront includes the ``Referrer-Policy`` HTTP response header and the header's value.\n For more information about the ``Referrer-Policy`` HTTP response header, see [Referrer-Policy](https://docs.aws.amazon.com/https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy) in the MDN Web Docs.": {
@@ -5407,10 +5431,16 @@
   "If a service is using the rolling update (``ECS``) deployment type, the ``minimumHealthyPercent`` represents a lower limit on the number of your service's tasks that must remain in the ``RUNNING`` state during a deployment, as a percentage of the ``desiredCount`` (rounded up to the nearest integer). This parameter enables you to deploy without using additional cluster capacity. For example, if your service has a ``desiredCount`` of four tasks and a ``minimumHealthyPercent`` of 50%, the service scheduler may stop two existing tasks to free up cluster capacity before starting two new tasks. \n  If any tasks are unhealthy and if ``maximumPercent`` doesn't allow the Amazon ECS scheduler to start replacement tasks, the scheduler stops the unhealthy tasks one-by-one — using the ``minimumHealthyPercent`` as a constraint — to clear up capacity to launch replacement tasks. For more information about how the scheduler replaces unhealthy tasks, see [Amazon ECS services](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html) . \n For services that *do not* use a load balancer, the following should be noted:\n  +  A service is considered healthy if all essential containers within the tasks in the service pass their health checks.\n  +  If a task has no essential containers with a health check defined, the service scheduler will wait for 40 seconds after a task reaches a ``RUNNING`` state before the task is counted towards the minimum healthy percent total.\n  +  If a task has one or more essential containers with a health check defined, the service scheduler will wait for the task to reach a healthy status before counting it towards the minimum healthy percent total. A task is considered healthy when all essential containers within the task have passed their health checks. The amount of time the service scheduler can wait for is determined by the container health check settings. \n  \n For services that *do* use a load balancer, the following should be noted:\n  +  If a task has no essential containers with a health check defined, the service scheduler will wait for the load balancer target group health check to return a healthy status before counting the task towards the minimum healthy percent total.\n  +  If a task has an essential container with a health check defined, the service scheduler will wait for both the task to reach a healthy status and the load balancer target group health check to return a healthy status before counting the task towards the minimum healthy percent total.\n  \n The default value for a replica service for ``minimumHealthyPercent`` is 100%. The default ``minimumHealthyPercent`` value for a service using the ``DAEMON`` service schedule is 0% for the CLI, the AWS SDKs, and the APIs and 50% for the AWS Management Console.\n The minimum number of healthy tasks during a deployment is the ``desiredCount`` multiplied by the ``minimumHealthyPercent``/100, rounded up to the nearest integer value.\n If a service is using either the blue/green (``CODE_DEPLOY``) or ``EXTERNAL`` deployment types and is running tasks that use the EC2 launch type, the *minimum healthy percent* value is set to the default value. The *minimum healthy percent* value is used to define the lower limit on the number of the tasks in the service that remain in the ``RUNNING`` state while the container instances are in the ``DRAINING`` state.\n  You can't specify a custom ``minimumHealthyPercent`` value for a service that uses either the blue/green (``CODE_DEPLOY``) or ``EXTERNAL`` deployment types and has tasks that use the EC2 launch type.\n  If a service is using either the blue/green (``CODE_DEPLOY``) or ``EXTERNAL`` deployment types and is running tasks that use the Fargate launch type, the minimum healthy percent value is not used, although it is returned when describing your service.": {
     "enum": null
   },
+  "If log destination is CLOUDWATCH, logs are sent to the specified log group in Amazon CloudWatch.": {
+    "enum": null
+  },
   "If node auto-recovery is set to true, faulty nodes will be replaced or rebooted when a failure is detected. If set to false, nodes will be labelled when a fault is detected.": {
     "enum": null
   },
   "If specified, the environment attempts to use this value as the prefix for the CNAME in your Elastic Beanstalk environment URL. If not specified, the CNAME is generated automatically by appending a random alphanumeric string to the environment name.": {
+    "enum": null
+  },
+  "If the DB instance is a member of a DB cluster, contains the name of the DB cluster that the DB instance is a member of.": {
     "enum": null
   },
   "If the SLO monitors a specific operation of the service, this field displays that operation name.": {
@@ -7109,6 +7139,9 @@
     "enum": null
   },
   "Specifies the name of the Amazon SNS topic defined for notification of log file delivery. The maximum length is 256 characters.": {
+    "enum": null
+  },
+  "Specifies the name of the Availability Zone the DB instance is located in.": {
     "enum": null
   },
   "Specifies the name of the HSM client certificate the Amazon Redshift cluster uses to retrieve the data encryption keys stored in an HSM": {
@@ -8890,6 +8923,9 @@
   "The HTTPS port that CF uses to connect to the origin. Specify the HTTPS port that the origin listens on.": {
     "enum": null
   },
+  "The IAM IdentityCenter instance arn": {
+    "enum": null
+  },
   "The IAM Role that allows AWS to update CloudFormation stacks based on content in the specified repository.": {
     "enum": null
   },
@@ -9308,6 +9344,9 @@
     "enum": null
   },
   "The ID of the file system on which the data repository association is configured.": {
+    "enum": null
+  },
+  "The ID of the filter that this rule is associated with.": {
     "enum": null
   },
   "The ID of the gateway.": {
@@ -10801,6 +10840,9 @@
   "The description of the Serverless Cache.": {
     "enum": null
   },
+  "The description of the Traffic Mirror Filter rule.": {
+    "enum": null
+  },
   "The description of the UsageProfile.": {
     "enum": null
   },
@@ -11093,6 +11135,9 @@
     "enum": null
   },
   "The destination AWS Region that you want to copy snapshots to. Constraints: Must be the name of a valid AWS Region. For more information, see Regions and Endpoints in the Amazon Web Services [https://docs.aws.amazon.com/general/latest/gr/rande.html#redshift_region] General Reference": {
+    "enum": null
+  },
+  "The destination CIDR block to assign to the Traffic Mirror rule.": {
     "enum": null
   },
   "The destination is triggered only for profiles that meet the criteria of a segment definition.": {
@@ -11414,6 +11459,9 @@
     "enum": null
   },
   "The first name. This is required if you are using Amazon Connect or SAML for identity management.": {
+    "enum": null
+  },
+  "The first port in the Traffic Mirror port range.": {
     "enum": null
   },
   "The flag to enable/disable docker-proxy server": {
@@ -11870,6 +11918,9 @@
     "enum": null
   },
   "The last name. This is required if you are using Amazon Connect or SAML for identity management.": {
+    "enum": null
+  },
+  "The last port in the Traffic Mirror port range.": {
     "enum": null
   },
   "The last time the Anycast static IP list was modified.": {
@@ -12620,6 +12671,9 @@
     "enum": null
   },
   "The name of an association between the  Profile and resource.": {
+    "enum": null
+  },
+  "The name of an existing DB parameter group or a reference to an AWS::Neptune::DBParameterGroup resource created in the template. If any of the data members of the referenced parameter group are changed during an update, the DB instance might need to be restarted, which causes some interruption. If the parameter group contains static parameters, whether they were changed or not, an update triggers a reboot.": {
     "enum": null
   },
   "The name of an existing DB parameter group or a reference to an [AWS::RDS::DBParameterGroup](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-rds-dbparametergroup.html) resource created in the template.\n To list all of the available DB parameter group names, use the following command:\n  ``aws rds describe-db-parameter-groups --query \"DBParameterGroups[].DBParameterGroupName\" --output text`` \n  If any of the data members of the referenced parameter group are changed during an update, the DB instance might need to be restarted, which causes some interruption. If the parameter group contains static parameters, whether they were changed or not, an update triggers a reboot.\n  If you don't specify a value for ``DBParameterGroupName`` property, the default DB parameter group for the specified engine and engine version is used.": {
@@ -14245,6 +14299,9 @@
   "The number of profiles that you are currently paying for in the domain. If you have more than 100 objects associated with a single profile, that profile counts as two profiles. If you have more than 200 objects, that profile counts as three, and so on.": {
     "enum": null
   },
+  "The number of protocol, for example 17 (UDP), to assign to the Traffic Mirror rule.": {
+    "enum": null
+  },
   "The number of replicas to apply to each shard. The limit is 5.": {
     "enum": null
   },
@@ -14282,6 +14339,9 @@
     "enum": null
   },
   "The number of tasks to create based on TaskDefinition. The default is 1.": {
+    "enum": null
+  },
+  "The number of the Traffic Mirror rule.": {
     "enum": null
   },
   "The number of the partition the instance should launch in. Valid only if the placement group strategy is set to ``partition``.": {
@@ -15185,6 +15245,9 @@
     "enum": null
   },
   "The software AWS PCS uses to manage cluster scaling and job scheduling.": {
+    "enum": null
+  },
+  "The source CIDR block to assign to the Traffic Mirror Filter rule.": {
     "enum": null
   },
   "The source image for the container recipe.": {
@@ -16409,6 +16472,9 @@
     "enum": null
   },
   "This parameter is no longer used. Instead, specify a server launch path using the RuntimeConfiguration parameter. Requests that specify a server launch path and launch parameters instead of a runtime configuration will continue to work.": {
+    "enum": null
+  },
+  "This parameter is not supported.\n\n`AWS::Neptune::DBInstance` does not support restoring from snapshots.\n\n`AWS::Neptune::DBCluster` does support restoring from snapshots.\n\n": {
     "enum": null
   },
   "This parameter is not used.": {
