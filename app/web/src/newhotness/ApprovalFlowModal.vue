@@ -160,7 +160,7 @@ function closeModalHandler() {
   modalRef.value?.close();
 }
 
-function applyButtonHandler() {
+async function applyButtonHandler() {
   // TODO(nick): restore approvals in the new UI.
   // if (!workspacesStore.workspaceApprovalsEnabled && authStore.user) {
   //   changeSetsStore.APPLY_CHANGE_SET(authStore.user.name);
@@ -185,18 +185,20 @@ function applyButtonHandler() {
   // TODO(nick): we should make sure this isn't possible...
   if (!ctx || !authStore.user) return;
 
-  changeSetsStore.APPLY_CHANGE_SET(authStore.user.name);
-  const name = route.name;
-  router.push({
-    name,
-    params: {
-      ...route.params,
-      changeSetId: ctx.headChangeSetId.value,
-    },
-    query: route.query,
-  });
-  reset();
-  closeModalHandler();
+  const resp = await changeSetsStore.APPLY_CHANGE_SET(authStore.user.name);
+  if (resp.result.success) {
+    const name = route.name;
+    router.push({
+      name,
+      params: {
+        ...route.params,
+        changeSetId: ctx.headChangeSetId.value,
+      },
+      query: route.query,
+    });
+    reset();
+    closeModalHandler();
+  }
 }
 
 watch(
