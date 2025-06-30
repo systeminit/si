@@ -5,7 +5,6 @@ use dal::{
     Component,
     ComponentId,
     DalContext,
-    FuncId,
     diagram::{
         geometry::Geometry,
         view::View,
@@ -23,39 +22,19 @@ use super::schema::variant::SchemaVariantKey;
 use crate::{
     Result,
     expected::ExpectComponent,
-    helpers::attribute::value,
+    helpers::{
+        attribute::value,
+        func::{
+            self,
+            FuncKey,
+        },
+        schema::variant,
+    },
 };
 
-///
-/// Things that you can pass to reference components (name or id)
-///
-#[allow(async_fn_in_trait)]
-pub trait ComponentKey {
-    ///
-    /// Turn this into a real ComponentId
-    ///
-    async fn lookup_component(self, ctx: &DalContext) -> Result<ComponentId>;
-}
-impl ComponentKey for ComponentId {
-    async fn lookup_component(self, _: &DalContext) -> Result<ComponentId> {
-        Ok(self)
-    }
-}
-// "ComponentName" finds the component with that name
-impl ComponentKey for &str {
-    async fn lookup_component(self, ctx: &DalContext) -> Result<ComponentId> {
-        Ok(Component::get_by_name(ctx, self).await?)
-    }
-}
-impl ComponentKey for ExpectComponent {
-    async fn lookup_component(self, _: &DalContext) -> Result<ComponentId> {
-        Ok(self.id())
-    }
-}
-impl ComponentKey for Component {
-    async fn lookup_component(self, _: &DalContext) -> Result<ComponentId> {
-        Ok(self.id())
-    }
+/// Lookup a component by name or id
+pub async fn id(ctx: &DalContext, key: impl ComponentKey) -> Result<ComponentId> {
+    ComponentKey::id(ctx, key).await
 }
 
 /// Create a component with the given name and schema variant
@@ -64,7 +43,7 @@ pub async fn create(
     variant: impl SchemaVariantKey,
     name: impl AsRef<str>,
 ) -> Result<ComponentId> {
-    let variant_id = variant.lookup_schema_variant(ctx).await?;
+    let variant_id = variant::id(ctx, variant).await?;
     let view_id = View::get_id_for_default(ctx).await?;
 
     Ok(
@@ -78,9 +57,10 @@ pub async fn create(
 pub async fn execute_management_func(
     ctx: &DalContext,
     component: impl ComponentKey,
-    func_id: FuncId,
+    func: impl FuncKey,
 ) -> Result<()> {
-    let component_id = component.lookup_component(ctx).await?;
+    let func_id = func::id(ctx, func).await?;
+    let component_id = id(ctx, component).await?;
     let mut prototype_ids = ManagementPrototype::list_ids_for_func_id(ctx, func_id)
         .await?
         .into_iter();
@@ -133,7 +113,7 @@ pub async fn domain(ctx: &DalContext, component: impl ComponentKey) -> Result<se
 
 /// Get the single view id for the component
 pub async fn view_id(ctx: &DalContext, component: impl ComponentKey) -> Result<ViewId> {
-    let component_id = component.lookup_component(ctx).await?;
+    let component_id = id(ctx, component).await?;
     let mut geometry_ids = Geometry::list_ids_by_component(ctx, component_id)
         .await?
         .into_iter();
@@ -144,4 +124,36 @@ pub async fn view_id(ctx: &DalContext, component: impl ComponentKey) -> Result<V
         return Err(eyre!("multiple geometries for component"));
     }
     Ok(Geometry::get_view_id_by_id(ctx, geometry_id).await?)
+}
+
+///
+/// Things that you can pass to reference components (name or id)
+///
+#[allow(async_fn_in_trait)]
+pub trait ComponentKey {
+    ///
+    /// Turn this into a real ComponentId
+    ///
+    async fn id(ctx: &DalContext, key: Self) -> Result<ComponentId>;
+}
+impl ComponentKey for ComponentId {
+    async fn id(_: &DalContext, key: Self) -> Result<ComponentId> {
+        Ok(key)
+    }
+}
+// "ComponentName" finds the component with that name
+impl ComponentKey for &str {
+    async fn id(ctx: &DalContext, key: Self) -> Result<ComponentId> {
+        Ok(Component::get_by_name(ctx, key).await?)
+    }
+}
+impl ComponentKey for ExpectComponent {
+    async fn id(_: &DalContext, key: Self) -> Result<ComponentId> {
+        Ok(key.id())
+    }
+}
+impl ComponentKey for Component {
+    async fn id(_: &DalContext, key: Self) -> Result<ComponentId> {
+        Ok(key.id())
+    }
 }

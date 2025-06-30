@@ -47,7 +47,7 @@ use crate::helpers::{
     ChangeSetTestHelpers,
     component,
     schema::{
-        SchemaKey as _,
+        self,
         variant::{
             self,
             SchemaVariantKey,
@@ -208,12 +208,7 @@ impl From<Schema> for ExpectSchema {
 
 impl ExpectSchema {
     pub async fn find(ctx: &DalContext, name: impl AsRef<str>) -> ExpectSchema {
-        ExpectSchema(
-            name.as_ref()
-                .lookup_schema(ctx)
-                .await
-                .expect("lookup schema"),
-        )
+        ExpectSchema(schema::id(ctx, name.as_ref()).await.expect("lookup schema"))
     }
 
     pub async fn create(ctx: &DalContext) -> ExpectSchema {

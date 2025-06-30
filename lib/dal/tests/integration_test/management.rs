@@ -6,6 +6,7 @@ use dal::{
     ComponentId,
     DalContext,
     SchemaId,
+    SchemaVariantId,
     Ulid,
     component::resource::ResourceData,
     diagram::{
@@ -37,10 +38,7 @@ use dal_test::{
         ChangeSetTestHelpers,
         attribute::value,
         change_set,
-        component::{
-            self,
-            ComponentKey,
-        },
+        component,
         create_component_for_default_schema_name_in_default_view,
         schema::variant,
     },
@@ -1318,9 +1316,10 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
         .await?,
     );
     change_set::commit(ctx).await?;
-    let runme = variant::create_management_func(
+    variant::create_management_func(
         ctx,
-        original_variant.id(),
+        "createme",
+        "runme",
         r#"
                 function main(input) {
                     return {
@@ -1339,7 +1338,7 @@ async fn upgrade_manager_variant(ctx: &mut DalContext) -> Result<()> {
 
     // Create manager component and run management function to create managed component
     let manager = original_variant.create_component_on_default_view(ctx).await;
-    component::execute_management_func(ctx, manager.id(), runme).await?;
+    component::execute_management_func(ctx, manager.id(), "runme").await?;
     let created = ExpectComponent::find(ctx, "created").await;
     assert_eq!(created.schema_variant(ctx).await, original_variant);
 
@@ -1519,25 +1518,14 @@ async fn component_incoming_connections_inferred_from_parent(ctx: DalContext) ->
 }
 
 #[test]
-async fn add_subscriptions(ctx: &mut DalContext) -> Result<()> {
-    variant::create(
+async fn create_and_subscribe_to_source(ctx: &mut DalContext) -> Result<()> {
+    create_subscription_tracker_asset(ctx).await?;
+
+    // Create management function to subscribe to the source component
+    variant::create_management_func(
         ctx,
-        "testy",
-        r#"
-            function main() {
-                return {
-                    props: [
-                        { name: "Value", kind: "string" },
-                        { name: "Sources", kind: "json" },
-                    ],
-                };
-            }
-        "#,
-    )
-    .await?;
-    let subscribe_to_source = variant::create_management_func(
-        ctx,
-        "testy",
+        "subscription_tracker",
+        "create_and_subscribe_to_source",
         r##"
             async function main({ thisComponent }: Input): Promise<Output> {
                 return {
@@ -1563,23 +1551,77 @@ async fn add_subscriptions(ctx: &mut DalContext) -> Result<()> {
         "##,
     )
     .await?;
-    let save_subscriptions = variant::create_management_func(
+
+    // Create source and manager manager components
+    component::create(ctx, "subscription_tracker", "source").await?;
+    value::set(ctx, ("source", "/domain/Value"), "value from source").await?;
+    component::create(ctx, "subscription_tracker", "manager").await?;
+    change_set::commit(ctx).await?;
+
+    // Use management function to subscribe source -> NewComponent -> manager
+    component::execute_management_func(ctx, "manager", "create_and_subscribe_to_source").await?;
+    change_set::commit(ctx).await?;
+    component::execute_management_func(ctx, "manager", "save_subscriptions").await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(
+        json!({
+            "Value": "value from source"
+        }),
+        component::domain(ctx, "source").await?,
+    );
+    assert_eq!(
+        json!({
+            "Value": "value from source",
+            "Sources": {
+                "/domain/Value": { "component": component::id(ctx, "NewComponent").await?, "path": "/domain/Value" }
+            }
+        }),
+        component::domain(ctx, "manager").await?,
+    );
+    assert_eq!(
+        json!({
+            "Value": "value from source",
+            "Sources": {
+                "/domain/Value": { "component": component::id(ctx, "source").await?, "path": "/domain/Value" }
+            }
+        }),
+        component::domain(ctx, "NewComponent").await?,
+    );
+
+    Ok(())
+}
+
+// create_and_subscribe_foo_to_bar, create_and_subscribe_bar_to_foo, and create_and_subscribe_foo_to_bar_reverse
+// are designed to make sure we can create two components and subscribe one to the other,
+// completely independent of of creation order:
+// - If foo_to_bar and foo_to_bar_reverse both succeed, we are independent of the order specified in JS
+// - If foo_to_bar and bar_to_foo both succeed, we are independent of the hash ordering (i.e.
+//   if we pull it into a HashMap<name, Component>, Foo and Bar would always appear in the same
+//   order)
+
+#[test]
+async fn create_and_subscribe_foo_to_bar(ctx: &mut DalContext) -> Result<()> {
+    create_subscription_tracker_asset(ctx).await?;
+
+    // Management function to create and subscribe Foo -> Bar
+    variant::create_management_func(
         ctx,
-        "testy",
+        "subscription_tracker",
+        "create_and_subscribe_foo_to_bar",
         r##"
-            async function main({ thisComponent, components }: Input): Promise<Output> {
+            async function main({ thisComponent }: Input): Promise<Output> {
                 return {
                     status: "ok",
                     ops: {
-                        update: {
-                            self: {
+                        create: {
+                            Bar: {
                                 attributes: {
-                                    "/domain/Sources": thisComponent.sources,
+                                    "/domain/Value": "value from Bar",
                                 }
                             },
-                            NewComponent: {
+                            Foo: {
                                 attributes: {
-                                    "/domain/Sources": Object.values(components)[0].sources,
+                                    "/domain/Value": { $source: { component: "Bar", path: "/domain/Value" } },
                                 }
                             }
                         }
@@ -1590,35 +1632,170 @@ async fn add_subscriptions(ctx: &mut DalContext) -> Result<()> {
     )
     .await?;
 
-    // Create source and target components
-    component::create(ctx, "testy", "source").await?;
-    value::set(ctx, ("source", "/domain/Value"), "value from source").await?;
-    component::create(ctx, "testy", "target").await?;
+    // Create manager component
+    component::create(ctx, "subscription_tracker", "manager").await?;
     change_set::commit(ctx).await?;
 
-    // Use management function to subscribe source -> NewComponent -> target
-    component::execute_management_func(ctx, "target", subscribe_to_source).await?;
+    // Use management function to create and subscribe Foo -> Bar
+    component::execute_management_func(ctx, "manager", "create_and_subscribe_foo_to_bar").await?;
+    component::execute_management_func(ctx, "manager", "save_subscriptions").await?;
     change_set::commit(ctx).await?;
     assert_eq!(
-        value::get(ctx, ("target", "/domain/Value")).await?,
-        "value from source"
+        json!({
+            "Sources": {}
+        }),
+        component::domain(ctx, "manager").await?,
+    );
+    assert_eq!(
+        json!({
+            "Value": "value from Bar",
+            "Sources": {
+                "/domain/Value": { "component": component::id(ctx, "Bar").await?, "path": "/domain/Value" }
+            }
+        }),
+        component::domain(ctx, "Foo").await?,
+    );
+    assert_eq!(
+        json!({
+            "Value": "value from Bar",
+            "Sources": {}
+        }),
+        component::domain(ctx, "Bar").await?,
     );
 
-    // Use management function to check existing subscriptions
-    component::execute_management_func(ctx, "target", save_subscriptions).await?;
-    let new_component_id = "NewComponent".lookup_component(ctx).await?;
-    let source_id = "source".lookup_component(ctx).await?;
+    Ok(())
+}
+
+#[test]
+async fn create_and_subscribe_bar_to_foo(ctx: &mut DalContext) -> Result<()> {
+    create_subscription_tracker_asset(ctx).await?;
+
+    // Management function to create and subscribe Bar -> Foo
+    variant::create_management_func(
+        ctx,
+        "subscription_tracker",
+        "create_and_subscribe_bar_to_foo",
+        r##"
+            async function main({ thisComponent }: Input): Promise<Output> {
+                return {
+                    status: "ok",
+                    ops: {
+                        create: {
+                            Foo: {
+                                attributes: {
+                                    "/domain/Value": "value from Foo",
+                                }
+                            },
+                            Bar: {
+                                attributes: {
+                                    "/domain/Value": { $source: { component: "Foo", path: "/domain/Value" } },
+                                }
+                            },
+                        }
+                    }
+                };
+            }
+        "##,
+    )
+    .await?;
+
+    // Create manager component
+    component::create(ctx, "subscription_tracker", "manager").await?;
+    change_set::commit(ctx).await?;
+
+    // Use management function to create and subscribe Bar -> Foo
+    component::execute_management_func(ctx, "manager", "create_and_subscribe_bar_to_foo").await?;
+    component::execute_management_func(ctx, "manager", "save_subscriptions").await?;
+    change_set::commit(ctx).await?;
     assert_eq!(
-        value::get(ctx, ("target", "/domain/Sources")).await?,
         json!({
-            "/domain/Value": { "component": new_component_id.to_string(), "path": "/domain/Value" }
-        })
+            "Sources": {}
+        }),
+        component::domain(ctx, "manager").await?,
     );
     assert_eq!(
-        value::get(ctx, ("NewComponent", "/domain/Sources")).await?,
         json!({
-            "/domain/Value": { "component": source_id.to_string(), "path": "/domain/Value" }
-        })
+            "Value": "value from Foo",
+            "Sources": {}
+        }),
+        component::domain(ctx, "Foo").await?,
+    );
+    assert_eq!(
+        json!({
+            "Value": "value from Foo",
+            "Sources": {
+                "/domain/Value": { "component": component::id(ctx, "Foo").await?, "path": "/domain/Value" }
+            }
+        }),
+        component::domain(ctx, "Bar").await?,
+    );
+
+    Ok(())
+}
+
+#[test]
+async fn create_and_subscribe_foo_to_bar_reverse(ctx: &mut DalContext) -> Result<()> {
+    create_subscription_tracker_asset(ctx).await?;
+
+    // Management function to create and subscribe Foo -> Bar
+    variant::create_management_func(
+        ctx,
+        "subscription_tracker",
+        "create_and_subscribe_foo_to_bar_reverse",
+        r##"
+            async function main({ thisComponent }: Input): Promise<Output> {
+                return {
+                    status: "ok",
+                    ops: {
+                        create: {
+                            Bar: {
+                                attributes: {
+                                    "/domain/Value": "value from Bar",
+                                }
+                            },
+                            Foo: {
+                                attributes: {
+                                    "/domain/Value": { $source: { component: "Bar", path: "/domain/Value" } },
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+        "##,
+    )
+    .await?;
+
+    // Create manager component
+    component::create(ctx, "subscription_tracker", "manager").await?;
+    change_set::commit(ctx).await?;
+
+    // Use management function to create and subscribe Foo -> Bar
+    component::execute_management_func(ctx, "manager", "create_and_subscribe_foo_to_bar_reverse")
+        .await?;
+    component::execute_management_func(ctx, "manager", "save_subscriptions").await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(
+        json!({
+            "Sources": {}
+        }),
+        component::domain(ctx, "manager").await?,
+    );
+    assert_eq!(
+        json!({
+            "Value": "value from Bar",
+            "Sources": {
+                "/domain/Value": { "component": component::id(ctx, "Bar").await?, "path": "/domain/Value" }
+            }
+        }),
+        component::domain(ctx, "Foo").await?,
+    );
+    assert_eq!(
+        json!({
+            "Value": "value from Bar",
+            "Sources": {}
+        }),
+        component::domain(ctx, "Bar").await?,
     );
 
     Ok(())
@@ -1707,7 +1884,8 @@ pub mod connection_test {
         // Management func that creates a new component connected to our input
         let create_output_and_copy_connection = variant::create_management_func(
             &ctx,
-            output.id(),
+            "output",
+            "create_output_and_copy_connection",
             r#"
                     async function main({ thisComponent }: Input): Promise<Output> {
                         let connect = [];
@@ -1741,7 +1919,8 @@ pub mod connection_test {
         .into();
 
         // Management func that creates a new component connected to our input
-        let remove_all_connections = variant::create_management_func(&ctx, output.id(),
+        let remove_all_connections = variant::create_management_func(&ctx, "output",
+        "remove_all_connections",
                 r#"
                     async function main({ components }: Input): Promise<Output> {
                         function updateComponent(component: Input["components"][string]) {
@@ -2018,4 +2197,57 @@ async fn management_execution_state_db_test(ctx: &mut DalContext) -> Result<()> 
     assert_eq!(new_pending, pending);
 
     Ok(())
+}
+
+/// Create a "subscription_tracker" component "
+async fn create_subscription_tracker_asset(ctx: &DalContext) -> Result<SchemaVariantId> {
+    let subscription_tracker = variant::create(
+        ctx,
+        "subscription_tracker",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        { name: "Value", kind: "string" },
+                        { name: "Sources", kind: "json" },
+                    ],
+                };
+            }
+        "#,
+    )
+    .await?;
+    variant::create_management_func(
+        ctx,
+        "subscription_tracker",
+        "save_subscriptions",
+        r##"
+            async function main({ thisComponent, components }: Input): Promise<Output> {
+                let component_sources = Object.fromEntries(Object.values(components).map(
+                    (component) => [
+                        component.properties.si.name,
+                        {
+                            attributes: {
+                                "/domain/Sources": component.sources,
+                            }
+                        }
+                    ]
+                ));
+                return {
+                    status: "ok",
+                    ops: {
+                        update: {
+                            self: {
+                                attributes: {
+                                    "/domain/Sources": thisComponent.sources,
+                                }
+                            },
+                            ...component_sources
+                        }
+                    }
+                };
+            }
+        "##,
+    )
+    .await?;
+    Ok(subscription_tracker)
 }

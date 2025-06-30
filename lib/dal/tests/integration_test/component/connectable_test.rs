@@ -30,8 +30,8 @@ use si_frontend_types::RawGeometry;
 #[derive(Debug, Clone, Copy)]
 pub struct ConnectableTest {
     pub connectable_variant_id: SchemaVariantId,
-    pub parent_variant_id: SchemaVariantId,
-    pub management_func_id: FuncId,
+    pub connectable_manager_variant_id: SchemaVariantId,
+    pub retrieve_managed_values_id: FuncId,
 }
 
 impl ConnectableTest {
@@ -71,7 +71,7 @@ impl ConnectableTest {
             "#,
         )
         .await?;
-        let parent_variant_id = variant::create(ctx,
+        let connectable_manager_variant_id = variant::create(ctx,
             "connectable manager",
             r#"
                 function main() {
@@ -90,13 +90,14 @@ impl ConnectableTest {
             "#,
         )
         .await?;
-        SchemaVariant::get_by_id(ctx, parent_variant_id)
+        SchemaVariant::get_by_id(ctx, connectable_manager_variant_id)
             .await?
             .set_type(ctx, ComponentType::ConfigurationFrameDown)
             .await?;
-        let management_func_id = variant::create_management_func(
+        let retrieve_managed_values_id = variant::create_management_func(
                 ctx,
-                parent_variant_id,
+                "connectable manager",
+                "retrieve_managed_values",
                 r#"
                     function main(input) {
                         let managed_values = Object.values(input.components).map(c => c.properties.domain.Value).sort();
@@ -120,8 +121,8 @@ impl ConnectableTest {
             .await?;
         Ok(Self {
             connectable_variant_id,
-            parent_variant_id,
-            management_func_id,
+            connectable_manager_variant_id,
+            retrieve_managed_values_id,
         })
     }
 
@@ -176,9 +177,11 @@ impl ConnectableTest {
     }
 
     pub async fn create_parent(self, ctx: &DalContext, name: &str) -> Result<Connectable> {
-        let component =
-            create_component_for_schema_variant_on_default_view(ctx, self.parent_variant_id)
-                .await?;
+        let component = create_component_for_schema_variant_on_default_view(
+            ctx,
+            self.connectable_manager_variant_id,
+        )
+        .await?;
         component.set_name(ctx, name).await?;
         update_attribute_value_for_component(
             ctx,
@@ -210,7 +213,7 @@ impl Connectable {
 
     pub async fn run_management_func(self, ctx: &mut DalContext) -> Result<Value> {
         ExpectComponent(self.id)
-            .execute_management_func(ctx, ExpectFunc(self.test.management_func_id))
+            .execute_management_func(ctx, ExpectFunc(self.test.retrieve_managed_values_id))
             .await;
         ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
         get_attribute_value_for_component(ctx, self.id, &["root", "domain", "ManagedValues"]).await
