@@ -295,14 +295,19 @@ async fn graceful_shutdown_signal(
 }
 
 mod handlers {
-    use std::result;
+    use std::{
+        result,
+        sync::Arc,
+    };
 
     use dal::{
         ChangeSet,
         ChangeSetId,
         DalContext,
         WorkspacePk,
+        WorkspaceSnapshot,
         WorkspaceSnapshotAddress,
+        WorkspaceSnapshotError,
     };
     use frigg::FriggStore;
     use naxum::{
@@ -528,16 +533,38 @@ mod handlers {
                         Some((pointer, _kv_revision)) => Some(pointer.index_checksum),
                         None => None,
                     };
-                    materialized_view::build_all_mv_for_change_set(
-                        ctx,
-                        frigg,
-                        edda_updates,
-                        parallel_build_limit,
-                        latest_index_checksum,
-                        "snapshot moved",
-                    )
-                    .await
-                    .map_err(Into::into)
+                    match WorkspaceSnapshot::find(ctx, to_snapshot_address).await {
+                        // The snapshot is still available, so we can build the MVs for the changes
+                        Ok(workspace_snapshot) => {
+                            let mut ctx_with_old_snapshot = ctx.clone();
+                            ctx_with_old_snapshot.set_workspace_snapshot(Arc::new(workspace_snapshot));
+
+                            process_incremental_updates(
+                                &ctx_with_old_snapshot,
+                                frigg,
+                                edda_updates,
+                                parallel_build_limit,
+                                change_set_id,
+                                from_snapshot_address,
+                                to_snapshot_address,
+                                change_batch_addresses,
+                            ).await
+                        }
+                        // It was probably GCed. Fall back to a full rebuild.
+                        Err(WorkspaceSnapshotError::WorkspaceSnapshotGraphMissing(_)) => {
+                            materialized_view::build_all_mv_for_change_set(
+                                ctx,
+                                frigg,
+                                edda_updates,
+                                parallel_build_limit,
+                                latest_index_checksum,
+                                "snapshot not available",
+                            )
+                            .await
+                            .map_err(Into::into)
+                        }
+                        Err(e) => Err(e.into()),
+                    }
                 }
                 // Index does not exist???
                 else {
