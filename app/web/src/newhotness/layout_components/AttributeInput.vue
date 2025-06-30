@@ -121,8 +121,8 @@
             v-if="props.externalSources && props.externalSources.length > 0"
             v-tooltip="
               props.isSecret
-                ? 'Remove subscription to Secret'
-                : 'Remove subscription'
+                ? 'Remove connection to Secret'
+                : 'Remove connection'
             "
             name="x"
             size="sm"
