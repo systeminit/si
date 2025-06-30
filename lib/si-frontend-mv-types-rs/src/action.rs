@@ -71,6 +71,7 @@ pub struct ActionView {
 #[mv(
     trigger_entity = EntityKind::CategoryAction,
     reference_kind = ReferenceKind::ActionViewList,
+    build_priority = "List",
 )]
 pub struct ActionViewList {
     pub id: WorkspacePk,

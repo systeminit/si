@@ -8407,6 +8407,7 @@ dependencies = [
  "manyhow",
  "proc-macro2",
  "quote",
+ "si-events",
  "syn 2.0.103",
 ]
 

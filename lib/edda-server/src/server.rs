@@ -161,6 +161,7 @@ impl Server {
             config.instance_id().to_string(),
             config.concurrency_limit(),
             config.parallel_build_limit(),
+            config.streaming_patches(),
             services_context,
             config.quiescent_period(),
             shutdown_token,
@@ -174,6 +175,7 @@ impl Server {
         instance_id: impl Into<String>,
         concurrency_limit: Option<usize>,
         parallel_build_limit: usize,
+        streaming_patches: bool,
         services_context: ServicesContext,
         quiescent_period: Duration,
         shutdown_token: CancellationToken,
@@ -200,8 +202,11 @@ impl Server {
 
         let frigg = FriggStore::new(nats.clone(), frigg_kv(&context, prefix.as_deref()).await?);
 
-        let edda_updates =
-            EddaUpdates::new(nats.clone(), services_context.compute_executor().clone());
+        let edda_updates = EddaUpdates::new(
+            nats.clone(),
+            services_context.compute_executor().clone(),
+            streaming_patches,
+        );
 
         let ctx_builder = DalContext::builder(services_context, false);
 

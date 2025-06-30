@@ -67,6 +67,9 @@ pub struct Config {
     #[builder(default = "default_parallel_build_limit()")]
     parallel_build_limit: usize,
 
+    #[builder(default = "default_streaming_patches()")]
+    streaming_patches: bool,
+
     #[builder(default = "PgPoolConfig::default()")]
     pg_pool: PgPoolConfig,
 
@@ -99,6 +102,11 @@ impl Config {
     /// Gets the config's parallel build limit.
     pub fn parallel_build_limit(&self) -> usize {
         self.parallel_build_limit
+    }
+
+    /// Gets whether edda should stream patches, or send as a single batch.
+    pub fn streaming_patches(&self) -> bool {
+        self.streaming_patches
     }
 
     /// Gets the config's instance ID.
@@ -157,6 +165,8 @@ pub struct ConfigFile {
     edda_concurrency_limit: Option<usize>,
     #[serde(default = "default_parallel_build_limit")]
     edda_parallel_build_limit: usize,
+    #[serde(default = "default_streaming_patches")]
+    streaming_patches: bool,
     #[serde(default)]
     pg: PgPoolConfig,
     #[serde(default)]
@@ -177,6 +187,7 @@ impl Default for ConfigFile {
             instance_id: random_instance_id(),
             edda_concurrency_limit: default_concurrency_limit(),
             edda_parallel_build_limit: default_parallel_build_limit(),
+            streaming_patches: default_streaming_patches(),
             pg: Default::default(),
             nats: Default::default(),
             crypto: Default::default(),
@@ -204,6 +215,7 @@ impl TryFrom<ConfigFile> for Config {
         config.symmetric_crypto_service(value.symmetric_crypto_service.try_into()?);
         config.layer_db_config(value.layer_db_config);
         config.concurrency_limit(value.edda_concurrency_limit);
+        config.streaming_patches(value.streaming_patches);
         config.parallel_build_limit(value.edda_parallel_build_limit);
         config.instance_id(value.instance_id);
         config.quiescent_period(Duration::from_secs(value.quiescent_period_secs));
@@ -221,6 +233,10 @@ fn default_concurrency_limit() -> Option<usize> {
 
 fn default_parallel_build_limit() -> usize {
     DEFAULT_PARALLEL_BUILD_LIMIT
+}
+
+fn default_streaming_patches() -> bool {
+    false
 }
 
 fn default_symmetric_crypto_config() -> SymmetricCryptoServiceConfigFile {

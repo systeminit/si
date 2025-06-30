@@ -10,6 +10,7 @@ cargo_test(
 rust_library(
     name = "si-frontend-mv-types-macros",
     deps = [
+        "//lib/si-events-rs:si-events",
         "//third-party/rust:darling",
         "//third-party/rust:manyhow",
         "//third-party/rust:proc-macro2",

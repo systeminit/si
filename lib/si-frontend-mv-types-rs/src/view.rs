@@ -45,6 +45,7 @@ pub struct View {
 #[mv(
     trigger_entity = EntityKind::CategoryView,
     reference_kind = ReferenceKind::ViewList,
+    build_priority = "List",
 )]
 pub struct ViewList {
     pub id: WorkspacePk,
@@ -65,6 +66,7 @@ pub struct ViewList {
 #[mv(
     trigger_entity = EntityKind::View,
     reference_kind = ReferenceKind::ViewComponentList,
+    build_priority = "List",
 )]
 pub struct ViewComponentList {
     pub id: ViewId,
