@@ -81,7 +81,9 @@
         :label="option.label"
         :checkable="checkable"
         :checked="option.value === modelValue"
-        :enableSecondaryAction="enableSecondaryAction"
+        :enableSecondaryAction="
+          enableSecondaryAction && enableSecondaryAction(option)
+        "
         :secondaryActionIcon="secondaryActionIcon"
         @secondaryAction="secondaryAction(option)"
         @select="selectOption(option)"
@@ -128,7 +130,7 @@ const props = defineProps({
   minWidthToAnchor: { type: Boolean },
   noBorder: { type: Boolean },
   alignRightOnAnchor: { type: Boolean },
-  enableSecondaryAction: { type: Boolean },
+  enableSecondaryAction: { type: Function },
   secondaryActionIcon: { type: String as PropType<IconNames> },
   alwaysShowPlaceholder: { type: Boolean },
   highlightWhenModelValue: { type: Boolean },

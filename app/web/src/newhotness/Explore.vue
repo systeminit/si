@@ -14,7 +14,7 @@
           minWidthToAnchor
           placeholder="All Views"
           checkable
-          enableSecondaryAction
+          :enableSecondaryAction="() => true"
           @secondaryAction="openEditViewModal"
           @update:modelValue="(val) => (selectedView = val)"
         >

@@ -16,7 +16,7 @@
         placeholder="-- select a change set --"
         checkable
         variant="navbar"
-        :enableSecondaryAction="enableChangesetRename"
+        :enableSecondaryAction="calculateShowSecondaryAction"
         secondaryActionIcon="edit2"
         @select="onSelectChangeSet"
         @secondaryAction="openRenameModal"
@@ -147,9 +147,16 @@ const selectedChangeSetName = computed(
 const dropdownMenuRef = ref<InstanceType<typeof DropdownMenuButton>>();
 
 const changeSetDropdownOptions = computed(() => [
-  ..._.map(openChangeSets.value, (cs) => ({ value: cs.id, label: cs.name })),
+  ..._.map(openChangeSets.value, (cs) => ({
+    value: cs.id,
+    label: cs.name,
+  })),
   // { value: "NEW", label: "+ Create new change set" },
 ]);
+
+const calculateShowSecondaryAction = (option: { label: string }) => {
+  return option.label.toUpperCase() !== "HEAD";
+};
 
 const changeSetSearchFilteredOptions = computed(() => {
   const searchString = dropdownMenuRef.value?.searchString;
