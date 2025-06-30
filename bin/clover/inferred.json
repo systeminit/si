@@ -5578,6 +5578,9 @@
   "Indicates whether AppMonitor accepts custom events.": {
     "enum": null
   },
+  "Indicates whether CDC is enabled or disabled for the table": {
+    "enum": null
+  },
   "Indicates whether IMDSv2 is required.": {
     "enum": null
   },
@@ -7268,6 +7271,9 @@
     "enum": null
   },
   "Specifies what DataSync uses the manifest for.": {
+    "enum": null
+  },
+  "Specifies what data should be captured in the change data stream": {
     "enum": null
   },
   "Specifies whether IAM Identity Center user assignment is REQUIRED or OPTIONAL. If the value is set to REQUIRED, users must be explicitly assigned to the Studio application to access the Studio.": {
