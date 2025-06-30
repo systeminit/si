@@ -570,6 +570,7 @@ const groupedComponents = computed(() => {
       "Failed qualifications": [],
       Warnings: [],
       "Passed qualifications": [],
+      "Unknown qualification status": [],
     };
     for (const component of components) {
       const title = getQualificationStatusTitle(component);
@@ -1098,12 +1099,14 @@ watch([groupBySelection], () => {
 const getQualificationStatusTitle = (component: ComponentInList) => {
   const status = getQualificationStatus(component);
   switch (status) {
+    case "success":
+      return "Passed qualifications";
     case "failure":
       return "Failed qualifications";
     case "warning":
       return "Warnings";
     default:
-      return "Passed qualifications";
+      return "Unknown qualification status";
   }
 };
 
