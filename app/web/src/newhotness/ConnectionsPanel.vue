@@ -74,15 +74,17 @@ const componentConnectionsQuery = useQuery<IncomingConnections | null>({
   },
 });
 
-const outgoingQuery = useQuery<Connection[]>({
+const myOutgoing = computed<Connection[]>(() => {
+  if (!outgoingQuery.data.value) return [];
+
+  const mine = outgoingQuery.data.value.get(props.component.id);
+  if (!mine) return [];
+  return Object.values(mine);
+});
+const outgoingQuery = useQuery({
   queryKey: key(EntityKind.OutgoingConnections),
   queryFn: async () => {
-    const byComponents = await getOutgoingConnections(
-      args(EntityKind.OutgoingConnections),
-    );
-    const mine = byComponents.get(props.component.id);
-    if (!mine) return [];
-    return Object.values(mine);
+    return await getOutgoingConnections(args(EntityKind.OutgoingConnections));
   },
 });
 
@@ -123,8 +125,7 @@ const incoming = computed(
 );
 
 const outgoing = computed<SimpleConnection[]>(() => {
-  const outgoing = outgoingQuery.data?.value ?? [];
-  return outgoing.map((conn) => {
+  return myOutgoing.value.map((conn) => {
     if (conn.kind === "management") {
       return {
         key: `mgmt-${conn.toComponentId}-${conn.fromComponentId}`,

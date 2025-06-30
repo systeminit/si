@@ -17,11 +17,13 @@ import { ComponentInfo } from "./dbinterface";
 export enum EntityKind {
   Component = "Component",
   ComponentInList = "ComponentInList",
+  ComponentDetails = "ComponentDetails",
   View = "View",
   ViewList = "ViewList",
   ComponentList = "ComponentList",
   ViewComponentList = "ViewComponentList",
   IncomingConnections = "IncomingConnections",
+  ManagementConnections = "ManagementConnections",
   IncomingConnectionsList = "IncomingConnectionsList",
   SchemaVariantCategories = "SchemaVariantCategories",
   SchemaVariant = "SchemaVariant",
@@ -32,8 +34,8 @@ export enum EntityKind {
   AttributeTree = "AttributeTree",
   PossibleConnections = "PossibleConnections",
   OutgoingConnections = "OutgoingConnections",
+  IncomingManagementConnections = "IncomingManagementConnections",
   OutgoingCounts = "OutgoingCounts",
-  ComponentDetails = "ComponentDetails",
 }
 
 /**
@@ -382,6 +384,12 @@ export interface AttributeTree {
 export interface IncomingConnectionsList {
   id: ChangeSetId;
   componentConnections: WeakReference<EntityKind.IncomingConnections>[];
+}
+
+// NOTE: these are OUTGOING
+export interface ManagementConnections {
+  id: ComponentId;
+  connections: Connection[];
 }
 
 export interface IncomingConnections {

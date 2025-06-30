@@ -45,6 +45,7 @@ pub enum ReferenceKind {
     ComponentList,
     IncomingConnections,
     IncomingConnectionsList,
+    ManagementConnections,
     MvIndex,
     SchemaMembers,
     SchemaVariant,

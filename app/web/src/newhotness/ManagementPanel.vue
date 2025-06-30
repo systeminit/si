@@ -13,6 +13,7 @@
       />
     </ul>
     <ManagementConnectionsList
+      v-if="incoming.length > 0"
       :edges="incoming"
       titleText="Managed By Components"
     />
@@ -32,14 +33,14 @@ import { computed, PropType } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
 import {
-  IncomingConnections,
   Connection,
   EntityKind,
   BifrostComponent,
+  ManagementConnections,
 } from "@/workers/types/entity_kind_types";
 import {
   bifrost,
-  getOutgoingConnections,
+  getIncomingManagement,
   useMakeArgs,
   useMakeKey,
 } from "@/store/realtime/heimdall";
@@ -51,7 +52,6 @@ import ManagementConnectionsList from "./ManagementConnectionsList.vue";
 const props = defineProps({
   component: { type: Object as PropType<BifrostComponent> },
   latestFuncRuns: { type: Object as PropType<Record<string, FuncRun>> },
-  connections: { type: Object as PropType<IncomingConnections> },
 });
 
 const mgmtFuncs = computed(
@@ -62,80 +62,72 @@ const key = useMakeKey();
 const args = useMakeArgs();
 
 const componentId = computed(() => props.component?.id);
-const enableLookup = computed(
-  () => !(props.connections && "id" in props.connections),
-);
 
-const componentConnectionsQuery = useQuery<IncomingConnections | null>({
-  enabled: enableLookup,
-  queryKey: key(EntityKind.IncomingConnections, componentId.value),
+const mgmtConnectionsQuery = useQuery<ManagementConnections | null>({
+  queryKey: key(EntityKind.ManagementConnections, componentId.value),
   queryFn: async () => {
-    const componentConnections = await bifrost<IncomingConnections>(
-      args(EntityKind.IncomingConnections, componentId.value),
+    return await bifrost<ManagementConnections>(
+      args(EntityKind.ManagementConnections, componentId.value),
     );
-    return componentConnections;
   },
 });
 
-const outgoingQuery = useQuery<Connection[]>({
-  queryKey: key(EntityKind.OutgoingConnections),
+const myIncoming = computed<Connection[]>(() => {
+  if (!incomingQuery.data.value || !componentId.value) return [];
+
+  const mine = incomingQuery.data.value.get(componentId.value);
+  if (!mine) return [];
+  return Object.values(mine);
+});
+
+const incomingQuery = useQuery({
+  queryKey: key(EntityKind.IncomingManagementConnections),
   queryFn: async () => {
-    const byComponents = await getOutgoingConnections(
-      args(EntityKind.OutgoingConnections),
+    const inc = await getIncomingManagement(
+      args(EntityKind.IncomingManagementConnections),
     );
-    if (!componentId.value) return [];
-    const mine = byComponents.get(componentId.value);
-    if (!mine) return [];
-    return Object.values(mine);
+    return inc;
   },
 });
 
-const componentConnections = computed(() => {
-  if (enableLookup.value && componentConnectionsQuery.data.value) {
-    const { connections: incoming } = componentConnectionsQuery.data.value;
-    return { incoming };
-  } else if (props.connections) {
-    const { connections: incoming } = props.connections;
-    return { incoming };
+const mgmtConnections = computed(() => {
+  if (mgmtConnectionsQuery.data.value) {
+    const { connections: outgoing } = mgmtConnectionsQuery.data.value;
+    return { outgoing };
   } else {
     return {
-      incoming: [] as Connection[],
+      outgoing: [] as Connection[],
     };
   }
 });
 
-const incoming = computed(
+const outgoing = computed(
   () =>
-    componentConnections.value.incoming
-      .filter((conn) => conn.kind === "management") // && conn.fromComponentId !== componentId.value
-      .map((conn) => {
-        return {
-          key: `mgmt-${conn.toComponentId}-${conn.fromComponentId}`,
-          componentId: conn.fromComponentId,
-          self: "Management",
-          other: "-",
-        };
-      }) ?? ([] as SimpleConnection[]),
-);
-
-const outgoing = computed<SimpleConnection[]>(() => {
-  const outgoing = outgoingQuery.data?.value ?? [];
-  return outgoing
-    .filter((conn) => conn.kind === "management")
-    .map((conn) => {
+    mgmtConnections.value.outgoing.map((conn) => {
       return {
         key: `mgmt-${conn.toComponentId}-${conn.fromComponentId}`,
-        componentId: conn.fromComponentId,
+        componentId: conn.toComponentId,
         self: "Management",
         other: "-",
       };
-    });
+    }) ?? ([] as SimpleConnection[]),
+);
+
+const incoming = computed<SimpleConnection[]>(() => {
+  return myIncoming.value.map((conn) => {
+    return {
+      key: `mgmt-${conn.toComponentId}-${conn.fromComponentId}`,
+      componentId: conn.toComponentId,
+      self: "Management",
+      other: "-",
+    };
+  });
 });
 
 const managementData = computed(
   () =>
     mgmtFuncs.value.length > 0 ||
-    incoming.value.length > 0 ||
+    // incoming.value.length > 0 ||
     outgoing.value.length > 0,
 );
 </script>

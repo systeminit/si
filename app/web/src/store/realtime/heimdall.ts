@@ -437,6 +437,20 @@ export const getOutgoingConnections = async (args: {
   return new DefaultMap<string, Record<string, Connection>>(() => ({}));
 };
 
+export const getIncomingManagement = async (args: {
+  workspaceId: string;
+  changeSetId: ChangeSetId;
+}) => {
+  if (!initCompleted.value) throw new Error("You must wait for initialization");
+
+  const connectionsById = await db.getIncomingManagementByComponentId(
+    args.workspaceId,
+    args.changeSetId,
+  );
+  if (connectionsById) return reactive(connectionsById);
+  return new DefaultMap<string, Record<string, Connection>>(() => ({}));
+};
+
 const waitForInitCompletion = (): Promise<void> => {
   return new Promise((resolve) => {
     if (initCompleted.value) {
