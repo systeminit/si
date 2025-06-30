@@ -1,6 +1,5 @@
 <template>
   <ul
-    v-if="edges.length > 0"
     :class="
       clsx(
         'flex flex-col gap-xs rounded border [&>li]:px-xs py-xs',
@@ -9,6 +8,7 @@
     "
   >
     <li
+      v-if="edges.length > 0"
       :class="
         clsx(
           'text-lg font-bold border-b',
@@ -18,17 +18,20 @@
     >
       {{ titleText }}
     </li>
+
     <ManagementConnectionInput
       v-if="selectComponent && parentComponentId"
       :existingEdges="edges"
       :parentComponentName="parentComponentName ?? 'this component'"
       :parentComponentId="parentComponentId"
     />
-    <ManagementConnectionCard
-      v-for="edge in edges"
-      :key="edge.key"
-      :componentId="edge.componentId"
-    />
+    <template v-if="edges.length > 0">
+      <ManagementConnectionCard
+        v-for="edge in edges"
+        :key="edge.key"
+        :componentId="edge.componentId"
+      />
+    </template>
   </ul>
 </template>
 

@@ -41,7 +41,7 @@ pub async fn assemble_in_list(
     let color = Component::color_by_id(ctx, component_id).await?;
 
     let attribute_tree = attribute_tree::assemble(ctx.to_owned(), component_id).await?;
-    let mut input_count = attribute_tree
+    let input_count = attribute_tree
         .attribute_values
         .values()
         .filter(|value| match value.external_sources.as_ref() {
@@ -49,7 +49,6 @@ pub async fn assemble_in_list(
             None => false,
         })
         .count();
-    input_count += Component::managers_by_id(ctx, component_id).await?.len();
 
     Ok(ComponentInListMv {
         id: component_id,
@@ -102,7 +101,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
     // NOTE(nick): I think having both null and empty external sources may lead to a path of pain
     // and despair. Given that we're solely concerned with the input count though, now is not the
     // time to refactor that.
-    let mut input_count = attribute_tree
+    let input_count = attribute_tree
         .attribute_values
         .values()
         .filter(|value| match value.external_sources.as_ref() {
@@ -110,7 +109,6 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
             None => false,
         })
         .count();
-    input_count += Component::managers_by_id(ctx, component_id).await?.len();
 
     Ok(ComponentMv {
         id: component_id,

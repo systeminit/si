@@ -138,7 +138,6 @@
           <ManagementPanel
             :component="component"
             :latestFuncRuns="latestFuncRuns"
-            :connections="componentConnections ?? undefined"
           />
         </CollapsingFlexItem>
       </div>

@@ -14,6 +14,7 @@ use dal::{
 use si_frontend_mv_types::incoming_connections::{
     Connection,
     IncomingConnections as IncomingConnectionsMv,
+    ManagementConnections as ManagementConnectionsMv,
 };
 use si_id::ComponentId;
 use telemetry::prelude::*;
@@ -30,10 +31,30 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> Result<Inco
 
     let mut connections = Vec::new();
     connections.extend(prop_to_prop(ctx, component_id).await?);
-    connections.extend(management(ctx, component_id).await?);
     connections.sort();
 
     Ok(IncomingConnectionsMv {
+        id: component_id,
+        connections,
+    })
+}
+
+#[instrument(
+    name = "dal_materialized_views.outgoing_mgmt_connections",
+    level = "debug",
+    skip_all
+)]
+pub async fn assemble_management(
+    ctx: DalContext,
+    component_id: ComponentId,
+) -> Result<ManagementConnectionsMv> {
+    let ctx = &ctx;
+
+    let mut connections = Vec::new();
+    connections.extend(management(ctx, component_id).await?);
+    connections.sort();
+
+    Ok(ManagementConnectionsMv {
         id: component_id,
         connections,
     })

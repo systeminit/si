@@ -66,9 +66,22 @@ pub struct IncomingConnections {
 )]
 #[serde(rename_all = "camelCase")]
 #[mv(
-    trigger_entity = EntityKind::CategoryComponent,
-    reference_kind = ReferenceKind::IncomingConnectionsList,
-    build_priority = "List",
+    trigger_entity = EntityKind::Component,
+    reference_kind = ReferenceKind::ManagementConnections,
+)]
+pub struct ManagementConnections {
+    pub id: ComponentId,
+    pub connections: Vec<Connection>,
+}
+
+#[derive(
+    Clone, Debug, Deserialize, Eq, PartialEq, Serialize, FrontendChecksum, FrontendObject, Refer, MV,
+)]
+#[serde(rename_all = "camelCase")]
+#[mv(
+  trigger_entity = EntityKind::CategoryComponent,
+  reference_kind = ReferenceKind::IncomingConnectionsList,
+  build_priority = "List",
 )]
 pub struct IncomingConnectionsList {
     pub id: WorkspacePk,

@@ -47,6 +47,7 @@ use si_frontend_mv_types::{
     incoming_connections::{
         IncomingConnections as IncomingConnectionsMv,
         IncomingConnectionsList as IncomingConnectionsListMv,
+        ManagementConnections as ManagementConnectionsMv,
     },
     index::MvIndex,
     materialized_view::{
@@ -905,6 +906,22 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 entity_mv_id,
                 IncomingConnectionsMv,
                 dal_materialized_views::incoming_connections::assemble(
+                    ctx.clone(),
+                    si_events::ulid::Ulid::from(change.entity_id).into(),
+                ),
+            );
+        }
+        ReferenceKind::ManagementConnections => {
+            let entity_mv_id = change.entity_id.to_string();
+
+            spawn_build_mv_task!(
+                build_tasks,
+                ctx,
+                frigg,
+                change,
+                entity_mv_id,
+                ManagementConnectionsMv,
+                dal_materialized_views::incoming_connections::assemble_management(
                     ctx.clone(),
                     si_events::ulid::Ulid::from(change.entity_id).into(),
                 ),

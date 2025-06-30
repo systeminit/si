@@ -75,6 +75,7 @@ import {
   SchemaVariant,
   UninstalledVariant,
   AttributeTree,
+  ManagementConnections,
 } from "./types/entity_kind_types";
 import {
   bulkDone,
@@ -1757,6 +1758,7 @@ const weakReference = (
 const COMPUTED_KINDS: EntityKind[] = [
   EntityKind.AttributeTree,
   EntityKind.IncomingConnections,
+  EntityKind.ManagementConnections,
   EntityKind.Component,
 ];
 
@@ -1767,6 +1769,12 @@ const allPossibleConns = new DefaultMap<
 
 // the `string` is `${toAttributeValueId}-${fromAttributeValueId}`
 const allOutgoingConns = new DefaultMap<
+  ChangeSetId,
+  DefaultMap<ComponentId, Record<string, Connection>>
+>(() => new DefaultMap(() => ({})));
+
+// the `string` is `${toComponentId}-${fromComponentId}`
+const allIncomingMgmt = new DefaultMap<
   ChangeSetId,
   DefaultMap<ComponentId, Record<string, Connection>>
 >(() => new DefaultMap(() => ({})));
@@ -1827,19 +1835,17 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
   );
 
   const listData = JSON.parse(list) as IncomingConnections[];
-  await Promise.all(
-    listData.flatMap((c) =>
-      postProcess(
-        workspaceId,
-        changeSetId,
-        EntityKind.IncomingConnections,
-        c,
-        c.id,
-        undefined,
-        false,
-        false,
-        false,
-      ),
+  listData.flatMap((c) =>
+    postProcess(
+      workspaceId,
+      changeSetId,
+      EntityKind.IncomingConnections,
+      c,
+      c.id,
+      undefined,
+      false,
+      false,
+      false,
     ),
   );
   // bust everything all at once on cold start
@@ -1847,6 +1853,52 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     workspaceId,
     changeSetId,
     EntityKind.OutgoingConnections,
+    workspaceId,
+    true,
+    true,
+  );
+
+  const mgmtSql = `
+    select
+      data
+    from
+      atoms
+      inner join index_mtm_atoms mtm
+        ON atoms.kind = mtm.kind AND atoms.args = mtm.args AND atoms.checksum = mtm.checksum
+      inner join indexes ON mtm.index_checksum = indexes.checksum
+      inner join changesets ON changesets.index_checksum = indexes.checksum
+    where
+      changesets.change_set_id = ?
+      AND atoms.kind = ?
+    ;`;
+  const mgmtBind = [changeSetId, EntityKind.ManagementConnections];
+  const mgmtEdges = db.exec({
+    sql: mgmtSql,
+    bind: mgmtBind,
+    returnValue: "resultRows",
+  });
+
+  mgmtEdges.map((tree) => {
+    const doc = decodeDocumentFromDB(
+      tree[0] as ArrayBuffer,
+    ) as ManagementConnections;
+    return postProcess(
+      workspaceId,
+      changeSetId,
+      EntityKind.ManagementConnections,
+      doc,
+      doc.id,
+      undefined,
+      false,
+      false,
+      false,
+    );
+  });
+
+  bustCacheAndReferences(
+    workspaceId,
+    changeSetId,
+    EntityKind.IncomingManagementConnections,
     workspaceId,
     true,
     true,
@@ -1944,6 +1996,42 @@ const postProcess = (
         workspaceId,
       );
     }
+  } else if (kind === EntityKind.ManagementConnections) {
+    // these are OUTGOING connections
+    const data = doc as ManagementConnections;
+    if (removed) {
+      // delete the outgoing conns for the deleted component
+      const conns = allIncomingMgmt.get(changeSetId);
+      conns.delete(id);
+      for (const componentId of conns.keys()) {
+        const outgoing = conns.get(componentId);
+        Object.entries(outgoing).forEach(([outgoingId, conn]) => {
+          if (conn.toComponentId === id) {
+            delete outgoing[outgoingId];
+          }
+        });
+      }
+    } else {
+      data.connections.forEach((outgoing) => {
+        if (outgoing.kind !== "prop") {
+          const id = `${outgoing.toComponentId}-${outgoing.fromComponentId}`;
+          const incoming = flip(outgoing);
+          const conns = allIncomingMgmt
+            .get(changeSetId)
+            .get(outgoing.toComponentId);
+          conns[id] = incoming;
+        }
+      });
+    }
+
+    if (bust) {
+      bustCacheFn(
+        workspaceId,
+        changeSetId,
+        EntityKind.IncomingManagementConnections,
+        workspaceId,
+      );
+    }
   } else if (kind === EntityKind.IncomingConnections) {
     const data = doc as IncomingConnections;
 
@@ -1962,15 +2050,14 @@ const postProcess = (
       }
     } else {
       data.connections.forEach((incoming) => {
-        const id =
-          incoming.kind === "management"
-            ? `mgmt-${incoming.toComponentId}-${incoming.fromComponentId}`
-            : `${incoming.toAttributeValueId}-${incoming.fromAttributeValueId}`;
-        const outgoing = flip(incoming);
-        const conns = allOutgoingConns
-          .get(changeSetId)
-          .get(incoming.fromComponentId);
-        conns[id] = outgoing;
+        if (incoming.kind !== "management") {
+          const id = `${incoming.toAttributeValueId}-${incoming.fromAttributeValueId}`;
+          const outgoing = flip(incoming);
+          const conns = allOutgoingConns
+            .get(changeSetId)
+            .get(incoming.fromComponentId);
+          conns[id] = outgoing;
+        }
       });
     }
     if (bust) {
@@ -2105,6 +2192,13 @@ const getOutgoingConnectionsCounts = (
     counts[componentId] = Object.values(conns).length;
   });
   return counts;
+};
+
+const getIncomingManagementByComponentId = (
+  _workspaceId: string,
+  changeSetId: string,
+) => {
+  return allIncomingMgmt.get(changeSetId);
 };
 
 const getComponentDetails = (
@@ -2976,6 +3070,7 @@ const dbInterface: TabDBInterface = {
   getList,
   getOutgoingConnectionsByComponentId,
   getOutgoingConnectionsCounts,
+  getIncomingManagementByComponentId,
   getComponentDetails,
   getSchemaMembers,
   getPossibleConnections,

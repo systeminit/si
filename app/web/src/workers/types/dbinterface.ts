@@ -36,6 +36,11 @@ export type OutgoingConnections = DefaultMap<
   Record<string, Connection>
 >;
 
+export type IncomingManagementConnections = DefaultMap<
+  string,
+  Record<string, Connection>
+>;
+
 export type UpdateFn = (
   workspaceId: string,
   changeSetId: string,
@@ -135,6 +140,10 @@ export interface SharedDBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): Promise<OutgoingConnections | undefined>;
+  getIncomingManagementByComponentId(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): Promise<IncomingManagementConnections | undefined>;
   getOutgoingConnectionsCounts(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -218,6 +227,10 @@ export interface TabDBInterface {
     workspaceId: string,
     changeSetId: ChangeSetId,
   ): OutgoingConnections;
+  getIncomingManagementByComponentId(
+    workspaceId: string,
+    changeSetId: ChangeSetId,
+  ): IncomingManagementConnections;
   getOutgoingConnectionsCounts(
     workspaceId: string,
     changeSetId: ChangeSetId,

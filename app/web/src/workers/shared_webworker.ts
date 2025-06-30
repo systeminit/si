@@ -167,6 +167,19 @@ const dbInterface: SharedDBInterface = {
     );
   },
 
+  async getIncomingManagementByComponentId(
+    workspaceId: string,
+    changeSetId: string,
+  ) {
+    return await withRemote(
+      async (remote) =>
+        await remote.getIncomingManagementByComponentId(
+          workspaceId,
+          changeSetId,
+        ),
+    );
+  },
+
   async get(
     workspaceId: string,
     changeSetId: string,
