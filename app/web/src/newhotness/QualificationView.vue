@@ -19,7 +19,7 @@
           {{ qualification.message }}
         </template>
         <template v-else>
-          The qualification has not yet ran or is actively running. Standby...
+          The qualification has not yet ran or is actively running.
         </template>
       </StatusMessageBox>
 

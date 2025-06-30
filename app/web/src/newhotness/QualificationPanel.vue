@@ -21,7 +21,7 @@ import { AttributeValueId } from "@/store/status.store";
 import { ValidationOutputStatus } from "@/api/sdf/dal/property_editor";
 import { findAvsAtPropPath } from "./util";
 
-export type QualificationStatus = "success" | "failure" | "warning";
+export type QualificationStatus = "success" | "failure" | "warning" | "unknown";
 
 export interface Qualification {
   name?: string;

@@ -80,6 +80,15 @@
       </div>
       <div>
         <div class="keys">
+          <div class="key">P</div>
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">P</TextPill> to pin or unpin the
+          selected component.
+        </div>
+      </div>
+      <div>
+        <div class="keys">
           <Icon name="backspace" />
         </div>
         <div>

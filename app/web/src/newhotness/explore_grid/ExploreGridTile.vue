@@ -45,79 +45,8 @@
       class="[&>li]:p-xs [&>li]:flex [&>li]:flex-row [&>li]:items-center [&>li]:gap-xs [&>li]:h-9 [&_.pillcounter]:w-5 [&_.pillcounter]:h-5"
     >
       <li>
-        <StatusIndicatorIcon
-          type="qualification"
-          size="sm"
-          :status="qualificationStatus"
-        />
-        <div>Qualifications</div>
-        <TextPill
-          v-if="
-            component.qualificationTotals.failed === 0 &&
-            component.qualificationTotals.warned === 0 &&
-            component.qualificationTotals.succeeded === 0
-          "
-          tighter
-          :class="
-            clsx(
-              'text-xs ml-auto',
-              themeClasses(
-                'border-neutral-500 bg-neutral-100 text-black',
-                'border-neutral-600 bg-neutral-900 text-white',
-              ),
-            )
-          "
-        >
-          Unknown
-        </TextPill>
-        <TextPill
-          v-else-if="
-            component.qualificationTotals.failed === 0 &&
-            component.qualificationTotals.warned === 0
-          "
-          tighter
-          :class="
-            clsx(
-              'text-xs ml-auto',
-              themeClasses(
-                'border-success-500 bg-neutral-100 text-black',
-                'border-success-600 bg-neutral-900 text-white',
-              ),
-            )
-          "
-        >
-          All passed
-        </TextPill>
-        <TextPill
-          v-else-if="component.qualificationTotals.failed > 0"
-          tighter
-          :class="
-            clsx(
-              'text-xs ml-auto',
-              themeClasses(
-                'border-destructive-500 bg-destructive-100 text-black',
-                'border-destructive-600 bg-destructive-900 text-white',
-              ),
-            )
-          "
-        >
-          {{ component.qualificationTotals.failed }} Failed
-        </TextPill>
-        <TextPill
-          v-else-if="component.qualificationTotals.warned > 0"
-          tighter
-          :class="
-            clsx(
-              'text-xs ml-auto',
-              themeClasses(
-                'border-warning-500 bg-warning-100 text-black',
-                'border-warning-600 bg-warning-900 text-white',
-              ),
-            )
-          "
-        >
-          {{ component.qualificationTotals.warned }} Warning
-        </TextPill>
+        <!-- We need the "grow" here so that the qualification status expands fully. -->
+        <ComponentQualificationStatus class="grow" :component="component" />
       </li>
       <li>
         <template v-if="component.diffCount > 0">
@@ -168,7 +97,6 @@
 import {
   Icon,
   PillCounter,
-  TextPill,
   themeClasses,
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
@@ -181,6 +109,7 @@ import {
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon } from "../util";
 import { assertIsDefined, Context, ExploreContext } from "../types";
+import ComponentQualificationStatus from "../ComponentQualificationStatus.vue";
 
 const props = defineProps<{
   component: BifrostComponent | ComponentInList;
@@ -199,10 +128,6 @@ const outgoing = computed(
 
 const canBeUpgraded = computed(() =>
   explore.upgradeableComponents.value.has(props.component.id),
-);
-
-const qualificationStatus = computed(() =>
-  getQualificationStatus(props.component),
 );
 </script>
 
