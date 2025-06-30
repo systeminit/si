@@ -135,6 +135,9 @@ impl IntoResponse for Error {
             Self::Transactions(dal::TransactionsError::BadWorkspaceAndChangeSet) => {
                 (StatusCode::FORBIDDEN, None)
             }
+            Error::ChangeSet(dal::ChangeSetError::CantRenameHeadChangeSet) => {
+                (StatusCode::PRECONDITION_FAILED, None)
+            }
             _ => (ApiError::DEFAULT_ERROR_STATUS_CODE, None),
         };
 
