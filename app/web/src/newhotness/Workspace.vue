@@ -454,23 +454,33 @@ const invalidatePaginatedFuncRuns = _.debounce(() => {
 onMounted(() => {
   windowResizeHandler();
   windowResizeEmitter.on("resize", windowResizeHandler);
-
-  // Invalidate the paginatedFuncRuns query when FuncRunLogUpdated events are received.
-  realtimeStore.subscribe(
-    funcRunKey,
-    `changeset/${ctx.value.changeSetId.value}`,
-    [
-      {
-        eventType: "FuncRunLogUpdated",
-        callback: async (payload) => {
-          if (payload.funcRunId) {
-            invalidatePaginatedFuncRuns();
-          }
-        },
-      },
-    ],
-  );
 });
+
+watch(
+  ctx.value.changeSetId,
+  () => {
+    // stop listening to old change set
+    realtimeStore.unsubscribe(funcRunKey);
+    // listen to new change set
+    // Invalidate the paginatedFuncRuns query when FuncRunLogUpdated events are received.
+    realtimeStore.subscribe(
+      funcRunKey,
+      `changeset/${ctx.value.changeSetId.value}`,
+      [
+        {
+          eventType: "FuncRunLogUpdated",
+          callback: async (payload) => {
+            if (payload.funcRunId) {
+              invalidatePaginatedFuncRuns();
+            }
+          },
+        },
+      ],
+    );
+  },
+  { immediate: true },
+);
+
 onBeforeUnmount(() => {
   windowResizeEmitter.off("resize", windowResizeHandler);
   realtimeStore.unsubscribe(funcRunKey);
