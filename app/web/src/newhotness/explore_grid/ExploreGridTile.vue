@@ -215,6 +215,7 @@ export function getQualificationStatus(
 ) {
   if (component.qualificationTotals.failed > 0) return "failure";
   if (component.qualificationTotals.warned > 0) return "warning";
-  return "success";
+  if (component.qualificationTotals.succeeded > 0) return "success";
+  return "unknown";
 }
 </script>

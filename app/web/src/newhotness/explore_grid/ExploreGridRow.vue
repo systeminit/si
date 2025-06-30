@@ -133,6 +133,11 @@ const titleIcon = computed((): TitleIcon | null => {
         iconName: "loader",
         iconTone: "neutral",
       };
+    case "Unknown qualification status":
+      return {
+        iconName: "question-circle",
+        iconTone: "warning",
+      };
     default:
       return null;
   }
@@ -149,6 +154,10 @@ const emptyAreaData = computed((): EmptyAreaData | null => {
     case "Failed qualifications":
       return {
         message: "No failed qualifications",
+      };
+    case "Unknown qualification status":
+      return {
+        message: "No components with unknown qualifications",
       };
     case "Warnings":
       return {
