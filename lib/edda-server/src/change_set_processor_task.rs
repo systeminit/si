@@ -500,12 +500,11 @@ mod handlers {
                 to_snapshot_address,
                 change_batch_addresses,
             } => {
-                // Index exists and current snapshot address is currently `to_snapshot_address`
+                // Index exists
                 if frigg
                     .get_index(workspace_id, change_set_id)
                     .await?
                     .is_some()
-                    && ctx.workspace_snapshot()?.id().await == to_snapshot_address
                 {
                     process_incremental_updates(
                         ctx,
@@ -519,27 +518,7 @@ mod handlers {
                     )
                     .await
                 }
-                // Current snapshot address is *not* currently `to_snapshot_address`
-                else if ctx.workspace_snapshot()?.id().await != to_snapshot_address {
-                    let latest_index_checksum = match frigg
-                        .get_index_pointer_value(workspace_id, change_set_id)
-                        .await?
-                    {
-                        Some((pointer, _kv_revision)) => Some(pointer.index_checksum),
-                        None => None,
-                    };
-                    materialized_view::build_all_mv_for_change_set(
-                        ctx,
-                        frigg,
-                        edda_updates,
-                        parallel_build_limit,
-                        latest_index_checksum,
-                        "snapshot moved",
-                    )
-                    .await
-                    .map_err(Into::into)
-                }
-                // Index does not exist???
+                // Index does not exist
                 else {
                     // todo: this is where we'd handle reusing an index from another change set if
                     // the snapshots match!
