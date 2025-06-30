@@ -215,6 +215,31 @@ const createChangeSetName = ref("");
 
 const { validationState, validationMethods } = useValidatedInputGroup();
 
+const waitForChangeSetExists = (
+  workspaceId: string,
+  changeSetId: string,
+): Promise<void> => {
+  const INTERVAL_MS = 50;
+  const MAX_WAIT_IN_SEC = 10;
+  const MAX_RETRIES = (MAX_WAIT_IN_SEC * 1000) / INTERVAL_MS;
+
+  return new Promise((resolve, reject) => {
+    let retry = 0;
+    const interval = setInterval(async () => {
+      if (retry >= MAX_RETRIES) {
+        clearInterval(interval);
+        reject();
+      }
+
+      if (await heimdall.changeSetExists(workspaceId, changeSetId)) {
+        clearInterval(interval);
+        resolve();
+      }
+      retry += 1;
+    });
+  });
+};
+
 async function onSelectChangeSet(newVal: string) {
   if (newVal === "NEW") {
     createModalRef.value?.open();
@@ -224,6 +249,15 @@ async function onSelectChangeSet(newVal: string) {
   if (newVal && route.name) {
     // keep everything in the current route except the change set id
     // note - we use push here, so there is a new browser history entry
+
+    if (
+      route.name?.toString().startsWith("new-hotness") &&
+      typeof route.params.workspacePk === "string"
+    ) {
+      const workspaceId = route.params.workspacePk;
+      await waitForChangeSetExists(workspaceId, newVal);
+    }
+
     const name = route.name;
     await router.push({
       name,
@@ -247,7 +281,6 @@ async function onCreateChangeSet() {
   if (createReq.result.success) {
     // reusing above to navigate to new change set... will probably clean this all up later
     const newChangeSetId = createReq.result.data.changeSet.id;
-    heimdall.muspelheimStatuses.value[newChangeSetId] = false;
     onSelectChangeSet(newChangeSetId);
     createModalRef.value?.close();
   }
