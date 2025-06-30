@@ -20,3 +20,4 @@ si-frontend-mv-types = { path = "../../lib/si-frontend-mv-types-rs" }
 si-id = { path = "../../lib/si-id" }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
+tracing = { workspace = true }

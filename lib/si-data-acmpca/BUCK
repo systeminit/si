@@ -12,6 +12,7 @@ rust_library(
         "//third-party/rust:rcgen",
         "//third-party/rust:thiserror",
         "//third-party/rust:tokio",
+        "//third-party/rust:tracing",
     ],
     srcs = glob([
         "src/**/*.rs",

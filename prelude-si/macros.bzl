@@ -30,6 +30,12 @@ load(
 rootfs = _rootfs
 
 load(
+    "@prelude-si//macros:mise.bzl",
+    _mise_install = "mise_install",
+)
+mise_install = _mise_install
+
+load(
     "@prelude-si//macros:nix.bzl",
     _nix_binary = "nix_binary",
     _nix_flake_lock = "nix_flake_lock",
