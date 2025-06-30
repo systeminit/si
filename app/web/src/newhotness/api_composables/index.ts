@@ -249,7 +249,7 @@ export const useApi = () => {
 
   // You have to run endpoint BEFORE you call setWatchFn or it will break
   let labeledObs: LabeledObs;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
   let apiCall: APICall<any>;
   const endpoint = <Response>(key: routes, args?: Record<string, string>) => {
     let path = _routes[key];
@@ -328,9 +328,6 @@ export const useApi = () => {
         retry += 1;
       }, INTERVAL);
     });
-    if (apiCall.lobbyRequired) {
-      muspelheimStatuses.value[newChangeSetId] = false;
-    }
     await router.push(to);
     reset();
   };

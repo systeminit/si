@@ -361,7 +361,6 @@ export const linkNewChangeset = async (
   changeSetId: string,
   headChangeSetId: string,
 ) => {
-  muspelheimStatuses.value[changeSetId] = false;
   await db.linkNewChangeset(workspaceId, headChangeSetId, changeSetId);
 };
 
@@ -529,7 +528,8 @@ export const muspelheim = async (workspaceId: string, force?: boolean) => {
 export const niflheim = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
-  force?: boolean,
+  force = false,
+  lobbyOnFailure = true,
 ): Promise<boolean> => {
   await waitForInitCompletion();
   const changeSetExists = await db.changeSetExists(workspaceId, changeSetId);
@@ -542,7 +542,11 @@ export const niflheim = async (
 
     // If niflheim returned false (202 response), navigate to lobby
     // Index is being rebuilt and is not ready yet.
-    muspelheimStatuses.value[changeSetId] = success;
+    if (!success && lobbyOnFailure) {
+      muspelheimStatuses.value[changeSetId] = false;
+    } else if (success) {
+      muspelheimStatuses.value[changeSetId] = true;
+    }
     return success;
   }
 
