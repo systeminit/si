@@ -41,7 +41,6 @@ import {
   AtomMeta,
   BroadcastMessage,
   BustCacheFn,
-  CategorizedPossibleConnections,
   Checksum,
   ComponentInfo,
   Gettable,
@@ -70,7 +69,6 @@ import {
   EddaSchemaVariantCategories,
   EntityKind,
   PossibleConnection,
-  Prop,
   SchemaMembers,
   SchemaVariant,
   UninstalledVariant,
@@ -2119,60 +2117,14 @@ const postProcess = (
         workspaceId,
         changeSetId,
         EntityKind.PossibleConnections,
-        changeSetId,
+        workspaceId,
       );
     }
   }
 };
 
-const getPossibleConnections = (
-  _workspaceId: string,
-  changeSetId: string,
-  destSchemaName: string,
-  dest: Prop,
-) => {
-  const possible = Object.values(allPossibleConns.get(changeSetId));
-
-  const categories: CategorizedPossibleConnections = {
-    suggestedMatches: [],
-    typeAndNameMatches: [],
-    typeMatches: [],
-    nonMatches: [],
-  };
-
-  for (const source of possible) {
-    const isSuggested =
-      dest.suggestSources?.some(
-        (s) => s.schema === source.schemaName && s.prop === source.path,
-      ) ||
-      source.suggestAsSourceFor?.some(
-        (d) => d.schema === destSchemaName && `root${d.prop}` === dest.path,
-      );
-    if (isSuggested) {
-      categories.suggestedMatches.push(source);
-    } else if (
-      source.kind === dest.kind ||
-      (source.kind === "string" &&
-        !["string", "boolean", "object", "map", "integer"].includes(dest.kind))
-    ) {
-      // If the types match, sort name matches first
-      if (source.name === dest.name && source.schemaName !== destSchemaName) {
-        categories.typeAndNameMatches.push(source);
-      } else {
-        categories.typeMatches.push(source);
-      }
-    } else {
-      categories.nonMatches.push(source);
-    }
-  }
-
-  const cmp = (a: PossibleConnection, b: PossibleConnection) =>
-    `${a.name} ${a.path}`.localeCompare(`${b.name} ${b.path}`);
-  categories.suggestedMatches.sort(cmp);
-  categories.typeAndNameMatches.sort(cmp);
-  categories.typeMatches.sort(cmp);
-  categories.nonMatches.sort(cmp);
-  return categories;
+const getPossibleConnections = (_workspaceId: string, changeSetId: string) => {
+  return Object.values(allPossibleConns.get(changeSetId));
 };
 
 const getOutgoingConnectionsByComponentId = (
