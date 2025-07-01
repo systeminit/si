@@ -79,9 +79,17 @@ export const init = async (bearerToken: string, _queryClient: QueryClient) => {
     console.log(`...initialization completed [${end - start}ms] 🌈`);
   }
 
-  if (await db.hasRemote()) {
-    lockAcquired.value = true;
-  }
+  // If both tabs are refreshed at the same time, this can falsely indicate that a tab has the lock,
+  // but that tab has actually been refreshed just *after* this call, so *we* now have the lock.
+  // adding 2.5 second timeout here ensures that there is enough time for the lock to be resolved
+  // in a multitab scenario before we begin cold start. (This only matters if 2+ tabs are refreshed
+  // at more or less the same time, in the normal scenario we will indicate lock acquisition via
+  // the broadcast channel)
+  setTimeout(async () => {
+    if (await db.hasRemote()) {
+      lockAcquired.value = true;
+    }
+  }, 2500);
 };
 
 export const initCompleted = computed(
