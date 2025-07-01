@@ -246,11 +246,38 @@
       <div
         :class="
           clsx(
-            'flex-none h-12 border-t flex flex-col justify-between p-2xs',
+            'flex-none h-12 border-t flex flex-row items-center gap-xs p-xs',
             themeClasses('border-neutral-400', 'border-neutral-600'),
           )
         "
       >
+        <TextPill
+          v-tooltip="componentCountTooltip"
+          class="flex-none rounded p-xs"
+          variant="key2"
+        >
+          Total: {{ componentListRaw.data.value?.length ?? 0 }}
+        </TextPill>
+        <TextPill
+          v-if="resourceCount > 0"
+          v-tooltip="resourceCountTooltip"
+          :class="
+            clsx(
+              'flex-none flex flex-row items-center gap-2xs rounded p-xs',
+              themeClasses(
+                'border-success-400 bg-success-100 text-black',
+                'border-success-800 bg-success-900 text-white',
+              ),
+            )
+          "
+        >
+          <Icon
+            :class="themeClasses('text-success-600', 'text-success-400')"
+            name="check-hex-outline"
+            size="xs"
+          />
+          {{ resourceCount }}
+        </TextPill>
         <RealtimeStatusPageState />
       </div>
     </div>
@@ -297,6 +324,7 @@ import {
   DropdownMenuButton,
   DropdownMenuItem,
   Icon,
+  TextPill,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
@@ -630,6 +658,12 @@ const componentList = computed(() => {
   }
   return relevantComponentsWhenPinning;
 });
+
+const resourceCount = computed(
+  () => componentListUnchecked.value.filter((c) => c.hasResource).length ?? 0,
+);
+const resourceCountTooltip = "Components with resources";
+const componentCountTooltip = "Total components in selected view";
 
 // ================================================================================================
 // HANDLE FILTERING, SORTING, GROUPING, ETC. FOR THE COMPUTED COMPONENT LIST
