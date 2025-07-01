@@ -2275,6 +2275,12 @@
       "PUBLISHED"
     ]
   },
+  "The publish status of the rule.\n *Allowed values*: ``DRAFT`` | ``PUBLISHED``": {
+    "enum": [
+      "DRAFT",
+      "PUBLISHED"
+    ]
+  },
   "The status of the evaluation form.\n  *Allowed values*: ``DRAFT`` | ``ACTIVE``": {
     "enum": [
       "DRAFT",
@@ -14050,6 +14056,9 @@
   "The namespace of the metric.": {
     "enum": null
   },
+  "The namespace the snapshot is associated with.": {
+    "enum": null
+  },
   "The namespace the workgroup is associated with.": {
     "enum": null
   },
@@ -15035,6 +15044,9 @@
     "enum": null
   },
   "The retention period for automated backups in a different AWS Region. Use this parameter to set a unique retention period that only applies to cross-Region automated backups. To enable automated backups in a different Region, specify a positive value for the ``AutomaticBackupReplicationRegion`` parameter. \n If not specified, this parameter defaults to the value of the ``BackupRetentionPeriod`` parameter. The maximum allowed value is 35.": {
+    "enum": null
+  },
+  "The retention period of the snapshot.": {
     "enum": null
   },
   "The retention period unit of the rule": {
