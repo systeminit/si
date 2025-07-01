@@ -131,15 +131,10 @@
       </div>
       <div>
         <div class="keys">
-          <Icon name="command" />
           <div class="key">E</div>
         </div>
         <div>
-          Press <TextPill tighter variant="key">⌘</TextPill>+<TextPill
-            tighter
-            variant="key"
-            >E</TextPill
-          >
+          Press <TextPill tighter variant="key">E</TextPill>
           to erase the selected component.
         </div>
       </div>
@@ -154,5 +149,5 @@ import clsx from "clsx";
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const { open, close } = useModal(modalRef);
-defineExpose({ open, close });
+defineExpose({ open, close, isOpen: modalRef.value?.isOpen });
 </script>

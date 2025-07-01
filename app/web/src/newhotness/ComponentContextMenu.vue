@@ -73,10 +73,12 @@ const atLeastOneNormalComponent = computed(() =>
 
 // ================================================================================================
 // These values are for "single component" functionality.
-const component = computed(() =>
+const singleComponent = computed(() =>
   components.value.length === 1 ? components.value[0] : undefined,
 );
-const schemaVariantId = computed(() => component.value?.schemaVariantId ?? "");
+const schemaVariantId = computed(
+  () => singleComponent.value?.schemaVariantId ?? "",
+);
 const actionPrototypes = computed(
   () => actionPrototypesQuery.data.value?.actionPrototypes ?? [],
 );
@@ -89,19 +91,19 @@ const actionPrototypesQuery = useQuery<ActionPrototypeViewList | null>({
     ),
 });
 const actionsQuery = useQuery<BifrostActionViewList | null>({
-  enabled: () => component.value !== undefined,
+  enabled: () => singleComponent.value !== undefined,
   queryKey: key(EntityKind.ActionViewList),
   queryFn: async () =>
     await bifrost<BifrostActionViewList>(args(EntityKind.ActionViewList)),
 });
 const actionByPrototype = computed(() => {
-  if (!component.value) return {};
+  if (!singleComponent.value) return {};
   if (!actionsQuery.data.value?.actions) return {};
   if (actionsQuery.data.value.actions.length < 1) return {};
 
   const result: Record<ActionPrototypeId, ActionId> = {};
   for (const action of actionsQuery.data.value.actions) {
-    if (action.componentId === component.value.id) {
+    if (action.componentId === singleComponent.value.id) {
       // NOTE(nick): this assumes that there can be one action for a given prototype and component.
       // As of the time of writing, this is true, but multiple actions per prototype and component
       // aren't disallowed from the underlying graph's perspective. Theorhetically, you could
@@ -113,11 +115,14 @@ const actionByPrototype = computed(() => {
   return result;
 });
 const schemaVariantQuery = useQuery<SchemaVariant | null>({
-  enabled: () => component.value !== undefined,
-  queryKey: key(EntityKind.SchemaVariant, component.value?.schemaVariantId),
+  enabled: () => singleComponent.value !== undefined,
+  queryKey: key(
+    EntityKind.SchemaVariant,
+    singleComponent.value?.schemaVariantId,
+  ),
   queryFn: async () =>
     await bifrost<SchemaVariant>(
-      args(EntityKind.SchemaVariant, component.value?.schemaVariantId),
+      args(EntityKind.SchemaVariant, singleComponent.value?.schemaVariantId),
     ),
 });
 const managementFunctions = computed(
@@ -130,9 +135,14 @@ const rightClickMenuItems = computed(() => {
 
   // If we are dealing with both ghosted and regular components (which should not be possible),
   // then return helper text as a failsafe.
+  // TODO(Wendy) - fix how this displays to look nicer!
   if (atLeastOneGhostedComponent.value && atLeastOneNormalComponent.value) {
     items.push({
-      label: "No options available for both ghosted and regular components",
+      label: "No options available for both",
+      disabled: true,
+    });
+    items.push({
+      label: "ghosted and regular components",
       disabled: true,
     });
     return items;
@@ -149,19 +159,21 @@ const rightClickMenuItems = computed(() => {
     return items;
   }
 
-  items.push({
-    label: "Edit",
-    shortcut: "Enter",
-    icon: "edit2",
-    onSelect: () => emit("edit"),
-  });
+  if (singleComponent.value) {
+    items.push({
+      label: "Edit",
+      shortcut: "Enter",
+      icon: "edit2",
+      onSelect: () => emit("edit"),
+    });
+  }
 
   // can erase so long as you have not selected a view
   items.push({
     label: "Erase",
     shortcut: "E",
     icon: "erase",
-    onSelect: () => componentsStartErase(components.value.map((c) => c.id)),
+    onSelect: () => componentsStartErase(components.value),
   });
 
   items.push({
@@ -175,12 +187,12 @@ const rightClickMenuItems = computed(() => {
     label: "Duplicate",
     shortcut: "⌘D",
     icon: "clipboard-copy",
-    onSelect: () => componentDuplicate(components.value.map((c) => c.id)),
+    onSelect: () => componentsDuplicate(components.value.map((c) => c.id)),
   });
 
   // Only enable pinning if we are working with a single component on the grid.
-  if (props.onGrid && component.value) {
-    const componentId = component.value.id;
+  if (props.onGrid && singleComponent.value) {
+    const componentId = singleComponent.value.id;
     items.push({
       label: "Pin",
       shortcut: "P",
@@ -198,13 +210,13 @@ const rightClickMenuItems = computed(() => {
       label: "Upgrade",
       shortcut: "U",
       icon: "bolt-outline",
-      onSelect: () => componentUpgrade(components.value.map((c) => c.id)),
+      onSelect: () => componentsUpgrade(components.value.map((c) => c.id)),
     });
   }
 
   // Only enable actions if we are working with a single component.
-  if (component.value && schemaVariantId.value) {
-    const componentId = component.value.id;
+  if (singleComponent.value && schemaVariantId.value) {
+    const componentId = singleComponent.value.id;
 
     const actionsSubmenuItems: DropdownMenuItemObjectDef[] = [];
     for (const actionPrototype of actionPrototypes.value) {
@@ -301,10 +313,10 @@ const removeAction = (actionId: ActionId) => {
 
 const mgmtRunApi = useApi();
 const runMgmtFunc = async (funcId: string) => {
-  if (!component.value?.id) return;
+  if (!singleComponent.value?.id) return;
   const call = mgmtRunApi.endpoint<{ success: boolean }>(routes.MgmtFuncRun, {
     prototypeId: funcId,
-    componentId: component.value?.id,
+    componentId: singleComponent.value?.id,
     viewId: "DEFAULT",
   });
 
@@ -348,9 +360,10 @@ const eraseApi = useApi();
 const eraseComponentIds = ref<ComponentId[] | undefined>(undefined);
 const eraseModalRef = ref<InstanceType<typeof EraseModal>>();
 
-const componentsStartErase = (componentIds: ComponentId[]) => {
+const componentsStartErase = (components: ComponentInList[]) => {
+  const componentIds = components.map((component) => component.id);
   eraseComponentIds.value = componentIds;
-  eraseModalRef.value?.open();
+  eraseModalRef.value?.open(components);
   close();
 };
 const componentsFinishErase = async () => {
@@ -441,10 +454,11 @@ const componentsFinishDelete = async (mode: DeleteMode) => {
 };
 
 const duplicateComponentApi = useApi();
-const componentDuplicate = async (componentIds: ComponentId[]) => {
+const componentsDuplicate = async (componentIds: ComponentId[]) => {
   const call = duplicateComponentApi.endpoint(routes.DuplicateComponents, {
     viewId: explore.viewId.value,
   });
+  emit("clearSelected");
   const { req, newChangeSetId } = await call.post({
     components: componentIds,
   });
@@ -463,7 +477,7 @@ const componentDuplicate = async (componentIds: ComponentId[]) => {
 };
 
 const upgradeComponentApi = useApi();
-const componentUpgrade = async (componentIds: ComponentId[]) => {
+const componentsUpgrade = async (componentIds: ComponentId[]) => {
   const call = upgradeComponentApi.endpoint(routes.UpgradeComponents);
   const { req, newChangeSetId } = await call.post({
     componentIds,
@@ -490,9 +504,14 @@ function open(
   anchorTo: Object,
   componentsForMenu: ComponentInList[],
 ) {
+  const oldAnchor = anchor.value;
   anchor.value = anchorTo;
   components.value = componentsForMenu;
-  nextTick(() => contextMenuRef.value?.open());
+  nextTick(() => {
+    if (oldAnchor !== anchor.value || !contextMenuRef.value?.isOpen) {
+      contextMenuRef.value?.open();
+    }
+  });
 }
 
 function close() {
@@ -504,6 +523,7 @@ const isOpen = computed(() => contextMenuRef.value?.isOpen);
 
 const emit = defineEmits<{
   (e: "edit"): void;
+  (e: "clearSelected"): void;
   (e: "pin", componentId: ComponentId): void;
 }>();
 
@@ -512,8 +532,8 @@ defineExpose({
   close,
   isOpen,
   componentsStartErase,
-  componentDuplicate,
-  componentUpgrade,
+  componentsDuplicate,
+  componentsUpgrade,
   contextMenuRef,
   componentsStartDelete,
   componentsRestore,

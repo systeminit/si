@@ -364,13 +364,13 @@ const onEscape = () => {
 const onE = (_e: KeyDetails["e"]) => {
   if (selectedComponent.value) {
     componentContextMenuRef.value?.componentsStartErase([
-      selectedComponent.value.id,
+      selectedComponent.value,
     ]);
   }
 };
 const onD = (e: KeyDetails["d"]) => {
   if (selectedComponent.value && (e.metaKey || e.ctrlKey)) {
-    componentContextMenuRef.value?.componentDuplicate([
+    componentContextMenuRef.value?.componentsDuplicate([
       selectedComponent.value.id,
     ]);
   }

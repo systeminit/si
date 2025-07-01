@@ -86,11 +86,18 @@
       :data-index="dataIndexForTileInRow(row, columnIndex)"
       :component="component"
       class="flex-1"
-      :class="tileBorderClasses(component.id)"
+      showSelectionCheckbox
+      :selected="
+        selectedComponentIndexes.has(dataIndexForTileInRow(row, columnIndex))
+      "
+      :focused="focusedComponentId === component.id"
+      :hovered="hoveredId === component.id"
+      @select="emit('childSelect', dataIndexForTileInRow(row, columnIndex))"
+      @deselect="emit('childDeselect', dataIndexForTileInRow(row, columnIndex))"
       @mouseenter="hover(component.id, true)"
       @mouseleave="hover(component.id, false)"
       @click.stop.left="
-        (e) =>
+        (e: MouseEvent) =>
           emit(
             'childClicked',
             e,
@@ -99,7 +106,7 @@
           )
       "
       @click.stop.right="
-        (e) =>
+        (e: MouseEvent) =>
           emit(
             'childClicked',
             e,
@@ -156,6 +163,7 @@ import ExploreGridTile from "./ExploreGridTile.vue";
 const props = defineProps<{
   row: ExploreGridRowData;
   lanesCount: number;
+  selectedComponentIndexes: Set<number>;
   focusedComponentId?: ComponentId;
 }>();
 
@@ -292,15 +300,6 @@ const pinnedBorderClasses = (componentId: string) => {
   else return "border-neutral-600 bg-neutral-600";
 };
 
-const tileBorderClasses = (componentId: string) => {
-  const focused = props.focusedComponentId === componentId;
-  if (focused)
-    return themeClasses(tw`border-action-500`, tw`border-action-300`);
-  else if (hoveredId.value === componentId)
-    return themeClasses(tw`border-black`, tw`border-white`);
-  else return "";
-};
-
 const emit = defineEmits<{
   (e: "unpin", componentId: ComponentId): void;
   (e: "childHover", componentId: ComponentId): void;
@@ -312,6 +311,8 @@ const emit = defineEmits<{
     componentIdx: number,
   ): void;
   (e: "clickCollapse", title: string, collapsed: boolean): void;
+  (e: "childSelect", componentIdx: number): void;
+  (e: "childDeselect", componentIdx: number): void;
 }>();
 
 defineExpose({ exploreGridComponentRefs });

@@ -67,9 +67,10 @@
               :placeholder="placeholderSearchText"
               @focus="
                 () => {
-                  slotProps.focus();
+                  clearSelection();
                   mapRef?.deselect();
-                  unfocus();
+                  slotProps.focus();
+                  focusedComponentIdx = -1;
                 }
               "
               @blur="slotProps.blur"
@@ -165,7 +166,10 @@
           ref="exploreGridRef"
           :components="sortedAndGroupedComponents"
           :focusedComponentIdx="focusedComponentIdx"
+          :selectedComponentIndexes="selectedComponentIndexes"
           @childClicked="componentClicked"
+          @childSelect="selectComponent"
+          @childDeselect="deselectComponent"
           @unpin="() => (pinnedComponentId = undefined)"
           @scrollend="fixContextMenuAfterScroll"
           @scroll="onScroll"
@@ -271,6 +275,7 @@
       ref="componentContextMenuRef"
       onGrid
       enableKeyboardControls
+      @clearSelected="clearSelection"
       @edit="navigateToFocusedComponent"
       @pin="(c) => (pinnedComponentId = c)"
     />
@@ -387,7 +392,7 @@ const urlGridOrMap = computed(() => {
 });
 const showGrid = computed(() => (groupRef.value ? groupRef.value.isA : true));
 watch(showGrid, () => {
-  unfocus();
+  clearSelection();
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
   };
@@ -402,7 +407,7 @@ watch(showGrid, () => {
 // SETUP THE FILTERED COMPONENTS REACTIVE AND UPGRADEABLES
 const filteredComponents = reactive<ComponentInList[]>([]);
 const upgrade = useUpgrade();
-const upgradeableComponents = computed(() => {
+const upgradeableComponentIds = computed(() => {
   const set: Set<ComponentId> = new Set();
 
   // TODO(nick): try to swap this with the component list to see if we recompute this less
@@ -420,6 +425,11 @@ const upgradeableComponents = computed(() => {
   }
   return set;
 });
+// This is the list of all components that get rendered but the explore grid, considering the filtering and grouping
+// done here and any removals caused by collapsing by the ExploreGrid
+const allVisibleComponents = computed(
+  () => exploreGridRef.value?.allVisibleComponents ?? [],
+);
 
 // ================================================================================================
 // VIEWS
@@ -498,8 +508,8 @@ watch(
 const pinnedComponentId = ref<ComponentId | undefined>(undefined);
 
 watch([pinnedComponentId], () => {
-  // First, make sure we unfocus.
-  unfocus();
+  // First, make sure we clear any selection.
+  clearSelection();
 
   // Update the query of the route (allowing for URL links) when the pinned component changes.
   const query: SelectionsInQueryString = {
@@ -524,7 +534,7 @@ watch([pinnedComponentId], () => {
 const exploreContext = computed<ExploreContext>(() => {
   return {
     viewId: selectedViewOrDefaultId,
-    upgradeableComponents,
+    upgradeableComponents: upgradeableComponentIds,
   };
 });
 
@@ -649,7 +659,9 @@ const sortedAndGroupedComponents = computed(() => {
 
   // Second, perform any secondary sorts, if applicable. This relies on the fact that the
   // components are already sorted.
-  if (sortBySelection.value === SortByCriteria.FailingActions) {
+  if (sortBySelection.value === SortByCriteria.OldestToLatest) {
+    components.sort((a, b) => -b.id.localeCompare(a.id));
+  } else if (sortBySelection.value === SortByCriteria.FailingActions) {
     const failed = [];
     const theRest = [];
     for (const component of components) {
@@ -719,7 +731,7 @@ const sortedAndGroupedComponents = computed(() => {
       "Up to date": [],
     };
     for (const component of components) {
-      const title = upgradeableComponents.value.has(component.id)
+      const title = upgradeableComponentIds.value.has(component.id)
         ? "Upgradeable"
         : "Up to date";
       groups[title]?.push(component);
@@ -758,7 +770,7 @@ watch(
     filteredComponents.splice(0, Infinity, ...results.map((fz) => fz.item));
 
     mapRef.value?.deselect();
-    unfocus();
+    clearSelection();
   },
   { immediate: true, deep: true },
 );
@@ -780,12 +792,16 @@ watch(searchString, (newValue, oldValue) => {
   }
   updateDebouncedSearch(newValue);
   mapRef.value?.deselect();
-  unfocus();
+  clearSelection();
 });
 
 // ================================================================================================
 // FOCUSING, TABBING, ETC.
-const focusedComponentIdx = ref<number>(-1);
+const focusedComponentIdx = ref<number | undefined>(-1);
+const selectedComponentIndexes = reactive<Set<number>>(new Set());
+const selectedComponents = computed(
+  () => exploreGridRef.value?.selectedComponents ?? [],
+);
 const focusedComponent = computed(() => exploreGridRef.value?.focusedComponent);
 const focusedComponentIsPinned = computed(() => {
   if (!focusedComponent.value) return false;
@@ -802,11 +818,11 @@ const nextComponent = (wrap = false) => {
 
   focusedComponentIdx.value += 1;
 
-  if (focusedComponentIdx.value > filteredComponents.length - 1) {
+  if (focusedComponentIdx.value > allVisibleComponents.value.length - 1) {
     if (wrap) {
       focusedComponentIdx.value = -1;
     } else {
-      focusedComponentIdx.value = filteredComponents.length - 1;
+      focusedComponentIdx.value = allVisibleComponents.value.length - 1;
     }
   }
 };
@@ -822,7 +838,7 @@ const previousComponent = (wrap = false) => {
 
   if (desiredIdx < -1) {
     if (wrap) {
-      desiredIdx = filteredComponents.length - 1;
+      desiredIdx = allVisibleComponents.value.length - 1;
     } else {
       desiredIdx = -1;
     }
@@ -838,29 +854,87 @@ watch([focusedComponentIdx], () => {
 });
 
 const focusedGridComponentRef = computed(() =>
-  focusedComponentIdx.value > -1
+  focusedComponentIdx.value !== undefined && focusedComponentIdx.value > -1
     ? exploreGridRef.value?.getGridComponentRefByIndex(
         focusedComponentIdx.value,
       )
     : undefined,
 );
 
-const onFocus = () => {
+const selectionComponentsForAction = computed(() => {
+  if (selectedComponents.value.length > 0) return selectedComponents.value;
+  else if (focusedComponent.value) return [focusedComponent.value];
+  else return undefined;
+});
+const selectionComponentsForActionIds = computed(() => {
+  if (selectionComponentsForAction.value) {
+    return selectionComponentsForAction.value.map((component) => component.id);
+  } else return undefined;
+});
+const allSelectedComponentsAreUpgradeable = computed(() => {
+  if (!selectionComponentsForActionIds.value) return false;
+
+  const notUpgradeable = selectionComponentsForActionIds.value.find(
+    (componentId) => !upgradeableComponentIds.value.has(componentId),
+  );
+  return notUpgradeable === undefined;
+});
+const allSelectedComponentsAreRestorable = computed(() => {
+  if (!selectionComponentsForAction.value) return false;
+
+  const notRestorable = selectionComponentsForAction.value.find(
+    (component) => !component.toDelete,
+  );
+  return notRestorable === undefined;
+});
+
+const fixContextMenu = () => {
   // If we focus on the pinned component, do not bring up the context menu.
   if (
     focusedGridComponentRef.value &&
-    focusedComponent.value &&
+    selectionComponentsForAction.value &&
     !focusedComponentIsPinned.value
   ) {
-    componentContextMenuRef.value?.open(focusedGridComponentRef.value, [
-      focusedComponent.value,
-    ]);
+    componentContextMenuRef.value?.open(
+      focusedGridComponentRef.value,
+      selectionComponentsForAction.value,
+    );
   }
 };
 const unfocus = () => {
-  focusedComponentIdx.value = -1;
+  focusedComponentIdx.value = undefined; // don't focus the search bar on unfocus
   componentContextMenuRef.value?.close();
 };
+const clearSelection = () => {
+  selectedComponentIndexes.clear();
+  unfocus();
+};
+
+const selectComponent = (componentIdx: number) => {
+  selectedComponentIndexes.add(componentIdx);
+  focusedComponentIdx.value = componentIdx;
+  fixContextMenu();
+};
+const deselectComponent = (componentIdx: number) => {
+  selectedComponentIndexes.delete(componentIdx);
+  if (componentIdx === focusedComponentIdx.value) {
+    if (selectedComponentIndexes.size === 0) {
+      clearSelection();
+    } else {
+      focusedComponentIdx.value = [...selectedComponentIndexes].pop();
+    }
+  }
+  fixContextMenu();
+};
+const toggleComponentSelection = (componentIdx: number) => {
+  if (isComponentSelected(componentIdx)) {
+    deselectComponent(componentIdx);
+  } else {
+    selectComponent(componentIdx);
+  }
+};
+const isComponentSelected = (componentIdx: number) =>
+  selectedComponentIndexes.has(componentIdx);
 
 // ================================================================================================
 // CLICKING AND NAVIGATION
@@ -870,6 +944,12 @@ const componentClicked = (
   componentIdx: number,
 ) => {
   e.preventDefault();
+  if (e.shiftKey) {
+    // multi select time!
+    toggleComponentSelection(componentIdx);
+    return;
+  }
+
   if (e.button === 0) {
     componentNavigate(componentId);
   } else if (e.button === 2) {
@@ -888,7 +968,7 @@ const componentNavigate = (componentId: ComponentId) => {
 watch([focusedComponent], () => {
   if (!focusedComponent.value) return;
 
-  onFocus();
+  fixContextMenu();
 });
 
 // ================================================================================================
@@ -896,6 +976,7 @@ watch([focusedComponent], () => {
 const searchRef = ref<InstanceType<typeof VormInput>>();
 const mountEmitters = () => {
   removeEmitters();
+  keyEmitter.on("a", onA);
   keyEmitter.on("c", onC);
   keyEmitter.on("k", onK);
   keyEmitter.on("n", onN);
@@ -914,6 +995,7 @@ const mountEmitters = () => {
   windowResizeEmitter.on("resize", onResize);
 };
 const removeEmitters = () => {
+  keyEmitter.off("a", onA);
   keyEmitter.off("c", onC);
   keyEmitter.off("k", onK);
   keyEmitter.off("n", onN);
@@ -932,6 +1014,19 @@ const removeEmitters = () => {
   windowResizeEmitter.off("resize", onResize);
 };
 
+const onA = (e: KeyDetails["a"]) => {
+  e.preventDefault();
+  if (e.metaKey || e.ctrlKey) {
+    const components = allVisibleComponents.value;
+    [...components.keys()].forEach((index) => {
+      const component = componentList.value[index];
+      if (component) {
+        selectComponent(index);
+      }
+    });
+  }
+};
+
 const onC = (e: KeyDetails["c"]) => {
   e.preventDefault();
   if (e.metaKey || e.ctrlKey) return;
@@ -943,7 +1038,7 @@ const onK = (e: KeyDetails["k"]) => {
 
   // Deselect the current selection based on which screen you are on
   if (showGrid.value) {
-    unfocus();
+    clearSelection();
   } else {
     mapRef.value?.deselect();
   }
@@ -960,11 +1055,11 @@ const onN = (e: KeyDetails["n"]) => {
 const onE = (e: KeyDetails["e"]) => {
   e.preventDefault();
   if (showGrid.value) {
-    if (!focusedComponent.value) return;
+    if (!selectionComponentsForAction.value) return;
 
-    componentContextMenuRef.value?.componentsStartErase([
-      focusedComponent.value?.id,
-    ]);
+    componentContextMenuRef.value?.componentsStartErase(
+      selectionComponentsForAction.value,
+    );
   } else {
     mapRef.value?.onE(e);
   }
@@ -974,19 +1069,22 @@ const onD = (e: KeyDetails["d"]) => {
 
   if (showGrid.value) {
     if (e.metaKey || e.ctrlKey) {
-      if (!focusedComponent.value) return;
-      componentContextMenuRef.value?.componentDuplicate([
-        focusedComponent.value.id,
-      ]);
+      if (!selectionComponentsForActionIds.value) return;
+      componentContextMenuRef.value?.componentsDuplicate(
+        selectionComponentsForActionIds.value,
+      );
     }
   } else {
     mapRef.value?.onD(e);
   }
 };
 const onP = (e: KeyDetails["p"]) => {
+  // You can only pin one component at a time!
+  if (selectedComponentIndexes.size > 1) return;
+
   e.preventDefault();
   if (showGrid.value) {
-    if (!focusedComponent.value) return;
+    if (!focusedComponent.value || selectedComponents.value.length > 1) return;
 
     // We do not need the context menu to pin and unpin.
     if (focusedComponentIsPinned.value) {
@@ -1002,12 +1100,12 @@ const onU = (e: KeyDetails["u"]) => {
   e.preventDefault();
 
   if (showGrid.value) {
-    if (!focusedComponent.value) return;
+    if (!selectionComponentsForActionIds.value) return;
 
-    if (upgradeableComponents.value.has(focusedComponent.value.id)) {
-      componentContextMenuRef.value?.componentUpgrade([
-        focusedComponent.value.id,
-      ]);
+    if (allSelectedComponentsAreUpgradeable.value) {
+      componentContextMenuRef.value?.componentsUpgrade(
+        selectionComponentsForActionIds.value,
+      );
     }
   } else {
     mapRef.value?.onU(e);
@@ -1017,10 +1115,10 @@ const onBackspace = (e: KeyDetails["Backspace"] | KeyDetails["Delete"]) => {
   e.preventDefault();
 
   if (showGrid.value) {
-    if (!focusedComponent.value) return;
-    componentContextMenuRef.value?.componentsStartDelete([
-      focusedComponent.value,
-    ]);
+    if (!selectionComponentsForAction.value) return;
+    componentContextMenuRef.value?.componentsStartDelete(
+      selectionComponentsForAction.value,
+    );
   } else {
     mapRef.value?.onBackspace(e);
   }
@@ -1034,30 +1132,33 @@ const onR = (e: KeyDetails["r"]) => {
   e.preventDefault();
 
   if (showGrid.value) {
-    if (!focusedComponent.value) return;
-    if (focusedComponent.value.toDelete) {
-      componentContextMenuRef.value?.componentsRestore([
-        focusedComponent.value.id,
-      ]);
+    if (!selectionComponentsForActionIds.value) return;
+    if (allSelectedComponentsAreRestorable.value) {
+      componentContextMenuRef.value?.componentsRestore(
+        selectionComponentsForActionIds.value,
+      );
     }
   } else {
     mapRef.value?.onR(e);
   }
 };
 const onEscape = () => {
+  if (isThereAModalOpen.value) return;
+
   if (showGrid.value) {
     searchRef.value?.blur();
-    unfocus();
+    clearSelection();
   } else {
     mapRef.value?.onEscape();
   }
 };
 
 const onTab = (e: KeyDetails["Tab"], blurSearch = false) => {
-  // FIXME(victor) Don't execute this if a modal is open
   e.preventDefault();
   if (!showGrid.value) return; // no tab behavior on the map yet
+  if (isThereAModalOpen.value) return; // no tab behavior when a modal is open
 
+  selectedComponentIndexes.clear();
   const pageFunc = e.shiftKey ? previousComponent : nextComponent;
   if (!searchRef.value) return;
   else if (blurSearch) {
@@ -1071,6 +1172,11 @@ const onTab = (e: KeyDetails["Tab"], blurSearch = false) => {
 };
 
 const onEnter = (e: KeyDetails["Enter"]) => {
+  if (selectedComponentIndexes.size > 1) {
+    // TODO(Wendy) - for now, this does nothing.
+    return;
+  }
+
   // If there is a focused component, we know we may have to ignore the "ENTER" key press.
   if (focusedComponentIdx.value !== undefined) {
     // If the focused component is actually a component (and not the search bar), and it is not a
@@ -1105,14 +1211,30 @@ const fixContextMenuAfterScroll = () => {
   // If the element is scrolled into view, show the menu
   // If the element is scrolled offscreen, unfocus and reset selected component index
   const el = focusedGridComponentRef.value?.$el;
-  if (el && elementIsScrolledIntoView(el)) {
-    onFocus();
+  if (elementIsScrolledIntoView(el)) {
+    fixContextMenu();
   } else {
     unfocus();
+    if (selectedComponentIndexes.size > 0) {
+      // we are in a situation where the menu is not showing for a multi select!
+      // try to find the best component to put it on
+      const selectedIndexesArray = [...selectedComponentIndexes];
+      for (const selectedIndex of selectedIndexesArray) {
+        const el =
+          exploreGridRef.value?.getGridComponentRefByIndex(selectedIndex)?.$el;
+        if (elementIsScrolledIntoView(el)) {
+          focusedComponentIdx.value = selectedIndex;
+          break;
+        }
+      }
+      if (focusedComponentIdx.value === undefined) {
+        focusedComponentIdx.value = selectedIndexesArray.pop();
+      }
+    }
   }
 };
 const onResize = () => {
-  unfocus();
+  clearSelection();
 };
 
 // general click handler for the whole page
@@ -1125,7 +1247,7 @@ const onClick = (e: MouseDetails["click"]) => {
       return;
     }
 
-    unfocus();
+    clearSelection();
   }
 };
 
@@ -1186,13 +1308,21 @@ watch([router.currentRoute], setSelectionsFromQuery);
 // ================================================================================================
 // THIS FUNCTION IS LOST AND NEEDS A HOME
 const navigateToFocusedComponent = () => {
-  if (focusedComponent.value) {
+  if (focusedComponent.value && selectedComponentIndexes.size < 2) {
     componentNavigate(focusedComponent.value.id);
   }
 };
 
 // ================================================================================================
 // MODAL REFS
+const isThereAModalOpen = computed(
+  () =>
+    shortcutModalRef.value?.isOpen ||
+    addComponentModalRef.value?.isOpen ||
+    addViewModalRef.value?.isOpen ||
+    editViewModalRef.value?.isOpen,
+);
+
 const addComponentModalRef = ref<InstanceType<typeof AddComponentModal>>();
 
 const openAddComponentModal = () => {
@@ -1267,8 +1397,8 @@ const groupByDropDownOptions = [
 ];
 
 watch([groupBySelection], () => {
-  // First, make sure we unfocus.
-  unfocus();
+  // First, make sure we clear all selections.
+  clearSelection();
 
   // Update the query of the route (allowing for URL links) when the group by selection change.
   const query: SelectionsInQueryString = {
@@ -1314,6 +1444,7 @@ enum SortByCriteria {
   FailingActions = "Failing actions",
   RunningActions = "Running actions",
   LatestToOldest = "Latest to oldest",
+  OldestToLatest = "Oldest to latest",
 }
 
 const sortByFromString = (s: string): SortByCriteria => {
@@ -1328,13 +1459,16 @@ const sortByFromString = (s: string): SortByCriteria => {
 const sortBySelection = ref<SortByCriteria>(SortByCriteria.LatestToOldest);
 const sortByDropDownOptions = [
   { value: SortByCriteria.LatestToOldest, label: "Latest to oldest" },
+  // NOTE(victor, wendy): We use this option for testing how things react to sorting,
+  // so we can keep it around even though it's not meant for release
+  // { value: SortByCriteria.OldestToLatest, label: "Oldest to latest" },
   { value: SortByCriteria.FailingActions, label: "Failing actions" },
   { value: SortByCriteria.RunningActions, label: "Running actions" },
 ];
 
 watch([sortBySelection], () => {
-  // First, make sure we unfocus.
-  unfocus();
+  // First, make sure we clear all selections.
+  clearSelection();
 
   // Update the query of the route (allowing for URL links) when the sort by selection changes.
   const query: SelectionsInQueryString = {

@@ -3,11 +3,15 @@
     :class="
       clsx(
         'component tile',
-        'cursor-pointer border rounded overflow-hidden',
-        themeClasses(
-          'bg-shade-0 border-neutral-400',
-          'bg-neutral-900 border-neutral-600',
-        ),
+        'cursor-pointer border rounded overflow-hidden relative select-none',
+        selected || focused
+          ? themeClasses('border-action-500', 'border-action-300')
+          : [
+              hovered
+                ? themeClasses('border-black', 'border-white')
+                : themeClasses('border-neutral-400', 'border-neutral-600'),
+            ],
+        themeClasses('bg-shade-0', 'bg-neutral-900'),
         component.toDelete && 'opacity-70',
       )
     "
@@ -15,7 +19,7 @@
     <header
       :class="
         clsx(
-          'p-xs',
+          'p-xs pr-sm',
           !component.toDelete &&
             themeClasses('bg-neutral-200', 'bg-neutral-800'),
         )
@@ -35,8 +39,10 @@
       <Icon
         v-if="canBeUpgraded"
         name="bolt-outline"
-        size="lg"
-        :class="clsx(themeClasses('text-success-500', 'text-success-400'))"
+        size="md"
+        :class="
+          clsx(themeClasses('text-success-500', 'text-success-400'), 'mt-[5px]')
+        "
       />
       <!-- TODO(nick): center this vertically with the pill counters -->
       <Icon v-if="component.toDelete" name="hourglass" size="md" />
@@ -80,16 +86,34 @@
         </li>
       </template>
     </ol>
-    <!-- <footer class="grid grid-cols-2 p-xs">
-      <div class="place-self-start">
-        <VButton label="📌" size="sm" tone="neutral" variant="ghost" />
-        <VButton label="Upgrade" size="sm" tone="action" />
-      </div>
-      <div class="place-self-end">
-        <VButton label="Delete" size="sm" tone="destructive" />
-        <VButton label="Edit" size="sm" tone="action" />
-      </div>
-    </footer> -->
+    <div
+      v-if="showSelectionCheckbox"
+      :class="
+        clsx(
+          'absolute top-2xs right-2xs border w-sm h-sm',
+          selected
+            ? themeClasses('border-action-500', 'border-action-300')
+            : themeClasses(
+                'border-neutral-400 hover:border-black',
+                'border-neutral-600 hover:border-white',
+              ),
+        )
+      "
+      @click.stop.prevent.left="toggleSelection"
+      @click.stop.prevent.right="toggleSelection"
+    >
+      <Icon
+        v-if="selected"
+        name="check"
+        size="xs"
+        :class="
+          clsx(
+            'absolute top-[-1px] left-[-1px]',
+            themeClasses('text-black', 'text-white'),
+          )
+        "
+      />
+    </div>
   </div>
 </template>
 
@@ -113,7 +137,11 @@ import ComponentQualificationStatus from "../ComponentQualificationStatus.vue";
 
 const props = defineProps<{
   component: BifrostComponent | ComponentInList;
+  selected?: boolean;
+  focused?: boolean;
+  hovered?: boolean;
   hideConnections?: boolean;
+  showSelectionCheckbox?: boolean;
 }>();
 
 const ctx = inject<Context>("CONTEXT");
@@ -129,6 +157,19 @@ const outgoing = computed(
 const canBeUpgraded = computed(() =>
   explore.upgradeableComponents.value.has(props.component.id),
 );
+
+const toggleSelection = () => {
+  if (props.selected) {
+    emit("deselect");
+  } else {
+    emit("select");
+  }
+};
+
+const emit = defineEmits<{
+  (e: "select"): void;
+  (e: "deselect"): void;
+}>();
 </script>
 
 <script lang="ts">

@@ -1,14 +1,22 @@
 <template>
   <Modal ref="modalRef" title="Delete Component">
     <div class="max-h-[70vh] overflow-hidden flex flex-col">
-      <div class="pb-xs">Are you sure you want to delete this component?</div>
+      <div class="pb-xs">
+        Are you sure you want to delete
+        {{
+          components.length > 1
+            ? `${components.length} components`
+            : "this component"
+        }}?
+      </div>
 
-      <!-- NOTE(nick): we should consider splitting this out into its own component... potentially to use with Map view too -->
-      <ComponentCard
-        v-for="component in components"
-        :key="component.id"
-        :component="component"
-      />
+      <div class="scrollable">
+        <ComponentCard
+          v-for="component in components"
+          :key="component.id"
+          :component="component"
+        />
+      </div>
 
       <div class="px-2xs py-xs">
         <VormInput v-model="mode" noLabel type="radio">

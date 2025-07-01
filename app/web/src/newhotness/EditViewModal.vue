@@ -194,5 +194,5 @@ const close = () => {
   isDefaultView.value = false;
   modalRef.value?.close();
 };
-defineExpose({ open, close });
+defineExpose({ open, close, isOpen: modalRef.value?.isOpen });
 </script>

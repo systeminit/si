@@ -102,5 +102,5 @@ const open = () => {
   modalRef.value?.open();
   nameForm.reset();
 };
-defineExpose({ open });
+defineExpose({ open, isOpen: modalRef.value?.isOpen });
 </script>
