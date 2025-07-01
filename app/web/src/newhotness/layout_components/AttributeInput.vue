@@ -547,6 +547,7 @@ import {
 } from "@/store/realtime/heimdall";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { PropKind } from "@/api/sdf/dal/prop";
+import { CategorizedPossibleConnections } from "@/workers/types/dbinterface";
 import {
   attributeEmitter,
   MouseDetails,
@@ -1020,18 +1021,69 @@ const onTab = (e: KeyboardEvent) => {
 const connectingComponentId = ref<string | undefined>();
 const makeKey = useMakeKey();
 const makeArgs = useMakeArgs();
+const queryKey = makeKey(EntityKind.PossibleConnections);
 const potentialConnQuery = useQuery({
-  queryKey: makeKey(EntityKind.PossibleConnections, undefined, props.prop),
+  queryKey,
   enabled: inputOpen,
   queryFn: async () => {
     if (props.prop) {
-      return await getPossibleConnections({
-        ...makeArgs(EntityKind.PossibleConnections),
-        destSchemaName: props.component.schemaName,
-        dest: props.prop,
-      });
+      return await getPossibleConnections(
+        makeArgs(EntityKind.PossibleConnections),
+      );
     }
   },
+});
+
+const categorizedPossibleConn = computed(() => {
+  const possible = potentialConnQuery.data.value;
+  const categories: CategorizedPossibleConnections = {
+    suggestedMatches: [],
+    typeAndNameMatches: [],
+    typeMatches: [],
+    nonMatches: [],
+  };
+  if (!possible) return categories;
+
+  for (const source of possible) {
+    const isSuggested =
+      props.prop?.suggestSources?.some(
+        (s) => s.schema === source.schemaName && s.prop === source.path,
+      ) ||
+      source.suggestAsSourceFor?.some(
+        (d) =>
+          d.schema === props.component.schemaName &&
+          `root${d.prop}` === props.prop?.path,
+      );
+    if (isSuggested) {
+      categories.suggestedMatches.push(source);
+    } else if (
+      source.kind === props.prop?.kind ||
+      (source.kind === "string" &&
+        !["string", "boolean", "object", "map", "integer"].includes(
+          props.prop?.kind ?? "",
+        ))
+    ) {
+      // If the types match, sort name matches first
+      if (
+        source.name === props.prop?.name &&
+        source.schemaName !== props.component.schemaName
+      ) {
+        categories.typeAndNameMatches.push(source);
+      } else {
+        categories.typeMatches.push(source);
+      }
+    } else {
+      categories.nonMatches.push(source);
+    }
+  }
+
+  const cmp = (a: PossibleConnection, b: PossibleConnection) =>
+    `${a.name} ${a.path}`.localeCompare(`${b.name} ${b.path}`);
+  categories.suggestedMatches.sort(cmp);
+  categories.typeAndNameMatches.sort(cmp);
+  categories.typeMatches.sort(cmp);
+  categories.nonMatches.sort(cmp);
+  return categories;
 });
 
 const filteredConnections = computed(() => {
@@ -1079,13 +1131,13 @@ const filteredConnections = computed(() => {
       });
     };
 
-    addToOutput(potentialConnQuery.data.value.suggestedMatches);
-    addToOutput(potentialConnQuery.data.value.typeAndNameMatches);
-    addToOutput(potentialConnQuery.data.value.typeMatches);
+    addToOutput(categorizedPossibleConn.value.suggestedMatches);
+    addToOutput(categorizedPossibleConn.value.typeAndNameMatches);
+    addToOutput(categorizedPossibleConn.value.typeMatches);
 
     // todo: rethink this for secrets
     if (!props.isSecret) {
-      addToOutput(potentialConnQuery.data.value.nonMatches);
+      addToOutput(categorizedPossibleConn.value.nonMatches);
     }
   }
 

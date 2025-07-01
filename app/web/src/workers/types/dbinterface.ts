@@ -18,7 +18,6 @@ import {
   Connection,
   EntityKind,
   PossibleConnection,
-  Prop,
 } from "./entity_kind_types";
 
 export type Column = string;
@@ -133,9 +132,7 @@ export interface SharedDBInterface {
   getPossibleConnections(
     workspaceId: string,
     changeSetId: string,
-    destSchemaName: string,
-    dest: Prop,
-  ): Promise<CategorizedPossibleConnections>;
+  ): Promise<PossibleConnection[]>;
   getOutgoingConnectionsByComponentId(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -220,9 +217,7 @@ export interface TabDBInterface {
   getPossibleConnections(
     workspaceId: string,
     changeSetId: string,
-    destSchemaName: string,
-    dest: Prop,
-  ): CategorizedPossibleConnections;
+  ): PossibleConnection[];
   getOutgoingConnectionsByComponentId(
     workspaceId: string,
     changeSetId: ChangeSetId,

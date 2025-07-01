@@ -6,7 +6,6 @@ import {
   inject,
   ComputedRef,
   unref,
-  toRaw,
   ref,
   watch,
   onScopeDispose,
@@ -30,7 +29,6 @@ import {
 import {
   Connection,
   EntityKind,
-  Prop,
   SchemaMembers,
 } from "@/workers/types/entity_kind_types";
 import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
@@ -343,17 +341,8 @@ export const bifrostList = async <T>(args: {
 export const getPossibleConnections = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
-  destSchemaName: string;
-  dest: Prop;
 }) => {
-  return reactive(
-    await db.getPossibleConnections(
-      args.workspaceId,
-      args.changeSetId,
-      args.destSchemaName,
-      toRaw(args.dest), // Can't send reactive stuff across the boundary, silently fails
-    ),
-  );
+  return await db.getPossibleConnections(args.workspaceId, args.changeSetId);
 };
 
 export const linkNewChangeset = async (
@@ -628,29 +617,18 @@ export const changeSetExists = async (
 /// const componentId = ref<ComponentId>();
 /// const makeKey = useMakeKey();
 /// const query = useQuery({ queryKey: makeKey(EntityKind.Component, componentId), ... });
-///
-/// You may also specify other reactive values that will be included in the key, so that the query
-/// will restart when those other values change:
-///
-/// @example
-/// const currentProp = ref<Prop>();
-/// const makeKey = useMakeKey();
-/// const query = useQuery({ queryKey: makeKey(EntityKind.PossibleConnections, undefined, currentProp), ... });
-///
 export const useMakeKey = () => {
   const ctx: Context | undefined = inject("CONTEXT");
 
-  return <T extends unknown[], K = Gettable>(
+  return <K = Gettable>(
     kind: ComputedRef<K> | K,
     id?: ComputedRef<string> | string,
-    ...extra: [...T]
   ) =>
-    computed<[string?, string?, (ComputedRef<K> | K)?, string?, ...T]>(() => [
+    computed<[string?, string?, (ComputedRef<K> | K)?, string?]>(() => [
       ctx?.workspacePk.value,
       ctx?.changeSetId.value,
       kind as K,
       unref(id) ?? ctx?.workspacePk.value,
-      ...extra,
     ]);
 };
 

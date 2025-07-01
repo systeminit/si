@@ -203,20 +203,10 @@ const dbInterface: SharedDBInterface = {
     );
   },
 
-  async getPossibleConnections(
-    workspaceId,
-    changeSetId,
-    destSchemaName,
-    destProp,
-  ) {
+  async getPossibleConnections(workspaceId, changeSetId) {
     return await withRemote(
       async (remote) =>
-        await remote.getPossibleConnections(
-          workspaceId,
-          changeSetId,
-          destSchemaName,
-          destProp,
-        ),
+        await remote.getPossibleConnections(workspaceId, changeSetId),
     );
   },
 
