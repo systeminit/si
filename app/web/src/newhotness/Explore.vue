@@ -10,13 +10,13 @@
         <DropdownMenuButton
           class="rounded min-w-[128px]"
           :options="viewListOptions"
-          :modelValue="selectedView"
+          :modelValue="selectedViewId"
           minWidthToAnchor
           placeholder="All Views"
           checkable
           :enableSecondaryAction="() => true"
           @secondaryAction="openEditViewModal"
-          @update:modelValue="(val) => (selectedView = val)"
+          @update:modelValue="(val) => (selectedViewId = val)"
         >
           <template #beforeOptions>
             <DropdownMenuItem
@@ -24,8 +24,8 @@
               value="''"
               checkable
               sizeClass="h-lg px-xs pr-xs"
-              :checked="selectedView === ''"
-              @select="() => (selectedView = '')"
+              :checked="selectedViewId === ''"
+              @select="() => (selectedViewId = '')"
             />
           </template>
           <template #afterOptions>
@@ -265,7 +265,7 @@
     <!-- For the edit view modals, upon delete, change back to "All Views" -->
     <EditViewModal
       ref="editViewModalRef"
-      @deleted="() => (selectedView = '')"
+      @deleted="() => (selectedViewId = '')"
     />
     <ComponentContextMenu
       ref="componentContextMenuRef"
@@ -359,7 +359,6 @@ const VIEW_MODE_LOCAL_STORAGE_KEY = "newhotness-view-mode";
 const viewModeStorageKey = () =>
   `${VIEW_MODE_LOCAL_STORAGE_KEY}: ${ctx.changeSetId}`;
 
-const selectedView = ref("");
 const groupRef = ref<InstanceType<typeof TabGroupToggle>>();
 const actionsRef = ref<typeof CollapsingGridItem>();
 const historyRef = ref<typeof CollapsingGridItem>();
@@ -424,12 +423,33 @@ const viewListOptions = computed(() => {
 const defaultView = computed(() =>
   viewListQuery.data.value?.find((v) => v.isDefault),
 );
+const selectedViewId = ref<string | undefined>(undefined);
 const selectedViewOrDefaultId = computed(() => {
-  if (selectedView.value) return selectedView.value;
+  if (selectedViewId.value) return selectedViewId.value;
   if (!viewListQuery.data.value) return "";
   const view = viewListQuery.data.value.find((v) => v.isDefault);
   if (!view) return "";
   return view.id;
+});
+
+// Store the viewId in the URL if it's not the default view or all views
+watch([selectedViewId], () => {
+  unfocus();
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+  delete query.map;
+  delete query.viewId;
+  query.grid = "1";
+  if (
+    selectedViewId.value !== "" &&
+    selectedViewId.value !== defaultView.value?.id
+  ) {
+    query.viewId = selectedViewOrDefaultId.value;
+  }
+  router.push({
+    query,
+  });
 });
 
 // We need to check if the change set has been changed
@@ -440,9 +460,9 @@ watch(
   () => {
     if (
       !viewListQuery.data.value ||
-      !viewListQuery.data.value.find((v) => v.id === selectedView.value)
+      !viewListQuery.data.value.find((v) => v.id === selectedViewId.value)
     ) {
-      selectedView.value = "";
+      selectedViewId.value = "";
     }
   },
   { immediate: true },
@@ -536,18 +556,20 @@ const componentsHaveActionsWithState = computed(() => {
 });
 
 const kind = computed(() =>
-  selectedView.value ? EntityKind.ViewComponentList : EntityKind.ComponentList,
+  selectedViewId.value
+    ? EntityKind.ViewComponentList
+    : EntityKind.ComponentList,
 );
 const id = computed(() =>
-  selectedView.value ? selectedView.value : ctx.workspacePk.value,
+  selectedViewId.value ? selectedViewId.value : ctx.workspacePk.value,
 );
 const componentQueryKey = key(kind, id);
 
 const componentListRaw = useQuery<ComponentInList[]>({
   queryKey: componentQueryKey,
   queryFn: async () => {
-    const arg = selectedView.value
-      ? args<Listable>(EntityKind.ViewComponentList, selectedView.value)
+    const arg = selectedViewId.value
+      ? args<Listable>(EntityKind.ViewComponentList, selectedViewId.value)
       : args<Listable>(EntityKind.ComponentList);
     const list = await bifrostList<ComponentInList[]>(arg);
     return list ?? [];
@@ -1148,6 +1170,10 @@ const setSelectionsFromQuery = () => {
 
   if (query.pinned !== undefined) {
     pinnedComponentId.value = query.pinned;
+  }
+
+  if (query.viewId !== undefined) {
+    selectedViewId.value = query.viewId;
   }
 };
 
