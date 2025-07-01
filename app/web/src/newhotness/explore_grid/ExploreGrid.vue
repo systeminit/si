@@ -296,6 +296,8 @@ const virtualizerOptions = computed(() => ({
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   getScrollElement: () => scrollRef.value!,
   estimateSize: (i: number) => rowHeights.value[i] ?? 0,
+  // The item key is essential for reactivity and was found by @vbustamante and his valiant
+  // efforts. Without this, the virtualizer will not re-compute, even with new components.
   getItemKey: (i: number) => getItemKey(i),
   overscan: 4,
 }));
@@ -357,7 +359,10 @@ defineEmits<{
   ): void;
 }>();
 
-defineExpose({ getGridComponentByIndex, focusedComponent });
+defineExpose({
+  getGridComponentRefByIndex: getGridComponentByIndex,
+  focusedComponent,
+});
 </script>
 
 <style lang="css" scoped>

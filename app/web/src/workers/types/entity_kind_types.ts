@@ -402,6 +402,8 @@ export interface BifrostIncomingConnections {
   connections: Connection[];
 }
 
+// FIXME(nick,jobelenus): we should split the connection type into two now that management
+// connections have their own MV.
 export type Connection =
   | {
       kind: "management";
