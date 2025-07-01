@@ -87,6 +87,8 @@ pub mod view;
 pub enum ChangeSetError {
     #[error("billing publish error: {0}")]
     BillingPublish(#[from] Box<BillingPublishError>),
+    #[error("cannot rename HEAD change set")]
+    CantRenameHeadChangeSet,
     #[error("change set not approved for apply. Current state: {0}")]
     ChangeSetNotApprovedForApply(ChangeSetStatus),
     #[error("change set with id {0} not found")]
@@ -1148,6 +1150,11 @@ impl ChangeSet {
         change_set_id: ChangeSetId,
         new_name: &String,
     ) -> ChangeSetResult<()> {
+        let default_change_set_id = ctx.get_workspace_default_change_set_id().await?;
+        if default_change_set_id == change_set_id {
+            return Err(ChangeSetError::CantRenameHeadChangeSet);
+        }
+
         ctx.txns()
             .await?
             .pg()
