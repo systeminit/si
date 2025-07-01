@@ -54,6 +54,7 @@ pub mod action_prototype_view_list;
 pub mod action_view_list;
 pub mod component;
 pub mod component_list;
+pub mod dependent_value_component_list;
 pub mod incoming_connections;
 pub mod incoming_connections_list;
 pub mod mgmt_prototype_view_list;
@@ -85,6 +86,10 @@ pub enum Error {
     Component(#[from] dal::ComponentError),
     #[error("dal transactions error: {0}")]
     DalTransactions(#[from] dal::TransactionsError),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(
+        #[from] dal::workspace_snapshot::dependent_value_root::DependentValueRootError,
+    ),
     #[error("diagram error: {0}")]
     Diagram(#[from] dal::diagram::DiagramError),
     #[error("func error: {0}")]

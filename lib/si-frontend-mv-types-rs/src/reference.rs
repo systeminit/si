@@ -43,6 +43,7 @@ pub enum ReferenceKind {
     Component,
     ComponentInList,
     ComponentList,
+    DependentValueComponentList,
     IncomingConnections,
     IncomingConnectionsList,
     ManagementConnections,

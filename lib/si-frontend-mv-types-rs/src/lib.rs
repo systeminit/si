@@ -26,6 +26,7 @@ pub mod action;
 mod change_set;
 pub mod checksum;
 pub mod component;
+pub mod dependent_values;
 pub mod incoming_connections;
 pub mod index;
 pub mod management;

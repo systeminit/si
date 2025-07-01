@@ -44,6 +44,7 @@ use si_frontend_mv_types::{
         SchemaMembers,
         attribute_tree::AttributeTree as AttributeTreeMv,
     },
+    dependent_values::DependentValueComponentList as DependentValueComponentListMv,
     incoming_connections::{
         IncomingConnections as IncomingConnectionsMv,
         IncomingConnectionsList as IncomingConnectionsListMv,
@@ -892,7 +893,20 @@ async fn spawn_build_mv_task_for_change_and_mv_kind(
                 change,
                 workspace_mv_id,
                 ComponentListMv,
-                dal_materialized_views::component_list::assemble(ctx.clone(),),
+                dal_materialized_views::component_list::assemble(ctx.clone()),
+            );
+        }
+        ReferenceKind::DependentValueComponentList => {
+            let workspace_mv_id = workspace_pk.to_string();
+
+            spawn_build_mv_task!(
+                build_tasks,
+                ctx,
+                frigg,
+                change,
+                workspace_mv_id,
+                DependentValueComponentListMv,
+                dal_materialized_views::dependent_value_component_list::assemble(ctx.clone()),
             );
         }
         ReferenceKind::IncomingConnections => {
