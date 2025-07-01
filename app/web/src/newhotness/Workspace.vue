@@ -449,6 +449,15 @@ onMounted(() => {
   windowResizeEmitter.on("resize", windowResizeHandler);
 });
 
+const invalidateOneFuncRun = _.debounce((funcRunId: string) => {
+  const queryKey = [ctx.value.changeSetId, "funcRunLogs", funcRunId];
+  if (queryClient.isFetching({ queryKey }) > 0) {
+    invalidateOneFuncRun(funcRunId);
+    return;
+  }
+  queryClient.invalidateQueries({ queryKey });
+}, 500);
+
 watch(
   ctx.value.changeSetId,
   () => {
@@ -465,6 +474,7 @@ watch(
           callback: async (payload) => {
             if (payload.funcRunId) {
               invalidatePaginatedFuncRuns();
+              invalidateOneFuncRun(payload.funcRunId);
             }
           },
         },
