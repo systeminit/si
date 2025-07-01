@@ -39,11 +39,10 @@
 
 <script lang="ts" setup>
 import { computed, onMounted, onBeforeUnmount, ref, inject, unref } from "vue";
-import { useQuery, useQueryClient } from "@tanstack/vue-query";
+import { useQuery } from "@tanstack/vue-query";
 import { VButton } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
 import { useRouter } from "vue-router";
-import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import FuncRunDetailsLayout from "./layout_components/FuncRunDetailsLayout.vue";
 import { assertIsDefined, Context } from "./types";
 import { useApi, routes, funcRunTypes } from "./api_composables";
@@ -76,8 +75,6 @@ const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
 
 const router = useRouter();
-const queryClient = useQueryClient();
-const realtimeStore = useRealtimeStore();
 const isLive = ref(false);
 
 const back = () => {
@@ -131,9 +128,12 @@ const { data: funcRunQuery } = useQuery<Omit<FuncRun, "logs"> | undefined>({
     });
     const req = await call.get();
     if (api.ok(req)) {
-      pollInterval.value = ["Running", "Dispatched", "Created"].includes(
-        req.data.funcRun.state,
-      )
+      pollInterval.value = [
+        "Running",
+        "Dispatched",
+        "Created",
+        "Failed",
+      ].includes(req.data.funcRun.state)
         ? 5000
         : false;
       return req.data.funcRun;
@@ -147,6 +147,7 @@ const funcRun = computed(() => funcRunQuery.value);
 const { data: funcRunLogsQuery } = useQuery<FuncRunLog | undefined>({
   queryKey: [ctx.changeSetId.value, "funcRunLogs", props.funcRunId],
   queryFn: async () => {
+    isLive.value = true;
     const call = api.endpoint<funcRunTypes.FuncRunLogsResponse>(
       routes.FuncRunLogs,
       {
@@ -155,6 +156,10 @@ const { data: funcRunLogsQuery } = useQuery<FuncRunLog | undefined>({
     );
     const req = await call.get();
     if (api.ok(req)) {
+      if (req.data.logs.finalized) {
+        pollInterval.value = false;
+        isLive.value = false;
+      }
       return req.data.logs;
     }
   },
@@ -211,53 +216,8 @@ const resultJson = computed<string>(() => {
   }
 });
 
-let executionKey: string | undefined;
-
-const bustFuncQuery = _.debounce(
-  () => {
-    queryClient.invalidateQueries({
-      queryKey: [ctx.changeSetId.value, "funcRunLogs", props.funcRunId],
-    });
-  },
-  1000,
-  {
-    leading: false,
-    trailing: true,
-  },
-);
-
-// Function to set up subscription for FuncRunLogUpdated events
-const setupFuncRunSubscription = () => {
-  executionKey = `funcRunDetails-${props.funcRunId}`;
-
-  // Subscribe to FuncRunLogUpdated events for this function run
-  realtimeStore.subscribe(executionKey, `changeset/${ctx.changeSetId}`, [
-    {
-      eventType: "FuncRunLogUpdated",
-      callback: (payload) => {
-        if (payload.funcRunId === props.funcRunId) {
-          // Set live state to true to show the "Live updating" indicator
-          isLive.value = true;
-
-          // Only fetch the logs instead of the entire function run
-          // This is more efficient than re-fetching the entire function run
-          bustFuncQuery();
-
-          // Reset the live indicator after a brief delay if the function run is complete
-          if (funcRun.value?.state !== "Running") {
-            setTimeout(() => {
-              isLive.value = false;
-            }, 3000);
-          }
-        }
-      },
-    },
-  ]);
-};
-
 // Set up subscription on component mount
 onMounted(() => {
-  setupFuncRunSubscription();
   keyEmitter.on("Escape", () => {
     back();
   });
@@ -266,9 +226,5 @@ onMounted(() => {
 // Ensure cleanup on component unmount
 onBeforeUnmount(() => {
   keyEmitter.off("Escape");
-  if (executionKey) {
-    realtimeStore.unsubscribe(executionKey);
-    executionKey = undefined;
-  }
 });
 </script>

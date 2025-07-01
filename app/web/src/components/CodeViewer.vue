@@ -81,7 +81,15 @@
 
 <script setup lang="ts">
 import * as _ from "lodash-es";
-import { ref, computed, watch, PropType, onMounted, onBeforeMount } from "vue";
+import {
+  ref,
+  computed,
+  watch,
+  PropType,
+  onMounted,
+  onBeforeMount,
+  nextTick,
+} from "vue";
 import { basicSetup, EditorView } from "codemirror";
 import { StreamLanguage } from "@codemirror/language";
 
@@ -193,8 +201,6 @@ const editorExtensionList = computed<Extension[]>(() => {
 });
 
 function initCodeMirrorEditor() {
-  if (numberOfLinesInCode.value < 2) return;
-
   editorView = new EditorView({
     state: EditorState.create({
       doc: props.code,
@@ -214,15 +220,8 @@ function syncEditorConfig() {
 }
 
 function syncEditorCode() {
-  if (!editorView) return;
-  editorView.dispatch({
-    changes: {
-      from: 0,
-      to: editorView.state.doc.length,
-      insert: props.code,
-    },
-    effects: readOnly.reconfigure(EditorState.readOnly.of(true)),
-  });
+  // this is what `CodeEditor` does, on any change it remounts the editor
+  initCodeMirrorEditor();
 }
 
 onMounted(initCodeMirrorEditor);
@@ -231,7 +230,9 @@ watch(editorExtensionList, syncEditorConfig, { immediate: true });
 watch(
   () => props.code,
   () => {
-    syncEditorCode();
+    nextTick(() => {
+      syncEditorCode();
+    });
   },
 );
 
