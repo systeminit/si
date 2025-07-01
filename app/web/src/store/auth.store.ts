@@ -62,8 +62,8 @@ export const useAuthStore = () => {
         !_.isEmpty(state.tokens) && state.user?.pk,
       selectedWorkspaceToken: (state) => {
         const workspacesStore = useWorkspacesStore();
-        if (workspacesStore.selectedWorkspacePk) {
-          return state.tokens[workspacesStore.selectedWorkspacePk];
+        if (workspacesStore.urlSelectedWorkspaceId) {
+          return state.tokens[workspacesStore.urlSelectedWorkspaceId];
         }
       },
       selectedOrDefaultAuthToken(): string | undefined {
@@ -162,9 +162,7 @@ export const useAuthStore = () => {
         });
       },
 
-      // OTHER ACTIONS ///////////////////////////////////////////////////////////////////
-      async initFromStorage() {
-        // check regular user token (we will likely have a different token for admin auth later)
+      initTokens() {
         let tokensByWorkspacePk: Record<string, string> = {};
         try {
           const parsed = JSON.parse(
@@ -186,6 +184,12 @@ export const useAuthStore = () => {
           tokens: tokensByWorkspacePk,
           userPk,
         });
+      },
+
+      // OTHER ACTIONS ///////////////////////////////////////////////////////////////////
+      async initFromStorage() {
+        // check regular user token (we will likely have a different token for admin auth later)
+        this.initTokens();
 
         // this endpoint re-fetches the user and workspace
         // dont think it's 100% necessary at the moment and not quite the right shape, but can fix later
