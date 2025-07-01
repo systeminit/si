@@ -9,6 +9,7 @@
   -->
   <div ref="scrollRef" class="scrollable grow" style="overflow-anchor: none">
     <div
+      data-testid="tile-container"
       class="w-full relative flex flex-col"
       :style="{
         ['overflow-anchor']: 'none',
@@ -19,6 +20,7 @@
         v-for="row in componentRowsVirtualItemsList"
         :key="`${row.key}`"
         ref="exploreGridRowRefs"
+        data-testid="component-tile"
         :data-index="row.index"
         :class="clsx('absolute top-0 left-0 w-full')"
         :style="{
