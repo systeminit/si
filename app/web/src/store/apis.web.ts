@@ -34,8 +34,6 @@ export function injectBearerTokenAuth(config: InternalAxiosRequestConfig) {
   const authStore = useAuthStore();
   config.headers = config.headers || {};
 
-  // not logged in means zero tokens
-  if (!authStore.userIsLoggedIn) authStore.initTokens();
   const token = authStore.selectedOrDefaultAuthToken;
   if (token) {
     config.headers.authorization = `Bearer ${token}`;
