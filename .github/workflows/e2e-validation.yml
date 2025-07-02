@@ -64,40 +64,7 @@ jobs:
           echo "Remote IP set to ${remote_ip}"
           echo "remote_ip=$remote_ip" >> "$GITHUB_OUTPUT"
 
-  cypress-tests:
-    environment: ${{ inputs.environment }}
-    runs-on: ubuntu-latest
-    needs: 
-      - define-test-matrix
-      - launch-ec2-node
-    strategy:
-      fail-fast: true
-      matrix:
-        tests: ${{ fromJSON(needs.define-test-matrix.outputs.tests) }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18.18.2'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Install Deps
-        working-directory: app/web
-        run: |
-          pnpm i
-          npx cypress install
-
-      - name: install uuid
-        run: |
-          sudo apt update
-          sudo apt install uuid -y
-
-      - name: Setup SSH tunnel if ec2-node
+      - name: Validate Service's are healthy
         if: ${{ inputs.environment == 'ec2-node' }}
         working-directory: .ci/
         run: |
@@ -146,6 +113,60 @@ jobs:
             echo "⏳ Attempt $i/180: Service not responding yet. Retrying in 10s..."
             sleep 10
           done
+
+          # Fail if still not up after 30 min
+          if ! nc -z localhost 8080; then
+            echo "❌ Timed out waiting for web app on port 8080"
+            exit 1
+          fi
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+
+  cypress-tests:
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    needs: 
+      - define-test-matrix
+      - launch-ec2-node
+    strategy:
+      fail-fast: true
+      matrix:
+        tests: ${{ fromJSON(needs.define-test-matrix.outputs.tests) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.18.2'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Deps
+        working-directory: app/web
+        run: |
+          pnpm i
+          npx cypress install
+
+      - name: install uuid
+        run: |
+          sudo apt update
+          sudo apt install uuid -y
+
+      - name: Setup SSH tunnel if ec2-node for web access
+        if: ${{ inputs.environment == 'ec2-node' }}
+        working-directory: .ci/
+        run: |
+          echo "$SSH_KEY" > ssh-key.pem
+          chmod 600 ssh-key.pem
+
+          remote_ip="${{ needs.launch-ec2-node.outputs.remote-ip }}"
+          echo "Tunneling EC2 node @ $remote_ip"
+
+          # Start SSH tunnel in background for 8080 (Web App) & 3020 (Bedrock)
+          nohup ssh -o StrictHostKeyChecking=no -L 8080:localhost:8080 arch@$remote_ip -i ssh-key.pem -N &
 
           # Fail if still not up after 30 min
           if ! nc -z localhost 8080; then
