@@ -1,9 +1,7 @@
 <template>
   <Modal ref="modalRef" :title="title" size="lg">
     <div class="max-h-[70vh] overflow-hidden flex flex-col gap-sm">
-      <div>
-        <slot />
-      </div>
+      <slot />
 
       <VormInput
         v-if="irreversible"

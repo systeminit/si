@@ -30,7 +30,10 @@
         :lanesCount="virtualizerLanes"
         :row="gridRows[row.index]!"
         :focusedComponentId="focusedComponent?.id"
+        :selectedComponentIndexes="selectedComponentIndexes"
         @childClicked="(e, c, idx) => $emit('childClicked', e, c, idx)"
+        @childSelect="(idx) => $emit('childSelect', idx)"
+        @childDeselect="(idx) => $emit('childDeselect', idx)"
         @clickCollapse="clickCollapse"
         @unpin="(componentId) => $emit('unpin', componentId)"
       />
@@ -53,6 +56,7 @@ import ExploreGridTile, { GRID_TILE_HEIGHT } from "./ExploreGridTile.vue";
 const props = defineProps<{
   components: Record<string, ComponentInList[]>;
   focusedComponentIdx?: number;
+  selectedComponentIndexes: Set<number>;
 }>();
 
 const MIN_GRID_TILE_WIDTH = 250;
@@ -77,19 +81,32 @@ const exploreGridComponentRefs = computed(() => {
   return componentRefs;
 });
 
-const allComponents = computed(() => {
-  let components: ComponentInList[] = [];
-  for (const title in props.components) {
-    const newComponents = props.components[title] ?? [];
-    components = [...components, ...newComponents];
+const allVisibleComponents = computed(() => {
+  // this excludes components which are inside collapsed groups
+  const components: ComponentInList[] = [];
+  for (const row of gridRows.value) {
+    if (row.type === "contentRow") {
+      components.push(...row.components);
+    }
   }
-
   return components;
 });
 
 const focusedComponent = computed(
-  () => allComponents.value[props.focusedComponentIdx ?? -1],
+  () => allVisibleComponents.value[props.focusedComponentIdx ?? -1],
 );
+const selectedComponents = computed(() => {
+  const selected: ComponentInList[] = [];
+
+  props.selectedComponentIndexes.forEach((index) => {
+    const component = allVisibleComponents.value[index];
+    if (component) {
+      selected.push(component);
+    }
+  });
+
+  return selected;
+});
 
 function getScrollbarWidth(): number {
   const temp = document.createElement("div");
@@ -106,7 +123,7 @@ function getScrollbarWidth(): number {
   return scrollbarWidth;
 }
 
-const getGridComponentByIndex = (idx: number) => {
+const getGridComponentRefByIndex = (idx: number) => {
   if (!exploreGridComponentRefs.value) return undefined;
 
   return exploreGridComponentRefs.value.find(
@@ -334,7 +351,7 @@ const scrollCurrentTileIntoView = () => {
   if (
     props.focusedComponentIdx === undefined ||
     props.focusedComponentIdx < 0 ||
-    props.focusedComponentIdx > allComponents.value.length - 1
+    props.focusedComponentIdx > allVisibleComponents.value.length - 1
   )
     return;
 
@@ -351,6 +368,8 @@ watch([() => props.focusedComponentIdx], scrollCurrentTileIntoView);
 
 defineEmits<{
   (e: "unpin", componentId: ComponentId): void;
+  (e: "childSelect", componentIdx: number): void;
+  (e: "childDeselect", componentIdx: number): void;
   (
     e: "childClicked",
     event: MouseEvent,
@@ -360,8 +379,10 @@ defineEmits<{
 }>();
 
 defineExpose({
-  getGridComponentRefByIndex: getGridComponentByIndex,
+  getGridComponentRefByIndex,
   focusedComponent,
+  selectedComponents,
+  allVisibleComponents,
 });
 </script>
 
