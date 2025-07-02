@@ -1,5 +1,5 @@
 <template>
-  <DelayedLoader v-if="componentListRaw.isLoading.value" :size="'full'" />
+  <DelayedSkeleton v-if="componentListRaw.isLoading.value" />
   <section v-else :class="clsx('grid h-full', showGrid ? 'explore' : 'map')">
     <!-- Left column -->
     <!-- 12 pixel padding to align with the SI logo -->
@@ -354,7 +354,6 @@ import { getQualificationStatus } from "./ComponentQualificationStatus.vue";
 import ActionCard from "./ActionCard.vue";
 import FuncRunList from "./FuncRunList.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
-import DelayedLoader from "./layout_components/DelayedLoader.vue";
 import {
   KeyDetails,
   keyEmitter,
@@ -373,6 +372,7 @@ import ShortcutModal from "./ShortcutModal.vue";
 import { useUpgrade } from "./logic_composables/upgrade";
 import ExploreGrid from "./explore_grid/ExploreGrid.vue";
 import { useConnections } from "./logic_composables/connections";
+import DelayedSkeleton from "./skeletons/DelayedSkeleton.vue";
 
 const router = useRouter();
 const route = useRoute();
