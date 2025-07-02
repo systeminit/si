@@ -496,9 +496,7 @@ watch([selectedViewId], () => {
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
   };
-  delete query.map;
   delete query.viewId;
-  query.grid = "1";
   if (
     selectedViewId.value !== "" &&
     selectedViewId.value !== defaultView.value?.id
