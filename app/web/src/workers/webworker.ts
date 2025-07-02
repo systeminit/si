@@ -2090,9 +2090,16 @@ const postProcess = (
 
     const attributeTree = doc as AttributeTree;
     if (doc) {
+      const avsForThisComponent = new Set(
+        Object.values(existing)
+          .filter((av) => av.componentId === attributeTree.id)
+          .map((av) => av.attributeValueId),
+      );
+      const avsFound: Set<string> = new Set();
       Object.values(attributeTree.attributeValues).forEach((av) => {
         const prop = attributeTree.props[av.propId ?? ""];
         if (av.path && prop && prop.eligibleForConnection && !prop.hidden) {
+          avsFound.add(av.id);
           conns[av.id] = {
             attributeValueId: av.id,
             value: av.secret ? av.secret.name : av.value || "<computed>",
@@ -2106,7 +2113,14 @@ const postProcess = (
           };
         }
       });
-      // TODO what if individual AVs get removed?
+      const avsToRemove = new Set(
+        [...avsForThisComponent].filter((id) => !avsFound.has(id)),
+      );
+      Object.values(existing).forEach((av) => {
+        if (avsToRemove.has(av.attributeValueId)) {
+          delete existing[av.attributeValueId];
+        }
+      });
       allPossibleConns.set(changeSetId, { ...existing, ...conns });
     }
     if (removed) {
