@@ -10,27 +10,32 @@
       )
     "
   >
-    <input
+    <component
+      :is="fieldname === 'Description' ? 'textarea' : 'input'"
       ref="inputRef"
       :class="
         clsx(
-          'block h-lg w-full ml-auto text-sm font-mono',
+          'block w-full ml-auto text-sm font-mono',
           'border-transparent focus:outline-none focus:border-transparent focus:ring-0 focus:z-10',
           themeClasses(
             'text-black bg-white disabled:bg-neutral-100',
             'text-white bg-black disabled:bg-neutral-900',
           ),
           field.state.meta.errors.length > 0 && 'border-destructive-500 z-100',
+          fieldname === 'Description' ? 'min-h-[36px]' : 'h-lg',
         )
       "
-      :type="getCurrentFormFieldType(fieldname)"
+      :type="
+        fieldname === 'Description' ? null : getCurrentFormFieldType(fieldname)
+      "
+      :rows="fieldname === 'Description' ? 4 : null"
       :value="field.state.value"
       tabindex="0"
       :placeholder="placeholder"
       data-1p-ignore
       @keydown.tab="onTab"
       @input="
-      (e) =>
+      (e: Event) =>
         field.handleChange((e.target as HTMLInputElement).value)
     "
     />
