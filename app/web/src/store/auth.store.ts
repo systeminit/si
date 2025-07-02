@@ -62,8 +62,8 @@ export const useAuthStore = () => {
         !_.isEmpty(state.tokens) && state.user?.pk,
       selectedWorkspaceToken: (state) => {
         const workspacesStore = useWorkspacesStore();
-        if (workspacesStore.selectedWorkspacePk) {
-          return state.tokens[workspacesStore.selectedWorkspacePk];
+        if (workspacesStore.urlSelectedWorkspaceId) {
+          return state.tokens[workspacesStore.urlSelectedWorkspaceId];
         }
       },
       selectedOrDefaultAuthToken(): string | undefined {
@@ -162,9 +162,7 @@ export const useAuthStore = () => {
         });
       },
 
-      // OTHER ACTIONS ///////////////////////////////////////////////////////////////////
-      async initFromStorage() {
-        // check regular user token (we will likely have a different token for admin auth later)
+      initTokens() {
         let tokensByWorkspacePk: Record<string, string> = {};
         try {
           const parsed = JSON.parse(
@@ -176,7 +174,7 @@ export const useAuthStore = () => {
         }
 
         const tokens = _.values(tokensByWorkspacePk);
-        if (!tokens.length) return;
+        if (!tokens.length) return [];
 
         // token contains user pk and biling account pk
         const { user_pk: userPk } =
@@ -186,14 +184,23 @@ export const useAuthStore = () => {
           tokens: tokensByWorkspacePk,
           userPk,
         });
+        return tokens;
+      },
+
+      // OTHER ACTIONS ///////////////////////////////////////////////////////////////////
+      async initFromStorage() {
+        // check regular user token (we will likely have a different token for admin auth later)
+        const tokens = this.initTokens();
+        if (!tokens.length) return;
 
         // this endpoint re-fetches the user and workspace
         // dont think it's 100% necessary at the moment and not quite the right shape, but can fix later
         const restoreAuthReq = await this.RESTORE_AUTH();
         if (!restoreAuthReq.result.success) {
-          const errMessage: string =
+          const errMessage: string | undefined =
             restoreAuthReq.result.errBody?.error?.message;
-          const errCode: string = restoreAuthReq.result.errBody?.error?.code;
+          const errCode: string | undefined =
+            restoreAuthReq.result.errBody?.error?.code;
 
           if (errCode === "WORKSPACE_NOT_INITIALIZED") {
             // db is migrated, but workspace does not exist, probably because it has been reset
@@ -205,6 +212,7 @@ export const useAuthStore = () => {
           } else if (
             // db is totally empty and needs migrations to run
             // TODO: can we catch this more broadly in the backend and return a specific error code?
+            errMessage &&
             errMessage.includes("relation") &&
             errMessage.includes("does not exist")
           ) {
