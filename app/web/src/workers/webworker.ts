@@ -949,6 +949,8 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
         atom.toChecksum,
         upToDateAtomIndexes,
       );
+      // get the doc for post processing
+      doc = atomDocumentForChecksum(atom.kind, atom.id, atom.toChecksum);
       span.addEvent("noop", {
         upToDateAtomIndexes: JSON.stringify(upToDateAtomIndexes),
       });
@@ -1625,6 +1627,7 @@ const niflheim = async (
       const local = localChecksums[key];
       if (!local || local !== checksum) {
         // Attempt to find an existing atom, since it might already exist in the database with this checksum
+        // if !local, this query will find no results...
         const existingDataForChecksum = atomDocumentForChecksum(
           kind,
           id,
@@ -2083,8 +2086,10 @@ const postProcess = (
   } else if (kind === EntityKind.AttributeTree) {
     const conns: Record<string, PossibleConnection> = {};
 
-    if (!removed && !doc)
-      throw new Error("Atom is not removed, but no data for post processing");
+    if (!removed && !doc) {
+      error("Atom is not removed, but no data for post processing", id);
+      return;
+    }
 
     const existing = allPossibleConns.get(changeSetId);
 
