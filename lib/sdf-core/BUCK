@@ -14,6 +14,7 @@ rust_library(
         "//lib/si-data-spicedb:si-data-spicedb",
         "//lib/si-db:si-db",
         "//lib/si-events-rs:si-events",
+        "//lib/si-frontend-mv-types-rs:si-frontend-mv-types",
         "//lib/si-frontend-types-rs:si-frontend-types",
         "//lib/si-id:si-id",
         "//lib/si-jwt-public-key:si-jwt-public-key",
