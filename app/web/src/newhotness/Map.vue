@@ -479,10 +479,12 @@ const mapData = computed(() => {
     const results = fzf.find(searchString.value);
     if (results.length === 0) return { nodes, edges, components };
     else matchingIds.push(...results.map((c) => c.item.id));
+  } else {
+    matchingIds.push(...Object.keys(componentsById.value));
   }
 
   connections.data.value.forEach((c) => {
-    if (searchString?.value && !matchingIds.includes(c.id)) return;
+    if (!matchingIds.includes(c.id)) return;
 
     nodes.add(c.id);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -490,9 +492,8 @@ const mapData = computed(() => {
     c.connections.forEach((e) => {
       // incoming, so "to" is me, always start with "me"
       if (
-        searchString?.value &&
-        (!matchingIds.includes(e.toComponentId) ||
-          !matchingIds.includes(e.fromComponentId))
+        !matchingIds.includes(e.toComponentId) ||
+        !matchingIds.includes(e.fromComponentId)
       )
         return;
 
