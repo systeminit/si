@@ -1855,6 +1855,14 @@ const coldStartComputed = async (workspaceId: string, changeSetId: string) => {
     true,
     true,
   );
+  bustCacheAndReferences(
+    workspaceId,
+    changeSetId,
+    EntityKind.OutgoingCounts,
+    workspaceId,
+    true,
+    true,
+  );
 
   const mgmtSql = `
     select

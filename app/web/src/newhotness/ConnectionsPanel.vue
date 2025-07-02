@@ -28,25 +28,15 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useQuery } from "@tanstack/vue-query";
 import clsx from "clsx";
 import { themeClasses } from "@si/vue-lib/design-system";
 import {
   IncomingConnections,
   ComponentInList,
-  Connection,
-  EntityKind,
   BifrostComponent,
 } from "@/workers/types/entity_kind_types";
-import {
-  bifrost,
-  getOutgoingConnections,
-  useMakeArgs,
-  useMakeKey,
-} from "@/store/realtime/heimdall";
-import ConnectionLayout, {
-  SimpleConnection,
-} from "./layout_components/ConnectionLayout.vue";
+import ConnectionLayout from "./layout_components/ConnectionLayout.vue";
+import { useConnections } from "./logic_composables/connections";
 import EmptyState from "./EmptyState.vue";
 
 const props = defineProps<{
@@ -55,92 +45,10 @@ const props = defineProps<{
   noEmptyState?: boolean;
 }>();
 
-const key = useMakeKey();
-const args = useMakeArgs();
-
-const componentId = computed(() => props.component.id);
-const enableLookup = computed(
-  () => !(props.connections && "id" in props.connections),
+const connectionsGetter = useConnections();
+const connections = computed(
+  () => connectionsGetter(props.component.id, props.connections).value,
 );
-
-const componentConnectionsQuery = useQuery<IncomingConnections | null>({
-  enabled: enableLookup,
-  queryKey: key(EntityKind.IncomingConnections, componentId),
-  queryFn: async () => {
-    const componentConnections = await bifrost<IncomingConnections>(
-      args(EntityKind.IncomingConnections, componentId.value),
-    );
-    return componentConnections;
-  },
-});
-
-const myOutgoing = computed<Connection[]>(() => {
-  if (!outgoingQuery.data.value) return [];
-
-  const mine = outgoingQuery.data.value.get(props.component.id);
-  if (!mine) return [];
-  return Object.values(mine);
-});
-const outgoingQuery = useQuery({
-  queryKey: key(EntityKind.OutgoingConnections),
-  queryFn: async () => {
-    return await getOutgoingConnections(args(EntityKind.OutgoingConnections));
-  },
-});
-
-const componentConnections = computed(() => {
-  if (enableLookup.value && componentConnectionsQuery.data.value) {
-    const { connections: incoming } = componentConnectionsQuery.data.value;
-    return { incoming };
-  } else if (props.connections) {
-    const { connections: incoming } = props.connections;
-    return { incoming };
-  } else {
-    return {
-      incoming: [] as Connection[],
-    };
-  }
-});
-
-// these two shouldn't be the same shape?
-const incoming = computed(
-  () =>
-    componentConnections.value.incoming.map((conn) => {
-      if (conn.kind === "management") {
-        return {
-          key: `mgmt-${conn.toComponentId}-${conn.fromComponentId}`,
-          componentId: conn.fromComponentId,
-          self: "Management",
-          other: "-",
-        };
-      } else {
-        return {
-          key: `${conn.toAttributeValueId}-${conn.toComponentId}-${conn.fromComponentId}-${conn.fromAttributeValueId}`,
-          componentId: conn.fromComponentId,
-          self: conn.toAttributeValuePath,
-          other: conn.fromAttributeValuePath,
-        };
-      }
-    }) ?? ([] as SimpleConnection[]),
-);
-
-const outgoing = computed<SimpleConnection[]>(() => {
-  return myOutgoing.value.map((conn) => {
-    if (conn.kind === "management") {
-      return {
-        key: `mgmt-${conn.toComponentId}-${conn.fromComponentId}`,
-        componentId: conn.fromComponentId,
-        self: "Management",
-        other: "-",
-      };
-    } else {
-      return {
-        key: `${conn.toAttributeValueId}-${conn.toComponentId}-${conn.fromComponentId}-${conn.fromAttributeValueId}`,
-        componentId: conn.fromComponentId,
-        self: conn.toAttributeValuePath,
-        other: conn.fromAttributeValuePath,
-      };
-    }
-  });
-});
+const incoming = computed(() => connections.value.incoming);
+const outgoing = computed(() => connections.value.outgoing);
 </script>
