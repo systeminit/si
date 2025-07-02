@@ -1927,15 +1927,14 @@ const postProcess = (
   // So when we move to streaming patches, we have to do something else
   // to support adding & removing items from lists
   if (LISTABLE_ITEMS.includes(kind)) {
-    // push updates over the thread boundary
     const listIds: string[] = [];
     if (kind === EntityKind.ComponentInList) {
       const sql = `
-      select
+      select distinct
         viewId
       FROM
         (select
-          id as viewId,
+          atoms.args as viewId,
           json_each.value as ref
         from
           atoms,
