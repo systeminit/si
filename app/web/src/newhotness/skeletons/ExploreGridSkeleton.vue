@@ -1,14 +1,12 @@
 <template>
   <section
-    :class="
-      clsx('grid h-full explore', themeClasses('bg-white', 'bg-neutral-950'))
-    "
+    :class="clsx('grid h-full explore', themeClasses('bg-white', 'bg-black'))"
   >
     <div
       :class="
         clsx(
           'main pt-xs flex flex-col gap-xs items-stretch [&>div]:mx-[12px]',
-          themeClasses('bg-white', 'bg-neutral-950'),
+          themeClasses('bg-white', 'bg-black'),
         )
       "
     >
@@ -88,7 +86,7 @@
         :class="
           clsx(
             'w-full grid gap-4 flex-1 pr-6',
-            themeClasses('bg-white', 'bg-neutral-950'),
+            themeClasses('bg-white', 'bg-black'),
           )
         "
         :style="{

@@ -235,6 +235,7 @@ const keyForm = wForm.newForm({
       );
     }
   },
+  watchFn: () => props.attributeTree.children.length,
 });
 
 const saveKeyIfFormValid = async () => {

@@ -32,19 +32,35 @@
         <!-- Display / edit the value -->
         <div
           ref="inputFocusDivRef"
+          v-tooltip="
+            readOnly
+              ? {
+                  placement: 'left',
+                  content: 'Unable to edit this value.',
+                }
+              : null
+          "
           :class="
             clsx(
+              'w-full h-lg p-xs ml-auto text-sm border font-mono flex flex-row items-center gap-3xs',
+              themeClasses('border-neutral-400', 'border-neutral-600'),
+
+              readOnly
+                ? [
+                    'cursor-not-allowed',
+                    themeClasses(
+                      'bg-caution-lines-light text-neutral-600',
+                      'bg-caution-lines-dark text-neutral-400',
+                    ),
+                  ]
+                : [themeClasses('bg-shade-0', 'bg-shade-100'), 'cursor-text'],
+
               isArray || isMap
                 ? [
                     'flex flex-row items-center',
                     themeClasses('text-neutral-600', 'text-neutral-400'),
                   ]
-                : themeClasses('text-shade-100', 'text-shade-0'),
-              'w-full h-lg p-xs ml-auto text-sm border font-mono cursor-text flex flex-row items-center gap-3xs',
-              themeClasses(
-                'bg-shade-0 border-neutral-400',
-                'bg-shade-100 border-neutral-600',
-              ),
+                : [!readOnly && themeClasses('text-shade-100', 'text-shade-0')],
             )
           "
           tabindex="0"
@@ -148,7 +164,6 @@
           ref="inputWindowRef"
           :class="
             clsx(
-              // TODO(Wendy) - for floating version, use absolute!
               'flex flex-col gap-xs text-sm font-normal border z-100 p-xs',
               themeClasses(
                 'bg-shade-0 border-neutral-400',
@@ -156,7 +171,6 @@
               ),
             )
           "
-          :style="inputWindowStyles"
         >
           <!-- top input row, looks mostly the same as the unselected input -->
           <div class="grid grid-cols-2 pl-xs gap-2xs relative">
@@ -174,11 +188,15 @@
                 @click.left="remove"
               />
             </div>
-            <input
+            <component
+              :is="inputHtmlTag"
               ref="inputRef"
               :class="
                 clsx(
-                  'block w-full h-lg p-xs ml-auto text-sm border font-mono',
+                  inputHtmlTag === 'input' && 'h-lg',
+                  inputHtmlTag === 'textarea' && 'min-h-[36px]',
+                  kindAsString === 'codeeditor' && 'pr-[32px]',
+                  'block w-full p-xs ml-auto text-sm border font-mono',
                   'focus:outline-none focus:ring-0 focus:z-10',
                   themeClasses(
                     'text-shade-100 bg-shade-0 border-neutral-400 focus:border-action-500',
@@ -186,11 +204,12 @@
                   ),
                 )
               "
-              type="text"
+              :type="inputHtmlTag === 'input' ? 'text' : null"
+              :rows="inputHtmlTag === 'textarea' ? 4 : null"
               data-1p-ignore
               :value="isMap ? mapKey : field.state.value"
               :disabled="wForm.bifrosting.value || bifrostingTrash"
-              @input="(e) => onInputChange(e)"
+              @input="(e: Event) => onInputChange(e)"
               @blur="blur"
               @focus="focus"
               @keydown.esc.stop.prevent="closeInput"
@@ -200,18 +219,22 @@
               @keydown.tab="onTab"
             />
             <Icon
-              v-if="wForm.bifrosting.value"
-              class="absolute right-[42px] top-xs pointer-events-none"
-              name="loader"
+              v-if="kindAsString === 'codeeditor'"
+              v-tooltip="'Set manual value in code editor'"
+              name="code-pop"
               size="sm"
-              tone="action"
+              :class="
+                clsx(
+                  'absolute right-[6px] top-[10px] z-20',
+                  themeClasses(
+                    'hover:text-action-500',
+                    'hover:text-action-300',
+                  ),
+                  'hover:scale-110 cursor-pointer',
+                )
+              "
+              @click.stop="openCodeEditorModal"
             />
-            <TextPill
-              variant="key2"
-              class="absolute text-xs right-xs top-[7px] pointer-events-none"
-            >
-              Tab
-            </TextPill>
           </div>
 
           <!-- raw value selection area -->
@@ -508,6 +531,12 @@
           </div>
         </div>
       </template>
+      <CodeEditorModal
+        ref="codeEditorModalRef"
+        :title="`Set Value For ${displayName}`"
+        :codeEditorId="`${displayName}-${changeSetId}-${prop?.id}`"
+        @submit="setValueFromCodeEditorModal"
+      />
     </template>
   </valueForm.Field>
 </template>
@@ -541,6 +570,7 @@ import {
   Prop,
 } from "@/workers/types/entity_kind_types";
 import {
+  changeSetId,
   getPossibleConnections,
   useMakeArgs,
   useMakeKey,
@@ -555,6 +585,7 @@ import {
 } from "../logic_composables/emitters";
 import { useWatchedForm } from "../logic_composables/watched_form";
 import AttributeValueBox from "../AttributeValueBox.vue";
+import CodeEditorModal from "../CodeEditorModal.vue";
 
 type UIPotentialConnection = PossibleConnection & {
   pathArray: string[];
@@ -581,23 +612,7 @@ const isSetByConnection = computed(
   () => props.externalSources && props.externalSources.length > 0,
 );
 
-// TODO(Wendy) - come back to this code when we wanna make the input float again
-// const context = inject<ComponentPageContext>("ComponentPageContext");
-
-// const closeOnResizeOrScroll = (e: Event) => {
-//   if (inputWindowRef.value && e.target instanceof Node && inputWindowRef.value.contains(e.target)) {
-//     // ignore events on descendants
-//     return;
-//   }
-//   if (scrollingToFixPosition.value) {
-//     scrollingToFixPosition.value = false;
-//   } else if (inputOpen.value) {
-//     closeInput();
-//   }
-// };
-
 const anchorRef = ref<InstanceType<typeof HTMLElement>>();
-// const optionRef = ref<InstanceType<typeof HTMLDivElement>>();
 
 const path = computed(() => {
   // fix the MV! for arrays path": "root\u000bdomain\u000btags\u000btag"
@@ -846,6 +861,8 @@ const inputOpen = ref(false);
 const labelRect = ref<undefined | DOMRect>(undefined);
 
 const openInput = () => {
+  if (readOnly.value) return;
+
   if (props.disableInputWindow) {
     emit("selected");
     return;
@@ -854,7 +871,6 @@ const openInput = () => {
   resetFilteredOptions();
   valueForm.reset();
   labelRect.value = anchorRef.value?.getClientRects()[0];
-  inputWindowYPositionOffset.value = 0;
   mapKey.value = "";
   mapKeyError.value = false;
   if (!labelRect.value) return;
@@ -867,53 +883,6 @@ const openInput = () => {
     // fixWindowPosition();
   });
 };
-// const scrollingToFixPosition = ref(false);
-const inputWindowYPositionOffset = ref(0);
-// TODO(Wendy) - come back to this code when we wanna make the input float again
-// const fixWindowPosition = () => {
-//   // This function fixes the input floating window position if it is off the bottom of the screen
-
-//   // This number determines the minimum distance between the bottom of the input window and the bottom of the screen
-//   const WINDOW_EDGE_PADDING = 10;
-
-//   if (inputWindowRef.value) {
-//     const rect = inputWindowRef.value.getBoundingClientRect();
-//     const edge = window.innerHeight - WINDOW_EDGE_PADDING;
-//     if (rect.bottom > edge) {
-//       scrollingToFixPosition.value = true; // don't close on scroll for this!
-//       // inputWindowYPositionOffset.value = (rect.bottom - window.innerHeight) + WINDOW_EDGE_PADDING;
-//       // console.log(`(${rect.bottom} - ${window.innerHeight}) + 5 = ${inputWindowYPositionOffset.value}`);
-//       if (context && anchorRef.value) {
-//         const anchorTop = anchorRef.value.getBoundingClientRect().top;
-//         const inputWindowHeight = rect.height;
-//         const scroll = (anchorTop + inputWindowHeight) - edge;
-//         console.log(scroll);
-//         context.scrollAttributePanel(context.attributePanelScrollY.value + scroll);
-//         // context.scrollAttributePanel();
-//         // context.attributePanelScrollY
-//       }
-//       nextTick(() => {
-//         labelRect.value = anchorRef.value?.getClientRects()[0];
-//       });
-//     }
-//   }
-// };
-const inputWindowStyles = computed(() => {
-  // These values account for the padding to get the position right
-  // const PADDING_AND_BORDER_OFFSET = 10;
-  // const WIDTH_OFFSET = 16;
-
-  // return `width: ${
-  //   (labelRect.value?.width ?? -WIDTH_OFFSET) + WIDTH_OFFSET
-  // }px; top: ${
-  //   (labelRect.value?.top ?? PADDING_AND_BORDER_OFFSET) -
-  //   PADDING_AND_BORDER_OFFSET // - inputWindowYPositionOffset.value
-  // }px; left: ${
-  //   (labelRect.value?.left ?? PADDING_AND_BORDER_OFFSET) -
-  //   PADDING_AND_BORDER_OFFSET
-  // }px`;
-  return {};
-});
 const closeInput = () => {
   inputOpen.value = false;
   removeListeners();
@@ -921,15 +890,9 @@ const closeInput = () => {
 
 const addListeners = () => {
   mouseEmitter.on("mousedown", onMouseDown);
-  // TODO(Wendy) - come back to this code when we wanna make the input float again
-  // window.addEventListener("resize", closeOnResizeOrScroll);
-  // window.addEventListener("scroll", closeOnResizeOrScroll, true);
 };
 const removeListeners = () => {
   mouseEmitter.off("mousedown", onMouseDown);
-  // TODO(Wendy) - come back to this code when we wanna make the input float again
-  // window.removeEventListener("resize", closeOnResizeOrScroll);
-  // window.addEventListener("scroll", closeOnResizeOrScroll, true);
 };
 
 const onInputChange = (e: Event) => {
@@ -1181,18 +1144,32 @@ const selectedConnection = computed(
   () =>
     filteredConnections.value[selectedIndex.value - 1 - filteredOptions.length],
 );
-// TODO(Wendy) - come back to this code when we wanna make the input float again
-// watch(() => inputWindowRef.value?.getBoundingClientRect().height, () => {
-//   // This watcher fixes the window position if the height of the input window div changes
-//   nextTick(() => {
-//     fixWindowPosition();
-//   });
-// });
-// watch(() => filteredConnections.value, () => {
-//   nextTick(() => {
-//     fixWindowPosition();
-//   });
-// });
+
+const readOnly = computed(
+  () => !!(props.prop?.createOnly && props.component.hasResource),
+);
+
+const kindAsString = computed(() => `${props.prop?.widgetKind}`.toLowerCase());
+
+const inputHtmlTag = computed(() => {
+  if (kindAsString.value === "textarea") {
+    return "textarea";
+  }
+
+  return "input";
+});
+
+const codeEditorModalRef = ref<InstanceType<typeof CodeEditorModal>>();
+
+const openCodeEditorModal = () => {
+  const currentValue = valueForm.getFieldValue("value");
+  codeEditorModalRef.value?.open(currentValue);
+};
+
+const setValueFromCodeEditorModal = (value: string) => {
+  valueForm.setFieldValue("value", value);
+  valueForm.handleSubmit();
+};
 </script>
 
 <style lang="css" scoped>
