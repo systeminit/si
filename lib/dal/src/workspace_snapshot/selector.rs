@@ -23,6 +23,7 @@ use si_events::{
 };
 use si_id::{
     ApprovalRequirementDefinitionId,
+    AttributePrototypeId,
     AttributeValueId,
     ComponentId,
     EntityId,
@@ -57,6 +58,8 @@ use super::{
     split_snapshot::SplitSnapshot,
     traits::{
         approval_requirement::ApprovalRequirementExt,
+        attribute_value::AttributeValueExt,
+        component::ComponentExt,
         diagram::view::ViewExt,
         prop::PropExt,
     },
@@ -72,6 +75,7 @@ use crate::{
         ApprovalRequirementDefinition,
     },
     component::ComponentResult,
+    entity_kind::EntityKindResult,
     prop::PropResult,
 };
 
@@ -974,7 +978,7 @@ impl SchemaVariantExt for WorkspaceSnapshotSelector {
 
 #[async_trait]
 impl EntityKindExt for WorkspaceSnapshotSelector {
-    async fn get_entity_kind_for_id(&self, id: EntityId) -> WorkspaceSnapshotResult<EntityKind> {
+    async fn get_entity_kind_for_id(&self, id: EntityId) -> EntityKindResult<EntityKind> {
         match self {
             Self::LegacySnapshot(snapshot) => snapshot.get_entity_kind_for_id(id).await,
             Self::SplitSnapshot(snapshot) => snapshot.get_entity_kind_for_id(id).await,
@@ -1005,6 +1009,39 @@ impl PropExt for WorkspaceSnapshotSelector {
         match self {
             Self::LegacySnapshot(snapshot) => snapshot.ts_type(prop_id).await,
             Self::SplitSnapshot(snapshot) => snapshot.ts_type(prop_id).await,
+        }
+    }
+}
+
+#[async_trait]
+impl ComponentExt for WorkspaceSnapshotSelector {
+    async fn root_attribute_value(
+        &self,
+        component_id: ComponentId,
+    ) -> ComponentResult<AttributeValueId> {
+        match self {
+            Self::LegacySnapshot(snapshot) => snapshot.root_attribute_value(component_id).await,
+            Self::SplitSnapshot(snapshot) => snapshot.root_attribute_value(component_id).await,
+        }
+    }
+
+    async fn external_source_count(&self, id: ComponentId) -> ComponentResult<usize> {
+        match self {
+            Self::LegacySnapshot(snapshot) => snapshot.external_source_count(id).await,
+            Self::SplitSnapshot(snapshot) => snapshot.external_source_count(id).await,
+        }
+    }
+}
+
+#[async_trait]
+impl AttributeValueExt for WorkspaceSnapshotSelector {
+    async fn component_prototype_id(
+        &self,
+        id: AttributeValueId,
+    ) -> WorkspaceSnapshotResult<Option<AttributePrototypeId>> {
+        match self {
+            Self::LegacySnapshot(snapshot) => snapshot.component_prototype_id(id).await,
+            Self::SplitSnapshot(snapshot) => snapshot.component_prototype_id(id).await,
         }
     }
 }

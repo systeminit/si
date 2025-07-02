@@ -116,6 +116,7 @@ use crate::{
             NodeWeightError,
         },
         serde_value_to_string_type,
+        traits::attribute_value::AttributeValueExt,
     },
 };
 
@@ -232,6 +233,8 @@ pub enum AttributeValueError {
     MultipleAttributeValuesSameProp(AttributeValueId, AttributeValueId, PropId),
     #[error("found multiple props ({0} and {1}, at minimum) for attribute value: {2}")]
     MultiplePropsFound(PropId, PropId, AttributeValueId),
+    #[error("found multiple prototypes for attribute value id {0}")]
+    MultiplePrototypesFound(AttributeValueId),
     #[error("attribute value {0} has no child named {1}")]
     NoChildWithName(AttributeValueId, String),
     #[error("no component prototype found for attribute value: {0}")]
@@ -1686,26 +1689,10 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Option<AttributePrototypeId>> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let maybe_prototype_idx = workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(
-                attribute_value_id,
-                EdgeWeightKindDiscriminants::Prototype,
-            )
-            .await?
-            .first()
-            .copied();
-
-        Ok(match maybe_prototype_idx {
-            Some(prototype_idx) => Some(
-                workspace_snapshot
-                    .get_node_weight(prototype_idx)
-                    .await?
-                    .id()
-                    .into(),
-            ),
-            None => None,
-        })
+        ctx.workspace_snapshot()?
+            .component_prototype_id(attribute_value_id)
+            .await
+            .map_err(Into::into)
     }
 
     /// The id of the prototype that controls this attribute value at the level of the schema

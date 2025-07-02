@@ -50,6 +50,8 @@
     while_true
 )]
 
+use dal::WorkspaceSnapshotError;
+
 pub mod action_prototype_view_list;
 pub mod action_view_list;
 pub mod component;
@@ -110,6 +112,14 @@ pub enum Error {
     SerdeJson(#[from] serde_json::Error),
     #[error("validation error: {0}")]
     Validation(#[from] dal::validation::ValidationError),
+    #[error("workspace snapshot error: {0}")]
+    WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
+}
+
+impl From<WorkspaceSnapshotError> for Error {
+    fn from(value: WorkspaceSnapshotError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 type Result<T> = std::result::Result<T, Error>;
