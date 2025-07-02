@@ -153,7 +153,9 @@ const workspacePk = computed(() => props.workspacePk);
 const changeSetId = computed(() => props.changeSetId);
 
 // no tan stack queries hitting sqlite until after the cold start has finished
-const queriesEnabled = ref(false);
+const queriesEnabled = computed(
+  () => heimdall.initCompleted.value && !lobby.value,
+);
 
 const countsQueryKey = computed(() => {
   return [
@@ -300,9 +302,9 @@ queryClient.setDefaultOptions({ queries: { staleTime: Infinity } });
 const container = inject<{ loadingGuard: Ref<boolean> }>("LOADINGGUARD");
 onBeforeMount(async () => {
   if (container && container.loadingGuard.value) {
-    queriesEnabled.value = true;
     return;
   }
+
   if (container) {
     container.loadingGuard.value = true;
   }
@@ -344,7 +346,6 @@ onBeforeMount(async () => {
   // NOTE: onBeforeMount doesn't wait on promises
   // the page will load before execution finishes
   await heimdall.muspelheim(thisWorkspacePk, true);
-  queriesEnabled.value = true;
 });
 
 watch(
