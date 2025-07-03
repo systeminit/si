@@ -36,6 +36,7 @@ export enum EntityKind {
   OutgoingConnections = "OutgoingConnections",
   IncomingManagementConnections = "IncomingManagementConnections",
   OutgoingCounts = "OutgoingCounts",
+  DependentValueComponentList = "DependentValueComponentList",
 }
 
 /**
@@ -446,4 +447,9 @@ export interface Secret {
   description?: string;
   // If the secret can be used on this workspace
   isUsable: boolean;
+}
+
+export interface DependentValueComponentList {
+  id: string;
+  componentIds: ComponentId[];
 }

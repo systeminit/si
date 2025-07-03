@@ -22,6 +22,8 @@
         computedRotate && `--rotate-${computedRotate}`,
         AUTO_SPIN_ICONS_CLOCKWISE.includes(name) && '--spin',
         AUTO_SPIN_ICONS_COUNTER_CLOCKWISE.includes(name) && '--spin-cc',
+        AUTO_SPIN_SLOW_WITH_HORIZONTAL_FLIP_CLOCKWISE.includes(name) &&
+          '--spin-slow-with-horizontal-flip',
       )
     "
     v-html="iconSvgRaw"
@@ -93,6 +95,7 @@ const sizeClasses = computed(
 
 const AUTO_SPIN_ICONS_CLOCKWISE = ["loader"];
 const AUTO_SPIN_ICONS_COUNTER_CLOCKWISE = ["refresh-active"];
+const AUTO_SPIN_SLOW_WITH_HORIZONTAL_FLIP_CLOCKWISE = ["refresh-carbon-active"];
 </script>
 
 <style lang="less" scoped>
@@ -113,6 +116,17 @@ const AUTO_SPIN_ICONS_COUNTER_CLOCKWISE = ["refresh-active"];
   &.--spin-cc {
     > :deep(svg) {
       @apply animate-spin-cc;
+    }
+  }
+  &.--spin-slow-with-horizontal-flip {
+    transform: scaleY(-1);
+
+    > :deep(svg) {
+      // Note that we spin counter-clockwise because we've flipped it. That's also why we don't
+      // have the flip and the spin separated: it would be confusing to the caller to request
+      // counter-clockwise and flip when they truly want clockwise.
+      @apply animate-spin-cc;
+      animation-duration: 5s;
     }
   }
   &.--rotate-up > :deep(svg) {

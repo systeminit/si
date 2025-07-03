@@ -170,6 +170,7 @@ import CarbonTransformCode from "~icons/carbon/code"; // using this one as a pla
 import SettingsEdit from "~icons/carbon/settings-edit";
 import CarbonWarningAlt from "~icons/carbon/warning-alt";
 import Pin from "~icons/carbon/pin-filled";
+import Renew from "~icons/carbon/renew";
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -354,6 +355,7 @@ export const ICONS = Object.freeze({
   "read-only": PencilOff,
   refresh: Refresh,
   "refresh-active": Refresh,
+  "refresh-carbon-active": Renew,
   "refresh-hex-outline": RefreshHexOutline,
   resize: Resize,
   save: Save,

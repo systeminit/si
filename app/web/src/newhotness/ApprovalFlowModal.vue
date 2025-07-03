@@ -49,21 +49,23 @@
             @click="closeModalHandler"
           />
           <!--
-            TODO(nick): restore the dynamic label when approvals are re-introduced.
-            ```
-            :label="
-              workspaceHasOneUser || !workspacesStore.workspaceApprovalsEnabled
-              ? 'Apply Change Set'
-              : 'Request Approval'
-            "
-            ```
+          TODO(nick): restore the dynamic label when approvals are re-introduced.
+          ```
+          :label="
+            workspaceHasOneUser || !workspacesStore.workspaceApprovalsEnabled
+            ? 'Apply Change Set'
+            : 'Request Approval'
+          "
+          ```
           -->
           <VButton
             tone="action"
             label="Apply Change Set"
             class="grow"
+            loadingText="Applying Changes"
+            :loading="api.inFlight.value"
             pill="Cmd + Enter"
-            @click="applyButtonHandler"
+            @click="debouncedApply"
           />
         </div>
       </div>
@@ -74,32 +76,26 @@
 <script lang="ts" setup>
 import * as _ from "lodash-es";
 import { PillCounter, Icon, VButton, Modal } from "@si/vue-lib/design-system";
-import { useToast } from "vue-toastification";
 import { useRouter, useRoute } from "vue-router";
-import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
-import { useAuthStore } from "@/store/auth.store";
-import { useChangeSetsStore } from "@/store/change_sets.store";
-import ApprovalFlowCancelled from "@/components/toasts/ApprovalFlowCancelled.vue";
+import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue";
+import { debounce } from "lodash-es";
 import { ActionProposedView } from "@/store/actions.store";
 import { ActionKind } from "@/api/sdf/dal/action";
 import { keyEmitter } from "./logic_composables/emitters";
 import ActionCard from "./ActionCard.vue";
-import { Context } from "./types";
+import { assertIsDefined, Context } from "./types";
 import { reset } from "./logic_composables/navigation_stack";
+import { useApi, routes } from "./api_composables";
 
 const props = defineProps<{
   actions: ActionProposedView[];
 }>();
 
-const changeSetsStore = useChangeSetsStore();
-const authStore = useAuthStore();
-const toast = useToast();
-
 const modalRef = ref<InstanceType<typeof Modal> | null>(null);
-const changeSet = computed(() => changeSetsStore.selectedChangeSet);
 
-const ctx: Context | undefined = inject("CONTEXT");
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined(ctx);
+
 const router = useRouter();
 const route = useRoute();
 
@@ -142,7 +138,7 @@ onMounted(() => {
 
   keyEmitter.on("Enter", (e) => {
     if (e.metaKey || e.ctrlKey) {
-      applyButtonHandler();
+      debouncedApply();
     }
   });
 });
@@ -151,7 +147,7 @@ onBeforeUnmount(() => {
 });
 
 async function openModalHandler() {
-  if (changeSet?.value?.name === "HEAD") return;
+  if (ctx?.onHead.value) return;
 
   modalRef.value?.open();
 }
@@ -160,13 +156,20 @@ function closeModalHandler() {
   modalRef.value?.close();
 }
 
-async function applyButtonHandler() {
+const api = useApi();
+
+const debouncedApply = debounce(apply, 500);
+onBeforeUnmount(() => {
+  debouncedApply.cancel();
+});
+
+async function apply() {
   // TODO(nick): restore approvals in the new UI.
   // if (!workspacesStore.workspaceApprovalsEnabled && authStore.user) {
-  //   changeSetsStore.APPLY_CHANGE_SET(authStore.user.name);
+  //   changeSetsStore.APPLY_CHANGE_SET_NEW_HOTNESS(authStore.user.name);
   // } else {
   //   if (workspaceHasOneUser.value && authStore.user) {
-  //     changeSetsStore.APPLY_CHANGE_SET(authStore.user.name);
+  //     changeSetsStore.APPLY_CHANGE_SET_NEW_HOTNESS(authStore.user.name);
   //   } else {
   //     changeSetsStore.REQUEST_CHANGE_SET_APPROVAL();
   //
@@ -181,12 +184,10 @@ async function applyButtonHandler() {
   //     presenceStore.leftDrawerOpen = false; // close the left draw for the InsetModal
   //   }
   // }
-
-  // TODO(nick): we should make sure this isn't possible...
-  if (!ctx || !authStore.user) return;
-
-  const resp = await changeSetsStore.APPLY_CHANGE_SET(authStore.user.name);
-  if (resp.result.success) {
+  if (!ctx) return;
+  const call = api.endpoint(routes.ApplyChangeSet);
+  const { req } = await call.post({});
+  if (api.ok(req)) {
     const name = route.name;
     router.push({
       name,
@@ -201,25 +202,27 @@ async function applyButtonHandler() {
   }
 }
 
-watch(
-  () => changeSetsStore.selectedChangeSet?.status,
-  (newVal, oldVal) => {
-    if (
-      newVal === ChangeSetStatus.Open &&
-      (oldVal === ChangeSetStatus.NeedsApproval ||
-        oldVal === ChangeSetStatus.Approved ||
-        oldVal === ChangeSetStatus.Rejected)
-    ) {
-      if (!changeSetsStore.headSelected) {
-        toast({
-          component: ApprovalFlowCancelled,
-          props: {
-            action: "applying",
-          },
-        });
-      }
-    }
-  },
-);
+// NOTE(nick): this should only be relevant when approval requirements come back.
+// watch(
+//   () => changeSetsStore.selectedChangeSet?.status,
+//   (newVal, oldVal) => {
+//     if (
+//       newVal === ChangeSetStatus.Open &&
+//       (oldVal === ChangeSetStatus.NeedsApproval ||
+//         oldVal === ChangeSetStatus.Approved ||
+//         oldVal === ChangeSetStatus.Rejected)
+//     ) {
+//       if (!changeSetsStore.headSelected) {
+//         toast({
+//           component: ApprovalFlowCancelled,
+//           props: {
+//             action: "applying",
+//           },
+//         });
+//       }
+//     }
+//   },
+// );
+
 defineExpose({ open: openModalHandler });
 </script>

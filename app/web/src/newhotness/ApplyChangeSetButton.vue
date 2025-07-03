@@ -1,5 +1,9 @@
 <template>
-  <section v-if="!changeSetsStore.headSelected">
+  <section v-if="!ctx.onHead.value">
+    <!--
+    TODO(nick): restore loading status. It was buggy to emit the "api.inFlight" and infinite
+    spinners were common.
+     -->
     <VButton
       ref="applyButtonRef"
       size="sm"
@@ -7,15 +11,14 @@
       label="Apply Change Set"
       class="ml-2xs mr-xs"
       loadingText="Applying Changes"
-      :requestStatus="applyChangeSetReqStatus"
       :disabled="disabled"
       @click="openApprovalFlowModal"
     >
       <template #iconRight>
         <!--
-          NOTE(nick): I wanted this to look like "Add a component", but its concept of a pill 
-          more of a plaintext helper. The pills look a little different and I don't love it, but
-          this will have to do in the meantime.
+        NOTE(nick): I wanted this to look like "Add a component", but its concept of a pill
+        more of a plaintext helper. The pills look a little different and I don't love it, but
+        this will have to do in the meantime.
         -->
         <PillCounter
           :count="actions.length"
@@ -38,8 +41,6 @@ import { computed, inject, ref } from "vue";
 import * as _ from "lodash-es";
 import { VButton, PillCounter } from "@si/vue-lib/design-system";
 import { useQuery } from "@tanstack/vue-query";
-import { useChangeSetsStore } from "@/store/change_sets.store";
-import { useStatusStore } from "@/store/status.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import {
   BifrostActionViewList,
@@ -48,14 +49,11 @@ import {
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import ApprovalFlowModal from "./ApprovalFlowModal.vue";
 import { assertIsDefined, Context } from "./types";
+import { useStatus } from "./logic_composables/status";
+import { useCurrentChangeSet } from "./logic_composables/change_set";
 
-const changeSetsStore = useChangeSetsStore();
-const statusStore = useStatusStore();
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
-
-const applyChangeSetReqStatus =
-  changeSetsStore.getRequestStatus("APPLY_CHANGE_SET");
 
 const approvalFlowModalRef = ref<InstanceType<typeof ApprovalFlowModal>>();
 
@@ -63,18 +61,17 @@ const openApprovalFlowModal = () => {
   approvalFlowModalRef.value?.open();
 };
 
+const currentChangeSet = useCurrentChangeSet();
+const changeSet = computed(() => currentChangeSet.value);
+
+// FIXME(nick): this also needs to account for rebasing.
+const status = useStatus();
 const disabled = computed(
   () =>
-    changeSetsStore.selectedChangeSet?.status !== ChangeSetStatus.Open ||
-    changeSetsStore.headSelected ||
-    statusStoreUpdating.value,
+    changeSet.value?.status !== ChangeSetStatus.Open ||
+    ctx.onHead.value ||
+    status.value === "syncing",
 );
-
-const statusStoreUpdating = computed(() => {
-  if (statusStore.globalStatus) {
-    return statusStore.globalStatus.isUpdating;
-  } else return false;
-});
 
 const key = useMakeKey();
 const args = useMakeArgs();
