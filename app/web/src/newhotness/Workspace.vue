@@ -15,6 +15,7 @@
 
       <!-- Center -->
       <div
+        v-if="!lobby"
         class="flex flex-row flex-none items-center h-full justify-center place-items-center mx-auto overflow-hidden"
       >
         <NavbarButton
@@ -51,25 +52,27 @@
      min-h-0 prevents the main container from being *larger* than the max it can grow, no matter its contents -->
     <main class="grow min-h-0">
       <div v-if="tokenFail">Bad Token</div>
-      <template v-else-if="lobby">
-        <Lobby />
-      </template>
-      <template v-else-if="componentId">
-        <ComponentPage :componentId="componentId" />
-      </template>
-      <template v-else-if="funcRunId">
-        <FuncRunDetails :funcRunId="funcRunId" />
-      </template>
-      <template v-else-if="actionId">
-        <LatestFuncRunDetails
-          :functionKind="FunctionKind.Action"
-          :actionId="actionId"
-        />
-      </template>
-      <template v-else>
-        <Explore @openChangesetModal="openChangesetModal" />
-      </template>
+      <ComponentPage v-else-if="componentId" :componentId="componentId" />
+      <FuncRunDetails v-else-if="funcRunId" :funcRunId="funcRunId" />
+      <LatestFuncRunDetails
+        v-else-if="actionId"
+        :functionKind="FunctionKind.Action"
+        :actionId="actionId"
+      />
+      <Explore v-else @openChangesetModal="openChangesetModal" />
     </main>
+
+    <!-- Since lobby hides away the navbar, it's more of an overlay and stays apart from all else -->
+    <Transition
+      enterActiveClass="duration-300 ease-out"
+      enterFromClass="transform opacity-0"
+      enterToClass="opacity-100"
+      leaveActiveClass="delay-1000 duration-200 ease-in"
+      leaveFromClass="opacity-100"
+      leaveToClass="transform opacity-0"
+    >
+      <Lobby v-if="!tokenFail && lobby" />
+    </Transition>
   </div>
 </template>
 
