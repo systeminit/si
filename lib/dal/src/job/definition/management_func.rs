@@ -102,7 +102,7 @@ pub struct ManagementFuncJob {
     component_id: ComponentId,
     prototype_id: ManagementPrototypeId,
     view_id: ViewId,
-    request_ulid: Option<ulid::Ulid>,
+    request_ulid: ulid::Ulid,
 }
 
 impl ManagementFuncJob {
@@ -144,6 +144,10 @@ impl ManagementFuncJob {
                 break;
             }
             tokio::time::sleep(Duration::from_millis(WAIT_MS)).await;
+            WsEvent::management_operations_in_progress(ctx, self.request_ulid)
+                .await?
+                .publish_on_commit(ctx)
+                .await?;
             count += 1;
         }
         Ok(())
@@ -181,6 +185,10 @@ impl ManagementFuncJob {
                 self.view_id.into(),
             )
             .await?;
+        WsEvent::management_operations_in_progress(ctx, self.request_ulid)
+            .await?
+            .publish_immediately(ctx)
+            .await?;
 
         Self::executing_state(ctx, execution_state_id, func_run_id).await?;
 
@@ -194,6 +202,10 @@ impl ManagementFuncJob {
         )
         .await?;
 
+        WsEvent::management_operations_in_progress(ctx, self.request_ulid)
+            .await?
+            .publish_immediately(ctx)
+            .await?;
         self.operate(ctx, execution_state_id, execution_result)
             .await?;
 
@@ -221,12 +233,17 @@ impl ManagementFuncJob {
         let mut created_component_ids = None;
         if result.status == ManagementFuncStatus::Ok {
             if let Some(operations) = result.operations {
+                WsEvent::management_operations_in_progress(ctx, self.request_ulid)
+                    .await?
+                    .publish_on_commit(ctx)
+                    .await?;
                 created_component_ids = ManagementOperator::new(
                     ctx,
                     self.component_id,
                     operations,
                     execution_result,
                     self.view_id.into(),
+                    self.request_ulid,
                 )
                 .await?
                 .operate()
@@ -239,7 +256,8 @@ impl ManagementFuncJob {
 
         WsEvent::management_operations_complete(
             ctx,
-            self.request_ulid,
+            // TODO(nick): make this required.
+            Some(self.request_ulid),
             func.name.clone(),
             result.message.clone(),
             result.status,
@@ -273,6 +291,10 @@ impl ManagementFuncJob {
         &self,
         ctx: &mut DalContext,
     ) -> ManagementFuncJobResult<JobCompletionState> {
+        WsEvent::management_operations_in_progress(ctx, self.request_ulid)
+            .await?
+            .publish_on_commit(ctx)
+            .await?;
         let pending_execution =
             ManagementFuncJobState::get_pending(ctx, self.component_id, self.prototype_id)
                 .await?
@@ -305,6 +327,10 @@ impl ManagementFuncJob {
             }
         }
         ManagementFuncJobState::transition_state(ctx, execution_state_id, new_state, func_run_id)
+            .await?;
+        WsEvent::management_operations_in_progress(ctx, self.request_ulid)
+            .await?
+            .publish_on_commit(ctx)
             .await?;
         ctx_clone.commit_no_rebase().await?;
 
@@ -353,7 +379,8 @@ impl DalJob for ManagementFuncJob {
             component_id: self.component_id,
             prototype_id: self.prototype_id,
             view_id: self.view_id,
-            request_ulid: self.request_ulid,
+            // TODO(nick): make this required.
+            request_ulid: Some(self.request_ulid),
         }
     }
 

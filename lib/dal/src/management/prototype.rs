@@ -1044,6 +1044,12 @@ pub struct ManagementFuncExecutedPayload {
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct ManagementOperationsInProgressPayload {
+    request_ulid: ulid::Ulid,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct ManagementOperationsCompletePayload {
     request_ulid: Option<ulid::Ulid>,
     func_name: String,
@@ -1065,6 +1071,19 @@ impl WsEvent {
                 prototype_id,
                 manager_component_id,
                 func_run_id,
+            }),
+        )
+        .await
+    }
+
+    pub async fn management_operations_in_progress(
+        ctx: &DalContext,
+        request_ulid: ulid::Ulid,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ManagementOperationsInProgress(ManagementOperationsInProgressPayload {
+                request_ulid,
             }),
         )
         .await

@@ -236,6 +236,9 @@ export type WsEventPayloadMap = {
     funcRunId: FuncRunId;
     changeSetId: string;
   };
+  ManagementOperationsInProgress: {
+    requestUlid: string;
+  };
   ManagementOperationsComplete: {
     requestUlid?: string;
     funcName: string;

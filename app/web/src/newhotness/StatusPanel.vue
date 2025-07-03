@@ -13,6 +13,8 @@ import {
   onMounted,
   onUnmounted,
   unref,
+  inject,
+  onBeforeUnmount,
 } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import StatusPanelIcon from "@/newhotness/StatusPanelIcon.vue";
@@ -23,6 +25,14 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { useRainbow } from "@/newhotness/logic_composables/rainbow_counter";
 import { useStatus } from "./logic_composables/status";
+import { useRealtimeStore } from "@/store/realtime/realtime.store";
+import { Context, assertIsDefined } from "@/newhotness/types";
+
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined(ctx);
+
+// This is needed for reacting to WsEvents.
+const realtimeStore = useRealtimeStore();
 
 const status = useStatus();
 const bucket = reactive<Record<string, number>>({});
@@ -33,6 +43,7 @@ const tickMs = 1000;
 
 const key = useMakeKey();
 const args = useMakeArgs();
+
 const dependentValueComponentListQuery =
   useQuery<DependentValueComponentList | null>({
     queryKey: key(EntityKind.DependentValueComponentList),
@@ -49,11 +60,13 @@ watch(
   () => componentsInFlight.value,
   (newComponentsInFlight) => {
     if (newComponentsInFlight.length > 0) {
-      bucket.componentsInFlight = Date.now();
+      // BUCKET ITEM -- ADD -- COMPONENTS IN FLIGHT, DVU ROOTS, ETC.
+      // bucket.componentsInFlight = Date.now();
     } else if (
       newComponentsInFlight.length === 0 &&
       bucket.componentsInFlight
     ) {
+      // BUCKET ITEM -- REMOVE -- COMPONENTS IN FLIGHT, DVU ROOTS, ETC.
       delete bucket.componentsInFlight;
     }
   },
@@ -66,13 +79,16 @@ watch(
   (newRainbow) => {
     const count = unref(newRainbow.count);
     if (count > 0) {
-      bucket.rainbow = Date.now();
+      // BUCKET ITEM -- ADD -- RAINBOW, MATERIALIZED VIEWS, ETC.
+      // bucket.rainbow = Date.now();
     } else if (count === 0 && bucket.rainbow) {
+      // BUCKET ITEM -- REMOVE -- RAINBOW, MATERIALIZED VIEWS, ETC.
       delete bucket.rainbow;
     }
   },
 );
 
+// This watcher ejects expired items.
 watch([trigger], () => {
   const now = Date.now();
 
@@ -88,6 +104,7 @@ watch([trigger], () => {
   // }
 });
 
+// This watcher updates the status based on the state of the bucket.
 watch(
   () => ({ ...bucket }),
   (newBucket) => {
@@ -99,13 +116,43 @@ watch(
   },
 );
 
+const STATUS_PANEL_KEY = "statusPanel";
 onMounted(() => {
   const interval = setInterval(() => {
     trigger.value = !trigger.value;
   }, tickMs);
 
+  realtimeStore.subscribe(
+    STATUS_PANEL_KEY,
+    `changeset/${ctx?.changeSetId.value}`,
+    [
+      {
+        eventType: "ManagementOperationsInProgress",
+        callback: async (payload) => {
+          // BUCKET ITEM -- ADD -- MANAGEMENT FUNCS
+          const key = `management-${payload.requestUlid}`;
+          bucket[key] = Date.now();
+        },
+      },
+      {
+        eventType: "ManagementOperationsComplete",
+        callback: async (payload) => {
+          if (!payload.requestUlid) return;
+          const key = `management-${payload.requestUlid}`;
+          if (bucket[key]) {
+            // BUCKET ITEM -- REMOVE -- MANAGEMENT FUNCS
+            delete bucket[key];
+          }
+        },
+      },
+    ],
+  );
+
   onUnmounted(() => {
     clearInterval(interval);
   });
+});
+onBeforeUnmount(() => {
+  realtimeStore.unsubscribe(STATUS_PANEL_KEY);
 });
 </script>

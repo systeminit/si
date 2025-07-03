@@ -538,6 +538,7 @@ pub struct ManagementOperator<'a> {
     view_placeholders: HashMap<String, ViewId>,
     created_components: HashMap<ComponentId, Vec<ViewId>>,
     updated_components: HashMap<ComponentId, Vec<ViewId>>,
+    request_ulid: ulid::Ulid,
 }
 
 #[derive(Clone, Debug)]
@@ -581,6 +582,7 @@ impl<'a> ManagementOperator<'a> {
         operations: ManagementOperations,
         management_execution: ManagementPrototypeExecution,
         view_id: Option<ViewId>,
+        request_ulid: ulid::Ulid,
     ) -> ManagementResult<Self> {
         let mut component_id_placeholders = HashMap::new();
         component_id_placeholders.insert(SELF_ID.to_string(), manager_component_id);
@@ -628,6 +630,7 @@ impl<'a> ManagementOperator<'a> {
             view_placeholders: views,
             created_components: HashMap::new(),
             updated_components: HashMap::new(),
+            request_ulid,
         })
     }
 
@@ -1559,6 +1562,10 @@ impl<'a> ManagementOperator<'a> {
                 _ => None,
             })
         {
+            WsEvent::management_operations_in_progress(self.ctx, self.request_ulid)
+                .await?
+                .publish_on_commit(self.ctx)
+                .await?;
             let (parent_id, inferred_edges) = self
                 .set_parent(pending_parent.child_component_id, &pending_parent.parent)
                 .await?;
@@ -1598,6 +1605,10 @@ impl<'a> ManagementOperator<'a> {
             .into_iter()
             .chain(new_pending_ops_from_parentage.into_iter())
         {
+            WsEvent::management_operations_in_progress(self.ctx, self.request_ulid)
+                .await?
+                .publish_on_commit(self.ctx)
+                .await?;
             match pending_op {
                 PendingOperation::Connect(pending_connect) => {
                     self.create_connection(
