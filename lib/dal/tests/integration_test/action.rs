@@ -1,7 +1,10 @@
+use std::time::Duration;
+
 use dal::{
     AttributeValue,
     Component,
     DalContext,
+    SchemaVariant,
     action::{
         Action,
         ActionState,
@@ -12,9 +15,12 @@ use dal::{
         },
     },
     component::frame::Frame,
+    func::authoring::FuncAuthoringClient,
+    schema::variant::authoring::VariantAuthoringClient,
 };
 use dal_test::{
     Result,
+    expected::ExpectSchemaVariant,
     helpers::{
         ChangeSetTestHelpers,
         attribute::value,
@@ -31,6 +37,7 @@ use pretty_assertions_sorted::{
     assert_eq,
     assert_ne,
 };
+use serde_json::json;
 use si_id::ActionId;
 
 #[test]
@@ -652,6 +659,147 @@ async fn simple_transitive_action_ordering(ctx: &mut DalContext) -> Result<()> {
     Ok(())
 }
 
+/// THIS TEST DOESNT PASS BUT SHOULD
+#[test]
+async fn resource_value_propagation_subscriptions_works(ctx: &mut DalContext) -> Result<()> {
+    // create 2 variants A & B where A has a resource_value prop that B is subscribed to
+    let component_a_code_definition = r#"
+        function main() {
+            const prop = new PropBuilder()
+                .setName("prop")
+                .setKind("string")
+                .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                .build();
+            const resourceProp = new PropBuilder()
+                .setName("prop")
+                .setKind("string")
+                .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                .build();
+
+            return new AssetBuilder()
+                .addProp(prop)
+                .addResourceProp(resourceProp)
+                .build();
+        }
+    "#;
+
+    let a_variant = ExpectSchemaVariant(
+        VariantAuthoringClient::create_schema_and_variant_from_code(
+            ctx,
+            "A",
+            None,
+            None,
+            "Category",
+            "#0077cc",
+            component_a_code_definition,
+        )
+        .await?
+        .id,
+    );
+
+    // Create Action Func for A
+    let func_name = "Create A".to_string();
+    let func = FuncAuthoringClient::create_new_action_func(
+        ctx,
+        Some(func_name.clone()),
+        ActionKind::Create,
+        a_variant.id(),
+    )
+    .await?;
+
+    let create_func_code = r#"
+        async function main(component: Input): Promise<Output> {
+        const prop = component.properties.domain?.prop;
+    return {
+        status: "ok",
+        payload: {
+            prop: prop
+        },
+    }
+}
+    "#;
+    FuncAuthoringClient::save_code(ctx, func.id, create_func_code).await?;
+
+    // Create B Variant
+    let component_b_code_definition = r#"
+        function main() {
+            const prop = new PropBuilder()
+                .setName("prop")
+                .setKind("string")
+                .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                .build();
+            return new AssetBuilder()
+                .addProp(prop)
+                .build();
+        }
+    "#;
+
+    let _b_variant = ExpectSchemaVariant(
+        VariantAuthoringClient::create_schema_and_variant_from_code(
+            ctx,
+            "B",
+            None,
+            None,
+            "Category",
+            "#0077cc",
+            component_b_code_definition,
+        )
+        .await?
+        .id,
+    );
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    let all_funcs = SchemaVariant::all_funcs(ctx, a_variant.id())
+        .await
+        .expect("unable to get all funcs");
+
+    // do we see resourcePayloadToValue??
+    assert!(
+        all_funcs
+            .iter()
+            .any(|func| func.name == "si:resourcePayloadToValue")
+    );
+
+    // create each component
+    component::create(ctx, "A", "A").await?;
+    component::create(ctx, "B", "B").await?;
+
+    // component b subscribes to resource_value/prop from component a
+    value::subscribe(ctx, ("B", "/domain/prop"), [("A", "/resource_value/prop")]).await?;
+
+    // update the value for component A
+    value::set(ctx, ("A", "/domain/prop"), "hello world").await?;
+    // commit change set
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let actions = Action::list_topologically(ctx).await?;
+    assert!(actions.len() == 1);
+
+    // Apply changeset so it runs the creation action
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+
+    // wait for actions to run
+    ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
+    // also wait for dvu!
+    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
+    // need to update snapshot to visibility again for some reason??
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    assert!(value::has_value(ctx, ("A", "/resource/payload")).await?);
+
+    assert_eq!(
+        json!("hello world"),
+        value::get(ctx, ("A", "/resource_value/prop")).await?
+    );
+    // check if value has propagated
+    //  assert!(value::has_value(ctx,  ("B", "/domain/prop")).await?);
+    assert_eq!(
+        json!("hello world"),
+        value::get(ctx, ("B", "/domain/prop")).await?
+    );
+    Ok(())
+}
+
 #[test]
 async fn create_action_ordering_subscriptions(ctx: &mut DalContext) -> Result<()> {
     // create two components and connect a.two -> b.two and b.two -> c.two via subscriptions
@@ -851,6 +999,134 @@ async fn next_actions(ctx: &mut DalContext) -> Result<Vec<String>> {
     }
     result.sort();
     Ok(result)
+}
+
+#[test]
+async fn simple_transitive_action_ordering_subscriptions(ctx: &mut DalContext) -> Result<()> {
+    // Simple case: a chain of 3 components: A->B->C, an action for A and C only
+    // This test uses attribute subscriptions instead of socket connections and frames
+    // to establish the transitive dependencies between components
+
+    // create three components
+    let first_component = create_component_for_schema_name_with_type_on_default_view(
+        ctx,
+        "small odd lego",
+        "first component",
+        dal::ComponentType::ConfigurationFrameDown,
+    )
+    .await?;
+    let first_component_id = first_component.id();
+    let first_component_sv_id = first_component.schema_variant(ctx).await?.id();
+
+    let second_component = create_component_for_schema_name_with_type_on_default_view(
+        ctx,
+        "small even lego",
+        "second component",
+        dal::ComponentType::ConfigurationFrameDown,
+    )
+    .await?;
+    let second_component_id = second_component.id();
+
+    let third_component = create_component_for_schema_name_with_type_on_default_view(
+        ctx,
+        "medium odd lego",
+        "third component",
+        dal::ComponentType::ConfigurationFrameDown,
+    )
+    .await?;
+    let third_component_id = third_component.id();
+    let third_component_sv_id = third_component.schema_variant(ctx).await?.id();
+
+    // Create transitive dependencies using attribute subscriptions: A->B->C
+    // Second component subscribes to first component's output
+    value::subscribe(
+        ctx,
+        (second_component_id, "/domain/two"),
+        [(first_component_id, "/domain/two")],
+    )
+    .await?;
+    // Third component subscribes to second component's output
+    value::subscribe(
+        ctx,
+        (third_component_id, "/domain/one"),
+        [(second_component_id, "/domain/one")],
+    )
+    .await?;
+
+    // remove the action for the second component so we only have actions for first and third
+    Action::remove_all_for_component_id(ctx, second_component_id).await?;
+
+    // there should be two actions enqueued
+    let actions = Action::list_topologically(ctx).await?;
+    assert_eq!(actions.len(), 2);
+
+    let first_component_action = Action::find_for_component_id(ctx, first_component_id)
+        .await?
+        .pop()
+        .expect("doesn't have one");
+    let third_component_action = Action::find_for_component_id(ctx, third_component_id)
+        .await?
+        .pop()
+        .expect("didn't have an action");
+    let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
+
+    // Create for the third action is dependent on the create for the first action (transitive)
+    assert_eq!(
+        action_graph.get_all_dependencies(first_component_action),
+        vec![third_component_action]
+    );
+    assert_eq!(
+        action_graph.direct_dependencies_of(third_component_action),
+        vec![first_component_action]
+    );
+
+    // now test with destroy actions
+    Action::remove_all_for_component_id(ctx, first_component_id).await?;
+    Action::remove_all_for_component_id(ctx, third_component_id).await?;
+
+    // there should be no actions enqueued
+    let actions = Action::list_topologically(ctx).await?;
+    assert!(actions.is_empty());
+
+    // manually enqueue deletes for the first and third component
+    let first_actions = ActionPrototype::for_variant(ctx, first_component_sv_id)
+        .await?
+        .into_iter()
+        .filter(|proto| proto.kind == ActionKind::Destroy)
+        .collect_vec();
+    assert_eq!(first_actions.len(), 1);
+
+    let first_action = Action::new(ctx, first_actions[0].id, Some(first_component_id))
+        .await?
+        .id();
+
+    let third_actions = ActionPrototype::for_variant(ctx, third_component_sv_id)
+        .await?
+        .into_iter()
+        .filter(|proto| proto.kind == ActionKind::Destroy)
+        .collect_vec();
+    assert_eq!(third_actions.len(), 1);
+    let third_action = Action::new(ctx, third_actions[0].id, Some(third_component_id))
+        .await?
+        .id();
+
+    // there should be two actions enqueued
+    let actions = Action::list_topologically(ctx).await?;
+    assert_eq!(actions.len(), 2);
+
+    let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
+
+    // Delete for the first action is dependent on the delete for the third action (reverse order)
+    assert_eq!(
+        action_graph.get_all_dependencies(third_action),
+        vec![first_action]
+    );
+    assert_eq!(
+        action_graph.direct_dependencies_of(first_action),
+        vec![third_action]
+    );
+
+    Ok(())
 }
 
 async fn enqueue_delete_action(
