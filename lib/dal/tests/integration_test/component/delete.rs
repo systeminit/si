@@ -25,12 +25,19 @@ use dal::{
         frame::Frame,
         resource::ResourceData,
     },
-    func::intrinsics::IntrinsicFunc,
+    func::{
+        authoring::FuncAuthoringClient,
+        intrinsics::IntrinsicFunc,
+    },
+    schema::variant::authoring::VariantAuthoringClient,
 };
 use dal_test::{
     Result,
+    expected::ExpectSchemaVariant,
     helpers::{
         ChangeSetTestHelpers,
+        attribute::value,
+        component,
         create_component_for_default_schema_name_in_default_view,
         create_component_for_schema_name_with_type_on_default_view,
         create_named_component_for_schema_variant_on_default_view,
@@ -1501,6 +1508,191 @@ async fn delete_multiple_components(ctx: &mut DalContext) -> Result<()> {
         component_with_resource_to_delete.to_delete(),
         "component with resource should be marked as to delete"
     );
+
+    Ok(())
+}
+
+#[test]
+async fn delete_multiple_components_with_subscriptions(ctx: &mut DalContext) -> Result<()> {
+    // Create a component B that feeds 2 other components A via subscription
+    // Run Create actions for 2 components A
+    // Delete all 3 of them (which should mark them all as to_delete)
+    // Check that the first component isn't allowed to be removed since the downstream components need them
+    // Check that all 3 components are deleted after the delete actions run!
+
+    let component_a_code_definition = r#"
+        function main() {
+            const prop = new PropBuilder()
+                .setName("prop")
+                .setKind("string")
+                .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                .build();
+            const resourceProp = new PropBuilder()
+                .setName("prop")
+                .setKind("string")
+                .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                .build();
+
+            return new AssetBuilder()
+                .addProp(prop)
+                .addResourceProp(resourceProp)
+                .build();
+        }
+    "#;
+
+    let a_variant = ExpectSchemaVariant(
+        VariantAuthoringClient::create_schema_and_variant_from_code(
+            ctx,
+            "A",
+            None,
+            None,
+            "Category",
+            "#0077cc",
+            component_a_code_definition,
+        )
+        .await?
+        .id,
+    );
+
+    // Create Action Func for A
+    let func_name = "Create A".to_string();
+    let func = FuncAuthoringClient::create_new_action_func(
+        ctx,
+        Some(func_name.clone()),
+        ActionKind::Create,
+        a_variant.id(),
+    )
+    .await?;
+
+    let create_func_code = r#"
+        async function main(component: Input): Promise<Output> {
+        const prop = component.properties.domain?.prop;
+    return {
+        status: "ok",
+        payload: {
+            prop: prop
+        },
+    }
+}
+    "#;
+    FuncAuthoringClient::save_code(ctx, func.id, create_func_code).await?;
+    // Create Action Func for A
+    let func_name = "Destroy A".to_string();
+    let func = FuncAuthoringClient::create_new_action_func(
+        ctx,
+        Some(func_name.clone()),
+        ActionKind::Destroy,
+        a_variant.id(),
+    )
+    .await?;
+
+    let delete_func_code = r#"
+        async function main(component: Input): Promise<Output> {
+    return {
+        status: "ok",
+        payload: null,
+    }
+}
+    "#;
+    FuncAuthoringClient::save_code(ctx, func.id, delete_func_code).await?;
+
+    // Create B Variant
+    let component_b_code_definition = r#"
+        function main() {
+            const prop = new PropBuilder()
+                .setName("prop")
+                .setKind("string")
+                .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                .build();
+            return new AssetBuilder()
+                .addProp(prop)
+                .build();
+        }
+    "#;
+
+    let _b_variant = ExpectSchemaVariant(
+        VariantAuthoringClient::create_schema_and_variant_from_code(
+            ctx,
+            "B",
+            None,
+            None,
+            "Category",
+            "#0077cc",
+            component_b_code_definition,
+        )
+        .await?
+        .id,
+    );
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    // create 1 component B and 2 component As
+    let a_1 = component::create(ctx, "A", "A1").await?;
+    let a_2 = component::create(ctx, "A", "A2").await?;
+    let b = component::create(ctx, "B", "B").await?;
+
+    // both A's subscribe to B
+    value::subscribe(ctx, ("A1", "/domain/prop"), [("B", "/domain/prop")]).await?;
+    value::subscribe(ctx, ("A2", "/domain/prop"), [("B", "/domain/prop")]).await?;
+
+    // update value for B
+    value::set(ctx, ("B", "/domain/prop"), "hello world").await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    assert!(value::has_value(ctx, ("A1", "/domain/prop")).await?);
+    assert!(value::has_value(ctx, ("A2", "/domain/prop")).await?);
+
+    let actions = Action::list_topologically(ctx).await?;
+    assert!(actions.len() == 2);
+    // Apply changeset so it runs the creation action
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+
+    // wait for actions to run
+    ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
+    // fork head
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
+
+    let actions = Action::list_topologically(ctx).await?;
+    assert!(actions.is_empty());
+    assert!(value::has_value(ctx, ("A1", "/resource/payload")).await?);
+    assert!(value::has_value(ctx, ("A2", "/resource/payload")).await?);
+
+    // now delete all 3 components
+    let a_1_comp = Component::get_by_id(ctx, a_1).await?.delete(ctx).await?;
+    let a_2_comp = Component::get_by_id(ctx, a_2).await?.delete(ctx).await?;
+    let b_comp = Component::get_by_id(ctx, b).await?.delete(ctx).await?;
+
+    assert!(a_1_comp.is_some());
+    assert!(a_2_comp.is_some());
+    assert!(b_comp.is_some());
+
+    // now should have 2 delete actions enqueued
+    let actions = Action::list_topologically(ctx).await?;
+    assert!(actions.len() == 2);
+
+    // Apply changeset so it runs the creation action
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+
+    // wait for actions to run
+    ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
+    // loop until the other components are removed
+    let total_count = 50;
+    let mut count = 0;
+
+    while count < total_count {
+        ctx.update_snapshot_to_visibility()
+            .await
+            .expect("could not update snapshot");
+        let components = Component::list(ctx)
+            .await
+            .expect("could not list components");
+        if components.is_empty() {
+            break;
+        }
+        count += 1;
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    // All components are gone!
+    assert!(Component::list(ctx).await?.is_empty());
 
     Ok(())
 }
