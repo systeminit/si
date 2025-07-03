@@ -60,6 +60,8 @@ async fn run_prototype(
     }): Path<RunPrototypePath>,
     Json(request): Json<RunPrototypeRequest>,
 ) -> Result<Json<RunPrototypeResponse>> {
+    let request_ulid = request.request_ulid.unwrap_or_default();
+
     // TODO check that this is a valid prototypeId
     let mut execution_result =
         ManagementPrototype::execute_by_id(ctx, prototype_id, component_id, view_id.into()).await?;
@@ -91,6 +93,7 @@ async fn run_prototype(
                     operations,
                     execution_result,
                     Some(view_id),
+                    request_ulid,
                 )
                 .await?
                 .operate()

@@ -28,6 +28,7 @@ use dal::{
     SchemaVariantError,
     TransactionsError,
     WorkspacePk,
+    WsEvent,
     WsEventError,
     diagram::{
         DiagramError,
@@ -194,7 +195,15 @@ pub async fn run_prototype_inner(
         }
     }
 
-    ctx.enqueue_management_func(prototype_id, component_id, view_id, request.request_ulid)
+    // Enqueue the management func and if there is not a request ULID, we will provide one to the
+    // event payload. This is so that the activity tracker has something to work with for tracking
+    // the lifecycle of a management function in flight.
+    let request_ulid = request.request_ulid.unwrap_or_default();
+    ctx.enqueue_management_func(prototype_id, component_id, view_id, request_ulid)
+        .await?;
+    WsEvent::management_operations_in_progress(ctx, request_ulid)
+        .await?
+        .publish_on_commit(ctx)
         .await?;
 
     tracker.track(

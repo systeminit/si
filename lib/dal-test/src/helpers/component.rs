@@ -99,10 +99,17 @@ pub async fn execute_management_func(
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, component_id, operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        component_id,
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
     Ok(())
 }
 

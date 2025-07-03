@@ -243,6 +243,12 @@ export type WsEventPayloadMap = {
     message?: string;
     createdComponentIds?: ComponentId[];
   };
+  ManagementOperationsFailed: {
+    requestUlid: string;
+  };
+  ManagementOperationsInProgress: {
+    requestUlid: string;
+  };
 
   ModuleImported: SchemaVariant[];
   ModulesUpdated: {
