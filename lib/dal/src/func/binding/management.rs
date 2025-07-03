@@ -98,8 +98,7 @@ impl ManagementBinding {
                     // Since it's already installed, we don't include it in "installable_schemas"
                     installable_schemas.remove(schema.name());
 
-                    let variant_id =
-                        Schema::get_or_install_default_variant(ctx, schema.id()).await?;
+                    let variant_id = Schema::default_variant_id(ctx, schema.id()).await?;
                     let root_prop_id = SchemaVariant::get_root_prop_id(ctx, variant_id).await?;
                     let sv_type = Prop::ts_type(ctx, root_prop_id).await?;
 
