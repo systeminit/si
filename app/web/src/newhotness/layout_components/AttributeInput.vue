@@ -92,9 +92,9 @@
                     props.externalSources[0]?.componentName
                   }}</TruncateWithTooltip>
                   <div class="flex-none">/</div>
-                  <TruncateWithTooltip>{{
-                    field.state.value
-                  }}</TruncateWithTooltip>
+                  <TruncateWithTooltip>
+                    {{ field.state.value }}
+                  </TruncateWithTooltip>
                 </div>
               </template>
               <div
@@ -109,7 +109,10 @@
                 <TruncateWithTooltip
                   :class="themeClasses('text-neutral-600', 'text-neutral-400')"
                 >
-                  {{ field.state.value }}
+                  {{
+                    field.state.value ||
+                    `<${props.externalSources[0]?.path?.replace(/^\//, "")}>`
+                  }}
                 </TruncateWithTooltip>
               </div>
             </AttributeValueBox>
