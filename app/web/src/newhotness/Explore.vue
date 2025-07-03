@@ -1,5 +1,8 @@
 <template>
-  <DelayedSkeleton v-if="componentListRaw.isLoading.value" />
+  <DelayedSkeleton
+    v-if="componentListRaw.isLoading.value"
+    :skeleton="urlGridOrMap"
+  />
   <section v-else :class="clsx('grid h-full', showGrid ? 'explore' : 'map')">
     <!-- Left column -->
     <!-- 12 pixel padding to align with the SI logo -->
@@ -406,19 +409,21 @@ const collapsingStyles = computed(() =>
   ]),
 );
 
-const urlGridOrMap = computed(() => {
+const urlGridOrMap = computed((): "grid" | "map" => {
   const q: SelectionsInQueryString = router.currentRoute.value?.query;
   const keys = Object.keys(q);
   if (keys.includes("grid")) return "grid";
   if (keys.includes("map")) return "map";
   const mode = localStorage.getItem(viewModeStorageKey());
   if (mode) {
-    return mode;
+    return mode as "grid" | "map";
   } else {
     return "grid";
   }
 });
+
 const showGrid = computed(() => (groupRef.value ? groupRef.value.isA : true));
+
 watch(showGrid, () => {
   clearSelection();
   const query: SelectionsInQueryString = {
