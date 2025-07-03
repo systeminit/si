@@ -94,9 +94,13 @@ bustQueue.on("active", () => {
 
 processPatchQueue.on("empty", () => {
   debug("⚙️ patches processed");
+  // the queue may either be paused or running
+  bustQueue.start();
 });
 processMjolnirQueue.on("empty", () => {
   debug("⚙️ mjolnir processed");
+  // the queue may either be paused or running
+  bustQueue.start();
 });
 bustQueue.on("empty", () => {
   debug("🧹 busts processed");
