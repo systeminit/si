@@ -35,7 +35,7 @@
             >
               <Icon name="info-circle" />
               <div class="grow">
-                Because you are currently on Head, when you create a component a
+                Because you are currently on HEAD, when you create a component a
                 new change set will be created.
               </div>
               <div

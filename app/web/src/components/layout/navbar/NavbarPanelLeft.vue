@@ -39,13 +39,7 @@
 
     <ChangeSetPanel ref="changeSetPanelRef" />
 
-    <div v-if="unref(rainbow.count) > 0" class="mt-xs ml-xs relative">
-      <span
-        class="text-action-400 text-xs font-bold absolute w-[32px] top-[9px] text-center"
-        >{{ rainbow.count }}</span
-      >
-      <Icon size="lg" name="loader" tone="action" />
-    </div>
+    <StatusPanel v-if="useNewUI" />
   </div>
 </template>
 
@@ -58,10 +52,17 @@ import {
   DropdownMenuItem,
   Icon,
 } from "@si/vue-lib/design-system";
-import { computed, ref, watch, unref } from "vue";
+import { computed, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { useWorkspacesStore } from "@/store/workspaces.store";
-import { useRainbow } from "@/newhotness/logic_composables/rainbow_counter";
+import StatusPanel from "@/newhotness/StatusPanel.vue";
 import ChangeSetPanel from "./ChangeSetPanel.vue";
+
+// Determine if we're in the new experience
+const route = useRoute();
+const useNewUI = computed(() => {
+  return route.name?.toString().startsWith("new-hotness");
+});
 
 const workspacesStore = useWorkspacesStore();
 
@@ -76,8 +77,6 @@ watch(
   },
   { immediate: true },
 );
-
-const rainbow = useRainbow();
 
 const updateRoute = (newWorkspacePk: string) => {
   if (selectedWorkspacePk.value === newWorkspacePk) return;

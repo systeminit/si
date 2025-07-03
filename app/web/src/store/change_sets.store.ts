@@ -260,7 +260,6 @@ export function useChangeSetsStore() {
               window.localStorage.removeItem(headkey);
             },
             onSuccess: (_response) => {
-              // this.changeSetsById[response.changeSet.pk] = response.changeSet;
               const statusStore = useStatusStore();
               statusStore.resetWhenChangingChangeset();
             },
@@ -507,6 +506,7 @@ export function useChangeSetsStore() {
                   }
                   // END REDIRECT FOR ABANDONED CHANGE SET IN NEWHOTNESS
 
+                  // FIXME(nick): use a new design in the new UI, but keep the toast.
                   toast({
                     component: MovedToHead,
                     props: {
@@ -593,6 +593,7 @@ export function useChangeSetsStore() {
                     this.selectedChangeSet &&
                     this.selectedChangeSet.name !== "HEAD"
                   )
+                    // FIXME(nick): use a new design in the new UI, but keep the toast.
                     toast({
                       component: MovedToHead,
                       props: {
