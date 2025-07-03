@@ -132,8 +132,17 @@ build_context_toolchain(
     visibility = ["PUBLIC"],
 )
 
+mise_install(
+    name = "deno_compiler",
+    packages = [
+        "deno@latest",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 deno_toolchain(
     name = "deno",
+    mise_install = ":deno_compiler",
     visibility = ["PUBLIC"],
 )
 

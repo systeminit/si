@@ -36,7 +36,7 @@ def _mise_rust_toolchain_impl(ctx):
     compiler_args.add(shims)
 
     rustc_cmd = cmd_args(
-        [compiler_args, mise_binary, "exec", "rust",  "--", "rustc"]
+        [compiler_args, mise_binary, "exec", "rust", "vfox:https://github.com/systeminit/vfox-clang@20.1.7", "--", "rustc"]
     )
     clippy_driver_cmd = cmd_args(
         [compiler_args, mise_binary, "exec", "rust",  "--", "clippy"]

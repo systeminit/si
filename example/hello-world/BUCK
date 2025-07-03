@@ -1,7 +1,0 @@
-load("@prelude-si//:macros.bzl", "rust_binary")
-
-rust_binary(
-    name = "hello_world",
-    srcs = ["src/main.rs"],
-    deps = [],
-)

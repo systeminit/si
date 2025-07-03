@@ -21,8 +21,9 @@ def _execution_platform_impl(ctx: AnalysisContext) -> list[Provider]:
             remote_enabled = True,
             use_limited_hybrid = True,
             remote_cache_enabled = True,
-            allow_limited_hybrid_fallbacks = True,
-            allow_hybrid_fallbacks_on_failure = True,
+            # allow_limited_hybrid_fallbacks = True,
+            # allow_hybrid_fallbacks_on_failure = True,
+            allow_cache_uploads = True,
             remote_output_paths = "output_paths",
             remote_execution_properties = {
                 "OSFamily": "Linux",

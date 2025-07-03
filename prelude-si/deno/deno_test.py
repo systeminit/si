@@ -12,6 +12,10 @@ from typing import List
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--deno-binary",
+                        required=True,
+                        type=pathlib.Path,
+                        help="The path to the deno binary")
     parser.add_argument(
         "--input",
         action="append",
@@ -61,6 +65,7 @@ def parse_unstable_flags(flags: List[str]) -> List[str]:
 
 
 def run_tests(
+    deno_binary: str,
     input_paths: List[str],
     filter_pattern: str | None,
     flags: List[str],
@@ -70,7 +75,7 @@ def run_tests(
     watch: bool,
 ) -> None:
     """Run deno test with the specified arguments."""
-    cmd = ["deno", "test"]
+    cmd = [str(deno_binary), "test"]
 
     if filter_pattern:
         cmd.extend(["--filter", filter_pattern])
@@ -123,8 +128,16 @@ def main() -> int:
         permissions_list = parse_permissions(args.permissions)
         flags_list = parse_unstable_flags(args.unstable_flags)
 
-        run_tests(input_paths, args.filter, flags_list, args.ignore,
-                  args.parallel, permissions_list, args.watch)
+        run_tests(
+            args.deno_binary,
+            input_paths,
+            args.filter,
+            flags_list,
+            args.ignore,
+            args.parallel,
+            permissions_list,
+            args.watch
+        )
 
         print("Tests completed successfully.")
         return 0

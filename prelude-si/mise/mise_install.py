@@ -384,7 +384,6 @@ exec "$MISE_INSTALL_PATH" "$@"
     cargo_home = mise_tools_dir / 'cargo'
     rustup_home.mkdir(parents=True, exist_ok=True)
     cargo_home.mkdir(parents=True, exist_ok=True)
-    shims_dir = mise_tools_dir / 'shims'
 
     env.update({
         'MISE_BOOTSTRAP_PROJECT_DIR': str(project_dir),
@@ -410,10 +409,16 @@ exec "$MISE_INSTALL_PATH" "$@"
     print("Installing mise...", file=sys.stderr)
     subprocess.run([str(mise_bootstrap_path), '--version'], env=env, check=True)
 
+    print("Updating plugins...", file=sys.stderr)
+    subprocess.run([str(mise_bootstrap_path), 'plugins', 'update'], env=env, check=True)
+
     # Install each requested package
     for package in args.packages:
         print(f"Installing {package}...", file=sys.stderr)
         subprocess.run([str(mise_bootstrap_path), 'use', "-g", package], env=env, check=True)
+
+    print("Ensuring shims can shim...", file=sys.stderr)
+    subprocess.run([str(mise_bootstrap_path), 'reshim'], env=env, check=True)
 
     print("Mise installation completed successfully", file=sys.stderr)
 

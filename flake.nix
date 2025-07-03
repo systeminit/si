@@ -45,11 +45,13 @@
           buck2
           cacert
           clang
+          curl
           deno
           gitMinimal
           lld
           makeWrapper
           minica
+          mise
           nodePkgs.pnpm
           nodejs
           protobuf
@@ -174,6 +176,7 @@
             @//mode/release \
             "$buck2_target" \
             --verbose 8 \
+            --local-only \
             --out "build/$name-$system"
         '',
         extraBuildPhase ? "",
@@ -209,7 +212,6 @@
               done
           '';
           configurePhase = ''
-            export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
             export BINDGEN_EXTRA_CLANG_ARGS="\
               $(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/libc-cflags) \
@@ -384,7 +386,6 @@
         devShells.default = mkShell {
           # Env Vars so bindgen can find libclang
           shellHook = ''
-            export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
             export BINDGEN_EXTRA_CLANG_ARGS="\
               $(< ${pkgs.stdenv.cc}/nix-support/libc-crt1-cflags) \
               $(< ${pkgs.stdenv.cc}/nix-support/libc-cflags) \
