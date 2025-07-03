@@ -8,6 +8,7 @@ use dal::{
     ComponentId,
     DalContext,
     component::frame::Frame,
+    func::authoring::FuncAuthoringClient,
 };
 use dal_test::{
     expected::{
@@ -19,6 +20,7 @@ use dal_test::{
         update_visibility_and_snapshot_to_visibility,
     },
     helpers::{
+        attribute::value,
         connect_components_with_socket_names,
         get_component_input_socket_value,
     },
@@ -333,6 +335,207 @@ async fn deleting_a_connected_component_doesnt_cause_nonconnected_components_to_
             .expect("couldn't find value");
 
     assert!(butane_1_after_apply.is_none());
+}
+
+/// THIS TEST DOESN'T PASS 
+#[test]
+async fn deleting_a_connected_component_doesnt_cause_nonconnected_components_to_process_subscriptions(
+    ctx: &mut DalContext,
+) {
+    let docker_image_1 = ExpectComponent::create_named(ctx, "Docker Image", "docker 1").await;
+    let docker_image_1_id = docker_image_1.id();
+    let docker_image_2 = ExpectComponent::create_named(ctx, "Docker Image", "docker 2").await;
+
+    let butane_1 = ExpectComponent::create_named(ctx, "Butane", "butane 1")
+        .await
+        .component(ctx)
+        .await;
+    let butane_2 = ExpectComponent::create_named(ctx, "Butane", "butane 2")
+        .await
+        .component(ctx)
+        .await;
+
+    // Use subscriptions instead of socket connections
+    // butane components subscribe to docker image values
+
+    let func = FuncAuthoringClient::create_new_transformation_func(
+        ctx,
+        Some("transform_to_units".to_string()),
+    )
+    .await
+    .expect("couldn't create new func");
+    let code = "async function main(input: Input): Promise < Output > {
+        if (input === undefined || input === null) return {};
+         
+            let unit: Record < string, any > = {
+                name: input.image + '.service',
+                enabled: true,
+            };
+
+            let ports = '';
+            let dockerImageExposedPorts = input.ExposedPorts;
+            if (
+                !(
+                    dockerImageExposedPorts === undefined ||
+                    dockerImageExposedPorts === null
+                )
+            ) {
+                dockerImageExposedPorts.forEach(function(dockerImageExposedPort: any) {
+                    if (
+                        !(
+                            dockerImageExposedPort === undefined ||
+                            dockerImageExposedPort === null
+                        )
+                    ) {
+                        let parts = dockerImageExposedPort.split('/');
+                        try {
+                            // Prefix with a blank space.
+                            ports = ports + ` --publish ${parts[0]}:${parts[0]}`;
+                        } catch (err) {}
+                    }
+                });
+            }
+
+            let image = input.image;
+            let defaultDockerHost = 'docker.io';
+            let imageParts = image.split('/');
+            if (imageParts.length === 1) {
+                image = [defaultDockerHost, 'library', imageParts[0]].join('/');
+            } else if (imageParts.length === 2) {
+                image = [defaultDockerHost, imageParts[0], imageParts[1]].join('/');
+            }
+
+            let description = name.charAt(0).toUpperCase() + name.slice(1);
+
+            unit.contents = `[Unit]\nDescription=${description}\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nTimeoutStartSec=0\nExecStartPre=-/bin/podman kill ${name}\nExecStartPre=-/bin/podman rm ${name}\nExecStartPre=/bin/podman pull ${image}\nExecStart=/bin/podman run --name ${name}${ports} ${image}\n\n[Install]\nWantedBy=multi-user.target`;
+        return unit;
+    }";
+
+    FuncAuthoringClient::save_code(ctx, func.id, code)
+        .await
+        .expect("couldn't save code");
+    // first create an entry in the domain/units array
+    // then subscribe that entry to docker image with a transformation function?
+
+    value::subscribe_with_custom_function(
+        ctx,
+        (butane_1.id(), "/domain/systemd/units"),
+        [(docker_image_1.id(), "/domain")],
+        Some(func.id),
+    )
+    .await
+    .expect("able to create subscription");
+
+    value::subscribe_with_custom_function(
+        ctx,
+        (butane_2.id(), "/domain/systemd/units"),
+        [(docker_image_2.id(), "/domain")],
+        Some(func.id),
+    )
+    .await
+    .expect("able to create subscription");
+    value::set(
+        ctx,
+        (docker_image_2.id(), "/domain/image"),
+        "systeminit/whiskers",
+    )
+    .await
+    .expect("couldn't set value");
+    value::set(
+        ctx,
+        (docker_image_1.id(), "/domain/image"),
+        "systeminit/whiskers",
+    )
+    .await
+    .expect("couldn't set image");
+
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    let monster = value::get(ctx, (butane_2.id(), "/domain/systemd/units"))
+        .await
+        .expect("couldn't get value");
+    dbg!(&monster);
+
+    // I think this is failing for the same reason here - so not able to actually test the expected scenario
+    let val_2 = value::get(ctx, (butane_2.id(), "/domain/systemd/units/0"))
+        .await
+        .expect("couldn't get value");
+    let val_1 = value::get(ctx, (butane_1.id(), "/domain/systemd/units/0"))
+        .await
+        .expect("couldn't get value");
+    dbg!(&val_1);
+    dbg!(&val_2);
+    expected::apply_change_set_to_base(ctx).await;
+    let prop_path = &["root", "domain", "systemd", "units", "0"];
+    // open 2 new change sets
+    let cs_1 = fork_from_head_change_set(ctx).await;
+
+    // get the attribute value id for the second butane component to check when it's function was last run
+    let mut attribute_value_ids = butane_2
+        .attribute_values_for_prop(ctx, prop_path)
+        .await
+        .expect("couldn't find attribute values");
+    let attribute_value_id = attribute_value_ids.pop().expect("has an attribute value");
+
+    // I'm not actually looking for a qualification but there's nothing qualification specific here anyways
+    // using this to validate that this func didn't re-run unnecessarily after removing the docker image
+    // connected to the other butane component
+    let func_run_pre_delete: Option<FuncRun> = ctx
+        .layer_db()
+        .func_run()
+        .get_last_qualification_for_attribute_value_id(
+            ctx.workspace_pk().expect("has a workspace"),
+            attribute_value_id,
+        )
+        .await
+        .expect("could not get func run");
+
+    // remove one of the connected docker images
+    let docker = Component::get_by_id(ctx, docker_image_1_id)
+        .await
+        .expect("couldn't get component");
+    docker.delete(ctx).await.expect("couldn't delete");
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
+    // ensure the func that sets the prop for butane_2 didn't rerun (it should have the same func_run_id!)
+    let func_run_post_delete: Option<FuncRun> = ctx
+        .layer_db()
+        .func_run()
+        .get_last_qualification_for_attribute_value_id(
+            ctx.workspace_pk().expect("has a workspace"),
+            attribute_value_id,
+        )
+        .await
+        .expect("could not get func run");
+
+    assert_eq!(
+        func_run_post_delete.as_ref().expect("has a value").id(),
+        func_run_pre_delete.expect("has a value").id()
+    );
+
+    // before we apply, create a second fork of head
+    let cs_2 = fork_from_head_change_set(ctx).await;
+    update_visibility_and_snapshot_to_visibility(ctx, cs_1.id).await;
+
+    // now apply
+    expected::apply_change_set_to_base(ctx).await;
+
+    update_visibility_and_snapshot_to_visibility(ctx, cs_2.id).await;
+
+    //now switch to cs_2 and ensure the butane_1 component is updated correctly but the butane_2 component is as it was
+    // and we haven't re-ran the existing input socket
+    let func_run_post_apply: Option<FuncRun> = ctx
+        .layer_db()
+        .func_run()
+        .get_last_qualification_for_attribute_value_id(
+            ctx.workspace_pk().expect("has a workspace"),
+            attribute_value_id,
+        )
+        .await
+        .expect("could not get func run");
+    assert_eq!(
+        func_run_post_delete.expect("has a value").id(),
+        func_run_post_apply.expect("has a value").id()
+    );
 }
 
 #[ignore]
