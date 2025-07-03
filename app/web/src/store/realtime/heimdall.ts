@@ -31,7 +31,7 @@ import {
   EntityKind,
   SchemaMembers,
 } from "@/workers/types/entity_kind_types";
-import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { Context } from "@/newhotness/types";
 import { DefaultMap } from "@/utils/defaultmap";
 import * as rainbow from "@/newhotness/logic_composables/rainbow_counter";
@@ -483,20 +483,14 @@ const MUSPELHEIM_CONCURRENCY = 1;
 
 export const muspelheimStatuses = ref<{ [key: string]: boolean }>({});
 
-const fetchOpenChangeSets = async (workspaceId: string) => {
+const fetchOpenChangeSets = async (
+  workspaceId: string,
+): Promise<WorkspaceMetadata> => {
   const resp = await sdf<WorkspaceMetadata>({
     method: "GET",
     url: `v2/workspaces/${workspaceId}/change-sets`,
   });
-  return resp.data.changeSets.filter((cs) =>
-    [
-      ChangeSetStatus.Open,
-      ChangeSetStatus.NeedsApproval,
-      ChangeSetStatus.NeedsAbandonApproval,
-      ChangeSetStatus.Rejected,
-      ChangeSetStatus.Approved,
-    ].includes(cs.status),
-  );
+  return resp.data;
 };
 
 export const muspelheim = async (workspaceId: string, force?: boolean) => {
@@ -504,9 +498,9 @@ export const muspelheim = async (workspaceId: string, force?: boolean) => {
   // eslint-disable-next-line no-console
   console.log("🔥 MUSPELHEIM 🔥");
   const niflheimQueue = new PQueue({ concurrency: MUSPELHEIM_CONCURRENCY });
-  const openChangeSets = await fetchOpenChangeSets(workspaceId);
-  const baseChangeSet = openChangeSets.find((cs) => !cs.baseChangeSetId);
-  if (!baseChangeSet) {
+  const { changeSets: openChangeSets, defaultChangeSetId: baseChangeSetId } =
+    await fetchOpenChangeSets(workspaceId);
+  if (!baseChangeSetId) {
     throw new Error("No HEAD changeset found");
   }
 
@@ -515,7 +509,6 @@ export const muspelheim = async (workspaceId: string, force?: boolean) => {
     muspelheimStatuses.value[changeSet.id] = false;
   }
 
-  const baseChangeSetId = baseChangeSet.id;
   await niflheim(workspaceId, baseChangeSetId, force);
 
   for (const changeSet of openChangeSets) {
