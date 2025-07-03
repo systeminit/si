@@ -2840,6 +2840,30 @@ impl Component {
             }
         }
 
+        // Check subscribers too
+        let subscribers = Self::subscribers(ctx, self.id()).await?;
+        for (_, subscriber_apa_id) in subscribers {
+            let subscriber_ap_id =
+                AttributePrototypeArgument::prototype_id(ctx, subscriber_apa_id).await?;
+            let Some(subscriber_av_id) =
+                AttributePrototype::attribute_value_id(ctx, subscriber_ap_id).await?
+            else {
+                continue;
+            };
+            let connected_to_component_id =
+                AttributeValue::component_id(ctx, subscriber_av_id).await?;
+            if Self::resource_by_id(ctx, connected_to_component_id)
+                .await?
+                .is_some()
+            {
+                debug!(
+                    "component {:?} cannot be removed because {:?} has resource",
+                    self.id, connected_to_component_id
+                );
+                return Ok(false);
+            }
+        }
+
         debug!("component {:?} can be removed", self.id,);
         Ok(true)
     }
