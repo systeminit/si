@@ -176,6 +176,8 @@ pub enum ChangeSetApplyError {
     Action(#[from] ActionError),
     #[error("action prototype not found for id: {0}")]
     ActionPrototypeNotFound(ActionId),
+    #[error("Cannot apply changeset {0} to itself")]
+    CannotApplyToItself(ChangeSetId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
@@ -853,8 +855,15 @@ impl ChangeSet {
     /// Also sends the relevant WSEvent
     #[instrument(level = "info", skip_all)]
     pub async fn apply_to_base_change_set(ctx: &mut DalContext) -> ChangeSetApplyResult<ChangeSet> {
+        let base_change_set_id = ctx.get_workspace_default_change_set_id().await?;
+
+        if ctx.change_set_id() == base_change_set_id {
+            return Err(ChangeSetApplyError::CannotApplyToItself(base_change_set_id));
+        }
+
         // Apply to the base change with the current change set (non-editing) and commit.
         let mut change_set_to_be_applied = Self::get_by_id(ctx, ctx.change_set_id()).await?;
+
         ctx.update_visibility_and_snapshot_to_visibility(ctx.change_set_id())
             .await?;
         change_set_to_be_applied
