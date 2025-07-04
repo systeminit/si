@@ -67,7 +67,7 @@ impl EddaUpdates {
 
     #[instrument(
         name = "edda_updates.publish_patch_batch",
-        level = "info",
+        level = "debug",
         skip_all,
         fields()
     )]
