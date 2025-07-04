@@ -193,7 +193,7 @@ pub(crate) async fn default(State(state): State<AppState>, subject: Subject) -> 
         }
         // The processor tasks has signaled to shutdown from a quiet period
         _ = quiesced_notify.notified() => {
-            info!(
+            debug!(
                 service.instance.id = metadata.instance_id(),
                 si.workspace.id = %workspace.str,
                 si.change_set.id = %change_set.str,
