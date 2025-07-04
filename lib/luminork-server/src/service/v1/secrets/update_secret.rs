@@ -63,6 +63,10 @@ pub async fn update_secret(
 ) -> SecretsResult<Json<UpdateSecretV1Response>> {
     let Json(payload) = payload?;
 
+    if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
+        return Err(SecretsError::NotPermittedOnHead);
+    }
+
     let secret = Secret::get_by_id(ctx, secret_id)
         .await
         .map_err(|_s| SecretsError::SecretNotFound(secret_id))?;

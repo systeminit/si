@@ -54,6 +54,10 @@ pub async fn delete_component(
     tracker: PosthogEventTracker,
     Path(ComponentV1RequestPath { component_id }): Path<ComponentV1RequestPath>,
 ) -> Result<Json<DeleteComponentV1Response>, ComponentsError> {
+    if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
+        return Err(ComponentsError::NotPermittedOnHead);
+    }
+
     let head_components: HashSet<ComponentId> =
         Component::exists_on_head(ctx, &[component_id]).await?;
 

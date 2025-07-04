@@ -78,6 +78,10 @@ pub async fn create_component(
 ) -> Result<Json<CreateComponentV1Response>, ComponentsError> {
     let Json(payload) = payload?;
 
+    if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
+        return Err(ComponentsError::NotPermittedOnHead);
+    }
+
     let schema_id =
         match CachedModule::find_latest_for_schema_name(ctx, payload.schema_name.as_str()).await? {
             Some(module) => module.schema_id,

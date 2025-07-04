@@ -136,6 +136,8 @@ pub enum ComponentsError {
     ManagementFunctionNotFound(String),
     #[error("prop error: {0}")]
     ManagementPrototype(#[from] dal::management::prototype::ManagementPrototypeError),
+    #[error("changes not permitted on HEAD change set")]
+    NotPermittedOnHead,
     #[error("output socket error: {0}")]
     OutputSocket(#[from] dal::socket::output::OutputSocketError),
     #[error("prop error: {0}")]
@@ -268,6 +270,7 @@ impl crate::service::v1::common::ErrorIntoResponse for ComponentsError {
             ComponentsError::DuplicateActionFunctionName(_) => {
                 (StatusCode::PRECONDITION_FAILED, self.to_string())
             }
+            ComponentsError::NotPermittedOnHead => (StatusCode::BAD_REQUEST, self.to_string()),
             ComponentsError::ViewNotFound(_) => (StatusCode::PRECONDITION_FAILED, self.to_string()),
             ComponentsError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
             ComponentsError::InvalidSecretValue(_) => {
