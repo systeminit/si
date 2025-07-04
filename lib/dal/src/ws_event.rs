@@ -63,6 +63,7 @@ use crate::{
     management::prototype::{
         ManagementFuncExecutedPayload,
         ManagementOperationsCompletePayload,
+        ManagementOperationsInProgressPayload,
     },
     module::ModulesUpdatedPayload,
     pkg::{
@@ -161,6 +162,7 @@ pub enum WsPayload {
     InferredEdgeUpsert(InferredEdgeUpsertPayload),
     ManagementFuncExecuted(ManagementFuncExecutedPayload),
     ManagementOperationsComplete(ManagementOperationsCompletePayload),
+    ManagementOperationsInProgress(ManagementOperationsInProgressPayload),
     ModuleImported(Vec<si_frontend_types::SchemaVariant>),
     ModulesUpdated(ModulesUpdatedPayload),
     Online(OnlinePayload),
