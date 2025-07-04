@@ -148,7 +148,7 @@ watch([visibleSentenceCount], async () => {
     we chose to use this as is.
   */
   animation: borderRotate 9000ms linear infinite forwards;
-  /* border-radius does not interact with border images, so this makes the div's edges a bit more rounded by masking the border */
-  mask-image: radial-gradient(transparent 0, #000 0px);
+  /* border-radius does not interact with border images, so this all black mask that takes the size of the div makes it round again */
+  mask-image: radial-gradient(#000 0, #000 0);
 }
 </style>
