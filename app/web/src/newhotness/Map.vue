@@ -614,23 +614,103 @@ const deselect = () => {
 
 watch(selectedComponent, () => {
   // this handles later changes after the page loads
+  document.querySelectorAll("#map > svg rect.node").forEach((n) => {
+    n.classList.remove("selected");
+    n.classList.remove("greyed-out");
+  });
+
+  // Remove greyed-out classes from text elements
   document
-    .querySelectorAll("#map > svg rect.node")
-    .forEach((n) => n.classList.remove("selected"));
+    .querySelectorAll("#map > svg text")
+    .forEach((n) => n.classList.remove("greyed-out"));
+
+  // Reset opacity for all icons and color bars
+  document.querySelectorAll("#map > svg path").forEach((path) => {
+    if (path.getAttribute("stroke")) {
+      path.setAttribute("stroke-opacity", "1");
+    } else {
+      (path as HTMLElement).style.opacity = "1";
+    }
+  });
+
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
   };
   delete query.c;
+
   if (selectedComponent.value) {
     query.c = selectedComponent.value.id;
+
+    // Add selected class to the selected component
     document
       .querySelector(`#map > svg rect.node.id-${selectedComponent.value.id}`)
       ?.classList.add("selected");
+
+    // Add greyed-out class to unconnected components
+    document.querySelectorAll("#map > svg rect.node").forEach((element) => {
+      const componentId = Array.from(element.classList)
+        .find((cls) => cls.startsWith("id-"))
+        ?.substring(3);
+
+      if (componentId && !connectedComponentIds.value.has(componentId)) {
+        element.classList.add("greyed-out");
+      }
+    });
+
+    // Add greyed-out class to text elements of unconnected components
+    document.querySelectorAll("#map > svg g").forEach((group) => {
+      const rect = group.querySelector("rect.node");
+      const componentId = Array.from(rect?.classList || [])
+        .find((cls) => cls.startsWith("id-"))
+        ?.substring(3);
+
+      if (componentId && !connectedComponentIds.value.has(componentId)) {
+        group.querySelectorAll("text").forEach((text) => {
+          text.classList.add("greyed-out");
+        });
+
+        // Grey out icons and color bars
+        group.querySelectorAll("path").forEach((path) => {
+          if (path.getAttribute("stroke")) {
+            // This is likely a color bar
+            path.setAttribute("stroke-opacity", "0.3");
+          } else {
+            // This is likely an icon
+            path.style.opacity = "0.3";
+          }
+        });
+      }
+    });
   }
+
   router.push({ query });
 });
 
 const searchString = inject<ComputedRef<string>>("SEARCH");
+
+const connectedComponentIds = computed(() => {
+  const connectedIds = new Set<string>();
+  if (!selectedComponent.value || !connections.data.value) {
+    return connectedIds;
+  }
+
+  const selectedId = selectedComponent.value.id;
+  connectedIds.add(selectedId); // Include the selected component itself
+
+  // Find all components connected to the selected component
+  connections.data.value.forEach((component) => {
+    component.connections.forEach((connection) => {
+      if (connection.toComponentId === selectedId) {
+        connectedIds.add(connection.fromComponentId);
+      }
+      if (connection.fromComponentId === selectedId) {
+        connectedIds.add(connection.toComponentId);
+      }
+    });
+  });
+
+  return connectedIds;
+});
 
 const fillDefault = ref<string>();
 onMounted(() => {
@@ -766,6 +846,7 @@ watch(
         )
         .attr("dx", "45")
         .attr("dy", "45")
+        .attr("class", "")
         .attr("alignment-baseline", "middle")
         .attr("color", "white")
         .attr("pointer-events", "none"); // prevents this from being clickable
@@ -901,6 +982,17 @@ defineExpose({
         fill: @colors-action-300;
       }
     }
+
+    &.greyed-out {
+      fill: @colors-neutral-200;
+      stroke: @colors-neutral-300;
+      opacity: 0.3;
+
+      body.dark & {
+        fill: @colors-neutral-700;
+        stroke: @colors-neutral-600;
+      }
+    }
   }
 
   text {
@@ -912,6 +1004,15 @@ defineExpose({
     &.name {
       font-weight: bold;
       font-size: 1.2rem;
+    }
+
+    &.greyed-out {
+      fill: @colors-neutral-400;
+      opacity: 0.6;
+
+      body.dark & {
+        fill: @colors-neutral-500;
+      }
     }
   }
 
