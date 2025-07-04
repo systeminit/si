@@ -18,6 +18,8 @@
           <div class="flex flex-row items-center ml-auto gap-2xs">
             <IconButton
               v-if="canDelete"
+              tooltip="Delete"
+              tooltipPlacement="top"
               icon="trash"
               iconTone="destructive"
               iconIdleTone="shade"
@@ -47,10 +49,10 @@
 
               readOnly
                 ? [
-                    'cursor-not-allowed',
+                    'cursor-not-allowed focus:outline-none focus:z-10',
                     themeClasses(
-                      'bg-caution-lines-light text-neutral-600',
-                      'bg-caution-lines-dark text-neutral-400',
+                      'bg-caution-lines-light text-neutral-600 focus:border-action-500',
+                      'bg-caution-lines-dark text-neutral-400 focus:border-action-300',
                     ),
                   ]
                 : [themeClasses('bg-shade-0', 'bg-shade-100'), 'cursor-text'],
@@ -65,6 +67,7 @@
           "
           tabindex="0"
           @focus="openInput"
+          @keydown.tab="(e) => (readOnly ? onTab(e) : null)"
           @click.left="openInput"
         >
           <TruncateWithTooltip>
@@ -181,6 +184,8 @@
               <TruncateWithTooltip>{{ displayName }}</TruncateWithTooltip>
               <IconButton
                 v-if="canDelete"
+                tooltip="Delete (⌘⌫)"
+                tooltipPlacement="top"
                 icon="trash"
                 iconTone="destructive"
                 iconIdleTone="shade"
@@ -215,16 +220,17 @@
               @input="(e: Event) => onInputChange(e)"
               @blur="blur"
               @focus="focus"
-              @keydown.esc.stop.prevent="closeInput"
-              @keydown.up.prevent="onUp"
-              @keydown.down.prevent="onDown"
+              @keydown.esc.stop.prevent="closeAndReset"
+              @keydown.up="onUp"
+              @keydown.down="onDown"
               @keydown.enter.prevent="onEnter"
               @keydown.tab="onTab"
+              @keydown.delete="onDelete"
             />
             <Icon
               v-if="kindAsString === 'codeeditor'"
               v-tooltip="'Set manual value in code editor'"
-              name="code-pop"
+              name="code-pop-right"
               size="sm"
               :class="
                 clsx(
@@ -244,31 +250,46 @@
           <div
             :class="
               clsx(
-                'flex flex-row px-xs justify-between font-bold',
+                'flex flex-row items-center gap-sm px-xs font-bold h-5',
                 themeClasses('text-neutral-600', 'text-neutral-400'),
               )
             "
           >
-            <div>
+            <TruncateWithTooltip>
               <template v-if="isArray"> Add an array item </template>
               <template v-else-if="isMap"> Enter a key </template>
               <template v-else-if="isSecret"> Select a secret </template>
               <template v-else> Enter a value </template>
-            </div>
+            </TruncateWithTooltip>
+
+            <!-- Divides the controls from the text and pushes them right -->
+            <div class="ml-auto" />
+
             <div
-              v-if="!isMap"
+              v-if="selectedIndex === -1"
               :class="
                 clsx(
-                  'text-xs',
+                  'text-xs flex-none flex flex-row items-center gap-2xs',
                   themeClasses('text-neutral-900', 'text-neutral-200'),
                 )
               "
             >
-              Navigate
-              <span
-                ><TextPill variant="key2">Up</TextPill>
-                <TextPill variant="key2">Down</TextPill></span
-              >
+              <div>
+                {{ inputTouched ? discardString : "Next attribute" }}
+              </div>
+              <TextPill variant="key2">{{ selectKeyString }}</TextPill>
+            </div>
+            <div
+              :class="
+                clsx(
+                  'text-xs flex-none flex flex-row items-center gap-2xs',
+                  themeClasses('text-neutral-900', 'text-neutral-200'),
+                )
+              "
+            >
+              <div>Navigate</div>
+              <TextPill variant="key2">Up</TextPill>
+              <TextPill variant="key2">Down</TextPill>
             </div>
           </div>
           <div
@@ -278,8 +299,8 @@
                 'flex flex-row items-center cursor-pointer border border-transparent',
                 'px-xs py-2xs h-[30px]',
                 themeClasses(
-                  'hover:border-action-500',
-                  'hover:border-action-300',
+                  'hover:border-action-500 active:bg-action-200',
+                  'hover:border-action-300 active:bg-action-900',
                 ),
                 selectedIndex === 0 && [
                   mapKeyError
@@ -321,7 +342,7 @@
                 )
               "
             >
-              <TextPill variant="key2">Enter</TextPill>
+              <TextPill variant="key2">{{ selectKeyString }}</TextPill>
               to select
             </div>
           </div>
@@ -341,14 +362,7 @@
           <div
             v-if="maybeOptions.hasOptions"
             ref="optionRef"
-            :class="
-              clsx(
-                'scrollable',
-                selectedIndex < filteredOptions.length + 1
-                  ? 'max-h-[10rem]'
-                  : 'hidden',
-              )
-            "
+            class="scrollable max-h-[10rem]"
           >
             <ol>
               <li
@@ -363,12 +377,12 @@
                       themeClasses('bg-action-200', 'bg-action-900'),
                     ],
                     themeClasses(
-                      'border-t-neutral-400 hover:border-action-500',
-                      'border-t-neutral-600 hover:border-action-300',
+                      'border-t-neutral-400 hover:border-action-500 active:active:bg-action-200',
+                      'border-t-neutral-600 hover:border-action-300 active:active:bg-action-900',
                     ),
                   )
                 "
-                @click.left="() => selectOption(option, index)"
+                @click.left="() => selectOption(option)"
               >
                 <TruncateWithTooltip class="grow">{{
                   option.label
@@ -382,7 +396,7 @@
                     )
                   "
                 >
-                  <TextPill variant="key2">Enter</TextPill>
+                  <TextPill variant="key2">{{ selectKeyString }}</TextPill>
                   to select
                 </div>
               </li>
@@ -412,27 +426,17 @@
               This will allow us to only create HTML elements for visible items, and speeds up
               the rendering and initialization of the list.
             -->
-            <div
-              ref="filteredConnectionsListRef"
-              :class="
-                clsx(
-                  'scrollable',
-                  selectedIndex > filteredOptions.length || selectedIndex === 0
-                    ? 'h-[10rem]'
-                    : 'hidden',
-                )
-              "
-            >
+            <div ref="filteredConnectionsListRef" class="scrollable h-[10rem]">
               <!-- Create a relative-positioned container so that children are relative to its (0,0) -->
               <div
                 :class="clsx('relative w-full')"
                 :style="{
-                  height: `${filteredConnectionsList.getTotalSize()}px`,
+                  height: `${virtualFilteredConnectionsHeight}px`,
                 }"
               >
                 <!-- position this item exactly where the virtualizer tells it to go -->
                 <div
-                  v-for="virtualItem in filteredConnectionsList.getVirtualItems()"
+                  v-for="virtualItem in virtualFilteredConnectionItemsList"
                   :key="
                     filteredConnections[virtualItem.index]?.attributeValueId
                   "
@@ -446,8 +450,8 @@
                         themeClasses('bg-action-200', 'bg-action-900'),
                       ],
                       themeClasses(
-                        'hover:border-action-500',
-                        'hover:border-action-300',
+                        'hover:border-action-500 active:active:bg-action-200',
+                        'hover:border-action-300 active:active:bg-action-900',
                       ),
                     )
                   "
@@ -497,7 +501,7 @@
                       )
                     "
                   >
-                    <TextPill variant="key2">Enter</TextPill>
+                    <TextPill variant="key2">{{ selectKeyString }}</TextPill>
                     to select
                   </div>
                   <TruncateWithTooltip v-else>
@@ -615,6 +619,9 @@ const isSetByConnection = computed(
   () => props.externalSources && props.externalSources.length > 0,
 );
 
+// does not set the actual key, just the string displayed!
+const selectKeyString = "Tab";
+
 const anchorRef = ref<InstanceType<typeof HTMLElement>>();
 
 const path = computed(() => {
@@ -684,13 +691,12 @@ const maybeOptions = computed<{
 }>(() => {
   if (!props.kind || props.isSecret) return { hasOptions: false, options: [] };
 
-  if (props.kind === "boolean") {
+  if (props.kind === "checkbox") {
     return {
       hasOptions: true,
       options: [
         { label: "true", value: "true" },
         { label: "false", value: "false" },
-        { label: "unset", value: "UNSET" },
       ],
     };
   }
@@ -757,61 +763,55 @@ const focus = () => {
     link: props.prop?.docLink ?? "",
     docs: props.prop?.documentation ?? "",
   });
-  inputOpen.value = true;
+  openInput();
 };
 
 const selectConnection = (index: number) => {
-  if (isConnectionSelected(index)) {
-    const newConnection = filteredConnections.value[index];
-    if (!newConnection) return;
-    const newValue = newConnection.path;
-    connectingComponentId.value = newConnection.componentId;
-    if (
-      newValue &&
-      connectingComponentId.value &&
-      newValue !== attrData.value.value
-    ) {
-      valueForm.setFieldValue("value", newValue);
-      valueForm.handleSubmit();
-    }
-    closeInput();
-  } else {
-    selectedIndex.value = index + 1 + filteredOptions.length;
+  if (readOnly.value) return;
+
+  const newConnection = filteredConnections.value[index];
+  if (!newConnection) return;
+  const newValue = newConnection.path;
+  connectingComponentId.value = newConnection.componentId;
+  if (
+    newValue &&
+    connectingComponentId.value &&
+    newValue !== attrData.value.value
+  ) {
+    valueForm.setFieldValue("value", newValue);
+    valueForm.handleSubmit();
   }
+  closeInput();
 };
-const selectOption = (option: LabelEntry<AttrOption>, index: number) => {
-  if (isOptionSelected(index)) {
-    const newValue = option.value.toString();
-    connectingComponentId.value = undefined;
-    if (newValue !== attrData.value.value) {
-      valueForm.setFieldValue("value", newValue);
-      valueForm.handleSubmit();
-    }
-    closeInput();
-  } else {
-    selectedIndex.value = index + 1;
+const selectOption = (option: LabelEntry<AttrOption>) => {
+  if (readOnly.value) return;
+
+  const newValue = option.value.toString();
+  connectingComponentId.value = undefined;
+  if (newValue !== attrData.value.value) {
+    valueForm.setFieldValue("value", newValue);
+    valueForm.handleSubmit();
   }
+  closeInput();
 };
 const selectDefault = () => {
-  if (selectedIndex.value === 0) {
-    const newValue = valueForm.state.values.value;
-    connectingComponentId.value = undefined;
+  if (readOnly.value) return;
 
-    if (props.isArray) {
-      emit("add");
-    } else if (props.isMap) {
-      if (!mapKey.value) {
-        mapKeyError.value = true;
-        return;
-      }
-      emit("add", mapKey.value);
-    } else if (newValue !== attrData.value.value) {
-      valueForm.handleSubmit();
+  const newValue = valueForm.state.values.value;
+  connectingComponentId.value = undefined;
+
+  if (props.isArray) {
+    emit("add");
+  } else if (props.isMap) {
+    if (!mapKey.value) {
+      mapKeyError.value = true;
+      return;
     }
-    closeInput();
-  } else {
-    selectedIndex.value = 0;
+    emit("add", mapKey.value);
+  } else if (newValue !== attrData.value.value) {
+    valueForm.handleSubmit();
   }
+  closeInput();
 };
 
 const blur = () => {
@@ -847,13 +847,14 @@ const emit = defineEmits<{
 
 const mapKey = ref("");
 const mapKeyError = ref(false);
-const defaultSelectedIndex = () => (props.isSecret ? 1 : 0);
+const defaultSelectedIndex = () => -1;
 /**
  * The index of the selected option or connection.
  *
  * This is an index into an imagined concatenated list containing both filteredOptions and filteredConnections.
  *
- * - If this is 0, nothing is selected.
+ * - If this is -1, nothing is selected, we start here!
+ * - If this is 0, the manual value is selected.
  * - If this is > 0 and <= filteredOptions.length, it references filteredOptions[selectedIndex - 1].
  * - If this is > filteredOptions.length, it references filteredConnetions[selectedIndex - 1 - filteredOptions.length].
  */
@@ -863,23 +864,30 @@ const inputWindowRef = ref<InstanceType<typeof HTMLDivElement>>();
 const inputOpen = ref(false);
 const labelRect = ref<undefined | DOMRect>(undefined);
 
+const inputTouched = ref(false);
+
+const resetEverything = () => {
+  resetFilteredOptions();
+  valueForm.reset();
+  mapKey.value = "";
+  mapKeyError.value = false;
+  selectedIndex.value = defaultSelectedIndex();
+  connectingComponentId.value = undefined;
+  inputTouched.value = false;
+};
+
 const openInput = () => {
-  if (readOnly.value) return;
+  if (readOnly.value || inputOpen.value) return;
 
   if (props.disableInputWindow) {
     emit("selected");
     return;
   }
 
-  resetFilteredOptions();
-  valueForm.reset();
+  resetEverything();
   labelRect.value = anchorRef.value?.getClientRects()[0];
-  mapKey.value = "";
-  mapKeyError.value = false;
   if (!labelRect.value) return;
   inputOpen.value = true;
-  selectedIndex.value = defaultSelectedIndex();
-  connectingComponentId.value = undefined;
   nextTick(() => {
     inputRef.value?.focus();
     addListeners();
@@ -887,8 +895,14 @@ const openInput = () => {
   });
 };
 const closeInput = () => {
-  inputOpen.value = false;
-  removeListeners();
+  if (inputOpen.value) {
+    inputOpen.value = false;
+    removeListeners();
+  }
+};
+const closeAndReset = () => {
+  closeInput();
+  resetEverything();
 };
 
 const addListeners = () => {
@@ -898,39 +912,98 @@ const removeListeners = () => {
   mouseEmitter.off("mousedown", onMouseDown);
 };
 
+const selectAtCurrentIndex = () => {
+  if (readOnly.value) {
+    return;
+  } else if (selectedIndex.value === -1) {
+    closeAndReset();
+  } else if (selectedIndex.value === 0) {
+    selectDefault();
+  } else if (optionIsSelected.value) {
+    const option = filteredOptions[selectedIndex.value - 1];
+    if (option) {
+      selectOption(option);
+    }
+  } else {
+    selectConnection(selectedIndex.value - filteredOptions.length - 1);
+  }
+};
 const onInputChange = (e: Event) => {
+  inputTouched.value = true;
+
   const v = (e.target as HTMLInputElement).value;
   if (props.isMap) {
     mapKey.value = v;
-    return;
+    selectedIndex.value = 0;
+  } else {
+    valueForm.setFieldValue("value", v);
+    filterStr.value = v;
   }
 
-  valueForm.setFieldValue("value", v);
-  filterStr.value = v;
-  selectedIndex.value = defaultSelectedIndex();
+  // fixing various things
+  if (props.isArray && v.length === 0 && selectedIndex.value === 0) {
+    inputTouched.value = false;
+    selectedIndex.value = -1;
+  } else if (props.isMap) {
+    if (mapKey.value.length === 0) {
+      inputTouched.value = false;
+      selectedIndex.value = -1;
+    } else {
+      mapKeyError.value = false;
+    }
+  } else if (selectedIndex.value === -1) {
+    // If the user starts editing the field, move the selector to a value
+    if (props.isSecret) {
+      selectedIndex.value = 1; // the first connection for secrets
+    } else {
+      selectedIndex.value = 0; // the manual value for everything else
+    }
+  }
 };
 const onMouseDown = (e: MouseDetails["mousedown"]) => {
   const target = e.target;
   if (!(target instanceof Element)) {
     return;
   }
-  if (!inputWindowRef.value?.contains(target)) {
-    closeInput();
+  if (!inputWindowRef.value?.contains(target) && inputOpen.value) {
+    closeAndReset();
   }
 };
-const onUp = () => {
-  if (props.isMap) return;
+const onUp = (e: KeyboardEvent) => {
+  e.preventDefault();
+
+  if (props.isMap) {
+    mapArrow();
+    return;
+  }
+  preventAutoScroll.value = false;
 
   selectedIndex.value--;
+  if (selectedIndex.value === 0 && props.isSecret) {
+    // A secret field cannot be set via a manual value
+    selectedIndex.value = -1;
+  }
+
   if (selectedIndex.value < defaultSelectedIndex()) {
     selectedIndex.value =
       filteredConnections.value.length + filteredOptions.length;
   }
 };
-const onDown = () => {
-  if (props.isMap) return;
+const onDown = (e: KeyboardEvent) => {
+  e.preventDefault();
+
+  if (props.isMap) {
+    mapArrow();
+    return;
+  }
+  preventAutoScroll.value = false;
 
   selectedIndex.value++;
+  if (selectedIndex.value === 0 && props.isSecret) {
+    // A secret field cannot be set via a manual value
+    selectedIndex.value = 1;
+  }
+
   if (
     selectedIndex.value >
     filteredConnections.value.length + filteredOptions.length
@@ -939,19 +1012,15 @@ const onDown = () => {
   }
 };
 const onEnter = () => {
-  if (selectedIndex.value === 0) {
-    selectDefault();
-  } else if (selectedIndex.value < filteredOptions.length + 1) {
-    const option = filteredOptions[selectedIndex.value - 1];
-    if (option) {
-      selectOption(option, selectedIndex.value - 1);
-    }
-  } else {
-    selectConnection(selectedIndex.value - filteredOptions.length - 1);
-  }
+  if (selectedIndex.value === -1) selectedIndex.value = 0;
+  selectAtCurrentIndex();
 };
 const inputFocusDivRef = ref<HTMLDivElement>();
 const onTab = (e: KeyboardEvent) => {
+  if (!readOnly.value) selectAtCurrentIndex();
+
+  if (mapKeyError.value) return;
+
   // This allows the user to Tab or Shift+Tab to go through the attribute fields
   const focusable = Array.from(
     document.querySelectorAll('[tabindex="0"]'),
@@ -961,6 +1030,7 @@ const onTab = (e: KeyboardEvent) => {
   const index = focusable.indexOf(currentFocus);
   if (e.shiftKey) {
     e.preventDefault();
+    if (readOnly.value) e.stopPropagation();
     closeInput();
     nextTick(() => {
       if (currentFocus && focusable) {
@@ -981,6 +1051,30 @@ const onTab = (e: KeyboardEvent) => {
     });
   } else {
     closeInput();
+    if (readOnly.value) {
+      e.preventDefault();
+      e.stopPropagation();
+      nextTick(() => {
+        focusable[index + 1]?.focus();
+      });
+    }
+  }
+};
+const onDelete = (e: KeyboardEvent) => {
+  if (!props.canDelete) return;
+
+  if (e.metaKey || e.ctrlKey) {
+    e.preventDefault();
+    remove();
+  }
+};
+
+const mapArrow = () => {
+  // both arrows do the same thing for Map
+  if (selectedIndex.value === -1) {
+    selectedIndex.value = 0;
+  } else {
+    selectedIndex.value = -1;
   }
 };
 
@@ -1025,7 +1119,7 @@ const categorizedPossibleConn = computed(() => {
     } else if (
       source.kind === props.prop?.kind ||
       (source.kind === "string" &&
-        !["string", "boolean", "object", "map", "integer"].includes(
+        !["string", "checkbox", "object", "map", "integer"].includes(
           props.prop?.kind ?? "",
         ))
     ) {
@@ -1110,13 +1204,23 @@ const filteredConnections = computed(() => {
   return output;
 });
 
+const preventAutoScroll = ref(false);
+
 watch(
   () => selectedIndex.value,
   () => {
     nextTick(() => {
-      const el = document.getElementsByClassName("input-selected-item")[0];
-      if (el) {
-        el.scrollIntoView({ block: "nearest" });
+      if (preventAutoScroll.value) return;
+
+      if (optionIsSelected.value) {
+        const el = document.getElementsByClassName("input-selected-item")[0];
+        if (el) {
+          el.scrollIntoView({ block: "nearest" });
+        }
+      } else if (connectionIsSelected.value) {
+        virtualFilteredConnections.value.scrollToIndex(
+          selectedIndex.value - filteredOptions.length - 1,
+        );
       }
     });
   },
@@ -1124,7 +1228,7 @@ watch(
 
 // Virtualized list for potential connections
 const filteredConnectionsListRef = ref<HTMLDivElement>();
-const filteredConnectionsList = useVirtualizer(
+const virtualFilteredConnections = useVirtualizer(
   computed(() => {
     return {
       count: filteredConnections.value.length,
@@ -1135,6 +1239,12 @@ const filteredConnectionsList = useVirtualizer(
       overscan: 3,
     };
   }),
+);
+const virtualFilteredConnectionItemsList = computed(() =>
+  virtualFilteredConnections.value.getVirtualItems(),
+);
+const virtualFilteredConnectionsHeight = computed(() =>
+  virtualFilteredConnections.value.getTotalSize(),
 );
 
 const isOptionSelected = (index: number) =>
@@ -1173,6 +1283,19 @@ const setValueFromCodeEditorModal = (value: string) => {
   valueForm.setFieldValue("value", value);
   valueForm.handleSubmit();
 };
+
+const optionIsSelected = computed(
+  () => selectedIndex.value < filteredOptions.length + 1,
+);
+const connectionIsSelected = computed(
+  () => !optionIsSelected.value && selectedIndex.value > 0,
+);
+
+const discardString = computed(() => {
+  if (props.isMap) return "Discard key";
+
+  return "Discard edits";
+});
 </script>
 
 <style lang="css" scoped>

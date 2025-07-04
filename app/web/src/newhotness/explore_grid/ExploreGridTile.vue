@@ -36,16 +36,15 @@
           component.schemaName
         }}</TruncateWithTooltip>
       </h3>
+      <Icon v-if="component.toDelete" name="hourglass" size="md" />
       <Icon
-        v-if="canBeUpgraded"
+        v-else-if="canBeUpgraded"
         name="bolt-outline"
         size="md"
         :class="
           clsx(themeClasses('text-success-500', 'text-success-400'), 'mt-[5px]')
         "
       />
-      <!-- TODO(nick): center this vertically with the pill counters -->
-      <Icon v-if="component.toDelete" name="hourglass" size="md" />
     </header>
     <ol
       class="[&>li]:p-xs [&>li]:flex [&>li]:flex-row [&>li]:items-center [&>li]:gap-xs [&>li]:h-9 [&_.pillcounter]:w-5 [&_.pillcounter]:h-5"

@@ -210,6 +210,7 @@ import TildeHexOutline from "./custom-icons/tilde-hex-outline.svg?raw";
 
 import CodeDeployed from "./custom-icons/code-deployed.svg?raw";
 import CodePop from "./custom-icons/code-pop.svg?raw";
+import CodePopRight from "./custom-icons/code-pop-right.svg?raw";
 import LogsPop from "./custom-icons/logs-pop.svg?raw";
 import CodePopSquare from "./custom-icons/code-pop-square.svg?raw";
 import LogsPopSquare from "./custom-icons/logs-pop-square.svg?raw";
@@ -266,6 +267,7 @@ export const ICONS = Object.freeze({
   "code-circle": StreamlineBracesCircleSolid,
   "code-deployed": CodeDeployed,
   "code-pop": CodePop,
+  "code-pop-right": CodePopRight,
   "code-pop-square": CodePopSquare,
   "code-transform": CarbonTransformCode,
   "collapse-row": CollapseAll,
