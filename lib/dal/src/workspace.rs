@@ -287,7 +287,7 @@ impl Workspace {
 
     pub async fn update_default_change_set_id(
         &mut self,
-        ctx: &DalContext,
+        ctx: &mut DalContext,
         change_set_id: ChangeSetId,
     ) -> WorkspaceResult<()> {
         ctx.txns()
@@ -300,6 +300,8 @@ impl Workspace {
             .await?;
 
         self.default_change_set_id = change_set_id;
+        // Bust the default change set id in `DalContext`
+        ctx.update_tenancy(*ctx.tenancy());
 
         Ok(())
     }
@@ -877,7 +879,7 @@ impl Workspace {
 
     pub async fn import(
         &mut self,
-        ctx: &DalContext,
+        ctx: &mut DalContext,
         workspace_data: WorkspaceExport,
     ) -> WorkspaceResult<()> {
         let WorkspaceExportContentV0 {

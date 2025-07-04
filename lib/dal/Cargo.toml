@@ -12,6 +12,7 @@ publish.workspace = true
 audit-database           = { path = "../../lib/audit-database" }
 audit-logs-stream        = { path = "../../lib/audit-logs-stream" }
 billing-events           = { path = "../../lib/billing-events" }
+concurrent-extensions    = { path = "../../lib/concurrent-extensions" }
 dal-macros               = { path = "../../lib/dal-macros" }
 joi-validator            = { path = "../../lib/joi-validator" }
 module-index-client      = { path = "../../lib/module-index-client" }
