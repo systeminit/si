@@ -210,7 +210,7 @@
         v-else
         ref="mapRef"
         :active="!showGrid"
-        :components="componentList"
+        :components="filteredComponents"
         @deselect="onMapDeselect"
         @help="openShortcutModal"
       />
@@ -807,14 +807,35 @@ watch(
       return;
     }
 
-    const fzf = new Fzf(componentList.value, {
-      casing: "case-insensitive",
-      selector: (c) =>
-        `${c.name} ${c.schemaVariantName} ${c.schemaName} ${c.schemaCategory} ${c.schemaId} ${c.id}`,
-    });
+    const searchTerm = debouncedSearchString.value.trim();
 
-    const results = fzf.find(debouncedSearchString.value);
-    filteredComponents.splice(0, Infinity, ...results.map((fz) => fz.item));
+    // Check if the search term contains "schema:" queries
+    const schemaMatches = searchTerm.match(/schema:([^\s]+)/gi);
+    if (schemaMatches) {
+      const schemaNames = schemaMatches.map((match) =>
+        match.substring(7).trim().toLowerCase(),
+      );
+
+      if (schemaNames.length === 0 || schemaNames.some((name) => name === "")) {
+        filteredComponents.splice(0, Infinity, ...componentList.value);
+        return;
+      }
+
+      const results = componentList.value.filter((c) =>
+        schemaNames.includes(c.schemaName.toLowerCase()),
+      );
+      filteredComponents.splice(0, Infinity, ...results);
+    } else {
+      // Regular fuzzy search across all fields
+      const fzf = new Fzf(componentList.value, {
+        casing: "case-insensitive",
+        selector: (c) =>
+          `${c.name} ${c.schemaVariantName} ${c.schemaName} ${c.schemaCategory} ${c.schemaId} ${c.id}`,
+      });
+
+      const results = fzf.find(searchTerm);
+      filteredComponents.splice(0, Infinity, ...results.map((fz) => fz.item));
+    }
 
     mapRef.value?.deselect();
     clearSelection();

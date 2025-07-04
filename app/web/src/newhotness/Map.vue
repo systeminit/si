@@ -470,15 +470,35 @@ const mapData = computed(() => {
 
   const matchingIds: string[] = [];
   if (searchString?.value && searchString.value.trim().length > 0) {
-    const fzf = new Fzf(Object.values(componentsById.value), {
-      casing: "case-insensitive",
-      selector: (c) =>
-        `${c.name} ${c.schemaVariantName} ${c.schemaName} ${c.schemaCategory} ${c.schemaId} ${c.id}`,
-    });
+    const searchTerm = searchString.value.trim();
 
-    const results = fzf.find(searchString.value);
-    if (results.length === 0) return { nodes, edges, components };
-    else matchingIds.push(...results.map((c) => c.item.id));
+    // Check if the search term contains "schema:" queries
+    const schemaMatches = searchTerm.match(/schema:([^\s]+)/gi);
+    if (schemaMatches) {
+      const schemaNames = schemaMatches.map((match) =>
+        match.substring(7).trim().toLowerCase(),
+      );
+
+      if (schemaNames.length === 0 || schemaNames.some((name) => name === "")) {
+        matchingIds.push(...Object.keys(componentsById.value));
+      } else {
+        const results = Object.values(componentsById.value).filter((c) =>
+          schemaNames.includes(c.schemaName.toLowerCase()),
+        );
+        matchingIds.push(...results.map((c) => c.id));
+      }
+    } else {
+      // Regular fuzzy search across all fields
+      const fzf = new Fzf(Object.values(componentsById.value), {
+        casing: "case-insensitive",
+        selector: (c) =>
+          `${c.name} ${c.schemaVariantName} ${c.schemaName} ${c.schemaCategory} ${c.schemaId} ${c.id}`,
+      });
+
+      const results = fzf.find(searchTerm);
+      if (results.length === 0) return { nodes, edges, components };
+      else matchingIds.push(...results.map((c) => c.item.id));
+    }
   } else {
     matchingIds.push(...Object.keys(componentsById.value));
   }
