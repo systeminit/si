@@ -8,6 +8,7 @@ use std::{
 };
 
 use async_trait::async_trait;
+use concurrent_extensions::ConcurrentExtensions;
 use futures::{
     Future,
     future::BoxFuture,
@@ -465,6 +466,8 @@ pub struct DalContext {
     request_ulid: Option<ulid::Ulid>,
     /// The authentication method used
     authentication_method: AuthenticationMethod,
+    /// A type cache of data which saves on constant re-fetching
+    cache: ConcurrentExtensions,
 }
 
 #[async_trait]
@@ -504,6 +507,11 @@ impl SiDbTransactions for Transactions {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct WorkspaceDefaultChangeSetId {
+    default_change_set_id: ChangeSetId,
+}
+
 impl DalContext {
     /// Takes a reference to a [`ServicesContext`] and returns a builder to construct a
     /// `DalContext`.
@@ -516,12 +524,20 @@ impl DalContext {
     }
 
     pub async fn get_workspace_default_change_set_id(&self) -> TransactionsResult<ChangeSetId> {
-        let workspace_pk = self
-            .tenancy()
-            .workspace_pk_opt()
-            .unwrap_or(WorkspacePk::NONE);
-        let workspace = Workspace::get_by_pk(self, workspace_pk).await?;
-        Ok(workspace.default_change_set_id())
+        if let Some(cached) = self.cache.get::<WorkspaceDefaultChangeSetId>() {
+            return Ok(cached.default_change_set_id);
+        }
+
+        let workspace_pk = self.tenancy().workspace_pk()?;
+        let default_change_set_id = Workspace::get_by_pk(self, workspace_pk)
+            .await?
+            .default_change_set_id();
+
+        self.cache.insert(WorkspaceDefaultChangeSetId {
+            default_change_set_id,
+        });
+
+        Ok(default_change_set_id)
     }
 
     pub async fn get_workspace_token(&self) -> Result<Option<String>, TransactionsError> {
@@ -948,12 +964,6 @@ impl DalContext {
         new
     }
 
-    /// Updates this context with a new [`Visibility`].
-    pub fn update_access_builder(&mut self, access_builder: AccessBuilder) {
-        self.tenancy = access_builder.tenancy;
-        self.history_actor = access_builder.history_actor;
-    }
-
     /// Runs a block of code with a custom [`Visibility`] DalContext using the same transactions
     pub async fn run_with_visibility<F, Fut, R>(&self, visibility: Visibility, fun: F) -> R
     where
@@ -993,11 +1003,15 @@ impl DalContext {
         let base_change_set_id = change_set
             .base_change_set_id
             .ok_or(TransactionsError::NoBaseChangeSet(change_set.id))?;
-        Ok(self.get_workspace().await?.default_change_set_id() == base_change_set_id)
+
+        Ok(self.get_workspace_default_change_set_id().await? == base_change_set_id)
     }
 
     /// Updates this context with a new [`Tenancy`]
     pub fn update_tenancy(&mut self, tenancy: Tenancy) {
+        // Bust cache as we're updating tenancy (i.e. workspace_pk)
+        self.cache.remove::<WorkspaceDefaultChangeSetId>();
+
         self.tenancy = tenancy;
     }
 
@@ -1433,6 +1447,7 @@ impl DalContextBuilder {
             change_set: None,
             event_session_id: EventSessionId::new(),
             authentication_method: AuthenticationMethod::System,
+            cache: Default::default(),
         })
     }
 
@@ -1459,6 +1474,7 @@ impl DalContextBuilder {
             change_set: None,
             event_session_id: EventSessionId::new(),
             authentication_method,
+            cache: Default::default(),
         })
     }
 
@@ -1485,6 +1501,7 @@ impl DalContextBuilder {
             change_set: None,
             event_session_id: EventSessionId::new(),
             authentication_method: AuthenticationMethod::System,
+            cache: Default::default(),
         };
 
         ctx.update_snapshot_to_visibility().await?;
@@ -1512,6 +1529,7 @@ impl DalContextBuilder {
             change_set: None,
             event_session_id: EventSessionId::new(),
             authentication_method: access_builder.authentication_method,
+            cache: Default::default(),
         };
 
         // TODO(nick): there's a chicken and egg problem here. We want a dal context to get the
@@ -1542,6 +1560,7 @@ impl DalContextBuilder {
             change_set: None,
             event_session_id: EventSessionId::new(),
             authentication_method: request_context.authentication_method,
+            cache: Default::default(),
         };
 
         if ctx.history_actor() != &HistoryActor::SystemInit {

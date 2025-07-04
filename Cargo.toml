@@ -26,6 +26,7 @@ members = [
     "lib/billing-events",
     "lib/buck2-resources",
     "lib/bytes-lines-codec",
+    "lib/concurrent-extensions",
     "lib/config-file",
     "lib/cyclone-client",
     "lib/cyclone-core",
