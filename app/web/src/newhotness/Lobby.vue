@@ -2,35 +2,38 @@
   <div
     class="absolute w-screen h-screen bg-neutral-900 z-100 flex flex-col items-center justify-center"
   >
-    <!-- Floating panel (to hold future animated border  -->
+    <!-- Floating panel (holds box shadow)  -->
     <div
       :class="
         clsx(
-          'w-[720px] max-w-[70vw] h-[400px] rounded shadow-[0_0_8px_0_rgba(255,255,255,0.08)]',
+          'w-[720px] max-w-[70vw] h-[400px] rounded bg-neutral-800',
+          'shadow-[0_0_8px_0_rgba(255,255,255,0.08)]',
           'transition-opacity',
           showPanel ? 'opacity-100' : 'opacity-0',
         )
       "
     >
-      <!-- Inner section of panel -->
-      <div
-        :class="
-          clsx(
-            'w-full h-full rounded font-mono text-sm',
-            'flex flex-col justify-end gap-xs',
-            // Note(Victor): We need borders, since padding does not hide overflow
-            'overflow-hidden border-[16px] border-b-[64px]',
-            'bg-neutral-800 border-neutral-800',
-          )
-        "
-      >
-        <LobbyTerminalOutputLine
-          v-for="(data, index) in visibleSentences"
-          :key="index"
-          :message="data.sentence"
-          :isActive="index === visibleSentences.length - 1"
-          :isLoader="data.isLoader"
-        />
+      <!-- Holds spinning border (we can't use the internal one because of margins -->
+      <div class="spinning-border h-full w-full flex flex-row rounded">
+        <!-- Inner section of panel -->
+        <div
+          :class="
+            clsx(
+              'rounded font-mono text-sm ',
+              'flex flex-col justify-end gap-xs ',
+              'overflow-hidden m-sm mb-xl',
+              'bg-neutral-800 border-neutral-800',
+            )
+          "
+        >
+          <LobbyTerminalOutputLine
+            v-for="(data, index) in visibleSentences"
+            :key="index"
+            :message="data.sentence"
+            :isActive="index === visibleSentences.length - 1"
+            :isLoader="data.isLoader"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -106,3 +109,46 @@ watch([visibleSentenceCount], async () => {
   visibleSentenceCount.value += 1;
 });
 </script>
+
+<style scoped>
+/* Note*(victor): These styles exist to power the spinning border on the lobby terminal */
+
+/*
+  We need to declare --angle as a property with an initial value so that keyframes can correctly interpolate it
+  If we don't, the keyframes below would only blip between the declared states
+ */
+@property --angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes borderRotate {
+  100% {
+    --angle: 360deg;
+  }
+}
+
+.spinning-border {
+  border: 1px solid;
+  /*
+    use a spinning conic-gradient as the border image. It looks like this: https://www.geeksforgeeks.org/css/css-conic-gradient-function/
+    But "masked" through the border
+  */
+  border-image: conic-gradient(
+      from var(--angle),
+      #333,
+      #333 0.95turn,
+      #aaa8 1turn
+    )
+    1;
+  /*
+    Enable the animation. Although the rotation is linear, since it's showing through a rectangular shape,
+    both the moving speed and the trail length vary depending on the position. We could fudge the border speed by
+    compensating on the keyframes vs the "radius" of each border position but this wouldn't fix the trail so
+    we chose to use this as is.
+  */
+  animation: borderRotate 9000ms linear infinite forwards;
+  /* border-radius does not interact with border images, so this makes the div's edges a bit more rounded by masking the border */
+  mask-image: radial-gradient(transparent 0, #000 0px);
+}
+</style>

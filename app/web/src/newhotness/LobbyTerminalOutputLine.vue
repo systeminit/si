@@ -57,7 +57,7 @@ const INITIAL_DELAY_MS = 800;
 const CHAR_DELAY_MS = 35;
 const BASE_ELLIPSIS_DELAY_MS = 300;
 const ellipsisDelay = () =>
-  BASE_ELLIPSIS_DELAY_MS + Math.floor(Math.random() * 200);
+  BASE_ELLIPSIS_DELAY_MS + Math.floor(Math.random() * 100);
 watch([visibleCharCount], async () => {
   const message = props.message ?? "";
   if (visibleCharCount.value >= message.length) return;
