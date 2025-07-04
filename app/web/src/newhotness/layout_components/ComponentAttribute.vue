@@ -1,21 +1,36 @@
 <template>
   <li
-    v-if="showingChildren || !props.attributeTree.prop?.hidden"
+    v-if="showingChildren || !attributeTree.prop?.hidden"
     :class="clsx('flex flex-col', !showingChildren && 'mb-[-1px]')"
   >
     <template v-if="showingChildren">
       <AttributeChildLayout>
         <template #header>
-          <div class="flex flex-row items-center gap-2xs">
+          <div
+            ref="headerRef"
+            :class="
+              clsx(
+                'flex flex-row items-center gap-2xs',
+                attributeTree.isBuildable &&
+                  'focus:outline-none group/attributeheader',
+              )
+            "
+            :tabindex="attributeTree.isBuildable ? 0 : undefined"
+            @keydown.tab.stop.prevent="onHeaderTab"
+            @keydown.enter.stop.prevent="remove"
+            @keydown.delete.stop.prevent="remove"
+          >
             <div>{{ displayName }}</div>
             <IconButton
-              v-if="props.attributeTree.isBuildable"
+              v-if="attributeTree.isBuildable"
+              v-tooltip="'Delete'"
               icon="trash"
               size="sm"
               iconTone="destructive"
               iconIdleTone="shade"
               loadingIcon="loader"
               :loading="bifrostingTrash"
+              class="group-focus/attributeheader:outline group-focus/attributeheader:outline-action-500"
               @click="remove"
             />
           </div>
@@ -40,36 +55,23 @@
           v-if="isBuildable"
           class="grid grid-cols-2 items-center gap-xs relative"
         >
-          <div class="p-xs">
-            <VButton
-              class="font-normal"
-              tone="shade"
-              variant="ghost"
-              size="sm"
-              :loading="addApi.bifrosting.value"
-              :disabled="addApi.bifrosting.value"
-              loadingIcon="loader"
-              :tabindex="-1"
-              @click="() => add()"
-            >
-              + add
-            </VButton>
-          </div>
-          <template v-if="props.attributeTree.prop?.kind === 'map'">
+          <template v-if="attributeTree.prop?.kind === 'map'">
             <keyForm.Field name="key">
               <template #default="{ field }">
                 <input
                   :class="
                     clsx(
-                      'block ml-auto border w-full h-lg font-mono text-sm',
+                      'block ml-auto border w-full h-lg font-mono text-sm order-2',
+                      'focus:outline-none focus:shadow-none focus:ring-0',
                       themeClasses(
-                        'text-black bg-white border-neutral-400 disabled:bg-neutral-200',
-                        'text-white bg-black border-neutral-600 disabled:bg-neutral-900',
+                        'text-black bg-white border-neutral-400 disabled:bg-neutral-200 focus:border-action-500',
+                        'text-white bg-black border-neutral-600 disabled:bg-neutral-900 focus:border-action-300',
                       ),
                     )
                   "
                   type="text"
                   placeholder="Enter a key"
+                  tabindex="0"
                   :value="field.state.value"
                   :disabled="wForm.bifrosting.value"
                   @input="
@@ -81,22 +83,47 @@
               </template>
             </keyForm.Field>
           </template>
+          <div class="p-xs">
+            <VButton
+              ref="addButtonRef"
+              :class="
+                clsx(
+                  'font-normal',
+                  themeClasses(
+                    'focus:!border-action-500',
+                    'focus:!border-action-300',
+                  ),
+                )
+              "
+              tone="shade"
+              variant="ghost"
+              size="sm"
+              :loading="addApi.bifrosting.value"
+              :disabled="addApi.bifrosting.value"
+              loadingIcon="loader"
+              :tabindex="0"
+              @click="() => add()"
+              @keydown.tab.stop.prevent="onAddButtonTab"
+            >
+              + add
+            </VButton>
+          </div>
         </div>
       </AttributeChildLayout>
     </template>
-    <template v-else-if="!props.attributeTree.prop?.hidden">
+    <template v-else-if="!attributeTree.prop?.hidden">
       <AttributeInput
         :displayName="displayName"
         :attributeValueId="props.attributeTree.attributeValue.id"
-        :path="props.attributeTree.attributeValue.path ?? ''"
-        :kind="props.attributeTree.prop?.widgetKind"
-        :prop="props.attributeTree.prop"
+        :path="attributeTree.attributeValue.path ?? ''"
+        :kind="attributeTree.prop?.widgetKind"
+        :prop="attributeTree.prop"
         :component="component"
-        :value="props.attributeTree.attributeValue.value?.toString() ?? ''"
-        :canDelete="props.attributeTree.isBuildable"
-        :externalSources="props.attributeTree.attributeValue.externalSources"
-        :isArray="props.attributeTree.prop?.kind === 'array'"
-        :isMap="props.attributeTree.prop?.kind === 'map'"
+        :value="attributeTree.attributeValue.value?.toString() ?? ''"
+        :canDelete="attributeTree.isBuildable"
+        :externalSources="attributeTree.attributeValue.externalSources"
+        :isArray="attributeTree.prop?.kind === 'array'"
+        :isMap="attributeTree.prop?.kind === 'map'"
         @save="(...args) => emit('save', ...args)"
         @delete="(...args) => emit('delete', ...args)"
         @remove-subscription="(...args) => emit('removeSubscription', ...args)"
@@ -266,7 +293,10 @@ const saveKey = async () => {
 // be removed from the DOM once the update comes over the wire
 const bifrostingTrash = ref(false);
 const remove = () => {
-  if (props.attributeTree.attributeValue.path) {
+  if (
+    props.attributeTree.attributeValue.path &&
+    props.attributeTree.isBuildable
+  ) {
     emit(
       "delete",
       props.attributeTree.attributeValue.path,
@@ -292,4 +322,46 @@ const emit = defineEmits<{
 const showingChildren = computed(
   () => hasChildren.value && props.attributeTree.children.length > 0,
 );
+
+const headerRef = ref<HTMLDivElement>();
+const addButtonRef = ref<InstanceType<typeof VButton>>();
+
+const handleTab = (e: KeyboardEvent, currentFocus?: HTMLElement) => {
+  const focusable = Array.from(
+    document.querySelectorAll('[tabindex="0"]'),
+  ) as HTMLElement[];
+
+  if (!currentFocus) return;
+  const index = focusable.indexOf(currentFocus);
+
+  if (e.shiftKey) {
+    nextTick(() => {
+      if (currentFocus && focusable) {
+        if (index > 0) {
+          focusable[index - 1]?.focus();
+        } else {
+          focusable[focusable.length - 1]?.focus();
+        }
+      }
+    });
+  } else if (index === focusable.length - 1) {
+    // When you hit the last attribute, go back to the
+    // fuzzy search instead of searching the document for more things to tab to.
+    e.preventDefault();
+    nextTick(() => {
+      focusable[0]?.focus();
+    });
+  } else {
+    nextTick(() => {
+      focusable[index + 1]?.focus();
+    });
+  }
+};
+
+const onHeaderTab = (e: KeyboardEvent) => {
+  handleTab(e, headerRef.value);
+};
+const onAddButtonTab = (e: KeyboardEvent) => {
+  handleTab(e, addButtonRef.value?.$el);
+};
 </script>
