@@ -17,7 +17,10 @@ use utoipa::{
     ToSchema,
 };
 
-use super::ChangeSetResult;
+use super::{
+    ChangeSetError,
+    ChangeSetResult,
+};
 use crate::extract::{
     PosthogEventTracker,
     change_set::ChangeSetDalContext,
@@ -47,6 +50,12 @@ pub async fn request_approval(
 ) -> ChangeSetResult<Json<RequestApprovalChangeSetV1Response>> {
     let mut change_set = ctx.change_set()?.clone();
     let change_set_id = change_set.id;
+    let base_change_set_id = ctx.get_workspace_default_change_set_id().await?;
+
+    if change_set_id == base_change_set_id {
+        return Err(ChangeSetError::CannotMergeHead);
+    }
+
     let old_status = change_set.status;
 
     change_set.request_change_set_approval(ctx).await?;

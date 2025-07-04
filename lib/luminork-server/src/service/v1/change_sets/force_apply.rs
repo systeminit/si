@@ -11,7 +11,10 @@ use utoipa::{
     ToSchema,
 };
 
-use super::ChangeSetResult;
+use super::{
+    ChangeSetError,
+    ChangeSetResult,
+};
 use crate::extract::{
     PosthogEventTracker,
     change_set::ChangeSetDalContext,
@@ -37,6 +40,12 @@ pub async fn force_apply(
     tracker: PosthogEventTracker,
 ) -> ChangeSetResult<Json<ForceApplyChangeSetV1Response>> {
     let change_set_id = ctx.change_set_id();
+    let base_change_set_id = ctx.get_workspace_default_change_set_id().await?;
+
+    if change_set_id == base_change_set_id {
+        return Err(ChangeSetError::CannotMergeHead);
+    }
+
     let old_status = ctx.change_set()?.status;
     ChangeSet::prepare_for_force_apply(ctx).await?;
     ctx.write_audit_log(
