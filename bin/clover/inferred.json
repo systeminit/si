@@ -2047,6 +2047,12 @@
       "UPDATE_IN_DATABASE"
     ]
   },
+  "The Oracle license model that applies to the Autonomous VM cluster. Valid values are LICENSE_INCLUDED or BRING_YOUR_OWN_LICENSE.": {
+    "enum": [
+      "LICENSE_INCLUDED",
+      "BRING_YOUR_OWN_LICENSE"
+    ]
+  },
   "The encryption type to use.\n If you use the ``KMS`` encryption type, the contents of the repository will be encrypted using server-side encryption with KMSlong key stored in KMS. When you use KMS to encrypt your data, you can either use the default AWS managed KMS key for Amazon ECR, or specify your own KMS key, which you already created. For more information, see [Protecting data using server-side encryption with an key stored in (SSE-KMS)](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html) in the *Amazon Simple Storage Service Console Developer Guide*.\n If you use the ``AES256`` encryption type, Amazon ECR uses server-side encryption with Amazon S3-managed encryption keys which encrypts the images in the repository using an AES-256 encryption algorithm. For more information, see [Protecting data using server-side encryption with Amazon S3-managed encryption keys (SSE-S3)](https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingServerSideEncryption.html) in the *Amazon Simple Storage Service Console Developer Guide*.": {
     "enum": [
       "KMS",
@@ -4838,6 +4844,9 @@
     "enum": null
   },
   "Deprecated.": {
+    "enum": null
+  },
+  "Describes a Region.": {
     "enum": null
   },
   "Describes a Sync configuration for a resolver. Contains information on which Conflict Detection, as well as Resolution strategy, should be performed when the resolver is invoked.": {
@@ -7939,6 +7948,9 @@
   "The AWS AppSync GraphQL API that you want to attach using this function.": {
     "enum": null
   },
+  "The AWS Availability Zone (AZ) where the ODB network is located.": {
+    "enum": null
+  },
   "The AWS Identity and Access Management service role ARN for a merged API. ": {
     "enum": null
   },
@@ -8087,6 +8099,12 @@
     "enum": null
   },
   "The AWS::Amplify::Domain resource allows you to connect a custom domain to your app.": {
+    "enum": null
+  },
+  "The AZ ID of the AZ where the Exadata infrastructure is located.": {
+    "enum": null
+  },
+  "The AZ ID of the AZ where the ODB network is located.": {
     "enum": null
   },
   "The AZ ID of the subnet.": {
@@ -8800,6 +8818,12 @@
   "The CIDR block used for destination matches.": {
     "enum": null
   },
+  "The CIDR range of the backup subnet in the ODB network.": {
+    "enum": null
+  },
+  "The CIDR range of the client subnet in the ODB network.": {
+    "enum": null
+  },
   "The CIDR range used for destination matches. Routing decisions are based on the most specific match.": {
     "enum": null
   },
@@ -8843,6 +8867,9 @@
     "enum": null
   },
   "The DNS name for users to reach your application.": {
+    "enum": null
+  },
+  "The DNS prefix to the default DNS domain name. The default DNS domain name is oraclevcn.com.": {
     "enum": null
   },
   "The DNS records created for the endpoint.": {
@@ -9841,6 +9868,9 @@
   "The Operation which a SKU pricing rule is modifying": {
     "enum": null
   },
+  "The Oracle license model applied to the VM cluster.": {
+    "enum": null
+  },
   "The Oracle system identifier (SID), which is the name of the Oracle database instance that manages your database files. In this context, the term \"Oracle database instance\" refers exclusively to the system global area (SGA) and Oracle background processes. If you don't specify a SID, the value defaults to ``RDSCDB``. The Oracle SID is also the name of your CDB.": {
     "enum": null
   },
@@ -9923,6 +9953,12 @@
     "enum": null
   },
   "The S3Uri of the bucket or folder that stores the source map files. It is required if status is ENABLED.": {
+    "enum": null
+  },
+  "The SCAN listener port for TLS (TCP) protocol. The default is 2484.": {
+    "enum": null
+  },
+  "The SCAN listener port for non-TLS (TCP) protocol. The default is 1521.": {
     "enum": null
   },
   "The SNS Topic Amazon Resource Name (ARN) of the infrastructure configuration.": {
@@ -10154,6 +10190,15 @@
     "enum": null
   },
   "The amount of [memory available to the function](https://docs.aws.amazon.com/lambda/latest/dg/configuration-function-common.html#configuration-memory-console) at runtime. Increasing the function memory also increases its CPU allocation. The default value is 128 MB. The value can be any multiple of 1 MB. Note that new AWS accounts have reduced concurrency and memory quotas. AWS raises these quotas automatically based on your usage. You can also request a quota increase.": {
+    "enum": null
+  },
+  "The amount of local node storage, in gigabytes (GB), that's allocated for the VM cluster.": {
+    "enum": null
+  },
+  "The amount of memory allocated per Oracle Compute Unit, in GB.": {
+    "enum": null
+  },
+  "The amount of memory, in gigabytes (GB), that's allocated for the VM cluster.": {
     "enum": null
   },
   "The amount of provisioned concurrency to allocate for the alias.": {
@@ -10681,6 +10726,9 @@
   "The data of the workflow.": {
     "enum": null
   },
+  "The data storage size allocated for Autonomous Databases in the Autonomous VM cluster, in TB.": {
+    "enum": null
+  },
   "The data type for the vectors when using a model to convert text into vector embeddings.": {
     "enum": null
   },
@@ -10691,6 +10739,9 @@
     "enum": null
   },
   "The database name associated for the namespace that is being created. Only alphanumeric characters and underscores are allowed. It should start with an alphabet.": {
+    "enum": null
+  },
+  "The database server model type of the Exadata infrastructure. For the list of valid model names, use the ListDbSystemShapes operation.": {
     "enum": null
   },
   "The database to which the query belongs.": {
@@ -11215,6 +11266,9 @@
   "The display name for the email address.": {
     "enum": null
   },
+  "The display name of the Autonomous VM cluster.": {
+    "enum": null
+  },
   "The display name of the Pipeline.": {
     "enum": null
   },
@@ -11587,6 +11641,9 @@
   "The host arn configured to represent the infrastructure where your third-party provider is installed. You must specify either a ProviderType or a HostArn.": {
     "enum": null
   },
+  "The host name for the VM cluster.": {
+    "enum": null
+  },
   "The hour end time of maintenance window.": {
     "enum": null
   },
@@ -11948,6 +12005,9 @@
     "enum": null
   },
   "The layer's software license.": {
+    "enum": null
+  },
+  "The lead time in weeks before the maintenance window.": {
     "enum": null
   },
   "The length of the password. If you don't include this parameter, the default length is 32 characters.": {
@@ -12538,6 +12598,9 @@
   "The mode that the event data store will use to charge for event storage.": {
     "enum": null
   },
+  "The model name of the Exadata infrastructure.": {
+    "enum": null
+  },
   "The model selection expression for the route response. Supported only for WebSocket APIs.": {
     "enum": null
   },
@@ -12790,6 +12853,9 @@
   "The name of the Auto Scaling group. This name must be unique per Region per account.\n The name can contain any ASCII character 33 to 126 including most punctuation characters, digits, and upper and lowercased letters.\n  You cannot use a colon (:) in the name.": {
     "enum": null
   },
+  "The name of the Availability Zone (AZ) where the Exadata infrastructure is located.": {
+    "enum": null
+  },
   "The name of the CloudFront VPC origin endpoint configuration.": {
     "enum": null
   },
@@ -12836,6 +12902,9 @@
     "enum": null
   },
   "The name of the Global Datastore, it is generated by MemoryDB adding a prefix to MultiRegionClusterNameSuffix.": {
+    "enum": null
+  },
+  "The name of the Grid Infrastructure (GI) cluster.": {
     "enum": null
   },
   "The name of the HyperPod Cluster.": {
@@ -14128,6 +14197,12 @@
   "The number of AWS Glue data processing units (DPUs) that can be allocated when this job runs.": {
     "enum": null
   },
+  "The number of CPU cores enabled on the VM cluster.": {
+    "enum": null
+  },
+  "The number of CPU cores enabled per node in the Autonomous VM cluster.": {
+    "enum": null
+  },
   "The number of CPU cores for the instance.": {
     "enum": null
   },
@@ -14204,6 +14279,9 @@
     "enum": null
   },
   "The number of data points that must be not within the specified threshold to trigger the alarm. If you are setting an \"M out of N\" alarm, this value (datapointsToAlarm) is the M.": {
+    "enum": null
+  },
+  "The number of database servers for the Exadata infrastructure.": {
     "enum": null
   },
   "The number of datapoints that must be breaching to trigger the alarm. This is used only if you are setting an \"M out of N\" alarm. In that case, this value is the M, and the value that you set for ``EvaluationPeriods`` is the N value. For more information, see [Evaluating an Alarm](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html#alarm-evaluation) in the *User Guide*.\n If you omit this parameter, CW uses the same value here that you set for ``EvaluationPeriods``, and the alarm goes to alarm state if that many consecutive periods are breaching.": {
@@ -14359,6 +14437,9 @@
   "The number of simultaneous executions to reserve for the function.": {
     "enum": null
   },
+  "The number of storage servers that are activated for the Exadata infrastructure.": {
+    "enum": null
+  },
   "The number of tasks to create based on TaskDefinition. The default is 1.": {
     "enum": null
   },
@@ -14396,6 +14477,9 @@
     "enum": null
   },
   "The operating system that the game server binaries are built to run on. This value determines the type of fleet resources that you can use for this build. If your game build contains multiple executables, they all must run on the same operating system. If an operating system is not specified when creating a build, Amazon GameLift uses the default value (WINDOWS_2012). This value cannot be changed later.": {
+    "enum": null
+  },
+  "The operating system version of the image chosen for the VM cluster.": {
     "enum": null
   },
   "The operating system.": {
@@ -14711,6 +14795,9 @@
     "enum": null
   },
   "The predictive scaling mode. Defaults to ``ForecastOnly`` if not specified.": {
+    "enum": null
+  },
+  "The preference for the maintenance window scheduling.": {
     "enum": null
   },
   "The preferred Lease Time for ipV6 address in seconds.": {
@@ -15232,6 +15319,9 @@
   "The size of the cluster.": {
     "enum": null
   },
+  "The size of the data disk group, in terabytes (TB), that's allocated for the VM cluster.": {
+    "enum": null
+  },
   "The size of the directory.": {
     "enum": null
   },
@@ -15269,6 +15359,9 @@
     "enum": null
   },
   "The software AWS PCS uses to manage cluster scaling and job scheduling.": {
+    "enum": null
+  },
+  "The software version of the Oracle Grid Infrastructure (GI) for the VM cluster.": {
     "enum": null
   },
   "The source CIDR block to assign to the Traffic Mirror Filter rule.": {
@@ -15461,6 +15554,9 @@
     "enum": null
   },
   "The status of the user profile.": {
+    "enum": null
+  },
+  "The storage server model type of the Exadata infrastructure. For the list of valid model names, use the ListDbSystemShapes operation.": {
     "enum": null
   },
   "The storage type of a knowledge base.": {
@@ -15712,7 +15808,13 @@
   "The time zone for the cron expression.": {
     "enum": null
   },
+  "The time zone of the Autonomous VM cluster.": {
+    "enum": null
+  },
   "The time zone of the DB instance. The time zone parameter is currently supported only by [RDS for Db2](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/db2-time-zone) and [RDS for SQL Server](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_SQLServer.html#SQLServer.Concepts.General.TimeZone).": {
+    "enum": null
+  },
+  "The time zone of the VM cluster.": {
     "enum": null
   },
   "The time zone of the hours of operation.": {
@@ -15755,6 +15857,9 @@
     "enum": null
   },
   "The total memory limit of container groups following this definition in MiB": {
+    "enum": null
+  },
+  "The total number of Autonomous Container Databases that can be created with the allocated local storage.": {
     "enum": null
   },
   "The total number of objects in domain.": {
@@ -16030,7 +16135,19 @@
   "The unique identifier of the Amazon Redshift cluster.": {
     "enum": null
   },
+  "The unique identifier of the Cloud Exadata Infrastructure containing this Autonomous VM cluster.": {
+    "enum": null
+  },
+  "The unique identifier of the Exadata infrastructure that this VM cluster belongs to.": {
+    "enum": null
+  },
   "The unique identifier of the Grantee": {
+    "enum": null
+  },
+  "The unique identifier of the ODB network associated with this Autonomous VM cluster.": {
+    "enum": null
+  },
+  "The unique identifier of the ODB network for the VM cluster.": {
     "enum": null
   },
   "The unique identifier of the cache policy that is attached to the default cache behavior. For more information, see [Creating cache policies](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/controlling-the-cache-key.html#cache-key-create-cache-policy) or [Using the managed cache policies](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-cache-policies.html) in the *Amazon CloudFront Developer Guide*.\n A ``DefaultCacheBehavior`` must include either a ``CachePolicyId`` or ``ForwardedValues``. We recommend that you use a ``CachePolicyId``.": {
@@ -16186,7 +16303,19 @@
   "The user's password.": {
     "enum": null
   },
+  "The user-friendly name for the Exadata infrastructure.": {
+    "enum": null
+  },
+  "The user-friendly name for the VM cluster.": {
+    "enum": null
+  },
+  "The user-friendly name of the ODB network.": {
+    "enum": null
+  },
   "The user-generated name for the Data Store.": {
+    "enum": null
+  },
+  "The user-provided description of the Autonomous VM cluster.": {
     "enum": null
   },
   "The user-specified name of the Cluster to be created.": {
