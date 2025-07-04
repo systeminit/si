@@ -6,7 +6,7 @@
         ref="anchorRef"
         :class="
           clsx(
-            'grid grid-cols-2 items-center gap-xs relative text-sm font-normal',
+            'grid grid-cols-2 items-center gap-2xs relative text-sm font-normal',
             inputOpen && 'hidden',
             isSecret && 'mb-[-1px]',
           )
@@ -16,6 +16,13 @@
         <div class="flex flex-row items-center gap-2xs pl-xs">
           <TruncateWithTooltip>{{ displayName }}</TruncateWithTooltip>
           <div class="flex flex-row items-center ml-auto gap-2xs">
+            <StatusIndicatorIcon
+              v-if="validation"
+              v-tooltip="validation.message"
+              type="qualification"
+              :status="validation.status === 'Success' ? 'success' : 'failure'"
+              class="w-8 mr-2 shrink-0"
+            />
             <IconButton
               v-if="canDelete"
               tooltip="Delete"
@@ -567,6 +574,7 @@ import {
   PropertyEditorPropWidgetKindComboBox,
   PropertyEditorPropWidgetKindSecret,
   PropertyEditorPropWidgetKindSelect,
+  ValidationOutput,
 } from "@/api/sdf/dal/property_editor";
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
 import {
@@ -585,6 +593,7 @@ import {
 import CodeViewer from "@/components/CodeViewer.vue";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { CategorizedPossibleConnections } from "@/workers/types/dbinterface";
+import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import {
   attributeEmitter,
   MouseDetails,
@@ -604,6 +613,7 @@ const props = defineProps<{
   value: string;
   kind?: PropertyEditorPropWidgetKind | string;
   prop?: Prop;
+  validation?: ValidationOutput;
   component: BifrostComponent;
   displayName: string;
   canDelete?: boolean;

@@ -12,13 +12,10 @@
 import { computed } from "vue";
 import {
   AttributeTree,
-  AttributeValue,
   BifrostComponent,
-  Prop,
 } from "@/workers/types/entity_kind_types";
 import QualificationView from "@/newhotness/QualificationView.vue";
 import { AttributeValueId } from "@/store/status.store";
-import { ValidationOutputStatus } from "@/api/sdf/dal/property_editor";
 import { findAvsAtPropPath } from "./util";
 
 export type QualificationStatus = "success" | "failure" | "warning" | "unknown";
@@ -37,7 +34,7 @@ const props = defineProps<{
 
 const root = computed(() => props.attributeTree);
 
-const qualificationsWithoutValidations = computed<Qualification[]>(() => {
+const qualifications = computed<Qualification[]>(() => {
   const items: Qualification[] = [];
   if (!root.value) return items;
   const r = root.value;
@@ -67,51 +64,5 @@ const qualificationsWithoutValidations = computed<Qualification[]>(() => {
     });
   });
   return items;
-});
-
-const validations = computed(() => {
-  const avsWithValidation: {
-    prop?: Prop;
-    attributeValue: AttributeValue;
-  }[] = [];
-  if (!root.value) return avsWithValidation;
-  Object.values(root.value.attributeValues).forEach((attributeValue) => {
-    if (attributeValue.validation !== null) {
-      const prop = root.value?.props[attributeValue.propId ?? ""];
-      avsWithValidation.push({ attributeValue, prop });
-    }
-  });
-  return avsWithValidation;
-});
-
-const convertValidationStatusToQualificationStatus = (
-  status: ValidationOutputStatus,
-): QualificationStatus => {
-  switch (status) {
-    case "Failure":
-      return "failure";
-    case "Error":
-      return "failure";
-    default:
-      return "success";
-  }
-};
-
-const qualifications = computed<Qualification[]>(() => {
-  const results = [...qualificationsWithoutValidations.value];
-
-  validations.value.forEach(({ attributeValue, prop }) => {
-    if (attributeValue.validation && prop) {
-      results.push({
-        name: prop.name,
-        message: attributeValue.validation.message || "",
-        status: convertValidationStatusToQualificationStatus(
-          attributeValue.validation.status,
-        ),
-      });
-    }
-  });
-
-  return results;
 });
 </script>
