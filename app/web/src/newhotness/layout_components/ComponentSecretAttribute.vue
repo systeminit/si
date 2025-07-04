@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="props.attributeTree.prop?.isOriginSecret && showSecretForm"
+    v-if="attributeTree.prop?.isOriginSecret && showSecretForm"
     ref="secretFormRef"
   >
     <AttributeChildLayout>
@@ -67,9 +67,7 @@
           </li>
           <!-- TODO(Wendy) - figure out tabbing for buttons -->
           <VButton
-            :label="
-              props.attributeTree.secret ? 'Replace Secret' : 'Add Secret'
-            "
+            :label="attributeTree.secret ? 'Replace Secret' : 'Add Secret'"
             :loading="wForm.bifrosting.value"
             loadingText="Saving Secret"
             tone="action"
@@ -84,16 +82,17 @@
   <!-- TODO(nick): add the ability to remove a subscription -->
   <AttributeInput
     v-else
-    :displayName="props.attributeTree.prop?.name ?? 'Secret Value'"
-    :attributeValueId="props.attributeTree.attributeValue.id"
-    :path="props.attributeTree.attributeValue.path ?? ''"
-    :kind="props.attributeTree.prop?.widgetKind"
-    :prop="props.attributeTree.prop"
+    :displayName="attributeTree.prop?.name ?? 'Secret Value'"
+    :attributeValueId="attributeTree.attributeValue.id"
+    :path="attributeTree.attributeValue.path ?? ''"
+    :kind="attributeTree.prop?.widgetKind"
+    :prop="attributeTree.prop"
+    :validation="attributeTree.attributeValue.validation"
     :component="component"
-    :externalSources="props.attributeTree.attributeValue.externalSources"
-    :value="props.attributeTree.secret?.name?.toString() ?? ''"
+    :externalSources="attributeTree.attributeValue.externalSources"
+    :value="attributeTree.secret?.name?.toString() ?? ''"
     :canDelete="false"
-    :disableInputWindow="props.attributeTree.prop?.isOriginSecret"
+    :disableInputWindow="attributeTree.prop?.isOriginSecret"
     isSecret
     @selected="openSecretForm"
     @save="
