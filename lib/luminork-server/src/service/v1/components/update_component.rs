@@ -77,6 +77,11 @@ pub async fn update_component(
     payload: Result<Json<UpdateComponentV1Request>, axum::extract::rejection::JsonRejection>,
 ) -> Result<Json<UpdateComponentV1Response>, ComponentsError> {
     let Json(payload) = payload?;
+
+    if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
+        return Err(ComponentsError::NotPermittedOnHead);
+    }
+
     let component = Component::get_by_id(ctx, component_id).await?;
 
     let old_name = component.name(ctx).await?;

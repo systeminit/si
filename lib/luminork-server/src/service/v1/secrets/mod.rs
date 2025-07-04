@@ -35,6 +35,8 @@ pub enum SecretsError {
     CantDeleteSecret(SecretId),
     #[error("keypair error: {0}")]
     KeyPair(#[from] dal::KeyPairError),
+    #[error("changes not permitted on HEAD change set")]
+    NotPermittedOnHead,
     #[error("secret error: {0}")]
     Secret(#[from] dal::SecretError),
     #[error("secret definition view error: {0}")]
@@ -90,6 +92,7 @@ impl crate::service::v1::common::ErrorIntoResponse for SecretsError {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
             SecretsError::SecretNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            SecretsError::NotPermittedOnHead => (StatusCode::BAD_REQUEST, self.to_string()),
             SecretsError::SecretWithInvalidDefinition(_) => {
                 (StatusCode::NOT_FOUND, self.to_string())
             }

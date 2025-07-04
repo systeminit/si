@@ -66,6 +66,10 @@ pub async fn add_action(
 ) -> Result<Json<AddActionV1Response>, ComponentsError> {
     let Json(payload) = payload?;
 
+    if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
+        return Err(ComponentsError::NotPermittedOnHead);
+    }
+
     let action_prototype_id =
         resolve_action_function_reference(ctx, component_id, &payload.action).await?;
     let prototype = ActionPrototype::get_by_id(ctx, action_prototype_id).await?;

@@ -19,6 +19,7 @@ use utoipa::{
 
 use super::{
     ComponentV1RequestPath,
+    ComponentsError,
     ComponentsResult,
 };
 use crate::{
@@ -54,6 +55,10 @@ pub async fn manage_component(
     payload: Result<Json<ManageComponentV1Request>, axum::extract::rejection::JsonRejection>,
 ) -> ComponentsResult<Json<ManageComponentV1Response>> {
     let Json(payload) = payload?;
+
+    if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
+        return Err(ComponentsError::NotPermittedOnHead);
+    }
 
     let _manager_component = Component::get_by_id(ctx, component_id)
         .await

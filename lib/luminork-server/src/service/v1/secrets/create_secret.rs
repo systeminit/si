@@ -17,6 +17,7 @@ use si_events::audit_log::AuditLogKind;
 use utoipa::ToSchema;
 
 use super::{
+    SecretsError,
     SecretsResult,
     encrypt_message,
 };
@@ -51,6 +52,10 @@ pub async fn create_secret(
     payload: Result<Json<CreateSecretV1Request>, axum::extract::rejection::JsonRejection>,
 ) -> SecretsResult<Json<CreateSecretV1Response>> {
     let Json(payload) = payload?;
+
+    if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
+        return Err(SecretsError::NotPermittedOnHead);
+    }
 
     let public_key = PublicKey::get_current(ctx).await?;
     let algorithm = SecretAlgorithm::Sealedbox;

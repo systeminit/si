@@ -78,6 +78,10 @@ pub async fn execute_management_function(
 ) -> Result<Json<ExecuteManagementFunctionV1Response>, ComponentsError> {
     let Json(payload) = payload?;
 
+    if ctx.change_set_id() == ctx.get_workspace_default_change_set_id().await? {
+        return Err(ComponentsError::NotPermittedOnHead);
+    }
+
     let prototype_id =
         resolve_management_function_reference(ctx, component_id, &payload.management_function)
             .await?;
