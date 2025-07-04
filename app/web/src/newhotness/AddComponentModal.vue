@@ -175,23 +175,12 @@
             </div>
           </div>
         </div>
-        <!-- Right side - documentation and attributes -->
+        <!-- Right side - documentation -->
         <template v-if="selectedAsset">
-          <div class="docs scrollable border p-xs max-h-[22svh]">
+          <div class="docs scrollable border p-xs flex-1 overflow-auto">
             <h3>{{ selectedAsset.name }}</h3>
             <p>{{ selectedAsset.variant.link }}</p>
             <p><VueMarkdown :source="selectedAsset.variant.description" /></p>
-          </div>
-          <div class="props scrollable border p-xs max-h-[22svh]">
-            <template v-if="'propTree' in selectedAsset">
-              <PropTreeComponent
-                v-for="tree in selectedAssetProps.children"
-                :key="tree.id"
-                :tree="tree"
-              />
-              <h3 v-if="!selectedAssetProps.children">Prop data not found</h3>
-            </template>
-            <h3 v-else>HI PAUL, WE ARE LOOKING FOR THIS DATA</h3>
           </div>
         </template>
       </div>
@@ -224,8 +213,6 @@ import EditingPill from "@/components/EditingPill.vue";
 import {
   BifrostSchemaVariantCategories,
   CategoryVariant,
-  Prop,
-  PropTree,
   EntityKind,
   SchemaVariant,
   UninstalledVariant,
@@ -237,9 +224,6 @@ import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import FilterTile from "./layout_components/FilterTile.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
 import { componentTypes, routes, useApi } from "./api_composables";
-import PropTreeComponent, {
-  PropsAsTree,
-} from "./layout_components/PropsAsTree.vue";
 
 const ctx: Context | undefined = inject("CONTEXT");
 assertIsDefined(ctx);
@@ -267,56 +251,6 @@ const selectAsset = (asset: UIAsset) => {
 const clearSelection = () => {
   selectedAsset.value = undefined;
   selectionIndex.value = undefined;
-};
-
-const selectedAssetProps = computed<PropsAsTree>(() => {
-  const empty = {
-    id: "",
-    children: [] as PropsAsTree[],
-    prop: {} as Prop,
-  };
-  if (!selectedAsset.value) return empty;
-  if (!("propTree" in selectedAsset.value.variant)) return empty;
-  const propTree = selectedAsset.value.variant.propTree;
-  const rootId = Object.keys(propTree.treeInfo).find((id) => {
-    const prop = propTree.treeInfo[id];
-    if (prop && !prop.parent) return true;
-    return false;
-  });
-  if (!rootId) return empty;
-
-  const tree = makePropTree(selectedAsset.value.variant.propTree, rootId);
-  // root always has 1 child, domain
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return tree.children.pop()!;
-});
-
-const makePropTree = (
-  data: PropTree,
-  propId: string,
-  parent?: string,
-): PropsAsTree => {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const prop = { ...data.props[propId]! };
-  prop.path = prop.path.replaceAll("\u000b", "/");
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const childrenIds = data.treeInfo[propId]!.children;
-  const children = childrenIds
-    .filter((id) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const prop = data.props[id]!;
-      let path = prop.path;
-      path = prop.path.replaceAll("\u000b", "/");
-      return path.startsWith("root/domain");
-    })
-    .map((id) => makePropTree(data, id, propId));
-  const tree: PropsAsTree = {
-    id: propId,
-    children,
-    parent,
-    prop,
-  };
-  return tree;
 };
 
 const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
@@ -725,16 +659,11 @@ defineExpose({ open, close, isOpen: modalRef.value?.isOpen });
 <style lang="less" scoped>
 div.grid.createcomponent {
   grid-template-columns: minmax(0, 70%) minmax(0, 30%);
-  grid-template-rows: 1fr 1fr;
-  grid-template-areas:
-    "assets docs"
-    "assets props";
+  grid-template-rows: 1fr;
+  grid-template-areas: "assets docs";
 }
 div.docs {
   grid-area: docs;
-}
-div.props {
-  grid-area: props;
 }
 div.assets {
   grid-area: assets;
