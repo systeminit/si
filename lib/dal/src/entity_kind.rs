@@ -19,6 +19,8 @@ use crate::{
 pub enum EntityKindError {
     #[error("diagram error: {0}")]
     Diagram(#[from] DiagramError),
+    #[error("node not found for entity id {0}")]
+    NodeNotFound(EntityId),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("workspace snapshot error: {0}")]
@@ -32,10 +34,7 @@ impl EntityKind {
         ctx: &DalContext,
         id: EntityId,
     ) -> EntityKindResult<EntityKindEvents> {
-        ctx.workspace_snapshot()?
-            .get_entity_kind_for_id(id)
-            .await
-            .map_err(Into::into)
+        ctx.workspace_snapshot()?.get_entity_kind_for_id(id).await
     }
 
     pub async fn get_entity_name_for_id(

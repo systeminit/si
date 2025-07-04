@@ -134,6 +134,7 @@ use crate::{
             ViewId,
         },
     },
+    entity_kind::EntityKindError,
     func::{
         argument::FuncArgumentError,
         binding::FuncBindingError,
@@ -245,6 +246,8 @@ pub enum ComponentError {
     DestinationComponentMissingAttributeValueForInputSocket(ComponentId, InputSocketId),
     #[error("diagram error: {0}")]
     Diagram(#[from] Box<DiagramError>),
+    #[error("entity kind error: {0}")]
+    EntityKind(#[from] Box<EntityKindError>),
     #[error("frame error: {0}")]
     Frame(#[from] Box<FrameError>),
     #[error("func error: {0}")]
@@ -382,6 +385,13 @@ impl From<DiagramError> for ComponentError {
         Box::new(err).into()
     }
 }
+
+impl From<EntityKindError> for ComponentError {
+    fn from(err: EntityKindError) -> Self {
+        Box::new(err).into()
+    }
+}
+
 impl From<FrameError> for ComponentError {
     fn from(err: FrameError) -> Self {
         Box::new(err).into()

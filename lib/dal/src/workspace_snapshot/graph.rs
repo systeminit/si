@@ -39,6 +39,8 @@ use crate::{
     ComponentError,
     EdgeWeightKindDiscriminants,
     SchemaVariantError,
+    attribute::value::AttributeValueError,
+    entity_kind::EntityKindError,
     socket::input::InputSocketError,
     workspace_snapshot::node_weight::{
         NodeWeightError,
@@ -69,6 +71,8 @@ pub type WorkspaceSnapshotGraphVCurrent = WorkspaceSnapshotGraphV4;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum WorkspaceSnapshotGraphError {
+    #[error("attribute value error: {0}")]
+    AttributeValue(Box<AttributeValueError>),
     #[error(
         "Cannot compare ordering of container elements between ordered, and un-ordered container: {0:?}, {1:?}"
     )]
@@ -89,6 +93,8 @@ pub enum WorkspaceSnapshotGraphError {
     EdgeDoesNotExist(EdgeIndex),
     #[error("EdgeWeight not found")]
     EdgeWeightNotFound,
+    #[error("entity kind error: {0}")]
+    EntityKind(Box<EntityKindError>),
     #[error("Entity not found for Approval Requirement Definition Id: {0}")]
     EntityNotFoundForApprovalRequirementDefinition(ApprovalRequirementDefinitionId),
     #[error("Problem during graph traversal: {0:?}")]
@@ -135,6 +141,18 @@ pub enum WorkspaceSnapshotGraphError {
     WorkspaceNeedsRebase,
     #[error("Workspace Snapshot has conflicts")]
     WorkspacesConflict,
+}
+
+impl From<AttributeValueError> for WorkspaceSnapshotGraphError {
+    fn from(value: AttributeValueError) -> Self {
+        Self::AttributeValue(Box::new(value))
+    }
+}
+
+impl From<EntityKindError> for WorkspaceSnapshotGraphError {
+    fn from(value: EntityKindError) -> Self {
+        Self::EntityKind(Box::new(value))
+    }
 }
 
 pub type WorkspaceSnapshotGraphResult<T> = Result<T, WorkspaceSnapshotGraphError>;

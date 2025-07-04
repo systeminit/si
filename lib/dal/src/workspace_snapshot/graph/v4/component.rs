@@ -1,4 +1,11 @@
-use petgraph::prelude::*;
+use petgraph::{
+    prelude::*,
+    visit::{
+        Control,
+        DfsEvent,
+    },
+};
+use si_events::workspace_snapshot::EntityKind;
 use si_id::{
     AttributeValueId,
     ViewId,
@@ -14,9 +21,14 @@ use crate::{
     workspace_snapshot::{
         edge_weight::EdgeWeightKindDiscriminants,
         graph::{
+            WorkspaceSnapshotGraphError,
             WorkspaceSnapshotGraphResult,
             WorkspaceSnapshotGraphV4,
-            traits::component::ComponentExt,
+            traits::{
+                attribute_value::AttributeValueExt,
+                component::ComponentExt,
+                entity_kind::EntityKindExt,
+            },
         },
         node_weight::NodeWeightDiscriminants,
     },
@@ -106,13 +118,60 @@ impl WorkspaceSnapshotGraphV4 {
 
         Ok(results)
     }
+
+    fn external_source_count_dfs_event(
+        event: DfsEvent<NodeIndex>,
+        count: &mut usize,
+        graph: &Self,
+    ) -> WorkspaceSnapshotGraphResult<Control<()>> {
+        match event {
+            DfsEvent::Discover(node_idx, _) => {
+                let av_id = graph
+                    .node_index_to_id(node_idx)
+                    .ok_or_else(|| WorkspaceSnapshotGraphError::GraphTraversal(event))?;
+                let entity_kind = graph.get_entity_kind_for_id(av_id.into())?;
+
+                // Early return if node is not an attribute value
+                if !matches!(entity_kind, EntityKind::AttributeValue) {
+                    return Ok(petgraph::visit::Control::Prune);
+                }
+
+                let Some(prototype_id) = graph.component_prototype_id(av_id.into())? else {
+                    return Ok(petgraph::visit::Control::Continue);
+                };
+
+                let prototype_node_idx = graph.get_node_index_by_id(prototype_id)?;
+
+                let mut subs_count = 0;
+
+                for (_, _, apa_idx) in graph.edges_directed_for_edge_weight_kind(
+                    prototype_node_idx,
+                    Direction::Outgoing,
+                    EdgeWeightKindDiscriminants::PrototypeArgument,
+                ) {
+                    subs_count += graph
+                        .edges_directed_for_edge_weight_kind(
+                            apa_idx,
+                            Direction::Outgoing,
+                            EdgeWeightKindDiscriminants::ValueSubscription,
+                        )
+                        .count();
+                }
+
+                if subs_count > 0 {
+                    *count += subs_count;
+                    Ok(petgraph::visit::Control::Prune)
+                } else {
+                    Ok(petgraph::visit::Control::Continue)
+                }
+            }
+            _ => Ok(petgraph::visit::Control::Continue),
+        }
+    }
 }
 
 impl ComponentExt for WorkspaceSnapshotGraphV4 {
-    fn root_attribute_value(
-        &self,
-        component_id: ComponentId,
-    ) -> WorkspaceSnapshotGraphResult<AttributeValueId> {
+    fn root_attribute_value(&self, component_id: ComponentId) -> ComponentResult<AttributeValueId> {
         let component_index = self.get_node_index_by_id(component_id)?;
         let root_index = self.target(component_index, EdgeWeightKind::Root)?;
         let root_id = self
@@ -122,5 +181,19 @@ impl ComponentExt for WorkspaceSnapshotGraphV4 {
             .id()
             .into();
         Ok(root_id)
+    }
+
+    fn external_source_count(&self, component_id: ComponentId) -> ComponentResult<usize> {
+        let root_av_id = self.root_attribute_value(component_id)?;
+
+        let mut count = 0;
+
+        petgraph::visit::depth_first_search(
+            self.graph(),
+            Some(self.get_node_index_by_id(root_av_id)?),
+            |event| Self::external_source_count_dfs_event(event, &mut count, self),
+        )?;
+
+        Ok(count)
     }
 }

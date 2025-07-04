@@ -61,9 +61,12 @@ use crate::{
     TransactionsError,
     WorkspaceError,
     WorkspaceSnapshotGraphVCurrent,
-    attribute::prototype::{
-        AttributePrototypeError,
-        argument::AttributePrototypeArgumentError,
+    attribute::{
+        prototype::{
+            AttributePrototypeError,
+            argument::AttributePrototypeArgumentError,
+        },
+        value::AttributeValueError,
     },
     change_set::{
         ChangeSetError,
@@ -145,6 +148,8 @@ pub enum WorkspaceSnapshotError {
     AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("Attribute Prototype Argument: {0}")]
     AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
+    #[error("AttributeValue error: {0}")]
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("could not find category node of kind: {0:?}")]
     CategoryNodeNotFound(CategoryNodeKind),
     #[error("change set error: {0}")]
@@ -213,6 +218,8 @@ pub enum WorkspaceSnapshotError {
     SplitSnapshotSubGraphMissingAtAddress(WorkspaceSnapshotAddress),
     #[error("split snapshot supergraph missing at address: {0}")]
     SplitSnapshotSuperGraphMissingAtAddress(WorkspaceSnapshotAddress),
+    #[error("Too many edges of kind {1} found with node id {0:?} as the source")]
+    TooManyEdgesOfKind(Ulid, EdgeWeightKindDiscriminants),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("could not acquire lock: {0}")]
@@ -243,6 +250,12 @@ pub enum WorkspaceSnapshotError {
     WorkspaceSnapshotNotMigrated(WorkspaceSnapshotAddress),
     #[error("Unable to write workspace snapshot")]
     WorkspaceSnapshotNotWritten,
+}
+
+impl From<AttributeValueError> for WorkspaceSnapshotError {
+    fn from(value: AttributeValueError) -> Self {
+        Self::AttributeValue(Box::new(value))
+    }
 }
 
 impl WorkspaceSnapshotError {

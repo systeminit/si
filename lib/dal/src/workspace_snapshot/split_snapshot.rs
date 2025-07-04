@@ -33,6 +33,7 @@ use si_events::{
 };
 use si_id::{
     ApprovalRequirementDefinitionId,
+    AttributePrototypeId,
     AttributeValueId,
     ChangeSetId,
     ComponentId,
@@ -116,6 +117,10 @@ use crate::{
         ComponentResult,
         inferred_connection_graph::InferredConnectionGraph,
     },
+    entity_kind::{
+        EntityKindError,
+        EntityKindResult,
+    },
     layer_db_types::{
         ViewContent,
         ViewContentV1,
@@ -123,9 +128,17 @@ use crate::{
     prop::PropResult,
     slow_rt,
     socket::input::InputSocketError,
+    workspace_snapshot::{
+        graph::traits::component::ComponentExt as _,
+        traits::{
+            attribute_value::AttributeValueExt,
+            component::ComponentExt,
+        },
+    },
 };
 
 pub mod corrections;
+pub mod graph;
 
 pub type SplitSnapshotGraphV1 = SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>;
 pub type SplitSnapshotGraphVCurrent = SplitSnapshotGraphV1;
@@ -1338,7 +1351,26 @@ impl SplitSnapshot {
             from_different_change_set,
         )?)
     }
+
+    /// Get the target node of the outgoing edge of the given kind
+    /// Returns an error if there is more than one matching edge
+    pub async fn target_opt(
+        &self,
+        node_id: Ulid,
+        kind: impl Into<EdgeWeightKindDiscriminants>,
+    ) -> WorkspaceSnapshotResult<Option<Ulid>> {
+        let kind = kind.into();
+        let results = self
+            .outgoing_targets_for_edge_weight_kind(node_id, kind)
+            .await?;
+        if results.len() > 1 {
+            return Err(WorkspaceSnapshotError::TooManyEdgesOfKind(node_id, kind));
+        }
+
+        Ok(results.first().copied())
+    }
 }
+
 #[async_trait]
 impl ApprovalRequirementExt for SplitSnapshot {
     async fn new_definition(
@@ -1661,14 +1693,12 @@ impl SchemaVariantExt for SplitSnapshot {
 
 #[async_trait]
 impl EntityKindExt for SplitSnapshot {
-    async fn get_entity_kind_for_id(&self, id: EntityId) -> WorkspaceSnapshotResult<EntityKind> {
-        let id = id.into();
-        Ok(self
-            .working_copy()
+    async fn get_entity_kind_for_id(&self, id: EntityId) -> EntityKindResult<EntityKind> {
+        self.working_copy()
             .await
-            .node_weight(id)
-            .ok_or(WorkspaceSnapshotError::NodeNotFoundAtId(id))?
-            .into())
+            .node_weight(id.into())
+            .map(Into::into)
+            .ok_or(EntityKindError::NodeNotFound(id))
     }
 }
 
@@ -1828,5 +1858,33 @@ impl ViewExt for SplitSnapshot {
 impl PropExt for SplitSnapshot {
     async fn ts_type(&self, _prop_id: PropId) -> PropResult<String> {
         Ok("any".to_string())
+    }
+}
+
+#[async_trait]
+impl ComponentExt for SplitSnapshot {
+    async fn root_attribute_value(
+        &self,
+        component_id: ComponentId,
+    ) -> ComponentResult<AttributeValueId> {
+        self.working_copy().await.root_attribute_value(component_id)
+    }
+
+    async fn external_source_count(&self, component_id: ComponentId) -> ComponentResult<usize> {
+        self.working_copy()
+            .await
+            .external_source_count(component_id)
+    }
+}
+
+#[async_trait]
+impl AttributeValueExt for SplitSnapshot {
+    async fn component_prototype_id(
+        &self,
+        id: AttributeValueId,
+    ) -> WorkspaceSnapshotResult<Option<AttributePrototypeId>> {
+        self.target_opt(id.into(), EdgeWeightKindDiscriminants::Prototype)
+            .await
+            .map(|maybe_ulid| maybe_ulid.map(Into::into))
     }
 }
