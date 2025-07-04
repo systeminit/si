@@ -30,6 +30,8 @@ pub enum ChangeSetError {
     Action(#[from] dal::action::ActionError),
     #[error("cannot abandon head change set")]
     CannotAbandonHead,
+    #[error("cannot merge head change set")]
+    CannotMergeHead,
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("change set apply error: {0}")]
@@ -62,7 +64,8 @@ impl ErrorIntoResponse for ChangeSetError {
             ChangeSetError::ChangeSet(dal::ChangeSetError::ChangeSetNotFound(_)) => {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
-            ChangeSetError::CannotAbandonHead => (StatusCode::CONFLICT, self.to_string()),
+            ChangeSetError::CannotAbandonHead => (StatusCode::BAD_REQUEST, self.to_string()),
+            ChangeSetError::CannotMergeHead => (StatusCode::BAD_REQUEST, self.to_string()),
             ChangeSetError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
