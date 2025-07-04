@@ -444,7 +444,7 @@ impl Action {
 
     /// Sort the dependency graph of [`Actions`][Action] topologically, breaking ties by listing
     /// [`Actions`][Action] sorted by their ID (oldest first thanks to ULID sorting).
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub async fn list_topologically(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
         // TODO: Grab all "running" & "failed" Actions to list first?
         let mut result = Vec::new();

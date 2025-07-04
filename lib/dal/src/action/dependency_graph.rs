@@ -61,7 +61,7 @@ impl ActionDependencyGraph {
     /// Construct an [`ActionDependencyGraph`] of all of the queued [`Action`s][crate::action::Action]
     /// for the current [`WorkspaceSnapshot`][crate::WorkspaceSnapshot].
     #[instrument(
-        level = "info",
+        level = "debug",
         name = "action.dependency_graph.for_workspace",
         skip(ctx)
     )]
