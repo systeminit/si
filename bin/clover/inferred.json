@@ -1321,6 +1321,13 @@
       "2"
     ]
   },
+  "Specifies whether to create standby standby DB data access shard for the DB shard group. Valid values are the following:\n  +  0 - Creates a DB shard group without a standby DB data access shard. This is the default value.\n  +  1 - Creates a DB shard group with a standby DB data access shard in a different Availability Zone (AZ).\n  +  2 - Creates a DB shard group with two standby DB data access shard in two different AZs.": {
+    "enum": [
+      "0",
+      "1",
+      "2"
+    ]
+  },
   "Type of trust provider. Possible values: user|device": {
     "enum": [
       "user",
@@ -2525,6 +2532,11 @@
   "The AWS service or identity that receives the permission. At this time, the only valid principal is acm.amazonaws.com.": {
     "enum": [
       "acm.amazonaws.com"
+    ]
+  },
+  "Indicates that you don't want to specify a schema for the table. This property is mutually exclusive to 'IcebergMetadata', and its only possible value is 'Yes'.": {
+    "enum": [
+      "Yes"
     ]
   },
   "A specifier for the type of value specified in SingleSignOnUserValue. Currently, the only supported value is \"UserName\". If the Domain's AuthMode is SSO, this field is required. If the Domain's AuthMode is not SSO, this field cannot be specified.": {
@@ -5275,6 +5287,9 @@
   "Format for the offline store feature group. Iceberg is the optimal format for feature groups shared between offline and online stores.": {
     "enum": null
   },
+  "Format of the table.": {
+    "enum": null
+  },
   "Free-form string, with a maximum of 128 characters, used to decide what fields to expect in the event detail.": {
     "enum": null
   },
@@ -5618,6 +5633,12 @@
     "enum": null
   },
   "Indicates whether tags from the instance are propagated to the EBS volumes.": {
+    "enum": null
+  },
+  "Indicates whether the Compaction maintenance action is enabled.": {
+    "enum": null
+  },
+  "Indicates whether the SnapshotManagement maintenance action is enabled.": {
     "enum": null
   },
   "Indicates whether the Studio experience is available to users. If not, users cannot access Studio.": {
@@ -8371,6 +8392,9 @@
   "The Amazon Resource Name (ARN) of the Lifecycle Configuration to attach to the Resource.": {
     "enum": null
   },
+  "The Amazon Resource Name (ARN) of the Network Load Balancer that is associated with the target.": {
+    "enum": null
+  },
   "The Amazon Resource Name (ARN) of the OpenSearch domain.": {
     "enum": null
   },
@@ -9194,6 +9218,9 @@
     "enum": null
   },
   "The ID of the ENI that you want to attach.": {
+    "enum": null
+  },
+  "The ID of the Gateway Load Balancer endpoint.": {
     "enum": null
   },
   "The ID of the GuardDuty detector associated with the publishing destination.": {
@@ -10909,6 +10936,9 @@
   "The description of the Traffic Mirror Filter rule.": {
     "enum": null
   },
+  "The description of the Traffic Mirror target.": {
+    "enum": null
+  },
   "The description of the UsageProfile.": {
     "enum": null
   },
@@ -12169,6 +12199,9 @@
   "The maximum age of a request that Lambda sends to a function for processing.": {
     "enum": null
   },
+  "The maximum age of a snapshot before it can be expired.": {
+    "enum": null
+  },
   "The maximum allowed duration for the pre-roll ad avail. AWS Elemental MediaTailor won't play pre-roll ads to exceed this duration, regardless of the total duration of ads that the ADS returns.": {
     "enum": null
   },
@@ -12532,6 +12565,9 @@
   "The minimum number of network interfaces. To specify no minimum limit, omit this parameter.": {
     "enum": null
   },
+  "The minimum number of snapshots to keep.": {
+    "enum": null
+  },
   "The minimum number of things that will be notified of a pending job, per minute at the start of job rollout. This parameter allows you to define the initial rate of rollout.": {
     "enum": null
   },
@@ -12686,6 +12722,9 @@
     "enum": null
   },
   "The name for the solution": {
+    "enum": null
+  },
+  "The name for the table.": {
     "enum": null
   },
   "The name for the table. If you don't specify a name, AWS CloudFormation generates a unique physical ID and uses that ID for the table name.": {
@@ -14131,6 +14170,9 @@
   "The namespace of the metric.": {
     "enum": null
   },
+  "The namespace that the table belongs to.": {
+    "enum": null
+  },
   "The namespace the snapshot is associated with.": {
     "enum": null
   },
@@ -14153,6 +14195,9 @@
     "enum": null
   },
   "The netmask length of the IPv6 CIDR you would like to associate from an Amazon VPC IP Address Manager (IPAM) pool.": {
+    "enum": null
+  },
+  "The network interface ID that is associated with the target.": {
     "enum": null
   },
   "The network interface's position in the attachment order. For example, the first attached network interface has a ``DeviceIndex`` of 0.": {
@@ -15691,6 +15736,9 @@
   "The target cache engine for the user.": {
     "enum": null
   },
+  "The target file size for the table in MB.": {
+    "enum": null
+  },
   "The target for the route.": {
     "enum": null
   },
@@ -16667,6 +16715,12 @@
     "enum": null
   },
   "Thumbnail Recording Mode, which determines whether thumbnails are recorded at an interval or are disabled.": {
+    "enum": null
+  },
+  "Tier name for tier configuration in content filters policy": {
+    "enum": null
+  },
+  "Tier name for tier configuration in topic policy": {
     "enum": null
   },
   "Time (in seconds) between each encryption key rotation.": {
