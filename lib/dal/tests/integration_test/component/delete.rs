@@ -1489,7 +1489,7 @@ async fn delete_multiple_components(ctx: &mut DalContext) -> Result<()> {
     );
 
     assert!(
-        Component::exists_on_head(ctx, &[component_still_on_head.id()])
+        Component::exists_on_head_by_ids(ctx, &[component_still_on_head.id()])
             .await?
             .contains(&component_still_on_head.id()),
         "component should still exist on head"

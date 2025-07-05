@@ -163,7 +163,6 @@ export interface EddaComponent {
   inputCount: number;
   // this will only be filled in when it is computed
   outputCount: number;
-  diffCount: number;
   rootAttributeValueId: AttributeValueId;
   domainAttributeValueId: AttributeValueId;
   secretsAttributeValueId: AttributeValueId;
@@ -264,7 +263,6 @@ export interface BifrostComponent {
   inputCount: number;
   // this will only be filled in when it is computed
   outputCount: number;
-  diffCount: number;
   rootAttributeValueId: AttributeValueId;
   domainAttributeValueId: AttributeValueId;
   secretsAttributeValueId: AttributeValueId;
@@ -292,7 +290,7 @@ export interface ComponentInList {
   hasResource: boolean;
   qualificationTotals: ComponentQualificationTotals;
   inputCount: number;
-  diffCount: number;
+  hasDiff: boolean;
   toDelete: boolean;
 }
 

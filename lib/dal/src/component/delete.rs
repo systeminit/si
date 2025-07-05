@@ -35,7 +35,7 @@ pub async fn delete_components(
     force_erase: bool,
 ) -> ComponentResult<HashMap<ComponentId, ComponentDeletionStatus>> {
     let head_components: HashSet<ComponentId> =
-        Component::exists_on_head(ctx, component_ids).await?;
+        Component::exists_on_head_by_ids(ctx, component_ids).await?;
     let mut result = HashMap::new();
 
     let mut socket_map = HashMap::new();
