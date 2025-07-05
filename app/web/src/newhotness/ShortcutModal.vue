@@ -122,6 +122,20 @@
       </div>
       <div>
         <div class="keys">
+          <Icon name="command" />
+          <div class="key">A</div>
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">⌘</TextPill>+<TextPill
+            tighter
+            variant="key"
+            >A</TextPill
+          >
+          to select all components in the grid.
+        </div>
+      </div>
+      <div>
+        <div class="keys">
           <Icon name="esc" />
         </div>
         <div>
