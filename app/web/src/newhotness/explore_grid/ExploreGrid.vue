@@ -199,9 +199,10 @@ const gridRows = computed(() => {
     let collapsed = collapseTracker.value[groupName];
 
     // Handle the very first time everything is loaded. We want empty sections to begin collapsed
-    // and non-empty sections to be expanded by default.
+    // and non-empty sections to be expanded by default. The "Unconnected" section should always
+    // start collapsed.
     if (collapsed === undefined) {
-      collapsed = count === 0;
+      collapsed = count === 0 || groupName === "Unconnected";
     }
 
     if (hasMultipleSections.value) {

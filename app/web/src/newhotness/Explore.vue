@@ -660,17 +660,9 @@ const componentList = computed(() => {
   if (!pinnedComponent.value || !pinnedComponentConnections.value)
     return componentListUnchecked.value;
 
-  // If we are dealing with pinning, we are only concerned with relevant components.
-  const relevantComponentsWhenPinning = [pinnedComponent.value];
-  for (const component of componentListUnchecked.value) {
-    if (
-      pinnedComponentConnectionSets.value.incoming.has(component.id) ||
-      pinnedComponentConnectionSets.value.outgoing.has(component.id)
-    ) {
-      relevantComponentsWhenPinning.push(component);
-    }
-  }
-  return relevantComponentsWhenPinning;
+  // When pinning, include all components so they can be properly grouped
+  // into connected and unconnected sections
+  return componentListUnchecked.value;
 });
 
 const resourceCount = computed(
@@ -729,17 +721,33 @@ const sortedAndGroupedComponents = computed(() => {
       Pinned: [pinnedComponent.value],
       "Incoming connections": [],
       "Outgoing connections": [],
+      Unconnected: [],
     };
     for (const component of components) {
+      // Skip the pinned component itself - it's already in the "Pinned" group
+      if (component.id === pinnedComponent.value.id) {
+        continue;
+      }
+
+      let hasConnection = false;
+
       // This is subtle, but we do not use "else-if". This should have no opinion on whether or not
       // something can be both an input or an output.
       if (pinnedComponentConnectionSets.value.incoming.has(component.id)) {
         groups["Incoming connections"] ??= [];
         groups["Incoming connections"].push(component);
+        hasConnection = true;
       }
       if (pinnedComponentConnectionSets.value.outgoing.has(component.id)) {
         groups["Outgoing connections"] ??= [];
         groups["Outgoing connections"].push(component);
+        hasConnection = true;
+      }
+
+      // Component is neither incoming nor outgoing, so it's unconnected
+      if (!hasConnection) {
+        groups.Unconnected ??= [];
+        groups.Unconnected.push(component);
       }
     }
   } else if (groupBySelection.value === "Diff Status") {
