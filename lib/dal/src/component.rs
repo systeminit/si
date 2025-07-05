@@ -214,6 +214,10 @@ pub enum ComponentError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error(
+        "attribute value view could not be generated, root value not found; workspace_pk={0}, change_set_id={1}, component_id={2}"
+    )]
+    AttributeValueView(WorkspacePk, ChangeSetId, ComponentId),
     #[error("cannot clone attributes from a component with a different schema variant id")]
     CannotCloneFromDifferentVariants,
     #[error("change set error: {0}")]
@@ -473,7 +477,7 @@ impl Component {
     }
 
     pub async fn change_status(&self, ctx: &DalContext) -> ComponentResult<ChangeStatus> {
-        let status = if self.exists_in_head(ctx).await? {
+        let status = if self.exists_on_head(ctx).await? {
             if self.to_delete() {
                 ChangeStatus::Deleted
             } else {
@@ -486,10 +490,13 @@ impl Component {
         Ok(status)
     }
 
-    pub async fn exists_in_head(&self, ctx: &DalContext) -> ComponentResult<bool> {
-        let head_ctx = ctx.clone_with_head().await?;
+    pub async fn exists_on_head(&self, ctx: &DalContext) -> ComponentResult<bool> {
+        Self::exists_on_head_by_id(ctx, self.id).await
+    }
 
-        Ok(Self::try_get_by_id(&head_ctx, self.id).await?.is_some())
+    async fn exists_on_head_by_id(ctx: &DalContext, id: ComponentId) -> ComponentResult<bool> {
+        let head_ctx = ctx.clone_with_head().await?;
+        Self::exists_by_id(&head_ctx, id).await
     }
 
     pub async fn view(&self, ctx: &DalContext) -> ComponentResult<Option<serde_json::Value>> {
@@ -1531,11 +1538,12 @@ impl Component {
         Ok(None)
     }
 
-    /// Returns "true" if the [`Component`] exists on the underlying graph. Returns "false" if it
-    /// does not.
-    pub async fn exists(ctx: &DalContext, id: ComponentId) -> ComponentResult<bool> {
-        Ok(Self::try_get_node_weight_and_content_hash(ctx, id)
-            .await?
+    /// Returns whether or not the [`Component`] exists on the underlying graph.
+    pub async fn exists_by_id(ctx: &DalContext, id: ComponentId) -> ComponentResult<bool> {
+        Ok(ctx
+            .workspace_snapshot()?
+            .get_node_weight_opt(id)
+            .await
             .is_some())
     }
 
@@ -4132,20 +4140,24 @@ impl Component {
         Ok(())
     }
 
-    pub async fn exists_on_head(
+    pub async fn exists_on_head_by_ids(
         ctx: &DalContext,
         component_ids: &[ComponentId],
     ) -> ComponentResult<HashSet<ComponentId>> {
-        let mut components = HashSet::new();
-        let base_change_set_ctx = ctx.clone_with_base().await?;
-        for &component_id in component_ids {
-            let maybe_component =
-                Component::try_get_by_id(&base_change_set_ctx, component_id).await?;
-            if maybe_component.is_some() {
-                components.insert(component_id);
+        let snapshot = {
+            let head_ctx = ctx.clone_with_head().await?;
+            head_ctx.workspace_snapshot()?
+        };
+
+        let mut component_ids_on_head = HashSet::new();
+
+        for component_id in component_ids.iter().copied() {
+            if snapshot.get_node_weight_opt(component_id).await.is_some() {
+                component_ids_on_head.insert(component_id);
             }
         }
-        Ok(components)
+
+        Ok(component_ids_on_head)
     }
 
     pub async fn can_be_upgraded_by_id(

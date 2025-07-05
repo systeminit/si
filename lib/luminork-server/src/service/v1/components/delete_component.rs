@@ -59,7 +59,7 @@ pub async fn delete_component(
     }
 
     let head_components: HashSet<ComponentId> =
-        Component::exists_on_head(ctx, &[component_id]).await?;
+        Component::exists_on_head_by_ids(ctx, &[component_id]).await?;
 
     let comp = Component::get_by_id(ctx, component_id).await?;
     let variant = comp.schema_variant(ctx).await?;

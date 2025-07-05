@@ -211,7 +211,6 @@ async fn component(ctx: &DalContext) -> Result<()> {
             has_resource: false,
             qualification_totals: stats,
             input_count: 0,
-            diff_count: 0,
             resource_diff,
             is_secret_defining,
             to_delete: false,
