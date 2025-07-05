@@ -88,6 +88,14 @@
           @select="navigateToActionDetailsProtected"
         />
 
+        <!-- Go to component -->
+        <DropdownMenuItem
+          v-if="props.action.componentId"
+          icon="component"
+          label="Go to component"
+          @select="navigateToComponent"
+        />
+
         <!-- Action state controls -->
         <DropdownMenuItem
           v-if="action.state === ActionState.Queued"
@@ -170,6 +178,20 @@ const navigateToActionDetails = () => {
       workspacePk: route.params.workspacePk,
       changeSetId: route.params.changeSetId,
       actionId: props.action.id,
+    },
+  });
+};
+
+// Navigate to component
+const navigateToComponent = () => {
+  if (!props.action.componentId) return;
+
+  router.push({
+    name: "new-hotness-component",
+    params: {
+      workspacePk: route.params.workspacePk,
+      changeSetId: route.params.changeSetId,
+      componentId: props.action.componentId,
     },
   });
 };
