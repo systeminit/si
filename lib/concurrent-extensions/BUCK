@@ -1,0 +1,9 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "concurrent-extensions",
+    deps = [
+        "//third-party/rust:dashmap",
+    ],
+    srcs = glob(["src/**/*.rs"]),
+)
