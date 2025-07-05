@@ -170,6 +170,7 @@
           :components="sortedAndGroupedComponents"
           :focusedComponentIdx="focusedComponentIdx"
           :selectedComponentIndexes="selectedComponentIndexes"
+          :componentsWithFailedActions="componentsHaveActionsWithState.failed"
           @childClicked="componentClicked"
           @childSelect="selectComponent"
           @childDeselect="deselectComponent"
