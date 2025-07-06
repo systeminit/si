@@ -31,6 +31,7 @@
         :row="gridRows[row.index]!"
         :focusedComponentId="focusedComponent?.id"
         :selectedComponentIndexes="selectedComponentIndexes"
+        :componentsWithFailedActions="componentsWithFailedActions"
         @childClicked="(e, c, idx) => $emit('childClicked', e, c, idx)"
         @childSelect="(idx) => $emit('childSelect', idx)"
         @childDeselect="(idx) => $emit('childDeselect', idx)"
@@ -57,6 +58,7 @@ const props = defineProps<{
   components: Record<string, ComponentInList[]>;
   focusedComponentIdx?: number;
   selectedComponentIndexes: Set<number>;
+  componentsWithFailedActions: Set<ComponentId>;
 }>();
 
 const MIN_GRID_TILE_WIDTH = 250;

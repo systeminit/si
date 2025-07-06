@@ -6,6 +6,8 @@
         'cursor-pointer border rounded overflow-hidden relative select-none',
         selected || focused
           ? themeClasses('border-action-500', 'border-action-300')
+          : hasFailedActions
+          ? themeClasses('border-destructive-500', 'border-destructive-400')
           : [
               hovered
                 ? themeClasses('border-black', 'border-white')
@@ -141,6 +143,7 @@ const props = defineProps<{
   hovered?: boolean;
   hideConnections?: boolean;
   showSelectionCheckbox?: boolean;
+  hasFailedActions?: boolean;
 }>();
 
 const ctx = inject<Context>("CONTEXT");
