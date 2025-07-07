@@ -115,6 +115,59 @@
           </pattern>
         </defs>
       </template>
+
+      <!-- Arrow markers for connection directions -->
+      <defs>
+        <marker
+          id="arrowhead"
+          markerWidth="10"
+          markerHeight="7"
+          refX="8"
+          refY="3.5"
+          orient="auto"
+        >
+          <path
+            d="M 0,0 L 8,3.5 L 0,7"
+            fill="none"
+            :stroke="themeClasses('#6b7280', '#9ca3af')"
+            stroke-width="1.5"
+            stroke-linejoin="miter"
+          />
+        </marker>
+        <marker
+          id="arrowhead-highlighted"
+          markerWidth="10"
+          markerHeight="7"
+          refX="8"
+          refY="3.5"
+          orient="auto"
+        >
+          <path
+            d="M 0,0 L 8,3.5 L 0,7"
+            fill="none"
+            :stroke="themeClasses('#3b82f6', '#93c5fd')"
+            stroke-width="1.5"
+            stroke-linejoin="miter"
+          />
+        </marker>
+        <marker
+          id="arrowhead-greyed"
+          markerWidth="10"
+          markerHeight="7"
+          refX="8"
+          refY="3.5"
+          orient="auto"
+        >
+          <path
+            d="M 0,0 L 8,3.5 L 0,7"
+            fill="none"
+            :stroke="themeClasses('#d1d5db', '#4b5563')"
+            stroke-width="1.5"
+            stroke-linejoin="miter"
+            opacity="0.3"
+          />
+        </marker>
+      </defs>
       <g :transform="`matrix(${transformMatrix})`"></g>
       <circle :cx="origCenter" :cy="origCenter" r="5" fill="yellow" />
     </svg>
@@ -647,6 +700,51 @@ watch(selectedComponent, () => {
     }
   });
 
+  // Update edge styling when selection changes
+  document.querySelectorAll("#map > svg path.edge").forEach((edge) => {
+    const edgeElement = edge as SVGPathElement;
+    const edgeId = edgeElement.getAttribute("data-edge-id");
+
+    if (edgeId) {
+      const [targetId, sourceId] = edgeId.split("-");
+      const isConnectedToSelected =
+        selectedComponent.value &&
+        (targetId === selectedComponent.value.id ||
+          sourceId === selectedComponent.value.id);
+
+      if (selectedComponent.value) {
+        // Update stroke color - theme aware
+        const isDark = document.body.classList.contains("dark");
+        const connectedColor = isDark ? "#93c5fd" : "#3b82f6"; // action-300 : action-500
+        const greyedColor = isDark ? "#4b5563" : "#d1d5db"; // neutral-600 : neutral-300
+
+        edgeElement.style.stroke = isConnectedToSelected
+          ? connectedColor
+          : greyedColor;
+        // Update opacity
+        edgeElement.style.opacity = isConnectedToSelected ? "1" : "0.3";
+        // Update stroke width
+        edgeElement.style.strokeWidth = isConnectedToSelected ? "2" : "1";
+        // Update arrow marker
+        edgeElement.setAttribute(
+          "marker-end",
+          isConnectedToSelected
+            ? "url(#arrowhead-highlighted)"
+            : "url(#arrowhead-greyed)",
+        );
+      } else {
+        // Reset to default when no component is selected - theme aware
+        const isDark = document.body.classList.contains("dark");
+        const defaultColor = isDark ? "#9ca3af" : "#6b7280"; // neutral-400 : neutral-500
+
+        edgeElement.style.stroke = defaultColor;
+        edgeElement.style.opacity = "1";
+        edgeElement.style.strokeWidth = "1";
+        edgeElement.setAttribute("marker-end", "url(#arrowhead)");
+      }
+    }
+  });
+
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
   };
@@ -906,7 +1004,15 @@ watch(
         .data(edges)
         .enter()
         .append("path")
-        .attr("class", "edge")
+        .attr("class", (d) => {
+          const [targetId, sourceId] = d.id.split("-");
+          const isConnectedToSelected =
+            selectedComponent.value &&
+            (targetId === selectedComponent.value.id ||
+              sourceId === selectedComponent.value.id);
+          return `edge ${isConnectedToSelected ? "connected" : ""}`;
+        })
+        .attr("data-edge-id", (d) => d.id)
         .attr("d", (d) => {
           const lineGenerator = d3.line();
 
@@ -919,7 +1025,62 @@ watch(
           const pairs: Array<[number, number]> = points.map((p) => [p.x, p.y]);
           return lineGenerator(pairs);
         })
-        .style("fill", "none");
+        .attr("marker-end", (d) => {
+          const [targetId, sourceId] = d.id.split("-");
+          const isConnectedToSelected =
+            selectedComponent.value &&
+            (targetId === selectedComponent.value.id ||
+              sourceId === selectedComponent.value.id);
+
+          if (selectedComponent.value) {
+            return isConnectedToSelected
+              ? "url(#arrowhead-highlighted)"
+              : "url(#arrowhead-greyed)";
+          } else {
+            return "url(#arrowhead)";
+          }
+        })
+        .style("fill", "none")
+        .style("stroke", (d) => {
+          const [targetId, sourceId] = d.id.split("-");
+          const isConnectedToSelected =
+            selectedComponent.value &&
+            (targetId === selectedComponent.value.id ||
+              sourceId === selectedComponent.value.id);
+
+          // Theme-aware colors
+          const isDark = document.body.classList.contains("dark");
+          const connectedColor = isDark ? "#93c5fd" : "#3b82f6"; // action-300 : action-500
+          const greyedColor = isDark ? "#4b5563" : "#d1d5db"; // neutral-600 : neutral-300
+          const defaultColor = isDark ? "#9ca3af" : "#6b7280"; // neutral-400 : neutral-500
+
+          if (selectedComponent.value) {
+            return isConnectedToSelected ? connectedColor : greyedColor;
+          } else {
+            return defaultColor;
+          }
+        })
+        .style("stroke-width", (d) => {
+          const [targetId, sourceId] = d.id.split("-");
+          const isConnectedToSelected =
+            selectedComponent.value &&
+            (targetId === selectedComponent.value.id ||
+              sourceId === selectedComponent.value.id);
+          return isConnectedToSelected ? "2" : "1";
+        })
+        .style("opacity", (d) => {
+          const [targetId, sourceId] = d.id.split("-");
+          const isConnectedToSelected =
+            selectedComponent.value &&
+            (targetId === selectedComponent.value.id ||
+              sourceId === selectedComponent.value.id);
+
+          if (selectedComponent.value) {
+            return isConnectedToSelected ? "1" : "0.3"; // Reduce opacity for unconnected lines
+          } else {
+            return "1"; // Full opacity when no component is selected
+          }
+        });
     });
     if (selectedComponent.value && !componentContextMenuRef.value?.isOpen) {
       selectComponent(selectedComponent.value);
@@ -990,10 +1151,9 @@ defineExpose({
     }
 
     &.selected {
-      fill: @colors-action-200;
       stroke: @colors-action-500;
+      stroke-width: 3;
       body.dark & {
-        fill: @colors-action-800;
         stroke: @colors-action-300;
       }
     }
@@ -1007,9 +1167,9 @@ defineExpose({
     }
 
     &.selected:hover {
-      fill: @colors-action-300;
+      fill: @colors-neutral-200;
       body.dark & {
-        fill: @colors-action-300;
+        fill: @colors-neutral-700;
       }
     }
 
@@ -1048,6 +1208,20 @@ defineExpose({
 
   path.edge {
     stroke: @colors-neutral-500;
+    stroke-width: 1;
+
+    body.dark & {
+      stroke: @colors-neutral-400;
+    }
+
+    &.connected {
+      stroke: @colors-action-500;
+      stroke-width: 2;
+
+      body.dark & {
+        stroke: @colors-action-300;
+      }
+    }
   }
 }
 </style>
