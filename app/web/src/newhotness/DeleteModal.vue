@@ -1,5 +1,5 @@
 <template>
-  <Modal ref="modalRef" title="Delete Component">
+  <Modal ref="modalRef" title="Delete Component" @keydown.enter="onConfirm">
     <div class="max-h-[70vh] overflow-hidden flex flex-col">
       <div class="pb-xs">
         Are you sure you want to delete
