@@ -147,6 +147,8 @@ import ConfirmHoldModal from "@/components/Actions/ConfirmHoldModal.vue";
 import DetailsPanelMenuIcon from "@/newhotness/layout_components/DetailsPanelMenuIcon.vue";
 import ActionCardLayout from "@/mead-hall/ActionCardLayout.vue";
 import { routes, useApi } from "./api_composables";
+import { preserveExploreState } from "./util";
+import { SelectionsInQueryString } from "./Workspace.vue";
 
 const props = defineProps<{
   action: ActionProposedView;
@@ -179,6 +181,9 @@ const navigateToActionDetails = () => {
       changeSetId: route.params.changeSetId,
       actionId: props.action.id,
     },
+    query: preserveExploreState(
+      router.currentRoute.value?.query as SelectionsInQueryString,
+    ),
   });
 };
 
@@ -193,6 +198,9 @@ const navigateToComponent = () => {
       changeSetId: route.params.changeSetId,
       componentId: props.action.componentId,
     },
+    query: preserveExploreState(
+      router.currentRoute.value?.query as SelectionsInQueryString,
+    ),
   });
 };
 

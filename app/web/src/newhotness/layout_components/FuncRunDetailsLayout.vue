@@ -134,6 +134,8 @@ import CodeViewer from "@/components/CodeViewer.vue";
 import { FuncRun } from "../api_composables/func_run";
 import FuncRunStatusBadge from "../FuncRunStatusBadge.vue";
 import GridItemWithLiveHeader from "./GridItemWithLiveHeader.vue";
+import { preserveExploreState } from "../util";
+import { SelectionsInQueryString } from "../Workspace.vue";
 
 const props = defineProps<{
   funcRun: FuncRun;
@@ -157,6 +159,9 @@ const navigateBack = () => {
       workspacePk: route.params.workspacePk,
       changeSetId: route.params.changeSetId,
     },
+    query: preserveExploreState(
+      router.currentRoute.value?.query as SelectionsInQueryString,
+    ),
   });
 };
 

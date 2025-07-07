@@ -267,6 +267,8 @@ import DelayedLoader from "./layout_components/DelayedLoader.vue";
 import EditInPlace from "./layout_components/EditInPlace.vue";
 import { useApi, routes, componentTypes } from "./api_composables";
 import { useWatchedForm } from "./logic_composables/watched_form";
+import { preserveExploreState } from "./util";
+import { SelectionsInQueryString } from "./Workspace.vue";
 import QualificationPanel from "./QualificationPanel.vue";
 import ResourcePanel from "./ResourcePanel.vue";
 import CodePanel from "./CodePanel.vue";
@@ -371,6 +373,9 @@ const close = () => {
   router.push({
     name: "new-hotness",
     params,
+    query: preserveExploreState(
+      router.currentRoute.value?.query as SelectionsInQueryString,
+    ),
   });
 };
 
