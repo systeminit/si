@@ -53,7 +53,7 @@ pub async fn install_workspace(
     Host(host_name): Host,
     Path(req_workspace_pk): Path<WorkspacePk>,
 ) -> WorkspaceAPIResult<Json<InstallWorkspaceResponse>> {
-    let ctx = builder.build_head(request_ctx).await?;
+    let mut ctx = builder.build_head(request_ctx).await?;
 
     let current_workspace = {
         let workspace_pk = ctx
@@ -67,7 +67,7 @@ pub async fn install_workspace(
 
     tokio::task::spawn(async move {
         match install_workspace_inner(
-            &ctx,
+            &mut ctx,
             req_workspace_pk,
             current_workspace,
             &original_uri,
@@ -97,7 +97,7 @@ pub async fn install_workspace(
 }
 
 async fn install_workspace_inner(
-    ctx: &DalContext,
+    ctx: &mut DalContext,
     workspace_pk: WorkspacePk,
     mut current_workspace: Workspace,
     original_uri: &Uri,
