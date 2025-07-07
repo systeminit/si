@@ -549,7 +549,20 @@ const updateDebouncedSearch = debounce(
 );
 
 // Watch for changes to fuzzySearchString and update the debounced version
-watch(fuzzySearchString, (newValue) => {
+const justCleared = ref(false);
+
+watch(fuzzySearchString, (newValue, oldValue) => {
+  // Check if the search was cleared (likely by X button)
+  if (oldValue && oldValue.length > 0 && newValue === "") {
+    clearSelection();
+    selectedFilter.value = undefined;
+    justCleared.value = true;
+    // Reset the flag after a short delay to prevent closing the modal
+    setTimeout(() => {
+      justCleared.value = false;
+    }, 100);
+  }
+
   updateDebouncedSearch(newValue);
 });
 
@@ -646,7 +659,8 @@ const onClick = (e: MouseEvent | undefined) => {
 
   if (
     (!showResults.value || !selectedAsset.value) &&
-    !leftSideRef.value.contains(target)
+    !leftSideRef.value.contains(target) &&
+    !justCleared.value
   ) {
     // clicking the empty area inside the modal
     close();
