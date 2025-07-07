@@ -68,7 +68,7 @@ pub async fn find_definition(
                 Prop::direct_child_props_ordered(ctx, secret_definition_prop_id).await?;
 
             // Assemble the form data views.
-            let mut form_data_views = Vec::new();
+            let mut form_data_views = Vec::with_capacity(field_props.len());
             for field_prop in field_props {
                 let widget_options = field_prop.widget_options.clone().map(|options| {
                     options

@@ -446,11 +446,10 @@ impl Action {
     /// [`Actions`][Action] sorted by their ID (oldest first thanks to ULID sorting).
     #[instrument(level = "debug", skip_all)]
     pub async fn list_topologically(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
-        // TODO: Grab all "running" & "failed" Actions to list first?
-        let mut result = Vec::new();
-
         let mut action_dependency_graph = ActionDependencyGraph::for_workspace(ctx).await?;
+        let mut result = Vec::with_capacity(action_dependency_graph.remaining_actions().len());
 
+        // TODO: Grab all "running" & "failed" Actions to list first?
         loop {
             let mut independent_actions = action_dependency_graph.independent_actions();
             if independent_actions.is_empty() {
@@ -617,7 +616,7 @@ impl Action {
     ///     [`Component`](crate::Component) as the [`Action`].
     pub async fn eligible_to_dispatch(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
         let action_dependency_graph = ActionDependencyGraph::for_workspace(ctx).await?;
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(action_dependency_graph.remaining_actions().len());
         let dependent_value_graph = DependentValueGraph::new(
             ctx,
             DependentValueRoot::get_dependent_value_roots(ctx).await?,

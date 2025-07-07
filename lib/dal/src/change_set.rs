@@ -750,8 +750,6 @@ impl ChangeSet {
         ctx: &DalContext,
         workspace_pk: WorkspacePk,
     ) -> ChangeSetResult<Vec<Self>> {
-        let mut result = Vec::new();
-
         let rows = ctx
             .txns()
             .await?
@@ -762,6 +760,7 @@ impl ChangeSet {
             )
             .await?;
 
+        let mut result = Vec::with_capacity(rows.len());
         for row in rows {
             result.push(Self::try_from(row)?);
         }

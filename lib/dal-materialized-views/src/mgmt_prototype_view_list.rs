@@ -20,9 +20,12 @@ pub async fn assemble(
     schema_variant_id: SchemaVariantId,
 ) -> super::Result<Vec<MgmtPrototypeView>> {
     let ctx = &ctx;
-    let mut views = Vec::new();
 
-    for p in ManagementPrototype::list_for_variant_id(ctx, schema_variant_id).await? {
+    let management_prototypes_for_variant =
+        ManagementPrototype::list_for_variant_id(ctx, schema_variant_id).await?;
+    let mut views = Vec::with_capacity(management_prototypes_for_variant.len());
+
+    for p in management_prototypes_for_variant {
         let func_id = ManagementPrototype::func_id(ctx, p.id).await?;
         let func = Func::get_by_id(ctx, func_id).await?;
         // TODO: Make Management Func Kinds a real thing
