@@ -3,6 +3,7 @@
     :is="htmlTagOrComponentType"
     :id="id"
     ref="internalRef"
+    v-tooltip="tooltip"
     :aria-disabled="noInteract === true ? true : undefined"
     :class="
       clsx(
@@ -213,6 +214,11 @@ export interface DropdownMenuItemProps {
   submenuItems?: DropdownMenuItemProps[];
 
   submenuVariant?: DropdownMenuVariant;
+
+  // Applies a tooltip to this menu item on the right side
+  // Not compatible with a menu item that has submenuItems
+  tooltip?: string;
+  labelAsTooltip?: boolean;
 }
 
 const props = defineProps<DropdownMenuItemProps>();
@@ -417,6 +423,26 @@ defineExpose({
   openSubmenu,
   closeSubmenu,
   focusFirstSubmenuItem,
+});
+
+const tooltip = computed(() => {
+  const tooltipTemplate = {
+    shown: isFocused.value,
+    triggers: [],
+    placement: "right",
+  };
+
+  if (props.labelAsTooltip) {
+    return {
+      ...tooltipTemplate,
+      content: props.label,
+    };
+  } else if (props.tooltip) {
+    return {
+      ...tooltipTemplate,
+      content: props.tooltip,
+    };
+  } else return undefined;
 });
 </script>
 

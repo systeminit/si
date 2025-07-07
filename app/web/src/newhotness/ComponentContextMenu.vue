@@ -151,6 +151,7 @@ const rightClickMenuItems = computed(() => {
   // If everything is ghosted, only add the ability to restore and return.
   if (atLeastOneGhostedComponent.value) {
     items.push({
+      labelAsTooltip: true,
       label: "Restore",
       shortcut: "R",
       icon: "trash-restore",
@@ -161,6 +162,7 @@ const rightClickMenuItems = computed(() => {
 
   if (singleComponent.value) {
     items.push({
+      labelAsTooltip: true,
       label: "Edit",
       shortcut: "Enter",
       icon: "edit2",
@@ -170,6 +172,7 @@ const rightClickMenuItems = computed(() => {
 
   // can erase so long as you have not selected a view
   items.push({
+    labelAsTooltip: true,
     label: "Erase",
     shortcut: "E",
     icon: "erase",
@@ -177,6 +180,7 @@ const rightClickMenuItems = computed(() => {
   });
 
   items.push({
+    labelAsTooltip: true,
     label: "Delete",
     shortcut: "⌫",
     icon: "trash",
@@ -184,6 +188,7 @@ const rightClickMenuItems = computed(() => {
   });
 
   items.push({
+    labelAsTooltip: true,
     label: "Duplicate",
     shortcut: "⌘D",
     icon: "clipboard-copy",
@@ -194,6 +199,7 @@ const rightClickMenuItems = computed(() => {
   if (props.onGrid && singleComponent.value) {
     const componentId = singleComponent.value.id;
     items.push({
+      labelAsTooltip: true,
       label: "Pin",
       shortcut: "P",
       icon: "pin",
@@ -207,6 +213,7 @@ const rightClickMenuItems = computed(() => {
     components.value.map((c) => upgradeableComponents.has(c.id)).every((b) => b)
   ) {
     items.push({
+      labelAsTooltip: true,
       label: "Upgrade",
       shortcut: "U",
       icon: "bolt-outline",
