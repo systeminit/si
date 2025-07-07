@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     content = [
         "#!/usr/bin/env sh",
-        "export PATH=\"{}:$PATH\"".format(":".join(path)),
+        'export PATH="{}:$PATH"'.format(":".join(path)),
         "exec {} $@".format(bin),
     ]
 

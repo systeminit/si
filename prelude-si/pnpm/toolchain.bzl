@@ -1,4 +1,7 @@
+load("//mise.bzl", "MiseInfo")
+
 PnpmToolchainInfo = provider(fields = {
+    "pnpm_binary": provider_field(typing.Any, default = None),
     "build_npm_bin": typing.Any,
     "build_package_node_modules": typing.Any,
     "build_pkg_bin": typing.Any,
@@ -20,9 +23,18 @@ def pnpm_toolchain_impl(ctx) -> list[[DefaultInfo, PnpmToolchainInfo]]:
     else:
         editorconfig = None
 
+
+    mise_info = ctx.attrs.mise_install[MiseInfo]
+    pnpm_binary = cmd_args(
+        mise_info.mise_tools_dir,
+        "/installs/pnpm/latest/pnpm",
+        delimiter=""
+    )
+
     return [
         DefaultInfo(),
         PnpmToolchainInfo(
+            pnpm_binary = pnpm_binary,
             build_npm_bin = ctx.attrs._build_npm_bin,
             build_package_node_modules = ctx.attrs._build_package_node_modules,
             build_pkg_bin = ctx.attrs._build_pkg_bin,
@@ -39,6 +51,10 @@ def pnpm_toolchain_impl(ctx) -> list[[DefaultInfo, PnpmToolchainInfo]]:
 pnpm_toolchain = rule(
     impl = pnpm_toolchain_impl,
     attrs = {
+        "mise_install": attrs.dep(
+            providers = [MiseInfo],
+            doc = "The mise_install target that provides the deno installation",
+        ),
         "editorconfig": attrs.option(
             attrs.dep(providers = [DefaultInfo]),
             default = None,

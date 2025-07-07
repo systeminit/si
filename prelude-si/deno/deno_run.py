@@ -16,36 +16,41 @@ def parse_args() -> argparse.Namespace:
         "--deno-binary",
         required=True,
         type=pathlib.Path,
-        help="The path to the deno binary")
+        help="The path to the deno binary",
+    )
     parser.add_argument(
         "--input",
         required=True,
         type=pathlib.Path,
-        help="The path to compile, relative to the project root.")
+        help="The path to compile, relative to the project root.",
+    )
     parser.add_argument(
         "--output",
         required=True,
         type=pathlib.Path,
-        help="The target directory for outputting the artifact")
+        help="The target directory for outputting the artifact",
+    )
     parser.add_argument(
         "--deno-dir",
         type=pathlib.Path,
         default=None,
-        help="Path to the pre-populated Deno cache directory (DENO_DIR)")
+        help="Path to the pre-populated Deno cache directory (DENO_DIR)",
+    )
     parser.add_argument(
         "--workspace-dir",
         type=pathlib.Path,
         default=None,
-        help="The workspace directory to use as the CWD for compilation.")
+        help="The workspace directory to use as the CWD for compilation.",
+    )
     parser.add_argument(
         "--permissions",
-        nargs='*',
+        nargs="*",
         default=[],
         help="List of Deno permissions to grant (e.g., all, read, net).",
     )
     parser.add_argument(
         "--unstable-flags",
-        nargs='*',
+        nargs="*",
         default=[],
         help="List of unstable flags to enable (e.g., ffi, node-globals).",
     )
@@ -59,7 +64,7 @@ def run(
     permissions: List[str],
     flags: List[str],
     deno_dir: Optional[pathlib.Path],
-    workspace_dir: Optional[pathlib.Path]
+    workspace_dir: Optional[pathlib.Path],
 ) -> None:
     """Run deno run with the specified arguments."""
     deno_binary_abs = deno_binary.resolve()
@@ -81,13 +86,12 @@ def run(
         env["DENO_DIR"] = str(deno_dir_abs)
 
     try:
-        subprocess.run(
-            cmd,
-            check=True,
-            capture_output=True,
-            text=True,
-            env=env,
-            cwd=cwd)
+        subprocess.run(cmd,
+                       check=True,
+                       capture_output=True,
+                       text=True,
+                       env=env,
+                       cwd=cwd)
     except subprocess.CalledProcessError as e:
         print("Error during Deno run:", file=sys.stderr)
         print(f"Command: {' '.join(cmd)}", file=sys.stderr)
@@ -111,7 +115,7 @@ def main() -> int:
             args.permissions,
             args.unstable_flags,
             args.deno_dir,
-            args.workspace_dir
+            args.workspace_dir,
         )
 
         if args.output:

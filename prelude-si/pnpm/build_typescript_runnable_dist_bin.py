@@ -34,7 +34,7 @@ if __name__ == "__main__":
         "#!/usr/bin/env sh",
         "set -eu",
         f"cd {abs_cd_path}",
-        f"exec ./{args.rel_path} \"$@\"",
+        f'exec ./{args.rel_path} "$@"',
     ]
 
     with open(args.out_path, "w") as f:

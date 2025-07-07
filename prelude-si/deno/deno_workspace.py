@@ -15,48 +15,59 @@ import sys
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root-config",
-                        required=True,
-                        type=pathlib.Path,
-                        help="The root deno.json file.")
-    parser.add_argument("--workspace-dir",
-                        required=True,
-                        type=pathlib.Path,
-                        help="The output directory for the workspace.")
-    parser.add_argument("--deno-binary",
-                        required=True,
-                        type=pathlib.Path,
-                        help="The path to the deno binary or wrapper script.")
-    parser.add_argument("--deno-dir",
-                        required=True,
-                        type=pathlib.Path,
-                        help="The output directory for the Deno cache.")
-    parser.add_argument("--src",
-                        action="append",
-                        default=[],
-                        type=pathlib.Path,
-                        help="A directory of source files to include.")
+    parser.add_argument(
+        "--root-config",
+        required=True,
+        type=pathlib.Path,
+        help="The root deno.json file.",
+    )
+    parser.add_argument(
+        "--workspace-dir",
+        required=True,
+        type=pathlib.Path,
+        help="The output directory for the workspace.",
+    )
+    parser.add_argument(
+        "--deno-binary",
+        required=True,
+        type=pathlib.Path,
+        help="The path to the deno binary or wrapper script.",
+    )
+    parser.add_argument(
+        "--deno-dir",
+        required=True,
+        type=pathlib.Path,
+        help="The output directory for the Deno cache.",
+    )
+    parser.add_argument(
+        "--src",
+        action="append",
+        default=[],
+        type=pathlib.Path,
+        help="A directory of source files to include.",
+    )
     return parser.parse_args()
 
 
-def run_cache(deno_binary: pathlib.Path, deno_dir: pathlib.Path,
-              workspace_dir: pathlib.Path, inputs: list[pathlib.Path]) -> None:
+def run_cache(
+    deno_binary: pathlib.Path,
+    deno_dir: pathlib.Path,
+    workspace_dir: pathlib.Path,
+    inputs: list[pathlib.Path],
+) -> None:
     """Run `deno cache` on a given set of input files."""
     if not inputs:
         print("No input files found to cache. Skipping.")
         return
 
-    subprocess.run(["ls", deno_binary.parent, "-lah"])
-    subprocess.run(["ls", deno_binary.resolve().parent, "-lah"])
-    subprocess.run(["cat", f"{deno_binary.resolve().parent}/config.toml" ])
     cmd = [
-        str(deno_binary), "cache", "--config", "deno.json", "--node-modules-dir"
+        str(deno_binary), "cache", "--config", "deno.json",
+        "--node-modules-dir"
     ]
     cmd.extend([str(p) for p in inputs])
 
     env = os.environ.copy()
     env["DENO_DIR"] = str(deno_dir)
-    cwd = workspace_dir
 
     try:
         result = subprocess.run(cmd,
@@ -64,16 +75,17 @@ def run_cache(deno_binary: pathlib.Path, deno_dir: pathlib.Path,
                                 text=True,
                                 capture_output=True,
                                 env=env,
-                                cwd=cwd)
+                                cwd=workspace_dir)
         if result.stdout:
             print(result.stdout)
         if result.stderr:
             print(result.stderr, file=sys.stderr)
-        print(f"Successfully cached {len(inputs)} files and created node_modules directory.")
+        print(
+            f"Successfully cached {len(inputs)} files and created node_modules directory."
+        )
     except subprocess.CalledProcessError as e:
         print("Error running deno cache:", file=sys.stderr)
         print(f"Command: {' '.join(cmd)}", file=sys.stderr)
-        print(f"CWD: {cwd}", file=sys.stderr)
         print(f"Exit code: {e.returncode}", file=sys.stderr)
         if e.stdout:
             print(f"stdout: {e.stdout}", file=sys.stderr)
@@ -119,19 +131,29 @@ def main() -> int:
         for suffix in (".ts", ".tsx", ".js", ".mjs"):
             files_to_cache.extend(workspace_dir.rglob(f"*{suffix}"))
 
-        files_to_cache_relative = [p.relative_to(workspace_dir) for p in files_to_cache]
+        files_to_cache_relative = [
+            p.relative_to(workspace_dir) for p in files_to_cache
+        ]
 
-        print(f"Found {len(files_to_cache_relative)} source files in workspace to cache.")
+        print(
+            f"Found {len(files_to_cache_relative)} source files in workspace to cache."
+        )
 
         abs_deno_dir = args.deno_dir.resolve()
         abs_deno_dir.mkdir(parents=True, exist_ok=True)
 
-        run_cache(args.deno_binary.absolute(), abs_deno_dir, workspace_dir, files_to_cache_relative)
+        run_cache(
+            args.deno_binary.absolute(),
+            abs_deno_dir,
+            workspace_dir,
+            files_to_cache_relative,
+        )
 
         return 0
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc()
         return 1
 

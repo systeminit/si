@@ -61,7 +61,7 @@ if __name__ == "__main__":
         )
 
         js_path = os.path.join(
-            '${0%/*}',
+            "${0%/*}",
             "..",
             "lib",
             args.package_dir,
@@ -70,7 +70,7 @@ if __name__ == "__main__":
         )
         binary_content = [
             "#!/usr/bin/env sh",
-            f"exec node \"{js_path}\" \"$@\"",
+            f'exec node "{js_path}" "$@"',
         ]
 
         binary = os.path.join(bin_dir, os.path.basename(args.package_dir))

@@ -16,8 +16,6 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, IO, NamedTuple, Optional
-from pprint import pprint
-
 
 IS_WINDOWS: bool = os.name == "nt"
 
@@ -162,7 +160,6 @@ def run_buildscript(
     env: Dict[str, str],
     cwd: Path,
 ) -> str:
-    pprint(env)
     try:
         return subprocess.check_output(
             os.path.abspath(buildscript),

@@ -27,7 +27,7 @@ def _execution_platform_impl(ctx: AnalysisContext) -> list[Provider]:
             remote_output_paths = "output_paths",
             remote_execution_properties = {
                 "OSFamily": "Linux",
-                "container-image": "docker://python:3-bullseye",
+                "container-image": "docker://python:3.9.23-bookworm",
 
             },
             remote_execution_use_case = "buck2-default",

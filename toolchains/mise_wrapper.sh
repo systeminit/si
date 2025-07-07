@@ -7,7 +7,6 @@ shift 1
 SHIMS=$(readlink -f "$SHIMS")
 
 export PATH="$SHIMS:$PATH"
-export RUSTC="$SHIMS/rustc"
 export C="$SHIMS/clang"
 export CXX="$SHIMS/clang++"
 

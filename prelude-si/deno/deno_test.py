@@ -12,10 +12,12 @@ from typing import List
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--deno-binary",
-                        required=True,
-                        type=pathlib.Path,
-                        help="The path to the deno binary")
+    parser.add_argument(
+        "--deno-binary",
+        required=True,
+        type=pathlib.Path,
+        help="The path to the deno binary",
+    )
     parser.add_argument(
         "--input",
         action="append",
@@ -40,13 +42,13 @@ def parse_args() -> argparse.Namespace:
                         help="Watch for file changes and restart tests")
     parser.add_argument(
         "--permissions",
-        nargs='*',
+        nargs="*",
         default=[],
         help="List of Deno permissions to grant (e.g., read write net)",
     )
     parser.add_argument(
         "--unstable-flags",
-        nargs='*',
+        nargs="*",
         default=[],
         help="List of unstable flags to enable",
     )
@@ -56,12 +58,12 @@ def parse_args() -> argparse.Namespace:
 
 def parse_permissions(perms: List[str]) -> List[str]:
     """Convert permission names to Deno CLI flags."""
-    return [f'--{perm}' for perm in perms]
+    return [f"--{perm}" for perm in perms]
 
 
 def parse_unstable_flags(flags: List[str]) -> List[str]:
     """Convert unstable flag names to Deno CLI flags."""
-    return [f'--unstable-{flag}' for flag in flags]
+    return [f"--unstable-{flag}" for flag in flags]
 
 
 def run_tests(
@@ -136,7 +138,7 @@ def main() -> int:
             args.ignore,
             args.parallel,
             permissions_list,
-            args.watch
+            args.watch,
         )
 
         print("Tests completed successfully.")

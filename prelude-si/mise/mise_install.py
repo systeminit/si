@@ -409,7 +409,11 @@ exec "$MISE_INSTALL_PATH" "$@"
     print("Installing mise...", file=sys.stderr)
     subprocess.run([str(mise_bootstrap_path), '--version'], env=env, check=True)
 
+    # Ensure we are always installing the latest version of the plugins
     print("Updating plugins...", file=sys.stderr)
+    subprocess.run([str(mise_bootstrap_path), 'clear', 'cache'], env=env, check=True)
+    subprocess.run([str(mise_bootstrap_path), 'clear', 'cache'], env=env, check=True)
+    subprocess.run([str(mise_bootstrap_path), 'clear', 'cache'], env=env, check=True)
     subprocess.run([str(mise_bootstrap_path), 'plugins', 'update'], env=env, check=True)
 
     # Install each requested package

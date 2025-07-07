@@ -30,6 +30,10 @@ load(
     "//pnpm:toolchain.bzl",
     "PnpmToolchainInfo",
 )
+load(
+    "@prelude//utils:cmd_script.bzl",
+    "cmd_script"
+)
 
 TypescriptDistInfo = provider(fields = {
     "index_file": provider_field(str, default = "index.js"),  # [str]
@@ -52,9 +56,15 @@ def _npm_test_impl(
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
     package_build_ctx = package_build_context(ctx)
 
+    shim = cmd_script(
+        ctx = ctx,
+        name = "pnpm_shim",
+        cmd = cmd_args(pnpm_toolchain.pnpm_binary),
+    )
+
     if ctx.attrs.pnpm_exec_cmd_override:
         exec_cmd = cmd_args(
-            "pnpm",
+            shim,
             "exec",
             ctx.attrs.pnpm_exec_cmd_override,
         )
@@ -859,10 +869,19 @@ def workspace_node_modules_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
 
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
     package_dir = cmd_args(ctx.label.package).relative_to(ctx.label.cell_root)
+    shim = cmd_script(
+        ctx = ctx,
+        name = "pnpm_shim",
+        cmd = cmd_args(pnpm_toolchain.pnpm_binary),
+    )
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         pnpm_toolchain.build_workspace_node_modules[DefaultInfo].default_outputs,
+        "--package-json",
+        ctx.attrs._package_json,
+        "--pnpm-binary",
+        shim,
         hidden = [ctx.attrs.pnpm_lock],
     )
     if ctx.attrs.root_workspace:
@@ -883,6 +902,10 @@ workspace_node_modules = rule(
         "pnpm_lock": attrs.source(
             default = "root//:pnpm-lock.yaml",
             doc = """Workspace Pnpm lock file""",
+        ),
+        "_package_json": attrs.source(
+            default = "root//:package.json",
+            doc = """Workspace Pnpm package.json""",
         ),
         "root_workspace": attrs.bool(
             default = True,
