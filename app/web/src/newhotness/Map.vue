@@ -284,7 +284,9 @@ const pan = (dx: number, dy: number) => {
   // TODO(Wendy) - this fixes the position of the context menu
   // but it is not a perfect fix, as it doesn't handle the
   // selected component going near the edges or offscreen well :(
-  if (selectedComponent.value) selectComponent(selectedComponent.value);
+  if (selectedComponent.value && componentContextMenuRef.value?.isOpen) {
+    selectComponent(selectedComponent.value);
+  }
 };
 
 const mouseDown = ref(false);
@@ -449,7 +451,7 @@ const connections = useQuery<IncomingConnections[]>({
           const c = d.find((c) => c.id === fillDefault.value);
           if (c && c.id) {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            selectComponent(componentsById.value[c.id]!);
+            selectedComponent.value = componentsById.value[c.id]!;
           }
           fillDefault.value = undefined;
         });
@@ -578,8 +580,20 @@ const clickedNode = (e: MouseEvent, n: layoutNode) => {
   if (selectedComponent.value?.id === n.component.id) {
     navigateToSelectedComponent();
   } else {
-    selectComponent(n.component, e.target as Element);
+    // Close context menu if it's open before selecting new component
+    if (componentContextMenuRef.value?.isOpen) {
+      componentContextMenuRef.value?.close();
+    }
+    selectedComponent.value = n.component;
   }
+};
+
+const rightClickedNode = (e: MouseEvent, n: layoutNode) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  // Always show context menu on right-click
+  selectComponent(n.component, e.target as Element);
 };
 
 const selectComponent = (component: ComponentInList, componentEl?: Element) => {
@@ -646,18 +660,26 @@ watch(selectedComponent, () => {
       .querySelector(`#map > svg rect.node.id-${selectedComponent.value.id}`)
       ?.classList.add("selected");
 
-    // Add greyed-out class to unconnected components
+    // Add greyed-out class to unconnected components (except components with no connections at all)
     document.querySelectorAll("#map > svg rect.node").forEach((element) => {
       const componentId = Array.from(element.classList)
         .find((cls) => cls.startsWith("id-"))
         ?.substring(3);
 
       if (componentId && !connectedComponentIds.value.has(componentId)) {
-        element.classList.add("greyed-out");
+        // Check if this component has any connections at all
+        const componentHasConnections = connections.data.value?.some(
+          (c) => c.id === componentId && c.connections.length > 0,
+        );
+
+        // Only grey out if component has connections but isn't connected to selected
+        if (componentHasConnections) {
+          element.classList.add("greyed-out");
+        }
       }
     });
 
-    // Add greyed-out class to text elements of unconnected components
+    // Add greyed-out class to text elements of unconnected components (except components with no connections at all)
     document.querySelectorAll("#map > svg g").forEach((group) => {
       const rect = group.querySelector("rect.node");
       const componentId = Array.from(rect?.classList || [])
@@ -665,20 +687,28 @@ watch(selectedComponent, () => {
         ?.substring(3);
 
       if (componentId && !connectedComponentIds.value.has(componentId)) {
-        group.querySelectorAll("text").forEach((text) => {
-          text.classList.add("greyed-out");
-        });
+        // Check if this component has any connections at all
+        const componentHasConnections = connections.data.value?.some(
+          (c) => c.id === componentId && c.connections.length > 0,
+        );
 
-        // Grey out icons and color bars
-        group.querySelectorAll("path").forEach((path) => {
-          if (path.getAttribute("stroke")) {
-            // This is likely a color bar
-            path.setAttribute("stroke-opacity", "0.3");
-          } else {
-            // This is likely an icon
-            path.style.opacity = "0.3";
-          }
-        });
+        // Only grey out if component has connections but isn't connected to selected
+        if (componentHasConnections) {
+          group.querySelectorAll("text").forEach((text) => {
+            text.classList.add("greyed-out");
+          });
+
+          // Grey out icons and color bars
+          group.querySelectorAll("path").forEach((path) => {
+            if (path.getAttribute("stroke")) {
+              // This is likely a color bar
+              path.setAttribute("stroke-opacity", "0.3");
+            } else {
+              // This is likely an icon
+              path.style.opacity = "0.3";
+            }
+          });
+        }
       }
     });
   }
@@ -798,7 +828,7 @@ watch(
           clickedNode(e, d);
         })
         .on("contextmenu", (e: MouseEvent, d: layoutNode) => {
-          clickedNode(e, d);
+          rightClickedNode(e, d);
         })
         .on("dblclick", (_e: Event, d: layoutNode) => {
           componentNavigate(d.component.id);
