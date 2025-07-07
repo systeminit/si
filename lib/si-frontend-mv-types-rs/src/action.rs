@@ -12,7 +12,6 @@ use si_id::{
     ActionPrototypeId,
     ChangeSetId,
     ComponentId,
-    FuncRunId,
     WorkspacePk,
 };
 
@@ -46,7 +45,6 @@ pub struct ActionView {
     pub kind: ActionKind,
     pub state: ActionState,
     pub originating_change_set_id: ChangeSetId,
-    pub func_run_id: Option<FuncRunId>,
     // Actions that will wait until I've successfully completed before running
     pub my_dependencies: Vec<ActionId>,
     // Things that need to finish before I can start

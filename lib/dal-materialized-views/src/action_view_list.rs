@@ -37,7 +37,6 @@ pub async fn assemble(ctx: DalContext) -> super::Result<ActionViewListMv> {
         let func_id = ActionPrototype::func_id(ctx, prototype_id).await?;
         let func = Func::get_by_id(ctx, func_id).await?;
         let prototype = ActionPrototype::get_by_id(ctx, prototype_id).await?;
-        let func_run_id = Action::last_func_run_id_for_id_opt(ctx, action_id).await?;
 
         let component_id = Action::component_id(ctx, action_id).await?;
         let (component_schema_name, component_name) = match component_id {
@@ -65,7 +64,6 @@ pub async fn assemble(ctx: DalContext) -> super::Result<ActionViewListMv> {
             description: func.display_name,
             kind: prototype.kind.into(),
             state: action.state(),
-            func_run_id,
             originating_change_set_id: action.originating_changeset_id(),
             my_dependencies,
             dependent_on,
