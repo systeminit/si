@@ -81,7 +81,6 @@ async fn actions(ctx: &DalContext) -> Result<()> {
             kind: ActionKind::Create,
             state: ActionState::Queued,
             originating_change_set_id: create_action.originating_changeset_id(),
-            func_run_id: None,
             my_dependencies: Vec::new(),
             dependent_on: Vec::new(),
             hold_status_influenced_by: Vec::new(),

@@ -1,5 +1,5 @@
 <template>
-  <FuncRunDetails v-if="latestFuncRunId" :funcRunId="latestFuncRunId" />
+  <FuncRunDetails v-if="funcRunId" :funcRunId="funcRunId" />
   <div
     v-else
     class="flex items-center justify-center h-full bg-neutral-900 text-white"
@@ -12,36 +12,34 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
 import { Icon } from "@si/vue-lib/design-system";
 import { useQuery } from "@tanstack/vue-query";
+import { computed } from "vue";
 import { ActionProposedView } from "@/store/actions.store";
-import { useMakeKey, bifrost, useMakeArgs } from "@/store/realtime/heimdall";
-import {
-  BifrostActionViewList,
-  EntityKind,
-} from "@/workers/types/entity_kind_types";
 import FuncRunDetails from "./FuncRunDetails.vue";
 import { FunctionKind } from "./types";
+import { useApi, routes } from "./api_composables";
 
+const api = useApi();
 const props = defineProps<{
   functionKind: FunctionKind;
   actionId?: string;
 }>();
 
-const key = useMakeKey();
-const args = useMakeArgs();
-const actionViewListRaw = useQuery<BifrostActionViewList | null>({
-  queryKey: key(EntityKind.ActionViewList),
-  queryFn: async () =>
-    await bifrost<BifrostActionViewList>(args(EntityKind.ActionViewList)),
+const actionFuncRunQuery = useQuery<string>({
+  queryKey: ["action_func_run_id", props.actionId],
+  staleTime: 100,
+  enabled: () => !!props.actionId,
+  queryFn: async () => {
+    const call = api.endpoint<{ funcRunId: string }>(routes.ActionFuncRunId, {
+      id: props.actionId as string,
+    });
+    const resp = await call.get();
+    return resp.data.funcRunId;
+  },
 });
-const action = computed(
-  () =>
-    (actionViewListRaw.data.value?.actions.find(
-      (a) => a.id === props.actionId,
-    ) as ActionProposedView) ?? [],
-);
+
+const funcRunId = computed(() => actionFuncRunQuery.data.value);
 
 export interface ActionProposedViewWithHydratedChildren
   extends ActionProposedView {
@@ -49,9 +47,4 @@ export interface ActionProposedViewWithHydratedChildren
   myDependentActions: ActionProposedView[];
   holdStatusInfluencedByActions: ActionProposedView[];
 }
-
-const latestFuncRunId = computed(() => {
-  if (!action.value?.funcRunId) return null;
-  return action.value.funcRunId;
-});
 </script>

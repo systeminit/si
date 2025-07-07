@@ -8,6 +8,7 @@ use axum::{
         Response,
     },
     routing::{
+        get,
         post,
         put,
     },
@@ -45,7 +46,10 @@ use si_events::{
     ActionState,
     audit_log::AuditLogKind,
 };
-use si_id::ActionId;
+use si_id::{
+    ActionId,
+    FuncRunId,
+};
 use si_layer_cache::LayerDbError;
 use thiserror::Error;
 
@@ -130,6 +134,7 @@ pub fn v2_routes() -> Router<AppState> {
         .route("/:action_id/cancel", put(cancel))
         .route("/:action_id/put_on_hold", put(hold))
         .route("/:action_id/retry", put(retry))
+        .route("/:action_id/func_run_id", get(get_func_run_id))
 }
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -273,4 +278,23 @@ pub async fn retry(
     Action::set_state(&ctx, action.id(), ActionState::Queued).await?;
     ctx.commit().await?;
     Ok(())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LatestFuncRunId {
+    pub func_run_id: Option<FuncRunId>,
+}
+
+pub async fn get_func_run_id(
+    HandlerContext(builder): HandlerContext,
+    AccessBuilder(access_builder): AccessBuilder,
+    Path((_workspace_pk, change_set_id, action_id)): Path<(WorkspacePk, ChangeSetId, ActionId)>,
+) -> ActionResult<Json<LatestFuncRunId>> {
+    let ctx = builder
+        .build(access_builder.build(change_set_id.into()))
+        .await?;
+
+    let func_run_id = Action::last_func_run_id_for_id_opt(&ctx, action_id).await?;
+    Ok(Json(LatestFuncRunId { func_run_id }))
 }
