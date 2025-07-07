@@ -184,7 +184,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
             id: av_id,
             prop_id: maybe_prop.as_ref().map(|p| p.id),
             key,
-            path: Some(av_path),
+            path: av_path,
             value,
             can_be_set_by_socket,
             external_sources,

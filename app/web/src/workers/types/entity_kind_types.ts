@@ -1,5 +1,5 @@
 import { ActionProposedView } from "@/store/actions.store";
-import { ComponentId } from "@/api/sdf/dal/component";
+import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import { SchemaId, SchemaVariantId } from "@/api/sdf/dal/schema";
 import { ActionKind, ActionPrototypeId } from "@/api/sdf/dal/action";
 import { FuncId } from "@/api/sdf/dal/func";
@@ -351,8 +351,8 @@ export interface PropSuggestion {
 export interface AttributeValue {
   id: AttributeValueId;
   key?: string;
-  path?: string;
-  propId?: string;
+  path: AttributePath;
+  propId?: PropId;
   value: string | null;
   canBeSetBySocket: boolean;
   externalSources?: ExternalSource[];

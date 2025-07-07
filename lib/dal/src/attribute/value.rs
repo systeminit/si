@@ -213,10 +213,10 @@ pub enum AttributeValueError {
     InputSocket(#[from] InputSocketError),
     #[error("cannot insert for prop kind: {0}")]
     InsertionForInvalidPropKind(PropKind),
-    #[error("jsonptr parse error: {0}")]
-    JsonptrParseError(#[from] jsonptr::ParseError),
-    #[error("jsonptr parse index error: {0}")]
-    JsonptrParseIndexError(#[from] jsonptr::index::ParseIndexError),
+    #[error("jsonptr parse error parsing {0}: {1}")]
+    JsonptrParseError(String, jsonptr::ParseError),
+    #[error("jsonptr parse index error parsing {0}: {1}")]
+    JsonptrParseIndexError(String, jsonptr::index::ParseIndexError),
     #[error("layer db error: {0}")]
     LayerDb(#[from] si_layer_cache::LayerDbError),
     #[error("missing attribute value with id: {0}")]

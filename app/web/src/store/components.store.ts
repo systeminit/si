@@ -371,10 +371,9 @@ type EventBusEvents = {
 //         }
 //       }
 //
-export type UpdateComponentAttributesArgs = Record<
-  AttributePath,
-  AttributeSource
->;
+export type UpdateComponentAttributesArgs = {
+  [K in AttributePath]?: AttributeSource;
+};
 
 // Set attribute to a subscription (another component's value feeds it)
 type AttributeSourceSetSubscription = {
@@ -1394,7 +1393,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
               passRequestUlidInHeadersOnly: true,
               optimistic: () => {
                 for (const toPath in payload) {
-                  const update = payload[toPath];
+                  const update = payload[toPath as AttributePath];
                   if (!update) continue;
 
                   if (isAttributeSourceSetSubscription(update)) {
@@ -1402,7 +1401,7 @@ export const useComponentsStore = (forceChangeSetId?: ChangeSetId) => {
                       fromComponentId: update.$source.component,
                       fromAttributePath: update.$source.path,
                       toComponentId: componentId,
-                      toAttributePath: toPath,
+                      toAttributePath: toPath as AttributePath,
                       toDelete: false,
                       changeStatus: "added",
                     });

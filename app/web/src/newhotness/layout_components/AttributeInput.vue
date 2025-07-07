@@ -594,6 +594,7 @@ import CodeViewer from "@/components/CodeViewer.vue";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { CategorizedPossibleConnections } from "@/workers/types/dbinterface";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
+import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import {
   attributeEmitter,
   MouseDetails,
@@ -608,8 +609,7 @@ type UIPotentialConnection = PossibleConnection & {
 };
 
 const props = defineProps<{
-  attributeValueId: string;
-  path: string;
+  path: AttributePath;
   value: string;
   kind?: PropertyEditorPropWidgetKind | string;
   prop?: Prop;
@@ -634,16 +634,9 @@ const selectKeyString = "Tab";
 
 const anchorRef = ref<InstanceType<typeof HTMLElement>>();
 
-const path = computed(() => {
-  // fix the MV! for arrays path": "root\u000bdomain\u000btags\u000btag"
-  let path = props.path;
-  path = path.replaceAll("\u000b", "/");
-  return path;
-});
-
 type AttrData = { value: string };
 const wForm = useWatchedForm<AttrData>(
-  `component.av.prop.${props.attributeValueId}`,
+  `component.av.prop.${props.component.id}.${props.path}`,
 );
 const attrData = computed<AttrData>(() => {
   return { value: props.value };
@@ -656,20 +649,13 @@ const valueForm = wForm.newForm({
     if (connectingComponentId.value) {
       emit(
         "save",
-        path.value,
-        props.attributeValueId,
+        props.path,
         value.value,
         props.prop.kind,
         connectingComponentId.value,
       );
     } else {
-      emit(
-        "save",
-        path.value,
-        props.attributeValueId,
-        value.value,
-        props.prop.kind,
-      );
+      emit("save", props.path, value.value, props.prop.kind);
     }
   },
   watchFn: () => {
@@ -762,13 +748,13 @@ watch(
 );
 
 attributeEmitter.on("selectedPath", (selectedPath) => {
-  if (selectedPath !== path.value) {
+  if (selectedPath !== props.path) {
     closeInput();
   }
 });
 
 const focus = () => {
-  attributeEmitter.emit("selectedPath", path.value);
+  attributeEmitter.emit("selectedPath", props.path);
   attributeEmitter.emit("selectedDocs", {
     link: props.prop?.docLink ?? "",
     docs: props.prop?.documentation ?? "",
@@ -830,25 +816,24 @@ const blur = () => {
 
 const bifrostingTrash = ref(false);
 const remove = () => {
-  emit("delete", path.value, props.attributeValueId);
+  emit("delete", props.path);
   bifrostingTrash.value = true;
 };
 const removeSubscription = () => {
-  emit("removeSubscription", path.value, props.attributeValueId);
+  emit("removeSubscription", props.path);
 };
 
 // TODO add spinner for deletion
 const emit = defineEmits<{
   (
     e: "save",
-    path: string,
-    id: string,
+    path: AttributePath,
     value: string,
     propKind: PropKind,
-    connectingComponentId?: string,
+    connectingComponentId?: ComponentId,
   ): void;
-  (e: "delete", path: string, id: string): void;
-  (e: "removeSubscription", path: string, id: string): void;
+  (e: "delete", path: AttributePath): void;
+  (e: "removeSubscription", path: AttributePath): void;
   (e: "add", key?: string): void;
   (e: "selected"): void;
 }>();

@@ -14,6 +14,7 @@ import {
   DiagramSocketDirection,
   Size2D,
 } from "@/components/ModelingDiagram/diagram_types";
+import { TopLevelProp } from "./prop";
 
 export interface Component extends StandardModel {
   name: string;
@@ -140,5 +141,11 @@ export interface PotentialMatch {
   value: any | null;
 }
 
-// JSON pointer to an attribute, relative to the component root (e.g. /domain/IpAddresses/0 or /si/name)
-export type AttributePath = string;
+/** JSON pointer to an attribute, relative to the component root (e.g. /domain/IpAddresses/0 or /si/name) */
+// NOTE: This three-alternative type is used to ensure it is either the root (/), or a path under
+// domain/resource/si, etc. Specifying it this way gives us nice autocompletions for "/domain"
+// and friends under IDEs, too.
+export type AttributePath =
+  | "/"
+  | `/${TopLevelProp}`
+  | `/${TopLevelProp}/${string}`;
