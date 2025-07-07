@@ -48,6 +48,8 @@ import { assertIsDefined, Context } from "./types";
 import { useApi, routes, funcRunTypes } from "./api_composables";
 import { keyEmitter } from "./logic_composables/emitters";
 import { FuncRun, funcRunStatus } from "./api_composables/func_run";
+import { preserveExploreState } from "./util";
+import { SelectionsInQueryString } from "./Workspace.vue";
 
 export interface OutputLine {
   stream: string;
@@ -82,6 +84,9 @@ const back = () => {
   router.push({
     name: "new-hotness",
     params,
+    query: preserveExploreState(
+      router.currentRoute.value?.query as SelectionsInQueryString,
+    ),
   });
 };
 

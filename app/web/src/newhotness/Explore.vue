@@ -356,7 +356,7 @@ import { Listable } from "@/workers/types/dbinterface";
 import { elementIsScrolledIntoView } from "@/newhotness/logic_composables/dom_funcs";
 import { ActionState } from "@/api/sdf/dal/action";
 import Map from "./Map.vue";
-import { collapsingGridStyles } from "./util";
+import { collapsingGridStyles, preserveExploreState } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
 import { getQualificationStatus } from "./ComponentQualificationStatus.vue";
@@ -1039,6 +1039,9 @@ const componentNavigate = (componentId: ComponentId) => {
   router.push({
     name: "new-hotness-component",
     params,
+    query: preserveExploreState(
+      router.currentRoute.value?.query as SelectionsInQueryString,
+    ),
   });
 };
 
