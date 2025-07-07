@@ -47,27 +47,9 @@ import FuncRunDetailsLayout from "./layout_components/FuncRunDetailsLayout.vue";
 import { assertIsDefined, Context } from "./types";
 import { useApi, routes, funcRunTypes } from "./api_composables";
 import { keyEmitter } from "./logic_composables/emitters";
-import { FuncRun, funcRunStatus } from "./api_composables/func_run";
+import { FuncRun, funcRunStatus, FuncRunLog } from "./api_composables/func_run";
 import { preserveExploreState } from "./util";
 import { SelectionsInQueryString } from "./Workspace.vue";
-
-export interface OutputLine {
-  stream: string;
-  execution_id: string;
-  level: string;
-  group?: string;
-  message: string;
-  timestamp: string;
-}
-
-export interface FuncRunLog {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  funcRunID: string;
-  logs: OutputLine[];
-  finalized: boolean;
-}
 
 const props = defineProps<{
   funcRunId: string;
@@ -181,7 +163,46 @@ const logText = computed<string>(() => {
 
   return funcRunLogs.value.logs
     .map((log) => {
-      const timestamp = new Date(log.timestamp).toUTCString();
+      let timestamp: string;
+
+      // Check if log.timestamp is valid and not empty
+      if (!log.timestamp || log.timestamp === "" || log.timestamp === "0") {
+        timestamp = "No timestamp";
+      } else {
+        let date: Date;
+
+        // Handle timestamps that are Unix timestamps in seconds (numbers) vs milliseconds (strings)
+        if (typeof log.timestamp === "number") {
+          // If it's a number, assume it's Unix timestamp in seconds and convert to milliseconds
+          date = new Date(log.timestamp * 1000);
+        } else {
+          // If it's a string, try parsing as-is first
+          date = new Date(log.timestamp);
+
+          // If the parsed date is in 1970 and the original value looks like Unix seconds
+          const timeValue = date.getTime();
+          if (
+            timeValue > 0 &&
+            timeValue < 2147483647000 &&
+            !log.timestamp.includes("-") &&
+            !log.timestamp.includes("T")
+          ) {
+            // Looks like Unix timestamp in seconds as string, convert it
+            const numericTimestamp = parseInt(log.timestamp, 10);
+            if (!Number.isNaN(numericTimestamp)) {
+              date = new Date(numericTimestamp * 1000);
+            }
+          }
+        }
+
+        const timeValue = date.getTime();
+        if (Number.isNaN(timeValue) || timeValue < 0) {
+          timestamp = `Invalid: ${log.timestamp}`;
+        } else {
+          timestamp = date.toUTCString();
+        }
+      }
+
       return `[${timestamp}] [${log.level.padEnd(5)}] ${log.message}`;
     })
     .join("\n");
