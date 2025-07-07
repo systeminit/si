@@ -398,8 +398,12 @@ const save = async (
   );
 
   // TODO - Paul there's a better way to handle this for sure!
-  let coercedVal: string | boolean | number = value;
-  if (propKind === PropKind.Boolean) {
+  let coercedVal: string | boolean | number | null = value;
+  if (value === "") {
+    // For now we don't allow a user to enter an empty string
+    // passing an empty string is effectively an unset operation
+    coercedVal = null;
+  } else if (propKind === PropKind.Boolean) {
     coercedVal = value.toLowerCase() === "true" || value === "1";
   } else if (propKind === PropKind.Integer) {
     coercedVal = Math.trunc(Number(value));
