@@ -118,6 +118,7 @@
         :path="attributeTree.attributeValue.path ?? ''"
         :kind="attributeTree.prop?.widgetKind"
         :prop="attributeTree.prop"
+        :validation="attributeTree.attributeValue.validation"
         :component="component"
         :value="attributeTree.attributeValue.value?.toString() ?? ''"
         :canDelete="attributeTree.isBuildable"
