@@ -96,8 +96,8 @@
     isSecret
     @selected="openSecretForm"
     @save="
-      (path, id, value, _kind, connectingComponentId) =>
-        save(path, id, value, connectingComponentId)
+      (path, value, _kind, connectingComponentId) =>
+        save(path, value, connectingComponentId)
     "
     @remove-subscription="removeSubscription"
   />
@@ -114,6 +114,7 @@ import { useRoute } from "vue-router";
 import clsx from "clsx";
 import { BifrostComponent } from "@/workers/types/entity_kind_types";
 import { encryptMessage } from "@/utils/messageEncryption";
+import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
 import { AttrTree } from "../AttributePanel.vue";
@@ -154,17 +155,15 @@ const secretFormData = computed(() => {
 
 const saveApi = useApi();
 const save = async (
-  path: string,
-  _id: string,
+  path: AttributePath,
   value: string,
-  connectingComponentId?: string,
+  connectingComponentId?: ComponentId,
 ) => {
   const call = saveApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
   const payload: componentTypes.UpdateComponentAttributesArgs = {};
-  path = path.replace("root", ""); // endpoint doesn't want it
   payload[path] = value;
   if (connectingComponentId) {
     payload[path] = {
@@ -189,15 +188,13 @@ const save = async (
 };
 
 const removeSubscriptionApi = useApi();
-const removeSubscription = async (path: string, _id: string) => {
+const removeSubscription = async (path: AttributePath) => {
   const call = removeSubscriptionApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
 
   const payload: componentTypes.UpdateComponentAttributesArgs = {};
-  path = path.replace("root", ""); // endpoint doesn't want it
-
   payload[path] = {
     $source: null,
   };

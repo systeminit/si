@@ -1,9 +1,8 @@
-import { ComponentId } from "@/api/sdf/dal/component";
+import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 
-export type UpdateComponentAttributesArgs = Record<
-  AttributeJsonPointer,
-  SetAttributeTo
->;
+export type UpdateComponentAttributesArgs = {
+  [K in AttributePath]?: SetAttributeTo;
+};
 
 export type ComponentIdType =
   | {
@@ -47,15 +46,12 @@ export type SetAttributeTo =
   | {
       $source: "subscription";
       component: ComponentId | string;
-      path: AttributeJsonPointer;
+      path: AttributePath;
     }
   // Unset the value by not passing "value" field
   | { $source: "value"; value?: undefined }
   // Set attribute to a static JS value (use this to safely set object values that could have "$source" property in them)
   | { $source: "value"; value: unknown };
-
-// JSON pointer to the attribute, relative to the component root (e.g. /domain/IpAddresses/0 or /si/name)
-export type AttributeJsonPointer = string;
 
 export type UpdateComponentNameArgs = {
   name: string;

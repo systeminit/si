@@ -209,6 +209,7 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
+import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import { componentTypes, routes, useApi } from "./api_composables";
 import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
 import { keyEmitter } from "./logic_composables/emitters";
@@ -386,11 +387,10 @@ const route = useRoute();
 const saveApi = useApi();
 
 const save = async (
-  path: string,
-  _id: string,
+  path: AttributePath,
   value: string,
   propKind: PropKind,
-  connectingComponentId?: string,
+  connectingComponentId?: ComponentId,
 ) => {
   const call = saveApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
@@ -412,7 +412,6 @@ const save = async (
   }
 
   const payload: componentTypes.UpdateComponentAttributesArgs = {};
-  path = path.replace("root", ""); // endpoint doesn't want it
   payload[path] = coercedVal;
   if (connectingComponentId) {
     payload[path] = {
@@ -439,13 +438,12 @@ const save = async (
 
 const removeApi = useApi();
 
-const remove = async (path: string, _id: string) => {
+const remove = async (path: AttributePath) => {
   const call = removeApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
   const payload: componentTypes.UpdateComponentAttributesArgs = {};
-  path = path.replace("root", ""); // endpoint doesn't want it
   payload[path] = { $source: null };
   const { req, newChangeSetId } =
     await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
@@ -466,14 +464,13 @@ const remove = async (path: string, _id: string) => {
 
 const removeSubscriptionApi = useApi();
 
-const removeSubscription = async (path: string, _id: string) => {
+const removeSubscription = async (path: AttributePath) => {
   const call = removeSubscriptionApi.endpoint<{ success: boolean }>(
     routes.UpdateComponentAttributes,
     { id: props.component.id },
   );
 
   const payload: componentTypes.UpdateComponentAttributesArgs = {};
-  path = path.replace("root", ""); // endpoint doesn't want it
 
   payload[path] = {
     $source: null,
@@ -521,7 +518,7 @@ const saveResourceId = async () => {
 
   bifrostingResourceId.value = true;
 
-  await save("/si/resourceId", "", resourceIdFormValue.value, PropKind.String);
+  await save("/si/resourceId", resourceIdFormValue.value, PropKind.String);
 };
 
 watch(

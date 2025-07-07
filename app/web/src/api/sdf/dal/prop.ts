@@ -22,3 +22,16 @@ export interface Prop {
   eligibleToSendData: boolean;
   hidden: boolean;
 }
+
+/**
+ * Valid top-level props of a component.
+ */
+export type TopLevelProp =
+  | "code"
+  | "domain"
+  | "resource_value"
+  | "resource"
+  | "qualification"
+  | "secret_definition"
+  | "secrets"
+  | "si";

@@ -56,7 +56,8 @@ impl AttributePath {
     ) -> AttributeValueResult<Option<AttributeValueId>> {
         match self {
             AttributePath::JsonPointer(pointer) => {
-                let pointer = jsonptr::Pointer::parse(pointer)?;
+                let pointer = jsonptr::Pointer::parse(pointer)
+                    .map_err(|err| AttributeValueError::JsonptrParseError(pointer.clone(), err))?;
                 resolve_json_pointer(ctx, av_id, pointer).await
             }
         }
@@ -74,7 +75,8 @@ impl AttributePath {
     ) -> AttributeValueResult<AttributeValueId> {
         match self {
             AttributePath::JsonPointer(pointer) => {
-                let pointer = jsonptr::Pointer::parse(pointer)?;
+                let pointer = jsonptr::Pointer::parse(pointer)
+                    .map_err(|err| AttributeValueError::JsonptrParseError(pointer.clone(), err))?;
                 vivify_json_pointer(ctx, av_id, pointer).await
             }
         }
@@ -86,7 +88,8 @@ impl AttributePath {
     pub async fn validate(&self, ctx: &DalContext, prop_id: PropId) -> AttributeValueResult<()> {
         match self {
             AttributePath::JsonPointer(pointer) => {
-                let pointer = jsonptr::Pointer::parse(pointer)?;
+                let pointer = jsonptr::Pointer::parse(pointer)
+                    .map_err(|err| AttributeValueError::JsonptrParseError(pointer.clone(), err))?;
                 validate_json_pointer(ctx, prop_id, pointer).await
             }
         }
@@ -182,7 +185,9 @@ async fn vivify_json_pointer(
                     // Make sure the user asked to append (can't insert at an index that doesn't exist)
                     let elements =
                         AttributeValue::get_child_av_ids_in_order(ctx, parent_id).await?;
-                    match token.to_index()? {
+                    match token.to_index().map_err(|err| {
+                        AttributeValueError::JsonptrParseIndexError(pointer.to_string(), err)
+                    })? {
                         // If it's - or the next index (len+1), we can append!
                         jsonptr::index::Index::Next => {
                             AttributeValue::insert(ctx, parent_id, None, None).await?
@@ -245,7 +250,9 @@ async fn validate_json_pointer(
         let prop = Prop::get_by_id(ctx, parent_id).await?;
         parent_id = match prop.kind {
             // Look up array index in ordering node
-            PropKind::Array => match token.to_index()? {
+            PropKind::Array => match token.to_index().map_err(|err| {
+                AttributeValueError::JsonptrParseIndexError(pointer.to_string(), err)
+            })? {
                 jsonptr::index::Index::Num(_) => Prop::element_prop_id(ctx, parent_id).await?,
 
                 jsonptr::index::Index::Next => {

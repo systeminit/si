@@ -42,13 +42,11 @@
             :component="component"
             :attributeTree="child"
             @save="
-              (path, id, value, propKind, connectingComponentId) =>
-                emit('save', path, id, value, propKind, connectingComponentId)
+              (path, value, propKind, connectingComponentId) =>
+                emit('save', path, value, propKind, connectingComponentId)
             "
-            @delete="(path, id) => emit('delete', path, id)"
-            @remove-subscription="
-              (path, id) => emit('removeSubscription', path, id)
-            "
+            @delete="(path) => emit('delete', path)"
+            @remove-subscription="(path) => emit('removeSubscription', path)"
           />
         </ul>
         <div
@@ -114,8 +112,7 @@
     <template v-else-if="!attributeTree.prop?.hidden">
       <AttributeInput
         :displayName="displayName"
-        :attributeValueId="props.attributeTree.attributeValue.id"
-        :path="attributeTree.attributeValue.path ?? ''"
+        :path="attributeTree.attributeValue.path"
         :kind="attributeTree.prop?.widgetKind"
         :prop="attributeTree.prop"
         :validation="attributeTree.attributeValue.validation"
@@ -141,6 +138,7 @@ import { useRoute } from "vue-router";
 import clsx from "clsx";
 import { BifrostComponent } from "@/workers/types/entity_kind_types";
 import { PropKind } from "@/api/sdf/dal/prop";
+import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
 import { AttrTree } from "../AttributePanel.vue";
@@ -176,6 +174,26 @@ const displayName = computed(() => {
 
 const addApi = useApi();
 
+const emptyChildValue = () => {
+  // Do I send `{}` for array of map/object or "" for array of string?
+  // Answer by looking at my prop child
+  const propTree = props.component.schemaVariant.propTree;
+  const childProp =
+    propTree.props[
+      propTree.treeInfo[props.attributeTree.prop?.id ?? ""]?.children[0] ?? ""
+    ];
+  switch (childProp?.kind) {
+    case "array":
+      return [];
+    case "map":
+    case "object":
+      return {};
+    default:
+      // string, number, boolean, etc.
+      return "";
+  }
+};
+
 const add = async (key?: string) => {
   if (props.attributeTree.prop?.kind === "map") {
     if (!key) {
@@ -196,21 +214,14 @@ const add = async (key?: string) => {
     // once the children count updates, we can stop spinning
     () => props.attributeTree.children.length,
   );
-  const payload: componentTypes.UpdateComponentAttributesArgs = {};
-  const path =
-    props.attributeTree.prop?.path
-      .replace("root", "")
-      .replaceAll("\u000b", "/") ?? ""; // endpoint doesn't want it
 
   // Do I send `{}` for array of map/object or "" for array of string?
   // Answer by looking at my prop child
-  const propTree = props.component.schemaVariant.propTree;
-  const childProp =
-    propTree.props[
-      propTree.treeInfo[props.attributeTree.prop?.id ?? ""]?.children[0] ?? ""
-    ];
-  if (childProp?.kind === "object") payload[`${path}/-`] = {};
-  else payload[`${path}/-`] = "";
+  const appendPath =
+    `${props.attributeTree.attributeValue.path}/-` as AttributePath;
+  const payload = {
+    [appendPath]: emptyChildValue(),
+  };
   const { req, newChangeSetId } =
     await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
   if (addApi.ok(req) && newChangeSetId) {
@@ -241,12 +252,11 @@ const keyForm = wForm.newForm({
       routes.UpdateComponentAttributes,
       { id: props.component.id },
     );
-    const payload: componentTypes.UpdateComponentAttributesArgs = {};
-    const path =
-      props.attributeTree.prop?.path
-        .replace("root", "")
-        .replaceAll("\u000b", "/") ?? ""; // endpoint doesn't want it
-    payload[`${path}/${value.key}`] = "";
+    const childPath =
+      `${props.attributeTree.attributeValue.path}/${value.key}` as AttributePath;
+    const payload = {
+      [childPath]: emptyChildValue(),
+    };
     const { req, newChangeSetId } =
       await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
     if (newChangeSetId && keyApi.ok(req)) {
@@ -298,11 +308,7 @@ const remove = () => {
     props.attributeTree.attributeValue.path &&
     props.attributeTree.isBuildable
   ) {
-    emit(
-      "delete",
-      props.attributeTree.attributeValue.path,
-      props.attributeTree.attributeValue.id,
-    );
+    emit("delete", props.attributeTree.attributeValue.path);
     bifrostingTrash.value = true;
   }
 };
@@ -310,14 +316,13 @@ const remove = () => {
 const emit = defineEmits<{
   (
     e: "save",
-    path: string,
-    id: string,
+    path: AttributePath,
     value: string,
     propKind: PropKind,
-    connectingComponentId?: string,
+    connectingComponentId?: ComponentId,
   ): void;
-  (e: "delete", path: string, id: string): void;
-  (e: "removeSubscription", path: string, id: string): void;
+  (e: "delete", path: AttributePath): void;
+  (e: "removeSubscription", path: AttributePath): void;
 }>();
 
 const showingChildren = computed(

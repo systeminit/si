@@ -69,7 +69,7 @@ pub struct ExternalSource {
 pub struct AttributeValue {
     pub id: AttributeValueId,
     pub key: Option<String>,
-    pub path: Option<String>,
+    pub path: String,
     pub prop_id: Option<PropId>,
     pub value: serde_json::Value,
     pub can_be_set_by_socket: bool, // true if this prop value is currently driven by a socket, even if the socket isn't in use
