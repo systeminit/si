@@ -29,8 +29,7 @@ use crate::Result;
 pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> Result<IncomingConnectionsMv> {
     let ctx = &ctx;
 
-    let mut connections = Vec::new();
-    connections.extend(prop_to_prop(ctx, component_id).await?);
+    let mut connections = prop_to_prop(ctx, component_id).await?;
     connections.sort();
 
     Ok(IncomingConnectionsMv {
@@ -50,8 +49,7 @@ pub async fn assemble_management(
 ) -> Result<ManagementConnectionsMv> {
     let ctx = &ctx;
 
-    let mut connections = Vec::new();
-    connections.extend(management(ctx, component_id).await?);
+    let mut connections = management(ctx, component_id).await?;
     connections.sort();
 
     Ok(ManagementConnectionsMv {
@@ -75,10 +73,9 @@ async fn prop_to_prop(ctx: &DalContext, component_id: ComponentId) -> Result<Vec
         // Find all connections for the given attribute value. We'll collect everything into an
         // "in progress" cache to ensure that we don't perform unnecessary setup work if no
         // connections are found.
-        let mut in_progress = Vec::new();
-        for attribute_prototype_argument_id in
-            AttributePrototype::list_arguments(ctx, attribute_prototype_id).await?
-        {
+        let ap_args = AttributePrototype::list_arguments(ctx, attribute_prototype_id).await?;
+        let mut in_progress = Vec::with_capacity(ap_args.len());
+        for attribute_prototype_argument_id in ap_args {
             if let Some(ValueSource::ValueSubscription(subscription)) =
                 AttributePrototypeArgument::value_source_opt(ctx, attribute_prototype_argument_id)
                     .await?
@@ -114,6 +111,7 @@ async fn prop_to_prop(ctx: &DalContext, component_id: ComponentId) -> Result<Vec
                 .with_replaced_sep_and_prefix("/");
             let (_, attribute_value_path) =
                 AttributeValue::path_from_root(ctx, attribute_value_id).await?;
+            connections.reserve(in_progress.len());
 
             for (
                 from_component_id,
@@ -143,9 +141,10 @@ async fn prop_to_prop(ctx: &DalContext, component_id: ComponentId) -> Result<Vec
 }
 
 async fn management(ctx: &DalContext, component_id: ComponentId) -> Result<Vec<Connection>> {
-    let mut connections = Vec::new();
+    let component_managed_by_ids = Component::get_managed_by_id(ctx, component_id).await?;
+    let mut connections = Vec::with_capacity(component_managed_by_ids.len());
 
-    for managed_component_id in Component::get_managed_by_id(ctx, component_id).await? {
+    for managed_component_id in component_managed_by_ids {
         connections.push(Connection::Management {
             from_component_id: component_id,
             to_component_id: managed_component_id,

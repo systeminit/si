@@ -120,7 +120,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         let subscriptions = AttributeValue::subscriptions(ctx, av_id).await?;
 
         let external_sources: Option<Vec<ExternalSource>> = if let Some(subs) = subscriptions {
-            let mut sources = vec![];
+            let mut sources = Vec::with_capacity(subs.len());
             for sub in subs {
                 let comp_id = AttributeValue::component_id(ctx, sub.attribute_value_id).await?;
                 let comp_name = Component::name_by_id(ctx, comp_id).await?;

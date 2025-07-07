@@ -20,13 +20,16 @@ pub async fn assemble(
     schema_variant_id: SchemaVariantId,
 ) -> super::Result<ActionPrototypeViewListMv> {
     let ctx = &ctx;
-    let mut views = Vec::new();
 
-    for action_prototype in ActionPrototype::for_variant(ctx, schema_variant_id).await? {
+    let action_prototypes_for_variant =
+        ActionPrototype::for_variant(ctx, schema_variant_id).await?;
+    let mut action_prototypes = Vec::with_capacity(action_prototypes_for_variant.len());
+
+    for action_prototype in action_prototypes_for_variant {
         let func_id = ActionPrototype::func_id(ctx, action_prototype.id).await?;
         let func = Func::get_by_id(ctx, func_id).await?;
 
-        views.push(ActionPrototypeView {
+        action_prototypes.push(ActionPrototypeView {
             id: action_prototype.id,
             func_id,
             kind: action_prototype.kind.into(),
@@ -37,6 +40,6 @@ pub async fn assemble(
 
     Ok(ActionPrototypeViewListMv {
         id: schema_variant_id,
-        action_prototypes: views,
+        action_prototypes,
     })
 }

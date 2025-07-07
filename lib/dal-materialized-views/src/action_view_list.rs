@@ -23,7 +23,7 @@ pub async fn assemble(ctx: DalContext) -> super::Result<ActionViewListMv> {
     let ctx = &ctx;
     let action_ids = Action::list_topologically(ctx).await?;
 
-    let mut views = Vec::new();
+    let mut actions = Vec::with_capacity(action_ids.len());
 
     let action_graph = ActionDependencyGraph::for_workspace(ctx).await?;
     if !action_graph.is_acyclic() {
@@ -55,7 +55,7 @@ pub async fn assemble(ctx: DalContext) -> super::Result<ActionViewListMv> {
         let mut hold_status_influenced_by =
             Action::get_hold_status_influenced_by(ctx, &action_graph, action_id).await?;
         hold_status_influenced_by.sort();
-        views.push(ActionView {
+        actions.push(ActionView {
             id: action_id,
             prototype_id: prototype.id(),
             name: prototype.name().clone(),
@@ -72,9 +72,6 @@ pub async fn assemble(ctx: DalContext) -> super::Result<ActionViewListMv> {
             hold_status_influenced_by,
         })
     }
-    let workspace_mv_id = ctx.workspace_pk()?;
-    Ok(ActionViewListMv {
-        id: workspace_mv_id,
-        actions: views,
-    })
+    let id = ctx.workspace_pk()?;
+    Ok(ActionViewListMv { id, actions })
 }

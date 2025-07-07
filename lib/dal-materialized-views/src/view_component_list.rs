@@ -16,9 +16,10 @@ use telemetry::prelude::*;
 )]
 pub async fn assemble(ctx: DalContext, view_id: ViewId) -> super::Result<ViewComponentListMv> {
     // Logic comes from the /get_geometry endpoint
-    let mut components = vec![];
+    let geometries = Geometry::list_by_view_id(&ctx, view_id).await?;
+    let mut components = Vec::with_capacity(geometries.len());
 
-    for geometry in Geometry::list_by_view_id(&ctx, view_id).await? {
+    for geometry in geometries {
         let geo_represents = match Geometry::represented_id(&ctx, geometry.id()).await? {
             Some(id) => id,
             None => continue,
