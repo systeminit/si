@@ -1,49 +1,28 @@
 use std::{
-    collections::{
-        HashMap,
-        HashSet,
-        VecDeque,
-        hash_map::Entry,
-    },
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque, hash_map::Entry},
     fs::File,
     io::Write,
 };
 
 use petgraph::prelude::*;
 use si_events::ulid::Ulid;
+use si_hash::Hash;
 use telemetry::prelude::*;
 
 use super::{
-    AttributeValue,
-    AttributeValueError,
-    AttributeValueId,
-    AttributeValueResult,
+    AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult,
     subscription::ValueSubscription,
 };
 use crate::{
-    Component,
-    ComponentError,
-    ComponentId,
-    DalContext,
-    EdgeWeightKind,
-    Prop,
-    PropKind,
-    Secret,
+    Component, ComponentError, ComponentId, DalContext, EdgeWeightKind, Prop, PropKind, Secret,
     attribute::{
-        prototype::{
-            AttributePrototype,
-            argument::AttributePrototypeArgument,
-        },
+        prototype::{AttributePrototype, argument::AttributePrototypeArgument},
         value::ValueIsFor,
     },
-    component::{
-        ControllingFuncData,
-        socket::ComponentOutputSocket,
-    },
+    component::{ControllingFuncData, socket::ComponentOutputSocket},
     dependency_graph::DependencyGraph,
     workspace_snapshot::{
-        DependentValueRoot,
-        edge_weight::EdgeWeightKindDiscriminants,
+        DependentValueRoot, edge_weight::EdgeWeightKindDiscriminants,
         node_weight::NodeWeightDiscriminants,
     },
 };
@@ -52,6 +31,7 @@ use crate::{
 pub struct DependentValueGraph {
     inner: DependencyGraph<AttributeValueId>,
     values_that_need_to_execute_from_prototype_function: HashSet<AttributeValueId>,
+    component_ids_for_av: BTreeMap<AttributeValueId, ComponentId>,
 }
 
 // We specifically need to track if the value is one of the child values we
@@ -84,6 +64,7 @@ impl DependentValueGraph {
         let mut dependent_value_graph = Self {
             inner: DependencyGraph::new(),
             values_that_need_to_execute_from_prototype_function: HashSet::new(),
+            component_ids_for_av: BTreeMap::new(),
         };
 
         let values = dependent_value_graph.parse_initial_ids(ctx, roots).await?;
@@ -158,6 +139,23 @@ impl DependentValueGraph {
         Ok(values)
     }
 
+    async fn component_id_for_av(
+        &mut self,
+        ctx: &DalContext,
+        value_id: AttributeValueId,
+    ) -> AttributeValueResult<ComponentId> {
+        if self.component_ids_for_av.contains_key(&value_id) {
+            Ok(*self
+                .component_ids_for_av
+                .get(&value_id)
+                .expect("we know it is there, we just asked"))
+        } else {
+            let component_id = AttributeValue::component_id(ctx, value_id).await?;
+            self.component_ids_for_av.insert(value_id, component_id);
+            Ok(component_id)
+        }
+    }
+
     /// Populate the [`DependentValueGraph`] using the provided [`values`](WorkQueueValue). This
     /// includes the entire parent tree of each value discovered, up to the root for every value's
     /// component, as well as any dependencies of values discovered while walking the graph
@@ -173,22 +171,32 @@ impl DependentValueGraph {
     ) -> AttributeValueResult<()> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        // Map from subscribed_to to all its subscribers
-        let mut subscriptions: HashMap<AttributeValueId, Vec<AttributeValueId>> = HashMap::new();
-        let mut controlling_funcs_for_component = HashMap::new();
         let mut work_queue = VecDeque::from_iter(values);
         let mut seen_list = HashSet::new();
 
         while let Some(current_attribute_value) = work_queue.pop_front() {
-            let mut found_deps = false;
-
             if seen_list.contains(&current_attribute_value.id()) {
                 continue;
             }
             seen_list.insert(current_attribute_value.id());
 
-            let current_component_id =
-                AttributeValue::component_id(ctx, current_attribute_value.id()).await?;
+            // Parent props always depend on their children, even if those parents do not have
+            // "dependent" functions. Adding them to the graph ensures we execute the entire set of
+            // dependent values here (suppose for example an output socket depends on the root
+            // prop, we have to be sure we add that output socket to the graph if a child of root
+            // changes, because if a child of root has changed, then the view of root to the leaves
+            // will also change)
+            if let Some(parent_attribute_value_id) =
+                AttributeValue::parent_id(ctx, current_attribute_value.id()).await?
+            {
+                work_queue.push_back(WorkQueueValue::Discovered(parent_attribute_value_id));
+                self.inner
+                    .id_depends_on(parent_attribute_value_id, current_attribute_value.id());
+            }
+
+            let current_component_id = self
+                .component_id_for_av(ctx, current_attribute_value.id())
+                .await?;
 
             // Look for subscription edges to this AV, and resolve the paths to figure out what
             // AV each subscription depends on
@@ -214,44 +222,45 @@ impl DependentValueGraph {
                                 .await?
                             {
                                 let subscriber_av_id = subscriber_av_ulid.into();
-                                if seen_list.contains(&resolved_av_id) {
-                                    // 1. If we've already processed the subscribed_to, add its subscribers to the work queue
+                                let subscriber_component_id =
+                                    self.component_id_for_av(ctx, subscriber_av_id).await?;
+
+                                if subscriber_component_id != current_component_id {
+                                    if Component::should_data_flow_between_components(
+                                        ctx,
+                                        subscriber_component_id,
+                                        current_component_id,
+                                    )
+                                    .await
+                                    .map_err(|e| AttributeValueError::Component(Box::new(e)))?
+                                    {
+                                        self.value_depends_on(
+                                            subscriber_av_id,
+                                            current_attribute_value.id(),
+                                        );
+
+                                        self.value_depends_on(
+                                            current_attribute_value.id(),
+                                            resolved_av_id,
+                                        );
+                                        work_queue.push_back(WorkQueueValue::Discovered(
+                                            subscriber_av_id,
+                                        ));
+                                        work_queue
+                                            .push_back(WorkQueueValue::Discovered(resolved_av_id));
+                                    }
+                                } else {
+                                    self.value_depends_on(subscriber_av_id, resolved_av_id);
                                     work_queue
                                         .push_back(WorkQueueValue::Discovered(subscriber_av_id));
-                                    self.value_depends_on(subscriber_av_id, resolved_av_id);
-                                } else {
-                                    // 2. If we *haven't* seen the subscribed_to, we may see it later, so stuff its subscribers
-                                    //    in the subscriptions map
-                                    let subscribers =
-                                        subscriptions.entry(resolved_av_id).or_default();
-                                    subscribers.push(subscriber_av_id);
+                                    work_queue
+                                        .push_back(WorkQueueValue::Discovered(resolved_av_id));
                                 }
                             }
                         }
                     }
                 }
             }
-
-            // If we already discovered subscriptions to us, they are just as dirty as us
-            if let Some(subscribers) = subscriptions.get(&current_attribute_value.id()) {
-                for &subscriber_av_id in subscribers {
-                    work_queue.push_back(WorkQueueValue::Discovered(subscriber_av_id));
-                    self.value_depends_on(subscriber_av_id, current_attribute_value.id());
-                }
-            }
-
-            // We need to be sure to only construct the graph out of
-            // "controlling" values. However, controlled values can still be
-            // inputs to functions, so we need to find the prototypes that
-            // depend on them!
-            let current_attribute_value_controlling_value_id =
-                Self::get_controlling_attribute_value_id(
-                    ctx,
-                    current_component_id,
-                    current_attribute_value.id(),
-                    &mut controlling_funcs_for_component,
-                )
-                .await?;
 
             let value_is_for = AttributeValue::is_for(ctx, current_attribute_value.id()).await?;
 
@@ -273,7 +282,7 @@ impl DependentValueGraph {
                         .get_attribute_prototype_argument_node_weight()?;
 
                     match apa.targets() {
-                        // If there are no targets, this is a schema-level attribute prototype argument
+                        // If there are no targets, this is an intra-component dynamic function
                         None => relevant_apas.push(apa),
                         Some(targets) => {
                             if targets.source_component_id == current_component_id {
@@ -344,8 +353,9 @@ impl DependentValueGraph {
                         // Both "deleted" and not deleted Components can feed data into
                         // "deleted" Components. **ONLY** not deleted Components can feed
                         // data into not deleted Components.
-                        let destination_component_id =
-                            AttributeValue::component_id(ctx, current_attribute_value.id()).await?;
+                        let destination_component_id = self
+                            .component_id_for_av(ctx, current_attribute_value.id())
+                            .await?;
                         if Component::should_data_flow_between_components(
                             ctx,
                             destination_component_id,
@@ -361,8 +371,6 @@ impl DependentValueGraph {
                                 component_input_socket.attribute_value_id,
                                 current_attribute_value.id(),
                             );
-
-                            found_deps = true;
                         }
                     }
                 }
@@ -372,8 +380,6 @@ impl DependentValueGraph {
             // Find the values that are set by the prototype for the relevant
             // AttributePrototypeArguments, and declare that these values depend
             // on the value of the current value
-            //
-            // TODO: This code is very expensive, especially as the graph grows.
             for apa in relevant_apas {
                 let prototype_id =
                     AttributePrototypeArgument::prototype_id(ctx, apa.id().into()).await?;
@@ -386,60 +392,15 @@ impl DependentValueGraph {
                         None => current_component_id,
                         Some(targets) => targets.destination_component_id,
                     };
-                    let component_id =
-                        AttributeValue::component_id(ctx, attribute_value_id).await?;
-
+                    let component_id = self.component_id_for_av(ctx, attribute_value_id).await?;
                     if component_id != filter_component_id {
                         continue;
                     }
 
-                    // If the input to this function is a value that is a child of another dynamic
-                    // function, we should just depend on the controlling value in the dependency
-                    // graph, since we can't guarantee that the controlled value won't be destroyed
-                    // when "populating" nested value
-                    let controlling_attribute_value_id = Self::get_controlling_attribute_value_id(
-                        ctx,
-                        component_id,
-                        attribute_value_id,
-                        &mut controlling_funcs_for_component,
-                    )
-                    .await?;
-
-                    work_queue
-                        .push_back(WorkQueueValue::Discovered(controlling_attribute_value_id));
-                    self.inner.id_depends_on(
-                        controlling_attribute_value_id,
-                        current_attribute_value_controlling_value_id,
-                    );
-
-                    found_deps = true;
+                    work_queue.push_back(WorkQueueValue::Discovered(attribute_value_id));
+                    self.inner
+                        .id_depends_on(attribute_value_id, current_attribute_value.id());
                 }
-            }
-
-            // Parent props always depend on their children, even if those parents do not have
-            // "dependent" functions. Adding them to the graph ensures we execute the entire set of
-            // dependent values here (suppose for example an output socket depends on the root
-            // prop, we have to be sure we add that output socket to the graph if a child of root
-            // changes, because if a child of root has changed, then the view of root to the leaves
-            // will also change)
-            if let Some(parent_attribute_value_id) =
-                AttributeValue::parent_id(ctx, current_attribute_value_controlling_value_id).await?
-            {
-                // If this is one of child values we added speculatively we
-                // should only walk the parent tree if we have actually found a
-                // dep for this value.  Otherwise we will add unnecessary values
-                // to the graph. Normally this is harmless, but it means we'll
-                // do more work than necessary
-                if !found_deps && matches!(current_attribute_value, WorkQueueValue::ObjectChild(_))
-                {
-                    continue;
-                }
-
-                work_queue.push_back(WorkQueueValue::Discovered(parent_attribute_value_id));
-                self.inner.id_depends_on(
-                    parent_attribute_value_id,
-                    current_attribute_value_controlling_value_id,
-                );
             }
         }
 
@@ -448,8 +409,23 @@ impl DependentValueGraph {
 
     pub async fn debug_dot(&self, ctx: &DalContext, suffix: Option<&str>) {
         let mut is_for_map = HashMap::new();
+        let mut component_name_map = HashMap::new();
 
         for attribute_value_id in self.inner.id_to_index_map().keys() {
+            let component_id = AttributeValue::component_id(ctx, *attribute_value_id)
+                .await
+                .expect("able to get component id");
+            let component = Component::get_by_id(ctx, component_id)
+                .await
+                .expect("get component");
+
+            component_name_map.insert(
+                *attribute_value_id,
+                component
+                    .name(ctx)
+                    .await
+                    .expect("able to get component name"),
+            );
             let is_for = AttributeValue::is_for(ctx, *attribute_value_id)
                 .await
                 .expect("able to get value is for")
@@ -471,7 +447,15 @@ impl DependentValueGraph {
                     .map(ToOwned::to_owned)
                     .expect("is for exists for every value");
 
-                format!("label = \"{}\n{}\"", attribute_value_id, is_for_string)
+                let component_name = component_name_map
+                    .get(&attribute_value_id)
+                    .map(ToOwned::to_owned)
+                    .expect("component name exists for every value");
+
+                format!(
+                    "label = \"{}\n{}\n{}\"",
+                    component_name, attribute_value_id, is_for_string
+                )
             };
 
         let dot = petgraph::dot::Dot::with_attr_getters(

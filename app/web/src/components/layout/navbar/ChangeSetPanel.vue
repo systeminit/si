@@ -243,7 +243,7 @@ const waitForChangeSetExists = (
         resolve();
       }
       retry += 1;
-    });
+    }, INTERVAL_MS);
   });
 };
 

@@ -1,28 +1,17 @@
-use std::{
-    collections::HashSet,
-    time::Duration,
-};
+use std::{collections::HashSet, time::Duration};
 
 use dal::{
-    Component,
-    ComponentId,
-    DalContext,
-    component::frame::Frame,
-    func::authoring::FuncAuthoringClient,
+    Component, ComponentId, DalContext, attribute::value::DependentValueGraph,
+    component::frame::Frame, func::authoring::FuncAuthoringClient,
+    workspace_snapshot::DependentValueRoot,
 };
 use dal_test::{
     expected::{
-        self,
-        ExpectComponent,
-        apply_change_set_to_base,
-        commit_and_update_snapshot_to_visibility,
-        fork_from_head_change_set,
-        update_visibility_and_snapshot_to_visibility,
+        self, ExpectComponent, apply_change_set_to_base, commit_and_update_snapshot_to_visibility,
+        fork_from_head_change_set, update_visibility_and_snapshot_to_visibility,
     },
     helpers::{
-        attribute::value,
-        connect_components_with_socket_names,
-        get_component_input_socket_value,
+        attribute::value, connect_components_with_socket_names, get_component_input_socket_value,
     },
     test,
 };
@@ -337,7 +326,7 @@ async fn deleting_a_connected_component_doesnt_cause_nonconnected_components_to_
     assert!(butane_1_after_apply.is_none());
 }
 
-/// THIS TEST DOESN'T PASS 
+/// THIS TEST DOESN'T PASS
 #[test]
 async fn deleting_a_connected_component_doesnt_cause_nonconnected_components_to_process_subscriptions(
     ctx: &mut DalContext,
@@ -366,7 +355,7 @@ async fn deleting_a_connected_component_doesnt_cause_nonconnected_components_to_
     .expect("couldn't create new func");
     let code = "async function main(input: Input): Promise < Output > {
         if (input === undefined || input === null) return {};
-         
+
             let unit: Record < string, any > = {
                 name: input.image + '.service',
                 enabled: true,
@@ -434,6 +423,9 @@ async fn deleting_a_connected_component_doesnt_cause_nonconnected_components_to_
     )
     .await
     .expect("able to create subscription");
+
+    expected::commit_and_update_snapshot_to_visibility(ctx).await;
+
     value::set(
         ctx,
         (docker_image_2.id(), "/domain/image"),
@@ -449,7 +441,23 @@ async fn deleting_a_connected_component_doesnt_cause_nonconnected_components_to_
     .await
     .expect("couldn't set image");
 
+    let roots = DependentValueRoot::get_dependent_value_roots(ctx)
+        .await
+        .expect("get dvu roots");
+
+    let graph = DependentValueGraph::new(ctx, roots)
+        .await
+        .expect("couldn't create graph");
+
+    graph.debug_dot(ctx, Some("after_set_image")).await;
+
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
+    dbg!(
+        Component::view_by_id(ctx, butane_2.id())
+            .await
+            .expect("couldn't view component")
+    );
+
     let monster = value::get(ctx, (butane_2.id(), "/domain/systemd/units"))
         .await
         .expect("couldn't get value");

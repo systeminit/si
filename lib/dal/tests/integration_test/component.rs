@@ -1,32 +1,16 @@
 use dal::{
-    AttributeValue,
-    AttributeValueId,
-    Component,
-    DalContext,
-    Schema,
-    SchemaVariant,
-    Ulid,
+    AttributeValue, AttributeValueId, Component, DalContext, Schema, SchemaVariant, Ulid,
     attribute::value::DependentValueGraph,
-    diagram::{
-        Diagram,
-        view::View,
-    },
-    prop::{
-        Prop,
-        PropPath,
-    },
+    diagram::{Diagram, view::View},
+    prop::{Prop, PropPath},
     property_editor::values::PropertyEditorValues,
     workspace_snapshot::DependentValueRoot,
 };
 use dal_test::{
     Result,
-    expected::{
-        self,
-        ExpectComponent,
-    },
+    expected::{self, ExpectComponent},
     helpers::{
-        ChangeSetTestHelpers,
-        create_component_for_default_schema_name_in_default_view,
+        ChangeSetTestHelpers, create_component_for_default_schema_name_in_default_view,
         create_component_for_schema_variant_on_default_view,
     },
     test,
@@ -531,8 +515,8 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) -> R
 
 #[test]
 async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalContext) -> Result<()> {
-    let etoiles = ExpectComponent::create(ctx, "etoiles").await;
-    let morningstar = ExpectComponent::create(ctx, "morningstar").await;
+    let etoiles = ExpectComponent::create_named(ctx, "etoiles", "etoiles").await;
+    let morningstar = ExpectComponent::create_named(ctx, "morningstar", "morningstar").await;
     let possible_world_a = etoiles
         .prop(ctx, ["root", "domain", "possible_world_a"])
         .await;
@@ -579,6 +563,19 @@ async fn through_the_wormholes_dynamic_child_value_reactivity(ctx: &mut DalConte
             "naming_and_necessity",
         )
         .await;
+
+    let roots = DependentValueRoot::get_dependent_value_roots(ctx)
+        .await
+        .expect("get dvu roots");
+
+    dbg!(&roots);
+
+    let graph = DependentValueGraph::new(ctx, roots)
+        .await
+        .expect("couldn't create graph");
+
+    graph.debug_dot(ctx, Some("wormholes")).await;
+
     expected::commit_and_update_snapshot_to_visibility(ctx).await;
 
     assert_eq!(json!("phosphorus"), stars.get(ctx).await);
