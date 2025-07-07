@@ -154,10 +154,6 @@ const changeSetDropdownOptions = computed(() => [
   // { value: "NEW", label: "+ Create new change set" },
 ]);
 
-const calculateShowSecondaryAction = (option: { label: string }) => {
-  return option.label.toUpperCase() !== "HEAD";
-};
-
 const changeSetSearchFilteredOptions = computed(() => {
   const searchString = dropdownMenuRef.value?.searchString;
 
@@ -180,6 +176,10 @@ const route = useRoute();
 const enableChangesetRename = computed(() =>
   route.name?.toString().startsWith("new-hotness"),
 );
+
+const calculateShowSecondaryAction = (option: { label: string }) => {
+  return enableChangesetRename.value && option.label.toUpperCase() !== "HEAD";
+};
 
 const abandonModalRef = ref<InstanceType<typeof AbandonChangeSetModal> | null>(
   null,
