@@ -17,10 +17,10 @@
           <TruncateWithTooltip>{{ displayName }}</TruncateWithTooltip>
           <div class="flex flex-row items-center ml-auto gap-2xs">
             <StatusIndicatorIcon
-              v-if="validation"
+              v-if="validation && validation.status !== 'Success'"
               v-tooltip="validation.message"
               type="qualification"
-              :status="validation.status === 'Success' ? 'success' : 'failure'"
+              status="failure"
               class="w-8 mr-2 shrink-0"
             />
             <IconButton
@@ -58,8 +58,8 @@
                 ? [
                     'cursor-not-allowed focus:outline-none focus:z-10',
                     themeClasses(
-                      'bg-caution-lines-light text-neutral-600 focus:border-action-500',
-                      'bg-caution-lines-dark text-neutral-400 focus:border-action-300',
+                      'bg-neutral-100 text-neutral-600 focus:border-action-500',
+                      'bg-neutral-900 text-neutral-400 focus:border-action-300',
                     ),
                   ]
                 : [themeClasses('bg-shade-0', 'bg-shade-100'), 'cursor-text'],
