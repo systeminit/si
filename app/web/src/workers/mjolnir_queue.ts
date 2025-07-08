@@ -1,9 +1,10 @@
 import PQueue from "p-queue";
+import { context, trace } from "@opentelemetry/api";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { BustCacheFn, Id } from "./types/dbinterface";
 import { EntityKind } from "./types/entity_kind_types";
 
-const _DEBUG = true; // import.meta.env.VITE_SI_ENV === "local";
+const _DEBUG = import.meta.env.VITE_SI_ENV === "local";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function debug(...args: any | any[]) {
   // eslint-disable-next-line no-console
@@ -94,16 +95,25 @@ bustQueue.on("active", () => {
 
 processPatchQueue.on("empty", () => {
   debug("⚙️ patches processed");
+  const ctx = context.active();
+  const span = trace.getSpan(ctx);
+  if (span) span.setAttribute("processPatchQueueEmpty", true);
   // the queue may either be paused or running
   bustQueue.start();
 });
 processMjolnirQueue.on("empty", () => {
   debug("⚙️ mjolnir processed");
+  const ctx = context.active();
+  const span = trace.getSpan(ctx);
+  if (span) span.setAttribute("processMjolnirQueueEmpty", true);
   // the queue may either be paused or running
   bustQueue.start();
 });
 bustQueue.on("empty", () => {
   debug("🧹 busts processed");
+  const ctx = context.active();
+  const span = trace.getSpan(ctx);
+  if (span) span.setAttribute("bustQueueEmpty", true);
 });
 
 // ensure that when we get patches we process them fully
