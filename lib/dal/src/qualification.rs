@@ -293,8 +293,6 @@ impl QualificationView {
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> Result<Option<Self>, QualificationError> {
-        let mut output = Vec::new();
-
         let mut status = QualificationSubCheckStatus::Success;
 
         let mut fail_counter = 0;
@@ -304,9 +302,10 @@ impl QualificationView {
         // validations summary for a component and store it on the graph during the
         // compute_validations job.
         // Then we'd just load it here and convert to the view struct
-        for (av_id, validation_output) in
-            ValidationOutput::list_for_component(ctx, component_id).await?
-        {
+        let component_validation_outputs =
+            ValidationOutput::list_for_component(ctx, component_id).await?;
+        let mut output = Vec::with_capacity(component_validation_outputs.len());
+        for (av_id, validation_output) in component_validation_outputs {
             // We have validations therefore, we need to show the validations in the Qualifications output
             has_active_validations = true;
             if validation_output.status != ValidationStatus::Success {

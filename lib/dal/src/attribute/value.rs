@@ -878,7 +878,7 @@ impl AttributeValue {
         let inferred_connections = inferred_connection_graph
             .inferred_connections_for_input_socket(ctx, component_id, input_socket_id)
             .await?;
-        let mut connections = Vec::new();
+        let mut connections = Vec::with_capacity(inferred_connections.len());
         for inferred_connection in inferred_connections {
             // Both deleted and non deleted components can feed data into deleted components.
             // ** ONLY ** non-deleted components can feed data into non-deleted components
@@ -1197,11 +1197,8 @@ impl AttributeValue {
         root_value: Option<serde_json::Value>,
     ) -> AttributeValueResult<()> {
         let mut work_queue = VecDeque::from([(root_id, root_value)]);
-        let mut view_stack = Vec::new();
 
         while let Some((av_id, value)) = work_queue.pop_front() {
-            view_stack.push(av_id);
-
             let prop_id = Self::prop_id(ctx, av_id).await?;
             let child_values = match Prop::node_weight(ctx, prop_id).await?.kind() {
                 PropKind::Object => {
@@ -1246,10 +1243,7 @@ impl AttributeValue {
                     | PropKind::Float
                     | PropKind::Integer
                     | PropKind::Json
-                    | PropKind::String => {
-                        view_stack.push(child_av_id);
-                        (child_value, None)
-                    }
+                    | PropKind::String => (child_value, None),
                 };
 
                 if let Some(nested_values) = nested_values {
@@ -1378,11 +1372,12 @@ impl AttributeValue {
 
                 match prop.kind {
                     PropKind::Object => {
-                        let mut object_view: IndexMap<String, serde_json::Value> = IndexMap::new();
+                        let child_avs =
+                            Self::get_child_avs_in_order(ctx, attribute_value_id).await?;
+                        let mut object_view: IndexMap<String, serde_json::Value> =
+                            IndexMap::with_capacity(child_avs.len());
 
-                        for child_av in
-                            Self::get_child_avs_in_order(ctx, attribute_value_id).await?
-                        {
+                        for child_av in child_avs {
                             if let Some(view) = child_av.view(ctx).await? {
                                 let prop = Self::prop(ctx, child_av.id).await?;
                                 object_view.insert(prop.name, view);
@@ -1392,11 +1387,11 @@ impl AttributeValue {
                         Ok(Some(serde_json::to_value(object_view)?))
                     }
                     PropKind::Map => {
-                        let mut map_view = IndexMap::new();
+                        let child_avs =
+                            Self::get_child_avs_in_order(ctx, attribute_value_id).await?;
+                        let mut map_view = IndexMap::with_capacity(child_avs.len());
 
-                        for child_av in
-                            Self::get_child_avs_in_order(ctx, attribute_value_id).await?
-                        {
+                        for child_av in child_avs {
                             if let Some(key) = child_av.key(ctx).await? {
                                 if let Some(view) = child_av.view(ctx).await? {
                                     map_view.insert(key.to_owned(), view);
@@ -1407,11 +1402,11 @@ impl AttributeValue {
                         Ok(Some(serde_json::to_value(map_view)?))
                     }
                     PropKind::Array => {
-                        let mut array_view = Vec::new();
+                        let child_avs =
+                            Self::get_child_avs_in_order(ctx, attribute_value_id).await?;
+                        let mut array_view = Vec::with_capacity(child_avs.len());
 
-                        for element_av in
-                            Self::get_child_avs_in_order(ctx, attribute_value_id).await?
-                        {
+                        for element_av in child_avs {
                             if let Some(view) = element_av.view(ctx).await? {
                                 array_view.push(view);
                             }
@@ -2460,15 +2455,14 @@ impl AttributeValue {
         first_parent: AttributeValueId,
         second_parent: AttributeValueId,
     ) -> AttributeValueResult<Vec<ChildAttributeValuePair>> {
-        // The resulting pairs
-        let mut pairs: Vec<ChildAttributeValuePair> = Vec::new();
-
-        // The index in `pairs` for a given key
-        let mut pair_index = HashMap::<KeyOrIndex, usize>::new();
-
         // Add the children of the first parent first, in order.
         let first_children = Self::get_child_av_ids_in_order(ctx, first_parent).await?;
-        pairs.reserve(first_children.len());
+
+        // The resulting pairs
+        let mut pairs: Vec<ChildAttributeValuePair> = Vec::with_capacity(first_children.len());
+
+        // The index in `pairs` for a given key
+        let mut pair_index = HashMap::<KeyOrIndex, usize>::with_capacity(first_children.len());
 
         // Go through
         for (index, first_child) in first_children.iter().enumerate() {

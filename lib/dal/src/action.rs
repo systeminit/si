@@ -457,6 +457,7 @@ impl Action {
             }
 
             independent_actions.sort();
+            result.reserve(independent_actions.len());
             for action_id in independent_actions {
                 action_dependency_graph.remove_action(action_id);
                 result.push(action_id);
@@ -467,7 +468,7 @@ impl Action {
         // actions exist, even though they'll never start executing.
         let mut actions_in_cycle = action_dependency_graph.remaining_actions();
         actions_in_cycle.sort();
-        result.extend(&actions_in_cycle);
+        result.append(&mut actions_in_cycle);
 
         Ok(result)
     }
@@ -538,17 +539,16 @@ impl Action {
     }
 
     pub async fn all_ids(ctx: &DalContext) -> ActionResult<Vec<ActionId>> {
-        let mut result = Vec::new();
-
         let action_category_node_index = ctx
             .workspace_snapshot()?
             .get_category_node_or_err(None, CategoryNodeKind::Action)
             .await?;
-        for (_, _, action_node_index) in ctx
+        let action_edges = ctx
             .workspace_snapshot()?
             .edges_directed(action_category_node_index, Outgoing)
-            .await?
-        {
+            .await?;
+        let mut result = Vec::with_capacity(action_edges.len());
+        for (_, _, action_node_index) in action_edges {
             let action_id = ctx
                 .workspace_snapshot()?
                 .get_node_weight(action_node_index)

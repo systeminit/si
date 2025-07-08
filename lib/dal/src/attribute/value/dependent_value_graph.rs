@@ -101,7 +101,7 @@ impl DependentValueGraph {
     ) -> AttributeValueResult<Vec<WorkQueueValue>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let mut values = Vec::new();
+        let mut values = Vec::with_capacity(roots.len());
         for root in roots {
             let root_ulid: Ulid = root.into();
             // It's possible that one or more of the initial ids provided by the enqueued

@@ -443,7 +443,7 @@ impl Workspace {
             .query(WORKSPACE_LIST_FOR_USER, &[&user_pk])
             .await?;
 
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(rows.len());
 
         for row in rows {
             result.push(Self::try_from(row)?);
@@ -489,7 +489,7 @@ impl Workspace {
                 .await?
         };
 
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
             result.push(Self::try_from(row)?);
         }

@@ -545,7 +545,7 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<Vec<InputSocketId>> {
         let apa_ids = AttributePrototypeArgument::list_ids_for_prototype(ctx, ap_id).await?;
 
-        let mut input_socket_ids = Vec::<InputSocketId>::new();
+        let mut input_socket_ids = Vec::<InputSocketId>::with_capacity(apa_ids.len());
         for apa_id in apa_ids {
             let maybe_value_source =
                 AttributePrototypeArgument::value_source_opt(ctx, apa_id).await?;
@@ -561,14 +561,13 @@ impl AttributePrototype {
         ctx: &DalContext,
         func_id: FuncId,
     ) -> AttributePrototypeResult<Vec<AttributePrototypeId>> {
-        let mut attribute_prototype_argument_ids = Vec::new();
-
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        for node_index in workspace_snapshot
+        let prototype_sources = workspace_snapshot
             .incoming_sources_for_edge_weight_kind(func_id, EdgeWeightKindDiscriminants::Use)
-            .await?
-        {
+            .await?;
+        let mut attribute_prototype_argument_ids = Vec::with_capacity(prototype_sources.len());
+        for node_index in prototype_sources {
             let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
             let node_weight_id = node_weight.id();
             if let Some(ContentAddressDiscriminants::AttributePrototype) =
@@ -666,11 +665,11 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<Vec<AttributePrototypeSource>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let mut sources = Vec::new();
-        for (edge_weight, prototype_edge_source, _) in workspace_snapshot
+        let prototypes = workspace_snapshot
             .edges_directed(id, Direction::Incoming)
-            .await?
-        {
+            .await?;
+        let mut sources = Vec::with_capacity(prototypes.len());
+        for (edge_weight, prototype_edge_source, _) in prototypes {
             let key = match edge_weight.kind() {
                 EdgeWeightKind::Prototype(key) => key.clone(),
                 _ => continue,

@@ -62,7 +62,7 @@ where
     V: Debug + DeserializeOwned + Serialize + postgres_types::FromSqlOwned,
 {
     pub fn from_rows(rows: Vec<PgRow>) -> LabelListResult<LabelList<V>> {
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(rows.len());
         for row in rows.into_iter() {
             let name: String = row.try_get("name")?;
             let value: V = row.try_get("value")?;

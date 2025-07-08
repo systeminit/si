@@ -1165,7 +1165,7 @@ impl Prop {
             .try_read_many_as(content_hashes.as_slice())
             .await?;
 
-        let mut props = Vec::new();
+        let mut props = Vec::with_capacity(node_weights.len());
         for node_weight in node_weights {
             match content_map.get(&node_weight.content_hash()) {
                 Some(content) => {
