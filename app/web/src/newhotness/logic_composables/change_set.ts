@@ -1,6 +1,9 @@
 import { computed, inject } from "vue";
 import { useChangeSetsStore } from "@/store/change_sets.store";
+import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { assertIsDefined, Context } from "../types";
+import { routes, useApi } from "../api_composables";
+import { useStatus } from "./status";
 
 export const useCurrentChangeSet = () => {
   const ctx = inject<Context>("CONTEXT");
@@ -19,4 +22,41 @@ export const useCurrentChangeSet = () => {
   return computed(() =>
     changeSetsStore.openChangeSets.find((c) => c.id === ctx.changeSetId.value),
   );
+};
+
+const useApplyChangeSetInner = () => {
+  const api = useApi();
+
+  const loading = computed(() => api.inFlight.value);
+
+  const performApply = async () => {
+    const call = api.endpoint(routes.ApplyChangeSet);
+    const { req } = await call.post({});
+    return { success: api.ok(req) };
+  };
+
+  return { loading, performApply };
+};
+
+const useDisableApplyChangeSetInner = () => {
+  const ctx = inject<Context>("CONTEXT");
+  assertIsDefined(ctx);
+
+  const currentChangeSet = useCurrentChangeSet();
+  const status = useStatus();
+
+  const changeSet = computed(() => currentChangeSet.value);
+
+  return computed(
+    () =>
+      changeSet.value?.status !== ChangeSetStatus.Open ||
+      ctx.onHead.value ||
+      status.value === "syncing",
+  );
+};
+
+export const useApplyChangeSet = () => {
+  const applyChangeSet = useApplyChangeSetInner();
+  const disableApplyChangeSet = useDisableApplyChangeSetInner();
+  return { applyChangeSet, disableApplyChangeSet };
 };

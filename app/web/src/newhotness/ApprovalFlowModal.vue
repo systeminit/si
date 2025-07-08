@@ -63,7 +63,8 @@
             label="Apply Change Set"
             class="grow"
             loadingText="Applying Changes"
-            :loading="api.inFlight.value"
+            :loading="applyChangeSet.loading.value"
+            :disabled="disableApplyChangeSet"
             pill="Cmd + Enter"
             @click="debouncedApply"
           />
@@ -85,7 +86,7 @@ import { keyEmitter } from "./logic_composables/emitters";
 import ActionCard from "./ActionCard.vue";
 import { assertIsDefined, Context } from "./types";
 import { reset } from "./logic_composables/navigation_stack";
-import { useApi, routes } from "./api_composables";
+import { useApplyChangeSet } from "./logic_composables/change_set";
 
 const props = defineProps<{
   actions: ActionProposedView[];
@@ -156,7 +157,7 @@ function closeModalHandler() {
   modalRef.value?.close();
 }
 
-const api = useApi();
+const { applyChangeSet, disableApplyChangeSet } = useApplyChangeSet();
 
 const debouncedApply = debounce(apply, 500);
 onBeforeUnmount(() => {
@@ -185,9 +186,10 @@ async function apply() {
   //   }
   // }
   if (!ctx) return;
-  const call = api.endpoint(routes.ApplyChangeSet);
-  const { req } = await call.post({});
-  if (api.ok(req)) {
+
+  const result = await applyChangeSet.performApply();
+
+  if (result.success) {
     const name = route.name;
     router.push({
       name,

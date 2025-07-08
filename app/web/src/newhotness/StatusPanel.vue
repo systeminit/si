@@ -53,7 +53,6 @@ const dependentValueComponentListQuery =
 const componentsInFlight = computed(
   () => dependentValueComponentListQuery.data.value?.componentIds ?? [],
 );
-
 watch(
   () => componentsInFlight.value,
   (newComponentsInFlight) => {
@@ -71,7 +70,6 @@ watch(
 );
 
 const rainbow = useRainbow();
-
 watch(
   () => rainbow.value,
   (newRainbow) => {
