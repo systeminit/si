@@ -112,11 +112,7 @@
           <div class="key">D</div>
         </div>
         <div>
-          Press <TextPill tighter variant="key">⌘</TextPill>+<TextPill
-            tighter
-            variant="key"
-            >D</TextPill
-          >
+          Press <TextPill tighter variant="key">D</TextPill>
           to duplicate the selected component.
         </div>
       </div>

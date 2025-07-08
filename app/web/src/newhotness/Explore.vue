@@ -1148,12 +1148,10 @@ const onD = (e: KeyDetails["d"]) => {
   e.preventDefault();
 
   if (showGrid.value) {
-    if (e.metaKey || e.ctrlKey) {
-      if (!selectionComponentsForActionIds.value) return;
-      componentContextMenuRef.value?.componentsDuplicate(
-        selectionComponentsForActionIds.value,
-      );
-    }
+    if (!selectionComponentsForActionIds.value) return;
+    componentContextMenuRef.value?.componentsDuplicate(
+      selectionComponentsForActionIds.value,
+    );
   } else {
     mapRef.value?.onD(e);
   }
