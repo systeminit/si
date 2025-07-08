@@ -90,21 +90,19 @@
           @toggle="storeViewMode"
         >
           <template #a="{ selected, toggle }">
-            <VButton
+            <ExploreModeTile
+              icon="grid"
               label="Grid"
-              size="sm"
-              variant="ghost"
-              :tone="selected ? 'action' : 'shade'"
-              @click.stop="toggle"
+              :selected="selected"
+              @toggle="toggle"
             />
           </template>
           <template #b="{ selected, toggle }">
-            <VButton
-              label="Map"
-              size="sm"
-              variant="ghost"
-              :tone="selected ? 'action' : 'shade'"
-              @click.stop="toggle"
+            <ExploreModeTile
+              icon="map"
+              label="Map (Model)"
+              :selected="selected"
+              @toggle="toggle"
             />
           </template>
         </TabGroupToggle>
@@ -382,6 +380,7 @@ import { useUpgrade } from "./logic_composables/upgrade";
 import ExploreGrid from "./explore_grid/ExploreGrid.vue";
 import { useConnections } from "./logic_composables/connections";
 import DelayedSkeleton from "./skeletons/DelayedSkeleton.vue";
+import ExploreModeTile from "./ExploreModeTile.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -1065,6 +1064,8 @@ const mountEmitters = () => {
   keyEmitter.on("u", onU);
   keyEmitter.on("r", onR);
   keyEmitter.on("p", onP);
+  keyEmitter.on("ArrowRight", onArrow);
+  keyEmitter.on("ArrowLeft", onArrow);
   keyEmitter.on("Enter", onEnter);
   keyEmitter.on("Tab", onTab);
   keyEmitter.on("Escape", onEscape);
@@ -1084,6 +1085,8 @@ const removeEmitters = () => {
   keyEmitter.off("u", onU);
   keyEmitter.off("r", onR);
   keyEmitter.off("p", onP);
+  keyEmitter.off("ArrowRight", onArrow);
+  keyEmitter.off("ArrowLeft", onArrow);
   keyEmitter.off("Enter", onEnter);
   keyEmitter.off("Tab", onTab);
   keyEmitter.off("Escape", onEscape);
@@ -1276,6 +1279,10 @@ const onEnter = (e: KeyDetails["Enter"]) => {
   }
 
   navigateToFocusedComponent();
+};
+
+const onArrow = () => {
+  componentContextMenuRef.value?.focusFirstItem(true);
 };
 
 // ================================================================================================

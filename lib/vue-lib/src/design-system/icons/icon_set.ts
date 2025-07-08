@@ -171,6 +171,8 @@ import SettingsEdit from "~icons/carbon/settings-edit";
 import CarbonWarningAlt from "~icons/carbon/warning-alt";
 import Pin from "~icons/carbon/pin-filled";
 import Renew from "~icons/carbon/renew";
+import CarbonApps from "~icons/carbon/apps";
+import CarbonFlowConnection from "~icons/carbon/flow-connection";
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -305,6 +307,7 @@ export const ICONS = Object.freeze({
   "git-commit": GitCommit,
   "git-merge": GitMerge,
   globe: Globe,
+  grid: CarbonApps,
   hide: EyeOff,
   hourglass: Hourglass,
   "info-circle": MdiInformationVariantCircleOutline,
@@ -324,6 +327,7 @@ export const ICONS = Object.freeze({
   logout: Logout,
   "logs-pop": LogsPop,
   "logs-pop-square": LogsPopSquare,
+  map: CarbonFlowConnection,
   menu: Menu,
   minus: Minus,
   "minus-circle": MinusCircle,
