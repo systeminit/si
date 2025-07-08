@@ -2,7 +2,7 @@
 <template>
   <section id="map" class="grid h-full">
     <div
-      v-if="selectedComponent"
+      v-if="selectedComponent && selectedComponents.size === 1"
       id="selection"
       :class="
         clsx(
@@ -244,7 +244,16 @@ const componentsById = computed<Record<ComponentId, ComponentInList>>(() => {
 const componentContextMenuRef =
   ref<InstanceType<typeof ComponentContextMenu>>();
 
-const selectedComponent = ref<ComponentInList | null>(null);
+const selectedComponents = ref<Set<ComponentInList>>(new Set());
+
+// Get the primary selected component (first one in the set)
+const selectedComponent = computed<ComponentInList | null>(() => {
+  if (selectedComponents.value.size === 0) {
+    return null;
+  }
+  const firstComponent = selectedComponents.value.values().next().value;
+  return firstComponent || null;
+});
 
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
@@ -499,12 +508,18 @@ const connections = useQuery<IncomingConnections[]>({
 
     if (d) {
       // this sets the component from the URL querystring on load, and then doesn't re-enter
-      if (fillDefault.value) {
+      if (fillDefault.value && fillDefault.value.length > 0) {
         nextTick(() => {
-          const c = d.find((c) => c.id === fillDefault.value);
-          if (c && c.id) {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            selectedComponent.value = componentsById.value[c.id]!;
+          const selectedComps: ComponentInList[] = [];
+          fillDefault.value?.forEach((componentId) => {
+            const component = componentsById.value[componentId];
+            if (component) {
+              selectedComps.push(component);
+            }
+          });
+
+          if (selectedComps.length > 0) {
+            selectedComponents.value = new Set(selectedComps);
           }
           fillDefault.value = undefined;
         });
@@ -630,14 +645,37 @@ const clickedNode = (e: MouseEvent, n: layoutNode) => {
   e.preventDefault();
   e.stopPropagation();
 
-  if (selectedComponent.value?.id === n.component.id) {
-    navigateToSelectedComponent();
-  } else {
-    // Close context menu if it's open before selecting new component
+  if (e.shiftKey) {
+    // Multi-select mode with shift-click
+    const newSelectedComponents = new Set(selectedComponents.value);
+
+    if (newSelectedComponents.has(n.component)) {
+      // Remove from selection if already selected
+      newSelectedComponents.delete(n.component);
+    } else {
+      // Add to selection
+      newSelectedComponents.add(n.component);
+    }
+
+    selectedComponents.value = newSelectedComponents;
+
+    // Close context menu during multi-select
     if (componentContextMenuRef.value?.isOpen) {
       componentContextMenuRef.value?.close();
     }
-    selectedComponent.value = n.component;
+  } else {
+    // Single select mode
+    if (selectedComponent.value?.id === n.component.id) {
+      navigateToSelectedComponent();
+    } else {
+      // Close context menu if it's open before selecting new component
+      if (componentContextMenuRef.value?.isOpen) {
+        componentContextMenuRef.value?.close();
+      }
+
+      // Clear multi-select and set single selection
+      selectedComponents.value = new Set([n.component]);
+    }
   }
 };
 
@@ -645,17 +683,23 @@ const rightClickedNode = (e: MouseEvent, n: layoutNode) => {
   e.preventDefault();
   e.stopPropagation();
 
-  // Always show context menu on right-click
-  selectComponent(n.component, e.target as Element);
+  // If the right-clicked component is not in the current selection, select it
+  if (!selectedComponents.value.has(n.component)) {
+    selectedComponents.value = new Set([n.component]);
+  }
+
+  // Show context menu for all selected components
+  showContextMenuForSelection(n.component, e.target as Element);
 };
 
-const selectComponent = (component: ComponentInList, componentEl?: Element) => {
-  selectedComponent.value = component;
-
+const showContextMenuForSelection = (
+  anchorComponent: ComponentInList,
+  componentEl?: Element,
+) => {
   nextTick(() => {
     let element = componentEl;
     if (!element) {
-      element = document.getElementsByClassName(`id-${component.id}`)[0];
+      element = document.getElementsByClassName(`id-${anchorComponent.id}`)[0];
       if (!element) return;
     }
 
@@ -671,181 +715,209 @@ const selectComponent = (component: ComponentInList, componentEl?: Element) => {
       }),
     };
 
-    componentContextMenuRef.value?.open(anchor, [component]);
+    // Pass all selected components to the context menu
+    const componentsForMenu = Array.from(selectedComponents.value);
+    componentContextMenuRef.value?.open(anchor, componentsForMenu);
   });
 };
+
+const selectComponent = (component: ComponentInList, componentEl?: Element) => {
+  selectedComponents.value = new Set([component]);
+  showContextMenuForSelection(component, componentEl);
+};
 const deselect = () => {
-  selectedComponent.value = null;
+  selectedComponents.value = new Set();
   componentContextMenuRef.value?.close();
 };
 
-watch(selectedComponent, () => {
-  // this handles later changes after the page loads
-  document.querySelectorAll("#map > svg rect.node").forEach((n) => {
-    n.classList.remove("selected");
-    n.classList.remove("greyed-out");
-  });
+watch(
+  selectedComponents,
+  () => {
+    // this handles later changes after the page loads
+    document.querySelectorAll("#map > svg rect.node").forEach((n) => {
+      n.classList.remove("selected");
+      n.classList.remove("greyed-out");
+    });
 
-  // Remove greyed-out classes from text elements
-  document
-    .querySelectorAll("#map > svg text")
-    .forEach((n) => n.classList.remove("greyed-out"));
-
-  // Reset opacity for all icons and color bars
-  document.querySelectorAll("#map > svg path").forEach((path) => {
-    if (path.getAttribute("stroke")) {
-      path.setAttribute("stroke-opacity", "1");
-    } else {
-      (path as HTMLElement).style.opacity = "1";
-    }
-  });
-
-  // Update edge styling when selection changes
-  document.querySelectorAll("#map > svg path.edge").forEach((edge) => {
-    const edgeElement = edge as SVGPathElement;
-    const edgeId = edgeElement.getAttribute("data-edge-id");
-
-    if (edgeId) {
-      const [targetId, sourceId] = edgeId.split("-");
-      const isConnectedToSelected =
-        selectedComponent.value &&
-        (targetId === selectedComponent.value.id ||
-          sourceId === selectedComponent.value.id);
-
-      if (selectedComponent.value) {
-        // Update stroke color - theme aware
-        const isDark = document.body.classList.contains("dark");
-        const connectedColor = isDark ? "#93c5fd" : "#3b82f6"; // action-300 : action-500
-        const greyedColor = isDark ? "#4b5563" : "#d1d5db"; // neutral-600 : neutral-300
-
-        edgeElement.style.stroke = isConnectedToSelected
-          ? connectedColor
-          : greyedColor;
-        // Update opacity
-        edgeElement.style.opacity = isConnectedToSelected ? "1" : "0.3";
-        // Update stroke width
-        edgeElement.style.strokeWidth = isConnectedToSelected ? "2" : "1";
-        // Update arrow marker
-        edgeElement.setAttribute(
-          "marker-end",
-          isConnectedToSelected
-            ? "url(#arrowhead-highlighted)"
-            : "url(#arrowhead-greyed)",
-        );
-      } else {
-        // Reset to default when no component is selected - theme aware
-        const isDark = document.body.classList.contains("dark");
-        const defaultColor = isDark ? "#9ca3af" : "#6b7280"; // neutral-400 : neutral-500
-
-        edgeElement.style.stroke = defaultColor;
-        edgeElement.style.opacity = "1";
-        edgeElement.style.strokeWidth = "1";
-        edgeElement.setAttribute("marker-end", "url(#arrowhead)");
-      }
-    }
-  });
-
-  const query: SelectionsInQueryString = {
-    ...router.currentRoute.value?.query,
-  };
-  delete query.c;
-
-  if (selectedComponent.value) {
-    query.c = selectedComponent.value.id;
-
-    // Add selected class to the selected component
+    // Remove greyed-out classes from text elements
     document
-      .querySelector(`#map > svg rect.node.id-${selectedComponent.value.id}`)
-      ?.classList.add("selected");
+      .querySelectorAll("#map > svg text")
+      .forEach((n) => n.classList.remove("greyed-out"));
 
-    // Add greyed-out class to unconnected components (except components with no connections at all)
-    document.querySelectorAll("#map > svg rect.node").forEach((element) => {
-      const componentId = Array.from(element.classList)
-        .find((cls) => cls.startsWith("id-"))
-        ?.substring(3);
+    // Reset opacity for all icons and color bars
+    document.querySelectorAll("#map > svg path").forEach((path) => {
+      if (path.getAttribute("stroke")) {
+        path.setAttribute("stroke-opacity", "1");
+      } else {
+        (path as HTMLElement).style.opacity = "1";
+      }
+    });
 
-      if (componentId && !connectedComponentIds.value.has(componentId)) {
-        // Check if this component has any connections at all
-        const componentHasConnections = connections.data.value?.some(
-          (c) => c.id === componentId && c.connections.length > 0,
+    // Update edge styling when selection changes
+    document.querySelectorAll("#map > svg path.edge").forEach((edge) => {
+      const edgeElement = edge as SVGPathElement;
+      const edgeId = edgeElement.getAttribute("data-edge-id");
+
+      if (edgeId) {
+        const [targetId, sourceId] = edgeId.split("-");
+        // Check if edge is connected to any of the selected components
+        const isConnectedToSelected = Array.from(selectedComponents.value).some(
+          (component) => targetId === component.id || sourceId === component.id,
         );
 
-        // Only grey out if component has connections but isn't connected to selected
-        if (componentHasConnections) {
-          element.classList.add("greyed-out");
+        if (selectedComponents.value.size > 0) {
+          // Update stroke color - theme aware
+          const isDark = document.body.classList.contains("dark");
+          const connectedColor = isDark ? "#93c5fd" : "#3b82f6"; // action-300 : action-500
+          const greyedColor = isDark ? "#4b5563" : "#d1d5db"; // neutral-600 : neutral-300
+
+          edgeElement.style.stroke = isConnectedToSelected
+            ? connectedColor
+            : greyedColor;
+          // Update opacity
+          edgeElement.style.opacity = isConnectedToSelected ? "1" : "0.3";
+          // Update stroke width
+          edgeElement.style.strokeWidth = isConnectedToSelected ? "2" : "1";
+          // Update arrow marker
+          edgeElement.setAttribute(
+            "marker-end",
+            isConnectedToSelected
+              ? "url(#arrowhead-highlighted)"
+              : "url(#arrowhead-greyed)",
+          );
+        } else {
+          // Reset to default when no component is selected - theme aware
+          const isDark = document.body.classList.contains("dark");
+          const defaultColor = isDark ? "#9ca3af" : "#6b7280"; // neutral-400 : neutral-500
+
+          edgeElement.style.stroke = defaultColor;
+          edgeElement.style.opacity = "1";
+          edgeElement.style.strokeWidth = "1";
+          edgeElement.setAttribute("marker-end", "url(#arrowhead)");
         }
       }
     });
 
-    // Add greyed-out class to text elements of unconnected components (except components with no connections at all)
-    document.querySelectorAll("#map > svg g").forEach((group) => {
-      const rect = group.querySelector("rect.node");
-      const componentId = Array.from(rect?.classList || [])
-        .find((cls) => cls.startsWith("id-"))
-        ?.substring(3);
+    const query: SelectionsInQueryString = {
+      ...router.currentRoute.value?.query,
+    };
+    delete query.c;
 
-      if (componentId && !connectedComponentIds.value.has(componentId)) {
-        // Check if this component has any connections at all
-        const componentHasConnections = connections.data.value?.some(
-          (c) => c.id === componentId && c.connections.length > 0,
-        );
+    // Store multiple selected component IDs as comma-separated string
+    if (selectedComponents.value.size > 0) {
+      const selectedIds = Array.from(selectedComponents.value).map((c) => c.id);
+      query.c = selectedIds.join(",");
+    }
 
-        // Only grey out if component has connections but isn't connected to selected
-        if (componentHasConnections) {
-          group.querySelectorAll("text").forEach((text) => {
-            text.classList.add("greyed-out");
-          });
-
-          // Grey out icons and color bars
-          group.querySelectorAll("path").forEach((path) => {
-            if (path.getAttribute("stroke")) {
-              // This is likely a color bar
-              path.setAttribute("stroke-opacity", "0.3");
-            } else {
-              // This is likely an icon
-              path.style.opacity = "0.3";
-            }
-          });
-        }
-      }
+    // Add selected class to all selected components
+    selectedComponents.value.forEach((component) => {
+      document
+        .querySelector(`#map > svg rect.node.id-${component.id}`)
+        ?.classList.add("selected");
     });
-  }
 
-  router.push({ query });
-});
+    if (selectedComponents.value.size > 0) {
+      // Add greyed-out class to unconnected components (except components with no connections at all)
+      document.querySelectorAll("#map > svg rect.node").forEach((element) => {
+        const componentId = Array.from(element.classList)
+          .find((cls) => cls.startsWith("id-"))
+          ?.substring(3);
+
+        if (componentId && !connectedComponentIds.value.has(componentId)) {
+          // Check if this component has any connections at all
+          const componentHasConnections = connections.data.value?.some(
+            (c) => c.id === componentId && c.connections.length > 0,
+          );
+
+          // Only grey out if component has connections but isn't connected to selected
+          // AND we actually have selected components (safety check)
+          if (componentHasConnections && selectedComponents.value.size > 0) {
+            element.classList.add("greyed-out");
+          }
+        }
+      });
+
+      // Add greyed-out class to text elements of unconnected components (except components with no connections at all)
+      document.querySelectorAll("#map > svg g").forEach((group) => {
+        const rect = group.querySelector("rect.node");
+        const componentId = Array.from(rect?.classList || [])
+          .find((cls) => cls.startsWith("id-"))
+          ?.substring(3);
+
+        if (componentId && !connectedComponentIds.value.has(componentId)) {
+          // Check if this component has any connections at all
+          const componentHasConnections = connections.data.value?.some(
+            (c) => c.id === componentId && c.connections.length > 0,
+          );
+
+          // Only grey out if component has connections but isn't connected to selected
+          // AND we actually have selected components (safety check)
+          if (componentHasConnections && selectedComponents.value.size > 0) {
+            group.querySelectorAll("text").forEach((text) => {
+              text.classList.add("greyed-out");
+            });
+
+            // Grey out icons and color bars
+            group.querySelectorAll("path").forEach((path) => {
+              if (path.getAttribute("stroke")) {
+                // This is likely a color bar
+                path.setAttribute("stroke-opacity", "0.3");
+              } else {
+                // This is likely an icon
+                path.style.opacity = "0.3";
+              }
+            });
+          }
+        }
+      });
+    }
+
+    router.push({ query });
+  },
+  { deep: true },
+);
 
 const searchString = inject<ComputedRef<string>>("SEARCH");
 
 const connectedComponentIds = computed(() => {
   const connectedIds = new Set<string>();
-  if (!selectedComponent.value || !connections.data.value) {
+  if (!connections.data.value) {
     return connectedIds;
   }
 
-  const selectedId = selectedComponent.value.id;
-  connectedIds.add(selectedId); // Include the selected component itself
+  // Include all selected components themselves
+  selectedComponents.value.forEach((component) => {
+    connectedIds.add(component.id);
+  });
 
-  // Find all components connected to the selected component
-  connections.data.value.forEach((component) => {
-    component.connections.forEach((connection) => {
-      if (connection.toComponentId === selectedId) {
-        connectedIds.add(connection.fromComponentId);
-      }
-      if (connection.fromComponentId === selectedId) {
-        connectedIds.add(connection.toComponentId);
-      }
+  // Find all components connected to any of the selected components
+  selectedComponents.value.forEach((selectedComp) => {
+    const selectedId = selectedComp.id;
+
+    connections.data.value?.forEach((component) => {
+      component.connections.forEach((connection) => {
+        if (connection.toComponentId === selectedId) {
+          connectedIds.add(connection.fromComponentId);
+        }
+        if (connection.fromComponentId === selectedId) {
+          connectedIds.add(connection.toComponentId);
+        }
+      });
     });
   });
 
   return connectedIds;
 });
 
-const fillDefault = ref<string>();
+const fillDefault = ref<string[]>();
 onMounted(() => {
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
   };
-  if (query.c) fillDefault.value = query.c;
+  if (query.c) {
+    // Parse comma-separated component IDs
+    fillDefault.value = query.c.split(",").filter((id) => id.trim());
+  }
 });
 
 // debouncing since the fzf and svg is actually a bit of a grind for every key press
