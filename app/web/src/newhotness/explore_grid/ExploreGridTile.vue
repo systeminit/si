@@ -56,10 +56,9 @@
         <ComponentQualificationStatus class="grow" :component="component" />
       </li>
       <li>
-        <template v-if="component.diffCount > 0">
+        <template v-if="component.hasDiff">
           <Icon name="tilde" class="text-warning-500" size="sm" />
           <div>Diff</div>
-          <PillCounter :count="component.diffCount" size="sm" class="ml-auto" />
         </template>
       </li>
       <li>
@@ -127,17 +126,14 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { computed, inject } from "vue";
-import {
-  BifrostComponent,
-  ComponentInList,
-} from "@/workers/types/entity_kind_types";
+import { ComponentInList } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon } from "../util";
 import { assertIsDefined, Context, ExploreContext } from "../types";
 import ComponentQualificationStatus from "../ComponentQualificationStatus.vue";
 
 const props = defineProps<{
-  component: BifrostComponent | ComponentInList;
+  component: ComponentInList;
   selected?: boolean;
   focused?: boolean;
   hovered?: boolean;
@@ -178,9 +174,7 @@ const emit = defineEmits<{
 // Grid tiles need to have a fixed height - make sure this number matches its total height!
 export const GRID_TILE_HEIGHT = 233;
 
-export function getQualificationStatus(
-  component: BifrostComponent | ComponentInList,
-) {
+export function getQualificationStatus(component: ComponentInList) {
   if (component.qualificationTotals.failed > 0) return "failure";
   if (component.qualificationTotals.warned > 0) return "warning";
   if (component.qualificationTotals.succeeded > 0) return "success";

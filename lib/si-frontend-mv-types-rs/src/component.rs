@@ -82,7 +82,6 @@ pub struct Component {
     pub has_resource: bool,
     pub qualification_totals: ComponentQualificationStats,
     pub input_count: usize,
-    pub diff_count: usize,
     pub resource_diff: ComponentDiff,
     pub is_secret_defining: bool,
     pub to_delete: bool,
@@ -117,7 +116,7 @@ pub struct ComponentInList {
     pub has_resource: bool,
     pub qualification_totals: ComponentQualificationStats,
     pub input_count: usize,
-    pub diff_count: usize,
+    pub has_diff: bool,
     pub to_delete: bool,
 }
 
