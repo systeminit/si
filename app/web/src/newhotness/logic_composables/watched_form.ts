@@ -103,6 +103,7 @@ export const useWatchedForm = <Data>(label: string) => {
         const markComplete = () => {
           bifrosting.value = false;
           rainbow.remove(ctx.changeSetId.value, label);
+          if (!wForm.state.canSubmit) wForm.reset(props.value);
           if (span) {
             span.setAttribute("measured_time", Date.now() - start);
             span.end();
