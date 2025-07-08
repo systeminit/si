@@ -310,11 +310,20 @@ impl QualificationView {
             // We have validations therefore, we need to show the validations in the Qualifications output
             has_active_validations = true;
             if validation_output.status != ValidationStatus::Success {
+                // We need to filter out any false positive results for subscriptions that
+                // have yet to propagate their value during DVU - this would be a misleading
+                // result for a user
+                let av = AttributeValue::get_by_id(ctx, av_id).await?;
+                if AttributeValue::subscriptions(ctx, av_id).await?.is_some()
+                    && av.value(ctx).await?.is_none()
+                {
+                    continue;
+                }
+
                 status = QualificationSubCheckStatus::Failure;
                 fail_counter += 1;
 
                 let prop_id = AttributeValue::prop_id(ctx, av_id).await?;
-
                 let prop = Prop::get_by_id(ctx, prop_id).await?;
 
                 output.push(QualificationOutputStreamView {
