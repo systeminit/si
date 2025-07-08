@@ -7,7 +7,7 @@
       class="w-8 mr-2 shrink-0"
     />
 
-    <span class="self-center">
+    <span class="self-center grow">
       <slot></slot>
     </span>
   </div>

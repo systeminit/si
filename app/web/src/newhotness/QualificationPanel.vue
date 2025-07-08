@@ -25,6 +25,9 @@ export interface Qualification {
   message?: string;
   status?: QualificationStatus;
   avId?: AttributeValueId;
+  // This exists so the validation qualification can pass in its output, since that comes baked in the data
+  // We should avoid using it for normal qualifications, for which QualificationView will lazily fetch the output
+  output?: string[];
 }
 
 const props = defineProps<{
@@ -36,8 +39,8 @@ const root = computed(() => props.attributeTree);
 
 const qualifications = computed<Qualification[]>(() => {
   const items: Qualification[] = [];
-  if (!root.value) return items;
   const r = root.value;
+  if (!r) return items;
   const data = findAvsAtPropPath(r, [
     "root",
     "qualification",
@@ -45,6 +48,7 @@ const qualifications = computed<Qualification[]>(() => {
   ]);
   if (!data) return items;
   const { attributeValues } = data;
+
   attributeValues.forEach((av) => {
     const name = av.key;
     const children = r.treeInfo[av.id]?.children ?? [];
@@ -63,6 +67,40 @@ const qualifications = computed<Qualification[]>(() => {
       message,
     });
   });
+
+  // Since we have all the data locally, we compute the validation rollup qualification over here
+  // The qualification also gets computed in the backed for the old UI and luminork, so at some point we may
+  // revisit this, but this works well.
+  let hasValidations = false;
+  const validationOutput: string[] = [];
+  Object.values(r.attributeValues).forEach((av) => {
+    const prop = r.props[av.propId ?? ""];
+    if (!av.validation || !prop) return;
+    hasValidations = true;
+
+    const name = prop.name;
+
+    if (av.validation.status === "Success") return;
+
+    validationOutput.push(
+      `${name}: ${av.validation.message ?? "unknown validation error"}`,
+    );
+  });
+
+  if (hasValidations) {
+    const status = validationOutput.length > 0 ? "failure" : "success";
+
+    const message = `Component has ${validationOutput.length} invalid value(s).`;
+    const output = validationOutput.length > 0 ? validationOutput : undefined;
+
+    items.push({
+      name: "Prop Validations",
+      status,
+      message,
+      output,
+    });
+  }
+
   return items;
 });
 </script>
