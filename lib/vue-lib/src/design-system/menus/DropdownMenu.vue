@@ -727,8 +727,10 @@ const elementIsInsideMenu = (el: Node) => {
   return false;
 };
 
-const focusFirstItem = () => {
-  focusedItemIndex.value = 0;
+const focusFirstItem = (onlyIfNoFocus = false) => {
+  if (!onlyIfNoFocus || focusedItemIndex.value === undefined) {
+    focusedItemIndex.value = 0;
+  }
 };
 
 // this is what is exposed to the component using this component (via template ref)

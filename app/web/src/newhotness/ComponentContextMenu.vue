@@ -526,6 +526,10 @@ function close() {
   contextMenuRef.value?.forceClose();
 }
 
+const focusFirstItem = (onlyIfNoFocus = false) => {
+  contextMenuRef.value?.focusFirstItem(onlyIfNoFocus);
+};
+
 const isOpen = computed(() => contextMenuRef.value?.isOpen);
 
 const emit = defineEmits<{
@@ -544,5 +548,6 @@ defineExpose({
   contextMenuRef,
   componentsStartDelete,
   componentsRestore,
+  focusFirstItem,
 });
 </script>

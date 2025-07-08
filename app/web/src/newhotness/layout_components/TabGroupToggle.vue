@@ -1,20 +1,11 @@
 <template>
-  <div class="flex flex-row">
-    <div
-      :class="
-        clsx('[&>*]:rounded-tr-none [&>*]:rounded-br-none [&>*]:border-r-0')
-      "
-    >
-      <slot name="a" :selected="isA" :toggle="toggle"> </slot>
-    </div>
-    <div :class="clsx('[&>*]:rounded-tl-none [&>*]:rounded-bl-none')">
-      <slot name="b" :selected="isB" :toggle="toggle"> </slot>
-    </div>
+  <div class="flex flex-row gap-xs">
+    <slot name="a" :selected="isA" :toggle="toggle"> </slot>
+    <slot name="b" :selected="isB" :toggle="toggle"> </slot>
   </div>
 </template>
 
 <script setup lang="ts">
-import clsx from "clsx";
 import { computed, watch } from "vue";
 import { useToggle } from "../logic_composables/toggle_containers";
 
