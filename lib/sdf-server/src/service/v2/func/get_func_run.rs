@@ -227,6 +227,21 @@ pub async fn get_func_run_view(ctx: &DalContext, func_run: &FuncRun) -> FuncAPIR
         }
     };
 
+    let unprocessed_result_value: Option<serde_json::Value> = {
+        match func_run.result_unprocessed_value_cas_address() {
+            Some(result_unprocessed_value_cas_address) => {
+                let result_unprocessed_value_cas: Option<CasValue> = ctx
+                    .layer_db()
+                    .cas()
+                    .try_read_as(&result_unprocessed_value_cas_address)
+                    .await?;
+
+                result_unprocessed_value_cas.map(|r| r.into())
+            }
+            None => None,
+        }
+    };
+
     let logs = ctx
         .layer_db()
         .func_run_log()
@@ -241,7 +256,7 @@ pub async fn get_func_run_view(ctx: &DalContext, func_run: &FuncRun) -> FuncAPIR
         code_base64,
         result_value,
         logs,
-        None, // TODO(nick): we likely need to add the unprocessed value here as well in the future
+        unprocessed_result_value,
     ))
 }
 
