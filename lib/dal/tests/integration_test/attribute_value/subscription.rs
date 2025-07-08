@@ -632,7 +632,9 @@ async fn remove_subscribed_component(ctx: &mut DalContext) -> Result<()> {
     change_set::commit(ctx).await?;
     assert_eq!(
         json!("value"),
-        value::get(ctx, ("subscriber", "/domain/Value")).await?
+        value::get(ctx, ("subscriber", "/domain/Value"))
+            .await
+            .expect("value should exist")
     );
 
     // Remove the source component and make sure the subscriber value is unset

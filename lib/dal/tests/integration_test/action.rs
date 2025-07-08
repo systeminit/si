@@ -2,6 +2,7 @@ use dal::{
     AttributeValue,
     Component,
     DalContext,
+    SchemaVariant,
     action::{
         Action,
         ActionState,
@@ -12,9 +13,12 @@ use dal::{
         },
     },
     component::frame::Frame,
+    func::authoring::FuncAuthoringClient,
+    schema::variant::authoring::VariantAuthoringClient,
 };
 use dal_test::{
     Result,
+    expected::ExpectSchemaVariant,
     helpers::{
         ChangeSetTestHelpers,
         attribute::value,
@@ -31,6 +35,7 @@ use pretty_assertions_sorted::{
     assert_eq,
     assert_ne,
 };
+use serde_json::json;
 use si_id::ActionId;
 
 #[test]
@@ -649,6 +654,150 @@ async fn simple_transitive_action_ordering(ctx: &mut DalContext) -> Result<()> {
         vec![third_action]
     );
 
+    Ok(())
+}
+
+#[test]
+async fn resource_value_propagation_subscriptions_works(ctx: &mut DalContext) -> Result<()> {
+    // create 2 variants A & B where A has a resource_value prop that B is subscribed to
+    let component_a_code_definition = r#"
+        function main() {
+            const prop = new PropBuilder()
+                .setName("prop")
+                .setKind("string")
+                .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                .build();
+            const resourceProp = new PropBuilder()
+                .setName("prop")
+                .setKind("string")
+                .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                .build();
+
+            return new AssetBuilder()
+                .addProp(prop)
+                .addResourceProp(resourceProp)
+                .build();
+        }
+    "#;
+
+    let a_variant = ExpectSchemaVariant(
+        VariantAuthoringClient::create_schema_and_variant_from_code(
+            ctx,
+            "A",
+            None,
+            None,
+            "Category",
+            "#0077cc",
+            component_a_code_definition,
+        )
+        .await?
+        .id,
+    );
+
+    // Create Action Func for A
+    let func_name = "Create A".to_string();
+    let func = FuncAuthoringClient::create_new_action_func(
+        ctx,
+        Some(func_name.clone()),
+        ActionKind::Create,
+        a_variant.id(),
+    )
+    .await?;
+
+    let create_func_code = r#"
+        async function main(component: Input): Promise<Output> {
+        const prop = component.properties.domain?.prop;
+    return {
+        status: "ok",
+        payload: {
+            prop: prop
+        },
+    }
+}
+    "#;
+    FuncAuthoringClient::save_code(ctx, func.id, create_func_code).await?;
+
+    // Create B Variant
+    let component_b_code_definition = r#"
+        function main() {
+            const prop = new PropBuilder()
+                .setName("prop")
+                .setKind("string")
+                .setWidget(new PropWidgetDefinitionBuilder().setKind("text").build())
+                .build();
+            return new AssetBuilder()
+                .addProp(prop)
+                .build();
+        }
+    "#;
+
+    let _b_variant = ExpectSchemaVariant(
+        VariantAuthoringClient::create_schema_and_variant_from_code(
+            ctx,
+            "B",
+            None,
+            None,
+            "Category",
+            "#0077cc",
+            component_b_code_definition,
+        )
+        .await?
+        .id,
+    );
+
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    let all_funcs = SchemaVariant::all_funcs(ctx, a_variant.id())
+        .await
+        .expect("unable to get all funcs");
+
+    // do we see resourcePayloadToValue??
+    assert!(
+        all_funcs
+            .iter()
+            .any(|func| func.name == "si:resourcePayloadToValue")
+    );
+
+    // create each component
+    component::create(ctx, "A", "A").await?;
+    component::create(ctx, "B", "B").await?;
+
+    // component b subscribes to resource_value/prop from component a
+    value::subscribe(ctx, ("B", "/domain/prop"), [("A", "/resource_value/prop")]).await?;
+
+    // update the value for component A
+    value::set(ctx, ("A", "/domain/prop"), "hello world").await?;
+    // commit change set
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let actions = Action::list_topologically(ctx).await?;
+    assert!(actions.len() == 1);
+
+    // Apply changeset so it runs the creation action
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+
+    // wait for actions to run
+    ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
+    // also wait for dvu!
+    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
+    // need to update snapshot to visibility again for some reason??
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    assert!(
+        value::has_value(ctx, ("A", "/resource/payload"))
+            .await
+            .expect("Failed to get value")
+    );
+
+    assert_eq!(
+        json!("hello world"),
+        value::get(ctx, ("A", "/resource_value/prop")).await?
+    );
+    // check if value has propagated
+    //  assert!(value::has_value(ctx,  ("B", "/domain/prop")).await?);
+    assert_eq!(
+        json!("hello world"),
+        value::get(ctx, ("B", "/domain/prop")).await?
+    );
     Ok(())
 }
 
