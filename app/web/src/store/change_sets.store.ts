@@ -582,13 +582,34 @@ export function useChangeSetsStore() {
                 const route = useRouterStore().currentRoute;
 
                 if (route?.name) {
-                  router.push({
-                    name: route.name,
-                    params: {
-                      ...route.params,
-                      changeSetId: this.headChangeSetId,
-                    },
-                  });
+                  if ((route.name as string).startsWith("new-hotness")) {
+                    let name = route.name as string;
+                    // if you're on a single-item page in the UI while just bring them to explore
+                    if (
+                      ![
+                        "new-hotness",
+                        "new-hotness-workspace-auto",
+                        "new-hotness-head",
+                      ].includes(route.name as string)
+                    )
+                      name = "new-hotness";
+
+                    router.push({
+                      name,
+                      params: {
+                        ...route.query, // this will keep map/grid, search, if its there
+                        changeSetId: this.headChangeSetId,
+                      },
+                    });
+                  } else {
+                    router.push({
+                      name: route.name,
+                      params: {
+                        ...route.params,
+                        changeSetId: this.headChangeSetId,
+                      },
+                    });
+                  }
                   if (
                     this.selectedChangeSet &&
                     this.selectedChangeSet.name !== "HEAD"
