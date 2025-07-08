@@ -89,7 +89,7 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
 
     // Check that everything looks as we expect.
     {
-        let expected_total = 5;
+        let expected_total = 7;
         confirm_jetstream_stream_has_no_messages(
             &source_stream,
             STREAM_RETRY_TIMEOUT_SECONDS,
@@ -164,7 +164,7 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
 
     // Check that everything looks as we expect.
     {
-        let expected_total = 9;
+        let expected_total = 11;
         confirm_jetstream_stream_has_no_messages(
             &source_stream,
             STREAM_RETRY_TIMEOUT_SECONDS,
@@ -219,7 +219,7 @@ async fn round_trip(ctx: &mut DalContext, audit_database_context: AuditDatabaseC
 
     // Check that everything looks as we expect.
     {
-        let expected_total = 10;
+        let expected_total = 12;
         confirm_jetstream_stream_has_no_messages(
             &source_stream,
             STREAM_RETRY_TIMEOUT_SECONDS,
