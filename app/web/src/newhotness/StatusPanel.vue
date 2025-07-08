@@ -13,6 +13,8 @@ import {
   onMounted,
   onUnmounted,
   unref,
+  inject,
+  onBeforeUnmount,
 } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import StatusPanelIcon from "@/newhotness/StatusPanelIcon.vue";
@@ -22,7 +24,13 @@ import {
   EntityKind,
 } from "@/workers/types/entity_kind_types";
 import { useRainbow } from "@/newhotness/logic_composables/rainbow_counter";
+import { useRealtimeStore } from "@/store/realtime/realtime.store";
+import { Context, assertIsDefined } from "@/newhotness/types";
 import { useStatus } from "./logic_composables/status";
+
+const realtimeStore = useRealtimeStore();
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined(ctx);
 
 const status = useStatus();
 const bucket = reactive<Record<string, number>>({});
@@ -33,6 +41,7 @@ const tickMs = 1000;
 
 const key = useMakeKey();
 const args = useMakeArgs();
+
 const dependentValueComponentListQuery =
   useQuery<DependentValueComponentList | null>({
     queryKey: key(EntityKind.DependentValueComponentList),
@@ -49,11 +58,13 @@ watch(
   () => componentsInFlight.value,
   (newComponentsInFlight) => {
     if (newComponentsInFlight.length > 0) {
+      // BUCKET ITEM -- ADD -- COMPONENTS IN FLIGHT, DVU ROOTS, ETC.
       bucket.componentsInFlight = Date.now();
     } else if (
       newComponentsInFlight.length === 0 &&
       bucket.componentsInFlight
     ) {
+      // BUCKET ITEM -- REMOVE -- COMPONENTS IN FLIGHT, DVU ROOTS, ETC.
       delete bucket.componentsInFlight;
     }
   },
@@ -66,13 +77,58 @@ watch(
   (newRainbow) => {
     const count = unref(newRainbow.count);
     if (count > 0) {
+      // BUCKET ITEM -- ADD -- RAINBOW, MATERIALIZED VIEWS, ETC.
       bucket.rainbow = Date.now();
     } else if (count === 0 && bucket.rainbow) {
+      // BUCKET ITEM -- REMOVE -- RAINBOW, MATERIALIZED VIEWS, ETC.
       delete bucket.rainbow;
     }
   },
 );
 
+const STATUS_PANEL_KEY = "statusPanel";
+const changeSetId = computed(() => ctx.changeSetId.value);
+watch(
+  () => changeSetId.value,
+  () => {
+    realtimeStore.unsubscribe(STATUS_PANEL_KEY);
+    realtimeStore.subscribe(
+      STATUS_PANEL_KEY,
+      `changeset/${changeSetId.value}`,
+      [
+        {
+          eventType: "ManagementOperationsComplete",
+          callback: async (payload) => {
+            if (!payload.requestUlid) return;
+            const key = `management-${payload.requestUlid}`;
+            if (bucket[key]) {
+              // BUCKET ITEM -- REMOVE -- MANAGEMENT FUNCS
+              delete bucket[key];
+            }
+          },
+        },
+        {
+          eventType: "ManagementOperationsFailed",
+          callback: async (payload) => {
+            // BUCKET ITEM -- ADD -- MANAGEMENT FUNCS
+            const key = `management-${payload.requestUlid}`;
+            bucket[key] = Date.now();
+          },
+        },
+        {
+          eventType: "ManagementOperationsInProgress",
+          callback: async (payload) => {
+            // BUCKET ITEM -- ADD -- MANAGEMENT FUNCS
+            const key = `management-${payload.requestUlid}`;
+            bucket[key] = Date.now();
+          },
+        },
+      ],
+    );
+  },
+);
+
+// This watcher ejects expired items.
 watch([trigger], () => {
   const now = Date.now();
 
@@ -81,13 +137,9 @@ watch([trigger], () => {
       delete bucket[key];
     }
   }
-
-  // TODO(nick): if we saw at least one failure, we should not say everything is synced.
-  // if (deletedAtLeastOne) {
-  // status.value = undefined;
-  // }
 });
 
+// This watcher updates the status based on the state of the bucket.
 watch(
   () => ({ ...bucket }),
   (newBucket) => {
@@ -107,5 +159,8 @@ onMounted(() => {
   onUnmounted(() => {
     clearInterval(interval);
   });
+});
+onBeforeUnmount(() => {
+  realtimeStore.unsubscribe(STATUS_PANEL_KEY);
 });
 </script>

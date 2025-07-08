@@ -102,7 +102,7 @@ pub struct ManagementFuncJob {
     component_id: ComponentId,
     prototype_id: ManagementPrototypeId,
     view_id: ViewId,
-    request_ulid: Option<ulid::Ulid>,
+    request_ulid: ulid::Ulid,
 }
 
 impl ManagementFuncJob {
@@ -114,6 +114,11 @@ impl ManagementFuncJob {
         view_id: ViewId,
         request_ulid: Option<ulid::Ulid>,
     ) -> Box<Self> {
+        // NOTE(nick): this may seem hacky, but it is acceptable to create this later down the
+        // chain. That's because this ID is threaded through all management operations and its
+        // lifecycle. None of that tracking requires you create the ID at the outermost point. You
+        // just may miss early event(s).
+        let request_ulid = request_ulid.unwrap_or_default();
         Self {
             workspace_id,
             change_set_id,
@@ -145,6 +150,12 @@ impl ManagementFuncJob {
             }
             tokio::time::sleep(Duration::from_millis(WAIT_MS)).await;
             count += 1;
+
+            // Signal progress when spinning until ready.
+            WsEvent::management_operations_in_progress(ctx, self.request_ulid)
+                .await?
+                .publish_immediately(ctx)
+                .await?;
         }
         Ok(())
     }
@@ -182,6 +193,12 @@ impl ManagementFuncJob {
             )
             .await?;
 
+        // Signal progress after execution is started.
+        WsEvent::management_operations_in_progress(ctx, self.request_ulid)
+            .await?
+            .publish_immediately(ctx)
+            .await?;
+
         Self::executing_state(ctx, execution_state_id, func_run_id).await?;
 
         let execution_result = ManagementPrototype::finalize_execution(
@@ -193,6 +210,12 @@ impl ManagementFuncJob {
             run_channel,
         )
         .await?;
+
+        // Signal progress after execution is finalized, but before operation.
+        WsEvent::management_operations_in_progress(ctx, self.request_ulid)
+            .await?
+            .publish_immediately(ctx)
+            .await?;
 
         self.operate(ctx, execution_state_id, execution_result)
             .await?;
@@ -221,12 +244,18 @@ impl ManagementFuncJob {
         let mut created_component_ids = None;
         if result.status == ManagementFuncStatus::Ok {
             if let Some(operations) = result.operations {
+                // Signal progress before performing operations.
+                WsEvent::management_operations_in_progress(ctx, self.request_ulid)
+                    .await?
+                    .publish_immediately(ctx)
+                    .await?;
                 created_component_ids = ManagementOperator::new(
                     ctx,
                     self.component_id,
                     operations,
                     execution_result,
                     self.view_id.into(),
+                    self.request_ulid,
                 )
                 .await?
                 .operate()
@@ -239,7 +268,8 @@ impl ManagementFuncJob {
 
         WsEvent::management_operations_complete(
             ctx,
-            self.request_ulid,
+            // TODO(nick): make this required.
+            Some(self.request_ulid),
             func.name.clone(),
             result.message.clone(),
             result.status,
@@ -273,6 +303,12 @@ impl ManagementFuncJob {
         &self,
         ctx: &mut DalContext,
     ) -> ManagementFuncJobResult<JobCompletionState> {
+        // Signal progress when running the prototype.
+        WsEvent::management_operations_in_progress(ctx, self.request_ulid)
+            .await?
+            .publish_immediately(ctx)
+            .await?;
+
         let pending_execution =
             ManagementFuncJobState::get_pending(ctx, self.component_id, self.prototype_id)
                 .await?
@@ -287,6 +323,12 @@ impl ManagementFuncJob {
             Ok(completion_state) => Ok(completion_state),
             Err(err) => {
                 Self::fail_state(ctx, execution_state_id).await?;
+
+                // Signal failure because we never reach a "complete" state.
+                WsEvent::management_operations_failed(ctx, self.request_ulid)
+                    .await?
+                    .publish_immediately(ctx)
+                    .await?;
                 Err(err)
             }
         }
@@ -353,7 +395,8 @@ impl DalJob for ManagementFuncJob {
             component_id: self.component_id,
             prototype_id: self.prototype_id,
             view_id: self.view_id,
-            request_ulid: self.request_ulid,
+            // TODO(nick): make this required.
+            request_ulid: Some(self.request_ulid),
         }
     }
 

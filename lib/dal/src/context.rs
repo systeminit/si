@@ -1129,7 +1129,7 @@ impl DalContext {
         prototype_id: ManagementPrototypeId,
         component_id: ComponentId,
         view_id: ViewId,
-        request_ulid: Option<ulid::Ulid>,
+        request_ulid: ulid::Ulid,
     ) -> TransactionsResult<()> {
         self.txns()
             .await?
@@ -1140,7 +1140,8 @@ impl DalContext {
                 prototype_id,
                 component_id,
                 view_id,
-                request_ulid,
+                // TODO(nick): make this required.
+                Some(request_ulid),
             )
             .await;
 

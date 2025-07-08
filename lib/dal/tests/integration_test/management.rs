@@ -116,10 +116,17 @@ async fn exec_mgmt_func_and_operate(
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, component_id, operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        component_id,
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
 
     Ok(())
 }
@@ -165,6 +172,7 @@ async fn update_managed_components_in_view(ctx: &DalContext) -> Result<()> {
         operations,
         execution_result,
         Some(new_view_id),
+        ulid::Ulid::new(),
     )
     .await?
     .operate()
@@ -218,10 +226,17 @@ async fn update_managed_components(ctx: &DalContext) -> Result<()> {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        small_odd_lego.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
 
     let mut new_component = None;
     let components = Component::list(ctx).await?;
@@ -276,10 +291,17 @@ async fn create_component_of_other_schema(ctx: &DalContext) -> Result<()> {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        small_odd_lego.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
 
     let mut new_component = None;
     let components = Component::list(ctx).await?;
@@ -339,10 +361,17 @@ async fn create_and_connect_to_self_as_children(ctx: &mut DalContext) -> Result<
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        small_odd_lego.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
 
     let geometry = small_odd_lego
         .geometry(ctx, View::get_id_for_default(ctx).await?)
@@ -430,10 +459,17 @@ async fn create_and_connect_to_self(ctx: &DalContext) -> Result<()> {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        small_odd_lego.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
 
     let components = Component::list(ctx).await?;
     assert_eq!(4, components.len());
@@ -492,10 +528,17 @@ async fn create_and_connect_from_self(ctx: &DalContext) -> Result<()> {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        small_odd_lego.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
 
     let components = Component::list(ctx).await?;
     assert_eq!(4, components.len());
@@ -528,10 +571,17 @@ async fn create_component_of_same_schema(ctx: &DalContext) -> Result<()> {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        small_odd_lego.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
 
     let mut new_component = None;
     let components = Component::list(ctx).await?;
@@ -571,10 +621,17 @@ async fn create_component_of_same_schema(ctx: &DalContext) -> Result<()> {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        small_odd_lego.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
 
     let mut new_component_2 = None;
 
@@ -617,10 +674,17 @@ async fn execute_management_func(ctx: &DalContext) -> Result<()> {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        small_odd_lego.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
 
     let av_id =
         Component::attribute_value_for_prop(ctx, small_odd_lego.id(), &["root", "domain", "two"])
@@ -650,10 +714,17 @@ async fn deeply_nested_children(ctx: &DalContext) -> Result<()> {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        small_odd_lego.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
 
     let mut component_names = vec![];
 
@@ -698,10 +769,17 @@ async fn override_values_set_by_sockets(ctx: &DalContext) -> Result<()> {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        small_odd_lego.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
 
     let current = small_odd_lego.id();
     let children = Component::get_children_for_id(ctx, current).await?;
@@ -758,14 +836,20 @@ async fn create_in_views(ctx: &DalContext) -> Result<()> {
 
     let operations = result.operations.expect("should have operations");
 
-    let component_id =
-        ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-            .await?
-            .operate()
-            .await?
-            .expect("should return component ids")
-            .pop()
-            .expect("should have a component id");
+    let component_id = ManagementOperator::new(
+        ctx,
+        small_odd_lego.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?
+    .expect("should return component ids")
+    .pop()
+    .expect("should have a component id");
 
     let geometries = Geometry::by_view_for_component_id(ctx, component_id).await?;
 
@@ -828,14 +912,20 @@ async fn create_view_and_in_view(ctx: &DalContext) -> Result<()> {
 
     let operations = result.operations.expect("should have operations");
 
-    let component_id =
-        ManagementOperator::new(ctx, small_odd_lego.id(), operations, execution_result, None)
-            .await?
-            .operate()
-            .await?
-            .expect("should return component ids")
-            .pop()
-            .expect("should have a component id");
+    let component_id = ManagementOperator::new(
+        ctx,
+        small_odd_lego.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?
+    .expect("should return component ids")
+    .pop()
+    .expect("should have a component id");
 
     let red_room = View::find_by_name(ctx, view_name)
         .await?
@@ -941,10 +1031,17 @@ async fn delete_and_erase_components(ctx: &mut DalContext) -> Result<()> {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, manager.id(), operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        manager.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
 
     assert!(
         Component::try_get_by_id(ctx, component_to_delete.id())
@@ -1036,10 +1133,17 @@ async fn remove_view_and_component_from_view(ctx: &DalContext) -> Result<()> {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, manager.id(), operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        manager.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
 
     assert!(View::find_by_name(ctx, new_view_name).await?.is_none());
 
@@ -1068,10 +1172,17 @@ async fn remove_view_and_component_from_view(ctx: &DalContext) -> Result<()> {
 
     let operations = result.operations.expect("should have operations");
 
-    ManagementOperator::new(ctx, manager.id(), operations, execution_result, None)
-        .await?
-        .operate()
-        .await?;
+    ManagementOperator::new(
+        ctx,
+        manager.id(),
+        operations,
+        execution_result,
+        None,
+        ulid::Ulid::new(),
+    )
+    .await?
+    .operate()
+    .await?;
 
     assert_eq!(default_view_id, View::get_id_for_default(ctx).await?);
 

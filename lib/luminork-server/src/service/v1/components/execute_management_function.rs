@@ -10,6 +10,7 @@ use dal::{
     Component,
     ComponentId,
     Func,
+    WsEvent,
     diagram::view::View,
     management::prototype::ManagementPrototype,
 };
@@ -124,7 +125,15 @@ pub async fn execute_management_function(
             other => ComponentsError::ManagementFunctionExecutionFailed(other),
         })?;
 
-    ctx.enqueue_management_func(prototype_id, component_id, view_id, None)
+    // Enqueue the management func and create a request ULID to provide to the event payload. This
+    // is so that the activity tracker has something to work with for tracking the lifecycle of a
+    // management function in flight.
+    let request_ulid = ulid::Ulid::new();
+    ctx.enqueue_management_func(prototype_id, component_id, view_id, request_ulid)
+        .await?;
+    WsEvent::management_operations_in_progress(ctx, request_ulid)
+        .await?
+        .publish_on_commit(ctx)
         .await?;
 
     ctx.commit().await?;
