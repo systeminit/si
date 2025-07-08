@@ -92,6 +92,7 @@ import {
 } from "vue";
 import * as _ from "lodash-es";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
+import { Span, trace } from "@opentelemetry/api";
 import NavbarPanelLeft from "@/components/layout/navbar/NavbarPanelLeft.vue";
 import NavbarPanelRight from "@/components/layout/navbar/NavbarPanelRight.vue";
 import NavbarButton from "@/components/layout/navbar/NavbarButton.vue";
@@ -121,6 +122,7 @@ import {
 import { tokensByWorkspacePk } from "./logic_composables/tokens";
 import ComponentPage from "./ComponentDetails.vue";
 
+const tracer = trace.getTracer("si-vue");
 const navbarPanelLeftRef = ref<InstanceType<typeof NavbarPanelLeft>>();
 
 const props = defineProps<{
@@ -132,6 +134,8 @@ const props = defineProps<{
   funcRunId?: string;
   actionId?: string;
 }>();
+
+const span = ref<Span | undefined>();
 
 const lobby = computed(() => {
   const muspelheimStates = heimdall.muspelheimStatuses.value;
@@ -146,6 +150,27 @@ const lobby = computed(() => {
   }
   return false;
 });
+
+watch(
+  lobby,
+  () => {
+    if (!span.value && lobby.value) {
+      span.value = tracer.startSpan("lobby");
+      span.value.setAttributes({
+        ...props,
+        user: authStore.user?.pk,
+        "si.workspace.id": props.workspacePk,
+        "si.changeset.id": props.changeSetId,
+      });
+    }
+
+    if (span.value && !lobby.value) {
+      span.value.end();
+      span.value = undefined;
+    }
+  },
+  { immediate: true },
+);
 
 const authStore = useAuthStore();
 const featureFlagsStore = useFeatureFlagsStore();

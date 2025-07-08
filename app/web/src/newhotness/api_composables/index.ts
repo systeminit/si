@@ -12,7 +12,7 @@ import { reset } from "../logic_composables/navigation_stack";
 export * as componentTypes from "./component";
 export * as funcRunTypes from "./func_run";
 
-const tracer = trace.getTracer("bifrost");
+const tracer = trace.getTracer("si-vue");
 
 export enum routes {
   ActionAdd = "ActionAdd",
