@@ -10,20 +10,34 @@
         class="break-all"
       >
         <template v-if="qualificationStatus === 'success'"> Passed! </template>
-        <template
+        <div
           v-else-if="
             qualificationStatus === 'failure' ||
             qualificationStatus === 'warning'
           "
+          class="w-full flex flex-row gap-xs"
         >
-          {{ qualification.message }}
-        </template>
+          <span class="grow">
+            {{ qualification.message }}
+          </span>
+          <button
+            v-if="
+              (qualification.avId || qualification.output) &&
+              (qualification.message || output?.length)
+            "
+            tabindex="-1"
+            class="underline text-action-400 shrink-0"
+            @click="toggleHidden"
+          >
+            {{ showDetails ? "Hide" : "View" }} Details
+          </button>
+        </div>
         <template v-else>
           The qualification has not yet ran or is actively running.
         </template>
       </StatusMessageBox>
 
-      <template v-if="showDetails && qualification.avId">
+      <template v-if="showDetails">
         <div
           v-if="output?.length"
           class="my-xs p-xs border border-warning-600 text-warning-500 rounded"
@@ -39,19 +53,6 @@
         </div>
         <LoadingMessage v-else message="Loading Details..." />
       </template>
-
-      <div
-        v-if="qualification.avId && (qualification.message || output?.length)"
-        class="text-right"
-      >
-        <button
-          tabindex="-1"
-          class="underline text-action-400"
-          @click="toggleHidden"
-        >
-          {{ showDetails ? "Hide" : "View" }} Details
-        </button>
-      </div>
     </div>
   </li>
 </template>
@@ -82,7 +83,15 @@ const qualificationStatus = computed(() => {
 
 const toggleHidden = async () => {
   showDetails.value = !showDetails.value;
-  if (showDetails.value && props.qualification.avId) {
+
+  if (!showDetails.value) return;
+
+  if (props.qualification.output) {
+    output.value = props.qualification.output;
+    return;
+  }
+
+  if (props.qualification.avId) {
     const call = api.endpoint<funcRunTypes.FuncRunLogsResponse>(
       routes.FuncRunByAv,
       {
