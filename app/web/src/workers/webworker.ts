@@ -114,7 +114,7 @@ const tracer = trace.getTracer("bifrost");
 const log = console.log;
 // eslint-disable-next-line no-console
 const error = console.error;
-const _DEBUG = true; // import.meta.env.VITE_SI_ENV === "local";
+const _DEBUG = import.meta.env.VITE_SI_ENV === "local";
 const _START_FRESH = false;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function debug(...args: any | any[]) {
@@ -515,125 +515,161 @@ const bustCacheAndReferences = (
   });
 };
 
-const handleHammer = async (msg: AtomMessage, span?: Span) => {
-  debug(
-    "🔨 HAMMER RECEIVED:",
-    msg.atom.kind,
-    msg.atom.id,
-    "toChecksum:",
-    msg.atom.toChecksum,
-  );
+const handleHammer = async (msg: AtomMessage) => {
+  await tracer.startActiveSpan("Mjolnir", async (span) => {
+    debug(
+      "🔨 HAMMER RECEIVED:",
+      msg.atom.kind,
+      msg.atom.id,
+      "toChecksum:",
+      msg.atom.toChecksum,
+    );
 
-  // Log index checksum for validation context
-  if (msg.atom.toChecksum) {
-    span?.setAttribute("indexChecksum", msg.atom.toIndexChecksum);
-    debug("🔨 handling hammer with index checksum", msg.atom.toIndexChecksum);
-  }
+    const { changeSetId, workspaceId, toIndexChecksum } = { ...msg.atom };
 
-  // Make sure the index exists before we try to insert atoms into it
-  const indexChecksum = initIndexAndChangeSet(msg.atom, span);
+    span.setAttributes({
+      changeSetId,
+      workspaceId,
+      toIndexChecksum,
+    });
 
-  // in between throwing a hammer and receiving it, i might already have written the atom
-  const indexes = atomExistsOnIndexes(
-    msg.atom.kind,
-    msg.atom.id,
-    msg.atom.toChecksum,
-  );
-  let noop = false;
-  if (indexes.length > 0) {
-    if (indexes.includes(msg.atom.toIndexChecksum)) {
+    // Log index checksum for validation context
+    if (msg.atom.toChecksum) {
+      debug("🔨 handling hammer with index checksum", msg.atom.toIndexChecksum);
+    }
+
+    // in between throwing a hammer and receiving it, i might already have written the atom
+    const indexes = atomExistsOnIndexes(
+      msg.atom.kind,
+      msg.atom.id,
+      msg.atom.toChecksum,
+    );
+    let noop = false;
+    if (indexes.length > 0) {
+      if (indexes.includes(msg.atom.toIndexChecksum)) {
+        span.setAttributes({
+          noop: true,
+          upToDateAtomIndexes: indexes,
+          needToInsertMTM: false,
+        });
+        debug(
+          "🔨 HAMMER NOOP: Atom already exists in index:",
+          msg.atom.kind,
+          msg.atom.id,
+          msg.atom.toChecksum,
+          indexes,
+        );
+        noop = true;
+      } else {
+        debug("HAMMER: Atom exists, MTM needed");
+        span.setAttributes({
+          noop: true,
+          upToDateAtomIndexes: indexes,
+          needToInsertMTM: true,
+        });
+        const inserted = insertAtomMTM(msg.atom, msg.atom.toIndexChecksum);
+        span.setAttribute("insertedMTM", inserted);
+        noop = true;
+      }
+    }
+
+    // Make sure the index exists before we try to insert atoms into it
+    const indexChecksum = initIndexAndChangeSet(msg.atom, span);
+
+    if (!indexChecksum) {
+      throw new Error(
+        `Expected index checksum for ${msg.atom.toIndexChecksum}`,
+      );
+    }
+
+    // if the atom exists, i just need the MTM
+    if (indexes.length === 0) {
       debug(
-        "🔨 HAMMER NOOP: Atom already exists in index:",
+        "🔨 HAMMER: Creating new atom:",
         msg.atom.kind,
         msg.atom.id,
+        "checksum:",
         msg.atom.toChecksum,
+      );
+      span.setAttribute("createAtom", true);
+      await createAtom(msg.atom, msg.data, span);
+      debug(
+        "🔨 HAMMER: Atom created successfully:",
+        msg.atom.kind,
+        msg.atom.id,
+        "checksum:",
+        msg.atom.toChecksum,
+      );
+    } else {
+      debug(
+        "🔨 HAMMER: Atom exists, just need MTM:",
+        msg.atom.kind,
+        msg.atom.id,
+        "existing indexes:",
         indexes,
       );
-      noop = true;
-    } else {
-      debug("HAMMER: Atom exists, MTM needed");
-      insertAtomMTM(msg.atom, msg.atom.toIndexChecksum);
-      noop = true;
+      span.setAttributes({
+        upToDateAtomIndexes: indexes,
+        needToInsertMTM: true,
+      });
     }
-  }
 
-  // if the atom exists, i just need the MTM
-  if (indexes.length === 0) {
+    if (!noop) {
+      debug(
+        "🔨 HAMMER: Inserting MTM for:",
+        msg.atom.kind,
+        msg.atom.id,
+        "checksum:",
+        msg.atom.toChecksum,
+        "index:",
+        indexChecksum,
+      );
+      span.setAttributes({
+        needToInsertMTM: true,
+      });
+      const inserted = insertAtomMTM(msg.atom, indexChecksum);
+      span.setAttribute("insertedMTM", inserted);
+    }
+
+    updateChangeSetWithNewIndex(msg.atom);
+    span.setAttribute("updatedWithNewIndex", true);
+    removeOldIndex(span);
+
+    if (
+      COMPUTED_KINDS.includes(msg.atom.kind) ||
+      LISTABLE_ITEMS.includes(msg.atom.kind)
+    ) {
+      debug("🔨 HAMMER: Updating computed for:", msg.atom.kind, msg.atom.id);
+      postProcess(
+        msg.atom.workspaceId,
+        msg.atom.changeSetId,
+        msg.atom.kind,
+        msg.data,
+        msg.atom.id,
+        indexChecksum,
+      );
+    }
+
     debug(
-      "🔨 HAMMER: Creating new atom:",
+      "🔨 HAMMER: Busting cache for:",
       msg.atom.kind,
       msg.atom.id,
       "checksum:",
       msg.atom.toChecksum,
     );
-    await createAtom(msg.atom, msg.data, span);
-    debug(
-      "🔨 HAMMER: Atom created successfully:",
-      msg.atom.kind,
-      msg.atom.id,
-      "checksum:",
-      msg.atom.toChecksum,
+    span.setAttribute(
+      "bustCache",
+      JSON.stringify([msg.atom.kind, msg.atom.id]),
     );
-  } else {
-    debug(
-      "🔨 HAMMER: Atom exists, just need MTM:",
-      msg.atom.kind,
-      msg.atom.id,
-      "existing indexes:",
-      indexes,
-    );
-  }
-
-  if (!indexChecksum) {
-    throw new Error(`Expected index checksum for ${msg.atom.toIndexChecksum}`);
-  }
-
-  if (!noop) {
-    debug(
-      "🔨 HAMMER: Inserting MTM for:",
-      msg.atom.kind,
-      msg.atom.id,
-      "checksum:",
-      msg.atom.toChecksum,
-      "index:",
-      indexChecksum,
-    );
-    insertAtomMTM(msg.atom, indexChecksum);
-  }
-
-  updateChangeSetWithNewIndex(msg.atom);
-  await removeOldIndex();
-
-  if (
-    COMPUTED_KINDS.includes(msg.atom.kind) ||
-    LISTABLE_ITEMS.includes(msg.atom.kind)
-  ) {
-    debug("🔨 HAMMER: Updating computed for:", msg.atom.kind, msg.atom.id);
-    postProcess(
+    bustCacheAndReferences(
       msg.atom.workspaceId,
       msg.atom.changeSetId,
       msg.atom.kind,
-      msg.data,
       msg.atom.id,
-      indexChecksum,
+      false,
+      true,
     );
-  }
-
-  debug(
-    "🔨 HAMMER: Busting cache for:",
-    msg.atom.kind,
-    msg.atom.id,
-    "checksum:",
-    msg.atom.toChecksum,
-  );
-  bustCacheAndReferences(
-    msg.atom.workspaceId,
-    msg.atom.changeSetId,
-    msg.atom.kind,
-    msg.atom.id,
-    false,
-    true,
-  );
+  });
 };
 
 const insertAtomMTM = (atom: Atom, indexChecksum: Checksum) => {
@@ -673,16 +709,10 @@ const insertAtomMTM = (atom: Atom, indexChecksum: Checksum) => {
  * @param meta new (and previous) index for the changeset
  * @param span tracing span to work with
  */
-const initIndexAndChangeSet = (meta: AtomMeta, span?: Span) => {
-  const { changeSetId, workspaceId, toIndexChecksum } = {
+const initIndexAndChangeSet = (meta: AtomMeta, span: Span) => {
+  const { toIndexChecksum } = {
     ...meta,
   };
-
-  span?.setAttributes({
-    changeSetId,
-    workspaceId,
-    toIndexChecksum,
-  });
 
   //
   // Figure out what index the change set has right now
@@ -697,6 +727,10 @@ const initIndexAndChangeSet = (meta: AtomMeta, span?: Span) => {
   const changeSet = changeSetQuery[0] as string[];
   if (changeSet) {
     [changeSetExists, currentIndexChecksum] = [...changeSet];
+    span.setAttributes({
+      changeSetExists,
+      currentIndexChecksum,
+    });
   }
 
   const indexQuery = db.exec({
@@ -705,6 +739,7 @@ const initIndexAndChangeSet = (meta: AtomMeta, span?: Span) => {
     bind: [toIndexChecksum],
   });
   const indexExists = oneInOne(indexQuery);
+  if (indexExists) span.setAttribute("indexExists", indexExists?.toString());
 
   if (changeSetExists && !currentIndexChecksum) {
     throw new Error("Null value from SQL, impossible");
@@ -728,7 +763,10 @@ const initIndexAndChangeSet = (meta: AtomMeta, span?: Span) => {
   //
   // Create the index if it doesn't exist--and copy the previous index if we have them
   //
-  if (indexExists === NOROW) newIndex(meta, currentIndexChecksum);
+  if (indexExists === NOROW) {
+    span.setAttribute("newIndexCreated", true);
+    newIndex(meta, currentIndexChecksum);
+  }
 
   //
   // Create the changeset record if it doesn't exist
@@ -736,6 +774,7 @@ const initIndexAndChangeSet = (meta: AtomMeta, span?: Span) => {
   // TODO this is the wrong place to do this, or at least it shouldn't use the toIndexChecksum;
   // in general, we don't associate a changeset with a specific index until that index is complete!
   if (!changeSetExists) {
+    span.setAttribute("changeSetCreated", true);
     db.exec({
       sql: "insert into changesets (change_set_id, workspace_id, index_checksum) VALUES (?, ?, ?);",
       bind: [meta.changeSetId, meta.workspaceId, toIndexChecksum],
@@ -748,174 +787,219 @@ const initIndexAndChangeSet = (meta: AtomMeta, span?: Span) => {
   return toIndexChecksum;
 };
 
-const handlePatchMessage = async (data: PatchBatch, span?: Span) => {
-  const batchId = `${data.meta.toIndexChecksum}-${data.patches.length}`;
-  debug("📦 BATCH START:", batchId);
+const handlePatchMessage = async (data: PatchBatch) => {
+  await tracer.startActiveSpan("PatchBatch", async (span) => {
+    try {
+      const batchId = `${data.meta.toIndexChecksum}-${data.patches.length}`;
+      debug("📦 BATCH START:", batchId);
 
-  span?.setAttribute("numRawPatches", data.patches.length);
-  debug(data.patches);
-  if (data.patches.length === 0) return;
-  // Assumption: every patch is working on the same workspace and changeset
-  // (e.g. we're not bundling messages across workspaces somehow)
+      const { changeSetId, workspaceId, toIndexChecksum } = { ...data.meta };
 
-  if (!data.meta.changeSetId) throw new Error("Expected changeSetId");
-  if (!data.meta.toIndexChecksum) throw new Error("Expected indexChecksum");
-
-  // Log index checksum for tracing - this provides validation at the index level
-  span?.setAttribute("indexChecksum", data.meta.toIndexChecksum);
-  debug("📦 Processing patches with index checksum", data.meta.toIndexChecksum);
-  debug(
-    "📦 Patch details:",
-    data.patches.map(
-      (p, i) =>
-        `[${i}] ${p.kind}.${p.id}: ${p.fromChecksum} -> ${p.toChecksum}`,
-    ),
-  );
-
-  // Check for duplicate patches in the same batch
-  const patchKeys = data.patches.map(
-    (p) => `${p.kind}.${p.id}.${p.fromChecksum}.${p.toChecksum}`,
-  );
-  const uniquePatchKeys = new Set(patchKeys);
-  if (patchKeys.length !== uniquePatchKeys.size) {
-    debug("📦 WARNING: Duplicate patches detected in batch!", {
-      total: patchKeys.length,
-      unique: uniquePatchKeys.size,
-      duplicates: patchKeys.filter(
-        (key, index) => patchKeys.indexOf(key) !== index,
-      ),
-    });
-  }
-
-  let indexChecksum: string;
-  try {
-    indexChecksum = initIndexAndChangeSet(data.meta, span);
-    debug("📦 Index logic completed, resolved checksum:", indexChecksum);
-  } catch (err) {
-    if (err instanceof Ragnarok) {
-      span?.addEvent("ragnarok", {
-        patchBatch: JSON.stringify(data),
-        fromChecksumExpected: err.fromChecksumExpected,
-        currentChecksum: err.currentChecksum,
+      span.setAttributes({
+        batchId,
+        numRawPatches: data.patches.length,
+        rawPatches: JSON.stringify(data.patches),
+        changeSetId,
+        workspaceId,
+        toIndexChecksum,
       });
-      ragnarok(err.workspaceId, err.changeSetId);
-      return;
-    } else {
-      throw err;
-    }
-  }
+      debug("RAW PATCHES", data.patches);
+      if (data.patches.length === 0) {
+        span.end();
+        return;
+      }
+      // Assumption: every patch is working on the same workspace and changeset
+      // (e.g. we're not bundling messages across workspaces somehow)
 
-  /**
-   * Patches are not coming over the wire in any meaningful
-   * order, which means they can be inter-dependent e.g. an item in
-   * a list can be _after_ the list that wants it.
-   * This causes an unnecessary hammer by the list when its cache busts
-   * it doesn't have the item on the read.
-   *
-   * BUT NOW, we're not busting on a list (other than a hammer)
-   * So we can do the lists first, which fixes the add/remove behavior
-   * for postProcessing
-   */
+      if (!data.meta.changeSetId) throw new Error("Expected changeSetId");
+      if (!data.meta.toIndexChecksum) throw new Error("Expected indexChecksum");
 
-  const atoms = data.patches
-    .map((rawAtom) => {
-      const atom: Atom = {
-        ...rawAtom,
-        ...data.meta,
-        operations: rawAtom.patch,
-      };
-      return atom;
-    })
-    .filter((rawAtom): rawAtom is Required<Atom> => !!rawAtom.fromChecksum);
-
-  span?.setAttribute("numAtoms", atoms.length);
-  if (!indexChecksum) {
-    throw new Error(`Expected index checksum for ${data.meta.toIndexChecksum}`);
-  }
-
-  // lists first now
-  const listAtoms = atoms.filter((a) => LISTABLE.includes(a.kind));
-  debug(
-    "📦 Processing list atoms:",
-    listAtoms.length,
-    listAtoms.map(
-      (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
-    ),
-  );
-  // not busting these
-  await Promise.all(
-    listAtoms.map(async (atom) => {
-      return applyPatch(atom, indexChecksum);
-    }),
-  );
-
-  // non-list atoms
-  // non-connections (e.g. components need to go before connections)
-  const nonListAtoms = atoms.filter(
-    (a) =>
-      !LISTABLE.includes(a.kind) && a.kind !== EntityKind.IncomingConnections,
-  );
-  debug(
-    "📦 Processing non-list atoms:",
-    nonListAtoms.length,
-    nonListAtoms.map(
-      (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
-    ),
-  );
-  const atomsToBust = await Promise.all(
-    nonListAtoms.map(async (atom) => {
-      return applyPatch(atom, indexChecksum);
-    }),
-  );
-
-  const connectionAtoms = atoms.filter(
-    (a) => a.kind === EntityKind.IncomingConnections,
-  );
-  debug(
-    "📦 Processing connection atoms:",
-    connectionAtoms.length,
-    connectionAtoms.map(
-      (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
-    ),
-  );
-  const connAtomsToBust = await Promise.all(
-    connectionAtoms.map(async (atom) => {
-      return await applyPatch(atom, indexChecksum);
-    }),
-  );
-
-  updateChangeSetWithNewIndex(data.meta);
-  await removeOldIndex();
-
-  debug(
-    "🧹 Busting cache for atoms:",
-    atomsToBust.length + connAtomsToBust.length,
-  );
-
-  atomsToBust.forEach((atom) => {
-    if (atom) {
-      debug("🧹 Busting cache for atom:", atom.kind, atom.id);
-      bustCacheAndReferences(
-        atom.workspaceId,
-        atom.changeSetId,
-        atom.kind,
-        atom.id,
+      // Log index checksum for tracing - this provides validation at the index level
+      debug(
+        "📦 Processing patches with index checksum",
+        data.meta.toIndexChecksum,
       );
+      debug(
+        "📦 Patch details:",
+        data.patches.map(
+          (p, i) =>
+            `[${i}] ${p.kind}.${p.id}: ${p.fromChecksum} -> ${p.toChecksum}`,
+        ),
+      );
+
+      // Check for duplicate patches in the same batch
+      // const patchKeys = data.patches.map(
+      //   (p) => `${p.kind}.${p.id}.${p.fromChecksum}.${p.toChecksum}`,
+      // );
+      // const uniquePatchKeys = new Set(patchKeys);
+      // if (patchKeys.length !== uniquePatchKeys.size) {
+      //   debug("📦 WARNING: Duplicate patches detected in batch!", {
+      //     total: patchKeys.length,
+      //     unique: uniquePatchKeys.size,
+      //     duplicates: patchKeys.filter(
+      //       (key, index) => patchKeys.indexOf(key) !== index,
+      //     ),
+      //   });
+      // }
+
+      let indexChecksum: string;
+      try {
+        indexChecksum = initIndexAndChangeSet(data.meta, span);
+        debug("📦 Index logic completed, resolved checksum:", indexChecksum);
+      } catch (err) {
+        if (err instanceof Ragnarok) {
+          // not currently implemented
+          span.addEvent("ragnarok", {
+            patchBatch: JSON.stringify(data),
+            fromChecksumExpected: err.fromChecksumExpected,
+            currentChecksum: err.currentChecksum,
+          });
+          ragnarok(err.workspaceId, err.changeSetId);
+          return;
+        } else {
+          throw err;
+        }
+      }
+
+      /**
+       * Patches are not coming over the wire in any meaningful
+       * order, which means they can be inter-dependent e.g. an item in
+       * a list can be _after_ the list that wants it.
+       * This causes an unnecessary hammer by the list when its cache busts
+       * it doesn't have the item on the read.
+       *
+       * BUT NOW, we're not busting on a list (other than a hammer)
+       * So we can do the lists first, which fixes the add/remove behavior
+       * for postProcessing
+       */
+
+      const atoms = data.patches
+        .map((rawAtom) => {
+          const atom: Atom = {
+            ...rawAtom,
+            ...data.meta,
+            operations: rawAtom.patch,
+          };
+          return atom;
+        })
+        .filter((rawAtom): rawAtom is Required<Atom> => !!rawAtom.fromChecksum);
+
+      span.setAttribute("numAtoms", atoms.length);
+      if (!indexChecksum) {
+        throw new Error(
+          `Expected index checksum for ${data.meta.toIndexChecksum}`,
+        );
+      }
+
+      // lists first now
+      const listAtoms = atoms.filter((a) => LISTABLE.includes(a.kind));
+      const listAtomsDesc = listAtoms.map(
+        (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
+      );
+      span.setAttributes({
+        listAtomsLength: listAtoms.length,
+        listAtomsDesc,
+      });
+      debug("📦 Processing list atoms:", listAtoms.length, listAtomsDesc);
+      // not busting these
+      await Promise.all(
+        listAtoms.map(async (atom) => {
+          return applyPatch(atom, indexChecksum);
+        }),
+      );
+
+      // non-list atoms
+      // non-connections (e.g. components need to go before connections)
+      const nonListAtoms = atoms.filter(
+        (a) =>
+          !LISTABLE.includes(a.kind) &&
+          a.kind !== EntityKind.IncomingConnections,
+      );
+      const nonListAtomsDesc = nonListAtoms.map(
+        (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
+      );
+      span.setAttributes({
+        nonListAtomsLength: nonListAtoms.length,
+        nonListAtomsDesc,
+      });
+      debug(
+        "📦 Processing non-list atoms:",
+        nonListAtoms.length,
+        nonListAtomsDesc,
+      );
+
+      const atomsToBust = await Promise.all(
+        nonListAtoms.map(async (atom) => {
+          return applyPatch(atom, indexChecksum);
+        }),
+      );
+
+      const connectionAtoms = atoms.filter(
+        (a) => a.kind === EntityKind.IncomingConnections,
+      );
+      const connectionAtomsDesc = connectionAtoms.map(
+        (a) => `${a.kind}.${a.id}: ${a.fromChecksum} -> ${a.toChecksum}`,
+      );
+      span.setAttributes({
+        connectionAtomsLength: connectionAtoms.length,
+        connectionAtomsDesc,
+      });
+      debug(
+        "📦 Processing connection atoms:",
+        connectionAtoms.length,
+        connectionAtomsDesc,
+      );
+      const connAtomsToBust = await Promise.all(
+        connectionAtoms.map(async (atom) => {
+          return await applyPatch(atom, indexChecksum);
+        }),
+      );
+
+      updateChangeSetWithNewIndex(data.meta);
+      span.setAttribute("updatedWithNewIndex", true);
+      removeOldIndex(span);
+
+      debug(
+        "🧹 Busting cache for atoms:",
+        atomsToBust.length + connAtomsToBust.length,
+      );
+
+      span.setAttributes({
+        bustCacheLength: atomsToBust.length + connAtomsToBust.length,
+        bustCache: JSON.stringify(
+          [...atomsToBust, ...connAtomsToBust]
+            .filter((a): a is Required<Atom> => !!a)
+            .map((a) => [a.kind, a.id]),
+        ),
+      });
+      atomsToBust.forEach((atom) => {
+        if (atom) {
+          debug("🧹 Busting cache for atom:", atom.kind, atom.id);
+          bustCacheAndReferences(
+            atom.workspaceId,
+            atom.changeSetId,
+            atom.kind,
+            atom.id,
+          );
+        }
+      });
+      connAtomsToBust.forEach((atom) => {
+        if (atom) {
+          debug("🧹 Busting cache for connection:", atom.kind, atom.id);
+          bustCacheAndReferences(
+            atom.workspaceId,
+            atom.changeSetId,
+            atom.kind,
+            atom.id,
+          );
+        }
+      });
+
+      debug("📦 BATCH COMPLETE:", batchId);
+    } finally {
+      span.end();
     }
   });
-  connAtomsToBust.forEach((atom) => {
-    if (atom) {
-      debug("🧹 Busting cache for connection:", atom.kind, atom.id);
-      bustCacheAndReferences(
-        atom.workspaceId,
-        atom.changeSetId,
-        atom.kind,
-        atom.id,
-      );
-    }
-  });
-
-  debug("📦 BATCH COMPLETE:", batchId);
 };
 
 const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
@@ -951,7 +1035,8 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
       );
       // get the doc for post processing
       doc = atomDocumentForChecksum(atom.kind, atom.id, atom.toChecksum);
-      span.addEvent("noop", {
+      span.setAttributes({
+        noop: true,
         upToDateAtomIndexes: JSON.stringify(upToDateAtomIndexes),
       });
       span.end();
@@ -982,7 +1067,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
         if (!exists) {
           // if i already have it, this is a NOOP
           debug("🔧 Creating new atom from patch:", atom.kind, atom.id);
-          span.setAttribute("createAtomFromPatch", true);
+          span.setAttribute("createAtom", true);
           doc = await createAtomFromPatch(atom, span);
           needToInsertMTM = true;
           bustCache = true;
@@ -1017,11 +1102,12 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
             "fromChecksum:",
             atom.fromChecksum,
           );
-          span.addEvent("mjolnir", {
-            atom: JSON.stringify(atom),
-            previousIndexes: JSON.stringify(previousIndexes),
-            toChecksumIndexes: JSON.stringify([]), // indexes variable was removed
-            source: "applyPatch",
+          span.setAttributes({
+            mjolnir: true,
+            mjolnirAtom: JSON.stringify(atom),
+            mjolnirPreviousIndexes: JSON.stringify(previousIndexes),
+            mjolnirToChecksumIndexes: JSON.stringify([]), // indexes variable was removed
+            mjolnirSource: "applyPatch",
           });
           debug("applyPatch mjolnir", atom.kind, atom.id);
           mjolnir(
@@ -1037,7 +1123,10 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
 
     // this insert potentially replaces the MTM row that exists for the current index
     // based on the table constraint
-    span.setAttribute("needToInsertMTM", needToInsertMTM);
+    span.setAttributes({
+      needToInsertMTM,
+      bustCache,
+    });
     if (needToInsertMTM) {
       debug(
         "🔧 Inserting MTM for:",
@@ -1372,51 +1461,47 @@ const updateChangeSetWithNewIndex = (
   });
 };
 
-const removeOldIndex = async () => {
-  await tracer.startActiveSpan("removeOldIndex", async (span) => {
-    // Keep the last 5 indexes per changeset for debugging purposes
-    // This helps track previous session checksums
-    const deleteIndexes = db.exec({
-      sql: `
-        DELETE FROM indexes
-        WHERE checksum NOT IN (
-          SELECT index_checksum FROM changesets
-        )
-        RETURNING *;
-      `,
-      returnValue: "resultRows",
-    });
-
-    // Only delete atoms that aren't referenced by any index (including retained ones)
-    const deleteAtoms = db.exec({
-      sql: `
-        DELETE FROM atoms
-        WHERE (kind, args, checksum) NOT IN (
-          SELECT kind, args, checksum FROM index_mtm_atoms
-        ) returning atoms.kind, atoms.args, atoms.checksum;
-      `,
-      returnValue: "resultRows",
-    });
-
-    span.setAttributes({
-      indexes: JSON.stringify(deleteIndexes),
-      atoms: JSON.stringify(deleteAtoms),
-    });
-
-    if (deleteIndexes.length > 0) {
-      debug(
-        "🗑️ Cleaned up",
-        deleteIndexes.length,
-        "old indexes (keeping recent 5 per workspace)",
-        deleteIndexes,
-      );
-    }
-    if (deleteAtoms.length > 0) {
-      debug("🗑️ Cleaned up", deleteAtoms.length, "orphaned atoms", deleteAtoms);
-    }
-
-    span.end();
+const removeOldIndex = async (span: Span) => {
+  // Keep the last 5 indexes per changeset for debugging purposes
+  // This helps track previous session checksums
+  const deleteIndexes = db.exec({
+    sql: `
+      DELETE FROM indexes
+      WHERE checksum NOT IN (
+        SELECT index_checksum FROM changesets
+      )
+      RETURNING *;
+    `,
+    returnValue: "resultRows",
   });
+
+  // Only delete atoms that aren't referenced by any index (including retained ones)
+  const deleteAtoms = db.exec({
+    sql: `
+      DELETE FROM atoms
+      WHERE (kind, args, checksum) NOT IN (
+        SELECT kind, args, checksum FROM index_mtm_atoms
+      ) returning atoms.kind, atoms.args, atoms.checksum;
+    `,
+    returnValue: "resultRows",
+  });
+
+  span.setAttributes({
+    deletedIndexes: JSON.stringify(deleteIndexes),
+    deletedAtoms: JSON.stringify(deleteAtoms),
+  });
+
+  if (deleteIndexes.length > 0) {
+    debug(
+      "🗑️ Cleaned up",
+      deleteIndexes.length,
+      "old indexes (keeping recent 5 per workspace)",
+      deleteIndexes,
+    );
+  }
+  if (deleteAtoms.length > 0) {
+    debug("🗑️ Cleaned up", deleteAtoms.length, "orphaned atoms", deleteAtoms);
+  }
 };
 
 const pruneAtomsForClosedChangeSet = async (
@@ -1431,7 +1516,7 @@ const pruneAtomsForClosedChangeSet = async (
       `,
       bind: [changeSetId],
     });
-    await removeOldIndex();
+    removeOldIndex(span);
     span.end();
   });
 };
@@ -2205,13 +2290,13 @@ const getComponentDetails = (
       atoms.kind = 'Component'
     ;`;
   const bind = [indexChecksum ?? changeSetId];
-  const start = Date.now();
+  const start = performance.now();
   const data = db.exec({
     sql,
     bind,
     returnValue: "resultRows",
   });
-  const end = Date.now();
+  const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("sql get names", end - start, "ms");
   const details: Record<string, ComponentInfo> = {};
@@ -2539,13 +2624,13 @@ from
     id,
     indexChecksum ?? changeSetId,
   ];
-  const start = Date.now();
+  const start = performance.now();
   const atomData = db.exec({
     sql,
     bind,
     returnValue: "resultRows",
   });
-  const end = Date.now();
+  const end = performance.now();
   debug(
     "❓ sql getList",
     `[${end - start}ms]`,
@@ -2590,13 +2675,13 @@ const get = (
       atoms.args = ?
     ;`;
   const bind = [indexChecksum ?? changeSetId, kind, id];
-  const start = Date.now();
+  const start = performance.now();
   const atomData = db.exec({
     sql,
     bind,
     returnValue: "resultRows",
   });
-  const end = Date.now();
+  const end = performance.now();
   const data = oneInOne(atomData);
   debug(
     "❓ sql get",
@@ -2663,13 +2748,13 @@ const getSchemaMembers = (
     ;`;
 
   const bind = [indexChecksum ?? changeSetId, EntityKind.SchemaMembers];
-  const start = Date.now();
+  const start = performance.now();
   const atomData = db.exec({
     sql,
     bind,
     returnValue: "resultRows",
   });
-  const end = Date.now();
+  const end = performance.now();
 
   debug("❓ sql getSchemaMembers", `[${end - start}ms]`);
   if (atomData.length === 0) return "";
@@ -2714,13 +2799,13 @@ const getMany = (
     ;`;
 
   const bind = [indexChecksum ?? changeSetId, kind, ...ids];
-  const start = Date.now();
+  const start = performance.now();
   const atomData = db.exec({
     sql,
     bind,
     returnValue: "resultRows",
   });
-  const end = Date.now();
+  const end = performance.now();
 
   debug(
     "❓ sql getMany",
@@ -2894,28 +2979,23 @@ const dbInterface: TabDBInterface = {
             log("🌈 bifrost incoming", data);
           }
 
-          // Track message processing to detect duplicates
-          let messageId: string;
-          if (data.kind === MessageKind.PATCH) {
-            messageId = `${data.kind}-${data.meta.toIndexChecksum}-${data.patches.length}`;
-          } else if (data.kind === MessageKind.MJOLNIR) {
-            messageId = `${data.kind}-${data.atom.kind}-${data.atom.id}-${data.atom.toChecksum}`;
-          } else {
-            messageId = `${data.kind}`;
-          }
-          debug("📨 Processing message:", messageId);
-
           if (!("kind" in data)) span.setAttribute("kindMissing", "no kind");
           else {
-            span.setAttribute("messageKind", data.kind);
+            span.setAttributes({
+              messageKind: data.kind,
+            });
+            if ("meta" in data) {
+              const { changeSetId, workspaceId, toIndexChecksum } = {
+                ...data.meta,
+              };
+              span.setAttributes({
+                messageKind: data.kind,
+                changeSetId,
+                workspaceId,
+                toIndexChecksum,
+              });
+            }
             if (data.kind === MessageKind.PATCH) {
-              if (!data.meta.toIndexChecksum) {
-                // eslint-disable-next-line no-console
-                console.error(
-                  "ATTEMPTING TO PATCH BUT INDEX CHECKSUM IS MISSING",
-                  data.meta,
-                );
-              }
               debug(
                 "📨 PATCH MESSAGE START:",
                 data.meta.toIndexChecksum,
