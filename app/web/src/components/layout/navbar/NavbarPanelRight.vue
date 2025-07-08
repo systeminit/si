@@ -3,7 +3,8 @@
     class="flex flex-row flex-1 basis-1/2 items-center min-w-0 h-full justify-end"
   >
     <Collaborators />
-    <Notifications />
+    <NewhotnessNotifications v-if="useNewUI" />
+    <Notifications v-else />
 
     <template v-if="featureFlagsStore.SQLITE_TOOLS">
       <NavbarButton icon="odin" size="sm">
@@ -142,6 +143,7 @@ import ApplyChangeSetButton from "@/newhotness/ApplyChangeSetButton.vue";
 import NavbarButton from "./NavbarButton.vue";
 import Collaborators from "./Collaborators.vue";
 import Notifications from "./Notifications.vue";
+import NewhotnessNotifications from "@/newhotness/navbar/Notifications.vue";
 import WorkspaceSettingsMenu from "./WorkspaceSettingsMenu.vue";
 import ProfileButton from "./ProfileButton.vue";
 

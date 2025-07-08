@@ -111,10 +111,13 @@ const allActionViews = computed(() => {
   if (!actionViewList.data.value) return [];
   if (actionViewList.data.value.actions.length < 1) return [];
   const proposed = actionViewList.data.value.actions;
-  const proposedById = proposed.reduce((obj, p) => {
-    obj[p.id] = p;
-    return obj;
-  }, {} as Record<string, ActionProposedView>);
+  const proposedById = proposed.reduce(
+    (obj, p) => {
+      obj[p.id] = p;
+      return obj;
+    },
+    {} as Record<string, ActionProposedView>,
+  );
   return proposed.map((_p) => {
     const p = { ..._p } as ActionProposedViewWithHydratedChildren;
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

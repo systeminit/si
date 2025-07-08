@@ -30,7 +30,7 @@ const useApplyChangeSetInner = () => {
   const loading = computed(() => api.inFlight.value);
 
   const performApply = async () => {
-    const call = api.endpoint(routes.ApplyChangeSet);
+    const call = api.endpoint(routes.ChangeSetApply);
     const { req } = await call.post({});
     return { success: api.ok(req) };
   };
@@ -49,7 +49,8 @@ const useDisableApplyChangeSetInner = () => {
 
   return computed(
     () =>
-      changeSet.value?.status !== ChangeSetStatus.Open ||
+      (changeSet.value?.status !== ChangeSetStatus.Open &&
+      changeSet.value?.status !== ChangeSetStatus.NeedsApproval) ||
       ctx.onHead.value ||
       status.value === "syncing",
   );
@@ -60,3 +61,40 @@ export const useApplyChangeSet = () => {
   const disableApplyChangeSet = useDisableApplyChangeSetInner();
   return { applyChangeSet, disableApplyChangeSet };
 };
+
+export type ChangeSetApprovalId = string;
+export type Ulid = string;
+export interface ChangeSetApprovalRequirement {
+  entityId: Ulid;
+  entityKind: string;
+  requiredCount: number;
+  isSatisfied: boolean;
+  applicableApprovalIds: ChangeSetApprovalId[];
+  approverGroups: Record<string, string[]>;
+  approverIndividuals: string[];
+}
+
+export type UserId = string;
+export type ApprovalStatusThing = "Approved" | "Rejected";
+export interface ChangeSetApproval {
+  id: ChangeSetApprovalId;
+  userId: UserId;
+  status: ApprovalStatusThing;
+  isValid: boolean; // is this approval "out of date" based on the checksum
+}
+
+export interface ApprovalData {
+  requirements: ChangeSetApprovalRequirement[];
+  latestApprovals: ChangeSetApproval[];
+}
+
+export const approverForChangeSet = (
+  userId: string,
+  approvalData: ApprovalData,
+) =>
+  approvalData.requirements.some((r) =>
+    Object.values(r.approverGroups)
+      .flat()
+      .concat(r.approverIndividuals)
+      .includes(userId),
+  );

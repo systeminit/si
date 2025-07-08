@@ -39,6 +39,11 @@
             />
           </ul>
         </div>
+        <ApprovalStatusBox
+          v-if="changeSet"
+          :approvalData="approvalData"
+          :changeSet="changeSet"
+        />
         <div
           class="flex flex-row w-full items-center justify-center gap-sm mt-xs"
         >
@@ -48,19 +53,13 @@
             pill="Esc"
             @click="closeModalHandler"
           />
-          <!--
-          TODO(nick): restore the dynamic label when approvals are re-introduced.
-          ```
-          :label="
-            workspaceHasOneUser || !workspacesStore.workspaceApprovalsEnabled
-            ? 'Apply Change Set'
-            : 'Request Approval'
-          "
-          ```
-          -->
           <VButton
             tone="action"
-            label="Apply Change Set"
+            :label="
+              workspace.hasOneUser.value || !workspace.approvalsEnabled.value
+                ? 'Apply Change Set'
+                : 'Request Approval'
+            "
             class="grow"
             loadingText="Applying Changes"
             :loading="applyChangeSet.loading.value"
@@ -78,15 +77,29 @@
 import * as _ from "lodash-es";
 import { PillCounter, Icon, VButton, Modal } from "@si/vue-lib/design-system";
 import { useRouter, useRoute } from "vue-router";
-import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue";
+import {
+  computed,
+  inject,
+  onBeforeUnmount,
+  onMounted,
+  reactive,
+  ref,
+} from "vue";
 import { debounce } from "lodash-es";
 import { ActionProposedView } from "@/store/actions.store";
 import { ActionKind } from "@/api/sdf/dal/action";
 import { keyEmitter } from "./logic_composables/emitters";
+import { useWorkspace } from "./logic_composables/workspace";
 import ActionCard from "./ActionCard.vue";
+import ApprovalStatusBox from "./ApprovalStatus.vue";
 import { assertIsDefined, Context } from "./types";
 import { reset } from "./logic_composables/navigation_stack";
-import { useApplyChangeSet } from "./logic_composables/change_set";
+import {
+  useCurrentChangeSet,
+  useApplyChangeSet,
+  ApprovalStatus,
+} from "./logic_composables/change_set";
+import { useApi, routes } from "./api_composables";
 
 const props = defineProps<{
   actions: ActionProposedView[];
@@ -99,6 +112,10 @@ assertIsDefined(ctx);
 
 const router = useRouter();
 const route = useRoute();
+
+const workspace = useWorkspace();
+const currentChangeSet = useCurrentChangeSet();
+const changeSet = computed(() => currentChangeSet.value);
 
 const actionsTitle = computed(() =>
   props.actions.length === 1
@@ -164,6 +181,11 @@ onBeforeUnmount(() => {
   debouncedApply.cancel();
 });
 
+const approvalStatusApi = useApi();
+const requestApprovalApi = useApi();
+
+const approvalData = ref<ApprovalData | undefined>(undefined);
+
 async function apply() {
   // TODO(nick): restore approvals in the new UI.
   // if (!workspacesStore.workspaceApprovalsEnabled && authStore.user) {
@@ -187,44 +209,44 @@ async function apply() {
   // }
   if (!ctx) return;
 
-  const result = await applyChangeSet.performApply();
+  // let result = { success: false };
+  //  if (!workspace.approvalsEnabled && ctx.user) {
+  //    result = await applyChangeSet.performApply();
+  //  } else if (workspace.hasOneUser && ctx.user) {
+  //    result = await applyChangeSet.performApply();
+  //  } else {
+  const requestApprovalCall = requestApprovalApi.endpoint(
+    routes.ChangeSetRequestApproval,
+  );
+  const { req } = await requestApprovalCall.post({});
+  console.log("WHEEE REQUEST APPROVAL", requestApprovalApi.ok(req));
 
-  if (result.success) {
-    const name = route.name;
-    router.push({
-      name,
-      params: {
-        ...route.params,
-        changeSetId: ctx.headChangeSetId.value,
-      },
-      query: route.query,
-    });
-    reset();
-    closeModalHandler();
-  }
+  // NOTE(nick): we should not have to manually call this
+  const approvalStatusCall = approvalStatusApi.endpoint<ApprovalData>(
+    routes.ChangeSetApprovalStatus,
+  );
+  const approvalStatusReq = await approvalStatusCall.get();
+
+  console.log("WHEEE APPROVAL STATUS", approvalStatusApi.ok(approvalStatusReq));
+
+  approvalData.value = approvalStatusReq.data;
+
+  // TODO(nick): allow apply
+
+  //  if (result.success) {
+  //    const name = route.name;
+  //    router.push({
+  //      name,
+  //      params: {
+  //        ...route.params,
+  //        changeSetId: ctx.headChangeSetId.value,
+  //      },
+  //      query: route.query,
+  //    });
+  //    reset();
+  //    closeModalHandler();
+  //  }
 }
-
-// NOTE(nick): this should only be relevant when approval requirements come back.
-// watch(
-//   () => changeSetsStore.selectedChangeSet?.status,
-//   (newVal, oldVal) => {
-//     if (
-//       newVal === ChangeSetStatus.Open &&
-//       (oldVal === ChangeSetStatus.NeedsApproval ||
-//         oldVal === ChangeSetStatus.Approved ||
-//         oldVal === ChangeSetStatus.Rejected)
-//     ) {
-//       if (!changeSetsStore.headSelected) {
-//         toast({
-//           component: ApprovalFlowCancelled,
-//           props: {
-//             action: "applying",
-//           },
-//         });
-//       }
-//     }
-//   },
-// );
 
 defineExpose({ open: openModalHandler });
 </script>

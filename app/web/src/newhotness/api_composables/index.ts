@@ -20,8 +20,13 @@ export enum routes {
   ActionHold = "ActionHold",
   ActionRetry = "ActionRetry",
   ActionFuncRunId = "ActionFuncRunId",
-  ApplyChangeSet = "ApplyChangeSet",
-  ChangeSetRename = "ChangeSetRename",
+  ChangeSetApply = "ChangeSetApply", // post
+  ChangeSetApprovalStatus = "ChangeSetApprovalStatus", // get
+  ChangeSetApprove = "ChangeSetApprove", // post { status: "Approved" | "Rejected" }
+  ChangeSetCancelApprovalRequest = "ChangeSetCancelApprovalRequest", // post
+  ChangeSetRename = "ChangeSetRename", // post
+  ChangeSetReopen = "ChangeSetReopen", // post
+  ChangeSetRequestApproval = "ChangeSetRequestApproval", // post
   CreateComponent = "CreateComponent",
   CreateSecret = "CreateSecret",
   CreateView = "CreateView",
@@ -61,8 +66,13 @@ const _routes: Record<routes, string> = {
   ActionHold: "/action/<id>/put_on_hold",
   ActionRetry: "/action/<id>/retry",
   ActionFuncRunId: "/action/<id>/func_run_id",
-  ApplyChangeSet: "/apply",
+  ChangeSetApply: "/apply",
+  ChangeSetApprovalStatus: "/approval_status",
+  ChangeSetApprove: "/approve",
+  ChangeSetCancelApprovalRequest: "/cancel_approval_request",
   ChangeSetRename: "/rename",
+  ChangeSetReopen: "/reopen",
+  ChangeSetRequestApproval: "/request_approval",
   CreateComponent: "/views/<viewId>/component",
   CreateSecret: "/components/<id>/secret",
   CreateView: "/views",
