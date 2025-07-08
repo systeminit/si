@@ -190,7 +190,7 @@ const rightClickMenuItems = computed(() => {
   items.push({
     labelAsTooltip: true,
     label: "Duplicate",
-    shortcut: "⌘D",
+    shortcut: "D",
     icon: "clipboard-copy",
     onSelect: () => componentsDuplicate(components.value.map((c) => c.id)),
   });
