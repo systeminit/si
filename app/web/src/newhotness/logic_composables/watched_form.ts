@@ -11,7 +11,7 @@ import { trace } from "@opentelemetry/api";
 import { assertIsDefined, Context } from "../types";
 import * as rainbow from "./rainbow_counter";
 
-const tracer = trace.getTracer("bifrost");
+const tracer = trace.getTracer("si-vue");
 
 /**
  * WHEN? You want to use this form when the data that displays initially
