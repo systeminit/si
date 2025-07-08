@@ -221,6 +221,7 @@ function syncEditorConfig() {
 
 function syncEditorCode() {
   // this is what `CodeEditor` does, on any change it remounts the editor
+  teardownCodeMirrorEditor();
   initCodeMirrorEditor();
 }
 
