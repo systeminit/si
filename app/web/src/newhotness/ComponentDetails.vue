@@ -122,7 +122,7 @@
             :connections="componentConnections ?? undefined"
           />
         </CollapsingFlexItem>
-        <CollapsingFlexItem open>
+        <CollapsingFlexItem>
           <template #header>
             <PillCounter :count="component.qualificationTotals.total" />
             Qualifications
