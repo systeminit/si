@@ -165,6 +165,19 @@ export interface SharedDBInterface {
     kind: Listable,
     id: Id,
   ): Promise<string>;
+  /**
+   * Query AttributeTree MVs in a changeset, looking for components that match the given terms.
+   *
+   * @param workspaceId The workspace ID to query.
+   * @param changeSetId The changeset ID to query.
+   * @param terms The key/value pairs to match. e.g. { key: "vpcId", value: "vpc-123" } or { key: "/domain/vpcId", value: "vpc-123" }
+   * @returns the list of component IDs that match the given terms.
+   */
+  queryAttributes(
+    workspaceId: WorkspacePk,
+    changeSetId: ChangeSetId,
+    terms: { key: string; value: string }[],
+  ): Promise<ComponentId[]>;
   mjolnir(
     workspaceId: string,
     changeSetId: ChangeSetId,
@@ -247,6 +260,19 @@ export interface TabDBInterface {
     kind: Listable,
     id: Id,
   ): string;
+  /**
+   * Query AttributeTree MVs in a changeset, looking for components that match the given terms.
+   *
+   * @param workspaceId The workspace ID to query.
+   * @param changeSetId The changeset ID to query.
+   * @param terms The key/value pairs to match. e.g. { key: "vpcId", value: "vpc-123" } or { key: "/domain/vpcId", value: "vpc-123" }
+   * @returns the list of component IDs that match the given terms.
+   */
+  queryAttributes(
+    workspaceId: WorkspacePk,
+    changeSetId: ChangeSetId,
+    terms: { key: string; value: string }[],
+  ): ComponentId[];
   mjolnirBulk(
     workspaceId: string,
     changeSetId: ChangeSetId,

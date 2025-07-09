@@ -1,6 +1,6 @@
 <template>
   <DelayedSkeleton
-    v-if="componentListRaw.isLoading.value"
+    v-if="componentListQuery.isLoading.value"
     :skeleton="urlGridOrMap"
   />
   <section v-else :class="clsx('grid h-full', showGrid ? 'explore' : 'map')">
@@ -157,7 +157,9 @@
       </div>
       <template v-if="showGrid">
         <div
-          v-if="componentList.length === 0 && componentListRaw.isSuccess.value"
+          v-if="
+            componentList.length === 0 && componentListQuery.isSuccess.value
+          "
           class="flex-1 overflow-hidden flex flex-row items-center justify-center"
         >
           <EmptyState icon="component" text="No components in view" />
@@ -255,7 +257,7 @@
           class="flex-none rounded p-xs"
           variant="key2"
         >
-          Total: {{ componentListRaw.data.value?.length ?? 0 }}
+          Total: {{ componentList.length }}
         </TextPill>
         <TextPill
           v-if="resourceCount > 0"
@@ -306,6 +308,7 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
+import { computedAsync } from "@vueuse/core";
 import {
   computed,
   inject,
@@ -333,6 +336,7 @@ import { Fzf } from "fzf";
 import {
   bifrost,
   bifrostList,
+  bifrostQueryAttributes,
   useMakeArgs,
   useMakeKey,
 } from "@/store/realtime/heimdall";
@@ -432,14 +436,13 @@ watch(showGrid, () => {
 
 // ================================================================================================
 // SETUP THE FILTERED COMPONENTS REACTIVE AND UPGRADEABLES
-const filteredComponents = reactive<ComponentInList[]>([]);
 const upgrade = useUpgrade();
 const upgradeableComponentIds = computed(() => {
   const set: Set<ComponentId> = new Set();
 
   // TODO(nick): try to swap this with the component list to see if we recompute this less
   // frequently. This is not a problem today, but could be tomorrow.
-  for (const component of filteredComponents) {
+  for (const component of filteredComponents.value) {
     // This needs to be split out into a variable for reactivity. Keep this here or drown in
     // sorrow and suffering. Relevant pull request: https://github.com/systeminit/si/pull/6483
     const canUpgrade = upgrade(
@@ -608,7 +611,7 @@ const componentListQueryId = computed(() =>
   selectedViewId.value ? selectedViewId.value : ctx.workspacePk.value,
 );
 const componentQueryKey = key(componentListQueryKind, componentListQueryId);
-const componentListRaw = useQuery<ComponentInList[]>({
+const componentListQuery = useQuery<ComponentInList[]>({
   queryKey: componentQueryKey,
   queryFn: async () => {
     const arg = selectedViewId.value
@@ -619,13 +622,12 @@ const componentListRaw = useQuery<ComponentInList[]>({
   },
 });
 const placeholderSearchText = computed(
-  () => `Search across ${componentListRaw.data.value?.length ?? 0} Components`,
+  () =>
+    `Search across ${componentListQuery.data.value?.length ?? 0} Components`,
 );
-const componentListUnchecked = computed(
-  () => componentListRaw.data.value ?? [],
-);
+const componentList = computed(() => componentListQuery.data.value ?? []);
 const pinnedComponent = computed(() =>
-  componentListUnchecked.value.find((c) => c.id === pinnedComponentId.value),
+  componentList.value.find((c) => c.id === pinnedComponentId.value),
 );
 const connectionsGetter = useConnections();
 const pinnedComponentConnections = computed(() =>
@@ -648,18 +650,9 @@ const pinnedComponentConnectionSets = computed(() => {
     outgoing,
   };
 });
-const componentList = computed(() => {
-  // If we aren't dealing with pinning, return the standard list.
-  if (!pinnedComponent.value || !pinnedComponentConnections.value)
-    return componentListUnchecked.value;
-
-  // When pinning, include all components so they can be properly grouped
-  // into connected and unconnected sections
-  return componentListUnchecked.value;
-});
 
 const resourceCount = computed(
-  () => componentListUnchecked.value.filter((c) => c.hasResource).length ?? 0,
+  () => componentList.value.filter((c) => c.hasResource).length ?? 0,
 );
 const resourceCountTooltip = "Components with resources";
 const componentCountTooltip = "Total components in selected view";
@@ -677,7 +670,7 @@ const sortedAndGroupedComponents = computed(() => {
   let groups: Record<string, ComponentInList[]> = {};
 
   // First, always sort by latest to oldest. This relies on the fact ULIDs are time-based.
-  let components = filteredComponents;
+  let components = filteredComponents.value;
   components.sort((a, b) => b.id.localeCompare(a.id));
 
   // Second, perform any secondary sorts, if applicable. This relies on the fact that the
@@ -796,49 +789,122 @@ const sortedAndGroupedComponents = computed(() => {
 // THE SEARCH BAR AND FILTERING
 const searchString = ref<string>("");
 const debouncedSearchString = ref<string>("");
-const computedSearchString = computed(() => debouncedSearchString.value);
 
 // send this down to any components that might use it
-provide("SEARCH", computedSearchString);
+provide("SEARCH", debouncedSearchString);
 
-watch(
-  () => [debouncedSearchString.value, componentList.value],
-  () => {
-    if (!debouncedSearchString.value) {
-      filteredComponents.splice(0, Infinity, ...componentList.value);
-      return;
-    }
-
-    const searchTerm = debouncedSearchString.value.trim();
-
-    // Check if the search term contains "schema:" queries
-    const schemaMatches = searchTerm.match(/schema:([^\s]+)/gi);
-    if (schemaMatches) {
-      const schemaNames = schemaMatches.map((match) =>
-        match.substring(7).trim().toLowerCase(),
-      );
-
-      if (schemaNames.length === 0 || schemaNames.some((name) => name === "")) {
-        filteredComponents.splice(0, Infinity, ...componentList.value);
-        return;
+/**
+ * Search string, split into terms.
+ *
+ * MyComponent vpcId:vpc-123 AWS::EC2::Subnet parses to:
+ *
+ *     {
+ *       attrSearchTerms: [ { key: "vpcId", value: "vpc-123" } ],
+ *       knownSearchTerms: [ { key: "schema", value: "AWS::EC2::Subnet" } ],
+ *       fuzzyTerms: [ "MyComponent", "AWS::EC2::Subnet" ]
+ *     }
+ */
+const debouncedSearchTerms = computed(() => {
+  const attrSearchTerms = new Array<{ key: string; value: string }>();
+  const knownSearchTerms = new Array<{ key: "schema"; value: string }>();
+  const fuzzyTerms = new Array<string>();
+  for (const term of debouncedSearchString.value.split(/\s+/g)) {
+    // Treat a:b as a key-value pair
+    const colon = term.indexOf(":");
+    if (colon >= 0 && term[colon + 1] !== ":") {
+      // Don't treat :: as a key-value pair
+      const key = term.slice(0, colon);
+      const value = term.slice(colon + 1);
+      if (key === "schema") {
+        knownSearchTerms.push({ key, value });
+      } else {
+        attrSearchTerms.push({ key, value });
       }
-
-      const results = componentList.value.filter((c) =>
-        schemaNames.includes(c.schemaName.toLowerCase()),
-      );
-      filteredComponents.splice(0, Infinity, ...results);
     } else {
-      // Regular fuzzy search across all fields
-      const fzf = new Fzf(componentList.value, {
-        casing: "case-insensitive",
-        selector: (c) =>
-          `${c.name} ${c.schemaVariantName} ${c.schemaName} ${c.schemaCategory} ${c.schemaId} ${c.id}`,
-      });
-
-      const results = fzf.find(searchTerm);
-      filteredComponents.splice(0, Infinity, ...results.map((fz) => fz.item));
+      fuzzyTerms.push(term);
     }
+  }
+  return { attrSearchTerms, knownSearchTerms, fuzzyTerms };
+});
 
+/**
+ * Components list filtered by the advanced search terms (by querying bifrost).
+ *
+ * Should only be used by filteredComponents.
+ */
+const attrSearchedComponentIds = computedAsync(async () => {
+  const { attrSearchTerms } = debouncedSearchTerms.value;
+  if (attrSearchTerms.length === 0) {
+    return undefined;
+  }
+
+  const result = await bifrostQueryAttributes({
+    workspaceId: ctx.workspacePk.value,
+    changeSetId: ctx.changeSetId.value,
+    terms: attrSearchTerms,
+  });
+  return result;
+});
+
+/**
+ * Components list filtered by all search terms.
+ */
+const filteredComponents = computed(() => {
+  let components = componentList.value;
+  const { attrSearchTerms, knownSearchTerms, fuzzyTerms } =
+    debouncedSearchTerms.value;
+
+  // Handle attribute search terms
+  if (attrSearchTerms.length > 0) {
+    components = components.filter((component) =>
+      attrSearchedComponentIds.value?.includes(component.id),
+    );
+  }
+
+  // Handle special-cased keys (e.g. schema)
+  for (const term of knownSearchTerms) {
+    // Search specifically for matching schemas
+    switch (term.key) {
+      case "schema":
+        components = components.filter((c) => {
+          let schemaName: string | undefined = c.schemaName.toLowerCase();
+          const termLowerCase = term.value.toLowerCase();
+          // Support matching "VPC", "EC2::VPC" or "AWS::EC2::VPC" by checking against each one
+          // in succession
+          while (schemaName) {
+            if (schemaName.startsWith(termLowerCase)) {
+              return true;
+            }
+            // Remove the first part of the schema name ("AWS::EC2::VPC" -> "EC2::VPC") and try again
+            const doubleColon = schemaName.indexOf("::");
+            if (doubleColon >= 0) {
+              schemaName = schemaName.slice(doubleColon + 2);
+            } else {
+              // No more "::" to remove, break out of the loop
+              schemaName = undefined;
+            }
+          }
+          return false;
+        });
+        break;
+      default:
+        break;
+    }
+  }
+
+  // Regular fuzzy search across all fields
+  const fzf = new Fzf(components, {
+    casing: "case-insensitive",
+    selector: (c) => `${c.name} ${c.schemaName} ${c.schemaCategory} ${c.id}`,
+  });
+  return fzf.find(fuzzyTerms.join(" ")).map((fz) => fz.item);
+});
+
+// Clear the selection when the filter changes
+// TODO leave the selection as long as it is still one of the filtered components?
+watch(
+  filteredComponents,
+  () => {
     mapRef.value?.deselect();
     clearSelection();
   },
