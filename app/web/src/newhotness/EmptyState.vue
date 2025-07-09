@@ -1,10 +1,10 @@
 <template>
-  <div class="flex flex-col items-center gap-sm">
+  <div class="flex flex-col items-center gap-sm text-center">
     <div
       :class="
         clsx(
           'mt-sm p-sm rounded-full',
-          themeClasses('bg-neutral-100', 'bg-neutral-900'),
+          themeClasses('bg-neutral-200', 'bg-neutral-700'),
         )
       "
     >

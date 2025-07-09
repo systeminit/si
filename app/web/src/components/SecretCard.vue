@@ -13,7 +13,7 @@
             ]
           : [
               'flex-col rounded',
-              themeClasses('border-neutral-400', 'border-neutral-400'),
+              themeClasses('border-neutral-400', 'border-neutral-600'),
               isUsable
                 ? themeClasses(
                     'hover:border-action-500 hover:text-action-500 text-shade-100',
