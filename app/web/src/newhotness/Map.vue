@@ -824,14 +824,9 @@ watch(
           ?.substring(3);
 
         if (componentId && !connectedComponentIds.value.has(componentId)) {
-          // Check if this component has any connections at all
-          const componentHasConnections = connections.data.value?.some(
-            (c) => c.id === componentId && c.connections.length > 0,
-          );
-
-          // Only grey out if component has connections but isn't connected to selected
-          // AND we actually have selected components (safety check)
-          if (componentHasConnections && selectedComponents.value.size > 0) {
+          // Grey out ALL components that are not connected to selected components
+          // when there are selected components
+          if (selectedComponents.value.size > 0) {
             element.classList.add("greyed-out");
           }
         }
@@ -845,14 +840,9 @@ watch(
           ?.substring(3);
 
         if (componentId && !connectedComponentIds.value.has(componentId)) {
-          // Check if this component has any connections at all
-          const componentHasConnections = connections.data.value?.some(
-            (c) => c.id === componentId && c.connections.length > 0,
-          );
-
-          // Only grey out if component has connections but isn't connected to selected
-          // AND we actually have selected components (safety check)
-          if (componentHasConnections && selectedComponents.value.size > 0) {
+          // Grey out ALL components that are not connected to selected components
+          // when there are selected components
+          if (selectedComponents.value.size > 0) {
             group.querySelectorAll("text").forEach((text) => {
               text.classList.add("greyed-out");
             });
