@@ -23,42 +23,6 @@
           <!-- I don't like that we have to specify a height here it should
           contain within its parent, and its possible, just dont want to spend more time on it -->
           <div class="flex flex-col gap-xs grow p-xs max-h-[41svh]">
-            <!-- warning header for when user is on HEAD -->
-            <div
-              v-if="onHead && !bannerClosed"
-              :class="
-                clsx(
-                  'flex flex-row items-center gap-xs p-2xs',
-                  themeClasses('bg-action-100', 'bg-action-900'),
-                )
-              "
-            >
-              <Icon name="info-circle" />
-              <div class="grow">
-                Because you are currently on HEAD, when you create a component a
-                new change set will be created.
-              </div>
-              <div
-                :class="
-                  clsx(
-                    'underline cursor-pointer flex-none',
-                    themeClasses(
-                      'hover:text-action-500',
-                      'hover:text-action-300',
-                    ),
-                  )
-                "
-              >
-                Learn More
-              </div>
-              <IconButton
-                iconTone="shade"
-                icon="x"
-                tooltip="Close"
-                tooltipPlacement="top"
-                @click="bannerClosed = true"
-              />
-            </div>
             <!-- Fuzzy search input, is focused when the Modal is opened-->
             <SiSearch
               ref="searchRef"
@@ -193,7 +157,6 @@ import {
   BRAND_COLOR_FILTER_HEX_CODES,
   HorizontalScrollArea,
   Icon,
-  IconButton,
   IconNames,
   Modal,
   SiSearch,
@@ -227,7 +190,6 @@ import { componentTypes, routes, useApi } from "./api_composables";
 
 const ctx: Context | undefined = inject("CONTEXT");
 assertIsDefined(ctx);
-const onHead = computed(() => ctx.onHead.value);
 const bannerClosed = ref(false);
 
 const selectedAsset = ref<UIAsset | undefined>(undefined);
