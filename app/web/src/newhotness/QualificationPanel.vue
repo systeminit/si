@@ -78,6 +78,15 @@ const qualifications = computed<Qualification[]>(() => {
     if (!av.validation || !prop) return;
     hasValidations = true;
 
+    // We believe that if we are connected to a subscription and that subscription
+    // has yet to propagate a value, then it's a computed value and we should mark
+    // the validation as passing for the user
+    const pendingValue =
+      av.externalSources &&
+      av.externalSources?.length > 0 &&
+      (av.value === "" || !av.value);
+    if (pendingValue) return;
+
     const name = prop.name;
 
     if (av.validation.status === "Success") return;

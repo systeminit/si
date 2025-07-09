@@ -17,7 +17,9 @@
           <TruncateWithTooltip>{{ displayName }}</TruncateWithTooltip>
           <div class="flex flex-row items-center ml-auto gap-2xs">
             <StatusIndicatorIcon
-              v-if="validation && validation.status !== 'Success'"
+              v-if="
+                validation && validation.status !== 'Success' && !isPendingValue
+              "
               v-tooltip="validation.message"
               type="qualification"
               status="failure"
@@ -627,6 +629,13 @@ const props = defineProps<{
 
 const isSetByConnection = computed(
   () => props.externalSources && props.externalSources.length > 0,
+);
+
+const isPendingValue = computed(
+  () =>
+    props.externalSources &&
+    props.externalSources.length > 0 &&
+    props.value === "",
 );
 
 // does not set the actual key, just the string displayed!
