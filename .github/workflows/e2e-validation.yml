@@ -60,16 +60,75 @@ jobs:
         id: get-ip
         working-directory: .ci/
         run: |
-          remote_ip=$(grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' ./ip)
+          remote_ip=$(grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' "./ip")
           echo "Remote IP set to ${remote_ip}"
           echo "remote_ip=$remote_ip" >> "$GITHUB_OUTPUT"
+          echo "remote_ip=$remote_ip" >> "$GITHUB_ENV"
+
+      - name: Validate Service's are healthy
+        if: ${{ inputs.environment == 'ec2-node' }}
+        working-directory: .ci/
+        run: |
+          echo "$SSH_KEY" > ssh-key.pem
+          chmod 600 ssh-key.pem
+
+          echo "Tunneling EC2 node @ $remote_ip"
+
+          # Start SSH tunnel in background for 3020 (Bedrock)
+          nohup ssh -o StrictHostKeyChecking=no -L 3020:localhost:3020 "arch@$remote_ip" -i ssh-key.pem -N &
+
+          # Wait for Bedrock (EC2 localhost:3020) to be ready
+          echo "Waiting for Bedrock to be ready..."
+          for i in {1..180}; do
+            if curl --fail --silent --max-time 2 http://localhost:3020/; then
+                echo "✅ Bedrock service is up and returned a valid response, preparing db"
+                curl --location 'http://localhost:3020/prepare' \
+                --header 'Content;' \
+                --header 'Content-Type: application/json' \
+                --data '{
+                  "recording_id": "W=01JYPR32SD5RKR3AMG298J7263-CS=01JZ3W5XX6QHQZ6PYSBHK4SB3K (39 components)",
+                  "parameters": {},
+                  "executionParameters": {}
+                }'
+                break
+            fi
+            echo "⏳ Attempt $i/180: Bedrock not responding yet. Retrying in 10s..."
+            sleep 10
+          done
+
+          # Fail if still not up after 30 min
+          if ! nc -z localhost 3020; then
+            echo "❌ Timed out waiting for bedrock service on port 3020"
+            exit 1
+          fi
+
+          # Start SSH tunnel in background for 8080 (Web App)
+          nohup ssh -o StrictHostKeyChecking=no -L 8080:localhost:8080 "arch@$remote_ip" -i ssh-key.pem -N &
+
+          # Wait for tunnel Web App (EC2 localhost:8080) to be ready
+          echo "Waiting up to 30 minutes for remote web app to be ready..."
+          for i in {1..180}; do
+            if curl --fail --silent --max-time 2 http://localhost:8080/health; then
+                echo "✅ Remote service is up and returned a valid response!"
+                break
+            fi
+            echo "⏳ Attempt $i/180: Service not responding yet. Retrying in 10s..."
+            sleep 10
+          done
+
+          # Fail if still not up after 30 min
+          if ! nc -z localhost 8080; then
+            echo "❌ Timed out waiting for web app on port 8080"
+            exit 1
+          fi
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
 
   cypress-tests:
     environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    needs: 
-      - define-test-matrix
-      - launch-ec2-node
+    needs: [define-test-matrix, launch-ec2-node]
+    if: always() && (needs.define-test-matrix.result == 'success') && (inputs.environment != 'ec2-node' || needs.launch-ec2-node.result == 'success')
     strategy:
       fail-fast: true
       matrix:
@@ -97,7 +156,7 @@ jobs:
           sudo apt update
           sudo apt install uuid -y
 
-      - name: Setup SSH tunnel if ec2-node
+      - name: Setup SSH tunnel if ec2-node for web access
         if: ${{ inputs.environment == 'ec2-node' }}
         working-directory: .ci/
         run: |
@@ -109,32 +168,6 @@ jobs:
 
           # Start SSH tunnel in background for 8080 (Web App) & 3020 (Bedrock)
           nohup ssh -o StrictHostKeyChecking=no -L 8080:localhost:8080 arch@$remote_ip -i ssh-key.pem -N &
-          nohup ssh -o StrictHostKeyChecking=no -L 3020:localhost:3020 arch@$remote_ip -i ssh-key.pem -N &
-
-          # Wait for Bedrock (EC2 localhost:3020) to be ready
-          echo "Waiting for Bedrock to be ready..."
-          for i in {1..180}; do
-            if curl --fail --silent --max-time 2 http://localhost:3020/; then
-                echo "✅ Bedrock service is up and returned a valid response, preparing db"
-                curl --location 'http://localhost:3020/prepare' \
-                --header 'Content;' \
-                --header 'Content-Type: application/json' \
-                --data '{
-                  "recording_id": "W=01JYPR32SD5RKR3AMG298J7263-CS=01JZ3W5XX6QHQZ6PYSBHK4SB3K (39 components)",
-                  "parameters": {},
-                  "executionParameters": {}
-                }'
-                break
-            fi
-            echo "⏳ Attempt $i/180: Bedrock not responding yet. Retrying in 10s..."
-            sleep 10
-          done
-
-          # Fail if still not up after 30 min
-          if ! nc -z localhost 3020; then
-            echo "❌ Timed out waiting for bedrock service on port 3020"
-            exit 1
-          fi
 
           # Wait for tunnel Web App (EC2 localhost:8080) to be ready
           echo "Waiting up to 30 minutes for remote web app to be ready..."
