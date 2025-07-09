@@ -346,6 +346,33 @@ export const bifrostList = async <T>(args: {
   return reactive(JSON.parse(maybeAtomDoc));
 };
 
+/**
+ * Query AttributeTree MVs in a changeset, looking for components that match the given terms.
+ *
+ * @param workspaceId The workspace ID to query.
+ * @param changeSetId The changeset ID to query.
+ * @param terms The key/value pairs to match. e.g. { key: "vpcId", value: "vpc-123" } or { key: "/domain/vpcId", value: "vpc-123" }
+ * @returns the list of component IDs that match the given terms.
+ */
+export const bifrostQueryAttributes = async (args: {
+  workspaceId: string;
+  changeSetId: ChangeSetId;
+  terms: { key: string; value: string }[];
+}) => {
+  if (!initCompleted.value) throw new Error("You must wait for initialization");
+
+  const start = performance.now();
+  const components = await db.queryAttributes(
+    args.workspaceId,
+    args.changeSetId,
+    args.terms,
+  );
+  const end = performance.now();
+  // eslint-disable-next-line no-console
+  console.log("🌈 bifrost queryAttributes", end - start, "ms");
+  return reactive(components);
+};
+
 export const getPossibleConnections = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;

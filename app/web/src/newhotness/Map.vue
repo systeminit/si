@@ -192,11 +192,11 @@ import {
 } from "@si/vue-lib/design-system";
 import {
   computed,
-  ComputedRef,
   inject,
   nextTick,
   onMounted,
   reactive,
+  Ref,
   ref,
   watch,
 } from "vue";
@@ -814,7 +814,7 @@ watch(selectedComponent, () => {
   router.push({ query });
 });
 
-const searchString = inject<ComputedRef<string>>("SEARCH");
+const searchString = inject<Ref<string>>("SEARCH");
 
 const connectedComponentIds = computed(() => {
   const connectedIds = new Set<string>();

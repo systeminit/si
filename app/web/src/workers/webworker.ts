@@ -34,6 +34,7 @@ import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { nonNullable } from "@/utils/typescriptLinter";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { WorkspacePk } from "@/store/workspaces.store";
 import {
   Atom,
   AtomDocument,
@@ -2560,6 +2561,53 @@ from
   return atomData[0]![0] as string;
 };
 
+const queryAttributes = (
+  _workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
+  terms: { key: string; value: string }[],
+) => {
+  const sql = `
+    SELECT atoms.args AS component_id
+       FROM changesets
+       JOIN indexes ON changesets.index_checksum = indexes.checksum
+       JOIN index_mtm_atoms ON indexes.checksum = index_mtm_atoms.index_checksum
+       JOIN atoms ON atoms.kind = index_mtm_atoms.kind AND atoms.args = index_mtm_atoms.args AND atoms.checksum = index_mtm_atoms.checksum
+       JOIN json_each(jsonb_extract(CAST(atoms.data as text), '$.attributeValues')) AS attr
+      WHERE changesets.change_set_id = ?
+        AND atoms.kind = 'AttributeTree'
+        AND (${terms
+          .map(
+            (_) =>
+              `(attr.value ->> 'path' LIKE ? AND attr.value ->> 'value' LIKE ?)`,
+          )
+          .join(" OR ")})
+  `;
+  const bind = [
+    changeSetId,
+    ...terms.flatMap((term) => [
+      term.key.startsWith("/") ? term.key : `%/${term.key}`,
+      `${term.value.replaceAll("*", "%")}%`,
+    ]),
+  ];
+
+  const start = Date.now();
+  const components = db.exec({
+    sql,
+    bind,
+    returnValue: "resultRows",
+  });
+  const end = Date.now();
+  debug(
+    "❓ sql queryAttributes",
+    `[${end - start}ms]`,
+    bind,
+    " returns ?",
+    !(components.length === 0),
+    components,
+  );
+  return components.map((c) => c[0] as ComponentId);
+};
+
 const get = (
   workspaceId: string,
   changeSetId: ChangeSetId,
@@ -3052,6 +3100,7 @@ const dbInterface: TabDBInterface = {
   getComponentDetails,
   getSchemaMembers,
   getPossibleConnections,
+  queryAttributes,
   partialKeyFromKindAndId: partialKeyFromKindAndArgs,
   kindAndIdFromKey: kindAndArgsFromKey,
   mjolnirBulk,

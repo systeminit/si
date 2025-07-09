@@ -6,6 +6,10 @@ import {
   FlexibleString,
   SqlValue,
 } from "@sqlite.org/sqlite-wasm";
+import { ChangeSetId } from "@/api/sdf/dal/change_set";
+import { WorkspacePk } from "@/store/workspaces.store";
+import { ComponentId } from "@/api/sdf/dal/component";
+import { EntityKind } from "./types/entity_kind_types";
 import {
   SharedDBInterface,
   TabDBInterface,
@@ -16,7 +20,6 @@ import {
   Gettable,
   Listable,
 } from "./types/dbinterface";
-import { EntityKind } from "./types/entity_kind_types";
 
 declare global {
   interface Window {
@@ -200,6 +203,17 @@ const dbInterface: SharedDBInterface = {
     return await withRemote(
       async (remote) =>
         await remote.getList(workspaceId, changeSetId, kind, id),
+    );
+  },
+
+  async queryAttributes(
+    workspaceId: WorkspacePk,
+    changeSetId: ChangeSetId,
+    terms: { key: string; value: string }[],
+  ): Promise<ComponentId[]> {
+    return await withRemote(
+      async (remote) =>
+        await remote.queryAttributes(workspaceId, changeSetId, terms),
     );
   },
 
