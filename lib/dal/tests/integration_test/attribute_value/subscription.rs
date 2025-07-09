@@ -128,14 +128,14 @@ async fn subscribe_to_array_element(ctx: &mut DalContext) -> Result<()> {
     AttributeValue::insert(ctx, values_av_id, Some(json!("b")), None).await?;
     AttributeValue::insert(ctx, values_av_id, Some(json!("c")), None).await?;
     change_set::commit(ctx).await?;
-    assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
+    assert_eq!(None, AttributeValue::view(ctx, value_av_id).await?);
 
     // Subscribe to a specific index and watch the value come through!
     value::subscribe(ctx, value_av_id, [(component_id, "/domain/Values/1")]).await?;
     change_set::commit(ctx).await?;
     assert_eq!(
         Some(json!("b")),
-        AttributeValue::view_by_id(ctx, value_av_id).await?
+        AttributeValue::view(ctx, value_av_id).await?
     );
 
     // Update the array and watch the new value come through!
@@ -146,13 +146,13 @@ async fn subscribe_to_array_element(ctx: &mut DalContext) -> Result<()> {
     change_set::commit(ctx).await?;
     assert_eq!(
         Some(json!("b_2")),
-        AttributeValue::view_by_id(ctx, value_av_id).await?
+        AttributeValue::view(ctx, value_av_id).await?
     );
 
     // // Update the array with fewer values and watch the value disappear!
     // AttributeValue::update(ctx, values_av_id, Some(json!(["a_3"]))).await?;
     // change_set::commit(ctx).await?;
-    // assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
+    // assert_eq!(None, AttributeValue::view(ctx, value_av_id).await?);
 
     Ok(())
 }
@@ -174,14 +174,14 @@ async fn subscribe_to_map_element(ctx: &mut DalContext) -> Result<()> {
     AttributeValue::insert(ctx, value_map_av_id, Some(json!("b")), Some("B".to_owned())).await?;
     AttributeValue::insert(ctx, value_map_av_id, Some(json!("c")), Some("C".to_owned())).await?;
     change_set::commit(ctx).await?;
-    assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
+    assert_eq!(None, AttributeValue::view(ctx, value_av_id).await?);
 
     // Subscribe to a specific index and watch the value come through!
     value::subscribe(ctx, value_av_id, [(component_id, "/domain/ValueMap/B")]).await?;
     change_set::commit(ctx).await?;
     assert_eq!(
         Some(json!("b")),
-        AttributeValue::view_by_id(ctx, value_av_id).await?
+        AttributeValue::view(ctx, value_av_id).await?
     );
 
     // Update the map value and watch the new value come through!
@@ -196,13 +196,13 @@ async fn subscribe_to_map_element(ctx: &mut DalContext) -> Result<()> {
     change_set::commit(ctx).await?;
     assert_eq!(
         Some(json!("b_2")),
-        AttributeValue::view_by_id(ctx, value_av_id).await?
+        AttributeValue::view(ctx, value_av_id).await?
     );
 
     // // Remove the map value and watch the value disappear!
     // AttributeValue::insert(ctx, value_map_av_id, None, Some("B".to_owned())).await?;
     // change_set::commit(ctx).await?;
-    // assert_eq!(None, AttributeValue::view_by_id(ctx, value_av_id).await?);
+    // assert_eq!(None, AttributeValue::view(ctx, value_av_id).await?);
 
     Ok(())
 }

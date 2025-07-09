@@ -312,9 +312,7 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
     )
     .await?;
 
-    let view = AttributeValue::get_by_id(ctx, rigid_designator_value_id)
-        .await?
-        .view(ctx)
+    let view = AttributeValue::view(ctx, rigid_designator_value_id)
         .await?
         .expect("has a view");
 
@@ -322,9 +320,7 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-    let naming_and_necessity_view = AttributeValue::get_by_id(ctx, naming_and_necessity_value_id)
-        .await?
-        .view(ctx)
+    let naming_and_necessity_view = AttributeValue::view(ctx, naming_and_necessity_value_id)
         .await?
         .expect("naming and necessity has a value");
 
@@ -341,10 +337,7 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
         .copied()
         .expect("a value exists for the root prop");
 
-    let root_value = AttributeValue::get_by_id(ctx, root_value_id).await?;
-
-    let root_view = root_value
-        .view(ctx)
+    let root_view = AttributeValue::view(ctx, root_value_id)
         .await?
         .expect("there is a value for the root value view");
 
@@ -467,9 +460,7 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) -> R
     )
     .await?;
 
-    let view = AttributeValue::get_by_id(ctx, possible_world_a_value_id)
-        .await?
-        .view(ctx)
+    let view = AttributeValue::view(ctx, possible_world_a_value_id)
         .await?
         .expect("has a view");
 
@@ -477,9 +468,7 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) -> R
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-    let naming_and_necessity_view = AttributeValue::get_by_id(ctx, naming_and_necessity_value_id)
-        .await?
-        .view(ctx)
+    let naming_and_necessity_view = AttributeValue::view(ctx, naming_and_necessity_value_id)
         .await?
         .expect("naming and necessity has a value");
 
@@ -496,10 +485,7 @@ async fn through_the_wormholes_child_value_reactivity(ctx: &mut DalContext) -> R
         .copied()
         .expect("a value exists for the root prop");
 
-    let root_value = AttributeValue::get_by_id(ctx, root_value_id).await?;
-
-    let root_view = root_value
-        .view(ctx)
+    let root_view = AttributeValue::view(ctx, root_value_id)
         .await?
         .expect("there is a value for the root value view");
 
@@ -628,9 +614,7 @@ async fn set_the_universe(ctx: &mut DalContext) -> Result<()> {
 
     AttributeValue::update(ctx, universe_value_id, Some(universe_json.to_owned())).await?;
 
-    let view = AttributeValue::get_by_id(ctx, universe_value_id)
-        .await?
-        .view(ctx)
+    let view = AttributeValue::view(ctx, universe_value_id)
         .await?
         .expect("has a view");
 
@@ -638,9 +622,7 @@ async fn set_the_universe(ctx: &mut DalContext) -> Result<()> {
 
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
 
-    let view = AttributeValue::get_by_id(ctx, universe_value_id)
-        .await?
-        .view(ctx)
+    let view = AttributeValue::view(ctx, universe_value_id)
         .await?
         .expect("has a view");
 

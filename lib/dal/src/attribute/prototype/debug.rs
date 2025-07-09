@@ -168,12 +168,7 @@ impl AttributePrototypeDebugView {
                     ValueSource::ValueSubscription(ref subscription) => {
                         let value_source_id = subscription.attribute_value_id.into();
                         let view = match subscription.resolve(ctx).await? {
-                            Some(av_id) => {
-                                AttributeValue::get_by_id(ctx, av_id)
-                                    .await?
-                                    .view(ctx)
-                                    .await?
-                            }
+                            Some(av_id) => AttributeValue::view(ctx, av_id).await?,
                             None => None,
                         };
                         // TODO add subscription path to FuncArgDebugView (path right now is prop path)
@@ -222,11 +217,11 @@ impl AttributePrototypeDebugView {
                             .attribute_values_for_component_id(ctx, expected_source_component_id)
                             .await?
                         {
-                            let attribute_value =
-                                AttributeValue::get_by_id(ctx, attribute_value_id).await?;
                             let prop_path =
                                 AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
-                            let view = attribute_value.view(ctx).await?.unwrap_or(Value::Null);
+                            let view = AttributeValue::view(ctx, attribute_value_id)
+                                .await?
+                                .unwrap_or(Value::Null);
                             let func_arg_debug = FuncArgDebugView {
                                 value: view,
                                 name: func_arg_name.clone(),
@@ -248,13 +243,12 @@ impl AttributePrototypeDebugView {
                             .attribute_values_for_component_id(ctx, expected_source_component_id)
                             .await?
                         {
-                            let attribute_value =
-                                AttributeValue::get_by_id(ctx, attribute_value_id).await?;
                             let attribute_value_path =
                                 AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
 
-                            let value_view =
-                                attribute_value.view(ctx).await?.unwrap_or(Value::Null);
+                            let value_view = AttributeValue::view(ctx, attribute_value_id)
+                                .await?
+                                .unwrap_or(Value::Null);
                             let func_arg_debug = FuncArgDebugView {
                                 value: value_view,
                                 name: func_arg_name.clone(),
@@ -276,13 +270,12 @@ impl AttributePrototypeDebugView {
                             .attribute_values_for_component_id(ctx, expected_source_component_id)
                             .await?
                         {
-                            let attribute_value =
-                                AttributeValue::get_by_id(ctx, attribute_value_id).await?;
                             let attribute_value_path =
                                 AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
 
-                            let value_view =
-                                attribute_value.view(ctx).await?.unwrap_or(Value::Null);
+                            let value_view = AttributeValue::view(ctx, attribute_value_id)
+                                .await?
+                                .unwrap_or(Value::Null);
                             let func_arg_debug = FuncArgDebugView {
                                 value: value_view,
                                 name: func_arg_name.clone(),
@@ -326,9 +319,9 @@ impl AttributePrototypeDebugView {
                     .await?;
                     let attribute_value_path =
                         AttributeValue::get_path_for_id(ctx, attribute_value_id).await?;
-                    let output_av =
-                        AttributeValue::get_by_id(ctx, output_match.attribute_value_id).await?;
-                    let value_view = output_av.view(ctx).await?.unwrap_or(Value::Null);
+                    let value_view = AttributeValue::view(ctx, output_match.attribute_value_id)
+                        .await?
+                        .unwrap_or(Value::Null);
                     let input_func = AttributePrototype::func_id(ctx, prototype_id).await?;
                     if let Some(func_argument) =
                         FuncArgument::list_for_func(ctx, input_func).await?.pop()

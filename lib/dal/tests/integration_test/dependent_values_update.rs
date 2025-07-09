@@ -157,10 +157,7 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
-        .await
-        .expect("value exists")
-        .view(ctx)
+    let view = AttributeValue::view(ctx, units_value_id)
         .await
         .expect("able to get units view")
         .expect("units has a view");
@@ -202,10 +199,7 @@ async fn marked_for_deletion_to_normal_is_blocked(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
-        .await
-        .expect("value exists")
-        .view(ctx)
+    let view = AttributeValue::view(ctx, units_value_id)
         .await
         .expect("able to get units view")
         .expect("units has a view");
@@ -331,10 +325,7 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
-        .await
-        .expect("value exists")
-        .view(ctx)
+    let view = AttributeValue::view(ctx, units_value_id)
         .await
         .expect("able to get units view")
         .expect("units has a view");
@@ -374,10 +365,7 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
-        .await
-        .expect("value exists")
-        .view(ctx)
+    let view = AttributeValue::view(ctx, units_value_id)
         .await
         .expect("able to get units view")
         .expect("units has a view");
@@ -417,10 +405,7 @@ async fn normal_to_marked_for_deletion_flows(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
-        .await
-        .expect("value exists")
-        .view(ctx)
+    let view = AttributeValue::view(ctx, units_value_id)
         .await
         .expect("able to get units view")
         .expect("units has a view");

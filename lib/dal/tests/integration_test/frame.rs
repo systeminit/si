@@ -598,10 +598,7 @@ async fn output_sockets_can_have_both(ctx: &mut DalContext) {
         .into_iter()
         .next()
         .expect("got av");
-    let odd_component_1_mat_view = AttributeValue::get_by_id(ctx, odd_component_1_av)
-        .await
-        .expect("got av")
-        .view(ctx)
+    let odd_component_1_mat_view = AttributeValue::view(ctx, odd_component_1_av)
         .await
         .expect("got mat view")
         .expect("has value");
@@ -616,10 +613,7 @@ async fn output_sockets_can_have_both(ctx: &mut DalContext) {
         .into_iter()
         .next()
         .expect("got av");
-    let odd_component_2_mat_view = AttributeValue::get_by_id(ctx, odd_component_2_av)
-        .await
-        .expect("got av")
-        .view(ctx)
+    let odd_component_2_mat_view = AttributeValue::view(ctx, odd_component_2_av)
         .await
         .expect("got mat view")
         .expect("has value");

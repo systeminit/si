@@ -82,6 +82,7 @@ use crate::{
             content_node_weight,
             traits::SiNodeWeight,
         },
+        traits::attribute_prototype::AttributePrototypeExt as _,
     },
 };
 
@@ -107,6 +108,8 @@ pub enum AttributePrototypeError {
     LayerDb(#[from] LayerDbError),
     #[error("attribute prototype {0} is missing a function edge")]
     MissingFunction(AttributePrototypeId),
+    #[error("Attribute prototype {0} has multiple functions")]
+    MultipleFunctionsFound(AttributePrototypeId),
     #[error("no arguments to identity func at {0}")]
     NoArgumentsToIdentityFunction(AttributePrototypeId),
     #[error("No attribute values for: {0}")]
@@ -220,19 +223,9 @@ impl AttributePrototype {
         ctx: &DalContext,
         prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<FuncId> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        for node_index in workspace_snapshot
-            .outgoing_targets_for_edge_weight_kind(prototype_id, EdgeWeightKindDiscriminants::Use)
-            .await?
-        {
-            let node_weight = workspace_snapshot.get_node_weight(node_index).await?;
-            let node_weight_id = node_weight.id();
-            if NodeWeightDiscriminants::Func == node_weight.into() {
-                return Ok(node_weight_id.into());
-            }
-        }
-
-        Err(AttributePrototypeError::MissingFunction(prototype_id))
+        ctx.workspace_snapshot()?
+            .attribute_prototype_func_id(prototype_id)
+            .await
     }
 
     pub async fn func(
@@ -733,27 +726,9 @@ impl AttributePrototype {
         ctx: &DalContext,
         ap_id: AttributePrototypeId,
     ) -> AttributePrototypeResult<Vec<AttributePrototypeArgumentId>> {
-        let mut apas = vec![];
-
-        let snap = ctx.workspace_snapshot()?;
-
-        for idx in snap
-            .outgoing_targets_for_edge_weight_kind(
-                ap_id,
-                EdgeWeightKindDiscriminants::PrototypeArgument,
-            )
-            .await?
-        {
-            apas.push(snap.get_node_weight(idx).await?.id().into())
-        }
-        // Whenever we're dealing with the arguments, we always want them to have stable
-        // ordering. For function execution, we want the arguments to have the same relative
-        // order from run to run. For use when generating checksums and other lists we also
-        // want them to have consistent order to avoid unnecessary churn in the data sent to
-        // & used by the front end.
-        apas.sort();
-
-        Ok(apas)
+        ctx.workspace_snapshot()?
+            .attribute_prototype_arguments(ap_id)
+            .await
     }
 
     // Returns the argument to this identity (or unset) function call.

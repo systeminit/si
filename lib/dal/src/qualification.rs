@@ -4,6 +4,7 @@ use serde::{
 };
 use si_data_pg::PgError;
 use si_frontend_types::ComponentQualificationStats;
+use si_id::AttributeValueId;
 use si_layer_cache::LayerDbError;
 use strum::{
     AsRefStr,
@@ -214,20 +215,20 @@ impl Ord for QualificationView {
 impl QualificationView {
     pub async fn new(
         ctx: &DalContext,
-        attribute_value: AttributeValue,
+        attribute_value_id: AttributeValueId,
     ) -> Result<Option<Self>, QualificationError> {
         let maybe_qual_run = ctx
             .layer_db()
             .func_run()
             .get_last_qualification_for_attribute_value_id(
                 ctx.events_tenancy().workspace_pk,
-                attribute_value.id(),
+                attribute_value_id,
             )
             .await?;
         match maybe_qual_run {
             Some(qual_run) => {
                 let qualification_entry: QualificationEntry =
-                    match attribute_value.view(ctx).await? {
+                    match AttributeValue::view(ctx, attribute_value_id).await? {
                         Some(value) => serde_json::from_value(value)?,
                         None => return Ok(None),
                     };

@@ -3,25 +3,24 @@ use std::collections::{
     VecDeque,
 };
 
-use itertools::Itertools as _;
+use petgraph::Direction;
 use si_id::{
     AttributePrototypeId,
     AttributeValueId,
     PropId,
 };
+use si_split_graph::SplitGraphError;
 
 use crate::{
     EdgeWeightKind,
-    EdgeWeightKindDiscriminants,
     PropKind,
     attribute::value::{
         AttributeValueError,
         AttributeValueResult,
     },
-    workspace_snapshot::graph::{
-        WorkspaceSnapshotGraphError,
-        WorkspaceSnapshotGraphV4,
-        traits::{
+    workspace_snapshot::{
+        edge_weight::EdgeWeightKindDiscriminants,
+        graph::traits::{
             attribute_value::{
                 AttributeValueExt,
                 AttributeValueTree,
@@ -29,10 +28,11 @@ use crate::{
             },
             prop::PropExt as _,
         },
+        split_snapshot::SplitSnapshotGraphV1,
     },
 };
 
-impl AttributeValueExt for WorkspaceSnapshotGraphV4 {
+impl AttributeValueExt for SplitSnapshotGraphV1 {
     fn attribute_value_tree(
         &self,
         root_attribute_value_id: AttributeValueId,
@@ -41,7 +41,8 @@ impl AttributeValueExt for WorkspaceSnapshotGraphV4 {
             .prop_for_attribute_value_id(root_attribute_value_id)?
             .ok_or_else(|| AttributeValueError::PropNotFound(root_attribute_value_id))?;
         let root_prop_kind = self
-            .get_node_weight_by_id(root_prop_id)?
+            .node_weight(root_prop_id.into())
+            .ok_or_else(|| SplitGraphError::NodeNotFound(root_prop_id.into()))?
             .get_prop_node_weight()?
             .kind();
         let mut tree =
@@ -58,7 +59,8 @@ impl AttributeValueExt for WorkspaceSnapshotGraphV4 {
                     .prop_for_attribute_value_id(child_id)?
                     .ok_or_else(|| AttributeValueError::PropNotFound(child_id))?;
                 let child_prop_kind = self
-                    .get_node_weight_by_id(child_prop_id)?
+                    .node_weight(child_prop_id.into())
+                    .ok_or_else(|| SplitGraphError::NodeNotFound(root_prop_id.into()))?
                     .get_prop_node_weight()?
                     .kind();
                 child_tree_entries.push(AttributeValueTreeEntry {
@@ -77,29 +79,25 @@ impl AttributeValueExt for WorkspaceSnapshotGraphV4 {
         &self,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Vec<AttributeValueId>> {
-        let node_index = self.get_node_index_by_id(attribute_value_id)?;
-        self.targets(node_index, EdgeWeightKindDiscriminants::Contain)
-            .map(|child_idx| {
-                self.node_index_to_id(child_idx)
-                    .map(Into::into)
-                    .ok_or_else(|| {
-                        WorkspaceSnapshotGraphError::NodeWithIndexNotFound(child_idx).into()
-                    })
-            })
-            .try_collect()
+        Ok(self
+            .outgoing_targets(
+                attribute_value_id.into(),
+                EdgeWeightKindDiscriminants::Contain,
+            )?
+            .map(Into::into)
+            .collect())
     }
 
     fn child_attribute_values_in_order(
         &self,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Vec<AttributeValueId>> {
-        let node_index = self.get_node_index_by_id(attribute_value_id)?;
         let prop_id = self
             .prop_for_attribute_value_id(attribute_value_id)?
             .ok_or_else(|| AttributeValueError::PropNotFound(attribute_value_id))?;
-
         let prop = self
-            .get_node_weight_by_id(prop_id)?
+            .node_weight(prop_id.into())
+            .ok_or_else(|| SplitGraphError::NodeNotFound(prop_id.into()))?
             .get_prop_node_weight()?;
 
         match prop.kind() {
@@ -108,38 +106,30 @@ impl AttributeValueExt for WorkspaceSnapshotGraphV4 {
             | PropKind::Integer
             | PropKind::Json
             | PropKind::String => Ok(Vec::new()),
-            PropKind::Array | PropKind::Map => {
-                let child_idxs = self.ordered_children_for_node(node_index)?.ok_or_else(|| {
+            PropKind::Array | PropKind::Map => Ok(self
+                .ordered_children(attribute_value_id.into())
+                .ok_or_else(|| {
                     AttributeValueError::NoOrderingNodeForAttributeValue(attribute_value_id)
-                })?;
-                let mut ordered_child_ids = Vec::with_capacity(child_idxs.len());
-                for child_idx in child_idxs {
-                    ordered_child_ids.push(
-                        self.node_index_to_id(child_idx)
-                            .ok_or_else(|| {
-                                WorkspaceSnapshotGraphError::NodeWithIndexNotFound(child_idx)
-                            })?
-                            .into(),
-                    );
-                }
-
-                Ok(ordered_child_ids)
-            }
+                })?
+                .iter()
+                .copied()
+                .map(Into::into)
+                .collect()),
             PropKind::Object => {
                 let mut child_av_ids = self.child_attribute_values(attribute_value_id)?;
                 let child_props = self.ordered_child_prop_ids(prop_id)?;
-                let mut av_by_prop = HashMap::with_capacity(child_props.len());
+                let mut avs_by_prop = HashMap::with_capacity(child_props.len());
 
                 for &child_av_id in &child_av_ids {
                     let child_prop_id = self
                         .prop_for_attribute_value_id(child_av_id)?
                         .ok_or_else(|| AttributeValueError::PropNotFound(child_av_id))?;
-                    av_by_prop.insert(child_prop_id, child_av_id);
+                    avs_by_prop.insert(child_prop_id, child_av_id);
                 }
 
                 let mut ordered_child_av_ids: Vec<_> = child_props
                     .iter()
-                    .filter_map(|child_prop_id| av_by_prop.get(child_prop_id).copied())
+                    .filter_map(|child_prop_id| avs_by_prop.get(child_prop_id).copied())
                     .collect();
 
                 // Ensure we haven't missed any child attribute values because of having multiple
@@ -160,39 +150,43 @@ impl AttributeValueExt for WorkspaceSnapshotGraphV4 {
 
     fn component_prototype_id(
         &self,
-        id: AttributeValueId,
+        attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Option<AttributePrototypeId>> {
-        let node_idx = self
-            .get_node_index_by_id(id)
-            .map_err(|_| AttributeValueError::MissingForId(id))?;
-        let maybe_prototype_idx = self
-            .target_opt(node_idx, EdgeWeightKindDiscriminants::Prototype)
-            .map_err(|_| AttributeValueError::MultiplePrototypesFound(id))?
-            .and_then(|node_idx| self.node_index_to_id(node_idx).map(Into::into));
+        let mut iter = self.outgoing_targets(
+            attribute_value_id.into(),
+            EdgeWeightKindDiscriminants::Prototype,
+        )?;
 
-        Ok(maybe_prototype_idx)
+        match (iter.next(), iter.next()) {
+            (None, None) => Ok(None),
+            (Some(ap_id), None) => Ok(Some(ap_id.into())),
+            (Some(_), Some(_)) => Err(AttributeValueError::MultiplePrototypesFound(
+                attribute_value_id,
+            )),
+            (None, Some(_)) => unreachable!("iterator had none then some"),
+        }
     }
 
     fn key_for_attribute_value_id(
         &self,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Option<String>> {
-        let node_idx = self
-            .get_node_index_by_id(attribute_value_id)
-            .map_err(|_| AttributeValueError::MissingForId(attribute_value_id))?;
-        let mut incoming_edges =
-            self.incoming_edges(node_idx, EdgeWeightKindDiscriminants::Contain);
+        let mut incoming_edges = self.incoming_edges(
+            attribute_value_id.into(),
+            EdgeWeightKindDiscriminants::Contain,
+        )?;
         match (incoming_edges.next(), incoming_edges.next()) {
-            (Some(_), Some(_)) => Err(WorkspaceSnapshotGraphError::TooManyEdgesOfKind(
-                node_idx,
-                EdgeWeightKindDiscriminants::Contain,
+            (None, None) => Ok(None),
+            (Some(edge), None) => match edge.weight().kind() {
+                EdgeWeightKind::Contain(key) => Ok(key.clone()),
+                _ => unreachable!("incoming_edges iterator returned unexpected kind"),
+            },
+            (Some(_), Some(_)) => Err(SplitGraphError::TooManyEdgesOfKind(
+                attribute_value_id.into(),
+                Direction::Incoming,
+                EdgeWeightKindDiscriminants::Contain.to_string(),
             )
             .into()),
-            (Some(edge_ref), None) => match edge_ref.weight().kind() {
-                EdgeWeightKind::Contain(key) => Ok(key.clone()),
-                kind => Err(WorkspaceSnapshotGraphError::InvalidEdgeWeightKind(kind.into()).into()),
-            },
-            (None, None) => Ok(None),
             (None, Some(_)) => unreachable!("iterator had none then some"),
         }
     }
@@ -201,38 +195,23 @@ impl AttributeValueExt for WorkspaceSnapshotGraphV4 {
         &self,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Option<PropId>> {
-        let node_idx = self
-            .get_node_index_by_id(attribute_value_id)
-            .map_err(|_| AttributeValueError::MissingForId(attribute_value_id))?;
-        let mut prop_edges = self.targets(node_idx, EdgeWeightKindDiscriminants::Prop);
-        match (prop_edges.next(), prop_edges.next()) {
-            (Some(prop_idx), None) => {
-                let prop_id = self
-                    .node_index_to_id(prop_idx)
-                    .map(Into::into)
-                    .ok_or_else(|| WorkspaceSnapshotGraphError::NodeWithIndexNotFound(prop_idx))?;
-                Ok(Some(prop_id))
-            }
-            (None, Some(_)) => unreachable!("iterator had none then some"),
-            (Some(prop_idx), Some(second_prop_idx)) => {
-                let prop_id = self
-                    .node_index_to_id(prop_idx)
-                    .map(Into::into)
-                    .ok_or_else(|| WorkspaceSnapshotGraphError::NodeWithIndexNotFound(prop_idx))?;
-                let second_prop_id = self
-                    .node_index_to_id(second_prop_idx)
-                    .map(Into::into)
-                    .ok_or_else(|| {
-                        WorkspaceSnapshotGraphError::NodeWithIndexNotFound(second_prop_idx)
-                    })?;
-
-                Err(AttributeValueError::MultiplePropsFound(
-                    second_prop_id,
-                    prop_id,
-                    attribute_value_id,
-                ))
-            }
+        let mut prop_ids: Vec<_> = self
+            .edges_directed_for_edge_weight_kind(
+                attribute_value_id.into(),
+                Direction::Outgoing,
+                EdgeWeightKindDiscriminants::Prop,
+            )?
+            .map(|edge_ref| edge_ref.target())
+            .collect();
+        match (prop_ids.pop(), prop_ids.pop()) {
+            (Some(prop_id), None) => Ok(Some(prop_id.into())),
             (None, None) => Ok(None),
+            (Some(prop_id), Some(second_prop_id)) => Err(AttributeValueError::MultiplePropsFound(
+                prop_id.into(),
+                second_prop_id.into(),
+                attribute_value_id,
+            )),
+            (None, Some(_)) => unreachable!("Vec::pop() had None then Some"),
         }
     }
 }

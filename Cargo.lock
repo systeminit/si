@@ -2189,7 +2189,6 @@ dependencies = [
 name = "dal"
 version = "0.1.0"
 dependencies = [
- "async-recursion",
  "async-trait",
  "audit-database",
  "audit-logs-stream",

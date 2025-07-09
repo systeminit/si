@@ -13,31 +13,23 @@ use si_id::{
 use crate::{
     DalContext,
     PropKind,
-    WorkspaceSnapshot,
     WorkspaceSnapshotError,
-    attribute::value::AttributeValueResult,
+    attribute::value::{
+        AttributeValueError,
+        AttributeValueResult,
+    },
     workspace_snapshot::{
         graph::traits::attribute_value::AttributeValueExt as _,
-        traits::prop::PropExt as _,
+        split_snapshot::SplitSnapshot,
+        traits::{
+            attribute_value::AttributeValueExt,
+            prop::PropExt as _,
+        },
     },
 };
 
 #[async_trait]
-pub trait AttributeValueExt {
-    async fn attribute_value_view(
-        &self,
-        ctx: &DalContext,
-        attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<Option<serde_json::Value>>;
-
-    async fn component_prototype_id(
-        &self,
-        attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<Option<AttributePrototypeId>>;
-}
-
-#[async_trait]
-impl AttributeValueExt for WorkspaceSnapshot {
+impl AttributeValueExt for SplitSnapshot {
     async fn attribute_value_view(
         &self,
         ctx: &DalContext,
@@ -65,7 +57,8 @@ impl AttributeValueExt for WorkspaceSnapshot {
             let av_node_weight = self
                 .working_copy()
                 .await
-                .get_node_weight_by_id(av_tree_entry.attribute_value_id)?
+                .node_weight(av_tree_entry.attribute_value_id.into())
+                .ok_or_else(|| AttributeValueError::MissingForId(av_tree_entry.attribute_value_id))?
                 .get_attribute_value_node_weight()?;
             match av_node_weight.value() {
                 None => {
@@ -141,7 +134,12 @@ impl AttributeValueExt for WorkspaceSnapshot {
                                 let prop_name = self
                                     .working_copy()
                                     .await
-                                    .get_node_weight_by_id(child_tree_entry.prop_id)?
+                                    .node_weight(child_tree_entry.prop_id.into())
+                                    .ok_or_else(|| {
+                                        AttributeValueError::MissingForId(
+                                            child_tree_entry.attribute_value_id,
+                                        )
+                                    })?
                                     .get_prop_node_weight()?
                                     .name()
                                     .to_owned();

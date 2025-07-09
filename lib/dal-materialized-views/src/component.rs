@@ -62,8 +62,7 @@ pub async fn assemble_in_list(
         {
             let av_id_for_prop_id =
                 Component::attribute_value_for_prop_id(ctx, component_id, prop_id).await?;
-            let av = dal::AttributeValue::get_by_id(ctx, av_id_for_prop_id).await?;
-            av.view(ctx).await?
+            dal::AttributeValue::view(ctx, av_id_for_prop_id).await?
         } else {
             None
         };

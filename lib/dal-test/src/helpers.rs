@@ -288,9 +288,9 @@ pub async fn get_component_input_socket_value(
         .collect_vec()
         .pop()
         .ok_or(eyre!("no input socket match found"))?;
-    let input_socket_av =
-        AttributeValue::get_by_id(ctx, component_input_socket.attribute_value_id).await?;
-    Ok(input_socket_av.view(ctx).await?)
+    AttributeValue::view(ctx, component_input_socket.attribute_value_id)
+        .await
+        .map_err(Into::into)
 }
 /// Gets the [`Value`] for a specific [`Component`]'s [`InputSocket`] by the [`InputSocket`] name
 pub async fn get_component_input_socket_attribute_value(
@@ -333,9 +333,9 @@ pub async fn get_component_output_socket_value(
         .collect_vec()
         .pop()
         .ok_or(eyre!("no input socket match found"))?;
-    let output_socket_av =
-        AttributeValue::get_by_id(ctx, component_output_socket.attribute_value_id).await?;
-    Ok(output_socket_av.view(ctx).await?)
+    AttributeValue::view(ctx, component_output_socket.attribute_value_id)
+        .await
+        .map_err(Into::into)
 }
 
 /// Update the [`Value`] for a specific [`AttributeValue`] for the given [`Component`](ComponentId) by the [`PropPath`]
@@ -381,10 +381,9 @@ pub async fn get_attribute_value_for_component_opt(
         .ok_or(eyre!("unexpected, no attribute values found for prop"))?;
     assert!(attribute_value_ids.is_empty());
 
-    let attribute_value = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
-
-    let value = attribute_value.view(ctx).await?;
-    Ok(value)
+    AttributeValue::view(ctx, attribute_value_id)
+        .await
+        .map_err(Into::into)
 }
 
 /// Encrypts a message with a given [`KeyPairPk`](KeyPair).
@@ -420,11 +419,9 @@ pub async fn fetch_resource_last_synced_value(
         return Err(eyre!("unexpected: more than one attribute value found"));
     }
 
-    let last_synced_value = AttributeValue::get_by_id(ctx, attribute_value_id)
-        .await?
-        .view(ctx)
-        .await?;
-    Ok(last_synced_value)
+    AttributeValue::view(ctx, attribute_value_id)
+        .await
+        .map_err(Into::into)
 }
 
 /// Extracts the value and validation from a raw property edtior value.

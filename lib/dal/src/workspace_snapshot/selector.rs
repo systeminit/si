@@ -23,10 +23,12 @@ use si_events::{
 };
 use si_id::{
     ApprovalRequirementDefinitionId,
+    AttributePrototypeArgumentId,
     AttributePrototypeId,
     AttributeValueId,
     ComponentId,
     EntityId,
+    FuncId,
     InputSocketId,
     PropId,
     SchemaId,
@@ -56,13 +58,6 @@ use super::{
         category_node_weight::CategoryNodeKind,
     },
     split_snapshot::SplitSnapshot,
-    traits::{
-        approval_requirement::ApprovalRequirementExt,
-        attribute_value::AttributeValueExt,
-        component::ComponentExt,
-        diagram::view::ViewExt,
-        prop::PropExt,
-    },
 };
 use crate::{
     DalContext,
@@ -74,9 +69,27 @@ use crate::{
         ApprovalRequirementApprover,
         ApprovalRequirementDefinition,
     },
+    attribute::{
+        prototype::{
+            AttributePrototypeResult,
+            argument::AttributePrototypeArgumentResult,
+        },
+        value::AttributeValueResult,
+    },
     component::ComponentResult,
     entity_kind::EntityKindResult,
+    func::FuncResult,
     prop::PropResult,
+    workspace_snapshot::traits::{
+        approval_requirement::ApprovalRequirementExt,
+        attribute_prototype::AttributePrototypeExt,
+        attribute_prototype_argument::AttributePrototypeArgumentExt,
+        attribute_value::AttributeValueExt,
+        component::ComponentExt,
+        diagram::view::ViewExt,
+        func::FuncExt,
+        prop::PropExt,
+    },
 };
 
 /// The `WorkspaceSnapshotSelector` enum acts as a dispatcher for workspace snapshot methods
@@ -1005,6 +1018,24 @@ impl ViewExt for WorkspaceSnapshotSelector {
 
 #[async_trait]
 impl PropExt for WorkspaceSnapshotSelector {
+    async fn prop_default_value(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<Option<serde_json::Value>> {
+        match self {
+            Self::LegacySnapshot(snapshot) => snapshot.prop_default_value(ctx, prop_id).await,
+            Self::SplitSnapshot(snapshot) => snapshot.prop_default_value(ctx, prop_id).await,
+        }
+    }
+
+    async fn prop_prototype_id(&self, prop_id: PropId) -> PropResult<AttributePrototypeId> {
+        match self {
+            Self::LegacySnapshot(snapshot) => snapshot.prop_prototype_id(prop_id).await,
+            Self::SplitSnapshot(snapshot) => snapshot.prop_prototype_id(prop_id).await,
+        }
+    }
+
     async fn ts_type(&self, prop_id: PropId) -> PropResult<String> {
         match self {
             Self::LegacySnapshot(snapshot) => snapshot.ts_type(prop_id).await,
@@ -1035,13 +1066,99 @@ impl ComponentExt for WorkspaceSnapshotSelector {
 
 #[async_trait]
 impl AttributeValueExt for WorkspaceSnapshotSelector {
+    async fn attribute_value_view(
+        &self,
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<Option<serde_json::Value>> {
+        match self {
+            Self::LegacySnapshot(snapshot) => {
+                snapshot.attribute_value_view(ctx, attribute_value_id).await
+            }
+            Self::SplitSnapshot(snapshot) => {
+                snapshot.attribute_value_view(ctx, attribute_value_id).await
+            }
+        }
+    }
+
     async fn component_prototype_id(
         &self,
         id: AttributeValueId,
-    ) -> WorkspaceSnapshotResult<Option<AttributePrototypeId>> {
+    ) -> AttributeValueResult<Option<AttributePrototypeId>> {
         match self {
             Self::LegacySnapshot(snapshot) => snapshot.component_prototype_id(id).await,
             Self::SplitSnapshot(snapshot) => snapshot.component_prototype_id(id).await,
+        }
+    }
+}
+
+#[async_trait]
+impl AttributePrototypeExt for WorkspaceSnapshotSelector {
+    async fn attribute_prototype_arguments(
+        &self,
+        attribute_prototype_id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<Vec<AttributePrototypeArgumentId>> {
+        match self {
+            Self::LegacySnapshot(snapshot) => {
+                snapshot
+                    .attribute_prototype_arguments(attribute_prototype_id)
+                    .await
+            }
+            Self::SplitSnapshot(snapshot) => {
+                snapshot
+                    .attribute_prototype_arguments(attribute_prototype_id)
+                    .await
+            }
+        }
+    }
+
+    async fn attribute_prototype_func_id(
+        &self,
+        attribute_prototype_id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<FuncId> {
+        match self {
+            Self::LegacySnapshot(snapshot) => {
+                snapshot
+                    .attribute_prototype_func_id(attribute_prototype_id)
+                    .await
+            }
+            Self::SplitSnapshot(snapshot) => {
+                snapshot
+                    .attribute_prototype_func_id(attribute_prototype_id)
+                    .await
+            }
+        }
+    }
+}
+
+#[async_trait]
+impl AttributePrototypeArgumentExt for WorkspaceSnapshotSelector {
+    async fn attribute_prototype_argument_static_value(
+        &self,
+        ctx: &DalContext,
+        attribute_prototype_argument_id: AttributePrototypeArgumentId,
+    ) -> AttributePrototypeArgumentResult<Option<serde_json::Value>> {
+        match self {
+            Self::LegacySnapshot(snapshot) => {
+                snapshot
+                    .attribute_prototype_argument_static_value(ctx, attribute_prototype_argument_id)
+                    .await
+            }
+            Self::SplitSnapshot(snapshot) => {
+                snapshot
+                    .attribute_prototype_argument_static_value(ctx, attribute_prototype_argument_id)
+                    .await
+            }
+        }
+    }
+}
+
+#[async_trait]
+impl FuncExt for WorkspaceSnapshotSelector {
+    async fn func_is_dynamic(&self, func_id: FuncId) -> FuncResult<bool> {
+        match self {
+            Self::LegacySnapshot(snapshot) => snapshot.func_is_dynamic(func_id).await,
+            Self::SplitSnapshot(snapshot) => snapshot.func_is_dynamic(func_id).await,
         }
     }
 }

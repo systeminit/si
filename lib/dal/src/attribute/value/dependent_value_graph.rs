@@ -291,7 +291,6 @@ impl DependentValueGraph {
                         &mut controlling_funcs_for_component,
                     )
                     .await?;
-                work_queue.reserve(new_work_queue_values.len());
                 work_queue.extend(new_work_queue_values);
             }
 

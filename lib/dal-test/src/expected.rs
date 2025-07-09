@@ -801,9 +801,7 @@ impl ExpectAttributeValue {
     }
 
     pub async fn view(self, ctx: &DalContext) -> Option<Value> {
-        self.attribute_value(ctx)
-            .await
-            .view(ctx)
+        dal::AttributeValue::view(ctx, self.attribute_value(ctx).await.id())
             .await
             .expect("attribute value view")
     }

@@ -33,13 +33,11 @@ use si_events::{
 };
 use si_id::{
     ApprovalRequirementDefinitionId,
-    AttributePrototypeId,
     AttributeValueId,
     ChangeSetId,
     ComponentId,
     EntityId,
     InputSocketId,
-    PropId,
     SchemaId,
     SchemaVariantId,
     UserPk,
@@ -95,7 +93,6 @@ use super::{
     traits::{
         approval_requirement::ApprovalRequirementExt,
         diagram::view::ViewExt,
-        prop::PropExt,
         socket::input::input_socket_from_node_weight,
     },
 };
@@ -125,20 +122,22 @@ use crate::{
         ViewContent,
         ViewContentV1,
     },
-    prop::PropResult,
     slow_rt,
     socket::input::InputSocketError,
     workspace_snapshot::{
         graph::traits::component::ComponentExt as _,
-        traits::{
-            attribute_value::AttributeValueExt,
-            component::ComponentExt,
-        },
+        traits::component::ComponentExt,
     },
 };
 
+pub mod attribute_prototype;
+pub mod attribute_prototype_argument;
+pub mod attribute_value;
 pub mod corrections;
+pub mod func;
 pub mod graph;
+pub mod prop;
+pub mod static_argument_value;
 
 pub type SplitSnapshotGraphV1 = SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>;
 pub type SplitSnapshotGraphVCurrent = SplitSnapshotGraphV1;
@@ -1855,13 +1854,6 @@ impl ViewExt for SplitSnapshot {
 }
 
 #[async_trait]
-impl PropExt for SplitSnapshot {
-    async fn ts_type(&self, _prop_id: PropId) -> PropResult<String> {
-        Ok("any".to_string())
-    }
-}
-
-#[async_trait]
 impl ComponentExt for SplitSnapshot {
     async fn root_attribute_value(
         &self,
@@ -1874,17 +1866,5 @@ impl ComponentExt for SplitSnapshot {
         self.working_copy()
             .await
             .external_source_count(component_id)
-    }
-}
-
-#[async_trait]
-impl AttributeValueExt for SplitSnapshot {
-    async fn component_prototype_id(
-        &self,
-        id: AttributeValueId,
-    ) -> WorkspaceSnapshotResult<Option<AttributePrototypeId>> {
-        self.target_opt(id.into(), EdgeWeightKindDiscriminants::Prototype)
-            .await
-            .map(|maybe_ulid| maybe_ulid.map(Into::into))
     }
 }

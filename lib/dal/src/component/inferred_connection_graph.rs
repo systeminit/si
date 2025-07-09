@@ -266,7 +266,6 @@ impl InferredConnectionGraph {
         {
             let mut cached_results = Vec::new();
             for input_socket_info in component_cache.get().values() {
-                cached_results.reserve(input_socket_info.len());
                 cached_results.extend(input_socket_info);
             }
 

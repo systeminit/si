@@ -187,6 +187,7 @@ use crate::{
             attribute_prototype_argument_node_weight::ArgumentTargets,
             category_node_weight::CategoryNodeKind,
         },
+        traits::attribute_value::AttributeValueExt as _,
     },
 };
 
@@ -514,8 +515,10 @@ impl Component {
         for value_id in Component::attribute_values_for_prop_id(ctx, id, root_prop_id).await? {
             let value_component_id = AttributeValue::component_id(ctx, value_id).await?;
             if value_component_id == id {
-                let root_value = AttributeValue::get_by_id(ctx, value_id).await?;
-                return Ok(root_value.view(ctx).await?);
+                return Ok(ctx
+                    .workspace_snapshot()?
+                    .attribute_value_view(ctx, value_id)
+                    .await?);
             }
         }
 
@@ -1453,7 +1456,6 @@ impl Component {
         while let Some(child_id) = work_queue.pop_front() {
             all_descendants.push(child_id);
             let children = Self::get_children_for_id(ctx, child_id).await?;
-            work_queue.reserve(children.len());
             work_queue.extend(children);
         }
         Ok(all_descendants)
@@ -1831,9 +1833,7 @@ impl Component {
     ) -> ComponentResult<Option<ResourceData>> {
         let value_id = Self::attribute_value_for_prop(ctx, id, &["root", "resource"]).await?;
 
-        let av = AttributeValue::get_by_id(ctx, value_id).await?;
-
-        match av.view(ctx).await? {
+        match AttributeValue::view(ctx, value_id).await? {
             Some(serde_value) => {
                 if serde_value.is_object()
                     && serde_value
@@ -1855,9 +1855,7 @@ impl Component {
         let name_value_id =
             Self::attribute_value_for_prop(ctx, id, &["root", "si", "name"]).await?;
 
-        let name_av = AttributeValue::get_by_id(ctx, name_value_id).await?;
-
-        let view_result = name_av.view(ctx).await?;
+        let view_result = AttributeValue::view(ctx, name_value_id).await?;
 
         Ok(match view_result {
             Some(serde_value) => serde_json::from_value(serde_value)?,
@@ -1880,12 +1878,12 @@ impl Component {
             let resource_id_value_id =
                 Self::attribute_value_for_prop_id(ctx, self.id, prop_id).await?;
 
-            let resource_id_av = AttributeValue::get_by_id(ctx, resource_id_value_id).await?;
-
-            Ok(match resource_id_av.view(ctx).await? {
-                Some(serde_value) => serde_json::from_value(serde_value)?,
-                None => "".into(),
-            })
+            Ok(
+                match AttributeValue::view(ctx, resource_id_value_id).await? {
+                    Some(serde_value) => serde_json::from_value(serde_value)?,
+                    None => "".into(),
+                },
+            )
         } else {
             Ok("".into())
         }
@@ -1894,9 +1892,8 @@ impl Component {
     pub async fn color(&self, ctx: &DalContext) -> ComponentResult<Option<String>> {
         let color_value_id =
             Component::attribute_value_for_prop(ctx, self.id(), &["root", "si", "color"]).await?;
-        let color_av = AttributeValue::get_by_id(ctx, color_value_id).await?;
 
-        Ok(match color_av.view(ctx).await? {
+        Ok(match AttributeValue::view(ctx, color_value_id).await? {
             Some(serde_value) => Some(serde_json::from_value(serde_value)?),
             None => None,
         })
@@ -1904,9 +1901,8 @@ impl Component {
     pub async fn color_by_id(ctx: &DalContext, id: ComponentId) -> ComponentResult<Option<String>> {
         let color_value_id =
             Component::attribute_value_for_prop(ctx, id, &["root", "si", "color"]).await?;
-        let color_av = AttributeValue::get_by_id(ctx, color_value_id).await?;
 
-        Ok(match color_av.view(ctx).await? {
+        Ok(match AttributeValue::view(ctx, color_value_id).await? {
             Some(serde_value) => Some(serde_json::from_value(serde_value)?),
             None => None,
         })
@@ -1919,13 +1915,9 @@ impl Component {
     ) -> ComponentResult<ComponentType> {
         let type_value_id =
             Self::attribute_value_for_prop(ctx, component_id, &["root", "si", "type"]).await?;
-        let type_value = AttributeValue::get_by_id(ctx, type_value_id)
-            .await?
-            .view(ctx)
-            .await?
-            .ok_or(ComponentError::ComponentMissingTypeValueMaterializedView(
-                component_id,
-            ))?;
+        let type_value = AttributeValue::view(ctx, type_value_id).await?.ok_or(
+            ComponentError::ComponentMissingTypeValueMaterializedView(component_id),
+        )?;
 
         Ok(serde_json::from_value(type_value)?)
     }
@@ -2106,7 +2098,6 @@ impl Component {
             if !early_return && all_relevant_prop_ids.contains(&working_prop_id) {
                 let children =
                     AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id).await?;
-                work_queue.reserve(children.len());
                 work_queue.extend(children);
             }
         }
@@ -3036,7 +3027,6 @@ impl Component {
         while let Some(av_id) = queue.pop_front() {
             flattened.push(av_id);
             if let Some(children) = attribute_value_tree.get(&av_id) {
-                queue.reserve(children.len());
                 queue.extend(children);
             }
         }
@@ -3066,8 +3056,7 @@ impl Component {
                             {
                                 // no existing connection, so let's queue this up to see if there's a matching socket
                                 // somewhere!
-                                let av = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
-                                let view = av.view(ctx).await?;
+                                let view = AttributeValue::view(ctx, attribute_value_id).await?;
                                 let info_needed = PotentialMatchData {
                                     attr_value_id: attribute_value_id,
                                     value: view,
@@ -3115,8 +3104,7 @@ impl Component {
                     if !is_single_arity
                         || !outgoing_connections_to_check.contains(&output_socket_id)
                     {
-                        let av = AttributeValue::get_by_id(ctx, output_socket_av).await?;
-                        let output_value = av.view(ctx).await?;
+                        let output_value = AttributeValue::view(ctx, output_socket_av).await?;
                         // Check against the list of available input sockets for compatibility
                         for (input_socket_id, info) in &available_input_sockets_to_connect {
                             // Does this output socket fits this input socket? (including annotations!)

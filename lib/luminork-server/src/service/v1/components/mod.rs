@@ -682,14 +682,14 @@ impl ComponentViewV1 {
         let domain_values = AttributeValue::get_child_av_ids_in_order(ctx, domain_root_av).await?;
         work_queue.extend(domain_values);
         while let Some(av) = work_queue.pop_front() {
-            let attribute_value = AttributeValue::get_by_id(ctx, av).await?;
+            let value = AttributeValue::view(ctx, av).await?;
             let prop_id = AttributeValue::prop_id(ctx, av).await?;
             let is_hidden_prop = Prop::get_by_id(ctx, prop_id).await?.hidden;
             if !is_hidden_prop {
                 let view = ComponentPropViewV1 {
                     id: av,
                     prop_id,
-                    value: attribute_value.view(ctx).await?,
+                    value,
                     path: AttributeValue::get_path_for_id(ctx, av)
                         .await?
                         .unwrap_or_else(String::new),
@@ -711,12 +711,12 @@ impl ComponentViewV1 {
             AttributeValue::get_child_av_ids_in_order(ctx, resource_value_root_av).await?;
         work_queue.extend(resource_value_values);
         while let Some(av) = work_queue.pop_front() {
-            let attribute_value = AttributeValue::get_by_id(ctx, av).await?;
+            let value = AttributeValue::view(ctx, av).await?;
 
             let view = ComponentPropViewV1 {
                 id: av,
                 prop_id: AttributeValue::prop_id(ctx, av).await?,
-                value: attribute_value.view(ctx).await?,
+                value,
                 path: AttributeValue::get_path_for_id(ctx, av)
                     .await?
                     .unwrap_or_else(String::new),

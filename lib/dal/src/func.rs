@@ -74,6 +74,7 @@ use crate::{
             NodeWeightError,
             category_node_weight::CategoryNodeKind,
         },
+        traits::func::FuncExt as _,
     },
 };
 
@@ -509,41 +510,11 @@ impl Func {
     }
 
     pub async fn is_dynamic(ctx: &DalContext, func_id: FuncId) -> FuncResult<bool> {
-        let func = ctx
-            .workspace_snapshot()?
-            .get_node_weight(func_id)
-            .await?
-            .get_func_node_weight()?;
-        Ok(Self::is_dynamic_for_name_string(func.name()))
+        ctx.workspace_snapshot()?.func_is_dynamic(func_id).await
     }
 
     pub fn is_intrinsic(&self) -> bool {
         IntrinsicFunc::maybe_from_str(&self.name).is_some()
-    }
-
-    /// A non-dynamic Func is an Intrinsic func that returns a fixed value, set by a StaticArgumentValue in the graph
-    /// opposingly, a dynamic Func is a func that returns a non statically predictable value, possibly user defined.
-    ///
-    /// It's important to note that not all Intrinsic funcs are non-dynamic. Identity, for instance, is dynamic.
-    fn is_dynamic_for_name_string(name: &str) -> bool {
-        match IntrinsicFunc::maybe_from_str(name) {
-            Some(intrinsic) => match intrinsic {
-                IntrinsicFunc::SetArray
-                | IntrinsicFunc::SetBoolean
-                | IntrinsicFunc::SetInteger
-                | IntrinsicFunc::SetFloat
-                | IntrinsicFunc::SetJson
-                | IntrinsicFunc::SetMap
-                | IntrinsicFunc::SetObject
-                | IntrinsicFunc::SetString
-                | IntrinsicFunc::Unset => false,
-                IntrinsicFunc::Identity
-                | IntrinsicFunc::NormalizeToArray
-                | IntrinsicFunc::ResourcePayloadToValue
-                | IntrinsicFunc::Validation => true,
-            },
-            None => true,
-        }
     }
 
     pub async fn modify_by_id<L>(ctx: &DalContext, id: FuncId, lambda: L) -> FuncResult<Func>
