@@ -349,9 +349,9 @@ export const bifrostList = async <T>(args: {
 /**
  * Query AttributeTree MVs in a changeset, looking for components that match the given terms.
  *
- * @param workspaceId The workspace ID to query.
- * @param changeSetId The changeset ID to query.
- * @param terms The key/value pairs to match. e.g. { key: "vpcId", value: "vpc-123" } or { key: "/domain/vpcId", value: "vpc-123" }
+ * @param args.workspaceId The workspace ID to query.
+ * @param args.changeSetId The changeset ID to query.
+ * @param args.terms The key/value pairs to match. e.g. { key: "vpcId", value: "vpc-123" } or { key: "/domain/vpcId", value: "vpc-123" }
  * @returns the list of component IDs that match the given terms.
  */
 export const bifrostQueryAttributes = async (args: {

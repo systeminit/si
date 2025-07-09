@@ -305,6 +305,7 @@ export type SelectionsInQueryString = Partial<{
   sortBy: SortByUrlQuery;
   pinned: string;
   viewId: string;
+  searchQuery: string;
 }>;
 
 const compositionLink = computed(() => {
