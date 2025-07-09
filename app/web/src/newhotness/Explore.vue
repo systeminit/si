@@ -319,16 +319,16 @@ import {
   ref,
   watch,
 } from "vue";
-import { useRouter, useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import {
-  themeClasses,
-  VormInput,
-  VButton,
   DropdownMenuButton,
   DropdownMenuItem,
   Icon,
-  TextPill,
   PillCounter,
+  TextPill,
+  themeClasses,
+  VButton,
+  VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
@@ -342,8 +342,8 @@ import {
 } from "@/store/realtime/heimdall";
 import {
   BifrostActionViewList,
-  EntityKind,
   ComponentInList,
+  EntityKind,
   View,
 } from "@/workers/types/entity_kind_types";
 import RealtimeStatusPageState from "@/components/RealtimeStatusPageState.vue";
@@ -793,6 +793,23 @@ const debouncedSearchString = ref<string>("");
 // send this down to any components that might use it
 provide("SEARCH", debouncedSearchString);
 
+watch(debouncedSearchString, () => {
+  // Update the query of the route (allowing for URL links) when the group by selection change.
+  const query: SelectionsInQueryString = {
+    ...router.currentRoute.value?.query,
+  };
+
+  if (!debouncedSearchString.value) {
+    delete query.searchQuery;
+  } else {
+    query.searchQuery = debouncedSearchString.value;
+  }
+
+  router.replace({
+    query,
+  });
+});
+
 /**
  * Search string, split into terms.
  *
@@ -838,12 +855,11 @@ const attrSearchedComponentIds = computedAsync(async () => {
     return undefined;
   }
 
-  const result = await bifrostQueryAttributes({
+  return await bifrostQueryAttributes({
     workspaceId: ctx.workspacePk.value,
     changeSetId: ctx.changeSetId.value,
     terms: attrSearchTerms,
   });
-  return result;
 });
 
 /**
@@ -902,14 +918,10 @@ const filteredComponents = computed(() => {
 
 // Clear the selection when the filter changes
 // TODO leave the selection as long as it is still one of the filtered components?
-watch(
-  filteredComponents,
-  () => {
-    mapRef.value?.deselect();
-    clearSelection();
-  },
-  { immediate: true, deep: true },
-);
+watch(filteredComponents, () => {
+  mapRef.value?.deselect();
+  clearSelection();
+});
 
 // Debounce the search string updates to avoid expensive filtering on every keystroke
 const updateDebouncedSearch = _.debounce(
@@ -917,7 +929,7 @@ const updateDebouncedSearch = _.debounce(
     debouncedSearchString.value = value;
   },
   500,
-  { trailing: true, leading: false },
+  { trailing: true, leading: true },
 );
 
 // Watch for changes to fuzzySearchString and update the debounced version
@@ -1400,6 +1412,10 @@ const onClick = (e: MouseDetails["click"]) => {
 // MOUNTING AND URL QUERY HANDLING
 const setSelectionsFromQuery = () => {
   const query: SelectionsInQueryString = router.currentRoute.value?.query;
+
+  if (query.searchQuery !== undefined) {
+    searchString.value = query.searchQuery;
+  }
 
   switch (query.sortBy) {
     case "failingactions":
