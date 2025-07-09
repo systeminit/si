@@ -1,6 +1,7 @@
 <template>
-  <div class="flex flex-col min-h-0">
+  <div class="flex flex-col min-h-full">
     <div
+      v-if="showSubheader"
       :class="
         clsx(
           'header flex flex-row justify-between items-center p-2xs',
@@ -18,7 +19,16 @@
       </div>
     </div>
 
-    <div ref="scrollContainerRef" class="scrollable" @scroll="handleScroll">
+    <div
+      ref="scrollContainerRef"
+      :class="
+        clsx(
+          'scrollable',
+          showSubheader ? 'min-h-[calc(100%-28px)]' : 'min-h-full',
+        )
+      "
+      @scroll="handleScroll"
+    >
       <TransitionGroup name="func-run-item">
         <FuncRunCard
           v-for="funcRun in funcRuns"
@@ -46,12 +56,23 @@
       </div>
 
       <!-- Empty state -->
-      <EmptyState
+      <div
         v-if="funcRuns.length === 0 && !isLoading"
-        text="No function runs found"
-        icon="func"
-        class="m-xs"
-      />
+        :class="
+          clsx(
+            'flex flex-row items-center justify-center',
+            'm-xs p-xs border min-h-[calc(100%-16px)]',
+            themeClasses('border-neutral-400', 'border-neutral-600'),
+          )
+        "
+      >
+        <EmptyState
+          icon="func"
+          text="No function runs yet"
+          secondaryText="Function history shows the output of executed functions, including logs, generated code, passed arguments, and results."
+          class="max-w-[420px]"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -153,6 +174,10 @@ const navigateToFuncRunDetails = (funcRunId: string) => {
     },
   });
 };
+
+const showSubheader = computed(
+  () => funcRuns.value.length > 0 || isLoading.value,
+);
 </script>
 
 <style>

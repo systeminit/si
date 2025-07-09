@@ -226,23 +226,16 @@
         )
       "
     >
-      <div class="grow grid grid-rows-subgrid" :style="collapsingStyles">
+      <div
+        class="grow grid grid-rows-subgrid min-h-0"
+        :style="collapsingStyles"
+      >
         <CollapsingGridItem ref="actionsRef">
-          <template #header>Actions ({{ actionViewList.length }})</template>
-          <EmptyState
-            v-if="actionViewList.length === 0"
-            icon="tools"
-            text="No actions to display"
-          />
-          <ul v-else class="actions list">
-            <ActionCard
-              v-for="action in actionViewList"
-              :key="action.id"
-              :action="action"
-              :selected="false"
-              :noInteraction="false"
-            />
-          </ul>
+          <template #header>Actions</template>
+          <template #headerIconsRight>
+            <PillCounter :count="actionViewList.length" class="text-sm" />
+          </template>
+          <ActionQueueList :actionViewList="actionViewList" />
         </CollapsingGridItem>
         <CollapsingGridItem ref="historyRef" disableScroll>
           <template #header>History</template>
@@ -332,6 +325,7 @@ import {
   DropdownMenuItem,
   Icon,
   TextPill,
+  PillCounter,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
@@ -358,7 +352,6 @@ import { collapsingGridStyles, preserveExploreState } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
 import { getQualificationStatus } from "./ComponentQualificationStatus.vue";
-import ActionCard from "./ActionCard.vue";
 import FuncRunList from "./FuncRunList.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
 import {
@@ -381,6 +374,7 @@ import ExploreGrid from "./explore_grid/ExploreGrid.vue";
 import { useConnections } from "./logic_composables/connections";
 import DelayedSkeleton from "./skeletons/DelayedSkeleton.vue";
 import ExploreModeTile from "./ExploreModeTile.vue";
+import ActionQueueList from "./ActionQueueList.vue";
 
 const router = useRouter();
 const route = useRoute();

@@ -1,11 +1,10 @@
 <template>
-  <!-- TODO(Wendy) - I bet this and CollapsingFlexItem can be merged into one component -->
-  <div :class="disableScroll ? 'overflow-hidden flex flex-col' : 'scrollable'">
+  <div class="overflow-hidden min-h-0 flex flex-col">
     <h3
       :class="
         clsx(
-          'group/header flex flex-row items-center',
-          'sticky top-0 cursor-pointer text-lg font-bold px-xs',
+          'group/header flex flex-row items-center h-[28px]',
+          'cursor-pointer text-lg font-bold px-xs flex-none',
           themeClasses(
             'bg-neutral-200 hover:bg-neutral-300',
             'bg-neutral-900 hover:bg-black',
@@ -19,8 +18,18 @@
         :name="openState.open.value ? 'chevron--down' : 'chevron--right'"
       />
       <slot name="header" />
+      <div class="ml-auto" />
+      <slot name="headerIconsRight" />
     </h3>
-    <slot />
+    <div
+      :class="
+        disableScroll
+          ? 'overflow-hidden flex flex-col min-h-[calc(100%-28px)]'
+          : 'scrollable flex-1 min-h-0'
+      "
+    >
+      <slot />
+    </div>
   </div>
 </template>
 
