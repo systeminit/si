@@ -328,6 +328,11 @@ const queryClient = useQueryClient();
 queryClient.setDefaultOptions({ queries: { staleTime: Infinity } });
 
 const container = inject<{ loadingGuard: Ref<boolean> }>("LOADINGGUARD");
+
+const getTokenForWorkspace = (workspaceId: string) => {
+  return tokensByWorkspacePk[workspaceId];
+};
+
 onBeforeMount(async () => {
   if (container && container.loadingGuard.value) {
     return;
@@ -346,20 +351,15 @@ onBeforeMount(async () => {
     }
   }, 500);
 
-  if (!Object.keys(tokensByWorkspacePk).length) {
-    tokenFail.value = true;
-    return;
-  }
-
   const thisWorkspacePk = workspacePk.value;
-  const workspaceAuthToken = tokensByWorkspacePk[thisWorkspacePk];
+  const workspaceAuthToken = getTokenForWorkspace(thisWorkspacePk);
   if (!workspaceAuthToken) {
     tokenFail.value = true;
     return;
   }
 
   // Activate the norse stack, which is explicitly NOT flagged for the job-specific UI.
-  await heimdall.init(workspaceAuthToken, queryClient);
+  await heimdall.init(thisWorkspacePk, workspaceAuthToken, queryClient);
   watch(
     [connectionShouldBeEnabled, heimdall.initCompleted],
     async () => {
@@ -377,9 +377,17 @@ onBeforeMount(async () => {
 });
 
 watch(
-  () => props.changeSetId,
-  async (newValue, _) => {
-    await heimdall.niflheim(props.workspacePk, newValue, true, false);
+  () => [props.workspacePk, props.changeSetId],
+  async ([newWorkspacePk, newChangeSetId], _) => {
+    if (newWorkspacePk && newChangeSetId) {
+      const workspaceToken = getTokenForWorkspace(newWorkspacePk);
+      if (!workspaceToken) {
+        tokenFail.value = true;
+        return;
+      }
+      await heimdall.registerBearerToken(newWorkspacePk, workspaceToken);
+      heimdall.niflheim(newWorkspacePk, newChangeSetId, true, false);
+    }
   },
 );
 

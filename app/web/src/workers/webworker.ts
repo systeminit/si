@@ -126,7 +126,7 @@ function debug(...args: any | any[]) {
  *  INITIALIZATION FNS
  */
 let db: Database;
-let sdf: AxiosInstance;
+const sdfClients: { [key: string]: AxiosInstance } = {};
 
 const getDbName = (testing: boolean) => {
   if (testing) return "sitest.sqlite3";
@@ -1236,6 +1236,12 @@ const mjolnirBulk = async (
   });
 
   await tracer.startActiveSpan(`GET ${desc}`, async (span) => {
+    const sdf = getSdfClientForWorkspace(workspaceId, span);
+    if (!sdf) {
+      span.end();
+      return;
+    }
+
     span.setAttributes({
       workspaceId,
       changeSetId,
@@ -1377,6 +1383,11 @@ const mjolnirJob = async (
   let req: undefined | AxiosResponse<IndexObjectMeta, any>;
 
   await tracer.startActiveSpan(`GET ${desc}`, async (span) => {
+    const sdf = getSdfClientForWorkspace(workspaceId, span);
+    if (!sdf) {
+      span.end();
+      return;
+    }
     span.setAttributes({ workspaceId, changeSetId, kind, id, checksum });
     try {
       req = await sdf<IndexObjectMeta>({
@@ -1645,11 +1656,31 @@ export const CHANGE_SET_INDEX_URL = (
 
 export const STATUS_INDEX_IN_PROGRESS = 202;
 
+const getSdfClientForWorkspace = (workspaceId: string, span?: Span) => {
+  const sdf = sdfClients[workspaceId];
+
+  if (!sdf) {
+    const errorMessage = `SDF client not found for workspace: ${workspaceId}`;
+    error(errorMessage);
+    span?.addEvent("error", {
+      "error.message": errorMessage,
+    });
+  }
+
+  return sdf;
+};
+
 const niflheim = async (
   workspaceId: string,
   changeSetId: ChangeSetId,
 ): Promise<boolean> => {
   return await tracer.startActiveSpan("niflheim", async (span: Span) => {
+    const sdf = getSdfClientForWorkspace(workspaceId, span);
+    if (!sdf) {
+      span.end();
+      return false;
+    }
+
     // build connections list based on data we have in the DB
     // connections list will rebuild as data comes in
     bulkInflight();
@@ -2843,8 +2874,8 @@ const getMany = (
  * INTERFACE DEFINITION
  */
 
-let socket: ReconnectingWebSocket;
-let bearerToken: string;
+const sockets: { [key: string]: ReconnectingWebSocket } = {};
+const bearerTokens: { [key: string]: string } = {};
 
 let bustCacheFn: BustCacheFn;
 let inFlightFn: RainbowFn;
@@ -2909,8 +2940,8 @@ const dbInterface: TabDBInterface = {
         assertNever(message);
     }
   },
-  setBearer(token) {
-    bearerToken = token;
+  setBearer(workspaceId, token) {
+    bearerTokens[workspaceId] = token;
     let apiUrl: string;
     if (import.meta.env.VITE_API_PROXY_PATH) {
       // eslint-disable-next-line no-restricted-globals
@@ -2920,7 +2951,7 @@ const dbInterface: TabDBInterface = {
     } else throw new Error("Invalid API env var config");
     const API_HTTP_URL = apiUrl;
 
-    sdf = Axios.create({
+    sdfClients[workspaceId] = Axios.create({
       headers: {
         "Content-Type": "application/json",
       },
@@ -2936,7 +2967,7 @@ const dbInterface: TabDBInterface = {
       return config;
     }
 
-    sdf.interceptors.request.use(injectBearerTokenAuth);
+    sdfClients[workspaceId]?.interceptors.request.use(injectBearerTokenAuth);
   },
   async initDB(testing: boolean) {
     return initializeSQLite(testing);
@@ -2948,22 +2979,28 @@ const dbInterface: TabDBInterface = {
     return result;
   },
 
-  async initSocket() {
+  async initSocket(workspaceId: string) {
+    if (typeof sockets[workspaceId] !== "undefined") {
+      return;
+    }
+
+    debug("Initializing websocket for workspaceId", workspaceId);
+
     try {
-      socket = new ReconnectingWebSocket(
-        () => `/api/ws/bifrost?token=Bearer+${bearerToken}`,
+      const token = bearerTokens[workspaceId];
+      sockets[workspaceId] = new ReconnectingWebSocket(
+        () => `/api/ws/bifrost?token=Bearer+${token}`,
         [],
         {
           // see options https://www.npmjs.com/package/reconnecting-websocket#available-options
           startClosed: true, // don't start connected - we'll watch auth to trigger
-          // TODO: tweak settings around reconnection behaviour
         },
       );
     } catch (err) {
       error(err);
     }
 
-    socket.addEventListener("message", (messageEvent) => {
+    sockets[workspaceId]?.addEventListener("message", (messageEvent) => {
       tracer.startActiveSpan("handleEvent", async (span) => {
         // we'll either be getting AtomMessages as patches to the data
         // OR we'll be getting mjolnir responses with the Atom as a whole
@@ -3051,7 +3088,7 @@ const dbInterface: TabDBInterface = {
       });
     });
 
-    socket.addEventListener("error", (errorEvent) => {
+    sockets[workspaceId]?.addEventListener("error", (errorEvent) => {
       error("ws error", errorEvent.error, errorEvent.message);
     });
   },
@@ -3073,7 +3110,7 @@ const dbInterface: TabDBInterface = {
       { mode: "exclusive", signal: abortController.signal },
       async () => {
         debug("lock acquired! 🌈 Initializing sqlite3 bifrost for real");
-        await Promise.all([this.initDB(false), this.initSocket()]);
+        await this.initDB(false);
         this.migrate(false);
         debug("🌈 Bifrost initialization complete");
 
@@ -3091,7 +3128,9 @@ const dbInterface: TabDBInterface = {
 
   bifrostClose() {
     try {
-      if (socket) socket.close();
+      for (const workspaceId in sockets) {
+        sockets[workspaceId]?.close();
+      }
     } catch (err) {
       error(err);
     }
@@ -3099,8 +3138,13 @@ const dbInterface: TabDBInterface = {
 
   bifrostReconnect() {
     try {
-      // don't re-connect if you're already connected!
-      if (socket && socket.readyState !== WebSocket.OPEN) socket.reconnect();
+      for (const workspaceId in sockets) {
+        const socket = sockets[workspaceId];
+        // don't re-connect if you're already connected!
+        if (socket && socket.readyState !== WebSocket.OPEN) {
+          socket.reconnect();
+        }
+      }
     } catch (err) {
       error(err);
     }
