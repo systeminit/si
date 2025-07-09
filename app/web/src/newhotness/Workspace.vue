@@ -135,6 +135,8 @@ const props = defineProps<{
   actionId?: string;
 }>();
 
+const authStore = useAuthStore();
+
 const span = ref<Span | undefined>();
 
 const lobby = computed(() => {
@@ -172,7 +174,6 @@ watch(
   { immediate: true },
 );
 
-const authStore = useAuthStore();
 const featureFlagsStore = useFeatureFlagsStore();
 const changeSetsStore = useChangeSetsStore();
 const realtimeStore = useRealtimeStore();
