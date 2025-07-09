@@ -35,10 +35,10 @@ function debug(...args: any | any[]) {
   if (_DEBUG) console.debug(args);
 }
 
-let bearerToken: string;
 let currentRemote: Comlink.Remote<TabDBInterface> | undefined;
 let currentRemoteId: string | undefined;
 const remotes: { [key: string]: Comlink.Remote<TabDBInterface> } = {};
+const bearerTokens: { [key: string]: string } = {};
 
 const hasRemoteChannel = new MessageChannel();
 
@@ -93,24 +93,20 @@ const dbInterface: SharedDBInterface = {
   async setRemote(remoteId: string) {
     debug("setting remote in shared web worker to", remoteId);
 
-    const wasConnected = !!currentRemote;
-
     currentRemote = remotes[remoteId];
     if (!currentRemote) {
       throw new Error(`remote {$remoteId} not registered`);
     }
     currentRemoteId = remoteId;
 
-    // Ensure we reconnect the websocket if we already had a remote
-    // (otherwise we let heimdall decide when to connect the websocket)
-    if (wasConnected) {
-      currentRemote.bifrostReconnect();
+    for (const [workspaceId, workspaceToken] of Object.entries(bearerTokens)) {
+      await currentRemote.setBearer(workspaceId, workspaceToken);
+      await currentRemote.initSocket(workspaceId);
     }
 
+    currentRemote.bifrostReconnect();
+
     hasRemoteChannel.port2.postMessage("got remote");
-    if (bearerToken) {
-      currentRemote.setBearer(bearerToken);
-    }
   },
 
   async initDB(_testing: boolean) {
@@ -121,13 +117,14 @@ const dbInterface: SharedDBInterface = {
     return withRemote(async (remote) => await remote.migrate(testing));
   },
 
-  setBearer(token: string): void {
-    bearerToken = token;
-    currentRemote?.setBearer(bearerToken);
+  setBearer(workspaceId, token): void {
+    bearerTokens[workspaceId] = token;
+    currentRemote?.setBearer(workspaceId, token);
+    currentRemote?.initSocket(workspaceId);
   },
 
-  async initSocket(): Promise<void> {
-    await withRemote(async (remote) => await remote.initSocket());
+  async initSocket(workspaceId: string): Promise<void> {
+    await withRemote(async (remote) => await remote.initSocket(workspaceId));
   },
 
   async initBifrost(_gotlockPort: MessagePort) {

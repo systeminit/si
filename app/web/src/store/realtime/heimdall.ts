@@ -44,7 +44,7 @@ import { useWorkspacesStore } from "../workspaces.store";
 // we do not need crypto-secure ulids. We just want every tab to have a different one. Which this will get us.
 const ulid = monotonicFactory(() => Math.random());
 
-const token = ref<string | undefined>(undefined);
+const ranInit = ref<boolean>(false);
 let queryClient: QueryClient;
 const tabDbId = ulid();
 const lockAcquired = ref(false);
@@ -54,12 +54,16 @@ lockAcquiredBroadcastChannel.onmessage = () => {
   lockAcquired.value = true;
 };
 
-export const init = async (bearerToken: string, _queryClient: QueryClient) => {
-  if (!token.value) {
+export const init = async (
+  workspaceId: string,
+  bearerToken: string,
+  _queryClient: QueryClient,
+) => {
+  if (!ranInit.value) {
     // eslint-disable-next-line no-console
     console.log("🌈 initializing bifrost...");
     const start = performance.now();
-    await tabDb.setBearer(bearerToken);
+    await db.setBearer(workspaceId, bearerToken);
 
     const { port1, port2 } = new MessageChannel();
     // This message fires when the lock has been acquired for this tab
@@ -73,7 +77,7 @@ export const init = async (bearerToken: string, _queryClient: QueryClient) => {
     tabDb.initBifrost(Comlink.proxy(port2));
 
     const end = performance.now();
-    token.value = bearerToken;
+    ranInit.value = true;
     queryClient = _queryClient;
     // eslint-disable-next-line no-console
     console.log(`...initialization completed [${end - start}ms] 🌈`);
@@ -93,7 +97,7 @@ export const init = async (bearerToken: string, _queryClient: QueryClient) => {
 };
 
 export const initCompleted = computed(
-  () => !!token.value && lockAcquired.value,
+  () => ranInit.value && lockAcquired.value,
 );
 
 const bustTanStackCache: BustCacheFn = (
@@ -553,6 +557,13 @@ export const muspelheim = async (workspaceId: string, force?: boolean) => {
   // eslint-disable-next-line no-console
   console.log("🔥 DONE 🔥");
   return true;
+};
+
+export const registerBearerToken = async (
+  workspaceId: string,
+  bearerToken: string,
+) => {
+  await db.setBearer(workspaceId, bearerToken);
 };
 
 // cold start
