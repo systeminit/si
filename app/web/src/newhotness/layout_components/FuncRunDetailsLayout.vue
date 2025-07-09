@@ -52,10 +52,6 @@
             <dt><Icon name="play" size="xs" /></dt>
             <dd>{{ funcRun.actionKind }}</dd>
           </template>
-
-          <!-- ID and Status -->
-          <dt class="text-xs">ID:</dt>
-          <dd class="text-xs">{{ funcRun.id }}</dd>
         </dl>
         <FuncRunStatusBadge v-if="funcRun && status" :status="status" />
       </div>

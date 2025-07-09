@@ -84,8 +84,7 @@
         <DropdownMenuItem
           icon="eye"
           label="View details"
-          :disabled="!props.action.funcRunId"
-          @select="navigateToActionDetailsProtected"
+          @select="navigateToActionDetails"
         />
 
         <!-- Go to component -->
@@ -166,12 +165,6 @@ const route = useRoute();
 const confirmRef = ref<InstanceType<typeof ConfirmHoldModal> | null>(null);
 const contextMenuRef = ref<InstanceType<typeof DropdownMenu>>();
 
-// Navigate to action details only if the func run ID is populated for the action
-const navigateToActionDetailsProtected = () => {
-  if (!props.action.funcRunId) return;
-  navigateToActionDetails();
-};
-
 // Navigate to action details
 const navigateToActionDetails = () => {
   router.push({
@@ -204,29 +197,9 @@ const navigateToComponent = () => {
   });
 };
 
-// Note: This function is commented out but kept for future use
-// when we might want to navigate directly to function run details
-/*
-const navigateToFuncRunDetails = () => {
-  if (props.action.funcRunId) {
-    router.push({
-      name: "new-hotness-func-run",
-      params: {
-        workspacePk: route.params.workspacePk,
-        changeSetId: route.params.changeSetId,
-        funcRunId: props.action.funcRunId,
-      },
-    });
-  }
-};
-*/
-
 // Handle click on the card
 const handleClick = () => {
-  if (!props.action.funcRunId) return;
-
   emit("click", props.action);
-
   // Navigate to action details which will show the latest function run
   navigateToActionDetails();
 };
