@@ -13,6 +13,7 @@
       <VButton
         v-if="
           funcRun &&
+          funcRun.actionId &&
           ['Failure', 'ActionFailure', 'Running'].includes(
             funcRunStatus(funcRun) || '',
           )
@@ -25,6 +26,7 @@
       <VButton
         v-if="
           funcRun &&
+          funcRun.actionId &&
           ['Failure', 'ActionFailure'].includes(funcRunStatus(funcRun) || '')
         "
         tone="action"
@@ -108,7 +110,7 @@ const api = useApi();
 const pollInterval = ref<number | false>(0); // initial calls
 
 const { data: funcRunQuery } = useQuery<Omit<FuncRun, "logs"> | undefined>({
-  queryKey: [ctx.changeSetId.value, "funcRun", props.funcRunId],
+  queryKey: computed(() => [ctx.changeSetId.value, "funcRun", props.funcRunId]),
   queryFn: async () => {
     const call = api.endpoint<funcRunTypes.FuncRunResponse>(routes.FuncRun, {
       id: props.funcRunId,
