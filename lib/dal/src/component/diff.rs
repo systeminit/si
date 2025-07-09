@@ -148,8 +148,7 @@ impl Component {
         // Now we need serialized, textual versions of the component on this change set and on head
         // in order to calculate a textural diff
         //
-        // NOTE(fnichol): this ported implementation is still way too expensive and relies on
-        // `AttributeValue.view()` which uses `async_recursion`. This needs to change...
+        // NOTE(fnichol): this ported implementation is still way too expensive
 
         let this_component_json_str = {
             let view = Self::view_by_id(ctx, component_id).await?.ok_or(

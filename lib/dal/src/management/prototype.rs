@@ -274,10 +274,7 @@ async fn build_connection(
         .to_owned();
     let av_id =
         OutputSocket::component_attribute_value_id(ctx, from_socket_id, from_component_id).await?;
-    let value = AttributeValue::get_by_id(ctx, av_id)
-        .await?
-        .view(ctx)
-        .await?;
+    let value = AttributeValue::view(ctx, av_id).await?;
     Ok(SocketRefAndValue {
         socket_ref: SocketRef { component, socket },
         value,

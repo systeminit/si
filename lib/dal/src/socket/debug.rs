@@ -102,7 +102,7 @@ impl SocketDebugView {
         let path =
             (AttributeValue::get_path_for_id(ctx, attribute_value_id).await?).unwrap_or_default();
 
-        let view = attribute_value.view(ctx).await?;
+        let view = AttributeValue::view(ctx, attribute_value_id).await?;
         let inferred_connections: Vec<Ulid> =
             AttributeValue::list_input_socket_sources_for_id(ctx, attribute_value_id)
                 .await?
@@ -148,7 +148,7 @@ impl SocketDebugView {
             .collect();
         let path =
             (AttributeValue::get_path_for_id(ctx, attribute_value_id).await?).unwrap_or_default();
-        let value_view = attribute_value.view(ctx).await?;
+        let value_view = AttributeValue::view(ctx, attribute_value_id).await?;
         let inferred_connections = component_input_socket
             .find_inferred_connections(ctx)
             .await?

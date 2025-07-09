@@ -114,7 +114,7 @@ impl AttributeDebugView {
         let prop_opt: Option<Prop> = Some(prop);
         let attribute_prototype_debug_view =
             AttributePrototypeDebugView::new(ctx, attribute_value_id).await?;
-        let value_view = attribute_value.view(ctx).await?;
+        let value_view = AttributeValue::view(ctx, attribute_value_id).await?;
         let prop_kind = prop_opt.clone().map(|prop| prop.kind);
         let value = match attribute_value.unprocessed_value(ctx).await? {
             Some(value) => Some(value),
