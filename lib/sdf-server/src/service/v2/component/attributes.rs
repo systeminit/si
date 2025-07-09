@@ -1,9 +1,16 @@
 use std::collections::HashMap;
 
 use axum::{
+    BoxError,
     Json,
     Router,
+    error_handling::HandleErrorLayer,
     extract::Path,
+    http::StatusCode,
+    response::{
+        IntoResponse,
+        Response,
+    },
     routing::put,
 };
 use dal::{
@@ -13,12 +20,17 @@ use dal::{
         ValueOrSourceSpec,
     },
 };
-use sdf_core::force_change_set_response::ForceChangeSetResponse;
+use sdf_core::{
+    api_error::ApiError,
+    force_change_set_response::ForceChangeSetResponse,
+};
 use sdf_extract::{
     PosthogEventTracker,
     change_set::ChangeSetDalContext,
 };
 use serde_json::json;
+use tower::ServiceBuilder;
+use tower_http::decompression::RequestDecompressionLayer;
 
 use super::{
     ComponentIdFromPath,
@@ -27,7 +39,23 @@ use super::{
 use crate::app_state::AppState;
 
 pub fn v2_routes() -> Router<AppState> {
-    Router::new().route("/", put(update_attributes))
+    Router::new().route(
+        "/",
+        put(update_attributes).layer(
+            ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(handle_decompression_error))
+                .layer(
+                    RequestDecompressionLayer::new()
+                        .gzip(true)
+                        .deflate(true)
+                        .pass_through_unaccepted(true),
+                ),
+        ),
+    )
+}
+
+async fn handle_decompression_error(err: BoxError) -> Response {
+    ApiError::new(StatusCode::UNSUPPORTED_MEDIA_TYPE, err.to_string()).into_response()
 }
 
 async fn update_attributes(
