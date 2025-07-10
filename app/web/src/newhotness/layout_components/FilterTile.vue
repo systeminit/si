@@ -6,8 +6,8 @@
         'flex flex-row gap-xs items-center',
         'p-2xs max-w-24 h-10 text-sm border cursor-pointer',
         themeClasses(
-          'border-neutral-400 hover:border-action-500',
-          'border-neutral-600 hover:border-action-300',
+          'border-neutral-400 hover:border-action-500 active:bg-action-500',
+          'border-neutral-600 hover:border-action-300 active:bg-action-300',
         ),
         selected
           ? themeClasses('bg-action-100', 'bg-action-800')
@@ -23,9 +23,12 @@
     <Icon v-if="icon" :name="icon" class="flex-none" />
     <TruncateWithTooltip
       :class="
-        themeClasses(
-          'group-hover:text-action-500',
-          'group-hover:text-action-300',
+        clsx(
+          'group-active:text-shade-0',
+          themeClasses(
+            'group-hover:text-action-500',
+            'group-hover:text-action-300',
+          ),
         )
       "
     >
