@@ -232,6 +232,7 @@ const MAX_STRING_LENGTH = 18;
 const props = defineProps<{
   active: boolean;
   components: ComponentInList[];
+  componentsWithFailedActions: Set<ComponentId>;
 }>();
 
 const componentsById = computed<Record<ComponentId, ComponentInList>>(() => {
@@ -737,6 +738,7 @@ watch(
     document.querySelectorAll("#map > svg rect.node").forEach((n) => {
       n.classList.remove("selected");
       n.classList.remove("greyed-out");
+      n.classList.remove("failed-actions");
     });
 
     // Remove greyed-out classes from text elements
@@ -809,11 +811,15 @@ watch(
       query.c = selectedIds.join(",");
     }
 
-    // Add selected class to all selected components
+    // Add selected class to all selected components and ensure they're not greyed out
     selectedComponents.value.forEach((component) => {
-      document
-        .querySelector(`#map > svg rect.node.id-${component.id}`)
-        ?.classList.add("selected");
+      const element = document.querySelector(
+        `#map > svg rect.node.id-${component.id}`,
+      );
+      if (element) {
+        element.classList.add("selected");
+        element.classList.remove("greyed-out"); // Explicitly remove greyed-out class
+      }
     });
 
     if (selectedComponents.value.size > 0) {
@@ -823,10 +829,11 @@ watch(
           .find((cls) => cls.startsWith("id-"))
           ?.substring(3);
 
-        if (componentId && !connectedComponentIds.value.has(componentId)) {
-          // Grey out ALL components that are not connected to selected components
-          // when there are selected components
-          if (selectedComponents.value.size > 0) {
+        if (componentId) {
+          const isInConnectedIds = connectedComponentIds.value.has(componentId);
+          const hasSelectedClass = element.classList.contains("selected");
+
+          if (!isInConnectedIds && !hasSelectedClass) {
             element.classList.add("greyed-out");
           }
         }
@@ -839,28 +846,59 @@ watch(
           .find((cls) => cls.startsWith("id-"))
           ?.substring(3);
 
-        if (componentId && !connectedComponentIds.value.has(componentId)) {
+        if (
+          componentId &&
+          !connectedComponentIds.value.has(componentId) &&
+          !rect?.classList.contains("selected")
+        ) {
           // Grey out ALL components that are not connected to selected components
-          // when there are selected components
-          if (selectedComponents.value.size > 0) {
-            group.querySelectorAll("text").forEach((text) => {
-              text.classList.add("greyed-out");
-            });
+          // when there are selected components (but never grey out selected components)
+          group.querySelectorAll("text").forEach((text) => {
+            text.classList.add("greyed-out");
+          });
 
-            // Grey out icons and color bars
-            group.querySelectorAll("path").forEach((path) => {
-              if (path.getAttribute("stroke")) {
-                // This is likely a color bar
-                path.setAttribute("stroke-opacity", "0.3");
-              } else {
-                // This is likely an icon
-                path.style.opacity = "0.3";
-              }
-            });
-          }
+          // Grey out icons and color bars
+          group.querySelectorAll("path").forEach((path) => {
+            if (path.getAttribute("stroke")) {
+              // This is likely a color bar
+              path.setAttribute("stroke-opacity", "0.3");
+            } else {
+              // This is likely an icon
+              path.style.opacity = "0.3";
+            }
+          });
+        } else if (componentId && rect?.classList.contains("selected")) {
+          // If this is a selected component, explicitly remove greyed-out styling
+          group.querySelectorAll("text").forEach((text) => {
+            text.classList.remove("greyed-out");
+          });
+
+          // Reset opacity for icons and color bars
+          group.querySelectorAll("path").forEach((path) => {
+            if (path.getAttribute("stroke")) {
+              path.setAttribute("stroke-opacity", "1");
+            } else {
+              path.style.opacity = "1";
+            }
+          });
         }
       });
     }
+
+    // Add failed-actions class to components with failed actions (unless they're selected)
+    document.querySelectorAll("#map > svg rect.node").forEach((element) => {
+      const componentId = Array.from(element.classList)
+        .find((cls) => cls.startsWith("id-"))
+        ?.substring(3);
+
+      if (
+        componentId &&
+        props.componentsWithFailedActions.has(componentId) &&
+        !element.classList.contains("selected")
+      ) {
+        element.classList.add("failed-actions");
+      }
+    });
 
     router.push({ query });
   },
@@ -977,13 +1015,17 @@ watch(
         .attr("width", (d) => d.width)
         .attr("height", (d) => d.height)
         // note this only handles the selected class on load
-        .attr(
-          "class",
-          (d) =>
-            `node id-${d.component.id} ${
-              selectedComponent.value?.id === d.component.id && "selected"
-            }`,
-        )
+        .attr("class", (d) => {
+          const classes = [`node`, `id-${d.component.id}`];
+
+          if (selectedComponent.value?.id === d.component.id) {
+            classes.push("selected");
+          } else if (props.componentsWithFailedActions.has(d.component.id)) {
+            classes.push("failed-actions");
+          }
+
+          return classes.join(" ");
+        })
         .on("click", (e: MouseEvent, d: layoutNode) => {
           clickedNode(e, d);
         })
@@ -1217,6 +1259,14 @@ defineExpose({
       stroke-width: 3;
       body.dark & {
         stroke: @colors-action-300;
+      }
+    }
+
+    &.failed-actions {
+      stroke: @colors-destructive-600;
+      stroke-width: 2;
+      body.dark & {
+        stroke: @colors-destructive-400;
       }
     }
 
