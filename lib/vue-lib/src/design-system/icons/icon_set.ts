@@ -120,6 +120,7 @@ import MdiCursorDefaultClickOutline from "~icons/mdi/cursor-default-click-outlin
 import MaterialSymbolsShiftLockOutline from "~icons/material-symbols/shift-lock-outline";
 import MaterialSymbolsAddLink from "~icons/material-symbols/add-link";
 import MaterialSymbolsLink from "~icons/material-symbols/link";
+import Map from "~icons/heroicons/map";
 
 import TdesignLinkUnlink from "~icons/tdesign/link-unlink";
 import PhTestTubeFill from "~icons/ph/test-tube-fill";
@@ -329,6 +330,7 @@ export const ICONS = Object.freeze({
   "logs-pop-square": LogsPopSquare,
   map: CarbonFlowConnection,
   menu: Menu,
+  minimap: Map,
   minus: Minus,
   "minus-circle": MinusCircle,
   "minus-hex": MinusHex,

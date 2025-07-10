@@ -37,45 +37,69 @@
 
     <div
       id="controls"
-      class="absolute left-0 bottom-0 flex flex-row gap-xs m-sm items-center"
+      class="absolute left-0 bottom-0 flex flex-col gap-xs m-sm items-start"
     >
-      <div
-        v-tooltip="'Zoom Out'"
-        :class="getButtonClasses(zoomLevel >= MAX_ZOOM)"
-        @click="zoomOut"
-      >
-        <Icon name="minus" size="sm" />
-      </div>
-      <div
-        v-tooltip="'Current Zoom'"
-        :class="
-          clsx(
-            'border p-2xs rounded select-none',
-            themeClasses(
-              'text-black border-black bg-white',
-              'text-white border-white bg-black',
-            ),
-          )
-        "
-      >
-        {{ Math.round(zoomLevel * 100) }}%
-      </div>
-      <div
-        v-tooltip="'Zoom In'"
-        :class="getButtonClasses(zoomLevel >= MAX_ZOOM)"
-        @click="zoomIn"
-      >
-        <Icon name="plus" size="sm" />
-      </div>
-      <div v-tooltip="'Reset'" :class="getButtonClasses(false)" @click="reset">
-        <Icon name="empty-square" size="sm" />
-      </div>
-      <div
-        v-tooltip="'Help'"
-        :class="getButtonClasses(false)"
-        @click="emit('help')"
-      >
-        <Icon name="question-circle" size="sm" />
+      <!-- Minimap -->
+      <MiniMap
+        v-show="showMinimap"
+        :layoutData="dataAsGraph"
+        :worldBounds="worldBounds"
+        :viewportCoordinates="viewportCoordinates"
+        :currentScale="transformMatrix[0] ?? 1"
+        @pan="pan"
+      />
+
+      <!-- Control buttons -->
+      <div class="flex flex-row gap-xs items-center">
+        <div
+          v-tooltip="showMinimap ? 'Hide Minimap' : 'Show Minimap'"
+          :class="getButtonClasses(false)"
+          @click="toggleMinimap"
+        >
+          <Icon name="minimap" size="sm" />
+        </div>
+        <div
+          v-tooltip="'Zoom Out'"
+          :class="getButtonClasses(zoomLevel >= MAX_ZOOM)"
+          @click="zoomOut"
+        >
+          <Icon name="minus" size="sm" />
+        </div>
+        <div
+          v-tooltip="'Current Zoom'"
+          :class="
+            clsx(
+              'border p-2xs rounded select-none',
+              themeClasses(
+                'text-black border-black bg-white',
+                'text-white border-white bg-black',
+              ),
+            )
+          "
+        >
+          {{ Math.round(zoomLevel * 100) }}%
+        </div>
+        <div
+          v-tooltip="'Zoom In'"
+          :class="getButtonClasses(zoomLevel >= MAX_ZOOM)"
+          @click="zoomIn"
+        >
+          <Icon name="plus" size="sm" />
+        </div>
+        <div
+          v-tooltip="'Reset'"
+          :class="getButtonClasses(false)"
+          @click="reset"
+        >
+          <Icon name="empty-square" size="sm" />
+        </div>
+        <div
+          v-tooltip="'Help'"
+          :class="getButtonClasses(false)"
+          @click="emit('help')"
+        >
+          <Icon name="question-circle" size="sm" />
+        </div>
       </div>
     </div>
 
@@ -195,6 +219,7 @@ import {
   inject,
   nextTick,
   onMounted,
+  onUnmounted,
   reactive,
   ref,
   watch,
@@ -224,6 +249,7 @@ import ConnectionsPanel from "./ConnectionsPanel.vue";
 import { getAssetIcon } from "./util";
 import ComponentContextMenu from "./ComponentContextMenu.vue";
 import { truncateString } from "./logic_composables/string_funcs";
+import MiniMap from "./MiniMap.vue";
 
 const MAX_STRING_LENGTH = 18;
 
@@ -244,6 +270,7 @@ const componentContextMenuRef =
   ref<InstanceType<typeof ComponentContextMenu>>();
 
 const selectedComponents = ref<Set<ComponentInList>>(new Set());
+const showMinimap = ref(true);
 
 // Get the primary selected component (first one in the set)
 const selectedComponent = computed<ComponentInList | null>(() => {
@@ -352,6 +379,128 @@ const pan = (dx: number, dy: number) => {
 
 const mouseDown = ref(false);
 
+// Reactive window dimensions for accurate viewport tracking
+const windowDimensions = ref({
+  width: window.innerWidth,
+  height: window.innerHeight,
+});
+
+// Update window dimensions reactively
+const updateWindowDimensions = () => {
+  windowDimensions.value = {
+    width: window.innerWidth,
+    height: window.innerHeight,
+  };
+};
+
+// Calculate world bounds for minimap coordinate system
+const worldBounds = computed(() => {
+  if (!dataAsGraph.value?.children || dataAsGraph.value.children.length === 0) {
+    return {
+      minX: -500,
+      minY: -500,
+      maxX: 500,
+      maxY: 500,
+      width: 1000,
+      height: 1000,
+    };
+  }
+
+  // Calculate bounding box of all nodes
+  let nodeMinX = Infinity;
+  let nodeMinY = Infinity;
+  let nodeMaxX = -Infinity;
+  let nodeMaxY = -Infinity;
+
+  dataAsGraph.value.children.forEach((node: layoutNode) => {
+    nodeMinX = Math.min(nodeMinX, node.x);
+    nodeMinY = Math.min(nodeMinY, node.y);
+    nodeMaxX = Math.max(nodeMaxX, node.x + node.width);
+    nodeMaxY = Math.max(nodeMaxY, node.y + node.height);
+  });
+
+  // Calculate current viewport area
+  const currentScale = transformMatrix[0] ?? 1;
+  const translateX = transformMatrix[4] ?? 0;
+  const translateY = transformMatrix[5] ?? 0;
+  const actualWidth = windowDimensions.value.width;
+  const actualHeight = windowDimensions.value.height;
+
+  const viewportWidth = actualWidth / currentScale;
+  const viewportHeight = actualHeight / currentScale;
+  const viewportX = -translateX / currentScale;
+  const viewportY = -translateY / currentScale;
+
+  // Strategy: minimap should always show all nodes prominently for navigation
+  // The world bounds should be large enough to include both nodes and viewport,
+  // but sized so that nodes remain visible and useful
+
+  // Calculate how much larger the viewport is compared to the node area
+  const nodeWidth = nodeMaxX - nodeMinX;
+  const nodeHeight = nodeMaxY - nodeMinY;
+
+  // Always include the viewport area
+  let finalMinX = Math.min(nodeMinX, viewportX);
+  let finalMinY = Math.min(nodeMinY, viewportY);
+  let finalMaxX = Math.max(nodeMaxX, viewportX + viewportWidth);
+  let finalMaxY = Math.max(nodeMaxY, viewportY + viewportHeight);
+
+  // If the total area is much larger than the node area, constrain it so nodes stay visible
+  const totalWidth = finalMaxX - finalMinX;
+  const totalHeight = finalMaxY - finalMinY;
+  const maxReasonableExpansion = 4; // Don't let the world be more than 4x the node size
+
+  if (totalWidth > nodeWidth * maxReasonableExpansion) {
+    const maxWidth = nodeWidth * maxReasonableExpansion;
+    const centerX = (finalMinX + finalMaxX) / 2;
+    finalMinX = centerX - maxWidth / 2;
+    finalMaxX = centerX + maxWidth / 2;
+  }
+
+  if (totalHeight > nodeHeight * maxReasonableExpansion) {
+    const maxHeight = nodeHeight * maxReasonableExpansion;
+    const centerY = (finalMinY + finalMaxY) / 2;
+    finalMinY = centerY - maxHeight / 2;
+    finalMaxY = centerY + maxHeight / 2;
+  }
+
+  // Add small padding for clean edges
+  const padding = 20;
+
+  return {
+    minX: finalMinX - padding,
+    minY: finalMinY - padding,
+    maxX: finalMaxX + padding,
+    maxY: finalMaxY + padding,
+    width: finalMaxX - finalMinX + padding * 2,
+    height: finalMaxY - finalMinY + padding * 2,
+  };
+});
+
+// Calculate viewport coordinates for minimap
+const viewportCoordinates = computed(() => {
+  const scale = transformMatrix[0] ?? 1;
+  const translateX = transformMatrix[4] ?? 0;
+  const translateY = transformMatrix[5] ?? 0;
+
+  // Use actual window dimensions for accurate viewport representation
+  const actualWidth = windowDimensions.value.width;
+  const actualHeight = windowDimensions.value.height;
+
+  // Calculate the viewport area in the main coordinate space
+  const viewportWidth = actualWidth / scale;
+  const viewportHeight = actualHeight / scale;
+  const viewportX = -translateX / scale;
+  const viewportY = -translateY / scale;
+
+  return {
+    x: viewportX,
+    y: viewportY,
+    width: viewportWidth,
+    height: viewportHeight,
+  };
+});
+
 const zoomIn = () => {
   zoomLevel.value += scaleStep;
   applyZoom();
@@ -380,6 +529,10 @@ const wheel = (event: WheelEvent) => {
 const reset = () => {
   zoomLevel.value = 1;
   transformMatrix.splice(0, 6, 1, 0, 0, 1, 0, 0);
+};
+
+const toggleMinimap = () => {
+  showMinimap.value = !showMinimap.value;
 };
 
 const clickWithNoDrag = ref(false);
@@ -466,6 +619,13 @@ onMounted(() => {
   // if we need to adjust zoom level on load dynamically
   // change it here
   applyZoom();
+
+  // Set up window resize listener for reactive dimensions
+  window.addEventListener("resize", updateWindowDimensions);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", updateWindowDimensions);
 });
 
 const mousemove = (event: MouseEvent) => {
@@ -559,7 +719,7 @@ const mapData = computed(() => {
   return { nodes, edges, components };
 });
 
-type node = {
+export type node = {
   id: string;
   width: number;
   height: number;
@@ -567,22 +727,22 @@ type node = {
   icons: [string | null];
 };
 
-type xy = {
+export type xy = {
   x: number;
   y: number;
 };
 
-type h = {
+export type h = {
   $H: number;
 };
 
-type edge = {
+export type edge = {
   id: string;
   sources: string[];
   targets: string[];
 };
 
-type line = {
+export type line = {
   sections: {
     id: string;
     startPoint: xy;
@@ -594,10 +754,17 @@ type line = {
   container: string;
 };
 
-type layoutNode = node & xy & h;
-type layoutLine = line & edge;
+export type layoutNode = node & xy & h;
+export type layoutLine = line & edge;
 
-const dataAsGraph = ref<unknown>();
+// Type for ELK layout result - simplified to match actual usage
+export type GraphData = {
+  children: layoutNode[];
+  edges: unknown[]; // ELK transforms edges in complex ways
+  [key: string]: unknown; // Allow other ELK properties
+};
+
+const dataAsGraph = ref<GraphData | null>(null);
 
 const WIDTH = 250;
 const HEIGHT = 75;
@@ -951,7 +1118,9 @@ watch(
     };
     const elk = new ELK();
     const layoutedData = await elk.layout(graph);
-    dataAsGraph.value = layoutedData;
+    // typescript gods help me
+    dataAsGraph.value = layoutedData as unknown as GraphData;
+
     nextTick(() => {
       const svg = d3.select("#map > svg g");
       // the viewbox should be based on "how much of the coordinate space is in use"
