@@ -22,6 +22,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import("@/pages/HomePage.vue"),
   },
   {
+    path: "/hashes",
+    name: "hashes",
+    meta: { public: true },
+    component: () => import("@/pages/Hashes.vue"),
+  },
+  {
     path: "/w",
     name: "workspace-index",
     redirect: { name: "home" },

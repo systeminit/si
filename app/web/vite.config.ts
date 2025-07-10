@@ -8,6 +8,7 @@ import IconsPlugin from "unplugin-icons/vite";
 import packageJson from "./package.json";
 import postcss from "./postcss.config.js";
 import ViteGitRevisionPlugin from "./build-src/vite_git_revision_plugin";
+import * as child_process from "child_process";
 
 // can't import a random file as a string :(
 // importing via node_modules at least lest us sort of import it from the module rather
@@ -37,14 +38,31 @@ const dotPathFixPlugin = () => ({
   },
 });
 
+
+const gitHashFile = (file: string) => {
+  const cmd = `git hash-object '${file}'`;
+  return child_process.execSync(cmd).toString().trim();
+}
+
+const sharedWorkerPath = path.resolve(__dirname, "src/workers/shared_webworker.ts");
+const sharedWorkerHash = JSON.stringify(gitHashFile(sharedWorkerPath));
+
+const headCommitHash = JSON.stringify(
+  child_process.execSync("git rev-parse HEAD").toString().trim()
+);
+
 // see https://vitejs.dev/config/ for more info
 export default (opts: { mode: string }) => {
   // load config so we can keep the dev port to run there, and potentially other things in the future
   // 3rd arg (prefix) loads all env vars instead of just VITE_APP_*
   const config = loadEnv(opts.mode, process.cwd(), "");
 
-  // defineConfig is a no-op but provides typing info for the options
   return defineConfig({
+    // NOTE: these constants only update at build time, or if you restart the vite server
+    define: {
+      __COMMIT_HASH__:  headCommitHash,
+      __SHARED_WORKER_HASH__: sharedWorkerHash,
+    },
     plugins: [
       dotPathFixPlugin(),
       vue(),
@@ -120,10 +138,7 @@ export default (opts: { mode: string }) => {
         input: {
           main: path.resolve(__dirname, "index.html"),
           worker: path.resolve(__dirname, "src/workers/webworker.ts"), // Add worker as an entry point
-          sharedWorker: path.resolve(
-            __dirname,
-            "src/workers/shared_webworker.ts",
-          ),
+          sharedWorker: sharedWorkerPath,
         },
         output: {
           entryFileNames: (chunk) => {
