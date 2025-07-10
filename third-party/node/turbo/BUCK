@@ -24,6 +24,7 @@ workspace_node_modules(
     name = "node_modules",
     pnpm_lock = ":pnpm-lock.yaml",
     root_workspace = False,
+    _package_json = ":package.json",
 )
 
 npm_bin(

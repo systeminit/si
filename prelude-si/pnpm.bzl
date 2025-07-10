@@ -868,7 +868,6 @@ def workspace_node_modules_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
     out = ctx.actions.declare_output("root", dir = True)
 
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
-    package_dir = cmd_args(ctx.label.package).relative_to(ctx.label.cell_root)
     shim = cmd_script(
         ctx = ctx,
         name = "pnpm_shim",
@@ -882,14 +881,9 @@ def workspace_node_modules_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
         ctx.attrs._package_json,
         "--pnpm-binary",
         shim,
-        hidden = [ctx.attrs.pnpm_lock],
+        "--pnpm-lock",
+        ctx.attrs.pnpm_lock,
     )
-    if ctx.attrs.root_workspace:
-        cmd.add("--package-dir")
-        cmd.add(package_dir)
-    else:
-        cmd.add("--root-dir")
-        cmd.add(package_dir)
     cmd.add(out.as_output())
 
     ctx.actions.run(cmd, category = "pnpm", identifier = "install")

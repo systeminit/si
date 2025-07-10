@@ -179,7 +179,7 @@ nix_toolchain(
 mise_install(
     name = "pnpm_compiler",
     packages = [
-        "pnpm@latest",
+        "pnpm@10.0.0",
     ],
     visibility = ["PUBLIC"],
 )

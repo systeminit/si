@@ -414,6 +414,7 @@ exec "$MISE_INSTALL_PATH" "$@"
     subprocess.run([str(mise_bootstrap_path), 'clear', 'cache'], env=env, check=True)
     subprocess.run([str(mise_bootstrap_path), 'clear', 'cache'], env=env, check=True)
     subprocess.run([str(mise_bootstrap_path), 'clear', 'cache'], env=env, check=True)
+    subprocess.run([str(mise_bootstrap_path), 'clear', 'cache'], env=env, check=True)
     subprocess.run([str(mise_bootstrap_path), 'plugins', 'update'], env=env, check=True)
 
     # Install each requested package

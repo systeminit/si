@@ -32,24 +32,39 @@ def _mise_rust_toolchain_impl(ctx):
     mise_binary = cmd_args(mise_info.mise_bootstrap)
     shims = cmd_args(mise_info.mise_tools_dir, "/shims", delimiter="")
     wrapper_tool = ctx.attrs._wrapper[RunInfo]
-    compiler_args = cmd_args(wrapper_tool)
-    compiler_args.add(shims)
+    wrapper = cmd_args(wrapper_tool)
+    wrapper.add(shims)
 
     rustc_cmd = cmd_args(
-        [compiler_args, mise_binary, "exec", "rust", "vfox:https://github.com/systeminit/vfox-clang@20.1.7", "--", "rustc"]
-    )
-    clippy_driver_cmd = cmd_args(
-        [mise_binary, "exec", "rust",  "--", "clippy"]
+        [wrapper, mise_binary, "exec", "rust", "vfox:https://github.com/systeminit/vfox-clang@20.1.7", "--", "rustc"]
     )
     rustdoc_cmd = cmd_args(
-        [mise_binary, "exec", "rust",  "--", "rustdoc"]
+        [wrapper, mise_binary, "exec", "rust",  "--", "rustdoc"]
     )
+
+    # the way clippy is invoked deep in the prelude means
+    # we need to have a single thing on the commandline
+    # or everything gets mangled. We generate a one-off
+    # script here for that purpose instead of reusing the
+    # wrapper.
+    clippy_wrapper_script = ctx.actions.declare_output("clippy_mise_wrapper.sh")
+    ctx.actions.write(
+        clippy_wrapper_script,
+        cmd_args(
+            "#!/bin/bash",
+            "set -e",
+            cmd_args("MISE_BINARY=", mise_binary, delimiter=""),
+            'exec "$MISE_BINARY" exec rust -- clippy-driver "$@"',
+        ),
+        is_executable = True,
+    )
+    clippy_driver = RunInfo(args = [clippy_wrapper_script])
 
     return [
         DefaultInfo(),
         RustToolchainInfo(
             allow_lints = ctx.attrs.allow_lints,
-            clippy_driver = RunInfo(args = clippy_driver_cmd),
+            clippy_driver = clippy_driver,
             clippy_toml = ctx.attrs.clippy_toml[DefaultInfo].default_outputs[0] if ctx.attrs.clippy_toml else None,
             compiler = RunInfo(args = rustc_cmd),
             default_edition = ctx.attrs.default_edition,
@@ -74,6 +89,7 @@ mise_rust_toolchain = rule(
         "mise_install": attrs.dep(
             providers = [MiseInfo],
             doc = "The mise_install target that provides the Rust installation",
+            default = "toolchains//:rust_compiler",
         ),
         "allow_lints": attrs.list(attrs.string(), default = []),
         "clippy_toml": attrs.option(attrs.dep(providers = [DefaultInfo]), default = None),
