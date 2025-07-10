@@ -212,6 +212,7 @@
         ref="mapRef"
         :active="!showGrid"
         :components="filteredComponents"
+        :componentsWithFailedActions="componentsHaveActionsWithState.failed"
         @deselect="onMapDeselect"
         @help="openShortcutModal"
       />
