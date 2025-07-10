@@ -6,19 +6,20 @@ import { useTheme } from "./theme_tools";
 export const COLOR_PALETTE = colorsJson;
 
 export const BRAND_COLOR_FILTER_HEX_CODES = {
-  AWS: "#FF9900",
-  Docker: "#1D63ED",
-  Azure: "#104581",
-  "Google Cloud": "#EF6255",
-  Github: "#9467EC",
-  Netlify: "#05BDBA",
   "Digital Ocean": "#ABF7FF",
-  Posthog: "#F54E00",
-  CoreOS: "#E9659C",
+  "Google Cloud": "#EF6255",
   "Open AI": "#FFBE19",
-  Tailscale: "#A7DAC2",
-  Helpers: "#E1A7FE",
+  AWS: "#FF9900",
+  Azure: "#104581",
+  CoreOS: "#E9659C",
   Custom: "#E5E5E5",
+  Docker: "#1D63ED",
+  Fastly: "#FE272D",
+  GitHub: "#9467EC",
+  Helpers: "#E1A7FE",
+  Netlify: "#05BDBA",
+  Posthog: "#F54E00",
+  Tailscale: "#A7DAC2",
 };
 
 const TONES = {

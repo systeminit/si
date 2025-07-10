@@ -1,11 +1,18 @@
 <template>
   <!-- NOTE: the Modal CSS for height in "max" doesn't work as we might expect -->
-  <Modal ref="modalRef" noWrapper hideExitButton size="max" @click="onClick">
+  <Modal
+    ref="modalRef"
+    noWrapper
+    hideExitButton
+    size="max"
+    class="w-[max(800px,66vw)]"
+    @click="onClick"
+  >
     <div class="h-[45svh]">
       <div
         :class="
           clsx(
-            'grid createcomponent gap-xs [&>*]:border max-h-full',
+            'grid createcomponent gap-xs [&>*]:border h-full',
             selectedAsset && 'grid grid-cols-2',
             themeClasses(
               '[&>*]:bg-shade-0 border-neutral-400 [&_*]:border-neutral-400',
@@ -27,7 +34,7 @@
             <SiSearch
               ref="searchRef"
               v-model="fuzzySearchString"
-              placeholder="Start typing to find components"
+              placeholder="Start typing to filter components"
               :borderBottom="false"
               class="flex-none border"
               @blur="searchRef?.focusSearch()"
@@ -35,6 +42,9 @@
               @keydown.enter.prevent="onEnter"
               @keydown.up.prevent="onUp"
               @keydown.down.prevent="onDown"
+              @keydown.left.prevent="onLeft"
+              @keydown.right.prevent="onRight"
+              @keydown.tab.prevent="onTab"
             >
               <template #right>
                 <div
@@ -64,18 +74,24 @@
                 :count="filter.count"
                 :color="filter.color"
                 :icon="filter.icon"
-                :selected="!!(selectedFilter && selectedFilter === filter.name)"
+                :selected="isFilterSelected(filter.name)"
                 @click="toggleFilterTile(filter.name)"
               />
             </HorizontalScrollArea>
             <!-- Fuzzy search results list -->
-            <div v-if="showResults" class="grow min-h-0 scrollable mb-xs">
+            <div v-if="showResults" class="grow min-h-0 scrollable">
               <TreeNode
                 v-for="category in filteredCategories"
+                ref="categoryTreeNodeRefs"
                 :key="category.name"
+                :defaultOpen="
+                  !(
+                    debouncedSearchString.length === 0 &&
+                    selectedFilter === undefined
+                  )
+                "
                 :class="themeClasses('bg-neutral-200', 'bg-neutral-700')"
                 indentationSize="none"
-                defaultOpen
                 :label="category.name"
                 alwaysShowArrow
                 clickLabelToToggle
@@ -136,15 +152,62 @@
                   </template>
                 </TreeNode>
               </TreeNode>
+              <EmptyState
+                v-if="filteredCategories.length === 0"
+                text="No Components Found"
+                secondaryText="Your search parameters did not match any components"
+                icon="alert-circle"
+              />
             </div>
           </div>
         </div>
         <!-- Right side - documentation -->
         <template v-if="selectedAsset">
-          <div class="docs scrollable border p-xs flex-1 overflow-auto">
-            <h3>{{ selectedAsset.name }}</h3>
-            <p>{{ selectedAsset.variant.link }}</p>
-            <p><VueMarkdown :source="selectedAsset.variant.description" /></p>
+          <div
+            :class="
+              clsx(
+                'docs border overflow-hidden break-words',
+                'flex flex-col flex-1 pb-xs gap-2xs',
+              )
+            "
+          >
+            <TruncateWithTooltip
+              :class="clsx('text-lg font-bold flex-none px-xs py-2xs border-b')"
+            >
+              {{ selectedAsset.name }}
+            </TruncateWithTooltip>
+            <div
+              class="flex flex-col gap-2xs px-xs scrollable flex-1 min-h-0 [&>.markdown_*]:text-sm"
+            >
+              <a
+                v-if="selectedAsset.variant.link"
+                target="_blank"
+                :href="selectedAsset.variant.link"
+                :class="
+                  clsx(
+                    'flex-none italic hover:underline',
+                    themeClasses('text-action-500', 'text-action-300'),
+                  )
+                "
+              >
+                {{ selectedAsset.variant.link }}
+              </a>
+              <p v-if="selectedAsset.variant.description" class="markdown">
+                <MarkdownRender
+                  :source="selectedAsset.variant.description"
+                  removeMargins
+                />
+              </p>
+              <div
+                v-if="
+                  !selectedAsset.variant.link &&
+                  !selectedAsset.variant.description
+                "
+                class="h-full flex flex-row items-center justify-center pb-lg"
+              >
+                <EmptyState icon="docs" text="No Documentation Available" />
+              </div>
+            </div>
           </div>
         </template>
       </div>
@@ -168,10 +231,9 @@ import {
 import { computed, inject, nextTick, ref, watch } from "vue";
 import clsx from "clsx";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
-import { Fzf } from "fzf";
 import { useRoute, useRouter } from "vue-router";
 import { debounce } from "lodash-es";
-import VueMarkdown from "vue-markdown-render";
+import { FzfResultItem } from "fzf";
 import EditingPill from "@/components/EditingPill.vue";
 import {
   BifrostSchemaVariantCategories,
@@ -184,9 +246,12 @@ import {
   AttributeTree,
 } from "@/workers/types/entity_kind_types";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
+import { useFzf } from "./logic_composables/fzf";
 import FilterTile from "./layout_components/FilterTile.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
 import { componentTypes, routes, useApi } from "./api_composables";
+import EmptyState from "./EmptyState.vue";
+import MarkdownRender from "./MarkdownRender.vue";
 
 const ctx: Context | undefined = inject("CONTEXT");
 assertIsDefined(ctx);
@@ -206,7 +271,7 @@ const selectAsset = (asset: UIAsset) => {
       "add-component-selected-item",
     )[0];
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      el.scrollIntoView({ block: "center" });
     }
   });
 };
@@ -308,11 +373,17 @@ const onEnter = async () => {
     else router.push(to);
   }
 };
-const onUp = () => {
+const onUp = (e: KeyboardEvent) => {
   if (!showResults.value) return;
+
+  const goByCategory =
+    e.key !== "Tab" && (e.shiftKey || e.ctrlKey || e.metaKey);
 
   if (selectionIndex.value === undefined) {
     selectionIndex.value = filteredAssetsFlat.value.length - 1;
+  } else if (goByCategory) {
+    selectFirstInNextCategory(selectionIndex.value, -1);
+    return;
   } else {
     selectionIndex.value--;
     if (selectionIndex.value < 0) {
@@ -321,11 +392,17 @@ const onUp = () => {
   }
   selectAssetByIndex();
 };
-const onDown = () => {
+const onDown = (e: KeyboardEvent) => {
   if (!showResults.value) return;
+
+  const goByCategory =
+    e.key !== "Tab" && (e.shiftKey || e.ctrlKey || e.metaKey);
 
   if (selectionIndex.value === undefined) {
     selectionIndex.value = 0;
+  } else if (goByCategory) {
+    selectFirstInNextCategory(selectionIndex.value, 1);
+    return;
   } else {
     selectionIndex.value++;
     if (selectionIndex.value > filteredAssetsFlat.value.length - 1) {
@@ -334,12 +411,72 @@ const onDown = () => {
   }
   selectAssetByIndex();
 };
+const onLeft = () => {
+  let currentFilterIndex = componentFilters.value.findIndex(
+    (filter) => filter.name === selectedFilter.value,
+  );
+
+  if (currentFilterIndex < 1) {
+    selectedFilter.value = undefined;
+  } else {
+    currentFilterIndex--;
+    const newFilter = componentFilters.value[currentFilterIndex];
+    if (newFilter) {
+      selectedFilter.value = newFilter.name;
+    }
+  }
+};
+const onRight = () => {
+  let currentFilterIndex = componentFilters.value.findIndex(
+    (filter) => filter.name === selectedFilter.value,
+  );
+
+  if (currentFilterIndex === componentFilters.value.length - 1) {
+    return;
+  } else {
+    if (currentFilterIndex < 1) currentFilterIndex = 1;
+    else currentFilterIndex++;
+    const newFilter = componentFilters.value[currentFilterIndex];
+    if (newFilter) {
+      selectedFilter.value = newFilter.name;
+    }
+  }
+};
+const onTab = (e: KeyboardEvent) => {
+  if (!showResults.value) return;
+
+  if (e.shiftKey) onUp(e);
+  else onDown(e);
+};
 const selectAssetByIndex = () => {
   if (
     selectionIndex.value !== undefined &&
     filteredAssetsFlat.value[selectionIndex.value]
   ) {
     selectAsset(filteredAssetsFlat.value[selectionIndex.value] as UIAsset);
+  }
+};
+const selectFirstInNextCategory = (currentIndex: number, direction: 1 | -1) => {
+  const currentSelection = filteredAssetsFlat.value[currentIndex];
+  if (!currentSelection) return;
+  const currentCategoryIndex = filteredCategories.value.findIndex((category) =>
+    category.assets.find((asset) =>
+      compareKeys(asset.key, currentSelection.key),
+    ),
+  );
+  if (currentCategoryIndex > -1) {
+    const nextCategory =
+      filteredCategories.value[currentCategoryIndex + direction];
+    const firstCategoryAsset = filteredCategories.value[0]?.assets[0];
+    const lastCategoryAsset =
+      filteredCategories.value[filteredCategories.value.length - 1]?.assets[0];
+    if (nextCategory && nextCategory.assets[0]) {
+      selectAsset(nextCategory.assets[0]);
+    } else if (direction === 1 && firstCategoryAsset) {
+      selectAsset(firstCategoryAsset);
+    } else if (direction === -1 && lastCategoryAsset) {
+      selectAsset(lastCategoryAsset);
+    }
   }
 };
 
@@ -385,7 +522,6 @@ const schemaVariantCategoriesOverBifrost =
 const categories = computed(() => {
   const rawCategoryData =
     schemaVariantCategoriesOverBifrost.data.value?.categories ?? [];
-
   return rawCategoryData.map((rawCategory) => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const firstSV = rawCategory.schemaVariants[0]!;
@@ -451,12 +587,14 @@ const filteredCategories = computed(() => {
   const assets = filteredResults.flatMap((c) => c.assets);
 
   if (debouncedSearchString.value !== "") {
-    const fzf = new Fzf(assets, {
-      casing: "case-insensitive",
-      selector: (a: UIAsset) => `${a.name} ${a.uiCategory.name}`,
-    });
+    const fzf = useFzf(
+      assets,
+      (a: UIAsset) => `${a.name} ${a.uiCategory.name}`,
+    );
 
-    const results = fzf.find(debouncedSearchString.value);
+    const results = fzf.find(
+      debouncedSearchString.value,
+    ) as FzfResultItem<UIAsset>[];
     const items: UIAsset[] = results.map((fz) => fz.item);
 
     // reconstruct categories from the results (this is why asset.category exists)
@@ -491,11 +629,12 @@ const filteredAssetsFlat = computed(() => {
 });
 
 const showResults = computed(
-  () => !!(debouncedSearchString.value !== "" || selectedFilter.value),
+  () => true, // !!(debouncedSearchString.value !== "" || selectedFilter.value),
 );
 
 const modalRef = ref<InstanceType<typeof Modal>>();
 const searchRef = ref<InstanceType<typeof SiSearch>>();
+const categoryTreeNodeRefs = ref<InstanceType<typeof TreeNode>[]>();
 
 const fuzzySearchString = ref<string>("");
 const debouncedSearchString = ref<string>("");
@@ -513,36 +652,61 @@ const updateDebouncedSearch = debounce(
 // Watch for changes to fuzzySearchString and update the debounced version
 const justCleared = ref(false);
 
-watch(fuzzySearchString, (newValue, oldValue) => {
-  // Check if the search was cleared (likely by X button)
-  if (oldValue && oldValue.length > 0 && newValue === "") {
-    clearSelection();
-    selectedFilter.value = undefined;
-    justCleared.value = true;
-    // Reset the flag after a short delay to prevent closing the modal
-    setTimeout(() => {
-      justCleared.value = false;
-    }, 100);
-  }
+watch([fuzzySearchString, selectedFilter], ([newFuzzySearchString]) => {
+  updateDebouncedSearch(newFuzzySearchString);
 
-  updateDebouncedSearch(newValue);
+  nextTick(() => {
+    fixCollapse();
+  });
 });
 
-const toggleFilterTile = (name: string) => {
+watch(selectedAsset, (newSelectedAsset) => {
+  if (newSelectedAsset === undefined || !categoryTreeNodeRefs.value) return;
+
+  const selectedCategoryIndex = filteredCategories.value.findIndex((category) =>
+    category.assets.find((asset) =>
+      compareKeys(asset.key, newSelectedAsset.key),
+    ),
+  );
+
+  const treeNode = categoryTreeNodeRefs.value[selectedCategoryIndex];
+  treeNode?.toggleIsOpen(true);
+});
+
+const fixCollapse = () => {
+  if (
+    fuzzySearchString.value.length === 0 &&
+    selectedFilter.value === undefined
+  ) {
+    categoryTreeNodeRefs.value?.forEach((node) => node.toggleIsOpen(false));
+  } else {
+    categoryTreeNodeRefs.value?.forEach((node) => node.toggleIsOpen(true));
+  }
+};
+
+const toggleFilterTile = (name?: string) => {
   clearSelection();
-  if (selectedFilter.value === name) selectedFilter.value = undefined;
+  if (!name) selectedFilter.value = undefined;
+  else if (selectedFilter.value === name) selectedFilter.value = undefined;
   else selectedFilter.value = name;
+};
+
+const isFilterSelected = (name: string) => {
+  if (name === selectedFilter.value) return true;
+  else if (name === "All" && selectedFilter.value === undefined) return true;
+  else return false;
 };
 
 const open = () => {
   modalRef.value?.open();
-  searchRef.value?.focusSearch();
   fuzzySearchString.value = "";
   debouncedSearchString.value = "";
   bannerClosed.value = false;
-  selectedAsset.value = undefined;
-  selectedFilter.value = undefined;
-  selectionIndex.value = undefined;
+  toggleFilterTile();
+  nextTick(() => {
+    searchRef.value?.focusSearch();
+    fixCollapse();
+  });
 };
 
 const close = () => {
@@ -551,10 +715,17 @@ const close = () => {
 
 const pickIcon = (name: string): IconNames => {
   if (name.toLowerCase().includes("aws")) return "logo-aws";
-  else if (name.toLowerCase().includes("docker")) return "logo-docker";
   else if (name.toLowerCase().includes("coreos")) return "logo-coreos";
+  else if (name.toLowerCase().includes("docker")) return "logo-docker";
+  else if (name.toLowerCase().includes("fastly")) return "logo-fastly";
   // TODO(Wendy) - we need to fill out the rest of these icon lookups for the various categories/filters!
   else return "logo-si";
+};
+
+const foundCategoryMatch = (categoryName: string, category: UICategory) => {
+  if (categoryName === "All") return true;
+  if (categoryName === "Templates") return category.name === "Templates";
+  return category.name.toLowerCase().includes(categoryName.toLowerCase());
 };
 
 const getCategoriesAndCountForFilterString = (categoryName = "All") => {
@@ -564,11 +735,7 @@ const getCategoriesAndCountForFilterString = (categoryName = "All") => {
   categories.value.forEach((category) => {
     const filtered: UICategory = { ...category, assets: [] };
     category.assets.forEach((asset) => {
-      // TODO(Wendy) - we probably need a better system than just string matching for some categories!
-      if (
-        categoryName === "All" ||
-        category.name.toLowerCase().includes(categoryName.toLowerCase())
-      ) {
+      if (foundCategoryMatch(categoryName, category)) {
         count++;
         filtered.assets.push(asset);
       }
@@ -592,21 +759,28 @@ const componentFilters = computed((): AssetFilter[] => {
   const filters: AssetFilter[] = [
     {
       name: "All",
-      icon: "logo-si",
+      icon: "logo-si", // TODO(Wendy) - different logo for this?
       count: getCategoriesAndCountForFilterString().count,
     },
+    {
+      name: "AWS",
+      icon: pickIcon("aws"),
+      count: getCategoriesAndCountForFilterString("aws").count,
+      color: BRAND_COLOR_FILTER_HEX_CODES.AWS,
+    },
+    {
+      name: "Fastly",
+      icon: pickIcon("fastly"),
+      count: getCategoriesAndCountForFilterString("fastly").count,
+      color: BRAND_COLOR_FILTER_HEX_CODES.Fastly,
+    },
+    {
+      name: "Templates",
+      icon: "logo-si", // TODO(Wendy) - different logo for this?
+      count: getCategoriesAndCountForFilterString("Templates").count,
+    },
   ];
-
-  for (const [key, value] of Object.entries(BRAND_COLOR_FILTER_HEX_CODES)) {
-    filters.push({
-      name: key,
-      icon: pickIcon(key),
-      count: getCategoriesAndCountForFilterString(key).count,
-      color: value,
-    });
-  }
-
-  return filters;
+  return filters.filter((f) => f.count > 0);
 });
 
 const leftSideRef = ref<HTMLDivElement>();
@@ -617,7 +791,12 @@ const onClick = (e: MouseEvent | undefined) => {
 
   const target = e.target;
 
-  if (!leftSideRef.value || !(target instanceof Node)) return;
+  if (
+    !leftSideRef.value ||
+    !(target instanceof Node) ||
+    !document.contains(target)
+  )
+    return;
 
   if (
     (!showResults.value || !selectedAsset.value) &&

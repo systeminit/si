@@ -156,8 +156,9 @@ import DockerLogo from "~icons/mdi/docker";
 import KubernetesLogo from "~icons/carbon/kubernetes";
 import CarbonLightning from "~icons/carbon/lightning";
 import DiscordLogo from "~icons/carbon/logo-discord";
-import GithubLogo from "~icons/carbon/logo-github";
+import GitHubLogo from "~icons/carbon/logo-github";
 import VimLogo from "~icons/raphael/vim";
+import FastlyLogo from "~icons/simple-icons/fastly";
 
 // carbon
 import Create from "~icons/carbon/intent-request-create";
@@ -418,9 +419,10 @@ export const LOGO_ICONS = Object.freeze({
   "logo-docker": DockerLogo,
   "logo-k8s": KubernetesLogo,
   "logo-si": SiLogo,
+  "logo-fastly": FastlyLogo,
   // others - not used in providers currently
   "logo-discord": DiscordLogo,
-  "logo-github": GithubLogo,
+  "logo-github": GitHubLogo,
   "logo-vim": VimLogo,
 });
 
