@@ -1819,6 +1819,7 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<()> {
+        AttributeValue::update(ctx, attribute_value_id, None).await?;
         let prototype_id = AttributeValue::component_prototype_id(ctx, attribute_value_id)
             .await?
             .ok_or(AttributeValueError::NoComponentPrototype(

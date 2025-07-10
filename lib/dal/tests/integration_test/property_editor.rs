@@ -381,6 +381,8 @@ async fn override_value_then_reset(ctx: &mut DalContext) {
     AttributeValue::use_default_prototype(ctx, av_id)
         .await
         .expect("revert back to default prototype");
+    let current_value = AttributeValue::view_by_id(ctx, av_id).await.expect("couldn't get av view");
+    assert_eq!(current_value, None);
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
@@ -482,6 +484,8 @@ async fn override_array_then_reset(ctx: &mut DalContext) {
     AttributeValue::use_default_prototype(ctx, av_id)
         .await
         .expect("revert back to default prototype");
+    let current_value = AttributeValue::view_by_id(ctx, av_id).await.expect("couldn't get av view");
+    assert_eq!(current_value, None);
     ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx)
         .await
         .expect("could not commit and update snapshot to visibility");
