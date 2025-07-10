@@ -35,6 +35,8 @@
         @childClicked="(e, c, idx) => $emit('childClicked', e, c, idx)"
         @childSelect="(idx) => $emit('childSelect', idx)"
         @childDeselect="(idx) => $emit('childDeselect', idx)"
+        @childHover="(componentId) => $emit('childHover', componentId)"
+        @childUnhover="(componentId) => $emit('childUnhover', componentId)"
         @clickCollapse="clickCollapse"
         @unpin="(componentId) => $emit('unpin', componentId)"
       />
@@ -373,6 +375,8 @@ defineEmits<{
   (e: "unpin", componentId: ComponentId): void;
   (e: "childSelect", componentIdx: number): void;
   (e: "childDeselect", componentIdx: number): void;
+  (e: "childHover", componentId: ComponentId): void;
+  (e: "childUnhover", componentId: ComponentId): void;
   (
     e: "childClicked",
     event: MouseEvent,
