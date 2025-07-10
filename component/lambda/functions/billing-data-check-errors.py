@@ -1,4 +1,5 @@
 import logging, typing
+from os import getenv
 from typing import cast, Iterable, NotRequired, Literal, LiteralString, TypeVar
 
 from si_lambda import SiLambda, SiLambdaEnv
@@ -36,6 +37,7 @@ ALL_ISSUES: list[Issue] = list(typing.get_args(Issue))
 class BillingDataCheckErrorsEnv(SiLambdaEnv):
     issue_queries: NotRequired[list[IssueQuery]]
     ignore_issues: NotRequired[list[Issue]]
+    ignore_users: NotRequired[list[str]]
 
 class BillingDataCheckErrors(SiLambda):
     def __init__(self, event: BillingDataCheckErrorsEnv):
@@ -49,10 +51,21 @@ class BillingDataCheckErrors(SiLambda):
             ]
         ])
         self.ignore_issues = event.get('ignore_issues', ['no_subscriptions', 'overlapping_subscriptions'])
+        self.ignore_users = [s for s in self.getenv('ignore_users', '').split(',') if s != '']
 
     def run_issue_query(self, issue_query: IssueQuery):
+        filters = []
+
         ignore_issues = [f"'{issue}'" for issue in self.ignore_issues]
-        issue_filter = f" WHERE issue NOT IN ({', '.join(ignore_issues)})" if len(self.ignore_issues) > 0 else ""
+        if len(ignore_issues) > 0:
+            filters.append(f"issue NOT IN ({', '.join(ignore_issues)})")
+
+        ignore_users = [f"'{user}'" for user in self.ignore_users]
+        if len(ignore_users) > 0:
+            filters.append(f"owner_pk NOT IN ({', '.join(ignore_users)})")
+
+        issue_filter = f" WHERE {' AND '.join(filters)}" if len(filters) > 0 else ""
+
         issue_count = 0
         for issue in self.redshift.query(f"SELECT * FROM workspace_verifications.{issue_query}{issue_filter}"):
             logging.error(f"Found issue {issue['issue']} in {issue_query}: {issue}")
