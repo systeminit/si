@@ -196,7 +196,6 @@ import {
   nextTick,
   onMounted,
   reactive,
-  Ref,
   ref,
   watch,
 } from "vue";
@@ -206,7 +205,6 @@ import clsx from "clsx";
 import { tw } from "@si/vue-lib";
 import { useRoute, useRouter } from "vue-router";
 import * as _ from "lodash-es";
-import { Fzf } from "fzf";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
   IncomingConnections,
@@ -535,47 +533,12 @@ const mapData = computed(() => {
   const nodes = new Set<string>();
   const edges = new Set<string>();
   const components: Record<string, ComponentInList> = {};
-  if (!connections.data.value) {
+  if (!connections.data.value || !componentsById.value) {
     return { nodes, edges, components };
   }
 
-  const matchingIds: string[] = [];
-  if (searchString?.value && searchString.value.trim().length > 0) {
-    const searchTerm = searchString.value.trim();
-
-    // Check if the search term contains "schema:" queries
-    const schemaMatches = searchTerm.match(/schema:([^\s]+)/gi);
-    if (schemaMatches) {
-      const schemaNames = schemaMatches.map((match) =>
-        match.substring(7).trim().toLowerCase(),
-      );
-
-      if (schemaNames.length === 0 || schemaNames.some((name) => name === "")) {
-        matchingIds.push(...Object.keys(componentsById.value));
-      } else {
-        const results = Object.values(componentsById.value).filter((c) =>
-          schemaNames.includes(c.schemaName.toLowerCase()),
-        );
-        matchingIds.push(...results.map((c) => c.id));
-      }
-    } else {
-      // Regular fuzzy search across all fields
-      const fzf = new Fzf(Object.values(componentsById.value), {
-        casing: "case-insensitive",
-        selector: (c) =>
-          `${c.name} ${c.schemaVariantName} ${c.schemaName} ${c.schemaCategory} ${c.schemaId} ${c.id}`,
-      });
-
-      const results = fzf.find(searchTerm);
-      if (results.length === 0) return { nodes, edges, components };
-      else matchingIds.push(...results.map((c) => c.item.id));
-    }
-  } else {
-    matchingIds.push(...Object.keys(componentsById.value));
-  }
-
   connections.data.value.forEach((c) => {
-    if (!matchingIds.includes(c.id)) return;
+    if (!componentsById.value[c.id]) return;
 
     nodes.add(c.id);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -583,8 +546,8 @@ const mapData = computed(() => {
     c.connections.forEach((e) => {
       // incoming, so "to" is me, always start with "me"
       if (
-        !matchingIds.includes(e.toComponentId) ||
-        !matchingIds.includes(e.fromComponentId)
+        !componentsById.value[e.toComponentId] ||
+        !componentsById.value[e.fromComponentId]
       )
         return;
 
@@ -904,8 +867,6 @@ watch(
   },
   { deep: true },
 );
-
-const searchString = inject<Ref<string>>("SEARCH");
 
 const connectedComponentIds = computed(() => {
   const connectedIds = new Set<string>();
