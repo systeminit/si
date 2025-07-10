@@ -265,10 +265,10 @@ const hoveredId = ref<ComponentId | undefined>(undefined);
 const hover = (componentId: ComponentId, hovered: boolean) => {
   if (hovered) {
     hoveredId.value = componentId;
-    emit("childUnhover", componentId);
+    emit("childHover", componentId);
   } else {
     hoveredId.value = undefined;
-    emit("childHover", componentId);
+    emit("childUnhover", componentId);
   }
 };
 

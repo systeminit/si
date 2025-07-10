@@ -6,8 +6,13 @@
         !noInteraction
           ? 'cursor-pointer hover:border-action-500 dark:hover:border-action-300 group/actioncard'
           : '',
-        selected
-          ? 'dark:bg-action-900 bg-action-100 border-action-500 dark:border-action-300'
+        // Background color for selected state
+        selected ? 'dark:bg-action-900 bg-action-100' : '',
+        // Border color priority: red for highlighted failed, blue for selected, default for others
+        highlightedFailed
+          ? 'border-destructive-500 dark:border-destructive-400'
+          : selected
+          ? 'border-action-500 dark:border-action-300'
           : 'dark:border-neutral-800',
         actionFailed ? 'action-failed' : '',
       )
@@ -54,6 +59,7 @@ defineProps<{
   noInteraction?: boolean;
   selected?: boolean;
   actionFailed: boolean;
+  highlightedFailed?: boolean;
   componentId: string | null | undefined;
   componentSchemaName?: string;
   componentName?: string;

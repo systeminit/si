@@ -174,6 +174,14 @@
           @childClicked="componentClicked"
           @childSelect="selectComponent"
           @childDeselect="deselectComponent"
+          @childHover="
+            (componentId) => {
+              if (componentsHaveActionsWithState.failed.has(componentId)) {
+                hoveredComponentId = componentId;
+              }
+            }
+          "
+          @childUnhover="() => (hoveredComponentId = undefined)"
           @unpin="() => (pinnedComponentId = undefined)"
           @scrollend="fixContextMenuAfterScroll"
           @scroll="onScroll"
@@ -238,7 +246,10 @@
           <template #headerIconsRight>
             <PillCounter :count="actionViewList.length" class="text-sm" />
           </template>
-          <ActionQueueList :actionViewList="actionViewList" />
+          <ActionQueueList
+            :actionViewList="actionViewList"
+            :highlightedActionIds="highlightedActionIds"
+          />
         </CollapsingGridItem>
         <CollapsingGridItem ref="historyRef" disableScroll>
           <template #header>History</template>
@@ -536,6 +547,9 @@ watch(
 // to compute the component from the ID rather than the other way around.
 const pinnedComponentId = ref<ComponentId | undefined>(undefined);
 
+// Track hovered component for highlighting failed actions
+const hoveredComponentId = ref<ComponentId | undefined>(undefined);
+
 watch([pinnedComponentId], () => {
   // First, make sure we clear any selection.
   clearSelection();
@@ -599,6 +613,22 @@ const componentsHaveActionsWithState = computed(() => {
     }
   }
   return results;
+});
+
+// Calculate which actions should be highlighted based on hovered component (only failed actions)
+const highlightedActionIds = computed(() => {
+  if (!hoveredComponentId.value) return new Set<string>();
+
+  const highlightedIds = new Set<string>();
+  for (const action of actionViewList.value) {
+    if (
+      action.componentId === hoveredComponentId.value &&
+      action.state === ActionState.Failed
+    ) {
+      highlightedIds.add(action.id);
+    }
+  }
+  return highlightedIds;
 });
 
 // ================================================================================================

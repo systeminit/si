@@ -3,6 +3,7 @@
     :noInteraction="noInteraction"
     :selected="selected"
     :actionFailed="actionFailed"
+    :highlightedFailed="failed"
     :abbr="actionKindToAbbreviation(action.kind)"
     :description="action.kind === ActionKind.Manual ? action.description : ''"
     :componentSchemaName="action.componentSchemaName"
@@ -153,6 +154,7 @@ const props = defineProps<{
   action: ActionProposedView;
   slim?: boolean;
   selected?: boolean;
+  failed?: boolean;
   noInteraction?: boolean;
 }>();
 
