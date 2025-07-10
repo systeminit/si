@@ -425,8 +425,16 @@ function toggleTheme() {
 const storeUser = computed(() => authStore.user);
 const verifyEmail = async () => {
   // if this is first time, we will take them off profile page after save
+  // eslint-disable-next-line no-console
+  console.debug("storeUser before request", storeUser.value?.email);
   const verificationReq = await authStore.REFRESH_AUTH0_PROFILE();
   if (verificationReq.result.success) {
+    // eslint-disable-next-line no-console
+    console.debug(
+      "email verified",
+      verificationReq.result,
+      storeUser.value?.email,
+    );
     if (storeUser.value && storeUser.value.emailVerified) {
       // We only want to send this event when a user has signed up and
       // we captured a verified email for them
