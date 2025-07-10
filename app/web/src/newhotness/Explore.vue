@@ -821,9 +821,6 @@ const sortedAndGroupedComponents = computed(() => {
 const searchString = ref<string>("");
 const debouncedSearchString = ref<string>("");
 
-// send this down to any components that might use it
-provide("SEARCH", debouncedSearchString);
-
 watch(debouncedSearchString, () => {
   // Update the query of the route (allowing for URL links) when the group by selection change.
   const query: SelectionsInQueryString = {
