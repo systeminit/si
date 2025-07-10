@@ -615,6 +615,9 @@ const onR = (_e: KeyDetails["r"]) => {
     ]);
   }
 };
+const onM = (_e: KeyDetails["m"]) => {
+  toggleMinimap();
+};
 onMounted(() => {
   // if we need to adjust zoom level on load dynamically
   // change it here
@@ -1370,6 +1373,7 @@ defineExpose({
   onU,
   onBackspace,
   onR,
+  onM,
 });
 </script>
 
