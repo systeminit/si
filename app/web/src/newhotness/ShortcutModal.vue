@@ -148,6 +148,15 @@
           to erase the selected component.
         </div>
       </div>
+      <div>
+        <div class="keys">
+          <div class="key">P</div>
+        </div>
+        <div>
+          Press <TextPill tighter variant="key">M</TextPill> when on the map
+          view to toggle the mini-map open or closed.
+        </div>
+      </div>
     </div>
   </Modal>
 </template>

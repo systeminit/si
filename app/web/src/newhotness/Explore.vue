@@ -1173,6 +1173,7 @@ const mountEmitters = () => {
   keyEmitter.on("Delete", onBackspace);
   keyEmitter.on("/", openShortcutModal);
   keyEmitter.on("?", openShortcutModal);
+  keyEmitter.on("m", onM);
   windowResizeEmitter.on("resize", onResize);
 };
 const removeEmitters = () => {
@@ -1194,6 +1195,7 @@ const removeEmitters = () => {
   keyEmitter.off("Delete", onBackspace);
   keyEmitter.off("/", openShortcutModal);
   keyEmitter.off("?", openShortcutModal);
+  keyEmitter.off("m", onM);
   windowResizeEmitter.off("resize", onResize);
 };
 
@@ -1322,6 +1324,14 @@ const onR = (e: KeyDetails["r"]) => {
   } else {
     mapRef.value?.onR(e);
   }
+};
+const onM = (e: KeyDetails["m"]) => {
+  e.preventDefault();
+  if (showGrid.value) {
+    // Do nothing in grid mode
+    return;
+  }
+  mapRef.value?.onM(e);
 };
 const onEscape = () => {
   if (isThereAModalOpen.value) return;
