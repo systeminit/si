@@ -176,18 +176,9 @@ nix_toolchain(
     visibility = ["PUBLIC"],
 )
 
-mise_install(
-    name = "pnpm_compiler",
-    packages = [
-        "pnpm@10.0.0",
-    ],
-    visibility = ["PUBLIC"],
-)
-
 pnpm_toolchain(
     name = "pnpm",
     editorconfig = "root//:.editorconfig",
-    mise_install = ":pnpm_compiler",
     visibility = ["PUBLIC"],
 )
 

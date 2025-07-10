@@ -19,20 +19,12 @@ load(
     "inject_test_run_info",
 )
 load(
-    "@prelude//tests:re_utils.bzl",
-    "get_re_executors_from_props",
-)
-load(
     "@prelude-si//:test.bzl",
     "inject_test_env",
 )
 load(
     "//pnpm:toolchain.bzl",
     "PnpmToolchainInfo",
-)
-load(
-    "@prelude//utils:cmd_script.bzl",
-    "cmd_script"
 )
 
 TypescriptDistInfo = provider(fields = {
@@ -56,15 +48,9 @@ def _npm_test_impl(
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
     package_build_ctx = package_build_context(ctx)
 
-    shim = cmd_script(
-        ctx = ctx,
-        name = "pnpm_shim",
-        cmd = cmd_args(pnpm_toolchain.pnpm_binary),
-    )
-
     if ctx.attrs.pnpm_exec_cmd_override:
         exec_cmd = cmd_args(
-            shim,
+            "pnpm",
             "exec",
             ctx.attrs.pnpm_exec_cmd_override,
         )
@@ -83,14 +69,11 @@ def _npm_test_impl(
 
     args_file = ctx.actions.write("args.txt", run_cmd_args)
 
-    # Setup a RE executor based on the `remote_execution` param.
-    re_executor, executor_overrides = get_re_executors_from_props(ctx)
-
     # We implicitly make the target run from the project root if remote
     # excution options were specified
     run_from_project_root = "buck2_run_from_project_root" in (
         ctx.attrs.labels or []
-    ) or re_executor != None
+    )
 
     return inject_test_run_info(
         ctx,
@@ -100,8 +83,6 @@ def _npm_test_impl(
             env = ctx.attrs.env,
             labels = ctx.attrs.labels,
             contacts = ctx.attrs.contacts,
-            default_executor = re_executor,
-            executor_overrides = executor_overrides,
             run_from_project_root = run_from_project_root,
             use_project_relative_paths = run_from_project_root,
         ),
@@ -406,7 +387,7 @@ def node_pkg_bin_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
         cmd.add(["--extra-src", src])
     cmd.add(out.as_output())
 
-    ctx.actions.run(cmd, category = "pkg")
+    ctx.actions.run(cmd, category = "pkg", local_only = True)
 
     return [
         DefaultInfo(default_output = out),
@@ -468,7 +449,7 @@ def npm_bin_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo, TemplatePl
         bin_name,
     ])
 
-    ctx.actions.run(cmd, category = "build_npm_bin", identifier = bin_name)
+    ctx.actions.run(cmd, category = "build_npm_bin", identifier = bin_name, local_only = True)
 
     return [
         DefaultInfo(default_output = exe),
@@ -627,7 +608,7 @@ def typescript_dist_impl(ctx: AnalysisContext) -> list[[DefaultInfo, TypescriptD
     if ctx.attrs.args:
         cmd.append(ctx.attrs.args)
 
-    ctx.actions.run(cmd, category = "tsc")
+    ctx.actions.run(cmd, category = "tsc", local_only = True)
 
     return [
         DefaultInfo(default_output = out),
@@ -753,7 +734,7 @@ def typescript_runnable_dist_bin_impl(ctx: AnalysisContext) -> list[[DefaultInfo
         hidden = [base_path],
     )
 
-    ctx.actions.run(cmd, category = "pnpm", identifier = "typescript_runnable_dist_bin")
+    ctx.actions.run(cmd, category = "pnpm", identifier = "typescript_runnable_dist_bin", local_only = True)
 
     return [
         DefaultInfo(default_output = out),
@@ -804,7 +785,7 @@ def vite_app_impl(ctx: AnalysisContext) -> list[[DefaultInfo, RunInfo]]:
         "build",
     )
 
-    ctx.actions.run(cmd, category = "vite", identifier = "build")
+    ctx.actions.run(cmd, category = "vite", identifier = "build", local_only = True)
 
     run_cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
@@ -868,25 +849,22 @@ def workspace_node_modules_impl(ctx: AnalysisContext) -> list[DefaultInfo]:
     out = ctx.actions.declare_output("root", dir = True)
 
     pnpm_toolchain = ctx.attrs._pnpm_toolchain[PnpmToolchainInfo]
-    shim = cmd_script(
-        ctx = ctx,
-        name = "pnpm_shim",
-        cmd = cmd_args(pnpm_toolchain.pnpm_binary),
-    )
+    package_dir = cmd_args(ctx.label.package).relative_to(ctx.label.cell_root)
 
     cmd = cmd_args(
         ctx.attrs._python_toolchain[PythonToolchainInfo].interpreter,
         pnpm_toolchain.build_workspace_node_modules[DefaultInfo].default_outputs,
-        "--package-json",
-        ctx.attrs._package_json,
-        "--pnpm-binary",
-        shim,
-        "--pnpm-lock",
-        ctx.attrs.pnpm_lock,
+        hidden = [ctx.attrs.pnpm_lock],
     )
+    if ctx.attrs.root_workspace:
+        cmd.add("--package-dir")
+        cmd.add(package_dir)
+    else:
+        cmd.add("--root-dir")
+        cmd.add(package_dir)
     cmd.add(out.as_output())
 
-    ctx.actions.run(cmd, category = "pnpm", identifier = "install")
+    ctx.actions.run(cmd, category = "pnpm", identifier = "install", local_only = True)
 
     return [DefaultInfo(default_output = out)]
 
@@ -896,10 +874,6 @@ workspace_node_modules = rule(
         "pnpm_lock": attrs.source(
             default = "root//:pnpm-lock.yaml",
             doc = """Workspace Pnpm lock file""",
-        ),
-        "_package_json": attrs.source(
-            default = "root//:package.json",
-            doc = """Workspace Pnpm package.json""",
         ),
         "root_workspace": attrs.bool(
             default = True,
@@ -948,7 +922,7 @@ def node_modules_context(
         cmd.add("--prod-only")
     cmd.add(out.as_output())
 
-    ctx.actions.run(cmd, category = "pnpm", identifier = "install " + ctx.label.package)
+    ctx.actions.run(cmd, category = "pnpm", identifier = "install " + ctx.label.package, local_only = True)
 
     return NodeModulesContext(root = out)
 
@@ -985,7 +959,7 @@ def package_build_context(ctx: AnalysisContext) -> PackageBuildContext:
         cmd.add(pnpm_toolchain.editorconfig)
     cmd.add(srcs_tree.as_output())
 
-    ctx.actions.run(cmd, category = "package_build_context")
+    ctx.actions.run(cmd, category = "package_build_context", local_only = True)
 
     return PackageBuildContext(
         srcs_tree = srcs_tree,
@@ -1020,7 +994,7 @@ def package_runnable_dist_context(
     )
     cmd.add(out.as_output())
 
-    ctx.actions.run(cmd, category = "package_runnable_dist_context")
+    ctx.actions.run(cmd, category = "package_runnable_dist_context", local_only = True)
 
     return PackageDistContext(
         tree = out,

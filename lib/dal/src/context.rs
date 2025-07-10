@@ -1901,7 +1901,7 @@ impl Transactions {
 /// attempts to stick *one* data type through the context world for the moment in the hopes this
 /// will make future refactoring a little easier.
 #[derive(Debug)]
-enum DelayedRebaseWithReply<'a> {
+pub enum DelayedRebaseWithReply<'a> {
     NoUpdates,
     WithUpdates {
         rebaser: &'a RebaserClient,

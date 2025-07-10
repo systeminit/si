@@ -12,6 +12,7 @@ rust_binary(
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:futures",
         "//third-party/rust:tokio",
+        "//third-party/rust:tracing",
         "//third-party/rust:tracing-subscriber",
     ],
 )

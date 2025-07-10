@@ -659,12 +659,10 @@ impl InferredConnectionGraph {
 
                 Ok(inferred_connections)
             }
-            t => {
-                return Err(InferredConnectionGraphError::UnsupportedComponentType(
-                    t,
-                    component_id,
-                ));
-            }
+            t => Err(InferredConnectionGraphError::UnsupportedComponentType(
+                t,
+                component_id,
+            )),
         }
     }
 }

@@ -71,7 +71,7 @@ def _si_cargo_buildscript_impl(ctx: AnalysisContext) -> list[Provider]:
         env["CARGO_FEATURE_{}".format(upper_feature)] = "1"
     for k, v in ctx.attrs.env.items():
         env[k] = cmd_args(v, relative_to = cwd)
-    ctx.actions.run(cmd, env = env, category = "buildscript")
+    ctx.actions.run(cmd, env = env, category = "buildscript", prefer_remote = True)
     return [DefaultInfo(default_output = None, sub_targets = {"out_dir": [DefaultInfo(default_output = out_dir)], "rustc_flags": [DefaultInfo(default_output = rustc_flags)]})]
 
 _si_cargo_buildscript_rule = rule(

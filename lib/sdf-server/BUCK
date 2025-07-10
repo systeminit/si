@@ -127,6 +127,7 @@ rust_test(
         "//third-party/rust:pretty_assertions_sorted",
         "//third-party/rust:serde",
         "//third-party/rust:serde_json",
+        "//third-party/rust:tracing",
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-tungstenite",
         "//third-party/rust:tokio-util",

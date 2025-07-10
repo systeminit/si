@@ -27,11 +27,9 @@ if __name__ == "__main__":
         "--dist-path",
         help="Path to `dist` scripts",
     )
-    parser.add_argument(
-        "--extra-src",
-        action="append",
-        help="Additional file(s) needed to produce the binary",
-    )
+    parser.add_argument("--extra-src",
+                        action="append",
+                        help="Additional file(s) needed to produce the binary")
     parser.add_argument(
         "bin_out_path",
         help="Path to output binary executable",
