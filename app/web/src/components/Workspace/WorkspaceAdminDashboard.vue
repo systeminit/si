@@ -3,6 +3,8 @@
     class="w-full h-full flex flex-col gap-xs p-lg items-center relative overflow-scroll dark:bg-neutral-800 dark:text-shade-0 bg-neutral-50 text-neutral-900"
   >
     <span class="font-bold text-3xl">Admin Dashboard</span>
+    <span class="text-xs">commit hash: {{ commitHash }}</span>
+    <span class="text-xs">shared worker hash: {{ sharedWorkerHash }}</span>
     <div class="flex flex-row gap-sm w-full">
       <Stack spacing="md" class="flex-none">
         <Stack class="max-w-xl">
@@ -127,6 +129,9 @@ const killExecution = () => {
 };
 
 const funcRunId = ref<string | null>(null);
+
+const commitHash = __COMMIT_HASH__;
+const sharedWorkerHash = __SHARED_WORKER_HASH__;
 
 const featureFlags = computed(() => {
   return featureFlagsStore.allFeatureFlags;
