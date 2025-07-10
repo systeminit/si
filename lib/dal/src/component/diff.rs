@@ -53,8 +53,9 @@ impl Component {
                 });
             };
 
-        let mut lines = Vec::new();
-        for diff_object in diff::lines(&head_json, &curr_json) {
+        let diff_lines = diff::lines(&head_json, &curr_json);
+        let mut lines = Vec::with_capacity(diff_lines.len());
+        for diff_object in diff_lines {
             let line = match diff_object {
                 diff::Result::Left(left) => format!("-{left}"),
                 diff::Result::Both(unchanged, _) => format!(" {unchanged}"),

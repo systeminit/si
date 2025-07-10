@@ -694,8 +694,8 @@ impl Func {
             )
             .await?;
 
-        let mut func_node_weights = Vec::new();
-        let mut func_content_hashes = Vec::new();
+        let mut func_node_weights = Vec::with_capacity(func_node_indexes.len());
+        let mut func_content_hashes = Vec::with_capacity(func_node_indexes.len());
         for index in func_node_indexes {
             let node_weight = workspace_snapshot
                 .get_node_weight(index)
@@ -743,8 +743,8 @@ impl Func {
     pub async fn list_from_ids(ctx: &DalContext, func_ids: &[FuncId]) -> FuncResult<Vec<Self>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let mut func_node_weights = Vec::new();
-        let mut func_content_hashes = Vec::new();
+        let mut func_node_weights = Vec::with_capacity(func_ids.len());
+        let mut func_content_hashes = Vec::with_capacity(func_ids.len());
         for id in func_ids {
             let node_weight = workspace_snapshot
                 .get_node_weight(id)
@@ -768,7 +768,7 @@ impl Func {
             .try_read_many_as(func_content_hashes.as_slice())
             .await?;
 
-        let mut funcs = Vec::new();
+        let mut funcs = Vec::with_capacity(func_node_weights.len());
         for node_weight in func_node_weights {
             match func_contents.get(&node_weight.content_hash()) {
                 Some(func_content) => {

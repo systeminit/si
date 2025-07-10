@@ -272,11 +272,11 @@ impl Schema {
     ) -> SchemaResult<Vec<SchemaVariantId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let mut schema_variant_ids = Vec::new();
-        for (edge_weight, _, target_index) in workspace_snapshot
+        let schema_variant_edges = workspace_snapshot
             .edges_directed(schema_id, Outgoing)
-            .await?
-        {
+            .await?;
+        let mut schema_variant_ids = Vec::with_capacity(schema_variant_edges.len());
+        for (edge_weight, _, target_index) in schema_variant_edges {
             if EdgeWeightKindDiscriminants::Use == edge_weight.kind().into() {
                 schema_variant_ids.push(
                     workspace_snapshot
@@ -493,7 +493,7 @@ impl Schema {
             )
             .await?;
 
-        let mut schema_ids = Vec::new();
+        let mut schema_ids = Vec::with_capacity(schema_node_indices.len());
         for index in schema_node_indices {
             let raw_id = workspace_snapshot.get_node_weight(index).await?.id();
             schema_ids.push(raw_id.into());

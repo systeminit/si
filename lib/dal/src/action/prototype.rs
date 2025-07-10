@@ -281,11 +281,11 @@ impl ActionPrototype {
     ) -> ActionPrototypeResult<Vec<ActionPrototypeId>> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
-        let mut action_prototype_ids = Vec::new();
-        for node_index in workspace_snapshot
+        let action_prototype_nodes = workspace_snapshot
             .incoming_sources_for_edge_weight_kind(func_id, EdgeWeightKindDiscriminants::Use)
-            .await?
-        {
+            .await?;
+        let mut action_prototype_ids = Vec::with_capacity(action_prototype_nodes.len());
+        for node_index in action_prototype_nodes {
             if let NodeWeight::ActionPrototype(node_weight) =
                 workspace_snapshot.get_node_weight(node_index).await?
             {
@@ -423,16 +423,16 @@ impl ActionPrototype {
         ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> ActionPrototypeResult<Vec<Self>> {
-        let mut prototypes = Vec::new();
-        for (_, _tail_node_idx, head_node_idx) in ctx
+        let prototype_edges = ctx
             .workspace_snapshot()?
             .edges_directed_for_edge_weight_kind(
                 schema_variant_id,
                 Outgoing,
                 EdgeWeightKindDiscriminants::ActionPrototype,
             )
-            .await?
-        {
+            .await?;
+        let mut prototypes = Vec::with_capacity(prototype_edges.len());
+        for (_, _tail_node_idx, head_node_idx) in prototype_edges {
             if let NodeWeight::ActionPrototype(node_weight) = ctx
                 .workspace_snapshot()?
                 .get_node_weight(head_node_idx)

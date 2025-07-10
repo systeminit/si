@@ -50,8 +50,9 @@ type ResourceMetadataResult<T> = Result<T, ResourceMetadataError>;
 /// Collect [`ResourceMetadata`] for every [`Component`] in the workspace.
 #[instrument(name = "resource_metadata.list", level = "debug", skip(ctx))]
 pub async fn list(ctx: &DalContext) -> ResourceMetadataResult<Vec<si_events::ResourceMetadata>> {
-    let mut results = Vec::new();
-    for component_id in Component::list_ids(ctx).await? {
+    let component_ids = Component::list_ids(ctx).await?;
+    let mut results = Vec::with_capacity(component_ids.len());
+    for component_id in component_ids {
         if let Some(data) = Component::resource_by_id(ctx, component_id).await? {
             results.push(assemble_metadata(component_id, data));
         }

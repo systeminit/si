@@ -187,8 +187,9 @@ impl InferredConnectionGraph {
     ) -> InferredConnectionGraphResult<Vec<InferredConnection>> {
         let mut results = Vec::new();
         for component_id in Component::list_ids(ctx).await.map_err(Box::new)? {
-            results.extend(
-                self.inferred_incoming_connections_for_component(ctx, component_id)
+            results.append(
+                &mut self
+                    .inferred_incoming_connections_for_component(ctx, component_id)
                     .await?,
             );
         }
@@ -265,6 +266,7 @@ impl InferredConnectionGraph {
         {
             let mut cached_results = Vec::new();
             for input_socket_info in component_cache.get().values() {
+                cached_results.reserve(input_socket_info.len());
                 cached_results.extend(input_socket_info);
             }
 

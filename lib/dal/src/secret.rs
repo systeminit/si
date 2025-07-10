@@ -538,7 +538,8 @@ impl Secret {
             )
             .await?;
 
-        let mut attribute_value_ids = Vec::new();
+        let mut attribute_value_ids =
+            Vec::with_capacity(attribute_prototype_argument_indices.len());
         for attribute_prototype_argument_index in attribute_prototype_argument_indices {
             let attribute_prototype_argument_node_weight = workspace_snapshot
                 .get_node_weight(attribute_prototype_argument_index)

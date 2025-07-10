@@ -1454,7 +1454,9 @@ impl Component {
         let mut work_queue = VecDeque::from(Self::get_children_for_id(ctx, component_id).await?);
         while let Some(child_id) = work_queue.pop_front() {
             all_descendants.push(child_id);
-            work_queue.extend(Self::get_children_for_id(ctx, child_id).await?);
+            let children = Self::get_children_for_id(ctx, child_id).await?;
+            work_queue.reserve(children.len());
+            work_queue.extend(children);
         }
         Ok(all_descendants)
     }
@@ -2106,9 +2108,8 @@ impl Component {
             if !early_return && all_relevant_prop_ids.contains(&working_prop_id) {
                 let children =
                     AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id).await?;
-                if !children.is_empty() {
-                    work_queue.extend(children);
-                }
+                work_queue.reserve(children.len());
+                work_queue.extend(children);
             }
         }
         Ok(result)
@@ -2638,8 +2639,8 @@ impl Component {
 
             result.insert(av_id, controlling_tuple);
 
-            av_queue.extend(
-                AttributeValue::get_child_av_ids_in_order(ctx, av_id)
+            av_queue.append(
+                &mut AttributeValue::get_child_av_ids_in_order(ctx, av_id)
                     .await?
                     .into_iter()
                     .map(|child_av_id| (child_av_id, Some(av_id)))
@@ -3038,6 +3039,7 @@ impl Component {
         while let Some(av_id) = queue.pop_front() {
             flattened.push(av_id);
             if let Some(children) = attribute_value_tree.get(&av_id) {
+                queue.reserve(children.len());
                 queue.extend(children);
             }
         }
