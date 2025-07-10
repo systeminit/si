@@ -139,8 +139,11 @@
             </AttributeValueBox>
             <template v-else>
               {{
-                maybeOptions.options?.find((o) => o.value === field.state.value)
-                  ?.label ?? field.state.value
+                optimisticDisplayValue ||
+                (maybeOptions.options?.find(
+                  (o) => o.value === field.state.value,
+                )?.label ??
+                  field.state.value)
               }}
             </template>
           </TruncateWithTooltip>
@@ -569,7 +572,7 @@ import {
   TextPill,
 } from "@si/vue-lib/design-system";
 import { Fzf } from "fzf";
-import { useQuery } from "@tanstack/vue-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/vue-query";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import {
   PropertyEditorPropWidgetKind,
@@ -580,6 +583,8 @@ import {
 } from "@/api/sdf/dal/property_editor";
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
 import {
+  AttributeTree,
+  AttributeValue,
   BifrostComponent,
   EntityKind,
   ExternalSource,
@@ -655,15 +660,18 @@ const valueForm = wForm.newForm({
   data: attrData,
   onSubmit: async ({ value }) => {
     if (!props.prop) return;
-    if (connectingComponentId.value) {
+    if (connectingComponentId.value && selectedConnectionData.value) {
+      // For new subscriptions, send the raw path to the API, not the display value
+      const apiValue = selectedConnectionData.value.propPath;
       emit(
         "save",
         props.path,
-        value.value,
+        apiValue,
         props.prop.kind,
         connectingComponentId.value,
       );
     } else {
+      // For manual values or other cases, use the form value
       emit("save", props.path, value.value, props.prop.kind);
     }
   },
@@ -771,20 +779,140 @@ const focus = () => {
   openInput();
 };
 
+const connectingComponentId = ref<string | undefined>();
+const selectedConnectionData = ref<
+  { componentName: string; propPath: string } | undefined
+>();
+const optimisticDisplayValue = ref<string | null>(null);
+const queryClient = useQueryClient();
+const makeKey = useMakeKey();
+
+// Helper function to find attribute value by path in AttributeTree data
+const findAttributeValueInTree = (
+  tree: AttributeTree,
+  targetPath: AttributePath,
+): { attributeValue: AttributeValue; avId: string } | null => {
+  const pathStr = targetPath.toString();
+
+  for (const [avId, av] of Object.entries(tree.attributeValues)) {
+    const prop = av.propId ? tree.props[av.propId] : undefined;
+    if (prop?.path === pathStr) {
+      return { attributeValue: av, avId };
+    }
+  }
+  return null;
+};
+
+const createSubscriptionMutation = useMutation({
+  mutationFn: async (variables: {
+    path: AttributePath;
+    apiValue: string;
+    propKind: PropKind;
+    connectingComponentId: ComponentId;
+  }) => {
+    // Emit to the save handler which calls the actual API
+    if (props.prop) {
+      emit(
+        "save",
+        variables.path,
+        variables.apiValue,
+        variables.propKind,
+        variables.connectingComponentId,
+      );
+    }
+    return variables;
+  },
+  onMutate: async (variables) => {
+    const queryKey = makeKey(EntityKind.AttributeTree, props.component.id);
+
+    const previousData = queryClient.getQueryData<AttributeTree>(
+      queryKey.value,
+    );
+
+    if (!previousData) {
+      const connectionData = selectedConnectionData.value;
+      if (connectionData) {
+        optimisticDisplayValue.value = `subscribing to ${connectionData.propPath}`;
+      }
+      return { previousData: null };
+    }
+
+    queryClient.setQueryData(
+      queryKey.value,
+      (cachedData: AttributeTree | undefined) => {
+        if (!cachedData) return cachedData;
+
+        const found = findAttributeValueInTree(cachedData, variables.path);
+        if (!found || !selectedConnectionData.value) return cachedData;
+
+        const updatedData = structuredClone(cachedData);
+        const updatedFound = findAttributeValueInTree(
+          updatedData,
+          variables.path,
+        );
+        if (updatedFound) {
+          updatedFound.attributeValue.externalSources = [
+            {
+              componentName: selectedConnectionData.value.componentName,
+              path: selectedConnectionData.value.propPath,
+            },
+          ];
+          updatedFound.attributeValue.value = `subscribing to ${selectedConnectionData.value.propPath}`;
+        }
+
+        return updatedData;
+      },
+    );
+
+    return { previousData };
+  },
+  onError: (_error, _variables, context) => {
+    if (context?.previousData) {
+      const queryKey = makeKey(EntityKind.AttributeTree, props.component.id);
+      queryClient.setQueryData(queryKey.value, context.previousData);
+    }
+    optimisticDisplayValue.value = null;
+  },
+  onSettled: () => {
+    const queryKey = makeKey(EntityKind.AttributeTree, props.component.id);
+    queryClient.invalidateQueries({ queryKey: queryKey.value });
+    optimisticDisplayValue.value = null;
+  },
+});
+
+watch(
+  () => props.externalSources,
+  (newSources) => {
+    if (optimisticDisplayValue.value && newSources) {
+      optimisticDisplayValue.value = null;
+    }
+  },
+);
+
 const selectConnection = (index: number) => {
   if (readOnly.value) return;
 
   const newConnection = filteredConnections.value[index];
   if (!newConnection) return;
-  const newValue = newConnection.path;
+  const apiValue = newConnection.path;
   connectingComponentId.value = newConnection.componentId;
+  selectedConnectionData.value = {
+    componentName: newConnection.componentName,
+    propPath: newConnection.path,
+  };
+
   if (
-    newValue &&
+    apiValue &&
     connectingComponentId.value &&
-    newValue !== attrData.value.value
+    apiValue !== attrData.value.value &&
+    props.prop
   ) {
-    valueForm.setFieldValue("value", newValue);
-    valueForm.handleSubmit();
+    createSubscriptionMutation.mutate({
+      path: props.path,
+      apiValue,
+      propKind: props.prop.kind,
+      connectingComponentId: connectingComponentId.value,
+    });
   }
   closeInput();
 };
@@ -793,6 +921,8 @@ const selectOption = (option: LabelEntry<AttrOption>) => {
 
   const newValue = option.value.toString();
   connectingComponentId.value = undefined;
+  selectedConnectionData.value = undefined;
+  optimisticDisplayValue.value = null;
   if (newValue !== attrData.value.value) {
     valueForm.setFieldValue("value", newValue);
     valueForm.handleSubmit();
@@ -804,6 +934,8 @@ const selectDefault = () => {
 
   const newValue = valueForm.state.values.value;
   connectingComponentId.value = undefined;
+  selectedConnectionData.value = undefined;
+  optimisticDisplayValue.value = null;
 
   if (props.isArray) {
     emit("add");
@@ -877,6 +1009,8 @@ const resetEverything = () => {
   mapKeyError.value = false;
   selectedIndex.value = defaultSelectedIndex();
   connectingComponentId.value = undefined;
+  selectedConnectionData.value = undefined;
+  optimisticDisplayValue.value = null;
   inputTouched.value = false;
 };
 
@@ -1082,8 +1216,6 @@ const mapArrow = () => {
   }
 };
 
-const connectingComponentId = ref<string | undefined>();
-const makeKey = useMakeKey();
 const makeArgs = useMakeArgs();
 const queryKey = makeKey(EntityKind.PossibleConnections);
 const potentialConnQuery = useQuery({
