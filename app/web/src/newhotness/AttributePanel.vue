@@ -199,15 +199,18 @@ import {
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
 import * as _ from "lodash-es";
+import { useMutation, useQueryClient } from "@tanstack/vue-query";
 import {
   AttributeTree,
   AttributeValue,
   BifrostComponent,
+  EntityKind,
   MgmtFunction,
   Prop,
   Secret,
 } from "@/workers/types/entity_kind_types";
 import { PropKind } from "@/api/sdf/dal/prop";
+import { useMakeKey } from "@/store/realtime/heimdall";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import { componentTypes, routes, useApi } from "./api_composables";
@@ -463,34 +466,98 @@ const remove = async (path: AttributePath) => {
 };
 
 const removeSubscriptionApi = useApi();
+const queryClient = useQueryClient();
+const makeKey = useMakeKey();
+
+const findAttributeValueInTree = (
+  tree: AttributeTree,
+  targetPath: AttributePath,
+): { attributeValue: AttributeValue; avId: string } | null => {
+  const pathStr = targetPath.toString();
+
+  for (const [avId, av] of Object.entries(tree.attributeValues)) {
+    const prop = av.propId ? tree.props[av.propId] : undefined;
+    if (prop?.path === pathStr) {
+      return { attributeValue: av, avId };
+    }
+  }
+  return null;
+};
+
+const removeSubscriptionMutation = useMutation({
+  mutationFn: async (path: AttributePath) => {
+    const call = removeSubscriptionApi.endpoint<{ success: boolean }>(
+      routes.UpdateComponentAttributes,
+      { id: props.component.id },
+    );
+
+    const payload: componentTypes.UpdateComponentAttributesArgs = {};
+    payload[path] = {
+      $source: null,
+    };
+
+    const { req, newChangeSetId } =
+      await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+
+    if (removeSubscriptionApi.ok(req) && newChangeSetId) {
+      removeSubscriptionApi.navigateToNewChangeSet(
+        {
+          name: "new-hotness-component",
+          params: {
+            workspacePk: route.params.workspacePk,
+            changeSetId: newChangeSetId,
+            componentId: props.component.id,
+          },
+        },
+        newChangeSetId,
+      );
+    }
+
+    return { req, newChangeSetId };
+  },
+  onMutate: async (path: AttributePath) => {
+    const queryKey = makeKey(EntityKind.AttributeTree, props.component.id);
+
+    const previousData = queryClient.getQueryData<AttributeTree>(
+      queryKey.value,
+    );
+    if (!previousData) return null;
+
+    queryClient.setQueryData(
+      queryKey.value,
+      (cachedData: AttributeTree | undefined) => {
+        if (!cachedData) return cachedData;
+
+        const found = findAttributeValueInTree(cachedData, path);
+        if (!found) return cachedData;
+
+        const updatedData = structuredClone(cachedData);
+        const updatedFound = findAttributeValueInTree(updatedData, path);
+        if (updatedFound) {
+          updatedFound.attributeValue.externalSources = undefined;
+          updatedFound.attributeValue.value = null;
+        }
+
+        return updatedData;
+      },
+    );
+
+    return { previousData };
+  },
+  onError: (error, path, context) => {
+    if (context?.previousData) {
+      const queryKey = makeKey(EntityKind.AttributeTree, props.component.id);
+      queryClient.setQueryData(queryKey.value, context.previousData);
+    }
+  },
+  onSettled: () => {
+    const queryKey = makeKey(EntityKind.AttributeTree, props.component.id);
+    queryClient.invalidateQueries({ queryKey: queryKey.value });
+  },
+});
 
 const removeSubscription = async (path: AttributePath) => {
-  const call = removeSubscriptionApi.endpoint<{ success: boolean }>(
-    routes.UpdateComponentAttributes,
-    { id: props.component.id },
-  );
-
-  const payload: componentTypes.UpdateComponentAttributesArgs = {};
-
-  payload[path] = {
-    $source: null,
-  };
-
-  const { req, newChangeSetId } =
-    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
-  if (removeSubscriptionApi.ok(req) && newChangeSetId) {
-    removeSubscriptionApi.navigateToNewChangeSet(
-      {
-        name: "new-hotness-component",
-        params: {
-          workspacePk: route.params.workspacePk,
-          changeSetId: newChangeSetId,
-          componentId: props.component.id,
-        },
-      },
-      newChangeSetId,
-    );
-  }
+  removeSubscriptionMutation.mutate(path);
 };
 
 const nameInputRef = ref<HTMLInputElement>();
