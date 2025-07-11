@@ -68,25 +68,18 @@
                 )
             "
           />
-
-          <hr
-            v-if="featureFlagsStore.NEW_HOTNESS"
-            class="border-neutral-600 my-xs"
-          />
-
-          <DropdownMenuItem
-            v-if="featureFlagsStore.NEW_HOTNESS"
-            icon="bolt"
-            label="Use New UI"
-            checkable
-            :checked="useNewUI"
-            @select="toggleExperience"
-          />
         </template>
       </NavbarButton>
     </template>
 
     <template v-if="!collapse">
+      <NavbarButton
+        v-if="featureFlagsStore.ENABLE_NEW_EXPERIENCE"
+        icon="grid"
+        tooltipText="Use New UI"
+        @click="toggleExperience"
+      />
+
       <NavbarButton
         tooltipText="Documentation"
         icon="question-circle"
