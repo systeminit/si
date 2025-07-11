@@ -88,6 +88,8 @@ import {
 
 const WORKER_LOCK_KEY = "BIFROST_LOCK";
 
+let hasTheLock = false;
+
 let otelEndpoint = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT;
 if (!otelEndpoint) otelEndpoint = "http://localhost:8080";
 const exporter = new OTLPTraceExporter({
@@ -3145,8 +3147,12 @@ const dbInterface: TabDBInterface = {
     debug("this should only be called on the shared webworker");
   },
 
+  async hasDbLock(): Promise<boolean> {
+    return hasTheLock;
+  },
+
   async initBifrost(gotLockPort: MessagePort) {
-    debug("initializing bifrost in tabWorker");
+    debug("waiting for lock in webworker");
     if (abortController) {
       debug("already initialized bifrost");
       return;
@@ -3157,6 +3163,7 @@ const dbInterface: TabDBInterface = {
       WORKER_LOCK_KEY,
       { mode: "exclusive", signal: abortController.signal },
       async () => {
+        hasTheLock = true;
         debug("lock acquired! 🌈 Initializing sqlite3 bifrost for real");
         await this.initDB(false);
         this.migrate(false);
@@ -3166,6 +3173,7 @@ const dbInterface: TabDBInterface = {
 
         return new Promise((_, reject) => {
           abortController?.signal.addEventListener("abort", () => {
+            hasTheLock = false;
             this.bifrostClose();
             reject(abortController?.signal.reason);
           });

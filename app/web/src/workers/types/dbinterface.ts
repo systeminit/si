@@ -114,10 +114,15 @@ export type Gettable = Exclude<EntityKind, Listable>;
 export interface SharedDBInterface {
   initDB: (testing: boolean) => Promise<void>;
   migrate: (testing: boolean) => Promise<Database>;
-  setBearer: (workspaceId: string, token: string) => void;
+  setBearer: (workspaceId: string, token: string) => Promise<void>;
+  getBearers(): Promise<{ [key: string]: string }>;
+  addBearers(bearers: { [key: string]: string }): Promise<void>;
   initSocket(workspaceId: string): Promise<void>;
   unregisterRemote(id: string): void;
-  registerRemote(id: string, remote: Comlink.Remote<TabDBInterface>): void;
+  registerRemote(
+    id: string,
+    remote: Comlink.Remote<TabDBInterface>,
+  ): Promise<void>;
   broadcastMessage(message: BroadcastMessage): Promise<void>;
   setRemote(remoteId: string): Promise<void>;
   hasRemote(): Promise<boolean>;
@@ -214,6 +219,7 @@ export interface SharedDBInterface {
 
 export interface TabDBInterface {
   initDB: (testing: boolean) => Promise<void>;
+  hasDbLock(): Promise<boolean>;
   migrate: (testing: boolean) => Database;
   setBearer: (workspaceId: string, token: string) => void;
   initSocket(workspaceId: string): Promise<void>;
