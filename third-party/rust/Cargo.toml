@@ -219,6 +219,8 @@ tower-http = { version = "0.4.4", features = [
     "compression-deflate",
     "compression-gzip",
     "cors",
+    "decompression-deflate",
+    "decompression-gzip",
     "trace",
 ] } # todo: pinning back to 0.4.4, upgrade this alongside hyper/http/axum/tokio-tungstenite
 tracing = { version = "0.1.41" }

@@ -55,6 +55,10 @@ const CAN_MUTATE_ON_HEAD: readonly routes[] = [
   routes.ChangeSetRename,
 ] as const;
 
+const COMPRESSED_ROUTES: readonly routes[] = [
+  routes.UpdateComponentAttributes,
+] as const;
+
 const _routes: Record<routes, string> = {
   ActionAdd: "/action/add",
   ActionCancel: "/action/<id>/cancel",
@@ -110,6 +114,7 @@ export class APICall<Response> {
   path: string;
   ctx: Context;
   canMutateHead: boolean;
+  mustCompress: boolean;
   description: string;
   obs: LabeledObs;
   lobbyRequired: boolean;
@@ -118,6 +123,7 @@ export class APICall<Response> {
     ctx: Context,
     path: string,
     canMutateHead: boolean,
+    mustCompress: boolean,
     description: string,
     obs: LabeledObs,
     changesetId?: string,
@@ -129,6 +135,7 @@ export class APICall<Response> {
     this.changeSetId = changeSetId;
     this.path = path;
     this.canMutateHead = canMutateHead;
+    this.mustCompress = mustCompress;
     this.description = description;
     this.obs = obs;
     this.lobbyRequired = false;
@@ -154,11 +161,31 @@ export class APICall<Response> {
     rainbow.add(this.changeSetId, this.obs.label);
     this.obs.changeSetIdExecutedAgainst = this.changeSetId;
 
+    let formattedData: D | ArrayBuffer = data;
+    const headers: Record<string, string> = {};
+    if (this.mustCompress) {
+      const textEncoder = new TextEncoder();
+      const readableStream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(textEncoder.encode(JSON.stringify(data)));
+          controller.close();
+        },
+      });
+
+      const compressedStream = readableStream.pipeThrough(
+        new CompressionStream("gzip"),
+      );
+      formattedData = await new Response(compressedStream).arrayBuffer();
+
+      headers["Content-Encoding"] = "gzip";
+    }
+
     const req = await sdf<Response>({
       method,
+      headers,
       url: this.url(),
       params,
-      data,
+      data: formattedData,
       validateStatus: (_status) => true, // don't throw exception on 4/5xxx
     });
     this.obs.inFlight.value = false;
@@ -272,6 +299,7 @@ export const useApi = () => {
         path = path.replace(`<${k}>`, v);
       });
     const canMutateHead = CAN_MUTATE_ON_HEAD.includes(key);
+    const mustCompress = COMPRESSED_ROUTES.includes(key);
     const argList = args ? Object.entries(args).flatMap((m) => m) : [];
     const desc = `${key} ${argList.join(": ")} by ${
       ctx.user?.name
@@ -281,6 +309,7 @@ export const useApi = () => {
       ctx,
       path,
       canMutateHead,
+      mustCompress,
       desc,
       labeledObs,
       changesetId,
