@@ -32,7 +32,7 @@ describe('web', () => {
         failOnStatusCode: false
     });
 
-    cy.wait(30000);
+    cy.wait(60000);
 
     let attempt = 0;
     let maxAttempts = 10;

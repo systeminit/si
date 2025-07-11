@@ -28,6 +28,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+
   e2e-validation:
     uses: ./.github/workflows/e2e-validation.yml
     with:
@@ -42,5 +43,6 @@ jobs:
     steps:
       - run: |
           curl -X POST \
-          -H 'Content-type: application/json' \
-          --data "{\"text\": \":si: Validation of mainline failed: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:ship: Link>\"}" ${{ secrets.SLACK_WEBHOOK_URL }}
+          --header 'Content-type: application/json' \
+          --data "{\"text\": \":si: Failed Cypress E2E Test on main: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:test_tube: Link>\"}" \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
