@@ -21,6 +21,7 @@ export enum EntityKind {
   View = "View",
   ViewList = "ViewList",
   ComponentList = "ComponentList",
+  ComponentSearch = "ComponentSearch",
   ViewComponentList = "ViewComponentList",
   IncomingConnections = "IncomingConnections",
   ManagementConnections = "ManagementConnections",

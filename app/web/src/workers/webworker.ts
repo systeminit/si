@@ -2264,6 +2264,13 @@ const postProcess = (
         EntityKind.PossibleConnections,
         workspaceId,
       );
+
+      bustCacheFn(
+        workspaceId,
+        changeSetId,
+        EntityKind.ComponentSearch,
+        workspaceId,
+      );
     }
   }
 };
