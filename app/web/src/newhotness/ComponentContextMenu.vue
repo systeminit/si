@@ -148,7 +148,15 @@ const rightClickMenuItems = computed(() => {
     return items;
   }
 
-  // If everything is ghosted, only add the ability to restore and return.
+  const eraseMenuItem = {
+    labelAsTooltip: true,
+    label: "Erase",
+    shortcut: "E",
+    icon: "erase" as const,
+    onSelect: () => componentsStartErase(components.value),
+  };
+
+  // If everything is ghosted, only add the ability to restore/erase and return.
   if (atLeastOneGhostedComponent.value) {
     items.push({
       labelAsTooltip: true,
@@ -157,6 +165,7 @@ const rightClickMenuItems = computed(() => {
       icon: "trash-restore",
       onSelect: () => componentsRestore(components.value.map((c) => c.id)),
     });
+    items.push(eraseMenuItem);
     return items;
   }
 
@@ -171,13 +180,7 @@ const rightClickMenuItems = computed(() => {
   }
 
   // can erase so long as you have not selected a view
-  items.push({
-    labelAsTooltip: true,
-    label: "Erase",
-    shortcut: "E",
-    icon: "erase",
-    onSelect: () => componentsStartErase(components.value),
-  });
+  items.push(eraseMenuItem);
 
   items.push({
     labelAsTooltip: true,
