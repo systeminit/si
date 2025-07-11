@@ -21,6 +21,9 @@ import {
   Listable,
 } from "./types/dbinterface";
 
+// Wait 5 seconds after we no longer have any remotes before terminating ourselves
+const SHUTDOWN_DELAY_MS = 5000;
+
 declare global {
   interface Window {
     onconnect?: (event: MessageEvent) => void;
@@ -80,11 +83,25 @@ const dbInterface: SharedDBInterface = {
   unregisterRemote(id: string) {
     debug("unregister remote in shared", id);
     delete remotes[id];
+
+    if (Object.keys(remotes).length === 0) {
+      // Just in case there is a race between closing a tab and a new one
+      // loading, and this worker gets a new remote, don't shut down right away.
+      // Double check after a few seconds.
+      setTimeout(async () => {
+        if (Object.keys(remotes).length === 0) {
+          shutDownWebWorker();
+        }
+      }, SHUTDOWN_DELAY_MS);
+    }
   },
-  registerRemote(id: string, remote: Comlink.Remote<TabDBInterface>) {
+  async registerRemote(id: string, remote: Comlink.Remote<TabDBInterface>) {
     if (!remotes[id]) {
       debug("register remote in shared", id);
       remotes[id] = remote;
+      if (!currentRemote && (await remote.hasDbLock())) {
+        await this.setRemote(id);
+      }
     }
   },
   async hasRemote() {
@@ -117,10 +134,25 @@ const dbInterface: SharedDBInterface = {
     return withRemote(async (remote) => await remote.migrate(testing));
   },
 
-  setBearer(workspaceId, token): void {
+  async setBearer(workspaceId, token): Promise<void> {
     bearerTokens[workspaceId] = token;
-    currentRemote?.setBearer(workspaceId, token);
-    currentRemote?.initSocket(workspaceId);
+    const updateRemote = async () => {
+      await currentRemote?.setBearer(workspaceId, token);
+      currentRemote?.initSocket(workspaceId);
+    };
+    updateRemote();
+  },
+
+  async getBearers(): Promise<{ [key: string]: string }> {
+    return bearerTokens;
+  },
+
+  async addBearers(bearers) {
+    for (const [workspaceId, bearerToken] of Object.entries(bearers)) {
+      bearerTokens[workspaceId] = bearerToken;
+      await currentRemote?.setBearer(workspaceId, bearerToken);
+      currentRemote?.initSocket(workspaceId);
+    }
   },
 
   async initSocket(workspaceId: string): Promise<void> {
@@ -309,7 +341,13 @@ const dbInterface: SharedDBInterface = {
 const onConnectBroadcast = new BroadcastChannel(SHARED_BROADCAST_CHANNEL_NAME);
 
 // eslint-disable-next-line no-restricted-globals
+const name = self.name;
+
+// eslint-disable-next-line no-restricted-globals
+const shutDownWebWorker = () => self.close();
+
+// eslint-disable-next-line no-restricted-globals
 self.onconnect = (event: MessageEvent) => {
   Comlink.expose(dbInterface, event.ports[0]);
-  onConnectBroadcast.postMessage("booted");
+  onConnectBroadcast.postMessage(name);
 };
