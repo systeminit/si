@@ -1,90 +1,89 @@
 [package]
-name = "dal"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-repository.workspace = true
-edition.workspace = true
+name                   = "dal"
+version.workspace      = true
+authors.workspace      = true
+license.workspace      = true
+repository.workspace   = true
+edition.workspace      = true
 rust-version.workspace = true
-publish.workspace = true
+publish.workspace      = true
 
 [dependencies]
-audit-database           = { path = "../../lib/audit-database" }
-audit-logs-stream        = { path = "../../lib/audit-logs-stream" }
-billing-events           = { path = "../../lib/billing-events" }
-concurrent-extensions    = { path = "../../lib/concurrent-extensions" }
-dal-macros               = { path = "../../lib/dal-macros" }
-joi-validator            = { path = "../../lib/joi-validator" }
-module-index-client      = { path = "../../lib/module-index-client" }
-nats-std                 = { path = "../../lib/nats-std" }
-object-tree              = { path = "../../lib/object-tree" }
-pending-events           = { path = "../../lib/pending-events" }
-pinga-client             = { path = "../../lib/pinga-client" }
-pinga-core               = { path = "../../lib/pinga-core" }
-rebaser-client           = { path = "../../lib/rebaser-client" }
-shuttle-server           = { path = "../../lib/shuttle-server" }
-si-crypto                = { path = "../../lib/si-crypto" }
-si-data-nats             = { path = "../../lib/si-data-nats" }
-si-data-pg               = { path = "../../lib/si-data-pg" }
-si-db                    = { path = "../../lib/si-db" }
-si-events                = { path = "../../lib/si-events-rs" }
-si-frontend-types        = { path = "../../lib/si-frontend-types-rs" }
-si-hash                  = { path = "../../lib/si-hash" }
-si-id                    = { path = "../../lib/si-id" }
-si-layer-cache           = { path = "../../lib/si-layer-cache" }
-si-pkg                   = { path = "../../lib/si-pkg" }
-si-runtime               = { path = "../../lib/si-runtime-rs" }
-si-settings              = { path = "../../lib/si-settings" }
-si-split-graph           = { path = "../../lib/si-split-graph" }
-si-std                   = { path = "../../lib/si-std" }
-telemetry                = { path = "../../lib/telemetry-rs" }
-telemetry-nats           = { path = "../../lib/telemetry-nats-rs" }
-telemetry-utils          = { path = "../../lib/telemetry-utils-rs" }
-veritech-client          = { path = "../../lib/veritech-client" }
+audit-database        = { path = "../../lib/audit-database" }
+audit-logs-stream     = { path = "../../lib/audit-logs-stream" }
+billing-events        = { path = "../../lib/billing-events" }
+concurrent-extensions = { path = "../../lib/concurrent-extensions" }
+dal-macros            = { path = "../../lib/dal-macros" }
+joi-validator         = { path = "../../lib/joi-validator" }
+module-index-client   = { path = "../../lib/module-index-client" }
+nats-std              = { path = "../../lib/nats-std" }
+object-tree           = { path = "../../lib/object-tree" }
+pending-events        = { path = "../../lib/pending-events" }
+pinga-client          = { path = "../../lib/pinga-client" }
+pinga-core            = { path = "../../lib/pinga-core" }
+rebaser-client        = { path = "../../lib/rebaser-client" }
+shuttle-server        = { path = "../../lib/shuttle-server" }
+si-crypto             = { path = "../../lib/si-crypto" }
+si-data-nats          = { path = "../../lib/si-data-nats" }
+si-data-pg            = { path = "../../lib/si-data-pg" }
+si-db                 = { path = "../../lib/si-db" }
+si-events             = { path = "../../lib/si-events-rs" }
+si-frontend-types     = { path = "../../lib/si-frontend-types-rs" }
+si-hash               = { path = "../../lib/si-hash" }
+si-id                 = { path = "../../lib/si-id" }
+si-layer-cache        = { path = "../../lib/si-layer-cache" }
+si-pkg                = { path = "../../lib/si-pkg" }
+si-runtime            = { path = "../../lib/si-runtime-rs" }
+si-settings           = { path = "../../lib/si-settings" }
+si-split-graph        = { path = "../../lib/si-split-graph" }
+si-std                = { path = "../../lib/si-std" }
+telemetry             = { path = "../../lib/telemetry-rs" }
+telemetry-nats        = { path = "../../lib/telemetry-nats-rs" }
+telemetry-utils       = { path = "../../lib/telemetry-utils-rs" }
+veritech-client       = { path = "../../lib/veritech-client" }
 
-async-recursion = { workspace = true }
-async-trait     = { workspace = true }
-base64          = { workspace = true }
-blake3          = { workspace = true }
-chrono          = { workspace = true }
-ciborium        = { workspace = true }
-clap            = { workspace = true }
-convert_case    = { workspace = true }
-derive_more     = { workspace = true }
-diff            = { workspace = true }
-dyn-clone       = { workspace = true }
-futures         = { workspace = true }
-hex             = { workspace = true }
-iftree          = { workspace = true }
-indexmap        = { workspace = true }
-itertools       = { workspace = true }
-json-patch      = { workspace = true }
-jsonptr         = { workspace = true }
-jwt-simple      = { workspace = true }
-lazy_static     = { workspace = true }
-once_cell       = { workspace = true }
-paste           = { workspace = true }
-petgraph        = { workspace = true }
-postcard        = { workspace = true }
-postgres-types  = { workspace = true }
-rand            = { workspace = true }
-refinery        = { workspace = true }
-regex           = { workspace = true }
-remain          = { workspace = true }
-ringmap         = { workspace = true }
-serde           = { workspace = true }
-serde-aux       = { workspace = true }
-serde_json      = { workspace = true }
-serde_with      = { workspace = true }
-sodiumoxide     = { workspace = true }
-strum           = { workspace = true }
-thiserror       = { workspace = true }
-tokio           = { workspace = true }
-tokio-stream    = { workspace = true }
-tokio-util      = { workspace = true }
-tryhard         = { workspace = true }
-ulid            = { workspace = true }
-url             = { workspace = true }
+async-trait    = { workspace = true }
+base64         = { workspace = true }
+blake3         = { workspace = true }
+chrono         = { workspace = true }
+ciborium       = { workspace = true }
+clap           = { workspace = true }
+convert_case   = { workspace = true }
+derive_more    = { workspace = true }
+diff           = { workspace = true }
+dyn-clone      = { workspace = true }
+futures        = { workspace = true }
+hex            = { workspace = true }
+iftree         = { workspace = true }
+indexmap       = { workspace = true }
+itertools      = { workspace = true }
+json-patch     = { workspace = true }
+jsonptr        = { workspace = true }
+jwt-simple     = { workspace = true }
+lazy_static    = { workspace = true }
+once_cell      = { workspace = true }
+paste          = { workspace = true }
+petgraph       = { workspace = true }
+postcard       = { workspace = true }
+postgres-types = { workspace = true }
+rand           = { workspace = true }
+refinery       = { workspace = true }
+regex          = { workspace = true }
+remain         = { workspace = true }
+ringmap        = { workspace = true }
+serde          = { workspace = true }
+serde-aux      = { workspace = true }
+serde_json     = { workspace = true }
+serde_with     = { workspace = true }
+sodiumoxide    = { workspace = true }
+strum          = { workspace = true }
+thiserror      = { workspace = true }
+tokio          = { workspace = true }
+tokio-stream   = { workspace = true }
+tokio-util     = { workspace = true }
+tryhard        = { workspace = true }
+ulid           = { workspace = true }
+url            = { workspace = true }
 
 [dev-dependencies]
 buck2-resources        = { path = "../../lib/buck2-resources" }

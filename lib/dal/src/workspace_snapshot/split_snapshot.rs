@@ -138,6 +138,9 @@ use crate::{
 };
 
 pub mod corrections;
+
+mod attribute_value;
+
 pub mod graph;
 
 pub type SplitSnapshotGraphV1 = SplitGraph<NodeWeight, EdgeWeight, EdgeWeightKindDiscriminants>;
@@ -1874,17 +1877,5 @@ impl ComponentExt for SplitSnapshot {
         self.working_copy()
             .await
             .external_source_count(component_id)
-    }
-}
-
-#[async_trait]
-impl AttributeValueExt for SplitSnapshot {
-    async fn component_prototype_id(
-        &self,
-        id: AttributeValueId,
-    ) -> WorkspaceSnapshotResult<Option<AttributePrototypeId>> {
-        self.target_opt(id.into(), EdgeWeightKindDiscriminants::Prototype)
-            .await
-            .map(|maybe_ulid| maybe_ulid.map(Into::into))
     }
 }

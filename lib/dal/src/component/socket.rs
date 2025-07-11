@@ -208,8 +208,8 @@ impl ComponentOutputSocket {
             .await?
             .attribute_value_id;
 
-        let av = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
-        let view = av.view(ctx).await?;
+        let view = AttributeValue::view(ctx, attribute_value_id).await?;
+
         Ok(view)
     }
 }
@@ -454,8 +454,9 @@ impl ComponentInputSocket {
         let attribute_value_id = Self::get_by_ids_or_error(ctx, component_id, input_socket_id)
             .await?
             .attribute_value_id;
-        let av = AttributeValue::get_by_id(ctx, attribute_value_id).await?;
-        let view = av.view(ctx).await?;
+
+        let view = AttributeValue::view(ctx, attribute_value_id).await?;
+
         Ok(view)
     }
 

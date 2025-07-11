@@ -7,9 +7,7 @@ use std::{
     sync::Arc,
 };
 
-use async_recursion::async_recursion;
 pub use dependent_value_graph::DependentValueGraph;
-use indexmap::IndexMap;
 pub use is_for::ValueIsFor;
 use petgraph::prelude::*;
 use serde::{
@@ -28,6 +26,7 @@ use si_pkg::{
     AttributeValuePath,
     KeyOrIndex,
 };
+use si_split_graph::SplitGraphError;
 use subscription::ValueSubscription;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -109,6 +108,7 @@ use crate::{
             EdgeWeightKind,
             EdgeWeightKindDiscriminants,
         },
+        graph::WorkspaceSnapshotGraphError,
         node_weight::{
             AttributeValueNodeWeight,
             NodeWeight,
@@ -269,6 +269,8 @@ pub enum AttributeValueError {
         "attribute value {0} with type {1} must be set to 1 subscription, attempted to include {2} subscriptions"
     )]
     SingleValueMustHaveOneSubscription(AttributeValueId, PropKind, usize),
+    #[error("Split  graph error: {0}")]
+    SplitGraph(#[from] SplitGraphError),
     #[error("Cannot set subscription with function that isn't builtin or transformation")]
     SubscribingWithInvalidFunction,
     #[error("transactions error: {0}")]
@@ -289,6 +291,8 @@ pub enum AttributeValueError {
     Workspace(String),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    #[error("Workspace Snapshot Graph error: {0}")]
+    WorkspaceSnapshotGraph(#[from] WorkspaceSnapshotGraphError),
 }
 
 impl From<ComponentError> for AttributeValueError {
@@ -756,12 +760,7 @@ impl AttributeValue {
                 {
                     ValueSource::ValueSubscription(subscription) => {
                         let value = match subscription.resolve(ctx).await? {
-                            Some(av_id) => {
-                                AttributeValue::get_by_id(ctx, av_id)
-                                    .await?
-                                    .view(ctx)
-                                    .await?
-                            }
+                            Some(av_id) => Self::view(ctx, av_id).await?,
                             None => None,
                         };
 
@@ -787,11 +786,10 @@ impl AttributeValue {
                             .await?
                         {
                             input_attribute_value_ids.push(av_id);
-                            let attribute_value = AttributeValue::get_by_id(ctx, av_id).await?;
                             // XXX: We need to properly handle the difference between "there is
                             // XXX: no value" vs "the value is null", but right now we collapse
                             // XXX: the two to just be "null" when passing these to a function.
-                            values.push(attribute_value.view(ctx).await?.unwrap_or(Value::Null));
+                            values.push(Self::view(ctx, av_id).await?.unwrap_or(Value::Null));
                         }
 
                         values
@@ -898,17 +896,15 @@ impl AttributeValue {
             // XXX: We need to properly handle the difference between "there is
             // XXX: no value" vs "the value is null", but right now we collapse
             // XXX: the two to just be "null" when passing these to a function.
-            let output_av = AttributeValue::get_by_id(
+            let av_id = OutputSocket::component_attribute_value_id(
                 ctx,
-                OutputSocket::component_attribute_value_id(
-                    ctx,
-                    inferred_connection.output_socket_id,
-                    inferred_connection.source_component_id,
-                )
-                .await?,
+                inferred_connection.output_socket_id,
+                inferred_connection.source_component_id,
             )
             .await?;
-            let view = output_av.view(ctx).await?.unwrap_or(Value::Null);
+            let view = AttributeValue::view(ctx, av_id)
+                .await?
+                .unwrap_or(Value::Null);
             inputs.push(view);
         }
 
@@ -1352,10 +1348,10 @@ impl AttributeValue {
             .ok_or(AttributeValueError::NoChildWithName(id, name.to_string()))
     }
 
-    #[async_recursion]
-    pub async fn view(&self, ctx: &DalContext) -> AttributeValueResult<Option<serde_json::Value>> {
-        let attribute_value_id = self.id;
-
+    pub async fn view(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<Option<serde_json::Value>> {
         match AttributeValue::is_for(ctx, attribute_value_id).await? {
             ValueIsFor::Prop(prop_id) => {
                 let self_value = self.value(ctx).await?;
@@ -1425,8 +1421,9 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Option<serde_json::Value>> {
-        let attribute_value = Self::get_by_id(ctx, attribute_value_id).await?;
-        attribute_value.view(ctx).await
+        ctx.workspace_snapshot()?
+            .attribute_value_view(ctx, attribute_value_id)
+            .await
     }
 
     /// Create the immediate child AVs for an object if they don't exist, and remove any other

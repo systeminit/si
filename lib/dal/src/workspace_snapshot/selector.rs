@@ -74,6 +74,7 @@ use crate::{
         ApprovalRequirementApprover,
         ApprovalRequirementDefinition,
     },
+    attribute::value::AttributeValueResult,
     component::ComponentResult,
     entity_kind::EntityKindResult,
     prop::PropResult,
@@ -1035,10 +1036,25 @@ impl ComponentExt for WorkspaceSnapshotSelector {
 
 #[async_trait]
 impl AttributeValueExt for WorkspaceSnapshotSelector {
+    async fn attribute_value_view(
+        &self,
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<Option<serde_json::Value>> {
+        match self {
+            Self::LegacySnapshot(snapshot) => {
+                snapshot.attribute_value_view(ctx, attribute_value_id).await
+            }
+            Self::SplitSnapshot(snapshot) => {
+                snapshot.attribute_value_view(ctx, attribute_value_id).await
+            }
+        }
+    }
+
     async fn component_prototype_id(
         &self,
         id: AttributeValueId,
-    ) -> WorkspaceSnapshotResult<Option<AttributePrototypeId>> {
+    ) -> AttributeValueResult<Option<AttributePrototypeId>> {
         match self {
             Self::LegacySnapshot(snapshot) => snapshot.component_prototype_id(id).await,
             Self::SplitSnapshot(snapshot) => snapshot.component_prototype_id(id).await,

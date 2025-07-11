@@ -1849,10 +1849,7 @@ async fn update_component(
             | PropKind::Float
             | PropKind::Json => {
                 // todo: type check!
-                let view = AttributeValue::get_by_id(ctx, path_attribute_value_id)
-                    .await?
-                    .view(ctx)
-                    .await?;
+                let view = AttributeValue::view(ctx, path_attribute_value_id).await?;
                 if Some(&current_val) != view.as_ref() {
                     AttributeValue::update(ctx, path_attribute_value_id, Some(current_val)).await?;
                 }
@@ -1895,10 +1892,7 @@ async fn update_component(
                             if AttributeValue::is_set_by_dependent_function(ctx, *child_id).await? {
                                 continue;
                             }
-                            let view = AttributeValue::get_by_id(ctx, *child_id)
-                                .await?
-                                .view(ctx)
-                                .await?;
+                            let view = AttributeValue::view(ctx, *child_id).await?;
                             if Some(&value) != view.as_ref() {
                                 AttributeValue::update(ctx, *child_id, Some(value)).await?;
                             }
@@ -1917,10 +1911,7 @@ async fn update_component(
             }
             PropKind::Array => {
                 if matches!(current_val, serde_json::Value::Array(_)) {
-                    let view = AttributeValue::get_by_id(ctx, path_attribute_value_id)
-                        .await?
-                        .view(ctx)
-                        .await?;
+                    let view = AttributeValue::view(ctx, path_attribute_value_id).await?;
 
                     if Some(&current_val) != view.as_ref() {
                         // Just update the entire array whole cloth

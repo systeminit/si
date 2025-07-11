@@ -103,6 +103,8 @@ pub enum WorkspaceSnapshotGraphError {
     IncompatibleNodeTypes,
     #[error("InputSocket error {0}")]
     InputSocketError(#[from] Box<InputSocketError>),
+    #[error("Invalid edge weight kind: {0}")]
+    InvalidEdgeWeightKind(EdgeWeightKindDiscriminants),
     #[error("Invalid value graph")]
     InvalidValueGraph,
     #[error("layerdb error: {0}")]
@@ -121,6 +123,8 @@ pub enum WorkspaceSnapshotGraphError {
     NodeWeightNotFound,
     #[error("Node with ID {} not found", .0.to_string())]
     NodeWithIdNotFound(Ulid),
+    #[error("Node with index {0:?} not found")]
+    NodeWithIndexNotFound(NodeIndex),
     #[error("No edges of kind {1} found with node index {0:?} as the source")]
     NoEdgesOfKindFound(NodeIndex, EdgeWeightKindDiscriminants),
     #[error("No Prop found for NodeIndex {0:?}")]
