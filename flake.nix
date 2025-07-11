@@ -45,11 +45,13 @@
           buck2
           cacert
           clang
+          curl
           deno
           gitMinimal
           lld
           makeWrapper
           minica
+          mise
           nodePkgs.pnpm
           nodejs
           protobuf
@@ -174,6 +176,8 @@
             @//mode/release \
             "$buck2_target" \
             --verbose 8 \
+            --local-only \
+            --no-remote-cache \
             --out "build/$name-$system"
         '',
         extraBuildPhase ? "",
