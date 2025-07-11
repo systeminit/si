@@ -30,7 +30,7 @@
     "pinia": "^2.2.4",
     "posthog-js": "^1.176.0",
     "vite-ssg": "^0.23.8",
-    "vue": "^3.5.12",
+    "vue": "^3.5.13",
     "vue-router": "^4.4.5"
   },
   "devDependencies": {

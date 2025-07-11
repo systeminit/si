@@ -65,7 +65,7 @@
     "tailwindcss-capsize": "^3.0.3",
     "ulid": "^2.3.0",
     "vanilla-picker": "^2.12.1",
-    "vue": "^3.5.12",
+    "vue": "^3.5.13",
     "vue-router": "^4.4.5",
     "vue-safe-teleport": "^0.1.2"
   },
