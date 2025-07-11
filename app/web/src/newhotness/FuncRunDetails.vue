@@ -11,6 +11,13 @@
   >
     <template #actions>
       <VButton
+        v-if="funcRun && funcRun.componentId"
+        tone="neutral"
+        label="Go to Component"
+        size="xs"
+        @click="navigateToComponent"
+      />
+      <VButton
         v-if="
           funcRun &&
           funcRun.actionId &&
@@ -103,6 +110,20 @@ const retryAction = async () => {
 
     // This route can mutate head, so we do not need to handle new change set semantics.
     await call.put({});
+  }
+};
+
+const navigateToComponent = () => {
+  if (funcRun.value?.componentId) {
+    const params = { ...router.currentRoute.value.params };
+    params.componentId = funcRun.value.componentId;
+    router.push({
+      name: "new-hotness-component",
+      params,
+      query: preserveExploreState(
+        router.currentRoute.value?.query as SelectionsInQueryString,
+      ),
+    });
   }
 };
 

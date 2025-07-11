@@ -171,6 +171,8 @@
           :focusedComponentIdx="focusedComponentIdx"
           :selectedComponentIndexes="selectedComponentIndexes"
           :componentsWithFailedActions="componentsHaveActionsWithState.failed"
+          :componentsWithRunningActions="componentsHaveActionsWithState.running"
+          :componentsPendingActionNames="componentsPendingActionNames"
           @childClicked="componentClicked"
           @childSelect="selectComponent"
           @childDeselect="deselectComponent"
@@ -611,6 +613,43 @@ const componentsHaveActionsWithState = computed(() => {
       results.failed.add(action.componentId);
     } else if (action.state === ActionState.Running) {
       results.running.add(action.componentId);
+    }
+  }
+  return results;
+});
+
+// Map component IDs to their pending action counts by type (can be multiple)
+const componentsPendingActionNames = computed(() => {
+  const results = new globalThis.Map<
+    ComponentId,
+    Record<string, { count: number; hasFailed: boolean }>
+  >();
+  for (const action of actionViewList.value) {
+    if (!action.componentId) continue;
+    // All action states are considered "pending" and should be shown
+    if (!results.has(action.componentId)) {
+      results.set(action.componentId, {});
+    }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const actionCounts = results.get(action.componentId)!;
+
+    // Group Other actions with Manual
+    let actionName = action.name;
+    if (actionName.toLowerCase() === "other") {
+      actionName = "Manual";
+    }
+
+    if (!actionCounts[actionName]) {
+      actionCounts[actionName] = { count: 0, hasFailed: false };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    actionCounts[actionName]!.count += 1;
+
+    // Track if any action in this group has failed
+    if (action.state === ActionState.Failed) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      actionCounts[actionName]!.hasFailed = true;
     }
   }
   return results;
