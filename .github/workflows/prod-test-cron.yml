@@ -19,6 +19,7 @@ jobs:
     uses: ./.github/workflows/e2e-validation.yml
     with:
       environment: production
+      test_dir: cypress/e2e
     secrets: inherit
   api-test:
     uses: ./.github/workflows/run-api-test.yml

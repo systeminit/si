@@ -84,6 +84,7 @@ jobs:
     uses: ./.github/workflows/e2e-validation.yml
     with:
       environment: ${{ inputs.environment }}
+      test_dir: cypress/e2e
     secrets: inherit
 
   api-test:
