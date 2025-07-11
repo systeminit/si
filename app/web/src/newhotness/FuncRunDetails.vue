@@ -205,7 +205,7 @@ const logText = computed<string>(() => {
         }
       }
 
-      return `[${timestamp}] [${log.level.padEnd(5)}] ${log.message}`;
+      return `[${timestamp}] [${log.level}] ${log.message}`;
     })
     .join("\n");
 });
