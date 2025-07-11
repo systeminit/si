@@ -704,7 +704,7 @@ const sortedAndGroupedComponents = computed(() => {
   // First, always sort by latest to oldest. This relies on the fact ULIDs are time-based.
   // NOTE: We also do this to get a new array, so that later sort() calls do not mutate the
   // filteredComponents array.
-  let components = _.sortBy(filteredComponents.value, (c) => c.id);
+  let components = _.reverse(_.sortBy(filteredComponents.value, (c) => c.id));
 
   // Second, perform any secondary sorts, if applicable. This relies on the fact that the
   // components are already sorted.
@@ -923,11 +923,16 @@ const filteredComponents = computedAsync(async () => {
       }
       case "attr": {
         // Query to find the component IDs matching this attr, then use that to narrow the components
+        const terms = term.values.map((value) => ({
+          key: term.key,
+          value,
+        }));
+
         const componentIds = new Set(
           await bifrostQueryAttributes({
             workspaceId,
             changeSetId,
-            terms: [term],
+            terms,
           }),
         );
         return components.filter((c) => componentIds.has(c.id));
