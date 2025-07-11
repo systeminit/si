@@ -1,0 +1,46 @@
+name: Validate Main
+
+on:
+  push:
+    tags:
+      - 'release/*'
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+        description: "where to test"
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        required: true
+        description: "where to test"
+        default: "tools"
+        options:
+          - tools
+          - production
+          - perf
+          - ec2-node
+
+concurrency:
+  group: validate-main
+  cancel-in-progress: false
+
+jobs:
+  e2e-validation:
+    uses: ./.github/workflows/e2e-validation.yml
+    with:
+      environment: ec2-node
+      test_dir: cypress/ux
+    secrets: inherit
+
+  on-failure:
+    runs-on: ubuntu-latest
+    needs:  e2e-validation
+    if: failure()
+    steps:
+      - run: |
+          curl -X POST \
+          -H 'Content-type: application/json' \
+          --data "{\"text\": \":si: Validation of mainline failed: <https://github.com/systeminit/si/actions/runs/$GITHUB_RUN_ID|:ship: Link>\"}" ${{ secrets.SLACK_WEBHOOK_URL }}

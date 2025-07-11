@@ -7,6 +7,10 @@ on:
         type: string
         required: true
         description: "where to test"
+      test_dir:
+        type: string
+        required: true
+        description: "which test directory to execute"
   workflow_dispatch:
     inputs:
       environment:
@@ -19,6 +23,11 @@ on:
           - production
           - perf
           - ec2-node
+      test_dir:
+        type: string
+        required: true
+        description: "which test directory to execute"
+        default: "cypress/e2e"
 
 jobs:
   define-test-matrix:
@@ -28,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: tests
-        working-directory: app/web/cypress/e2e
+        working-directory: app/web/${{ inputs.test_dir }}
         run: |
           test_dirs=$(find . -mindepth 1 -maxdepth 1 -type d  | sed 's|^\./||')
           test_array="[]"
@@ -207,7 +216,7 @@ jobs:
           
           until [ $n -ge $max_retries ]; do
             unset exit_code || echo "exit_code not set"
-            npx cypress run --spec "cypress/e2e/${{ matrix.tests }}/**" || exit_code=$?
+            npx cypress run --spec "${{ inputs.test_dir }}/${{ matrix.tests }}/**" || exit_code=$?
             if [ -z "$exit_code" ]; then
               echo "Cypress Test task succeeded!"
               break
