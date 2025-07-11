@@ -348,7 +348,7 @@ onBeforeMount(async () => {
   // route that uses this component. This is wrapped in a "setTimeout" to ensure that the feature
   // flag loads in time.
   setTimeout(() => {
-    if (!featureFlagsStore.NEW_HOTNESS) {
+    if (!featureFlagsStore.ENABLE_NEW_EXPERIENCE) {
       router.push({ name: "workspace-index" });
     }
   }, 500);
