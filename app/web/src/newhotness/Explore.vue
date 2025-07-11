@@ -219,7 +219,7 @@
         v-else
         ref="mapRef"
         :active="!showGrid"
-        :components="filteredComponents"
+        :components="filteredComponents.value"
         :componentsWithFailedActions="componentsHaveActionsWithState.failed"
         @deselect="onMapDeselect"
         @help="openShortcutModal"
@@ -391,6 +391,7 @@ import { useConnections } from "./logic_composables/connections";
 import DelayedSkeleton from "./skeletons/DelayedSkeleton.vue";
 import ExploreModeTile from "./ExploreModeTile.vue";
 import ActionQueueList from "./ActionQueueList.vue";
+import { parseSearch, SearchTerms } from "./logic_composables/search";
 
 const router = useRouter();
 const route = useRoute();
@@ -701,8 +702,9 @@ const sortedAndGroupedComponents = computed(() => {
   let groups: Record<string, ComponentInList[]> = {};
 
   // First, always sort by latest to oldest. This relies on the fact ULIDs are time-based.
-  let components = filteredComponents.value;
-  components.sort((a, b) => b.id.localeCompare(a.id));
+  // NOTE: We also do this to get a new array, so that later sort() calls do not mutate the
+  // filteredComponents array.
+  let components = _.sortBy(filteredComponents.value, (c) => c.id);
 
   // Second, perform any secondary sorts, if applicable. This relies on the fact that the
   // components are already sorted.
@@ -839,110 +841,106 @@ watch(debouncedSearchString, () => {
 });
 
 /**
- * Search string, split into terms.
- *
- * MyComponent vpcId:vpc-123 AWS::EC2::Subnet parses to:
- *
- *     {
- *       attrSearchTerms: [ { key: "vpcId", value: "vpc-123" } ],
- *       knownSearchTerms: [ { key: "schema", value: "AWS::EC2::Subnet" } ],
- *       fuzzyTerms: [ "MyComponent", "AWS::EC2::Subnet" ]
- *     }
- */
-const debouncedSearchTerms = computed(() => {
-  const attrSearchTerms = new Array<{ key: string; value: string }>();
-  const knownSearchTerms = new Array<{ key: "schema"; value: string }>();
-  const fuzzyTerms = new Array<string>();
-  for (const term of debouncedSearchString.value.split(/\s+/g)) {
-    // Treat a:b as a key-value pair
-    const colon = term.indexOf(":");
-    if (colon >= 0 && term[colon + 1] !== ":") {
-      // Don't treat :: as a key-value pair
-      const key = term.slice(0, colon);
-      const value = term.slice(colon + 1);
-      if (key === "schema") {
-        knownSearchTerms.push({ key, value });
-      } else {
-        attrSearchTerms.push({ key, value });
-      }
-    } else {
-      fuzzyTerms.push(term);
-    }
-  }
-  return { attrSearchTerms, knownSearchTerms, fuzzyTerms };
-});
-
-/**
- * Components list filtered by the advanced search terms (by querying bifrost).
- *
- * Should only be used by filteredComponents.
- */
-const attrSearchedComponentIds = computedAsync(async () => {
-  const { attrSearchTerms } = debouncedSearchTerms.value;
-  if (attrSearchTerms.length === 0) {
-    return undefined;
-  }
-
-  return await bifrostQueryAttributes({
-    workspaceId: ctx.workspacePk.value,
-    changeSetId: ctx.changeSetId.value,
-    terms: attrSearchTerms,
-  });
-});
-
-/**
  * Components list filtered by all search terms.
  */
-const filteredComponents = computed(() => {
+const filteredComponents = computedAsync(async () => {
+  const searchTerms = parseSearch(debouncedSearchString.value);
+
+  // Filter components based on the parsed (debounced) search string.
+  const workspaceId = ctx.workspacePk.value;
+  const changeSetId = ctx.changeSetId.value;
   let components = componentList.value;
-  const { attrSearchTerms, knownSearchTerms, fuzzyTerms } =
-    debouncedSearchTerms.value;
-
-  // Handle attribute search terms
-  if (attrSearchTerms.length > 0) {
-    components = components.filter((component) =>
-      attrSearchedComponentIds.value?.includes(component.id),
-    );
+  if (searchTerms) {
+    components = await search(components, searchTerms);
   }
+  return components;
 
-  // Handle special-cased keys (e.g. schema)
-  for (const term of knownSearchTerms) {
-    // Search specifically for matching schemas
-    switch (term.key) {
-      case "schema":
-        components = components.filter((c) => {
-          let schemaName: string | undefined = c.schemaName.toLowerCase();
-          const termLowerCase = term.value.toLowerCase();
-          // Support matching "VPC", "EC2::VPC" or "AWS::EC2::VPC" by checking against each one
-          // in succession
-          while (schemaName) {
-            if (schemaName.startsWith(termLowerCase)) {
-              return true;
-            }
-            // Remove the first part of the schema name ("AWS::EC2::VPC" -> "EC2::VPC") and try again
-            const doubleColon = schemaName.indexOf("::");
-            if (doubleColon >= 0) {
-              schemaName = schemaName.slice(doubleColon + 2);
-            } else {
-              // No more "::" to remove, break out of the loop
-              schemaName = undefined;
-            }
+  /** Recursively apply the search query, one term at a time, honoring boolean operators */
+  async function search(
+    components: ComponentInList[],
+    term: SearchTerms,
+  ): Promise<ComponentInList[]> {
+    // NOTE: this does an exhaustiveness check
+    switch (term.op) {
+      case "not": {
+        // Find the matches, then pick everything else
+        const removeComponents = new Set(
+          (await search(components, term.condition)).map((c) => c.id),
+        );
+        return components.filter((c) => !removeComponents.has(c.id));
+      }
+      case "and": {
+        // Just narrow down the results by applying each condition.
+        for (const condition of term.conditions) {
+          components = await search(components, condition);
+        }
+        return components;
+      }
+      case "or": {
+        // Figure out which things match; but maintain the order of the individual searches
+        const results = new Set<ComponentInList>();
+        for (const condition of term.conditions) {
+          // Add results in the order they were defined (unless they are duplicates)
+          for (const component of await search(components, condition)) {
+            results.add(component);
           }
-          return false;
+        }
+        return Array.from(results);
+      }
+      case "exact": {
+        // Make sure the term is an exact match for name/schemaName/schemaCategory/id
+        // TODO AWS::EC2::Instance vs. Instance: should both work?
+        // TODO support *
+        return components.filter(
+          (c) =>
+            c.name.localeCompare(term.value) === 0 ||
+            c.schemaCategory.localeCompare(term.value) === 0 ||
+            c.schemaName.localeCompare(term.value) === 0 ||
+            c.id.localeCompare(term.value) === 0,
+        );
+      }
+      case "startsWith": {
+        // Make sure the term is an exact match for name/schemaName/schemaCategory/id
+        // TODO AWS::EC2::Instance vs. Instance: should both work?
+        // TODO support *
+        const value = term.value.toLowerCase();
+        return components.filter(
+          (c) =>
+            c.name.toLowerCase().startsWith(value) ||
+            c.schemaCategory.toLowerCase().startsWith(value) ||
+            c.schemaName.toLowerCase().startsWith(value) ||
+            c.id.toLowerCase().startsWith(value),
+        );
+      }
+      case "fuzzy": {
+        // Regular fuzzy search across all fields
+        const fzf = new Fzf(components, {
+          casing: "case-insensitive",
+          selector: (c) =>
+            `${c.name} ${c.schemaCategory} ${c.schemaName} ${c.id}`,
         });
-        break;
+        return fzf.find(term.value).map((fz) => fz.item);
+      }
+      case "attr": {
+        // Query to find the component IDs matching this attr, then use that to narrow the components
+        const componentIds = new Set(
+          await bifrostQueryAttributes({
+            workspaceId,
+            changeSetId,
+            terms: [term],
+          }),
+        );
+        return components.filter((c) => componentIds.has(c.id));
+      }
       default:
-        break;
+        return assertUnreachable(term);
     }
   }
+}, []);
 
-  // Regular fuzzy search across all fields
-  const fzf = new Fzf(components, {
-    casing: "case-insensitive",
-    selector: (c) => `${c.name} ${c.schemaName} ${c.schemaCategory} ${c.id}`,
-  });
-  return fzf.find(fuzzyTerms.join(" ")).map((fz) => fz.item);
-});
+function assertUnreachable(_: never): never {
+  throw new Error("Didn't expect to get here");
+}
 
 // Clear the selection when the filter changes
 // TODO leave the selection as long as it is still one of the filtered components?
@@ -956,7 +954,7 @@ const updateDebouncedSearch = _.debounce(
   (value: string) => {
     debouncedSearchString.value = value;
   },
-  500,
+  200,
   { trailing: true, leading: true },
 );
 
