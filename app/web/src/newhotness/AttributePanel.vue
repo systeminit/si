@@ -1,7 +1,7 @@
 <template>
   <div v-if="root" class="p-xs flex flex-col gap-xs">
     <div
-      v-if="importFunc"
+      v-if="importFunc && !component.toDelete"
       class="grid grid-cols-2 gap-2xs relative text-sm h-lg"
     >
       <div class="flex flex-row items-center gap-2xs">
@@ -54,7 +54,31 @@
       >
         <template #default="{ field }">
           <div>Name</div>
+          <div
+            v-if="component.toDelete"
+            ref="nameInputRef"
+            v-tooltip="{
+              content: 'Unable to edit this value.',
+              placement: 'left',
+            }"
+            :class="
+              clsx(
+                'h-lg p-xs text-sm border font-mono',
+                'focus:outline-none focus:ring-0 focus:z-10',
+                'cursor-not-allowed focus:outline-none focus:z-10',
+                themeClasses(
+                  'bg-neutral-100 text-neutral-600 border-neutral-400 focus:border-action-500',
+                  'bg-neutral-900 text-neutral-400 border-neutral-600 focus:border-action-300',
+                ),
+              )
+            "
+            tabindex="0"
+            @keydown.tab.stop.prevent="onNameInputTab"
+          >
+            {{ field.state.value }}
+          </div>
           <input
+            v-else
             ref="nameInputRef"
             :value="field.state.value"
             :placeholder="namePlaceholder"
@@ -71,12 +95,10 @@
             tabindex="0"
             type="text"
             @blur="blurNameInput"
-            @input="
-              (e) => field.handleChange((e.target as HTMLInputElement).value)
-            "
+            @input="(e: Event) => { handleNameInput(e, field); }"
             @keydown.enter.stop.prevent="blurNameInput"
             @keydown.esc.stop.prevent="resetNameInput"
-            @keydown.tab.prevent="onNameInputTab"
+            @keydown.tab.stop.prevent="onNameInputTab"
           />
         </template>
       </nameForm.Field>
@@ -493,7 +515,7 @@ const removeSubscription = async (path: AttributePath) => {
   }
 };
 
-const nameInputRef = ref<HTMLInputElement>();
+const nameInputRef = ref<HTMLInputElement | HTMLDivElement>();
 const searchRef = ref<InstanceType<typeof SiSearch>>();
 
 // Import
@@ -627,6 +649,7 @@ const onNameInputTab = (e: KeyboardEvent) => {
       focusable[focusable.length - 1]?.focus();
     }
   } else {
+    nameInputRef.value?.blur();
     focusSearch();
   }
 };
@@ -653,12 +676,20 @@ const resetNameInput = () => {
 };
 
 const blurNameInput = () => {
-  if (nameForm.fieldInfo.name.instance?.state.meta.isDirty) {
+  if (
+    nameForm.fieldInfo.name.instance?.state.meta.isDirty &&
+    !props.component.toDelete
+  ) {
     // don't double submit if you were `select()'d'`
     if (!nameForm.baseStore.state.isSubmitted) nameForm.handleSubmit();
   } else {
     resetNameInput();
   }
+};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const handleNameInput = (e: Event, field: any) => {
+  if (props.component.toDelete) return;
+  field.handleChange((e.target as HTMLInputElement).value);
 };
 
 const nameIsDefault = computed(() => props.component.name.startsWith("si-"));

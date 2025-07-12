@@ -26,7 +26,7 @@
               class="w-8 mr-2 shrink-0"
             />
             <IconButton
-              v-if="canDelete"
+              v-if="canDelete && !component.toDelete"
               tooltip="Delete"
               tooltipPlacement="top"
               icon="trash"
@@ -149,7 +149,11 @@
           <Icon v-if="isArray" name="chevron--down" />
           <!-- NOTE(nick): you need "click.stop" here to prevent the outer click -->
           <Icon
-            v-if="props.externalSources && props.externalSources.length > 0"
+            v-if="
+              props.externalSources &&
+              props.externalSources.length > 0 &&
+              !component.toDelete
+            "
             v-tooltip="
               props.isSecret
                 ? 'Remove connection to Secret'
@@ -192,7 +196,7 @@
             <div class="flex flex-row items-center gap-2xs">
               <TruncateWithTooltip>{{ displayName }}</TruncateWithTooltip>
               <IconButton
-                v-if="canDelete"
+                v-if="canDelete && !component.toDelete"
                 tooltip="Delete (⌘⌫)"
                 tooltipPlacement="top"
                 icon="trash"
@@ -223,7 +227,10 @@
               "
               :type="inputHtmlTag === 'input' ? 'text' : null"
               :rows="inputHtmlTag === 'textarea' ? 4 : null"
+              data-lpignore="true"
               data-1p-ignore
+              data-bwignore
+              data-form-type="other"
               :value="isMap ? mapKey : field.state.value"
               :disabled="wForm.bifrosting.value || bifrostingTrash"
               @input="(e: Event) => onInputChange(e)"
@@ -1263,7 +1270,9 @@ const selectedConnection = computed(
 );
 
 const readOnly = computed(
-  () => !!(props.prop?.createOnly && props.component.hasResource),
+  () =>
+    !!(props.prop?.createOnly && props.component.hasResource) ||
+    props.component.toDelete,
 );
 
 const kindAsString = computed(() => `${props.prop?.widgetKind}`.toLowerCase());

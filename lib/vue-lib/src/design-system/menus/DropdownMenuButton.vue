@@ -85,6 +85,7 @@
           enableSecondaryAction && enableSecondaryAction(option)
         "
         :secondaryActionIcon="secondaryActionIcon"
+        :sizeClass="sizeClass"
         @secondaryAction="secondaryAction(option)"
         @select="selectOption(option)"
       />
@@ -134,6 +135,7 @@ const props = defineProps({
   secondaryActionIcon: { type: String as PropType<IconNames> },
   alwaysShowPlaceholder: { type: Boolean },
   highlightWhenModelValue: { type: Boolean },
+  sizeClass: { type: String },
 });
 
 const arrayOptionsFromProps = computed((): OptionsAsArray => {

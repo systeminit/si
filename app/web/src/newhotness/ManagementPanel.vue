@@ -1,6 +1,13 @@
 <template>
+  <EmptyState
+    v-if="component?.toDelete"
+    text="Marked for deletion"
+    secondaryText="Can't adjust management on a component which has been marked for deletion"
+    icon="tools"
+    class="p-sm"
+  />
   <div
-    v-if="component && componentId && latestFuncRuns && managementData"
+    v-else-if="component && componentId && latestFuncRuns && managementData"
     class="p-xs flex flex-col gap-xs"
   >
     <ul class="flex flex-col gap-xs">
@@ -25,7 +32,12 @@
       :parentComponentId="componentId"
     />
   </div>
-  <EmptyState v-else text="No management information available" icon="tools" />
+  <EmptyState
+    v-else
+    text="No management information available"
+    icon="tools"
+    class="p-sm"
+  />
 </template>
 
 <script setup lang="ts">
