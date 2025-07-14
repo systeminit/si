@@ -13,10 +13,13 @@
 </template>
 
 <script setup lang="ts">
-import { Modal, RichText, Stack, VButton } from "@si/vue-lib/design-system";
-
 import axios from "axios";
 import { onBeforeUnmount, onMounted, ref } from "vue";
+import { Modal, RichText, Stack, VButton } from "@si/vue-lib/design-system";
+import {
+  cachedAppEmitter,
+  SHOW_CACHED_APP_NOTIFICATION_EVENT,
+} from "@/store/realtime/cached_app_emitter";
 
 // const APP_FILENAME_REGEX = /\/?assets\/index-([0-9a-z]+).js/;
 const getFilenameFromPath = (path: string) => path.split("/").pop();
@@ -24,6 +27,10 @@ const getFilenameFromPath = (path: string) => path.split("/").pop();
 const runningHash = getRunningHash();
 
 const modalRef = ref();
+
+cachedAppEmitter.on(SHOW_CACHED_APP_NOTIFICATION_EVENT, () => {
+  modalRef.value?.open();
+});
 
 async function check() {
   const manifestUrl = `${

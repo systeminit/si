@@ -39,9 +39,14 @@ import { sdfApiInstance as sdf } from "@/store/apis.web";
 import { WorkspaceMetadata } from "@/api/sdf/dal/workspace";
 import { useChangeSetsStore } from "../change_sets.store";
 import { useWorkspacesStore } from "../workspaces.store";
+import {
+  cachedAppEmitter,
+  SHOW_CACHED_APP_NOTIFICATION_EVENT,
+} from "./cached_app_emitter";
 
-// We want an id right away, not later. But ulid fails if run in this context (something about crypto randomValues).
-// we do not need crypto-secure ulids. We just want every tab to have a different one. Which this will get us.
+// We want an id right away, not later. But ulid fails if run in this context
+// (something about crypto randomValues).  we do not need crypto-secure ulids.
+// We just want every tab to have a different one. Which this will get us.
 const ulid = monotonicFactory(() => Math.random());
 
 const ranInit = ref<boolean>(false);
@@ -50,8 +55,76 @@ const tabDbId = ulid();
 const lockAcquired = ref(false);
 
 const lockAcquiredBroadcastChannel = new BroadcastChannel("DB_LOCK_ACQUIRED");
-lockAcquiredBroadcastChannel.onmessage = () => {
-  lockAcquired.value = true;
+lockAcquiredBroadcastChannel.onmessage = (message) => {
+  if (message.data !== tabDbId) {
+    // eslint-disable-next-line no-console
+    console.log("🌈 lock acquired by another tab");
+    lockAcquired.value = true;
+  }
+};
+
+const SHARED_WEB_WORKER_URL =
+  import.meta.env.VITE_SI_ENV === "local"
+    ? "../../workers/shared_webworker.ts"
+    : "shared_webworker.js";
+
+// Shared workers are unique per *name*, not per code URL.
+const spawnSharedWorker = (name: string) =>
+  new SharedWorker(new URL(SHARED_WEB_WORKER_URL, import.meta.url), {
+    type: "module",
+    name,
+  });
+
+let sharedWebWorkerName = `si-db-multiplexer-${__SHARED_WORKER_HASH__}`;
+let sharedWorker = spawnSharedWorker(sharedWebWorkerName);
+let db: Comlink.Remote<SharedDBInterface> = Comlink.wrap(sharedWorker.port);
+
+const WORKER_URL =
+  import.meta.env.VITE_SI_ENV === "local"
+    ? "../../workers/webworker.ts"
+    : "webworker.js";
+
+const tabWorker = new Worker(new URL(WORKER_URL, import.meta.url), {
+  type: "module",
+});
+const tabDb: Comlink.Remote<TabDBInterface> = Comlink.wrap(tabWorker);
+
+const onSharedWorkerBootBroadcastChannel = new BroadcastChannel(
+  SHARED_BROADCAST_CHANNEL_NAME,
+);
+
+onSharedWorkerBootBroadcastChannel.onmessage = async (msg) => {
+  const name = msg.data as string;
+  if (name !== sharedWebWorkerName) {
+    // This will ensure that the new shared worker is the one we use to
+    // communicate with the various remotes if a new version of the shared
+    // webworker code is detected. But, note that if the interface changes, this
+    // tab will still have to be reloaded for that communication to work.
+
+    // eslint-disable-next-line no-console
+    console.log("🌈 new shared worker detected, reconnecting");
+    const currentBearers = await db.getBearers();
+    db.unregisterRemote(tabDbId);
+    sharedWorker = spawnSharedWorker(name);
+    sharedWebWorkerName = name;
+    db = Comlink.wrap(sharedWorker.port);
+    db.registerRemote(tabDbId, Comlink.proxy(tabDb));
+    if (await tabDb.hasDbLock()) {
+      await db.setRemote(tabDbId);
+    }
+    db.addBearers(currentBearers);
+    showCachedAppNotification();
+  } else {
+    db.registerRemote(tabDbId, Comlink.proxy(tabDb));
+  }
+};
+
+window.onbeforeunload = () => {
+  db.unregisterRemote(tabDbId);
+};
+
+const showCachedAppNotification = () => {
+  cachedAppEmitter.emit(SHOW_CACHED_APP_NOTIFICATION_EVENT);
 };
 
 export const init = async (
@@ -61,36 +134,38 @@ export const init = async (
 ) => {
   if (!ranInit.value) {
     // eslint-disable-next-line no-console
-    console.log("🌈 initializing bifrost...");
-    const start = performance.now();
+    console.log("🌈 calling init...");
     await db.setBearer(workspaceId, bearerToken);
 
     const { port1, port2 } = new MessageChannel();
     // This message fires when the lock has been acquired for this tab
     port1.onmessage = () => {
       db.setRemote(tabDbId);
+      // eslint-disable-next-line no-console
+      console.log("🌈 lock acquired by this tab");
       lockAcquired.value = true;
-      lockAcquiredBroadcastChannel.postMessage("acquired");
+      lockAcquiredBroadcastChannel.postMessage(tabDbId);
     };
 
-    // We are deliberately not awaiting this promise, since it blocks forever on the tabs that do not get the lock
+    // We are deliberately not awaiting this promise, since it blocks forever on
+    // the tabs that do not get the lock
     tabDb.initBifrost(Comlink.proxy(port2));
 
-    const end = performance.now();
     ranInit.value = true;
     queryClient = _queryClient;
-    // eslint-disable-next-line no-console
-    console.log(`...initialization completed [${end - start}ms] 🌈`);
   }
 
-  // If both tabs are refreshed at the same time, this can falsely indicate that a tab has the lock,
-  // but that tab has actually been refreshed just *after* this call, so *we* now have the lock.
-  // adding 2.5 second timeout here ensures that there is enough time for the lock to be resolved
-  // in a multitab scenario before we begin cold start. (This only matters if 2+ tabs are refreshed
-  // at more or less the same time, in the normal scenario we will indicate lock acquisition via
-  // the broadcast channel)
+  // If both tabs are refreshed at the same time, this can falsely indicate that
+  // a tab has the lock, but that tab has actually been refreshed just *after*
+  // this call, so *we* now have the lock.  adding 2.5 second timeout here
+  // ensures that there is enough time for the lock to be resolved in a multitab
+  // scenario before we begin cold start. (This only matters if 2+ tabs are
+  // refreshed at more or less the same time, in the normal scenario we will
+  // indicate lock acquisition via the broadcast channel)
   setTimeout(async () => {
-    if (await db.hasRemote()) {
+    if ((await db.hasRemote()) && !(await tabDb.hasDbLock())) {
+      // eslint-disable-next-line no-console
+      console.log("🌈 lock acquired by another tab, detected in timeout");
       lockAcquired.value = true;
     }
   }, 2500);
@@ -117,38 +192,6 @@ const bustTanStackCache: BustCacheFn = (
       arguments: { workspaceId, changeSetId, kind, id },
     });
   }
-};
-
-const sharedWebWorkerUrl =
-  import.meta.env.VITE_SI_ENV === "local"
-    ? "../../workers/shared_webworker.ts"
-    : "shared_webworker.js";
-
-const sharedWorker = new SharedWorker(
-  new URL(sharedWebWorkerUrl, import.meta.url),
-  { type: "module", name: "si-db-multiplexer" },
-);
-
-const db: Comlink.Remote<SharedDBInterface> = Comlink.wrap(sharedWorker.port);
-
-const workerUrl =
-  import.meta.env.VITE_SI_ENV === "local"
-    ? "../../workers/webworker.ts"
-    : "webworker.js";
-
-const tabWorker = new Worker(new URL(workerUrl, import.meta.url), {
-  type: "module",
-});
-const tabDb: Comlink.Remote<TabDBInterface> = Comlink.wrap(tabWorker);
-
-const onSharedWorkerBootBroadcastChannel = new BroadcastChannel(
-  SHARED_BROADCAST_CHANNEL_NAME,
-);
-onSharedWorkerBootBroadcastChannel.onmessage = () => {
-  db.registerRemote(tabDbId, Comlink.proxy(tabDb));
-};
-window.onbeforeunload = () => {
-  db.unregisterRemote(tabDbId);
 };
 
 const inFlight = (
