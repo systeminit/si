@@ -219,7 +219,7 @@
         v-else
         ref="mapRef"
         :active="!showGrid"
-        :components="filteredComponents.value"
+        :components="filteredComponents"
         :componentsWithFailedActions="componentsHaveActionsWithState.failed"
         @deselect="onMapDeselect"
         @help="openShortcutModal"
