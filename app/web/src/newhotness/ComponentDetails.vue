@@ -498,7 +498,7 @@ section.grid.docs-open-without-banner {
   grid-template-rows: 3rem minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr) minmax(0, 25%) minmax(0, 25%);
 }
-section.grid.docs-closedout-with-banner {
+section.grid.docs-closed-without-banner {
   grid-template-areas:
     "name right"
     "attrs right";
