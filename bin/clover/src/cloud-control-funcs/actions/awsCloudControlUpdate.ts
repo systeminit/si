@@ -2,8 +2,7 @@ async function main(component: Input): Promise<Output> {
   if (!component.properties.resource?.payload) {
     return {
       status: "error",
-      message: "Resource must exist to be updated",
-      payload: component.properties.resource.payload,
+      message: "Unable to queue an update action on a component without a resource",
     };
   }
 

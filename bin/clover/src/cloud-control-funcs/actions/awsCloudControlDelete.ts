@@ -3,8 +3,7 @@ async function main(component: Input): Promise<Output> {
   if (!component.properties.resource?.payload) {
     return {
       status: "error",
-      message: "Resource must exist",
-      payload: component.properties.resource.payload,
+      message: "Unable to queue a delete action on a component without a resource",
     };
   }
   const child = await siExec.waitUntilEnd("aws", [
