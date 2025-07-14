@@ -43,4 +43,5 @@ pub enum ManagementFuncKind {
     Discover,
     Import,
     Other,
+    RunTemplate,
 }

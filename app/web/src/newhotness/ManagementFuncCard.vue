@@ -1,6 +1,6 @@
 <template>
   <li
-    v-if="func.kind !== 'import'"
+    v-if="func.kind !== MgmtFuncKind.Import"
     :class="
       clsx(
         'rounded border flex flex-col',
@@ -24,6 +24,7 @@
       </span>
 
       <VButton
+        v-if="func.kind !== MgmtFuncKind.RunTemplate"
         size="sm"
         label="Run Function"
         iconTone="action"
@@ -68,7 +69,7 @@ import { ref } from "vue";
 import clsx from "clsx";
 import { routes, useApi } from "@/newhotness/api_composables";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
-import { MgmtFunction } from "@/workers/types/entity_kind_types";
+import { MgmtFuncKind, MgmtFunction } from "@/workers/types/entity_kind_types";
 
 const props = defineProps<{
   componentId: string;
@@ -98,10 +99,11 @@ const runMgmtFunc = async (funcId: string) => {
   if (mgmtRunApi.ok(req) && newChangeSetId) {
     mgmtRunApi.navigateToNewChangeSet(
       {
-        name: "new-hotness",
+        name: "new-hotness-component",
         params: {
           workspacePk: route.params.workspacePk,
           changeSetId: newChangeSetId,
+          componentId: props.componentId,
         },
       },
       newChangeSetId,
