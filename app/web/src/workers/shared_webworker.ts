@@ -19,6 +19,7 @@ import {
   SHARED_BROADCAST_CHANNEL_NAME,
   Gettable,
   Listable,
+  QueryAttributesTerm,
 } from "./types/dbinterface";
 
 // Wait 5 seconds after we no longer have any remotes before terminating ourselves
@@ -238,7 +239,7 @@ const dbInterface: SharedDBInterface = {
   async queryAttributes(
     workspaceId: WorkspacePk,
     changeSetId: ChangeSetId,
-    terms: { key: string; value: string }[],
+    terms: QueryAttributesTerm[],
   ): Promise<ComponentId[]> {
     return await withRemote(
       async (remote) =>

@@ -26,6 +26,7 @@ import {
   Gettable,
   AtomDocument,
   UpdateFn,
+  QueryAttributesTerm,
 } from "@/workers/types/dbinterface";
 import {
   Connection,
@@ -405,7 +406,7 @@ export const bifrostList = async <T>(args: {
 export const bifrostQueryAttributes = async (args: {
   workspaceId: string;
   changeSetId: ChangeSetId;
-  terms: { key: string; value: string }[];
+  terms: QueryAttributesTerm[];
 }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
