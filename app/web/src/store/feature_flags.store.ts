@@ -18,6 +18,7 @@ const FLAG_MAPPING = {
   SIMPLE_SOCKET_UI: "simple-socket-ui",
   SQLITE_TOOLS: "sqlite-tools",
   PROPS_TO_PROPS_CONNECTIONS: "props-to-props-connections",
+  ENABLE_NEW_EXPERIENCE: "enable-new-experience",
 };
 
 const WORKSPACE_FLAG_MAPPING = {
@@ -61,7 +62,7 @@ export function useFeatureFlagsStore() {
       },
       actions: {
         setDependentFlags() {
-          if (this.NEW_HOTNESS) {
+          if (this.ENABLE_NEW_EXPERIENCE) {
             this.FLOATING_CONNECTION_MENU = true;
             this.SIMPLE_SOCKET_UI = true;
             this.PROPS_TO_PROPS_CONNECTIONS = true;
@@ -107,7 +108,8 @@ export function useFeatureFlagsStore() {
         // this.FEATURE_FLAG_NAME = false;
 
         // turning this on for local development
-        if (import.meta.env.VITE_SI_ENV === "local") this.NEW_HOTNESS = true;
+        if (import.meta.env.VITE_SI_ENV === "local")
+          this.ENABLE_NEW_EXPERIENCE = true;
 
         // After processing override flags, set dependent flags.
         this.setDependentFlags();

@@ -6,7 +6,9 @@
       tooltipText="Model"
       icon="diagram"
       :selected="
-        ['workspace-compose', 'workspace-compose-view'].includes(route.name as string)
+        ['workspace-compose', 'workspace-compose-view'].includes(
+          route.name as string,
+        )
       "
       :linkTo="modelingLink()"
     />
@@ -46,7 +48,9 @@ const modelingLink = () => {
   const viewsStore = useViewsStore();
   const changeSetStore = useChangeSetsStore();
   const ffStore = useFeatureFlagsStore();
-  const prefix = ffStore.NEW_HOTNESS ? "new-hotness" : "workspace-compose";
+  const prefix = ffStore.ENABLE_NEW_EXPERIENCE
+    ? "new-hotness"
+    : "workspace-compose";
   if (changeSetStore.selectedChangeSetId) {
     if (viewsStore.selectedViewId) {
       return {
