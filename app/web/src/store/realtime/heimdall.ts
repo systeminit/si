@@ -570,6 +570,7 @@ const fetchOpenChangeSets = async (
 
 export const muspelheim = async (workspaceId: string, force?: boolean) => {
   await waitForInitCompletion();
+  const start = performance.now();
   // eslint-disable-next-line no-console
   console.log("🔥 MUSPELHEIM 🔥");
   const niflheimQueue = new PQueue({ concurrency: MUSPELHEIM_CONCURRENCY });
@@ -599,7 +600,7 @@ export const muspelheim = async (workspaceId: string, force?: boolean) => {
   await niflheimQueue.onEmpty();
 
   // eslint-disable-next-line no-console
-  console.log("🔥 DONE 🔥");
+  console.log("🔥 DONE 🔥", performance.now() - start);
   return true;
 };
 
@@ -618,13 +619,14 @@ export const niflheim = async (
   lobbyOnFailure = true,
 ): Promise<boolean> => {
   await waitForInitCompletion();
+  const start = performance.now();
   const changeSetExists = await db.changeSetExists(workspaceId, changeSetId);
   if (!changeSetExists || force) {
     // eslint-disable-next-line no-console
     console.log("❄️ NIFLHEIM ❄️", changeSetId);
     const success = await db.niflheim(workspaceId, changeSetId);
     // eslint-disable-next-line no-console
-    console.log("❄️ DONE ❄️");
+    console.log("❄️ DONE ❄️", performance.now() - start);
 
     // If niflheim returned false (202 response), navigate to lobby
     // Index is being rebuilt and is not ready yet.

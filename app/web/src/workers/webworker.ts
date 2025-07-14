@@ -1882,10 +1882,11 @@ const COMPUTED_KINDS: EntityKind[] = [
   EntityKind.Component,
 ];
 
-const allPossibleConns = new DefaultMap<
-  string,
-  Record<string, PossibleConnection>
->(() => ({}));
+// A mapping of possible connections per component, per change set
+const possibleConns = new DefaultMap<
+  ChangeSetId,
+  DefaultMap<ComponentId, Record<string, PossibleConnection>>
+>(() => new DefaultMap(() => ({})));
 
 // the `string` is `${toAttributeValueId}-${fromAttributeValueId}`
 const allOutgoingConns = new DefaultMap<
@@ -2203,28 +2204,18 @@ const postProcess = (
       );
     }
   } else if (kind === EntityKind.AttributeTree) {
-    const conns: Record<string, PossibleConnection> = {};
-
     if (!removed && !doc) {
       error("Atom is not removed, but no data for post processing", id);
       return;
     }
 
-    const existing = allPossibleConns.get(changeSetId);
-
     const attributeTree = doc as AttributeTree;
     if (doc) {
-      const avsForThisComponent = new Set(
-        Object.values(existing)
-          .filter((av) => av.componentId === attributeTree.id)
-          .map((av) => av.attributeValueId),
-      );
-      const avsFound: Set<string> = new Set();
+      const possibleConnsForComponent: Record<string, PossibleConnection> = {};
       Object.values(attributeTree.attributeValues).forEach((av) => {
         const prop = attributeTree.props[av.propId ?? ""];
         if (av.path && prop && prop.eligibleForConnection && !prop.hidden) {
-          avsFound.add(av.id);
-          conns[av.id] = {
+          possibleConnsForComponent[av.id] = {
             attributeValueId: av.id,
             value: av.secret ? av.secret.name : av.value || "<computed>",
             path: av.path,
@@ -2237,23 +2228,12 @@ const postProcess = (
           };
         }
       });
-      const avsToRemove = new Set(
-        [...avsForThisComponent].filter((id) => !avsFound.has(id)),
-      );
-      Object.values(existing).forEach((av) => {
-        if (avsToRemove.has(av.attributeValueId)) {
-          delete existing[av.attributeValueId];
-        }
-      });
-      allPossibleConns.set(changeSetId, { ...existing, ...conns });
+      possibleConns
+        .get(changeSetId)
+        .set(attributeTree.id, possibleConnsForComponent);
     }
     if (removed) {
-      Object.values(existing).forEach((av) => {
-        if (av.componentId === id) {
-          delete existing[av.attributeValueId];
-        }
-      });
-      allPossibleConns.set(changeSetId, { ...existing });
+      possibleConns.get(changeSetId).delete(id);
     }
 
     // dont bust individually on cold start
@@ -2276,7 +2256,13 @@ const postProcess = (
 };
 
 const getPossibleConnections = (_workspaceId: string, changeSetId: string) => {
-  return Object.values(allPossibleConns.get(changeSetId));
+  const result = [];
+  for (const componentMap of possibleConns.get(changeSetId).values()) {
+    for (const possibleConn of Object.values(componentMap)) {
+      result.push(possibleConn);
+    }
+  }
+  return result;
 };
 
 const getOutgoingConnectionsByComponentId = (
