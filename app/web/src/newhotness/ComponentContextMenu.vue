@@ -212,15 +212,29 @@ const rightClickMenuItems = computed(() => {
 
   const upgradeableComponents = explore.upgradeableComponents.value;
 
-  if (
-    components.value.map((c) => upgradeableComponents.has(c.id)).every((b) => b)
-  ) {
+  // Get only the components that are actually upgradeable
+  const upgradeableSelectedComponents = components.value.filter((c) =>
+    upgradeableComponents.has(c.id),
+  );
+
+  if (upgradeableSelectedComponents.length > 0) {
+    const allUpgradeable =
+      upgradeableSelectedComponents.length === components.value.length;
+    const label = allUpgradeable
+      ? "Upgrade"
+      : `Upgrade (${upgradeableSelectedComponents.length}/${components.value.length})`;
+
     items.push({
       labelAsTooltip: true,
-      label: "Upgrade",
+      label,
       shortcut: "U",
       icon: "bolt-outline",
-      onSelect: () => componentsUpgrade(components.value.map((c) => c.id)),
+      disabled: !allUpgradeable,
+      onSelect: () => {
+        if (allUpgradeable) {
+          componentsUpgrade(upgradeableSelectedComponents.map((c) => c.id));
+        }
+      },
     });
   }
 
