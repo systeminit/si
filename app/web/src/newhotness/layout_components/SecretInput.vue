@@ -32,7 +32,10 @@
       :value="field.state.value"
       tabindex="0"
       :placeholder="placeholder"
+      data-lpignore="true"
       data-1p-ignore
+      data-bwignore
+      data-form-type="other"
       @keydown.tab="onTab"
       @input="
       (e: Event) =>

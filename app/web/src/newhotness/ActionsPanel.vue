@@ -1,8 +1,16 @@
 <template>
   <EmptyState
-    v-if="actionPrototypeViews.length === 0"
+    v-if="component.toDelete"
+    text="Marked for deletion"
+    secondaryText="Can't run actions on a component which has been marked for deletion"
+    icon="tools"
+    class="p-sm"
+  />
+  <EmptyState
+    v-else-if="actionPrototypeViews.length === 0"
     text="No actions available"
     icon="tools"
+    class="p-sm"
   />
   <div v-else class="flex flex-col">
     <div

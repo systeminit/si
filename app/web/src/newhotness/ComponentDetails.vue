@@ -1,49 +1,86 @@
 <template>
   <DelayedLoader v-if="componentQuery.isLoading.value" :size="'full'" />
-  <section
-    v-else
-    :class="
-      clsx(
-        component && !component.toDelete && 'grid',
-        'gap-sm h-full p-sm',
-        docsOpen ? 'docs-open' : 'docs-closed',
-      )
-    "
-  >
+  <section v-else :class="clsx('grid gap-sm h-full p-sm', gridStateClass)">
     <div
+      v-if="showBanner"
       :class="
         clsx(
-          'name flex flex-row items-center gap-xs p-xs',
-          themeClasses('bg-neutral-200', 'bg-neutral-800'),
+          'banner',
+          'flex flex-row items-center gap-xs px-xs ',
+          themeClasses('bg-neutral-300', 'bg-neutral-600'),
         )
       "
     >
-      <IconButton
-        tooltip="Close (Esc)"
-        tooltipPlacement="top"
-        class="border-0 mr-2em"
-        icon="x"
-        size="sm"
-        iconIdleTone="shade"
-        iconTone="shade"
-        @click="close"
-      />
-
-      <div v-if="!component" class="text-destructive-500">
-        This component does not exist on this change set.
-      </div>
-      <!-- TODO(nick): replace this with a "read-only" view of the page and a banner -->
-      <div v-else-if="component.toDelete" class="text-warning-500">
-        This component has been marked for deletion.
-      </div>
-      <template v-else>
-        <div class="flex-none">{{ component.schemaVariantName }}</div>
-        <div class="flex-none">/</div>
-        <div class="flex-1 min-w-0 m-[-4px]">{{ component.name }}</div>
+      <template v-if="!component">
+        <IconButton
+          tooltip="Close (Esc)"
+          tooltipPlacement="top"
+          class="border-0 mr-2em"
+          icon="x"
+          size="sm"
+          iconIdleTone="shade"
+          iconTone="shade"
+          @click="close"
+        />
+        <TruncateWithTooltip class="py-xs">
+          No component with id "{{ componentId }}" exists on this change set.
+        </TruncateWithTooltip>
+      </template>
+      <template v-else-if="component.toDelete">
+        <VButton
+          v-tooltip="'Close (Esc)'"
+          label="Marked for deletion"
+          size="sm"
+          tone="neutral"
+          class="font-normal !py-0 flex-none"
+          @click="close"
+        />
+        <TruncateWithTooltip class="py-xs">
+          This component will be removed from HEAD once the current change set
+          is applied.
+        </TruncateWithTooltip>
+        <!-- TODO(Wendy) - make this button work -->
+        <!-- <VButton
+          label="Restore Component"
+          size="sm"
+          tone="neutral"
+          :class="
+            clsx(
+              'font-normal !py-0 flex-none ml-auto',
+              themeClasses(
+                '!bg-neutral-500 hover:!bg-neutral-400',
+                '!bg-neutral-700 hover:!bg-neutral-800',
+              ),
+            )
+          "
+        /> -->
       </template>
     </div>
 
-    <template v-if="component && !component.toDelete">
+    <template v-if="component">
+      <div
+        :class="
+          clsx(
+            'name flex flex-row items-center gap-xs p-xs ',
+            themeClasses('bg-neutral-200', 'bg-neutral-800'),
+          )
+        "
+      >
+        <IconButton
+          tooltip="Close (Esc)"
+          tooltipPlacement="top"
+          class="border-0 mr-2em"
+          icon="x"
+          size="sm"
+          iconIdleTone="shade"
+          iconTone="shade"
+          @click="close"
+        />
+        <div class="flex-none">{{ component.schemaVariantName }}</div>
+        <div class="flex-none">/</div>
+        <div class="flex-1 min-w-0 m-[-4px]">{{ component.name }}</div>
+      </div>
+
       <div class="attrs flex flex-col gap-sm">
         <CollapsingFlexItem ref="attrRef" :expandable="false" open>
           <template #header>
@@ -193,6 +230,7 @@ import {
   Icon,
   themeClasses,
   IconButton,
+  TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import { computed, ref, onMounted, onBeforeUnmount, inject, watch } from "vue";
 import { useRouter } from "vue-router";
@@ -414,22 +452,57 @@ onBeforeUnmount(() => {
   keyEmitter.off("Escape");
   realtimeStore.unsubscribe(MGMT_RUN_KEY);
 });
+
+const showBanner = computed(() => !component.value || component.value.toDelete);
+
+const gridStateClass = computed(() => {
+  let c;
+
+  if (docsOpen.value) {
+    c = "docs-open";
+  } else {
+    c = "docs-closed";
+  }
+
+  if (showBanner.value) {
+    c += "-with-banner";
+  } else {
+    c += "-without-banner";
+  }
+
+  return c;
+});
 </script>
 
 <style lang="less" scoped>
-section.grid {
-  grid-template-rows: 3rem minmax(0, 1fr);
+section.grid.docs-open-with-banner {
+  grid-template-areas:
+    "banner banner banner"
+    "name docs right"
+    "attrs docs right";
+  grid-template-rows: 2.5rem 3rem minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 25%) minmax(0, 25%);
 }
-section.grid.docs-open {
+section.grid.docs-closed-with-banner {
+  grid-template-areas:
+    "banner banner"
+    "name right"
+    "attrs right";
+  grid-template-rows: 2.5rem 3rem minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 33%);
+}
+section.grid.docs-open-without-banner {
   grid-template-areas:
     "name docs right"
     "attrs docs right";
+  grid-template-rows: 3rem minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr) minmax(0, 25%) minmax(0, 25%);
 }
-section.grid.docs-closed {
+section.grid.docs-closedout-with-banner {
   grid-template-areas:
     "name right"
     "attrs right";
+  grid-template-rows: 3rem minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr) minmax(0, 33%);
 }
 .docs {
@@ -443,5 +516,8 @@ section.grid.docs-closed {
 }
 .attrs {
   grid-area: attrs;
+}
+.banner {
+  grid-area: banner;
 }
 </style>

@@ -15,14 +15,16 @@
                   'focus:outline-none group/attributeheader',
               )
             "
-            :tabindex="attributeTree.isBuildable ? 0 : undefined"
+            :tabindex="
+              attributeTree.isBuildable && !component.toDelete ? 0 : undefined
+            "
             @keydown.tab.stop.prevent="onHeaderTab"
             @keydown.enter.stop.prevent="remove"
             @keydown.delete.stop.prevent="remove"
           >
             <div>{{ displayName }}</div>
             <IconButton
-              v-if="attributeTree.isBuildable"
+              v-if="attributeTree.isBuildable && !component.toDelete"
               v-tooltip="'Delete'"
               icon="trash"
               size="sm"
@@ -118,7 +120,7 @@
         :validation="attributeTree.attributeValue.validation"
         :component="component"
         :value="attributeTree.attributeValue.value?.toString() ?? ''"
-        :canDelete="attributeTree.isBuildable"
+        :canDelete="attributeTree.isBuildable && !component.toDelete"
         :externalSources="attributeTree.attributeValue.externalSources"
         :isArray="attributeTree.prop?.kind === 'array'"
         :isMap="attributeTree.prop?.kind === 'map'"
@@ -162,8 +164,10 @@ const hasChildren = computed(() => {
   }
 });
 
-const isBuildable = computed(() =>
-  ["array", "map"].includes(props.attributeTree.prop?.kind ?? ""),
+const isBuildable = computed(
+  () =>
+    ["array", "map"].includes(props.attributeTree.prop?.kind ?? "") &&
+    !props.component.toDelete,
 );
 
 const displayName = computed(() => {
@@ -195,6 +199,8 @@ const emptyChildValue = () => {
 };
 
 const add = async (key?: string) => {
+  if (props.component.toDelete) return;
+
   if (props.attributeTree.prop?.kind === "map") {
     if (!key) {
       saveKeyIfFormValid();

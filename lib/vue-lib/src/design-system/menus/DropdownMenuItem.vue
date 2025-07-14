@@ -136,7 +136,7 @@
         v-else-if="enableSecondaryAction"
         :class="
           clsx(
-            'h-full flex items-center p-2xs px-xs',
+            'h-full flex items-center px-xs',
             themeClasses(
               'group-hover:hover:bg-action-300 group-hover:text-shade-0',
               'group-hover:hover:bg-action-500 group-hover:text-shade-0',
@@ -259,7 +259,7 @@ const showSecondaryAction = computed(
 // the class option pile for the component attribute. Please forgive me.
 const sizeClass = computed(() => {
   if (props.sizeClass) return props.sizeClass;
-  if (props.enableSecondaryAction) return tw`h-lg`;
+  if (props.enableSecondaryAction) return tw`h-[28px]`;
   return {
     classic: tw`p-xs pr-sm`,
     compact: tw`px-xs py-2xs pr-xs`,

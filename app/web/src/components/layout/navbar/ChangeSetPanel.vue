@@ -17,6 +17,7 @@
         checkable
         variant="navbar"
         :enableSecondaryAction="calculateShowSecondaryAction"
+        :sizeClass="tw`h-[28px]`"
         secondaryActionIcon="edit2"
         @select="onSelectChangeSet"
         @secondaryAction="openRenameModal"
@@ -128,6 +129,7 @@ import {
   DropdownMenuItem,
   DEFAULT_DROPDOWN_SEARCH_THRESHOLD,
 } from "@si/vue-lib/design-system";
+import { tw } from "@si/vue-lib";
 import { useChangeSetsStore } from "@/store/change_sets.store";
 import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import AbandonChangeSetModal from "@/components/AbandonChangeSetModal.vue";

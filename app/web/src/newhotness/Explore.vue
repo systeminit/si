@@ -26,7 +26,7 @@
               label="All Views"
               value="''"
               checkable
-              sizeClass="h-lg px-xs pr-xs"
+              :sizeClass="tw`px-xs pr-xs h-[28px]`"
               :checked="selectedViewId === ''"
               @select="() => (selectedViewId = '')"
             />
@@ -36,7 +36,7 @@
               class="border-t"
               label="Add a View"
               icon="plus"
-              sizeClass="h-lg px-xs pr-xs"
+              :sizeClass="tw`px-xs pr-xs h-[28px]`"
               disableCheckable
               @select="openAddViewModal"
             />
@@ -345,6 +345,7 @@ import {
 import clsx from "clsx";
 import { useQuery } from "@tanstack/vue-query";
 import { Fzf } from "fzf";
+import { tw } from "@si/vue-lib";
 import {
   bifrost,
   bifrostList,

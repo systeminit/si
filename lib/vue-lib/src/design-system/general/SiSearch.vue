@@ -34,7 +34,10 @@
             filtersEnabled ? 'pr-[58px]' : 'pr-[30px]',
           )
         "
+        data-lpignore="true"
         data-1p-ignore
+        data-bwignore
+        data-form-type="other"
         :tabindex="tabIndex"
         @input="onChange"
         @keydown="onKeyDown"
