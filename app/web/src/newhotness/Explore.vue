@@ -320,7 +320,6 @@
 
 <script lang="ts" setup>
 import * as _ from "lodash-es";
-import { computedAsync } from "@vueuse/core";
 import {
   computed,
   inject,
@@ -343,7 +342,7 @@ import {
   VormInput,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { useQuery } from "@tanstack/vue-query";
+import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { Fzf } from "fzf";
 import { tw } from "@si/vue-lib";
 import {
@@ -705,6 +704,7 @@ const sortedAndGroupedComponents = computed(() => {
   // First, always sort by latest to oldest. This relies on the fact ULIDs are time-based.
   // NOTE: We also do this to get a new array, so that later sort() calls do not mutate the
   // filteredComponents array.
+  // NOTE: we reverse this because we want descending order, but sortBy only does ascending.
   let components = _.reverse(_.sortBy(filteredComponents.value, (c) => c.id));
 
   // Second, perform any secondary sorts, if applicable. This relies on the fact that the
@@ -822,18 +822,17 @@ const sortedAndGroupedComponents = computed(() => {
 // ================================================================================================
 // THE SEARCH BAR AND FILTERING
 const searchString = ref<string>("");
-const debouncedSearchString = ref<string>("");
 
-watch(debouncedSearchString, () => {
+watch(searchString, () => {
   // Update the query of the route (allowing for URL links) when the group by selection change.
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
   };
 
-  if (!debouncedSearchString.value) {
+  if (!searchString.value) {
     delete query.searchQuery;
   } else {
-    query.searchQuery = debouncedSearchString.value;
+    query.searchQuery = searchString.value;
   }
 
   router.replace({
@@ -841,108 +840,126 @@ watch(debouncedSearchString, () => {
   });
 });
 
+const filteredComponentsQueryKey = key(EntityKind.ComponentSearch);
+
 /**
  * Components list filtered by all search terms.
  */
-const filteredComponents = computedAsync(async () => {
-  const searchTerms = parseSearch(debouncedSearchString.value);
+const filteredComponentsQuery = useQuery({
+  queryKey: filteredComponentsQueryKey,
+  queryFn: async () => {
+    const searchTerms = parseSearch(searchString.value);
 
-  // Filter components based on the parsed (debounced) search string.
-  const workspaceId = ctx.workspacePk.value;
-  const changeSetId = ctx.changeSetId.value;
-  let components = componentList.value;
-  if (searchTerms) {
-    components = await search(components, searchTerms);
-  }
-  return components;
-
-  /** Recursively apply the search query, one term at a time, honoring boolean operators */
-  async function search(
-    components: ComponentInList[],
-    term: SearchTerms,
-  ): Promise<ComponentInList[]> {
-    // NOTE: this does an exhaustiveness check
-    switch (term.op) {
-      case "not": {
-        // Find the matches, then pick everything else
-        const removeComponents = new Set(
-          (await search(components, term.condition)).map((c) => c.id),
-        );
-        return components.filter((c) => !removeComponents.has(c.id));
-      }
-      case "and": {
-        // Just narrow down the results by applying each condition.
-        for (const condition of term.conditions) {
-          components = await search(components, condition);
-        }
-        return components;
-      }
-      case "or": {
-        // Figure out which things match; but maintain the order of the individual searches
-        const results = new Set<ComponentInList>();
-        for (const condition of term.conditions) {
-          // Add results in the order they were defined (unless they are duplicates)
-          for (const component of await search(components, condition)) {
-            results.add(component);
-          }
-        }
-        return Array.from(results);
-      }
-      case "exact": {
-        // Make sure the term is an exact match for name/schemaName/schemaCategory/id
-        // TODO AWS::EC2::Instance vs. Instance: should both work?
-        // TODO support *
-        return components.filter(
-          (c) =>
-            c.name.localeCompare(term.value) === 0 ||
-            c.schemaCategory.localeCompare(term.value) === 0 ||
-            c.schemaName.localeCompare(term.value) === 0 ||
-            c.id.localeCompare(term.value) === 0,
-        );
-      }
-      case "startsWith": {
-        // Make sure the term is an exact match for name/schemaName/schemaCategory/id
-        // TODO AWS::EC2::Instance vs. Instance: should both work?
-        // TODO support *
-        const value = term.value.toLowerCase();
-        return components.filter(
-          (c) =>
-            c.name.toLowerCase().startsWith(value) ||
-            c.schemaCategory.toLowerCase().startsWith(value) ||
-            c.schemaName.toLowerCase().startsWith(value) ||
-            c.id.toLowerCase().startsWith(value),
-        );
-      }
-      case "fuzzy": {
-        // Regular fuzzy search across all fields
-        const fzf = new Fzf(components, {
-          casing: "case-insensitive",
-          selector: (c) =>
-            `${c.name} ${c.schemaCategory} ${c.schemaName} ${c.id}`,
-        });
-        return fzf.find(term.value).map((fz) => fz.item);
-      }
-      case "attr": {
-        // Query to find the component IDs matching this attr, then use that to narrow the components
-        const terms = term.values.map((value) => ({
-          key: term.key,
-          value,
-        }));
-
-        const componentIds = new Set(
-          await bifrostQueryAttributes({
-            workspaceId,
-            changeSetId,
-            terms,
-          }),
-        );
-        return components.filter((c) => componentIds.has(c.id));
-      }
-      default:
-        return assertUnreachable(term);
+    // Filter components based on the parsed (debounced) search string.
+    const workspaceId = ctx.workspacePk.value;
+    const changeSetId = ctx.changeSetId.value;
+    let components = componentList.value;
+    if (searchTerms) {
+      components = await search(components, searchTerms);
     }
-  }
-}, []);
+    return components;
+
+    /** Recursively apply the search query, one term at a time, honoring boolean operators */
+    async function search(
+      components: ComponentInList[],
+      term: SearchTerms,
+    ): Promise<ComponentInList[]> {
+      // NOTE: this does an exhaustiveness check
+      switch (term.op) {
+        case "not": {
+          // Find the matches, then pick everything else
+          const removeComponents = new Set(
+            (await search(components, term.condition)).map((c) => c.id),
+          );
+          return components.filter((c) => !removeComponents.has(c.id));
+        }
+        case "and": {
+          // Just narrow down the results by applying each condition.
+          for (const condition of term.conditions) {
+            components = await search(components, condition);
+          }
+          return components;
+        }
+        case "or": {
+          // Figure out which things match; but maintain the order of the individual searches
+          const results = new Set<ComponentInList>();
+          for (const condition of term.conditions) {
+            // Add results in the order they were defined (unless they are duplicates)
+            for (const component of await search(components, condition)) {
+              results.add(component);
+            }
+          }
+          return Array.from(results);
+        }
+        case "exact": {
+          // Make sure the term is an exact match for name/schemaName/schemaCategory/id
+          // TODO AWS::EC2::Instance vs. Instance: should both work?
+          // TODO support *
+          return components.filter(
+            (c) =>
+              c.name.localeCompare(term.value) === 0 ||
+              c.schemaCategory.localeCompare(term.value) === 0 ||
+              c.schemaName.localeCompare(term.value) === 0 ||
+              c.id.localeCompare(term.value) === 0,
+          );
+        }
+        case "startsWith": {
+          // Make sure the term is an exact match for name/schemaName/schemaCategory/id
+          // TODO AWS::EC2::Instance vs. Instance: should both work?
+          // TODO support *
+          const value = term.value.toLowerCase();
+          return components.filter(
+            (c) =>
+              c.name.toLowerCase().startsWith(value) ||
+              c.schemaCategory.toLowerCase().startsWith(value) ||
+              c.schemaName.toLowerCase().startsWith(value) ||
+              c.id.toLowerCase().startsWith(value),
+          );
+        }
+        case "fuzzy": {
+          // Regular fuzzy search across all fields
+          const fzf = new Fzf(components, {
+            casing: "case-insensitive",
+            selector: (c) =>
+              `${c.name} ${c.schemaCategory} ${c.schemaName} ${c.id}`,
+          });
+          return fzf.find(term.value).map((fz) => fz.item);
+        }
+        case "attr": {
+          // Query to find the component IDs matching this attr, then use that to narrow the components
+          const terms = term.values.map((value) => ({
+            key: term.key,
+            value,
+          }));
+
+          const componentIds = new Set(
+            await bifrostQueryAttributes({
+              workspaceId,
+              changeSetId,
+              terms,
+            }),
+          );
+          return components.filter((c) => componentIds.has(c.id));
+        }
+        default:
+          return assertUnreachable(term);
+      }
+    }
+  },
+});
+
+// Make filteredComponentsQuery reactive to its inputs (componentList)
+// TODO filteredComponents needs to be a reactive thing, but queryFns aren't reactive.
+const queryClient = useQueryClient();
+watch([componentList, searchString], () => {
+  queryClient.invalidateQueries({
+    queryKey: filteredComponentsQueryKey.value,
+  });
+});
+
+const filteredComponents = computed(
+  () => filteredComponentsQuery.data.value ?? [],
+);
 
 function assertUnreachable(_: never): never {
   throw new Error("Didn't expect to get here");
@@ -955,22 +972,12 @@ watch(filteredComponents, () => {
   clearSelection();
 });
 
-// Debounce the search string updates to avoid expensive filtering on every keystroke
-const updateDebouncedSearch = _.debounce(
-  (value: string) => {
-    debouncedSearchString.value = value;
-  },
-  200,
-  { trailing: true, leading: true },
-);
-
 // Watch for changes to fuzzySearchString and update the debounced version
 watch(searchString, (newValue, oldValue) => {
   if (oldValue === "" && newValue === null) {
     // this is not a real change in the search string!
     return;
   }
-  updateDebouncedSearch(newValue);
   mapRef.value?.deselect();
   clearSelection();
 });

@@ -5,11 +5,12 @@ import {
   Reactive,
   inject,
   ComputedRef,
-  unref,
   ref,
   watch,
   onScopeDispose,
   getCurrentScope,
+  MaybeRefOrGetter,
+  toValue,
 } from "vue";
 import { QueryClient } from "@tanstack/vue-query";
 import { monotonicFactory } from "ulid";
@@ -703,14 +704,14 @@ export const useMakeKey = () => {
   const ctx: Context | undefined = inject("CONTEXT");
 
   return <K = Gettable>(
-    kind: ComputedRef<K> | K,
-    id?: ComputedRef<string> | string,
+    kind: MaybeRefOrGetter<K>,
+    id?: MaybeRefOrGetter<string>,
   ) =>
     computed<[string?, string?, (ComputedRef<K> | K)?, string?]>(() => [
       ctx?.workspacePk.value,
       ctx?.changeSetId.value,
-      kind as K,
-      unref(id) ?? ctx?.workspacePk.value,
+      toValue(kind),
+      toValue(id ?? ctx?.workspacePk),
     ]);
 };
 
