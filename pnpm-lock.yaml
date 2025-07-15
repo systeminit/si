@@ -575,8 +575,8 @@ importers:
         specifier: ^1.0.2
         version: 1.0.2
       posthog-node:
-        specifier: 4.10.1
-        version: 4.10.1(debug@4.3.4)
+        specifier: ^5.5.0
+        version: 5.5.0
       pretty-error:
         specifier: ^4.0.0
         version: 4.0.0
@@ -9189,9 +9189,9 @@ packages:
   posthog-js@1.177.0:
     resolution: {integrity: sha512-0Qt3qTkyfsFW89bveqEzYhhX8YRNFAES9OqhzuxbvbHId/PSyxx/Pzgmgp+N5k45lon3ibwYRAbTlQ4yQacODQ==}
 
-  posthog-node@4.10.1:
-    resolution: {integrity: sha512-rEzVszfaOkUFTjEabDcRLJNRqMwTOeU1WpqKgQEDV3x82O4ODifkvkoCERaPxl/ossi1NtqKXBOZ+XnhQ19pNQ==}
-    engines: {node: '>=15.0.0'}
+  posthog-node@5.5.0:
+    resolution: {integrity: sha512-q+d6yuwCw88ZkcYTDlrF6eBkbRDgn4pA4Jp8ghm8uTfgxoGUKEcajnuMfmYudAXsly6UC4YccwQThey8p1jvgg==}
+    engines: {node: '>=20'}
 
   preact@10.22.1:
     resolution: {integrity: sha512-jRYbDDgMpIb5LHq3hkI0bbl+l/TQ9UnkdQ0ww+lp+4MMOdqaUYdFc5qeyP+IV8FAd/2Em7drVPeKdQxsiWCf/A==}
@@ -15570,14 +15570,6 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  axios@1.8.4(debug@4.3.4):
-    dependencies:
-      follow-redirects: 1.15.9(debug@4.3.4)
-      form-data: 4.0.2
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-
   b4a@1.6.7: {}
 
   babel-jest@27.5.1(@babel/core@7.26.0):
@@ -21582,11 +21574,7 @@ snapshots:
       preact: 10.22.1
       web-vitals: 4.2.4
 
-  posthog-node@4.10.1(debug@4.3.4):
-    dependencies:
-      axios: 1.8.4(debug@4.3.4)
-    transitivePeerDependencies:
-      - debug
+  posthog-node@5.5.0: {}
 
   preact@10.22.1: {}
 
