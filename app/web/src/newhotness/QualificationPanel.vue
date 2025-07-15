@@ -1,9 +1,16 @@
 <template>
   <ul class="p-xs flex flex-col gap-xs">
-    <QualificationView
-      v-for="qualification in qualifications"
-      :key="qualification.avId"
-      :qualification="qualification"
+    <template v-if="attributeTree && qualifications.length > 0">
+      <QualificationView
+        v-for="qualification in qualifications"
+        :key="qualification.avId"
+        :qualification="qualification"
+      />
+    </template>
+    <EmptyState
+      v-else
+      icon="question-circle"
+      text="No qualifications to display"
     />
   </ul>
 </template>
@@ -17,6 +24,7 @@ import {
 import QualificationView from "@/newhotness/QualificationView.vue";
 import { AttributeValueId } from "@/store/status.store";
 import { findAvsAtPropPath } from "./util";
+import EmptyState from "./EmptyState.vue";
 
 export type QualificationStatus = "success" | "failure" | "warning" | "unknown";
 

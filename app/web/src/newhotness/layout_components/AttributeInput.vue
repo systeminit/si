@@ -80,10 +80,9 @@
           @click.left="openInput"
         >
           <TruncateWithTooltip>
-            <template v-if="isArray">
-              Set manually or connect to a prop
+            <template v-if="isArray || isMap">
+              <!-- arrays and maps do not show a value here! -->
             </template>
-            <template v-else-if="isMap"> Enter a key </template>
             <AttributeValueBox
               v-else-if="isSetByConnection && props.externalSources"
             >
@@ -147,9 +146,8 @@
               }}
             </template>
           </TruncateWithTooltip>
-          <div class="ml-auto" />
           <!-- This pushes all the icons to the right side! -->
-          <Icon v-if="isArray" name="chevron--down" />
+          <div class="ml-auto" />
           <!-- NOTE(nick): you need "click.stop" here to prevent the outer click -->
           <Icon
             v-if="
@@ -275,7 +273,7 @@
             "
           >
             <TruncateWithTooltip>
-              <template v-if="isArray"> Add an array item </template>
+              <template v-if="isArray"> Add an array item manually </template>
               <template v-else-if="isMap"> Enter a key </template>
               <template v-else-if="isSecret"> Select a secret </template>
               <template v-else> Enter a value </template>
@@ -296,6 +294,18 @@
               <div>
                 {{ inputTouched ? discardString : "Next attribute" }}
               </div>
+              <TextPill variant="key2">{{ selectKeyString }}</TextPill>
+            </div>
+            <div
+              v-else
+              :class="
+                clsx(
+                  'text-xs flex-none flex flex-row items-center gap-2xs',
+                  themeClasses('text-neutral-900', 'text-neutral-200'),
+                )
+              "
+            >
+              <div>Select</div>
               <TextPill variant="key2">{{ selectKeyString }}</TextPill>
             </div>
             <div
@@ -342,7 +352,9 @@
                 )
               "
             >
-              <template v-if="isArray"> + Set an array item manually </template>
+              <template v-if="isArray">
+                + Add a "{{ displayName }}" item
+              </template>
               <template v-else-if="isMap && !mapKey">
                 You must enter a key
               </template>
@@ -511,19 +523,7 @@
                       </div>
                     </template>
                   </div>
-                  <div
-                    v-if="isConnectionSelected(virtualItem.index)"
-                    :class="
-                      clsx(
-                        'text-xs pt-3xs ml-auto',
-                        themeClasses('text-neutral-900', 'text-neutral-200'),
-                      )
-                    "
-                  >
-                    <TextPill variant="key2">{{ selectKeyString }}</TextPill>
-                    to select
-                  </div>
-                  <TruncateWithTooltip v-else>
+                  <TruncateWithTooltip>
                     <template
                       v-if="
                         filteredConnections[virtualItem.index]?.kind ===
@@ -547,11 +547,17 @@
           </template>
 
           <!-- display potential connection value area -->
-          <div v-if="selectedConnection?.value" class="relative">
-            <!--- TODO(Wendy) - this doesn't look right? -->
+          <div
+            v-if="
+              selectedConnection?.value &&
+              (kindAsString === 'textarea' || kindAsString === 'codeeditor')
+            "
+            class="relative"
+          >
             <CodeViewer
-              :code="JSON.stringify(selectedConnection?.value)"
+              :code="`${JSON.stringify(selectedConnection?.value, null, 2)}\n`"
               showTitle
+              :allowCopy="false"
               :title="selectedConnection.path"
             />
           </div>
