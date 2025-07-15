@@ -243,6 +243,7 @@ import ComponentSecretAttribute from "./layout_components/ComponentSecretAttribu
 import { useWatchedForm } from "./logic_composables/watched_form";
 import { NameFormData } from "./ComponentDetails.vue";
 import EmptyState from "./EmptyState.vue";
+import { findAttributeValueInTree } from "./util";
 
 const q = ref("");
 
@@ -493,21 +494,6 @@ const removeSubscriptionApi = useApi();
 const queryClient = useQueryClient();
 const makeKey = useMakeKey();
 
-const findAttributeValueInTree = (
-  tree: AttributeTree,
-  targetPath: AttributePath,
-): { attributeValue: AttributeValue; avId: string } | null => {
-  const pathStr = targetPath.toString();
-
-  for (const [avId, av] of Object.entries(tree.attributeValues)) {
-    const prop = av.propId ? tree.props[av.propId] : undefined;
-    if (prop?.path === pathStr) {
-      return { attributeValue: av, avId };
-    }
-  }
-  return null;
-};
-
 const removeSubscriptionMutation = useMutation({
   mutationFn: async (path: AttributePath) => {
     const call = removeSubscriptionApi.endpoint<{ success: boolean }>(
@@ -545,17 +531,20 @@ const removeSubscriptionMutation = useMutation({
     const previousData = queryClient.getQueryData<AttributeTree>(
       queryKey.value,
     );
-    if (!previousData) return null;
 
     queryClient.setQueryData(
       queryKey.value,
       (cachedData: AttributeTree | undefined) => {
-        if (!cachedData) return cachedData;
+        if (!cachedData) {
+          return cachedData;
+        }
 
         const found = findAttributeValueInTree(cachedData, path);
-        if (!found) return cachedData;
+        if (!found) {
+          return cachedData;
+        }
 
-        const updatedData = structuredClone(cachedData);
+        const updatedData = { ...cachedData };
         const updatedFound = findAttributeValueInTree(updatedData, path);
         if (updatedFound) {
           updatedFound.attributeValue.externalSources = undefined;
@@ -573,10 +562,6 @@ const removeSubscriptionMutation = useMutation({
       const queryKey = makeKey(EntityKind.AttributeTree, props.component.id);
       queryClient.setQueryData(queryKey.value, context.previousData);
     }
-  },
-  onSettled: () => {
-    const queryKey = makeKey(EntityKind.AttributeTree, props.component.id);
-    queryClient.invalidateQueries({ queryKey: queryKey.value });
   },
 });
 
