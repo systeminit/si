@@ -67,7 +67,7 @@ lockAcquiredBroadcastChannel.onmessage = (message) => {
 const SHARED_WEB_WORKER_URL =
   import.meta.env.VITE_SI_ENV === "local"
     ? "../../workers/shared_webworker.ts"
-    : "shared_webworker.js";
+    : `shared_webworker.js?v=${__SHARED_WORKER_HASH__}`;
 
 // Shared workers are unique per *name*, not per code URL.
 const spawnSharedWorker = (name: string) =>
@@ -83,10 +83,11 @@ let db: Comlink.Remote<SharedDBInterface> = Comlink.wrap(sharedWorker.port);
 const WORKER_URL =
   import.meta.env.VITE_SI_ENV === "local"
     ? "../../workers/webworker.ts"
-    : "webworker.js";
+    : `webworker.js?v=${__WEBWORKER_HASH__}`;
 
 const tabWorker = new Worker(new URL(WORKER_URL, import.meta.url), {
   type: "module",
+  name: `si-db-${__WEBWORKER_HASH__}`,
 });
 const tabDb: Comlink.Remote<TabDBInterface> = Comlink.wrap(tabWorker);
 
