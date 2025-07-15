@@ -116,14 +116,12 @@ const actionByPrototype = computed(() => {
 });
 const schemaVariantQuery = useQuery<SchemaVariant | null>({
   enabled: () => singleComponent.value !== undefined,
-  queryKey: key(
-    EntityKind.SchemaVariant,
-    singleComponent.value?.schemaVariantId,
-  ),
-  queryFn: async () =>
-    await bifrost<SchemaVariant>(
+  queryKey: key(EntityKind.SchemaVariant, schemaVariantId),
+  queryFn: async () => {
+    return await bifrost<SchemaVariant>(
       args(EntityKind.SchemaVariant, singleComponent.value?.schemaVariantId),
-    ),
+    );
+  },
 });
 const managementFunctions = computed(
   () => schemaVariantQuery.data.value?.mgmtFunctions ?? [],
