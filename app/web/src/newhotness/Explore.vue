@@ -781,6 +781,7 @@ const componentListQueryId = computed(() =>
 const componentQueryKey = key(componentListQueryKind, componentListQueryId);
 const componentListQuery = useQuery<ComponentInList[]>({
   queryKey: componentQueryKey,
+  enabled: ctx.queriesEnabled,
   queryFn: async () => {
     const arg = selectedViewId.value
       ? args<Listable>(EntityKind.ViewComponentList, selectedViewId.value)

@@ -184,8 +184,6 @@ const bustTanStackCache: BustCacheFn = (
   noBroadcast?: boolean,
 ) => {
   const queryKey = [workspaceId, changeSetId, kind, id];
-  // eslint-disable-next-line no-console
-  console.log("💥 bust tanstack cache for", queryKey);
   queryClient.invalidateQueries({ queryKey });
   if (!noBroadcast) {
     db.broadcastMessage({

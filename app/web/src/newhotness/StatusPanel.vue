@@ -44,6 +44,7 @@ const args = useMakeArgs();
 
 const dependentValueComponentListQuery =
   useQuery<DependentValueComponentList | null>({
+    enabled: ctx.queriesEnabled,
     queryKey: key(EntityKind.DependentValueComponentList),
     queryFn: async () =>
       await bifrost<DependentValueComponentList>(
