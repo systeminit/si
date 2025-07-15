@@ -24,12 +24,12 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
+tracing = { workspace = true }
 
 [dev-dependencies]
 veritech-server = { path = "../../lib/veritech-server" }
 
 base64 = { workspace = true }
 test-log = { workspace = true }
-tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 uuid = { workspace = true }

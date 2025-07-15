@@ -48,6 +48,7 @@ rust_library(
         "//third-party/rust:tokio-util",
         "//third-party/rust:tracing-opentelemetry",
         "//third-party/rust:tracing-subscriber",
+        "//third-party/rust:tracing",
         "//third-party/rust:ulid",
         "//third-party/rust:uuid",
     ],

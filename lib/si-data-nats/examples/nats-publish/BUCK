@@ -11,6 +11,7 @@ rust_binary(
         "//lib/si-data-nats:si-data-nats",
         "//lib/telemetry-rs:telemetry",
         "//third-party/rust:tokio",
+        "//third-party/rust:tracing",
         "//third-party/rust:tracing-subscriber",
     ],
 )

@@ -42,6 +42,7 @@ rust_library(
         "//third-party/rust:tower",
         "//third-party/rust:tower-http",
         "//third-party/rust:tracing-tunnel",
+        "//third-party/rust:tracing",
         "//third-party/rust:ulid",
         "//third-party/rust:url",
         "//third-party/rust:uuid",

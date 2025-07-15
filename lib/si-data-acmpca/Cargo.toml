@@ -18,3 +18,4 @@ remain = { workspace = true }
 rcgen = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tracing = { workspace = true }

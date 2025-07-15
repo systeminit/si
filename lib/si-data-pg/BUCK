@@ -23,6 +23,7 @@ rust_library(
         "//third-party/rust:tokio",
         "//third-party/rust:tokio-postgres",
         "//third-party/rust:tokio-postgres-rustls",
+        "//third-party/rust:tracing",
     ],
     srcs = glob(["src/**/*.rs"]),
 )
