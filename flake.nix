@@ -45,11 +45,13 @@
           buck2
           cacert
           clang
+          curl
           deno
           gitMinimal
           lld
           makeWrapper
           minica
+          mise
           nodePkgs.pnpm
           nodejs
           protobuf

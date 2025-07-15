@@ -1,0 +1,5 @@
+export_file(
+    name = "mise_install.py",
+    src = "mise_install.py",
+    visibility = ["PUBLIC"],
+)
