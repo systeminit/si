@@ -79,7 +79,7 @@ async function main() {
     errorFn = makeConsole(executionId).error;
 
     // Async errors inside VM2 have to be caught here, they escape the try/catch wrapping the vm.run call
-    process.on("uncaughtException", (err) => {
+    process.on("uncaughtException", (err: Error) => {
       onError(errorFn, err, executionId);
     });
 

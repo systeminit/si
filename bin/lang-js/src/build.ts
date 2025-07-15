@@ -15,7 +15,8 @@ async function buildSandbox(outputPath?: string) {
       plugins: [
         ...denoPlugins({}),
       ],
-      entryPoints: [join(baseDir, "sandbox.ts")],
+      absWorkingDir: baseDir,
+      entryPoints: ["./sandbox.ts"],
       bundle: true,
       format: "esm",
       platform: "node",
@@ -38,7 +39,6 @@ async function buildSandbox(outputPath?: string) {
       charset: "utf8",
       legalComments: "none",
       keepNames: false,
-      absWorkingDir: baseDir,
       drop: ["debugger"],
     });
 
@@ -47,8 +47,11 @@ async function buildSandbox(outputPath?: string) {
     }
 
     const bundleContent = result.outputFiles[0].text;
-    const bundlePath = outputPath ?? join(baseDir, "bundle.ts");
-
+    const bundlePath = outputPath;
+    if (!bundlePath) {
+      throw new Error("Output path was not provided as an argument.");
+    }
+    await Deno.mkdir(dirname(bundlePath), { recursive: true });
     await Deno.writeTextFile(
       bundlePath,
       `export const SANDBOX_BUNDLE=${JSON.stringify(bundleContent)};`,

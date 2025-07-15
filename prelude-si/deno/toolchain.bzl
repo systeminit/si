@@ -1,5 +1,7 @@
+load("//mise.bzl", "MiseInfo")
+
 DenoToolchainInfo = provider(fields = {
-    "deno_cache": provider_field(typing.Any, default = None),
+    "deno_binary": provider_field(typing.Any, default = None),
     "deno_compile": provider_field(typing.Any, default = None),
     "deno_format": provider_field(typing.Any, default = None),
     "deno_run": provider_field(typing.Any, default = None),
@@ -11,10 +13,20 @@ def deno_toolchain_impl(ctx) -> list[[DefaultInfo, DenoToolchainInfo]]:
     """
     A deno toolchain.
     """
+
+    mise_info = ctx.attrs.mise_install[MiseInfo]
+    deno_shim = cmd_args(
+        mise_info.mise_tools_dir,
+        "/installs/deno/latest/bin/deno",
+        delimiter=""
+    )
+
+    deno_cmd = cmd_args([deno_shim])
+
     return [
         DefaultInfo(default_outputs = []),
         DenoToolchainInfo(
-            deno_cache = ctx.attrs._deno_cache,
+            deno_binary = RunInfo(args = deno_cmd),
             deno_compile = ctx.attrs._deno_compile,
             deno_format = ctx.attrs._deno_format,
             deno_run = ctx.attrs._deno_run,
@@ -26,9 +38,9 @@ def deno_toolchain_impl(ctx) -> list[[DefaultInfo, DenoToolchainInfo]]:
 deno_toolchain = rule(
     impl = deno_toolchain_impl,
     attrs = {
-       "_deno_cache": attrs.dep(
-            default = "prelude-si//deno:deno_cache.py",
-            providers = [DefaultInfo],
+        "mise_install": attrs.dep(
+            providers = [MiseInfo],
+            doc = "The mise_install target that provides the deno installation",
         ),
         "_deno_compile": attrs.dep(
             default = "prelude-si//deno:deno_compile.py",
@@ -52,4 +64,11 @@ deno_toolchain = rule(
         ),
     },
     is_toolchain_rule = True,
+)
+
+DenoWorkspaceInfo = provider(
+    fields = {
+        "workspace_dir": provider_field(typing.Any, default = None),
+        "cache_dir": provider_field(typing.Any, default = None),
+    },
 )
