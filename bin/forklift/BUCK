@@ -1,7 +1,6 @@
 load(
     "@prelude-si//:macros.bzl",
     "docker_image",
-    "nix_omnibus_pkg",
     "rust_binary",
 )
 
@@ -23,11 +22,9 @@ rust_binary(
 docker_image(
     name = "image",
     image_name = "forklift",
+    build_args = {
+        "BIN": "forkelift",
+        "SI_RBE_TOKEN": ""
+    },
     build_deps = ["//bin/forklift:forklift"],
-)
-
-nix_omnibus_pkg(
-    name = "omnibus",
-    pkg_name = "forklift",
-    build_dep = "//bin/forklift:forklift",
 )

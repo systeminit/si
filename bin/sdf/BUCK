@@ -2,7 +2,6 @@ load(
     "@prelude-si//:macros.bzl",
     "docker_image",
     "rust_binary",
-    "nix_omnibus_pkg",
 )
 
 rust_binary(
@@ -28,15 +27,12 @@ rust_binary(
 docker_image(
     name = "image",
     image_name = "sdf",
-    flake_lock = "//:flake.lock",
+    build_args = {
+        "BIN": "sdf",
+        "SI_RBE_TOKEN": ""
+    },
     build_deps = [
         "//bin/sdf:sdf",
         "//pkgs:pkgs",
     ]
-)
-
-nix_omnibus_pkg(
-    name = "omnibus",
-    pkg_name = "sdf",
-    build_dep = "//bin/sdf:sdf",
 )
