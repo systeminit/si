@@ -3,7 +3,6 @@ use std::collections::{
     HashSet,
 };
 
-use axum::Json;
 use dal::{
     AttributeValue,
     ChangeSet,
@@ -15,90 +14,169 @@ use dal::{
         prototype::argument::AttributePrototypeArgument,
         value::subscription::ValueSubscription,
     },
+    slow_rt,
     workspace_snapshot::graph::validator::connections::{
         ConnectionMigration,
+        ConnectionMigrationSummary,
+        ConnectionMigrationWithMessage,
         PropConnection,
         SocketConnection,
     },
 };
 use sdf_core::force_change_set_response::ForceChangeSetResponse;
-use sdf_extract::change_set::ChangeSetDalContext;
+use sdf_extract::{
+    PosthogEventTracker,
+    change_set::ChangeSetDalContext,
+};
+use serde_json::json;
+use telemetry::prelude::*;
 
 use super::Result;
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct Response {
-    pub migrations: Vec<ConnectionMigrationWithMessage>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ConnectionMigrationWithMessage {
-    #[serde(flatten)]
-    pub migration: ConnectionMigration,
-    pub message: String,
-    pub migrated: bool,
-}
-
-// Migrates all connections, and reports the unmigrateable ones as well.
+/// Migrates all connections, and reports the unmigrateable ones as well.
 pub async fn migrate_connections(
-    ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
-) -> Result<ForceChangeSetResponse<Response>> {
-    let force_change_set_id = ChangeSet::force_new(ctx).await?;
+    ChangeSetDalContext(mut ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
+) -> Result<ForceChangeSetResponse<()>> {
+    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
 
-    // Migrate
-    let migrations = get_connection_migrations(ctx).await?;
-    for migration in &migrations {
-        migrate_connection(ctx, &migration.migration).await?;
-    }
+    // Spawn this in the background in case it takes a while.
+    slow_rt::spawn(async move { migrate_connections_async(&ctx, tracker, false).await })?;
 
-    // Send WsEvents for components we migrated
-    let mut components = HashSet::new();
-    for migration in &migrations {
-        if !migration.migrated {
-            continue;
-        }
-        let Some(ref socket_connection) = migration.migration.socket_connection else {
-            continue;
-        };
-
-        if components.insert(socket_connection.to.0) {
-            let component = Component::get_by_id(ctx, socket_connection.to.0).await?;
-
-            let mut socket_map = HashMap::new();
-            let payload = component
-                .into_frontend_type(
-                    ctx,
-                    None,
-                    component.change_status(ctx).await?,
-                    &mut socket_map,
-                )
-                .await?;
-            WsEvent::component_updated(ctx, payload)
-                .await?
-                .publish_on_commit(ctx)
-                .await?;
-        }
-    }
-
-    ctx.commit().await?;
-
-    Ok(ForceChangeSetResponse::new(
-        force_change_set_id,
-        Response { migrations },
-    ))
+    Ok(ForceChangeSetResponse::new(force_change_set_id, ()))
 }
 
 /// Does the migrations, but doesn't commit them--just lets you see what would have happened.
-pub async fn dry_run(ChangeSetDalContext(ref ctx): ChangeSetDalContext) -> Result<Json<Response>> {
-    let migrations = get_connection_migrations(ctx).await?;
-    for migration in &migrations {
-        migrate_connection(ctx, &migration.migration).await?;
-    }
-    Ok(Json(Response { migrations }))
+pub async fn migrate_connections_dry_run(
+    ChangeSetDalContext(ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
+) -> Result<()> {
+    // Spawn this in the background in case it takes a while.
+    slow_rt::spawn(async move { migrate_connections_async(&ctx, tracker, true).await })?;
+
+    Ok(())
 }
 
+/// Internal: migrates and reports any errors wherever they need to be.
+#[instrument(level = "info", skip(ctx, tracker))]
+async fn migrate_connections_async(
+    ctx: &DalContext,
+    tracker: PosthogEventTracker,
+    dry_run: bool,
+) -> () {
+    let span = Span::current();
+
+    // Capture a summary even if we fail, so we can report what we *did* do.
+    let mut summary = ConnectionMigrationSummary {
+        connections: 0,
+        migrated: 0,
+        unmigrateable: 0,
+    };
+    let err = migrate_connections_async_fallible(ctx, dry_run, &mut summary)
+        .await
+        .err();
+
+    // Report state in span, WsEvent and Posthog event.
+    span.record("connections", summary.connections);
+    span.record("migrated", summary.migrated);
+    span.record("unmigrateable", summary.unmigrateable);
+    span.record("error", err.is_some());
+    tracker.track(
+        ctx,
+        if dry_run {
+            "migrate_connections_dry_run"
+        } else {
+            "migrate_connections"
+        },
+        json!({
+            "dry_run": dry_run,
+            "connections": summary.connections,
+            "migrated": summary.migrated,
+            "unmigrateable": summary.unmigrateable,
+            "error": err.as_ref().map(|e| e.to_string()),
+        }),
+    );
+
+    match WsEvent::connection_migration_finished(ctx, dry_run, err.map(|e| e.to_string()), summary)
+        .await
+    {
+        Ok(event) => {
+            if let Err(err) = event.publish_immediately(ctx).await {
+                error!("Failed to send connection migration finished event: {err}");
+            }
+        }
+        Err(err) => {
+            error!("Failed to send connection migration finished event: {err}");
+        }
+    }
+}
+
+// Internal, called by migrate_connections_async to catch errors in the migration process.
+async fn migrate_connections_async_fallible(
+    ctx: &DalContext,
+    dry_run: bool,
+    summary: &mut ConnectionMigrationSummary,
+) -> Result<()> {
+    WsEvent::connection_migration_started(ctx, dry_run)
+        .await?
+        .publish_immediately(ctx)
+        .await?;
+
+    // Migrate
+    let migrations = get_connection_migrations(ctx).await?;
+    summary.connections = migrations.len();
+    for migration in &migrations {
+        migrate_connection(ctx, &migration.migration).await?;
+        if migration.migrated {
+            summary.migrated += 1;
+        } else {
+            summary.unmigrateable += 1;
+        }
+        WsEvent::connection_migrated(ctx, migration.clone())
+            .await?
+            .publish_immediately(ctx)
+            .await?;
+    }
+
+    // Send WsEvents for components we migrated, and commit (unless it's a dry_run)
+    if !dry_run {
+        let mut components = HashSet::new();
+        for migration in migrations {
+            if !migration.migrated {
+                continue;
+            }
+            let Some(ref socket_connection) = migration.migration.socket_connection else {
+                continue;
+            };
+
+            // Send WsEvent
+            if components.insert(socket_connection.to.0) {
+                let component = Component::get_by_id(ctx, socket_connection.to.0).await?;
+
+                let mut socket_map = HashMap::new();
+                let payload = component
+                    .into_frontend_type(
+                        ctx,
+                        None,
+                        component.change_status(ctx).await?,
+                        &mut socket_map,
+                    )
+                    .await?;
+                WsEvent::component_updated(ctx, payload)
+                    .await?
+                    .publish_on_commit(ctx)
+                    .await?;
+            }
+        }
+
+        // Commits
+        ctx.commit().await?;
+    }
+
+    Ok(())
+}
+
+#[instrument(level = "info", skip(ctx))]
 async fn get_connection_migrations(
     ctx: &DalContext,
 ) -> Result<Vec<ConnectionMigrationWithMessage>> {

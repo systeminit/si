@@ -88,6 +88,11 @@ use crate::{
         CursorPayload,
         OnlinePayload,
     },
+    workspace_snapshot::graph::validator::connections::{
+        ConnectionMigratedPayload,
+        ConnectionMigrationFinishedPayload,
+        ConnectionMigrationStartedPayload,
+    },
 };
 
 #[remain::sorted]
@@ -109,11 +114,19 @@ pub enum WsEventError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
+    #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("workspace snapshot: {0}")]
+    WorkspaceSnapshot(#[from] crate::WorkspaceSnapshotError),
 }
 
 pub type WsEventResult<T> = Result<T, WsEventError>;
+
+impl From<FuncError> for WsEventError {
+    fn from(err: FuncError) -> Self {
+        Box::new(err).into()
+    }
+}
 
 #[remain::sorted]
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
@@ -148,6 +161,9 @@ pub enum WsPayload {
     ComponentUpdated(ComponentUpdatedPayload),
     ComponentUpgraded(ComponentUpgradedPayload),
     ConnectionDeleted(ConnectionDeletedPayload),
+    ConnectionMigrated(ConnectionMigratedPayload),
+    ConnectionMigrationFinished(ConnectionMigrationFinishedPayload),
+    ConnectionMigrationStarted(ConnectionMigrationStartedPayload),
     ConnectionUpserted(ConnectionUpsertedPayload),
     Cursor(CursorPayload),
     FuncArgumentsSaved(FuncWsEventPayload),

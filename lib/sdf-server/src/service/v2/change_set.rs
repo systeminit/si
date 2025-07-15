@@ -100,6 +100,8 @@ pub enum Error {
     Request(#[from] reqwest::Error),
     #[error("si db error: {0}")]
     SiDb(#[from] si_db::Error),
+    #[error("slow runtime error: {0}")]
+    SlowRuntime(#[from] dal::slow_rt::SlowRuntimeError),
     #[error("spice db error: {0}")]
     SpiceDB(#[from] SpiceDbError),
     #[error("spicedb client not found")]
@@ -220,7 +222,10 @@ pub fn change_set_routes(state: AppState) -> Router<AppState> {
                 permissions::Permission::Approve,
             )),
         )
-        .route("/migrate_connections", get(migrate_connections::dry_run))
+        .route(
+            "/migrate_connections",
+            get(migrate_connections::migrate_connections_dry_run),
+        )
         .route(
             "/migrate_connections",
             post(migrate_connections::migrate_connections),

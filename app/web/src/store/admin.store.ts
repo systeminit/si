@@ -15,6 +15,7 @@ import {
 import { PropId } from "@/api/sdf/dal/prop";
 import { InputSocketId, OutputSocketId } from "@/api/sdf/dal/schema";
 import { AttributeValueId } from "./status.store";
+import { WsEventPayloadMap } from "./realtime/realtime_events";
 
 export interface AdminWorkspace {
   id: WorkspacePk;
@@ -32,6 +33,17 @@ export interface AdminChangeSet {
   workspaceSnapshotAddress: string;
   workspaceId: WorkspacePk;
   mergeRequestedByUserId?: UserId;
+}
+
+export interface ConnectionMigrationRun {
+  workspaceId: WorkspacePk;
+  changeSetId: ChangeSetId;
+  startedAt: Date;
+  dryRun: boolean;
+  migrations: ConnectionMigration[];
+  summary?: WsEventPayloadMap["ConnectionMigrationFinished"] & {
+    finishedAt: Date;
+  };
 }
 
 export const useAdminStore = () => {
@@ -54,9 +66,7 @@ export const useAdminStore = () => {
         validateSnapshotResponse: undefined as
           | ValidateSnapshotResponse
           | undefined,
-        migrateConnectionsResponse: undefined as
-          | MigrateConnectionsResponse
-          | undefined,
+        connectionMigrationRun: undefined as ConnectionMigrationRun | undefined,
       }),
       getters: {},
       actions: {
@@ -182,12 +192,9 @@ export const useAdminStore = () => {
           changeSetId: string,
           options?: { dryRun?: boolean },
         ) {
-          return new ApiRequest<MigrateConnectionsResponse>({
+          return new ApiRequest<unknown>({
             method: options?.dryRun ? "get" : "post",
             url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/migrate_connections`,
-            onSuccess: (response) => {
-              this.migrateConnectionsResponse = response;
-            },
           });
         },
         async VALIDATE_SNAPSHOT(
@@ -208,7 +215,7 @@ export const useAdminStore = () => {
         realtimeStore.subscribe(this.$id, `workspace/${workspaceId}`, [
           {
             eventType: "AsyncFinish",
-            callback: async ({ id }: { id: string }) => {
+            callback: async ({ id }) => {
               if (id === this.updatingModuleCacheOperationId) {
                 this.updatingModuleCacheOperationRunning = false;
               }
@@ -216,10 +223,41 @@ export const useAdminStore = () => {
           },
           {
             eventType: "AsyncError",
-            callback: async ({ id, error }: { id: string; error: string }) => {
+            callback: async ({ id, error }) => {
               if (id === this.updatingModuleCacheOperationId) {
                 this.updatingModuleCacheOperationError = error;
                 this.updatingModuleCacheOperationRunning = false;
+              }
+            },
+          },
+          {
+            eventType: "ConnectionMigrationStarted",
+            callback: async ({ dryRun }, { workspace_pk, change_set_id }) => {
+              this.connectionMigrationRun = {
+                workspaceId: workspace_pk,
+                changeSetId: change_set_id,
+                dryRun,
+                startedAt: new Date(),
+                migrations: [],
+              };
+            },
+          },
+          {
+            eventType: "ConnectionMigrated",
+            callback: async (migration) => {
+              if (this.connectionMigrationRun) {
+                this.connectionMigrationRun.migrations.push(migration);
+              }
+            },
+          },
+          {
+            eventType: "ConnectionMigrationFinished",
+            callback: async (summary) => {
+              if (this.connectionMigrationRun) {
+                this.connectionMigrationRun.summary = {
+                  ...summary,
+                  finishedAt: new Date(),
+                };
               }
             },
           },
@@ -270,10 +308,6 @@ export type ValidationIssue =
       message: string;
       fixed: boolean;
     };
-
-export interface MigrateConnectionsResponse {
-  migrations: ConnectionMigration[];
-}
 
 export type ConnectionMigration =
   // If there is no issue, both socket and prop connections are always defined.
