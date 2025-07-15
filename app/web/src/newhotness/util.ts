@@ -3,7 +3,11 @@ import {
   IconNames,
   BRAND_COLOR_FILTER_HEX_CODES,
 } from "@si/vue-lib/design-system";
-import { AttributeTree } from "@/workers/types/entity_kind_types";
+import {
+  AttributeTree,
+  AttributeValue,
+} from "@/workers/types/entity_kind_types";
+import { AttributePath } from "@/api/sdf/dal/component";
 import { Toggle } from "./logic_composables/toggle_containers";
 import { SelectionsInQueryString } from "./Workspace.vue";
 
@@ -107,4 +111,18 @@ export const preserveExploreState = (
   if (currentQuery.viewId) preservedQuery.viewId = currentQuery.viewId;
 
   return preservedQuery;
+};
+
+export const findAttributeValueInTree = (
+  tree: AttributeTree,
+  targetPath: AttributePath,
+): { attributeValue: AttributeValue; avId: string } | null => {
+  const pathStr = targetPath.toString();
+
+  for (const [avId, av] of Object.entries(tree.attributeValues)) {
+    if (av.path === pathStr) {
+      return { attributeValue: av, avId };
+    }
+  }
+  return null;
 };

@@ -138,11 +138,8 @@
             </AttributeValueBox>
             <template v-else>
               {{
-                optimisticDisplayValue ||
-                (maybeOptions.options?.find(
-                  (o) => o.value === field.state.value,
-                )?.label ??
-                  field.state.value)
+                maybeOptions.options?.find((o) => o.value === field.state.value)
+                  ?.label ?? field.state.value
               }}
             </template>
           </TruncateWithTooltip>
@@ -597,7 +594,6 @@ import {
 import { LabelEntry, LabelList } from "@/api/sdf/dal/label_list";
 import {
   AttributeTree,
-  AttributeValue,
   BifrostComponent,
   EntityKind,
   ExternalSource,
@@ -623,6 +619,7 @@ import {
 import { useWatchedForm } from "../logic_composables/watched_form";
 import AttributeValueBox from "../AttributeValueBox.vue";
 import CodeEditorModal from "../CodeEditorModal.vue";
+import { findAttributeValueInTree } from "../util";
 
 type UIPotentialConnection = PossibleConnection & {
   pathArray: string[];
@@ -796,25 +793,8 @@ const connectingComponentId = ref<string | undefined>();
 const selectedConnectionData = ref<
   { componentName: string; propPath: string } | undefined
 >();
-const optimisticDisplayValue = ref<string | null>(null);
 const queryClient = useQueryClient();
 const makeKey = useMakeKey();
-
-// Helper function to find attribute value by path in AttributeTree data
-const findAttributeValueInTree = (
-  tree: AttributeTree,
-  targetPath: AttributePath,
-): { attributeValue: AttributeValue; avId: string } | null => {
-  const pathStr = targetPath.toString();
-
-  for (const [avId, av] of Object.entries(tree.attributeValues)) {
-    const prop = av.propId ? tree.props[av.propId] : undefined;
-    if (prop?.path === pathStr) {
-      return { attributeValue: av, avId };
-    }
-  }
-  return null;
-};
 
 const createSubscriptionMutation = useMutation({
   mutationFn: async (variables: {
@@ -842,14 +822,6 @@ const createSubscriptionMutation = useMutation({
       queryKey.value,
     );
 
-    if (!previousData) {
-      const connectionData = selectedConnectionData.value;
-      if (connectionData) {
-        optimisticDisplayValue.value = `subscribing to ${connectionData.propPath}`;
-      }
-      return { previousData: null };
-    }
-
     queryClient.setQueryData(
       queryKey.value,
       (cachedData: AttributeTree | undefined) => {
@@ -858,7 +830,7 @@ const createSubscriptionMutation = useMutation({
         const found = findAttributeValueInTree(cachedData, variables.path);
         if (!found || !selectedConnectionData.value) return cachedData;
 
-        const updatedData = structuredClone(cachedData);
+        const updatedData = { ...cachedData };
         const updatedFound = findAttributeValueInTree(
           updatedData,
           variables.path,
@@ -884,23 +856,8 @@ const createSubscriptionMutation = useMutation({
       const queryKey = makeKey(EntityKind.AttributeTree, props.component.id);
       queryClient.setQueryData(queryKey.value, context.previousData);
     }
-    optimisticDisplayValue.value = null;
-  },
-  onSettled: () => {
-    const queryKey = makeKey(EntityKind.AttributeTree, props.component.id);
-    queryClient.invalidateQueries({ queryKey: queryKey.value });
-    optimisticDisplayValue.value = null;
   },
 });
-
-watch(
-  () => props.externalSources,
-  (newSources) => {
-    if (optimisticDisplayValue.value && newSources) {
-      optimisticDisplayValue.value = null;
-    }
-  },
-);
 
 const selectConnection = (index: number) => {
   if (readOnly.value) return;
@@ -935,7 +892,6 @@ const selectOption = (option: LabelEntry<AttrOption>) => {
   const newValue = option.value.toString();
   connectingComponentId.value = undefined;
   selectedConnectionData.value = undefined;
-  optimisticDisplayValue.value = null;
   if (newValue !== attrData.value.value) {
     valueForm.setFieldValue("value", newValue);
     valueForm.handleSubmit();
@@ -948,7 +904,6 @@ const selectDefault = () => {
   const newValue = valueForm.state.values.value;
   connectingComponentId.value = undefined;
   selectedConnectionData.value = undefined;
-  optimisticDisplayValue.value = null;
 
   if (props.isArray) {
     emit("add");
@@ -1023,7 +978,6 @@ const resetEverything = () => {
   selectedIndex.value = defaultSelectedIndex();
   connectingComponentId.value = undefined;
   selectedConnectionData.value = undefined;
-  optimisticDisplayValue.value = null;
   inputTouched.value = false;
 };
 
