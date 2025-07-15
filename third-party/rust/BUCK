@@ -3,7 +3,7 @@
 ## Do not edit by hand.
 ##
 
-load("@prelude-si//:cargo_buildscript.bzl", "buildscript_run")
+load("@prelude-si//rust:cargo_buildscript.bzl", "buildscript_run")
 load("@prelude//rust:cargo_package.bzl", "cargo")
 load(
     "//third-party/macros:rust_third_party.bzl",
