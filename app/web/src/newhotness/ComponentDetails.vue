@@ -106,16 +106,10 @@
             </div>
           </template>
           <AttributePanel
-            v-if="attributeTree"
             :component="component"
             :attributeTree="attributeTree"
             :importFunc="showResourceInput ? importFunc : undefined"
             :importFuncRun="latestFuncRuns[importFunc?.id ?? '']"
-          />
-          <EmptyState
-            v-else
-            text="No attributes to display"
-            icon="code-circle"
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem ref="actionRef" :expandable="false">
@@ -165,14 +159,8 @@
             Qualifications
           </template>
           <QualificationPanel
-            v-if="attributeTree"
             :component="component"
             :attributeTree="attributeTree"
-          />
-          <EmptyState
-            v-else
-            icon="question-circle"
-            text="No qualifications to display"
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem>
@@ -259,7 +247,6 @@ import DiffPanel from "./DiffPanel.vue";
 import ActionsPanel from "./ActionsPanel.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import DocumentationPanel from "./DocumentationPanel.vue";
-import EmptyState from "./EmptyState.vue";
 import ManagementPanel from "./ManagementPanel.vue";
 
 const props = defineProps<{

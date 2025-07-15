@@ -105,7 +105,7 @@
               @click="() => add()"
               @keydown.tab.stop.prevent="onAddButtonTab"
             >
-              + add
+              + add "{{ displayName }}" item
             </VButton>
           </div>
         </div>

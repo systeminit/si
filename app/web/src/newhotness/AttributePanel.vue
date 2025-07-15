@@ -1,5 +1,5 @@
 <template>
-  <div v-if="root" class="p-xs flex flex-col gap-xs">
+  <div v-if="attributeTree && root" class="p-xs flex flex-col gap-xs">
     <div
       v-if="importFunc && !component.toDelete"
       class="grid grid-cols-2 gap-2xs relative text-sm h-lg"
@@ -199,6 +199,7 @@
       />
     </div>
   </div>
+  <EmptyState v-else text="No attributes to display" icon="code-circle" />
 </template>
 
 <script lang="ts" setup>
@@ -241,6 +242,7 @@ import { keyEmitter } from "./logic_composables/emitters";
 import ComponentSecretAttribute from "./layout_components/ComponentSecretAttribute.vue";
 import { useWatchedForm } from "./logic_composables/watched_form";
 import { NameFormData } from "./ComponentDetails.vue";
+import EmptyState from "./EmptyState.vue";
 
 const q = ref("");
 
