@@ -927,16 +927,32 @@ const filteredComponentsQuery = useQuery({
         }
         case "attr": {
           // Query to find the component IDs matching this attr, then use that to narrow the components
-          const terms = term.values.map((value) => ({
+          const startTerms = term.startsWith.map((value) => ({
             key: term.key,
             value,
+            op: "startsWith" as const,
           }));
+          const exactTerms = term.exact.map((value) => ({
+            key: term.key,
+            value,
+            op: "exact" as const,
+          }));
+
+          // If we get a key with no value (key:), we push in a single empty string, which will match
+          // all components with that key set to anything
+          if (exactTerms.length === 0 && startTerms.length === 0) {
+            startTerms.push({
+              key: term.key,
+              value: "",
+              op: "startsWith" as const,
+            });
+          }
 
           const componentIds = new Set(
             await bifrostQueryAttributes({
               workspaceId,
               changeSetId,
-              terms,
+              terms: [...startTerms, ...exactTerms],
             }),
           );
           return components.filter((c) => componentIds.has(c.id));

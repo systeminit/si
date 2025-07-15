@@ -54,6 +54,7 @@ import {
   MjolnirBulk,
   NOROW,
   PatchBatch,
+  QueryAttributesTerm,
   QueryKey,
   Ragnarok,
   RainbowFn,
@@ -2675,10 +2676,57 @@ from
 const queryAttributes = (
   _workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
-  terms: { key: string; value: string }[],
+  terms: QueryAttributesTerm[],
 ) => {
+  // Generate the SQL statements and the respective binds
+  const sqlTerms = terms.flatMap((term) => {
+    const key = term.key.startsWith("/") ? term.key : `%/${term.key}`;
+    // Extract the correct SQL like statement for our values, using * as the wildcard and respecting exact vs startsWith
+    let value = term.value;
+    // If the value is all digits, we always run an exact match, so no need to add % to the end
+    if (!term.value.match(/^\d+$/)) {
+      value =
+        term.value.replaceAll("*", "%") + (term.op === "startsWith" ? "%" : "");
+    }
+
+    // This is the default search statements, we include special cases further down
+    const sqlTerms = [
+      {
+        statement:
+          "(attr.value ->> 'path' LIKE ? AND attr.value ->> 'value' LIKE ?)",
+        binds: [key, value] as (string | boolean | number)[],
+      },
+    ];
+
+    // We translate the strings "true" and "false" to literal booleans we can match on sqlite
+    const booleanValues: Record<string, string | boolean> = {
+      true: true,
+      false: false,
+    };
+    const valueAsBoolean = booleanValues[term.value.toLowerCase()];
+    if (valueAsBoolean !== undefined) {
+      sqlTerms.push({
+        statement:
+          "(attr.value ->> 'path' LIKE ? AND attr.value ->> 'value' = ?)",
+        binds: [key, valueAsBoolean],
+      });
+    }
+
+    // When searching for schema, we also try to match schema name alongside any props called schema (default case)
+    if (term.key === "schema") {
+      sqlTerms.push({
+        statement: "(schema_name LIKE ?)",
+        binds: [value],
+      });
+    }
+
+    return sqlTerms;
+  });
+
   const sql = `
-    SELECT atoms.args AS component_id
+    SELECT 
+        atoms.args AS component_id,
+        jsonb_extract(CAST(atoms.data as text), '$.schemaName') AS schema_name
        FROM changesets
        JOIN indexes ON changesets.index_checksum = indexes.checksum
        JOIN index_mtm_atoms ON indexes.checksum = index_mtm_atoms.index_checksum
@@ -2686,20 +2734,10 @@ const queryAttributes = (
        JOIN json_each(jsonb_extract(CAST(atoms.data as text), '$.attributeValues')) AS attr
       WHERE changesets.change_set_id = ?
         AND atoms.kind = 'AttributeTree'
-        AND (${terms
-          .map(
-            (_) =>
-              `(attr.value ->> 'path' LIKE ? AND attr.value ->> 'value' LIKE ?)`,
-          )
-          .join(" OR ")})
+        AND (${sqlTerms.map((t) => t.statement).join(" OR ")})
   `;
-  const bind = [
-    changeSetId,
-    ...terms.flatMap((term) => [
-      term.key.startsWith("/") ? term.key : `%/${term.key}`,
-      `${term.value.replaceAll("*", "%")}%`,
-    ]),
-  ];
+
+  const bind = [changeSetId, ...sqlTerms.flatMap((term) => term.binds)];
 
   const start = Date.now();
   const components = db.exec({
@@ -2707,6 +2745,7 @@ const queryAttributes = (
     bind,
     returnValue: "resultRows",
   });
+
   const end = Date.now();
   debug(
     "❓ sql queryAttributes",

@@ -111,6 +111,12 @@ export type Listable =
   | EntityKind.ViewList;
 export type Gettable = Exclude<EntityKind, Listable>;
 
+export interface QueryAttributesTerm {
+  key: string;
+  value: string;
+  op: "startsWith" | "exact";
+}
+
 export interface SharedDBInterface {
   initDB: (testing: boolean) => Promise<void>;
   migrate: (testing: boolean) => Promise<Database>;
@@ -181,7 +187,7 @@ export interface SharedDBInterface {
   queryAttributes(
     workspaceId: WorkspacePk,
     changeSetId: ChangeSetId,
-    terms: { key: string; value: string }[],
+    terms: QueryAttributesTerm[],
   ): Promise<ComponentId[]>;
   mjolnir(
     workspaceId: string,
@@ -277,7 +283,7 @@ export interface TabDBInterface {
   queryAttributes(
     workspaceId: WorkspacePk,
     changeSetId: ChangeSetId,
-    terms: { key: string; value: string }[],
+    terms: QueryAttributesTerm[],
   ): ComponentId[];
   mjolnirBulk(
     workspaceId: string,
