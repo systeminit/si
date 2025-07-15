@@ -27,7 +27,11 @@ use super::{
     prop_path_from_root,
 };
 use crate::{
+    DalContext,
     PropKind,
+    WsEvent,
+    WsEventResult,
+    WsPayload,
     workspace_snapshot::{
         content_address::ContentAddress,
         edge_weight::{
@@ -753,5 +757,82 @@ impl std::fmt::Display for WithGraph<'_, &'_ ConnectionUnmigrateableBecause> {
                 write!(f, "Source socket prototype has no arguments")
             }
         }
+    }
+}
+
+/// Sent when a connection migration is started.
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionMigrationStartedPayload {
+    pub dry_run: bool,
+}
+
+/// Sent when a connection migration is completed. If it was a dry run or has an error, the
+/// data will not be committed.
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionMigrationFinishedPayload {
+    pub dry_run: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(flatten)]
+    pub summary: ConnectionMigrationSummary,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionMigrationSummary {
+    pub connections: usize,
+    pub migrated: usize,
+    pub unmigrateable: usize,
+}
+
+/// Sent when a connection migration is run (though it may not actually be migrated; see
+/// the "migrated" field).
+pub type ConnectionMigratedPayload = ConnectionMigrationWithMessage;
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionMigrationWithMessage {
+    #[serde(flatten)]
+    pub migration: ConnectionMigration,
+    pub message: String,
+    pub migrated: bool,
+}
+
+impl WsEvent {
+    pub async fn connection_migration_started(
+        ctx: &DalContext,
+        dry_run: bool,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ConnectionMigrationStarted(ConnectionMigrationStartedPayload { dry_run }),
+        )
+        .await
+    }
+
+    pub async fn connection_migration_finished(
+        ctx: &DalContext,
+        dry_run: bool,
+        error: Option<String>,
+        summary: ConnectionMigrationSummary,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(
+            ctx,
+            WsPayload::ConnectionMigrationFinished(ConnectionMigrationFinishedPayload {
+                dry_run,
+                error,
+                summary,
+            }),
+        )
+        .await
+    }
+
+    pub async fn connection_migrated(
+        ctx: &DalContext,
+        migration: ConnectionMigrationWithMessage,
+    ) -> WsEventResult<Self> {
+        WsEvent::new(ctx, WsPayload::ConnectionMigrated(migration)).await
     }
 }
