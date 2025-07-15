@@ -43,6 +43,7 @@ import {
   BroadcastMessage,
   BustCacheFn,
   Checksum,
+  Common,
   ComponentInfo,
   Gettable,
   Id,
@@ -402,13 +403,18 @@ const newIndex = (meta: AtomMeta, fromIndexChecksum: string | undefined) => {
   }
 };
 
-const removeAtom = (indexChecksum: Checksum, atom: Required<Atom>) => {
+const removeAtom = (
+  indexChecksum: Checksum,
+  kind: EntityKind,
+  id: string,
+  checksum: string,
+) => {
   db.exec({
     sql: `
     DELETE FROM index_mtm_atoms
     WHERE index_checksum = ? AND kind = ? AND args = ? AND checksum = ?
     `,
-    bind: [indexChecksum, atom.kind, atom.id, atom.fromChecksum],
+    bind: [indexChecksum, kind, id, checksum],
   });
 };
 
@@ -1082,7 +1088,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
         if (exists) {
           debug("🔧 Removing atom:", atom.kind, atom.id);
           span.setAttribute("removeAtom", true);
-          removeAtom(indexChecksum, atom);
+          removeAtom(indexChecksum, atom.kind, atom.id, atom.fromChecksum);
           bustCache = true;
           removed = true;
         } else {
@@ -1772,9 +1778,24 @@ const niflheim = async (
         }
       }
     }
+    const atomsToUnlink: Array<Common> = [];
+    Object.entries(localChecksums).forEach(([key, checksum]) => {
+      const { kind, id } = kindAndArgsFromKey(key);
+      const obj = atoms.find(
+        (a) => a.id === id && a.kind === kind && a.checksum === checksum,
+      );
+      if (!obj) atomsToUnlink.push({ kind, id, checksum });
+    });
 
+    span.setAttribute("numUnlink", atomsToUnlink.length);
     span.setAttribute("numHammers", numHammers);
     span.setAttribute("indexChecksum", indexChecksum);
+
+    if (atomsToUnlink.length > 0) {
+      atomsToUnlink.forEach(({ kind, id, checksum }) => {
+        removeAtom(indexChecksum, kind, id, checksum);
+      });
+    }
 
     if (hammerObjs.length > 0) {
       await mjolnirBulk(workspaceId, changeSetId, hammerObjs, indexChecksum);

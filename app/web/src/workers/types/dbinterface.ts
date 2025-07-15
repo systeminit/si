@@ -429,7 +429,7 @@ export interface IndexUpdate {
 export interface Atom extends AbstractAtom, AtomMeta {
   operations?: Operation[];
 }
-interface Common {
+export interface Common {
   kind: EntityKind;
   id: Id;
   checksum: string;
