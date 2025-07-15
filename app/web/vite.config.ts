@@ -43,6 +43,8 @@ const gitHashFile = (file: string) => {
   const cmd = `git hash-object '${file}'`;
   return child_process.execSync(cmd).toString().trim();
 }
+const webWorkerPath = path.resolve(__dirname, "src/workers/webworker.ts");
+const webWorkerHash = JSON.stringify(gitHashFile(webWorkerPath));
 
 const sharedWorkerPath = path.resolve(__dirname, "src/workers/shared_webworker.ts");
 const sharedWorkerHash = JSON.stringify(gitHashFile(sharedWorkerPath));
@@ -62,6 +64,7 @@ export default (opts: { mode: string }) => {
     define: {
       __COMMIT_HASH__:  headCommitHash,
       __SHARED_WORKER_HASH__: sharedWorkerHash,
+      __WEBWORKER_HASH__: webWorkerHash,
     },
     plugins: [
       dotPathFixPlugin(),
@@ -137,7 +140,7 @@ export default (opts: { mode: string }) => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, "index.html"),
-          worker: path.resolve(__dirname, "src/workers/webworker.ts"), // Add worker as an entry point
+          worker: webWorkerPath,
           sharedWorker: sharedWorkerPath,
         },
         output: {
