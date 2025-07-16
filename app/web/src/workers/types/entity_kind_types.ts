@@ -92,7 +92,7 @@ export type PossibleConnection = {
   attributeValueId: string;
   name: string;
   path: string;
-  value: string;
+  value: string | null;
   componentName: string;
   schemaName: string;
   componentId: string;

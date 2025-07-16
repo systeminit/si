@@ -1,7 +1,7 @@
 <template>
   <CollapsingFlexItem :open="open" @toggle="emit('toggle')">
     <template #header> Documentation </template>
-    <div class="flex flex-col items-center p-xs gap-sm [&>p]:w-full">
+    <div class="flex flex-col items-center p-xs gap-xs [&>.prose]:w-full">
       <EmptyState
         v-if="
           !docs &&
@@ -12,32 +12,52 @@
         icon="docs"
       />
       <template v-if="!docs">
-        <p v-if="component.schemaVariantDocLink">
+        <div v-if="component.schemaVariantDocLink" class="w-full">
           <a
             :href="component.schemaVariantDocLink"
             target="_blank"
             tabindex="-1"
+            :class="
+              clsx(
+                'no-underline hover:underline font-bold text-lg',
+                themeClasses('text-action-500', 'text-action-300'),
+              )
+            "
           >
             {{ component.schemaVariantName }}
           </a>
-        </p>
-        <MarkdownRender :source="component.schemaVariantDescription ?? ''" />
+        </div>
+        <MarkdownRender
+          :source="component.schemaVariantDescription ?? ''"
+          disableMaxWidth
+        />
       </template>
       <template v-else>
-        <VButton
-          class="border-0 mr-2em"
-          icon="arrow--left"
-          label="Back"
-          size="sm"
-          tone="shade"
-          variant="ghost"
-          @click="emit('cleardocs')"
-        />
-        <p v-if="docLink">
-          <a :href="docLink" target="_blank">{{
-            component.schemaVariantName
-          }}</a>
-        </p>
+        <div class="flex flex-row items-center gap-xs w-full">
+          <div v-if="docLink">
+            <a
+              :href="docLink"
+              target="_blank"
+              :class="
+                clsx(
+                  'no-underline hover:underline font-bold text-lg',
+                  themeClasses('text-action-500', 'text-action-300'),
+                )
+              "
+            >
+              {{ component.schemaVariantName }}
+            </a>
+          </div>
+          <IconButton
+            class="ml-auto"
+            icon="x"
+            tooltip="Close"
+            tooltipPlacement="top"
+            size="sm"
+            iconTone="shade"
+            @click="emit('cleardocs')"
+          />
+        </div>
         <MarkdownRender :source="docs" />
       </template>
     </div>
@@ -45,8 +65,9 @@
 </template>
 
 <script lang="ts" setup>
-import { VButton } from "@si/vue-lib/design-system";
+import { themeClasses, IconButton } from "@si/vue-lib/design-system";
 import { PropType } from "vue";
+import clsx from "clsx";
 import { BifrostComponent } from "@/workers/types/entity_kind_types";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
 import MarkdownRender from "./MarkdownRender.vue";

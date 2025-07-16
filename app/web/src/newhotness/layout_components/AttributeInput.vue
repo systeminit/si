@@ -355,7 +355,7 @@
             <TruncateWithTooltip
               :class="
                 clsx(
-                  'grow',
+                  'grow font-mono',
                   !field.state.value &&
                     !isArray && [
                       'italic',
@@ -478,82 +478,93 @@
                 }"
               >
                 <!-- position this item exactly where the virtualizer tells it to go -->
-                <div
+                <template
                   v-for="virtualItem in virtualFilteredConnectionItemsList"
                   :key="
-                    filteredConnections[virtualItem.index]?.attributeValueId
+                    filteredConnections[virtualItem.index]?.showAllButton
+                      ? 'show-all-button'
+                      : filteredConnections[virtualItem.index]
+                          ?.possibleConnection?.attributeValueId
                   "
-                  :class="
-                    clsx(
-                      `absolute top-0 left-0 w-full h-[${virtualItem.size}px]`,
-                      'possible-connections grid gap-xs cursor-pointer border border-transparent',
-                      'px-xs py-2xs',
-                      isConnectionSelected(virtualItem.index) && [
-                        'input-selected-item',
-                        themeClasses('bg-action-200', 'bg-action-900'),
-                      ],
-                      themeClasses(
-                        'hover:border-action-500 active:active:bg-action-200',
-                        'hover:border-action-300 active:active:bg-action-900',
-                      ),
-                    )
-                  "
-                  :style="{
-                    transform: `translateY(${virtualItem.start}px)`,
-                  }"
-                  @click.left="selectConnection(virtualItem.index)"
                 >
-                  <TruncateWithTooltip>
-                    {{ filteredConnections[virtualItem.index]?.componentName }}
-                  </TruncateWithTooltip>
-                  <div class="flex flex-row gap-2xs items-center">
-                    <template
-                      v-for="(item, itemIndex) in filteredConnections[
-                        virtualItem.index
-                      ]?.pathArray"
-                      :key="item"
-                    >
-                      <TruncateWithTooltip
-                        class="flex-1 max-w-fit"
-                        :style="`flex-basis: ${
-                          100 /
-                          (filteredConnections[virtualItem.index]?.pathArray
-                            .length ?? 0)
-                        }%`"
-                      >
-                        {{ item }}
-                      </TruncateWithTooltip>
-                      <div
-                        v-if="
-                          itemIndex !==
-                          (filteredConnections[virtualItem.index]?.pathArray
-                            .length ?? 0) -
-                            1
-                        "
-                      >
-                        /
-                      </div>
-                    </template>
-                  </div>
-                  <TruncateWithTooltip>
-                    <template
-                      v-if="
-                        filteredConnections[virtualItem.index]?.kind ===
-                          'array' ||
-                        filteredConnections[virtualItem.index]?.kind ===
-                          'map' ||
-                        filteredConnections[virtualItem.index]?.kind ===
-                          'object' ||
-                        filteredConnections[virtualItem.index]?.kind === 'json'
+                  <AttributeInputPossibleConnection
+                    v-if="
+                      filteredConnections[virtualItem.index]?.possibleConnection
+                    "
+                    :connection="
+                      filteredConnections[virtualItem.index]?.possibleConnection
+                    "
+                    :isConnectionSelected="
+                      isConnectionSelected(virtualItem.index)
+                    "
+                    :virtualItemIndex="virtualItem.index"
+                    :virtualItemSize="virtualItem.size"
+                    :virtualItemStart="virtualItem.start"
+                    @selectConnection="(index) => selectConnection(index)"
+                  />
+                  <div
+                    v-else
+                    :class="
+                      clsx(
+                        `absolute top-0 left-0 w-full h-[${virtualItem.size}px]`,
+                        'flex flex-row items-center gap-xs justify-center',
+                        'px-xs py-2xs w-full text-center border border-transparent',
+                        'text-xs cursor-pointer group',
+                        isConnectionSelected(virtualItem.index) && [
+                          'input-selected-item',
+                          themeClasses('bg-action-200', 'bg-action-900'),
+                        ],
+                        themeClasses(
+                          'hover:border-action-500 active:active:bg-action-200',
+                          'hover:border-action-300 active:active:bg-action-900',
+                        ),
+                      )
+                    "
+                    :style="{
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }"
+                    @click.left="selectConnection(virtualItem.index)"
+                  >
+                    <TruncateWithTooltip
+                      :class="
+                        clsx(
+                          'italic',
+                          themeClasses('text-neutral-600', 'text-neutral-400'),
+                        )
                       "
                     >
-                      {{ filteredConnections[virtualItem.index]?.kind }}
-                    </template>
-                    <template v-else>
-                      {{ filteredConnections[virtualItem.index]?.value }}
-                    </template>
-                  </TruncateWithTooltip>
-                </div>
+                      <template v-if="filteredConnections.length - 1 > 1">
+                        Showing {{ filteredConnections.length - 1 }} suggested
+                        connections
+                      </template>
+                      <template
+                        v-else-if="filteredConnections.length - 1 === 1"
+                      >
+                        Showing one suggested connection
+                      </template>
+                      <template v-else>
+                        No suggested connections available
+                      </template>
+                    </TruncateWithTooltip>
+                    <TruncateWithTooltip
+                      :class="
+                        clsx(
+                          'font-bold group-hover:underline',
+                          themeClasses(
+                            'group-hover:text-action-500',
+                            'group-hover:text-action-300',
+                          ),
+                          isConnectionSelected(virtualItem.index) && [
+                            'underline',
+                            themeClasses('text-action-500', 'text-action-300'),
+                          ],
+                        )
+                      "
+                    >
+                      Show All Possible Connections
+                    </TruncateWithTooltip>
+                  </div>
+                </template>
               </div>
             </div>
           </template>
@@ -561,16 +572,20 @@
           <!-- display potential connection value area -->
           <div
             v-if="
-              selectedConnection?.value &&
+              selectedConnection?.possibleConnection?.value &&
               (kindAsString === 'textarea' || kindAsString === 'codeeditor')
             "
             class="relative"
           >
             <CodeViewer
-              :code="`${JSON.stringify(selectedConnection?.value, null, 2)}\n`"
+              :code="`${JSON.stringify(
+                selectedConnection.possibleConnection.value,
+                null,
+                2,
+              )}\n`"
               showTitle
               :allowCopy="false"
-              :title="selectedConnection.path"
+              :title="selectedConnection.possibleConnection.path"
             />
           </div>
         </div>
@@ -635,8 +650,14 @@ import { useWatchedForm } from "../logic_composables/watched_form";
 import AttributeValueBox from "../AttributeValueBox.vue";
 import CodeEditorModal from "../CodeEditorModal.vue";
 import { findAttributeValueInTree } from "../util";
+import AttributeInputPossibleConnection from "./AttributeInputPossibleConnection.vue";
 
-type UIPotentialConnection = PossibleConnection & {
+type UIConnectionRow = {
+  showAllButton?: boolean;
+  possibleConnection?: UIPotentialConnection;
+};
+
+export type UIPotentialConnection = PossibleConnection & {
   pathArray: string[];
 };
 
@@ -657,6 +678,8 @@ const props = defineProps<{
   disableInputWindow?: boolean;
   forceReadOnly?: boolean;
 }>();
+
+const showAllPossibleConnections = ref(false);
 
 const isSetByConnection = computed(
   () => props.externalSources && props.externalSources.length > 0,
@@ -886,8 +909,16 @@ const createSubscriptionMutation = useMutation({
 const selectConnection = (index: number) => {
   if (readOnly.value) return;
 
-  const newConnection = filteredConnections.value[index];
-  if (!newConnection) return;
+  const newConnectionRow = filteredConnections.value[index];
+  if (!newConnectionRow) return;
+  const newConnection = newConnectionRow.possibleConnection;
+  if (!newConnection) {
+    // clicked the button to show hidden options
+    showAllPossibleConnections.value = true;
+    cancelTabBehavior.value = true;
+    return;
+  }
+
   const apiValue = newConnection.path;
   connectingComponentId.value = newConnection.componentId;
   selectedConnectionData.value = {
@@ -1003,6 +1034,8 @@ const resetEverything = () => {
   connectingComponentId.value = undefined;
   selectedConnectionData.value = undefined;
   inputTouched.value = false;
+  showAllPossibleConnections.value = false;
+  cancelTabBehavior.value = false;
 };
 
 const openInput = () => {
@@ -1144,11 +1177,18 @@ const onEnter = () => {
   if (selectedIndex.value === -1) selectedIndex.value = 0;
   selectAtCurrentIndex();
 };
+const cancelTabBehavior = ref(false);
 const inputFocusDivRef = ref<HTMLDivElement>();
 const onTab = (e: KeyboardEvent) => {
   if (!readOnly.value) selectAtCurrentIndex();
 
   if (mapKeyError.value) return;
+
+  if (cancelTabBehavior.value) {
+    // This boolean is set to true for one time tab behavior cancellation
+    cancelTabBehavior.value = false;
+    return;
+  }
 
   // This allows the user to Tab or Shift+Tab to go through the attribute fields
   const focusable = Array.from(
@@ -1274,10 +1314,13 @@ const categorizedPossibleConn = computed(() => {
 });
 
 const filteredConnections = computed(() => {
-  const output: UIPotentialConnection[] = [];
+  const output: UIConnectionRow[] = [];
 
   if (potentialConnQuery.data.value) {
-    const addToOutput = (matches: PossibleConnection[]) => {
+    const addToArray = (
+      matches: PossibleConnection[],
+      array: UIConnectionRow[],
+    ) => {
       // Node(victor): We know that secret props on secret defining schemas live on /secrets/kind name
       // This MAY match other secret props on random schemas, but we check the types match. Ideally the MVs at some
       // point should tells us what props are the secret props on the secret defining schemas. But this solves
@@ -1311,20 +1354,23 @@ const filteredConnections = computed(() => {
       fuzzyMatches.forEach((match) => {
         const pathArray = match.path.split("/");
         pathArray.shift();
-        output.push({
-          ...match,
-          pathArray,
+        array.push({
+          possibleConnection: {
+            ...match,
+            pathArray,
+          },
         });
       });
     };
 
-    addToOutput(categorizedPossibleConn.value.suggestedMatches);
-    addToOutput(categorizedPossibleConn.value.typeAndNameMatches);
-    addToOutput(categorizedPossibleConn.value.typeMatches);
-
-    // todo: rethink this for secrets
-    if (!props.isSecret) {
-      addToOutput(categorizedPossibleConn.value.nonMatches);
+    addToArray(categorizedPossibleConn.value.suggestedMatches, output);
+    if (showAllPossibleConnections.value || props.isSecret) {
+      addToArray(categorizedPossibleConn.value.typeAndNameMatches, output);
+      addToArray(categorizedPossibleConn.value.typeMatches, output);
+    } else {
+      output.push({
+        showAllButton: true,
+      });
     }
   }
 
@@ -1427,9 +1473,3 @@ const discardString = computed(() => {
   return "Discard edits";
 });
 </script>
-
-<style lang="css" scoped>
-.possible-connections.grid {
-  grid-template-columns: minmax(0, 20%) minmax(0, 60%) minmax(0, 20%);
-}
-</style>

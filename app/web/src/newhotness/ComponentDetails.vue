@@ -78,7 +78,9 @@
         />
         <div class="flex-none">{{ component.schemaVariantName }}</div>
         <div class="flex-none">/</div>
-        <div class="flex-1 min-w-0 m-[-4px]">{{ component.name }}</div>
+        <TruncateWithTooltip class="flex-1 min-w-0 m-[-4px] py-2xs px-xs">{{
+          component.name
+        }}</TruncateWithTooltip>
       </div>
 
       <div class="attrs flex flex-col gap-sm">

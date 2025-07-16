@@ -1,5 +1,8 @@
 <template>
-  <div ref="divRef" class="prose dark:prose-invert">
+  <div
+    ref="divRef"
+    :class="clsx('prose dark:prose-invert', disableMaxWidth && 'max-w-full')"
+  >
     <VueMarkdown
       :source="props.source"
       :options="{ breaks: true, linkify: true, typographer: true }"
@@ -10,10 +13,15 @@
 <script setup lang="ts">
 import { tw } from "@si/vue-lib";
 import { themeClasses } from "@si/vue-lib/design-system";
+import clsx from "clsx";
 import { onMounted, ref } from "vue";
 import VueMarkdown from "vue-markdown-render";
 
-const props = defineProps<{ source: string; removeMargins?: boolean }>();
+const props = defineProps<{
+  source: string;
+  removeMargins?: boolean;
+  disableMaxWidth?: boolean;
+}>();
 
 const divRef = ref<HTMLDivElement>();
 
