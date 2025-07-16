@@ -2,6 +2,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use serde_json::Value;
 use si_events::{
     ComponentId,
     SchemaId,
@@ -114,6 +115,7 @@ pub struct ComponentInList {
     pub schema_variant_name: String,
     pub schema_category: String,
     pub has_resource: bool,
+    pub resource_id: Option<Value>,
     pub qualification_totals: ComponentQualificationStats,
     pub input_count: usize,
     pub has_diff: bool,
