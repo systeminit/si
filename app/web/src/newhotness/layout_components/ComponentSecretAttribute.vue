@@ -117,7 +117,7 @@ import { encryptMessage } from "@/utils/messageEncryption";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
-import { AttrTree } from "../AttributePanel.vue";
+import { AttrTree } from "../logic_composables/attribute_tree";
 import { useApi, routes, componentTypes } from "../api_composables";
 import { useWatchedForm } from "../logic_composables/watched_form";
 import SecretInput from "./SecretInput.vue";

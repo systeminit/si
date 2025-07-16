@@ -4,7 +4,12 @@
       v-if="resourcePayload"
       :code="JSON.stringify(resourcePayload, null, 2)"
     />
-    <EmptyState v-else icon="check-hex" text="This component has no resource" />
+    <EmptyState
+      v-else
+      icon="check-hex"
+      text="No resource"
+      secondaryText="This component hasn’t been applied to HEAD, so its resource (the real-world object it represents) hasn’t been created yet."
+    />
   </ul>
 </template>
 

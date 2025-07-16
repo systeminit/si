@@ -124,6 +124,7 @@
         :externalSources="attributeTree.attributeValue.externalSources"
         :isArray="attributeTree.prop?.kind === 'array'"
         :isMap="attributeTree.prop?.kind === 'map'"
+        :forceReadOnly="props.forceReadOnly"
         @save="(...args) => emit('save', ...args)"
         @delete="(...args) => emit('delete', ...args)"
         @remove-subscription="(...args) => emit('removeSubscription', ...args)"
@@ -143,13 +144,14 @@ import { PropKind } from "@/api/sdf/dal/prop";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
-import { AttrTree } from "../AttributePanel.vue";
+import { AttrTree } from "../logic_composables/attribute_tree";
 import { useApi, routes, componentTypes } from "../api_composables";
 import { useWatchedForm } from "../logic_composables/watched_form";
 
 const props = defineProps<{
   component: BifrostComponent;
   attributeTree: AttrTree;
+  forceReadOnly?: boolean;
 }>();
 
 const hasChildren = computed(() => {

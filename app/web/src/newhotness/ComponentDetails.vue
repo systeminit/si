@@ -112,6 +112,21 @@
             :importFuncRun="latestFuncRuns[importFunc?.id ?? '']"
           />
         </CollapsingFlexItem>
+        <CollapsingFlexItem
+          v-if="hasResourceValueProps"
+          ref="resourceRef"
+          :expandable="false"
+        >
+          <template #header>
+            <div class="flex place-content-between w-full">
+              <span>Resource Values</span>
+            </div>
+          </template>
+          <ResourceValuesPanel
+            :component="component"
+            :attributeTree="attributeTree"
+          />
+        </CollapsingFlexItem>
         <CollapsingFlexItem ref="actionRef" :expandable="false">
           <template #header>Actions</template>
           <ActionsPanel
@@ -234,6 +249,7 @@ import { Context, assertIsDefined } from "@/newhotness/types";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import AttributePanel from "./AttributePanel.vue";
+import ResourceValuesPanel from "./ResourceValuesPanel.vue";
 import { attributeEmitter, keyEmitter } from "./logic_composables/emitters";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
 import DelayedLoader from "./layout_components/DelayedLoader.vue";
@@ -292,6 +308,25 @@ const attributeTreeQuery = useQuery<AttributeTree | undefined>({
 });
 const attributeTree = computed(() => attributeTreeQuery.data.value);
 
+// Determines if the component is able to have a resource. For example, for "AWS::EC2::KeyPair",
+// this would return 'true', but fore "AWS Region", this would return false.
+const hasResourceValueProps = computed(() => {
+  if (!attributeTree.value) return false;
+  const propMatch = Object.entries(attributeTree.value.props).find(
+    ([_, prop]) => prop.path === "root/resource_value",
+  );
+  if (!propMatch) return false;
+  const attributeValueMatch = Object.entries(
+    attributeTree.value.attributeValues,
+  ).find(([_, attributeValue]) => attributeValue.propId === propMatch[0]);
+  if (!attributeValueMatch) return false;
+  const resourceValueSubtree =
+    attributeTree.value.treeInfo[attributeValueMatch[0]];
+  const subtreeChildCount = resourceValueSubtree?.children?.length;
+  if (!subtreeChildCount) return false;
+  return subtreeChildCount > 0;
+});
+
 const component = computed(() => componentQuery.data.value);
 
 const mgmtFuncs = computed(
@@ -323,6 +358,7 @@ attributeEmitter.on("selectedDocs", (data) => {
 });
 
 const attrRef = ref<typeof CollapsingFlexItem>();
+const resourceRef = ref<typeof CollapsingFlexItem>();
 const actionRef = ref<typeof CollapsingFlexItem>();
 const mgmtRef = ref<typeof CollapsingFlexItem>();
 
