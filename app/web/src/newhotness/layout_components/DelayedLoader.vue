@@ -19,11 +19,11 @@ const props = defineProps<{
  * We don't want to "flash" a loader at them for a few frames bc the tanstack
  * query took ~90ms to return...
  */
-const DELAY = 300; // 300ms
+const DELAY_MS = 800;
 const show = ref(false);
 onMounted(() => {
   setTimeout(() => {
     show.value = true;
-  }, DELAY);
+  }, DELAY_MS);
 });
 </script>
