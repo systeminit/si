@@ -87,6 +87,8 @@ pub enum DependentValueUpdateError {
     DependentValueRoot(#[from] DependentValueRootError),
     #[error("dependent values update audit log error: {0}")]
     DependentValuesUpdateAuditLog(#[from] DependentValueUpdateAuditLogError),
+    #[error("func error: {0}")]
+    FuncError(#[from] crate::FuncError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("schema variant error: {0}")]
@@ -558,10 +560,12 @@ async fn execution_error_detail(
         .await?
         .debug_info(ctx)
         .await?;
-    let prototype_func = AttributeValue::prototype_func(ctx, id).await?.name;
+    let prototype_func =
+        Func::node_weight(ctx, AttributeValue::prototype_func_id(ctx, id).await?).await?;
 
     Ok(format!(
-        "error executing prototype function \"{prototype_func}\" to set the value of {is_for} ({id})"
+        "error executing prototype function \"{}\" to set the value of {is_for} ({id})",
+        prototype_func.name()
     ))
 }
 

@@ -1075,11 +1075,7 @@ impl Prop {
     ) -> PropResult<bool> {
         let prototype_id = Self::prototype_id(ctx, prop_id).await?;
         let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-
-        Ok(Func::get_by_id_opt(ctx, prototype_func_id)
-            .await?
-            .map(|f| f.is_dynamic())
-            .unwrap_or(false))
+        Ok(Func::is_dynamic(ctx, prototype_func_id).await?)
     }
 
     pub async fn default_value(
@@ -1087,9 +1083,8 @@ impl Prop {
         prop_id: PropId,
     ) -> PropResult<Option<serde_json::Value>> {
         let prototype_id = Self::prototype_id(ctx, prop_id).await?;
-        let prototype_func =
-            Func::get_by_id(ctx, AttributePrototype::func_id(ctx, prototype_id).await?).await?;
-        if prototype_func.is_dynamic() {
+        let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+        if Func::is_dynamic(ctx, prototype_func_id).await? {
             return Ok(None);
         }
 

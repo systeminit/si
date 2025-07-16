@@ -10,9 +10,11 @@ use super::value::{
     AttributeValueResult,
 };
 use crate::{
+    AttributePrototype,
     AttributeValue,
     AttributeValueId,
     DalContext,
+    Func,
     Prop,
     PropKind,
     prop::PropError,
@@ -172,10 +174,17 @@ async fn vivify_json_pointer(
         // If the parent is currently using its default value, make it explicit so it can
         // host child values.
         let prop = AttributeValue::prop(ctx, parent_id).await?;
-        if AttributeValue::component_prototype_id(ctx, parent_id)
-            .await?
-            .is_none()
-        {
+        if let Some(prototype_id) = AttributeValue::component_prototype_id(ctx, parent_id).await? {
+            // If we're trying to set a child of a dynamic value (like a subscription), we
+            // cannot do that--it would create an inconsistent state.
+            // TODO: really, if it's anything other than SetObject({}) or SetArray([]), we have a problem.
+            let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+            if Func::is_dynamic(ctx, func_id).await? {
+                return Err(AttributeValueError::CannotSetChildOfDynamicValue(
+                    parent_id, func_id,
+                ));
+            }
+        } else {
             AttributeValue::set_value(ctx, parent_id, prop.kind.empty_value()).await?;
         }
         // Find or create the child!

@@ -4,7 +4,10 @@ use dal::{
         Action,
         prototype::ActionPrototype,
     },
-    attribute::attributes,
+    attribute::{
+        attributes,
+        value::AttributeValueError,
+    },
 };
 use dal_test::{
     Result,
@@ -12,6 +15,7 @@ use dal_test::{
         attribute::value::{
             self,
         },
+        change_set,
         component::{
             self,
         },
@@ -58,8 +62,15 @@ async fn update_attributes(ctx: &DalContext) -> Result<()> {
     // Set some initial values and make sure they are set correctly without messing with other
     // values or defaults.
     let component_id = component::create(ctx, "test", "test").await?;
-    value::set(ctx, ("test", "/domain/Parent/Updated"), "old").await?;
-    value::set(ctx, ("test", "/domain/Parent/Unchanged"), "old").await?;
+    attributes::update_attributes(
+        ctx,
+        component_id,
+        serde_json::from_value(json!({
+            "/domain/Parent/Updated": "old",
+            "/domain/Parent/Unchanged": "old",
+        }))?,
+    )
+    .await?;
     assert_eq!(
         json!({
             "Parent": {
@@ -182,7 +193,7 @@ async fn update_attributes_enqueues_update_fn(ctx: &mut DalContext) -> Result<()
         }))?,
     )
     .await?;
-    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    change_set::commit(ctx).await?;
     Action::remove_all_for_component_id(ctx, component_swift.id()).await?;
 
     let action_ids = Action::list_topologically(ctx).await?;
@@ -205,6 +216,156 @@ async fn update_attributes_enqueues_update_fn(ctx: &mut DalContext) -> Result<()
     }
     // didn't actually change the value, so there should not be an update function for swifty!
     assert_eq!(0, update_action_count);
+
+    Ok(())
+}
+
+// Test that updating attributes sets them (and their parents) correctly, but leaves default
+// values and other values alone.
+#[test]
+async fn update_attribute_child_of_subscription(ctx: &mut DalContext) -> Result<()> {
+    variant::create(
+        ctx,
+        "test",
+        r#"
+            function main() {
+                return {
+                    props: [
+                        { name: "Obj", kind: "object", children: [
+                            { name: "Field", kind: "string" },
+                        ]},
+                        { name: "Map", kind: "map", entry:
+                            { name: "MapItem", kind: "string" },
+                        },
+                        { name: "Arr", kind: "array", entry:
+                            { name: "ArrayItem", kind: "string" },
+                        },
+                    ]
+                };
+            }
+        "#,
+    )
+    .await?;
+
+    // Subscribe source.Obj -> dest.Obj, source.Arr -> dest.Arr
+    component::create(ctx, "test", "source").await?;
+    value::set(ctx, ("source", "/domain/Obj/Field"), "value").await?;
+    value::set(ctx, ("source", "/domain/Map/a"), "valueA").await?;
+    value::set(ctx, ("source", "/domain/Map/b"), "valueB").await?;
+    value::set(ctx, ("source", "/domain/Arr"), ["a", "b"]).await?;
+    let dest = component::create(ctx, "test", "dest").await?;
+    value::subscribe(ctx, ("dest", "/domain/Obj"), [("source", "/domain/Obj")]).await?;
+    value::subscribe(ctx, ("dest", "/domain/Map"), [("source", "/domain/Map")]).await?;
+    value::subscribe(ctx, ("dest", "/domain/Arr"), [("source", "/domain/Arr")]).await?;
+    change_set::commit(ctx).await?;
+    assert_eq!(
+        json!({
+            "Obj": {
+                "Field": "value",
+            },
+            "Map": {
+                "a": "valueA",
+                "b": "valueB",
+            },
+            "Arr": ["a", "b"],
+        }),
+        component::domain(ctx, "dest").await?
+    );
+
+    // Check that updating a child value of an object/map/array yields an error
+    assert!(matches!(
+        attributes::update_attributes(
+            ctx,
+            dest,
+            serde_json::from_value(json!({
+                "/domain/Obj/Field": "new",
+            }))?,
+        )
+        .await,
+        Err(attributes::Error::AttributeValue(
+            AttributeValueError::CannotSetChildOfDynamicValue(..)
+        )),
+    ));
+    assert!(matches!(
+        attributes::update_attributes(
+            ctx,
+            dest,
+            serde_json::from_value(json!({
+                "/domain/Map/a": "updated",
+            }))?,
+        )
+        .await,
+        Err(attributes::Error::AttributeValue(
+            AttributeValueError::CannotSetChildOfDynamicValue(..)
+        )),
+    ));
+    assert!(matches!(
+        attributes::update_attributes(
+            ctx,
+            dest,
+            serde_json::from_value(json!({
+                "/domain/Arr/0": "new",
+            }))?,
+        )
+        .await,
+        Err(attributes::Error::AttributeValue(
+            AttributeValueError::CannotSetChildOfDynamicValue(..)
+        )),
+    ));
+    assert!(matches!(
+        attributes::update_attributes(
+            ctx,
+            dest,
+            serde_json::from_value(json!({
+                "/domain/Arr/-": "new",
+            }))?,
+        )
+        .await,
+        Err(attributes::Error::AttributeValue(
+            AttributeValueError::CannotSetChildOfDynamicValue(..)
+        )),
+    ));
+
+    // Check that removing a child value of an object/map/array yields an error
+    assert!(matches!(
+        attributes::update_attributes(
+            ctx,
+            dest,
+            serde_json::from_value(json!({
+                "/domain/Obj/Field": { "$source": null },
+            }))?,
+        )
+        .await,
+        Err(attributes::Error::AttributeValue(
+            AttributeValueError::CannotSetChildOfDynamicValue(..)
+        )),
+    ));
+    assert!(matches!(
+        attributes::update_attributes(
+            ctx,
+            dest,
+            serde_json::from_value(json!({
+                "/domain/Map/a": { "$source": null },
+            }))?,
+        )
+        .await,
+        Err(attributes::Error::AttributeValue(
+            AttributeValueError::CannotSetChildOfDynamicValue(..)
+        )),
+    ));
+    assert!(matches!(
+        attributes::update_attributes(
+            ctx,
+            dest,
+            serde_json::from_value(json!({
+                "/domain/Arr/0": { "$source": null },
+            }))?,
+        )
+        .await,
+        Err(attributes::Error::AttributeValue(
+            AttributeValueError::CannotSetChildOfDynamicValue(..)
+        )),
+    ));
 
     Ok(())
 }

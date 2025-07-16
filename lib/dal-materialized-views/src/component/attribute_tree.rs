@@ -137,13 +137,12 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
 
         let prototype_id = AttributeValue::prototype_id(ctx, av_id).await?;
         let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-        let func = Func::get_by_id(ctx, func_id).await?;
 
         // FIXME(nick): this is likely incorrect.
         let controlling_func = ControllingFuncData {
             func_id,
             av_id,
-            is_dynamic_func: func.is_dynamic(),
+            is_dynamic_func: Func::is_dynamic(ctx, func_id).await?,
         };
 
         // NOTE(nick): I ported Victor's comment.
