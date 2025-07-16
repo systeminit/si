@@ -160,9 +160,72 @@
           v-if="
             componentList.length === 0 && componentListQuery.isSuccess.value
           "
-          class="flex-1 overflow-hidden flex flex-row items-center justify-center"
+          class="flex-1 gap-sm overflow-hidden flex flex-col items-center justify-center"
         >
-          <EmptyState icon="component" text="No components in view" />
+          <div class="grow flex items-center justify-center">
+            <EmptyState
+              icon="logo-si"
+              iconSize="lg"
+              iconNoBg
+              text="Begin managing your infrastructure in a clear, controlled, and intelligent way."
+            >
+              <template #secondary>
+                <div class="flex flex-row gap-sm">
+                  <VButton
+                    label="Check our how-to guide"
+                    tone="action"
+                    size="sm"
+                    href="https://docs.systeminit.com/how-tos/"
+                    target="_blank"
+                  />
+                  <VButton
+                    label="API guidelines"
+                    tone="neutral"
+                    size="sm"
+                    href="https://docs.systeminit.com/reference/public-api"
+                    target="_blank"
+                  />
+                </div>
+              </template>
+            </EmptyState>
+          </div>
+          <div
+            :class="
+              clsx(
+                'shrink-0 flex flex-col items-center py-md px-lg w-full max-w-6xl mb-9 gap-3  text-center',
+                themeClasses('bg-neutral-300', 'bg-neutral-800'),
+              )
+            "
+          >
+            <span class="font-bold">Explore other ways to get started</span>
+            <span
+              >Prefer a different starting point? Here are a few other ways to
+              jump in and explore:
+            </span>
+            <div
+              :class="
+                clsx(
+                  'flex flex-row gap-md mt-sm hover:children:underline',
+                  themeClasses(
+                    'text-neutral-700 hover:children:text-black',
+                    'text-neutral-300 hover:children:text-white',
+                  ),
+                )
+              "
+            >
+              <a href="https://www.systeminit.com/?modal=demo" target="_blank"
+                >Schedule a demo</a
+              >
+              <a href="https://discord.gg/system-init" target="_blank">
+                Join the community
+              </a>
+              <a
+                :href="`https://auth.systeminit.com/workspace/${ctx?.workspacePk.value}`"
+                target="_blank"
+                >Invite a team mate</a
+              >
+            </div>
+          </div>
         </div>
         <ExploreGrid
           v-else
