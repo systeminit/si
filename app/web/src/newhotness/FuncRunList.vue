@@ -4,18 +4,77 @@
       v-if="showSubheader"
       :class="
         clsx(
-          'header flex flex-row justify-between items-center p-2xs',
+          'header flex flex-col gap-2xs p-2xs',
           themeClasses('bg-neutral-200', 'bg-neutral-900'),
         )
       "
     >
-      <div class="text-sm font-medium">Recent Function Runs</div>
-      <div
-        v-if="isFetching && !isFetchingNextPage"
-        class="text-xs text-neutral-500 flex items-center"
-      >
-        <Icon name="loader" size="xs" class="animate-spin mr-1" />
-        Updating...
+      <div class="flex flex-row justify-between items-center">
+        <div class="text-sm font-medium">Recent Function Runs</div>
+        <div
+          v-if="isFetching && !isFetchingNextPage"
+          class="text-xs text-neutral-500 flex items-center"
+        >
+          <Icon name="loader" size="xs" class="animate-spin mr-1" />
+          Updating...
+        </div>
+      </div>
+      <div class="flex flex-row items-center gap-sm flex-wrap">
+        <div class="flex flex-row items-center gap-2xs">
+          <select
+            v-model="selectedFuncKind"
+            :class="
+              clsx(
+                'text-xs border rounded px-2xs py-1 min-w-[120px]',
+                themeClasses(
+                  'bg-shade-0 border-neutral-400 text-shade-100',
+                  'bg-neutral-800 border-neutral-600 text-shade-0',
+                ),
+              )
+            "
+          >
+            <option value="" disabled>Filter by Kind</option>
+            <option
+              v-for="kind in availableFuncKinds"
+              :key="kind"
+              :value="kind"
+            >
+              {{ kind }}
+            </option>
+          </select>
+        </div>
+        <div class="flex flex-row items-center gap-2xs">
+          <input
+            v-model="componentNameFilter"
+            type="text"
+            placeholder="Filter by component name"
+            :class="
+              clsx(
+                'text-xs border rounded px-2xs py-1 min-w-[250px]',
+                themeClasses(
+                  'bg-shade-0 border-neutral-400 text-shade-100 placeholder-neutral-500',
+                  'bg-neutral-800 border-neutral-600 text-shade-0 placeholder-neutral-400',
+                ),
+              )
+            "
+          />
+        </div>
+        <button
+          v-if="hasActiveFilters"
+          :class="
+            clsx(
+              'text-xs border rounded px-2xs py-1 flex items-center gap-1',
+              themeClasses(
+                'bg-neutral-100 border-neutral-400 text-neutral-700 hover:bg-neutral-200',
+                'bg-neutral-700 border-neutral-600 text-neutral-300 hover:bg-neutral-600',
+              ),
+            )
+          "
+          @click="resetFilters"
+        >
+          <Icon name="x" size="xs" />
+          Reset
+        </button>
       </div>
     </div>
 
@@ -107,6 +166,10 @@ const pageSize = computed(() => props.limit || 50);
 // Scroll container reference for infinite loading
 const scrollContainerRef = ref<HTMLElement | null>(null);
 
+// Filter state
+const selectedFuncKind = ref<string>("");
+const componentNameFilter = ref<string>("");
+
 const api = useApi();
 
 const {
@@ -145,10 +208,56 @@ const {
 });
 
 // Flatten the pages of function runs for display
-const funcRuns = computed<FuncRun[]>(() => {
+const allFuncRuns = computed<FuncRun[]>(() => {
   if (!data.value) return [];
   return data.value.pages.flatMap((page) => page.funcRuns);
 });
+
+// Get available func kinds from the data
+const availableFuncKinds = computed(() => {
+  const kinds = new Set<string>();
+  allFuncRuns.value.forEach((funcRun) => {
+    if (funcRun.functionKind) {
+      kinds.add(funcRun.functionKind);
+    }
+  });
+  return Array.from(kinds).sort();
+});
+
+// Filter function runs based on selected func kind and component name
+const funcRuns = computed<FuncRun[]>(() => {
+  let filtered = allFuncRuns.value;
+
+  // Filter by function kind if selected
+  if (selectedFuncKind.value) {
+    filtered = filtered.filter(
+      (funcRun) => funcRun.functionKind === selectedFuncKind.value,
+    );
+  }
+
+  // Filter by component name if provided
+  if (componentNameFilter.value.trim()) {
+    const searchTerm = componentNameFilter.value.toLowerCase().trim();
+    filtered = filtered.filter((funcRun) => {
+      return funcRun.componentName?.toLowerCase().includes(searchTerm) || false;
+    });
+  }
+
+  return filtered;
+});
+
+// Check if any filters are active
+const hasActiveFilters = computed(() => {
+  return (
+    selectedFuncKind.value !== "" || componentNameFilter.value.trim() !== ""
+  );
+});
+
+// Reset all filters
+const resetFilters = () => {
+  selectedFuncKind.value = "";
+  componentNameFilter.value = "";
+};
 
 // Handle scroll to implement infinite loading
 const handleScroll = () => {
@@ -176,7 +285,7 @@ const navigateToFuncRunDetails = (funcRunId: string) => {
 };
 
 const showSubheader = computed(
-  () => funcRuns.value.length > 0 || isLoading.value,
+  () => allFuncRuns.value.length > 0 || isLoading.value,
 );
 </script>
 
