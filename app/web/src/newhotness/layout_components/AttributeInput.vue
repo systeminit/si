@@ -640,6 +640,7 @@ const props = defineProps<{
   isMap?: boolean;
   isSecret?: boolean;
   disableInputWindow?: boolean;
+  forceReadOnly?: boolean;
 }>();
 
 const isSetByConnection = computed(
@@ -1364,7 +1365,8 @@ const selectedConnection = computed(
 const readOnly = computed(
   () =>
     !!(props.prop?.createOnly && props.component.hasResource) ||
-    props.component.toDelete,
+    props.component.toDelete ||
+    props.forceReadOnly,
 );
 
 const kindAsString = computed(() => `${props.prop?.widgetKind}`.toLowerCase());
