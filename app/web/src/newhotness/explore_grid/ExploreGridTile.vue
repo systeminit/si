@@ -55,16 +55,31 @@
         <!-- We need the "grow" here so that the qualification status expands fully. -->
         <ComponentQualificationStatus class="grow" :component="component" />
       </li>
-      <li>
-        <template v-if="component.hasDiff">
+
+      <!-- Rows 2-3: Dynamic content based on priority -->
+      <li v-for="(rowContent, index) in dynamicRows" :key="index">
+        <template v-if="rowContent === 'resource'">
+          <StatusIndicatorIcon
+            v-if="component.resourceId"
+            v-tooltip="'Resource'"
+            type="resource"
+            size="sm"
+            status="exists"
+          />
+          <StatusIndicatorIcon
+            v-else
+            type="resource"
+            size="sm"
+            status="exists"
+          />
+          <div v-if="component.resourceId" class="text-xs opacity-75">
+            {{ component.resourceId }}
+          </div>
+          <div v-else>Resource</div>
+        </template>
+        <template v-else-if="rowContent === 'diff'">
           <Icon name="tilde" class="text-warning-500" size="sm" />
           <div>Diff</div>
-        </template>
-      </li>
-      <li>
-        <template v-if="component.hasResource">
-          <StatusIndicatorIcon type="resource" size="sm" status="exists" />
-          <div>Resource</div>
         </template>
       </li>
       <!-- NOTE: when coming from the Map page we don't have accurate outputCount, hiding this -->
@@ -155,6 +170,21 @@ const outgoing = computed(
 const canBeUpgraded = computed(() =>
   explore.upgradeableComponents.value.has(props.component.id),
 );
+
+const dynamicRows = computed(() => {
+  const rows: (string | null)[] = [];
+
+  // Priority order: resource first, then diff
+  if (props.component.hasResource) rows.push("resource");
+  if (props.component.hasDiff) rows.push("diff");
+
+  // Ensure we always have exactly 2 rows (for rows 2-3)
+  while (rows.length < 2) {
+    rows.push(null);
+  }
+
+  return rows.slice(0, 2);
+});
 
 const toggleSelection = () => {
   if (props.selected) {

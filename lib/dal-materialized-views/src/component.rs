@@ -2,9 +2,11 @@ use dal::{
     Component,
     ComponentId,
     DalContext,
+    Prop,
     Schema,
     SchemaId,
     SchemaVariant,
+    prop::PropPath,
     qualification::QualificationSummary,
     workspace_snapshot::traits::component::ComponentExt,
 };
@@ -51,6 +53,22 @@ pub async fn assemble_in_list(
         .await?
         .unwrap_or(false);
 
+    let prop_path_raw = ["root", "si", "resourceId"];
+    let mut resource_id = None;
+    if has_resource {
+        resource_id = if let Some(prop_id) =
+            Prop::find_prop_id_by_path_opt(ctx, schema_variant_id, &PropPath::new(prop_path_raw))
+                .await?
+        {
+            let av_id_for_prop_id =
+                Component::attribute_value_for_prop_id(ctx, component_id, prop_id).await?;
+            let av = dal::AttributeValue::get_by_id(ctx, av_id_for_prop_id).await?;
+            av.view(ctx).await?
+        } else {
+            None
+        };
+    }
+
     Ok(ComponentInListMv {
         id: component_id,
         name,
@@ -65,6 +83,7 @@ pub async fn assemble_in_list(
         input_count,
         has_diff,
         to_delete,
+        resource_id,
     })
 }
 

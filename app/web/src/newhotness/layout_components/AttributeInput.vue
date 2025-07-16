@@ -15,10 +15,25 @@
         <!-- Attribute name -->
         <div class="flex flex-row items-center gap-2xs pl-xs">
           <TruncateWithTooltip>{{ displayName }}</TruncateWithTooltip>
+          <span
+            v-if="showRequiredAsterisk"
+            v-tooltip="`${displayName} is a required value`"
+            :class="
+              clsx(
+                'shrink-0 text-lg font-bold',
+                themeClasses('text-destructive-600', 'text-destructive-300'),
+              )
+            "
+          >
+            *
+          </span>
           <div class="flex flex-row items-center ml-auto gap-2xs">
             <StatusIndicatorIcon
               v-if="
-                validation && validation.status !== 'Success' && !isPendingValue
+                validation &&
+                validation.status !== 'Success' &&
+                !isPendingValue &&
+                !showRequiredAsterisk
               "
               v-tooltip="validation.message"
               type="qualification"
@@ -651,6 +666,14 @@ const isPendingValue = computed(
     props.externalSources &&
     props.externalSources.length > 0 &&
     props.value === "",
+);
+
+const showRequiredAsterisk = computed(
+  () =>
+    props.validation &&
+    props.validation.status !== "Success" &&
+    !isPendingValue.value &&
+    props.validation.message === '"value" is required',
 );
 
 // does not set the actual key, just the string displayed!

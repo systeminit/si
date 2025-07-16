@@ -293,6 +293,7 @@ export interface ComponentInList {
   inputCount: number;
   hasDiff: boolean;
   toDelete: boolean;
+  resourceId: string | null;
 }
 
 export interface BifrostComponentList {
