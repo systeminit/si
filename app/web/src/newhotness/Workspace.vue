@@ -50,7 +50,7 @@
 
     <!-- grow the main body to fit all the space in between the nav and the bottom of the browser window
      min-h-0 prevents the main container from being *larger* than the max it can grow, no matter its contents -->
-    <main class="grow min-h-0">
+    <main v-if="!lobby" class="grow min-h-0">
       <div v-if="tokenFail">Bad Token</div>
       <ComponentPage v-else-if="componentId" :componentId="componentId" />
       <FuncRunDetails v-else-if="funcRunId" :funcRunId="funcRunId" />
