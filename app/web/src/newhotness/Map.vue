@@ -270,7 +270,18 @@ const componentContextMenuRef =
   ref<InstanceType<typeof ComponentContextMenu>>();
 
 const selectedComponents = ref<Set<ComponentInList>>(new Set());
-const showMinimap = ref(true);
+const showMinimap = ref(props.components.length > 0);
+
+watch(
+  () => props.components.length,
+  (newLength, oldLength) => {
+    if (oldLength === 0 && newLength > 0) {
+      showMinimap.value = true;
+    } else if (oldLength > 0 && newLength === 0) {
+      showMinimap.value = false;
+    }
+  },
+);
 
 // Get the primary selected component (first one in the set)
 const selectedComponent = computed<ComponentInList | null>(() => {
