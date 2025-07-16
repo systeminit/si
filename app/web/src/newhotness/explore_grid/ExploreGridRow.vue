@@ -93,6 +93,8 @@
       :focused="focusedComponentId === component.id"
       :hovered="hoveredId === component.id"
       :hasFailedActions="componentsWithFailedActions.has(component.id)"
+      :hasRunningActions="componentsWithRunningActions.has(component.id)"
+      :pendingActionCounts="componentsPendingActionNames.get(component.id)"
       @select="emit('childSelect', dataIndexForTileInRow(row, columnIndex))"
       @deselect="emit('childDeselect', dataIndexForTileInRow(row, columnIndex))"
       @mouseenter="hover(component.id, true)"
@@ -167,6 +169,11 @@ const props = defineProps<{
   selectedComponentIndexes: Set<number>;
   focusedComponentId?: ComponentId;
   componentsWithFailedActions: Set<ComponentId>;
+  componentsWithRunningActions: Set<ComponentId>;
+  componentsPendingActionNames: Map<
+    ComponentId,
+    Record<string, { count: number; hasFailed: boolean }>
+  >;
 }>();
 
 interface TitleIcon {

@@ -3,16 +3,19 @@
     :class="
       clsx(
         'component tile',
-        'cursor-pointer border rounded overflow-hidden relative select-none',
-        selected || focused
-          ? themeClasses('border-action-500', 'border-action-300')
-          : hasFailedActions
-          ? themeClasses('border-destructive-500', 'border-destructive-400')
-          : [
-              hovered
-                ? themeClasses('border-black', 'border-white')
-                : themeClasses('border-neutral-400', 'border-neutral-600'),
-            ],
+        'cursor-pointer rounded overflow-hidden relative select-none',
+        hasRunningActions ? 'spinning-border' : 'border',
+        !hasRunningActions && [
+          selected || focused
+            ? themeClasses('border-action-500', 'border-action-300')
+            : hasFailedActions
+            ? themeClasses('border-destructive-500', 'border-destructive-400')
+            : [
+                hovered
+                  ? themeClasses('border-black', 'border-white')
+                  : themeClasses('border-neutral-400', 'border-neutral-600'),
+              ],
+        ],
         themeClasses('bg-shade-0', 'bg-neutral-900'),
         component.toDelete && 'opacity-70',
       )
@@ -56,7 +59,7 @@
         <ComponentQualificationStatus class="grow" :component="component" />
       </li>
 
-      <!-- Rows 2-3: Dynamic content based on priority -->
+      <!-- Rows 2-4: Dynamic content based on priority -->
       <li v-for="(rowContent, index) in dynamicRows" :key="index">
         <template v-if="rowContent === 'resource'">
           <StatusIndicatorIcon
@@ -80,6 +83,33 @@
         <template v-else-if="rowContent === 'diff'">
           <Icon name="tilde" class="text-warning-500" size="sm" />
           <div>Diff</div>
+        </template>
+        <template v-else-if="rowContent === 'pending'">
+          <div class="grid grid-cols-5 gap-1 items-center">
+            <TextPill
+              v-for="(actionData, actionName) in pendingActionCounts"
+              :key="actionName"
+              v-tooltip="
+                getPendingActionTooltip(
+                  actionName,
+                  actionData.count,
+                  actionData.hasFailed,
+                )
+              "
+              variant="key2"
+              size="sm"
+              class="text-xs flex items-center gap-1"
+            >
+              <Icon
+                :name="getPendingActionIcon(actionName)"
+                :class="
+                  getPendingActionIconClass(actionName, actionData.hasFailed)
+                "
+                size="xs"
+              />
+              {{ actionData.count }}
+            </TextPill>
+          </div>
         </template>
       </li>
       <!-- NOTE: when coming from the Map page we don't have accurate outputCount, hiding this -->
@@ -135,7 +165,9 @@
 <script lang="ts" setup>
 import {
   Icon,
+  IconNames,
   PillCounter,
+  TextPill,
   themeClasses,
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
@@ -155,6 +187,8 @@ const props = defineProps<{
   hideConnections?: boolean;
   showSelectionCheckbox?: boolean;
   hasFailedActions?: boolean;
+  hasRunningActions?: boolean;
+  pendingActionCounts?: Record<string, { count: number; hasFailed: boolean }>;
 }>();
 
 const ctx = inject<Context>("CONTEXT");
@@ -173,24 +207,72 @@ const canBeUpgraded = computed(() =>
 
 const dynamicRows = computed(() => {
   const rows: (string | null)[] = [];
+  const hasPendingActions =
+    props.pendingActionCounts &&
+    Object.keys(props.pendingActionCounts).length > 0;
 
-  // Priority order: resource first, then diff
-  if (props.component.hasResource) rows.push("resource");
-  if (props.component.hasDiff) rows.push("diff");
-
-  // Ensure we always have exactly 2 rows (for rows 2-3)
-  while (rows.length < 2) {
+  // Row 2: Resource if exists
+  if (props.component.hasResource) {
+    rows.push("resource");
+  } else {
     rows.push(null);
   }
 
-  return rows.slice(0, 2);
-});
+  // Row 3: Diff if exists
+  if (props.component.hasDiff) {
+    rows.push("diff");
+  } else {
+    rows.push(null);
+  }
 
+  // Row 4: Pending actions if they exist
+  if (hasPendingActions) {
+    rows.push("pending");
+  } else {
+    rows.push(null);
+  }
+
+  return rows.slice(0, 3);
+});
 const toggleSelection = () => {
   if (props.selected) {
     emit("deselect");
   } else {
     emit("select");
+  }
+};
+
+const getPendingActionIcon = (actionName: string): IconNames => {
+  const iconMap: Record<string, IconNames> = {
+    Create: "plus",
+    Update: "tilde",
+    Refresh: "refresh",
+    Destroy: "trash",
+    Delete: "trash",
+    Manual: "play",
+  };
+  return iconMap[actionName] || "play";
+};
+
+const getPendingActionIconClass = (actionName: string, hasFailed: boolean) => {
+  // Red if failed, grey otherwise
+  return hasFailed ? "text-destructive-500" : "text-neutral-500";
+};
+
+const getPendingActionTooltip = (
+  actionName: string,
+  count: number,
+  hasFailed: boolean,
+) => {
+  const actionWord = actionName.toLowerCase();
+  const plural = count > 1 ? "s" : "";
+
+  if (hasFailed && count === 1) {
+    return `1 pending ${actionWord} action failed`;
+  } else if (hasFailed) {
+    return `${count} pending ${actionWord} action${plural} (including failed)`;
+  } else {
+    return `${count} pending ${actionWord} action${plural}`;
   }
 };
 
@@ -202,7 +284,7 @@ const emit = defineEmits<{
 
 <script lang="ts">
 // Grid tiles need to have a fixed height - make sure this number matches its total height!
-export const GRID_TILE_HEIGHT = 233;
+export const GRID_TILE_HEIGHT = 269;
 
 export function getQualificationStatus(component: ComponentInList) {
   if (component.qualificationTotals.failed > 0) return "failure";
@@ -211,3 +293,31 @@ export function getQualificationStatus(component: ComponentInList) {
   return "unknown";
 }
 </script>
+
+<style scoped>
+/* Running action animation - adapted from Lobby.vue */
+@property --angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes borderRotate {
+  100% {
+    --angle: 360deg;
+  }
+}
+
+.spinning-border {
+  border: 1px solid;
+  border-image: conic-gradient(
+      from var(--angle),
+      #06b6d4,
+      #06b6d4 0.95turn,
+      #0891b288 1turn
+    )
+    1;
+  animation: borderRotate 3000ms linear infinite forwards;
+  mask-image: radial-gradient(#000 0, #000 0);
+}
+</style>

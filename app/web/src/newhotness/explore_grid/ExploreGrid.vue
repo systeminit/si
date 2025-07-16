@@ -32,6 +32,8 @@
         :focusedComponentId="focusedComponent?.id"
         :selectedComponentIndexes="selectedComponentIndexes"
         :componentsWithFailedActions="componentsWithFailedActions"
+        :componentsWithRunningActions="componentsWithRunningActions"
+        :componentsPendingActionNames="componentsPendingActionNames"
         @childClicked="(e, c, idx) => $emit('childClicked', e, c, idx)"
         @childSelect="(idx) => $emit('childSelect', idx)"
         @childDeselect="(idx) => $emit('childDeselect', idx)"
@@ -61,6 +63,11 @@ const props = defineProps<{
   focusedComponentIdx?: number;
   selectedComponentIndexes: Set<number>;
   componentsWithFailedActions: Set<ComponentId>;
+  componentsWithRunningActions: Set<ComponentId>;
+  componentsPendingActionNames: Map<
+    ComponentId,
+    Record<string, { count: number; hasFailed: boolean }>
+  >;
 }>();
 
 const MIN_GRID_TILE_WIDTH = 250;
