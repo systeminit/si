@@ -11,7 +11,7 @@
   >
     <template #actions>
       <VButton
-        v-if="funcRun && funcRun.componentId"
+        v-if="funcRun && funcRun.componentId && componentExists"
         tone="neutral"
         label="Go to Component"
         size="xs"
@@ -52,6 +52,11 @@ import { useQuery } from "@tanstack/vue-query";
 import { VButton } from "@si/vue-lib/design-system";
 import * as _ from "lodash-es";
 import { useRouter } from "vue-router";
+import { bifrost, useMakeKey, useMakeArgs } from "@/store/realtime/heimdall";
+import {
+  BifrostComponent,
+  EntityKind,
+} from "@/workers/types/entity_kind_types";
 import FuncRunDetailsLayout from "./layout_components/FuncRunDetailsLayout.vue";
 import { assertIsDefined, Context } from "./types";
 import { useApi, routes, funcRunTypes } from "./api_composables";
@@ -69,6 +74,9 @@ assertIsDefined(ctx);
 
 const router = useRouter();
 const isLive = ref(false);
+
+const key = useMakeKey();
+const args = useMakeArgs();
 
 const back = () => {
   const params = router.currentRoute?.value.params ?? {};
@@ -153,6 +161,30 @@ const { data: funcRunQuery } = useQuery<Omit<FuncRun, "logs"> | undefined>({
 });
 
 const funcRun = computed(() => funcRunQuery.value);
+
+// Check if the component still exists
+const componentId = computed(() => funcRun.value?.componentId);
+
+const { data: componentQuery } = useQuery<BifrostComponent | undefined>({
+  queryKey: computed(() => {
+    if (!componentId.value) return ["no-component"];
+    return key(EntityKind.Component, componentId.value).value;
+  }),
+  queryFn: async (queryContext) => {
+    if (!componentId.value) return undefined;
+    return (
+      (await bifrost<BifrostComponent>(
+        args(EntityKind.Component, componentId.value),
+      )) ??
+      queryContext.client.getQueryData(
+        key(EntityKind.Component, componentId.value).value,
+      )
+    );
+  },
+  enabled: computed(() => !!componentId.value),
+});
+
+const componentExists = computed(() => !!componentQuery.value);
 
 const { data: funcRunLogsQuery } = useQuery<FuncRunLog | undefined>({
   queryKey: [ctx.changeSetId.value, "funcRunLogs", props.funcRunId],
