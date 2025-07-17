@@ -75,9 +75,12 @@
             size="sm"
             status="exists"
           />
-          <div v-if="component.resourceId" class="text-xs opacity-75">
+          <TruncateWithTooltip
+            v-if="component.resourceId"
+            class="text-xs py-xs opacity-75"
+          >
             {{ component.resourceId }}
-          </div>
+          </TruncateWithTooltip>
           <div v-else>Resource</div>
         </template>
         <template v-else-if="rowContent === 'diff'">
