@@ -407,21 +407,18 @@ impl Func {
     }
 
     /// If you know the func_id is supposed to be for an [`IntrinsicFunc`], get which one or error
-    pub async fn get_intrinsic_kind_by_id_or_error(
+    pub async fn intrinsic_kind_or_error(
         ctx: &DalContext,
         id: FuncId,
     ) -> FuncResult<IntrinsicFunc> {
         let func = Self::get_by_id(ctx, id).await?;
 
-        Self::get_intrinsic_kind_by_id(ctx, id)
+        Self::intrinsic_kind(ctx, id)
             .await?
             .ok_or(FuncError::IntrinsicFuncNotFound(func.name))
     }
 
-    pub async fn get_intrinsic_kind_by_id(
-        ctx: &DalContext,
-        id: FuncId,
-    ) -> FuncResult<Option<IntrinsicFunc>> {
+    pub async fn intrinsic_kind(ctx: &DalContext, id: FuncId) -> FuncResult<Option<IntrinsicFunc>> {
         let func = Self::get_by_id(ctx, id).await?;
         Ok(IntrinsicFunc::maybe_from_str(func.name.clone()))
     }

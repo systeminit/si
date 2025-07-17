@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
         println!("{}", "=".repeat(ident.len()));
         println!("{}", ident);
         println!();
-        println!("  {:?}", graph.get_node_weight(node_idx)?);
+        println!("{:#?}", graph.get_node_weight(node_idx)?);
         print_edges(&graph, node_idx)?;
     }
     // let output_socket =

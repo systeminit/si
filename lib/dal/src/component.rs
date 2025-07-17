@@ -1391,7 +1391,7 @@ impl Component {
             let source_component_id = AttributeValue::component_id(ctx, source_av_id).await?;
             let AttributePath::JsonPointer(path) = path;
             let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-            let func = match Func::get_intrinsic_kind_by_id(ctx, func_id).await? {
+            let func = match Func::intrinsic_kind(ctx, func_id).await? {
                 Some(IntrinsicFunc::Identity) => None,
                 _ => Some(func_id.into()),
             };

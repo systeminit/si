@@ -857,7 +857,7 @@ async fn return_the_right_bindings(ctx: &mut DalContext, nw: &WorkspaceSignup) {
         let bindings = FuncBinding::for_func_id(ctx, func.id)
             .await
             .expect("could not get func bindings");
-        let intrinsic = Func::get_intrinsic_kind_by_id_or_error(ctx, func.id).await;
+        let intrinsic = Func::intrinsic_kind_or_error(ctx, func.id).await;
         let maybe_intrinsic = intrinsic.ok();
 
         for binding in bindings {

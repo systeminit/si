@@ -5,6 +5,8 @@ use dal::{
     Component,
     ComponentId,
     DalContext,
+    InputSocket,
+    OutputSocket,
     diagram::{
         geometry::Geometry,
         view::View,
@@ -131,6 +133,32 @@ pub async fn view_id(ctx: &DalContext, component: impl ComponentKey) -> Result<V
         return Err(eyre!("multiple geometries for component"));
     }
     Ok(Geometry::get_view_id_by_id(ctx, geometry_id).await?)
+}
+
+///
+/// Connect two components by their sockets
+///
+pub async fn connect(
+    ctx: &DalContext,
+    source: (impl ComponentKey, &str),
+    dest: (impl ComponentKey, &str),
+) -> Result<()> {
+    let source_id = id(ctx, source.0).await?;
+    let source_variant_id = Component::schema_variant_id(ctx, source_id).await?;
+    let source_socket =
+        OutputSocket::find_with_name_or_error(ctx, source.1, source_variant_id).await?;
+    let dest_id = id(ctx, dest.0).await?;
+    let dest_variant_id = Component::schema_variant_id(ctx, dest_id).await?;
+    let dest_socket = InputSocket::find_with_name_or_error(ctx, dest.1, dest_variant_id).await?;
+    Component::connect(
+        ctx,
+        source_id,
+        source_socket.id(),
+        dest_id,
+        dest_socket.id(),
+    )
+    .await?;
+    Ok(())
 }
 
 ///
