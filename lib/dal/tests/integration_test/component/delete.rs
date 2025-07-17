@@ -313,10 +313,7 @@ async fn delete_updates_downstream_components(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
-        .await
-        .expect("value exists")
-        .view(ctx)
+    let view = AttributeValue::view(ctx, units_value_id)
         .await
         .expect("able to get units view")
         .expect("units has a view");
@@ -357,10 +354,7 @@ async fn delete_updates_downstream_components(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
-        .await
-        .expect("value exists")
-        .view(ctx)
+    let view = AttributeValue::view(ctx, units_value_id)
         .await
         .expect("able to get units view")
         .expect("units has a view");
@@ -485,10 +479,7 @@ async fn delete_undo_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
-        .await
-        .expect("value exists")
-        .view(ctx)
+    let view = AttributeValue::view(ctx, units_value_id)
         .await
         .expect("able to get units view")
         .expect("units has a view");
@@ -532,10 +523,7 @@ async fn delete_undo_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
-        .await
-        .expect("value exists")
-        .view(ctx)
+    let view = AttributeValue::view(ctx, units_value_id)
         .await
         .expect("able to get units view")
         .expect("units has a view");
@@ -577,10 +565,7 @@ async fn delete_undo_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
-        .await
-        .expect("value exists")
-        .view(ctx)
+    let view = AttributeValue::view(ctx, units_value_id)
         .await
         .expect("able to get units view")
         .expect("units has a view");
@@ -607,10 +592,7 @@ async fn delete_undo_updates_inputs(ctx: &mut DalContext) {
         .copied()
         .expect("has a value");
 
-    let view = AttributeValue::get_by_id(ctx, units_value_id)
-        .await
-        .expect("value exists")
-        .view(ctx)
+    let view = AttributeValue::view(ctx, units_value_id)
         .await
         .expect("able to get units view")
         .expect("units has a view");

@@ -7,7 +7,6 @@ use petgraph::{
 };
 use si_events::workspace_snapshot::EntityKind;
 use si_id::{
-    AttributePrototypeId,
     AttributeValueId,
     ComponentId,
     EntityId,
@@ -18,10 +17,6 @@ use crate::{
     ComponentError,
     EdgeWeightKindDiscriminants,
     WorkspaceSnapshotError,
-    attribute::value::{
-        AttributeValueError,
-        AttributeValueResult,
-    },
     component::ComponentResult,
     entity_kind::{
         EntityKindError,
@@ -36,6 +31,9 @@ use crate::{
         split_snapshot::SplitSnapshotGraphV1,
     },
 };
+
+pub mod attribute_value;
+pub mod prop;
 
 impl ComponentExt for SplitSnapshotGraphV1 {
     fn root_attribute_value(&self, component_id: ComponentId) -> ComponentResult<AttributeValueId> {
@@ -73,24 +71,6 @@ impl EntityKindExt for SplitSnapshotGraphV1 {
         self.node_weight(id.into())
             .ok_or(EntityKindError::NodeNotFound(id))
             .map(Into::into)
-    }
-}
-
-impl AttributeValueExt for SplitSnapshotGraphV1 {
-    fn component_prototype_id(
-        &self,
-        id: AttributeValueId,
-    ) -> AttributeValueResult<Option<AttributePrototypeId>> {
-        let mut iter = self
-            .outgoing_targets(id.into(), EdgeWeightKindDiscriminants::Prototype)
-            .map_err(WorkspaceSnapshotError::from)?;
-
-        match (iter.next(), iter.next()) {
-            (None, None) => Ok(None),
-            (Some(ap_id), None) => Ok(Some(ap_id.into())),
-            (Some(_), Some(_)) => Err(AttributeValueError::MultiplePrototypesFound(id)),
-            (None, Some(_)) => unreachable!("iterator had none then some"),
-        }
     }
 }
 

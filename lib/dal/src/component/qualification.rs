@@ -35,6 +35,7 @@ impl Component {
 
         Ok(AttributeValue::get_child_avs_in_order(ctx, qualification_map_value_id).await?)
     }
+
     pub async fn list_qualification_statuses(
         ctx: &DalContext,
         component_id: ComponentId,
@@ -44,7 +45,7 @@ impl Component {
         let qualification_avs = Self::list_qualification_avs(ctx, component_id).await?;
 
         for qualification_av in qualification_avs {
-            let Some(qual_value) = qualification_av.view(ctx).await? else {
+            let Some(qual_value) = AttributeValue::view(ctx, qualification_av.id()).await? else {
                 continue;
             };
 
@@ -74,7 +75,7 @@ impl Component {
         let qualification_avs = Self::list_qualification_avs(ctx, component_id).await?;
 
         for qualification_av in qualification_avs {
-            if let Some(view) = QualificationView::new(ctx, qualification_av).await? {
+            if let Some(view) = QualificationView::new(ctx, qualification_av.id()).await? {
                 qualification_views.push(view);
             }
         }

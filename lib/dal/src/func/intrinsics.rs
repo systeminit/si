@@ -43,6 +43,26 @@ pub enum IntrinsicFunc {
 }
 
 impl IntrinsicFunc {
+    /// The [`IntrinsicFunc`] variant considered "dynamic" if its value changes based on
+    /// the value of another [`AttributeValue`].
+    pub fn is_dynamic(&self) -> bool {
+        match self {
+            IntrinsicFunc::SetArray
+            | IntrinsicFunc::SetBoolean
+            | IntrinsicFunc::SetInteger
+            | IntrinsicFunc::SetFloat
+            | IntrinsicFunc::SetJson
+            | IntrinsicFunc::SetMap
+            | IntrinsicFunc::SetObject
+            | IntrinsicFunc::SetString
+            | IntrinsicFunc::Unset => false,
+            IntrinsicFunc::Identity
+            | IntrinsicFunc::NormalizeToArray
+            | IntrinsicFunc::ResourcePayloadToValue
+            | IntrinsicFunc::Validation => true,
+        }
+    }
+
     pub fn pkg_spec() -> FuncResult<PkgSpec> {
         let mut builder = PkgSpec::builder();
         builder.name("si-intrinsic-funcs");

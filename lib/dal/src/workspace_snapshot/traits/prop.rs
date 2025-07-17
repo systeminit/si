@@ -1,25 +1,84 @@
 use async_trait::async_trait;
 use petgraph::prelude::*;
-use si_id::PropId;
+use si_id::{
+    AttributePrototypeId,
+    PropId,
+};
 
 use crate::{
+    DalContext,
     EdgeWeightKindDiscriminants,
     PropKind,
     WorkspaceSnapshot,
     WorkspaceSnapshotGraphVCurrent,
-    prop::PropResult,
+    prop::{
+        PropError,
+        PropResult,
+    },
     slow_rt,
-    workspace_snapshot::node_weight::PropNodeWeight,
+    workspace_snapshot::{
+        node_weight::PropNodeWeight,
+        traits::{
+            attribute_prototype::AttributePrototypeExt as _,
+            attribute_prototype_argument::AttributePrototypeArgumentExt,
+            func::FuncExt as _,
+        },
+    },
 };
 
 #[async_trait]
 pub trait PropExt {
+    /// The default value for a [`Prop`][crate::prop::Prop], if there is a default value.
+    async fn prop_default_value(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<Option<serde_json::Value>>;
+
+    /// The first [`AttributePrototypeId`] for the given [`PropId`]. It is possible for a
+    /// prop to have multiple prototypes (for example with maps having ones for different
+    /// keys in the map), but it is an error for the prop to not have any prototypes.
+    async fn prop_prototype_id(&self, prop_id: PropId) -> PropResult<AttributePrototypeId>;
+
     /// Generate a TypeScript type for a prop tree.
     async fn ts_type(&self, prop_id: PropId) -> PropResult<String>;
 }
 
 #[async_trait]
 impl PropExt for WorkspaceSnapshot {
+    async fn prop_default_value(
+        &self,
+        ctx: &DalContext,
+        prop_id: PropId,
+    ) -> PropResult<Option<serde_json::Value>> {
+        let prototype_id = self.prop_prototype_id(prop_id).await?;
+        let func_id = self.attribute_prototype_func_id(prototype_id).await?;
+        if self.func_is_dynamic(func_id).await? {
+            return Ok(None);
+        }
+
+        match self
+            .attribute_prototype_arguments(prototype_id)
+            .await?
+            .first()
+        {
+            Some(&apa_id) => self
+                .attribute_prototype_argument_static_value(ctx, apa_id)
+                .await
+                .map_err(Into::into),
+            None => Ok(None),
+        }
+    }
+
+    async fn prop_prototype_id(&self, prop_id: PropId) -> PropResult<AttributePrototypeId> {
+        self.outgoing_targets_for_edge_weight_kind(prop_id, EdgeWeightKindDiscriminants::Prototype)
+            .await?
+            .first()
+            .copied()
+            .map(Into::into)
+            .ok_or_else(|| PropError::MissingPrototypeForProp(prop_id))
+    }
+
     async fn ts_type(&self, prop_id: PropId) -> PropResult<String> {
         let self_clone = self.clone();
         slow_rt::spawn(async move { ts_type(self_clone, prop_id).await })?.await?

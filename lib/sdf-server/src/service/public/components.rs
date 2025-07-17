@@ -231,10 +231,7 @@ async fn get_component(
 ) -> Result<Json<GetComponentResponse>> {
     let component = Component::get_by_id(ctx, component_id).await?;
     let domain_av_id = component.domain_prop_attribute_value(ctx).await?;
-    let domain = AttributeValue::get_by_id(ctx, domain_av_id)
-        .await?
-        .view(ctx)
-        .await?;
+    let domain = AttributeValue::view(ctx, domain_av_id).await?;
 
     let mut view_data = vec![];
     for (view_id, geometry) in Geometry::by_view_for_component_id(ctx, component_id).await? {

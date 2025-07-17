@@ -180,11 +180,9 @@ pub async fn create_component(
     }
 
     let av_id = component.domain_prop_attribute_value(ctx).await?;
-    let after_domain_tree = AttributeValue::get_by_id(ctx, av_id)
+    let after_value = AttributeValue::view(ctx, av_id)
         .await?
-        .view(ctx)
-        .await?;
-    let after_value = serde_json::to_value(after_domain_tree)?;
+        .unwrap_or(serde_json::Value::Null);
 
     if !payload.connections.is_empty() {
         for connection in payload.connections.iter() {

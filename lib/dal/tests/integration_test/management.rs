@@ -788,8 +788,7 @@ async fn override_values_set_by_sockets(ctx: &DalContext) -> Result<()> {
     let component = Component::get_by_id(ctx, child_id).await?;
 
     let props = component.domain_prop_attribute_value(ctx).await?;
-    let domain = AttributeValue::get_by_id(ctx, props).await?;
-    let view = domain.view(ctx).await?;
+    let view = AttributeValue::view(ctx, props).await?;
     assert!(view.is_some());
 
     let one_av_id =

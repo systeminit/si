@@ -8,11 +8,11 @@ use dal::{
     AttributeValue,
     Component,
     DalContext,
-    Func,
     Prop,
     Secret,
     component::ControllingFuncData,
     validation::ValidationOutputNode,
+    workspace_snapshot::traits::func::FuncExt as _,
 };
 use si_frontend_mv_types::component::attribute_tree::{
     self,
@@ -137,12 +137,13 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
 
         let prototype_id = AttributeValue::prototype_id(ctx, av_id).await?;
         let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+        let is_dynamic_func = ctx.workspace_snapshot()?.func_is_dynamic(func_id).await?;
 
         // FIXME(nick): this is likely incorrect.
         let controlling_func = ControllingFuncData {
             func_id,
             av_id,
-            is_dynamic_func: Func::is_dynamic(ctx, func_id).await?,
+            is_dynamic_func,
         };
 
         // NOTE(nick): I ported Victor's comment.

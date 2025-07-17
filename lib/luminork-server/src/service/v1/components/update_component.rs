@@ -115,11 +115,9 @@ pub async fn update_component(
 
     let av_id = component.domain_prop_attribute_value(ctx).await?;
 
-    let before_domain_tree = AttributeValue::get_by_id(ctx, av_id)
+    let before_value = AttributeValue::view(ctx, av_id)
         .await?
-        .view(ctx)
-        .await?;
-    let before_value = serde_json::to_value(before_domain_tree)?;
+        .unwrap_or(serde_json::Value::Null);
 
     for (key, value) in payload.domain.clone().into_iter() {
         let prop_id = key.prop_id(ctx, variant_id).await?;
@@ -170,11 +168,9 @@ pub async fn update_component(
         .await?;
     }
 
-    let after_domain_tree = AttributeValue::get_by_id(ctx, av_id)
+    let after_value = AttributeValue::view(ctx, av_id)
         .await?
-        .view(ctx)
-        .await?;
-    let after_value = serde_json::to_value(after_domain_tree)?;
+        .unwrap_or(serde_json::Value::Null);
 
     let component_list = Component::list_ids(ctx).await?;
     if !payload.connection_changes.add.is_empty() || !payload.connection_changes.remove.is_empty() {

@@ -61,7 +61,7 @@ pub async fn subscribe_with_custom_function<S: AttributeValueKey>(
 /// Get the value
 pub async fn get(ctx: &DalContext, av: impl AttributeValueKey) -> Result<serde_json::Value> {
     let av_id = id(ctx, av).await?;
-    AttributeValue::view_by_id(ctx, av_id)
+    AttributeValue::view(ctx, av_id)
         .await?
         .ok_or(eyre!("Attribute missing value"))
 }
@@ -69,7 +69,7 @@ pub async fn get(ctx: &DalContext, av: impl AttributeValueKey) -> Result<serde_j
 /// Check whether the value exists and is set
 pub async fn has_value(ctx: &DalContext, av: impl AttributeValueKey) -> Result<bool> {
     match AttributeValueKey::resolve(ctx, av).await? {
-        Some(av_id) => Ok(AttributeValue::view_by_id(ctx, av_id).await?.is_some()),
+        Some(av_id) => Ok(AttributeValue::view(ctx, av_id).await?.is_some()),
         None => Ok(false),
     }
 }

@@ -93,7 +93,7 @@ impl CodeView {
             None => return Ok(None),
         };
 
-        let func_execution = match attribute_value.view(ctx).await? {
+        let func_execution = match AttributeValue::view(ctx, attribute_value_id).await? {
             Some(func_execution) => func_execution,
             None => return Ok(None),
         };
