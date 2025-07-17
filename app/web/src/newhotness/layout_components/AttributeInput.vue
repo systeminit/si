@@ -95,7 +95,7 @@
           @click.left="openInput"
         >
           <TruncateWithTooltip>
-            <template v-if="isArray || isMap">
+            <template v-if="(isArray || isMap) && !isSetByConnection">
               <!-- arrays and maps do not show a value here! -->
             </template>
             <AttributeValueBox
@@ -337,12 +337,18 @@
             v-if="!isSecret"
             :class="
               clsx(
-                'flex flex-row items-center cursor-pointer border border-transparent',
+                'flex flex-row items-center border border-transparent',
                 'px-xs py-2xs h-[30px]',
-                themeClasses(
-                  'hover:border-action-500 active:bg-action-200',
-                  'hover:border-action-300 active:bg-action-900',
-                ),
+                // Don't show cursor pointer or hover effects for connected arrays/maps
+                (props.isArray || props.isMap) && isSetByConnection
+                  ? 'cursor-default'
+                  : [
+                      'cursor-pointer',
+                      themeClasses(
+                        'hover:border-action-500 active:bg-action-200',
+                        'hover:border-action-300 active:bg-action-900',
+                      ),
+                    ],
                 selectedIndex === 0 && [
                   mapKeyError
                     ? themeClasses('bg-destructive-200', 'bg-destructive-900')
@@ -364,13 +370,15 @@
                 )
               "
             >
-              <template v-if="isArray">
+              <template v-if="isArray && !isSetByConnection">
                 + Add a "{{ displayName }}" item
               </template>
-              <template v-else-if="isMap && !mapKey">
+              <template v-else-if="isMap && !mapKey && !isSetByConnection">
                 You must enter a key
               </template>
-              <template v-else-if="isMap && mapKey"> "{{ mapKey }}" </template>
+              <template v-else-if="isMap && mapKey && !isSetByConnection">
+                "{{ mapKey }}"
+              </template>
               <template v-else-if="field.state.value">
                 "{{ field.state.value }}"
               </template>
@@ -924,6 +932,11 @@ const selectOption = (option: LabelEntry<AttrOption>) => {
 };
 const selectDefault = () => {
   if (readOnly.value) return;
+
+  // Don't allow adding items to arrays/maps that are connected via external sources
+  if ((props.isArray || props.isMap) && isSetByConnection.value) {
+    return;
+  }
 
   const newValue = valueForm.state.values.value;
   connectingComponentId.value = undefined;

@@ -10,7 +10,7 @@
             ref="headerRef"
             :class="
               clsx(
-                'flex flex-row items-center gap-2xs',
+                'flex flex-row items-center gap-2xs w-full',
                 attributeTree.isBuildable &&
                   'focus:outline-none group/attributeheader',
               )
@@ -23,8 +23,48 @@
             @keydown.delete.stop.prevent="remove"
           >
             <div>{{ displayName }}</div>
+            <div class="flex-1" />
+            <div
+              v-if="
+                (attributeTree.prop?.kind === 'array' ||
+                  attributeTree.prop?.kind === 'map') &&
+                attributeTree.attributeValue.externalSources?.length
+              "
+              class="flex items-center gap-xs text-xs flex-shrink-0"
+            >
+              <span
+                :class="themeClasses('text-neutral-500', 'text-neutral-400')"
+              >
+                Set via subscription to
+              </span>
+              <span class="text-purple">
+                {{
+                  attributeTree.attributeValue.externalSources[0]?.componentName
+                }}
+              </span>
+              <span
+                :class="themeClasses('text-neutral-600', 'text-neutral-400')"
+              >
+                {{
+                  attributeTree.attributeValue.externalSources[0]?.path
+                }}</span
+              >
+
+              <IconButton
+                v-tooltip="'Remove subscription'"
+                icon="x"
+                size="sm"
+                iconTone="destructive"
+                iconIdleTone="shade"
+                @click="removeSubscription"
+              />
+            </div>
             <IconButton
-              v-if="attributeTree.isBuildable && !component.toDelete"
+              v-if="
+                attributeTree.isBuildable &&
+                !component.toDelete &&
+                !parentHasExternalSources
+              "
               v-tooltip="'Delete'"
               icon="trash"
               size="sm"
@@ -43,6 +83,13 @@
             :key="child.id"
             :component="component"
             :attributeTree="child"
+            :parentHasExternalSources="
+              !!attributeTree.attributeValue.externalSources?.length
+            "
+            :forceReadOnly="
+              props.forceReadOnly ||
+              !!attributeTree.attributeValue.externalSources?.length
+            "
             @save="
               (path, value, propKind, connectingComponentId) =>
                 emit('save', path, value, propKind, connectingComponentId)
@@ -85,6 +132,7 @@
           </template>
           <div class="p-xs">
             <VButton
+              v-if="!attributeTree.attributeValue.externalSources?.length"
               ref="addButtonRef"
               :class="
                 clsx(
@@ -120,11 +168,15 @@
         :validation="attributeTree.attributeValue.validation"
         :component="component"
         :value="attributeTree.attributeValue.value?.toString() ?? ''"
-        :canDelete="attributeTree.isBuildable && !component.toDelete"
+        :canDelete="
+          attributeTree.isBuildable &&
+          !component.toDelete &&
+          !parentHasExternalSources
+        "
         :externalSources="attributeTree.attributeValue.externalSources"
         :isArray="attributeTree.prop?.kind === 'array'"
         :isMap="attributeTree.prop?.kind === 'map'"
-        :forceReadOnly="props.forceReadOnly"
+        :forceReadOnly="props.forceReadOnly || parentHasExternalSources"
         @save="(...args) => emit('save', ...args)"
         @delete="(...args) => emit('delete', ...args)"
         @remove-subscription="(...args) => emit('removeSubscription', ...args)"
@@ -152,6 +204,7 @@ const props = defineProps<{
   component: BifrostComponent;
   attributeTree: AttrTree;
   forceReadOnly?: boolean;
+  parentHasExternalSources?: boolean;
 }>();
 
 const hasChildren = computed(() => {
@@ -176,6 +229,10 @@ const displayName = computed(() => {
   if (props.attributeTree.attributeValue.key)
     return props.attributeTree.attributeValue.key;
   else return props.attributeTree.prop?.name || "XXX";
+});
+
+const parentHasExternalSources = computed(() => {
+  return props.parentHasExternalSources || false;
 });
 
 const addApi = useApi();
@@ -318,6 +375,12 @@ const remove = () => {
   ) {
     emit("delete", props.attributeTree.attributeValue.path);
     bifrostingTrash.value = true;
+  }
+};
+
+const removeSubscription = () => {
+  if (props.attributeTree.attributeValue.path) {
+    emit("removeSubscription", props.attributeTree.attributeValue.path);
   }
 };
 
