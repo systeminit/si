@@ -652,6 +652,6 @@ body.light .scrollable {
 }
 
 .text-green-dark-mode {
-  color: #b2dfb9;
+  color: #aafec7;
 }
 </style>

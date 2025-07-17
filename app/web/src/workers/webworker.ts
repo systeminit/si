@@ -2239,7 +2239,7 @@ const postProcess = (
         if (av.path && prop && prop.eligibleForConnection && !prop.hidden) {
           possibleConnsForComponent[av.id] = {
             attributeValueId: av.id,
-            value: av.secret ? av.secret.name : av.value || "<computed>",
+            value: av.secret ? av.secret.name : av.value,
             path: av.path,
             name: prop.name,
             componentId: attributeTree.id,
