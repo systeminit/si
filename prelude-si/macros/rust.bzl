@@ -9,6 +9,7 @@ load(
     "@prelude-si//:rust.bzl",
     _clippy_check = "clippy_check",
     _rustfmt_check = "rustfmt_check",
+    _deny_check_bans= "deny_check_bans",
 )
 load(
     "@prelude-si//macros:native.bzl",
@@ -90,6 +91,20 @@ def rust_binary(
         _test_suite(
             name = "check-format",
             tests = [":check-format-rust"],
+            visibility = visibility,
+        )
+
+    _deny_check_bans(
+        name = "check-bans-rust",
+        srcs = srcs,
+        crate_root = crate_root,
+        visibility = visibility,
+    )
+
+    if not rule_exists("check-bans"):
+        _test_suite(
+            name = "check-bans",
+            tests = [":check-bans-rust"],
             visibility = visibility,
         )
 
@@ -235,6 +250,20 @@ def rust_library(
         _test_suite(
             name = "check-format",
             tests = [":check-format-rust"],
+            visibility = visibility,
+        )
+
+    _deny_check_bans(
+        name = "check-bans-rust",
+        srcs = srcs,
+        crate_root = crate_root,
+        visibility = visibility,
+    )
+
+    if not rule_exists("check-bans"):
+        _test_suite(
+            name = "check-bans",
+            tests = [":check-bans-rust"],
             visibility = visibility,
         )
 

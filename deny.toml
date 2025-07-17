@@ -1,0 +1,4 @@
+[bans]
+deny = [
+  { crate = "async-recursion", reason = "performance issues abound with our data access patterns" },
+]
