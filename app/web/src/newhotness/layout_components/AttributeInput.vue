@@ -1141,6 +1141,17 @@ const onMouseDown = (e: MouseDetails["mousedown"]) => {
     return;
   }
   if (!inputWindowRef.value?.contains(target) && inputOpen.value) {
+    // Save the value if it has changed when clicking outside
+    if (!readOnly.value && selectedIndex.value === 0) {
+      const newValue = valueForm.state.values.value;
+      if (newValue !== attrData.value.value) {
+        connectingComponentId.value = undefined;
+        selectedConnectionData.value = undefined;
+        valueForm.handleSubmit();
+        closeInput();
+        return;
+      }
+    }
     closeAndReset();
   }
 };
