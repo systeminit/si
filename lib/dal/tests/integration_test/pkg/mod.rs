@@ -246,7 +246,7 @@ async fn child_prop_names(
     let mut result = vec![];
     for Prop { name, id, .. } in Prop::direct_child_props_ordered(ctx, parent_prop_id).await? {
         let name = match prefix {
-            Some(prefix) => format!("{}.{}", prefix, name),
+            Some(prefix) => format!("{prefix}.{name}"),
             None => name.to_owned(),
         };
         result.push(name.clone());
@@ -273,7 +273,7 @@ async fn child_av_names(
     for child_av_id in AttributeValue::get_child_av_ids_in_order(ctx, parent_av_id).await? {
         let name = AttributeValue::prop(ctx, child_av_id).await?.name;
         let name = match prefix {
-            Some(prefix) => format!("{}.{}", prefix, name),
+            Some(prefix) => format!("{prefix}.{name}"),
             None => name.to_owned(),
         };
         result.push(name.clone());
@@ -291,7 +291,7 @@ fn spec_prop_child_names(parent_prop: &PropSpec, prefix: Option<&str>) -> Vec<St
     for child_prop in parent_prop.direct_children() {
         let name = child_prop.name();
         let name = match prefix {
-            Some(prefix) => format!("{}.{}", prefix, name),
+            Some(prefix) => format!("{prefix}.{name}"),
             None => name.to_owned(),
         };
         result.push(name.clone());

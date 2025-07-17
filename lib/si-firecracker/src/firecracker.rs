@@ -66,15 +66,15 @@ impl FirecrackerJail {
             .arg("--exec-file")
             .arg("/usr/bin/firecracker")
             .arg("--uid")
-            .arg(format!("500{}", id))
+            .arg(format!("500{id}"))
             .arg("--gid")
             .arg("10000")
             .arg("--netns")
-            .arg(format!("/var/run/netns/jailer-{}", id))
+            .arg(format!("/var/run/netns/jailer-{id}"))
             .arg("--")
             .arg("--config-file")
             .arg("./firecracker.conf");
-        let socket = PathBuf::from(&format!("/srv/jailer/firecracker/{}/root/v.sock", id));
+        let socket = PathBuf::from(&format!("/srv/jailer/firecracker/{id}/root/v.sock"));
 
         Ok(Self {
             jailer: cmd,

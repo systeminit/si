@@ -744,10 +744,7 @@ async fn code_gen_cannot_create_cycle(ctx: &mut DalContext) {
                 | WorkspaceSnapshotError::SplitGraph(SplitGraphError::WouldCreateGraphCycle),
             ),
         ))) => {}
-        other => panic!(
-            "Test should fail if we don't get this error, got: {:?}",
-            other
-        ),
+        other => panic!("Test should fail if we don't get this error, got: {other:?}"),
     }
 }
 

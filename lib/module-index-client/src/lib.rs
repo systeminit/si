@@ -293,7 +293,7 @@ impl ModuleIndexClient {
         let details_url = self
             .base_url
             .join("modules/")?
-            .join(&format!("{}", module_id))?;
+            .join(&format!("{module_id}"))?;
 
         let response = self.inner.get(details_url).send().await?;
 

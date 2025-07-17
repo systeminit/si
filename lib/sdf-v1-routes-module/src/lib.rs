@@ -200,8 +200,8 @@ pub async fn pkg_lookup(
 
 fn add_pkg_extension(to: &str, version: &str, attempts: usize) -> String {
     match attempts {
-        0 => format!("{}-{}.{}", to, version, PKG_EXTENSION),
-        more_than_zero => format!("{}-{}-{}.{}", to, version, more_than_zero, PKG_EXTENSION),
+        0 => format!("{to}-{version}.{PKG_EXTENSION}"),
+        more_than_zero => format!("{to}-{version}-{more_than_zero}.{PKG_EXTENSION}"),
     }
 }
 

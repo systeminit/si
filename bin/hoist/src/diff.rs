@@ -42,7 +42,7 @@ impl Display for PatchTarget {
                     return Err(fmt::Error);
                 };
 
-                f.write_str(format!("{} socket {}", kind, name).as_str())
+                f.write_str(format!("{kind} socket {name}").as_str())
             }
             PatchTarget::SocketContents(name) => {
                 let split_name = name.split("-").collect::<Vec<_>>();
@@ -50,13 +50,13 @@ impl Display for PatchTarget {
                     return Err(fmt::Error);
                 };
 
-                f.write_str(format!("contents of {} socket {}", kind, name).as_str())
+                f.write_str(format!("contents of {kind} socket {name}").as_str())
             }
-            PatchTarget::Prop(name) => f.write_str(format!("prop {}", name).as_str()),
+            PatchTarget::Prop(name) => f.write_str(format!("prop {name}").as_str()),
             PatchTarget::PropContents((name, target)) => {
-                f.write_str(format!("contents of prop {} at {}", name, target).as_str())
+                f.write_str(format!("contents of prop {name} at {target}").as_str())
             }
-            PatchTarget::Func(name) => f.write_str(format!("function {}", name).as_str()),
+            PatchTarget::Func(name) => f.write_str(format!("function {name}").as_str()),
             PatchTarget::FuncBinding(kind) => f.write_str(format!("{kind} binding").as_str()),
             PatchTarget::Variant => f.write_str("variant"),
             PatchTarget::VariantContent(path) => {

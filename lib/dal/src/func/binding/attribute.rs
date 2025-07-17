@@ -803,7 +803,7 @@ impl AttributeBinding {
 
         let output_ts = format!("type Output = {};", output_ts_types.join(" | "));
 
-        Ok(format!("{}\n{}", input_ts_types, output_ts))
+        Ok(format!("{input_ts_types}\n{output_ts}"))
     }
 
     /// Take the existing [`AttributeBinding`] and recreate it for the new [`Func`]

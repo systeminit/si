@@ -4085,7 +4085,7 @@ impl Component {
         if name.ends_with("- Copy") {
             name
         } else {
-            format!("{} - Copy", name)
+            format!("{name} - Copy")
         }
     }
 

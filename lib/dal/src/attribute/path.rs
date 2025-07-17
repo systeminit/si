@@ -32,7 +32,7 @@ pub enum AttributePath {
 impl std::fmt::Display for AttributePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AttributePath::JsonPointer(path) => write!(f, "{}", path),
+            AttributePath::JsonPointer(path) => write!(f, "{path}"),
         }
     }
 }

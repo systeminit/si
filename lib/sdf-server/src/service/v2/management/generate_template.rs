@@ -168,9 +168,7 @@ pub async fn generate_template(
             r#"
     const {variable_name}: Output["ops"]["create"][string] = {spec_body};
     specs.push({variable_name});
-"#,
-            variable_name = variable_name,
-            spec_body = spec_body
+"#
         );
         component_sync_code.push_str(&component_code);
     }

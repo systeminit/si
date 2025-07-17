@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api = match api_result {
         Ok(json_api) => json_api.0,
         Err((status, message)) => {
-            return Err(format!("API Error ({}): {}", status, message).into());
+            return Err(format!("API Error ({status}): {message}").into());
         }
     };
 

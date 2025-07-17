@@ -82,15 +82,15 @@ impl From<JsonRejection> for ChangeSetError {
     fn from(rejection: JsonRejection) -> Self {
         match rejection {
             JsonRejection::JsonDataError(_) => {
-                ChangeSetError::Validation(format!("Invalid JSON data format: {}", rejection))
+                ChangeSetError::Validation(format!("Invalid JSON data format: {rejection}"))
             }
             JsonRejection::JsonSyntaxError(_) => {
-                ChangeSetError::Validation(format!("Invalid JSON syntax: {}", rejection))
+                ChangeSetError::Validation(format!("Invalid JSON syntax: {rejection}"))
             }
             JsonRejection::MissingJsonContentType(_) => ChangeSetError::Validation(
                 "Request must have Content-Type: application/json header".to_string(),
             ),
-            _ => ChangeSetError::Validation(format!("JSON validation error: {}", rejection)),
+            _ => ChangeSetError::Validation(format!("JSON validation error: {rejection}")),
         }
     }
 }

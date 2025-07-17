@@ -61,7 +61,7 @@ impl<P: ParameterProvider> ParameterSource<P> {
         builder: ConfigBuilder<St>,
     ) -> Result<ConfigBuilder<St>, config::ConfigError> {
         let environment = self.provider.environment().await;
-        let global_path = format!("si/{}/global", environment);
+        let global_path = format!("si/{environment}/global");
         let global_params = match self
             .provider
             .get_parameters_by_path(global_path.clone())

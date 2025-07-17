@@ -252,7 +252,7 @@ async fn remove_view_with_exclusive_components(ctx: &mut DalContext) {
         )),
     ) = result
     else {
-        panic!("View removal did not error appropriately: {:?}", result);
+        panic!("View removal did not error appropriately: {result:?}");
     };
     assert_eq!(vec![Ulid::from(component.id())], orphans,);
 }

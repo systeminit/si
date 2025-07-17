@@ -89,7 +89,7 @@ async fn exec_mgmt_func(
         .await
         .map_err(|err| {
             if let ManagementPrototypeError::FuncExecutionFailure(ref err) = err {
-                println!("Error: {}", err);
+                println!("Error: {err}");
             }
             err
         })?;

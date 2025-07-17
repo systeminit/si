@@ -65,7 +65,7 @@ async fn set_av_for_prop_for_component(ctx: &DalContext, component_id: Component
 #[ignore]
 async fn create_split_snapshot_workspace(ctx: &mut DalContext) -> Result<()> {
     const COMPONENTS_COUNT: usize = 25;
-    println!("test with {} components", COMPONENTS_COUNT);
+    println!("test with {COMPONENTS_COUNT} components");
 
     let mut legacy_components = vec![];
     let view_id = View::get_id_for_default(ctx).await?;

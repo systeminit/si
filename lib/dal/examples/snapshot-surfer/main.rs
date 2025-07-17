@@ -57,7 +57,7 @@ async fn main() -> Result<()> {
         let ident = node_ident(&graph, node_idx)?;
         println!();
         println!("{}", "=".repeat(ident.len()));
-        println!("{}", ident);
+        println!("{ident}");
         println!();
         println!("  {:?}", graph.get_node_weight(node_idx)?);
         print_edges(&graph, node_idx)?;
@@ -87,7 +87,7 @@ fn print_edges(graph: &WorkspaceSnapshotGraph, index: NodeIndex) -> Result<()> {
         .try_collect()?;
     println!();
     for incoming in incoming {
-        println!("  {}", incoming);
+        println!("  {incoming}");
     }
 
     println!();
@@ -99,7 +99,7 @@ fn print_edges(graph: &WorkspaceSnapshotGraph, index: NodeIndex) -> Result<()> {
         })
         .try_collect()?;
     for outgoing in outgoing {
-        println!("  {}", outgoing);
+        println!("  {outgoing}");
     }
     Ok(())
 }

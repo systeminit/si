@@ -216,7 +216,7 @@ impl ComponentDebugData {
         let name = component
             .name(ctx)
             .await
-            .map_err(|e| ComponentDebugViewError::Component(format!("get name error: {}", e)))?;
+            .map_err(|e| ComponentDebugViewError::Component(format!("get name error: {e}")))?;
 
         let debug_view = ComponentDebugData {
             name,

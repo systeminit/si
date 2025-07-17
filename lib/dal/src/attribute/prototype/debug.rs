@@ -176,7 +176,7 @@ impl AttributePrototypeDebugView {
                         vec![FuncArgDebugView {
                             value: view.unwrap_or(Value::Null),
                             name: func_arg_name.clone(),
-                            value_source: format!("{:?}", value_source),
+                            value_source: format!("{value_source:?}"),
                             value_source_id,
                             path: None,
                             socket_source_kind: None,
@@ -189,7 +189,7 @@ impl AttributePrototypeDebugView {
                                 "[REDACTED KEY FOR SECRET (ID: {secret_id})]"
                             ))?,
                             name: func_arg_name.clone(),
-                            value_source: format!("{:?}", value_source),
+                            value_source: format!("{value_source:?}"),
                             value_source_id: secret_id.into(),
                             path: None,
                             socket_source_kind: None,
@@ -203,7 +203,7 @@ impl AttributePrototypeDebugView {
                         vec![FuncArgDebugView {
                             value: val,
                             name: func_arg_name.clone(),
-                            value_source: format!("{:?}", value_source),
+                            value_source: format!("{value_source:?}"),
                             value_source_id: static_argument_value_id.into(),
                             path: None,
                             socket_source_kind: None,
@@ -225,7 +225,7 @@ impl AttributePrototypeDebugView {
                             let func_arg_debug = FuncArgDebugView {
                                 value: view,
                                 name: func_arg_name.clone(),
-                                value_source: format!("{:?}", value_source),
+                                value_source: format!("{value_source:?}"),
                                 value_source_id: prop_id.into(),
                                 socket_source_kind: None,
                                 path: prop_path,
@@ -252,7 +252,7 @@ impl AttributePrototypeDebugView {
                             let func_arg_debug = FuncArgDebugView {
                                 value: value_view,
                                 name: func_arg_name.clone(),
-                                value_source: format!("{:?}", value_source),
+                                value_source: format!("{value_source:?}"),
                                 value_source_id: input_socket_id.into(),
                                 socket_source_kind: Some(SocketSourceKind::Manual),
                                 path: attribute_value_path,
@@ -279,7 +279,7 @@ impl AttributePrototypeDebugView {
                             let func_arg_debug = FuncArgDebugView {
                                 value: value_view,
                                 name: func_arg_name.clone(),
-                                value_source: format!("{:?}", value_source),
+                                value_source: format!("{value_source:?}"),
                                 value_source_id: output_socket_id.into(),
                                 socket_source_kind: Some(SocketSourceKind::Manual),
                                 path: attribute_value_path,

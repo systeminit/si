@@ -545,7 +545,7 @@ mod tests {
                 assert_eq!(input.to_snapshot_address, to_snapshot_address);
                 assert!(change_batch_addresses.is_empty());
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -579,7 +579,7 @@ mod tests {
                 assert_eq!(inputs.to_snapshot_address, to_snapshot_address);
                 assert!(change_batch_addresses.is_empty());
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -601,7 +601,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -623,7 +623,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -655,7 +655,7 @@ mod tests {
                 assert_eq!(update.to_snapshot_address, to_snapshot_address);
                 assert_eq!(vec![update.change_batch_address], change_batch_addresses);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -689,7 +689,7 @@ mod tests {
                 assert_eq!(last_to, to_snapshot_address);
                 assert_eq!(addresses, change_batch_addresses);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -713,7 +713,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -740,7 +740,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -778,7 +778,7 @@ mod tests {
                 assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
                 assert_eq!(addresses, change_batch_addresses);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -813,7 +813,7 @@ mod tests {
                 assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
                 assert!(change_batch_addresses.is_empty());
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -850,7 +850,7 @@ mod tests {
                 assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
                 assert!(change_batch_addresses.is_empty());
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -889,7 +889,7 @@ mod tests {
                 assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
                 assert!(change_batch_addresses.is_empty());
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -929,7 +929,7 @@ mod tests {
                 assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
                 assert!(change_batch_addresses.is_empty());
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -970,7 +970,7 @@ mod tests {
                 assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
                 assert_eq!(addresses, change_batch_addresses);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1011,7 +1011,7 @@ mod tests {
                 assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
                 assert_eq!(addresses, change_batch_addresses);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1037,7 +1037,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1062,7 +1062,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1097,7 +1097,7 @@ mod tests {
                 assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
                 assert!(change_batch_addresses.is_empty());
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1134,7 +1134,7 @@ mod tests {
                 assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
                 assert!(change_batch_addresses.is_empty());
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1159,7 +1159,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1184,7 +1184,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1217,7 +1217,7 @@ mod tests {
                 assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
                 assert_eq!(vec![ur.change_batch_address], change_batch_addresses);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1252,7 +1252,7 @@ mod tests {
                 assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
                 assert_eq!(vec![ur.change_batch_address], change_batch_addresses);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1275,7 +1275,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1300,7 +1300,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1324,7 +1324,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1348,7 +1348,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1374,7 +1374,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1399,7 +1399,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1424,7 +1424,7 @@ mod tests {
             CompressedRequest::Rebuild { src_requests_count } => {
                 assert_eq!(requests.len(), src_requests_count);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1462,7 +1462,7 @@ mod tests {
                 assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
                 assert_eq!(addresses, change_batch_addresses);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 
@@ -1500,7 +1500,7 @@ mod tests {
                 assert_eq!(ncsr.to_snapshot_address, to_snapshot_address);
                 assert_eq!(addresses, change_batch_addresses);
             }
-            _ => panic!("wrong variant for compressed request: {:?}", compressed),
+            _ => panic!("wrong variant for compressed request: {compressed:?}"),
         }
     }
 

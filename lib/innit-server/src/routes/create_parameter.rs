@@ -25,7 +25,7 @@ pub async fn create_parameter_route(
     Json(CreateParameterRequest { value }): Json<CreateParameterRequest>,
 ) -> Result<Json<CreateParameterResponse>, AppError> {
     let name = if !name.starts_with('/') {
-        format!("/{}", name)
+        format!("/{name}")
     } else {
         name.clone()
     };
