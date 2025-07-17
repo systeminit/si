@@ -389,22 +389,20 @@ impl Func {
     }
 
     pub async fn get_by_id_opt(ctx: &DalContext, id: FuncId) -> FuncResult<Option<Self>> {
-        let (func_node_weight, hash) = if let Some((func_node_weight, hash)) =
-            Self::get_node_weight_and_content_hash(ctx, id).await?
-        {
-            (func_node_weight, hash)
-        } else {
+        let workspace_snapshot = ctx.workspace_snapshot()?;
+        let Some(node_weight) = workspace_snapshot.get_node_weight_opt(id).await else {
             return Ok(None);
         };
+        let func_node_weight = node_weight.get_func_node_weight()?;
+        let hash = func_node_weight.content_hash();
 
         let func = Self::get_by_id_inner(ctx, &hash, &func_node_weight).await?;
         Ok(Some(func))
     }
 
     pub async fn get_by_id(ctx: &DalContext, id: FuncId) -> FuncResult<Self> {
-        let (func_node_weight, hash) =
-            Self::get_node_weight_and_content_hash_or_error(ctx, id).await?;
-        Self::get_by_id_inner(ctx, &hash, &func_node_weight).await
+        let func_node_weight = Self::node_weight(ctx, id).await?;
+        Self::get_by_id_inner(ctx, &func_node_weight.content_hash(), &func_node_weight).await
     }
 
     /// If you know the func_id is supposed to be for an [`IntrinsicFunc`], get which one or error
@@ -510,8 +508,13 @@ impl Func {
         })
     }
 
-    pub fn is_dynamic(&self) -> bool {
-        Self::is_dynamic_for_name_string(&self.name)
+    pub async fn is_dynamic(ctx: &DalContext, func_id: FuncId) -> FuncResult<bool> {
+        let func = ctx
+            .workspace_snapshot()?
+            .get_node_weight(func_id)
+            .await?
+            .get_func_node_weight()?;
+        Ok(Self::is_dynamic_for_name_string(func.name()))
     }
 
     pub fn is_intrinsic(&self) -> bool {
@@ -522,7 +525,7 @@ impl Func {
     /// opposingly, a dynamic Func is a func that returns a non statically predictable value, possibly user defined.
     ///
     /// It's important to note that not all Intrinsic funcs are non-dynamic. Identity, for instance, is dynamic.
-    pub fn is_dynamic_for_name_string(name: &str) -> bool {
+    fn is_dynamic_for_name_string(name: &str) -> bool {
         match IntrinsicFunc::maybe_from_str(name) {
             Some(intrinsic) => match intrinsic {
                 IntrinsicFunc::SetArray
@@ -559,31 +562,12 @@ impl Func {
         Ok(())
     }
 
-    async fn get_node_weight_and_content_hash(
-        ctx: &DalContext,
-        func_id: FuncId,
-    ) -> FuncResult<Option<(FuncNodeWeight, ContentHash)>> {
+    pub async fn node_weight(ctx: &DalContext, func_id: FuncId) -> FuncResult<FuncNodeWeight> {
         let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        let Some(node_weight) = workspace_snapshot.get_node_weight_opt(func_id).await else {
-            return Ok(None);
-        };
-
-        let hash = node_weight.content_hash();
-        let func_node_weight = node_weight.get_func_node_weight()?;
-        Ok(Some((func_node_weight, hash)))
-    }
-
-    async fn get_node_weight_and_content_hash_or_error(
-        ctx: &DalContext,
-        func_id: FuncId,
-    ) -> FuncResult<(FuncNodeWeight, ContentHash)> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let node_weight = workspace_snapshot.get_node_weight(func_id).await?;
-
-        let hash = node_weight.content_hash();
-        let func_node_weight = node_weight.get_func_node_weight()?;
-        Ok((func_node_weight, hash))
+        Ok(workspace_snapshot
+            .get_node_weight(func_id)
+            .await?
+            .get_func_node_weight()?)
     }
 
     /// This _unsafely_ unlocks the [`Func`].
@@ -622,8 +606,7 @@ impl Func {
         let before = FuncContent::from(func.clone());
         lambda(&mut func)?;
 
-        let (mut node_weight, _) =
-            Self::get_node_weight_and_content_hash_or_error(ctx, func.id).await?;
+        let mut node_weight = Self::node_weight(ctx, func.id).await?;
 
         let workspace_snapshot = ctx.workspace_snapshot()?;
 

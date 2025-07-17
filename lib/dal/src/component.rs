@@ -887,9 +887,10 @@ impl Component {
                         // The old component has an explicit value set rather than using
                         // the default: set the value in the new component as well.
                         Some(old_component_prototype_id) => {
-                            let old_prototype_func =
-                                AttributePrototype::func(ctx, old_component_prototype_id).await?;
-                            if old_prototype_func.is_dynamic() {
+                            let old_func_id =
+                                AttributePrototype::func_id(ctx, old_component_prototype_id)
+                                    .await?;
+                            if Func::is_dynamic(ctx, old_func_id).await? {
                                 // a custom function has been defined for
                                 // this specific component. We have to copy
                                 // this custom prototype over, but we can
@@ -958,7 +959,7 @@ impl Component {
                                 AttributeValue::prototype_id(ctx, new_av_id).await?;
                             let new_prototype_func =
                                 AttributePrototype::func(ctx, new_prototype_for_value).await?;
-                            if new_prototype_func.is_dynamic() {
+                            if Func::is_dynamic(ctx, new_prototype_func.id).await? {
                                 continue;
                             }
                         }
@@ -973,11 +974,8 @@ impl Component {
                         continue;
                     };
 
-                    let prototype_func = Func::get_by_id(
-                        ctx,
-                        AttributePrototype::func_id(ctx, old_component_prototype_id).await?,
-                    )
-                    .await?;
+                    let prototype_func_id =
+                        AttributePrototype::func_id(ctx, old_component_prototype_id).await?;
 
                     // Insert this value
                     let inserted_value = AttributeValue::new(
@@ -991,7 +989,7 @@ impl Component {
 
                     // If the func for this av is dynamic, it will create its own child avs when
                     // executed, if necessary, so we can skip the rest of the loop
-                    if prototype_func.is_dynamic() {
+                    if Func::is_dynamic(ctx, prototype_func_id).await? {
                         self.merge_component_specific_dynamic_func_from_other(
                             ctx,
                             inserted_value.id,
@@ -1076,9 +1074,9 @@ impl Component {
             AttributePrototypeArgument::list_ids_for_prototype(ctx, old_component_prototype_id)
                 .await?;
 
-        let component_prototype_func =
-            AttributePrototype::func(ctx, old_component_prototype_id).await?;
-        if !component_prototype_func.is_dynamic() {
+        let component_prototype_func_id =
+            AttributePrototype::func_id(ctx, old_component_prototype_id).await?;
+        if !Func::is_dynamic(ctx, component_prototype_func_id).await? {
             return Ok(());
         }
 
@@ -1140,7 +1138,7 @@ impl Component {
         }
 
         // All inputs are valid, create the component specific override
-        let new_prototype = AttributePrototype::new(ctx, component_prototype_func.id).await?;
+        let new_prototype = AttributePrototype::new(ctx, component_prototype_func_id).await?;
         for (func_arg_id, value_source) in new_value_sources {
             AttributePrototypeArgument::new(ctx, new_prototype.id, func_arg_id, value_source)
                 .await?;
@@ -2569,12 +2567,11 @@ impl Component {
         while let Some((av_id, maybe_parent_av_id)) = av_queue.pop_front() {
             let prototype_id = AttributeValue::prototype_id(ctx, av_id).await?;
             let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-            let func = Func::get_by_id(ctx, func_id).await?;
 
             let this_tuple = ControllingFuncData {
                 func_id,
                 av_id,
-                is_dynamic_func: func.is_dynamic(),
+                is_dynamic_func: Func::is_dynamic(ctx, func_id).await?,
             };
 
             // if av has a parent and parent is controlled by dynamic func, that's the controller

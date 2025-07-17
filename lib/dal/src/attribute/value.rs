@@ -156,6 +156,8 @@ pub enum AttributeValueError {
     CannotCreateSocketValueWithoutComponentId,
     #[error("cannot explicitly set the value of {0} because it is for an input or output socket")]
     CannotExplicitlySetSocketValues(AttributeValueId),
+    #[error("cannot set child of value {0} because it has a dynamic func {1}")]
+    CannotSetChildOfDynamicValue(AttributeValueId, FuncId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error(
@@ -915,32 +917,33 @@ impl AttributeValue {
         Ok(inputs)
     }
 
-    pub async fn prototype_func(
+    pub async fn prototype_func_id(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<Func> {
+    ) -> AttributeValueResult<FuncId> {
         let prototype_id = Self::prototype_id(ctx, attribute_value_id).await?;
-        let prototype_func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-        Ok(Func::get_by_id(ctx, prototype_func_id).await?)
+        Ok(AttributePrototype::func_id(ctx, prototype_id).await?)
     }
 
     pub async fn is_set_by_dependent_function(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<bool> {
-        Ok(Self::prototype_func(ctx, attribute_value_id)
-            .await?
-            .is_dynamic())
+        let func_id = Self::prototype_func_id(ctx, attribute_value_id).await?;
+        Ok(Func::is_dynamic(ctx, func_id).await?)
     }
 
     pub async fn is_set_by_unset(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<bool> {
-        Ok(
-            Self::prototype_func(ctx, attribute_value_id).await?.name
-                == IntrinsicFunc::Unset.name(),
-        )
+        let func_id = Self::prototype_func_id(ctx, attribute_value_id).await?;
+        let func = ctx
+            .workspace_snapshot()?
+            .get_node_weight(func_id)
+            .await?
+            .get_func_node_weight()?;
+        Ok(func.name() == IntrinsicFunc::Unset.name())
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -2514,6 +2517,27 @@ impl AttributeValue {
         }
 
         Ok(pairs)
+    }
+
+    /// Check whether this AV can be directly updated or removed by the user.
+    /// This will return an error if the AV is dynamically set (if it is the child of a dynamic
+    /// function).
+    pub async fn ensure_updateable(
+        ctx: &DalContext,
+        mut id: AttributeValueId,
+    ) -> AttributeValueResult<()> {
+        while let Some(parent_id) = Self::parent_id(ctx, id).await? {
+            if let Some(prototype_id) = Self::component_prototype_id(ctx, parent_id).await? {
+                let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+                if Func::is_dynamic(ctx, func_id).await? {
+                    return Err(AttributeValueError::CannotSetChildOfDynamicValue(
+                        parent_id, func_id,
+                    ));
+                }
+            }
+            id = parent_id;
+        }
+        Ok(())
     }
 
     /// Remove this AV.
