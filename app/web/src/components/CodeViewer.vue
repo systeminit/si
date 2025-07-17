@@ -95,8 +95,8 @@ import { StreamLanguage } from "@codemirror/language";
 
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
-import { gruvboxDark } from "cm6-theme-gruvbox-dark";
-import { basicLight } from "cm6-theme-basic-light";
+import { githubLight } from "@fsegurai/codemirror-theme-github-light";
+import { githubDark } from "@fsegurai/codemirror-theme-github-dark";
 import {
   EditorState,
   Compartment,
@@ -164,13 +164,13 @@ const CODE_PARSER_LOOKUP = {
 
 const editorThemeExtension = computed(() => {
   return {
-    dark: gruvboxDark,
-    light: basicLight,
+    dark: githubDark,
+    light: githubLight,
   }[theme.value];
 });
 
 const editorStyleExtension = computed(() => {
-  const activeLineHighlight = theme.value === "dark" ? "#7c6f64" : "#e0dee9";
+  const activeLineHighlight = theme.value === "dark" ? "#2d333b" : "#f6f8fa";
   return EditorView.theme({
     "&": {
       height: "100%",

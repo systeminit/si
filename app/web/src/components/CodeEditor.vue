@@ -46,8 +46,8 @@ import {
   getTooltip,
 } from "@codemirror/view";
 import { indentWithTab, historyField } from "@codemirror/commands";
-import { gruvboxDark } from "cm6-theme-gruvbox-dark";
-import { basicLight } from "cm6-theme-basic-light";
+import { githubLight } from "@fsegurai/codemirror-theme-github-light";
+import { githubDark } from "@fsegurai/codemirror-theme-github-dark";
 import { javascript as CodemirrorJsLang } from "@codemirror/lang-javascript";
 import { json as CodemirrorJsonLang } from "@codemirror/lang-json";
 import { yaml as CodemirrorYamlLang } from "@codemirror/lang-yaml";
@@ -190,14 +190,14 @@ const yCompartment = new Compartment();
 // Theme / style ///////////////////////////////////////////////////////////////////////////////////////////
 const { theme: appTheme } = useTheme();
 const codeMirrorTheme = computed(() =>
-  appTheme.value === "dark" ? gruvboxDark : basicLight,
+  appTheme.value === "dark" ? githubDark : githubLight,
 );
 
 const styleExtension = computed(() => {
-  const activeLineHighlight = appTheme.value === "dark" ? "#7c6f64" : "#e0dee9";
-  const tooltipBackground = appTheme.value === "dark" ? "#000000" : "#ffffff";
-  const tooltipBorder = appTheme.value === "dark" ? "#737373" : "#A3A3A3";
-  const tooltipTagText = appTheme.value === "dark" ? "#0E9BFF" : "#2F80ED";
+  const activeLineHighlight = appTheme.value === "dark" ? "#2d333b" : "#f6f8fa";
+  const tooltipBackground = appTheme.value === "dark" ? "#161b22" : "#ffffff";
+  const tooltipBorder = appTheme.value === "dark" ? "#30363d" : "#d0d7de";
+  const tooltipTagText = appTheme.value === "dark" ? "#58a6ff" : "#0969da";
 
   return EditorView.theme({
     "&": { height: "100%" },
