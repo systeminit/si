@@ -1084,7 +1084,7 @@ impl ChangeSet {
     }
 
     pub async fn extract_userid_from_context(ctx: &DalContext) -> Option<UserPk> {
-        let user_id = match ctx.history_actor() {
+        match ctx.history_actor() {
             HistoryActor::User(user_pk) => {
                 let maybe_user = User::get_by_pk_opt(ctx, *user_pk).await;
                 match maybe_user {
@@ -1093,9 +1093,9 @@ impl ChangeSet {
                 }
             }
             HistoryActor::SystemInit => None,
-        };
-        user_id
+        }
     }
+
     pub async fn extract_userid_from_context_or_error(ctx: &DalContext) -> ChangeSetResult<UserPk> {
         let user_id = match ctx.history_actor() {
             HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk).await?.pk(),
