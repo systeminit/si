@@ -177,6 +177,12 @@ importers:
       '@codemirror/view':
         specifier: ^6.7.1
         version: 6.7.1
+      '@fsegurai/codemirror-theme-github-dark':
+        specifier: ^6.2.0
+        version: 6.2.0(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(@lezer/highlight@1.1.3)
+      '@fsegurai/codemirror-theme-github-light':
+        specifier: ^6.2.0
+        version: 6.2.0(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(@lezer/highlight@1.1.3)
       '@headlessui/vue':
         specifier: ^1.7.10
         version: 1.7.12(vue@3.5.13(typescript@5.0.4))
@@ -273,12 +279,6 @@ importers:
       clsx:
         specifier: ^1.2.1
         version: 1.2.1
-      cm6-theme-basic-light:
-        specifier: ^0.2.0
-        version: 0.2.0(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(@lezer/highlight@1.1.3)
-      cm6-theme-gruvbox-dark:
-        specifier: ^0.2.0
-        version: 0.2.0(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(@lezer/highlight@1.1.3)
       codemirror:
         specifier: ^6.0.1
         version: 6.0.1(@lezer/common@1.2.3)
@@ -1802,6 +1802,22 @@ packages:
 
   '@floating-ui/dom@0.1.10':
     resolution: {integrity: sha512-4kAVoogvQm2N0XE0G6APQJuCNuErjOfPW8Ux7DFxh8+AfugWflwVJ5LDlHOwrwut7z/30NUvdtHzQ3zSip4EzQ==}
+
+  '@fsegurai/codemirror-theme-github-dark@6.2.0':
+    resolution: {integrity: sha512-XmKajOLo6n/gzWmzw90tL8OkS06oEYBKbokJMrDZ6amBdKHxIE5bRC4pRklEs/avcwMvLuuzRDoEoAamMQvsIw==}
+    peerDependencies:
+      '@codemirror/language': ^6.0.0
+      '@codemirror/state': ^6.0.0
+      '@codemirror/view': ^6.0.0
+      '@lezer/highlight': ^1.0.0
+
+  '@fsegurai/codemirror-theme-github-light@6.2.0':
+    resolution: {integrity: sha512-k6nFCSQnGVHGVpKjPv6Fz3krjAg+3bTmMYvIB8XwEEfsmlfaqQ5BJ3SALTgaMEQl9Oyj3OCtL9ZKvDElZoa6vQ==}
+    peerDependencies:
+      '@codemirror/language': ^6.0.0
+      '@codemirror/state': ^6.0.0
+      '@codemirror/view': ^6.0.0
+      '@lezer/highlight': ^1.0.0
 
   '@hapi/hoek@9.3.0':
     resolution: {integrity: sha512-/c6rf4UJlmHlC9b5BaNvzAcFv7HZ2QHaV0D4/HNlBdvFnvQq8RI4kYdhyPCl7Xj+oWvTWQ8ujhqS53LIgAe6KQ==}
@@ -4685,22 +4701,6 @@ packages:
   cluster-key-slot@1.1.2:
     resolution: {integrity: sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==}
     engines: {node: '>=0.10.0'}
-
-  cm6-theme-basic-light@0.2.0:
-    resolution: {integrity: sha512-1prg2gv44sYfpHscP26uLT/ePrh0mlmVwMSoSd3zYKQ92Ab3jPRLzyCnpyOCQLJbK+YdNs4HvMRqMNYdy4pMhA==}
-    peerDependencies:
-      '@codemirror/language': ^6.0.0
-      '@codemirror/state': ^6.0.0
-      '@codemirror/view': ^6.0.0
-      '@lezer/highlight': ^1.0.0
-
-  cm6-theme-gruvbox-dark@0.2.0:
-    resolution: {integrity: sha512-xyqsG19qV+nb7ZHTMocSNWwZHMExfQxDm0FlbNMqEGKeQR96WryssXJH/IZZQudwrPpWU2dCoyOgMFhti2UTYA==}
-    peerDependencies:
-      '@codemirror/language': ^6.0.0
-      '@codemirror/state': ^6.0.0
-      '@codemirror/view': ^6.0.0
-      '@lezer/highlight': ^1.0.0
 
   co-body@6.1.0:
     resolution: {integrity: sha512-m7pOT6CdLN7FuXUcpuz/8lfQ/L77x8SchHCF4G0RBTJO20Wzmhn5Sp4/5WsKy8OSpifBSUrmg83qEqaDHdyFuQ==}
@@ -12346,6 +12346,20 @@ snapshots:
     dependencies:
       '@floating-ui/core': 0.3.1
 
+  '@fsegurai/codemirror-theme-github-dark@6.2.0(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(@lezer/highlight@1.1.3)':
+    dependencies:
+      '@codemirror/language': 6.3.1
+      '@codemirror/state': 6.1.4
+      '@codemirror/view': 6.7.1
+      '@lezer/highlight': 1.1.3
+
+  '@fsegurai/codemirror-theme-github-light@6.2.0(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(@lezer/highlight@1.1.3)':
+    dependencies:
+      '@codemirror/language': 6.3.1
+      '@codemirror/state': 6.1.4
+      '@codemirror/view': 6.7.1
+      '@lezer/highlight': 1.1.3
+
   '@hapi/hoek@9.3.0': {}
 
   '@hapi/topo@5.1.0':
@@ -16074,20 +16088,6 @@ snapshots:
   clsx@1.2.1: {}
 
   cluster-key-slot@1.1.2: {}
-
-  cm6-theme-basic-light@0.2.0(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(@lezer/highlight@1.1.3):
-    dependencies:
-      '@codemirror/language': 6.3.1
-      '@codemirror/state': 6.1.4
-      '@codemirror/view': 6.7.1
-      '@lezer/highlight': 1.1.3
-
-  cm6-theme-gruvbox-dark@0.2.0(@codemirror/language@6.3.1)(@codemirror/state@6.1.4)(@codemirror/view@6.7.1)(@lezer/highlight@1.1.3):
-    dependencies:
-      '@codemirror/language': 6.3.1
-      '@codemirror/state': 6.1.4
-      '@codemirror/view': 6.7.1
-      '@lezer/highlight': 1.1.3
 
   co-body@6.1.0:
     dependencies:
