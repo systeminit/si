@@ -393,16 +393,21 @@ const save = async (
 
   // TODO - Paul there's a better way to handle this for sure!
   let coercedVal: string | boolean | number | null = value;
-  if (value === "") {
-    // For now we don't allow a user to enter an empty string
-    // passing an empty string is effectively an unset operation
-    coercedVal = null;
-  } else if (propKind === PropKind.Boolean) {
-    coercedVal = value.toLowerCase() === "true" || value === "1";
-  } else if (propKind === PropKind.Integer) {
-    coercedVal = Math.trunc(Number(value));
-  } else if (propKind === PropKind.Float) {
-    coercedVal = Number(value);
+
+  // We don't want to coerce a prop path when connecting via a subscription, so skip it (e.g. prop
+  // kind is "integer", but the value is the prop path, which is a "string").
+  if (!connectingComponentId) {
+    if (value === "") {
+      // For now, we don't allow a user to enter an empty string becuase passing an empty string is
+      // effectively an unset operation.
+      coercedVal = null;
+    } else if (propKind === PropKind.Boolean) {
+      coercedVal = value.toLowerCase() === "true" || value === "1";
+    } else if (propKind === PropKind.Integer) {
+      coercedVal = Math.trunc(Number(value));
+    } else if (propKind === PropKind.Float) {
+      coercedVal = Number(value);
+    }
   }
 
   const payload: componentTypes.UpdateComponentAttributesArgs = {};
