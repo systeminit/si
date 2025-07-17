@@ -1,5 +1,4 @@
 load("@prelude//tests:test_toolchain.bzl", "noop_test_toolchain")
-load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
 load("@prelude//toolchains:genrule.bzl", "system_genrule_toolchain")
 load(
     "@prelude//toolchains:python.bzl",
@@ -10,20 +9,29 @@ load(
     "@prelude//toolchains:remote_test_execution.bzl",
     "remote_test_execution_toolchain",
 )
-load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
 load("@prelude-si//artifact:toolchain.bzl", "artifact_toolchain")
 load("@prelude-si//build_context:toolchain.bzl", "build_context_toolchain")
 load("@prelude-si//deno:toolchain.bzl", "deno_toolchain")
 load("@prelude-si//docker:toolchain.bzl", "docker_toolchain")
 load("@prelude-si//e2e:toolchain.bzl", "e2e_toolchain")
 load("@prelude-si//git:toolchain.bzl", "git_toolchain")
+load("@prelude-si//mise:toolchain.bzl", "mise_toolchain")
 load("@prelude-si//nix:toolchain.bzl", "nix_toolchain")
 load("@prelude-si//pnpm:toolchain.bzl", "pnpm_toolchain")
 load("@prelude-si//python:toolchain.bzl", "si_python_toolchain")
 load("@prelude-si//rootfs:toolchain.bzl", "rootfs_toolchain")
 load("@prelude-si//rust:toolchain.bzl", "si_rust_toolchain")
 load("@prelude-si//shell:toolchain.bzl", "shell_toolchain")
+load("@prelude-si//:macros.bzl", "mise_install")
 load(":toolchain.bzl", "toolchain_alias")
+load(":rust.bzl", "mise_rust_toolchain")
+load(":cxx.bzl", "mise_cxx_toolchain")
+
+sh_binary(
+    name = "mise_wrapper",
+    main = "mise_wrapper.sh",
+    visibility = ["PUBLIC"],
+)
 
 remote_test_execution_toolchain(
     name = "remote_test_execution",
@@ -35,8 +43,17 @@ noop_test_toolchain(
     visibility = ["PUBLIC"],
 )
 
-system_cxx_toolchain(
+mise_install(
+    name = "cxx_compiler",
+    packages = [
+        "vfox:https://github.com/systeminit/vfox-clang@20.1.7",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mise_cxx_toolchain(
     name = "cxx",
+    mise_install = ":cxx_compiler",
     visibility = ["PUBLIC"],
 )
 
@@ -55,8 +72,18 @@ system_python_bootstrap_toolchain(
     visibility = ["PUBLIC"],
 )
 
-system_rust_toolchain(
+mise_install(
+    name = "rust_compiler",
+    packages = [
+        "vfox:https://github.com/systeminit/vfox-clang@20.1.7",
+        "rust@1.86.0",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mise_rust_toolchain(
     name = "rust_release",
+    mise_install = ":rust_compiler",
     default_edition = "2024",
     clippy_toml = "root//:clippy.toml",
     visibility = ["PUBLIC"],
@@ -70,11 +97,13 @@ system_rust_toolchain(
         "-Coverflow-checks=false",
         "-Clto=false",
         "-Ccodegen-units=16",
+        "-Clink-arg=-fuse-ld=",
     ],
 )
 
-system_rust_toolchain(
+mise_rust_toolchain(
     name = "rust_debug",
+    mise_install = ":rust_compiler",
     default_edition = "2024",
     clippy_toml = "root//:clippy.toml",
     visibility = ["PUBLIC"],
@@ -84,6 +113,7 @@ system_rust_toolchain(
         "-Ccodegen-units=256",
         "-Cdebug-assertions=true",
         "-Coverflow-checks=true",
+        "-Clink-arg=-fuse-ld=",
     ],
 )
 
@@ -101,8 +131,17 @@ build_context_toolchain(
     visibility = ["PUBLIC"],
 )
 
+mise_install(
+    name = "deno_compiler",
+    packages = [
+        "deno@2.2.12",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 deno_toolchain(
     name = "deno",
+    mise_install = ":deno_compiler",
     visibility = ["PUBLIC"],
 )
 
@@ -123,6 +162,11 @@ artifact_toolchain(
 
 git_toolchain(
     name = "git",
+    visibility = ["PUBLIC"],
+)
+
+mise_toolchain(
+    name = "mise",
     visibility = ["PUBLIC"],
 )
 

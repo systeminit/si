@@ -93,7 +93,7 @@ type RebaseResult<T> = Result<T, RebaseError>;
         si.rebase.snapshot_fetch_parse_time = Empty,
         si.rebase.pointer_updated = Empty
     ))]
-pub async fn perform_rebase(
+pub(crate) async fn perform_rebase(
     ctx: &mut DalContext,
     edda: &EddaClient,
     request: &EnqueueUpdatesRequest,

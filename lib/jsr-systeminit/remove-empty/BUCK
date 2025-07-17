@@ -13,7 +13,7 @@ export_file(
 )
 
 filegroup(
-    name = "ecs-template-qualification",
+    name = "srcs",
     srcs = glob([
         "**/*",
     ]),

@@ -1,8 +1,8 @@
 load(
     "@prelude-si//:macros.bzl",
     "docker_image",
-    "nix_omnibus_pkg",
     "rust_binary",
+    "rust_binary_pkg",
 )
 
 rust_binary(
@@ -25,12 +25,14 @@ rust_binary(
 docker_image(
     name = "image",
     image_name = "pinga",
-    flake_lock = "//:flake.lock",
+    build_args = {
+        "BIN": "pinga",
+        "SI_RBE_TOKEN": ""
+    },
     build_deps = ["//bin/pinga:pinga"],
 )
 
-nix_omnibus_pkg(
-    name = "omnibus",
-    pkg_name = "pinga",
-    build_dep = "//bin/pinga:pinga",
+rust_binary_pkg(
+    name = "pinga",
+    binary = ":pinga"
 )

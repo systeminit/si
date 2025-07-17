@@ -2,8 +2,8 @@ load(
     "@prelude-si//:macros.bzl",
     "docker_image",
     "export_file",
-    "nix_omnibus_pkg",
     "rust_binary",
+    "rust_binary_pkg",
     "shellcheck",
     "shfmt_check",
     "test_suite",
@@ -63,7 +63,10 @@ shellcheck(
 docker_image(
     name = "image",
     image_name = "veritech",
-    flake_lock = "//:flake.lock",
+    build_args = {
+        "BIN": "veritech",
+        "SI_RBE_TOKEN": ""
+    },
     build_deps = [
         "//bin/veritech:veritech",
         "//bin/veritech:docker-entrypoint.sh",
@@ -72,8 +75,7 @@ docker_image(
     ],
 )
 
-nix_omnibus_pkg(
-    name = "omnibus",
-    pkg_name = "veritech",
-    build_dep = "//bin/veritech:veritech",
+rust_binary_pkg(
+    name = "veritech",
+    binary = ":veritech"
 )

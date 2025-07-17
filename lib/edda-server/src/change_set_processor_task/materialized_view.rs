@@ -211,6 +211,7 @@ pub async fn try_reuse_mv_index_for_new_change_set(
 /// This function first tries to copy and existing [`MvIndex`] if we find a valid one with the same snapshot address
 /// If it cannot copy one, it builds all Materialized Views (MVs) for the change set in the [`DalContext`].
 /// It assumes there is no existing [`MvIndex`] for the change set.
+#[allow(dead_code)]
 #[instrument(
     name = "materialized_view.new_change_set",
     level = "info",

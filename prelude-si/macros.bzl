@@ -30,6 +30,12 @@ load(
 rootfs = _rootfs
 
 load(
+    "@prelude-si//macros:mise.bzl",
+    _mise_install = "mise_install",
+)
+mise_install = _mise_install
+
+load(
     "@prelude-si//macros:nix.bzl",
     _nix_binary = "nix_binary",
     _nix_flake_lock = "nix_flake_lock",
@@ -90,10 +96,12 @@ load(
     _rust_binary = "rust_binary",
     _rust_library = "rust_library",
     _rust_test = "rust_test",
+    _rust_binary_pkg = "rust_binary_pkg",
 )
 rust_binary = _rust_binary
 rust_library = _rust_library
 rust_test = _rust_test
+rust_binary_pkg = _rust_binary_pkg
 
 load(
     "@prelude-si//macros:shell.bzl",
