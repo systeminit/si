@@ -163,6 +163,23 @@
               :count="(component.inputCount ?? 0) + (outgoing ?? 0)"
             />
             Connections
+            <div class="ml-auto">
+              <div
+                :class="
+                  clsx(
+                    'text-sm cursor-pointer border px-xs py-2xs rounded',
+                    'hover:text-action-500 hover:underline',
+                    themeClasses(
+                      'bg-neutral-400 border-neutral-300 text-black',
+                      'bg-neutral-700 border-neutral-700 text-white',
+                    ),
+                  )
+                "
+                @click="navigateToMap"
+              >
+                See on Map
+              </div>
+            </div>
           </template>
           <ConnectionsPanel
             v-if="componentConnections && component"
@@ -382,6 +399,24 @@ const close = () => {
     query: preserveExploreState(
       router.currentRoute.value?.query as SelectionsInQueryString,
     ),
+  });
+};
+
+const navigateToMap = () => {
+  const params = router.currentRoute?.value.params ?? {};
+  delete params.componentId;
+  const preservedQuery = preserveExploreState(
+    router.currentRoute.value?.query as SelectionsInQueryString,
+  );
+  delete preservedQuery.grid;
+  router.push({
+    name: "new-hotness",
+    params,
+    query: {
+      ...preservedQuery,
+      map: "1",
+      c: component.value?.id,
+    },
   });
 };
 

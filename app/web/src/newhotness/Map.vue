@@ -1330,9 +1330,8 @@ watch(
           }
         });
     });
-    if (selectedComponent.value && !componentContextMenuRef.value?.isOpen) {
-      selectComponent(selectedComponent.value);
-    }
+    // Don't show context menu when component is selected via URL parameter
+    // Context menu should only show on user interaction (right-click)
   }, 100),
   { immediate: true },
 );
