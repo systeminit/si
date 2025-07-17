@@ -1,6 +1,15 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <section id="map" class="grid h-full">
+  <ExploreMapSkeleton v-if="showSkeleton" />
+  <section
+    id="map"
+    :class="
+      clsx(
+        'grid h-full',
+        showSkeleton && 'hidden', // Since the svgs need a target to be drawn, we need to have this in the DOM
+      )
+    "
+  >
     <div
       v-if="selectedComponent && selectedComponents.size === 1"
       id="selection"
@@ -241,6 +250,7 @@ import {
   useMakeArgs,
   useMakeKey,
 } from "@/store/realtime/heimdall";
+import ExploreMapSkeleton from "@/newhotness/skeletons/ExploreMapSkeleton.vue";
 import { SelectionsInQueryString } from "./Workspace.vue";
 import { KeyDetails } from "./logic_composables/emitters";
 import { assertIsDefined, Context, ExploreContext } from "./types";
@@ -297,6 +307,8 @@ assertIsDefined(ctx);
 
 const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
 assertIsDefined<ExploreContext>(explore);
+
+const showSkeleton = computed(() => explore.showSkeleton.value);
 
 // don't change this!
 // magic number puts the yellow dot in the middle!
@@ -1365,6 +1377,9 @@ const navigateToSelectedComponent = () => {
   }
 };
 
+// TODO there's a noticeable time before drawing svgs that we should take into account for setting this flag
+const isLoading = computed(() => connections.isLoading.value);
+
 const emit = defineEmits<{
   (e: "deselect"): void;
   (e: "help"): void;
@@ -1385,6 +1400,7 @@ defineExpose({
   onBackspace,
   onR,
   onM,
+  isLoading,
 });
 </script>
 

@@ -1,284 +1,296 @@
 <template>
-  <DelayedSkeleton
-    v-if="componentListQuery.isLoading.value"
-    :skeleton="urlGridOrMap"
-  />
-  <section v-else :class="clsx('grid h-full', showGrid ? 'explore' : 'map')">
+  <section :class="clsx('grid h-full', showGrid ? 'explore' : 'map')">
     <!-- Left column -->
     <!-- 12 pixel padding to align with the SI logo -->
     <div
       class="main pt-xs flex flex-col gap-xs items-stretch [&>div]:mx-[12px]"
     >
-      <div class="flex-none flex flex-row items-center gap-xs">
-        <DropdownMenuButton
-          class="rounded min-w-[128px]"
-          :options="viewListOptions"
-          :modelValue="selectedViewId"
-          minWidthToAnchor
-          placeholder="All Views"
-          checkable
-          :enableSecondaryAction="() => true"
-          @secondaryAction="openEditViewModal"
-          @update:modelValue="(val) => (selectedViewId = val)"
-        >
-          <template #beforeOptions>
-            <DropdownMenuItem
-              label="All Views"
-              value="''"
-              checkable
-              :sizeClass="tw`px-xs pr-xs h-[28px]`"
-              :checked="selectedViewId === ''"
-              @select="() => (selectedViewId = '')"
-            />
-          </template>
-          <template #afterOptions>
-            <DropdownMenuItem
-              class="border-t"
-              label="Add a View"
-              icon="plus"
-              :sizeClass="tw`px-xs pr-xs h-[28px]`"
-              disableCheckable
-              @select="openAddViewModal"
-            />
-          </template>
-        </DropdownMenuButton>
-        <InstructiveVormInput
-          :class="clsx('rounded grow cursor-text')"
-          :activeClasses="
-            themeClasses('border-action-500', 'border-action-300')
-          "
-          :inactiveClasses="
-            themeClasses(
-              'border-neutral-400 hover:border-black',
-              'border-neutral-600 hover:border-white',
-            )
-          "
-          :pills="showGrid ? ['Tab'] : undefined"
-          :instructions="showGrid ? 'to navigate' : undefined"
-          @click="searchRef?.focus()"
-        >
-          <template #left>
-            <Icon name="search" tone="neutral" size="sm" />
-          </template>
-          <template #default="slotProps">
-            <VormInput
-              ref="searchRef"
-              v-model="searchString"
-              autocomplete="off"
-              :class="slotProps.class"
-              noStyles
-              :placeholder="placeholderSearchText"
-              @focus="
-                () => {
-                  clearSelection();
-                  mapRef?.deselect();
-                  slotProps.focus();
-                  focusedComponentIdx = -1;
-                }
-              "
-              @blur="slotProps.blur"
-              @keydown.tab="(e: KeyboardEvent) => onTab(e, true)"
-              @keydown.esc="onEscape"
-            />
-          </template>
-        </InstructiveVormInput>
-      </div>
-      <div class="flex-none flex flex-row items-center gap-xs justify-between">
-        <TabGroupToggle
-          ref="groupRef"
-          :aOrB="urlGridOrMap === 'grid'"
-          @toggle="storeViewMode"
-        >
-          <template #a="{ selected, toggle }">
-            <ExploreModeTile
-              icon="grid"
-              label="Grid"
-              :selected="selected"
-              @toggle="toggle"
-            />
-          </template>
-          <template #b="{ selected, toggle }">
-            <ExploreModeTile
-              icon="map"
-              label="Map (Model)"
-              :selected="selected"
-              @toggle="toggle"
-            />
-          </template>
-        </TabGroupToggle>
-        <div v-if="showGrid" class="flex flex-row gap-xs">
+      <!-- Search and filters -->
+      <ExploreSearchBarSkeleton v-if="showSkeleton" />
+      <template v-else>
+        <div class="flex-none flex flex-row items-center gap-xs">
           <DropdownMenuButton
-            class="rounded"
-            :options="groupByDropDownOptions"
-            :modelValue="groupBySelection"
-            placeholder="Group by"
+            class="rounded min-w-[128px]"
+            :options="viewListOptions"
+            :modelValue="selectedViewId"
             minWidthToAnchor
+            placeholder="All Views"
             checkable
-            alwaysShowPlaceholder
-            highlightWhenModelValue
-            :disabled="pinnedComponentId !== undefined"
-            @update:modelValue="
-              (val) => (groupBySelection = groupByFromString(val))
-            "
+            :enableSecondaryAction="() => true"
+            @secondaryAction="openEditViewModal"
+            @update:modelValue="(val) => (selectedViewId = val)"
           >
             <template #beforeOptions>
               <DropdownMenuItem
-                label="None"
+                label="All Views"
                 value="''"
                 checkable
-                :checked="groupBySelection === ''"
-                @select="() => (groupBySelection = GroupByCriteria.None)"
+                :sizeClass="tw`px-xs pr-xs h-[28px]`"
+                :checked="selectedViewId === ''"
+                @select="() => (selectedViewId = '')"
+              />
+            </template>
+            <template #afterOptions>
+              <DropdownMenuItem
+                class="border-t"
+                label="Add a View"
+                icon="plus"
+                :sizeClass="tw`px-xs pr-xs h-[28px]`"
+                disableCheckable
+                @select="openAddViewModal"
               />
             </template>
           </DropdownMenuButton>
-          <!--
-          Something subtle here... we dynamically change highlighting for model value because we
-          want the default state to be "latest to oldest" and we want it to be obvious to the user.
-          Therefore, we don't highlight when it is "latest to oldest" _and_ we don't use an empty
-          string for the default. Why not the latter? We want the button to also show "latest to
-          oldest" next to the placeholder.
-          -->
-          <DropdownMenuButton
-            class="rounded"
-            :options="sortByDropDownOptions"
-            :modelValue="sortBySelection"
-            placeholder="Sort by"
-            minWidthToAnchor
-            checkable
-            alwaysShowPlaceholder
-            :highlightWhenModelValue="
-              sortBySelection !== SortByCriteria.LatestToOldest
+          <InstructiveVormInput
+            :class="clsx('rounded grow cursor-text')"
+            :activeClasses="
+              themeClasses('border-action-500', 'border-action-300')
             "
-            @update:modelValue="
-              (val) => (sortBySelection = sortByFromString(val))
-            "
-          />
-        </div>
-      </div>
-      <template v-if="showGrid">
-        <div
-          v-if="
-            componentList.length === 0 && componentListQuery.isSuccess.value
-          "
-          class="flex-1 gap-sm overflow-hidden flex flex-col items-center justify-center"
-        >
-          <div class="grow flex items-center justify-center">
-            <EmptyState
-              icon="logo-si"
-              iconSize="lg"
-              iconNoBg
-              text="Begin managing your infrastructure in a clear, controlled, and intelligent way."
-            >
-              <template #secondary>
-                <div class="flex flex-row gap-sm">
-                  <VButton
-                    label="Check our how-to guide"
-                    tone="action"
-                    size="sm"
-                    href="https://docs.systeminit.com/how-tos/"
-                    target="_blank"
-                  />
-                  <VButton
-                    label="API guidelines"
-                    tone="neutral"
-                    size="sm"
-                    href="https://docs.systeminit.com/reference/public-api"
-                    target="_blank"
-                  />
-                </div>
-              </template>
-            </EmptyState>
-          </div>
-          <div
-            :class="
-              clsx(
-                'shrink-0 flex flex-col items-center py-md px-lg w-full max-w-6xl mb-9 gap-3  text-center',
-                themeClasses('bg-neutral-300', 'bg-neutral-800'),
+            :inactiveClasses="
+              themeClasses(
+                'border-neutral-400 hover:border-black',
+                'border-neutral-600 hover:border-white',
               )
             "
+            :pills="showGrid ? ['Tab'] : undefined"
+            :instructions="showGrid ? 'to navigate' : undefined"
+            @click="searchRef?.focus()"
           >
-            <span class="font-bold">Explore other ways to get started</span>
-            <span
-              >Prefer a different starting point? Here are a few other ways to
-              jump in and explore:
-            </span>
+            <template #left>
+              <Icon name="search" tone="neutral" size="sm" />
+            </template>
+            <template #default="slotProps">
+              <VormInput
+                ref="searchRef"
+                v-model="searchString"
+                autocomplete="off"
+                :class="slotProps.class"
+                noStyles
+                :placeholder="placeholderSearchText"
+                @focus="
+                  () => {
+                    clearSelection();
+                    mapRef?.deselect();
+                    slotProps.focus();
+                    focusedComponentIdx = -1;
+                  }
+                "
+                @blur="slotProps.blur"
+                @keydown.tab="(e: KeyboardEvent) => onTab(e, true)"
+                @keydown.esc="onEscape"
+              />
+            </template>
+          </InstructiveVormInput>
+        </div>
+        <div
+          class="flex-none flex flex-row items-center gap-xs justify-between"
+        >
+          <TabGroupToggle
+            ref="groupRef"
+            :aOrB="urlGridOrMap === 'grid'"
+            @toggle="storeViewMode"
+          >
+            <template #a="{ selected, toggle }">
+              <ExploreModeTile
+                icon="grid"
+                label="Grid"
+                :selected="selected"
+                @toggle="toggle"
+              />
+            </template>
+            <template #b="{ selected, toggle }">
+              <ExploreModeTile
+                icon="map"
+                label="Map (Model)"
+                :selected="selected"
+                @toggle="toggle"
+              />
+            </template>
+          </TabGroupToggle>
+          <div v-if="showGrid" class="flex flex-row gap-xs">
+            <DropdownMenuButton
+              class="rounded"
+              :options="groupByDropDownOptions"
+              :modelValue="groupBySelection"
+              placeholder="Group by"
+              minWidthToAnchor
+              checkable
+              alwaysShowPlaceholder
+              highlightWhenModelValue
+              :disabled="pinnedComponentId !== undefined"
+              @update:modelValue="
+                (val) => (groupBySelection = groupByFromString(val))
+              "
+            >
+              <template #beforeOptions>
+                <DropdownMenuItem
+                  label="None"
+                  value="''"
+                  checkable
+                  :checked="groupBySelection === ''"
+                  @select="() => (groupBySelection = GroupByCriteria.None)"
+                />
+              </template>
+            </DropdownMenuButton>
+            <!--
+            Something subtle here... we dynamically change highlighting for model value because we
+            want the default state to be "latest to oldest" and we want it to be obvious to the user.
+            Therefore, we don't highlight when it is "latest to oldest" _and_ we don't use an empty
+            string for the default. Why not the latter? We want the button to also show "latest to
+            oldest" next to the placeholder.
+            -->
+            <DropdownMenuButton
+              class="rounded"
+              :options="sortByDropDownOptions"
+              :modelValue="sortBySelection"
+              placeholder="Sort by"
+              minWidthToAnchor
+              checkable
+              alwaysShowPlaceholder
+              :highlightWhenModelValue="
+                sortBySelection !== SortByCriteria.LatestToOldest
+              "
+              @update:modelValue="
+                (val) => (sortBySelection = sortByFromString(val))
+              "
+            />
+          </div>
+        </div>
+      </template>
+
+      <template v-if="showGrid">
+        <ExploreGridSkeleton v-if="showSkeleton" />
+        <template v-else>
+          <div
+            v-if="
+              componentList.length === 0 && componentListQuery.isSuccess.value
+            "
+            class="flex-1 gap-sm overflow-hidden flex flex-col items-center justify-center"
+          >
+            <div class="grow flex items-center justify-center">
+              <EmptyState
+                icon="logo-si"
+                iconSize="lg"
+                iconNoBg
+                text="Begin managing your infrastructure in a clear, controlled, and intelligent way."
+              >
+                <template #secondary>
+                  <div class="flex flex-row gap-sm">
+                    <VButton
+                      label="Check our how-to guide"
+                      tone="action"
+                      size="sm"
+                      href="https://docs.systeminit.com/how-tos/"
+                      target="_blank"
+                    />
+                    <VButton
+                      label="API guidelines"
+                      tone="neutral"
+                      size="sm"
+                      href="https://docs.systeminit.com/reference/public-api"
+                      target="_blank"
+                    />
+                  </div>
+                </template>
+              </EmptyState>
+            </div>
             <div
               :class="
                 clsx(
-                  'flex flex-row gap-md mt-sm hover:children:underline',
-                  themeClasses(
-                    'text-neutral-700 hover:children:text-black',
-                    'text-neutral-300 hover:children:text-white',
-                  ),
+                  'shrink-0 flex flex-col items-center py-md px-lg w-full max-w-6xl mb-9 gap-3  text-center',
+                  themeClasses('bg-neutral-300', 'bg-neutral-800'),
                 )
               "
             >
-              <a href="https://www.systeminit.com/?modal=demo" target="_blank"
-                >Schedule a demo</a
+              <span class="font-bold">Explore other ways to get started</span>
+              <span
+                >Prefer a different starting point? Here are a few other ways to
+                jump in and explore:
+              </span>
+              <div
+                :class="
+                  clsx(
+                    'flex flex-row gap-md mt-sm hover:children:underline',
+                    themeClasses(
+                      'text-neutral-700 hover:children:text-black',
+                      'text-neutral-300 hover:children:text-white',
+                    ),
+                  )
+                "
               >
-              <a href="https://discord.gg/system-init" target="_blank">
-                Join the community
-              </a>
-              <a
-                :href="`https://auth.systeminit.com/workspace/${ctx?.workspacePk.value}`"
-                target="_blank"
-                >Invite a team mate</a
-              >
+                <a
+                  href="https://www.systeminit.com/?modal=demo"
+                  target="_blank"
+                >
+                  Schedule a demo
+                </a>
+                <a href="https://discord.gg/system-init" target="_blank">
+                  Join the community
+                </a>
+                <a
+                  :href="`https://auth.systeminit.com/workspace/${ctx?.workspacePk.value}`"
+                  target="_blank"
+                >
+                  Invite a team mate
+                </a>
+              </div>
             </div>
           </div>
-        </div>
-        <ExploreGrid
-          v-else
-          ref="exploreGridRef"
-          :components="sortedAndGroupedComponents"
-          :focusedComponentIdx="focusedComponentIdx"
-          :selectedComponentIndexes="selectedComponentIndexes"
-          :componentsWithFailedActions="componentsHaveActionsWithState.failed"
-          :componentsWithRunningActions="componentsHaveActionsWithState.running"
-          :componentsPendingActionNames="componentsPendingActionNames"
-          @childClicked="componentClicked"
-          @childSelect="selectComponent"
-          @childDeselect="deselectComponent"
-          @childHover="
-            (componentId) => {
-              if (componentsHaveActionsWithState.failed.has(componentId)) {
-                hoveredComponentId = componentId;
+          <ExploreGrid
+            v-else
+            ref="exploreGridRef"
+            :components="sortedAndGroupedComponents"
+            :focusedComponentIdx="focusedComponentIdx"
+            :selectedComponentIndexes="selectedComponentIndexes"
+            :componentsWithFailedActions="componentsHaveActionsWithState.failed"
+            :componentsWithRunningActions="
+              componentsHaveActionsWithState.running
+            "
+            :componentsPendingActionNames="componentsPendingActionNames"
+            @childClicked="componentClicked"
+            @childSelect="selectComponent"
+            @childDeselect="deselectComponent"
+            @childHover="
+              (componentId) => {
+                if (componentsHaveActionsWithState.failed.has(componentId)) {
+                  hoveredComponentId = componentId;
+                }
               }
-            }
-          "
-          @childUnhover="() => (hoveredComponentId = undefined)"
-          @unpin="() => (pinnedComponentId = undefined)"
-          @scrollend="fixContextMenuAfterScroll"
-          @scroll="onScroll"
-        />
-        <footer
-          :class="
-            clsx(
-              'flex-none h-12 px-xs border-t flex flex-row items-center',
-              'justify-between',
-              themeClasses(
-                'bg-neutral-100 border-neutral-400',
-                'bg-neutral-800 border-neutral-600',
-              ),
-            )
-          "
-        >
-          <!-- footer -->
-          <VButton
-            label="See keyboard shortcuts"
-            pill="?"
-            tone="neutral"
-            size="sm"
-            @click="openShortcutModal"
+            "
+            @childUnhover="() => (hoveredComponentId = undefined)"
+            @unpin="() => (pinnedComponentId = undefined)"
+            @scrollend="fixContextMenuAfterScroll"
+            @scroll="onScroll"
           />
-          <VButton
-            label="Add a component"
-            pill="N"
-            tone="action"
-            size="sm"
-            @click="openAddComponentModal"
-          />
-        </footer>
+          <footer
+            :class="
+              clsx(
+                'flex-none h-12 px-xs border-t flex flex-row items-center',
+                'justify-between',
+                themeClasses(
+                  'bg-neutral-100 border-neutral-400',
+                  'bg-neutral-800 border-neutral-600',
+                ),
+              )
+            "
+          >
+            <!-- footer -->
+            <VButton
+              label="See keyboard shortcuts"
+              pill="?"
+              tone="neutral"
+              size="sm"
+              @click="openShortcutModal"
+            />
+            <VButton
+              label="Add a component"
+              pill="N"
+              tone="action"
+              size="sm"
+              @click="openAddComponentModal"
+            />
+          </footer>
+        </template>
       </template>
       <Map
         v-else
@@ -302,62 +314,66 @@
         )
       "
     >
-      <div
-        class="grow grid grid-rows-subgrid min-h-0"
-        :style="collapsingStyles"
-      >
-        <CollapsingGridItem ref="actionsRef">
-          <template #header>Actions</template>
-          <template #headerIconsRight>
-            <PillCounter :count="actionViewList.length" class="text-sm" />
-          </template>
-          <ActionQueueList
-            :actionViewList="actionViewList"
-            :highlightedActionIds="highlightedActionIds"
-          />
-        </CollapsingGridItem>
-        <CollapsingGridItem ref="historyRef" disableScroll>
-          <template #header>History</template>
-          <FuncRunList :limit="25" />
-        </CollapsingGridItem>
-      </div>
-      <div
-        :class="
-          clsx(
-            'flex-none h-12 border-t flex flex-row items-center gap-xs p-xs',
-            themeClasses('border-neutral-400', 'border-neutral-600'),
-          )
-        "
-      >
-        <TextPill
-          v-tooltip="componentCountTooltip"
-          class="flex-none rounded p-xs"
-          variant="key2"
+      <!-- Skeleton -->
+      <ExploreRightColumnSkeleton v-if="showSkeleton" />
+      <template v-else>
+        <div
+          class="grow grid grid-rows-subgrid min-h-0"
+          :style="collapsingStyles"
         >
-          Total: {{ componentList.length }}
-        </TextPill>
-        <TextPill
-          v-if="resourceCount > 0"
-          v-tooltip="resourceCountTooltip"
+          <CollapsingGridItem ref="actionsRef">
+            <template #header>Actions</template>
+            <template #headerIconsRight>
+              <PillCounter :count="actionViewList.length" class="text-sm" />
+            </template>
+            <ActionQueueList
+              :actionViewList="actionViewList"
+              :highlightedActionIds="highlightedActionIds"
+            />
+          </CollapsingGridItem>
+          <CollapsingGridItem ref="historyRef" disableScroll>
+            <template #header>History</template>
+            <FuncRunList :limit="25" />
+          </CollapsingGridItem>
+        </div>
+        <div
           :class="
             clsx(
-              'flex-none flex flex-row items-center gap-2xs rounded p-xs',
-              themeClasses(
-                'border-success-400 bg-success-100 text-black',
-                'border-success-800 bg-success-900 text-white',
-              ),
+              'flex-none h-12 border-t flex flex-row items-center gap-xs p-xs',
+              themeClasses('border-neutral-400', 'border-neutral-600'),
             )
           "
         >
-          <Icon
-            :class="themeClasses('text-success-600', 'text-success-400')"
-            name="check-hex-outline"
-            size="xs"
-          />
-          {{ resourceCount }}
-        </TextPill>
-        <RealtimeStatusPageState />
-      </div>
+          <TextPill
+            v-tooltip="componentCountTooltip"
+            class="flex-none rounded p-xs"
+            variant="key2"
+          >
+            Total: {{ componentList.length }}
+          </TextPill>
+          <TextPill
+            v-if="resourceCount > 0"
+            v-tooltip="resourceCountTooltip"
+            :class="
+              clsx(
+                'flex-none flex flex-row items-center gap-2xs rounded p-xs',
+                themeClasses(
+                  'border-success-400 bg-success-100 text-black',
+                  'border-success-800 bg-success-900 text-white',
+                ),
+              )
+            "
+          >
+            <Icon
+              :class="themeClasses('text-success-600', 'text-success-400')"
+              name="check-hex-outline"
+              size="xs"
+            />
+            {{ resourceCount }}
+          </TextPill>
+          <RealtimeStatusPageState />
+        </div>
+      </template>
     </div>
 
     <!-- MODALS -->
@@ -428,6 +444,9 @@ import { ComponentId } from "@/api/sdf/dal/component";
 import { Listable } from "@/workers/types/dbinterface";
 import { elementIsScrolledIntoView } from "@/newhotness/logic_composables/dom_funcs";
 import { ActionState } from "@/api/sdf/dal/action";
+import ExploreSearchBarSkeleton from "@/newhotness/skeletons/ExploreSearchBarSkeleton.vue";
+import ExploreGridSkeleton from "@/newhotness/skeletons/ExploreGridSkeleton.vue";
+import ExploreRightColumnSkeleton from "@/newhotness/skeletons/ExploreRightColumnSkeleton.vue";
 import Map from "./Map.vue";
 import { collapsingGridStyles, preserveExploreState } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
@@ -453,7 +472,6 @@ import ShortcutModal from "./ShortcutModal.vue";
 import { useUpgrade } from "./logic_composables/upgrade";
 import ExploreGrid from "./explore_grid/ExploreGrid.vue";
 import { useConnections } from "./logic_composables/connections";
-import DelayedSkeleton from "./skeletons/DelayedSkeleton.vue";
 import ExploreModeTile from "./ExploreModeTile.vue";
 import ActionQueueList from "./ActionQueueList.vue";
 import { parseSearch, SearchTerms } from "./logic_composables/search";
@@ -498,16 +516,22 @@ const urlGridOrMap = computed((): "grid" | "map" => {
   }
 });
 
-const showGrid = computed(() => (groupRef.value ? groupRef.value.isA : true));
+// Since we won't always have the group ref, let the url control showGrid
+const showGrid = computed(() => urlGridOrMap.value === "grid");
+const gridMapSwitcherValue = computed(
+  () => groupRef.value && groupRef.value.isA,
+);
 
-watch(showGrid, () => {
+watch(gridMapSwitcherValue, (newShowGrid) => {
+  // If this is nil, groupRef is unmounted,and we don't care about the change.
+  if (_.isNil(newShowGrid)) return;
   clearSelection();
   const query: SelectionsInQueryString = {
     ...router.currentRoute.value?.query,
   };
   delete query.map;
   delete query.grid;
-  if (showGrid.value) query.grid = "1";
+  if (newShowGrid) query.grid = "1";
   else query.map = "1";
   router.push({ query });
 });
@@ -639,11 +663,21 @@ watch([pinnedComponentId], () => {
 });
 
 // ================================================================================================
+// SKELETON BEHAVIOR
+
+const showSkeleton = computed(
+  () =>
+    componentListQuery.isLoading.value ||
+    (!_.isNil(mapRef.value) && mapRef.value.isLoading),
+);
+
+// ================================================================================================
 // EXPLORE CONTEXT
 const exploreContext = computed<ExploreContext>(() => {
   return {
     viewId: selectedViewOrDefaultId,
     upgradeableComponents: upgradeableComponentIds,
+    showSkeleton,
   };
 });
 
