@@ -1,6 +1,7 @@
 load(
     "@prelude-si//:macros.bzl",
     "rust_binary",
+    "rust_binary_pkg",
 )
 
 rust_binary(
@@ -12,4 +13,9 @@ rust_binary(
     ],
     srcs = glob(["src/**/*.rs"]),
     env = {"CARGO_BIN_NAME": "bedrock"},
+)
+
+rust_binary_pkg(
+    name = "bedrock",
+    binary = ":bedrock"
 )

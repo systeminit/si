@@ -2,6 +2,7 @@ load(
     "@prelude-si//:macros.bzl",
     "docker_image",
     "rust_binary",
+    "rust_binary_pkg",
 )
 
 rust_binary(
@@ -35,4 +36,9 @@ docker_image(
         "//bin/sdf:sdf",
         "//pkgs:pkgs",
     ]
+)
+
+rust_binary_pkg(
+    name = "sdf",
+    binary = ":sdf"
 )

@@ -28,8 +28,6 @@ def _execution_platform_impl(ctx: AnalysisContext) -> list[Provider]:
             remote_execution_properties = {
                 "OSFamily": "Linux",
                 "container-image": "docker://python:3.9.23-bookworm",
-                "platform": "linux/arm64"
-
             },
             remote_execution_use_case = "buck2-default",
             use_windows_path_separators = ctx.attrs.use_windows_path_separators,

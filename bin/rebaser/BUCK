@@ -2,6 +2,7 @@ load(
     "@prelude-si//:macros.bzl",
     "docker_image",
     "rust_binary",
+    "rust_binary_pkg",
 )
 
 rust_binary(
@@ -29,4 +30,9 @@ docker_image(
         "SI_RBE_TOKEN": ""
     },
     build_deps = ["//bin/rebaser:rebaser"],
+)
+
+rust_binary_pkg(
+    name = "rebaser",
+    binary = ":rebaser"
 )

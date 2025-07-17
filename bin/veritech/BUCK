@@ -3,6 +3,7 @@ load(
     "docker_image",
     "export_file",
     "rust_binary",
+    "rust_binary_pkg",
     "shellcheck",
     "shfmt_check",
     "test_suite",
@@ -72,4 +73,9 @@ docker_image(
         "//bin/cyclone:cyclone",
         "//bin/lang-js:bin",
     ],
+)
+
+rust_binary_pkg(
+    name = "veritech",
+    binary = ":veritech"
 )
