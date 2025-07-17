@@ -1,29 +1,66 @@
-import { computed, inject } from "vue";
-import { useChangeSetsStore } from "@/store/change_sets.store";
-import { ChangeSetStatus } from "@/api/sdf/dal/change_set";
+import * as _ from "lodash-es";
+import { computed, ComputedRef, inject, Ref, ref } from "vue";
+import { useQuery } from "@tanstack/vue-query";
+import { ChangeSet, ChangeSetStatus } from "@/api/sdf/dal/change_set";
+import { WorkspaceMetadata } from "@/api/sdf/dal/workspace";
 import { assertIsDefined, Context } from "../types";
 import { routes, useApi } from "../api_composables";
 import { useStatus } from "./status";
 
-export const useCurrentChangeSet = () => {
-  const ctx = inject<Context>("CONTEXT");
-  assertIsDefined(ctx);
+/**
+ * USED in Workspace.vue
+ * Which is why we are passing `ctx` and not using `inject`
+ * Because Workspace is the one who `provides` it (catch-22)
+ */
+export const useChangeSets = (
+  ctx: ComputedRef<Context>,
+  enabled?: ComputedRef<boolean> | Ref<boolean>,
+) => {
+  const headChangeSetId = ref();
+  const defaultApprovers = ref<string[]>([]);
 
-  // TODO(nick): yeet this! However, keeping it sandboxed here may help reduce usages in newhotness
-  // components since we only want it for limited, surgical use.
-  const changeSetsStore = useChangeSetsStore();
+  if (!enabled) enabled = ref(true);
+  const changeSetApi = useApi(ctx.value);
+  const changeSetQuery = useQuery<Record<string, ChangeSet>>({
+    enabled: enabled.value,
+    queryKey: ["changesets"],
+    staleTime: 5000,
+    queryFn: async () => {
+      const call = changeSetApi.endpoint<WorkspaceMetadata>(routes.ChangeSets);
+      const response = await call.get();
+      if (changeSetApi.ok(response)) {
+        const changeSets = _.keyBy(response.data.changeSets, "id");
+        const head = changeSets[response.data.defaultChangeSetId];
+        headChangeSetId.value = response.data.defaultChangeSetId;
+        defaultApprovers.value = response.data.approvers;
+        if (head) head.isHead = true;
+        return changeSets;
+      }
+      return {} as Record<string, ChangeSet>;
+    },
+  });
 
-  // TODO(nick): do not rely on the change set store. Why do we do this instead of grabbing the
-  // "selectedChangeSet"? As we move away from the old stores, we do not want to assume that the
-  // "selectedChangeSet" will be in sync with the new UI. However, searching through open change
-  // sets, like we are doing below, may be the safer approach as they are populated from simple fetch
-  // calls and reactions to WsEvents. This should be less prone to drift than relying on the
-  // "selectedChangeSet" being accurate.
-  return computed(() =>
-    changeSetsStore.openChangeSets.find((c) => c.id === ctx.changeSetId.value),
-  );
+  const openChangeSets = computed(() => {
+    return Object.values(changeSetQuery.data.value ?? {}).filter((cs) =>
+      [
+        ChangeSetStatus.Open,
+        ChangeSetStatus.NeedsApproval,
+        ChangeSetStatus.NeedsAbandonApproval,
+        ChangeSetStatus.Rejected,
+        ChangeSetStatus.Approved,
+      ].includes(cs.status),
+    );
+  });
+
+  const changeSet = computed(() => {
+    if (!changeSetQuery.data.value) return;
+    return changeSetQuery.data.value[ctx.value.changeSetId.value];
+  });
+
+  return { openChangeSets, changeSet, headChangeSetId, defaultApprovers };
 };
 
+// other components use the Context that is populated with the above data
 const useApplyChangeSetInner = () => {
   const api = useApi();
 
@@ -42,14 +79,11 @@ const useDisableApplyChangeSetInner = () => {
   const ctx = inject<Context>("CONTEXT");
   assertIsDefined(ctx);
 
-  const currentChangeSet = useCurrentChangeSet();
   const status = useStatus();
-
-  const changeSet = computed(() => currentChangeSet.value);
 
   return computed(
     () =>
-      changeSet.value?.status !== ChangeSetStatus.Open ||
+      ctx.changeSet.value?.status !== ChangeSetStatus.Open ||
       ctx.onHead.value ||
       status.value === "syncing",
   );

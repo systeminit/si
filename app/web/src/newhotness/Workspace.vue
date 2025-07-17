@@ -11,7 +11,11 @@
       "
     >
       <!-- Left side -->
-      <NavbarPanelLeft ref="navbarPanelLeftRef" />
+      <NavbarPanelLeft
+        ref="navbarPanelLeftRef"
+        :workspaceId="workspacePk"
+        :changeSetId="changeSetId"
+      />
 
       <!-- Center -->
       <div
@@ -45,7 +49,7 @@
       </div>
 
       <!-- Right -->
-      <NavbarPanelRight />
+      <NavbarPanelRight :changeSetId="changeSetId" :workspaceId="workspacePk" />
     </nav>
 
     <!-- grow the main body to fit all the space in between the nav and the bottom of the browser window
@@ -94,13 +98,10 @@ import {
 import * as _ from "lodash-es";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { Span, trace } from "@opentelemetry/api";
-import NavbarPanelLeft from "@/components/layout/navbar/NavbarPanelLeft.vue";
-import NavbarPanelRight from "@/components/layout/navbar/NavbarPanelRight.vue";
 import NavbarButton from "@/components/layout/navbar/NavbarButton.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import * as heimdall from "@/store/realtime/heimdall";
 import { useAuthStore } from "@/store/auth.store";
-import { useChangeSetsStore } from "@/store/change_sets.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import {
   ComponentDetails,
@@ -109,6 +110,8 @@ import {
   SchemaMembers,
 } from "@/workers/types/entity_kind_types";
 import { SchemaId } from "@/api/sdf/dal/schema";
+import { ChangeSet } from "@/api/sdf/dal/change_set";
+import NavbarPanelRight from "./nav/NavbarPanelRight.vue";
 import Lobby from "./Lobby.vue";
 import Explore, { GroupByUrlQuery, SortByUrlQuery } from "./Explore.vue";
 import FuncRunDetails from "./FuncRunDetails.vue";
@@ -122,6 +125,8 @@ import {
 } from "./logic_composables/emitters";
 import { tokensByWorkspacePk } from "./logic_composables/tokens";
 import ComponentPage from "./ComponentDetails.vue";
+import NavbarPanelLeft from "./nav/NavbarPanelLeft.vue";
+import { useChangeSets } from "./logic_composables/change_set";
 
 const tracer = trace.getTracer("si-vue");
 const navbarPanelLeftRef = ref<InstanceType<typeof NavbarPanelLeft>>();
@@ -176,7 +181,6 @@ watch(
 );
 
 const featureFlagsStore = useFeatureFlagsStore();
-const changeSetsStore = useChangeSetsStore();
 const realtimeStore = useRealtimeStore();
 
 const workspacePk = computed(() => props.workspacePk);
@@ -254,13 +258,18 @@ const schemaMembers = computed(() => {
   return schemaQuery.data.value ?? {};
 });
 
+const changeSet = ref<ChangeSet | undefined>();
+const _headChangeSetId = ref<string>("");
+const approvers = ref<string[]>([]);
 const ctx = computed<Context>(() => {
   return {
     workspacePk,
     changeSetId,
+    changeSet,
+    approvers,
     user: authStore.user,
-    onHead: computed(() => changeSetsStore.headSelected),
-    headChangeSetId: computed(() => changeSetsStore.headChangeSetId ?? ""),
+    onHead: computed(() => activeChangeSet.value?.id === headChangeSetId.value),
+    headChangeSetId: _headChangeSetId,
     outgoingCounts,
     componentDetails,
     schemaMembers,
@@ -268,17 +277,34 @@ const ctx = computed<Context>(() => {
   };
 });
 
+const {
+  openChangeSets,
+  changeSet: activeChangeSet,
+  headChangeSetId,
+  defaultApprovers,
+} = useChangeSets(ctx);
+watch(defaultApprovers, () => {
+  approvers.value = defaultApprovers.value;
+});
+watch(activeChangeSet, () => {
+  changeSet.value = activeChangeSet.value;
+});
+
+watch(headChangeSetId, () => {
+  _headChangeSetId.value = headChangeSetId.value;
+});
+
 watch(
-  () => changeSetsStore.changeSetsById,
+  () => openChangeSets,
   () => {
-    const ids = Object.keys(changeSetsStore.changeSetsById);
+    const ids = Object.keys(openChangeSets.value);
     if (ids.length > 0 && !ids.includes(props.changeSetId))
-      if (changeSetsStore.headChangeSetId)
+      if (ctx.value.headChangeSetId.value)
         router.push({
           name: "new-hotness",
           params: {
             workspacePk: props.workspacePk,
-            changeSetId: changeSetsStore.headChangeSetId,
+            changeSetId: headChangeSetId.value,
           },
         });
       else
@@ -431,6 +457,7 @@ realtimeStore.subscribe(
     {
       eventType: "ChangeSetCreated",
       callback: async (data) => {
+        queryClient.invalidateQueries({ queryKey: ["changesets"] });
         if (ctx.value.headChangeSetId.value) {
           await heimdall.linkNewChangeset(
             props.workspacePk,
@@ -438,6 +465,169 @@ realtimeStore.subscribe(
             ctx.value.headChangeSetId.value,
           );
         }
+      },
+    },
+    {
+      eventType: "ChangeSetStatusChanged",
+      callback: async (_data) => {
+        queryClient.invalidateQueries({ queryKey: ["changesets"] });
+        /* TURN THIS ON WHEN WE REMOVE CHANGE SET STORE
+        if (
+          [
+            ChangeSetStatus.Abandoned,
+            ChangeSetStatus.Applied,
+            ChangeSetStatus.Closed,
+          ].includes(data.changeSet.status) &&
+          data.changeSet.id !== ctx.value.headChangeSetId.value
+        ) {
+          if (featureFlagsStore.ENABLE_NEW_EXPERIENCE)
+            heimdall.prune(props.workspacePk, data.changeSet.id);
+        }
+        // If I'm the one who requested this change set - toast that it's been approved/rejected/etc.
+        if (data.changeSet.mergeRequestedByUserId === authStore.user?.pk) {
+          if (data.changeSet.status === ChangeSetStatus.Rejected) {
+            toast({
+              component: ChangeSetStatusChanged,
+              props: {
+                user: data.changeSet.reviewedByUser,
+                command: "rejected the request to apply",
+                changeSetName: data.changeSet.name,
+              },
+            });
+          } else if (data.changeSet.status === ChangeSetStatus.Approved) {
+            toast({
+              component: ChangeSetStatusChanged,
+              props: {
+                user: data.changeSet.reviewedByUser,
+                command: "approved the request to apply",
+                changeSetName: data.changeSet.name,
+              },
+            });
+          }
+        } else if (data.changeSet.status === ChangeSetStatus.NeedsApproval) {
+          // this.FETCH_APPROVAL_STATUS(data.changeSet.id);
+          // APPROVALS TODO, all the other change set store listeners
+        }
+        */
+      },
+    },
+    {
+      eventType: "ChangeSetAbandoned",
+      callback: async (_data) => {
+        queryClient.invalidateQueries({ queryKey: ["changesets"] });
+
+        /* TURN THIS ON WHEN WE REMOVE CHANGE SET STORE
+        if (
+        if (data.changeSetId !== ctx.value.headChangeSetId.value) {
+          heimdall.prune(props.workspacePk, data.changeSetId);
+        }
+
+        if (data.changeSetId === props.changeSetId) {
+          if (headChangeSetId.value) {
+            const params = { ...route.params };
+            delete params.componentId;
+            await router.push({
+              name: "new-hotness-head",
+              params: {
+                ...params,
+                changeSetId: ctx.value.headChangeSetId.value,
+              },
+            });
+
+            toast({
+              component: MovedToHead,
+              props: {
+                icon: "trash",
+                changeSetName: activeChangeSet.value?.name,
+                action: "abandoned",
+              },
+            });
+          }
+        }
+        */
+      },
+    },
+    {
+      eventType: "ChangeSetCancelled",
+      callback: () => {
+        queryClient.invalidateQueries({ queryKey: ["changesets"] });
+      },
+    },
+    {
+      eventType: "ChangeSetApplied",
+      callback: (_data) => {
+        queryClient.invalidateQueries({ queryKey: ["changesets"] });
+
+        /* TURN THIS ON WHEN WE REMOVE CHANGE SET STORE
+        if (
+        const { changeSetId: appliedId, toRebaseChangeSetId } = data;
+        if (activeChangeSet) {
+          if (appliedId !== ctx.value.headChangeSetId.value) {
+            // never set HEAD to Applied
+            heimdall.prune(props.workspacePk, appliedId);
+          }
+        }
+
+        if (
+          props.changeSetId === toRebaseChangeSetId &&
+          props.changeSetId !== headChangeSetId.value
+        ) {
+          toast({
+            component: RebaseOnBase,
+          });
+        }
+
+        // `list_open_change_sets` gets called prior on voters
+        // which means the change set is gone, so always move
+        if (!props.changeSetId || props.changeSetId === appliedId) {
+          if (route?.name) {
+            if ((route.name as string).startsWith("new-hotness")) {
+              let name = route.name as string;
+              // if you're on a single-item page in the UI while just bring them to explore
+              if (
+                ![
+                  "new-hotness",
+                  "new-hotness-workspace-auto",
+                  "new-hotness-head",
+                ].includes(route.name as string)
+              )
+                name = "new-hotness";
+
+              router.push({
+                name,
+                params: {
+                  ...route.query, // this will keep map/grid, search, if its there
+                  changeSetId: headChangeSetId.value,
+                },
+              });
+            } else {
+              router.push({
+                name: route.name,
+                params: {
+                  ...route.params,
+                  changeSetId: headChangeSetId.value,
+                },
+              });
+            }
+            if (!ctx.value.onHead.value)
+              // FIXME(nick): use a new design in the new UI, but keep the toast.
+              toast({
+                component: MovedToHead,
+                props: {
+                  icon: "tools",
+                  changeSetName: activeChangeSet.value?.name,
+                  action: "merged",
+                },
+              });
+          }
+        }
+        */
+      },
+    },
+    {
+      eventType: "ChangeSetRename",
+      callback: () => {
+        queryClient.invalidateQueries({ queryKey: ["changesets"] });
       },
     },
   ],

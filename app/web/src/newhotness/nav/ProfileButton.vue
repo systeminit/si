@@ -116,9 +116,9 @@ import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import WorkspaceImportModal from "@/components/WorkspaceImportModal.vue";
 import WorkspaceExportModal from "@/components/WorkspaceExportModal.vue";
 import WorkspaceIntegrationsModal from "@/components/WorkspaceIntegrationsModal.vue";
-import NavbarButton from "./NavbarButton.vue";
-import UserIcon from "./UserIcon.vue";
-import WorkspaceSettingsMenuItems from "./WorkspaceSettingsMenuItems.vue";
+import NavbarButton from "@/components/layout/navbar/NavbarButton.vue";
+import UserIcon from "@/components/layout/navbar/UserIcon.vue";
+import WorkspaceSettingsMenuItems from "@/components/layout/navbar/WorkspaceSettingsMenuItems.vue";
 
 const importModalRef = ref<InstanceType<typeof WorkspaceImportModal>>();
 const exportModalRef = ref<InstanceType<typeof WorkspaceExportModal>>();

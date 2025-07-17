@@ -142,7 +142,7 @@
       <DetailsPanelMenuIcon
         v-if="!props.noInteraction"
         @click="
-          (e) => {
+          (e: MouseEvent) => {
             contextMenuRef?.open(e, false);
           }
         "
@@ -172,7 +172,7 @@ import ConfirmHoldModal from "@/components/Actions/ConfirmHoldModal.vue";
 
 import DetailsPanelMenuIcon from "@/components/DetailsPanelMenuIcon.vue";
 import ActionCardLayout from "./ActionCardLayout.vue";
-import { ActionProposedViewWithHydratedChildren } from "./ChangesPanelProposed.vue";
+import { ActionProposedViewWithHydratedChildren } from "./ActionsList.vue";
 
 const actionStore = useActionsStore();
 

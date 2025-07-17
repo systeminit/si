@@ -127,13 +127,20 @@ import {
   ActionView,
   ActionHistoryView,
   FuncRunId,
+  ActionProposedView,
 } from "@/store/actions.store";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import ActionCard from "./ActionCard.vue";
 import ActionHistoryCard from "./ActionHistoryCard.vue";
-import { ActionProposedViewWithHydratedChildren } from "./ChangesPanelProposed.vue";
+
+export interface ActionProposedViewWithHydratedChildren
+  extends ActionProposedView {
+  dependentOnActions: ActionProposedView[];
+  myDependentActions: ActionProposedView[];
+  holdStatusInfluencedByActions: ActionProposedView[];
+}
 
 export type ActionsListKind = "proposed" | "history";
 

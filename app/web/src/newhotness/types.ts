@@ -6,13 +6,16 @@ import {
   SchemaMembers,
 } from "@/workers/types/entity_kind_types";
 import { SchemaId } from "@/api/sdf/dal/schema";
+import { ChangeSet } from "@/api/sdf/dal/change_set";
 
 export interface Context {
   workspacePk: ComputedRef<string>;
   changeSetId: ComputedRef<string>;
+  changeSet: Ref<ChangeSet | undefined>;
+  approvers: Ref<string[]>;
   user: User | null;
   onHead: ComputedRef<boolean>;
-  headChangeSetId: ComputedRef<string>;
+  headChangeSetId: Ref<string>;
   outgoingCounts: ComputedRef<Record<ComponentId, number>>;
   componentDetails: ComputedRef<ComponentDetails>;
   schemaMembers: ComputedRef<Record<SchemaId, SchemaMembers>>;

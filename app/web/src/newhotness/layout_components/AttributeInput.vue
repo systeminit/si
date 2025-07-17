@@ -586,7 +586,7 @@
       <CodeEditorModal
         ref="codeEditorModalRef"
         :title="`Set Value For ${displayName}`"
-        :codeEditorId="`${displayName}-${changeSetId}-${prop?.id}`"
+        :codeEditorId="`${displayName}-${prop?.id}`"
         @submit="setValueFromCodeEditorModal"
       />
     </template>
@@ -624,7 +624,6 @@ import {
   Prop,
 } from "@/workers/types/entity_kind_types";
 import {
-  changeSetId,
   getPossibleConnections,
   useMakeArgs,
   useMakeKey,
