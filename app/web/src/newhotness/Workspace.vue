@@ -89,6 +89,7 @@ import {
   watch,
   Ref,
   inject,
+  watchEffect,
 } from "vue";
 import * as _ from "lodash-es";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
@@ -345,13 +346,17 @@ onBeforeMount(async () => {
   }
   // NOTE(nick,wendy): if you do not have the flag enabled, you will be re-directed. This will be
   // true for all of the new hotness routes, provided that they are all children of the parent
-  // route that uses this component. This is wrapped in a "setTimeout" to ensure that the feature
-  // flag loads in time.
-  setTimeout(() => {
-    if (!featureFlagsStore.ENABLE_NEW_EXPERIENCE) {
-      router.push({ name: "workspace-index" });
+  // route that uses this component. We wait until we know the feature flag is false before
+  // redirecting; undefined means the feature flag is still loading.
+  watchEffect(() => {
+    if (featureFlagsStore.ENABLE_NEW_EXPERIENCE === false) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        "ENABLE_NEW_EXPERIENCE feature flag is false! Redirecting to old experience.",
+      );
+      window.location.href = `/w/${props.workspacePk}/${props.changeSetId}`;
     }
-  }, 500);
+  });
 
   const thisWorkspacePk = workspacePk.value;
   const workspaceAuthToken = getTokenForWorkspace(thisWorkspacePk);

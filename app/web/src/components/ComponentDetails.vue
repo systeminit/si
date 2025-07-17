@@ -162,8 +162,8 @@
             </template>
             <template
               v-if="
-                ffStore.FRONTEND_ARCH_VIEWS &&
-                ffStore.BIFROST_ACTIONS &&
+                featureFlagsStore.FRONTEND_ARCH_VIEWS &&
+                featureFlagsStore.BIFROST_ACTIONS &&
                 viewStore.selectedComponentId
               "
             >
@@ -243,7 +243,7 @@ const viewStore = useViewsStore();
 const qualificationsStore = useQualificationsStore();
 const changeSetsStore = useChangeSetsStore();
 const funcStore = useFuncStore();
-const ffStore = useFeatureFlagsStore();
+const featureFlagsStore = useFeatureFlagsStore();
 
 const modelingEventBus = componentsStore.eventBus;
 

@@ -4,8 +4,12 @@ import { addStoreHooks } from "@si/vue-lib/pinia";
 import { posthog } from "@/utils/posthog";
 import { useWorkspacesStore } from "./workspaces.store";
 
+type FeatureFlag = UserFlag | WorkspaceFlag;
+type UserFlag = keyof typeof USER_FLAG_MAPPING;
+type WorkspaceFlag = keyof typeof WORKSPACE_FLAG_MAPPING;
+
 // translation from store key to posthog feature flag name
-const FLAG_MAPPING = {
+const USER_FLAG_MAPPING = {
   // STORE_FLAG_NAME: "posthogFlagName",
   MODULES_TAB: "modules_tab",
   ADMIN_PANEL_ACCESS: "si_admin_panel_access",
@@ -19,27 +23,18 @@ const FLAG_MAPPING = {
   SQLITE_TOOLS: "sqlite-tools",
   PROPS_TO_PROPS_CONNECTIONS: "props-to-props-connections",
   ENABLE_NEW_EXPERIENCE: "enable-new-experience",
-};
-
+} as const;
 const WORKSPACE_FLAG_MAPPING = {
   FRONTEND_ARCH_VIEWS: "workspace-frontend-arch-views",
   BIFROST_ACTIONS: "workspace-bifrost-actions",
   NEW_HOTNESS: "workspace-new-hotness",
-};
+} as const;
 
-const ALL_FLAG_MAPPING: Record<FeatureFlags, string> = {
-  ...FLAG_MAPPING,
+// List of all feature flags
+const FEATURE_FLAGS = Object.keys({
+  ...USER_FLAG_MAPPING,
   ...WORKSPACE_FLAG_MAPPING,
-};
-
-type KeysOfUnion<T> = T extends T ? keyof T : never;
-type FeatureFlags = KeysOfUnion<
-  typeof FLAG_MAPPING | typeof WORKSPACE_FLAG_MAPPING
->;
-const PH_TO_STORE_FLAG_LOOKUP = _.invert(FLAG_MAPPING) as Record<
-  string,
-  FeatureFlags
->;
+}) as FeatureFlag[];
 
 export function useFeatureFlagsStore() {
   const workspacesStore = useWorkspacesStore();
@@ -49,70 +44,95 @@ export function useFeatureFlagsStore() {
     undefined,
     undefined,
     defineStore("feature-flags", {
-      // all flags default to false
-      state: () => _.mapValues({ ...ALL_FLAG_MAPPING }, () => false),
+      // all flags default to undefined, but we put entries in the feature flags anyway
+      state: () =>
+        Object.fromEntries(
+          FEATURE_FLAGS.map((flag) => [flag, undefined]),
+        ) as Record<FeatureFlag, boolean | undefined>,
       getters: {
-        allFeatureFlags(state) {
-          const flags = [] as Array<{ name: string; value: boolean }>;
-          for (const key of Object.keys(ALL_FLAG_MAPPING)) {
-            flags.push({ name: key, value: state[key as FeatureFlags] });
-          }
-          return flags;
-        },
+        allFeatureFlags: (state) =>
+          FEATURE_FLAGS.map((name) => ({ name, value: state[name] })),
       },
       actions: {
-        setDependentFlags() {
+        /**
+         * Sets flags
+         *
+         * NOTE: This is deliberately not async, so that all flags are set at the same time and
+         * there is no UI "flicker" if (for example) posthog has a flag as false but then we
+         * set an override.
+         *
+         * DO NOT set feature flags anywhere else but here.
+         *
+         * @param featureFlags - Set of general feature flags from posthog
+         * @param workspaceFlags - Set of workspace-specific feature flags from posthog
+         */
+        setFlags(featureFlags: Set<string>, workspaceFlags: Set<string>) {
+          // Set the flags!
+          for (const [flag, phFlag] of Object.entries(USER_FLAG_MAPPING)) {
+            this[flag] = featureFlags.has(phFlag);
+          }
+          for (const [flag, phFlag] of Object.entries(WORKSPACE_FLAG_MAPPING)) {
+            this[flag] = workspaceFlags.has(phFlag);
+          }
+
+          // You can override feature flags while working on a feature by setting them to true/false here
+          // for example:
+          // this.FEATURE_FLAG_NAME ??= false;
+
+          // turning this on for local development
+          if (import.meta.env.VITE_SI_ENV === "local")
+            this.ENABLE_NEW_EXPERIENCE = true;
+
+          // After processing override flags, set dependent flags.
           if (this.ENABLE_NEW_EXPERIENCE) {
             this.FLOATING_CONNECTION_MENU = true;
             this.SIMPLE_SOCKET_UI = true;
             this.PROPS_TO_PROPS_CONNECTIONS = true;
           }
         },
-      },
-      async onActivated() {
-        posthog.onFeatureFlags((phFlags) => {
-          // reset local flags from posthog data
-          _.each(phFlags, (phFlag) => {
-            const storeFlagKey = PH_TO_STORE_FLAG_LOOKUP[phFlag];
-            if (storeFlagKey) {
-              this[storeFlagKey] = true;
-            }
-          });
-        });
-
-        // NOTE: this will return all the OTHER flags too... so only look for workspace specific ones
-        const resp = await fetch(
-          `${import.meta.env.VITE_POSTHOG_API_HOST}/decide/?v=3`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              api_key: import.meta.env.VITE_POSTHOG_PUBLIC_KEY,
-              distinct_id: workspacePk,
-            }),
-          },
-        );
-        if (resp.ok) {
-          const result = await resp.json();
-          Object.entries(WORKSPACE_FLAG_MAPPING).forEach(
-            ([storeFlagKey, phFlag]) => {
-              this[storeFlagKey] = result.featureFlags[phFlag] ?? false;
+        /**
+         * Fetches workspace-specific feature flags
+         *
+         * If the response is not ok, it return an empty array.
+         * @returns
+         */
+        async fetchWorkspaceFlags(): Promise<string[]> {
+          const resp = await fetch(
+            `${import.meta.env.VITE_POSTHOG_API_HOST}/decide/?v=3`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                api_key: import.meta.env.VITE_POSTHOG_PUBLIC_KEY,
+                distinct_id: workspacePk,
+              }),
             },
           );
-        }
-
-        // You can override feature flags while working on a feature by setting them to true/false here
-        // for example:
-        // this.FEATURE_FLAG_NAME = false;
-
-        // turning this on for local development
-        if (import.meta.env.VITE_SI_ENV === "local")
-          this.ENABLE_NEW_EXPERIENCE = true;
-
-        // After processing override flags, set dependent flags.
-        this.setDependentFlags();
+          if (!resp.ok) {
+            // TODO probably should just throw here
+            // eslint-disable-next-line no-console
+            console.error(`Error retrieving workspace-specific flags: ${resp}`);
+            return [];
+          }
+          const json = await resp.json();
+          return Object.keys(json.featureFlags);
+        },
+      },
+      async onActivated() {
+        // Grab workspace-specific flags once, and listen for feature flag changes from posthog
+        const workspaceFlags = this.fetchWorkspaceFlags();
+        // TODO remove feature flag listener on deactivate
+        posthog.onFeatureFlags(async (flags) => {
+          try {
+            this.setFlags(new Set(flags), new Set(await workspaceFlags));
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error("Error setting feature flags", e);
+            throw e;
+          }
+        });
       },
     }),
   )();
