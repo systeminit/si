@@ -88,7 +88,9 @@
           "x86_64-darwin" = "/dev/null";
           "aarch64-darwin" = "/dev/null";
         }
-        .${system};
+        .${
+          system
+        };
 
       # This isn't an exact science, but confirmed the system interpreter by
       # running `ldd /bin/sh` in Docker containers running:
@@ -105,7 +107,9 @@
           "x86_64-darwin" = "/dev/null";
           "aarch64-darwin" = "/dev/null";
         }
-        .${system};
+        .${
+          system
+        };
 
       langJsExtraPkgs = with pkgs; [
         awscli2
