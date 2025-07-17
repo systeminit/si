@@ -76,7 +76,7 @@
       <NavbarButton
         v-if="featureFlagsStore.ENABLE_NEW_EXPERIENCE"
         icon="grid"
-        tooltipText="Use New UI"
+        :tooltipText="useNewUI ? 'Use Old UI' : 'Use New UI'"
         @click="toggleExperience"
       />
 
