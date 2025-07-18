@@ -30,6 +30,7 @@ pub type WidgetOptions = Vec<WidgetOption>;
 pub struct Prop {
     pub id: PropId,
     pub kind: PropKind,
+    pub child_kind: Option<PropKind>,
     pub widget_kind: PropWidgetKind,
     pub name: String,
     pub path: String,

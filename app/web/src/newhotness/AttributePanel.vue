@@ -133,6 +133,8 @@
         @save="save"
         @delete="remove"
         @remove-subscription="removeSubscription"
+        @add="add"
+        @set-key="setKey"
       />
     </AttributeChildLayout>
     <AttributeChildLayout v-if="secrets && secrets.children.length > 0">
@@ -180,15 +182,22 @@ import { PropKind } from "@/api/sdf/dal/prop";
 import { useMakeKey } from "@/store/realtime/heimdall";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
-import { componentTypes, routes, useApi } from "./api_composables";
-import ComponentAttribute from "./layout_components/ComponentAttribute.vue";
+import { componentTypes, routes, UseApi, useApi } from "./api_composables";
+import ComponentAttribute, {
+  NewChildValue,
+} from "./layout_components/ComponentAttribute.vue";
 import { keyEmitter } from "./logic_composables/emitters";
 import ComponentSecretAttribute from "./layout_components/ComponentSecretAttribute.vue";
 import { useWatchedForm } from "./logic_composables/watched_form";
 import { NameFormData } from "./ComponentDetails.vue";
 import EmptyState from "./EmptyState.vue";
 import { findAttributeValueInTree } from "./util";
-import { AttrTree, makeAvTree } from "./logic_composables/attribute_tree";
+import {
+  arrayAttrTreeIntoTree,
+  AttrTree,
+  makeAvTree,
+  makeSavePayload,
+} from "./logic_composables/attribute_tree";
 import AttributeChildLayout from "./layout_components/AttributeChildLayout.vue";
 
 const q = ref("");
@@ -202,6 +211,7 @@ const props = defineProps<{
 
 const root = computed<AttrTree>(() => {
   const empty = {
+    componentId: "",
     id: "",
     children: [] as AttrTree[],
     attributeValue: {} as AttributeValue,
@@ -269,48 +279,7 @@ watch(
     // Maybe we want to get rid of low scoring options (via std dev)?
     const matches: AttrTree[] = results.map((fz) => fz.item);
 
-    // get new instances of all the objects with empty children arrays
-    const parentsWithoutChildren = Object.values(map)
-      .map((attr) => {
-        return {
-          ...attr,
-          children: [],
-        };
-      })
-      .reduce((map, attr) => {
-        map[attr.id] = attr;
-        return map;
-      }, {} as Record<string, AttrTree>);
-
-    const matchesAsTree: Record<string, AttrTree> = {};
-    // work backwards from the leaf node, filling in their parents children arrays
-    // make sure there are no dupes b/c matches will give us dupes
-    matches.forEach((attr) => {
-      const parents = [attr.parent];
-      let prevPid: string | undefined;
-      while (parents.length > 0) {
-        const pId = parents.shift();
-        if (!pId) throw new Error("no pid");
-        let p: AttrTree | undefined;
-        p = matchesAsTree[pId];
-        if (!p) p = parentsWithoutChildren[pId];
-        if (p) {
-          if (prevPid) {
-            const lastParent = matchesAsTree[prevPid];
-            if (lastParent && !p.children.some((c) => c.id === lastParent.id))
-              p.children.push(lastParent);
-          } else if (!p.children.some((c) => c.id === attr.id))
-            p.children.push(attr);
-
-          matchesAsTree[p.id] = p;
-
-          if (p.parent && p.id !== domain.value?.id)
-            // dont traverse past domain
-            parents.push(p.parent);
-        }
-        prevPid = pId;
-      }
-    });
+    const matchesAsTree = arrayAttrTreeIntoTree(matches, map, domain.value?.id);
 
     // all roads lead back to domain
     const newDomain = matchesAsTree[domain.value.id];
@@ -334,37 +303,84 @@ const save = async (
     { id: props.component.id },
   );
 
-  // TODO - Paul there's a better way to handle this for sure!
-  let coercedVal: string | boolean | number | null = value;
-
-  // We don't want to coerce a prop path when connecting via a subscription, so skip it (e.g. prop
-  // kind is "integer", but the value is the prop path, which is a "string").
-  if (!connectingComponentId) {
-    if (value === "") {
-      // For now, we don't allow a user to enter an empty string becuase passing an empty string is
-      // effectively an unset operation.
-      coercedVal = null;
-    } else if (propKind === PropKind.Boolean) {
-      coercedVal = value.toLowerCase() === "true" || value === "1";
-    } else if (propKind === PropKind.Integer) {
-      coercedVal = Math.trunc(Number(value));
-    } else if (propKind === PropKind.Float) {
-      coercedVal = Number(value);
-    }
-  }
-
-  const payload: componentTypes.UpdateComponentAttributesArgs = {};
-  payload[path] = coercedVal;
-  if (connectingComponentId) {
-    payload[path] = {
-      $source: { component: connectingComponentId, path: coercedVal },
-    };
-  }
+  const payload = makeSavePayload(path, value, propKind, connectingComponentId);
 
   const { req, newChangeSetId } =
     await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
   if (saveApi.ok(req) && newChangeSetId) {
     saveApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness-component",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+          componentId: props.component.id,
+        },
+      },
+      newChangeSetId,
+    );
+  }
+};
+
+const keyApi = useApi();
+const setKey = async (
+  attributeTree: AttrTree,
+  key: string,
+  value: NewChildValue,
+) => {
+  const call = keyApi.endpoint<{ success: boolean }>(
+    routes.UpdateComponentAttributes,
+    { id: props.component.id },
+  );
+  const childPath =
+    `${attributeTree.attributeValue.path}/${key}` as AttributePath;
+  const payload = {
+    [childPath]: value,
+  };
+  const { req, newChangeSetId } =
+    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  if (newChangeSetId && keyApi.ok(req)) {
+    keyApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness-component",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+          componentId: props.component.id,
+        },
+      },
+      newChangeSetId,
+    );
+  }
+};
+
+const add = async (
+  addApi: UseApi,
+  attributeTree: AttrTree,
+  value: NewChildValue,
+) => {
+  if (props.component.toDelete) return;
+  if (!props.attributeTree) return;
+
+  const call = addApi.endpoint<{ success: boolean }>(
+    routes.UpdateComponentAttributes,
+    { id: props.component.id },
+  );
+  addApi.setWatchFn(
+    // once the children count updates, we can stop spinning
+    () => attributeTree.children.length,
+  );
+
+  // Do I send `{}` for array of map/object or "" for array of string?
+  // Answer by looking at my prop child
+  const appendPath = `${attributeTree.attributeValue.path}/-` as AttributePath;
+  const payload = {
+    [appendPath]: value,
+  };
+  const { req, newChangeSetId } =
+    await call.put<componentTypes.UpdateComponentAttributesArgs>(payload);
+  if (addApi.ok(req) && newChangeSetId) {
+    addApi.navigateToNewChangeSet(
       {
         name: "new-hotness-component",
         params: {

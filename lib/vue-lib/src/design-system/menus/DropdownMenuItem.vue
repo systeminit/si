@@ -227,7 +227,7 @@ useThemeContainer(props.submenuVariant !== "contextmenu" ? "dark" : undefined);
 const noInteract = computed(() => props.disabled || props.header);
 
 const emit = defineEmits<{
-  (e: "select"): void;
+  (e: "select", event: MouseEvent): void;
   (e: "secondaryAction"): void;
 }>();
 
@@ -294,9 +294,9 @@ const isFocused = computed(() => {
   return menuCtx.focusedItemId.value === id;
 });
 
-function trySelect() {
+function trySelect(event: MouseEvent) {
   if (!noInteract.value) {
-    emit("select");
+    emit("select", event);
   }
 }
 
@@ -313,9 +313,9 @@ function onClick(event: MouseEvent) {
     ) {
       openSubmenu();
     }
-    trySelect();
+    trySelect(event);
   } else {
-    trySelect();
+    trySelect(event);
     menuCtx.close(props.doNotCloseMenuOnClick);
   }
 }

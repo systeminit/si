@@ -76,6 +76,21 @@ pub async fn assemble_prop(
 
     let prop = Prop::get_by_id(ctx, prop_id).await?;
 
+    let mut child_kind = None;
+    let children = Prop::direct_child_props_ordered(ctx, prop_id).await?;
+    if !children.is_empty() {
+        child_kind = Some(match children[0].kind {
+            dal::PropKind::Array => PropKind::Array,
+            dal::PropKind::Boolean => PropKind::Boolean,
+            dal::PropKind::Integer => PropKind::Integer,
+            dal::PropKind::Json => PropKind::Json,
+            dal::PropKind::Map => PropKind::Map,
+            dal::PropKind::Object => PropKind::Object,
+            dal::PropKind::String => PropKind::String,
+            dal::PropKind::Float => PropKind::Float,
+        })
+    }
+
     let mut is_create_only = false;
     let filtered_widget_options = prop.widget_options.clone().map(|options| {
         options
@@ -101,6 +116,7 @@ pub async fn assemble_prop(
     let prop_mv = PropMv {
         id: prop_id,
         path: path.to_owned(),
+        child_kind,
         name: prop.name,
         kind: match prop.kind {
             dal::PropKind::Array => PropKind::Array,

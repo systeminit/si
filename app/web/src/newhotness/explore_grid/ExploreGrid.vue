@@ -8,7 +8,13 @@
     BUYER BEWARE.
   -->
   <div ref="scrollRef" class="scrollable grow" style="overflow-anchor: none">
+    <AttributePanelBulk
+      v-if="bulkEditing"
+      :selectedComponents="selectedComponents"
+      @close="() => $emit('bulkDone')"
+    />
     <div
+      v-else
       data-testid="tile-container"
       class="w-full relative flex flex-col"
       :style="{
@@ -57,8 +63,10 @@ import { windowWidthReactive } from "../logic_composables/emitters";
 import ExploreGridRow, { ExploreGridRowData } from "./ExploreGridRow.vue";
 import ComponentCard from "../ComponentCard.vue";
 import ExploreGridTile, { GRID_TILE_HEIGHT } from "./ExploreGridTile.vue";
+import AttributePanelBulk from "./AttributePanelBulk.vue";
 
 const props = defineProps<{
+  bulkEditing: boolean;
   components: Record<string, ComponentInList[]>;
   focusedComponentIdx?: number;
   selectedComponentIndexes: Set<number>;
@@ -379,6 +387,7 @@ const scrollCurrentTileIntoView = () => {
 watch([() => props.focusedComponentIdx], scrollCurrentTileIntoView);
 
 defineEmits<{
+  (e: "bulkDone"): void;
   (e: "unpin", componentId: ComponentId): void;
   (e: "childSelect", componentIdx: number): void;
   (e: "childDeselect", componentIdx: number): void;

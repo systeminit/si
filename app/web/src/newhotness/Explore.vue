@@ -247,6 +247,8 @@
               componentsHaveActionsWithState.running
             "
             :componentsPendingActionNames="componentsPendingActionNames"
+            :bulkEditing="bulkEditing"
+            @bulkDone="() => (bulkEditing = false)"
             @childClicked="componentClicked"
             @childSelect="selectComponent"
             @childDeselect="deselectComponent"
@@ -263,6 +265,7 @@
             @scroll="onScroll"
           />
           <footer
+            id="footer"
             :class="
               clsx(
                 'flex-none h-12 px-xs border-t flex flex-row items-center',
@@ -274,21 +277,23 @@
               )
             "
           >
-            <!-- footer -->
-            <VButton
-              label="See keyboard shortcuts"
-              pill="?"
-              tone="neutral"
-              size="sm"
-              @click="openShortcutModal"
-            />
-            <VButton
-              label="Add a component"
-              pill="N"
-              tone="action"
-              size="sm"
-              @click="openAddComponentModal"
-            />
+            <!-- footer, for bulk editing we teleport contents in here -->
+            <template v-if="!bulkEditing">
+              <VButton
+                label="See keyboard shortcuts"
+                pill="?"
+                tone="neutral"
+                size="sm"
+                @click="openShortcutModal"
+              />
+              <VButton
+                label="Add a component"
+                pill="N"
+                tone="action"
+                size="sm"
+                @click="openAddComponentModal"
+              />
+            </template>
           </footer>
         </template>
       </template>
@@ -395,6 +400,7 @@
       @clearSelected="clearSelection"
       @edit="navigateToFocusedComponent"
       @pin="(c) => (pinnedComponentId = c)"
+      @bulk="() => (bulkEditing = true)"
     />
   </section>
 </template>
@@ -547,6 +553,8 @@ const showGrid = computed(() => urlGridOrMap.value === "grid");
 const gridMapSwitcherValue = computed(
   () => groupRef.value && groupRef.value.isA,
 );
+// TODO — if youre on HEAD and you start bulk editing, create a change set right away
+const bulkEditing = ref(false);
 
 watch(gridMapSwitcherValue, (newShowGrid) => {
   // If this is nil, groupRef is unmounted, and we don't care about the change.
@@ -1409,7 +1417,7 @@ const onM = (e: KeyDetails["m"]) => {
   mapRef.value?.onM(e);
 };
 const onEscape = () => {
-  if (isThereAModalOpen.value) return;
+  if (isThereAModalOpen.value || bulkEditing.value) return;
 
   if (showGrid.value) {
     searchRef.value?.blur();
@@ -1510,6 +1518,8 @@ const onResize = () => {
 // general click handler for the whole page
 // any click which doesn't do this behavior should have .stop on it!
 const onClick = (e: MouseDetails["click"]) => {
+  if (bulkEditing.value) return;
+
   if (showGrid.value) {
     const inside =
       componentContextMenuRef.value?.contextMenuRef?.elementIsInsideMenu;

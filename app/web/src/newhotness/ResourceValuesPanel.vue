@@ -85,6 +85,7 @@ const props = defineProps<{
 const root = computed<AttrTree>(() => {
   const empty = {
     id: "",
+    componentId: "",
     children: [] as AttrTree[],
     attributeValue: {} as AttributeValue,
     isBuildable: false,
