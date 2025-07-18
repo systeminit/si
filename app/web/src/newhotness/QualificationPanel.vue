@@ -5,6 +5,7 @@
         v-for="qualification in qualifications"
         :key="qualification.avId"
         :qualification="qualification"
+        :component="component.id"
       />
     </template>
     <EmptyState

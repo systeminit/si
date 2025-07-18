@@ -31,6 +31,7 @@ export enum routes {
   DeleteComponents = "DeleteComponents",
   DeleteView = "DeleteView",
   DuplicateComponents = "DuplicateComponents",
+  EnqueueAttributeValue = "EnqueueAttributeValue",
   EraseComponentsFromView = "EraseComponentsFromView",
   FuncRun = "FuncRun",
   FuncRunByAv = "FuncRunByAv",
@@ -62,6 +63,7 @@ const CAN_MUTATE_ON_HEAD: readonly routes[] = [
   routes.ChangeSetRename,
   routes.CreateChangeSet,
   routes.AbandonChangeSet,
+  routes.EnqueueAttributeValue,
 ] as const;
 
 const COMPRESSED_ROUTES: readonly routes[] = [
@@ -82,6 +84,7 @@ const _routes: Record<routes, string> = {
   DeleteComponents: "/components/delete",
   DeleteView: "/views/<viewId>",
   DuplicateComponents: "/views/<viewId>/duplicate_components",
+  EnqueueAttributeValue: "/components/<id>/attributes/enqueue",
   EraseComponentsFromView: "/views/<viewId>/erase_components",
   FuncRun: "/funcs/runs/<id>",
   FuncRunByAv: "/funcs/runs/latest_av/<id>/logs",

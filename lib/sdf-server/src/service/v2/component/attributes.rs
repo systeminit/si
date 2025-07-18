@@ -11,10 +11,17 @@ use axum::{
         IntoResponse,
         Response,
     },
-    routing::put,
+    routing::{
+        post,
+        put,
+    },
 };
 use dal::{
+    AttributeValue,
     ChangeSet,
+    ChangeSetId,
+    ComponentId,
+    WorkspacePk,
     attribute::attributes::{
         AttributeValueIdent,
         ValueOrSourceSpec,
@@ -39,19 +46,21 @@ use super::{
 use crate::app_state::AppState;
 
 pub fn v2_routes() -> Router<AppState> {
-    Router::new().route(
-        "/",
-        put(update_attributes).layer(
-            ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(handle_decompression_error))
-                .layer(
-                    RequestDecompressionLayer::new()
-                        .gzip(true)
-                        .deflate(true)
-                        .pass_through_unaccepted(true),
-                ),
-        ),
-    )
+    Router::new()
+        .route(
+            "/",
+            put(update_attributes).layer(
+                ServiceBuilder::new()
+                    .layer(HandleErrorLayer::new(handle_decompression_error))
+                    .layer(
+                        RequestDecompressionLayer::new()
+                            .gzip(true)
+                            .deflate(true)
+                            .pass_through_unaccepted(true),
+                    ),
+            ),
+        )
+        .route("/enqueue", post(enqueue_prototype_function))
 }
 
 async fn handle_decompression_error(err: BoxError) -> Response {
@@ -84,4 +93,41 @@ async fn update_attributes(
     );
 
     Ok(ForceChangeSetResponse::new(force_change_set_id, ()))
+}
+
+async fn enqueue_prototype_function(
+    ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
+    tracker: PosthogEventTracker,
+    Path((_workspace_pk, _change_set_id, component_id)): Path<(
+        WorkspacePk,
+        ChangeSetId,
+        ComponentId,
+    )>,
+    Json(values): Json<Vec<AttributeValueIdent>>,
+) -> Result<()> {
+    let mut did_enqueue = false;
+    for value in values {
+        if let Some(attribute_value_id) = value.resolve(ctx, component_id).await? {
+            if AttributeValue::is_set_by_dependent_function(ctx, attribute_value_id).await? {
+                ctx.add_dependent_values_and_enqueue(vec![attribute_value_id])
+                    .await?;
+                did_enqueue = true;
+            }
+        }
+    }
+    if did_enqueue {
+        ctx.commit().await?;
+    }
+
+    tracker.track(
+        ctx,
+        "enqueue_attribute_prototype",
+        json!({
+            "how": "/component/attributes",
+            "component_id": component_id,
+            "change_set_id": ctx.change_set_id(),
+        }),
+    );
+
+    Ok(())
 }
