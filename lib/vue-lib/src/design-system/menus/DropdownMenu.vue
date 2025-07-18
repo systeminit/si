@@ -40,7 +40,7 @@
         :allFilter="{ name: 'All Views' }"
         :filters="searchFilters"
         @click.stop="selectSearch"
-        @blur="deselectSearch"
+        @blur="delayedDeselectSearch"
         @search="onSearch"
         @clearSearch="onSearch('')"
         @enterPressed="selectFirst"
@@ -706,6 +706,11 @@ const searchSelected = ref(false);
 const selectSearch = () => {
   searchSelected.value = true;
 };
+
+const delayedDeselectSearch = () => {
+  setTimeout(deselectSearch, 500);
+};
+
 const deselectSearch = () => {
   if (siSearchRef.value) {
     siSearchRef.value.clearSearch();
