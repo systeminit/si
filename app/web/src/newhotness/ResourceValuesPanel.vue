@@ -21,7 +21,7 @@
         :class="
           clsx(
             'border-l border-r border-t',
-            themeClasses('border-neutral-200', 'border-neutral-800'),
+            themeClasses('border-neutral-300', 'border-neutral-800'),
           )
         "
       >
@@ -37,7 +37,7 @@
         :class="
           clsx(
             'w-full border-b',
-            themeClasses('border-neutral-200', 'border-neutral-800'),
+            themeClasses('border-neutral-300', 'border-neutral-800'),
           )
         "
       />

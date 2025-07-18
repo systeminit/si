@@ -166,6 +166,7 @@ import Create from "~icons/carbon/intent-request-create";
 import CarbonEdit from "~icons/carbon/edit";
 import Hourglass from "~icons/carbon/hourglass";
 import CarbonCompare from "~icons/carbon/compare";
+import CarbonMaximize from "~icons/carbon/maximize";
 // TODO(Wendy) - for some reason this one specific icon fails to import? Not sure why.
 // import CarbonTransformCode from '~icons/carbon/transform-code';
 import CarbonTransformCode from "~icons/carbon/code"; // using this one as a placeholder for now
@@ -330,6 +331,7 @@ export const ICONS = Object.freeze({
   "logs-pop": LogsPop,
   "logs-pop-square": LogsPopSquare,
   map: CarbonFlowConnection,
+  maximize: CarbonMaximize,
   menu: Menu,
   minimap: Map,
   minus: Minus,

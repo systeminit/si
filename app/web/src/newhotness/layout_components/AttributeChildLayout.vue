@@ -3,8 +3,8 @@
   <dl
     :class="
       clsx(
-        'ml-xs border-l border-b my-xs',
-        themeClasses('border-neutral-200', 'border-neutral-800'),
+        'border my-2xs',
+        themeClasses('border-neutral-300', 'border-neutral-600'),
       )
     "
   >
@@ -12,19 +12,24 @@
     <dt
       :class="
         clsx(
-          'px-2xs py-xs flex flex-row items-center gap-2xs cursor-pointer',
+          'group/header',
+          'px-2xs py-xs flex flex-row items-center gap-2xs cursor-pointer h-lg',
+          open && 'border-b',
           themeClasses(
-            'bg-neutral-200 hover:bg-neutral-300',
-            'bg-neutral-800 hover:bg-neutral-700',
+            'bg-white border-neutral-300 hover:bg-neutral-100',
+            'bg-neutral-800 border-neutral-600 hover:bg-neutral-700',
           ),
         )
       "
       @click="() => (open = !open)"
     >
-      <Icon :name="open ? 'chevron--down' : 'chevron--right'" />
+      <Icon
+        :name="open ? 'chevron--down' : 'chevron--right'"
+        class="group-hover/header:scale-125"
+      />
       <slot name="header" />
     </dt>
-    <dd v-if="open">
+    <dd v-if="open" class="p-2xs">
       <slot />
       <!-- the children are, so far, another list or a button that would create a list -->
     </dd>

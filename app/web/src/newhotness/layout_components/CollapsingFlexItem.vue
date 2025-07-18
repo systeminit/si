@@ -1,26 +1,31 @@
 <template>
   <!-- requires that its parent container is flex (either direction) -->
   <div
-    ref="scrollableDivRef"
     :class="
       clsx(
         'collapsing-flex-item', // identifying class
-        'border basis-0 mb-[-1px]', // basis-0 makes items take equal size when multiple are open
-        themeClasses('border-neutral-300', 'border-neutral-700'),
-        openState.open.value ? 'scrollable grow' : 'shrink',
+        'flex flex-col items-stretch',
+        'border overflow-hidden basis-0 mb-[-1px]', // basis-0 makes items take equal size when multiple are open
+        themeClasses(
+          'border-neutral-300 bg-white',
+          'border-neutral-600 bg-neutral-800',
+        ),
+        openState.open.value ? 'grow' : 'shrink',
       )
     "
+    :style="`min-height: ${headerHeight}px`"
   >
-    <!-- TODO(Wendy) - fix this so that the scrollbar doesn't include the header -->
     <h3
+      ref="headerRef"
       :class="
         clsx(
           h3class,
           'group/header',
-          'sticky top-0 cursor-pointer text-lg font-bold',
+          'cursor-pointer text-lg font-bold flex-none h-lg',
+          openState.open.value && 'border-b',
           themeClasses(
-            'bg-neutral-200 hover:bg-neutral-300',
-            'bg-neutral-800 hover:bg-neutral-700',
+            'bg-white border-neutral-300 hover:bg-neutral-100',
+            'bg-neutral-800 border-neutral-600 hover:bg-neutral-700',
           ),
         )
       "
@@ -31,28 +36,30 @@
         :name="openState.open.value ? 'chevron--down' : 'chevron--right'"
       />
       <slot name="header" />
-      <template v-if="expandable">
-        <IconButton
-          tooltip="Expand"
-          tooltipPlacement="top"
-          class="ml-auto"
-          size="xs"
-          icon="arrows-out"
-          iconTone="shade"
-          @click.prevent.stop="expand"
-        />
-      </template>
+      <div class="ml-auto" />
+      <slot name="headerIcons" />
+      <IconButton
+        v-if="expandable && openState.open.value"
+        tooltip="Expand"
+        tooltipPlacement="top"
+        size="xs"
+        icon="maximize"
+        iconTone="shade"
+        @click.prevent.stop="expand"
+      />
     </h3>
-    <!-- only show contents when open, this makes flexbox grow/shrink work :chefskiss: -->
-    <slot v-if="openState.open.value" />
-
+    <div v-if="openState.open.value" :class="clsx('scrollable min-h-0 flex-1')">
+      <slot />
+    </div>
     <Modal ref="modalRef" size="4xl">
       <template #title>
-        <div :class="h3class">
+        <div :class="clsx(h3class)">
           <slot name="header" />
         </div>
       </template>
-      <slot />
+      <div class="scrollable max-h-[70vh]">
+        <slot />
+      </div>
     </Modal>
   </div>
 </template>
@@ -65,7 +72,7 @@ import {
   Icon,
 } from "@si/vue-lib/design-system";
 import clsx from "clsx";
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { tw } from "@si/vue-lib";
 import { useToggle } from "../logic_composables/toggle_containers";
 
@@ -88,6 +95,9 @@ const props = withDefaults(
     expandable: true,
   },
 );
+
+const headerRef = ref<HTMLDivElement>();
+const headerHeight = computed(() => headerRef.value?.offsetHeight ?? 0);
 
 onMounted(() => {
   openState.open.value = props.open;

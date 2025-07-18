@@ -1,11 +1,17 @@
 <template>
-  <div id="app-layout" class="h-screen flex flex-col">
+  <div
+    id="app-layout"
+    :class="
+      clsx('h-screen flex flex-col', themeClasses('bg-white', 'bg-neutral-900'))
+    "
+  >
     <!-- nav itself is fixed at 60 px-->
     <nav
       :class="
         clsx(
-          'navbar bg-neutral-900 text-white relative shadow-[0_4px_4px_0_rgba(0,0,0,0.15)]',
+          'navbar relative shadow-[0_4px_4px_0_rgba(0,0,0,0.15)] border-b',
           'z-90 h-[60px] overflow-hidden shrink-0 flex flex-row justify-between select-none',
+          'bg-neutral-800 border-neutral-600 text-white',
           windowWidth > 740 && 'gap-sm',
         )
       "
@@ -98,6 +104,7 @@ import {
 import * as _ from "lodash-es";
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { Span, trace } from "@opentelemetry/api";
+import { themeClasses } from "@si/vue-lib/design-system";
 import NavbarButton from "@/components/layout/navbar/NavbarButton.vue";
 import { useFeatureFlagsStore } from "@/store/feature_flags.store";
 import * as heimdall from "@/store/realtime/heimdall";
