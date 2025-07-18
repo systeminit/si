@@ -45,25 +45,11 @@
       )
     "
   >
-    <template
-      v-if="
-        featureFlagsStore.FRONTEND_ARCH_VIEWS &&
-        featureFlagsStore.BIFROST_ACTIONS
-      "
-    >
-      <BifrostInsetApprovalModal
-        v-if="changeSetsStore.selectedChangeSet && approvalData"
-        :approvalData="approvalData"
-        :changeSet="changeSetsStore.selectedChangeSet"
-      />
-    </template>
-    <template v-else>
-      <InsetApprovalModal
-        v-if="changeSetsStore.selectedChangeSet && approvalData"
-        :approvalData="approvalData"
-        :changeSet="changeSetsStore.selectedChangeSet"
-      />
-    </template>
+    <InsetApprovalModal
+      v-if="changeSetsStore.selectedChangeSet && approvalData"
+      :approvalData="approvalData"
+      :changeSet="changeSetsStore.selectedChangeSet"
+    />
   </div>
   <ModelingDiagram
     v-else
@@ -158,7 +144,6 @@ import { useAssetStore } from "@/store/asset.store";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useAuthStore } from "@/store/auth.store";
 import FloatingConnectionMenu from "@/components/ModelingView/FloatingConnectionMenu.vue";
-import BifrostInsetApprovalModal from "@/mead-hall/InsetApprovalModal.vue";
 import LeftPanelDrawer from "../LeftPanelDrawer.vue";
 import ModelingDiagram from "../ModelingDiagram/ModelingDiagram.vue";
 import AutoconnectMenu from "../ModelingView/AutoconnectMenu.vue";

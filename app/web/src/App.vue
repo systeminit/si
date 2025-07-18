@@ -284,11 +284,7 @@ body.dark {
   }
 }
 
-.Vue-Toastification__container.diagram-toast-container {
-  position: absolute; // default is fixed, but we want it positioned within its container, so go absolute
-  padding: 0;
-  top: 70px; // this puts the toasts 10px below the NavBar at the top of the screen
-
+.Vue-Toastification__container {
   & .Vue-Toastification__toast {
     background-color: var(--toast-bg-color);
     color: var(--toast-text-color);
@@ -297,5 +293,21 @@ body.dark {
       background-color: var(--toast-text-color);
     }
   }
+}
+
+.Vue-Toastification__container.diagram-toast-container.top-left,
+.Vue-Toastification__container.diagram-toast-container.top-right,
+.Vue-Toastification__container.diagram-toast-container.top-center {
+  position: absolute; // default is fixed, but we want it positioned within its container, so go absolute
+  padding: 0;
+  top: 70px; // this puts the toasts 10px below the NavBar at the top of the screen
+}
+
+.Vue-Toastification__container.diagram-toast-container.bottom-left,
+.Vue-Toastification__container.diagram-toast-container.bottom-right,
+.Vue-Toastification__container.diagram-toast-container.bottom-center {
+  position: absolute; // default is fixed, but we want it positioned within its container, so go absolute
+  padding: 0;
+  bottom: 58px; // this puts the toasts 10px above the bottom bar of the Explore page
 }
 </style>

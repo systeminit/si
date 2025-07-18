@@ -5,7 +5,7 @@
         <DetailsPanelMenuIcon
           :selected="props.menuSelected"
           @click="
-            (e) => {
+            (e: MouseEvent) => {
               emit('openMenu', e);
             }
           "
@@ -160,18 +160,7 @@
                 />
               </Inline>
             </template>
-            <template
-              v-if="
-                featureFlagsStore.FRONTEND_ARCH_VIEWS &&
-                featureFlagsStore.BIFROST_ACTIONS &&
-                viewStore.selectedComponentId
-              "
-            >
-              <BifrostAssetActionsDetails :component="component" />
-            </template>
-            <template v-else>
-              <AssetActionsDetails :component="props.component" />
-            </template>
+            <AssetActionsDetails :component="props.component" />
           </TabGroupItem>
           <TabGroupItem
             v-if="funcStore.managementFunctionsForSelectedComponent.length > 0"
@@ -208,8 +197,6 @@ import { useQualificationsStore } from "@/store/qualifications.store";
 import { ComponentType } from "@/api/sdf/dal/schema";
 import { useFuncStore } from "@/store/func/funcs.store";
 import { useViewsStore } from "@/store/views.store";
-import { useFeatureFlagsStore } from "@/store/feature_flags.store";
-import BifrostAssetActionsDetails from "@/mead-hall/AssetActionsDetails.vue";
 import ComponentCard from "./ComponentCard.vue";
 import DetailsPanelTimestamps from "./DetailsPanelTimestamps.vue";
 import ComponentDetailsManagement from "./ComponentDetailsManagement.vue";
@@ -243,7 +230,6 @@ const viewStore = useViewsStore();
 const qualificationsStore = useQualificationsStore();
 const changeSetsStore = useChangeSetsStore();
 const funcStore = useFuncStore();
-const featureFlagsStore = useFeatureFlagsStore();
 
 const modelingEventBus = componentsStore.eventBus;
 

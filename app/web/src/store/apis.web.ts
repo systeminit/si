@@ -7,7 +7,6 @@ import Axios, {
 import { useToast } from "vue-toastification";
 import { useAuthStore } from "@/store/auth.store";
 import { useChangeSetsStore } from "@/store/change_sets.store";
-import { trackEvent } from "@/utils/tracking";
 import FiveHundredError from "@/components/toasts/FiveHundredError.vue";
 import MaintenanceMode from "@/components/toasts/MaintenanceMode.vue";
 import UnscheduledDowntime from "@/components/toasts/UnscheduledDowntime.vue";
@@ -68,7 +67,6 @@ async function handleProxyTimeouts(response: AxiosResponse) {
     response.status === 404 &&
     response.headers?.["content-type"] !== "application/json"
   ) {
-    trackEvent("api_404_timeout");
     // redirect to oops page after short timeout so we give tracker a chance to send event
     setTimeout(() => {
       if (typeof window !== "undefined") window.location.href = "/oops";

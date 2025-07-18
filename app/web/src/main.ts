@@ -208,7 +208,7 @@ const filterBeforeCreate = (toast: any, toasts: any[]): any | false => {
 const options: PluginOptions = {
   newestOnTop: true,
   containerClassName: "diagram-toast-container",
-  position: POSITION.TOP_CENTER, // we overriding to push this down, BOTTOM is useless now
+  position: POSITION.TOP_CENTER, // we overriding to push this down
   transition: "si-toast-fade", // works better with overriden position
   icon: false,
   closeButton: false,

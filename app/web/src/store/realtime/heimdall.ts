@@ -39,8 +39,6 @@ import { DefaultMap } from "@/utils/defaultmap";
 import * as rainbow from "@/newhotness/logic_composables/rainbow_counter";
 import { sdfApiInstance as sdf } from "@/store/apis.web";
 import { WorkspaceMetadata } from "@/api/sdf/dal/workspace";
-import { useChangeSetsStore } from "../change_sets.store";
-import { useWorkspacesStore } from "../workspaces.store";
 import {
   cachedAppEmitter,
   SHOW_CACHED_APP_NOTIFICATION_EVENT,
@@ -643,38 +641,9 @@ export const niflheim = async (
   return true;
 };
 
-// deprecated
-export const changeSetId = computed(() => {
-  const changeSetsStore = useChangeSetsStore();
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return changeSetsStore.selectedChangeSetId!;
-});
-// deprecated
-const workspaceId = computed(() => {
-  const workspaceStore = useWorkspacesStore();
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return workspaceStore.selectedWorkspacePk!;
-});
-
-// deprecated
-// this is for the old world!
-export const makeKey = (kind: string, id?: string) => {
-  return [workspaceId.value, changeSetId.value, kind, id ?? workspaceId.value];
-};
-
 export const prune = async (workspaceId: string, changeSetId: string) => {
   delete muspelheimStatuses.value[changeSetId];
   await db.pruneAtomsForClosedChangeSet(workspaceId, changeSetId);
-};
-
-// this is for the old world!
-export const makeArgs = (kind: string, id?: string) => {
-  return {
-    workspaceId: workspaceId.value,
-    changeSetId: changeSetId.value,
-    kind: kind as Gettable,
-    id: id ?? changeSetId.value,
-  };
 };
 
 export const useMakeArgs = () => {

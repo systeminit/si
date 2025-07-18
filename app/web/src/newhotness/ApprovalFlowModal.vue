@@ -80,6 +80,7 @@ import { PillCounter, Icon, VButton, Modal } from "@si/vue-lib/design-system";
 import { useRouter, useRoute } from "vue-router";
 import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue";
 import { debounce } from "lodash-es";
+import { useToast, POSITION } from "vue-toastification";
 import { ActionProposedView } from "@/store/actions.store";
 import { ActionKind } from "@/api/sdf/dal/action";
 import { keyEmitter } from "./logic_composables/emitters";
@@ -87,6 +88,7 @@ import ActionCard from "./ActionCard.vue";
 import { assertIsDefined, Context } from "./types";
 import { reset } from "./logic_composables/navigation_stack";
 import { useApplyChangeSet } from "./logic_composables/change_set";
+import ToastApplyingChanges from "./nav/ToastApplyingChanges.vue";
 
 const props = defineProps<{
   actions: ActionProposedView[];
@@ -164,6 +166,8 @@ onBeforeUnmount(() => {
   debouncedApply.cancel();
 });
 
+const toast = useToast();
+
 async function apply() {
   // TODO(nick): restore approvals in the new UI.
   // if (!workspacesStore.workspaceApprovalsEnabled && authStore.user) {
@@ -188,8 +192,16 @@ async function apply() {
   if (!ctx) return;
 
   const result = await applyChangeSet.performApply();
-
   if (result.success) {
+    toast(
+      {
+        component: ToastApplyingChanges,
+      },
+      {
+        position: POSITION.BOTTOM_CENTER,
+        timeout: 5000,
+      },
+    );
     const name = route.name;
     router.push({
       name,

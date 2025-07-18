@@ -1,8 +1,11 @@
-import { unref, inject, ref, Ref, watch } from "vue";
-import { AxiosResponse } from "axios";
+import { unref, inject, ref, Ref, watch, computed } from "vue";
+import { AxiosInstance, AxiosResponse } from "axios";
 import { trace, Span } from "@opentelemetry/api";
 import { RouteLocationRaw } from "vue-router";
-import { sdfApiInstance as sdf } from "@/store/apis.web";
+import {
+  sdfApiInstance as sdf,
+  authApiInstance as auth,
+} from "@/store/apis.web";
 import { changeSetExists, muspelheimStatuses } from "@/store/realtime/heimdall";
 import router from "@/router";
 import { assertIsDefined, Context } from "../types";
@@ -42,6 +45,10 @@ export enum routes {
   UpdateComponentName = "UpdateComponentName",
   UpdateView = "UpdateView",
   UpgradeComponents = "UpgradeComponents",
+  CreateChangeSet = "CreateChangeSet",
+  AbandonChangeSet = "AbandonChangeSet",
+  Workspaces = "Workspaces",
+  ChangeSets = "ChangeSets",
 }
 
 /**
@@ -53,6 +60,8 @@ const CAN_MUTATE_ON_HEAD: readonly routes[] = [
   routes.ActionHold,
   routes.ActionRetry,
   routes.ChangeSetRename,
+  routes.CreateChangeSet,
+  routes.AbandonChangeSet,
 ] as const;
 
 const COMPRESSED_ROUTES: readonly routes[] = [
@@ -87,10 +96,17 @@ const _routes: Record<routes, string> = {
   UpdateComponentName: "/components/<id>/name",
   UpdateView: "/views/<viewId>",
   UpgradeComponents: "/components/upgrade",
+  // THESE ARE SPECIAL CASED & NOT V2
+  CreateChangeSet: "/change_set/create_change_set",
+  AbandonChangeSet: "/change_set/abandon_change_set",
+  Workspaces: "/workspaces", // not a v2 url
+  ChangeSets: "CHANGESETS", // a short v2 url
 } as const;
 
 // the mechanics
 type Obs = {
+  requested: Ref<boolean>;
+  success: Ref<boolean>;
   inFlight: Ref<boolean>;
   bifrosting: Ref<boolean>;
   isWatched: boolean;
@@ -142,8 +158,25 @@ export class APICall<Response> {
   }
 
   url(): string {
+    if (
+      [
+        _routes.Workspaces,
+        _routes.AbandonChangeSet,
+        _routes.CreateChangeSet,
+      ].includes(this.path)
+    ) {
+      return this.path;
+    }
+    if ([_routes.ChangeSets].includes(this.path)) {
+      return `v2/workspaces/${this.workspaceId}/change-sets`;
+    }
     const API_PREFIX = `v2/workspaces/${this.workspaceId}/change-sets/${this.changeSetId}`;
     return `${API_PREFIX}${this.path}`;
+  }
+
+  api(): AxiosInstance {
+    if ([_routes.Workspaces].includes(this.path)) return auth;
+    else return sdf;
   }
 
   async do<D = Record<string, unknown>>(
@@ -151,6 +184,7 @@ export class APICall<Response> {
     data: D,
     params?: URLSearchParams,
   ) {
+    this.obs.requested.value = true;
     this.obs.inFlight.value = true;
     this.obs.bifrosting.value = true;
     if (this.obs.isWatched) this.obs.span = tracer.startSpan("watchedApi");
@@ -180,7 +214,7 @@ export class APICall<Response> {
       headers["Content-Encoding"] = "gzip";
     }
 
-    const req = await sdf<Response>({
+    const req = await this.api()<Response>({
       method,
       headers,
       url: this.url(),
@@ -189,6 +223,7 @@ export class APICall<Response> {
       validateStatus: (_status) => true, // don't throw exception on 4/5xxx
     });
     this.obs.inFlight.value = false;
+    if (ok(req)) this.obs.success.value = true;
     if (!this.obs.isWatched) rainbow.remove(this.changeSetId, this.obs.label);
 
     // We have two shapes of errors from sdf: data.error as a string and data.error.message as a string
@@ -216,18 +251,20 @@ export class APICall<Response> {
   }
 
   async get(params?: URLSearchParams) {
+    this.obs.requested.value = true;
     this.obs.inFlight.value = true;
-    const req = await sdf<Response>({
+    const req = await this.api()<Response>({
       method: "GET",
       url: this.url(),
       params,
     });
+    if (ok(req)) this.obs.success.value = true;
     this.obs.inFlight.value = false;
     return req;
   }
 
   async makeChangeSet() {
-    const req = await sdf<{ id: string }>({
+    const req = await this.api()<{ id: string }>({
       method: "POST",
       url: `v2/workspaces/${this.workspaceId}/change-sets/create_change_set`,
       data: { name: this.description },
@@ -258,21 +295,23 @@ export class APICall<Response> {
   // and it didn't make sense... can revisit later
 }
 
-export const useApi = () => {
-  const ctx = inject<Context>("CONTEXT");
+const ok = (req: AxiosResponse) => {
+  switch (req.status) {
+    case 200:
+    case 201:
+      return true;
+    default:
+      return false;
+  }
+};
+
+export const useApi = (ctx?: Context) => {
+  if (!ctx) ctx = inject<Context>("CONTEXT");
   assertIsDefined(ctx);
 
-  const ok = (req: AxiosResponse) => {
-    switch (req.status) {
-      case 200:
-      case 201:
-        return true;
-      default:
-        return false;
-    }
-  };
-
   const obs: Obs = {
+    requested: ref(false),
+    success: ref(false),
     inFlight: ref(false),
     bifrosting: ref(false),
     isWatched: false,
@@ -287,6 +326,7 @@ export const useApi = () => {
     const needsArgs = path.includes("<") && path.includes(">");
     if (!args && needsArgs)
       throw new Error(`Endpoint ${key}, ${path} requires arguments`);
+    assertIsDefined(ctx);
 
     // There are some endpoints that can operate on a changeset even if a user is not using it.
     // Sending changesetId as an arg will override the changesetId for this request.
@@ -324,6 +364,7 @@ export const useApi = () => {
     watch(
       fn,
       () => {
+        assertIsDefined(ctx);
         labeledObs.bifrosting.value = false;
         rainbow.remove(
           labeledObs.changeSetIdExecutedAgainst ?? ctx.changeSetId.value,
@@ -345,6 +386,7 @@ export const useApi = () => {
     await new Promise<void>((resolve, reject) => {
       let retry = 0;
       const interval = setInterval(async () => {
+        assertIsDefined(ctx);
         if (retry >= MAX_RETRY) {
           clearInterval(interval);
           reject();
@@ -365,11 +407,30 @@ export const useApi = () => {
     reset();
   };
 
+  type ApiRequestStatus = {
+    isRequested: boolean;
+    isPending: boolean;
+    isFirstLoad: boolean;
+    isError: boolean;
+    isSuccess: boolean;
+  };
+
+  const requestStatuses = computed<ApiRequestStatus>(() => {
+    return {
+      isRequested: obs.requested.value,
+      isPending: obs.inFlight.value,
+      isFirstLoad: false,
+      isError: !obs.success.value,
+      isSuccess: obs.success.value,
+    };
+  });
+
   return {
     ok,
     endpoint,
     inFlight: obs.inFlight,
     bifrosting: obs.bifrosting,
+    requestStatuses,
     setWatchFn,
     navigateToNewChangeSet,
   };
