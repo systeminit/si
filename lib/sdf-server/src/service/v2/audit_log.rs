@@ -17,13 +17,31 @@ mod list_audit_logs;
 #[derive(Debug, Error)]
 pub enum AuditLogError {
     #[error("dal audit logging error: {0}")]
-    DalAuditLogging(#[from] dal::audit_logging::AuditLoggingError),
+    DalAuditLogging(#[from] Box<dal::audit_logging::AuditLoggingError>),
     #[error("dal change set error: {0}")]
-    DalChangeSet(#[from] dal::ChangeSetError),
+    DalChangeSet(#[from] Box<dal::ChangeSetError>),
     #[error("dal transactions error: {0}")]
-    DalTransactions(#[from] dal::TransactionsError),
+    DalTransactions(#[from] Box<dal::TransactionsError>),
     #[error("si db error: {0}")]
     SiDb(#[from] si_db::Error),
+}
+
+impl From<dal::audit_logging::AuditLoggingError> for AuditLogError {
+    fn from(value: dal::audit_logging::AuditLoggingError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<dal::ChangeSetError> for AuditLogError {
+    fn from(value: dal::ChangeSetError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<dal::TransactionsError> for AuditLogError {
+    fn from(value: dal::TransactionsError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type AuditLogResult<T> = Result<T, AuditLogError>;

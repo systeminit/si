@@ -110,7 +110,7 @@ pub enum LocalUdsInstanceError {
     ChildSpawn(#[source] io::Error),
     /// Cyclone client error.
     #[error(transparent)]
-    Client(#[from] ClientError),
+    Client(#[from] Box<ClientError>),
     /// Failed to build a container.
     #[error("failed to build a cyclone container: {0}")]
     ContainerBuild(#[source] Error),
@@ -150,7 +150,7 @@ pub enum LocalUdsInstanceError {
     TempSocket(#[source] io::Error),
     /// Cyclone client `watch` endpoint error.
     #[error(transparent)]
-    Watch(#[from] WatchError),
+    Watch(#[from] Box<WatchError>),
     /// Cyclone client `watch` session ended earlier than expected.
     #[error("server closed watch session before expected")]
     WatchClosed,
@@ -160,6 +160,18 @@ pub enum LocalUdsInstanceError {
     /// Cyclone client `watch` session shut down earlier than expected.
     #[error("watch session is shut down, cyclone server is considered unhealthy")]
     WatchShutDown,
+}
+
+impl From<ClientError> for LocalUdsInstanceError {
+    fn from(value: ClientError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WatchError> for LocalUdsInstanceError {
+    fn from(value: WatchError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 type Result<T> = result::Result<T, LocalUdsInstanceError>;

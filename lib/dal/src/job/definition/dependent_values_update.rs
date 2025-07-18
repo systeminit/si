@@ -76,33 +76,111 @@ use crate::{
 #[derive(Debug, Error)]
 pub enum DependentValueUpdateError {
     #[error("action error: {0}")]
-    Action(#[from] ActionError),
+    Action(#[from] Box<ActionError>),
     #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
+    ChangeSet(#[from] Box<ChangeSetError>),
     #[error("component error: {0}")]
-    Component(#[from] ComponentError),
+    Component(#[from] Box<ComponentError>),
     #[error("dependent value root error: {0}")]
-    DependentValueRoot(#[from] DependentValueRootError),
+    DependentValueRoot(#[from] Box<DependentValueRootError>),
     #[error("dependent values update audit log error: {0}")]
-    DependentValuesUpdateAuditLog(#[from] DependentValueUpdateAuditLogError),
+    DependentValuesUpdateAuditLog(#[from] Box<DependentValueUpdateAuditLogError>),
     #[error("func error: {0}")]
-    FuncError(#[from] crate::FuncError),
+    FuncError(#[from] Box<crate::FuncError>),
     #[error("prop error: {0}")]
-    Prop(#[from] PropError),
+    Prop(#[from] Box<PropError>),
     #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("status update error: {0}")]
-    StatusUpdate(#[from] StatusUpdateError),
+    StatusUpdate(#[from] Box<StatusUpdateError>),
     #[error(transparent)]
     TokioTask(#[from] JoinError),
     #[error(transparent)]
-    Transactions(#[from] TransactionsError),
+    Transactions(#[from] Box<TransactionsError>),
     #[error("workspace snapshot error: {0}")]
-    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
+    WsEvent(#[from] Box<WsEventError>),
+}
+
+impl From<ActionError> for DependentValueUpdateError {
+    fn from(value: ActionError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributeValueError> for DependentValueUpdateError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ChangeSetError> for DependentValueUpdateError {
+    fn from(value: ChangeSetError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for DependentValueUpdateError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<DependentValueRootError> for DependentValueUpdateError {
+    fn from(value: DependentValueRootError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<DependentValueUpdateAuditLogError> for DependentValueUpdateError {
+    fn from(value: DependentValueUpdateAuditLogError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<crate::FuncError> for DependentValueUpdateError {
+    fn from(value: crate::FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for DependentValueUpdateError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaVariantError> for DependentValueUpdateError {
+    fn from(value: SchemaVariantError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<StatusUpdateError> for DependentValueUpdateError {
+    fn from(value: StatusUpdateError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<TransactionsError> for DependentValueUpdateError {
+    fn from(value: TransactionsError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceSnapshotError> for DependentValueUpdateError {
+    fn from(value: WorkspaceSnapshotError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WsEventError> for DependentValueUpdateError {
+    fn from(value: WsEventError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type DependentValueUpdateResult<T> = Result<T, DependentValueUpdateError>;
@@ -679,17 +757,53 @@ pub mod audit_log {
     #[derive(Debug, Error)]
     pub enum DependentValueUpdateAuditLogError {
         #[error("attribute value error: {0}")]
-        AttributeValue(#[from] AttributeValueError),
+        AttributeValue(#[from] Box<AttributeValueError>),
         #[error("component error: {0}")]
-        Component(#[from] ComponentError),
+        Component(#[from] Box<ComponentError>),
         #[error("input socket error: {0}")]
-        InputSocket(#[from] InputSocketError),
+        InputSocket(#[from] Box<InputSocketError>),
         #[error("output socket error: {0}")]
-        OutputSocket(#[from] OutputSocketError),
+        OutputSocket(#[from] Box<OutputSocketError>),
         #[error("prop error: {0}")]
-        Prop(#[from] PropError),
+        Prop(#[from] Box<PropError>),
         #[error("write audit log error: {0}")]
-        WriteAuditLog(#[source] TransactionsError),
+        WriteAuditLog(#[source] Box<TransactionsError>),
+    }
+
+    impl From<AttributeValueError> for DependentValueUpdateAuditLogError {
+        fn from(value: AttributeValueError) -> Self {
+            Box::new(value).into()
+        }
+    }
+
+    impl From<ComponentError> for DependentValueUpdateAuditLogError {
+        fn from(value: ComponentError) -> Self {
+            Box::new(value).into()
+        }
+    }
+
+    impl From<InputSocketError> for DependentValueUpdateAuditLogError {
+        fn from(value: InputSocketError) -> Self {
+            Box::new(value).into()
+        }
+    }
+
+    impl From<OutputSocketError> for DependentValueUpdateAuditLogError {
+        fn from(value: OutputSocketError) -> Self {
+            Box::new(value).into()
+        }
+    }
+
+    impl From<PropError> for DependentValueUpdateAuditLogError {
+        fn from(value: PropError) -> Self {
+            Box::new(value).into()
+        }
+    }
+
+    impl From<TransactionsError> for DependentValueUpdateAuditLogError {
+        fn from(value: TransactionsError) -> Self {
+            Self::WriteAuditLog(Box::new(value))
+        }
     }
 
     #[instrument(
@@ -742,7 +856,7 @@ pub mod audit_log {
                     input_socket.name().to_owned(),
                 )
                 .await
-                .map_err(DependentValueUpdateAuditLogError::WriteAuditLog)?;
+                .map_err(|e| DependentValueUpdateAuditLogError::WriteAuditLog(Box::new(e)))?;
             }
             ValueIsFor::OutputSocket(output_socket_id) => {
                 let output_socket = OutputSocket::get_by_id(ctx, output_socket_id).await?;
@@ -767,7 +881,7 @@ pub mod audit_log {
                     output_socket.name().to_owned(),
                 )
                 .await
-                .map_err(DependentValueUpdateAuditLogError::WriteAuditLog)?;
+                .map_err(|e| DependentValueUpdateAuditLogError::WriteAuditLog(Box::new(e)))?;
             }
             ValueIsFor::Prop(prop_id) => {
                 let prop = Prop::get_by_id(ctx, prop_id).await?;
@@ -792,7 +906,7 @@ pub mod audit_log {
                     prop.name,
                 )
                 .await
-                .map_err(DependentValueUpdateAuditLogError::WriteAuditLog)?;
+                .map_err(|e| DependentValueUpdateAuditLogError::WriteAuditLog(Box::new(e)))?;
             }
         }
 

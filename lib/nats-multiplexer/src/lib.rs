@@ -63,8 +63,6 @@ mod parsing;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum MultiplexerError {
-    #[error("broadcast send nats message error: {0}")]
-    BroadcastSentNatsMessage(#[from] broadcast::error::SendError<Message>),
     #[error("nats error: {0}")]
     Nats(#[from] si_data_nats::Error),
 }

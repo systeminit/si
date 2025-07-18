@@ -95,9 +95,9 @@ pub enum PropError {
     #[error("array missing child element: {0}")]
     ArrayMissingChildElement(PropId),
     #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] AttributePrototypeError),
+    AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("path cannot include - (next element) because it will never yield a result")]
     CannotSubscribeToNextElement(PropId, String),
     #[error("change set error: {0}")]
@@ -107,9 +107,9 @@ pub enum PropError {
     #[error("prop {0} of kind {1} does not have an element prop")]
     ElementPropNotOnKind(PropId, PropKind),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("func argument error: {0}")]
-    FuncArgument(#[from] FuncArgumentError),
+    FuncArgument(#[from] Box<FuncArgumentError>),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("tokio join error: {0}")]
@@ -1218,5 +1218,29 @@ impl Prop {
 
     pub async fn ts_type(ctx: &DalContext, prop_id: PropId) -> PropResult<String> {
         ctx.workspace_snapshot()?.ts_type(prop_id).await
+    }
+}
+
+impl From<AttributePrototypeError> for PropError {
+    fn from(value: AttributePrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeArgumentError> for PropError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for PropError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncArgumentError> for PropError {
+    fn from(value: FuncArgumentError) -> Self {
+        Box::new(value).into()
     }
 }

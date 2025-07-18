@@ -243,16 +243,15 @@ async fn remove_view_with_exclusive_components(ctx: &mut DalContext) {
     assert_eq!(1, alternative_diagram.components.len());
 
     let result = View::remove(ctx, new_view.id()).await;
-    let Err(
-        DiagramError::WorkspaceSnapshot(WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-            WorkspaceSnapshotGraphError::ViewRemovalWouldOrphanItems(orphans),
-        ))
-        | DiagramError::WorkspaceSnapshot(WorkspaceSnapshotError::ViewRemovalWouldOrphanItems(
-            orphans,
-        )),
-    ) = result
-    else {
-        panic!("View removal did not error appropriately: {result:?}");
+    let orphans = match result {
+        Err(DiagramError::WorkspaceSnapshot(err)) => match *err {
+            WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                WorkspaceSnapshotGraphError::ViewRemovalWouldOrphanItems(orphans),
+            )
+            | WorkspaceSnapshotError::ViewRemovalWouldOrphanItems(orphans) => orphans,
+            _ => panic!("View removal did not error appropriately: {err:?}"),
+        },
+        _ => panic!("View removal did not error appropriately: {result:?}"),
     };
     assert_eq!(vec![Ulid::from(component.id())], orphans,);
 }

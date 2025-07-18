@@ -61,33 +61,33 @@ type AttributePrototypeDebugViewResult<T> = Result<T, AttributePrototypeDebugVie
 #[derive(Error, Debug)]
 pub enum AttributePrototypeDebugViewError {
     #[error("attribute prototype argument Error: {0}")]
-    AttributePrototypeArgumentError(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgumentError(#[from] Box<AttributePrototypeArgumentError>),
     #[error("attribute prototype error: {0}")]
-    AttributePrototypeError(#[from] AttributePrototypeError),
+    AttributePrototypeError(#[from] Box<AttributePrototypeError>),
     #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("component error: {0}")]
-    ComponentError(#[from] ComponentError),
+    ComponentError(#[from] Box<ComponentError>),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("func argument error: {0}")]
-    FuncArgumentError(#[from] FuncArgumentError),
+    FuncArgumentError(#[from] Box<FuncArgumentError>),
     #[error("input socket error: {0}")]
-    InputSocketError(#[from] InputSocketError),
+    InputSocketError(#[from] Box<InputSocketError>),
     #[error("node weight error: {0}")]
-    NodeWeightError(#[from] NodeWeightError),
+    NodeWeightError(#[from] Box<NodeWeightError>),
     #[error("output socket error: {0}")]
-    OutputSocketError(#[from] OutputSocketError),
+    OutputSocketError(#[from] Box<OutputSocketError>),
     #[error("prop error: {0}")]
-    PropError(#[from] PropError),
+    PropError(#[from] Box<PropError>),
     #[error("secret error: {0}")]
-    SecretError(#[from] SecretError),
+    SecretError(#[from] Box<SecretError>),
     #[error("serde json error: {0}")]
     SerdeJsonError(#[from] serde_json::Error),
     #[error("value source error: {0}")]
-    ValueSourceError(#[from] ValueSourceError),
+    ValueSourceError(#[from] Box<ValueSourceError>),
     #[error("workspace snapshot error: {0}")]
-    WorkspaceSnapshotError(#[from] WorkspaceSnapshotError),
+    WorkspaceSnapshotError(#[from] Box<WorkspaceSnapshotError>),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -358,5 +358,83 @@ impl AttributePrototypeDebugView {
             is_component_specific: has_component_prototype,
         };
         Ok(view)
+    }
+}
+
+impl From<AttributePrototypeArgumentError> for AttributePrototypeDebugViewError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeError> for AttributePrototypeDebugViewError {
+    fn from(value: AttributePrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributeValueError> for AttributePrototypeDebugViewError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for AttributePrototypeDebugViewError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for AttributePrototypeDebugViewError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncArgumentError> for AttributePrototypeDebugViewError {
+    fn from(value: FuncArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InputSocketError> for AttributePrototypeDebugViewError {
+    fn from(value: InputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<NodeWeightError> for AttributePrototypeDebugViewError {
+    fn from(value: NodeWeightError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<OutputSocketError> for AttributePrototypeDebugViewError {
+    fn from(value: OutputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for AttributePrototypeDebugViewError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SecretError> for AttributePrototypeDebugViewError {
+    fn from(value: SecretError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ValueSourceError> for AttributePrototypeDebugViewError {
+    fn from(value: ValueSourceError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceSnapshotError> for AttributePrototypeDebugViewError {
+    fn from(value: WorkspaceSnapshotError) -> Self {
+        Box::new(value).into()
     }
 }

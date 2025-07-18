@@ -62,9 +62,15 @@ pub struct QualificationSummary {
 #[derive(Error, Debug)]
 pub enum QualificationSummaryError {
     #[error(transparent)]
-    Component(#[from] ComponentError),
+    Component(#[from] Box<ComponentError>),
     #[error(transparent)]
     Pg(#[from] PgError),
+}
+
+impl From<ComponentError> for QualificationSummaryError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type QualificationSummaryResult<T> = Result<T, QualificationSummaryError>;

@@ -79,10 +79,16 @@ pub enum FuncBackendError {
     #[error("unable to decode ulid")]
     Ulid(#[from] ulid::DecodeError),
     #[error("veritech client error: {0}")]
-    VeritechClient(#[from] veritech_client::ClientError),
+    VeritechClient(#[from] Box<veritech_client::ClientError>),
 }
 
 pub type FuncBackendResult<T> = Result<T, FuncBackendError>;
+
+impl From<veritech_client::ClientError> for FuncBackendError {
+    fn from(value: veritech_client::ClientError) -> Self {
+        Box::new(value).into()
+    }
+}
 
 // NOTE(nick,zack): do not add "remain::sorted" for postcard de/ser. We need the order to be
 // retained.

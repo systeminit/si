@@ -127,11 +127,14 @@ impl IntoResponse for ViewError {
             ViewError::DalDiagram(dal::diagram::DiagramError::ViewNotFound(_)) => {
                 (StatusCode::NOT_FOUND, self.to_string())
             }
-            ViewError::DalDiagram(dal::diagram::DiagramError::WorkspaceSnapshot(
-                WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-                    WorkspaceSnapshotGraphError::ViewRemovalWouldOrphanItems(_),
-                ),
-            )) => (StatusCode::CONFLICT, self.to_string()),
+            ViewError::DalDiagram(dal::diagram::DiagramError::WorkspaceSnapshot(ref err)) => {
+                match err.as_ref() {
+                    WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                        WorkspaceSnapshotGraphError::ViewRemovalWouldOrphanItems(_),
+                    ) => (StatusCode::CONFLICT, self.to_string()),
+                    _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+                }
+            }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 

@@ -57,13 +57,13 @@ pub enum InferredConnectionGraphError {
     #[error("Component error: {0}")]
     Component(#[from] Box<ComponentError>),
     #[error("InputSocket error: {0}")]
-    InputSocket(#[from] InputSocketError),
+    InputSocket(#[from] Box<InputSocketError>),
     #[error("Missing graph node")]
     MissingGraphNode,
     #[error("Orphaned Component")]
     OrphanedComponent(ComponentId),
     #[error("OutputSocket error: {0}")]
-    OutputSocket(#[from] OutputSocketError),
+    OutputSocket(#[from] Box<OutputSocketError>),
     #[error("Unable to compute costs for inferred connections")]
     UnableToComputeCost,
     #[error("Unsupported Component type {0} for Component {1}")]
@@ -778,5 +778,17 @@ fn cost_visitor(
             }
             Ok(Control::Continue)
         }
+    }
+}
+
+impl From<InputSocketError> for InferredConnectionGraphError {
+    fn from(value: InputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<OutputSocketError> for InferredConnectionGraphError {
+    fn from(value: OutputSocketError) -> Self {
+        Box::new(value).into()
     }
 }

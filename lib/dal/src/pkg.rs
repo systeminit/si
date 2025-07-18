@@ -81,41 +81,41 @@ pub mod import;
 #[derive(Debug, Error)]
 pub enum PkgError {
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("attribute function for context {0:?} has key {1} but is not setting a prop value")]
     AttributeFuncForKeyMissingProp(import::AttrFuncContext, String),
     #[error("attribute function for prop {0} has a key {1} but prop kind is {2} not a map)")]
     AttributeFuncForKeySetOnWrongKind(PropId, String, PropKind),
     #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] AttributePrototypeError),
+    AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("attrbute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("AttributePrototypeArgument {0} missing FuncArgument {1}")]
     AttributePrototypeArgumentMissingFuncArgument(AttributePrototypeArgumentId, FuncArgumentId),
     #[error("attribute value error: {0}")]
-    AttributeValueError(#[from] AttributeValueError),
+    AttributeValueError(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
+    ChangeSet(#[from] Box<ChangeSetError>),
     #[error("connection annotation error: {0}")]
-    ConnectionAnnotation(#[from] ConnectionAnnotationError),
+    ConnectionAnnotation(#[from] Box<ConnectionAnnotationError>),
     #[error("expected data on an SiPkg node, but none found: {0}")]
     DataNotFound(String),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("func argument error: {0}")]
-    FuncArgument(#[from] FuncArgumentError),
+    FuncArgument(#[from] Box<FuncArgumentError>),
     #[error("func argument for {0} not found with name {1}")]
     FuncArgumentNotFoundByName(FuncId, String),
     #[error("action prototype error: {0}")]
-    FuncBinding(#[from] FuncBindingError),
+    FuncBinding(#[from] Box<FuncBindingError>),
     #[error("input socket error: {0}")]
-    InputSocket(#[from] InputSocketError),
+    InputSocket(#[from] Box<InputSocketError>),
     #[error("found multiple intrinsic func specs for name: {0}")]
     IntrinsicFuncSpecsMultipleForName(String),
     #[error("found no intrinsic func specs for name: {0}")]
     IntrinsicFuncSpecsNoneForName(String),
     #[error("management prototype error: {0}")]
-    ManagementPrototype(#[from] ManagementPrototypeError),
+    ManagementPrototype(#[from] Box<ManagementPrototypeError>),
     #[error("Missing Func {1} for AttributePrototype {0}")]
     MissingAttributePrototypeFunc(AttributePrototypeId, FuncId),
     #[error("Func {0} missing from exported funcs")]
@@ -131,9 +131,9 @@ pub enum PkgError {
     #[error("Unique id missing for node in workspace backup: {0}")]
     MissingUniqueIdForNode(String),
     #[error("module error: {0}")]
-    Module(#[from] ModuleError),
+    Module(#[from] Box<ModuleError>),
     #[error("output socket error: {0}")]
-    OutputSocket(#[from] OutputSocketError),
+    OutputSocket(#[from] Box<OutputSocketError>),
     #[error("output socket {0} missing attribute prototype")]
     OutputSocketMissingPrototype(OutputSocketId),
     #[error("Package with that hash already installed: {0}")]
@@ -143,7 +143,7 @@ pub enum PkgError {
     #[error("pkg spec error: {0}")]
     PkgSpec(#[from] SpecError),
     #[error("prop error: {0}")]
-    Prop(#[from] PropError),
+    Prop(#[from] Box<PropError>),
     #[error("prop {0} missing attribute prototype")]
     PropMissingPrototype(PropId),
     #[error("prop {0} not found")]
@@ -151,9 +151,9 @@ pub enum PkgError {
     #[error("prop spec structure is invalid: {0}")]
     PropSpecChildrenInvalid(String),
     #[error("schema error: {0}")]
-    Schema(#[from] SchemaError),
+    Schema(#[from] Box<SchemaError>),
     #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("json serialization error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
@@ -163,19 +163,133 @@ pub enum PkgError {
     )]
     TakingOutputSocketAsInputForPropUnsupported(String, String),
     #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
+    Transactions(#[from] Box<TransactionsError>),
     #[error("ulid decode error: {0}")]
     UlidDecode(#[from] ulid::DecodeError),
     #[error("url parse error: {0}")]
     Url(#[from] ParseError),
     #[error("workspace error: {0}")]
-    Workspace(#[from] WorkspaceError),
+    Workspace(#[from] Box<WorkspaceError>),
     #[error("workspace export not supported")]
     WorkspaceExportNotSupported(),
     #[error("workspace pk not found on context")]
     WorkspacePkNone,
     #[error("workspace snapshot error: {0}")]
-    WorkspaceSnaphot(#[from] WorkspaceSnapshotError),
+    WorkspaceSnaphot(#[from] Box<WorkspaceSnapshotError>),
+}
+
+impl From<ActionPrototypeError> for PkgError {
+    fn from(value: ActionPrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeError> for PkgError {
+    fn from(value: AttributePrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeArgumentError> for PkgError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributeValueError> for PkgError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ChangeSetError> for PkgError {
+    fn from(value: ChangeSetError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ConnectionAnnotationError> for PkgError {
+    fn from(value: ConnectionAnnotationError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for PkgError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncArgumentError> for PkgError {
+    fn from(value: FuncArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncBindingError> for PkgError {
+    fn from(value: FuncBindingError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InputSocketError> for PkgError {
+    fn from(value: InputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ManagementPrototypeError> for PkgError {
+    fn from(value: ManagementPrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ModuleError> for PkgError {
+    fn from(value: ModuleError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<OutputSocketError> for PkgError {
+    fn from(value: OutputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for PkgError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaError> for PkgError {
+    fn from(value: SchemaError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaVariantError> for PkgError {
+    fn from(value: SchemaVariantError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<TransactionsError> for PkgError {
+    fn from(value: TransactionsError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceError> for PkgError {
+    fn from(value: WorkspaceError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceSnapshotError> for PkgError {
+    fn from(value: WorkspaceSnapshotError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type PkgResult<T> = Result<T, PkgError>;
