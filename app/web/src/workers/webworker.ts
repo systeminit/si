@@ -7,6 +7,7 @@ import sqlite3InitModule, {
   ExecReturnResultRowsOptions,
   ExecRowModeArrayOptions,
   FlexibleString,
+  SAHPoolUtil,
   Sqlite3Static,
   SqlValue,
 } from "@sqlite.org/sqlite-wasm";
@@ -46,6 +47,7 @@ import {
   Checksum,
   Common,
   ComponentInfo,
+  FORCE_LEADER_ELECTION,
   Gettable,
   Id,
   IndexObjectMeta,
@@ -60,6 +62,7 @@ import {
   QueryKey,
   Ragnarok,
   RainbowFn,
+  SharedDBInterface,
   TabDBInterface,
   UpdateFn,
 } from "./types/dbinterface";
@@ -88,6 +91,7 @@ import {
   processMjolnirQueue,
   processPatchQueue,
 } from "./mjolnir_queue";
+
 
 const WORKER_LOCK_KEY = "BIFROST_LOCK";
 
@@ -132,6 +136,7 @@ function debug(...args: any | any[]) {
  *  INITIALIZATION FNS
  */
 let db: Database;
+let poolUtil: SAHPoolUtil | undefined;
 const sdfClients: { [key: string]: AxiosInstance } = {};
 
 const getDbName = (testing: boolean) => {
@@ -150,7 +155,11 @@ const start = async (sqlite3: Sqlite3Static, testing: boolean) => {
   const dbname = getDbName(testing);
 
   if ("opfs" in sqlite3) {
-    const poolUtil = await sqlite3.installOpfsSAHPoolVfs({});
+    if (!poolUtil) {
+      poolUtil = await sqlite3.installOpfsSAHPoolVfs({});
+    } else if (poolUtil.isPaused()) {
+      await poolUtil.unpauseVfs();
+    }
     db = new poolUtil.OpfsSAHPoolDb(`/${dbname}`);
     debug(
       `OPFS is available, created persisted database in SAH Pool VFS at ${db.filename}`,
@@ -3030,6 +3039,12 @@ let atomUpdatedFn: UpdateFn;
 
 let abortController: AbortController | undefined;
 
+const forceLeaderElectionBroadcastChannel = new BroadcastChannel(
+  FORCE_LEADER_ELECTION,
+);
+
+let sharedWorker: Comlink.Remote<SharedDBInterface> | undefined;
+
 /**
  * This enforces that `receiveBroadcast` handles
  * each discriminant of `BroadcastMessage`
@@ -3084,6 +3099,9 @@ const dbInterface: TabDBInterface = {
       default:
         assertNever(message);
     }
+  },
+  async setSharedWorker(sharedWorkerComlink: Comlink.Remote<SharedDBInterface>) {
+    sharedWorker = sharedWorkerComlink;
   },
   setBearer(workspaceId, token) {
     bearerTokens[workspaceId] = token;
@@ -3245,12 +3263,11 @@ const dbInterface: TabDBInterface = {
   async initBifrost(gotLockPort: MessagePort) {
     debug("waiting for lock in webworker");
     if (abortController) {
-      debug("already initialized bifrost");
-      return;
+      abortController.abort();
     }
 
     abortController = new AbortController();
-    navigator.locks.request(
+    return await navigator.locks.request(
       WORKER_LOCK_KEY,
       { mode: "exclusive", signal: abortController.signal },
       async () => {
@@ -3261,13 +3278,18 @@ const dbInterface: TabDBInterface = {
         debug("🌈 Bifrost initialization complete");
 
         gotLockPort.postMessage("lock acquired");
-
-        return new Promise((_, reject) => {
-          abortController?.signal.addEventListener("abort", () => {
-            hasTheLock = false;
-            this.bifrostClose();
-            reject(abortController?.signal.reason);
-          });
+          return new Promise((resolve) => {
+            forceLeaderElectionBroadcastChannel.onmessage = () => {
+              console.log("forced");
+              abortController?.abort("LEADER_ELECTION");
+            }
+            abortController?.signal.addEventListener("abort", () => {
+              hasTheLock = false;
+              db.close();
+              poolUtil?.pauseVfs();
+              this.bifrostClose();
+              resolve(abortController?.signal.reason);
+            });
         });
       },
     );
@@ -3313,6 +3335,10 @@ const dbInterface: TabDBInterface = {
 
   addListenerLobbyExit(cb: LobbyExitFn) {
     lobbyExitFn = cb;
+  },
+
+  async pong() {
+    return "PONG";
   },
 
   get,

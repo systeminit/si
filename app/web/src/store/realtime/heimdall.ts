@@ -27,6 +27,7 @@ import {
   AtomDocument,
   UpdateFn,
   QueryAttributesTerm,
+  FORCE_LEADER_ELECTION,
 } from "@/workers/types/dbinterface";
 import {
   Connection,
@@ -50,7 +51,7 @@ import {
 const ulid = monotonicFactory(() => Math.random());
 
 const ranInit = ref<boolean>(false);
-let queryClient: QueryClient;
+let queryClient: QueryClient | undefined;
 const tabDbId = ulid();
 const lockAcquired = ref(false);
 
@@ -116,7 +117,13 @@ onSharedWorkerBootBroadcastChannel.onmessage = async (msg) => {
   } else {
     db.registerRemote(tabDbId, Comlink.proxy(tabDb));
   }
+
+  tabDb.setSharedWorker(Comlink.proxy(db));
 };
+
+const forceLeaderElectionBroadcastChannel = new BroadcastChannel(
+  FORCE_LEADER_ELECTION,
+);
 
 window.onbeforeunload = () => {
   db.unregisterRemote(tabDbId);
@@ -125,6 +132,15 @@ window.onbeforeunload = () => {
 const showCachedAppNotification = () => {
   cachedAppEmitter.emit(SHOW_CACHED_APP_NOTIFICATION_EVENT);
 };
+
+const initBifrost = (messagePort: MessagePort) => {
+  tabDb.initBifrost(Comlink.proxy(messagePort)).then(result => {
+    if (typeof result === 'string' && result === "LEADER_ELECTION") {
+      console.debug("leader election forced, re-initializing bifrost");
+      initBifrost(messagePort);
+    }
+  });
+}
 
 export const init = async (
   workspaceId: string,
@@ -147,9 +163,7 @@ export const init = async (
       lockAcquiredBroadcastChannel.postMessage(tabDbId);
     };
 
-    // We are deliberately not awaiting this promise, since it blocks forever on
-    // the tabs that do not get the lock
-    tabDb.initBifrost(Comlink.proxy(port2));
+    initBifrost(port2);
 
     ranInit.value = true;
     queryClient = _queryClient;
@@ -163,16 +177,31 @@ export const init = async (
   // refreshed at more or less the same time, in the normal scenario we will
   // indicate lock acquisition via the broadcast channel)
   setTimeout(async () => {
-    if ((await db.hasRemote()) && !(await tabDb.hasDbLock())) {
-      const currentRemoteId = await db.currentRemoteId();
-      // eslint-disable-next-line no-console
-      console.log(
-        `🌈 lock acquired by another tab (${currentRemoteId}), detected in timeout`,
-      );
-      lockAcquired.value = true;
+    setTimeout(() => {
+      // If after 4.5 seconds total, we have not detected lock acquisition, try
+      // and force a leader election
+      if (!lockAcquired.value) {
+        forceLeaderElectionBroadcastChannel.postMessage("force leader election");
+      }
+    }, 2000);
+
+    if (await db.hasRemote()) {
+      if (!(await tabDb.hasDbLock())) {
+        const currentRemoteId = await db.currentRemoteId();
+        // eslint-disable-next-line no-console
+        console.log(
+          `🌈 lock acquired by another tab (${currentRemoteId}), detected in timeout`,
+        );
+        lockAcquired.value = true;
+      }
     }
   }, 2500);
 };
+
+forceLeaderElectionBroadcastChannel.onmessage = async () => {
+
+}
+
 
 export const initCompleted = computed(
   () => ranInit.value && lockAcquired.value,
@@ -186,7 +215,7 @@ const bustTanStackCache: BustCacheFn = (
   noBroadcast?: boolean,
 ) => {
   const queryKey = [workspaceId, changeSetId, kind, id];
-  queryClient.invalidateQueries({ queryKey });
+  queryClient?.invalidateQueries({ queryKey });
   if (!noBroadcast) {
     db.broadcastMessage({
       messageKind: "cacheBust",
@@ -235,7 +264,7 @@ const updateCache = (
 ) => {
   if (!removed && !data) return;
 
-  queryClient.setQueryData(queryKey, (cachedData: { id: string }[]) => {
+  queryClient?.setQueryData(queryKey, (cachedData: { id: string }[]) => {
     if (!cachedData) {
       return cachedData;
     }

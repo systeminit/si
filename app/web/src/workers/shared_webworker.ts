@@ -25,6 +25,8 @@ import {
 // Wait 5 seconds after we no longer have any remotes before terminating ourselves
 const SHUTDOWN_DELAY_MS = 5000;
 
+const REMOTE_PING_INTERVAL_MS = 1000;
+const REMOTE_PING_RESPONSE_IN_MS = 200;
 declare global {
   interface Window {
     onconnect?: (event: MessageEvent) => void;
@@ -43,6 +45,21 @@ let currentRemote: Comlink.Remote<TabDBInterface> | undefined;
 let currentRemoteId: string | undefined;
 const remotes: { [key: string]: Comlink.Remote<TabDBInterface> } = {};
 const bearerTokens: { [key: string]: string } = {};
+
+setInterval(async () => {
+  if (currentRemote) {
+    let gotPing = false;
+    setTimeout(() => {
+      if (!gotPing) {
+        console.log("remote is dead?", currentRemoteId);
+      } else {
+        console.log("remote alive", currentRemoteId);
+      }
+    }, REMOTE_PING_RESPONSE_IN_MS);
+    gotPing = !!await currentRemote.pong();
+  }
+}, REMOTE_PING_INTERVAL_MS);
+
 
 const hasRemoteChannel = new MessageChannel();
 
@@ -109,12 +126,19 @@ const dbInterface: SharedDBInterface = {
       await this.setRemote(id);
     }
   },
+
   async hasRemote() {
     return !!currentRemote;
   },
+
+  async pingRemote() {
+    return await currentRemote?.pong();
+  },
+
   async currentRemoteId() {
     return currentRemoteId;
   },
+
   async setRemote(remoteId: string) {
     debug("setting remote in shared web worker to", remoteId);
 
