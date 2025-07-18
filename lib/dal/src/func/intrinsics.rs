@@ -16,12 +16,9 @@ use strum::{
     IntoEnumIterator,
 };
 
-use crate::{
-    PropKind,
-    func::{
-        FuncError,
-        FuncResult,
-    },
+use crate::func::{
+    FuncError,
+    FuncResult,
 };
 
 #[remain::sorted]
@@ -316,20 +313,5 @@ impl IntrinsicFunc {
                 return None;
             }
         })
-    }
-}
-
-impl From<PropKind> for IntrinsicFunc {
-    fn from(value: PropKind) -> Self {
-        match value {
-            PropKind::Array => IntrinsicFunc::SetArray,
-            PropKind::Boolean => IntrinsicFunc::SetBoolean,
-            PropKind::Integer => IntrinsicFunc::SetInteger,
-            PropKind::Float => IntrinsicFunc::SetFloat,
-            PropKind::Json => IntrinsicFunc::SetJson,
-            PropKind::Map => IntrinsicFunc::SetMap,
-            PropKind::Object => IntrinsicFunc::SetObject,
-            PropKind::String => IntrinsicFunc::SetString,
-        }
     }
 }

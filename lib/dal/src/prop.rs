@@ -392,6 +392,20 @@ impl PropKind {
             PropKind::String | PropKind::Boolean | PropKind::Integer | PropKind::Float
         )
     }
+
+    /// The intrinsic function used to set a static value for this prop kind.
+    pub fn intrinsic_set_func(&self) -> IntrinsicFunc {
+        match self {
+            PropKind::Array => IntrinsicFunc::SetArray,
+            PropKind::Boolean => IntrinsicFunc::SetBoolean,
+            PropKind::Integer => IntrinsicFunc::SetInteger,
+            PropKind::Float => IntrinsicFunc::SetFloat,
+            PropKind::Json => IntrinsicFunc::SetJson,
+            PropKind::Map => IntrinsicFunc::SetMap,
+            PropKind::Object => IntrinsicFunc::SetObject,
+            PropKind::String => IntrinsicFunc::SetString,
+        }
+    }
 }
 
 impl From<PropKind> for PropSpecKind {
@@ -1119,7 +1133,7 @@ impl Prop {
         }
 
         let prototype_id = Self::prototype_id(ctx, prop_id).await?;
-        let intrinsic: IntrinsicFunc = prop.kind.into();
+        let intrinsic: IntrinsicFunc = prop.kind.intrinsic_set_func();
         let intrinsic_id = Func::find_intrinsic(ctx, intrinsic).await?;
         let func_arg_id = FuncArgument::single_arg_for_func(ctx, intrinsic_id).await?;
 

@@ -171,25 +171,43 @@ async fn vivify_json_pointer(
     // Go through each segment of the JSON pointer (e.g. /foo/bar/0 = foo, bar, 0)
     // and look for its child. If it doesn't exist, create it.
     for token in pointer {
-        // If the parent is currently using its default value, make it explicit so it can
-        // host child values.
-        let prop = AttributeValue::prop(ctx, parent_id).await?;
-        if let Some(prototype_id) = AttributeValue::component_prototype_id(ctx, parent_id).await? {
-            // If we're trying to set a child of a dynamic value (like a subscription), we
-            // cannot do that--it would create an inconsistent state.
-            // TODO: really, if it's anything other than SetObject({}) or SetArray([]), we have a problem.
-            let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-            if Func::is_dynamic(ctx, func_id).await? {
-                return Err(AttributeValueError::CannotSetChildOfDynamicValue(
-                    parent_id, func_id,
-                ));
+        //
+        // Ensure the parent is si:setObject/si:setArray/si:setMap, so it can have children.
+        //
+        let kind = AttributeValue::prop(ctx, parent_id).await?.kind;
+        let prototype_id = AttributeValue::prototype_id(ctx, parent_id).await?;
+        let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+        let intrinsic = Func::intrinsic_kind(ctx, func_id).await?;
+        // If it's not si:setObject/si:setArray/si:setMap, fix it!
+        if intrinsic != Some(kind.intrinsic_set_func()) {
+            if AttributePrototype::is_dynamic(ctx, prototype_id).await? {
+                // You can't modify children of dynamic values on the component itself--only
+                // if they are defaults from the prototype. i.e. if /domain/Foo is a subscription,
+                // you can't modify /domain/Foo/Bar. If you want to do this, you have to clear
+                // the subscription first. We don't mind, however, if the dynamic value comes
+                // from the default (from the prop); that's just "override the default".
+                if AttributeValue::component_prototype_id(ctx, parent_id)
+                    .await?
+                    .is_some()
+                {
+                    return Err(AttributeValueError::CannotSetChildOfDynamicValue(parent_id));
+                }
+                // If it's a dynamic default (or socket connections), we have to clear the
+                // existing value.
+                AttributeValue::update(ctx, parent_id, kind.empty_value()).await?;
+            } else {
+                // If it's si:unset (value=None), we set to empty value instead.
+                // NOTE: we use set_value() here because we want to preserve default values!
+                // This matches what AttributeValue::vivify_value_and_parent_values() does.
+                AttributeValue::set_value(ctx, parent_id, kind.empty_value()).await?;
             }
-        } else {
-            AttributeValue::set_value(ctx, parent_id, prop.kind.empty_value()).await?;
         }
+
+        //
         // Find or create the child!
+        //
         parent_id =
-            match prop.kind {
+            match kind {
                 PropKind::Array => {
                     // Make sure the user asked to append (can't insert at an index that doesn't exist)
                     let elements =
@@ -241,7 +259,7 @@ async fn vivify_json_pointer(
                         token.decoded().into_owned(),
                     ))?;
                 }
-            }
+            };
     }
     Ok(parent_id)
 }
