@@ -1100,6 +1100,10 @@ impl Component {
                         )
                         .await?;
 
+                        // We need to make sure this AV makes its way into the DVU roots, even though
+                        // we would normally add it at the end of the match arm, because we're
+                        // skipping the rest of the match arm by continuing here.
+                        dvu_roots.push(DependentValueRoot::Unfinished(inserted_value.id().into()));
                         continue;
                     }
 

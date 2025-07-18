@@ -1,4 +1,5 @@
 use dal::{
+    AttributeValue,
     Component,
     ComponentType,
     DalContext,
@@ -611,6 +612,167 @@ async fn retain_bindings(ctx: &mut DalContext) -> Result<()> {
             inner_binding => panic!("unexpected binding kind: {inner_binding:?}"),
         }
     }
+    Ok(())
+}
+
+#[test]
+async fn dynamic_functions_on_new_attribute_values_are_rerun(ctx: &mut DalContext) -> Result<()> {
+    let destination_schema_variant_name = "SchemaVariant Name";
+    let category = "Schema Variant Category";
+    let description = None;
+    let link = None;
+    let color = "#0586F1";
+    let destination_schema_variant_id = VariantAuthoringClient::create_schema_and_variant(
+        ctx,
+        destination_schema_variant_name,
+        description.clone(),
+        link.clone(),
+        category,
+        color,
+    )
+    .await?
+    .id();
+    let destination_asset_func = r##"function main() {
+        const asset = new AssetBuilder();
+
+        const inputNumbers = new PropBuilder()
+            .setName("inputNumbers")
+            .setKind("array")
+            .setHidden(false)
+            .setWidget(new PropWidgetDefinitionBuilder()
+                .setKind("array")
+                .build())
+            .setEntry(new PropBuilder()
+                .setName("number")
+                .setKind("string")
+                .setHidden(false)
+                .setWidget(new PropWidgetDefinitionBuilder()
+                   .setKind("header")
+                   .build())
+                .build()
+            )
+            .build();
+        const outputNumber = new PropBuilder()
+            .setName("outputNumber")
+            .setKind("string")
+            .build();
+
+        asset.addProp(inputNumbers)
+            .addProp(outputNumber)
+            .build();
+        return asset.build();
+    }"##;
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        destination_schema_variant_id,
+        destination_schema_variant_name,
+        destination_schema_variant_name,
+        category,
+        description.clone(),
+        link.clone(),
+        color,
+        ComponentType::Component,
+        Some(destination_asset_func),
+    )
+    .await?;
+    let source_schema_variant_name = "Source SchemaVariant";
+    let source_category = "Source Schema Category";
+    let source_schema_variant_id = VariantAuthoringClient::create_schema_and_variant(
+        ctx,
+        source_schema_variant_name,
+        description.clone(),
+        link.clone(),
+        source_category,
+        color,
+    )
+    .await?
+    .id();
+    let source_asset_func = r##"function main() {
+        const asset = new AssetBuilder();
+        return asset.build();
+    }"##;
+    VariantAuthoringClient::save_variant_content(
+        ctx,
+        source_schema_variant_id,
+        source_schema_variant_name,
+        source_schema_variant_name,
+        source_category,
+        description,
+        link,
+        color,
+        ComponentType::Component,
+        Some(source_asset_func),
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    let destination_schema_variant_id =
+        VariantAuthoringClient::regenerate_variant(ctx, destination_schema_variant_id).await?;
+    VariantAuthoringClient::regenerate_variant(ctx, source_schema_variant_id).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let source_component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        source_schema_variant_name,
+        "Source Component",
+    )
+    .await?;
+    let destination_component = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        destination_schema_variant_name,
+        "Destination Component",
+    )
+    .await?;
+    let array_av_id = Component::attribute_value_for_prop(
+        ctx,
+        destination_component.id(),
+        &["root", "domain", "inputNumbers"],
+    )
+    .await?;
+    AttributeValue::insert(ctx, array_av_id, Some(serde_json::json!("")), None).await?;
+    dal_test::helpers::attribute::value::subscribe(
+        ctx,
+        ("Destination Component", "/domain/inputNumbers/0"),
+        [("Source Component", "/si/name")],
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    // Make sure we set up the subscription correctly.
+    assert_eq!(
+        Some(serde_json::json!(["Source Component"])),
+        AttributeValue::view(ctx, array_av_id).await?,
+    );
+
+    // Regenerate the variant to see if we still have a value for the array element.
+    VariantAuthoringClient::regenerate_variant(ctx, destination_schema_variant_id).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let array_av_id = Component::attribute_value_for_prop(
+        ctx,
+        destination_component.id(),
+        &["root", "domain", "inputNumbers"],
+    )
+    .await?;
+    assert_eq!(
+        Some(serde_json::json!(["Source Component"])),
+        AttributeValue::view(ctx, array_av_id).await?,
+    );
+
+    let source_name_av_id =
+        Component::attribute_value_for_prop(ctx, source_component.id(), &["root", "si", "name"])
+            .await?;
+    AttributeValue::update(
+        ctx,
+        source_name_av_id,
+        Some(serde_json::json!("New Source Name")),
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    assert_eq!(
+        Some(serde_json::json!(["New Source Name"])),
+        AttributeValue::view(ctx, array_av_id).await?,
+    );
+
     Ok(())
 }
 
