@@ -4718,10 +4718,16 @@
   "Configures a desired maintenance window for the environment. If you do not provide a value, a random system-generated value will be assigned.": {
     "enum": null
   },
+  "Configures the log level of the EventBus and determines which log messages are sent to Ingestion Hub for delivery.": {
+    "enum": null
+  },
   "Configures the service that provides logs.": {
     "enum": null
   },
   "Configures the transfer acceleration state for an Amazon S3 bucket.": {
+    "enum": null
+  },
+  "Configures whether or not to include event detail, input transformer details, target properties, and target input in the applicable log messages.": {
     "enum": null
   },
   "Connect Instance ID with which the storage config will be associated": {
@@ -9735,6 +9741,9 @@
     "enum": null
   },
   "The IP address assigned to the transit gateway multicast group.": {
+    "enum": null
+  },
+  "The IP address for the customer gateway device's outside interface. The address must be static. If ``OutsideIpAddressType`` in your VPN connection options is set to ``PrivateIpv4``, you can use an RFC6598 or RFC1918 private IPv4 address. If ``OutsideIpAddressType`` is set to ``Ipv6``, you can use an IPv6 address.": {
     "enum": null
   },
   "The IP address of a core network.": {
