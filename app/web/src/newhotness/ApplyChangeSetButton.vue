@@ -18,8 +18,8 @@
         this will have to do in the meantime.
         -->
         <PillCounter
-          :count="actions.length"
-          :paddingX="actions.length > 10 ? '2xs' : 'xs'"
+          :count="proposedActions.length"
+          :paddingX="proposedActions.length > 10 ? '2xs' : 'xs'"
           noColorStyles
           class="border border-action-200 ml-2xs py-2xs"
         />
@@ -28,7 +28,7 @@
     <ApprovalFlowModal
       ref="approvalFlowModalRef"
       votingKind="merge"
-      :actions="actions"
+      :actions="proposedActions"
     />
   </section>
 </template>
@@ -68,4 +68,9 @@ const actionsRaw = useQuery<BifrostActionViewList | null>({
   enabled: ctx.queriesEnabled,
 });
 const actions = computed(() => actionsRaw.data.value?.actions ?? []);
+const proposedActions = computed(() =>
+  actions.value.filter(
+    (action) => action.originatingChangeSetId === ctx.changeSetId.value,
+  ),
+);
 </script>
