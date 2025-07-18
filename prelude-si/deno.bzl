@@ -62,6 +62,8 @@ def deno_compile_impl(ctx: AnalysisContext) -> list[Provider]:
         deno_toolchain.deno_compile[DefaultInfo].default_outputs[0],
         "--input",
         ctx.attrs.main,
+        "--extra-srcs",
+        ctx.attrs.extra_srcs,
         "--output",
         out.as_output(),
         hidden = ctx.attrs.srcs
@@ -93,6 +95,11 @@ deno_compile = rule(
             attrs.source(),
             default = [],
             doc = "All source files that are part of the compilation",
+        ),
+        "extra_srcs": attrs.list(
+            attrs.source(),
+            default = [],
+            doc = "Sources from other targets",
         ),
         "out": attrs.string(
             doc = "The name of the output binary",

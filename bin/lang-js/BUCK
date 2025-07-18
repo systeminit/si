@@ -37,7 +37,7 @@ deno_run(
         "//:deno_workspace"
     ] +
     glob([
-        "src/**/build.ts",
+        "src/**/*.ts",
     ]),
     permissions = [
         "allow-all",
@@ -49,13 +49,13 @@ deno_compile(
     name = "bin",
     main = "src/index.ts",
     out = "lang-js",
-    srcs = [
-        ":build",
-    ] +
-    glob([
+    srcs = glob([
         "src/**/*.ts",
         "src/**/*.js",
     ]),
+    extra_srcs = [
+      ":build"
+    ],
     permissions = [
         "allow-all",
     ],
