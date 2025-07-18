@@ -132,6 +132,7 @@ export interface SharedDBInterface {
   broadcastMessage(message: BroadcastMessage): Promise<void>;
   setRemote(remoteId: string): Promise<void>;
   hasRemote(): Promise<boolean>;
+  currentRemoteId(): Promise<string | undefined>;
   initBifrost(gotLockPort: MessagePort): Promise<void>;
   bifrostClose(): Promise<void>;
   bifrostReconnect(): Promise<void>;
@@ -230,7 +231,6 @@ export interface TabDBInterface {
   setBearer: (workspaceId: string, token: string) => void;
   initSocket(workspaceId: string): Promise<void>;
   receiveBroadcast(message: BroadcastMessage): Promise<void>;
-  setRemote(remoteId: string): Promise<void>;
   initBifrost(gotLockPort: MessagePort): Promise<void>;
   bifrostClose(): void;
   bifrostReconnect(): void;

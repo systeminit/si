@@ -56,9 +56,10 @@ const lockAcquired = ref(false);
 
 const lockAcquiredBroadcastChannel = new BroadcastChannel("DB_LOCK_ACQUIRED");
 lockAcquiredBroadcastChannel.onmessage = (message) => {
-  if (message.data !== tabDbId) {
+  const lockTabId = message.data;
+  if (lockTabId !== tabDbId) {
     // eslint-disable-next-line no-console
-    console.log("🌈 lock acquired by another tab");
+    console.log(`🌈 lock acquired by another tab: ${lockTabId}`);
     lockAcquired.value = true;
   }
 };
@@ -110,9 +111,6 @@ onSharedWorkerBootBroadcastChannel.onmessage = async (msg) => {
     sharedWebWorkerName = name;
     db = Comlink.wrap(sharedWorker.port);
     db.registerRemote(tabDbId, Comlink.proxy(tabDb));
-    if (await tabDb.hasDbLock()) {
-      await db.setRemote(tabDbId);
-    }
     db.addBearers(currentBearers);
     showCachedAppNotification();
   } else {
@@ -141,9 +139,10 @@ export const init = async (
     const { port1, port2 } = new MessageChannel();
     // This message fires when the lock has been acquired for this tab
     port1.onmessage = () => {
-      db.setRemote(tabDbId);
+      // Ensure we're registered. Register will set the remote!
+      db.registerRemote(tabDbId, Comlink.proxy(tabDb));
       // eslint-disable-next-line no-console
-      console.log("🌈 lock acquired by this tab");
+      console.log(`🌈 lock acquired by this tab: ${tabDbId}`);
       lockAcquired.value = true;
       lockAcquiredBroadcastChannel.postMessage(tabDbId);
     };
@@ -165,8 +164,11 @@ export const init = async (
   // indicate lock acquisition via the broadcast channel)
   setTimeout(async () => {
     if ((await db.hasRemote()) && !(await tabDb.hasDbLock())) {
+      const currentRemoteId = await db.currentRemoteId();
       // eslint-disable-next-line no-console
-      console.log("🌈 lock acquired by another tab, detected in timeout");
+      console.log(
+        `🌈 lock acquired by another tab (${currentRemoteId}), detected in timeout`,
+      );
       lockAcquired.value = true;
     }
   }, 2500);
