@@ -214,7 +214,14 @@ export interface MgmtFunction {
   description?: string;
   prototypeName: string;
   name: string;
-  kind: string;
+  kind: MgmtFuncKind;
+}
+
+export enum MgmtFuncKind {
+  Discover = "discover",
+  Import = "import",
+  Other = "other",
+  RunTemplate = "runTemplate",
 }
 
 export interface SchemaVariant {

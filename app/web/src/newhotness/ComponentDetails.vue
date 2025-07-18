@@ -105,6 +105,20 @@
                   "
                 />
               </template>
+              <template v-else-if="runTemplateFunc">
+                <VButton
+                  size="sm"
+                  label="Run Template"
+                  loadingText="Running"
+                  tone="neutral"
+                  class="ml-2xs mr-xs font-normal"
+                  :loading="
+                    dispatchedFunc ||
+                    latestFuncRuns[runTemplateFunc?.id]?.state === 'Running'
+                  "
+                  @click.stop="runMgmtFunc(runTemplateFunc?.id)"
+                />
+              </template>
             </div>
           </template>
           <AttributePanel
@@ -238,7 +252,7 @@ import {
   TruncateWithTooltip,
 } from "@si/vue-lib/design-system";
 import { computed, ref, onMounted, onBeforeUnmount, inject, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
@@ -246,6 +260,7 @@ import {
   BifrostComponent,
   EntityKind,
   IncomingConnections,
+  MgmtFuncKind,
 } from "@/workers/types/entity_kind_types";
 import { Context, assertIsDefined } from "@/newhotness/types";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
@@ -393,8 +408,46 @@ export type NameFormData = {
 
 // Import
 const importFunc = computed(() =>
-  mgmtFuncs.value.find((f) => f.kind === "import"),
+  mgmtFuncs.value.find((f) => f.kind === MgmtFuncKind.Import),
 );
+
+// Run Template
+const runTemplateFunc = computed(() =>
+  mgmtFuncs.value.find((f) => f.kind === MgmtFuncKind.RunTemplate),
+);
+const dispatchedFunc = ref(false);
+
+const mgmtRunApi = useApi();
+const route = useRoute();
+const runMgmtFunc = async (funcId: string) => {
+  const call = mgmtRunApi.endpoint<{ success: boolean }>(routes.MgmtFuncRun, {
+    prototypeId: funcId,
+    componentId: props.componentId,
+    viewId: "DEFAULT",
+  });
+
+  const { req, newChangeSetId } = await call.post({});
+
+  dispatchedFunc.value = true;
+  setTimeout(() => {
+    dispatchedFunc.value = false;
+  }, 2000);
+
+  // NOTE(nick): need to make sure this makes sense after the timeout.
+  if (mgmtRunApi.ok(req) && newChangeSetId) {
+    mgmtRunApi.navigateToNewChangeSet(
+      {
+        name: "new-hotness-component",
+        params: {
+          workspacePk: route.params.workspacePk,
+          changeSetId: newChangeSetId,
+          componentId: props.componentId,
+        },
+      },
+      newChangeSetId,
+    );
+  }
+};
 
 const showResourceInput = ref(false);
 

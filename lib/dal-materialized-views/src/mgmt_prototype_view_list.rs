@@ -34,6 +34,8 @@ pub async fn assemble(
                 ManagementFuncKind::Import
             } else if func.name == *"Discover on AWS" {
                 ManagementFuncKind::Discover
+            } else if func.display_name == Some(("Run Template").to_string()) {
+                ManagementFuncKind::RunTemplate
             } else {
                 ManagementFuncKind::Other
             }
