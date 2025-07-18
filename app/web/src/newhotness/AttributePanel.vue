@@ -113,95 +113,37 @@
       <SiSearch
         ref="searchRef"
         v-model="q"
-        placeholder="filter attributes..."
+        placeholder="Find an attribute"
         :tabIndex="0"
         :borderBottom="false"
+        variant="new"
         @keydown.tab="onSearchInputTab"
       />
     </div>
-    <div
+    <AttributeChildLayout
       v-if="'children' in filtered.tree && filtered.tree.children.length > 0"
+      defaultOpen
     >
-      <h3
-        :class="
-          clsx(
-            'p-xs border-l',
-            themeClasses(
-              'bg-neutral-200 border-neutral-200',
-              'bg-neutral-800 border-neutral-800',
-            ),
-          )
-        "
-      >
-        domain
-      </h3>
-      <!-- this is _really_ a type guard for "i am not an empty object" -->
-      <ul
-        :class="
-          clsx(
-            'border-l border-r',
-            themeClasses('border-neutral-200', 'border-neutral-800'),
-          )
-        "
-      >
-        <ComponentAttribute
-          v-for="child in filtered.tree.children"
-          :key="child.id"
-          :component="component"
-          :attributeTree="child"
-          @save="save"
-          @delete="remove"
-          @remove-subscription="removeSubscription"
-        />
-      </ul>
-      <div
-        :class="
-          clsx(
-            'w-full border-b',
-            themeClasses('border-neutral-200', 'border-neutral-800'),
-          )
-        "
+      <template #header> domain </template>
+      <ComponentAttribute
+        v-for="child in filtered.tree.children"
+        :key="child.id"
+        :component="component"
+        :attributeTree="child"
+        @save="save"
+        @delete="remove"
+        @remove-subscription="removeSubscription"
       />
-    </div>
-    <div v-if="secrets && secrets.children.length > 0">
-      <h3
-        :class="
-          clsx(
-            'p-xs border-l',
-            themeClasses(
-              'bg-neutral-200 border-neutral-200',
-              'bg-neutral-800 border-neutral-800',
-            ),
-          )
-        "
-      >
-        secrets
-      </h3>
-      <ul
-        v-if="'children' in secrets"
-        :class="
-          clsx(
-            'border-l',
-            themeClasses('border-neutral-200', 'border-neutral-800'),
-          )
-        "
-      >
-        <ComponentSecretAttribute
-          v-for="secret in secrets.children"
-          :key="secret.id"
-          :component="component"
-          :attributeTree="secret"
-        />
-      </ul>
-      <div
-        :class="
-          clsx(
-            'w-full border-b',
-            themeClasses('border-neutral-200', 'border-neutral-800'),
-          )
-        "
+    </AttributeChildLayout>
+    <AttributeChildLayout v-if="secrets && secrets.children.length > 0">
+      <template #header> secrets </template>
+      <ComponentSecretAttribute
+        v-for="secret in secrets.children"
+        :key="secret.id"
+        :component="component"
+        :attributeTree="secret"
       />
-    </div>
+    </AttributeChildLayout>
   </div>
   <EmptyState v-else text="No attributes to display" icon="code-circle" />
 </template>
@@ -247,6 +189,7 @@ import { NameFormData } from "./ComponentDetails.vue";
 import EmptyState from "./EmptyState.vue";
 import { findAttributeValueInTree } from "./util";
 import { AttrTree, makeAvTree } from "./logic_composables/attribute_tree";
+import AttributeChildLayout from "./layout_components/AttributeChildLayout.vue";
 
 const q = ref("");
 

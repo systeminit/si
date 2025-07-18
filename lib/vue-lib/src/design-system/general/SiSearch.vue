@@ -3,7 +3,7 @@
     :class="
       clsx(
         'siSearchRoot',
-        dropdownMenuSearch
+        variant === 'dropdownmenu'
           ? 'rounded-t-md'
           : borderBottom && 'dark:border-neutral-600 border-b',
       )
@@ -13,7 +13,7 @@
       :class="
         clsx(
           'relative text-neutral-400 focus-within:text-neutral-600 block h-[34px]',
-          dropdownMenuSearch && 'rounded-t-md',
+          variant === 'dropdownmenu' && 'rounded-t-md',
         )
       "
     >
@@ -24,13 +24,24 @@
         :placeholder="placeholder"
         :class="
           clsx(
-            'w-full text-xs pl-[32px] py-2xs h-[34px] placeholder:italic outline-offset-[-1px] focus:outline focus:outline-2',
-            dropdownMenuSearch
-              ? 'text-white bg-shade-100 placeholder:text-neutral-400 rounded-t-md'
-              : themeClasses(
-                  'text-black bg-shade-0 placeholder:text-neutral-500 focus:bg-neutral-50 focus:outline-action-500',
-                  'text-white bg-neutral-800 placeholder:text-neutral-400 focus:bg-shade-100 focus:outline-action-300',
+            'w-full text-xs pl-[32px] py-2xs h-[34px] placeholder:italic',
+            variant !== 'new' &&
+              'outline-offset-[-1px] focus:outline focus:outline-2',
+            {
+              dropdownmenu:
+                'text-white bg-shade-100 placeholder:text-neutral-400 rounded-t-md',
+              standard: themeClasses(
+                'text-black bg-shade-0 placeholder:text-neutral-500 focus:bg-neutral-50 focus:outline-action-500',
+                'text-white bg-neutral-800 placeholder:text-neutral-400 focus:bg-shade-100 focus:outline-action-300',
+              ),
+              new: [
+                'border outline-none focus:outline-none',
+                themeClasses(
+                  'text-black bg-shade-0 placeholder:text-neutral-500 border-neutral-400 focus:border-action-500',
+                  'text-white bg-shade-100 placeholder:text-neutral-400 border-neutral-600 focus:border-action-300',
                 ),
+              ],
+            }[variant],
             filtersEnabled ? 'pr-[58px]' : 'pr-[30px]',
           )
         "
@@ -48,7 +59,9 @@
         :class="
           clsx(
             'absolute left-2xs top-[6px]',
-            dropdownMenuSearch ? 'text-neutral-600' : 'dark:text-neutral-600',
+            variant === 'dropdownmenu'
+              ? 'text-neutral-600'
+              : 'dark:text-neutral-600',
           )
         "
       />
@@ -148,6 +161,8 @@ export type Filter = {
   count?: number;
 };
 
+export type SearchVariant = "standard" | "dropdownmenu" | "new";
+
 const emit = defineEmits<{
   (e: "search", searchTerm: string): void;
   (e: "clearSearch"): void;
@@ -162,7 +177,7 @@ const props = defineProps({
   modelValue: { type: String },
   filters: { type: Array<Filter> },
   disableFilters: { type: Boolean },
-  dropdownMenuSearch: { type: Boolean },
+  variant: { type: String as PropType<SearchVariant>, default: "standard" },
   borderBottom: { type: Boolean, default: true },
   allFilter: { type: Object as PropType<Filter> },
   tabIndex: { type: Number },

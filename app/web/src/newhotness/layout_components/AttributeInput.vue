@@ -371,7 +371,7 @@
               "
             >
               <template v-if="isArray && !isSetByConnection">
-                + Add a "{{ displayName }}" item
+                + Add "{{ displayName }}" item
               </template>
               <template v-else-if="isMap && !mapKey && !isSetByConnection">
                 You must enter a key

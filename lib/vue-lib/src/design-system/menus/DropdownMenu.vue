@@ -36,7 +36,7 @@
         v-if="search"
         ref="siSearchRef"
         class="w-full flex-none"
-        dropdownMenuSearch
+        variant="dropdownmenu"
         :allFilter="{ name: 'All Views' }"
         :filters="searchFilters"
         @click.stop="selectSearch"

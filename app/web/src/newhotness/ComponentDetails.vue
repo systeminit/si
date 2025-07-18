@@ -61,8 +61,11 @@
       <div
         :class="
           clsx(
-            'name flex flex-row items-center gap-xs p-xs ',
-            themeClasses('bg-neutral-200', 'bg-neutral-800'),
+            'name flex flex-row items-center gap-xs p-xs border',
+            themeClasses(
+              'bg-white border-neutral-300',
+              'bg-neutral-800 border-neutral-600',
+            ),
           )
         "
       >
@@ -90,14 +93,14 @@
               <span>Attributes</span>
               <template v-if="importFunc">
                 <VButton
-                  size="sm"
+                  size="xs"
                   tone="neutral"
                   :label="
                     showResourceInput
                       ? 'Set attributes manually'
                       : 'Import a Resource'
                   "
-                  class="ml-2xs mr-xs font-normal"
+                  class="font-normal p-0 h-md mt-[1px] [&>div]:top-[-2px]"
                   @click.stop="
                     () => {
                       showResourceInput = !showResourceInput;
@@ -172,11 +175,12 @@
 
       <div class="right flex flex-col">
         <CollapsingFlexItem>
-          <template #header>
+          <template #header> Connections </template>
+          <template #headerIcons>
             <PillCounter
               :count="(component.inputCount ?? 0) + (outgoing ?? 0)"
+              size="sm"
             />
-            Connections
           </template>
           <ConnectionsPanel
             v-if="componentConnections && component"
@@ -185,9 +189,12 @@
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem open>
-          <template #header>
-            <PillCounter :count="component.qualificationTotals.total" />
-            Qualifications
+          <template #header> Qualifications </template>
+          <template #headerIcons>
+            <PillCounter
+              :count="component.qualificationTotals.total"
+              size="sm"
+            />
           </template>
           <QualificationPanel
             :component="component"
@@ -195,7 +202,8 @@
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem>
-          <template #header>
+          <template #header> Resource </template>
+          <template #headerIcons>
             <Icon
               v-if="component.hasResource"
               name="check-hex"
@@ -203,7 +211,6 @@
               tone="success"
             />
             <Icon v-else name="refresh-hex-outline" size="sm" tone="shade" />
-            Resource
           </template>
           <ResourcePanel
             :component="component"
@@ -211,10 +218,7 @@
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem>
-          <template #header>
-            <Icon name="brackets-curly" size="sm" />
-            Generated Code
-          </template>
+          <template #header> Generated Code </template>
           <CodePanel
             v-if="attributeTree"
             :component="component"
@@ -222,10 +226,7 @@
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem>
-          <template #header>
-            <Icon name="tilde" size="sm" />
-            Diff
-          </template>
+          <template #header> Diff </template>
           <DiffPanel :component="component" />
         </CollapsingFlexItem>
         <DocumentationPanel
@@ -378,13 +379,6 @@ const attrRef = ref<typeof CollapsingFlexItem>();
 const resourceRef = ref<typeof CollapsingFlexItem>();
 const actionRef = ref<typeof CollapsingFlexItem>();
 const mgmtRef = ref<typeof CollapsingFlexItem>();
-
-// TODO(Wendy) - this code is for if we want the AttributeInput to float again
-// const scrollAttributePanel = (value: number) => {
-//   if (attrRef.value) {
-//     attrRef.value.setScroll(value);
-//   }
-// };
 
 const router = useRouter();
 
@@ -556,31 +550,31 @@ const gridStateClass = computed(() => {
 section.grid.docs-open-with-banner {
   grid-template-areas:
     "banner banner banner"
-    "name docs right"
+    "name name name"
     "attrs docs right";
-  grid-template-rows: 2.5rem 3rem minmax(0, 1fr);
+  grid-template-rows: 2.5rem 2.5rem minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr) minmax(0, 25%) minmax(0, 25%);
 }
 section.grid.docs-closed-with-banner {
   grid-template-areas:
     "banner banner"
-    "name right"
+    "name name"
     "attrs right";
-  grid-template-rows: 2.5rem 3rem minmax(0, 1fr);
+  grid-template-rows: 2.5rem 2.5rem minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr) minmax(0, 33%);
 }
 section.grid.docs-open-without-banner {
   grid-template-areas:
-    "name docs right"
+    "name name name"
     "attrs docs right";
-  grid-template-rows: 3rem minmax(0, 1fr);
+  grid-template-rows: 2.5rem minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr) minmax(0, 25%) minmax(0, 25%);
 }
 section.grid.docs-closed-without-banner {
   grid-template-areas:
-    "name right"
+    "name name"
     "attrs right";
-  grid-template-rows: 3rem minmax(0, 1fr);
+  grid-template-rows: 2.5rem minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr) minmax(0, 33%);
 }
 .docs {
