@@ -15,6 +15,7 @@ use dal::{
     KeyPairError,
     func::authoring::FuncAuthoringError,
     prop::PropError,
+    workspace_snapshot::dependent_value_root::DependentValueRootError,
 };
 use sdf_core::api_error::ApiError;
 use serde::Deserialize;
@@ -45,6 +46,8 @@ pub enum Error {
     Component(#[from] dal::ComponentError),
     #[error("dal secret error: {0}")]
     DalSecret(#[from] dal::SecretError),
+    #[error("dependent value root error: {0}")]
+    DependentValueRoot(#[from] DependentValueRootError),
     #[error("func error: {0}")]
     Func(#[from] dal::FuncError),
     #[error("func authoring error: {0}")]

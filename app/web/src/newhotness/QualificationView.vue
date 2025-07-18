@@ -31,6 +31,16 @@
           >
             {{ showDetails ? "Hide" : "View" }} Details
           </button>
+          <IconButton
+            v-if="qualification.avId"
+            tooltip="Rerun qualification"
+            tooltipPlacement="top"
+            icon="refresh"
+            iconTone="action"
+            size="sm"
+            class="self-center"
+            @click.left="enqueueDVU"
+          />
         </div>
         <template v-else>
           The qualification has not yet ran or is actively running.
@@ -60,7 +70,7 @@
 <script lang="ts" setup>
 import { computed, ref, toRef } from "vue";
 import * as _ from "lodash-es";
-import { LoadingMessage } from "@si/vue-lib/design-system";
+import { IconButton, LoadingMessage } from "@si/vue-lib/design-system";
 import StatusMessageBox from "@/components/StatusMessageBox.vue";
 import CodeViewer from "@/components/CodeViewer.vue";
 import { Qualification } from "@/newhotness/QualificationPanel.vue";
@@ -70,6 +80,7 @@ const api = useApi();
 
 const props = defineProps<{
   qualification: Qualification;
+  component: string;
 }>();
 
 const showDetails = ref(false);
@@ -81,6 +92,18 @@ const qualificationStatus = computed(() => {
   return props.qualification.status;
 });
 
+const dvuApi = useApi();
+const enqueueDVU = async () => {
+  if (props.qualification.avId) {
+    const call = dvuApi.endpoint(routes.EnqueueAttributeValue, {
+      id: props.component,
+      attributeValue: props.qualification.avId,
+    });
+
+    // This route can mutate head, so we do not need to handle new change set semantics.
+    await call.post([props.qualification.avId]);
+  }
+};
 const toggleHidden = async () => {
   showDetails.value = !showDetails.value;
 

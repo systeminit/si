@@ -585,12 +585,14 @@ export function useChangeSetsStore() {
                   if ((route.name as string).startsWith("new-hotness")) {
                     let name = route.name as string;
                     // if you're on a single-item page in the UI while just bring them to explore
+                    // but only if you're not already on head!
                     if (
                       ![
                         "new-hotness",
                         "new-hotness-workspace-auto",
                         "new-hotness-head",
-                      ].includes(route.name as string)
+                      ].includes(route.name as string) &&
+                      this.selectedChangeSetId !== this.headChangeSetId
                     )
                       name = "new-hotness";
 
