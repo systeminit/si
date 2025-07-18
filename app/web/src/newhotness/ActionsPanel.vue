@@ -30,7 +30,7 @@
 
 <script lang="ts" setup>
 import { useQuery } from "@tanstack/vue-query";
-import { computed } from "vue";
+import { computed, inject } from "vue";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import {
   ActionPrototypeViewList,
@@ -41,6 +41,7 @@ import {
 import { ActionId, ActionPrototypeId } from "@/api/sdf/dal/action";
 import ActionWidget from "./ActionWidget.vue";
 import EmptyState from "./EmptyState.vue";
+import { assertIsDefined, Context } from "./types";
 
 const props = defineProps<{
   component: BifrostComponent;
@@ -53,11 +54,15 @@ const props = defineProps<{
 const makeKey = useMakeKey();
 const makeArgs = useMakeArgs();
 
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined(ctx);
+
 const queryKeyForActionPrototypeViews = makeKey(
   EntityKind.ActionPrototypeViewList,
   props.component.schemaVariant.id,
 );
 const actionPrototypeViewsRaw = useQuery<ActionPrototypeViewList | null>({
+  enabled: ctx.queriesEnabled,
   queryKey: queryKeyForActionPrototypeViews,
   queryFn: async () =>
     await bifrost<ActionPrototypeViewList>(
