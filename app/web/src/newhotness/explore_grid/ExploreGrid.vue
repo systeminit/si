@@ -16,32 +16,39 @@
         height: `${virtualListHeight}px`,
       }"
     >
-      <ExploreGridRow
-        v-for="row in componentRowsVirtualItemsList"
-        :key="`${row.key}`"
-        ref="exploreGridRowRefs"
-        data-testid="component-tile"
-        :data-index="row.index"
-        :class="clsx('absolute top-0 left-0 w-full')"
-        :style="{
-          height: `${rowHeights[row.index]}px`,
-          transform: `translateY(${row.start}px)`,
-        }"
-        :lanesCount="virtualizerLanes"
-        :row="gridRows[row.index]!"
-        :focusedComponentId="focusedComponent?.id"
-        :selectedComponentIndexes="selectedComponentIndexes"
-        :componentsWithFailedActions="componentsWithFailedActions"
-        :componentsWithRunningActions="componentsWithRunningActions"
-        :componentsPendingActionNames="componentsPendingActionNames"
-        @childClicked="(e, c, idx) => $emit('childClicked', e, c, idx)"
-        @childSelect="(idx) => $emit('childSelect', idx)"
-        @childDeselect="(idx) => $emit('childDeselect', idx)"
-        @childHover="(componentId) => $emit('childHover', componentId)"
-        @childUnhover="(componentId) => $emit('childUnhover', componentId)"
-        @clickCollapse="clickCollapse"
-        @unpin="(componentId) => $emit('unpin', componentId)"
+      <AttributePanelBulk
+        v-if="bulkEditing"
+        :selectedComponents="selectedComponents"
+        @close="() => $emit('bulkDone')"
       />
+      <template v-else>
+        <ExploreGridRow
+          v-for="row in componentRowsVirtualItemsList"
+          :key="`${row.key}`"
+          ref="exploreGridRowRefs"
+          data-testid="component-tile"
+          :data-index="row.index"
+          :class="clsx('absolute top-0 left-0 w-full')"
+          :style="{
+            height: `${rowHeights[row.index]}px`,
+            transform: `translateY(${row.start}px)`,
+          }"
+          :lanesCount="virtualizerLanes"
+          :row="gridRows[row.index]!"
+          :focusedComponentId="focusedComponent?.id"
+          :selectedComponentIndexes="selectedComponentIndexes"
+          :componentsWithFailedActions="componentsWithFailedActions"
+          :componentsWithRunningActions="componentsWithRunningActions"
+          :componentsPendingActionNames="componentsPendingActionNames"
+          @childClicked="(e, c, idx) => $emit('childClicked', e, c, idx)"
+          @childSelect="(idx) => $emit('childSelect', idx)"
+          @childDeselect="(idx) => $emit('childDeselect', idx)"
+          @childHover="(componentId) => $emit('childHover', componentId)"
+          @childUnhover="(componentId) => $emit('childUnhover', componentId)"
+          @clickCollapse="clickCollapse"
+          @unpin="(componentId) => $emit('unpin', componentId)"
+        />
+      </template>
     </div>
   </div>
 </template>
@@ -57,8 +64,10 @@ import { windowWidthReactive } from "../logic_composables/emitters";
 import ExploreGridRow, { ExploreGridRowData } from "./ExploreGridRow.vue";
 import ComponentCard from "../ComponentCard.vue";
 import ExploreGridTile, { GRID_TILE_HEIGHT } from "./ExploreGridTile.vue";
+import AttributePanelBulk from "./AttributePanelBulk.vue";
 
 const props = defineProps<{
+  bulkEditing: boolean;
   components: Record<string, ComponentInList[]>;
   focusedComponentIdx?: number;
   selectedComponentIndexes: Set<number>;
@@ -379,6 +388,7 @@ const scrollCurrentTileIntoView = () => {
 watch([() => props.focusedComponentIdx], scrollCurrentTileIntoView);
 
 defineEmits<{
+  (e: "bulkDone"): void;
   (e: "unpin", componentId: ComponentId): void;
   (e: "childSelect", componentIdx: number): void;
   (e: "childDeselect", componentIdx: number): void;

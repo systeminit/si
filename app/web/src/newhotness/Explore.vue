@@ -247,6 +247,8 @@
               componentsHaveActionsWithState.running
             "
             :componentsPendingActionNames="componentsPendingActionNames"
+            :bulkEditing="bulkEditing"
+            @bulkDone="() => bulkEditing = false"
             @childClicked="componentClicked"
             @childSelect="selectComponent"
             @childDeselect="deselectComponent"
@@ -395,6 +397,7 @@
       @clearSelected="clearSelection"
       @edit="navigateToFocusedComponent"
       @pin="(c) => (pinnedComponentId = c)"
+      @bulk="() => bulkEditing = true"
     />
   </section>
 </template>
@@ -521,6 +524,7 @@ const showGrid = computed(() => urlGridOrMap.value === "grid");
 const gridMapSwitcherValue = computed(
   () => groupRef.value && groupRef.value.isA,
 );
+const bulkEditing = ref(false);
 
 watch(gridMapSwitcherValue, (newShowGrid) => {
   // If this is nil, groupRef is unmounted,and we don't care about the change.
@@ -1498,7 +1502,7 @@ const onM = (e: KeyDetails["m"]) => {
   mapRef.value?.onM(e);
 };
 const onEscape = () => {
-  if (isThereAModalOpen.value) return;
+  if (isThereAModalOpen.value || bulkEditing.value) return;
 
   if (showGrid.value) {
     searchRef.value?.blur();
@@ -1599,6 +1603,8 @@ const onResize = () => {
 // general click handler for the whole page
 // any click which doesn't do this behavior should have .stop on it!
 const onClick = (e: MouseDetails["click"]) => {
+  if (bulkEditing.value) return;
+
   if (showGrid.value) {
     const inside =
       componentContextMenuRef.value?.contextMenuRef?.elementIsInsideMenu;
