@@ -27,6 +27,7 @@ import {
   AtomDocument,
   UpdateFn,
   QueryAttributesTerm,
+  FORCE_LEADER_ELECTION,
 } from "@/workers/types/dbinterface";
 import {
   Connection,
@@ -50,7 +51,7 @@ import {
 const ulid = monotonicFactory(() => Math.random());
 
 const ranInit = ref<boolean>(false);
-let queryClient: QueryClient;
+let queryClient: QueryClient | undefined;
 const tabDbId = ulid();
 const lockAcquired = ref(false);
 
@@ -116,7 +117,24 @@ onSharedWorkerBootBroadcastChannel.onmessage = async (msg) => {
   } else {
     db.registerRemote(tabDbId, Comlink.proxy(tabDb));
   }
+
+  await detectLockAcquiredByOtherTab();
 };
+
+const detectLockAcquiredByOtherTab = async () => {
+  if (!(await tabDb.hasDbLock()) && !lockAcquired.value) {
+    const currentLeaderId = await db.currentLeaderId();
+    if (currentLeaderId) {
+      // eslint-disable-next-line no-console
+      console.log(`🌈 lock acquired by another tab (${currentLeaderId})`);
+      lockAcquired.value = true;
+    }
+  }
+};
+
+const forceLeaderElectionBroadcastChannel = new BroadcastChannel(
+  FORCE_LEADER_ELECTION,
+);
 
 window.onbeforeunload = () => {
   db.unregisterRemote(tabDbId);
@@ -124,6 +142,14 @@ window.onbeforeunload = () => {
 
 const showCachedAppNotification = () => {
   cachedAppEmitter.emit(SHOW_CACHED_APP_NOTIFICATION_EVENT);
+};
+
+const initBifrost = (messagePort: MessagePort) => {
+  tabDb.initBifrost(Comlink.proxy(messagePort)).then((result) => {
+    if (typeof result === "string" && result === FORCE_LEADER_ELECTION) {
+      initBifrost(messagePort);
+    }
+  });
 };
 
 export const init = async (
@@ -147,9 +173,7 @@ export const init = async (
       lockAcquiredBroadcastChannel.postMessage(tabDbId);
     };
 
-    // We are deliberately not awaiting this promise, since it blocks forever on
-    // the tabs that do not get the lock
-    tabDb.initBifrost(Comlink.proxy(port2));
+    initBifrost(port2);
 
     ranInit.value = true;
     queryClient = _queryClient;
@@ -162,16 +186,23 @@ export const init = async (
   // scenario before we begin cold start. (This only matters if 2+ tabs are
   // refreshed at more or less the same time, in the normal scenario we will
   // indicate lock acquisition via the broadcast channel)
+  //
   setTimeout(async () => {
-    if ((await db.hasRemote()) && !(await tabDb.hasDbLock())) {
-      const currentRemoteId = await db.currentRemoteId();
-      // eslint-disable-next-line no-console
-      console.log(
-        `🌈 lock acquired by another tab (${currentRemoteId}), detected in timeout`,
-      );
-      lockAcquired.value = true;
+    if (!lockAcquired.value) {
+      await detectLockAcquiredByOtherTab();
     }
-  }, 2500);
+  }, 2000);
+
+  setTimeout(async () => {
+    // If after 5 seconds total, we have not detected lock acquisition, try
+    // and force a leader election
+    if (!lockAcquired.value) {
+      await detectLockAcquiredByOtherTab();
+      if (!lockAcquired.value) {
+        forceLeaderElectionBroadcastChannel.postMessage(FORCE_LEADER_ELECTION);
+      }
+    }
+  }, 5000);
 };
 
 export const initCompleted = computed(
@@ -186,7 +217,7 @@ const bustTanStackCache: BustCacheFn = (
   noBroadcast?: boolean,
 ) => {
   const queryKey = [workspaceId, changeSetId, kind, id];
-  queryClient.invalidateQueries({ queryKey });
+  queryClient?.invalidateQueries({ queryKey });
   if (!noBroadcast) {
     db.broadcastMessage({
       messageKind: "cacheBust",
@@ -235,7 +266,7 @@ const updateCache = (
 ) => {
   if (!removed && !data) return;
 
-  queryClient.setQueryData(queryKey, (cachedData: { id: string }[]) => {
+  queryClient?.setQueryData(queryKey, (cachedData: { id: string }[]) => {
     if (!cachedData) {
       return cachedData;
     }
@@ -553,6 +584,19 @@ const waitForInitCompletion = (): Promise<void> => {
 const MUSPELHEIM_CONCURRENCY = 1;
 
 export const muspelheimStatuses = ref<{ [key: string]: boolean }>({});
+export const muspelheimInProgress = computed(() => {
+  const muspelheimStates = muspelheimStatuses.value;
+  if (Object.keys(muspelheimStates).length === 0) {
+    return true;
+  }
+
+  for (const changeSetId in muspelheimStates) {
+    if (!muspelheimStates[changeSetId]) {
+      return true;
+    }
+  }
+  return false;
+});
 
 const fetchOpenChangeSets = async (
   workspaceId: WorkspacePk,

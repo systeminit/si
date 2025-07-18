@@ -241,8 +241,8 @@ importers:
         specifier: workspace:*
         version: link:../../lib/vue-lib
       '@sqlite.org/sqlite-wasm':
-        specifier: 3.48.0-build4
-        version: 3.48.0-build4
+        specifier: 3.50.3-build1
+        version: 3.50.3-build1
       '@tanstack/vue-form':
         specifier: ^1.9.0
         version: 1.9.0(vue@3.5.13(typescript@5.0.4))
@@ -2897,8 +2897,8 @@ packages:
   '@sphinxxxx/color-conversion@2.2.2':
     resolution: {integrity: sha512-XExJS3cLqgrmNBIP3bBw6+1oQ1ksGjFh0+oClDKFYpCCqx/hlqwWO5KO/S63fzUo67SxI9dMrF0y5T/Ey7h8Zw==}
 
-  '@sqlite.org/sqlite-wasm@3.48.0-build4':
-    resolution: {integrity: sha512-hI6twvUkzOmyGZhQMza1gpfqErZxXRw6JEsiVjUbo7tFanVD+8Oil0Ih3l2nGzHdxPI41zFmfUQG7GHqhciKZQ==}
+  '@sqlite.org/sqlite-wasm@3.50.3-build1':
+    resolution: {integrity: sha512-NU+I7KJ5kpMZNyZtJ9hOLlhQHJAA3fJhtkE7kf3C0SlGg4ayz6AkqxcaDcR4qOsrz1XP2+yM1yORaLCt55XDQg==}
     hasBin: true
 
   '@swc/core-darwin-arm64@1.3.36':
@@ -13818,7 +13818,7 @@ snapshots:
 
   '@sphinxxxx/color-conversion@2.2.2': {}
 
-  '@sqlite.org/sqlite-wasm@3.48.0-build4': {}
+  '@sqlite.org/sqlite-wasm@3.50.3-build1': {}
 
   '@swc/core-darwin-arm64@1.3.36':
     optional: true
