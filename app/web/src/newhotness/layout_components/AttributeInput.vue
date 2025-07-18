@@ -9,37 +9,27 @@
             'grid grid-cols-2 items-center gap-2xs relative text-sm font-normal',
             inputOpen && 'hidden',
             isSecret && 'mb-[-1px]',
+            validationStatus === 'failing' && [
+              'pr-xs',
+              themeClasses('bg-destructive-200', 'bg-[#5A4949]'), // FIXME(nick): replace hex color with palette color... this is 702C2C with 25% opacity on a 525252 and was made using alpha blending to avoid opacity usage
+            ],
           )
         "
       >
         <!-- Attribute name -->
-        <div class="flex flex-row items-center gap-2xs pl-xs">
-          <TruncateWithTooltip>{{ displayName }}</TruncateWithTooltip>
-          <span
-            v-if="showRequiredAsterisk"
-            v-tooltip="`${displayName} is a required value`"
-            :class="
-              clsx(
-                'shrink-0 text-lg font-bold',
-                themeClasses('text-destructive-600', 'text-destructive-300'),
-              )
-            "
-          >
-            *
-          </span>
+        <div
+          :class="
+            clsx(
+              'flex flex-row items-center gap-2xs pl-xs',
+              validationStatus === 'failing' && 'mt-xs',
+            )
+          "
+        >
+          <AttributeInputRequiredProperty
+            :text="displayName"
+            :showAsterisk="validationStatus === 'missingRequiredValue'"
+          />
           <div class="flex flex-row items-center ml-auto gap-2xs">
-            <StatusIndicatorIcon
-              v-if="
-                validation &&
-                validation.status !== 'Success' &&
-                !isPendingValue &&
-                !showRequiredAsterisk
-              "
-              v-tooltip="validation.message"
-              type="qualification"
-              status="failure"
-              class="w-8 mr-2 shrink-0"
-            />
             <IconButton
               v-if="canDelete && !component.toDelete"
               tooltip="Delete"
@@ -69,7 +59,16 @@
           :class="
             clsx(
               'w-full h-lg p-xs ml-auto text-sm border font-mono flex flex-row items-center gap-3xs',
-              themeClasses('border-neutral-400', 'border-neutral-600'),
+
+              validationStatus === 'failing'
+                ? [
+                    'mt-xs',
+                    themeClasses(
+                      'border-destructive-600',
+                      'border-destructive-400',
+                    ),
+                  ]
+                : themeClasses('border-neutral-400', 'border-neutral-600'),
 
               readOnly
                 ? [
@@ -190,6 +189,28 @@
         <!-- `relative` on label just to "float" this loader above the form input -->
       </label>
 
+      <!-- validation message below the name and input box -->
+      <div
+        v-if="
+          !inputOpen &&
+          validationStatus === 'failing' &&
+          props.validation?.message
+        "
+        :class="
+          clsx(
+            'flex flex-row p-xs text-sm',
+            themeClasses(
+              'text-destructive-600 bg-destructive-200',
+              'text-destructive-200 bg-[#5A4949]', // FIXME(nick): replace hex color with palette color... this is 702C2C with 25% opacity on a 525252 and was made using alpha blending to avoid opacity usage
+            ),
+          )
+        "
+      >
+        <span>
+          {{ props.validation.message }}
+        </span>
+      </div>
+
       <!-- floating input window, shows when this attribute is selected -->
       <template v-if="inputOpen">
         <div
@@ -207,7 +228,10 @@
           <!-- top input row, looks mostly the same as the unselected input -->
           <div class="grid grid-cols-2 pl-xs gap-2xs relative">
             <div class="flex flex-row items-center gap-2xs">
-              <TruncateWithTooltip>{{ displayName }}</TruncateWithTooltip>
+              <AttributeInputRequiredProperty
+                :text="displayName"
+                :showAsterisk="validationStatus === 'missingRequiredValue'"
+              />
               <IconButton
                 v-if="canDelete && !component.toDelete"
                 tooltip="Delete (⌘⌫)"
@@ -646,7 +670,6 @@ import {
 import CodeViewer from "@/components/CodeViewer.vue";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { CategorizedPossibleConnections } from "@/workers/types/dbinterface";
-import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
 import {
   attributeEmitter,
@@ -658,6 +681,7 @@ import AttributeValueBox from "../AttributeValueBox.vue";
 import CodeEditorModal from "../CodeEditorModal.vue";
 import { findAttributeValueInTree } from "../util";
 import AttributeInputPossibleConnection from "./AttributeInputPossibleConnection.vue";
+import AttributeInputRequiredProperty from "./AttributeInputRequiredProperty.vue";
 
 type UIConnectionRow = {
   showAllButton?: boolean;
@@ -699,12 +723,17 @@ const isPendingValue = computed(
     props.value === "",
 );
 
-const showRequiredAsterisk = computed(
-  () =>
-    props.validation &&
-    props.validation.status !== "Success" &&
-    !isPendingValue.value &&
-    props.validation.message === '"value" is required',
+const validationStatus = computed(
+  (): "passing" | "missingRequiredValue" | "failing" => {
+    const failing =
+      props.validation &&
+      props.validation.status !== "Success" &&
+      !isPendingValue.value;
+    if (!failing) return "passing";
+    if (props.validation.message === '"value" is required')
+      return "missingRequiredValue";
+    return "failing";
+  },
 );
 
 // does not set the actual key, just the string displayed!
