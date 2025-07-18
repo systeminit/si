@@ -547,9 +547,6 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         const requestUlid = ulid();
         if ("registerRequestsBegin" in store) {
           store.registerRequestsBegin(requestUlid, actionName);
-        } else {
-          // eslint-disable-next-line no-console
-          console.error("registerRequestsBegin not found in", store);
         }
         const actionResult: any = await originalActionFn(...args);
         if (actionResult instanceof ApiRequest) {
@@ -557,9 +554,6 @@ export const initPiniaApiToolkitPlugin = (config: { api: AxiosInstance }) => {
         }
         if ("registerRequestsEnd" in store) {
           store.registerRequestsEnd(requestUlid);
-        } else {
-          // eslint-disable-next-line no-console
-          console.error("registerRequestsEnd not found in", store);
         }
         return actionResult;
       };
