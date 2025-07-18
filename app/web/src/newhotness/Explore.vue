@@ -939,6 +939,15 @@ const sortedAndGroupedComponents = computed(() => {
         : "Up to date";
       groups[title]?.push(component);
     }
+  } else if (groupBySelection.value === "Resource") {
+    groups = {
+      "Has Resource": [],
+      "No Resource": [],
+    };
+    for (const component of components) {
+      const title = component.hasResource ? "Has Resource" : "No Resource";
+      groups[title]?.push(component);
+    }
   } else if (groupBySelection.value === "Schema Name") {
     const unsortedGroups: Record<string, ComponentInList[]> = {};
     for (const component of components ?? []) {
@@ -1645,6 +1654,9 @@ const setSelectionsFromQuery = () => {
     case "schemaname":
       groupBySelection.value = GroupByCriteria.SchemaName;
       break;
+    case "resource":
+      groupBySelection.value = GroupByCriteria.Resource;
+      break;
     case undefined:
     default:
       groupBySelection.value = GroupByCriteria.None;
@@ -1738,13 +1750,15 @@ export type GroupByUrlQuery =
   | "diffstatus"
   | "qualificationstatus"
   | "upgradeable"
-  | "schemaname";
+  | "schemaname"
+  | "resource";
 
 enum GroupByCriteria {
   Diff = "Diff Status",
   Upgrade = "Upgradeable",
   Qualification = "Qualification Status",
   SchemaName = "Schema Name",
+  Resource = "Resource",
   None = "",
 }
 
@@ -1763,6 +1777,7 @@ const groupByDropDownOptions = [
   { value: GroupByCriteria.Qualification, label: "Qualification Status" },
   { value: GroupByCriteria.Upgrade, label: "Upgradeable" },
   { value: GroupByCriteria.SchemaName, label: "Schema Name" },
+  { value: GroupByCriteria.Resource, label: "Resource" },
 ];
 
 watch([groupBySelection], () => {
@@ -1786,6 +1801,8 @@ watch([groupBySelection], () => {
     query.groupBy = "upgradeable";
   } else if (groupBySelection.value === GroupByCriteria.SchemaName) {
     query.groupBy = "schemaname";
+  } else if (groupBySelection.value === GroupByCriteria.Resource) {
+    query.groupBy = "resource";
   }
 
   router.push({
