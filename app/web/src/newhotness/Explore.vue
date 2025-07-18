@@ -1113,11 +1113,17 @@ const filteredComponentsQuery = useQuery({
 // Make filteredComponentsQuery reactive to its inputs (componentList)
 // TODO filteredComponents needs to be a reactive thing, but queryFns aren't reactive.
 const queryClient = useQueryClient();
-watch([componentList, searchString], () => {
-  queryClient.invalidateQueries({
-    queryKey: filteredComponentsQueryKey.value,
-  });
-});
+watch(
+  [componentList, searchString],
+  () => {
+    queryClient.invalidateQueries({
+      queryKey: filteredComponentsQueryKey.value,
+    });
+  },
+  // Invalidating the query when loading in ensures we rerun the empty filter (show everything) when
+  // coming back to this page without a cached search string
+  { immediate: true },
+);
 
 const filteredComponents = computed(
   () => filteredComponentsQuery.data.value ?? [],
