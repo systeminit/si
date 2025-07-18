@@ -3238,10 +3238,6 @@ const dbInterface: TabDBInterface = {
     });
   },
 
-  async setRemote(_remote: string) {
-    debug("this should only be called on the shared webworker");
-  },
-
   async hasDbLock(): Promise<boolean> {
     return hasTheLock;
   },

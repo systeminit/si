@@ -83,6 +83,10 @@ const dbInterface: SharedDBInterface = {
 
   unregisterRemote(id: string) {
     debug("unregister remote in shared", id);
+    if (currentRemoteId === id) {
+      debug("tab with lock unregistered. no remote set");
+      currentRemote = undefined;
+    }
     delete remotes[id];
 
     if (Object.keys(remotes).length === 0) {
@@ -100,20 +104,23 @@ const dbInterface: SharedDBInterface = {
     if (!remotes[id]) {
       debug("register remote in shared", id);
       remotes[id] = remote;
-      if (!currentRemote && (await remote.hasDbLock())) {
-        await this.setRemote(id);
-      }
+    }
+    if (await remote.hasDbLock()) {
+      await this.setRemote(id);
     }
   },
   async hasRemote() {
     return !!currentRemote;
+  },
+  async currentRemoteId() {
+    return currentRemoteId;
   },
   async setRemote(remoteId: string) {
     debug("setting remote in shared web worker to", remoteId);
 
     currentRemote = remotes[remoteId];
     if (!currentRemote) {
-      throw new Error(`remote {$remoteId} not registered`);
+      throw new Error(`remote ${remoteId} not registered`);
     }
     currentRemoteId = remoteId;
 
