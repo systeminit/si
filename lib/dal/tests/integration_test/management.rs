@@ -1,4 +1,7 @@
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    time::Duration,
+};
 
 use dal::{
     AttributeValue,
@@ -8,6 +11,7 @@ use dal::{
     SchemaId,
     SchemaVariantId,
     Ulid,
+    action::Action,
     component::resource::ResourceData,
     diagram::{
         geometry::Geometry,
@@ -18,6 +22,7 @@ use dal::{
         ManagementGeometry,
         ManagementOperator,
         prototype::{
+            ManagementFuncKind,
             ManagementPrototype,
             ManagementPrototypeError,
             ManagementPrototypeExecution,
@@ -50,6 +55,7 @@ use si_db::{
     ManagementFuncJobState,
     ManagementState,
 };
+use si_events::ActionState;
 use si_frontend_types::RawGeometry;
 use si_id::ViewId;
 use tokio::try_join;
@@ -125,6 +131,116 @@ async fn exec_mgmt_func_and_operate(
     .await?
     .operate()
     .await?;
+    Ok(())
+}
+
+#[test]
+async fn import_and_refresh(ctx: &mut DalContext) -> Result<()> {
+    let small_even_lego = create_component_for_default_schema_name_in_default_view(
+        ctx,
+        "small even lego",
+        "small even lego",
+    )
+    .await?;
+    let no_payload_yet = value::has_value(ctx, ("small even lego", "/resource")).await?;
+    assert!(!no_payload_yet);
+    let av_id = Component::attribute_value_for_prop(
+        ctx,
+        small_even_lego.id(),
+        &["root", "si", "resourceId"],
+    )
+    .await?;
+
+    AttributeValue::update(ctx, av_id, Some(serde_json::json!("import id"))).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    let management_prototype =
+        find_mgmt_prototype(ctx, small_even_lego.id(), "Import from AWS").await?;
+    assert!(
+        ManagementPrototype::kind_by_id(ctx, management_prototype.id()).await?
+            == ManagementFuncKind::Import
+    );
+
+    ChangeSetTestHelpers::enqueue_management_func_job(
+        ctx,
+        management_prototype.id(),
+        small_even_lego.id(),
+        None,
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+    let actions = Action::all_ids(ctx).await?;
+    // there should be 1 refresh action now
+    assert!(actions.len() == 1);
+    let av_id =
+        Component::attribute_value_for_prop(ctx, small_even_lego.id(), &["root", "domain", "one"])
+            .await?;
+
+    let two_av = AttributeValue::get_by_id(ctx, av_id).await?;
+
+    let two_value = two_av.value(ctx).await?;
+
+    assert_eq!(Some(serde_json::json!("twostep")), two_value);
+
+    let seconds = 10;
+    let mut did_pass = false;
+    for _ in 0..(seconds * 10) {
+        ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+
+        let actions = Action::list_topologically(ctx).await?;
+
+        if actions.is_empty() {
+            did_pass = true;
+            break;
+        }
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    if !did_pass {
+        panic!(
+            "Refresh action should have been dispatched in this change set, but it did not. Must investigate!"
+        );
+    }
+    // resource has been set!
+    let payload = value::get(ctx, ("small even lego", "/resource/payload")).await?;
+    let refresh_count = payload
+        .get("refresh_count")
+        .and_then(|v| v.as_u64())
+        .expect("has a refresh_count");
+    assert_eq!(serde_json::json!(1), refresh_count);
+
+    // now let's run refresh manually and see that we're refreshed in this change set!
+    Action::enqueue_refresh_in_correct_change_set_and_commit(ctx, small_even_lego.id()).await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    ChangeSetTestHelpers::wait_for_actions_to_run(ctx).await?;
+
+    let payload = value::get(ctx, ("small even lego", "/resource/payload")).await?;
+    let refresh_count = payload
+        .get("refresh_count")
+        .and_then(|v| v.as_u64())
+        .expect("has a refresh_count");
+    assert_eq!(serde_json::json!(2), refresh_count);
+
+    // now apply the change set
+    ChangeSetTestHelpers::apply_change_set_to_base(ctx).await?;
+    // fork head, and run import again. Refresh should not run in this case.
+    ChangeSetTestHelpers::fork_from_head_change_set(ctx).await?;
+    ChangeSetTestHelpers::enqueue_management_func_job(
+        ctx,
+        management_prototype.id(),
+        small_even_lego.id(),
+        None,
+    )
+    .await?;
+    ChangeSetTestHelpers::commit_and_update_snapshot_to_visibility(ctx).await?;
+    // wait for dvu
+    ChangeSetTestHelpers::wait_for_dvu(ctx).await?;
+    // check actions, there should be one refresh enqueued but not dispatched since this component now exists on head
+    let actions = Action::all_ids(ctx).await?;
+    assert!(actions.len() == 1);
+    let action_id = actions.first().expect("has one");
+    let action = Action::get_by_id(ctx, *action_id).await?;
+    assert_eq!(action.state(), ActionState::Queued);
 
     Ok(())
 }

@@ -266,7 +266,7 @@ const ctx = computed<Context>(() => {
     changeSet,
     approvers,
     user: authStore.user,
-    onHead: computed(() => activeChangeSet.value?.id === headChangeSetId.value),
+    onHead: computed(() => activeChangeSet.value?.isHead ?? false),
     headChangeSetId: _headChangeSetId,
     outgoingCounts,
     componentDetails,

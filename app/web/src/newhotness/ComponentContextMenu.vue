@@ -33,13 +33,10 @@ import { RouteLocationRaw, useRoute } from "vue-router";
 import { bifrost, useMakeArgs, useMakeKey } from "@/store/realtime/heimdall";
 import { ComponentId } from "@/api/sdf/dal/component";
 import {
-  BifrostActionViewList,
-  ActionPrototypeViewList,
   ComponentInList,
   EntityKind,
   SchemaVariant,
 } from "@/workers/types/entity_kind_types";
-import { ActionId, ActionPrototypeId } from "@/api/sdf/dal/action";
 import CreateTemplateModal from "@/newhotness/CreateTemplateModal.vue";
 import EraseModal from "./EraseModal.vue";
 import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
@@ -47,6 +44,7 @@ import { useApi, routes } from "./api_composables";
 import { assertIsDefined, ExploreContext } from "./types";
 import { useComponentDeletion } from "./composables/useComponentDeletion";
 import { useComponentUpgrade } from "./composables/useComponentUpgrade";
+import { useComponentActions } from "./logic_composables/component_actions";
 
 const props = defineProps<{
   onGrid?: boolean;
@@ -88,44 +86,14 @@ const atLeastOneNormalComponent = computed(() =>
 const singleComponent = computed(() =>
   components.value.length === 1 ? components.value[0] : undefined,
 );
+
+// Use the composable for action functionality
+const { actionPrototypeViews, actionByPrototype, toggleActionHandler } =
+  useComponentActions(singleComponent);
+
 const schemaVariantId = computed(
   () => singleComponent.value?.schemaVariantId ?? "",
 );
-const actionPrototypes = computed(
-  () => actionPrototypesQuery.data.value?.actionPrototypes ?? [],
-);
-const actionPrototypesQuery = useQuery<ActionPrototypeViewList | null>({
-  enabled: () => schemaVariantId.value !== "",
-  queryKey: key(EntityKind.ActionPrototypeViewList, schemaVariantId),
-  queryFn: async () =>
-    await bifrost<ActionPrototypeViewList>(
-      args(EntityKind.ActionPrototypeViewList, schemaVariantId.value),
-    ),
-});
-const actionsQuery = useQuery<BifrostActionViewList | null>({
-  enabled: () => singleComponent.value !== undefined,
-  queryKey: key(EntityKind.ActionViewList),
-  queryFn: async () =>
-    await bifrost<BifrostActionViewList>(args(EntityKind.ActionViewList)),
-});
-const actionByPrototype = computed(() => {
-  if (!singleComponent.value) return {};
-  if (!actionsQuery.data.value?.actions) return {};
-  if (actionsQuery.data.value.actions.length < 1) return {};
-
-  const result: Record<ActionPrototypeId, ActionId> = {};
-  for (const action of actionsQuery.data.value.actions) {
-    if (action.componentId === singleComponent.value.id) {
-      // NOTE(nick): this assumes that there can be one action for a given prototype and component.
-      // As of the time of writing, this is true, but multiple actions per prototype and component
-      // aren't disallowed from the underlying graph's perspective. Theorhetically, you could
-      // enqueue two refreshes back-to-back. What then? I don't think we'll expose an interface to
-      // do that for awhile, so this should be sufficient.
-      result[action.prototypeId] = action.id;
-    }
-  }
-  return result;
-});
 const schemaVariantQuery = useQuery<SchemaVariant | null>({
   enabled: () => singleComponent.value !== undefined,
   queryKey: key(EntityKind.SchemaVariant, schemaVariantId),
@@ -278,27 +246,23 @@ const rightClickMenuItems = computed(() => {
   });
 
   // Only enable actions if we are working with a single component.
-  if (singleComponent.value && schemaVariantId.value) {
-    const componentId = singleComponent.value.id;
-
+  if (singleComponent.value && singleComponent.value.schemaVariantId) {
     const actionsSubmenuItems: DropdownMenuItemObjectDef[] = [];
-    for (const actionPrototype of actionPrototypes.value) {
-      const existingActionId = actionByPrototype.value[actionPrototype.id];
+    for (const actionPrototype of actionPrototypeViews.value) {
+      const existingActionId = actionByPrototype.value[actionPrototype.id]?.id;
+      const { handleToggle } = toggleActionHandler(
+        actionPrototype,
+        () => existingActionId,
+      );
       actionsSubmenuItems.push({
         label: actionPrototype.displayName || actionPrototype.name,
         toggleIcon: true,
         checked: existingActionId !== undefined,
-        onSelect: () => {
-          if (existingActionId) {
-            removeAction(existingActionId);
-          } else {
-            addAction(componentId, actionPrototype.id);
-          }
-        },
+        onSelect: handleToggle,
         endLinkTo: {
           name: "workspace-lab-assets",
           query: {
-            s: `a_${schemaVariantId.value}|f_${actionPrototype.funcId}`,
+            s: `a_${singleComponent.value?.schemaVariantId}|f_${actionPrototype.funcId}`,
           },
         } as RouteLocationRaw,
         endLinkLabel: "view",
@@ -350,43 +314,6 @@ const rightClickMenuItems = computed(() => {
 
   return items;
 });
-
-const addActionApi = useApi();
-const removeActionApi = useApi();
-const addAction = async (
-  componentId: ComponentId,
-  actionPrototypeId: ActionPrototypeId,
-) => {
-  const call = addActionApi.endpoint(routes.ActionAdd);
-
-  const { req, newChangeSetId } = await call.post<{
-    componentId: string;
-    prototypeId: string;
-  }>({
-    componentId,
-    prototypeId: actionPrototypeId,
-  });
-  if (addActionApi.ok(req) && newChangeSetId) {
-    addActionApi.navigateToNewChangeSet(
-      {
-        name: "new-hotness",
-        params: {
-          workspacePk: route.params.workspacePk,
-          changeSetId: newChangeSetId,
-        },
-      },
-      newChangeSetId,
-    );
-  }
-};
-const removeAction = (actionId: ActionId) => {
-  const call = removeActionApi.endpoint(routes.ActionCancel, {
-    id: actionId,
-  });
-
-  // This route can mutate head, so we do not need to handle new change set semantics.
-  call.put({});
-};
 
 const mgmtRunApi = useApi();
 const runMgmtFunc = async (funcId: string) => {
