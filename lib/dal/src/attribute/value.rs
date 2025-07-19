@@ -131,9 +131,9 @@ pub enum AttributeValueError {
     #[error("action error: {0}")]
     Action(String),
     #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] AttributePrototypeError),
+    AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error(
         "attribute prototype argument {0} has a value source {1:?} but no value for that prop found in component {2}"
     )]
@@ -192,9 +192,9 @@ pub enum AttributeValueError {
     #[error("object field is not a child prop of the object prop: {0}")]
     FieldNotChildOfObject(AttributeValueId),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("func argument error: {0}")]
-    FuncArgument(#[from] FuncArgumentError),
+    FuncArgument(#[from] Box<FuncArgumentError>),
     #[error("function result failure: kind={kind}, message={message}, backend={backend}")]
     FuncBackendResultFailure {
         kind: String,
@@ -212,7 +212,7 @@ pub enum AttributeValueError {
     #[error("InferredConnectionGraph error: {0}")]
     InferredConnectionGraph(#[from] InferredConnectionGraphError),
     #[error("input socket error: {0}")]
-    InputSocket(#[from] InputSocketError),
+    InputSocket(#[from] Box<InputSocketError>),
     #[error("cannot insert for prop kind: {0}")]
     InsertionForInvalidPropKind(PropKind),
     #[error("jsonptr parse error parsing {0}: {1}")]
@@ -252,11 +252,11 @@ pub enum AttributeValueError {
     #[error("attribute value {0} has no outgoing edge to a prop or socket")]
     OrphanedAttributeValue(AttributeValueId),
     #[error("output socket error: {0}")]
-    OutputSocketError(#[from] OutputSocketError),
+    OutputSocketError(#[from] Box<OutputSocketError>),
     #[error("parent prop of map or array not found: {0}")]
     ParentAttributeValueMissing(AttributeValueId),
     #[error("prop error: {0}")]
-    Prop(#[from] PropError),
+    Prop(#[from] Box<PropError>),
     #[error("array or map prop missing element prop: {0}")]
     PropMissingElementProp(PropId),
     #[error("array or map prop has more than one child prop: {0}")]
@@ -286,9 +286,9 @@ pub enum AttributeValueError {
     #[error("reached unreachable code")]
     Unreachable,
     #[error("validation error: {0}")]
-    Validation(#[from] ValidationError),
+    Validation(#[from] Box<ValidationError>),
     #[error("value source error: {0}")]
-    ValueSource(#[from] ValueSourceError),
+    ValueSource(#[from] Box<ValueSourceError>),
     #[error("workspace error: {0}")]
     Workspace(String),
     #[error("workspace snapshot error: {0}")]
@@ -309,6 +309,60 @@ impl From<FuncRunnerError> for AttributeValueError {
 }
 impl From<SecretError> for AttributeValueError {
     fn from(value: SecretError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeError> for AttributeValueError {
+    fn from(value: AttributePrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeArgumentError> for AttributeValueError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for AttributeValueError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncArgumentError> for AttributeValueError {
+    fn from(value: FuncArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InputSocketError> for AttributeValueError {
+    fn from(value: InputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<OutputSocketError> for AttributeValueError {
+    fn from(value: OutputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for AttributeValueError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ValidationError> for AttributeValueError {
+    fn from(value: ValidationError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ValueSourceError> for AttributeValueError {
+    fn from(value: ValueSourceError) -> Self {
         Box::new(value).into()
     }
 }

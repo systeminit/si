@@ -109,7 +109,7 @@ async fn main() -> Result<()> {
         }
         None => {
             if let Err(err) = Args::command().print_help() {
-                eprintln!("Error displaying help: {}", err);
+                eprintln!("Error displaying help: {err}");
                 std::process::exit(1);
             }
             std::process::exit(0);
@@ -228,7 +228,7 @@ async fn write_single_spec(
         .iter()
         .find(|m| m.name == spec_name)
         .cloned()
-        .unwrap_or_else(|| panic!("Unable to find spec with name: {}", spec_name));
+        .unwrap_or_else(|| panic!("Unable to find spec with name: {spec_name}"));
     write_spec(client, module.id, out).await
 }
 
@@ -366,10 +366,7 @@ async fn diff_summaries_with_module_index(
     let changes_with_summary = changes_with_summary.load(Ordering::SeqCst);
     let hash_mismatches = hash_mismatches.load(Ordering::SeqCst);
 
-    println!(
-        "Total: {} new asset(s), {} changed asset(s)",
-        total_added, hash_mismatches
-    );
+    println!("Total: {total_added} new asset(s), {hash_mismatches} changed asset(s)");
 
     if changes_with_summary != hash_mismatches {
         println!(
@@ -439,7 +436,7 @@ async fn upload_pkg_specs(
         let msg = format!("Parsing module: {}", spec.file_name().to_string_lossy());
         pb.set_message(msg.to_string());
         if non_interactive {
-            println!("{}", msg);
+            println!("{msg}");
         };
 
         let pkg = json_to_pkg(spec.path())?;
@@ -458,10 +455,7 @@ async fn upload_pkg_specs(
         }
     }
 
-    println!(
-        "🟰 {} modules have matching hashes and will be skipped",
-        no_action_needed
-    );
+    println!("🟰 {no_action_needed} modules have matching hashes and will be skipped");
     println!(
         "🔼 {} modules exist and will be updated",
         modules_with_updates.len()
@@ -485,12 +479,12 @@ async fn upload_pkg_specs(
                 "p" => break,
                 "n" => {
                     for module in &new_modules {
-                        println!("{}", module);
+                        println!("{module}");
                     }
                 }
                 "u" => {
                     for module in &modules_with_updates {
-                        println!("{}", module);
+                        println!("{module}");
                     }
                 }
 
@@ -505,7 +499,7 @@ async fn upload_pkg_specs(
     let msg = "⏰ Beginning uploads ...";
     pb.set_message(msg);
     if non_interactive {
-        println!("{}", msg);
+        println!("{msg}");
     };
 
     // Generates the "X failed" message for various set_message() calls to use
@@ -513,7 +507,7 @@ async fn upload_pkg_specs(
     let failed_message = || {
         let failed = failed.load(Ordering::Relaxed);
         if failed > 0 {
-            format!(" ❌ {} failed.  ", failed)
+            format!(" ❌ {failed} failed.  ")
         } else {
             "".to_string()
         }
@@ -526,7 +520,7 @@ async fn upload_pkg_specs(
             let msg = format!("{}⏰ Uploading: {}", failed_message(), metadata.name());
             pb.set_message(msg.to_string());
             if non_interactive {
-                println!("{}", msg);
+                println!("{msg}");
             };
             pb.inc(1);
             async move {
@@ -576,7 +570,7 @@ async fn upload_pkg_specs(
     );
     pb.finish_with_message(msg.to_string());
     if non_interactive {
-        println!("{}", msg);
+        println!("{msg}");
     };
     // If this message is not here, the console does not show the final message for some reason
     println!("Done");

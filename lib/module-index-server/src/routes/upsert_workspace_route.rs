@@ -128,7 +128,7 @@ pub async fn upsert_workspace_route(
     };
 
     s3_bucket
-        .put_object(format!("{}.workspace_export", hash), &data)
+        .put_object(format!("{hash}.workspace_export"), &data)
         .await?;
 
     let _new_module: si_module::Model = dbg!(new_module.insert(&txn).await)?;

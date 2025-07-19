@@ -110,7 +110,7 @@ pub enum ChangeSetError {
     #[error("tokio join error: {0}")]
     Join(#[from] tokio::task::JoinError),
     #[error("layer db error: {0}")]
-    LayerDb(#[from] LayerDbError),
+    LayerDb(#[from] Box<LayerDbError>),
     #[error("ulid monotonic error: {0}")]
     Monotonic(#[from] ulid::MonotonicError),
     #[error("mutex error: {0}")]
@@ -124,9 +124,9 @@ pub enum ChangeSetError {
     #[error("Changeset {0} does not have a workspace snapshot")]
     NoWorkspaceSnapshot(ChangeSetId),
     #[error("pg error: {0}")]
-    Pg(#[from] PgError),
+    Pg(#[from] Box<PgError>),
     #[error("rebaser client error: {0}")]
-    RebaserClient(#[from] rebaser_client::ClientError),
+    RebaserClient(#[from] Box<rebaser_client::ClientError>),
     #[error("schema error: {0}")]
     Schema(#[from] Box<SchemaError>),
     #[error("schema variant error: {0}")]
@@ -134,11 +134,11 @@ pub enum ChangeSetError {
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] Box<si_db::Error>),
     #[error("slow runtime error: {0}")]
     SlowRuntime(#[from] SlowRuntimeError),
     #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
+    Transactions(#[from] Box<TransactionsError>),
     #[error("ulid decode error: {0}")]
     UlidDecode(#[from] ulid::DecodeError),
     #[error(
@@ -153,15 +153,75 @@ pub enum ChangeSetError {
     WsEvent(#[from] Box<WsEventError>),
 }
 
+impl From<LayerDbError> for ChangeSetError {
+    fn from(value: LayerDbError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<si_db::Error> for ChangeSetError {
+    fn from(value: si_db::Error) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PgError> for ChangeSetError {
+    fn from(value: PgError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<rebaser_client::ClientError> for ChangeSetError {
+    fn from(value: rebaser_client::ClientError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<TransactionsError> for ChangeSetError {
+    fn from(value: TransactionsError) -> Self {
+        Box::new(value).into()
+    }
+}
+
 impl From<WorkspaceError> for ChangeSetError {
     fn from(value: WorkspaceError) -> Self {
-        Self::Workspace(Box::new(value))
+        Box::new(value).into()
     }
 }
 
 impl From<WsEventError> for ChangeSetError {
     fn from(value: WsEventError) -> Self {
-        Self::WsEvent(Box::new(value))
+        Box::new(value).into()
+    }
+}
+
+impl From<ActionError> for ChangeSetApplyError {
+    fn from(value: ActionError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ChangeSetError> for ChangeSetApplyError {
+    fn from(value: ChangeSetError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for ChangeSetApplyError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<si_db::Error> for ChangeSetApplyError {
+    fn from(value: si_db::Error) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<TransactionsError> for ChangeSetApplyError {
+    fn from(value: TransactionsError) -> Self {
+        Box::new(value).into()
     }
 }
 
@@ -173,15 +233,15 @@ pub type ChangeSetResult<T> = Result<T, ChangeSetError>;
 #[derive(Debug, Error)]
 pub enum ChangeSetApplyError {
     #[error("action error: {0}")]
-    Action(#[from] ActionError),
+    Action(#[from] Box<ActionError>),
     #[error("action prototype not found for id: {0}")]
     ActionPrototypeNotFound(ActionId),
     #[error("Cannot apply changeset {0} to itself")]
     CannotApplyToItself(ChangeSetId),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
+    ChangeSet(#[from] Box<ChangeSetError>),
     #[error("component error: {0}")]
-    Component(#[from] ComponentError),
+    Component(#[from] Box<ComponentError>),
     #[error("invalid user: {0}")]
     InvalidUser(UserPk),
     #[error("invalid user system init")]
@@ -189,9 +249,9 @@ pub enum ChangeSetApplyError {
     #[error("change set ({0}) does not have a base change set")]
     NoBaseChangeSet(ChangeSetId),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] Box<si_db::Error>),
     #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
+    Transactions(#[from] Box<TransactionsError>),
 }
 
 /// A superset of [`ChangeSetResult`] used when performing apply logic.
@@ -1084,7 +1144,7 @@ impl ChangeSet {
     }
 
     pub async fn extract_userid_from_context(ctx: &DalContext) -> Option<UserPk> {
-        let user_id = match ctx.history_actor() {
+        match ctx.history_actor() {
             HistoryActor::User(user_pk) => {
                 let maybe_user = User::get_by_pk_opt(ctx, *user_pk).await;
                 match maybe_user {
@@ -1093,9 +1153,9 @@ impl ChangeSet {
                 }
             }
             HistoryActor::SystemInit => None,
-        };
-        user_id
+        }
     }
+
     pub async fn extract_userid_from_context_or_error(ctx: &DalContext) -> ChangeSetResult<UserPk> {
         let user_id = match ctx.history_actor() {
             HistoryActor::User(user_pk) => User::get_by_pk(ctx, *user_pk).await?.pk(),

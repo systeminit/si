@@ -127,18 +127,18 @@ pub async fn capture_nats(
     let base_dir = PathBuf::from("./recordings/datasources")
         .join(recording_id)
         .join("nats_sequences");
-    create_dir_all(&base_dir).map_err(|e| format!("Failed to create output directory: {}", e))?;
+    create_dir_all(&base_dir).map_err(|e| format!("Failed to create output directory: {e}"))?;
 
     for source_stream in nats_streams {
-        let mirror_stream_name = format!("{}_AUDIT", source_stream);
-        let output_path = base_dir.join(format!("{}.sequence", source_stream));
+        let mirror_stream_name = format!("{source_stream}_AUDIT");
+        let output_path = base_dir.join(format!("{source_stream}.sequence"));
 
-        println!("Dumping stream: {}", mirror_stream_name);
+        println!("Dumping stream: {mirror_stream_name}");
 
         let mut stream = js
             .get_stream(&mirror_stream_name)
             .await
-            .map_err(|e| format!("Failed to get stream {}: {}", mirror_stream_name, e))?;
+            .map_err(|e| format!("Failed to get stream {mirror_stream_name}: {e}"))?;
 
         let mut messages = vec![];
         let mut seq = 1u64;
@@ -148,11 +148,11 @@ pub async fn capture_nats(
             let stream_info = stream
                 .info()
                 .await
-                .map_err(|e| format!("Failed to fetch stream info: {}", e))?;
+                .map_err(|e| format!("Failed to fetch stream info: {e}"))?;
             let last_seq = stream_info.state.last_sequence;
 
             if seq > last_seq {
-                println!("Reached end of stream at seq {}. Ending capture.", last_seq);
+                println!("Reached end of stream at seq {last_seq}. Ending capture.");
                 break;
             }
 
@@ -176,13 +176,10 @@ pub async fn capture_nats(
                     seq += 1;
                 }
                 Ok(Err(e)) => {
-                    return Err(format!("Failed to get message {}: {}", seq, e));
+                    return Err(format!("Failed to get message {seq}: {e}"));
                 }
                 Err(_) => {
-                    println!(
-                        "Timeout waiting for message at seq {}. Ending capture.",
-                        seq
-                    );
+                    println!("Timeout waiting for message at seq {seq}. Ending capture.");
                     break;
                 }
             }
@@ -190,14 +187,14 @@ pub async fn capture_nats(
 
         let mut file = TokioFile::create(&output_path)
             .await
-            .map_err(|e| format!("Failed to create output file: {}", e))?;
+            .map_err(|e| format!("Failed to create output file: {e}"))?;
 
         let serialized = serde_json::to_string_pretty(&messages)
-            .map_err(|e| format!("Failed to serialize messages: {}", e))?;
+            .map_err(|e| format!("Failed to serialize messages: {e}"))?;
 
         file.write_all(serialized.as_bytes())
             .await
-            .map_err(|e| format!("Failed to write output file: {}", e))?;
+            .map_err(|e| format!("Failed to write output file: {e}"))?;
 
         println!(
             "Dumped {} messages to {}",
@@ -207,9 +204,9 @@ pub async fn capture_nats(
 
         js.delete_stream(&mirror_stream_name)
             .await
-            .map_err(|e| format!("Failed to delete stream {}: {}", mirror_stream_name, e))?;
+            .map_err(|e| format!("Failed to delete stream {mirror_stream_name}: {e}"))?;
 
-        println!("🗑 Deleted stream {}", mirror_stream_name);
+        println!("🗑 Deleted stream {mirror_stream_name}");
     }
 
     Ok(())
@@ -229,12 +226,12 @@ pub fn resolve_local_sql_files(recording_id: &str) -> Result<Vec<String>, String
 
     let mut sql_paths = Vec::new();
     for entry in entries {
-        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let entry = entry.map_err(|e| format!("Failed to read entry: {e}"))?;
         let path = entry.path();
         if path.is_file() && path.extension().is_some_and(|e| e == "sql") {
             sql_paths.push(
                 path.canonicalize()
-                    .map_err(|e| format!("Failed to resolve absolute path: {}", e))?
+                    .map_err(|e| format!("Failed to resolve absolute path: {e}"))?
                     .to_string_lossy()
                     .to_string(),
             );
@@ -266,11 +263,11 @@ pub async fn resolve_remote_artifact_files(
         .and_then(|v| v.as_str())
         .ok_or_else(|| "Missing or invalid 'bucketName' in artifact config".to_string())?;
 
-    let prefix = format!("bedrock/datasources/{}/", recording_id);
+    let prefix = format!("bedrock/datasources/{recording_id}/");
     info!("🔍 Using prefix '{}' in bucket '{}'", prefix, bucket_name);
 
     let credentials = Credentials::anonymous()
-        .map_err(|e| format!("Failed to get anonymous credentials: {}", e))?;
+        .map_err(|e| format!("Failed to get anonymous credentials: {e}"))?;
 
     let region = Region::Custom {
         region: "us-east-1".to_string(),
@@ -278,13 +275,13 @@ pub async fn resolve_remote_artifact_files(
     };
 
     let bucket = Bucket::new(bucket_name, region, credentials)
-        .map_err(|e| format!("Failed to create bucket: {}", e))?
+        .map_err(|e| format!("Failed to create bucket: {e}"))?
         .with_path_style();
 
     let results = bucket
         .list(prefix.clone(), None)
         .await
-        .map_err(|e| format!("Failed to list objects: {}", e))?;
+        .map_err(|e| format!("Failed to list objects: {e}"))?;
 
     let mut all_objects = vec![];
     for result in results {
@@ -298,10 +295,7 @@ pub async fn resolve_remote_artifact_files(
 
     let total = all_objects.len();
     if total == 0 {
-        return Err(format!(
-            "No downloadable files found under prefix {}",
-            prefix
-        ));
+        return Err(format!("No downloadable files found under prefix {prefix}"));
     }
 
     info!("Found {} files under S3 prefix '{}'", total, prefix);
@@ -315,7 +309,7 @@ pub async fn resolve_remote_artifact_files(
 
         let relative_s3_path = key
             .strip_prefix("bedrock/datasources/")
-            .ok_or_else(|| format!("Unexpected object key format: {}", key))?;
+            .ok_or_else(|| format!("Unexpected object key format: {key}"))?;
 
         let relative_path = Path::new("recordings")
             .join("datasources")
@@ -325,18 +319,18 @@ pub async fn resolve_remote_artifact_files(
 
         if let Some(parent) = relative_path.parent() {
             create_dir_all(parent)
-                .map_err(|e| format!("Failed to create directory {:?}: {}", parent, e))?;
+                .map_err(|e| format!("Failed to create directory {parent:?}: {e}"))?;
         }
 
         let mut file = File::create(&relative_path)
             .await
-            .map_err(|e| format!("Failed to create file {:?}: {}", relative_path, e))?;
+            .map_err(|e| format!("Failed to create file {relative_path:?}: {e}"))?;
 
         // Start downloading with progress tracking
         let mut response = bucket
             .get_object_stream(&key)
             .await
-            .map_err(|e| format!("Failed to fetch object {}: {}", key, e))?;
+            .map_err(|e| format!("Failed to fetch object {key}: {e}"))?;
 
         let total_bytes = Arc::new(AtomicUsize::new(0));
         let size_bytes = obj.size as usize;
@@ -357,11 +351,11 @@ pub async fn resolve_remote_artifact_files(
         });
 
         while let Some(chunk) = response.bytes().next().await {
-            let bytes = chunk.map_err(|e| format!("Stream error: {}", e))?;
+            let bytes = chunk.map_err(|e| format!("Stream error: {e}"))?;
             total_bytes.fetch_add(bytes.len(), Ordering::Relaxed);
             file.write_all(&bytes)
                 .await
-                .map_err(|e| format!("Failed to write chunk to file {:?}: {}", relative_path, e))?;
+                .map_err(|e| format!("Failed to write chunk to file {relative_path:?}: {e}"))?;
         }
 
         downloading.store(false, Ordering::Relaxed);
@@ -389,11 +383,10 @@ pub async fn resolve_remote_artifact_files(
 
     if !found_sql && !found_sequence {
         return Err(format!(
-            "No .sql or .sequence files found under prefix {}",
-            prefix
+            "No .sql or .sequence files found under prefix {prefix}"
         ));
     } else if !found_sql {
-        return Err(format!("No .sql files found under prefix {}", prefix));
+        return Err(format!("No .sql files found under prefix {prefix}"));
     } // No sequence files is totally valid for a DB restore point only, i.e. not recording.
 
     info!(
@@ -412,7 +405,7 @@ pub async fn resolve_test(
     match resolve_local_sql_files(recording_id) {
         Ok(paths) => Ok(paths),
         Err(local_err) => {
-            println!("Local resolution failed: {}. Trying S3...", local_err);
+            println!("Local resolution failed: {local_err}. Trying S3...");
 
             let all_paths = resolve_remote_artifact_files(recording_id, &artifact_config).await?;
             let sql_paths: Vec<String> = all_paths
@@ -422,8 +415,7 @@ pub async fn resolve_test(
 
             if sql_paths.is_empty() {
                 Err(format!(
-                    "No .sql files found remotely for recording {}",
-                    recording_id
+                    "No .sql files found remotely for recording {recording_id}"
                 ))
             } else {
                 println!(
@@ -438,8 +430,8 @@ pub async fn resolve_test(
 
 pub async fn collect_files(recording_id: &str) -> Result<Vec<PathBuf>, String> {
     fn collect_files_rec(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), String> {
-        for entry in fs::read_dir(dir).map_err(|e| format!("Read dir error: {}", e))? {
-            let entry = entry.map_err(|e| format!("Dir entry error: {}", e))?;
+        for entry in fs::read_dir(dir).map_err(|e| format!("Read dir error: {e}"))? {
+            let entry = entry.map_err(|e| format!("Dir entry error: {e}"))?;
             let path = entry.path();
             if path.is_dir() {
                 collect_files_rec(&path, files)?;
@@ -452,7 +444,7 @@ pub async fn collect_files(recording_id: &str) -> Result<Vec<PathBuf>, String> {
 
     let base_path = PathBuf::from("recordings/datasources").join(recording_id);
     if !base_path.exists() {
-        return Err(format!("Path does not exist: {:?}", base_path));
+        return Err(format!("Path does not exist: {base_path:?}"));
     }
 
     let mut file_paths = Vec::new();
@@ -468,20 +460,19 @@ pub async fn configure_nats(
     let js = jetstream::new(nats_client.clone());
 
     for source_stream in nats_streams {
-        let mirror_stream_name = format!("{}_AUDIT", source_stream);
+        let mirror_stream_name = format!("{source_stream}_AUDIT");
 
         if js.get_stream(&mirror_stream_name).await.is_ok() {
-            println!("🗑 Deleting existing stream: {}", mirror_stream_name);
+            println!("🗑 Deleting existing stream: {mirror_stream_name}");
             js.delete_stream(&mirror_stream_name)
                 .await
-                .map_err(|e| format!("Failed to delete stream {}: {}", mirror_stream_name, e))?;
+                .map_err(|e| format!("Failed to delete stream {mirror_stream_name}: {e}"))?;
         }
 
         let stream_config = Config {
             name: mirror_stream_name.clone(),
             description: Some(format!(
-                "Passive copy of {} stream for recording ID {}",
-                source_stream, recording_id
+                "Passive copy of {source_stream} stream for recording ID {recording_id}"
             )),
             storage: StorageType::File,
             retention: RetentionPolicy::Limits,
@@ -497,10 +488,10 @@ pub async fn configure_nats(
 
         js.create_stream(stream_config.clone())
             .await
-            .map_err(|e| format!("Failed to create stream {}: {}", mirror_stream_name, e))?;
+            .map_err(|e| format!("Failed to create stream {mirror_stream_name}: {e}"))?;
 
         let consumer_config = PullConsumerConfig {
-            durable_name: Some(format!("{}_SINK", mirror_stream_name)),
+            durable_name: Some(format!("{mirror_stream_name}_SINK")),
             deliver_policy: DeliverPolicy::All,
             ack_policy: AckPolicy::None,
             replay_policy: ReplayPolicy::Instant,
@@ -510,12 +501,7 @@ pub async fn configure_nats(
 
         js.create_consumer_on_stream(consumer_config, mirror_stream_name.clone())
             .await
-            .map_err(|e| {
-                format!(
-                    "Failed to create consumer for {}: {}",
-                    mirror_stream_name, e
-                )
-            })?;
+            .map_err(|e| format!("Failed to create consumer for {mirror_stream_name}: {e}"))?;
     }
 
     Ok(())
@@ -542,22 +528,22 @@ pub async fn clear_nats(nats_client: &NatsClient) -> Result<(), String> {
 
     let mut names = js.stream_names();
     while let Ok(Some(stream_name)) = TryStreamExt::try_next(&mut names).await {
-        println!("stream: {}", stream_name);
+        println!("stream: {stream_name}");
         if stream_name.ends_with("_AUDIT") {
-            println!("Deleting stream: {}", stream_name);
+            println!("Deleting stream: {stream_name}");
             js.delete_stream(&stream_name)
                 .await
-                .map_err(|e| format!("Failed to delete stream {}: {}", stream_name, e))?;
+                .map_err(|e| format!("Failed to delete stream {stream_name}: {e}"))?;
         } else {
-            println!("Purging stream: {}", stream_name);
+            println!("Purging stream: {stream_name}");
             let stream = js
                 .get_stream(&stream_name)
                 .await
-                .map_err(|e| format!("Failed to get stream {}: {}", stream_name, e))?;
+                .map_err(|e| format!("Failed to get stream {stream_name}: {e}"))?;
             stream
                 .purge()
                 .await
-                .map_err(|e| format!("Failed to purge stream {}: {}", stream_name, e))?;
+                .map_err(|e| format!("Failed to purge stream {stream_name}: {e}"))?;
         }
     }
 
@@ -575,17 +561,17 @@ pub async fn dump_databases(
 
     {
         let mut file = fs::File::create(&script_path)
-            .map_err(|e| format!("Failed to create script file: {}", e))?;
+            .map_err(|e| format!("Failed to create script file: {e}"))?;
         file.write_all(DATABASE_DUMP_SCRIPT.as_bytes())
-            .map_err(|e| format!("Failed to write script: {}", e))?;
+            .map_err(|e| format!("Failed to write script: {e}"))?;
 
         let mut perms = file
             .metadata()
-            .map_err(|e| format!("Failed to read metadata: {}", e))?
+            .map_err(|e| format!("Failed to read metadata: {e}"))?
             .permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&script_path, perms)
-            .map_err(|e| format!("Failed to set permissions: {}", e))?;
+            .map_err(|e| format!("Failed to set permissions: {e}"))?;
     }
 
     for db in databases {
@@ -600,20 +586,17 @@ pub async fn dump_databases(
                 .arg(&recording_id)
                 .arg(&variant)
                 .status()
-                .map_err(|e| format!("Failed to run script: {}", e))
+                .map_err(|e| format!("Failed to run script: {e}"))
                 .and_then(|status| {
                     if status.success() {
                         Ok(())
                     } else {
-                        Err(format!(
-                            "Script failed for {} with exit code: {}",
-                            db, status
-                        ))
+                        Err(format!("Script failed for {db} with exit code: {status}"))
                     }
                 })
         })
         .await
-        .map_err(|e| format!("Join error: {}", e))??;
+        .map_err(|e| format!("Join error: {e}"))??;
     }
 
     Ok(())
@@ -626,18 +609,18 @@ pub async fn prepare_databases(sql_paths: Vec<String>) -> Result<(), String> {
 
     {
         let mut file = fs::File::create(&script_path)
-            .map_err(|e| format!("Failed to create script file: {}", e))?;
+            .map_err(|e| format!("Failed to create script file: {e}"))?;
 
         file.write_all(DATABASE_PREPARE_SCRIPT.as_bytes())
-            .map_err(|e| format!("Failed to write script: {}", e))?;
+            .map_err(|e| format!("Failed to write script: {e}"))?;
 
         let mut perms = file
             .metadata()
-            .map_err(|e| format!("Failed to read metadata: {}", e))?
+            .map_err(|e| format!("Failed to read metadata: {e}"))?
             .permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&script_path, perms)
-            .map_err(|e| format!("Failed to set permissions: {}", e))?;
+            .map_err(|e| format!("Failed to set permissions: {e}"))?;
     }
 
     // Spawn a task for each SQL file to be restored
@@ -646,17 +629,17 @@ pub async fn prepare_databases(sql_paths: Vec<String>) -> Result<(), String> {
         let file_name = path
             .file_name()
             .and_then(|f| f.to_str())
-            .ok_or_else(|| format!("Invalid file name in path: {}", sql_path))?;
+            .ok_or_else(|| format!("Invalid file name in path: {sql_path}"))?;
 
         let database_name = if file_name == "globals.sql" {
             "postgres".to_string()
         } else if file_name.ends_with("public_schema.sql") {
             file_name
                 .strip_suffix("_public_schema.sql")
-                .ok_or_else(|| format!("Invalid public_schema filename: {}", file_name))?
+                .ok_or_else(|| format!("Invalid public_schema filename: {file_name}"))?
                 .to_string()
         } else {
-            return Err(format!("Unknown SQL filename pattern: {}", file_name));
+            return Err(format!("Unknown SQL filename pattern: {file_name}"));
         };
 
         let script_path = script_path.clone();
@@ -669,20 +652,19 @@ pub async fn prepare_databases(sql_paths: Vec<String>) -> Result<(), String> {
                 .stdout(Stdio::null()) // suppress stdout as it's super chatty
                 .stderr(Stdio::inherit())
                 .status()
-                .map_err(|e| format!("Failed to run script: {}", e))
+                .map_err(|e| format!("Failed to run script: {e}"))
                 .and_then(|status| {
                     if status.success() {
                         Ok(())
                     } else {
                         Err(format!(
-                            "Script failed for {} with exit code: {}",
-                            sql_path, status
+                            "Script failed for {sql_path} with exit code: {status}"
                         ))
                     }
                 })
         })
         .await
-        .map_err(|e| format!("Join error: {}", e))??;
+        .map_err(|e| format!("Join error: {e}"))??;
     }
 
     Ok(())
@@ -708,8 +690,7 @@ pub async fn publish_artifact(
 
         if access_key_empty || secret_key_empty {
             return Err(format!(
-                "Credentials are required to publish to the artifact store: {}",
-                artifact_id
+                "Credentials are required to publish to the artifact store: {artifact_id}"
             ));
         }
 
@@ -721,7 +702,7 @@ pub async fn publish_artifact(
             .build();
 
         let client = Client::from_conf(config);
-        let s3_prefix = format!("bedrock/datasources/{}/", artifact_id);
+        let s3_prefix = format!("bedrock/datasources/{artifact_id}/");
 
         let existing = client
             .list_objects_v2()
@@ -729,21 +710,17 @@ pub async fn publish_artifact(
             .prefix(&s3_prefix)
             .send()
             .await
-            .map_err(|e| format!("Failed to list objects: {}", e))?;
+            .map_err(|e| format!("Failed to list objects: {e}"))?;
 
         if existing.key_count().unwrap_or(0) > 0 {
             return Err(format!(
-                "Test '{}' already exists. Please re-identify and retry.",
-                artifact_id
+                "Test '{artifact_id}' already exists. Please re-identify and retry."
             ));
         }
 
         let base_path = PathBuf::from("recordings/datasources").join(artifact_id);
         if !base_path.exists() {
-            return Err(format!(
-                "Local artifact path does not exist: {:?}",
-                base_path
-            ));
+            return Err(format!("Local artifact path does not exist: {base_path:?}"));
         }
 
         let file_paths: Vec<PathBuf> = collect_files(artifact_id).await?;
@@ -755,7 +732,7 @@ pub async fn publish_artifact(
                 .to_string_lossy()
                 .replace('\\', "/");
 
-            let s3_key = format!("bedrock/datasources/{}", key);
+            let s3_key = format!("bedrock/datasources/{key}");
             let total = file_paths.len();
             let artifact_index = index + 1;
 
@@ -766,7 +743,7 @@ pub async fn publish_artifact(
 
             let file = TokioFile::open(&path)
                 .await
-                .map_err(|e| format!("Failed to open file {:?}: {}", path, e))?;
+                .map_err(|e| format!("Failed to open file {path:?}: {e}"))?;
 
             let metadata = file.metadata().await.map_err(|e| e.to_string())?;
             let size_bytes = metadata.len() as usize;
@@ -813,7 +790,7 @@ pub async fn publish_artifact(
                 .body(ByteStream::from(buffer))
                 .send()
                 .await
-                .map_err(|e| format!("Upload failed: {}", e))?;
+                .map_err(|e| format!("Upload failed: {e}"))?;
 
             let bar = progress_bar_line(1.0, artifact_index, total);
             info!("{}", bar);

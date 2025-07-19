@@ -87,19 +87,19 @@ use crate::{
 #[derive(Debug, Error)]
 pub enum ManagementPrototypeError {
     #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] crate::attribute::prototype::AttributePrototypeError),
+    AttributePrototype(#[from] Box<crate::attribute::prototype::AttributePrototypeError>),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(
-        #[from] crate::attribute::prototype::argument::AttributePrototypeArgumentError,
+        #[from] Box<crate::attribute::prototype::argument::AttributePrototypeArgumentError>,
     ),
     #[error("attribute value error: {0}")]
-    AttributeValue(#[from] crate::attribute::value::AttributeValueError),
+    AttributeValue(#[from] Box<crate::attribute::value::AttributeValueError>),
     #[error("cached module error: {0}")]
-    CachedModule(#[from] CachedModuleError),
+    CachedModule(#[from] Box<CachedModuleError>),
     #[error("component error: {0}")]
-    Component(#[from] ComponentError),
+    Component(#[from] Box<ComponentError>),
     #[error("diagram error: {0}")]
-    Diagram(#[from] DiagramError),
+    Diagram(#[from] Box<DiagramError>),
     #[error("empty value within func run value (FuncId {0} and FuncRunId {1})")]
     EmptyValueWithinFuncRunValue(FuncId, FuncRunId),
     #[error("func error: {0}")]
@@ -107,19 +107,19 @@ pub enum ManagementPrototypeError {
     #[error("func execution failure error: {0}")]
     FuncExecutionFailure(String),
     #[error("func runner error: {0}")]
-    FuncRunner(#[from] FuncRunnerError),
+    FuncRunner(#[from] Box<FuncRunnerError>),
     #[error("func runner recv error")]
     FuncRunnerRecvError,
     #[error("helper error: {0}")]
-    Helper(#[from] HelperError),
+    Helper(#[from] Box<HelperError>),
     #[error("input socket error: {0}")]
-    InputSocket(#[from] crate::socket::input::InputSocketError),
+    InputSocket(#[from] Box<crate::socket::input::InputSocketError>),
     #[error("invalid prototype for component")]
     InvalidPrototypeForComponent(ManagementPrototypeId, ComponentId),
     #[error("layer db error: {0}")]
     LayerDbError(#[from] si_layer_cache::LayerDbError),
     #[error("management error: {0}")]
-    Management(#[from] ManagementError),
+    Management(#[from] Box<ManagementError>),
     #[error("management func execution state error: {0}")]
     ManagementExecution(#[from] si_db::ManagementFuncExecutionError),
     #[error("management prototype {0} has no use edge to a function")]
@@ -131,11 +131,11 @@ pub enum ManagementPrototypeError {
     #[error("management prototype {0} not found")]
     NotFound(ManagementPrototypeId),
     #[error("output socket error: {0}")]
-    OutputSocket(#[from] crate::socket::output::OutputSocketError),
+    OutputSocket(#[from] Box<crate::socket::output::OutputSocketError>),
     #[error("schema error: {0}")]
-    Schema(#[from] SchemaError),
+    Schema(#[from] Box<SchemaError>),
     #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("too few variants: {0}")]
@@ -143,11 +143,95 @@ pub enum ManagementPrototypeError {
     #[error("too many variants: {0}")]
     TooManyVariants(ManagementPrototypeId),
     #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
+    Transactions(#[from] Box<TransactionsError>),
     #[error("workspace snapshot error: {0}")]
-    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
+    WsEvent(#[from] Box<WsEventError>),
+}
+
+impl From<crate::attribute::value::AttributeValueError> for ManagementPrototypeError {
+    fn from(value: crate::attribute::value::AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<CachedModuleError> for ManagementPrototypeError {
+    fn from(value: CachedModuleError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for ManagementPrototypeError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<DiagramError> for ManagementPrototypeError {
+    fn from(value: DiagramError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncRunnerError> for ManagementPrototypeError {
+    fn from(value: FuncRunnerError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<HelperError> for ManagementPrototypeError {
+    fn from(value: HelperError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<crate::socket::input::InputSocketError> for ManagementPrototypeError {
+    fn from(value: crate::socket::input::InputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ManagementError> for ManagementPrototypeError {
+    fn from(value: ManagementError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<crate::socket::output::OutputSocketError> for ManagementPrototypeError {
+    fn from(value: crate::socket::output::OutputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaError> for ManagementPrototypeError {
+    fn from(value: SchemaError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaVariantError> for ManagementPrototypeError {
+    fn from(value: SchemaVariantError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<TransactionsError> for ManagementPrototypeError {
+    fn from(value: TransactionsError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceSnapshotError> for ManagementPrototypeError {
+    fn from(value: WorkspaceSnapshotError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WsEventError> for ManagementPrototypeError {
+    fn from(value: WsEventError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type ManagementPrototypeResult<T> = Result<T, ManagementPrototypeError>;

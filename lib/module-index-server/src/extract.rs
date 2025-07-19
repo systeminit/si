@@ -44,7 +44,7 @@ impl ExtractedS3Bucket {
 
     async fn get_url(self, object_key: String) -> Result<String, S3Error> {
         let download_url = if let Some(domain) = self.cloudfront_domain {
-            format!("https://{}/{}", domain, object_key)
+            format!("https://{domain}/{object_key}")
         } else {
             self.s3_bucket.presign_get(object_key, 60 * 5, None).await?
         };

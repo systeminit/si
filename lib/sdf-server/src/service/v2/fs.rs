@@ -146,7 +146,7 @@ pub enum FsError {
     #[error("func already unlocked: {0}")]
     FuncAlreadyUnlocked(FuncId),
     #[error("func api error: {0}")]
-    FuncApi(#[from] FuncAPIError),
+    FuncApi(#[from] Box<FuncAPIError>),
     #[error("func argument error: {0}")]
     FuncArgument(#[from] FuncArgumentError),
     #[error("func argument not found with name: {0}")]
@@ -195,6 +195,12 @@ pub enum FsError {
     WorkspaceSnapshot(#[from] dal::WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
+}
+
+impl From<FuncAPIError> for FsError {
+    fn from(value: FuncAPIError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type FsResult<T> = Result<T, FsError>;

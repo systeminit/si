@@ -46,9 +46,21 @@ pub enum DataWarehouseStreamClientError {
     #[error("firehose error: {0}")]
     Firehose(#[from] aws_sdk_firehose::Error),
     #[error("firehose build error: {0}")]
-    FirehoseBuild(#[from] aws_sdk_firehose::error::BuildError),
+    FirehoseBuild(#[from] Box<aws_sdk_firehose::error::BuildError>),
     #[error("firehose put record error: {0}")]
-    FirehosePutRecord(#[from] aws_sdk_firehose::error::SdkError<PutRecordError>),
+    FirehosePutRecord(#[from] Box<aws_sdk_firehose::error::SdkError<PutRecordError>>),
+}
+
+impl From<aws_sdk_firehose::error::BuildError> for DataWarehouseStreamClientError {
+    fn from(value: aws_sdk_firehose::error::BuildError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<aws_sdk_firehose::error::SdkError<PutRecordError>> for DataWarehouseStreamClientError {
+    fn from(value: aws_sdk_firehose::error::SdkError<PutRecordError>) -> Self {
+        Box::new(value).into()
+    }
 }
 
 type DataWarehouseStreamClientResult<T> = Result<T, DataWarehouseStreamClientError>;

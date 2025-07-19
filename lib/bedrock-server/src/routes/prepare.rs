@@ -51,7 +51,7 @@ pub async fn prepare_route(
     if let Err(e) = prepare_databases(database_sql_dumps).await {
         let result = PrepareResult {
             success: false,
-            message: format!("Failed to prepare requested databases: {}", e),
+            message: format!("Failed to prepare requested databases: {e}"),
             recording_id,
             duration_ms: Some(start_time.elapsed().as_millis() as u64),
             output: None,
@@ -62,7 +62,7 @@ pub async fn prepare_route(
     if let Err(e) = clear_nats(&state.nats).await {
         let result = PrepareResult {
             success: false,
-            message: format!("Failed to clear nats: {}", e),
+            message: format!("Failed to clear nats: {e}"),
             recording_id,
             duration_ms: Some(start_time.elapsed().as_millis() as u64),
             output: None,
@@ -81,7 +81,7 @@ pub async fn prepare_route(
         Err(e) => {
             let result = PrepareResult {
                 success: false,
-                message: format!("Failed to collect files: {}", e),
+                message: format!("Failed to collect files: {e}"),
                 recording_id,
                 duration_ms: Some(start_time.elapsed().as_millis() as u64),
                 output: None,

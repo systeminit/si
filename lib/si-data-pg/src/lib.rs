@@ -119,7 +119,7 @@ pub enum PgError {
     #[error("transaction not exclusively referenced when rollback attempted; arc_strong_count={0}")]
     TxnRollbackNotExclusive(usize),
     #[error("unexpected row returned: {0:?}")]
-    UnexpectedRow(PgRow),
+    UnexpectedRow(Box<PgRow>),
 }
 
 #[remain::sorted]
@@ -2537,7 +2537,7 @@ impl PgSharedTransaction {
         match self.inner.lock().await.borrow_txn().as_ref() {
             Some(txn) => match txn.query_opt(statement, params).await? {
                 None => Ok(()),
-                Some(row) => Err(PgError::UnexpectedRow(row)),
+                Some(row) => Err(PgError::UnexpectedRow(Box::new(row))),
             },
             None => {
                 unreachable!("txn is only consumed with commit/rollback--this is an internal bug")

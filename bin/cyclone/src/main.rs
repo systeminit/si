@@ -30,7 +30,11 @@ async fn main() -> Result<()> {
         let config = TelemetryConfig::builder()
             .force_color(args.force_color.then_some(true))
             .no_color(args.no_color.then_some(true))
-            .log_format(args.log_json.then_some(LogFormat::Json).unwrap_or_default())
+            .log_format(if args.log_json {
+                LogFormat::Json
+            } else {
+                Default::default()
+            })
             .log_file_directory(args.log_file_directory.clone())
             .tokio_console(args.tokio_console)
             .service_name(BIN_NAME)

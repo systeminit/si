@@ -199,7 +199,7 @@ pub fn build_service(
                     tracing::error!(error = %err, "Unexpected error in request processing");
                     Response::builder()
                         .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(format!("Internal server error: {}", err))
+                        .body(format!("Internal server error: {err}"))
                         .expect("Unable to build error response body")
                         .into_response()
                 }))

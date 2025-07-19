@@ -81,7 +81,11 @@ pub(crate) async fn publish_pending(
     // TODO(nick): nuke this from intergalactic orbit. Then do it again.
     let workspace_id = match ctx.workspace_pk() {
         Ok(workspace_id) => workspace_id,
-        Err(TransactionsError::SiDb(si_db::Error::NoWorkspace)) => return Ok(()),
+        Err(TransactionsError::SiDb(si_db_err))
+            if matches!(si_db_err.as_ref(), si_db::Error::NoWorkspace) =>
+        {
+            return Ok(());
+        }
         Err(err) => return Err(AuditLoggingError::Transactions(Box::new(err))),
     };
 
@@ -217,7 +221,11 @@ pub(crate) async fn write(
     // TODO(nick): nuke this from intergalactic orbit. Then do it again.
     let workspace_id = match ctx.workspace_pk() {
         Ok(workspace_id) => workspace_id,
-        Err(TransactionsError::SiDb(si_db::Error::NoWorkspace)) => return Ok(()),
+        Err(TransactionsError::SiDb(si_db_err))
+            if matches!(si_db_err.as_ref(), si_db::Error::NoWorkspace) =>
+        {
+            return Ok(());
+        }
         Err(err) => return Err(AuditLoggingError::Transactions(Box::new(err))),
     };
 
@@ -248,7 +256,11 @@ pub(crate) async fn write_final_message(ctx: &DalContext) -> Result<()> {
     // TODO(nick): nuke this from intergalactic orbit. Then do it again.
     let workspace_id = match ctx.workspace_pk() {
         Ok(workspace_id) => workspace_id,
-        Err(TransactionsError::SiDb(si_db::Error::NoWorkspace)) => return Ok(()),
+        Err(TransactionsError::SiDb(si_db_err))
+            if matches!(si_db_err.as_ref(), si_db::Error::NoWorkspace) =>
+        {
+            return Ok(());
+        }
         Err(err) => return Err(AuditLoggingError::Transactions(Box::new(err))),
     };
 

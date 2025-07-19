@@ -107,21 +107,21 @@ use crate::{
 #[derive(Error, Debug)]
 pub enum DiagramError {
     #[error("approval requirement error: {0}")]
-    ApprovalRequirement(#[from] ApprovalRequirementError),
+    ApprovalRequirement(#[from] Box<ApprovalRequirementError>),
     #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] AttributePrototypeError),
+    AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("attribute prototype not found")]
     AttributePrototypeNotFound,
     #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("attribute value not found")]
     AttributeValueNotFound,
     #[error("Change Set error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
+    ChangeSet(#[from] Box<ChangeSetError>),
     #[error("component error: {0}")]
-    Component(#[from] ComponentError),
+    Component(#[from] Box<ComponentError>),
     #[error("component not found")]
     ComponentNotFound,
     #[error("component status not found for component: {0}")]
@@ -147,7 +147,7 @@ pub enum DiagramError {
     #[error("edge not found")]
     EdgeNotFound,
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("geometry can't represent: {0}")]
     GeometryCannotRepresentNodeWeight(NodeWeightDiscriminants),
     #[error("geometry not found: {0}")]
@@ -157,19 +157,19 @@ pub enum DiagramError {
     #[error("geometry not found for view object {0} on view {1}")]
     GeometryNotFoundForViewObjectAndView(ViewId, ViewId),
     #[error("Helper error: {0}")]
-    Helper(#[from] HelperError),
+    Helper(#[from] Box<HelperError>),
     #[error("InferredConnectionGraph error: {0}")]
-    InferredConnectionGraph(#[from] InferredConnectionGraphError),
+    InferredConnectionGraph(#[from] Box<InferredConnectionGraphError>),
     #[error("input socket error: {0}")]
-    InputSocket(#[from] InputSocketError),
+    InputSocket(#[from] Box<InputSocketError>),
     #[error("layerdb error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("node not found")]
     NodeNotFound,
     #[error("node weight error: {0}")]
-    NodeWeight(#[from] NodeWeightError),
+    NodeWeight(#[from] Box<NodeWeightError>),
     #[error("output socket error: {0}")]
-    OutputSocket(#[from] OutputSocketError),
+    OutputSocket(#[from] Box<OutputSocketError>),
     #[error(transparent)]
     ParseFloat(#[from] ParseFloatError),
     #[error(transparent)]
@@ -181,7 +181,7 @@ pub enum DiagramError {
     #[error("schema not found")]
     SchemaNotFound,
     #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("schema variant not found")]
     SchemaVariantNotFound,
     #[error("serde error: {0}")]
@@ -191,7 +191,7 @@ pub enum DiagramError {
     #[error("socket not found")]
     SocketNotFound,
     #[error("Transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
+    Transactions(#[from] Box<TransactionsError>),
     #[error("could not acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
     #[error("view category node not found")]
@@ -201,9 +201,105 @@ pub enum DiagramError {
     #[error("view not found for geometry id: {0}")]
     ViewNotFoundForGeometry(GeometryId),
     #[error("Workspace error: {0}")]
-    Workspace(#[from] WorkspaceError),
+    Workspace(#[from] Box<WorkspaceError>),
     #[error("workspace snapshot error: {0}")]
-    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
+}
+
+impl From<ApprovalRequirementError> for DiagramError {
+    fn from(value: ApprovalRequirementError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeError> for DiagramError {
+    fn from(value: AttributePrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeArgumentError> for DiagramError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributeValueError> for DiagramError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ChangeSetError> for DiagramError {
+    fn from(value: ChangeSetError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for DiagramError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for DiagramError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<HelperError> for DiagramError {
+    fn from(value: HelperError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InferredConnectionGraphError> for DiagramError {
+    fn from(value: InferredConnectionGraphError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InputSocketError> for DiagramError {
+    fn from(value: InputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<NodeWeightError> for DiagramError {
+    fn from(value: NodeWeightError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<OutputSocketError> for DiagramError {
+    fn from(value: OutputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaVariantError> for DiagramError {
+    fn from(value: SchemaVariantError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<TransactionsError> for DiagramError {
+    fn from(value: TransactionsError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceError> for DiagramError {
+    fn from(value: WorkspaceError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceSnapshotError> for DiagramError {
+    fn from(value: WorkspaceSnapshotError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type DiagramResult<T> = Result<T, DiagramError>;

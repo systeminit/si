@@ -133,17 +133,17 @@ pub enum FuncRunnerError {
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("before func missing expected code: {0}")]
     BeforeFuncMissingCode(FuncId),
     #[error("before func missing expected handler: {0}")]
     BeforeFuncMissingHandler(FuncId),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
+    ChangeSet(#[from] Box<ChangeSetError>),
     #[error("component error: {0}")]
-    Component(#[from] ComponentError),
+    Component(#[from] Box<ComponentError>),
     #[error(
         "direct authentication func execution is unsupported (must go through \"before funcs\"), found: {0}"
     )]
@@ -155,9 +155,9 @@ pub enum FuncRunnerError {
     #[error("empty widget options for secret prop id: {0}")]
     EmptyWidgetOptionsForSecretProp(PropId),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("function backend error: {0}")]
-    FuncBackend(#[from] FuncBackendError),
+    FuncBackend(#[from] Box<FuncBackendError>),
     #[error("func run builder error: {0}")]
     FuncRunBuilder(#[from] FuncRunBuilderError),
     #[error("invalid resolver function type: {0}")]
@@ -171,7 +171,7 @@ pub enum FuncRunnerError {
     #[error("no widget options for secret prop id: {0}")]
     NoWidgetOptionsForSecretProp(PropId),
     #[error("prop error: {0}")]
-    Prop(#[from] PropError),
+    Prop(#[from] Box<PropError>),
     #[error("reconciliation funcs are no longer supported (found: {0})")]
     ReconciliationFuncsNoLongerSupported(FuncId),
     #[error("function run result failure: kind={kind}, message={message}, backend={backend}")]
@@ -181,9 +181,9 @@ pub enum FuncRunnerError {
         backend: String,
     },
     #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("secret error: {0}")]
-    Secret(#[from] SecretError),
+    Secret(#[from] Box<SecretError>),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
@@ -195,7 +195,7 @@ pub enum FuncRunnerError {
     #[error("too many attribute values for component ({0}) and prop ({1})")]
     TooManyAttributeValues(ComponentId, PropId),
     #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
+    Transactions(#[from] Box<TransactionsError>),
     #[error(
         "unexpected value source ({0:?}) for secret prop ({1}), attribute prototype argument ({2}) and component ({3})"
     )]
@@ -210,7 +210,73 @@ pub enum FuncRunnerError {
     #[error("veritech value encrypt error: {0}")]
     VeritechValueEncrypt(#[from] VeritechValueEncryptError),
     #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
+    WsEvent(#[from] Box<WsEventError>),
+}
+
+impl From<AttributePrototypeArgumentError> for FuncRunnerError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributeValueError> for FuncRunnerError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ChangeSetError> for FuncRunnerError {
+    fn from(value: ChangeSetError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for FuncRunnerError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for FuncRunnerError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncBackendError> for FuncRunnerError {
+    fn from(value: FuncBackendError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for FuncRunnerError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaVariantError> for FuncRunnerError {
+    fn from(value: SchemaVariantError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SecretError> for FuncRunnerError {
+    fn from(value: SecretError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<TransactionsError> for FuncRunnerError {
+    fn from(value: TransactionsError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WsEventError> for FuncRunnerError {
+    fn from(value: WsEventError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type FuncRunnerResult<T> = Result<T, FuncRunnerError>;

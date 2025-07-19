@@ -175,7 +175,7 @@ pub async fn delete_connection(
             to_socket_id: request.to_socket_id,
             to_socket_name: to_socket_name.clone(),
         },
-        format!("{0}-{1}", to_component_name, to_socket_name),
+        format!("{to_component_name}-{to_socket_name}"),
     )
     .await?;
     track(

@@ -100,9 +100,15 @@ pub enum ServerError {
     #[error("Failed to set up signal handler")]
     Signal(#[source] io::Error),
     #[error("Permissions error: {0}")]
-    SpiceDb(#[from] SpiceDbError),
+    SpiceDb(#[from] Box<SpiceDbError>),
     #[error("unix domain socket incoming stream error: {0}")]
     Uds(#[from] uds::UdsIncomingStreamError),
+}
+
+impl From<SpiceDbError> for ServerError {
+    fn from(value: SpiceDbError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 type ServerResult<T> = std::result::Result<T, ServerError>;

@@ -373,8 +373,7 @@ fn default_edges() -> SplitGraphResult<()> {
             } else {
                 assert!(
                     matches!(edge.0, TestEdgeWeight::EdgeB { is_default: true }),
-                    "{:?} should be default target",
-                    default_target
+                    "{default_target:?} should be default target"
                 );
                 hit_default = true;
             }

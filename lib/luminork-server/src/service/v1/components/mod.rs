@@ -187,8 +187,7 @@ pub async fn resolve_secret_id(
                         .find(|s| s.name() == value_str)
                         .ok_or_else(|| {
                             ComponentsError::SecretNotFound(format!(
-                                "Secret '{}' not found",
-                                value_str
+                                "Secret '{value_str}' not found"
                             ))
                         })?;
                     Ok(found_secret.id())
@@ -199,14 +198,13 @@ pub async fn resolve_secret_id(
                     .into_iter()
                     .find(|s| s.name() == value_str)
                     .ok_or_else(|| {
-                        ComponentsError::SecretNotFound(format!("Secret '{}' not found", value_str))
+                        ComponentsError::SecretNotFound(format!("Secret '{value_str}' not found"))
                     })?;
                 Ok(found_secret.id())
             }
         }
         _ => Err(ComponentsError::InvalidSecretValue(format!(
-            "Secret value must be a string containing ID or name, got: {}",
-            value
+            "Secret value must be a string containing ID or name, got: {value}"
         ))),
     }
 }
@@ -228,15 +226,15 @@ impl From<JsonRejection> for ComponentsError {
     fn from(rejection: JsonRejection) -> Self {
         match rejection {
             JsonRejection::JsonDataError(_) => {
-                ComponentsError::Validation(format!("Invalid JSON data format: {}", rejection))
+                ComponentsError::Validation(format!("Invalid JSON data format: {rejection}"))
             }
             JsonRejection::JsonSyntaxError(_) => {
-                ComponentsError::Validation(format!("Invalid JSON syntax: {}", rejection))
+                ComponentsError::Validation(format!("Invalid JSON syntax: {rejection}"))
             }
             JsonRejection::MissingJsonContentType(_) => ComponentsError::Validation(
                 "Request must have Content-Type: application/json header".to_string(),
             ),
-            _ => ComponentsError::Validation(format!("JSON validation error: {}", rejection)),
+            _ => ComponentsError::Validation(format!("JSON validation error: {rejection}")),
         }
     }
 }

@@ -122,25 +122,25 @@ pub enum FuncAuthoringError {
     )]
     ActionKindAlreadyExists(ActionKind, SchemaVariantId),
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] AttributePrototypeError),
+    AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("cannot unlock non-default schema variant: {0}")]
     CannotUnlockNonDefaultSchemaVariant(SchemaVariantId),
     #[error("component error: {0}")]
-    Component(#[from] ComponentError),
+    Component(#[from] Box<ComponentError>),
     #[error("dependent value root error: {0}")]
-    DependentValueRoot(#[from] DependentValueRootError),
+    DependentValueRoot(#[from] Box<DependentValueRootError>),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("func argument error: {0}")]
-    FuncArgument(#[from] FuncArgumentError),
+    FuncArgument(#[from] Box<FuncArgumentError>),
     #[error("func bindings error: {0}")]
-    FuncBinding(#[from] FuncBindingError),
+    FuncBinding(#[from] Box<FuncBindingError>),
     #[error("func named \"{0}\" already exists in this change set")]
     FuncNameExists(String),
     #[error("Function options are incompatible with variant")]
@@ -148,7 +148,7 @@ pub enum FuncAuthoringError {
     #[error("func run value sender is gone without sending a value")]
     FuncRunGone,
     #[error("func run error: {0}")]
-    FuncRunner(#[from] FuncRunnerError),
+    FuncRunner(#[from] Box<FuncRunnerError>),
     #[error("func runner has failed to send a value and exited")]
     FuncRunnerSend,
     #[error("invalid func kind for creation: {0}")]
@@ -166,15 +166,15 @@ pub enum FuncAuthoringError {
     #[error("func ({0}) is not runnable with kind: {1}")]
     NotRunnable(FuncId, FuncKind),
     #[error("output socket error: {0}")]
-    OutputSocket(#[from] OutputSocketError),
+    OutputSocket(#[from] Box<OutputSocketError>),
     #[error("prop error: {0}")]
-    Prop(#[from] PropError),
+    Prop(#[from] Box<PropError>),
     #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("tokio task join error: {0}")]
     TokioTaskJoin(#[from] tokio::task::JoinError),
     #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
+    Transactions(#[from] Box<TransactionsError>),
     #[error("unexpected func kind ({0}) creating attribute func")]
     UnexpectedFuncKindCreatingAttributeFunc(FuncKind),
     #[error(
@@ -184,9 +184,105 @@ pub enum FuncAuthoringError {
     #[error("variant authoring error: {0}")]
     VariantAuthoringClient(#[from] Box<VariantAuthoringError>),
     #[error("workspace snapshot error: {0}")]
-    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
+    WsEvent(#[from] Box<WsEventError>),
+}
+
+impl From<ActionPrototypeError> for FuncAuthoringError {
+    fn from(value: ActionPrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeError> for FuncAuthoringError {
+    fn from(value: AttributePrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeArgumentError> for FuncAuthoringError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributeValueError> for FuncAuthoringError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for FuncAuthoringError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<DependentValueRootError> for FuncAuthoringError {
+    fn from(value: DependentValueRootError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for FuncAuthoringError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncArgumentError> for FuncAuthoringError {
+    fn from(value: FuncArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncBindingError> for FuncAuthoringError {
+    fn from(value: FuncBindingError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncRunnerError> for FuncAuthoringError {
+    fn from(value: FuncRunnerError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<OutputSocketError> for FuncAuthoringError {
+    fn from(value: OutputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for FuncAuthoringError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaVariantError> for FuncAuthoringError {
+    fn from(value: SchemaVariantError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<TransactionsError> for FuncAuthoringError {
+    fn from(value: TransactionsError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceSnapshotError> for FuncAuthoringError {
+    fn from(value: WorkspaceSnapshotError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WsEventError> for FuncAuthoringError {
+    fn from(value: WsEventError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 type FuncAuthoringResult<T> = Result<T, FuncAuthoringError>;

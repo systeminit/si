@@ -3102,7 +3102,7 @@ impl SiFileSystem {
                         log::trace!("invaliding changeset {change_set_id}");
                         self_clone.invalidate_change_set(change_set_id).await;
                     } else {
-                        log::error!("{:?}", err);
+                        log::error!("{err:?}");
                     }
                 }
             });

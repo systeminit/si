@@ -644,7 +644,7 @@ impl std::fmt::Display for WithGraph<'_, &'_ ConnectionMigration> {
 
         match migration.explicit_connection_id {
             Some(explicit_connection_id) => {
-                write!(f, " (explicit connection APA {})", explicit_connection_id)
+                write!(f, " (explicit connection APA {explicit_connection_id})")
             }
             None => write!(f, " (inferred connection)"),
         }
@@ -725,7 +725,7 @@ impl std::fmt::Display for WithGraph<'_, &'_ ConnectionUnmigrateableBecause> {
                 )
             }
             ConnectionUnmigrateableBecause::InvalidGraph { ref error } => {
-                write!(f, "Invalid graph: {}", error)
+                write!(f, "Invalid graph: {error}")
             }
             ConnectionUnmigrateableBecause::MultipleConnectionsToSameProp => {
                 write!(f, "Multiple connections to the same prop")

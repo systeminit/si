@@ -102,15 +102,15 @@ impl From<JsonRejection> for SchemaError {
     fn from(rejection: JsonRejection) -> Self {
         match rejection {
             JsonRejection::JsonDataError(_) => {
-                SchemaError::Validation(format!("Invalid JSON data format: {}", rejection))
+                SchemaError::Validation(format!("Invalid JSON data format: {rejection}"))
             }
             JsonRejection::JsonSyntaxError(_) => {
-                SchemaError::Validation(format!("Invalid JSON syntax: {}", rejection))
+                SchemaError::Validation(format!("Invalid JSON syntax: {rejection}"))
             }
             JsonRejection::MissingJsonContentType(_) => SchemaError::Validation(
                 "Request must have Content-Type: application/json header".to_string(),
             ),
-            _ => SchemaError::Validation(format!("JSON validation error: {}", rejection)),
+            _ => SchemaError::Validation(format!("JSON validation error: {rejection}")),
         }
     }
 }
@@ -495,7 +495,7 @@ fn build_prop_schema_from_maps(
 ) -> SchemaResult<PropSchemaV1> {
     let prop = props_map
         .get(&prop_id)
-        .ok_or_else(|| SchemaError::Validation(format!("Prop {} not found in map", prop_id)))?;
+        .ok_or_else(|| SchemaError::Validation(format!("Prop {prop_id} not found in map")))?;
 
     let prop_type = match prop.kind {
         PropKind::String => "string",

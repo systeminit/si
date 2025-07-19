@@ -36,8 +36,8 @@ pub enum KeyOrIndex {
 impl fmt::Display for KeyOrIndex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let _ = match self {
-            KeyOrIndex::Key(key) => write!(f, "[{}]", key),
-            KeyOrIndex::Index(index) => write!(f, "[{}]", index),
+            KeyOrIndex::Key(key) => write!(f, "[{key}]"),
+            KeyOrIndex::Index(index) => write!(f, "[{index}]"),
         };
         Ok(())
     }
@@ -47,13 +47,13 @@ impl fmt::Display for AttributeValuePath {
         match self {
             AttributeValuePath::Prop { path, key_or_index } => {
                 if let Some(attribute_value_index_or_key) = key_or_index {
-                    write!(f, "{}{}", path, attribute_value_index_or_key)?
+                    write!(f, "{path}{attribute_value_index_or_key}")?
                 } else {
-                    write!(f, "{}", path)?
+                    write!(f, "{path}")?
                 }
             }
-            AttributeValuePath::InputSocket(path) => write!(f, "{}", path)?,
-            AttributeValuePath::OutputSocket(path) => write!(f, "{}", path)?,
+            AttributeValuePath::InputSocket(path) => write!(f, "{path}")?,
+            AttributeValuePath::OutputSocket(path) => write!(f, "{path}")?,
         };
         Ok(())
     }

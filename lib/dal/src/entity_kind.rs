@@ -18,11 +18,11 @@ use crate::{
 #[derive(Error, Debug)]
 pub enum EntityKindError {
     #[error("diagram error: {0}")]
-    Diagram(#[from] DiagramError),
+    Diagram(#[from] Box<DiagramError>),
     #[error("node not found for entity id {0}")]
     NodeNotFound(EntityId),
     #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -102,5 +102,17 @@ impl EntityKind {
             }
         };
         Ok(name)
+    }
+}
+
+impl From<DiagramError> for EntityKindError {
+    fn from(value: DiagramError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaVariantError> for EntityKindError {
+    fn from(value: SchemaVariantError) -> Self {
+        Box::new(value).into()
     }
 }

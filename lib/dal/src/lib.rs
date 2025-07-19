@@ -1,5 +1,6 @@
 //! The Data Access Layer (DAL) for System Initiative.
 
+#![recursion_limit = "256"]
 #![warn(
     clippy::panic,
     clippy::panic_in_result_fn,

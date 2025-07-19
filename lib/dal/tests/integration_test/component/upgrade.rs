@@ -1144,12 +1144,12 @@ async fn connections(ctx: &DalContext, component_id: ComponentId) -> Result<Vec<
     }
     for manager_id in Component::managers_by_id(ctx, component_id).await? {
         let manager = Component::name_by_id(ctx, manager_id).await?;
-        result.push(format!("[manager] {}", manager,));
+        result.push(format!("[manager] {manager}",));
     }
     let component = Component::get_by_id(ctx, component_id).await?;
     for managed_id in component.get_managed(ctx).await? {
         let managed = Component::name_by_id(ctx, managed_id).await?;
-        result.push(format!("[managed] {}", managed));
+        result.push(format!("[managed] {managed}"));
     }
     result.sort();
     Ok(result)

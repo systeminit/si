@@ -57,15 +57,15 @@ impl From<JsonRejection> for FuncsError {
     fn from(rejection: JsonRejection) -> Self {
         match rejection {
             JsonRejection::JsonDataError(_) => {
-                FuncsError::Validation(format!("Invalid JSON data format: {}", rejection))
+                FuncsError::Validation(format!("Invalid JSON data format: {rejection}"))
             }
             JsonRejection::JsonSyntaxError(_) => {
-                FuncsError::Validation(format!("Invalid JSON syntax: {}", rejection))
+                FuncsError::Validation(format!("Invalid JSON syntax: {rejection}"))
             }
             JsonRejection::MissingJsonContentType(_) => FuncsError::Validation(
                 "Request must have Content-Type: application/json header".to_string(),
             ),
-            _ => FuncsError::Validation(format!("JSON validation error: {}", rejection)),
+            _ => FuncsError::Validation(format!("JSON validation error: {rejection}")),
         }
     }
 }

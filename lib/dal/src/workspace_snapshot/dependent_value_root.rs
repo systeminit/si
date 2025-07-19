@@ -25,7 +25,13 @@ pub enum DependentValueRootError {
     #[error("Workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("transaction error: {0}")]
-    Transactions(#[from] crate::TransactionsError),
+    Transactions(#[from] Box<crate::TransactionsError>),
+}
+
+impl From<crate::TransactionsError> for DependentValueRootError {
+    fn from(value: crate::TransactionsError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type DependentValueRootResult<T> = Result<T, DependentValueRootError>;

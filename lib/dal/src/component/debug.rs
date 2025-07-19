@@ -90,25 +90,25 @@ pub struct ComponentDebugData {
 #[derive(Error, Debug)]
 pub enum ComponentDebugViewError {
     #[error("attribute debug view error: {0}")]
-    AttributeDebugViewError(#[from] AttributeDebugViewError),
+    AttributeDebugViewError(#[from] Box<AttributeDebugViewError>),
     #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("Attribute Value tree badly constructed with root prop of {0}")]
     AttributeValueTreeBad(AttributeValueId),
     #[error("component error: {0}")]
     Component(String),
     #[error("component error: {0}")]
-    ComponentError(#[from] ComponentError),
+    ComponentError(#[from] Box<ComponentError>),
     #[error("diagram error: {0}")]
-    Diagram(#[from] DiagramError),
+    Diagram(#[from] Box<DiagramError>),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("input socket error: {0}")]
-    InputSocketError(#[from] InputSocketError),
+    InputSocketError(#[from] Box<InputSocketError>),
     #[error("json pointer not found: {1:?} at {0}")]
     JSONPointerNotFound(serde_json::Value, String),
     #[error("node weight error: {0}")]
-    NodeWeightError(#[from] NodeWeightError),
+    NodeWeightError(#[from] Box<NodeWeightError>),
     #[error("no internal provider for prop {0}")]
     NoInternalProvider(PropId),
     #[error("no root prop found for schema variant {0}")]
@@ -118,21 +118,21 @@ pub enum ComponentDebugViewError {
     #[error("component not found {0}")]
     NotFound(ComponentId),
     #[error("output socket error: {0}")]
-    OutputSocketError(#[from] OutputSocketError),
+    OutputSocketError(#[from] Box<OutputSocketError>),
     #[error("prop error: {0}")]
-    Prop(#[from] PropError),
+    Prop(#[from] Box<PropError>),
     #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("secret error: {0}")]
-    Secret(#[from] SecretError),
+    Secret(#[from] Box<SecretError>),
     #[error("secret not found: {0}")]
     SecretNotFound(SecretId),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("socket debug view error: {0}")]
-    SocketDebugViewError(#[from] SocketDebugViewError),
+    SocketDebugViewError(#[from] Box<SocketDebugViewError>),
     #[error("workspace snapshot error: {0}")]
-    WorkspaceSnapshotError(#[from] WorkspaceSnapshotError),
+    WorkspaceSnapshotError(#[from] Box<WorkspaceSnapshotError>),
 }
 
 impl ComponentDebugView {
@@ -216,7 +216,7 @@ impl ComponentDebugData {
         let name = component
             .name(ctx)
             .await
-            .map_err(|e| ComponentDebugViewError::Component(format!("get name error: {}", e)))?;
+            .map_err(|e| ComponentDebugViewError::Component(format!("get name error: {e}")))?;
 
         let debug_view = ComponentDebugData {
             name,
@@ -273,5 +273,83 @@ impl ComponentDebugData {
         component_id: ComponentId,
     ) -> ComponentDebugViewResult<HashMap<AttributeValueId, Vec<AttributeValueId>>> {
         Ok(AttributeValue::tree_for_component(ctx, component_id).await?)
+    }
+}
+
+impl From<AttributeDebugViewError> for ComponentDebugViewError {
+    fn from(value: AttributeDebugViewError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributeValueError> for ComponentDebugViewError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for ComponentDebugViewError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<DiagramError> for ComponentDebugViewError {
+    fn from(value: DiagramError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for ComponentDebugViewError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InputSocketError> for ComponentDebugViewError {
+    fn from(value: InputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<NodeWeightError> for ComponentDebugViewError {
+    fn from(value: NodeWeightError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<OutputSocketError> for ComponentDebugViewError {
+    fn from(value: OutputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for ComponentDebugViewError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaVariantError> for ComponentDebugViewError {
+    fn from(value: SchemaVariantError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SecretError> for ComponentDebugViewError {
+    fn from(value: SecretError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SocketDebugViewError> for ComponentDebugViewError {
+    fn from(value: SocketDebugViewError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceSnapshotError> for ComponentDebugViewError {
+    fn from(value: WorkspaceSnapshotError) -> Self {
+        Box::new(value).into()
     }
 }

@@ -63,7 +63,7 @@ pub enum ParameterStoreClientError {
 
 impl ParameterStoreClientError {
     fn from_sdk_error<T: Debug>(error: SdkError<T>) -> Self {
-        ParameterStoreClientError::AwsParameterStore(format!("{:?}", error))
+        ParameterStoreClientError::AwsParameterStore(format!("{error:?}"))
     }
 }
 

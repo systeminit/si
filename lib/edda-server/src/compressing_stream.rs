@@ -109,7 +109,7 @@ enum State {
         /// The [`Subject`] to be used on the compressed request ([`Option`] for `mem::take()`)
         subject: Option<Subject>,
         /// The message to be parsed ([`Option`] for `mem::take()`)
-        message: Option<jetstream::Message>,
+        message: Box<Option<jetstream::Message>>,
         /// The stream sequence number of the first message
         message_stream_sequence: u64,
         /// A [`Future`] that calculates the read window
@@ -365,7 +365,7 @@ where
                             // Set next state and continue loop
                             *this.state = State::CalculateReadWindow {
                                 subject,
-                                message: Some(message),
+                                message: Box::new(Some(message)),
                                 message_stream_sequence,
                                 calculate_read_window_fut: Box::pin(async move {
                                     let info: HashMap<_, _> = stream

@@ -86,7 +86,7 @@ async fn get_debug_view(ctx: &mut DalContext) {
     let attribute_path = AttributeValue::get_path_for_id(ctx, rigid_designator_value_id)
         .await
         .expect("can't get the path");
-    println!("attribute_path: {:?}", attribute_path);
+    println!("attribute_path: {attribute_path:?}");
     assert_eq!(
         attribute_path,
         Some(rigid_prop_path.with_replaced_sep("/").to_string())

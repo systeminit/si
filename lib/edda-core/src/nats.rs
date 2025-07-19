@@ -92,10 +92,7 @@ pub mod subject {
     ) -> Subject {
         nats_std::subject::prefixed(
             prefix,
-            format!(
-                "{REQUESTS_SUBJECT_PREFIX}.{}.{}",
-                workspace_id, change_set_id,
-            ),
+            format!("{REQUESTS_SUBJECT_PREFIX}.{workspace_id}.{change_set_id}",),
         )
     }
 
@@ -107,10 +104,7 @@ pub mod subject {
     ) -> Subject {
         nats_std::subject::prefixed(
             prefix,
-            format!(
-                "{TASKS_SUBJECT_PREFIX}.{}.{}.process",
-                workspace_id, change_set_id,
-            ),
+            format!("{TASKS_SUBJECT_PREFIX}.{workspace_id}.{change_set_id}.process",),
         )
     }
 

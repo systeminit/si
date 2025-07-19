@@ -69,11 +69,8 @@ impl AuthApiClient {
         workspace_id: WorkspacePk,
         token_id: AuthTokenId,
     ) -> AuthApiResult<GetAuthTokenResponse> {
-        self.get(&format!(
-            "workspaces/{}/authTokens/{}",
-            workspace_id, token_id
-        ))
-        .await
+        self.get(&format!("workspaces/{workspace_id}/authTokens/{token_id}"))
+            .await
     }
 
     async fn get<T: DeserializeOwned>(&self, path: &str) -> AuthApiResult<T> {

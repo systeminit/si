@@ -59,9 +59,9 @@ async fn asset_func_execution_papercuts(ctx: &mut DalContext) {
         Err(box_err) => match box_err.downcast_ref::<VariantAuthoringError>() {
             Some(err) => match err {
                 VariantAuthoringError::AssetTypeNotReturnedForAssetFunc(_, _) => {}
-                err => panic!("{:?}", err),
+                err => panic!("{err:?}"),
             },
-            None => panic!("{:?}", box_err),
+            None => panic!("{box_err:?}"),
         },
     }
 
@@ -79,9 +79,9 @@ async fn asset_func_execution_papercuts(ctx: &mut DalContext) {
         Err(box_err) => match box_err.downcast_ref::<VariantAuthoringError>() {
             Some(err) => match err {
                 VariantAuthoringError::AssetTypeNotReturnedForAssetFunc(_, _) => {}
-                err => panic!("{:?}", err),
+                err => panic!("{err:?}"),
             },
-            None => panic!("{:?}", box_err),
+            None => panic!("{box_err:?}"),
         },
     }
 

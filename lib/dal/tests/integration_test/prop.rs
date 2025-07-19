@@ -59,8 +59,7 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) -> Result<()> {
 
         assert!(
             container_prop.can_be_used_as_prototype_arg,
-            "{:?} should be marked as able to be used as a prototype argument",
-            container_prop_path
+            "{container_prop_path:?} should be marked as able to be used as a prototype argument"
         );
     }
 
@@ -73,8 +72,7 @@ async fn verify_prop_used_as_input_flag(ctx: &DalContext) -> Result<()> {
 
         assert!(
             !item_prop.can_be_used_as_prototype_arg,
-            "{:?} should be marked as NOT able to be used as a prototype argument",
-            item_prop_path
+            "{item_prop_path:?} should be marked as NOT able to be used as a prototype argument"
         );
     }
 

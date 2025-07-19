@@ -72,7 +72,7 @@ pub enum ValidationError {
     #[error("component error: {0}")]
     Component(#[from] Box<ComponentError>),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("func run went away before a value could be sent down the channel")]
     FuncRunGone,
     #[error("func runner error: {0}")]
@@ -94,7 +94,7 @@ pub enum ValidationError {
     #[error("schema not found")]
     SchemaNotFound,
     #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("schema variant not found")]
     SchemaVariantNotFound,
     #[error("error serializing/deserializing json: {0}")]
@@ -102,7 +102,7 @@ pub enum ValidationError {
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("workspace snapshot error: {0}")]
-    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
 }
 
 impl From<AttributeValueError> for ValidationError {
@@ -117,8 +117,26 @@ impl From<ComponentError> for ValidationError {
     }
 }
 
+impl From<FuncError> for ValidationError {
+    fn from(e: FuncError) -> Self {
+        Box::new(e).into()
+    }
+}
+
 impl From<FuncRunnerError> for ValidationError {
     fn from(e: FuncRunnerError) -> Self {
+        Box::new(e).into()
+    }
+}
+
+impl From<SchemaVariantError> for ValidationError {
+    fn from(e: SchemaVariantError) -> Self {
+        Box::new(e).into()
+    }
+}
+
+impl From<WorkspaceSnapshotError> for ValidationError {
+    fn from(e: WorkspaceSnapshotError) -> Self {
         Box::new(e).into()
     }
 }

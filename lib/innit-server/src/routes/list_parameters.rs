@@ -23,7 +23,7 @@ pub async fn list_parameters_route(
     }): State<AppState>,
 ) -> Result<Json<ListParametersResponse>, AppError> {
     let path = if !path.starts_with('/') {
-        format!("/{}", path)
+        format!("/{path}")
     } else {
         path
     };

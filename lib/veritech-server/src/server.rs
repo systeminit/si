@@ -123,7 +123,7 @@ impl Server {
         let nats = Self::connect_to_nats(config.nats()).await?;
         let mut nats_config = config.nats().clone();
         if let Some(name) = nats_config.connection_name {
-            nats_config.connection_name = Some(format!("{}-stream", name));
+            nats_config.connection_name = Some(format!("{name}-stream"));
         }
         let nats_jetstream = Self::connect_to_nats(&nats_config).await?;
 

@@ -198,7 +198,7 @@ impl InnitClient {
 
     fn join_path(&self, base_segment: &str, path: &str) -> Result<Url> {
         let clean_path = path.trim_start_matches('/');
-        let full_path = format!("{}/{}", base_segment, clean_path);
+        let full_path = format!("{base_segment}/{clean_path}");
         Ok(self.base_url.join(&full_path)?)
     }
 

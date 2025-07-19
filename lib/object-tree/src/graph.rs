@@ -882,8 +882,7 @@ fn read_node_entry_lines<R: BufRead>(reader: &mut R) -> Result<Vec<NodeEntry>, G
 
         if !parts.is_empty() {
             return Err(GraphError::parse_custom(format!(
-                "entry line has more than 3 fields: {}",
-                line
+                "entry line has more than 3 fields: {line}"
             )));
         }
 

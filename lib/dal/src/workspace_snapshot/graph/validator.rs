@@ -678,7 +678,7 @@ pub fn av_path_from_root(
                 path.push_front("<MAP KEY SPECIFIED FOR ARRAY/OBJECT>")
             }
             (PropKind::Map, None) => path.push_front("<NO MAP KEY>"),
-            (kind, _) => path.push_front(format!("<BAD PARENT KIND {}>", kind)),
+            (kind, _) => path.push_front(format!("<BAD PARENT KIND {kind}>")),
         }
         index = parent_index;
     }

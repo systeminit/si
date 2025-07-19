@@ -51,37 +51,37 @@ use crate::{
 #[allow(clippy::large_enum_variant)]
 pub enum JobConsumerError {
     #[error("action error: {0}")]
-    Action(#[from] ActionError),
+    Action(#[from] Box<ActionError>),
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("ActionProtoype {0} not found")]
     ActionPrototypeNotFound(ActionPrototypeId),
     #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("billing publish error: {0}")]
     BillingPublish(#[from] BillingPublishError),
     #[error("Error blocking on job: {0}")]
-    BlockingJob(#[from] BlockingJobError),
+    BlockingJob(#[from] Box<BlockingJobError>),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
+    ChangeSet(#[from] Box<ChangeSetError>),
     #[error("component error: {0}")]
-    Component(#[from] ComponentError),
+    Component(#[from] Box<ComponentError>),
     #[error("component {0} is destroyed")]
     ComponentIsDestroyed(ComponentId),
     #[error("dependent value update error: {0}")]
-    DependentValueUpdate(#[from] DependentValueUpdateError),
+    DependentValueUpdate(#[from] Box<DependentValueUpdateError>),
     #[error("diagram error: {0}")]
-    Diagram(#[from] DiagramError),
+    Diagram(#[from] Box<DiagramError>),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("func runner error: {0}")]
-    FuncRunner(#[from] FuncRunnerError),
+    FuncRunner(#[from] Box<FuncRunnerError>),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
     InvalidArguments(String, Vec<Value>),
     #[error("std io error: {0}")]
     Io(#[from] ::std::io::Error),
     #[error("management function error: {0}")]
-    ManagementFunc(#[from] ManagementFuncJobError),
+    ManagementFunc(#[from] Box<ManagementFuncJobError>),
     #[error("nats error: {0}")]
     Nats(#[from] NatsError),
     #[error("nats is unavailable")]
@@ -89,7 +89,7 @@ pub enum JobConsumerError {
     #[error("pg pool error: {0}")]
     PgPool(#[from] PgPoolError),
     #[error("prop error: {0}")]
-    Prop(#[from] PropError),
+    Prop(#[from] Box<PropError>),
     #[error("execution of job {0} failed after {1} retry attempts")]
     RetriesFailed(JobArgsVCurrent, u32),
     #[error("serde json error: {0}")]
@@ -97,20 +97,116 @@ pub enum JobConsumerError {
     #[error("tokio task error: {0}")]
     TokioTask(#[from] JoinError),
     #[error("transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
+    Transactions(#[from] Box<TransactionsError>),
     #[error("ulid decode error: {0}")]
     UlidDecode(#[from] ulid::DecodeError),
     #[error("validation error: {0}")]
-    Validation(#[from] ValidationError),
+    Validation(#[from] Box<ValidationError>),
     #[error("workspace snapshot error: {0}")]
-    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
+    WsEvent(#[from] Box<WsEventError>),
 }
 
 impl From<JobConsumerError> for std::io::Error {
     fn from(jce: JobConsumerError) -> Self {
         Self::new(std::io::ErrorKind::InvalidData, jce)
+    }
+}
+
+impl From<ActionError> for JobConsumerError {
+    fn from(value: ActionError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributeValueError> for JobConsumerError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for JobConsumerError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<DiagramError> for JobConsumerError {
+    fn from(value: DiagramError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for JobConsumerError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncRunnerError> for JobConsumerError {
+    fn from(value: FuncRunnerError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceSnapshotError> for JobConsumerError {
+    fn from(value: WorkspaceSnapshotError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ActionPrototypeError> for JobConsumerError {
+    fn from(value: ActionPrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<BlockingJobError> for JobConsumerError {
+    fn from(value: BlockingJobError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ChangeSetError> for JobConsumerError {
+    fn from(value: ChangeSetError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<DependentValueUpdateError> for JobConsumerError {
+    fn from(value: DependentValueUpdateError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ManagementFuncJobError> for JobConsumerError {
+    fn from(value: ManagementFuncJobError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for JobConsumerError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<TransactionsError> for JobConsumerError {
+    fn from(value: TransactionsError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ValidationError> for JobConsumerError {
+    fn from(value: ValidationError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WsEventError> for JobConsumerError {
+    fn from(value: WsEventError) -> Self {
+        Box::new(value).into()
     }
 }
 

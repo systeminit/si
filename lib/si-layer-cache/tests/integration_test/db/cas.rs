@@ -382,7 +382,7 @@ async fn stress_test() {
     let time = tokio::time::Instant::now();
     while let Some(res) = write_join_set.join_next().await {
         if let Err(e) = res {
-            panic!("Write failed {}", e);
+            panic!("Write failed {e}");
         }
     }
     println!("writes are all sent: {:?}", time.elapsed());
@@ -391,7 +391,7 @@ async fn stress_test() {
     while let Some(res) = read_join_set.join_next().await {
         if let Err(e) = res {
             println!("read failed: {:?}", time.elapsed());
-            panic!("Read failed {}", e);
+            panic!("Read failed {e}");
         }
         println!("read succeeded: {:?}", time.elapsed());
     }

@@ -19,20 +19,14 @@ use dal::{
     Func,
     FuncError,
     FuncId,
-    SchemaVariantError,
-    WorkspaceSnapshotError,
     WsEventError,
-    attribute::{
-        prototype::argument::AttributePrototypeArgumentError,
-        value::AttributeValueError,
-    },
+    attribute::value::AttributeValueError,
     func::{
         argument::FuncArgumentError,
         authoring::FuncAuthoringError,
         binding::FuncBindingError,
         runner::FuncRunnerError,
     },
-    workspace_snapshot::graph::WorkspaceSnapshotGraphError,
 };
 use sdf_core::api_error::ApiError;
 use si_frontend_types::FuncCode;
@@ -181,31 +175,29 @@ impl IntoResponse for FuncAPIError {
             // Return 404 when the func is not found
             Self::FuncNotFound(_) |
             // When a graph node cannot be found for a schema variant, it is not found
-            Self::SchemaVariant(dal::SchemaVariantError::NotFound(_)) => (StatusCode::NOT_FOUND, None),
+            Self::SchemaVariant(dal::SchemaVariantError::NotFound(_)) => {
+                (StatusCode::NOT_FOUND, None)
+            },
 
             // When the authoring changes requested would result in a cycle
-            Self::FuncBinding(FuncBindingError::SchemaVariant(
-                SchemaVariantError::AttributePrototypeArgument(
-                    AttributePrototypeArgumentError::WorkspaceSnapshot(
-                        WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-                            WorkspaceSnapshotGraphError::CreateGraphCycle,
-                        ),
-                    ),
-                ),
-            ))
-            | Self::FuncBinding(FuncBindingError::AttributePrototypeArgument(
-                AttributePrototypeArgumentError::WorkspaceSnapshot(
-                    WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-                        WorkspaceSnapshotGraphError::CreateGraphCycle,
-                    ),
-                ),
-            )) => (StatusCode::UNPROCESSABLE_ENTITY, None),
+            Self::FuncBinding(func_binding_error) if func_binding_error.is_create_graph_cycle() => {
+                (StatusCode::UNPROCESSABLE_ENTITY, None)
+            },
 
             // Return 422 if the error is related to the user code being invalid
-            Self::FuncAuthoring(FuncAuthoringError::AttributeValue(AttributeValueError::FuncRunner(err))) =>
-                func_runner_err_to_status_and_message(*err),
-            Self::FuncAuthoring(FuncAuthoringError::FuncRunner(err)) => func_runner_err_to_status_and_message(err),
-
+            Self::FuncAuthoring(FuncAuthoringError::AttributeValue(err)) =>  {
+                match *err {
+                    AttributeValueError::FuncRunner(err) => {
+                        func_runner_err_to_status_and_message(*err)
+                    },
+                    _ => {
+                        (ApiError::DEFAULT_ERROR_STATUS_CODE, None)
+                    },
+                }
+            }
+            Self::FuncAuthoring(FuncAuthoringError::FuncRunner(err)) => {
+                func_runner_err_to_status_and_message(*err)
+            },
 
             _ => (ApiError::DEFAULT_ERROR_STATUS_CODE, None)
         };

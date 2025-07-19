@@ -1633,7 +1633,7 @@ impl DalContextBuilder {
 #[derive(Debug, Error, EnumDiscriminants)]
 pub enum TransactionsError {
     #[error("audit logging error: {0}")]
-    AuditLogging(#[from] AuditLoggingError),
+    AuditLogging(#[from] Box<AuditLoggingError>),
     #[error("expected a {0:?} activity, but received a {1:?}")]
     BadActivity(ActivityPayloadDiscriminants, ActivityPayloadDiscriminants),
     /// Intentionally a bit vague as its used when either the user in question doesn't have access
@@ -1646,31 +1646,31 @@ pub enum TransactionsError {
     #[error("change set not set on DalContext")]
     ChangeSetNotSet,
     #[error("job queue processor error: {0}")]
-    JobQueueProcessor(#[from] JobQueueProcessorError),
+    JobQueueProcessor(#[from] Box<JobQueueProcessorError>),
     #[error("tokio join error: {0}")]
     Join(#[from] tokio::task::JoinError),
     #[error("layer db error: {0}")]
-    LayerDb(#[from] LayerDbError),
+    LayerDb(#[from] Box<LayerDbError>),
     #[error("nats error: {0}")]
     Nats(#[from] NatsError),
     #[error("no base change set for change set: {0}")]
     NoBaseChangeSet(ChangeSetId),
     #[error("pg error: {0}")]
-    Pg(#[from] PgError),
+    Pg(#[from] Box<PgError>),
     #[error("pg pool error: {0}")]
-    PgPool(#[from] PgPoolError),
+    PgPool(#[from] Box<PgPoolError>),
     #[error("rebase of batch {0} for change set id {1} failed: {2}")]
     RebaseFailed(RebaseBatchAddressKind, ChangeSetId, String),
     #[error("rebaser client error: {0}")]
-    Rebaser(#[from] rebaser_client::ClientError),
+    Rebaser(#[from] Box<rebaser_client::ClientError>),
     #[error("rebaser reply deadline elapsed; waited={0:?}, request_id={1}")]
     RebaserReplyDeadlineElasped(Duration, RequestId),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("si db error: {0}")]
-    SiDb(#[from] si_db::Error),
+    SiDb(#[from] Box<si_db::Error>),
     #[error("slow rt error: {0}")]
-    SlowRuntime(#[from] SlowRuntimeError),
+    SlowRuntime(#[from] Box<SlowRuntimeError>),
     #[error("unable to acquire lock: {0}")]
     TryLock(#[from] tokio::sync::TryLockError),
     #[error("cannot commit transactions on invalid connections state")]
@@ -1689,6 +1689,54 @@ pub enum TransactionsError {
 
 pub type TransactionsResult<T> = Result<T, TransactionsError>;
 
+impl From<AuditLoggingError> for TransactionsError {
+    fn from(value: AuditLoggingError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<JobQueueProcessorError> for TransactionsError {
+    fn from(value: JobQueueProcessorError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<LayerDbError> for TransactionsError {
+    fn from(value: LayerDbError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PgError> for TransactionsError {
+    fn from(value: PgError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PgPoolError> for TransactionsError {
+    fn from(value: PgPoolError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<rebaser_client::ClientError> for TransactionsError {
+    fn from(value: rebaser_client::ClientError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<si_db::Error> for TransactionsError {
+    fn from(value: si_db::Error) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SlowRuntimeError> for TransactionsError {
+    fn from(value: SlowRuntimeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
 impl From<WorkspaceError> for TransactionsError {
     fn from(err: WorkspaceError) -> Self {
         Box::new(err).into()
@@ -1704,7 +1752,7 @@ impl From<ChangeSetError> for TransactionsError {
 impl From<SiDbTransactionsError> for TransactionsError {
     fn from(err: SiDbTransactionsError) -> Self {
         match err {
-            SiDbTransactionsError::Pg(err) => TransactionsError::Pg(err),
+            SiDbTransactionsError::Pg(err) => TransactionsError::Pg(Box::new(err)),
             SiDbTransactionsError::TxnStart(state) => TransactionsError::TxnStart(state),
         }
     }

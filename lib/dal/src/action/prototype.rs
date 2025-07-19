@@ -71,37 +71,103 @@ pub enum ActionPrototypeError {
     #[error("action error: {0}")]
     Action(#[from] Box<ActionError>),
     #[error("Change Set error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
+    ChangeSet(#[from] Box<ChangeSetError>),
     #[error("component error: {0}")]
-    Component(#[from] ComponentError),
+    Component(#[from] Box<ComponentError>),
     #[error("diagram error: {0}")]
-    Diagram(#[from] DiagramError),
+    Diagram(#[from] Box<DiagramError>),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("func not found for prototype: {0}")]
     FuncNotFoundForPrototype(ActionPrototypeId),
     #[error("func runner error: {0}")]
-    FuncRunner(#[from] FuncRunnerError),
+    FuncRunner(#[from] Box<FuncRunnerError>),
     #[error("func runner has failed to send a value and exited")]
     FuncRunnerSend,
     #[error("Helper error: {0}")]
-    Helper(#[from] HelperError),
+    Helper(#[from] Box<HelperError>),
     #[error("Layer DB Error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("Node Weight error: {0}")]
-    NodeWeight(#[from] NodeWeightError),
+    NodeWeight(#[from] Box<NodeWeightError>),
     #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("schema variant not found for prototype: {0}")]
     SchemaVariantNotFoundForPrototype(ActionPrototypeId),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("Transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
+    Transactions(#[from] Box<TransactionsError>),
     #[error("Workspace Snapshot error: {0}")]
-    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
+    WsEvent(#[from] Box<WsEventError>),
+}
+
+impl From<ChangeSetError> for ActionPrototypeError {
+    fn from(value: ChangeSetError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for ActionPrototypeError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<DiagramError> for ActionPrototypeError {
+    fn from(value: DiagramError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for ActionPrototypeError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncRunnerError> for ActionPrototypeError {
+    fn from(value: FuncRunnerError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<HelperError> for ActionPrototypeError {
+    fn from(value: HelperError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<NodeWeightError> for ActionPrototypeError {
+    fn from(value: NodeWeightError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaVariantError> for ActionPrototypeError {
+    fn from(value: SchemaVariantError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<TransactionsError> for ActionPrototypeError {
+    fn from(value: TransactionsError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceSnapshotError> for ActionPrototypeError {
+    fn from(value: WorkspaceSnapshotError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WsEventError> for ActionPrototypeError {
+    fn from(value: WsEventError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type ActionPrototypeResult<T> = Result<T, ActionPrototypeError>;

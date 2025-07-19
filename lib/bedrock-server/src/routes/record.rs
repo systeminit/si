@@ -41,7 +41,7 @@ pub async fn start_recording_route(
         if let Err(e) = configure_nats(&state.nats, nats_streams, &recording_id).await {
             let result = RecordResult {
                 success: false,
-                message: format!("Failed to setup nats: {}", e),
+                message: format!("Failed to setup nats: {e}"),
                 recording_id,
                 duration_ms: Some(start_time.elapsed().as_millis() as u64),
                 output: None,
@@ -55,7 +55,7 @@ pub async fn start_recording_route(
         if let Err(e) = dump_databases(postgres_dbs, &recording_id, "start").await {
             let result = RecordResult {
                 success: false,
-                message: format!("Failed to dump requested databases: {}", e),
+                message: format!("Failed to dump requested databases: {e}"),
                 recording_id,
                 duration_ms: Some(start_time.elapsed().as_millis() as u64),
                 output: None,
@@ -103,7 +103,7 @@ pub async fn stop_recording_route(
         if let Err(e) = capture_nats(&state.nats, nats_streams, &recording_id).await {
             let result = RecordResult {
                 success: false,
-                message: format!("Failed to capture messages on nats: {}", e),
+                message: format!("Failed to capture messages on nats: {e}"),
                 recording_id,
                 duration_ms: Some(start_time.elapsed().as_millis() as u64),
                 output: None,
@@ -117,7 +117,7 @@ pub async fn stop_recording_route(
         if let Err(e) = dump_databases(postgres_dbs, &recording_id, "end").await {
             let result = RecordResult {
                 success: false,
-                message: format!("Failed to dump requested databases: {}", e),
+                message: format!("Failed to dump requested databases: {e}"),
                 recording_id,
                 duration_ms: Some(start_time.elapsed().as_millis() as u64),
                 output: None,
@@ -135,8 +135,7 @@ pub async fn stop_recording_route(
     let response = RecordResult {
         success: true,
         message: format!(
-            "Recording stopped, please see output directory for content for recording_id {}",
-            recording_id
+            "Recording stopped, please see output directory for content for recording_id {recording_id}"
         ),
         recording_id,
         duration_ms: Some(duration),

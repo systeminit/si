@@ -278,7 +278,7 @@ mod integration_tests {
         // create two parameters in the same path
         client
             .create_parameter(
-                format!("{}/param1", path_prefix),
+                format!("{path_prefix}/param1"),
                 "path_test_value".to_string(),
             )
             .await
@@ -286,7 +286,7 @@ mod integration_tests {
 
         client
             .create_parameter(
-                format!("{}/param2", path_prefix),
+                format!("{path_prefix}/param2"),
                 "path_test_value".to_string(),
             )
             .await

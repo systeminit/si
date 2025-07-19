@@ -97,13 +97,13 @@ pub enum AttributePrototypeError {
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
+    ChangeSet(#[from] Box<ChangeSetError>),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("func error: {0}")]
-    FuncArgument(#[from] crate::func::argument::FuncArgumentError),
+    FuncArgument(#[from] Box<crate::func::argument::FuncArgumentError>),
     #[error("helper error: {0}")]
-    Helper(#[from] HelperError),
+    Helper(#[from] Box<HelperError>),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("attribute prototype {0} is missing a function edge")]
@@ -138,6 +138,30 @@ pub type AttributePrototypeResult<T> = Result<T, AttributePrototypeError>;
 
 impl From<AttributePrototypeArgumentError> for AttributePrototypeError {
     fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ChangeSetError> for AttributePrototypeError {
+    fn from(value: ChangeSetError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for AttributePrototypeError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<crate::func::argument::FuncArgumentError> for AttributePrototypeError {
+    fn from(value: crate::func::argument::FuncArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<HelperError> for AttributePrototypeError {
+    fn from(value: HelperError) -> Self {
         Box::new(value).into()
     }
 }

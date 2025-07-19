@@ -18,9 +18,15 @@ pub enum BlockingJobError {
     #[error("no access builder found in job info")]
     NoAccessBuilder,
     #[error("pinga client error: {0}")]
-    PingaClient(#[from] pinga_client::ClientError),
+    PingaClient(#[from] Box<pinga_client::ClientError>),
     #[error("serde error: {0}")]
     Serde(String),
     #[error("A transactions error occurred: {0}")]
     Transactions(String),
+}
+
+impl From<pinga_client::ClientError> for BlockingJobError {
+    fn from(value: pinga_client::ClientError) -> Self {
+        Box::new(value).into()
+    }
 }

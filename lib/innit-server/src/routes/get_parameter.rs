@@ -23,7 +23,7 @@ pub async fn get_parameter_route(
     }): State<AppState>,
 ) -> Result<Json<GetParameterResponse>, AppError> {
     let name = if !name.starts_with('/') {
-        format!("/{}", name)
+        format!("/{name}")
     } else {
         name.clone()
     };

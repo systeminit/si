@@ -25,11 +25,17 @@ pub enum JobQueueProcessorError {
     #[error("missing required workspace_pk")]
     MissingWorkspacePk,
     #[error("pinga client error: {0}")]
-    PingaClient(#[from] pinga_client::ClientError),
+    PingaClient(#[from] Box<pinga_client::ClientError>),
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
     #[error(transparent)]
     Transport(Box<dyn std::error::Error + Sync + Send + 'static>),
+}
+
+impl From<pinga_client::ClientError> for JobQueueProcessorError {
+    fn from(value: pinga_client::ClientError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type JobQueueProcessorResult<T> = Result<T, JobQueueProcessorError>;

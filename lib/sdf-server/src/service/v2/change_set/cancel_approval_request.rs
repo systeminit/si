@@ -68,7 +68,7 @@ pub async fn cancel_approval_request(
         .publish_on_commit(&ctx)
         .await?;
     let actor = ctx.history_actor().email(&ctx).await?;
-    let change_set_url = format!("https://{}/w/{}/{}", host_name, workspace_pk, change_set_id);
+    let change_set_url = format!("https://{host_name}/w/{workspace_pk}/{change_set_id}");
     let message = format!(
         "{} withdrew approval request of change set {}: {}",
         actor,

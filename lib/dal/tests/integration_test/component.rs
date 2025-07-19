@@ -298,8 +298,7 @@ async fn through_the_wormholes_simple(ctx: &mut DalContext) -> Result<()> {
     assert!(
         update_graph
             .direct_dependencies_of(naming_and_necessity_value_id)
-            .iter()
-            .any(|&id| id == rigid_designator_value_id),
+            .contains(&rigid_designator_value_id),
         "update graph declares that `naming_and_necessity` value depends on `rigid_designator` value"
     );
 

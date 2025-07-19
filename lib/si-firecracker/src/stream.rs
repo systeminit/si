@@ -108,7 +108,7 @@ pub struct TcpStreamForwarder {
 impl TcpStreamForwarder {
     pub async fn new() -> Result<Self> {
         let port = DEFAULT_OTEL_PORT;
-        let addr = format!("127.0.0.1:{}", port);
+        let addr = format!("127.0.0.1:{port}");
         let source = TcpListener::bind(addr)
             .await
             .map_err(StreamForwarderError::Tcp)?;

@@ -116,15 +116,14 @@ fn tracing_init_inner(span_events_env_var: &str, log_env_var: &str) {
                     "active" => FmtSpan::ACTIVE,
                     "full" => FmtSpan::FULL,
                     _ => panic!(
-                        "{} must contain filters separated by `,`.\n\t\
+                        "{span_events_env_var} must contain filters separated by `,`.\n\t\
                             For example: `active` or `new,close`\n\t
-                            Got: {}",
-                        span_events_env_var, value,
+                            Got: {value}",
                     ),
                 })
                 .fold(FmtSpan::NONE, |acc, filter| filter | acc),
             Err(::std::env::VarError::NotUnicode(_)) => {
-                panic!("{} must contain a valid UTF-8 string", span_events_env_var,)
+                panic!("{span_events_env_var} must contain a valid UTF-8 string",)
             }
             Err(::std::env::VarError::NotPresent) => FmtSpan::NONE,
         }

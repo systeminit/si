@@ -69,29 +69,29 @@ type AttributeDebugViewResult<T> = Result<T, AttributeDebugViewError>;
 #[derive(Error, Debug)]
 pub enum AttributeDebugViewError {
     #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgumentError(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgumentError(#[from] Box<AttributePrototypeArgumentError>),
     #[error("attribute debug view error: {0}")]
-    AttributePrototypeDebugViewError(#[from] AttributePrototypeDebugViewError),
+    AttributePrototypeDebugViewError(#[from] Box<AttributePrototypeDebugViewError>),
     #[error("attribute prototype error: {0}")]
-    AttributePrototypeError(#[from] AttributePrototypeError),
+    AttributePrototypeError(#[from] Box<AttributePrototypeError>),
     #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("component error: {0}")]
-    ComponentError(#[from] ComponentError),
+    ComponentError(#[from] Box<ComponentError>),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("input socket error: {0}")]
-    InputSocketError(#[from] InputSocketError),
+    InputSocketError(#[from] Box<InputSocketError>),
     #[error("node weight error: {0}")]
-    NodeWeightError(#[from] NodeWeightError),
+    NodeWeightError(#[from] Box<NodeWeightError>),
     #[error("output socket error: {0}")]
-    OutputSocketError(#[from] OutputSocketError),
+    OutputSocketError(#[from] Box<OutputSocketError>),
     #[error("prop error: {0}")]
-    PropError(#[from] PropError),
+    PropError(#[from] Box<PropError>),
     #[error("value source error: {0}")]
-    ValueSourceError(#[from] ValueSourceError),
+    ValueSourceError(#[from] Box<ValueSourceError>),
     #[error("workspace snapshot error: {0}")]
-    WorkspaceSnapshotError(#[from] WorkspaceSnapshotError),
+    WorkspaceSnapshotError(#[from] Box<WorkspaceSnapshotError>),
 }
 impl AttributeDebugView {
     #[instrument(level = "trace", skip_all)]
@@ -137,5 +137,77 @@ impl AttributeDebugView {
             view: value_view,
         };
         Ok(view)
+    }
+}
+
+impl From<AttributePrototypeArgumentError> for AttributeDebugViewError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeDebugViewError> for AttributeDebugViewError {
+    fn from(value: AttributePrototypeDebugViewError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeError> for AttributeDebugViewError {
+    fn from(value: AttributePrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributeValueError> for AttributeDebugViewError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for AttributeDebugViewError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for AttributeDebugViewError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InputSocketError> for AttributeDebugViewError {
+    fn from(value: InputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<NodeWeightError> for AttributeDebugViewError {
+    fn from(value: NodeWeightError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<OutputSocketError> for AttributeDebugViewError {
+    fn from(value: OutputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for AttributeDebugViewError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ValueSourceError> for AttributeDebugViewError {
+    fn from(value: ValueSourceError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceSnapshotError> for AttributeDebugViewError {
+    fn from(value: WorkspaceSnapshotError) -> Self {
+        Box::new(value).into()
     }
 }

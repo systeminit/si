@@ -50,10 +50,10 @@ async fn integration() -> std::result::Result<(), Box<dyn error::Error>> {
 
     // Create both streams.
     let (source_stream, destination_stream) = {
-        let source_subject = Subject::from(format!("{}.shuttle.test.source.>", prefix));
-        let source_stream_name = format!("SHUTTLE_TEST_SOURCE_{}", prefix);
-        let destination_subject = Subject::from(format!("{}.shuttle.test.destination.>", prefix));
-        let destination_stream_name = format!("SHUTTLE_TEST_DESTINATION_{}", prefix);
+        let source_subject = Subject::from(format!("{prefix}.shuttle.test.source.>"));
+        let source_stream_name = format!("SHUTTLE_TEST_SOURCE_{prefix}");
+        let destination_subject = Subject::from(format!("{prefix}.shuttle.test.destination.>"));
+        let destination_stream_name = format!("SHUTTLE_TEST_DESTINATION_{prefix}");
 
         let source_stream = context
             .get_or_create_stream(Config {
@@ -80,10 +80,9 @@ async fn integration() -> std::result::Result<(), Box<dyn error::Error>> {
         match Shuttle::new(
             client,
             source_stream_clone,
-            Subject::from(format!("{}.shuttle.test.source.some.inner.*", prefix)),
+            Subject::from(format!("{prefix}.shuttle.test.source.some.inner.*")),
             Subject::from(format!(
-                "{}.shuttle.test.destination.some.inner.messages",
-                prefix
+                "{prefix}.shuttle.test.destination.some.inner.messages"
             )),
         )
         .await
@@ -101,10 +100,8 @@ async fn integration() -> std::result::Result<(), Box<dyn error::Error>> {
 
     // Publish messages on the source stream to ensure that shuttle works.
     {
-        let data_setup_subject = Subject::from(format!(
-            "{}.shuttle.test.source.some.inner.messages",
-            prefix
-        ));
+        let data_setup_subject =
+            Subject::from(format!("{prefix}.shuttle.test.source.some.inner.messages"));
 
         // Publish many messages to be shuttled.
         for index in 0..MESSAGE_COUNT {

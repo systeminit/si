@@ -177,7 +177,7 @@ pub enum SchemaVariantError {
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("attribute argument prototype error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("attribute prototype not found for input socket id: {0}")]
     AttributePrototypeNotFoundForInputSocket(InputSocketId),
     #[error("attribute prototype not found for output socket id: {0}")]
@@ -201,15 +201,15 @@ pub enum SchemaVariantError {
     #[error("dependent value root error: {0}")]
     DependentValueRoot(#[from] DependentValueRootError),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("func argument error: {0}")]
-    FuncArgument(#[from] FuncArgumentError),
+    FuncArgument(#[from] Box<FuncArgumentError>),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("{0} exists, but is not a schema variant id")]
     IdForWrongType(Ulid),
     #[error("input socket error: {0}")]
-    InputSocket(#[from] InputSocketError),
+    InputSocket(#[from] Box<InputSocketError>),
     #[error("InputSocketNodeWeight error: {0}")]
     InputSocketNodeWeight(#[from] InputSocketNodeWeightError),
     #[error("layer db error: {0}")]
@@ -243,9 +243,9 @@ pub enum SchemaVariantError {
     #[error("schema spec has no variants")]
     NoVariants,
     #[error("output socket error: {0}")]
-    OutputSocket(#[from] OutputSocketError),
+    OutputSocket(#[from] Box<OutputSocketError>),
     #[error("prop error: {0}")]
-    Prop(#[from] PropError),
+    Prop(#[from] Box<PropError>),
     #[error("found prop id {0} that is not a prop")]
     PropIdNotAProp(PropId),
     #[error("cannot find prop at path {1} for SchemaVariant {0}")]
@@ -253,7 +253,7 @@ pub enum SchemaVariantError {
     #[error("schema variant {0} has no root node")]
     RootNodeMissing(SchemaVariantId),
     #[error("schema error: {0}")]
-    Schema(#[from] SchemaError),
+    Schema(#[from] Box<SchemaError>),
     #[error("schema not found for schema variant: {0}")]
     SchemaNotFound(SchemaVariantId),
     #[error("schema variant locked: {0}")]
@@ -2515,5 +2515,47 @@ impl SchemaVariant {
         }
 
         Ok(schema_variants.into_values().collect())
+    }
+}
+
+impl From<AttributePrototypeArgumentError> for SchemaVariantError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for SchemaVariantError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncArgumentError> for SchemaVariantError {
+    fn from(value: FuncArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InputSocketError> for SchemaVariantError {
+    fn from(value: InputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<OutputSocketError> for SchemaVariantError {
+    fn from(value: OutputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for SchemaVariantError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaError> for SchemaVariantError {
+    fn from(value: SchemaError) -> Self {
+        Box::new(value).into()
     }
 }

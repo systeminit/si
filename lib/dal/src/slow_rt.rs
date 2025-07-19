@@ -16,7 +16,13 @@ pub static SLOW_RUNTIME: OnceLock<Runtime> = OnceLock::new();
 #[derive(Debug, Error)]
 pub enum SlowRuntimeError {
     #[error("io error: {0}")]
-    Io(#[from] std::io::Error),
+    Io(#[from] Box<std::io::Error>),
+}
+
+impl From<std::io::Error> for SlowRuntimeError {
+    fn from(value: std::io::Error) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type SlowRuntimeResult<T> = Result<T, SlowRuntimeError>;

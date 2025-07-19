@@ -14,6 +14,7 @@ use serde::{
     Deserialize,
     Serialize,
 };
+use si_split_graph::SplitGraphError;
 use strum::{
     Display,
     EnumDiscriminants,
@@ -72,7 +73,10 @@ use crate::{
         input::InputSocketError,
         output::OutputSocketError,
     },
-    workspace_snapshot::dependent_value_root::DependentValueRootError,
+    workspace_snapshot::{
+        dependent_value_root::DependentValueRootError,
+        graph::WorkspaceSnapshotGraphError,
+    },
 };
 
 pub mod action;
@@ -90,17 +94,17 @@ pub enum FuncBindingError {
     )]
     ActionKindAlreadyExists(ActionKind, SchemaVariantId),
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("action prototype missing")]
     ActionPrototypeMissing,
     #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] AttributePrototypeError),
+    AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("attribute prototype missing")]
     AttributePrototypeMissing,
     #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("cached modules error: {0}")]
     CachedModules(#[from] crate::cached_module::CachedModuleError),
     #[error("cannot compile types for func: {0}")]
@@ -108,17 +112,17 @@ pub enum FuncBindingError {
     #[error("cannot set intrinsic func for component: {0}")]
     CannotSetIntrinsicForComponent(ComponentId),
     #[error("component error: {0}")]
-    ComponentError(#[from] ComponentError),
+    ComponentError(#[from] Box<ComponentError>),
     #[error("dependent value root error: {0}")]
     DependentValueRoot(#[from] DependentValueRootError),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("func argument error: {0}")]
-    FuncArgument(#[from] FuncArgumentError),
+    FuncArgument(#[from] Box<FuncArgumentError>),
     #[error("func argument missing for func arg: {0} with name: {1}")]
     FuncArgumentMissing(FuncArgumentId, String),
     #[error("input socket error: {0}")]
-    InputSocket(#[from] InputSocketError),
+    InputSocket(#[from] Box<InputSocketError>),
     #[error("invalid attribute prototype argument source: {0}")]
     InvalidAttributePrototypeArgumentSource(AttributeFuncArgumentSource),
     #[error("invalid attribute prototype destination: {0}")]
@@ -128,19 +132,19 @@ pub enum FuncBindingError {
     #[error("malformed input for binding: {0:?}")]
     MalformedInput(AttributeBindingMalformedInput),
     #[error("management prototype error: {0}")]
-    ManagementPrototype(#[from] ManagementPrototypeError),
+    ManagementPrototype(#[from] Box<ManagementPrototypeError>),
     #[error("no input location given for attribute prototype id ({0}) and func argument id ({1})")]
     NoInputLocationGiven(AttributePrototypeId, FuncArgumentId),
     #[error("no output location given for func: {0}")]
     NoOutputLocationGiven(FuncId),
     #[error("output socket error: {0}")]
-    OutputSocket(#[from] OutputSocketError),
+    OutputSocket(#[from] Box<OutputSocketError>),
     #[error("prop error: {0}")]
-    Prop(#[from] PropError),
+    Prop(#[from] Box<PropError>),
     #[error("schema error: {0}")]
-    Schema(#[from] SchemaError),
+    Schema(#[from] Box<SchemaError>),
     #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("unexpected func binding variant: {0:?} (expected: {1:?})")]
@@ -152,7 +156,36 @@ pub enum FuncBindingError {
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
+    WsEvent(#[from] Box<WsEventError>),
+}
+
+impl FuncBindingError {
+    pub fn is_create_graph_cycle(&self) -> bool {
+        match self {
+            Self::SchemaVariant(err) => match err.as_ref() {
+                SchemaVariantError::AttributePrototypeArgument(err) => matches!(
+                    err.as_ref(),
+                    AttributePrototypeArgumentError::WorkspaceSnapshot(
+                        WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                            WorkspaceSnapshotGraphError::CreateGraphCycle,
+                        ) | WorkspaceSnapshotError::SplitGraph(
+                            SplitGraphError::WouldCreateGraphCycle
+                        ),
+                    )
+                ),
+                _ => false,
+            },
+            Self::AttributePrototypeArgument(err) => matches!(
+                err.as_ref(),
+                AttributePrototypeArgumentError::WorkspaceSnapshot(
+                    WorkspaceSnapshotError::WorkspaceSnapshotGraph(
+                        WorkspaceSnapshotGraphError::CreateGraphCycle,
+                    ) | WorkspaceSnapshotError::SplitGraph(SplitGraphError::WouldCreateGraphCycle),
+                )
+            ),
+            _ => false,
+        }
+    }
 }
 
 type FuncBindingResult<T> = Result<T, FuncBindingError>;
@@ -761,5 +794,89 @@ impl FuncBinding {
             }
         }
         Ok(auth_bindings)
+    }
+}
+
+impl From<ManagementPrototypeError> for FuncBindingError {
+    fn from(value: ManagementPrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributeValueError> for FuncBindingError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for FuncBindingError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaVariantError> for FuncBindingError {
+    fn from(value: SchemaVariantError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WsEventError> for FuncBindingError {
+    fn from(value: WsEventError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ActionPrototypeError> for FuncBindingError {
+    fn from(value: ActionPrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeError> for FuncBindingError {
+    fn from(value: AttributePrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeArgumentError> for FuncBindingError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for FuncBindingError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncArgumentError> for FuncBindingError {
+    fn from(value: FuncArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InputSocketError> for FuncBindingError {
+    fn from(value: InputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<OutputSocketError> for FuncBindingError {
+    fn from(value: OutputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for FuncBindingError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaError> for FuncBindingError {
+    fn from(value: SchemaError) -> Self {
+        Box::new(value).into()
     }
 }

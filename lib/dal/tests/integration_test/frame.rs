@@ -196,7 +196,7 @@ async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) 
     match Frame::upsert_parent(ctx, fallout_component.id(), starfield_component.id()).await {
         Ok(_) => panic!("attaching child to parent should fail if parent is not a frame"),
         Err(FrameError::ParentIsNotAFrame(..)) => {}
-        Err(other_error) => panic!("unexpected error: {0}", other_error),
+        Err(other_error) => panic!("unexpected error: {other_error}"),
     }
 
     // Change the parent to become a frame.
@@ -242,10 +242,7 @@ async fn convert_component_to_frame_and_attach_no_nesting(ctx: &mut DalContext) 
         match component.schema_name.as_str() {
             "starfield" => starfield_parent_node_id = Some(component.parent_id),
             "fallout" => fallout_parent_node_id = Some(component.parent_id),
-            schema_name => panic!(
-                "unexpected schema name for diagram component: {0}",
-                schema_name
-            ),
+            schema_name => panic!("unexpected schema name for diagram component: {schema_name}"),
         }
     }
     let starfield_parent_node_id =

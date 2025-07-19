@@ -554,10 +554,7 @@ impl DependentValueGraph {
                     .map(ToOwned::to_owned)
                     .expect("component name exists for every value");
 
-                format!(
-                    "label = \"{}\n{}\n{}\"",
-                    component_name, attribute_value_id, is_for_string
-                )
+                format!("label = \"{component_name}\n{attribute_value_id}\n{is_for_string}\"")
             };
 
         let dot = petgraph::dot::Dot::with_attr_getters(

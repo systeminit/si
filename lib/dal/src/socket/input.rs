@@ -64,9 +64,9 @@ use crate::{
 #[derive(Error, Debug)]
 pub enum InputSocketError {
     #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] AttributePrototypeError),
+    AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgumentError(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgumentError(#[source] Box<AttributePrototypeArgumentError>),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
@@ -78,7 +78,7 @@ pub enum InputSocketError {
     #[error("found too many matches for input and socket: {0}, {1}")]
     FoundTooManyForInputSocketId(InputSocketId, ComponentId),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("layer db error: {0}")]
@@ -103,6 +103,24 @@ pub enum InputSocketError {
     TryLock(#[from] tokio::sync::TryLockError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+}
+
+impl From<AttributePrototypeArgumentError> for InputSocketError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Self::AttributePrototypeArgumentError(Box::new(value))
+    }
+}
+
+impl From<AttributePrototypeError> for InputSocketError {
+    fn from(value: AttributePrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for InputSocketError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type InputSocketResult<T> = Result<T, InputSocketError>;

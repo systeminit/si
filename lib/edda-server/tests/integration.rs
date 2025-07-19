@@ -79,10 +79,7 @@ async fn multiple_updates() {
             assert_eq!(last_to, to_snapshot_address);
             assert_eq!(addresses, change_batch_addresses);
         }
-        _ => panic!(
-            "wrong variant for compressed request: {:?}",
-            compressed_request
-        ),
+        _ => panic!("wrong variant for compressed request: {compressed_request:?}"),
     }
 }
 
@@ -147,10 +144,7 @@ async fn updates_with_single_rebuild() {
         CompressedRequest::Rebuild { src_requests_count } => {
             assert_eq!(requests.len(), src_requests_count);
         }
-        _ => panic!(
-            "wrong variant for compressed request: {:?}",
-            compressed_request
-        ),
+        _ => panic!("wrong variant for compressed request: {compressed_request:?}"),
     }
 }
 

@@ -161,15 +161,15 @@ pub use view::{
 #[derive(Error, Debug)]
 pub enum SecretError {
     #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] AttributePrototypeError),
+    AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("component error: {0}")]
-    Component(#[from] ComponentError),
+    Component(#[from] Box<ComponentError>),
     #[error("error when decrypting encrypted secret")]
     DecryptionFailed,
     #[error("dependent value root error: {0}")]
@@ -181,9 +181,9 @@ pub enum SecretError {
     #[error("encrypted secret not found for key: {0}")]
     EncryptedSecretNotFound(EncryptedSecretKey),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("func argument error: {0}")]
-    FuncArgument(#[from] FuncArgumentError),
+    FuncArgument(#[from] Box<FuncArgumentError>),
     #[error("func argument not found for func ({0}) and name ({1})")]
     FuncArgumentNotFound(FuncId, String),
     #[error("helper error: {0}")]
@@ -201,11 +201,11 @@ pub enum SecretError {
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("prop error: {0}")]
-    Prop(#[from] PropError),
+    Prop(#[from] Box<PropError>),
     #[error("not an error! prop id is not for a secret during MV build: {0}")]
     PropIdNotForSecret(PropId),
     #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("schema variant not secret defining: {0}")]
     SchemaVariantNotSecretDefining(SchemaVariantId),
     #[error("secret not found: {0}")]
@@ -987,6 +987,54 @@ impl DecryptedSecret {
 impl fmt::Debug for DecryptedSecret {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DecryptedSecret").finish_non_exhaustive()
+    }
+}
+
+impl From<AttributeValueError> for SecretError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for SecretError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaVariantError> for SecretError {
+    fn from(value: SchemaVariantError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeError> for SecretError {
+    fn from(value: AttributePrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeArgumentError> for SecretError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for SecretError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncArgumentError> for SecretError {
+    fn from(value: FuncArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for SecretError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
     }
 }
 

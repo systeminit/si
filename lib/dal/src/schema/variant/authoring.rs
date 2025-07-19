@@ -92,33 +92,33 @@ use crate::{
 #[derive(Error, Debug)]
 pub enum VariantAuthoringError {
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error(
         "found unexpected return type: expected type 'Asset' to be returned for asset func (FuncId {0}): raw error: {1})"
     )]
     AssetTypeNotReturnedForAssetFunc(FuncId, String),
     #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] AttributePrototypeError),
+    AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("attribute prototype error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("component error: {0}")]
-    Component(#[from] ComponentError),
+    Component(#[from] Box<ComponentError>),
     #[error("there already exists a Schema with the name {0}")]
     DuplicatedSchemaName(String),
     #[error("empty value within func run value (FuncId {0} and FuncRunId {1})")]
     EmptyValueWithinFuncRunValue(FuncId, FuncRunId),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("func authoring error: {0}")]
-    FuncAuthoring(#[from] FuncAuthoringError),
+    FuncAuthoring(#[from] Box<FuncAuthoringError>),
     #[error("func execution failure error: {0}")]
     FuncExecutionFailure(String),
     #[error("func run error: {0}")]
-    FuncRun(#[from] FuncRunnerError),
+    FuncRun(#[from] Box<FuncRunnerError>),
     #[error("func run value sender has terminated without sending")]
     FuncRunGone,
     #[error("input socket error: {0}")]
-    InputSocket(#[from] InputSocketError),
+    InputSocket(#[from] Box<InputSocketError>),
     #[error("layer db error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("trying to modify locked variant: {0}")]
@@ -126,21 +126,21 @@ pub enum VariantAuthoringError {
     #[error("no new asset was created")]
     NoAssetCreated,
     #[error("output socket error: {0}")]
-    OutputSocket(#[from] OutputSocketError),
+    OutputSocket(#[from] Box<OutputSocketError>),
     #[error("pkg error: {0}")]
-    Pkg(#[from] PkgError),
+    Pkg(#[from] Box<PkgError>),
     #[error("constructed package has no schema node")]
     PkgMissingSchema,
     #[error("constructed package has no schema variant node")]
     PkgMissingSchemaVariant,
     #[error("prop error: {0}")]
-    Prop(#[from] PropError),
+    Prop(#[from] Box<PropError>),
     #[error("schema error: {0}")]
-    Schema(#[from] SchemaError),
+    Schema(#[from] Box<SchemaError>),
     #[error("schema {0} already has unlocked variant: {1}")]
     SchemaAlreadyUnlocked(SchemaId, SchemaVariantId),
     #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("schema variant asset func not found: {0}")]
     SchemaVariantAssetNotFound(SchemaVariantId),
     #[error("schema variant not found: {0}")]
@@ -155,6 +155,84 @@ pub enum VariantAuthoringError {
     SiPkg(#[from] SiPkgError),
     #[error("spec error: {0}")]
     Spec(#[from] SpecError),
+}
+
+impl From<ActionPrototypeError> for VariantAuthoringError {
+    fn from(value: ActionPrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeError> for VariantAuthoringError {
+    fn from(value: AttributePrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeArgumentError> for VariantAuthoringError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for VariantAuthoringError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for VariantAuthoringError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncAuthoringError> for VariantAuthoringError {
+    fn from(value: FuncAuthoringError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncRunnerError> for VariantAuthoringError {
+    fn from(value: FuncRunnerError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InputSocketError> for VariantAuthoringError {
+    fn from(value: InputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<OutputSocketError> for VariantAuthoringError {
+    fn from(value: OutputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PkgError> for VariantAuthoringError {
+    fn from(value: PkgError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for VariantAuthoringError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaError> for VariantAuthoringError {
+    fn from(value: SchemaError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaVariantError> for VariantAuthoringError {
+    fn from(value: SchemaVariantError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 type VariantAuthoringResult<T> = Result<T, VariantAuthoringError>;

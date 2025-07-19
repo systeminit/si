@@ -645,7 +645,7 @@ mod kv_history {
                         let info = message.info().map_err(|err| {
                             WatcherError::Default(
                                 WatcherErrorKind::Other,
-                                format!("failed to parse message metadata: {}", err),
+                                format!("failed to parse message metadata: {err}"),
                             )
                         })?;
                         if info.pending == 0 {
