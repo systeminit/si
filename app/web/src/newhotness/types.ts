@@ -28,6 +28,10 @@ export function assertIsDefined<T>(value: T | undefined): asserts value is T {
   }
 }
 
+export function isOnHead(ctx: Context): boolean {
+  return ctx.changeSetId === ctx.headChangeSetId;
+}
+
 export interface ExploreContext {
   viewId: ComputedRef<string>;
   upgradeableComponents: ComputedRef<Set<string>>;

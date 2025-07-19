@@ -31,6 +31,10 @@ use crate::{
     WorkspaceSnapshotError,
     WsEvent,
     WsEventError,
+    action::{
+        Action,
+        ActionError,
+    },
     job::consumer::{
         DalJob,
         JobCompletionState,
@@ -42,6 +46,7 @@ use crate::{
         ManagementFuncReturn,
         ManagementOperator,
         prototype::{
+            ManagementFuncKind,
             ManagementPrototype,
             ManagementPrototypeError,
             ManagementPrototypeExecution,
@@ -56,6 +61,8 @@ use crate::{
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ManagementFuncJobError {
+    #[error("action error: {0}")]
+    Action(#[from] ActionError),
     #[error("dependent value root error: {0}")]
     DependentValueRoot(#[from] DependentValueRootError),
     #[error("func error: {0}")]
@@ -221,7 +228,24 @@ impl ManagementFuncJob {
             .await?;
 
         Self::success_state(ctx, execution_state_id).await?;
-
+        // if the management prototype is for a Import func and we're not on head, let's dispatch it!
+        let kind = ManagementPrototype::kind_by_id(ctx, self.prototype_id).await?;
+        if kind == ManagementFuncKind::Import
+            && ctx.get_workspace_default_change_set_id().await? != ctx.change_set_id()
+        {
+            let actions = Action::find_for_kind_and_component_id(
+                ctx,
+                self.component_id,
+                crate::action::prototype::ActionKind::Refresh,
+            )
+            .await?;
+            if actions.len() == 1 {
+                let action_id = actions
+                    .first()
+                    .expect("confirmed we have exactly one right above!");
+                Action::dispatch_action(ctx, *action_id).await?;
+            }
+        }
         ctx.commit().await?;
 
         Ok(JobCompletionState::Done)
