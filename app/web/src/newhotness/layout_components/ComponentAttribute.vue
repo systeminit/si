@@ -1,6 +1,25 @@
 <template>
+  <!-- Subscription input - appears when creating subscription -->
+  <AttributeInput
+    v-if="showSubscriptionInput"
+    ref="subscriptionInputRef"
+    :displayName="`Connect ${displayName}`"
+    :path="attributeTree.attributeValue.path"
+    :kind="attributeTree.prop?.widgetKind"
+    :prop="attributeTree.prop"
+    :validation="attributeTree.attributeValue.validation"
+    :component="component"
+    :value="''"
+    :canDelete="false"
+    :externalSources="attributeTree.attributeValue.externalSources"
+    :isArray="false"
+    :isMap="false"
+    :forceReadOnly="false"
+    @close="closeSubscriptionInput"
+    @save="(...args) => emit('save', ...args)"
+  />
   <li
-    v-if="showingChildren || !attributeTree.prop?.hidden"
+    v-else-if="showingChildren || !attributeTree.prop?.hidden"
     :class="clsx('flex flex-col', !showingChildren && 'mb-[-1px]')"
   >
     <template v-if="showingChildren">
@@ -15,9 +34,6 @@
                   'focus:outline-none group/attributeheader',
               )
             "
-            :tabindex="
-              attributeTree.isBuildable && !component.toDelete ? 0 : undefined
-            "
             @keydown.tab.stop.prevent="onHeaderTab"
             @keydown.enter.stop.prevent="remove"
             @keydown.delete.stop.prevent="remove"
@@ -25,11 +41,7 @@
             <div>{{ displayName }}</div>
             <div class="flex-1" />
             <div
-              v-if="
-                (attributeTree.prop?.kind === 'array' ||
-                  attributeTree.prop?.kind === 'map') &&
-                attributeTree.attributeValue.externalSources?.length
-              "
+              v-if="attributeTree.attributeValue.externalSources?.length"
               class="flex items-center gap-xs text-xs flex-shrink-0"
             >
               <span
@@ -59,21 +71,48 @@
                 @click="removeSubscription"
               />
             </div>
+            <VButton
+              v-if="
+                attributeTree.isBuildable &&
+                !component.toDelete &&
+                !parentHasExternalSources &&
+                attributeTree.prop?.kind === 'object' &&
+                !attributeTree.attributeValue.externalSources?.length
+              "
+              ref="connectButtonRef"
+              v-tooltip="'Create subscription'"
+              :tabIndex="
+                attributeTree.isBuildable && !component.toDelete ? 0 : undefined
+              "
+              variant="ghost"
+              size="xs"
+              class="focus:outline focus:outline-action-500"
+              @click.stop.prevent="createSubscription"
+              @keydown.tab.stop.prevent="onConnectButtonTab"
+            >
+              Connect
+            </VButton>
             <IconButton
               v-if="
                 attributeTree.isBuildable &&
                 !component.toDelete &&
-                !parentHasExternalSources
+                !parentHasExternalSources &&
+                !attributeTree.attributeValue.externalSources?.length
               "
+              ref="deleteButtonRef"
               v-tooltip="'Delete'"
+              :tabIndex="
+                attributeTree.isBuildable && !component.toDelete ? 0 : undefined
+              "
               icon="trash"
               size="sm"
               iconTone="destructive"
               iconIdleTone="shade"
               loadingIcon="loader"
               :loading="bifrostingTrash"
-              class="group-focus/attributeheader:outline group-focus/attributeheader:outline-action-500"
+              class="focus:outline focus:outline-action-500"
               @click="remove"
+              @keydown.tab.stop.prevent="onDeleteButtonTab"
             />
           </div>
         </template>
@@ -191,9 +230,18 @@ import { computed, nextTick, ref, watch } from "vue";
 import { VButton, IconButton, themeClasses } from "@si/vue-lib/design-system";
 import { useRoute } from "vue-router";
 import clsx from "clsx";
-import { BifrostComponent } from "@/workers/types/entity_kind_types";
+import { useQuery } from "@tanstack/vue-query";
+import {
+  BifrostComponent,
+  EntityKind,
+} from "@/workers/types/entity_kind_types";
 import { PropKind } from "@/api/sdf/dal/prop";
 import { AttributePath, ComponentId } from "@/api/sdf/dal/component";
+import {
+  getPossibleConnections,
+  useMakeArgs,
+  useMakeKey,
+} from "@/store/realtime/heimdall";
 import AttributeChildLayout from "./AttributeChildLayout.vue";
 import AttributeInput from "./AttributeInput.vue";
 import { AttrTree } from "../logic_composables/attribute_tree";
@@ -384,6 +432,77 @@ const removeSubscription = () => {
   }
 };
 
+const showSubscriptionInput = ref(false);
+const subscriptionInputRef = ref<InstanceType<typeof AttributeInput>>();
+
+// Query for possible connections to look up component IDs
+const makeArgs = useMakeArgs();
+const makeKey = useMakeKey();
+const queryKey = makeKey(EntityKind.PossibleConnections);
+
+const possibleConnectionsQuery = useQuery({
+  queryKey,
+  queryFn: async () => {
+    if (props.attributeTree.prop) {
+      return await getPossibleConnections(
+        makeArgs(EntityKind.PossibleConnections),
+      );
+    }
+    return [];
+  },
+});
+
+const createSubscription = (event: Event) => {
+  // Prevent any event propagation that might close the input
+  event.stopPropagation();
+  event.preventDefault();
+
+  showSubscriptionInput.value = true;
+
+  // Use a longer delay to ensure the DOM is fully rendered and stable
+  nextTick(() => {
+    setTimeout(() => {
+      subscriptionInputRef.value?.openInput();
+    }, 50);
+  });
+};
+
+const closeSubscriptionInput = () => {
+  showSubscriptionInput.value = false;
+
+  // Wait a bit for any state updates, then check for new subscriptions
+  setTimeout(() => {
+    if (props.attributeTree.attributeValue.externalSources?.length) {
+      const externalSource =
+        props.attributeTree.attributeValue.externalSources[0];
+      if (externalSource) {
+        // Look up the component ID from possible connections using the component name
+        let connectingComponentId: ComponentId | undefined;
+
+        if (possibleConnectionsQuery.data.value) {
+          const matchingConnection = possibleConnectionsQuery.data.value.find(
+            (conn) =>
+              conn.componentName === externalSource.componentName &&
+              conn.path === externalSource.path,
+          );
+          if (matchingConnection) {
+            connectingComponentId =
+              matchingConnection.componentId as ComponentId;
+          }
+        }
+
+        emit(
+          "save",
+          props.attributeTree.attributeValue.path,
+          externalSource.path,
+          props.attributeTree.prop?.kind || PropKind.String,
+          connectingComponentId,
+        );
+      }
+    }
+  }, 100);
+};
+
 const emit = defineEmits<{
   (
     e: "save",
@@ -402,6 +521,8 @@ const showingChildren = computed(
 
 const headerRef = ref<HTMLDivElement>();
 const addButtonRef = ref<InstanceType<typeof VButton>>();
+const connectButtonRef = ref<InstanceType<typeof VButton>>();
+const deleteButtonRef = ref<InstanceType<typeof IconButton>>();
 
 const handleTab = (e: KeyboardEvent, currentFocus?: HTMLElement) => {
   const focusable = Array.from(
@@ -440,5 +561,11 @@ const onHeaderTab = (e: KeyboardEvent) => {
 };
 const onAddButtonTab = (e: KeyboardEvent) => {
   handleTab(e, addButtonRef.value?.$el);
+};
+const onConnectButtonTab = (e: KeyboardEvent) => {
+  handleTab(e, connectButtonRef.value?.$el);
+};
+const onDeleteButtonTab = (e: KeyboardEvent) => {
+  handleTab(e, deleteButtonRef.value?.mainDivRef);
 };
 </script>
