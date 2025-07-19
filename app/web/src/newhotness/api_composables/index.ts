@@ -39,6 +39,7 @@ export enum routes {
   FuncRunLogs = "FuncRunLogs",
   GetFuncRunsPaginated = "GetFuncRunsPaginated",
   GetPublicKey = "GetPublicKey",
+  RefreshAction = "RefreshAction",
   RestoreComponents = "RestoreComponents",
   MgmtFuncRun = "MgmtFuncRun",
   MgmtFuncGetJobState = "MgmtFuncGetJobState",
@@ -66,6 +67,7 @@ const CAN_MUTATE_ON_HEAD: readonly routes[] = [
   routes.CreateChangeSet,
   routes.AbandonChangeSet,
   routes.EnqueueAttributeValue,
+  routes.RefreshAction,
 ] as const;
 
 const COMPRESSED_ROUTES: readonly routes[] = [
@@ -94,6 +96,7 @@ const _routes: Record<routes, string> = {
   FuncRunLogs: "/funcs/runs/<id>/logs",
   GetFuncRunsPaginated: "/funcs/runs/paginated",
   GetPublicKey: "/components/<id>/secret/public_key",
+  RefreshAction: "/action/refresh/<componentId>",
   RestoreComponents: "/components/restore",
   MgmtFuncRun: "/management/prototype/<prototypeId>/<componentId>/<viewId>",
   MgmtFuncGetJobState: "/management/state/<funcRunId>",

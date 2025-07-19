@@ -318,6 +318,18 @@
         <CollapsingFlexItem expandable>
           <template #header><span class="text-sm">Resource</span></template>
           <template #headerIcons>
+            <VButton
+              v-if="refreshEnabled"
+              size="xs"
+              class="font-normal p-0 h-md mt-[1px] [&>div]:top-[-2px]"
+              tone="neutral"
+              label="Refresh"
+              :loading="refreshActionRunning"
+              loadingIcon="loader"
+              loadingText="Refreshing..."
+              :disabled="refreshBifrosting"
+              @click.stop="executeRefresh"
+            />
             <Icon
               v-if="component.hasResource"
               name="check-hex"
@@ -392,6 +404,7 @@ import MinimizedComponentQualificationStatus from "./MinimizedComponentQualifica
 import { useComponentDeletion } from "./composables/useComponentDeletion";
 import { useComponentUpgrade } from "./composables/useComponentUpgrade";
 import { useManagementFuncJobState } from "./logic_composables/management";
+import { useComponentActions } from "./logic_composables/component_actions";
 
 const props = defineProps<{
   componentId: string;
@@ -454,6 +467,10 @@ const hasResourceValueProps = computed(() => {
 
 const component = computed(() => componentQuery.data.value);
 
+// Actions composable - reactive to component changes
+const { refreshEnabled, refreshActionRunning, runRefreshHandler } =
+  useComponentActions(component);
+const { executeRefresh, bifrosting: refreshBifrosting } = runRefreshHandler();
 const mgmtFuncs = computed(
   () => component.value?.schemaVariant.mgmtFunctions ?? [],
 );

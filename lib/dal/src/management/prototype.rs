@@ -11,6 +11,7 @@ use serde::{
 };
 use si_events::FuncRunId;
 use si_id::OutputSocketId;
+use strum::Display;
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech_client::{
@@ -31,6 +32,7 @@ use crate::{
     DalContext,
     EdgeWeightKind,
     EdgeWeightKindDiscriminants,
+    Func,
     FuncError,
     FuncId,
     HelperError,
@@ -290,6 +292,15 @@ pub struct SocketRefAndValue {
     pub value: Option<serde_json::Value>,
 }
 
+#[remain::sorted]
+#[derive(Clone, Debug, PartialEq, Eq, Display)]
+pub enum ManagementFuncKind {
+    Discover,
+    Import,
+    Other,
+    RunTemplate,
+}
+
 async fn build_management_geometry_map(
     ctx: &DalContext,
     component_id: ComponentId,
@@ -407,6 +418,27 @@ impl ManagementPrototype {
 
     pub fn description(&self) -> Option<&str> {
         self.description.as_deref()
+    }
+
+    pub async fn kind_by_id(
+        ctx: &DalContext,
+        id: ManagementPrototypeId,
+    ) -> ManagementPrototypeResult<ManagementFuncKind> {
+        let func_id = Self::func_id(ctx, id).await?;
+        let func = Func::get_by_id(ctx, func_id).await?;
+        // TODO: Make Management Func Kinds a real thing
+        let kind = {
+            if func.name == *"Import from AWS" {
+                ManagementFuncKind::Import
+            } else if func.name == *"Discover on AWS" {
+                ManagementFuncKind::Discover
+            } else if func.display_name == Some(("Run Template").to_string()) {
+                ManagementFuncKind::RunTemplate
+            } else {
+                ManagementFuncKind::Other
+            }
+        };
+        Ok(kind)
     }
 
     pub async fn schema_id(&self, ctx: &DalContext) -> ManagementPrototypeResult<Option<SchemaId>> {

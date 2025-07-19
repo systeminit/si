@@ -689,6 +689,18 @@ export const prune = async (
   await db.pruneAtomsForClosedChangeSet(workspaceId, changeSetId);
 };
 
+export const useMakeArgsForHead = () => {
+  const ctx: Context | undefined = inject("CONTEXT");
+  return <K = Gettable>(kind: EntityKind, id?: string) => {
+    return {
+      workspaceId: ctx?.workspacePk.value ?? "",
+      changeSetId: ctx?.headChangeSetId.value ?? "",
+      kind: kind as K,
+      id: id ?? ctx?.workspacePk.value ?? "",
+    };
+  };
+};
+
 export const useMakeArgs = () => {
   const ctx: Context | undefined = inject("CONTEXT");
 
@@ -726,6 +738,20 @@ export const useMakeKey = () => {
     computed<[string?, string?, (ComputedRef<K> | K)?, string?]>(() => [
       ctx?.workspacePk.value,
       ctx?.changeSetId.value,
+      toValue(kind),
+      toValue(id ?? ctx?.workspacePk),
+    ]);
+};
+
+export const useMakeKeyForHead = () => {
+  const ctx: Context | undefined = inject("CONTEXT");
+  return <K = Gettable>(
+    kind: MaybeRefOrGetter<K>,
+    id?: MaybeRefOrGetter<string>,
+  ) =>
+    computed<[string?, string?, (ComputedRef<K> | K)?, string?]>(() => [
+      ctx?.workspacePk.value,
+      ctx?.headChangeSetId.value,
       toValue(kind),
       toValue(id ?? ctx?.workspacePk),
     ]);
