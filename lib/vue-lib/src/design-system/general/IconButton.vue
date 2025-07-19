@@ -1,10 +1,12 @@
 <template>
   <!-- TODO(Wendy) - probably at some point IconButton should be merged with VButton -->
   <div
+    ref="mainDivRef"
     v-tooltip="{
       content: computedLoading && loadingTooltip ? loadingTooltip : tooltip,
       placement: tooltipPlacement,
     }"
+    :tabindex="tabIndex"
     :class="
       clsx(
         'cursor-pointer rounded p-3xs group/iconbutton',
@@ -94,6 +96,7 @@ const props = defineProps({
   requestStatus: {
     type: [Boolean, Object] as PropType<false | ApiRequestStatus>, // can be false if passing 'someCondition && status'
   },
+  tabIndex: Number,
 });
 
 const emit = defineEmits(["click"]);
@@ -143,5 +146,7 @@ const iconToneDefault = computed(() =>
   props.iconIdleTone ? props.iconIdleTone : props.iconTone,
 );
 
-defineExpose({ startActive, endActive, onHover, onEndHover });
+const mainDivRef = ref<HTMLDivElement>();
+
+defineExpose({ startActive, endActive, onHover, onEndHover, mainDivRef });
 </script>
