@@ -742,7 +742,7 @@ impl ComponentViewV1 {
             });
         }
 
-        let component_sources = Component::sources(ctx, component_id).await?;
+        let component_sources = Component::subscription_sources(ctx, component_id).await?;
         let mut sources = HashMap::new();
         for (attr_value_ident, source) in component_sources {
             if let dal::attribute::attributes::Source::Subscription {

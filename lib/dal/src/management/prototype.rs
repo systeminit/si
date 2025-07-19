@@ -290,7 +290,7 @@ impl ManagedComponent {
     ) -> ManagementPrototypeResult<Self> {
         let component = Component::get_by_id(ctx, component_id).await?;
         let properties = component.view(ctx).await?;
-        let sources = Component::sources(ctx, component_id).await?;
+        let sources = Component::subscription_sources(ctx, component_id).await?;
         let geometry = build_management_geometry_map(ctx, component_id, views).await?;
         let incoming_connections = build_incoming_connections(ctx, component_id).await?;
 
