@@ -2,7 +2,10 @@ use dal::{
     DalContext,
     Func,
     SchemaVariantId,
-    management::prototype::ManagementPrototype,
+    management::prototype::{
+        ManagementFuncKind as dalMgmtFuncKind,
+        ManagementPrototype,
+    },
 };
 use si_frontend_mv_types::management::{
     ManagementFuncKind,
@@ -28,18 +31,7 @@ pub async fn assemble(
     for p in management_prototypes_for_variant {
         let func_id = ManagementPrototype::func_id(ctx, p.id).await?;
         let func = Func::get_by_id(ctx, func_id).await?;
-        // TODO: Make Management Func Kinds a real thing
-        let kind = {
-            if func.name == *"Import from AWS" {
-                ManagementFuncKind::Import
-            } else if func.name == *"Discover on AWS" {
-                ManagementFuncKind::Discover
-            } else if func.display_name == Some(("Run Template").to_string()) {
-                ManagementFuncKind::RunTemplate
-            } else {
-                ManagementFuncKind::Other
-            }
-        };
+        let kind = ManagementPrototype::kind_by_id(ctx, p.id).await?;
 
         let name = if let Some(display_name) = func.display_name {
             display_name
@@ -53,10 +45,19 @@ pub async fn assemble(
             description: p.description,
             prototype_name: p.name,
             name,
-            kind,
+            kind: convert_kind(kind),
         });
     }
 
     views.sort_by_key(|v| v.id);
     Ok(views)
+}
+
+fn convert_kind(kind: dalMgmtFuncKind) -> ManagementFuncKind {
+    match kind {
+        dalMgmtFuncKind::Discover => ManagementFuncKind::Discover,
+        dalMgmtFuncKind::Import => ManagementFuncKind::Import,
+        dalMgmtFuncKind::Other => ManagementFuncKind::Other,
+        dalMgmtFuncKind::RunTemplate => ManagementFuncKind::RunTemplate,
+    }
 }

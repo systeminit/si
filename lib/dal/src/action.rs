@@ -12,8 +12,14 @@ use serde::{
     Deserialize,
     Serialize,
 };
-use si_events::ulid::Ulid;
-use si_id::FuncRunId;
+use si_events::{
+    audit_log::AuditLogKind,
+    ulid::Ulid,
+};
+use si_id::{
+    FuncRunId,
+    SchemaVariantId,
+};
 use si_layer_cache::LayerDbError;
 use strum::{
     AsRefStr,
@@ -34,8 +40,11 @@ use crate::{
     DalContext,
     EdgeWeightKind,
     EdgeWeightKindDiscriminants,
+    Func,
     FuncError,
     HelperError,
+    SchemaVariant,
+    SchemaVariantError,
     TransactionsError,
     WorkspaceSnapshotError,
     WsEvent,
@@ -75,6 +84,8 @@ pub mod prototype;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum ActionError {
+    #[error("action already enqueued: {0}")]
+    ActionAlreadyEnqueued(ActionPrototypeId),
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] ActionPrototypeError),
     #[error("attribute prototype error: {0}")]
@@ -105,10 +116,14 @@ pub enum ActionError {
     NodeWeight(#[from] NodeWeightError),
     #[error("prototype not found for action: {0}")]
     PrototypeNotFoundForAction(ActionId),
+    #[error("Schema Variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("Transactions error: {0}")]
     Transactions(#[from] TransactionsError),
     #[error("Unable to determine kind for action: {0}")]
     UnableToGetKind(ActionId),
+    #[error("unexpected number of action kind {0} for variant {1}")]
+    UnexpectedNumberOfActionKinds(ActionKind, SchemaVariantId),
     #[error("Workspace Snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
@@ -674,6 +689,61 @@ impl Action {
             .get_last_run_for_action_id_opt(ctx.events_tenancy().workspace_pk, id)
             .await?
             .map(|f| f.id()))
+    }
+
+    /// This function behaves differently if on head vs. in an open change set.
+    /// For a given component, if we're on head already, we'll enqueue the refresh function
+    /// If we're not on head, we check to see if the component exists on head
+    /// If it does, we enqueue the refresh function on head (and when it runs, it will be replayed)
+    /// as we do not want a change set to have a more up-to-date perspective than head
+    /// If it does NOT exist on head, we will dispatch the refresh action directly!
+    pub async fn enqueue_refresh_for_component(
+        ctx: &DalContext,
+        component_id: ComponentId,
+        should_dispatch: bool,
+    ) -> ActionResult<bool> {
+        let mut did_enqueue = false;
+        let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
+        let refresh_actions = SchemaVariant::find_action_prototypes_by_kind(
+            ctx,
+            schema_variant_id,
+            ActionKind::Refresh,
+        )
+        .await?;
+        if refresh_actions.len() > 1 {
+            return Err(ActionError::UnexpectedNumberOfActionKinds(
+                ActionKind::Refresh,
+                schema_variant_id,
+            ));
+        }
+        if let Some(&prototype_id) = refresh_actions.first() {
+            let maybe_duplicate_action =
+                Action::find_for_kind_and_component_id(ctx, component_id, ActionKind::Refresh)
+                    .await?;
+            if !maybe_duplicate_action.is_empty() {
+                return Err(ActionError::ActionAlreadyEnqueued(prototype_id));
+            }
+            let func_id = ActionPrototype::func_id(ctx, prototype_id).await?;
+            let func = Func::get_by_id(ctx, func_id).await?;
+            let action = Action::new(ctx, prototype_id, Some(component_id)).await?;
+            did_enqueue = true;
+            ctx.write_audit_log(
+                AuditLogKind::AddAction {
+                    prototype_id,
+                    action_kind: si_events::ActionKind::Refresh,
+                    func_id,
+                    func_display_name: func.display_name,
+                    func_name: func.name.clone(),
+                },
+                func.name,
+            )
+            .await?;
+            if should_dispatch {
+                Action::dispatch_action(ctx, action.id()).await?;
+            }
+        };
+
+        Ok(did_enqueue)
     }
 }
 
