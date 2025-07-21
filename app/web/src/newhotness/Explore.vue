@@ -448,7 +448,7 @@ import ExploreSearchBarSkeleton from "@/newhotness/skeletons/ExploreSearchBarSke
 import ExploreGridSkeleton from "@/newhotness/skeletons/ExploreGridSkeleton.vue";
 import ExploreRightColumnSkeleton from "@/newhotness/skeletons/ExploreRightColumnSkeleton.vue";
 import Map from "./Map.vue";
-import { collapsingGridStyles, preserveExploreState } from "./util";
+import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
 import { getQualificationStatus } from "./ComponentQualificationStatus.vue";
@@ -487,6 +487,34 @@ const args = useMakeArgs();
 const VIEW_MODE_LOCAL_STORAGE_KEY = "newhotness-view-mode";
 const viewModeStorageKey = () =>
   `${VIEW_MODE_LOCAL_STORAGE_KEY}: ${ctx.changeSetId}`;
+const storeViewMode = () => {
+  if (!groupRef.value) return;
+
+  const key = viewModeStorageKey();
+
+  if (groupRef.value.isB) {
+    localStorage.setItem(key, "grid");
+  } else {
+    localStorage.setItem(key, "map");
+  }
+};
+
+const FILTER_AND_GROUP_STORAGE_KEY = "newhotness-filter-and-grouping";
+const filterAndGroupStorageKey = () =>
+  `${FILTER_AND_GROUP_STORAGE_KEY}: ${ctx.changeSetId.value}`;
+const storeFilterAndGroup = (query: SelectionsInQueryString) => {
+  // Do not store retainSessionState, since when this query comes we're supposed to read stored data. Skipping this would always reset the storage
+  if (query.retainSessionState) {
+    return;
+  }
+  const queryString = JSON.stringify(query);
+  sessionStorage.setItem(filterAndGroupStorageKey(), queryString);
+};
+const retrieveFilterAndGroup = (): SelectionsInQueryString => {
+  const qString = sessionStorage.getItem(filterAndGroupStorageKey());
+
+  return qString ? (JSON.parse(qString) as SelectionsInQueryString) : {};
+};
 
 const groupRef = ref<InstanceType<typeof TabGroupToggle>>();
 const actionsRef = ref<typeof CollapsingGridItem>();
@@ -523,7 +551,7 @@ const gridMapSwitcherValue = computed(
 );
 
 watch(gridMapSwitcherValue, (newShowGrid) => {
-  // If this is nil, groupRef is unmounted,and we don't care about the change.
+  // If this is nil, groupRef is unmounted, and we don't care about the change.
   if (_.isNil(newShowGrid)) return;
   clearSelection();
   const query: SelectionsInQueryString = {
@@ -533,6 +561,8 @@ watch(gridMapSwitcherValue, (newShowGrid) => {
   delete query.grid;
   if (newShowGrid) query.grid = "1";
   else query.map = "1";
+
+  storeFilterAndGroup(query);
   router.push({ query });
 });
 
@@ -607,6 +637,8 @@ watch([selectedViewId], () => {
   ) {
     query.viewId = selectedViewOrDefaultId.value;
   }
+
+  storeFilterAndGroup(query);
   router.push({
     query,
   });
@@ -657,6 +689,7 @@ watch([pinnedComponentId], () => {
     query.pinned = pinnedComponentId.value;
   }
 
+  storeFilterAndGroup(query);
   router.push({
     query,
   });
@@ -981,6 +1014,7 @@ watch(searchString, () => {
     query.searchQuery = searchString.value;
   }
 
+  storeFilterAndGroup(query);
   router.replace({
     query,
   });
@@ -1317,9 +1351,6 @@ const componentNavigate = (componentId: ComponentId) => {
   router.push({
     name: "new-hotness-component",
     params,
-    query: preserveExploreState(
-      router.currentRoute.value?.query as SelectionsInQueryString,
-    ),
   });
 };
 
@@ -1630,6 +1661,15 @@ const onClick = (e: MouseDetails["click"]) => {
 const setSelectionsFromQuery = () => {
   const query: SelectionsInQueryString = router.currentRoute.value?.query;
 
+  // if we get retainSessionState, get query back from the session storage
+  if (query.retainSessionState) {
+    const query = retrieveFilterAndGroup();
+    delete query.retainSessionState;
+    router.replace({ query });
+
+    return;
+  }
+
   if (query.searchQuery !== undefined) {
     searchString.value = query.searchQuery;
   }
@@ -1740,18 +1780,6 @@ const onMapDeselect = () => {
 
 // ================================================================================================
 // GROUP BY STUFF
-const storeViewMode = () => {
-  if (!groupRef.value) return;
-
-  const key = viewModeStorageKey();
-
-  if (groupRef.value.isB) {
-    localStorage.setItem(key, "grid");
-  } else {
-    localStorage.setItem(key, "map");
-  }
-};
-
 export type GroupByUrlQuery =
   | "diffstatus"
   | "qualificationstatus"
@@ -1811,6 +1839,7 @@ watch([groupBySelection], () => {
     query.groupBy = "resource";
   }
 
+  storeFilterAndGroup(query);
   router.push({
     query,
   });
@@ -1879,6 +1908,7 @@ watch([sortBySelection], () => {
     query.sortBy = "runningactions";
   }
 
+  storeFilterAndGroup(query);
   router.push({
     query,
   });
