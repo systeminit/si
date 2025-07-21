@@ -16,6 +16,7 @@ use serde::{
 use si_frontend_mv_types::object::FrontendObject;
 use si_frontend_types::FrontEndObjectRequest;
 use thiserror::Error;
+use tokio::task::JoinError;
 
 use crate::api_error::ApiError;
 
@@ -30,6 +31,8 @@ pub struct FrontEndObjectMeta {
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum IndexError {
+    #[error("semaphore acquire error: {0}")]
+    Acquire(#[from] tokio::sync::AcquireError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
     #[error("deserializing mv index data error: {0}")]
@@ -48,6 +51,8 @@ pub enum IndexError {
     ItemWithChecksumNotFound(WorkspacePk, ChangeSetId, String),
     #[error("latest item not found; workspace_id={0}, change_set_id={1}, kind={2}")]
     LatestItemNotFound(WorkspacePk, ChangeSetId, String),
+    #[error("tokio task join error: {0}")]
+    TokioJoin(#[from] JoinError),
     #[error("transactions error: {0}")]
     Transactions(#[from] dal::TransactionsError),
     #[error("timed out when watching index with duration: {0:?}")]
