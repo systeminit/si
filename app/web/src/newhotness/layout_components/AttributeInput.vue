@@ -1041,6 +1041,7 @@ const emit = defineEmits<{
   (e: "removeSubscription", path: AttributePath): void;
   (e: "add", key?: string): void;
   (e: "selected"): void;
+  (e: "close"): void;
 }>();
 
 // INPUT WINDOW LOGIC
@@ -1100,6 +1101,7 @@ const openInput = () => {
 const closeInput = () => {
   if (inputOpen.value) {
     inputOpen.value = false;
+    emit("close");
     removeListeners();
   }
 };
@@ -1523,5 +1525,10 @@ const discardString = computed(() => {
   if (props.isMap) return "Discard key";
 
   return "Discard edits";
+});
+
+defineExpose({
+  openInput,
+  closeInput,
 });
 </script>
