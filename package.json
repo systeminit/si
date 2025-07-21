@@ -11,7 +11,7 @@
     "whichnode": "which node"
   },
   "engines": {
-    "node": ">=18 <19"
+    "node": ">=18 <=20"
   },
   "packageManager": "pnpm@10.0.0"
 }
