@@ -172,7 +172,7 @@
                 icon="logo-si"
                 iconSize="lg"
                 iconNoBg
-                text="Begin managing your infrastructure in a clear, controlled, and intelligent way."
+                text="Manage your infrastructure in a clear, controlled, and intelligent way."
               >
                 <template #secondary>
                   <div class="flex flex-row gap-sm">
