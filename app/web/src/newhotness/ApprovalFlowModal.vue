@@ -193,6 +193,7 @@ async function apply() {
 
   const result = await applyChangeSet.performApply();
   if (result.success) {
+    closeModalHandler();
     toast(
       {
         component: ToastApplyingChanges,
@@ -212,7 +213,6 @@ async function apply() {
       query: route.query,
     });
     reset();
-    closeModalHandler();
   }
 }
 
