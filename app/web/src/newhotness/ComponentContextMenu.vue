@@ -43,6 +43,8 @@ import EraseModal from "./EraseModal.vue";
 import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
 import { useApi, routes } from "./api_composables";
 import { assertIsDefined, ExploreContext } from "./types";
+import { useComponentDeletion } from "./composables/useComponentDeletion";
+import { useComponentUpgrade } from "./composables/useComponentUpgrade";
 
 const props = defineProps<{
   onGrid?: boolean;
@@ -63,6 +65,13 @@ const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
 assertIsDefined<ExploreContext>(explore);
 
 const components = ref<ComponentInList[]>([]);
+
+// Use shared deletion composable with view context
+const { deleteComponents, eraseComponents, restoreComponents } =
+  useComponentDeletion(explore.viewId.value);
+
+// Use shared upgrade composable
+const { upgradeComponents } = useComponentUpgrade();
 
 const atLeastOneGhostedComponent = computed(() =>
   components.value.some((c) => c.toDelete),
@@ -311,7 +320,7 @@ const addAction = async (
     componentId,
     prototypeId: actionPrototypeId,
   });
-  if (restoreApi.ok(req) && newChangeSetId) {
+  if (addActionApi.ok(req) && newChangeSetId) {
     addActionApi.navigateToNewChangeSet(
       {
         name: "new-hotness",
@@ -358,27 +367,10 @@ const runMgmtFunc = async (funcId: string) => {
   }
 };
 
-const restoreApi = useApi();
 const componentsRestore = async (componentIds: ComponentId[]) => {
-  const call = restoreApi.endpoint(routes.RestoreComponents);
-  const { req, newChangeSetId } = await call.put({
-    componentIds,
-  });
-  if (restoreApi.ok(req) && newChangeSetId) {
-    restoreApi.navigateToNewChangeSet(
-      {
-        name: "new-hotness",
-        params: {
-          workspacePk: route.params.workspacePk,
-          changeSetId: newChangeSetId,
-        },
-      },
-      newChangeSetId,
-    );
-  }
+  await restoreComponents(componentIds);
 };
 
-const eraseApi = useApi();
 const eraseComponentIds = ref<ComponentId[] | undefined>(undefined);
 const eraseModalRef = ref<InstanceType<typeof EraseModal>>();
 
@@ -391,32 +383,12 @@ const componentsStartErase = (components: ComponentInList[]) => {
 const componentsFinishErase = async () => {
   if (!eraseComponentIds.value || eraseComponentIds.value.length === 0) return;
 
-  const call = eraseApi.endpoint(routes.DeleteComponents);
-  const { req, newChangeSetId } = await call.delete({
-    componentIds: eraseComponentIds.value,
-    forceErase: true,
-  });
-
-  eraseModalRef.value?.close();
-
-  if (eraseApi.ok(req)) {
-    if (newChangeSetId) {
-      eraseApi.navigateToNewChangeSet(
-        {
-          name: "new-hotness",
-          params: {
-            workspacePk: route.params.workspacePk,
-            changeSetId: newChangeSetId,
-          },
-        },
-        newChangeSetId,
-      );
-    }
+  const result = await eraseComponents(eraseComponentIds.value);
+  if (result.success) {
+    eraseModalRef.value?.close();
   }
 };
 
-const deleteDeleteApi = useApi();
-const deleteEraseFromViewApi = useApi();
 const deleteComponentIds = ref<ComponentId[]>([]);
 const deleteModalRef = ref<InstanceType<typeof DeleteModal>>();
 
@@ -428,50 +400,9 @@ const componentsStartDelete = (components: ComponentInList[]) => {
 const componentsFinishDelete = async (mode: DeleteMode) => {
   if (!deleteComponentIds.value || deleteComponentIds.value.length < 1) return;
 
-  if (mode === DeleteMode.Delete) {
-    const call = deleteDeleteApi.endpoint(routes.DeleteComponents);
-    const { req, newChangeSetId } = await call.delete({
-      componentIds: deleteComponentIds.value,
-      forceErase: false,
-    });
-    if (deleteDeleteApi.ok(req)) {
-      deleteModalRef.value?.close();
-      if (newChangeSetId) {
-        deleteDeleteApi.navigateToNewChangeSet(
-          {
-            name: "new-hotness",
-            params: {
-              workspacePk: route.params.workspacePk,
-              changeSetId: newChangeSetId,
-            },
-          },
-          newChangeSetId,
-        );
-      }
-    }
-  } else {
-    const call = deleteEraseFromViewApi.endpoint(
-      routes.EraseComponentsFromView,
-      { viewId: explore.viewId.value },
-    );
-    const { req, newChangeSetId } = await call.delete({
-      componentIds: deleteComponentIds.value,
-    });
-    if (deleteEraseFromViewApi.ok(req)) {
-      deleteModalRef.value?.close();
-      if (newChangeSetId) {
-        deleteEraseFromViewApi.navigateToNewChangeSet(
-          {
-            name: "new-hotness",
-            params: {
-              workspacePk: route.params.workspacePk,
-              changeSetId: newChangeSetId,
-            },
-          },
-          newChangeSetId,
-        );
-      }
-    }
+  const result = await deleteComponents(deleteComponentIds.value, mode);
+  if (result.success) {
+    deleteModalRef.value?.close();
   }
 };
 
@@ -498,24 +429,8 @@ const componentsDuplicate = async (componentIds: ComponentId[]) => {
   }
 };
 
-const upgradeComponentApi = useApi();
 const componentsUpgrade = async (componentIds: ComponentId[]) => {
-  const call = upgradeComponentApi.endpoint(routes.UpgradeComponents);
-  const { req, newChangeSetId } = await call.post({
-    componentIds,
-  });
-  if (upgradeComponentApi.ok(req) && newChangeSetId) {
-    upgradeComponentApi.navigateToNewChangeSet(
-      {
-        name: "new-hotness",
-        params: {
-          workspacePk: route.params.workspacePk,
-          changeSetId: newChangeSetId,
-        },
-      },
-      newChangeSetId,
-    );
-  }
+  await upgradeComponents(componentIds);
 };
 
 // eslint-disable-next-line @typescript-eslint/ban-types
