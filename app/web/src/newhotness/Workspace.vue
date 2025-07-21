@@ -138,6 +138,9 @@ import { useChangeSets } from "./logic_composables/change_set";
 const tracer = trace.getTracer("si-vue");
 const navbarPanelLeftRef = ref<InstanceType<typeof NavbarPanelLeft>>();
 
+const route = useRoute();
+const router = useRouter();
+
 const props = defineProps<{
   workspacePk: string;
   changeSetId: string;
@@ -354,9 +357,6 @@ const compositionLink = computed(() => {
     params: props,
   };
 });
-
-const route = useRoute();
-const router = useRouter();
 
 const tokenFail = ref(false);
 
