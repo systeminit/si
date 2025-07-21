@@ -100,7 +100,7 @@ impl FirecrackerDisk {
     }
 
     fn overlay_from_id(id: u32) -> String {
-        format!("{}{}", OVERLAY_PREFIX, id)
+        format!("{OVERLAY_PREFIX}{id}")
     }
 
     fn find_loop_device_by_backing_file(backing_file: &Path) -> Result<Option<OsString>> {
@@ -118,7 +118,7 @@ impl FirecrackerDisk {
                 let backing_file_path = path.join("loop").join("backing_file");
                 if let Ok(contents) = fs::read_to_string(&backing_file_path) {
                     if contents.trim() == backing_file.to_string_lossy() {
-                        return Ok(Some(OsString::from(format!("/dev/{}", loop_name))));
+                        return Ok(Some(OsString::from(format!("/dev/{loop_name}"))));
                     }
                 }
             }

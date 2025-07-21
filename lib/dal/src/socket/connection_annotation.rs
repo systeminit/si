@@ -105,7 +105,7 @@ impl Display for ConnectionAnnotation {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let mut out = self.tokens.last().ok_or(fmt::Error)?.clone();
         for token in self.tokens.iter().rev().skip(1) {
-            out = format!("{}<{}>", token, out);
+            out = format!("{token}<{out}>");
         }
 
         f.serialize_str(out.as_str())

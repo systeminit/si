@@ -25,7 +25,13 @@ pub enum Error {
     )]
     RelationBuilder { required_fields: Vec<String> },
     #[error("spicedb client error: {0}")]
-    SpiceDb(#[from] SpiceDbError),
+    SpiceDb(#[from] Box<SpiceDbError>),
+}
+
+impl From<SpiceDbError> for Error {
+    fn from(value: SpiceDbError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 type Result<T> = result::Result<T, Error>;
@@ -116,7 +122,7 @@ impl RelationBuilder {
             Ok(relationship) => client
                 .create_relationships(vec![relationship])
                 .await
-                .map_err(Error::SpiceDb),
+                .map_err(Into::into),
             Err(err) => Err(err),
         }
     }
@@ -127,7 +133,7 @@ impl RelationBuilder {
             Ok(relationship) => client
                 .delete_relationships(vec![relationship])
                 .await
-                .map_err(Error::SpiceDb),
+                .map_err(Into::into),
             Err(err) => Err(err),
         }
     }
@@ -143,7 +149,7 @@ impl RelationBuilder {
                     self.zed_token.clone(),
                 ))
                 .await
-                .map_err(Error::SpiceDb),
+                .map_err(Into::into),
             _ => Err(Error::RelationBuilder {
                 required_fields: vec!["object".to_string(), "relation".to_string()],
             }),
@@ -237,10 +243,7 @@ impl PermissionBuilder {
     /// Checks if the given subject has the given permission in the given object
     pub async fn has_permission(&self, client: &mut SpiceDbClient) -> Result<bool> {
         match self.check_has_permission() {
-            Ok(perms) => Ok(client
-                .check_permissions(perms)
-                .await
-                .map_err(Error::SpiceDb)?),
+            Ok(perms) => client.check_permissions(perms).await.map_err(Into::into),
             Err(err) => Err(err),
         }
     }

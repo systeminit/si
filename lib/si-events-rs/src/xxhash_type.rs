@@ -182,7 +182,7 @@ macro_rules! create_xxhash_type {
 
             impl [<$name Hasher>] {
                 pub fn new() -> Self {
-                    Self(Box::new(::xxhash_rust::xxh3::Xxh3::new()))
+                    Self(Box::default())
                 }
 
                 pub fn update(&mut self, input: &[u8]) {

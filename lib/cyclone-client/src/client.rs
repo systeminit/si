@@ -118,7 +118,7 @@ pub enum ClientError {
     #[error("failed to resolve socket addrs")]
     SocketAddrResolve(#[source] std::io::Error),
     #[error("failed to create a tungstenite http request")]
-    TungsteniteRequest(#[source] tokio_tungstenite::tungstenite::Error),
+    TungsteniteRequest(#[source] Box<tokio_tungstenite::tungstenite::Error>),
     #[error("unexpected status code: {0}")]
     UnexpectedStatusCode(StatusCode),
     #[error("client is not healthy")]
@@ -126,7 +126,7 @@ pub enum ClientError {
     #[error("failed to decode as a UTF8 string")]
     Utf8Decode(#[from] std::str::Utf8Error),
     #[error("failed to establish a websocket connection")]
-    WebsocketConnection(#[source] tokio_tungstenite::tungstenite::Error),
+    WebsocketConnection(#[source] Box<tokio_tungstenite::tungstenite::Error>),
 }
 
 impl ClientError {
@@ -372,7 +372,7 @@ where
 
         let mut request = uri
             .into_client_request()
-            .map_err(ClientError::TungsteniteRequest)?;
+            .map_err(|err| ClientError::TungsteniteRequest(Box::new(err)))?;
         propagation::inject_headers(request.headers_mut());
 
         Ok(request)
@@ -455,9 +455,10 @@ where
         let stream = self.connect().await?;
 
         let request = self.new_ws_request(path_and_query)?;
-        let (websocket_stream, response) = tokio_tungstenite::client_async(request, stream)
-            .await
-            .map_err(ClientError::WebsocketConnection)?;
+        let (websocket_stream, response) =
+            tokio_tungstenite::client_async(request, stream)
+                .await
+                .map_err(|err| ClientError::WebsocketConnection(Box::new(err)))?;
         if response.status() != StatusCode::SWITCHING_PROTOCOLS {
             return Err(ClientError::UnexpectedStatusCode(response.status()));
         }

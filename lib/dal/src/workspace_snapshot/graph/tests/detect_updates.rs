@@ -121,7 +121,7 @@ mod test {
             ] => {
                 assert_eq!(&EdgeWeightKind::new_use(), edge_weight.kind());
             }
-            other => panic!("Unexpected updates: {:?}", other),
+            other => panic!("Unexpected updates: {other:?}"),
         }
     }
 
@@ -180,7 +180,7 @@ mod test {
             [Update::NewNode { .. }, Update::NewEdge { edge_weight, .. }] => {
                 assert_eq!(&EdgeWeightKind::new_use(), edge_weight.kind());
             }
-            other => panic!("Unexpected updates: {:?}", other),
+            other => panic!("Unexpected updates: {other:?}"),
         }
     }
 
@@ -481,7 +481,7 @@ mod test {
                 assert_eq!(attribute_prototype_id, destination.id.into(),);
                 assert_eq!(&EdgeWeightKind::Prototype(None), edge_weight.kind());
             }
-            other => panic!("Unexpected updates: {:?}", other),
+            other => panic!("Unexpected updates: {other:?}"),
         }
     }
 

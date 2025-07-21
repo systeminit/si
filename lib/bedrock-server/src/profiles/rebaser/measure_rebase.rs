@@ -52,7 +52,7 @@ fn load_message_sequence(recording_id: &str) -> Vec<JsonMessage> {
     let mut other_messages = Vec::new();
 
     for entry in entries {
-        let entry = entry.unwrap_or_else(|e| panic!("Failed to read entry: {}", e));
+        let entry = entry.unwrap_or_else(|e| panic!("Failed to read entry: {e}"));
         let path = entry.path();
 
         if path.is_file() {
@@ -98,7 +98,7 @@ pub async fn reissue_rebaser_tracker_message(
     workspace_id: &str,
     changeset_id: &str,
 ) -> Result<(), String> {
-    let subject = format!("rebaser.tasks.{}.{}.process", workspace_id, changeset_id);
+    let subject = format!("rebaser.tasks.{workspace_id}.{changeset_id}.process");
 
     let js = jetstream::new(nats.clone());
     let headers = HeaderMap::new();
@@ -155,7 +155,7 @@ impl TestProfile for MeasureRebase {
         let mut success_count = 0;
 
         for (i, json_msg) in messages.into_iter().enumerate() {
-            let reply_subject = format!("_INBOX.INCOMING_RESPONSES.{}", i);
+            let reply_subject = format!("_INBOX.INCOMING_RESPONSES.{i}");
             let mut headers = HeaderMap::new();
             let new_ulid = Ulid::new().to_string();
 
@@ -233,10 +233,10 @@ impl TestProfile for MeasureRebase {
                         let response = tokio::select! {
                             msg = sub.next() => msg,
                             _ = &mut timeout => {
-                                println!("Timeout waiting for response on {}", reply_subject);
+                                println!("Timeout waiting for response on {reply_subject}");
                                 return TestResult {
                                     success: false,
-                                    message: format!("Timeout waiting for response from service on subject {}", reply_subject),
+                                    message: format!("Timeout waiting for response from service on subject {reply_subject}"),
                                     duration_ms: None,
                                     output: Some(json!({
                                         "failed_message_index": i,
@@ -270,15 +270,11 @@ impl TestProfile for MeasureRebase {
                                             .and_then(|err| err.get("message"))
                                             .and_then(|msg| msg.as_str())
                                         {
-                                            println!(
-                                                "Early exit: error in response: {}",
-                                                error_msg
-                                            );
+                                            println!("Early exit: error in response: {error_msg}");
                                             return TestResult {
                                                 success: false,
                                                 message: format!(
-                                                    "Error at message {}: {}",
-                                                    i, error_msg
+                                                    "Error at message {i}: {error_msg}"
                                                 ),
                                                 duration_ms: None,
                                                 output: Some(json!({
@@ -289,11 +285,11 @@ impl TestProfile for MeasureRebase {
                                         }
                                     }
                                     Err(e) => {
-                                        println!("Failed to parse response CBOR: {:?}", e);
+                                        println!("Failed to parse response CBOR: {e:?}");
                                     }
                                 }
                             }
-                            None => println!("No response received on {}", reply_subject),
+                            None => println!("No response received on {reply_subject}"),
                         }
                     }
                     Err(e) => println!("Ack error for {}: {:?}", json_msg.subject, e),
@@ -304,7 +300,7 @@ impl TestProfile for MeasureRebase {
 
         TestResult {
             success: true,
-            message: format!("Sent and received {} message-response pairs", success_count),
+            message: format!("Sent and received {success_count} message-response pairs"),
             duration_ms: Some(42),
             output: Some(json!({ "message_response_pairs": success_count })),
         }

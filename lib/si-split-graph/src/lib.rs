@@ -1481,7 +1481,7 @@ where
             return Err(SplitGraphError::TooManyEdgesOfKind(
                 from_id,
                 direction,
-                format!("{:?}", kind),
+                format!("{kind:?}"),
             ));
         }
 

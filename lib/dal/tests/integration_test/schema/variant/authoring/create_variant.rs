@@ -58,7 +58,7 @@ async fn create_variant(ctx: &mut DalContext) {
     .await
     .expect("unable to get asset authoring func");
 
-    let scaffold_func_name = format!("{}Scaffold_", asset_name);
+    let scaffold_func_name = format!("{asset_name}Scaffold_");
     assert!(func.name.contains(&scaffold_func_name));
     assert_eq!(func.kind, FuncKind::SchemaVariantDefinition);
     assert_eq!(

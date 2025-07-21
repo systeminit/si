@@ -34,7 +34,7 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + 'static>>;
 const USAGE: &str = "usage: cargo run --example rebase <TO_REBASE_FILE_PATH> <REBASE_BATCH_PATH>";
 
 fn load_serialized_stuff<T: DeserializeOwned>(path: &str) -> Result<T> {
-    println!("opening file: {}", path);
+    println!("opening file: {path}");
     let mut file = File::open(path)?;
     let mut bytes = vec![];
     file.read_to_end(&mut bytes)?;
@@ -70,7 +70,7 @@ fn main() -> Result<()> {
         graph_to_update.perform_updates(&updates);
 
         if let Err(Cycle(node_id)) = toposort(&graph_to_update) {
-            println!("Cycle detected at node ID: {}", node_id);
+            println!("Cycle detected at node ID: {node_id}");
             // dbg!(
             //     graph_to_update
             //         .raw_nodes()

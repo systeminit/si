@@ -76,43 +76,127 @@ pub mod prototype;
 #[derive(Debug, Error)]
 pub enum ActionError {
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] crate::attribute::prototype::AttributePrototypeError),
+    AttributePrototype(#[from] Box<crate::attribute::prototype::AttributePrototypeError>),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(
-        #[from] crate::attribute::prototype::argument::AttributePrototypeArgumentError,
+        #[from] Box<crate::attribute::prototype::argument::AttributePrototypeArgumentError>,
     ),
     #[error("AttributeValue error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("Change Set error: {0}")]
-    ChangeSet(#[from] ChangeSetError),
+    ChangeSet(#[from] Box<ChangeSetError>),
     #[error("Component error: {0}")]
-    Component(#[from] ComponentError),
+    Component(#[from] Box<ComponentError>),
     #[error("component not found for action: {0}")]
     ComponentNotFoundForAction(ActionId),
     #[error("dependent value root error: {0}")]
-    DependentValueRoot(#[from] DependentValueRootError),
+    DependentValueRoot(#[from] Box<DependentValueRootError>),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("Helper error: {0}")]
-    Helper(#[from] HelperError),
+    Helper(#[from] Box<HelperError>),
     #[error("InferredConnectionGraph error: {0}")]
-    InferredConnectionGraph(#[from] InferredConnectionGraphError),
+    InferredConnectionGraph(#[from] Box<InferredConnectionGraphError>),
     #[error("Layer DB error: {0}")]
     LayerDb(#[from] LayerDbError),
     #[error("Node Weight error: {0}")]
-    NodeWeight(#[from] NodeWeightError),
+    NodeWeight(#[from] Box<NodeWeightError>),
     #[error("prototype not found for action: {0}")]
     PrototypeNotFoundForAction(ActionId),
     #[error("Transactions error: {0}")]
-    Transactions(#[from] TransactionsError),
+    Transactions(#[from] Box<TransactionsError>),
     #[error("Unable to determine kind for action: {0}")]
     UnableToGetKind(ActionId),
     #[error("Workspace Snapshot error: {0}")]
-    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
+    WsEvent(#[from] Box<WsEventError>),
+}
+
+impl From<ActionPrototypeError> for ActionError {
+    fn from(value: ActionPrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<crate::attribute::prototype::AttributePrototypeError> for ActionError {
+    fn from(value: crate::attribute::prototype::AttributePrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<crate::attribute::prototype::argument::AttributePrototypeArgumentError> for ActionError {
+    fn from(value: crate::attribute::prototype::argument::AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributeValueError> for ActionError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ChangeSetError> for ActionError {
+    fn from(value: ChangeSetError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for ActionError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<DependentValueRootError> for ActionError {
+    fn from(value: DependentValueRootError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for ActionError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<HelperError> for ActionError {
+    fn from(value: HelperError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InferredConnectionGraphError> for ActionError {
+    fn from(value: InferredConnectionGraphError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<NodeWeightError> for ActionError {
+    fn from(value: NodeWeightError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<TransactionsError> for ActionError {
+    fn from(value: TransactionsError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceSnapshotError> for ActionError {
+    fn from(value: WorkspaceSnapshotError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WsEventError> for ActionError {
+    fn from(value: WsEventError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type ActionResult<T> = Result<T, ActionError>;

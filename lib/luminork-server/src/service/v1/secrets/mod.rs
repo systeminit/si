@@ -72,15 +72,15 @@ impl From<JsonRejection> for SecretsError {
     fn from(rejection: JsonRejection) -> Self {
         match rejection {
             JsonRejection::JsonDataError(_) => {
-                SecretsError::Validation(format!("Invalid JSON data format: {}", rejection))
+                SecretsError::Validation(format!("Invalid JSON data format: {rejection}"))
             }
             JsonRejection::JsonSyntaxError(_) => {
-                SecretsError::Validation(format!("Invalid JSON syntax: {}", rejection))
+                SecretsError::Validation(format!("Invalid JSON syntax: {rejection}"))
             }
             JsonRejection::MissingJsonContentType(_) => SecretsError::Validation(
                 "Request must have Content-Type: application/json header".to_string(),
             ),
-            _ => SecretsError::Validation(format!("JSON validation error: {}", rejection)),
+            _ => SecretsError::Validation(format!("JSON validation error: {rejection}")),
         }
     }
 }

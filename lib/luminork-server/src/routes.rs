@@ -155,7 +155,7 @@ pub fn routes(state: AppState) -> Router {
         let mut spec = serde_json::to_value(original_response.0).map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("JSON conversion error: {}", e),
+                format!("JSON conversion error: {e}"),
             )
         })?;
 

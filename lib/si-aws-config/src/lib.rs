@@ -52,7 +52,7 @@ pub enum AwsConfigError {
 
 impl AwsConfigError {
     fn from_sdk_error<T: Debug>(error: SdkError<T>) -> Self {
-        AwsConfigError::Sts(format!("{:?}", error))
+        AwsConfigError::Sts(format!("{error:?}"))
     }
 }
 

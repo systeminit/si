@@ -92,8 +92,7 @@ pub async fn execute_management_function(
             view.id()
         } else {
             return Err(ComponentsError::ViewNotFound(format!(
-                "View '{}' not found",
-                view_name
+                "View '{view_name}' not found"
             )));
         }
     } else {

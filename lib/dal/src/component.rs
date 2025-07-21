@@ -210,11 +210,11 @@ pub enum ComponentError {
     #[error("action prototype error: {0}")]
     ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("attribute prototype error: {0}")]
-    AttributePrototype(#[from] AttributePrototypeError),
+    AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error(
         "attribute value view could not be generated, root value not found; workspace_pk={0}, change_set_id={1}, component_id={2}"
     )]
@@ -224,7 +224,7 @@ pub enum ComponentError {
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error("code view error: {0}")]
-    CodeView(#[from] CodeViewError),
+    CodeView(#[from] Box<CodeViewError>),
     #[error("component {0} already has a geometry for view {1}")]
     ComponentAlreadyInView(ComponentId, ViewId),
     #[error("component has children, cannot change to component type")]
@@ -256,17 +256,17 @@ pub enum ComponentError {
     #[error("frame error: {0}")]
     Frame(#[from] Box<FrameError>),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("func argument error: {0}")]
-    FuncArgumentError(#[from] FuncArgumentError),
+    FuncArgumentError(#[from] Box<FuncArgumentError>),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] Box<FuncBindingError>),
     #[error("helper error: {0}")]
     Helper(#[from] HelperError),
     #[error("InferredConnectionGraph Error: {0}")]
-    InferredConnectionGraph(#[from] InferredConnectionGraphError),
+    InferredConnectionGraph(#[from] Box<InferredConnectionGraphError>),
     #[error("input socket error: {0}")]
-    InputSocket(#[from] InputSocketError),
+    InputSocket(#[from] Box<InputSocketError>),
     #[error("input socket {0} not found for component id {1}")]
     InputSocketNotFoundForComponentId(InputSocketId, ComponentId),
     #[error("input socket {0} has more than one attribute value")]
@@ -286,7 +286,7 @@ pub enum ComponentError {
     #[error("component {0} missing attribute value for root")]
     MissingRootProp(ComponentId),
     #[error("module error: {0}")]
-    Module(#[from] ModuleError),
+    Module(#[from] Box<ModuleError>),
     #[error("more than one schema variant found for component: {0}")]
     MoreThanOneSchemaVariantFound(ComponentId),
     #[error("found multiple parents for component: {0}")]
@@ -302,7 +302,7 @@ pub enum ComponentError {
     #[error("object prop {0} has no ordering node")]
     ObjectPropHasNoOrderingNode(PropId),
     #[error("output socket error: {0}")]
-    OutputSocket(#[from] OutputSocketError),
+    OutputSocket(#[from] Box<OutputSocketError>),
     #[error("output socket has not found for attribute value id {0}")]
     OutputSocketNotFoundForAttributeValueId(AttributeValueId),
     #[error("output socket {0} not found for component id {1}")]
@@ -314,11 +314,11 @@ pub enum ComponentError {
     #[error(transparent)]
     ParseInt(#[from] ParseIntError),
     #[error("prop error: {0}")]
-    Prop(#[from] PropError),
+    Prop(#[from] Box<PropError>),
     #[error("found prop id ({0}) that is not a prop")]
     PropIdNotAProp(PropId),
     #[error("qualification error: {0}")]
-    Qualification(#[from] QualificationError),
+    Qualification(#[from] Box<QualificationError>),
     #[error("ordering node not found for qualifications map {0} and component {1}")]
     QualificationNoOrderingNode(AttributeValueId, ComponentId),
     #[error("qualification summary error: {0}")]
@@ -328,7 +328,7 @@ pub enum ComponentError {
     #[error("root attribute value not found for component: {0}")]
     RootAttributeValueNotFound(ComponentId),
     #[error("schema variant error: {0}")]
-    SchemaVariant(#[from] SchemaVariantError),
+    SchemaVariant(#[from] Box<SchemaVariantError>),
     #[error("schema variant not found for component: {0}")]
     SchemaVariantNotFound(ComponentId),
     #[error("serde_json error: {0}")]
@@ -356,11 +356,11 @@ pub enum ComponentError {
     )]
     UnexpectedExplicitAndInferredSources(ComponentId, ComponentId, ComponentInputSocket),
     #[error("validation error: {0}")]
-    Validation(#[from] ValidationError),
+    Validation(#[from] Box<ValidationError>),
     #[error("value source for known prop attribute value {0} is not a prop id")]
     ValueSourceForPropValueNotPropId(AttributeValueId),
     #[error("workspace error: {0}")]
-    Workspace(#[from] WorkspaceError),
+    Workspace(#[from] Box<WorkspaceError>),
     #[error("workspace pk not found on context")]
     WorkspacePkNone,
     #[error("workspace snapshot error: {0}")]
@@ -372,7 +372,7 @@ pub enum ComponentError {
     #[error("Attribute Prototype Argument used by too many Attribute Prototypes: {0}")]
     WrongNumberOfPrototypesForAttributePrototypeArgument(AttributePrototypeArgumentId),
     #[error("WsEvent error: {0}")]
-    WsEvent(#[from] WsEventError),
+    WsEvent(#[from] Box<WsEventError>),
 }
 
 impl From<ActionError> for ComponentError {
@@ -405,6 +405,102 @@ impl From<FrameError> for ComponentError {
 impl From<FuncBindingError> for ComponentError {
     fn from(err: FuncBindingError) -> Self {
         Box::new(err).into()
+    }
+}
+
+impl From<AttributePrototypeError> for ComponentError {
+    fn from(value: AttributePrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeArgumentError> for ComponentError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributeValueError> for ComponentError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<CodeViewError> for ComponentError {
+    fn from(value: CodeViewError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for ComponentError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncArgumentError> for ComponentError {
+    fn from(value: FuncArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InferredConnectionGraphError> for ComponentError {
+    fn from(value: InferredConnectionGraphError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InputSocketError> for ComponentError {
+    fn from(value: InputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ModuleError> for ComponentError {
+    fn from(value: ModuleError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<OutputSocketError> for ComponentError {
+    fn from(value: OutputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for ComponentError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<QualificationError> for ComponentError {
+    fn from(value: QualificationError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaVariantError> for ComponentError {
+    fn from(value: SchemaVariantError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ValidationError> for ComponentError {
+    fn from(value: ValidationError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceError> for ComponentError {
+    fn from(value: WorkspaceError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WsEventError> for ComponentError {
+    fn from(value: WsEventError) -> Self {
+        Box::new(value).into()
     }
 }
 
@@ -4085,7 +4181,7 @@ impl Component {
         if name.ends_with("- Copy") {
             name
         } else {
-            format!("{} - Copy", name)
+            format!("{name} - Copy")
         }
     }
 

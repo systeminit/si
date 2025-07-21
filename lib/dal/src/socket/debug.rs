@@ -62,17 +62,17 @@ type SocketDebugViewResult<T> = Result<T, SocketDebugViewError>;
 #[derive(Error, Debug)]
 pub enum SocketDebugViewError {
     #[error("attribute prototype debug view error: {0}")]
-    AttributePrototypeDebugViewError(#[from] AttributePrototypeDebugViewError),
+    AttributePrototypeDebugViewError(#[from] Box<AttributePrototypeDebugViewError>),
     #[error("attribute prototype error: {0}")]
-    AttributePrototypeError(#[from] AttributePrototypeError),
+    AttributePrototypeError(#[from] Box<AttributePrototypeError>),
     #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("component error: {0}")]
-    ComponentError(#[from] ComponentError),
+    ComponentError(#[from] Box<ComponentError>),
     #[error("input socket error: {0}")]
-    InputSocketError(#[from] InputSocketError),
+    InputSocketError(#[from] Box<InputSocketError>),
     #[error("output socket error: {0}")]
-    OutputSocketError(#[from] OutputSocketError),
+    OutputSocketError(#[from] Box<OutputSocketError>),
 }
 
 impl SocketDebugView {
@@ -171,5 +171,41 @@ impl SocketDebugView {
             inferred_connections,
         };
         Ok(view)
+    }
+}
+
+impl From<AttributePrototypeDebugViewError> for SocketDebugViewError {
+    fn from(value: AttributePrototypeDebugViewError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeError> for SocketDebugViewError {
+    fn from(value: AttributePrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributeValueError> for SocketDebugViewError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for SocketDebugViewError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InputSocketError> for SocketDebugViewError {
+    fn from(value: InputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<OutputSocketError> for SocketDebugViewError {
+    fn from(value: OutputSocketError) -> Self {
+        Box::new(value).into()
     }
 }

@@ -58,7 +58,7 @@ pub async fn startup(service: &str) -> Result<(), std::io::Error> {
         return Ok(());
     }
 
-    let metadata_candidates = match glob(&format!("/etc/nix-omnibus/{}/*/metadata.json", service)) {
+    let metadata_candidates = match glob(&format!("/etc/nix-omnibus/{service}/*/metadata.json")) {
         Ok(iter) => iter,
         Err(_) => {
             info!("metadata candidates could not be found for {}", service);

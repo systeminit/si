@@ -8,14 +8,9 @@ use dal::{
     Prop,
     Schema,
     SchemaVariant,
-    SchemaVariantError,
     Secret,
-    WorkspaceSnapshotError,
     action::prototype::ActionKind,
-    attribute::prototype::argument::{
-        AttributePrototypeArgument,
-        AttributePrototypeArgumentError,
-    },
+    attribute::prototype::argument::AttributePrototypeArgument,
     func::{
         argument::{
             FuncArgument,
@@ -28,7 +23,6 @@ use dal::{
             AttributeFuncDestination,
             EventualParent,
             FuncBinding,
-            FuncBindingError,
             action::ActionBinding,
             attribute::AttributeBinding,
             authentication::AuthBinding,
@@ -45,7 +39,6 @@ use dal::{
             LeafKind,
         },
     },
-    workspace_snapshot::graph::WorkspaceSnapshotGraphError,
 };
 use dal_test::{
     WorkspaceSignup,
@@ -59,7 +52,6 @@ use dal_test::{
 };
 use itertools::Itertools;
 use pretty_assertions_sorted::assert_eq;
-use si_split_graph::SplitGraphError;
 
 mod action;
 mod attribute;
@@ -736,18 +728,8 @@ async fn code_gen_cannot_create_cycle(ctx: &mut DalContext) {
     .await;
 
     match result {
-        Err(FuncBindingError::SchemaVariant(SchemaVariantError::AttributePrototypeArgument(
-            AttributePrototypeArgumentError::WorkspaceSnapshot(
-                WorkspaceSnapshotError::WorkspaceSnapshotGraph(
-                    WorkspaceSnapshotGraphError::CreateGraphCycle,
-                )
-                | WorkspaceSnapshotError::SplitGraph(SplitGraphError::WouldCreateGraphCycle),
-            ),
-        ))) => {}
-        other => panic!(
-            "Test should fail if we don't get this error, got: {:?}",
-            other
-        ),
+        Err(err) if err.is_create_graph_cycle() => {}
+        other => panic!("Test should fail if we don't get this error, got: {other:?}"),
     }
 }
 

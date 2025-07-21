@@ -58,16 +58,19 @@ pub enum AttributeBindingMalformedInput {
     /// [`SchemaVariant`](crate::SchemaVariant) provided.
     EventualParentComponentNotFromSchemaVariant(ComponentId, SchemaVariantId),
     /// When assembling an input location, all options were provided. We only want one.
-    InputLocationAllOptionsProvided(PropId, InputSocketId, serde_json::Value),
+    InputLocationAllOptionsProvided(PropId, InputSocketId, Box<serde_json::Value>),
     /// When assembling an input location, both an [`InputSocketId`](crate::InputSocket) and a raw, static argument
     /// value were provided. We only want one option to be provided.
-    InputLocationBothInputSocketAndStaticArgumentValueProvided(InputSocketId, serde_json::Value),
+    InputLocationBothInputSocketAndStaticArgumentValueProvided(
+        InputSocketId,
+        Box<serde_json::Value>,
+    ),
     /// When assembling an input location, both a [`PropId`](crate::Prop) and an [`InputSocketId`](crate::InputSocket)
     /// were provided. We only want one option to be provided.
     InputLocationBothPropAndInputSocketProvided(PropId, InputSocketId),
     /// When assembling an input location, both an [`PropId`](crate::Prop) and a raw, static argument
     /// value were provided. We only want one option to be provided.
-    InputLocationBothPropAndStaticArgumentValueProvided(PropId, serde_json::Value),
+    InputLocationBothPropAndStaticArgumentValueProvided(PropId, Box<serde_json::Value>),
     /// When assembling an input location, no option was provided. We want one option to be provided.
     InputLocationNoOptionProvided,
     /// When assembling an output location, both a [`PropId`](crate::Prop) and an [`OutputSocketId`](crate::OutputSocket)
@@ -185,7 +188,7 @@ impl AttributeBinding {
                     AttributeBindingMalformedInput::InputLocationAllOptionsProvided(
                         prop_id,
                         input_socket_id,
-                        static_argument_value,
+                        static_argument_value.into(),
                     ),
                 ))
             }
@@ -197,12 +200,18 @@ impl AttributeBinding {
             )),
             (Some(prop_id), None, Some(static_argument_value)) => {
                 Err(FuncBindingError::MalformedInput(
-                    AttributeBindingMalformedInput::InputLocationBothPropAndStaticArgumentValueProvided(prop_id, static_argument_value),
+                    AttributeBindingMalformedInput::InputLocationBothPropAndStaticArgumentValueProvided(
+                        prop_id,
+                        static_argument_value.into(),
+                    ),
                 ))
             }
             (None, Some(input_socket_id), Some(static_argument_value)) => {
                 Err(FuncBindingError::MalformedInput(
-                    AttributeBindingMalformedInput::InputLocationBothInputSocketAndStaticArgumentValueProvided(input_socket_id, static_argument_value),
+                    AttributeBindingMalformedInput::InputLocationBothInputSocketAndStaticArgumentValueProvided(
+                        input_socket_id,
+                        static_argument_value.into(),
+                    ),
                 ))
             }
             (None, None, None) => Err(FuncBindingError::MalformedInput(
@@ -803,7 +812,7 @@ impl AttributeBinding {
 
         let output_ts = format!("type Output = {};", output_ts_types.join(" | "));
 
-        Ok(format!("{}\n{}", input_ts_types, output_ts))
+        Ok(format!("{input_ts_types}\n{output_ts}"))
     }
 
     /// Take the existing [`AttributeBinding`] and recreate it for the new [`Func`]

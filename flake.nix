@@ -10,12 +10,29 @@
         nixpkgs.follows = "nixpkgs";
       };
     };
+    # NOTE 2025-07-17
+    # ---------------
+    #
+    # Pin Deno to version 2.2.12 as this is the last version that successfully
+    # built via Hydra. All newer versions revert to source-building which takes
+    # way too long for every developer.
+    #
+    # When the build failures are clear and there are pre-built packages
+    # available for Deno again, remove this input.
+    #
+    # References: https://github.com/NixOS/nixpkgs/issues/417331
+    # References: https://github.com/NixOS/nixpkgs/pull/384838
+    #
+    # See: https://aalbacetef.io/blog/nix-pinning-a-specific-package-version-in-a-flake-using-overlays/
+    # See: https://lazamar.co.uk/nix-versions/?channel=nixpkgs-unstable&package=deno
+    pinnedDenoVersion.url = "github:NixOS/nixpkgs/4684fd6b0c01e4b7d99027a34c93c2e09ecafee2";
   };
 
   outputs = {
     nixpkgs,
     flake-utils,
     rust-overlay,
+    pinnedDenoVersion,
     ...
   }:
     flake-utils.lib.eachDefaultSystem (system: let
@@ -24,6 +41,11 @@
           nodejs = super.nodejs_20;
         })
         (import rust-overlay)
+        # NOTE 2025-07-17: see inputs for explanation. When input is deleted,
+        # remove this overlay too.
+        (final: prev: {
+          deno = pinnedDenoVersion.legacyPackages.${prev.system}.deno;
+        })
       ];
 
       pkgs = import nixpkgs {inherit overlays system;};
@@ -88,7 +110,9 @@
           "x86_64-darwin" = "/dev/null";
           "aarch64-darwin" = "/dev/null";
         }
-        .${system};
+        .${
+          system
+        };
 
       # This isn't an exact science, but confirmed the system interpreter by
       # running `ldd /bin/sh` in Docker containers running:
@@ -105,7 +129,9 @@
           "x86_64-darwin" = "/dev/null";
           "aarch64-darwin" = "/dev/null";
         }
-        .${system};
+        .${
+          system
+        };
 
       langJsExtraPkgs = with pkgs; [
         awscli2

@@ -114,19 +114,19 @@ pub mod prototype;
 #[derive(Debug, Error)]
 pub enum ManagementError {
     #[error("action error: {0}")]
-    Action(#[from] ActionError),
+    Action(#[from] Box<ActionError>),
     #[error("action prototype error: {0}")]
-    ActionPrototype(#[from] ActionPrototypeError),
+    ActionPrototype(#[from] Box<ActionPrototypeError>),
     #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    AttributeValue(#[from] Box<AttributeValueError>),
     #[error("attributes error: {0}")]
-    Attributes(#[from] crate::attribute::attributes::Error),
+    Attributes(#[from] Box<crate::attribute::attributes::Error>),
     #[error("cannot create component with 'self' as a placeholder")]
     CannotCreateComponentWithSelfPlaceholder,
     #[error("component error: {0}")]
-    Component(#[from] ComponentError),
+    Component(#[from] Box<ComponentError>),
     #[error(
         "cannot add an action of kind {0} because component {1} does not have an action of that kind"
     )]
@@ -140,27 +140,27 @@ pub enum ManagementError {
     #[error("Component with management placeholder {0} could not be found")]
     ComponentWithPlaceholderNotFound(String),
     #[error("Diagram Error {0}")]
-    Diagram(#[from] DiagramError),
+    Diagram(#[from] Box<DiagramError>),
     #[error("Duplicate component placeholder {0}")]
     DuplicateComponentPlaceholder(String),
     #[error("frame error: {0}")]
-    Frame(#[from] FrameError),
+    Frame(#[from] Box<FrameError>),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("input socket error: {0}")]
-    InputSocket(#[from] InputSocketError),
+    InputSocket(#[from] Box<InputSocketError>),
     #[error("Component {0} does not have an input socket with name {1}")]
     InputSocketDoesNotExist(ComponentId, String),
     #[error("No existing or created view could be found named: {0}")]
     NoSuchView(String),
     #[error("output socket error: {0}")]
-    OutputSocket(#[from] OutputSocketError),
+    OutputSocket(#[from] Box<OutputSocketError>),
     #[error("Component {0} does not have an output socket with name {1}")]
     OutputSocketDoesNotExist(ComponentId, String),
     #[error("prop error: {0}")]
-    Prop(#[from] PropError),
+    Prop(#[from] Box<PropError>),
     #[error("schema error: {0}")]
-    Schema(#[from] SchemaError),
+    Schema(#[from] Box<SchemaError>),
     #[error("si db error: {0}")]
     SiDb(#[from] si_db::Error),
     #[error("transactions error: {0}")]
@@ -170,7 +170,7 @@ pub enum ManagementError {
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
     #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
+    WsEvent(#[from] Box<WsEventError>),
 }
 
 pub type ManagementResult<T> = Result<T, ManagementError>;
@@ -1988,4 +1988,88 @@ fn process_geometry(
     geometry.y.get_or_insert(default_y.unwrap_or(0.0));
 
     geometry.offset_by(origin_x, origin_y)
+}
+
+impl From<ActionError> for ManagementError {
+    fn from(value: ActionError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ActionPrototypeError> for ManagementError {
+    fn from(value: ActionPrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<crate::attribute::attributes::Error> for ManagementError {
+    fn from(value: crate::attribute::attributes::Error) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<DiagramError> for ManagementError {
+    fn from(value: DiagramError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FrameError> for ManagementError {
+    fn from(value: FrameError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributeValueError> for ManagementError {
+    fn from(value: AttributeValueError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ComponentError> for ManagementError {
+    fn from(value: ComponentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WsEventError> for ManagementError {
+    fn from(value: WsEventError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<AttributePrototypeArgumentError> for ManagementError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for ManagementError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<InputSocketError> for ManagementError {
+    fn from(value: InputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<OutputSocketError> for ManagementError {
+    fn from(value: OutputSocketError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<PropError> for ManagementError {
+    fn from(value: PropError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<SchemaError> for ManagementError {
+    fn from(value: SchemaError) -> Self {
+        Box::new(value).into()
+    }
 }

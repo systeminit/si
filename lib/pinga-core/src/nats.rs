@@ -52,10 +52,7 @@ pub mod subject {
     ) -> Subject {
         nats_std::subject::prefixed(
             prefix,
-            format!(
-                "{SUBJECT_PREFIX}.{}.{}.{}",
-                workspace_id, change_set_id, args,
-            ),
+            format!("{SUBJECT_PREFIX}.{workspace_id}.{change_set_id}.{args}",),
         )
     }
 }

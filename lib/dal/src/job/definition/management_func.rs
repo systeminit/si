@@ -57,19 +57,19 @@ use crate::{
 #[derive(Debug, Error)]
 pub enum ManagementFuncJobError {
     #[error("dependent value root error: {0}")]
-    DependentValueRoot(#[from] DependentValueRootError),
+    DependentValueRoot(#[from] Box<DependentValueRootError>),
     #[error("func error: {0}")]
-    Func(#[from] FuncError),
+    Func(#[from] Box<FuncError>),
     #[error("management prototype {0} is not valid for component {1}")]
     InvalidPrototypeForComponent(ManagementPrototypeId, ComponentId),
     #[error("management error: {0}")]
-    Management(#[from] ManagementError),
+    Management(#[from] Box<ManagementError>),
     #[error("management execution state error: {0}")]
     ManagementFuncExecutionState(#[from] ManagementFuncExecutionError),
     #[error("management func js execution failed")]
     ManagementFuncJsExecutionFailed,
     #[error("management prototype error: {0}")]
-    ManagementPrototype(#[from] ManagementPrototypeError),
+    ManagementPrototype(#[from] Box<ManagementPrototypeError>),
     #[error(
         "no pending execution for component {0} and management prototype {1} in change set {2}"
     )]
@@ -79,15 +79,57 @@ pub enum ManagementFuncJobError {
     #[error(transparent)]
     TokioTask(#[from] JoinError),
     #[error(transparent)]
-    Transactions(#[from] TransactionsError),
+    Transactions(#[from] Box<TransactionsError>),
     #[error(
         "management func {0} for component {1} waited too long for dependent values to be calculated"
     )]
     WaitedTooLongForDependentValueRoots(ManagementPrototypeId, ComponentId),
     #[error("workspace snapshot error: {0}")]
-    WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
+    WorkspaceSnapshot(#[from] Box<WorkspaceSnapshotError>),
     #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
+    WsEvent(#[from] Box<WsEventError>),
+}
+
+impl From<DependentValueRootError> for ManagementFuncJobError {
+    fn from(value: DependentValueRootError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<FuncError> for ManagementFuncJobError {
+    fn from(value: FuncError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ManagementError> for ManagementFuncJobError {
+    fn from(value: ManagementError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<ManagementPrototypeError> for ManagementFuncJobError {
+    fn from(value: ManagementPrototypeError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<TransactionsError> for ManagementFuncJobError {
+    fn from(value: TransactionsError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WorkspaceSnapshotError> for ManagementFuncJobError {
+    fn from(value: WorkspaceSnapshotError) -> Self {
+        Box::new(value).into()
+    }
+}
+
+impl From<WsEventError> for ManagementFuncJobError {
+    fn from(value: WsEventError) -> Self {
+        Box::new(value).into()
+    }
 }
 
 pub type ManagementFuncJobResult<T> = Result<T, ManagementFuncJobError>;
