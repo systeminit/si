@@ -62,6 +62,9 @@
       </div>
     </header>
 
+    <!-- Error banner for hinting -->
+    <ErrorBanner v-if="errorHint" class="mx-xs" :text="errorHint" />
+
     <div
       class="grid grid-cols-[1fr_1fr] grid-rows-[1fr_1fr_1fr] gap-xs p-xs h-full overflow-hidden"
     >
@@ -122,7 +125,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { Icon, themeClasses } from "@si/vue-lib/design-system";
 import { useRoute, useRouter } from "vue-router";
 import clsx from "clsx";
@@ -130,6 +133,7 @@ import CodeViewer from "@/components/CodeViewer.vue";
 import { FuncRun } from "../api_composables/func_run";
 import FuncRunStatusBadge from "../FuncRunStatusBadge.vue";
 import GridItemWithLiveHeader from "./GridItemWithLiveHeader.vue";
+import ErrorBanner from "./ErrorBanner.vue";
 
 const props = defineProps<{
   funcRun: FuncRun;
@@ -139,7 +143,19 @@ const props = defineProps<{
   argsJson: string;
   resultJson: string;
   isLive: boolean;
+  errorHint?: string;
+  errorMessageRaw?: string;
 }>();
+
+const logText = computed(() => {
+  if (props.errorHint && props.errorMessageRaw)
+    return `${props.logText}\n${props.errorHint}\nRaw error message: ${props.errorMessageRaw}`;
+  if (props.errorHint && !props.errorMessageRaw)
+    return `${props.logText}\n${props.errorHint}`;
+  if (!props.errorHint && props.errorMessageRaw)
+    return `${props.logText}\nRaw error message: ${props.errorMessageRaw}`;
+  return props.logText;
+});
 
 const router = useRouter();
 const route = useRoute();

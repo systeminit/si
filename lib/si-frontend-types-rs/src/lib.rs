@@ -6,6 +6,7 @@ mod conflict;
 pub mod fs;
 mod func;
 mod index;
+mod management;
 mod module;
 pub mod schema_variant;
 mod workspace;
@@ -50,6 +51,10 @@ pub use crate::{
         LeafInputLocation,
     },
     index::FrontEndObjectRequest,
+    management::{
+        ManagementFuncJobState,
+        ManagementState,
+    },
     module::{
         BuiltinModules,
         LatestModule,

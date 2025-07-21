@@ -1,6 +1,10 @@
 <template>
+  <!-- Do not include special case management funcs, like "import" and "run template" -->
   <li
-    v-if="func.kind !== MgmtFuncKind.Import"
+    v-if="
+      func.kind !== MgmtFuncKind.Import &&
+      func.kind !== MgmtFuncKind.RunTemplate
+    "
     :class="
       clsx(
         'rounded border flex flex-col',
@@ -24,17 +28,20 @@
       </span>
 
       <VButton
-        v-if="func.kind !== MgmtFuncKind.RunTemplate"
         size="sm"
         label="Run Function"
         iconTone="action"
         loadingText="Running"
-        :loading="dispatchedFunc || funcRun?.state === 'Running'"
+        :loading="managementExecutionStatus === 'Running'"
         @click="runMgmtFunc(func.id)"
       />
     </div>
     <div
-      v-if="funcRun"
+      v-if="
+        funcRun &&
+        managementExecutionStatusIcon &&
+        managementExecutionStatusMessage
+      "
       :class="
         clsx(
           'm-sm flex items-center gap-xs px-xs py-sm rounded',
@@ -42,13 +49,13 @@
         )
       "
     >
-      <Icon :name="getIconNameFromFuncRun(funcRun)" class="shrink-0" />
+      <Icon :name="managementExecutionStatusIcon" class="shrink-0" />
       <span class="grow">
-        {{ getMessageFromFuncRun(funcRun) }}
+        {{ managementExecutionStatusMessage }}
       </span>
       <VButton
         size="sm"
-        label="See Func Run"
+        :label="seeFuncRunLabel"
         iconTone="action"
         class="shrink-0"
         @click="navigateToFuncRunDetails(funcRun.id)"
@@ -65,17 +72,24 @@ import {
   VButton,
 } from "@si/vue-lib/design-system";
 import { useRoute, useRouter } from "vue-router";
-import { ref } from "vue";
+import { computed, inject, ref } from "vue";
 import clsx from "clsx";
 import { routes, useApi } from "@/newhotness/api_composables";
-import { FuncRun } from "@/newhotness/api_composables/func_run";
+import { funcRunStatus, FuncRun } from "@/newhotness/api_composables/func_run";
 import { MgmtFuncKind, MgmtFunction } from "@/workers/types/entity_kind_types";
+import { Context, assertIsDefined } from "@/newhotness/types";
+import { useManagementFuncJobState } from "./logic_composables/management";
 
 const props = defineProps<{
   componentId: string;
   func: MgmtFunction;
   funcRun?: FuncRun;
 }>();
+
+const seeFuncRunLabel = "See Func Run";
+
+const ctx = inject<Context>("CONTEXT");
+assertIsDefined(ctx);
 
 const router = useRouter();
 const route = useRoute();
@@ -113,21 +127,33 @@ const runMgmtFunc = async (funcId: string) => {
 
 const dispatchedFunc = ref(false);
 
-const getIconNameFromFuncRun = (funcRun: FuncRun): IconNames => {
-  if (funcRun.state === "Success") return "check-circle";
-  if (funcRun.state === "Failure") return "x-circle";
+const funcRun = computed(() => props.funcRun);
+const managementFuncJobStateComposable = useManagementFuncJobState(funcRun);
+const managementFuncJobState = computed(
+  () => managementFuncJobStateComposable.value.value,
+);
+const managementExecutionStatus = computed(() => {
+  if (!props.funcRun) return undefined;
+  if (dispatchedFunc.value) return "Running";
+  return funcRunStatus(props.funcRun, managementFuncJobState.value?.state);
+});
 
-  return "loader";
-};
+const managementExecutionStatusIcon = computed((): IconNames | undefined => {
+  if (managementExecutionStatus.value === "Success") return "check-circle";
+  if (managementExecutionStatus.value === "Failure") return "x-circle";
+  if (managementExecutionStatus.value === "Running") return "loader";
+  return undefined;
+});
 
-const getMessageFromFuncRun = (funcRun: FuncRun): string => {
-  if (funcRun.state === "Success")
-    return "Executed successfully. Click to see execution results";
-  if (funcRun.state === "Failure")
-    return `Error executing function, click "See Func Run" to get more details`;
-
-  return "Running Function...";
-};
+const managementExecutionStatusMessage = computed((): string | undefined => {
+  if (managementExecutionStatus.value === "Success")
+    return `Executed successfully. Click "${seeFuncRunLabel}" see execution results.`;
+  if (managementExecutionStatus.value === "Failure")
+    return `Error executing function. Click "${seeFuncRunLabel}" to get more details.`;
+  if (managementExecutionStatus.value === "Running")
+    return "Running Function...";
+  return undefined;
+});
 
 const navigateToFuncRunDetails = (funcRunId: string) => {
   router.push({

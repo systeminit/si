@@ -77,6 +77,7 @@ use crate::{
 mod generate_template;
 mod history;
 mod latest;
+mod state;
 
 pub type ManagementApiResult<T> = Result<T, ManagementApiError>;
 
@@ -181,6 +182,7 @@ pub async fn run_prototype_inner(
                 pending.id(),
                 ManagementState::Failure,
                 None,
+                Some("hit max pending duration".to_string()),
             )
             .await?;
             state_ctx.commit().await?;
@@ -296,4 +298,5 @@ pub fn v2_routes() -> Router<AppState> {
             "/generate_template/:viewId",
             post(generate_template::generate_template),
         )
+        .route("/state/:funcRunId", get(state::state))
 }

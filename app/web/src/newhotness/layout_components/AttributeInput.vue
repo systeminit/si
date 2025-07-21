@@ -11,7 +11,7 @@
             isSecret && 'mb-[-1px]',
             validationStatus === 'failing' && [
               'pr-xs',
-              themeClasses('bg-destructive-200', 'bg-[#5A4949]'), // FIXME(nick): replace hex color with palette color... this is 702C2C with 25% opacity on a 525252 and was made using alpha blending to avoid opacity usage
+              themeClasses('bg-destructive-200', 'bg-newhotness-destructive'),
             ],
           )
         "
@@ -201,7 +201,7 @@
             'flex flex-row p-xs text-sm',
             themeClasses(
               'text-destructive-600 bg-destructive-200',
-              'text-destructive-200 bg-[#5A4949]', // FIXME(nick): replace hex color with palette color... this is 702C2C with 25% opacity on a 525252 and was made using alpha blending to avoid opacity usage
+              'text-destructive-200 bg-newhotness-destructive',
             ),
           )
         "

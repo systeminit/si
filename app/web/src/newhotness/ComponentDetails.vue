@@ -1,45 +1,57 @@
 <template>
   <DelayedLoader v-if="componentQuery.isLoading.value" :size="'full'" />
   <section v-else :class="clsx('grid gap-sm h-full p-sm', gridStateClass)">
-    <div
-      v-if="showBanner"
-      :class="
-        clsx(
-          'banner',
-          'flex flex-row items-center gap-xs px-xs ',
-          themeClasses('bg-neutral-300', 'bg-neutral-600'),
-        )
-      "
-    >
-      <template v-if="!component">
-        <IconButton
-          tooltip="Close (Esc)"
-          tooltipPlacement="top"
-          class="border-0 mr-2em"
-          icon="x"
-          size="sm"
-          iconIdleTone="shade"
-          iconTone="shade"
-          @click="close"
-        />
-        <TruncateWithTooltip class="py-xs">
-          No component with id "{{ componentId }}" exists on this change set.
-        </TruncateWithTooltip>
-      </template>
-      <template v-else-if="component.toDelete">
-        <VButton
-          v-tooltip="'Close (Esc)'"
-          label="Marked for deletion"
-          size="sm"
-          tone="neutral"
-          class="font-normal !py-0 flex-none"
-          @click="close"
-        />
-        <TruncateWithTooltip class="py-xs">
-          This component will be removed from HEAD once the current change set
-          is applied.
-        </TruncateWithTooltip>
-      </template>
+    <div v-if="showComponentStateBanner || showErrorBanner" class="banner">
+      <ErrorBanner v-if="showErrorBanner" :text="errorBannerText">
+        <template #right>
+          <VButton
+            v-if="specialCaseManagementFuncRun"
+            :label="seeFuncRunLabel"
+            tone="neutral"
+            @click="navigateToFuncRunDetails(specialCaseManagementFuncRun.id)"
+          />
+        </template>
+      </ErrorBanner>
+      <div v-if="showComponentStateBanner && showErrorBanner" class="py-xs" />
+      <div
+        v-if="showComponentStateBanner"
+        :class="
+          clsx(
+            'flex flex-row items-center gap-xs px-xs',
+            themeClasses('bg-neutral-300', 'bg-neutral-600'),
+          )
+        "
+      >
+        <template v-if="!component">
+          <IconButton
+            tooltip="Close (Esc)"
+            tooltipPlacement="top"
+            class="border-0 mr-2em"
+            icon="x"
+            size="sm"
+            iconIdleTone="shade"
+            iconTone="shade"
+            @click="close"
+          />
+          <TruncateWithTooltip class="py-xs">
+            No component with id "{{ componentId }}" exists on this change set.
+          </TruncateWithTooltip>
+        </template>
+        <template v-else-if="component.toDelete">
+          <VButton
+            v-tooltip="'Close (Esc)'"
+            label="Marked for deletion"
+            size="sm"
+            tone="neutral"
+            class="font-normal !py-0 flex-none"
+            @click="close"
+          />
+          <TruncateWithTooltip class="py-xs">
+            This component will be removed from HEAD once the current change set
+            is applied.
+          </TruncateWithTooltip>
+        </template>
+      </div>
     </div>
 
     <template v-if="component">
@@ -114,28 +126,6 @@
               loadingIcon="loader"
               @click="upgradeComponent"
             />
-            <VButton
-              v-if="runTemplateFunc"
-              size="sm"
-              tone="neutral"
-              :label="
-                dispatchedFunc ||
-                latestFuncRuns[runTemplateFunc?.id]?.state === 'Running'
-                  ? 'Running...'
-                  : 'Run Template'
-              "
-              variant="ghost"
-              :loading="
-                dispatchedFunc ||
-                latestFuncRuns[runTemplateFunc?.id]?.state === 'Running'
-              "
-              :disabled="
-                dispatchedFunc ||
-                latestFuncRuns[runTemplateFunc?.id]?.state === 'Running'
-              "
-              loadingIcon="loader"
-              @click="runMgmtFunc(runTemplateFunc?.id)"
-            />
           </template>
         </div>
       </div>
@@ -145,7 +135,7 @@
           <template #header>
             <div class="flex place-content-between w-full">
               <span>Attributes</span>
-              <template v-if="importFunc">
+              <template v-if="specialCaseManagementFuncKind === 'import'">
                 <VButton
                   size="xs"
                   tone="neutral"
@@ -162,13 +152,38 @@
                   "
                 />
               </template>
+              <template
+                v-else-if="
+                  specialCaseManagementFuncKind === 'runTemplate' &&
+                  specialCaseManagementFunc?.id
+                "
+              >
+                <VButton
+                  size="sm"
+                  tone="action"
+                  :label="runTemplateButtonText"
+                  variant="ghost"
+                  :loading="specialCaseManagementExecutionStatus === 'Running'"
+                  :disabled="specialCaseManagementExecutionStatus === 'Running'"
+                  loadingIcon="loader"
+                  @click.stop="runMgmtFunc(specialCaseManagementFunc?.id)"
+                />
+              </template>
             </div>
           </template>
           <AttributePanel
             :component="component"
             :attributeTree="attributeTree"
-            :importFunc="showResourceInput ? importFunc : undefined"
-            :importFuncRun="latestFuncRuns[importFunc?.id ?? '']"
+            :importFunc="
+              specialCaseManagementFuncKind === 'import' && showResourceInput
+                ? specialCaseManagementFunc
+                : undefined
+            "
+            :importFuncRun="
+              specialCaseManagementFuncKind === 'import'
+                ? specialCaseManagementFuncRun
+                : undefined
+            "
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem
@@ -308,12 +323,13 @@ import {
   MgmtFuncKind,
 } from "@/workers/types/entity_kind_types";
 import { Context, ExploreContext, assertIsDefined } from "@/newhotness/types";
-import { FuncRun } from "@/newhotness/api_composables/func_run";
+import { funcRunStatus, FuncRun } from "@/newhotness/api_composables/func_run";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import AttributePanel from "./AttributePanel.vue";
 import ResourceValuesPanel from "./ResourceValuesPanel.vue";
 import { attributeEmitter, keyEmitter } from "./logic_composables/emitters";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
+import ErrorBanner from "./layout_components/ErrorBanner.vue";
 import DelayedLoader from "./layout_components/DelayedLoader.vue";
 import { useApi, routes } from "./api_composables";
 import QualificationPanel from "./QualificationPanel.vue";
@@ -329,6 +345,7 @@ import EraseModal from "./EraseModal.vue";
 import MinimizedComponentQualificationStatus from "./MinimizedComponentQualificationStatus.vue";
 import { useComponentDeletion } from "./composables/useComponentDeletion";
 import { useComponentUpgrade } from "./composables/useComponentUpgrade";
+import { useManagementFuncJobState } from "./logic_composables/management";
 
 const props = defineProps<{
   componentId: string;
@@ -461,17 +478,28 @@ export type NameFormData = {
   name: string;
 };
 
-// Import
-const importFunc = computed(() =>
-  mgmtFuncs.value.find((f) => f.kind === MgmtFuncKind.Import),
-);
+// Special case management funcs
+const specialCaseManagementFunc = computed(() => {
+  const importFunc = mgmtFuncs.value.find(
+    (f) => f.kind === MgmtFuncKind.Import,
+  );
+  const runTemplateFunc = mgmtFuncs.value.find(
+    (f) => f.kind === MgmtFuncKind.RunTemplate,
+  );
+  if (importFunc) return importFunc; // chose import first if both appear (they shouldn't!)
+  if (runTemplateFunc) return runTemplateFunc;
+  return undefined;
+});
+const specialCaseManagementFuncKind = computed(() => {
+  if (specialCaseManagementFunc.value?.kind === MgmtFuncKind.Import)
+    return "import";
+  if (specialCaseManagementFunc.value?.kind === MgmtFuncKind.RunTemplate)
+    return "runTemplate";
+  return undefined;
+});
+const dispatchedSpecialCaseManagementFunc = ref(false);
 
-// Run Template
-const runTemplateFunc = computed(() =>
-  mgmtFuncs.value.find((f) => f.kind === MgmtFuncKind.RunTemplate),
-);
-const dispatchedFunc = ref(false);
-
+// API to run special case management funcs
 const mgmtRunApi = useApi();
 const route = useRoute();
 const runMgmtFunc = async (funcId: string) => {
@@ -483,9 +511,9 @@ const runMgmtFunc = async (funcId: string) => {
 
   const { req, newChangeSetId } = await call.post({});
 
-  dispatchedFunc.value = true;
+  dispatchedSpecialCaseManagementFunc.value = true;
   setTimeout(() => {
-    dispatchedFunc.value = false;
+    dispatchedSpecialCaseManagementFunc.value = false;
   }, 2000);
 
   // NOTE(nick): need to make sure this makes sense after the timeout.
@@ -561,6 +589,33 @@ watch([funcRuns], () => {
   }
 });
 
+// Special case func run and state
+const specialCaseManagementFuncRun = computed(() => {
+  const specialCaseManagementFuncId = specialCaseManagementFunc.value?.id;
+  if (!specialCaseManagementFuncId) return undefined;
+  return latestFuncRuns.value[specialCaseManagementFuncId];
+});
+const specialCaseManagementFuncJobStateComposable = useManagementFuncJobState(
+  specialCaseManagementFuncRun,
+);
+const specialCaseManagementFuncJobState = computed(
+  () => specialCaseManagementFuncJobStateComposable.value.value,
+);
+const specialCaseManagementExecutionStatus = computed(() => {
+  if (dispatchedSpecialCaseManagementFunc.value) return "Running";
+  return funcRunStatus(
+    specialCaseManagementFuncRun.value,
+    specialCaseManagementFuncJobState.value?.state,
+  );
+});
+const runTemplateButtonText = computed(() => {
+  if (specialCaseManagementExecutionStatus.value === "Running")
+    return "Running...";
+  if (specialCaseManagementExecutionStatus.value === "Failure")
+    return "Re-run Template";
+  return "Run Template";
+});
+
 onMounted(() => {
   keyEmitter.on("Escape", () => {
     close();
@@ -614,7 +669,20 @@ onBeforeUnmount(() => {
   realtimeStore.unsubscribe(MGMT_RUN_KEY);
 });
 
-const showBanner = computed(() => !component.value || component.value.toDelete);
+const showComponentStateBanner = computed(
+  () => !component.value || component.value.toDelete,
+);
+const showErrorBanner = computed(
+  () => specialCaseManagementExecutionStatus.value === "Failure",
+);
+const seeFuncRunLabel = "See Func Run";
+const errorBannerText = computed(() => {
+  if (specialCaseManagementFuncKind.value === "import")
+    return `Error executing Import function. Click "${seeFuncRunLabel}" for more details.`;
+  if (specialCaseManagementFuncKind.value === "runTemplate")
+    return `Error executing Run Template function. Click "${seeFuncRunLabel}" for more details.`;
+  return "";
+});
 
 const gridStateClass = computed(() => {
   let c;
@@ -625,7 +693,7 @@ const gridStateClass = computed(() => {
     c = "docs-closed";
   }
 
-  if (showBanner.value) {
+  if (showComponentStateBanner.value || showErrorBanner.value) {
     c += "-with-banner";
   } else {
     c += "-without-banner";
@@ -711,6 +779,17 @@ const componentsFinishDelete = async (mode: DeleteMode) => {
     close();
   }
 };
+
+const navigateToFuncRunDetails = (funcRunId: string) => {
+  router.push({
+    name: "new-hotness-func-run",
+    params: {
+      workspacePk: route.params.workspacePk,
+      changeSetId: route.params.changeSetId,
+      funcRunId,
+    },
+  });
+};
 </script>
 
 <style lang="less" scoped>
@@ -719,7 +798,7 @@ section.grid.docs-open-with-banner {
     "banner banner banner"
     "name name name"
     "attrs docs right";
-  grid-template-rows: 2.5rem 2.5rem minmax(0, 1fr);
+  grid-template-rows: fit-content(5rem) 2.5rem minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr) minmax(0, 25%) minmax(0, 25%);
 }
 section.grid.docs-closed-with-banner {
@@ -727,7 +806,7 @@ section.grid.docs-closed-with-banner {
     "banner banner"
     "name name"
     "attrs right";
-  grid-template-rows: 2.5rem 2.5rem minmax(0, 1fr);
+  grid-template-rows: fit-content(5rem) 2.5rem minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr) minmax(0, 33%);
 }
 section.grid.docs-open-without-banner {

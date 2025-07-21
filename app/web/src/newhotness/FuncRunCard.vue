@@ -19,7 +19,7 @@
       <!-- Status indicator -->
       <div>
         <StatusIndicatorIcon
-          :status="funcRunStatus(funcRun)"
+          :status="funcRunStatus(funcRun, managementFuncJobState?.state)"
           type="management"
           size="sm"
         />
@@ -87,6 +87,7 @@ import {
 } from "@si/vue-lib/design-system";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { funcRunStatus, FuncRun } from "./api_composables/func_run";
+import { useManagementFuncJobState } from "./logic_composables/management";
 
 const props = defineProps<{
   funcRun: FuncRun;
@@ -95,6 +96,12 @@ const props = defineProps<{
 defineEmits<{
   (e: "click", funcRunId: string): void;
 }>();
+
+const funcRun = computed(() => props.funcRun);
+const managementFuncJobStateComposable = useManagementFuncJobState(funcRun);
+const managementFuncJobState = computed(
+  () => managementFuncJobStateComposable.value.value,
+);
 
 /**
  * Determines if the function is currently in a running state

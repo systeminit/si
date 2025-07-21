@@ -2240,6 +2240,7 @@ async fn management_execution_state_db_test(ctx: &mut DalContext) -> Result<()> 
         latest_execution.id(),
         ManagementState::Operating,
         None,
+        None,
     )
     .await
     .expect_err("should not allow you to transition state");
@@ -2249,6 +2250,7 @@ async fn management_execution_state_db_test(ctx: &mut DalContext) -> Result<()> 
         latest_execution.id(),
         ManagementState::Executing,
         Some(Ulid::new().into()),
+        None,
     )
     .await?;
 
@@ -2272,6 +2274,7 @@ async fn management_execution_state_db_test(ctx: &mut DalContext) -> Result<()> 
         latest_execution.id(),
         ManagementState::Operating,
         Some(Ulid::new().into()),
+        None,
     )
     .await?;
 
@@ -2284,6 +2287,7 @@ async fn management_execution_state_db_test(ctx: &mut DalContext) -> Result<()> 
         latest_execution.id(),
         ManagementState::Success,
         Some(Ulid::new().into()),
+        None,
     )
     .await?;
 
