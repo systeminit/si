@@ -307,9 +307,9 @@ watch(headChangeSetId, () => {
 watch(
   () => openChangeSets,
   () => {
-    const ids = Object.keys(openChangeSets.value);
-    if (ids.length > 0 && !ids.includes(props.changeSetId))
-      if (ctx.value.headChangeSetId.value)
+    const ids = openChangeSets.value.map((c) => c.id);
+    if (ids.length > 0 && !ids.includes(props.changeSetId)) {
+      if (ctx.value.headChangeSetId.value) {
         router.push({
           name: "new-hotness",
           params: {
@@ -317,15 +317,17 @@ watch(
             changeSetId: headChangeSetId.value,
           },
         });
-      else
+      } else {
         router.push({
           name: "new-hotness-workspace",
           params: {
             workspacePk: props.workspacePk,
           },
         });
+      }
+    }
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 );
 
 startKeyEmitter(document);
