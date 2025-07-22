@@ -100,12 +100,6 @@ pub async fn update_property_editor_value(
         let component_schema_variant = component.schema_variant(&ctx).await?;
         let prop = Prop::get_by_id(&ctx, request.prop_id).await?;
 
-        let parent_prop = if let Some(attribute_value_id) = request.parent_attribute_value_id {
-            AttributeValue::prop_opt(&ctx, attribute_value_id).await?
-        } else {
-            None
-        };
-
         // Determine the value after updating for audit logging.
         if request.is_for_secret {
             let (before_secret_id, before_secret_name) = if let Some(inner) = before_value {
@@ -165,6 +159,15 @@ pub async fn update_property_editor_value(
             .await?;
         }
 
+        let parent_prop_id = match request.parent_attribute_value_id {
+            Some(av_id) => AttributeValue::prop_id_opt(&ctx, av_id).await?,
+            None => None,
+        };
+        let parent_prop_name = match parent_prop_id {
+            Some(parent_prop_id) => Some(Prop::node_weight(&ctx, parent_prop_id).await?.name),
+            None => None,
+        };
+
         track(
             &posthog_client,
             &ctx,
@@ -177,8 +180,8 @@ pub async fn update_property_editor_value(
                 "component_schema_name": component_schema.name(),
                 "prop_id": prop.id,
                 "prop_name": prop.name,
-                "parent_prop_id": parent_prop.as_ref().map(|prop| prop.id),
-                "parent_prop_name": parent_prop.as_ref().map(|prop| prop.name.clone()),
+                "parent_prop_id": parent_prop_id,
+                "parent_prop_name": parent_prop_name,
                 "change_set_id": ctx.change_set_id(),
             }),
         );

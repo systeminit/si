@@ -114,7 +114,6 @@ use crate::{
             NodeWeight,
             NodeWeightDiscriminants,
             NodeWeightError,
-            PropNodeWeight,
         },
         serde_value_to_string_type,
         traits::attribute_value::AttributeValueExt,
@@ -1016,10 +1015,10 @@ impl AttributeValue {
             Self::vivify_value_and_parent_values(ctx, parent_attribute_value_id).await?;
         }
 
-        let should_populate_nested = Self::prop_opt(ctx, attribute_value_id)
-            .await?
-            .map(|prop| prop.kind.is_container())
-            .unwrap_or(false);
+        let should_populate_nested = match Self::prop_id_opt(ctx, attribute_value_id).await? {
+            Some(prop_id) => Prop::node_weight(ctx, prop_id).await?.kind.is_container(),
+            None => false,
+        };
 
         let unprocessed_value = func_run_value.unprocessed_value().cloned();
 
@@ -1372,7 +1371,7 @@ impl AttributeValue {
             .await?
         {
             result.insert(
-                Self::prop(ctx, child_av_id.into()).await?.name,
+                Self::prop_name(ctx, child_av_id.into()).await?,
                 child_av_id.into(),
             );
         }
@@ -2116,7 +2115,7 @@ impl AttributeValue {
             // TODO(victor) remove this new ui comes around
             // Pick the prototype for the function based on prop type: if it's Array, use
             // si:normalizeToArray, otherwise use si:identity
-            let intrinsic_func = match Self::prop(ctx, subscriber_av_id).await?.kind {
+            let intrinsic_func = match Self::prop_kind(ctx, subscriber_av_id).await? {
                 PropKind::Array => IntrinsicFunc::NormalizeToArray,
                 kind @ PropKind::Boolean
                 | kind @ PropKind::Integer
@@ -2211,23 +2210,20 @@ impl AttributeValue {
             .get_attribute_value_node_weight()?)
     }
 
-    pub async fn prop_opt(
+    pub async fn prop_kind(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<Option<Prop>> {
-        let prop_id = Self::prop_id_opt(ctx, attribute_value_id).await?;
-        Ok(match prop_id {
-            Some(prop_id) => Some(Prop::get_by_id(ctx, prop_id).await?),
-            None => None,
-        })
+    ) -> AttributeValueResult<PropKind> {
+        let prop_id = Self::prop_id(ctx, attribute_value_id).await?;
+        Ok(Prop::node_weight(ctx, prop_id).await?.kind)
     }
 
-    pub async fn prop(
+    pub async fn prop_name(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<PropNodeWeight> {
+    ) -> AttributeValueResult<String> {
         let prop_id = Self::prop_id(ctx, attribute_value_id).await?;
-        Ok(Prop::node_weight(ctx, prop_id).await?)
+        Ok(Prop::node_weight(ctx, prop_id).await?.name)
     }
 
     pub async fn prop_id(
@@ -2239,7 +2235,7 @@ impl AttributeValue {
             .ok_or(AttributeValueError::PropNotFound(attribute_value_id))
     }
 
-    async fn prop_id_opt(
+    pub async fn prop_id_opt(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Option<PropId>> {
@@ -2348,8 +2344,8 @@ impl AttributeValue {
         ctx: &DalContext,
         id: AttributeValueId,
     ) -> AttributeValueResult<Vec<AttributeValueId>> {
-        let prop = Self::prop(ctx, id).await?;
-        match prop.kind {
+        let prop_id = Self::prop_id(ctx, id).await?;
+        match Prop::node_weight(ctx, prop_id).await?.kind {
             PropKind::Boolean
             | PropKind::Integer
             | PropKind::Float
@@ -2370,8 +2366,7 @@ impl AttributeValue {
             PropKind::Object => {
                 // NOTE probably can get the unordered ones if it comes down to it.
                 let child_ids = Self::child_av_ids(ctx, id).await?;
-                let child_prop_ids =
-                    Prop::direct_child_prop_ids_ordered(ctx, prop.id.into()).await?;
+                let child_prop_ids = Prop::direct_child_prop_ids_ordered(ctx, prop_id).await?;
 
                 // Get the mapping from PropId -> AttributeValueId
                 let mut av_prop_map = HashMap::with_capacity(child_ids.len());
@@ -2577,10 +2572,10 @@ impl AttributeValue {
         let mut pointer = jsonptr::PointerBuf::new();
         while let Some((parent_id, key)) = Self::parent_and_map_key(ctx, child_id).await? {
             // Only props can have child AVs at the moment.
-            match Self::prop(ctx, parent_id).await?.kind {
+            match Self::prop_kind(ctx, parent_id).await? {
                 PropKind::Object => {
-                    let child_prop = Self::prop(ctx, child_id).await?;
-                    pointer.push_front(child_prop.name)
+                    let child_prop_name = Self::prop_name(ctx, child_id).await?;
+                    pointer.push_front(child_prop_name)
                 }
                 PropKind::Map => {
                     let Some(key) = key else {

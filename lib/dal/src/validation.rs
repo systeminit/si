@@ -28,6 +28,7 @@ use crate::{
     ComponentId,
     DalContext,
     FuncError,
+    Prop,
     TransactionsError,
     attribute::value::AttributeValueError,
     func::{
@@ -319,9 +320,11 @@ impl ValidationOutput {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> ValidationResult<Option<String>> {
-        Ok(AttributeValue::prop_opt(ctx, attribute_value_id)
-            .await?
-            .and_then(|prop| prop.validation_format))
+        let validation_format = match AttributeValue::prop_id_opt(ctx, attribute_value_id).await? {
+            Some(prop_id) => Prop::get_by_id(ctx, prop_id).await?.validation_format,
+            None => None,
+        };
+        Ok(validation_format)
     }
 
     /// If an attribute value is for a [Prop](Prop) that has a `validation_format`, run a validation

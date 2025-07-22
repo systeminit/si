@@ -118,8 +118,8 @@ async fn resolve_json_pointer(
     // Go through each segment of the JSON pointer (e.g. /foo/bar/0 = foo, bar, 0)
     // and look for its child
     for token in pointer {
-        let prop = AttributeValue::prop(ctx, parent_id).await?;
-        let child_av_id = match prop.kind {
+        let kind = AttributeValue::prop_kind(ctx, parent_id).await?;
+        let child_av_id = match kind {
             // Look up array index in ordering node
             PropKind::Array => match token.to_index() {
                 Ok(jsonptr::index::Index::Num(index)) => {
@@ -174,7 +174,7 @@ async fn vivify_json_pointer(
         //
         // Ensure the parent is si:setObject/si:setArray/si:setMap, so it can have children.
         //
-        let kind = AttributeValue::prop(ctx, parent_id).await?.kind;
+        let kind = AttributeValue::prop_kind(ctx, parent_id).await?;
         let prototype_id = AttributeValue::prototype_id(ctx, parent_id).await?;
         let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
         let intrinsic = Func::intrinsic_kind(ctx, func_id).await?;

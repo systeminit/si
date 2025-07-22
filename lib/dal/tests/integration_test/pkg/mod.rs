@@ -271,7 +271,7 @@ async fn child_av_names(
 ) -> Result<Vec<String>> {
     let mut result = vec![];
     for child_av_id in AttributeValue::get_child_av_ids_in_order(ctx, parent_av_id).await? {
-        let name = AttributeValue::prop(ctx, child_av_id).await?.name;
+        let name = AttributeValue::prop_name(ctx, child_av_id).await?;
         let name = match prefix {
             Some(prefix) => format!("{prefix}.{name}"),
             None => name.to_owned(),
