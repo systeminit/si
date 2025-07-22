@@ -11,6 +11,11 @@ load(
     _rustfmt_check = "rustfmt_check",
 )
 load(
+    "@prelude-si//:toml.bzl",
+    _toml_format = "toml_format",
+    _toml_format_check = "toml_format_check",
+)
+load(
     "@prelude-si//macros:native.bzl",
     _alias = "alias",
     _test_suite = "test_suite",
@@ -29,6 +34,7 @@ def rust_binary(
         test_unit_env = {},
         test_unit_resources = {},
         extra_test_targets = [],
+        toml_srcs = ["Cargo.toml"],
         visibility = ["PUBLIC"],
         **kwargs):
     native.rust_binary(
@@ -86,6 +92,13 @@ def rust_binary(
         visibility = visibility,
     )
 
+    if toml_srcs:
+        _toml_format_check(
+            name = "check-format-toml",
+            srcs = toml_srcs,
+            visibility = visibility,
+        )
+
     if not rule_exists("check-format"):
         _test_suite(
             name = "check-format",
@@ -139,14 +152,21 @@ def rust_binary(
     )
 
     _cargo_fmt(
-        name = "fix-format",
+        name = "fix-format-rust",
         crate = name,
         srcs = srcs,
         visibility = visibility,
     )
 
+    if toml_srcs:
+        _toml_format(
+            name = "fix-format-toml",
+            srcs = toml_srcs,
+            visibility = visibility,
+        )
+
     _cargo_clippy_fix(
-        name = "fix-lint",
+        name = "fix-lint-rust",
         crate = name,
         srcs = srcs,
         visibility = visibility,
@@ -172,6 +192,7 @@ def rust_library(
         test_unit_env = {},
         test_unit_resources = {},
         extra_test_targets = [],
+        toml_srcs = ["Cargo.toml"],
         proc_macro = False,
         visibility = ["PUBLIC"],
         **kwargs):
@@ -231,6 +252,13 @@ def rust_library(
         visibility = visibility,
     )
 
+    if toml_srcs:
+        _toml_format_check(
+            name = "check-format-toml",
+            srcs = toml_srcs,
+            visibility = visibility,
+        )
+
     if not rule_exists("check-format"):
         _test_suite(
             name = "check-format",
@@ -284,14 +312,21 @@ def rust_library(
     )
 
     _cargo_fmt(
-        name = "fix-format",
+        name = "fix-format-rust",
         crate = name,
         srcs = srcs,
         visibility = visibility,
     )
 
+    if toml_srcs:
+        _toml_format(
+            name = "fix-format-toml",
+            srcs = toml_srcs,
+            visibility = visibility,
+        )
+
     _cargo_clippy_fix(
-        name = "fix-lint",
+        name = "fix-lint-rust",
         crate = name,
         srcs = srcs,
         visibility = visibility,

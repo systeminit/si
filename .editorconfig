@@ -13,6 +13,12 @@ indent_size = 2
 tab_width = 2
 max_line_length = 80
 
+[*.toml]
+indent_style = space
+indent_size = 2
+tab_width = 2
+max_line_length = 80
+
 [*.rs]
 indent_style = space
 tab_width = 4

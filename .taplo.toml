@@ -1,0 +1,13 @@
+[formatting]
+allowed_blank_lines = 1
+reorder_keys = false
+
+[[rule]]
+include = ["**/Cargo.toml"]
+keys = ["dependencies", "dev-dependencies", "workspace.dependencies"]
+
+[rule.formatting]
+align_comments = false
+array_auto_expand = false
+reorder_arrays = true
+reorder_keys = true

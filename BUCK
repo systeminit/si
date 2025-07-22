@@ -6,6 +6,8 @@ load(
     "nix_flake_lock",
     "pnpm_lock",
     "pnpm_workspace",
+    "toml_format",
+    "toml_format_check",
     "workspace_node_modules",
 )
 
@@ -80,6 +82,10 @@ export_file(
 )
 
 export_file(
+    name = ".taplo.toml",
+)
+
+export_file(
     name = "clippy.toml",
 )
 
@@ -133,11 +139,37 @@ pnpm_lock(
 )
 
 export_file(
+    name = "Cargo.toml",
+)
+
+toml_srcs = [
+    "Cargo.toml",
+    "clippy.toml",
+    "rustfmt.toml",
+    "tomlfmt.toml",
+    "typos.toml",
+]
+
+toml_format_check(
+    name = "check-format-toml",
+    srcs = toml_srcs,
+)
+
+toml_format(
+    name = "fix-format-toml",
+    srcs = toml_srcs,
+)
+
+export_file(
     name = "rust-toolchain",
 )
 
 export_file(
     name = "rustfmt.toml",
+)
+
+export_file(
+    name = "tomlfmt.toml",
 )
 
 workspace_node_modules(
