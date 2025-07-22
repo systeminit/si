@@ -1,4 +1,5 @@
 buildscript.run = true
+
 [[cxx_library]]
 name = "lz4-sys"
 srcs = [

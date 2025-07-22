@@ -9,7 +9,7 @@ extra_srcs = ["src/**/*.rs"]
 buildscript.run = false
 features = ["tokio_track_caller"]
 
-[platform_fixup.'cfg(target_os = "linux")']
+['cfg(target_os = "linux")']
 cfgs = [
     "tokio_taskdump",
     "tokio_track_caller",
@@ -20,7 +20,7 @@ extra_deps = [
     ":tracing",
 ]
 
-[platform_fixup.'cfg(not(target_os = "linux"))']
+['cfg(not(target_os = "linux"))']
 cfgs = [
     "tokio_track_caller",
     "tokio_unstable",
