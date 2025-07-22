@@ -84,6 +84,75 @@
         <TruncateWithTooltip class="flex-1 min-w-0 m-[-4px] py-2xs px-xs">{{
           component.name
         }}</TruncateWithTooltip>
+        <div class="ml-auto flex gap-xs">
+          <template v-if="component.toDelete">
+            <VButton
+              v-tooltip="'Restore (R)'"
+              size="sm"
+              tone="success"
+              :label="restoreLoading ? 'Restoring...' : 'Restore'"
+              variant="ghost"
+              :icon="restoreLoading ? 'loader' : 'trash-restore'"
+              :loading="restoreLoading"
+              :disabled="restoreLoading"
+              loadingIcon="loader"
+              @click="restoreComponent"
+            />
+          </template>
+          <template v-else>
+            <VButton
+              v-tooltip="'Erase (E)'"
+              size="sm"
+              tone="destructive"
+              label="Erase"
+              variant="ghost"
+              @click="eraseComponent"
+            />
+            <VButton
+              v-tooltip="'Delete (⌫)'"
+              size="sm"
+              tone="destructive"
+              label="Delete"
+              class="border border-destructive-500 bg-destructive-500 text-white hover:bg-destructive-600 hover:border-destructive-600"
+              @click="deleteComponent"
+            />
+            <VButton
+              v-if="isUpgradeable"
+              v-tooltip="'Upgrade (U)'"
+              size="sm"
+              tone="action"
+              :label="upgradeLoading ? 'Upgrading...' : 'Upgrade'"
+              variant="ghost"
+              :icon="upgradeLoading ? 'loader' : 'bolt-outline'"
+              :loading="upgradeLoading"
+              :disabled="upgradeLoading"
+              loadingIcon="loader"
+              @click="upgradeComponent"
+            />
+            <VButton
+              v-if="runTemplateFunc"
+              size="sm"
+              tone="neutral"
+              :label="
+                dispatchedFunc ||
+                latestFuncRuns[runTemplateFunc?.id]?.state === 'Running'
+                  ? 'Running...'
+                  : 'Run Template'
+              "
+              variant="ghost"
+              :loading="
+                dispatchedFunc ||
+                latestFuncRuns[runTemplateFunc?.id]?.state === 'Running'
+              "
+              :disabled="
+                dispatchedFunc ||
+                latestFuncRuns[runTemplateFunc?.id]?.state === 'Running'
+              "
+              loadingIcon="loader"
+              @click="runMgmtFunc(runTemplateFunc?.id)"
+            />
+          </template>
+        </div>
       </div>
 
       <div class="attrs flex flex-col gap-sm">
@@ -106,20 +175,6 @@
                       showResourceInput = !showResourceInput;
                     }
                   "
-                />
-              </template>
-              <template v-else-if="runTemplateFunc">
-                <VButton
-                  size="sm"
-                  label="Run Template"
-                  loadingText="Running"
-                  tone="neutral"
-                  class="ml-2xs mr-xs font-normal"
-                  :loading="
-                    dispatchedFunc ||
-                    latestFuncRuns[runTemplateFunc?.id]?.state === 'Running'
-                  "
-                  @click.stop="runMgmtFunc(runTemplateFunc?.id)"
                 />
               </template>
             </div>
@@ -238,6 +293,12 @@
         />
       </div>
     </template>
+    <EraseModal ref="eraseModalRef" @confirm="componentsFinishErase" />
+    <DeleteModal
+      ref="deleteModalRef"
+      @delete="(mode) => componentsFinishDelete(mode)"
+    />
+    <AddComponentModal ref="addComponentModalRef" />
   </section>
 </template>
 
@@ -263,7 +324,7 @@ import {
   IncomingConnections,
   MgmtFuncKind,
 } from "@/workers/types/entity_kind_types";
-import { Context, assertIsDefined } from "@/newhotness/types";
+import { Context, ExploreContext, assertIsDefined } from "@/newhotness/types";
 import { FuncRun } from "@/newhotness/api_composables/func_run";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import AttributePanel from "./AttributePanel.vue";
@@ -282,6 +343,11 @@ import ActionsPanel from "./ActionsPanel.vue";
 import ConnectionsPanel from "./ConnectionsPanel.vue";
 import DocumentationPanel from "./DocumentationPanel.vue";
 import ManagementPanel from "./ManagementPanel.vue";
+import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
+import EraseModal from "./EraseModal.vue";
+import AddComponentModal from "./AddComponentModal.vue";
+import { useComponentDeletion } from "./composables/useComponentDeletion";
+import { useComponentUpgrade } from "./composables/useComponentUpgrade";
 
 const props = defineProps<{
   componentId: string;
@@ -290,6 +356,7 @@ const props = defineProps<{
 const realtimeStore = useRealtimeStore();
 const ctx = inject<Context>("CONTEXT");
 assertIsDefined(ctx);
+const explore = inject<ExploreContext | null>("EXPLORE_CONTEXT", null);
 
 const key = useMakeKey();
 const args = useMakeArgs();
@@ -505,6 +572,30 @@ onMounted(() => {
     close();
   });
 
+  keyEmitter.on("KeyE", () => {
+    if (!component.value?.toDelete) {
+      eraseComponent();
+    }
+  });
+
+  keyEmitter.on("Backspace", () => {
+    if (!component.value?.toDelete) {
+      deleteComponent();
+    }
+  });
+
+  keyEmitter.on("KeyR", () => {
+    if (component.value?.toDelete) {
+      restoreComponent();
+    }
+  });
+
+  keyEmitter.on("KeyU", () => {
+    if (!component.value?.toDelete && isUpgradeable.value) {
+      upgradeComponent();
+    }
+  });
+
   realtimeStore.subscribe(MGMT_RUN_KEY, `changeset/${ctx?.changeSetId.value}`, [
     {
       eventType: "FuncRunLogUpdated",
@@ -522,6 +613,10 @@ onMounted(() => {
 });
 onBeforeUnmount(() => {
   keyEmitter.off("Escape");
+  keyEmitter.off("KeyE");
+  keyEmitter.off("Backspace");
+  keyEmitter.off("KeyR");
+  keyEmitter.off("KeyU");
   realtimeStore.unsubscribe(MGMT_RUN_KEY);
 });
 
@@ -544,6 +639,85 @@ const gridStateClass = computed(() => {
 
   return c;
 });
+
+const deleteModalRef = ref<InstanceType<typeof DeleteModal>>();
+const eraseModalRef = ref<InstanceType<typeof EraseModal>>();
+const addComponentModalRef = ref<InstanceType<typeof AddComponentModal>>();
+const {
+  convertBifrostToComponentInList,
+  deleteComponents,
+  eraseComponents,
+  restoreComponents,
+} = useComponentDeletion(undefined, true);
+
+const { upgradeComponents } = useComponentUpgrade();
+
+const isUpgradeable = computed(() => {
+  if (!component.value) return false;
+
+  if (component.value.canBeUpgraded !== undefined) {
+    return component.value.canBeUpgraded;
+  }
+
+  // Fallback to explore context for upgrade info
+  if (explore) {
+    return explore.upgradeableComponents.value.has(component.value.id);
+  }
+
+  return false;
+});
+
+const deleteComponent = () => {
+  if (!component.value) return;
+  const componentForModal = convertBifrostToComponentInList(component.value);
+  deleteModalRef.value?.open([componentForModal]);
+};
+
+const eraseComponent = () => {
+  if (!component.value) return;
+  const componentForModal = convertBifrostToComponentInList(component.value);
+  eraseModalRef.value?.open([componentForModal]);
+};
+
+const upgradeLoading = ref(false);
+const restoreLoading = ref(false);
+
+const upgradeComponent = async () => {
+  if (!component.value || upgradeLoading.value) return;
+
+  upgradeLoading.value = true;
+  await upgradeComponents([component.value.id]);
+  upgradeLoading.value = false;
+};
+
+const restoreComponent = async () => {
+  if (!component.value || restoreLoading.value) return;
+
+  restoreLoading.value = true;
+  const result = await restoreComponents([component.value.id]);
+  if (result.success) {
+    close();
+  }
+  restoreLoading.value = false;
+};
+
+const componentsFinishErase = async () => {
+  if (!component.value) return;
+  const result = await eraseComponents([component.value.id]);
+  if (result.success) {
+    eraseModalRef.value?.close();
+    close();
+  }
+};
+
+const componentsFinishDelete = async (mode: DeleteMode) => {
+  if (!component.value) return;
+  const result = await deleteComponents([component.value.id], mode);
+  if (result.success) {
+    deleteModalRef.value?.close();
+    close();
+  }
+};
 </script>
 
 <style lang="less" scoped>
