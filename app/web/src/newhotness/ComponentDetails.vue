@@ -230,31 +230,33 @@
 
       <div class="right flex flex-col">
         <CollapsingFlexItem>
+          <template #header> Qualifications </template>
+          <template #headerIcons></template>
+          <QualificationPanel
+            :component="component"
+            :attributeTree="attributeTree"
+          />
+        </CollapsingFlexItem>
+        <CollapsingFlexItem>
           <template #header> Connections </template>
-          <template #headerIcons>
-            <PillCounter
-              :count="(component.inputCount ?? 0) + (outgoing ?? 0)"
-              size="sm"
-            />
-          </template>
+          <template #headerIcons></template>
           <ConnectionsPanel
             v-if="componentConnections && component"
             :component="component"
             :connections="componentConnections ?? undefined"
           />
         </CollapsingFlexItem>
-        <CollapsingFlexItem open>
-          <template #header> Qualifications </template>
-          <template #headerIcons>
-            <PillCounter
-              :count="component.qualificationTotals.total"
-              size="sm"
-            />
-          </template>
-          <QualificationPanel
+        <CollapsingFlexItem>
+          <template #header> Code Gen </template>
+          <CodePanel
+            v-if="attributeTree"
             :component="component"
             :attributeTree="attributeTree"
           />
+        </CollapsingFlexItem>
+        <CollapsingFlexItem>
+          <template #header> Diff </template>
+          <DiffPanel :component="component" />
         </CollapsingFlexItem>
         <CollapsingFlexItem>
           <template #header> Resource </template>
@@ -265,24 +267,11 @@
               size="sm"
               tone="success"
             />
-            <Icon v-else name="refresh-hex-outline" size="sm" tone="shade" />
           </template>
           <ResourcePanel
             :component="component"
             :attributeTree="attributeTree ?? undefined"
           />
-        </CollapsingFlexItem>
-        <CollapsingFlexItem>
-          <template #header> Generated Code </template>
-          <CodePanel
-            v-if="attributeTree"
-            :component="component"
-            :attributeTree="attributeTree"
-          />
-        </CollapsingFlexItem>
-        <CollapsingFlexItem>
-          <template #header> Diff </template>
-          <DiffPanel :component="component" />
         </CollapsingFlexItem>
         <DocumentationPanel
           v-if="!docsOpen"
@@ -298,7 +287,6 @@
       ref="deleteModalRef"
       @delete="(mode) => componentsFinishDelete(mode)"
     />
-    <AddComponentModal ref="addComponentModalRef" />
   </section>
 </template>
 
@@ -307,7 +295,6 @@
 import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import {
   VButton,
-  PillCounter,
   Icon,
   themeClasses,
   IconButton,
@@ -343,7 +330,6 @@ import DocumentationPanel from "./DocumentationPanel.vue";
 import ManagementPanel from "./ManagementPanel.vue";
 import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
 import EraseModal from "./EraseModal.vue";
-import AddComponentModal from "./AddComponentModal.vue";
 import { useComponentDeletion } from "./composables/useComponentDeletion";
 import { useComponentUpgrade } from "./composables/useComponentUpgrade";
 
@@ -363,10 +349,6 @@ const queryClient = useQueryClient();
 const docsOpen = ref(true);
 
 const componentId = computed(() => props.componentId);
-
-const outgoing = computed(
-  () => ctx.outgoingCounts.value[props.componentId] ?? 0,
-);
 
 const componentQuery = useQuery<BifrostComponent | undefined>({
   queryKey: key(EntityKind.Component, componentId),
@@ -638,7 +620,6 @@ const gridStateClass = computed(() => {
 
 const deleteModalRef = ref<InstanceType<typeof DeleteModal>>();
 const eraseModalRef = ref<InstanceType<typeof EraseModal>>();
-const addComponentModalRef = ref<InstanceType<typeof AddComponentModal>>();
 const {
   convertBifrostToComponentInList,
   deleteComponents,
