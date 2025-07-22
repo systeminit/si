@@ -251,7 +251,7 @@ impl AttributeBinding {
     ) -> FuncBindingResult<Vec<FuncBinding>> {
         let mut bindings = vec![];
         let intrinsic_func_kind: IntrinsicFunc =
-            Func::get_intrinsic_kind_by_id_or_error(ctx, func_id).await?;
+            Func::intrinsic_kind_or_error(ctx, func_id).await?;
 
         for attribute_prototype_id in AttributePrototype::list_ids_for_func_id(ctx, func_id).await?
         {
@@ -590,7 +590,7 @@ impl AttributeBinding {
 
         let func_id = AttributePrototype::func_id(ctx, attribute_prototype_id).await?;
         // if this func is intrinsic, make sure everything looks good
-        if (Func::get_intrinsic_kind_by_id(ctx, func_id).await?).is_some() {
+        if (Func::intrinsic_kind(ctx, func_id).await?).is_some() {
             let output_location = Self::find_output_location(ctx, attribute_prototype_id).await?;
             validate_intrinsic_inputs(
                 ctx,
@@ -863,7 +863,7 @@ async fn validate_intrinsic_inputs(
     output_location: AttributeFuncDestination,
     prototype_arguments: Vec<AttributeArgumentBinding>,
 ) -> FuncBindingResult<()> {
-    let intrinsic_kind = Func::get_intrinsic_kind_by_id_or_error(ctx, func_id).await?;
+    let intrinsic_kind = Func::intrinsic_kind_or_error(ctx, func_id).await?;
     if let EventualParent::Component(component_id) = eventual_parent {
         return Err(FuncBindingError::CannotSetIntrinsicForComponent(
             component_id,

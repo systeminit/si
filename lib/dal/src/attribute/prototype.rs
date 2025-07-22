@@ -259,6 +259,14 @@ impl AttributePrototype {
         Ok(Func::get_by_id(ctx, Self::func_id(ctx, prototype_id).await?).await?)
     }
 
+    pub async fn is_dynamic(
+        ctx: &DalContext,
+        prototype_id: AttributePrototypeId,
+    ) -> AttributePrototypeResult<bool> {
+        let func_id = Self::func_id(ctx, prototype_id).await?;
+        Ok(Func::is_dynamic(ctx, func_id).await?)
+    }
+
     pub async fn find_for_prop(
         ctx: &DalContext,
         prop_id: PropId,

@@ -114,6 +114,7 @@ use crate::{
             NodeWeight,
             NodeWeightDiscriminants,
             NodeWeightError,
+            PropNodeWeight,
         },
         serde_value_to_string_type,
         traits::attribute_value::AttributeValueExt,
@@ -156,8 +157,8 @@ pub enum AttributeValueError {
     CannotCreateSocketValueWithoutComponentId,
     #[error("cannot explicitly set the value of {0} because it is for an input or output socket")]
     CannotExplicitlySetSocketValues(AttributeValueId),
-    #[error("cannot set child of value {0} because it has a dynamic func {1}")]
-    CannotSetChildOfDynamicValue(AttributeValueId, FuncId),
+    #[error("cannot set child of value {0} because it has a dynamic prototype")]
+    CannotSetChildOfDynamicValue(AttributeValueId),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
     #[error(
@@ -912,11 +913,10 @@ impl AttributeValue {
         ctx: &DalContext,
         input_attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Vec<Value>> {
-        let maybe_input_socket_id =
-            match AttributeValue::is_for(ctx, input_attribute_value_id).await? {
-                ValueIsFor::InputSocket(input_socket_id) => Some(input_socket_id),
-                _ => None,
-            };
+        let maybe_input_socket_id = match Self::is_for(ctx, input_attribute_value_id).await? {
+            ValueIsFor::InputSocket(input_socket_id) => Some(input_socket_id),
+            _ => None,
+        };
 
         let Some(input_socket_id) = maybe_input_socket_id else {
             return Ok(vec![]);
@@ -1041,15 +1041,10 @@ impl AttributeValue {
         let read_lock = Arc::new(RwLock::new(()));
         // Don't need to pass in an Inferred Dependency Graph for one off updates, we can just calculate
         let (execution_result, func, _) =
-            AttributeValue::execute_prototype_function(ctx, attribute_value_id, read_lock).await?;
+            Self::execute_prototype_function(ctx, attribute_value_id, read_lock).await?;
 
-        AttributeValue::set_values_from_func_run_value(
-            ctx,
-            attribute_value_id,
-            execution_result,
-            func,
-        )
-        .await?;
+        Self::set_values_from_func_run_value(ctx, attribute_value_id, execution_result, func)
+            .await?;
 
         Ok(())
     }
@@ -1202,10 +1197,7 @@ impl AttributeValue {
 
         while let Some(attribute_value_id) = current_attribute_value_id {
             let prop_kind = {
-                let prop_id = match AttributeValue::is_for(ctx, attribute_value_id)
-                    .await?
-                    .prop_id()
-                {
+                let prop_id = match Self::is_for(ctx, attribute_value_id).await?.prop_id() {
                     Some(prop_id) => prop_id,
                     // Only prop values can be "vivified", but we don't return an error here to
                     // simplify the use of this function
@@ -1234,7 +1226,7 @@ impl AttributeValue {
                 }
             }
 
-            current_attribute_value_id = AttributeValue::parent_id(ctx, attribute_value_id).await?;
+            current_attribute_value_id = Self::parent_id(ctx, attribute_value_id).await?;
         }
 
         Ok(())
@@ -1440,14 +1432,14 @@ impl AttributeValue {
                 warn!(
                     "Removing child AV {child_av_id} (no prop) parent object AV {parent_av_id} (parent prop {parent_prop_id})"
                 );
-                AttributeValue::remove(ctx, child_av_id).await?;
+                Self::remove(ctx, child_av_id).await?;
                 continue;
             };
             if let Some(duplicate_av_id) = existing_children.insert(child_prop_id, child_av_id) {
                 warn!(
                     "Removing duplicate child AV {duplicate_av_id} (prop {child_prop_id}) from parent object AV {parent_av_id} (parent prop {parent_prop_id})"
                 );
-                AttributeValue::remove(ctx, duplicate_av_id).await?;
+                Self::remove(ctx, duplicate_av_id).await?;
                 continue;
             }
         }
@@ -1567,7 +1559,7 @@ impl AttributeValue {
 
         // Remove unused child AVs that are not in the JSON array
         for extra_element in existing_elements {
-            AttributeValue::remove(ctx, extra_element).await?;
+            Self::remove(ctx, extra_element).await?;
         }
 
         Ok(new_children)
@@ -1688,9 +1680,7 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<AttributePrototypeId> {
-        let is_for_ulid: Ulid = AttributeValue::is_for(ctx, attribute_value_id)
-            .await?
-            .into();
+        let is_for_ulid: Ulid = Self::is_for(ctx, attribute_value_id).await?.into();
         let workspace_snapshot = ctx.workspace_snapshot()?;
 
         // find an incoming contain edge if any, to grab the key for this value if it is part of a map
@@ -1770,13 +1760,12 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<AttributePrototypeId> {
-        let maybe_prototype_id =
-            AttributeValue::component_prototype_id(ctx, attribute_value_id).await?;
+        let maybe_prototype_id = Self::component_prototype_id(ctx, attribute_value_id).await?;
 
         match maybe_prototype_id {
             Some(prototype_id) => Ok(prototype_id),
             // If there is no Prototype edge the prototype for this value is defined at the schema variant level
-            None => Ok(AttributeValue::schema_variant_prototype_id(ctx, attribute_value_id).await?),
+            None => Ok(Self::schema_variant_prototype_id(ctx, attribute_value_id).await?),
         }
     }
 
@@ -1811,8 +1800,8 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<()> {
-        AttributeValue::update(ctx, attribute_value_id, None).await?;
-        let prototype_id = AttributeValue::component_prototype_id(ctx, attribute_value_id)
+        Self::update(ctx, attribute_value_id, None).await?;
+        let prototype_id = Self::component_prototype_id(ctx, attribute_value_id)
             .await?
             .ok_or(AttributeValueError::NoComponentPrototype(
                 attribute_value_id,
@@ -1826,8 +1815,8 @@ impl AttributeValue {
             )
             .await?;
 
-        if !AttributeValue::is_set_by_dependent_function(ctx, attribute_value_id).await? {
-            AttributeValue::update_from_prototype_function(ctx, attribute_value_id).await?;
+        if !Self::is_set_by_dependent_function(ctx, attribute_value_id).await? {
+            Self::update_from_prototype_function(ctx, attribute_value_id).await?;
         }
         ctx.add_dependent_values_and_enqueue(vec![attribute_value_id])
             .await?;
@@ -1843,7 +1832,7 @@ impl AttributeValue {
         value: Option<Value>,
     ) -> AttributeValueResult<()> {
         let mut normalized_value = value.to_owned();
-        let prop_id = match AttributeValue::is_for(ctx, attribute_value_id).await? {
+        let prop_id = match Self::is_for(ctx, attribute_value_id).await? {
             ValueIsFor::Prop(prop_id) => prop_id,
             _ => {
                 // Attribute values for input and output sockets should only be set by
@@ -1867,7 +1856,7 @@ impl AttributeValue {
 
                     IntrinsicFunc::Unset
                 } else {
-                    IntrinsicFunc::from(prop_node.kind())
+                    prop_node.kind().intrinsic_set_func()
                 }
             } else {
                 // None for the value means there is no value, so we use unset, but if it's a
@@ -1923,11 +1912,7 @@ impl AttributeValue {
         func_run_value: FuncRunValue,
         func: Func,
     ) -> AttributeValueResult<()> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-        let av_node_weight = workspace_snapshot
-            .get_node_weight(attribute_value_id)
-            .await?
-            .get_attribute_value_node_weight()?;
+        let av_node_weight = Self::node_weight(ctx, attribute_value_id).await?;
 
         let content_value: Option<si_events::CasValue> =
             func_run_value.value().cloned().map(Into::into);
@@ -1977,7 +1962,7 @@ impl AttributeValue {
         new_av_node_weight
             .set_unprocessed_value(unprocessed_value_address.map(ContentAddress::JsonValue));
 
-        workspace_snapshot
+        ctx.workspace_snapshot()?
             .add_or_replace_node(NodeWeight::AttributeValue(new_av_node_weight))
             .await?;
 
@@ -1994,7 +1979,7 @@ impl AttributeValue {
         // Which would make the rebaser dispatch the update action if the DVU is running on head, without user intervention
         /*
         {
-            let component_id = AttributeValue::component_id(ctx, attribute_value_id).await?;
+            let component_id = Self::component_id(ctx, attribute_value_id).await?;
             let schema_variant_id = Component::schema_variant_id(ctx, component_id).await?;
 
             for prototype_id in SchemaVariant::find_action_prototypes_by_kind(
@@ -2026,19 +2011,11 @@ impl AttributeValue {
         dest_av_id: AttributeValueId,
         from_av_id: AttributeValueId,
     ) -> AttributeValueResult<()> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
-
-        let mut dest_node_weight = workspace_snapshot
-            .get_node_weight(dest_av_id)
-            .await?
-            .get_attribute_value_node_weight()?;
-        let from_node_weight = workspace_snapshot
-            .get_node_weight(from_av_id)
-            .await?
-            .get_attribute_value_node_weight()?;
+        let mut dest_node_weight = Self::node_weight(ctx, dest_av_id).await?;
+        let from_node_weight = Self::node_weight(ctx, from_av_id).await?;
         dest_node_weight.set_unprocessed_value(from_node_weight.unprocessed_value());
         dest_node_weight.set_value(from_node_weight.value());
-        workspace_snapshot
+        ctx.workspace_snapshot()?
             .add_or_replace_node(NodeWeight::AttributeValue(dest_node_weight))
             .await?;
 
@@ -2051,9 +2028,7 @@ impl AttributeValue {
         from_av_id: AttributeValueId,
     ) -> AttributeValueResult<()> {
         // If the old component has a non-link value (prototype), copy it over
-        if let Some(from_prototype_id) =
-            AttributeValue::component_prototype_id(ctx, from_av_id).await?
-        {
+        if let Some(from_prototype_id) = Self::component_prototype_id(ctx, from_av_id).await? {
             let from_func_id = AttributePrototype::func_id(ctx, from_prototype_id).await?;
             let dest_prototype = AttributePrototype::new(ctx, from_func_id).await?;
 
@@ -2074,8 +2049,7 @@ impl AttributeValue {
                 .await?;
             }
 
-            AttributeValue::set_component_prototype_id(ctx, dest_av_id, dest_prototype.id, None)
-                .await?;
+            Self::set_component_prototype_id(ctx, dest_av_id, dest_prototype.id, None).await?;
 
             let sources = AttributePrototype::input_sources(ctx, dest_prototype.id).await?;
             for source in sources {
@@ -2113,7 +2087,7 @@ impl AttributeValue {
                 }
             }
         } else if let Some(existing_prototype_id) =
-            AttributeValue::component_prototype_id(ctx, dest_av_id).await?
+            Self::component_prototype_id(ctx, dest_av_id).await?
         {
             AttributePrototype::remove(ctx, existing_prototype_id).await?;
         }
@@ -2223,14 +2197,18 @@ impl AttributeValue {
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Self> {
-        let workspace_snapshot = ctx.workspace_snapshot()?;
+        Ok(Self::node_weight(ctx, attribute_value_id).await?.into())
+    }
 
-        let node_weight = workspace_snapshot
+    pub async fn node_weight(
+        ctx: &DalContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<AttributeValueNodeWeight> {
+        Ok(ctx
+            .workspace_snapshot()?
             .get_node_weight(attribute_value_id)
             .await?
-            .get_attribute_value_node_weight()?;
-
-        Ok(node_weight.into())
+            .get_attribute_value_node_weight()?)
     }
 
     pub async fn prop_opt(
@@ -2247,9 +2225,9 @@ impl AttributeValue {
     pub async fn prop(
         ctx: &DalContext,
         attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<Prop> {
+    ) -> AttributeValueResult<PropNodeWeight> {
         let prop_id = Self::prop_id(ctx, attribute_value_id).await?;
-        Ok(Prop::get_by_id(ctx, prop_id).await?)
+        Ok(Prop::node_weight(ctx, prop_id).await?)
     }
 
     pub async fn prop_id(
@@ -2314,7 +2292,7 @@ impl AttributeValue {
         &self,
         ctx: &DalContext,
     ) -> AttributeValueResult<Option<serde_json::Value>> {
-        match AttributeValue::is_for(ctx, self.id).await? {
+        match Self::is_for(ctx, self.id).await? {
             ValueIsFor::Prop(prop_id) => Ok(Prop::default_value(ctx, prop_id).await?),
             ValueIsFor::InputSocket(_) | ValueIsFor::OutputSocket(_) => Ok(None),
         }
@@ -2392,7 +2370,8 @@ impl AttributeValue {
             PropKind::Object => {
                 // NOTE probably can get the unordered ones if it comes down to it.
                 let child_ids = Self::child_av_ids(ctx, id).await?;
-                let child_prop_ids = Prop::direct_child_prop_ids_ordered(ctx, prop.id).await?;
+                let child_prop_ids =
+                    Prop::direct_child_prop_ids_ordered(ctx, prop.id.into()).await?;
 
                 // Get the mapping from PropId -> AttributeValueId
                 let mut av_prop_map = HashMap::with_capacity(child_ids.len());
@@ -2517,11 +2496,8 @@ impl AttributeValue {
     ) -> AttributeValueResult<()> {
         while let Some(parent_id) = Self::parent_id(ctx, id).await? {
             if let Some(prototype_id) = Self::component_prototype_id(ctx, parent_id).await? {
-                let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-                if Func::is_dynamic(ctx, func_id).await? {
-                    return Err(AttributeValueError::CannotSetChildOfDynamicValue(
-                        parent_id, func_id,
-                    ));
+                if AttributePrototype::is_dynamic(ctx, prototype_id).await? {
+                    return Err(AttributeValueError::CannotSetChildOfDynamicValue(parent_id));
                 }
             }
             id = parent_id;
@@ -2601,9 +2577,9 @@ impl AttributeValue {
         let mut pointer = jsonptr::PointerBuf::new();
         while let Some((parent_id, key)) = Self::parent_and_map_key(ctx, child_id).await? {
             // Only props can have child AVs at the moment.
-            match AttributeValue::prop(ctx, parent_id).await?.kind {
+            match Self::prop(ctx, parent_id).await?.kind {
                 PropKind::Object => {
-                    let child_prop = AttributeValue::prop(ctx, child_id).await?;
+                    let child_prop = Self::prop(ctx, child_id).await?;
                     pointer.push_front(child_prop.name)
                 }
                 PropKind::Map => {
@@ -2791,13 +2767,11 @@ impl AttributeValue {
         let mut work_queue = VecDeque::from([id]);
 
         while let Some(attribute_value_id) = work_queue.pop_front() {
-            if let ValueIsFor::Prop(prop_id) =
-                AttributeValue::is_for(ctx, attribute_value_id).await?
-            {
+            if let ValueIsFor::Prop(prop_id) = Self::is_for(ctx, attribute_value_id).await? {
                 let prop = Prop::get_by_id(ctx, prop_id).await?;
                 if prop.kind == PropKind::Object {
                     for child_value_id in
-                        AttributeValue::get_child_av_ids_in_order(ctx, attribute_value_id).await?
+                        Self::get_child_av_ids_in_order(ctx, attribute_value_id).await?
                     {
                         values.push(child_value_id);
                         work_queue.push_back(child_value_id);
