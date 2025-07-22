@@ -73,10 +73,11 @@ const mgmtFuncs = computed(
 const key = useMakeKey();
 const args = useMakeArgs();
 
-const componentId = computed(() => props.component?.id);
+const componentId = computed(() => props.component?.id ?? "");
 
 const mgmtConnectionsQuery = useQuery<ManagementConnections | null>({
-  queryKey: key(EntityKind.ManagementConnections, componentId.value),
+  enabled: () => componentId.value !== "",
+  queryKey: key(EntityKind.ManagementConnections, componentId),
   queryFn: async () => {
     return await bifrost<ManagementConnections>(
       args(EntityKind.ManagementConnections, componentId.value),
