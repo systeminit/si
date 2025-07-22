@@ -318,8 +318,8 @@ async fn parent_prop_is_map_or_array(ctx: &DalContext, av_id: AttributeValueId) 
     let Some(parent_av_id) = AttributeValue::parent_id(ctx, av_id).await? else {
         return Ok(false);
     };
-    let parent_prop = AttributeValue::prop(ctx, parent_av_id).await?;
-    Ok(matches!(parent_prop.kind, PropKind::Map | PropKind::Array))
+    let parent_prop_kind = AttributeValue::prop_kind(ctx, parent_av_id).await?;
+    Ok(matches!(parent_prop_kind, PropKind::Map | PropKind::Array))
 }
 
 /// The source for a value

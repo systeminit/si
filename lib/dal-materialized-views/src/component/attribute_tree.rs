@@ -59,7 +59,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
             },
         );
 
-        let maybe_prop = AttributeValue::prop_opt(ctx, av_id).await?;
+        let prop_id = AttributeValue::prop_id_opt(ctx, av_id).await?;
 
         // Build si_frontend_mv_types::AttributeValue & add to attribute_values HashMap.
         let key = AttributeValue::key_for_id(ctx, av_id).await?;
@@ -71,8 +71,8 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
                 .await?
             {
                 Some(value) => value,
-                None => match &maybe_prop {
-                    Some(prop) => Prop::default_value(ctx, prop.id)
+                None => match prop_id {
+                    Some(prop_id) => Prop::default_value(ctx, prop_id)
                         .await?
                         .unwrap_or(serde_json::Value::Null),
                     None => serde_json::Value::Null,
@@ -182,7 +182,7 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
 
         let av_mv = AttributeValueMv {
             id: av_id,
-            prop_id: maybe_prop.as_ref().map(|p| p.id),
+            prop_id,
             key,
             path: av_path,
             value,
@@ -196,11 +196,11 @@ pub async fn assemble(ctx: DalContext, component_id: ComponentId) -> crate::Resu
         };
         attribute_values.insert(av_id, av_mv);
 
-        if let Some(prop) = maybe_prop {
+        if let Some(prop_id) = prop_id {
             // If si_frontend_mv_types::Prop is not already in props HashMap, build & add.
-            if let std::collections::hash_map::Entry::Vacant(e) = props.entry(prop.id) {
+            if let std::collections::hash_map::Entry::Vacant(e) = props.entry(prop_id) {
                 let prop_mv =
-                    prop_tree::assemble_prop(ctx.clone(), prop.id(), schema_variant_id).await?;
+                    prop_tree::assemble_prop(ctx.clone(), prop_id, schema_variant_id).await?;
                 e.insert(prop_mv);
             }
         }

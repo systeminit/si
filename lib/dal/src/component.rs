@@ -3053,18 +3053,14 @@ impl Component {
     /// and there isn't any action already enqueued for this component, enqueue it!
     pub async fn enqueue_update_action_if_applicable(
         ctx: &DalContext,
-        modified_attribute_value_id: AttributeValueId,
+        modified_av_id: AttributeValueId,
     ) -> ComponentResult<Option<Action>> {
-        if let Some(prop_for_value) =
-            AttributeValue::prop_opt(ctx, modified_attribute_value_id).await?
-        {
-            if prop_for_value
-                .path(ctx)
+        if let Some(prop_id) = AttributeValue::prop_id_opt(ctx, modified_av_id).await? {
+            if Prop::path_by_id(ctx, prop_id)
                 .await?
                 .is_descendant_of(&PropPath::new(["root", "domain"]))
             {
-                let component_id =
-                    AttributeValue::component_id(ctx, modified_attribute_value_id).await?;
+                let component_id = AttributeValue::component_id(ctx, modified_av_id).await?;
                 if Component::resource_by_id(ctx, component_id)
                     .await?
                     .is_some()
@@ -3137,9 +3133,9 @@ impl Component {
                 .is_some()
             {
                 // this is a component specific prototype. Let's see what the input args would have been though
-                if let Some(prop) = AttributeValue::prop_opt(ctx, attribute_value_id).await? {
+                if let Some(prop_id) = AttributeValue::prop_id_opt(ctx, attribute_value_id).await? {
                     // get the schema variant defined prototype to see what it's potential inputs are
-                    let schema_prototype = Prop::prototype_id(ctx, prop.id()).await?;
+                    let schema_prototype = Prop::prototype_id(ctx, prop_id).await?;
                     let attribute_prototype_arg_ids =
                         AttributePrototypeArgument::list_ids_for_prototype(ctx, schema_prototype)
                             .await?;
