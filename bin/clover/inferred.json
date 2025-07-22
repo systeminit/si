@@ -16763,6 +16763,12 @@
   "This field is reserved for future use.": {
     "enum": null
   },
+  "This is a flag used to indicate if remote access is enabled.": {
+    "enum": null
+  },
+  "This is a flag used to indicate if space managed resources needs to be created.": {
+    "enum": null
+  },
   "This is also known as audience. The ID for the client application that makes authentication requests to the OpenID identity provider.": {
     "enum": null
   },
