@@ -365,7 +365,7 @@ const componentQuery = useQuery<BifrostComponent | undefined>({
 });
 
 const attributeTreeQuery = useQuery<AttributeTree | undefined>({
-  queryKey: key(EntityKind.AttributeTree, componentId.value),
+  queryKey: key(EntityKind.AttributeTree, componentId),
   queryFn: async (queryContext) =>
     (await bifrost<AttributeTree>(
       args(EntityKind.AttributeTree, componentId.value),
