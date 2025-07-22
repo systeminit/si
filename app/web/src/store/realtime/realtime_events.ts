@@ -26,7 +26,7 @@ import {
   ViewDescription,
   ViewId,
 } from "@/api/sdf/dal/views";
-import { WorkspacePk } from "../workspaces.store";
+import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import { StatusUpdate } from "../status.store";
 import { CursorContainerKind } from "../presence.store";
 import { UserId } from "../auth.store";

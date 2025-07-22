@@ -235,10 +235,11 @@ import {
   AdminChangeSet,
   useAdminStore,
 } from "@/store/admin.store";
-import { useWorkspacesStore, WorkspacePk } from "@/store/workspaces.store";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import ValidateSnapshot from "@/components/AdminDashboard/ValidateSnapshot.vue";
 import MigrateConnections from "@/components/AdminDashboard/MigrateConnections.vue";
+import { WorkspacePk } from "@/api/sdf/dal/workspace";
 
 const adminStore = useAdminStore();
 const workspacesStore = useWorkspacesStore();

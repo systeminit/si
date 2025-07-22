@@ -38,7 +38,7 @@ import { Context } from "@/newhotness/types";
 import { DefaultMap } from "@/utils/defaultmap";
 import * as rainbow from "@/newhotness/logic_composables/rainbow_counter";
 import { sdfApiInstance as sdf } from "@/store/apis.web";
-import { WorkspaceMetadata } from "@/api/sdf/dal/workspace";
+import { WorkspaceMetadata, WorkspacePk } from "@/api/sdf/dal/workspace";
 import {
   cachedAppEmitter,
   SHOW_CACHED_APP_NOTIFICATION_EVENT,
@@ -127,7 +127,7 @@ const showCachedAppNotification = () => {
 };
 
 export const init = async (
-  workspaceId: string,
+  workspaceId: WorkspacePk,
   bearerToken: string,
   _queryClient: QueryClient,
 ) => {
@@ -179,8 +179,8 @@ export const initCompleted = computed(
 );
 
 const bustTanStackCache: BustCacheFn = (
-  workspaceId: string,
-  changeSetId: string,
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
   kind: EntityKind,
   id: string,
   noBroadcast?: boolean,
@@ -256,8 +256,8 @@ const updateCache = (
 };
 
 const atomUpdated: UpdateFn = (
-  workspaceId: string,
-  changeSetId: string,
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
   kind: EntityKind,
   id: string,
   data: AtomDocument,
@@ -310,8 +310,8 @@ const atomUpdated: UpdateFn = (
 };
 
 const lobbyExit: LobbyExitFn = async (
-  workspaceId: string,
-  changeSetId: string,
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
   noBroadcast?: boolean,
 ) => {
   // Only navigate away from lobby if user is currently in the lobby
@@ -351,7 +351,7 @@ export const bifrostClose = async () => {
  */
 
 export const bifrost = async <T>(args: {
-  workspaceId: string;
+  workspaceId: WorkspacePk;
   changeSetId: ChangeSetId;
   kind: Gettable;
   id: Id;
@@ -373,7 +373,7 @@ export const bifrost = async <T>(args: {
 };
 
 export const bifrostList = async <T>(args: {
-  workspaceId: string;
+  workspaceId: WorkspacePk;
   changeSetId: ChangeSetId;
   kind: Listable;
   id: Id;
@@ -402,42 +402,38 @@ export const bifrostList = async <T>(args: {
  * @param args.terms The key/value pairs to match. e.g. { key: "vpcId", value: "vpc-123" } or { key: "/domain/vpcId", value: "vpc-123" }
  * @returns the list of component IDs that match the given terms.
  */
-export const bifrostQueryAttributes = async (args: {
-  workspaceId: string;
-  changeSetId: ChangeSetId;
-  terms: QueryAttributesTerm[];
-}) => {
+export const bifrostQueryAttributes = async (
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
+  terms: QueryAttributesTerm[],
+) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
 
   const start = performance.now();
-  const components = await db.queryAttributes(
-    args.workspaceId,
-    args.changeSetId,
-    args.terms,
-  );
+  const components = await db.queryAttributes(workspaceId, changeSetId, terms);
   const end = performance.now();
   // eslint-disable-next-line no-console
   console.log("🌈 bifrost queryAttributes", end - start, "ms");
-  return reactive(components);
+  return components;
 };
 
 export const getPossibleConnections = async (args: {
-  workspaceId: string;
+  workspaceId: WorkspacePk;
   changeSetId: ChangeSetId;
 }) => {
   return await db.getPossibleConnections(args.workspaceId, args.changeSetId);
 };
 
 export const linkNewChangeset = async (
-  workspaceId: string,
-  changeSetId: string,
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
   headChangeSetId: string,
 ) => {
   await db.linkNewChangeset(workspaceId, headChangeSetId, changeSetId);
 };
 
 export const getOutgoingConnectionsCounts = async (args: {
-  workspaceId: string;
+  workspaceId: WorkspacePk;
   changeSetId: ChangeSetId;
 }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
@@ -459,7 +455,7 @@ export const getOutgoingConnectionsCounts = async (args: {
 };
 
 export const getComponentDetails = async (args: {
-  workspaceId: string;
+  workspaceId: WorkspacePk;
   changeSetId: ChangeSetId;
 }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
@@ -477,7 +473,7 @@ export const getComponentDetails = async (args: {
 };
 
 export const getSchemaMembers = async (args: {
-  workspaceId: string;
+  workspaceId: WorkspacePk;
   changeSetId: ChangeSetId;
 }): Promise<SchemaMembers[]> => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
@@ -495,7 +491,7 @@ export const getSchemaMembers = async (args: {
 };
 
 export const getOutgoingConnections = async (args: {
-  workspaceId: string;
+  workspaceId: WorkspacePk;
   changeSetId: ChangeSetId;
 }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
@@ -509,7 +505,7 @@ export const getOutgoingConnections = async (args: {
 };
 
 export const getIncomingManagement = async (args: {
-  workspaceId: string;
+  workspaceId: WorkspacePk;
   changeSetId: ChangeSetId;
 }) => {
   if (!initCompleted.value) throw new Error("You must wait for initialization");
@@ -559,7 +555,7 @@ const MUSPELHEIM_CONCURRENCY = 1;
 export const muspelheimStatuses = ref<{ [key: string]: boolean }>({});
 
 const fetchOpenChangeSets = async (
-  workspaceId: string,
+  workspaceId: WorkspacePk,
 ): Promise<WorkspaceMetadata> => {
   const resp = await sdf<WorkspaceMetadata>({
     method: "GET",
@@ -568,7 +564,7 @@ const fetchOpenChangeSets = async (
   return resp.data;
 };
 
-export const muspelheim = async (workspaceId: string, force?: boolean) => {
+export const muspelheim = async (workspaceId: WorkspacePk, force?: boolean) => {
   await waitForInitCompletion();
   const start = performance.now();
   // eslint-disable-next-line no-console
@@ -605,7 +601,7 @@ export const muspelheim = async (workspaceId: string, force?: boolean) => {
 };
 
 export const registerBearerToken = async (
-  workspaceId: string,
+  workspaceId: WorkspacePk,
   bearerToken: string,
 ) => {
   await db.setBearer(workspaceId, bearerToken);
@@ -613,7 +609,7 @@ export const registerBearerToken = async (
 
 // cold start
 export const niflheim = async (
-  workspaceId: string,
+  workspaceId: WorkspacePk,
   changeSetId: ChangeSetId,
   force = false,
   lobbyOnFailure = true,
@@ -641,7 +637,10 @@ export const niflheim = async (
   return true;
 };
 
-export const prune = async (workspaceId: string, changeSetId: string) => {
+export const prune = async (
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
+) => {
   delete muspelheimStatuses.value[changeSetId];
   await db.pruneAtomsForClosedChangeSet(workspaceId, changeSetId);
 };
@@ -660,8 +659,8 @@ export const useMakeArgs = () => {
 };
 
 export const changeSetExists = async (
-  workspaceId: string,
-  changeSetId: string,
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
 ) => await db.changeSetExists(workspaceId, changeSetId);
 
 /// Make a reactive query key that includes the workspace, changeSet, EntityKind and entity ID
@@ -688,7 +687,7 @@ export const useMakeKey = () => {
     ]);
 };
 
-export const odin = async (changeSetId: string) => {
+export const odin = async (changeSetId: ChangeSetId) => {
   const allData = await db.odin(changeSetId);
   // eslint-disable-next-line no-console
   console.log("⚡ ODIN ⚡");
@@ -701,15 +700,18 @@ export const bobby = async () => {
   // eslint-disable-next-line no-console
   console.log("🗑️ BOBBY DROP TABLE 🗑️");
 };
-export const ragnarok = async (workspaceId: string, changeSetId: string) => {
+export const ragnarok = async (
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
+) => {
   await db.ragnarok(workspaceId, changeSetId);
   // eslint-disable-next-line no-console
   console.log("🗑️ RAGNAROK 🗑️");
 };
 
 export const mjolnir = async (
-  workspaceId: string,
-  changeSetId: string,
+  workspaceId: WorkspacePk,
+  changeSetId: ChangeSetId,
   kind: EntityKind,
   id: string,
 ) => {

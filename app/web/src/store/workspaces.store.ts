@@ -6,12 +6,12 @@ import storage from "local-storage-fallback";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import router from "@/router";
 import { ModuleId } from "@/api/sdf/dal/module";
+import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import { useAuthStore, UserId } from "./auth.store";
 import { useRouterStore } from "./router.store";
 import handleStoreError from "./errors";
 import { AuthApiRequest } from ".";
 
-export type WorkspacePk = string;
 export type WorkspaceIntegrationId = string;
 
 type WorkspaceExportId = string;
