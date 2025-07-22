@@ -7,4 +7,3 @@ VALUES=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254
 echo "export AWS_ACCESS_KEY_ID=$(echo $VALUES | jq -r '.AccessKeyId')"
 echo "export AWS_SECRET_ACCESS_KEY=$(echo $VALUES | jq -r '.SecretAccessKey')"
 echo "export AWS_SESSION_TOKEN=$(echo $VALUES | jq -r '.Token')"
-aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 179845983369.dkr.ecr.us-east-2.amazonaws.com
