@@ -21,7 +21,7 @@
         component.schemaName
       }}</TruncateWithTooltip>
     </div>
-    <ComponentQualificationStatus :component="component" hideTitle />
+    <ComponentTileQualificationStatus :component="component" hideTitle />
     <StatusIndicatorIcon
       v-if="component.hasResource"
       type="resource"
@@ -42,7 +42,7 @@ import clsx from "clsx";
 import { ComponentInList } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon, getAssetColor } from "./util";
-import ComponentQualificationStatus from "./ComponentQualificationStatus.vue";
+import ComponentTileQualificationStatus from "./ComponentTileQualificationStatus.vue";
 
 defineProps<{
   component: ComponentInList;

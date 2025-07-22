@@ -231,13 +231,15 @@
       <div class="right flex flex-col">
         <CollapsingFlexItem>
           <template #header> Qualifications </template>
-          <template #headerIcons></template>
+          <template #headerIcons>
+            <MinimizedComponentQualificationStatus :component="component" />
+          </template>
           <QualificationPanel
             :component="component"
             :attributeTree="attributeTree"
           />
         </CollapsingFlexItem>
-        <CollapsingFlexItem>
+        <CollapsingFlexItem expandable>
           <template #header> Connections </template>
           <template #headerIcons></template>
           <ConnectionsPanel
@@ -246,7 +248,7 @@
             :connections="componentConnections ?? undefined"
           />
         </CollapsingFlexItem>
-        <CollapsingFlexItem>
+        <CollapsingFlexItem expandable>
           <template #header> Code Gen </template>
           <CodePanel
             v-if="attributeTree"
@@ -254,11 +256,11 @@
             :attributeTree="attributeTree"
           />
         </CollapsingFlexItem>
-        <CollapsingFlexItem>
+        <CollapsingFlexItem expandable>
           <template #header> Diff </template>
           <DiffPanel :component="component" />
         </CollapsingFlexItem>
-        <CollapsingFlexItem>
+        <CollapsingFlexItem expandable>
           <template #header> Resource </template>
           <template #headerIcons>
             <Icon
@@ -330,6 +332,7 @@ import DocumentationPanel from "./DocumentationPanel.vue";
 import ManagementPanel from "./ManagementPanel.vue";
 import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
 import EraseModal from "./EraseModal.vue";
+import MinimizedComponentQualificationStatus from "./MinimizedComponentQualificationStatus.vue";
 import { useComponentDeletion } from "./composables/useComponentDeletion";
 import { useComponentUpgrade } from "./composables/useComponentUpgrade";
 

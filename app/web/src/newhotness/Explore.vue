@@ -449,7 +449,7 @@ import Map from "./Map.vue";
 import { collapsingGridStyles } from "./util";
 import CollapsingGridItem from "./layout_components/CollapsingGridItem.vue";
 import InstructiveVormInput from "./layout_components/InstructiveVormInput.vue";
-import { getQualificationStatus } from "./ComponentQualificationStatus.vue";
+import { getQualificationStatus } from "./ComponentTileQualificationStatus.vue";
 import FuncRunList from "./FuncRunList.vue";
 import { assertIsDefined, Context, ExploreContext } from "./types";
 import {

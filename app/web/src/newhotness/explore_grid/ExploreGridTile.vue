@@ -56,7 +56,7 @@
     >
       <li>
         <!-- We need the "grow" here so that the qualification status expands fully. -->
-        <ComponentQualificationStatus class="grow" :component="component" />
+        <ComponentTileQualificationStatus class="grow" :component="component" />
       </li>
 
       <!-- Rows 2-4: Dynamic content based on priority -->
@@ -180,7 +180,7 @@ import { ComponentInList } from "@/workers/types/entity_kind_types";
 import StatusIndicatorIcon from "@/components/StatusIndicatorIcon.vue";
 import { getAssetIcon } from "../util";
 import { assertIsDefined, Context, ExploreContext } from "../types";
-import ComponentQualificationStatus from "../ComponentQualificationStatus.vue";
+import ComponentTileQualificationStatus from "../ComponentTileQualificationStatus.vue";
 
 const props = defineProps<{
   component: ComponentInList;
