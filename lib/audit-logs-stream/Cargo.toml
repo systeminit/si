@@ -9,10 +9,9 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+remain = { workspace = true }
+serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }
 telemetry = { path = "../../lib/telemetry-rs" }
-
-remain = { workspace = true }
-serde_json = { workspace = true }
 thiserror = { workspace = true }

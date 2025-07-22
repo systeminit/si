@@ -9,25 +9,24 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+axum = { workspace = true }
 buck2-resources = { path = "../../lib/buck2-resources" }
+dashmap = { workspace = true }
+derive_builder = { workspace = true }
+futures = { workspace = true }
+hyper = { workspace = true }
 innit-core = { path = "../../lib/innit-core" }
+remain = { workspace = true }
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-data-acmpca = { path = "../../lib/si-data-acmpca" }
 si-data-ssm = { path = "../../lib/si-data-ssm" }
 si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 si-tls = { path = "../../lib/si-tls" }
 telemetry = { path = "../../lib/telemetry-rs" }
-
-axum = { workspace = true }
-dashmap = { workspace = true }
-derive_builder = { workspace = true }
-futures = { workspace = true }
-hyper = { workspace = true }
-remain = { workspace = true }
-rustls = { workspace = true }
-rustls-pemfile = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-rustls = { workspace = true }

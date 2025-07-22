@@ -13,9 +13,8 @@ name = "innitctl"
 path = "src/main.rs"
 
 [dependencies]
-innitctl-backend = { path = "../../lib/innitctl" }
-innit-client = { path = "../../lib/innit-client" }
-si-service = { path = "../../lib/si-service" }
-
 clap = { workspace = true }
+innit-client = { path = "../../lib/innit-client" }
+innitctl-backend = { path = "../../lib/innitctl" }
+si-service = { path = "../../lib/si-service" }
 tokio = { workspace = true }

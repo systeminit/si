@@ -10,9 +10,8 @@ publish.workspace = true
 
 [dependencies]
 nats-multiplexer-core = { path = "../../lib/nats-multiplexer-core" }
+remain = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 telemetry = { path = "../../lib/telemetry-rs" }
-
-remain = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }

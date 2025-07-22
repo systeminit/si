@@ -9,18 +9,17 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-buck2-resources = { path = "../../lib/buck2-resources" }
-config-file = { path = "../../lib/config-file" }
-si-settings = { path = "../../lib/si-settings" }
-si-std = { path = "../../lib/si-std" }
-telemetry = { path = "../../lib/telemetry-rs" }
-
 async-trait = { workspace = true }
 base64 = { workspace = true }
+buck2-resources = { path = "../../lib/buck2-resources" }
+config-file = { path = "../../lib/config-file" }
 derive_builder = { workspace = true }
 handlebars = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-settings = { path = "../../lib/si-settings" }
+si-std = { path = "../../lib/si-std" }
+telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }

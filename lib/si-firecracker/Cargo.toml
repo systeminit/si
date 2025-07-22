@@ -18,9 +18,9 @@ tokio = { workspace = true }
 tokio-util = { workspace = true }
 tracing = { workspace = true }
 
-[dev-dependencies]
-
 [target.'cfg(target_os = "linux")'.dependencies]
-devicemapper =  { workspace = true }
+devicemapper = { workspace = true }
 krata-loopdev = { workspace = true }
 tokio-vsock = { workspace = true }
+
+[dev-dependencies]

@@ -11,8 +11,7 @@ publish.workspace = true
 [dependencies]
 dal = { path = "../../lib/dal" }
 dal-test = { path = "../../lib/dal-test" }
+rand = { workspace = true }
 sdf-core = { path = "../../lib/sdf-core" }
 sdf-server = { path = "../../lib/sdf-server" }
 si-data-spicedb = { path = "../../lib/si-data-spicedb" }
-
-rand = { workspace = true }

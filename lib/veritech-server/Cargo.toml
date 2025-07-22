@@ -10,8 +10,15 @@ publish.workspace = true
 
 [dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
+chrono = { workspace = true }
+derive_builder = { workspace = true }
+futures = { workspace = true }
 nats-std = { path = "../../lib/nats-std" }
 naxum = { path = "../../lib/naxum" }
+once_cell = { workspace = true }
+remain = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-pool-noodle = { path = "../../lib/si-pool-noodle" }
@@ -20,16 +27,8 @@ si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
-veritech-core = { path = "../../lib/veritech-core" }
-
-chrono = { workspace = true }
-derive_builder = { workspace = true }
-futures = { workspace = true }
-once_cell = { workspace = true }
-remain = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 ulid = { workspace = true }
+veritech-core = { path = "../../lib/veritech-core" }

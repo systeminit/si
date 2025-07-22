@@ -11,6 +11,5 @@ publish.workspace = true
 [dependencies]
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
-
 tokio = { workspace = true }
 tokio-util = { workspace = true }

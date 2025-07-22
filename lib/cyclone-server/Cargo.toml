@@ -9,18 +9,12 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-bytes-lines-codec = { path = "../bytes-lines-codec" }
-cyclone-core = { path = "../../lib/cyclone-core" }
-si-crypto = { path = "../../lib/si-crypto" }
-si-std = { path = "../../lib/si-std" }
-telemetry = { path = "../../lib/telemetry-rs" }
-telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
-telemetry-http = { path = "../../lib/telemetry-http-rs" }
-
 async-trait = { workspace = true }
 axum = { workspace = true }
 base64 = { workspace = true }
+bytes-lines-codec = { path = "../bytes-lines-codec" }
 chrono = { workspace = true }
+cyclone-core = { path = "../../lib/cyclone-core" }
 derive_builder = { workspace = true }
 futures = { workspace = true }
 hyper = { workspace = true }
@@ -29,6 +23,11 @@ pin-project-lite = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-crypto = { path = "../../lib/si-crypto" }
+si-std = { path = "../../lib/si-std" }
+telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-http = { path = "../../lib/telemetry-http-rs" }
+telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-serde = { workspace = true }

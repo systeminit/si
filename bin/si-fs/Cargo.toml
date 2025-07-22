@@ -12,6 +12,6 @@ publish.workspace = true
 clap = { workspace = true }
 color-eyre = { workspace = true }
 env_logger = { workspace = true }
+nix = { workspace = true }
 si-filesystem = { path = "../../lib/si-filesystem" }
 tokio = { workspace = true }
-nix = { workspace = true }

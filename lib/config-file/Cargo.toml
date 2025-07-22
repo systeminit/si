@@ -15,18 +15,15 @@ publish.workspace = true
 
 [features]
 default = []
-
 json = []
 toml = []
 yaml = []
-
 load-str = ["serde"]
 load-json = ["json", "serde_json", "load-str"]
 load-toml = ["toml", "serde_toml", "load-str"]
 load-yaml = ["yaml", "serde_yaml", "load-str"]
 load-sync = ["load-str"]
 load-async = ["load-str", "tokio"]
-
 layered = ["serde", "config"]
 layered-json = ["layered", "json", "config/json"]
 layered-toml = ["layered", "toml", "config/toml"]
@@ -40,13 +37,12 @@ pathdiff = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
+# FIXME(nick): we should move directly onto the "toml" crate and use the workspace's version.
+serde_toml = { package = "toml", version = "0.8.12", optional = true }
 serde_yaml = { workspace = true, optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true }
 tracing = { workspace = true }
-
-# FIXME(nick): we should move directly onto the "toml" crate and use the workspace's version.
-serde_toml = { package = "toml", version = "0.8.12", optional = true }
 
 [dev-dependencies]
 serde = { workspace = true }

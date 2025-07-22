@@ -9,6 +9,6 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-clap = { workspace = true }
 bedrock-server = { path = "../../lib/bedrock-server" }
+clap = { workspace = true }
 si-service = { path = "../../lib/si-service" }

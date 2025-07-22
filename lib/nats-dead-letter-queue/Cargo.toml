@@ -9,7 +9,6 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-si-data-nats = { path = "../../lib/si-data-nats" }
-
 remain = { workspace = true }
+si-data-nats = { path = "../../lib/si-data-nats" }
 thiserror = { workspace = true }

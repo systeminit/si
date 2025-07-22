@@ -9,10 +9,9 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-si-aws-config = { path = "../../lib/si-aws-config" }
-telemetry = { path = "../../lib/telemetry-rs" }
-
 aws-sdk-ssm = { workspace = true }
 remain = { workspace = true }
+si-aws-config = { path = "../../lib/si-aws-config" }
+telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }

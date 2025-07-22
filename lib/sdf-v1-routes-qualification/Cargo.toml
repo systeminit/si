@@ -9,17 +9,16 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+axum = { workspace = true }
+base64 = { workspace = true }
 dal = { path = "../../lib/dal" }
+remain = { workspace = true }
 sdf-core = { path = "../../lib/sdf-core" }
 sdf-extract = { path = "../../lib/sdf-extract" }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-db = { path = "../../lib/si-db" }
 telemetry = { path = "../../lib/telemetry-rs" }
-
-axum = { workspace = true }
-base64 = { workspace = true }
-remain = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 thiserror = { workspace = true }

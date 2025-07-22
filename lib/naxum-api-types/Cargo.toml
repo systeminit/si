@@ -9,15 +9,14 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-nats-std = { path = "../../lib/nats-std" }
-si-data-nats = { path = "../../lib/si-data-nats" }
-si-id = { path = "../../lib/si-id" }
-
 ciborium = { workspace = true }
 derive_more = { workspace = true }
+nats-std = { path = "../../lib/nats-std" }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-id = { path = "../../lib/si-id" }
 strum = { workspace = true }
 thiserror = { workspace = true }
 ulid = { workspace = true }

@@ -9,16 +9,6 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-nats-std = { path = "../../lib/nats-std" }
-si-data-nats = { path = "../../lib/si-data-nats" }
-si-data-pg = { path = "../../lib/si-data-pg" }
-si-events = { path = "../../lib/si-events-rs" }
-si-id = { path = "../../lib/si-id" }
-si-runtime = { path = "../../lib/si-runtime-rs" }
-si-std = { path = "../../lib/si-std" }
-telemetry = { path = "../../lib/telemetry-rs" }
-telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
-
 async-trait = { workspace = true }
 blake3 = { workspace = true }
 bytes = { workspace = true }
@@ -28,13 +18,22 @@ fs4 = { workspace = true }
 futures = { workspace = true }
 miniz_oxide = { workspace = true }
 mixtrics = { workspace = true }
+nats-std = { path = "../../lib/nats-std" }
 postcard = { workspace = true }
 refinery = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-data-pg = { path = "../../lib/si-data-pg" }
+si-events = { path = "../../lib/si-events-rs" }
+si-id = { path = "../../lib/si-id" }
+si-runtime = { path = "../../lib/si-runtime-rs" }
+si-std = { path = "../../lib/si-std" }
 strum = { workspace = true }
 sysinfo = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
@@ -44,6 +43,5 @@ ulid = { workspace = true }
 
 [dev-dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
-si-tls = { path = "../../lib/si-tls" }
-
 rand = { workspace = true }
+si-tls = { path = "../../lib/si-tls" }

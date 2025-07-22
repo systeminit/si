@@ -10,26 +10,24 @@ publish.workspace = true
 
 [dependencies]
 cyclone-core = { path = "../../lib/cyclone-core" }
+futures = { workspace = true }
 nats-std = { path = "../../lib/nats-std" }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
-si-data-nats = { path = "../../lib/si-data-nats" }
-telemetry = { path = "../../lib/telemetry-rs" }
-telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
-veritech-core = { path = "../../lib/veritech-core" }
-
-futures = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-data-nats = { path = "../../lib/si-data-nats" }
+telemetry = { path = "../../lib/telemetry-rs" }
+telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
+veritech-core = { path = "../../lib/veritech-core" }
 
 [dev-dependencies]
-veritech-server = { path = "../../lib/veritech-server" }
-
 base64 = { workspace = true }
 test-log = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
+veritech-server = { path = "../../lib/veritech-server" }

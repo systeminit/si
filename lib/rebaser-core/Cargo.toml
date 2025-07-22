@@ -11,9 +11,8 @@ publish.workspace = true
 [dependencies]
 nats-std = { path = "../../lib/nats-std" }
 naxum-api-types = { path = "../../lib/naxum-api-types" }
-si-data-nats = { path = "../../lib/si-data-nats" }
-si-events = { path = "../../lib/si-events-rs" }
-
 remain = { workspace = true }
 serde = { workspace = true }
+si-data-nats = { path = "../../lib/si-data-nats" }
+si-events = { path = "../../lib/si-events-rs" }
 strum = { workspace = true }

@@ -1,26 +1,24 @@
 [package]
-name                   = "si-frontend-mv-types"
-version.workspace      = true
-authors.workspace      = true
-license.workspace      = true
-repository.workspace   = true
-edition.workspace      = true
+name = "si-frontend-mv-types"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+edition.workspace = true
 rust-version.workspace = true
-publish.workspace      = true
+publish.workspace = true
 
 [dependencies]
-module-index-types          = { path = "../../lib/module-index-types" }
-si-events                   = { path = "../../lib/si-events-rs" }
+chrono = { workspace = true }
+inventory = { workspace = true }
+json-patch = { workspace = true }
+module-index-types = { path = "../../lib/module-index-types" }
+remain = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+si-events = { path = "../../lib/si-events-rs" }
 si-frontend-mv-types-macros = { path = "../../lib/si-frontend-mv-types-macros" }
-si-id                       = { path = "../../lib/si-id" }
-
 # FIXME(nick): this dep needs to be removed from this crate.
 si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
-
-chrono     = { workspace = true }
-inventory  = { workspace = true }
-json-patch = { workspace = true }
-remain     = { workspace = true }
-serde      = { workspace = true }
-serde_json = { workspace = true }
-strum      = { workspace = true }
+si-id = { path = "../../lib/si-id" }
+strum = { workspace = true }

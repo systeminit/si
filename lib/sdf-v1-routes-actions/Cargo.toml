@@ -9,16 +9,15 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-dal = { path = "../../lib/dal" }
-sdf-core = { path = "../../lib/sdf-core" }
-sdf-extract = { path = "../../lib/sdf-extract" }
-si-events = { path = "../../lib/si-events-rs" }
-si-db = { path = "../../lib/si-db" }
-si-layer-cache = { path = "../../lib/si-layer-cache" }
-telemetry = { path = "../../lib/telemetry-rs" }
-
 axum = { workspace = true }
 chrono = { workspace = true }
+dal = { path = "../../lib/dal" }
 remain = { workspace = true }
+sdf-core = { path = "../../lib/sdf-core" }
+sdf-extract = { path = "../../lib/sdf-extract" }
 serde = { workspace = true }
+si-db = { path = "../../lib/si-db" }
+si-events = { path = "../../lib/si-events-rs" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
+telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
