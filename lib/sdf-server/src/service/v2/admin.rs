@@ -33,6 +33,7 @@ use dal::{
     Workspace,
     WorkspacePk,
     WorkspaceSnapshotAddress,
+    WsEventError,
     cached_module::CachedModuleError,
     func::runner::FuncRunnerError,
     slow_rt::SlowRuntimeError,
@@ -67,11 +68,13 @@ mod get_snapshot;
 mod innit;
 mod kill_execution;
 mod list_change_sets;
+mod migrate_connections;
 mod search_workspaces;
 mod set_concurrency_limit;
 mod set_snapshot;
 mod update_module_cache;
 mod upload_cas_data;
+mod validate_snapshot;
 
 // 1GB
 const MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 1024;
@@ -79,14 +82,28 @@ const MAX_UPLOAD_BYTES: usize = 1024 * 1024 * 1024;
 #[remain::sorted]
 #[derive(Debug, Error)]
 pub enum AdminAPIError {
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] dal::attribute::prototype::AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(
+        #[from] dal::attribute::prototype::argument::AttributePrototypeArgumentError,
+    ),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] dal::attribute::value::AttributeValueError),
     #[error("axum http error: {0}")]
     AxumHttp(#[from] axum::http::Error),
     #[error("cached module error: {0}")]
     CachedModule(#[from] CachedModuleError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] dal::ChangeSetError),
+    #[error("component error: {0}")]
+    Component(#[from] dal::component::ComponentError),
     #[error("func runner error: {0}")]
     FuncRunner(#[from] FuncRunnerError),
+    #[error("inferred connection graph error: {0}")]
+    InferredConnectionGraph(
+        #[from] dal::component::inferred_connection_graph::InferredConnectionGraphError,
+    ),
     #[error("innit error: {0}")]
     Innit(#[from] InnitClientError),
     #[error("layer db error: {0}")]
@@ -109,6 +126,8 @@ pub enum AdminAPIError {
     WorkspaceSnapshotAddressNotFound(ChangeSetId),
     #[error("workspace snapshot {0} for change set {1} could not be found in durable storage")]
     WorkspaceSnapshotNotFound(WorkspaceSnapshotAddress, ChangeSetId),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -220,6 +239,22 @@ pub fn v2_routes(state: AppState) -> Router<AppState> {
         .route(
             "/workspaces/:workspace_id/change_sets/:change_set_id/upload_cas_data",
             post(upload_cas_data::upload_cas_data),
+        )
+        .route(
+            "/workspaces/:workspace_id/change_sets/:change_set_id/migrate_connections",
+            get(migrate_connections::migrate_connections_dry_run),
+        )
+        .route(
+            "/workspaces/:workspace_id/change_sets/:change_set_id/migrate_connections",
+            post(migrate_connections::migrate_connections),
+        )
+        .route(
+            "/workspaces/:workspace_id/change_sets/:change_set_id/validate_snapshot",
+            get(validate_snapshot::validate_snapshot),
+        )
+        .route(
+            "/workspaces/:workspace_id/change_sets/:change_set_id/validate_snapshot",
+            post(validate_snapshot::validate_and_fix_snapshot),
         )
         .layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES))
         .route_layer(axum::middleware::from_fn_with_state(

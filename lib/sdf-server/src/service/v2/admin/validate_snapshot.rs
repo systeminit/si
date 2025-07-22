@@ -1,19 +1,25 @@
-use axum::Json;
+use axum::{
+    Json,
+    extract::Path,
+};
 use dal::{
     AttributePrototype,
     AttributeValue,
-    ChangeSet,
+    ChangeSetId,
     DalContext,
+    WorkspacePk,
     attribute::prototype::{
         AttributePrototypeSource,
         argument::AttributePrototypeArgument,
     },
     workspace_snapshot::graph::validator::ValidationIssue,
 };
-use sdf_core::force_change_set_response::ForceChangeSetResponse;
-use sdf_extract::change_set::ChangeSetDalContext;
+use si_db::Tenancy;
 
-use super::Result;
+use crate::service::v2::admin::{
+    AdminAPIResult,
+    AdminUserContext,
+};
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -31,31 +37,36 @@ pub struct ValidationIssueWithMessage {
 }
 
 pub async fn validate_snapshot(
-    ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
-) -> Result<Json<Response>> {
-    let issues = get_validation_issues(ctx).await?;
+    AdminUserContext(mut ctx): AdminUserContext,
+    Path((workspace_id, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
+) -> AdminAPIResult<Json<Response>> {
+    ctx.update_tenancy(Tenancy::new(workspace_id));
+    ctx.update_visibility_and_snapshot_to_visibility(change_set_id)
+        .await?;
+    let issues = get_validation_issues(&ctx).await?;
 
     Ok(Json(Response { issues }))
 }
 
 pub async fn validate_and_fix_snapshot(
-    ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
-) -> Result<ForceChangeSetResponse<Response>> {
-    let force_change_set_id = ChangeSet::force_new(ctx).await?;
-
-    let mut issues = get_validation_issues(ctx).await?;
+    AdminUserContext(mut ctx): AdminUserContext,
+    Path((workspace_id, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
+) -> AdminAPIResult<Json<Response>> {
+    ctx.update_tenancy(Tenancy::new(workspace_id));
+    ctx.update_visibility_and_snapshot_to_visibility(change_set_id)
+        .await?;
+    let mut issues = get_validation_issues(&ctx).await?;
     for issue in &mut issues {
-        issue.fixed = fix_issue(ctx, &issue.issue).await?;
+        issue.fixed = fix_issue(&ctx, &issue.issue).await?;
     }
     ctx.commit().await?;
 
-    Ok(ForceChangeSetResponse::new(
-        force_change_set_id,
-        Response { issues },
-    ))
+    Ok(Json(Response { issues }))
 }
 
-async fn get_validation_issues(ctx: &DalContext) -> Result<Vec<ValidationIssueWithMessage>> {
+async fn get_validation_issues(
+    ctx: &DalContext,
+) -> AdminAPIResult<Vec<ValidationIssueWithMessage>> {
     Ok(ctx
         .workspace_snapshot()?
         .as_legacy_snapshot()?
@@ -70,7 +81,7 @@ async fn get_validation_issues(ctx: &DalContext) -> Result<Vec<ValidationIssueWi
         .collect())
 }
 
-async fn fix_issue(ctx: &DalContext, issue: &ValidationIssue) -> Result<bool> {
+async fn fix_issue(ctx: &DalContext, issue: &ValidationIssue) -> AdminAPIResult<bool> {
     Ok(match issue {
         &ValidationIssue::ConnectionToUnknownSocket { apa, .. } => {
             // These will never be fixed, so we just remove them
