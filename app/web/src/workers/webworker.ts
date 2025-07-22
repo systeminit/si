@@ -571,6 +571,13 @@ const handleHammer = async (msg: AtomMessage) => {
       debug("🔨 handling hammer with index checksum", msg.atom.toIndexChecksum);
     }
 
+    // Make sure the index exists before we try to insert atoms into it
+    const indexChecksum = initIndexAndChangeSet(msg.atom, span);
+    if (!indexChecksum) {
+      throw new Error(
+        `Expected index checksum for ${msg.atom.toIndexChecksum}`,
+      );
+    }
     // in between throwing a hammer and receiving it, i might already have written the atom
     const indexes = atomExistsOnIndexes(
       msg.atom.kind,
@@ -604,15 +611,6 @@ const handleHammer = async (msg: AtomMessage) => {
         span.setAttribute("insertedMTM", inserted);
         noop = true;
       }
-    }
-
-    // Make sure the index exists before we try to insert atoms into it
-    const indexChecksum = initIndexAndChangeSet(msg.atom, span);
-
-    if (!indexChecksum) {
-      throw new Error(
-        `Expected index checksum for ${msg.atom.toIndexChecksum}`,
-      );
     }
 
     // if the atom exists, i just need the MTM
@@ -1224,6 +1222,7 @@ const applyPatch = async (atom: Required<Atom>, indexChecksum: Checksum) => {
         "indexChecksum:",
         indexChecksum,
       );
+      initIndexAndChangeSet(atom, span);
       const inserted = insertAtomMTM(atom, indexChecksum);
       span.setAttribute("insertedMTM", inserted);
       debug("🔧 MTM inserted:", inserted, "for:", atom.kind, atom.id);
