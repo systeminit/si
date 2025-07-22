@@ -417,6 +417,12 @@ impl From<ComponentId> for ComponentIdent {
     }
 }
 
+impl From<ComponentIdent> for String {
+    fn from(component_ident: ComponentIdent) -> Self {
+        component_ident.0
+    }
+}
+
 impl ComponentIdent {
     pub async fn resolve(&self, ctx: &DalContext) -> Result<Option<ComponentId>> {
         if let Some(id) = self.resolve_as_id(ctx).await? {
@@ -449,6 +455,12 @@ pub struct FuncIdent(String);
 impl From<FuncId> for FuncIdent {
     fn from(id: FuncId) -> Self {
         Self(id.to_string())
+    }
+}
+
+impl From<FuncIdent> for String {
+    fn from(ident: FuncIdent) -> Self {
+        ident.0
     }
 }
 

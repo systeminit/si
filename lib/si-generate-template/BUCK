@@ -1,0 +1,20 @@
+load("@prelude-si//:macros.bzl", "rust_library")
+
+rust_library(
+    name = "si-generate-template",
+    deps = [
+        "//third-party/rust:askama",
+        "//third-party/rust:serde_json",
+        "//third-party/rust:serde",
+        "//third-party/rust:thiserror",
+    ],
+    srcs = glob([
+        "Cargo.toml",
+        "src/**/*.rs",
+        "askama.toml",
+        "templates/**/*.ts",
+    ]),
+    env = {
+        "CARGO_MANIFEST_DIR": ".",
+    }
+)

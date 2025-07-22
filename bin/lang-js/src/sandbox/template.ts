@@ -6,7 +6,65 @@ export default {
   variables,
   updateVarsInViews,
   converge,
+  checkUniqueNamePrefix,
+  getComponentName,
+  sourceOrValue,
 };
+
+function sourceOrValue(path: string, thisComponent: any) {
+  if (thisComponent.sources[path]) {
+    return { "$source": thisComponent.sources[path] };
+  } else {
+    const lodashPathArray = path.split("/");
+    lodashPathArray.shift();
+    const value = _.get(thisComponent.properties, lodashPathArray);
+    if (value) {
+      return value;
+    } else {
+      throw new Error(`You must provide a value or a subscription for "${path}" in the template components attributes`);
+    }
+  }
+}
+
+
+interface ComponentPartialName {
+  properties: {
+    si: {
+      name: string,
+    }
+  }
+}
+
+export function checkUniqueNamePrefix(namePrefix: string, components: Record<string, ComponentPartialName>): boolean {
+  for (const component of Object.values(components)) {
+    const componentName = component.properties.si.name;
+    if (componentName && componentName.startsWith(namePrefix)) {
+      throw new Error(`Found a component named '${componentName}' that starts with the prefix '${namePrefix}'. Change the 'Name Prefix' so they do not overlap and try again.`);
+    }
+  }
+
+  return true;
+}
+
+type ComponentWithSiNameAttributeValue = string | { '$source': any } | bool | number;
+interface ComponentWithSiName {
+  attributes: {
+    [path: string]: ComponentWithSiNameAttributeValue;
+  }
+}
+
+export function getComponentName(component: ComponentScaffold): string {
+  const siName = component.attributes["/si/name"];
+  if (_.isString(siName)) {
+    return siName;
+  } else if (_.isBoolean(siName)) {
+    return `${siName}`;
+  } else if (_.isNumber(siName)) {
+    return `${siName}`;
+  } else {
+    throw new Error(`the /si/name of the component is not a string; received value:\n\n${JSON.stringify(component, null, 2)}`);
+  }
+}
 
 export function updateVarsInViews(
   mgmtComponentKind: string,

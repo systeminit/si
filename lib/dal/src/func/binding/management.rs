@@ -212,7 +212,7 @@ impl ManagementBinding {
         Ok(format!(
             r#"
 type ValueSource =
-  | {{ component: string; path: string }}
+  | {{ component: string; path: string; func?: string; }}
   | {{ value?: JsonValue }}
   | null;
 type JsonValue =

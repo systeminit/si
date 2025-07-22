@@ -109,6 +109,7 @@ use crate::{
                 AttributePrototypeArgument,
                 AttributePrototypeArgumentError,
                 AttributePrototypeArgumentId,
+                static_value::StaticArgumentValue,
                 value_source::ValueSource,
             },
         },
@@ -1460,55 +1461,102 @@ impl Component {
         Ok(input_socket_ids)
     }
 
+    pub async fn subscription_sources(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<HashMap<AttributeValueIdent, Source>> {
+        let mut sources = Self::sources(ctx, component_id).await?;
+        sources.retain(|_, source| matches!(source, Source::Subscription { .. }));
+        Ok(sources)
+    }
+
     pub async fn sources(
         ctx: &DalContext,
         component_id: ComponentId,
     ) -> ComponentResult<HashMap<AttributeValueIdent, Source>> {
         let mut sources = HashMap::new();
         for (dest_av_id, _) in AttributeValue::tree_for_component(ctx, component_id).await? {
-            // Make sure it's a prototype with exactly one subscription argument
-            let Some(prototype_id) =
-                AttributeValue::component_prototype_id(ctx, dest_av_id).await?
-            else {
-                continue;
-            };
-            let mut args =
-                AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
-            if args.len() != 1 {
-                continue;
+            if let Some(source) = Self::attr_to_source(ctx, dest_av_id).await? {
+                let (_, dest_path) = AttributeValue::path_from_root(ctx, dest_av_id).await?;
+                sources.insert(dest_path.into(), source);
             }
-            let Some(apa_id) = args.pop() else {
-                continue;
-            };
-            // Get source component and path if it's a subscription
-            let ValueSource::ValueSubscription(ValueSubscription {
+        }
+        Ok(sources)
+    }
+
+    // Used in sources()
+    async fn attr_to_source(
+        ctx: &DalContext,
+        av_id: AttributeValueId,
+    ) -> ComponentResult<Option<Source>> {
+        // If it's not a component-specific prototype, it has no Source.
+        let Some(prototype_id) = AttributeValue::component_prototype_id(ctx, av_id).await? else {
+            return Ok(None);
+        };
+
+        // If the user set this explicitly to si:unset, treat it like it's unspecified.
+        // TODO we should probably return None or Source::Null or something
+        let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+        let intrinsic = Func::intrinsic_kind(ctx, func_id).await?;
+        if intrinsic == Some(IntrinsicFunc::Unset) {
+            return Ok(None);
+        }
+
+        // If it's got multiple or zero arguments, it's a dynamic function we can't handle;
+        // treat it like it's unspecified.
+        // TODO error instead of pretending it has no source!
+        let mut args =
+            AttributePrototypeArgument::list_ids_for_prototype(ctx, prototype_id).await?;
+        let Some(apa_id) = args.pop() else {
+            return Ok(None);
+        };
+        if !args.is_empty() {
+            return Ok(None);
+        }
+
+        // Figure out what kind of source this is!
+        let source = match AttributePrototypeArgument::value_source(ctx, apa_id).await? {
+            ValueSource::ValueSubscription(ValueSubscription {
                 attribute_value_id: source_av_id,
                 path,
-            }) = AttributePrototypeArgument::value_source(ctx, apa_id).await?
-            else {
-                continue;
-            };
-            let source_component_id = AttributeValue::component_id(ctx, source_av_id).await?;
-            let AttributePath::JsonPointer(path) = path;
-            let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
-            let func = match Func::intrinsic_kind(ctx, func_id).await? {
-                Some(IntrinsicFunc::Identity) => None,
-                _ => Some(func_id.into()),
-            };
+            }) => {
+                let source_component_id = AttributeValue::component_id(ctx, source_av_id).await?;
+                let AttributePath::JsonPointer(path) = path;
+                let func_id = AttributePrototype::func_id(ctx, prototype_id).await?;
+                let func = match Func::intrinsic_kind(ctx, func_id).await? {
+                    Some(IntrinsicFunc::Identity) => None,
+                    _ => Some(func_id.into()),
+                };
 
-            let (_, dest_path) = AttributeValue::path_from_root(ctx, dest_av_id).await?;
-
-            sources.insert(
-                dest_path.into(),
                 Source::Subscription {
                     component: source_component_id.into(),
                     path,
                     keep_existing_subscriptions: None,
                     func,
-                },
-            );
-        }
-        Ok(sources)
+                }
+            }
+            ValueSource::StaticArgumentValue(value_id) => {
+                // If it's a static value, *and* the intrinsic is si:setXXX(), we can return it
+                // as a simple value source.
+                let kind = AttributeValue::prop_kind(ctx, av_id).await?;
+                if intrinsic != Some(kind.intrinsic_set_func()) {
+                    // TODO error instead of pretending it has no source! This is a dynamic value
+                    return Ok(None);
+                }
+                // If it's an object, array or map, we don't return its value; we look for
+                // childrens' values and return each of those instead!
+                if kind.is_container() {
+                    return Ok(None);
+                }
+                Source::Value(StaticArgumentValue::get_by_id(ctx, value_id).await?.value)
+            }
+            _ => {
+                // We don't support anything else
+                // TODO error instead of pretending it has no source!
+                return Ok(None);
+            }
+        };
+        Ok(Some(source))
     }
 
     /// Gets the list of subscriptions pointing at this root AV, returning the subscriber AV

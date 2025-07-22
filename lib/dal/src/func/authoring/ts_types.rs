@@ -80,8 +80,23 @@ pub(crate) fn compile_return_types(
 // #[allow(missing_docs)]
 pub(crate) fn compile_langjs_types() -> &'static str {
     "declare namespace YAML {
-    function stringify(obj: unknown): string;
-}
+        function stringify(obj: unknown): string;
+    }
+
+    declare namespace template {
+        function sourceOrValue(path: string, thisComponent: Input[\"thisComponent\"]): Output[\"ops\"][\"create\"][string][\"attributes\"][string];
+
+        function checkUniqueNamePrefix(namePrefix: string, components: any): boolean;
+
+        type ComponentWithSiNameAttributeValue = string | { '$source': any } | bool | number;
+        interface ComponentWithSiName {
+          attributes: {
+            [path: string]: ComponentWithSiNameAttributeValue;
+          }
+        }
+
+        export function getComponentName(component: ComponentScaffold): string;
+    }
 
     declare namespace zlib {
         function gzip(inputstr: string, callback: any);

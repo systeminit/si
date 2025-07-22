@@ -58,8 +58,6 @@ use veritech_client::{
     ResourceStatus,
 };
 
-pub mod generator;
-
 async fn find_mgmt_prototype(
     ctx: &DalContext,
     component_id: ComponentId,
