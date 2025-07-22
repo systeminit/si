@@ -18,6 +18,7 @@
       ref="deleteModalRef"
       @delete="(mode) => componentsFinishDelete(mode)"
     />
+    <CreateTemplateModal ref="createTemplateModalRef" />
   </div>
 </template>
 
@@ -39,6 +40,7 @@ import {
   SchemaVariant,
 } from "@/workers/types/entity_kind_types";
 import { ActionId, ActionPrototypeId } from "@/api/sdf/dal/action";
+import CreateTemplateModal from "@/newhotness/CreateTemplateModal.vue";
 import EraseModal from "./EraseModal.vue";
 import DeleteModal, { DeleteMode } from "./DeleteModal.vue";
 import { useApi, routes } from "./api_composables";
@@ -65,6 +67,7 @@ const explore = inject<ExploreContext>("EXPLORE_CONTEXT");
 assertIsDefined<ExploreContext>(explore);
 
 const components = ref<ComponentInList[]>([]);
+const componentIds = computed(() => components.value?.map((c) => c.id));
 
 // Use shared deletion composable with view context
 const { deleteComponents, eraseComponents, restoreComponents } =
@@ -170,10 +173,38 @@ const rightClickMenuItems = computed(() => {
       label: "Restore",
       shortcut: "R",
       icon: "trash-restore",
-      onSelect: () => componentsRestore(components.value.map((c) => c.id)),
+      onSelect: () => componentsRestore(componentIds.value),
     });
     items.push(eraseMenuItem);
     return items;
+  }
+
+  const upgradeableComponents = explore.upgradeableComponents.value;
+
+  // Get only the components that are actually upgradeable
+  const upgradeableSelectedComponentIds = componentIds.value.filter((cId) =>
+    upgradeableComponents.has(cId),
+  );
+
+  if (upgradeableSelectedComponentIds.length > 0) {
+    const allUpgradeable =
+      upgradeableSelectedComponentIds.length === components.value.length;
+    const label = allUpgradeable
+      ? "Upgrade"
+      : `Upgrade (${upgradeableSelectedComponentIds.length}/${components.value.length})`;
+
+    items.push({
+      labelAsTooltip: true,
+      label,
+      shortcut: "U",
+      icon: "bolt-outline",
+      disabled: !allUpgradeable,
+      onSelect: () => {
+        if (allUpgradeable) {
+          componentsUpgrade(upgradeableSelectedComponentIds);
+        }
+      },
+    });
   }
 
   if (singleComponent.value) {
@@ -185,25 +216,6 @@ const rightClickMenuItems = computed(() => {
       onSelect: () => emit("edit"),
     });
   }
-
-  // can erase so long as you have not selected a view
-  items.push(eraseMenuItem);
-
-  items.push({
-    labelAsTooltip: true,
-    label: "Delete",
-    shortcut: "⌫",
-    icon: "trash",
-    onSelect: () => componentsStartDelete(components.value),
-  });
-
-  items.push({
-    labelAsTooltip: true,
-    label: "Duplicate",
-    shortcut: "D",
-    icon: "clipboard-copy",
-    onSelect: () => componentsDuplicate(components.value.map((c) => c.id)),
-  });
 
   // Only enable pinning if we are working with a single component on the grid.
   if (props.onGrid && singleComponent.value) {
@@ -217,33 +229,35 @@ const rightClickMenuItems = computed(() => {
     });
   }
 
-  const upgradeableComponents = explore.upgradeableComponents.value;
+  items.push({
+    labelAsTooltip: true,
+    label: "Duplicate",
+    shortcut: "D",
+    icon: "clipboard-copy",
+    onSelect: () => componentsDuplicate(componentIds.value),
+  });
 
-  // Get only the components that are actually upgradeable
-  const upgradeableSelectedComponents = components.value.filter((c) =>
-    upgradeableComponents.has(c.id),
-  );
-
-  if (upgradeableSelectedComponents.length > 0) {
-    const allUpgradeable =
-      upgradeableSelectedComponents.length === components.value.length;
-    const label = allUpgradeable
-      ? "Upgrade"
-      : `Upgrade (${upgradeableSelectedComponents.length}/${components.value.length})`;
-
+  // Can't create template with ghosted components
+  if (!atLeastOneGhostedComponent.value) {
     items.push({
       labelAsTooltip: true,
-      label,
-      shortcut: "U",
-      icon: "bolt-outline",
-      disabled: !allUpgradeable,
-      onSelect: () => {
-        if (allUpgradeable) {
-          componentsUpgrade(upgradeableSelectedComponents.map((c) => c.id));
-        }
-      },
+      label: "Create Template",
+      shortcut: "T",
+      icon: "template-new",
+      onSelect: createTemplateStart,
     });
   }
+
+  // can erase so long as you have not selected a view
+  items.push(eraseMenuItem);
+
+  items.push({
+    labelAsTooltip: true,
+    label: "Delete",
+    shortcut: "⌫",
+    icon: "trash",
+    onSelect: () => componentsStartDelete(components.value),
+  });
 
   // Only enable actions if we are working with a single component.
   if (singleComponent.value && schemaVariantId.value) {
@@ -375,8 +389,7 @@ const eraseComponentIds = ref<ComponentId[] | undefined>(undefined);
 const eraseModalRef = ref<InstanceType<typeof EraseModal>>();
 
 const componentsStartErase = (components: ComponentInList[]) => {
-  const componentIds = components.map((component) => component.id);
-  eraseComponentIds.value = componentIds;
+  eraseComponentIds.value = componentIds.value;
   eraseModalRef.value?.open(components);
   close();
 };
@@ -393,7 +406,7 @@ const deleteComponentIds = ref<ComponentId[]>([]);
 const deleteModalRef = ref<InstanceType<typeof DeleteModal>>();
 
 const componentsStartDelete = (components: ComponentInList[]) => {
-  deleteComponentIds.value = components.map((c) => c.id);
+  deleteComponentIds.value = componentIds.value;
   deleteModalRef.value?.open(components);
   close();
 };
@@ -431,6 +444,13 @@ const componentsDuplicate = async (componentIds: ComponentId[]) => {
 
 const componentsUpgrade = async (componentIds: ComponentId[]) => {
   await upgradeComponents(componentIds);
+};
+
+const createTemplateModalRef = ref<InstanceType<typeof CreateTemplateModal>>();
+
+const createTemplateStart = () => {
+  createTemplateModalRef.value?.open(componentIds.value, explore.viewId.value);
+  close();
 };
 
 // eslint-disable-next-line @typescript-eslint/ban-types
@@ -478,6 +498,7 @@ defineExpose({
   contextMenuRef,
   componentsStartDelete,
   componentsRestore,
+  createTemplateStart,
   focusFirstItem,
 });
 </script>

@@ -20,12 +20,12 @@
         </VButton>
         <VButton
           class="flex-grow"
-          icon="trash"
-          tone="destructive"
+          :icon="confirmIcon"
+          :tone="confirmTone"
           :disabled="!irreversibleConfirmed"
           @click="emit('confirm')"
         >
-          Confirm
+          {{ confirmLabel }}
         </VButton>
       </div>
     </div>
@@ -33,12 +33,22 @@
 </template>
 
 <script setup lang="ts">
-import { Modal, useModal, VButton, VormInput } from "@si/vue-lib/design-system";
-import { nextTick, ref } from "vue";
+import {
+  IconNames,
+  Modal,
+  Tones,
+  useModal,
+  VButton,
+  VormInput,
+} from "@si/vue-lib/design-system";
+import { nextTick, PropType, ref } from "vue";
 
 const props = defineProps({
   title: { type: String },
   irreversible: { type: Boolean },
+  confirmLabel: { type: String, default: "Confirm" },
+  confirmIcon: { type: String as PropType<IconNames> },
+  confirmTone: { type: String as PropType<Tones> },
 });
 
 const irreversibleConfirmed = ref(false);

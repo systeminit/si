@@ -176,6 +176,7 @@ import Pin from "~icons/carbon/pin-filled";
 import Renew from "~icons/carbon/renew";
 import CarbonApps from "~icons/carbon/apps";
 import CarbonFlowConnection from "~icons/carbon/flow-connection";
+import CategoryNew from "~icons/carbon/category-new";
 
 // streamline
 import StreamlineBracesCircleSolid from "~icons/streamline/braces-circle-solid";
@@ -385,6 +386,7 @@ export const ICONS = Object.freeze({
   star: Star,
   starOutline: StarOutline,
   sun: Sun,
+  "template-new": CategoryNew,
   "test-tube": PhTestTubeFill,
   "thumbs-down": ThumbsDown,
   "thumbs-up": ThumbsUp,
