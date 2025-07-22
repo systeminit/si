@@ -7,8 +7,8 @@ import {
   SqlValue,
 } from "@sqlite.org/sqlite-wasm";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
-import { WorkspacePk } from "@/store/workspaces.store";
 import { ComponentId } from "@/api/sdf/dal/component";
+import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import { EntityKind } from "./types/entity_kind_types";
 import {
   SharedDBInterface,

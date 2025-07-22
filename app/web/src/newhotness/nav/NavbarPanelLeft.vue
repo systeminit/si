@@ -55,10 +55,9 @@ import {
 import { computed, ref, watch } from "vue";
 import { useQuery } from "@tanstack/vue-query";
 import StatusPanel from "@/newhotness/StatusPanel.vue";
+import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import ChangeSetPanel from "./ChangeSetPanel.vue";
 import { routes, useApi } from "../api_composables";
-
-export type WorkspacePk = string;
 
 type InstanceEnvType = "LOCAL" | "PRIVATE" | "SI";
 

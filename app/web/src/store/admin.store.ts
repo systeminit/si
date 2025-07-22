@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import * as _ from "lodash-es";
 import { UserId, WorkspaceUser } from "@/store/auth.store";
 import { FuncRunId } from "@/store/func_runs.store";
-import { useWorkspacesStore, WorkspacePk } from "@/store/workspaces.store";
+import { useWorkspacesStore } from "@/store/workspaces.store";
 import { useRealtimeStore } from "@/store/realtime/realtime.store";
 import { ChangeSetId, ChangeSetStatus } from "@/api/sdf/dal/change_set";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -14,6 +14,7 @@ import {
 } from "@/api/sdf/dal/func";
 import { PropId } from "@/api/sdf/dal/prop";
 import { InputSocketId, OutputSocketId } from "@/api/sdf/dal/schema";
+import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import { AttributeValueId } from "./status.store";
 import { WsEventPayloadMap } from "./realtime/realtime_events";
 

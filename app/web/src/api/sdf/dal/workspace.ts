@@ -1,7 +1,9 @@
 import { ChangeSetId, ChangeSet } from "./change_set";
 
+export type WorkspacePk = string;
+
 export interface Workspace {
-  pk: string;
+  pk: WorkspacePk;
   name: string;
   created_at: IsoDateString;
   updated_at: IsoDateString;
@@ -10,7 +12,7 @@ export interface Workspace {
 
 export interface WorkspaceMetadata {
   name: string;
-  id: string;
+  id: WorkspacePk;
   defaultChangeSetId: ChangeSetId;
   changeSets: ChangeSet[];
   approvers: string[];

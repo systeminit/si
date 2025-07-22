@@ -35,7 +35,7 @@ import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { nonNullable } from "@/utils/typescriptLinter";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentId } from "@/api/sdf/dal/component";
-import { WorkspacePk } from "@/store/workspaces.store";
+import { WorkspacePk } from "@/api/sdf/dal/workspace";
 import {
   Atom,
   AtomDocument,
@@ -2312,7 +2312,7 @@ const postProcess = (
       bustCacheFn(
         workspaceId,
         changeSetId,
-        EntityKind.ComponentSearch,
+        EntityKind.QueryAttributes,
         workspaceId,
       );
     }
