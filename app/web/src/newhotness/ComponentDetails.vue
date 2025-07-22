@@ -333,8 +333,6 @@ import { attributeEmitter, keyEmitter } from "./logic_composables/emitters";
 import CollapsingFlexItem from "./layout_components/CollapsingFlexItem.vue";
 import DelayedLoader from "./layout_components/DelayedLoader.vue";
 import { useApi, routes } from "./api_composables";
-import { preserveExploreState } from "./util";
-import { SelectionsInQueryString } from "./Workspace.vue";
 import QualificationPanel from "./QualificationPanel.vue";
 import ResourcePanel from "./ResourcePanel.vue";
 import CodePanel from "./CodePanel.vue";
@@ -455,9 +453,7 @@ const close = () => {
   router.push({
     name: "new-hotness",
     params,
-    query: preserveExploreState(
-      router.currentRoute.value?.query as SelectionsInQueryString,
-    ),
+    query: { retainSessionState: 1 },
   });
 };
 

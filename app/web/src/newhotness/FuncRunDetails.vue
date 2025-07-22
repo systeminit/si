@@ -62,8 +62,6 @@ import { assertIsDefined, Context } from "./types";
 import { useApi, routes, funcRunTypes } from "./api_composables";
 import { keyEmitter } from "./logic_composables/emitters";
 import { FuncRun, funcRunStatus, FuncRunLog } from "./api_composables/func_run";
-import { preserveExploreState } from "./util";
-import { SelectionsInQueryString } from "./Workspace.vue";
 
 const props = defineProps<{
   funcRunId: string;
@@ -83,9 +81,7 @@ const back = () => {
   router.push({
     name: "new-hotness",
     params,
-    query: preserveExploreState(
-      router.currentRoute.value?.query as SelectionsInQueryString,
-    ),
+    query: { retainSessionState: 1 },
   });
 };
 
@@ -124,13 +120,12 @@ const retryAction = async () => {
 const navigateToComponent = () => {
   if (funcRun.value?.componentId) {
     const params = { ...router.currentRoute.value.params };
+    const query = { ...router.currentRoute.value.query };
     params.componentId = funcRun.value.componentId;
     router.push({
       name: "new-hotness-component",
       params,
-      query: preserveExploreState(
-        router.currentRoute.value?.query as SelectionsInQueryString,
-      ),
+      query,
     });
   }
 };

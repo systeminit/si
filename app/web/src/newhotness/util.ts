@@ -9,7 +9,6 @@ import {
 } from "@/workers/types/entity_kind_types";
 import { AttributePath } from "@/api/sdf/dal/component";
 import { Toggle } from "./logic_composables/toggle_containers";
-import { SelectionsInQueryString } from "./Workspace.vue";
 
 export type BrandColorKey = keyof typeof BRAND_COLOR_FILTER_HEX_CODES;
 
@@ -93,24 +92,6 @@ export const findAvsAtPropPath = (data: AttributeTree, parts: string[]) => {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const attributeValues = avIds.map((avId) => data.attributeValues[avId]!);
   return { prop, attributeValues };
-};
-
-export const preserveExploreState = (
-  currentQuery: SelectionsInQueryString,
-): Partial<SelectionsInQueryString> => {
-  const preservedQuery: Partial<SelectionsInQueryString> = {};
-
-  if (currentQuery.groupBy) preservedQuery.groupBy = currentQuery.groupBy;
-  if (currentQuery.sortBy) preservedQuery.sortBy = currentQuery.sortBy;
-
-  if (currentQuery.pinned) preservedQuery.pinned = currentQuery.pinned;
-
-  if (currentQuery.grid) preservedQuery.grid = currentQuery.grid;
-  if (currentQuery.map) preservedQuery.map = currentQuery.map;
-
-  if (currentQuery.viewId) preservedQuery.viewId = currentQuery.viewId;
-
-  return preservedQuery;
 };
 
 export const findAttributeValueInTree = (

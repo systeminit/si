@@ -343,6 +343,7 @@ export type SelectionsInQueryString = Partial<{
   pinned: string;
   viewId: string;
   searchQuery: string;
+  retainSessionState: string; // If set, the component should load up with the last state it had on this tab. Used by Explore.vue
 }>;
 
 const compositionLink = computed(() => {
