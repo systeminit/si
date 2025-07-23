@@ -227,6 +227,7 @@ import OutputConnection from "./custom-icons/output-connection.svg?raw";
 import Odin from "./custom-icons/odin.svg?raw";
 import Niflheim from "./custom-icons/snowflake.svg?raw";
 import Mjolnir from "./custom-icons/mjolnir.svg?raw";
+import IncomingConnection from "./custom-icons/incoming-connection.svg?raw";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -313,6 +314,7 @@ export const ICONS = Object.freeze({
   grid: CarbonApps,
   hide: EyeOff,
   hourglass: Hourglass,
+  "incoming-connection": IncomingConnection,
   "info-circle": MdiInformationVariantCircleOutline,
   "input-connection": InputConnection,
   "input-socket": InputSocket,

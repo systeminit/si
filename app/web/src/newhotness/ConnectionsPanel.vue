@@ -12,10 +12,10 @@
     "
   >
     <template v-if="incoming.length">
-      <ConnectionLayout label="Inputs" :connections="incoming" />
+      <ConnectionLayout label="Incoming" :connections="incoming" />
     </template>
     <template v-if="outgoing.length">
-      <ConnectionLayout label="Outputs" :connections="outgoing" />
+      <ConnectionLayout label="Outgoing" :connections="outgoing" />
     </template>
   </div>
   <!-- TODO(Wendy) - separate empty states for input and output connections? -->
