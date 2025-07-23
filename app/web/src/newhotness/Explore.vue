@@ -572,7 +572,7 @@ const upgradeableComponentIds = computed(() => {
 
   // TODO(nick): try to swap this with the component list to see if we recompute this less
   // frequently. This is not a problem today, but could be tomorrow.
-  for (const component of filteredComponents.value) {
+  for (const component of filteredComponents.value ?? []) {
     // This needs to be split out into a variable for reactivity. Keep this here or drown in
     // sorrow and suffering. Relevant pull request: https://github.com/systeminit/si/pull/6483
     const canUpgrade = upgrade(
@@ -873,7 +873,9 @@ const sortedAndGroupedComponents = computed(() => {
   // NOTE: We also do this to get a new array, so that later sort() calls do not mutate the
   // filteredComponents array.
   // NOTE: we reverse this because we want descending order, but sortBy only does ascending.
-  let components = _.reverse(_.sortBy(filteredComponents.value, (c) => c.id));
+  let components = _.reverse(
+    _.sortBy(filteredComponents.value ?? [], (c) => c.id),
+  );
 
   // Second, perform any secondary sorts, if applicable. This relies on the fact that the
   // components are already sorted.
