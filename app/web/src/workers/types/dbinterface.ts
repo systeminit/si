@@ -9,7 +9,6 @@ import {
   SqlValue,
 } from "@sqlite.org/sqlite-wasm";
 import { Operation } from "fast-json-patch";
-import { Span } from "@opentelemetry/api";
 import { ChangeSetId } from "@/api/sdf/dal/change_set";
 import { DefaultMap } from "@/utils/defaultmap";
 import { ComponentId } from "@/api/sdf/dal/component";
@@ -305,9 +304,6 @@ export interface TabDBInterface {
   addListenerReturned(fn: RainbowFn): void;
   addListenerLobbyExit(fn: LobbyExitFn): void;
   addAtomUpdated(fn: UpdateFn): void;
-  atomChecksumsFor(
-    changeSetId: ChangeSetId,
-  ): Promise<Record<QueryKey, Checksum>>;
   changeSetExists(workspaceId: string, changeSetId: ChangeSetId): boolean;
   niflheim(workspaceId: string, changeSetId: ChangeSetId): Promise<boolean>;
   pruneAtomsForClosedChangeSet(
@@ -318,8 +314,8 @@ export interface TabDBInterface {
   oneInOne(rows: SqlValue[][]): SqlValue | typeof NOROW;
   encodeDocumentForDB(doc: object): Promise<ArrayBuffer>;
   decodeDocumentFromDB(doc: ArrayBuffer): AtomDocument;
-  handlePatchMessage(data: PatchBatch, span?: Span): Promise<void>;
-  handleHammer(msg: AtomMessage, span?: Span): Promise<void>;
+  handlePatchMessage(data: PatchBatch): Promise<void>;
+  handleHammer(msg: AtomMessage): Promise<void>;
   exec(
     opts: ExecBaseOptions &
       ExecRowModeArrayOptions &
