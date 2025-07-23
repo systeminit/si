@@ -1,7 +1,7 @@
 ---
 services:
   app:
-    image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/ci-base:stable
+    image: systeminit/ci-base:stable
     environment:
       - "USE_CI_PG_SETUP=true"
       - "SI_TEST_PG_HOSTNAME=postgres-test"
@@ -27,7 +27,7 @@ services:
 
   # This is the same as the pgbouncer test setup in our dev environment
   postgres-test:
-    image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/pgbouncer:stable
+    image: systeminit/pgbouncer:stable
     environment:
       - "DB_USER=si_test"
       - "DB_PASSWORD=bugbear"
@@ -47,7 +47,7 @@ services:
   # *no* need for the `postgres` service as we aren't running the full service
   # stack.
   db-test:
-    image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/postgres:stable
+    image: systeminit/postgres:stable
     environment:
       - "POSTGRES_PASSWORD=bugbear"
       - "PGPASSWORD=bugbear"
@@ -61,16 +61,16 @@ services:
       - "full_page_writes=off"
 
   nats:
-    image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/nats:stable
+    image: systeminit/nats:stable
     command:
       - "--config"
       - "nats-server.conf"
 
   jaeger:
-    image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/jaeger:stable
+    image: systeminit/jaeger:stable
 
   otelcol:
-    image: 179845983369.dkr.ecr.us-east-2.amazonaws.com/docker-hub/systeminit/otelcol:stable
+    image: systeminit/otelcol:stable
     depends_on:
       - jaeger
 
