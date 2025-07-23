@@ -149,7 +149,7 @@ def update_cargo_lock(
         if result.returncode == 1:
             print("  - Regenerated {} has changed with diff:\n".format(
                 cargo_lock_file))
-            print(result.stdout.decode("ascii"))
+            print(result.stdout.decode("utf-8"))
             file_modified = True
 
             if check_mode:
@@ -165,9 +165,9 @@ def update_cargo_lock(
         elif result.returncode != 0:
             print("xxx diff command failed", file=sys.stderr)
             print("xxx --- stdout:", file=sys.stderr)
-            print(result.stdout.decode("ascii"), file=sys.stderr)
+            print(result.stdout.decode("utf-8"), file=sys.stderr)
             print("xxx --- stderr:", file=sys.stderr)
-            print(result.stderr.decode("ascii"), file=sys.stderr)
+            print(result.stderr.decode("utf-8"), file=sys.stderr)
         else:
             print("  - No changes detected for {}".format(cargo_lock_file))
 
@@ -286,7 +286,7 @@ def update_third_party_rust_cargo_toml(
                 if result.returncode == 1:
                     print("  - Regenerated {} has changed with diff:\n".format(
                         dst_cargo_toml_file))
-                    print(result.stdout.decode("ascii"))
+                    print(result.stdout.decode("utf-8"))
                     file_modified = True
 
                     if not check_mode:
@@ -299,9 +299,9 @@ def update_third_party_rust_cargo_toml(
                 elif result.returncode != 0:
                     print("xxx diff command failed", file=sys.stderr)
                     print("xxx --- stdout:", file=sys.stderr)
-                    print(result.stdout.decode("ascii"), file=sys.stderr)
+                    print(result.stdout.decode("utf-8"), file=sys.stderr)
                     print("xxx --- stderr:", file=sys.stderr)
-                    print(result.stderr.decode("ascii"), file=sys.stderr)
+                    print(result.stderr.decode("utf-8"), file=sys.stderr)
                 else:
                     print("  - No changes detected for {}".format(
                         dst_cargo_toml_file))
@@ -351,9 +351,9 @@ def update_third_party_rust_cargo_lock(
         if result.returncode != 0:
             print("xxx cargo metadata command failed", file=sys.stderr)
             print("xxx --- stdout:", file=sys.stderr)
-            print(result.stdout.decode("ascii"), file=sys.stderr)
+            print(result.stdout.decode("utf-8"), file=sys.stderr)
             print("xxx --- stderr:", file=sys.stderr)
-            print(result.stderr.decode("ascii"), file=sys.stderr)
+            print(result.stderr.decode("utf-8"), file=sys.stderr)
         result.check_returncode()
 
         file_modified = False
@@ -368,7 +368,7 @@ def update_third_party_rust_cargo_lock(
         if result.returncode == 1:
             print("  - Regenerated {} has changed with diff:\n".format(
                 dst_cargo_lock_file))
-            print(result.stdout.decode("ascii"))
+            print(result.stdout.decode("utf-8"))
             file_modified = True
 
             if not check_mode:
@@ -376,9 +376,9 @@ def update_third_party_rust_cargo_lock(
         elif result.returncode != 0:
             print("xxx diff command failed", file=sys.stderr)
             print("xxx --- stdout:", file=sys.stderr)
-            print(result.stdout.decode("ascii"), file=sys.stderr)
+            print(result.stdout.decode("utf-8"), file=sys.stderr)
             print("xxx --- stderr:", file=sys.stderr)
-            print(result.stderr.decode("ascii"), file=sys.stderr)
+            print(result.stderr.decode("utf-8"), file=sys.stderr)
         else:
             print("  - No changes detected for {}".format(dst_cargo_lock_file))
 
@@ -437,7 +437,7 @@ def reindeer_buckify(
         if result.returncode == 1:
             print("  - Regenerated {} has changed with diff:\n".format(
                 third_party_rust_buck_file))
-            print(result.stdout.decode("ascii"))
+            print(result.stdout.decode("utf-8"))
             file_modified = True
 
             if check_mode:
@@ -453,9 +453,9 @@ def reindeer_buckify(
         elif result.returncode != 0:
             print("xxx diff command failed", file=sys.stderr)
             print("xxx --- stdout:", file=sys.stderr)
-            print(result.stdout.decode("ascii"), file=sys.stderr)
+            print(result.stdout.decode("utf-8"), file=sys.stderr)
             print("xxx --- stderr:", file=sys.stderr)
-            print(result.stderr.decode("ascii"), file=sys.stderr)
+            print(result.stderr.decode("utf-8"), file=sys.stderr)
         else:
             print("  - No changes detected for {}".format(
                 third_party_rust_buck_file))
