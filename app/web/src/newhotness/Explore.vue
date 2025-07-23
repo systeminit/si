@@ -1231,6 +1231,7 @@ const mountEmitters = () => {
   keyEmitter.on("u", onU);
   keyEmitter.on("r", onR);
   keyEmitter.on("p", onP);
+  keyEmitter.on("t", onT);
   keyEmitter.on("ArrowRight", onArrow);
   keyEmitter.on("ArrowLeft", onArrow);
   keyEmitter.on("Enter", onEnter);
@@ -1359,6 +1360,13 @@ const onU = (e: KeyDetails["u"]) => {
     }
   } else {
     mapRef.value?.onU(e);
+  }
+};
+const onT = (e: KeyDetails["t"]) => {
+  e.preventDefault();
+
+  if (showGrid.value) {
+    componentContextMenuRef.value?.createTemplateStart();
   }
 };
 const onBackspace = (e: KeyDetails["Backspace"] | KeyDetails["Delete"]) => {

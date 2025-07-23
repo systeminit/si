@@ -3,6 +3,8 @@
     ref="modalRef"
     title="Erase"
     irreversible
+    confirmIcon="trash"
+    confirmTone="destructive"
     @confirm="emit('confirm')"
   >
     <div>
