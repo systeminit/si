@@ -3,11 +3,13 @@ use std::collections::{
     HashSet,
 };
 
+use axum::extract::Path;
 use dal::{
     AttributeValue,
-    ChangeSet,
+    ChangeSetId,
     Component,
     DalContext,
+    WorkspacePk,
     WsEvent,
     attribute::{
         path::AttributePath,
@@ -23,43 +25,42 @@ use dal::{
         SocketConnection,
     },
 };
-use sdf_core::force_change_set_response::ForceChangeSetResponse;
-use sdf_extract::{
-    PosthogEventTracker,
-    change_set::ChangeSetDalContext,
-};
+use sdf_extract::PosthogEventTracker;
 use serde_json::json;
+use si_db::Tenancy;
 use telemetry::prelude::*;
 
-use super::Result;
+use crate::service::v2::admin::{
+    AdminAPIResult,
+    AdminUserContext,
+};
 
-/// Migrates all connections, and reports the unmigrateable ones as well.
 pub async fn migrate_connections(
-    ChangeSetDalContext(mut ctx): ChangeSetDalContext,
+    AdminUserContext(mut ctx): AdminUserContext,
     tracker: PosthogEventTracker,
-) -> Result<ForceChangeSetResponse<()>> {
-    let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
-
-    // Spawn this in the background in case it takes a while.
+    Path((workspace_id, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
+) -> AdminAPIResult<()> {
+    ctx.update_tenancy(Tenancy::new(workspace_id));
+    ctx.update_visibility_and_snapshot_to_visibility(change_set_id)
+        .await?;
     slow_rt::spawn(async move { migrate_connections_async(&ctx, tracker, false).await })?;
-
-    Ok(ForceChangeSetResponse::new(force_change_set_id, ()))
+    Ok(())
 }
-
-/// Does the migrations, but doesn't commit them--just lets you see what would have happened.
 pub async fn migrate_connections_dry_run(
-    ChangeSetDalContext(ctx): ChangeSetDalContext,
+    AdminUserContext(mut ctx): AdminUserContext,
     tracker: PosthogEventTracker,
-) -> Result<()> {
-    // Spawn this in the background in case it takes a while.
+    Path((workspace_id, change_set_id)): Path<(WorkspacePk, ChangeSetId)>,
+) -> AdminAPIResult<()> {
+    ctx.update_tenancy(Tenancy::new(workspace_id));
+    ctx.update_visibility_and_snapshot_to_visibility(change_set_id)
+        .await?;
     slow_rt::spawn(async move { migrate_connections_async(&ctx, tracker, true).await })?;
-
     Ok(())
 }
 
 /// Internal: migrates and reports any errors wherever they need to be.
 #[instrument(level = "info", skip(ctx, tracker))]
-async fn migrate_connections_async(
+pub async fn migrate_connections_async(
     ctx: &DalContext,
     tracker: PosthogEventTracker,
     dry_run: bool,
@@ -116,7 +117,7 @@ async fn migrate_connections_async_fallible(
     ctx: &DalContext,
     dry_run: bool,
     summary: &mut ConnectionMigrationSummary,
-) -> Result<()> {
+) -> AdminAPIResult<()> {
     WsEvent::connection_migration_started(ctx, dry_run)
         .await?
         .publish_immediately(ctx)
@@ -179,7 +180,7 @@ async fn migrate_connections_async_fallible(
 #[instrument(level = "info", skip(ctx))]
 async fn get_connection_migrations(
     ctx: &DalContext,
-) -> Result<Vec<ConnectionMigrationWithMessage>> {
+) -> AdminAPIResult<Vec<ConnectionMigrationWithMessage>> {
     let snapshot = ctx.workspace_snapshot()?.as_legacy_snapshot()?;
 
     let inferred_connections = snapshot
@@ -209,7 +210,10 @@ async fn get_connection_migrations(
 }
 
 // Returns true if migrated, false if we didn't migrate
-async fn migrate_connection(ctx: &DalContext, migration: &ConnectionMigration) -> Result<bool> {
+async fn migrate_connection(
+    ctx: &DalContext,
+    migration: &ConnectionMigration,
+) -> AdminAPIResult<bool> {
     // Make sure it's migrateable (no issues and has all the data we need)
     if migration.issue.is_some() {
         return Ok(false);

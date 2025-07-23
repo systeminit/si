@@ -195,7 +195,7 @@ export const useAdminStore = () => {
         ) {
           return new ApiRequest<unknown>({
             method: options?.dryRun ? "get" : "post",
-            url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/migrate_connections`,
+            url: `v2/admin/workspaces/${workspaceId}/change_sets/${changeSetId}/migrate_connections`,
           });
         },
         async VALIDATE_SNAPSHOT(
@@ -205,7 +205,7 @@ export const useAdminStore = () => {
         ) {
           return new ApiRequest<ValidateSnapshotResponse>({
             method: options?.fixIssues ? "post" : "get",
-            url: `v2/workspaces/${workspaceId}/change-sets/${changeSetId}/validate_snapshot`,
+            url: `v2/admin/workspaces/${workspaceId}/change_sets/${changeSetId}/validate_snapshot`,
             onSuccess: (response) => {
               this.validateSnapshotResponse = response;
             },
