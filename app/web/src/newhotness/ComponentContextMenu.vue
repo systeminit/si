@@ -163,6 +163,8 @@ const rightClickMenuItems = computed(() => {
     label: "Erase",
     shortcut: "E",
     icon: "erase" as const,
+    iconClass: "text-destructive-300",
+    shortcutClass: "border-destructive-200 text-destructive-300",
     onSelect: () => componentsStartErase(components.value),
   };
 
@@ -256,6 +258,8 @@ const rightClickMenuItems = computed(() => {
     label: "Delete",
     shortcut: "⌫",
     icon: "trash",
+    iconClass: "text-destructive-300",
+    shortcutClass: "border-destructive-200 text-destructive-300",
     onSelect: () => componentsStartDelete(components.value),
   });
 

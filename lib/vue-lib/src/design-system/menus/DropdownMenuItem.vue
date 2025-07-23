@@ -50,12 +50,7 @@
     <slot name="icon">
       <Icon
         v-if="icon"
-        :class="
-          clsx(
-            'shrink-0 pointer-events-none',
-            props.iconClass ? props.iconClass : '',
-          )
-        "
+        :class="clsx('shrink-0 pointer-events-none', iconClass ?? '')"
         :name="icon"
         size="sm"
       />
@@ -76,6 +71,7 @@
         clsx(
           'border rounded px-2xs py-xs min-w-[24px] h-md text-center capsize text-xs',
           themeClasses('border-neutral-400', 'border-neutral-600'),
+          shortcutClass ?? '',
         )
       "
     >
@@ -203,6 +199,7 @@ export interface DropdownMenuItemProps {
   doNotCloseMenuOnClick?: boolean;
 
   shortcut?: string;
+  shortcutClass?: string;
   endLinkLabel?: string;
   endLinkTo?: string | RouteLocationRaw;
 
