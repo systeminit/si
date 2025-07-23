@@ -17,6 +17,7 @@ import {
   AtomDocument,
   BroadcastMessage,
   SHARED_BROADCAST_CHANNEL_NAME,
+  DB_NOT_INIT_ERR,
   Gettable,
   Listable,
   QueryAttributesTerm,
@@ -39,21 +40,38 @@ function debug(...args: any | any[]) {
   if (_DEBUG) console.debug(args);
 }
 
-let currentRemote: Comlink.Remote<TabDBInterface> | undefined;
-let currentRemoteId: string | undefined;
+let currentLeader: Comlink.Remote<TabDBInterface> | undefined;
+let currentLeaderId: string | undefined;
 const remotes: { [key: string]: Comlink.Remote<TabDBInterface> } = {};
 const bearerTokens: { [key: string]: string } = {};
 
-const hasRemoteChannel = new MessageChannel();
+const hasLeaderChannel = new MessageChannel();
+const leaderChangedChannel = new MessageChannel();
 
-const getRemote = (): Promise<Comlink.Remote<TabDBInterface>> => {
+const LEADER_CHANGED = "LEADER_CHANGED";
+
+const failOnLeaderChange = (): Promise<never> => {
+  return new Promise((_, reject) => {
+    const onMessage = () => {
+      reject(LEADER_CHANGED);
+    };
+    leaderChangedChannel.port1.addEventListener("message", onMessage, {
+      capture: false,
+      passive: true,
+      once: true,
+    });
+    leaderChangedChannel.port1.start();
+  });
+};
+
+const getLeader = (): Promise<Comlink.Remote<TabDBInterface>> => {
   return new Promise((resolve, reject) => {
-    if (currentRemote) {
-      resolve(currentRemote);
+    if (currentLeader) {
+      resolve(currentLeader);
     }
-    hasRemoteChannel.port1.onmessage = () => {
-      if (currentRemote) {
-        resolve(currentRemote);
+    hasLeaderChannel.port1.onmessage = () => {
+      if (currentLeader) {
+        resolve(currentLeader);
       } else {
         reject(new Error("Got remote message but no remote set"));
       }
@@ -61,17 +79,51 @@ const getRemote = (): Promise<Comlink.Remote<TabDBInterface>> => {
   });
 };
 
-async function withRemote<R>(
+const MAX_RETRIES = 250;
+
+const sleep = (ms: number) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+async function withLeader<R>(
   cb: (remote: Comlink.Remote<TabDBInterface>) => Promise<R>,
+  retry?: number,
 ): Promise<R> {
-  const remote = await getRemote();
-  return cb(remote);
+  const remote = await getLeader();
+  const retries = retry ?? 0;
+
+  if (retries >= MAX_RETRIES) {
+    throw new Error(
+      "Retries exceeded attempting to perform query against database leader. Please refresh this tab.",
+    );
+  }
+
+  // If the leader with the remote changes while a call is in progress, we need
+  // to retry the call, now with the new remote. Otherwise, we will likely hang
+  // forever.
+  try {
+    const result = await Promise.race([cb(remote), failOnLeaderChange()]);
+    return result;
+  } catch (err) {
+    if (typeof err === "string" && err === LEADER_CHANGED) {
+      debug("LEADER CHANGED MID REQUEST, rerunning callback", retries);
+      return withLeader(cb, retries + 1);
+    }
+    if (err instanceof Error && err.message === DB_NOT_INIT_ERR) {
+      debug("DB NOT INITIALIZED?", retries);
+      await sleep(100);
+      return withLeader(cb, retries + 1);
+    }
+
+    throw err;
+  }
 }
 
 const dbInterface: SharedDBInterface = {
   async broadcastMessage(message: BroadcastMessage) {
     Object.keys(remotes).forEach((remoteId) => {
-      if (remoteId !== currentRemoteId) {
+      if (remoteId !== currentLeaderId) {
         try {
           remotes[remoteId]?.receiveBroadcast(message);
         } catch (err) {
@@ -83,9 +135,9 @@ const dbInterface: SharedDBInterface = {
 
   unregisterRemote(id: string) {
     debug("unregister remote in shared", id);
-    if (currentRemoteId === id) {
+    if (currentLeaderId === id) {
       debug("tab with lock unregistered. no remote set");
-      currentRemote = undefined;
+      currentLeader = undefined;
     }
     delete remotes[id];
 
@@ -106,32 +158,40 @@ const dbInterface: SharedDBInterface = {
       remotes[id] = remote;
     }
     if (await remote.hasDbLock()) {
-      await this.setRemote(id);
+      await this.setLeader(id);
     }
   },
-  async hasRemote() {
-    return !!currentRemote;
+
+  async hasLeader() {
+    return !!currentLeader;
   },
-  async currentRemoteId() {
-    return currentRemoteId;
+
+  async currentLeaderId() {
+    return currentLeaderId;
   },
-  async setRemote(remoteId: string) {
+
+  async setLeader(remoteId: string) {
     debug("setting remote in shared web worker to", remoteId);
 
-    currentRemote = remotes[remoteId];
-    if (!currentRemote) {
+    currentLeader = remotes[remoteId];
+    if (!currentLeader) {
       throw new Error(`remote ${remoteId} not registered`);
     }
-    currentRemoteId = remoteId;
+    const leaderChanged = currentLeaderId !== remoteId;
+    currentLeaderId = remoteId;
 
     for (const [workspaceId, workspaceToken] of Object.entries(bearerTokens)) {
-      await currentRemote.setBearer(workspaceId, workspaceToken);
-      await currentRemote.initSocket(workspaceId);
+      await currentLeader.setBearer(workspaceId, workspaceToken);
+      await currentLeader.initSocket(workspaceId);
     }
 
-    currentRemote.bifrostReconnect();
+    currentLeader.bifrostReconnect();
 
-    hasRemoteChannel.port2.postMessage("got remote");
+    hasLeaderChannel.port2.postMessage("got leader");
+    if (leaderChanged) {
+      debug("follow the leader");
+      leaderChangedChannel.port2.postMessage("leader changed");
+    }
   },
 
   async initDB(_testing: boolean) {
@@ -139,14 +199,14 @@ const dbInterface: SharedDBInterface = {
   },
 
   async migrate(testing: boolean) {
-    return withRemote(async (remote) => await remote.migrate(testing));
+    return withLeader(async (remote) => await remote.migrate(testing));
   },
 
   async setBearer(workspaceId, token): Promise<void> {
     bearerTokens[workspaceId] = token;
     const updateRemote = async () => {
-      await currentRemote?.setBearer(workspaceId, token);
-      currentRemote?.initSocket(workspaceId);
+      await currentLeader?.setBearer(workspaceId, token);
+      currentLeader?.initSocket(workspaceId);
     };
     updateRemote();
   },
@@ -158,13 +218,13 @@ const dbInterface: SharedDBInterface = {
   async addBearers(bearers) {
     for (const [workspaceId, bearerToken] of Object.entries(bearers)) {
       bearerTokens[workspaceId] = bearerToken;
-      await currentRemote?.setBearer(workspaceId, bearerToken);
-      currentRemote?.initSocket(workspaceId);
+      await currentLeader?.setBearer(workspaceId, bearerToken);
+      currentLeader?.initSocket(workspaceId);
     }
   },
 
   async initSocket(workspaceId: string): Promise<void> {
-    await withRemote(async (remote) => await remote.initSocket(workspaceId));
+    await withLeader(async (remote) => await remote.initSocket(workspaceId));
   },
 
   async initBifrost(_gotlockPort: MessagePort) {
@@ -172,11 +232,11 @@ const dbInterface: SharedDBInterface = {
   },
 
   async bifrostClose() {
-    await withRemote(async (remote) => await remote.bifrostClose());
+    await withLeader(async (remote) => await remote.bifrostClose());
   },
 
   async bifrostReconnect() {
-    await withRemote(async (remote) => await remote.bifrostReconnect());
+    await withLeader(async (remote) => await remote.bifrostReconnect());
   },
 
   async linkNewChangeset(
@@ -184,7 +244,7 @@ const dbInterface: SharedDBInterface = {
     headChangeSetId: string,
     changeSetId: string,
   ): Promise<void> {
-    await withRemote(
+    await withLeader(
       async (remote) =>
         await remote.linkNewChangeset(
           workspaceId,
@@ -198,7 +258,7 @@ const dbInterface: SharedDBInterface = {
     workspaceId: string,
     changeSetId: string,
   ) {
-    return await withRemote(
+    return await withLeader(
       async (remote) =>
         await remote.getOutgoingConnectionsByComponentId(
           workspaceId,
@@ -211,7 +271,7 @@ const dbInterface: SharedDBInterface = {
     workspaceId: string,
     changeSetId: string,
   ) {
-    return await withRemote(
+    return await withLeader(
       async (remote) =>
         await remote.getIncomingManagementByComponentId(
           workspaceId,
@@ -226,7 +286,7 @@ const dbInterface: SharedDBInterface = {
     kind: Gettable,
     id: string,
   ): Promise<typeof NOROW | AtomDocument> {
-    return await withRemote(
+    return await withLeader(
       async (remote) => await remote.get(workspaceId, changeSetId, kind, id),
     );
   },
@@ -237,7 +297,7 @@ const dbInterface: SharedDBInterface = {
     kind: Listable,
     id: string,
   ): Promise<string> {
-    return await withRemote(
+    return await withLeader(
       async (remote) =>
         await remote.getList(workspaceId, changeSetId, kind, id),
     );
@@ -248,35 +308,35 @@ const dbInterface: SharedDBInterface = {
     changeSetId: ChangeSetId,
     terms: QueryAttributesTerm[],
   ): Promise<ComponentId[]> {
-    return await withRemote(
+    return await withLeader(
       async (remote) =>
         await remote.queryAttributes(workspaceId, changeSetId, terms),
     );
   },
 
   async getPossibleConnections(workspaceId, changeSetId) {
-    return await withRemote(
+    return await withLeader(
       async (remote) =>
         await remote.getPossibleConnections(workspaceId, changeSetId),
     );
   },
 
   async getOutgoingConnectionsCounts(workspaceId: string, changeSetId: string) {
-    return await withRemote(
+    return await withLeader(
       async (remote) =>
         await remote.getOutgoingConnectionsCounts(workspaceId, changeSetId),
     );
   },
 
   async getComponentDetails(workspaceId: string, changeSetId: string) {
-    return await withRemote(
+    return await withLeader(
       async (remote) =>
         await remote.getComponentDetails(workspaceId, changeSetId),
     );
   },
 
   async getSchemaMembers(workspaceId: string, changeSetId: string) {
-    return await withRemote(
+    return await withLeader(
       async (remote) => await remote.getSchemaMembers(workspaceId, changeSetId),
     );
   },
@@ -288,7 +348,7 @@ const dbInterface: SharedDBInterface = {
     id: string,
     checksum?: string,
   ) {
-    await withRemote(
+    await withLeader(
       async (remote) =>
         await remote.mjolnir(workspaceId, changeSetId, kind, id, checksum),
     );
@@ -298,19 +358,19 @@ const dbInterface: SharedDBInterface = {
     workspaceId: string,
     changeSetId: string,
   ): Promise<boolean> {
-    return await withRemote(
+    return await withLeader(
       async (remote) => await remote.changeSetExists(workspaceId, changeSetId),
     );
   },
 
   async niflheim(workspaceId: string, changeSetId: string): Promise<boolean> {
-    return await withRemote(
+    return await withLeader(
       async (remote) => await remote.niflheim(workspaceId, changeSetId),
     );
   },
 
   async pruneAtomsForClosedChangeSet(workspaceId: string, changeSetId: string) {
-    return await withRemote(
+    return await withLeader(
       async (remote) =>
         await remote.pruneAtomsForClosedChangeSet(workspaceId, changeSetId),
     );
@@ -323,11 +383,11 @@ const dbInterface: SharedDBInterface = {
         sql: FlexibleString;
       },
   ): Promise<SqlValue[][]> {
-    return await withRemote(async (remote) => await remote.exec(opts));
+    return await withLeader(async (remote) => await remote.exec(opts));
   },
 
   async bobby(): Promise<void> {
-    await withRemote(async (remote) => await remote.bobby());
+    await withLeader(async (remote) => await remote.bobby());
   },
 
   async ragnarok(
@@ -335,14 +395,14 @@ const dbInterface: SharedDBInterface = {
     changeSetId: string,
     noColdStart?: boolean,
   ): Promise<void> {
-    await withRemote(
+    await withLeader(
       async (remote) =>
         await remote.ragnarok(workspaceId, changeSetId, noColdStart),
     );
   },
 
   async odin(changeSetId: string): Promise<object> {
-    return await withRemote(async (remote) => await remote.odin(changeSetId));
+    return await withLeader(async (remote) => await remote.odin(changeSetId));
   },
 };
 

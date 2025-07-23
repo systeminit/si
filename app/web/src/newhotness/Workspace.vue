@@ -155,19 +155,7 @@ const authStore = useAuthStore();
 
 const span = ref<Span | undefined>();
 
-const lobby = computed(() => {
-  const muspelheimStates = heimdall.muspelheimStatuses.value;
-  if (Object.keys(muspelheimStates).length === 0) {
-    return true;
-  }
-
-  for (const changeSetId in muspelheimStates) {
-    if (!muspelheimStates[changeSetId]) {
-      return true;
-    }
-  }
-  return false;
-});
+const lobby = computed(() => heimdall.muspelheimInProgress.value);
 
 watch(
   lobby,

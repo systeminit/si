@@ -7,6 +7,7 @@ import sqlite3InitModule, {
   ExecReturnResultRowsOptions,
   ExecRowModeArrayOptions,
   FlexibleString,
+  SAHPoolUtil,
   Sqlite3Static,
   SqlValue,
 } from "@sqlite.org/sqlite-wasm";
@@ -46,6 +47,7 @@ import {
   Checksum,
   Common,
   ComponentInfo,
+  FORCE_LEADER_ELECTION,
   Gettable,
   Id,
   IndexObjectMeta,
@@ -61,6 +63,7 @@ import {
   Ragnarok,
   RainbowFn,
   TabDBInterface,
+  DB_NOT_INIT_ERR,
   UpdateFn,
 } from "./types/dbinterface";
 import {
@@ -131,7 +134,8 @@ function debug(...args: any | any[]) {
 /**
  *  INITIALIZATION FNS
  */
-let sqlite: Database;
+let sqlite: Database | undefined;
+let poolUtil: SAHPoolUtil | undefined;
 const sdfClients: { [key: string]: AxiosInstance } = {};
 
 const getDbName = (testing: boolean) => {
@@ -150,7 +154,11 @@ const start = async (sqlite3: Sqlite3Static, testing: boolean) => {
   const dbname = getDbName(testing);
 
   if ("opfs" in sqlite3) {
-    const poolUtil = await sqlite3.installOpfsSAHPoolVfs({});
+    if (!poolUtil) {
+      poolUtil = await sqlite3.installOpfsSAHPoolVfs({});
+    } else if (poolUtil.isPaused()) {
+      await poolUtil.unpauseVfs();
+    }
     sqlite = new poolUtil.OpfsSAHPoolDb(`/${dbname}`);
     debug(
       `OPFS is available, created persisted database in SAH Pool VFS at ${sqlite.filename}`,
@@ -184,7 +192,7 @@ const dropTables = () => {
   DROP TABLE IF EXISTS changesets;
   DROP TABLE IF EXISTS weak_references;
   `;
-  sqlite.exec({ sql });
+  sqlite?.exec({ sql });
 };
 
 // INTEGER is 8 bytes, not large enough to store ULIDs
@@ -265,6 +273,10 @@ const ensureTables = (testing: boolean) => {
    *  - DELETE FROM indexes WHERE change_set_id=<this_changeSetId> AND checksum=<old_index_checksum>
    */
 
+  if (!sqlite) {
+    throw new Error(DB_NOT_INIT_ERR);
+  }
+
   return sqlite.exec({ sql });
 };
 
@@ -275,7 +287,12 @@ const exec = (
     ExecReturnResultRowsOptions & {
       sql: FlexibleString;
     },
-): SqlValue[][] => sqlite.exec(opts);
+): SqlValue[][] => {
+  if (!sqlite) {
+    throw new Error(DB_NOT_INIT_ERR);
+  }
+  return sqlite.exec(opts);
+};
 
 /**
  * A few small utilities
@@ -1639,8 +1656,10 @@ const mjolnirJob = async (
   };
 
   debug("🔨 MJOLNIR JOB COMPLETE:", kind, id, "sending to handleHammer");
-  processMjolnirQueue.add(() =>
-    sqlite.transaction(async (db) => await handleHammer(db, msg)),
+  processMjolnirQueue.add(
+    async () =>
+      sqlite &&
+      (await sqlite.transaction(async (db) => await handleHammer(db, msg))),
   );
 };
 
@@ -1975,39 +1994,44 @@ const niflheim = async (
     const finalAtoms = atomsForChangeSet(db, changeSetId);
     const atomsToUnlink: Array<Common> = [];
 
+    const processAtom = async (atom: AtomWithArrayBuffer) => {
+      let doc = getCachedDocument(atom.id, atom.checksum);
+      if (!doc) {
+        doc = decodeDocumentFromDB(atom.data);
+        setCachedDocument(atom.id, atom.checksum, doc);
+      }
+
+      postProcess(
+        db,
+        workspaceId,
+        changeSetId,
+        atom.kind,
+        doc,
+        atom.id,
+        indexChecksum,
+        false,
+        false,
+        false,
+      );
+
+      bustCacheAndReferences(
+        db,
+        workspaceId,
+        changeSetId,
+        atom.kind,
+        atom.id,
+        false,
+        true,
+      );
+    };
+
     for (const atom of finalAtoms) {
       // Atom is in the database, but not in the index? Delete it
       if (!atomSet.has(atomCacheKey(atom.id, atom.checksum))) {
         atomsToUnlink.push(atom);
       } else {
-        // Process the atom and bust cache and references related to it
-        const doc =
-          getCachedDocument(atom.id, atom.checksum) ??
-          decodeDocumentFromDB(atom.data);
-        setCachedDocument(atom.id, atom.checksum, doc);
-
-        postProcess(
-          db,
-          workspaceId,
-          changeSetId,
-          atom.kind,
-          doc,
-          atom.id,
-          indexChecksum,
-          false,
-          false,
-          false,
-        );
-
-        bustCacheAndReferences(
-          db,
-          workspaceId,
-          changeSetId,
-          atom.kind,
-          atom.id,
-          false,
-          true,
-        );
+        // Placing this in a promise to yield control back to the event loop
+        await processAtom(atom);
       }
     }
 
@@ -3106,6 +3130,10 @@ let atomUpdatedFn: UpdateFn;
 
 let abortController: AbortController | undefined;
 
+const forceLeaderElectionBroadcastChannel = new BroadcastChannel(
+  FORCE_LEADER_ELECTION,
+);
+
 /**
  * This enforces that `receiveBroadcast` handles
  * each discriminant of `BroadcastMessage`
@@ -3262,7 +3290,8 @@ const dbInterface: TabDBInterface = {
               );
               processPatchQueue.add(
                 async () =>
-                  await sqlite.transaction(
+                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                  await sqlite!.transaction(
                     async (db) => await handlePatchMessage(db, data),
                   ),
               );
@@ -3285,10 +3314,12 @@ const dbInterface: TabDBInterface = {
                 kind: data.atom.kind,
                 id: data.atom.id,
               });
-              processMjolnirQueue.add(async () =>
-                sqlite.transaction(async (db) => {
-                  return await handleHammer(db, data);
-                }),
+              processMjolnirQueue.add(
+                async () =>
+                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                  await sqlite!.transaction(async (db) => {
+                    return await handleHammer(db, data);
+                  }),
               );
               debug(
                 "📨 MJOLNIR MESSAGE COMPLETE:",
@@ -3330,12 +3361,11 @@ const dbInterface: TabDBInterface = {
   async initBifrost(gotLockPort: MessagePort) {
     debug("waiting for lock in webworker");
     if (abortController) {
-      debug("already initialized bifrost");
-      return;
+      abortController.abort();
     }
 
     abortController = new AbortController();
-    navigator.locks.request(
+    return await navigator.locks.request(
       WORKER_LOCK_KEY,
       { mode: "exclusive", signal: abortController.signal },
       async () => {
@@ -3346,12 +3376,16 @@ const dbInterface: TabDBInterface = {
         debug("🌈 Bifrost initialization complete");
 
         gotLockPort.postMessage("lock acquired");
-
-        return new Promise((_, reject) => {
+        return new Promise((resolve) => {
+          forceLeaderElectionBroadcastChannel.onmessage = () => {
+            abortController?.abort(FORCE_LEADER_ELECTION);
+          };
           abortController?.signal.addEventListener("abort", () => {
             hasTheLock = false;
+            sqlite?.close();
+            poolUtil?.pauseVfs();
             this.bifrostClose();
-            reject(abortController?.signal.reason);
+            resolve(abortController?.signal.reason);
           });
         });
       },
@@ -3401,11 +3435,17 @@ const dbInterface: TabDBInterface = {
   },
 
   get(workspaceId, changeSetId, kind, id) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     return sqlite.transaction((db) =>
       get(db, workspaceId, changeSetId, kind, id),
     );
   },
   getList(workspaceId, changeSetId, kind, id) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     return sqlite.transaction((db) =>
       getList(db, workspaceId, changeSetId, kind, id),
     );
@@ -3414,17 +3454,26 @@ const dbInterface: TabDBInterface = {
   getOutgoingConnectionsCounts,
   getIncomingManagementByComponentId,
   getComponentDetails(workspaceId, changeSetId) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     return sqlite.transaction((db) =>
       getComponentDetails(db, workspaceId, changeSetId),
     );
   },
   getSchemaMembers(workspaceId, changeSetId) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     return sqlite.transaction((db) =>
       getSchemaMembers(db, workspaceId, changeSetId),
     );
   },
   getPossibleConnections,
   queryAttributes(workspaceId, changeSetId, terms) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     return sqlite.transaction((db) =>
       queryAttributes(db, workspaceId, changeSetId, terms),
     );
@@ -3432,21 +3481,33 @@ const dbInterface: TabDBInterface = {
   partialKeyFromKindAndId: partialKeyFromKindAndArgs,
   kindAndIdFromKey: kindAndArgsFromKey,
   mjolnirBulk(workspaceId, changeSetId, objs, indexChecksum) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     return sqlite.transaction((db) =>
       mjolnirBulk(db, workspaceId, changeSetId, objs, indexChecksum),
     );
   },
   mjolnir(workspaceId, changeSetId, kind, id, checksum) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     return sqlite.transaction((db) =>
       mjolnir(db, workspaceId, changeSetId, kind, id, checksum),
     );
   },
   pruneAtomsForClosedChangeSet(workspaceId, changeSetId) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     return sqlite.transaction((db) =>
       pruneAtomsForClosedChangeSet(db, workspaceId, changeSetId),
     );
   },
   async niflheim(workspaceId, changeSetId) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     return await sqlite.transaction(
       async (db) => await niflheim(db, workspaceId, changeSetId),
     );
@@ -3454,21 +3515,33 @@ const dbInterface: TabDBInterface = {
   encodeDocumentForDB,
   decodeDocumentFromDB,
   handlePatchMessage(data) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     return sqlite.transaction((db) => handlePatchMessage(db, data));
   },
   exec,
   oneInOne,
   // This is only called externally by tests
   handleHammer(msg) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     return handleHammer(sqlite, msg);
   },
   bobby: dropTables,
   ragnarok(workspaceId, changeSetId, noColdStart) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     return sqlite.transaction((db) =>
       ragnarok(db, workspaceId, changeSetId, noColdStart),
     );
   },
   changeSetExists: (workspaceId: string, changeSetId: ChangeSetId) => {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     const row = sqlite.exec({
       sql: "select change_set_id from changesets where workspace_id = ? and change_set_id = ?",
       returnValue: "resultRows",
@@ -3479,6 +3552,9 @@ const dbInterface: TabDBInterface = {
   },
 
   odin(changeSetId: ChangeSetId): object {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     return sqlite.transaction((db) => {
       const changesets = db.exec({
         sql: "select * from changesets where change_set_id=?;",
@@ -3526,6 +3602,9 @@ const dbInterface: TabDBInterface = {
    * So we add "on conflict do nothing" to the insert.
    */
   linkNewChangeset(workspaceId, headChangeSet, changeSetId) {
+    if (!sqlite) {
+      throw new Error(DB_NOT_INIT_ERR);
+    }
     try {
       sqlite.transaction((db) => {
         const headRows = db.exec({

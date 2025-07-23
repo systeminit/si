@@ -57,7 +57,7 @@
     "@replit/codemirror-vim": "^6.0.11",
     "@si/ts-lib": "workspace:*",
     "@si/vue-lib": "workspace:*",
-    "@sqlite.org/sqlite-wasm": "3.48.0-build4",
+    "@sqlite.org/sqlite-wasm": "3.50.3-build1",
     "@tanstack/vue-form": "^1.9.0",
     "@tanstack/vue-query": "^5.67.3",
     "@tanstack/vue-table": "^8.20.5",

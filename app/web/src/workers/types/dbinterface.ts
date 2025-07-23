@@ -67,6 +67,8 @@ export type MjolnirBulk = Array<{
 }>;
 
 export const SHARED_BROADCAST_CHANNEL_NAME = "SHAREDWORKER_BROADCAST";
+export const FORCE_LEADER_ELECTION = "FORCE_LEADER_ELECTION";
+export const DB_NOT_INIT_ERR = "DB_NOT_INIT";
 
 export type BroadcastMessage =
   | {
@@ -129,9 +131,9 @@ export interface SharedDBInterface {
     remote: Comlink.Remote<TabDBInterface>,
   ): Promise<void>;
   broadcastMessage(message: BroadcastMessage): Promise<void>;
-  setRemote(remoteId: string): Promise<void>;
-  hasRemote(): Promise<boolean>;
-  currentRemoteId(): Promise<string | undefined>;
+  setLeader(remoteId: string): Promise<void>;
+  hasLeader(): Promise<boolean>;
+  currentLeaderId(): Promise<string | undefined>;
   initBifrost(gotLockPort: MessagePort): Promise<void>;
   bifrostClose(): Promise<void>;
   bifrostReconnect(): Promise<void>;
@@ -230,7 +232,7 @@ export interface TabDBInterface {
   setBearer: (workspaceId: string, token: string) => void;
   initSocket(workspaceId: string): Promise<void>;
   receiveBroadcast(message: BroadcastMessage): Promise<void>;
-  initBifrost(gotLockPort: MessagePort): Promise<void>;
+  initBifrost(gotLockPort: MessagePort): Promise<string>;
   bifrostClose(): void;
   bifrostReconnect(): void;
   linkNewChangeset(
