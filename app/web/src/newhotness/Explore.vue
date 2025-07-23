@@ -1022,7 +1022,9 @@ watch(searchString, () => {
 // Clear the selection when the filter or search string changes
 // TODO leave the selection as long as it is still one of the filtered components?
 watch(filteredComponents, () => {
-  mapRef.value?.deselect();
+  if (mapRef.value && typeof mapRef.value.deselect === "function") {
+    mapRef.value.deselect();
+  }
   clearSelection();
 });
 
@@ -1031,7 +1033,9 @@ watch(searchString, (newValue, oldValue) => {
     // this is not a real change in the search string!
     return;
   }
-  mapRef.value?.deselect();
+  if (mapRef.value && typeof mapRef.value.deselect === "function") {
+    mapRef.value.deselect();
+  }
   clearSelection();
 });
 

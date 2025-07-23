@@ -39,21 +39,6 @@
           This component will be removed from HEAD once the current change set
           is applied.
         </TruncateWithTooltip>
-        <!-- TODO(Wendy) - make this button work -->
-        <!-- <VButton
-          label="Restore Component"
-          size="sm"
-          tone="neutral"
-          :class="
-            clsx(
-              'font-normal !py-0 flex-none ml-auto',
-              themeClasses(
-                '!bg-neutral-500 hover:!bg-neutral-400',
-                '!bg-neutral-700 hover:!bg-neutral-800',
-              ),
-            )
-          "
-        /> -->
       </template>
     </div>
 
@@ -241,7 +226,16 @@
         </CollapsingFlexItem>
         <CollapsingFlexItem expandable>
           <template #header> Connections </template>
-          <template #headerIcons></template>
+          <template #headerIcons>
+            <div class="ml-auto my-sm">
+              <VButton
+                tone="neutral"
+                label="Visualize Connections"
+                size="xs"
+                @click="navigateToMap"
+              />
+            </div>
+          </template>
           <ConnectionsPanel
             v-if="componentConnections && component"
             :component="component"
@@ -439,6 +433,25 @@ const close = () => {
     name: "new-hotness",
     params,
     query: { retainSessionState: 1 },
+  });
+};
+
+const navigateToMap = () => {
+  const params = router.currentRoute?.value.params ?? {};
+  const query = { ...router.currentRoute?.value.query };
+
+  delete params.componentId;
+  delete query.grid;
+  delete query.retainSessionState;
+  query.map = "1";
+  if (component.value?.id) {
+    query.c = component.value.id;
+  }
+
+  router.push({
+    name: "new-hotness",
+    params,
+    query,
   });
 };
 

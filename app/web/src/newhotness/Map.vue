@@ -270,7 +270,7 @@ const props = defineProps<{
 }>();
 
 const componentsById = computed<Record<ComponentId, ComponentInList>>(() => {
-  return props.components.reduce((obj, component) => {
+  return (props.components || []).reduce((obj, component) => {
     obj[component.id] = component;
     return obj;
   }, {} as Record<ComponentId, ComponentInList>);
@@ -280,10 +280,10 @@ const componentContextMenuRef =
   ref<InstanceType<typeof ComponentContextMenu>>();
 
 const selectedComponents = ref<Set<ComponentInList>>(new Set());
-const showMinimap = ref(props.components.length > 0);
+const showMinimap = ref((props.components?.length ?? 0) > 0);
 
 watch(
-  () => props.components.length,
+  () => props.components?.length ?? 0,
   (newLength, oldLength) => {
     if (oldLength === 0 && newLength > 0) {
       showMinimap.value = true;
@@ -598,7 +598,18 @@ const onArrowRight = () => {
 };
 const onEscape = () => {
   if (!active.value) return;
-  deselect();
+
+  // If components are selected, deselect them first
+  if (selectedComponents.value.size > 0) {
+    deselect();
+  } else {
+    // If no components selected, close map and return to grid
+    const query = { ...router.currentRoute.value?.query };
+    delete query.map;
+    delete query.c;
+    query.grid = "1";
+    router.push({ query });
+  }
 };
 const onE = (_e: KeyDetails["e"]) => {
   if (selectedComponent.value) {
@@ -1102,6 +1113,34 @@ onMounted(() => {
   }
 });
 
+// Watch for when components become available and retry selection if needed
+watch(
+  [componentsById, fillDefault],
+  () => {
+    if (
+      fillDefault.value &&
+      fillDefault.value.length > 0 &&
+      Object.keys(componentsById.value).length > 0
+    ) {
+      nextTick(() => {
+        const selectedComps: ComponentInList[] = [];
+        fillDefault.value?.forEach((componentId) => {
+          const component = componentsById.value[componentId];
+          if (component) {
+            selectedComps.push(component);
+          }
+        });
+
+        if (selectedComps.length > 0) {
+          selectedComponents.value = new Set(selectedComps);
+          fillDefault.value = undefined;
+        }
+      });
+    }
+  },
+  { immediate: true },
+);
+
 // debouncing since the fzf and svg is actually a bit of a grind for every key press
 watch(
   mapData,
@@ -1342,9 +1381,8 @@ watch(
           }
         });
     });
-    if (selectedComponent.value && !componentContextMenuRef.value?.isOpen) {
-      selectComponent(selectedComponent.value);
-    }
+    // Don't show context menu when component is selected via URL parameter
+    // Context menu should only show on user interaction (right-click)
   }, 100),
   { immediate: true },
 );
