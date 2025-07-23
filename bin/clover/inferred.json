@@ -1077,6 +1077,13 @@
       "LAMBDA"
     ]
   },
+  "Determines when and how to apply fleet or location capacities. Allowed options are ON_UPDATE (default), ON_CREATE_AND_UPDATE and ON_CREATE_AND_UPDATE_WITH_AUTOSCALING. If you choose ON_CREATE_AND_UPDATE_WITH_AUTOSCALING, MinSize and MaxSize will still be applied on creation and on updates, but DesiredEC2Instances will only be applied once on fleet creation and will be ignored during updates to prevent conflicts with auto-scaling. During updates with ON_CREATE_AND_UPDATE_WITH_AUTOSCALING chosen, if current desired instance is lower than the new MinSize, it will be increased to the new MinSize; if current desired instance is larger than the new MaxSize, it will be decreased to the new MaxSize.": {
+    "enum": [
+      "ON_UPDATE",
+      "ON_CREATE_AND_UPDATE",
+      "ON_CREATE_AND_UPDATE_WITH_AUTOSCALING"
+    ]
+  },
   "Determines the type of SegmentTemplate included in the Media Presentation Description (MPD).  When set to NUMBER_WITH_TIMELINE, a full timeline is presented in each SegmentTemplate, with $Number$ media URLs.  When set to TIME_WITH_TIMELINE, a full timeline is presented in each SegmentTemplate, with $Time$ media URLs. When set to NUMBER_WITH_DURATION, only a duration is included in each SegmentTemplate, with $Number$ media URLs.": {
     "enum": [
       "NUMBER_WITH_TIMELINE",
@@ -10590,6 +10597,9 @@
     "enum": null
   },
   "The comparison operator.": {
+    "enum": null
+  },
+  "The compliance status for vendor recommended security updates that are not approved by this patch baseline.": {
     "enum": null
   },
   "The compression format that AWS uses for the report.": {
