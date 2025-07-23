@@ -39,9 +39,6 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
-    # TODO(nick): make it so that lockfile generation does not update deps. We probably need to use "--locked" or
-    # something analogous. If you are reading this and do not know what I am talking about, reach out to Fletcher. If
-    # you are Fletcher... hi Fletcher!
     cargo_lock_updated = update_cargo_lock(
         Path("Cargo.toml"),
         Path("Cargo.lock"),
@@ -120,9 +117,12 @@ def update_cargo_lock(
             backup_lock.flush()
             backup_lock.seek(0)
 
+        # https://users.rust-lang.org/t/check-if-the-cargo-lock-is-up-to-date-without-building-anything/91048/5
         cmd = [
             "cargo",
-            "generate-lockfile",
+            "update",
+            "--workspace",
+            "--locked",
         ]
         result = subprocess.run(cmd)
         if result.returncode != 0:

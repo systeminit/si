@@ -9,24 +9,23 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+axum = { workspace = true }
 dal = { path = "../../lib/dal" }
+hyper = { workspace = true }
 permissions = { path = "../../lib/permissions" }
+remain = { workspace = true }
+reqwest = { workspace = true }
 sdf-core = { path = "../../lib/sdf-core" }
 sdf-extract = { path = "../../lib/sdf-extract" }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-data-spicedb = { path = "../../lib/si-data-spicedb" }
 si-db = { path = "../../lib/si-db" }
 si-events = { path = "../../lib/si-events-rs" }
-telemetry = { path = "../../lib/telemetry-rs" }
-
-axum = { workspace = true }
-hyper = { workspace = true }
-remain = { workspace = true }
-reqwest = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 strum = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 y-sync = { workspace = true }

@@ -1,0 +1,26 @@
+load(
+    "@prelude-si//:macros.bzl",
+    "export_file",
+    "test_suite",
+    "yapf_check",
+)
+
+export_file(
+    name = "build_context.py",
+)
+
+export_file(
+    name = "toml_format.py",
+)
+
+yapf_check(
+    name = "check-format-python",
+    srcs = glob(["**/*.py"]),
+)
+
+test_suite(
+    name = "check-format",
+    tests = [
+        ":check-format-python",
+    ],
+)

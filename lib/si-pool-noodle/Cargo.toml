@@ -9,24 +9,23 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-buck2-resources = { path = "../buck2-resources" }
-cyclone-client = { path = "../cyclone-client" }
-cyclone-core = { path = "../cyclone-core" }
-si-firecracker = { path = "../si-firecracker" }
-si-std = { path = "../si-std" }
-telemetry-utils = { path = "../telemetry-utils-rs" }
-
 async-trait = { workspace = true }
 bollard = { workspace = true }
+buck2-resources = { path = "../buck2-resources" }
 crossbeam-queue = { workspace = true }
+cyclone-client = { path = "../cyclone-client" }
+cyclone-core = { path = "../cyclone-core" }
 derive_builder = { workspace = true }
 futures = { workspace = true }
 indexmap = { workspace = true }
 nix = { workspace = true }
 opentelemetry = { workspace = true }
-rand = {workspace = true }
+rand = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
+si-firecracker = { path = "../si-firecracker" }
+si-std = { path = "../si-std" }
+telemetry-utils = { path = "../telemetry-utils-rs" }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
@@ -35,6 +34,5 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 buck2-resources = { path = "../buck2-resources" }
-veritech-server = { path = "../veritech-server" }
-
 tracing-subscriber = { workspace = true }
+veritech-server = { path = "../veritech-server" }

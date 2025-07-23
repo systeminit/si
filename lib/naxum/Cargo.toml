@@ -9,21 +9,20 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
-
 async-nats = { workspace = true }
 async-trait = { workspace = true }
 bytes = { workspace = true }
-futures = { workspace = true } # NOTE: if extracted this can be `futures-util`
+futures = { workspace = true }                              # NOTE: if extracted this can be `futures-util`
 pin-project-lite = { workspace = true }
-serde = { workspace = true } # NOTE: if extracted, this is used for a json feature
-serde_json = { workspace = true } # NOTE: if extracted, this is used for a json feature
-serde_path_to_error = { workspace = true } # NOTE: if extracted, this is used for a json feature
+serde = { workspace = true }                                # NOTE: if extracted, this is used for a json feature
+serde_json = { workspace = true }                           # NOTE: if extracted, this is used for a json feature
+serde_path_to_error = { workspace = true }                  # NOTE: if extracted, this is used for a json feature
+telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
 time = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 tower = { workspace = true }
-tracing = { workspace = true } # NOTE: left with vanilla tracing for potential future extraction
+tracing = { workspace = true }                              # NOTE: left with vanilla tracing for potential future extraction
 
 [dev-dependencies]
 thiserror = { workspace = true }

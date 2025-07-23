@@ -1,1 +1,4 @@
 buildscript.run = true
+
+[env]
+CRUNCHY_LIB_SUFFIX = "/lib.rs"

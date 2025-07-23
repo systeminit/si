@@ -9,27 +9,26 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-dal = { path = "../../lib/dal" }
-module-index-client = { path = "../../lib/module-index-client" }
-permissions = { path = "../../lib/permissions" }
-sdf-core = { path = "../../lib/sdf-core" }
-sdf-extract = { path = "../../lib/sdf-extract" }
-si-data-pg = { path = "../../lib/si-data-pg" }
-si-db = { path = "../../lib/si-db" }
-si-layer-cache = { path = "../../lib/si-layer-cache" }
-si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
-si-pkg = { path = "../../lib/si-pkg" }
-si-std = { path = "../../lib/si-std" }
-
 async-trait = { workspace = true }
 axum = { workspace = true }
 convert_case = { workspace = true }
+dal = { path = "../../lib/dal" }
 futures = { workspace = true }
 hyper = { workspace = true }
+module-index-client = { path = "../../lib/module-index-client" }
+permissions = { path = "../../lib/permissions" }
 remain = { workspace = true }
 reqwest = { workspace = true }
+sdf-core = { path = "../../lib/sdf-core" }
+sdf-extract = { path = "../../lib/sdf-extract" }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-data-pg = { path = "../../lib/si-data-pg" }
+si-db = { path = "../../lib/si-db" }
+si-frontend-types = { path = "../../lib/si-frontend-types-rs" }
+si-layer-cache = { path = "../../lib/si-layer-cache" }
+si-pkg = { path = "../../lib/si-pkg" }
+si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }

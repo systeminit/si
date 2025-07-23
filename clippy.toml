@@ -1,10 +1,10 @@
 disallowed-methods = [
-    { path = "std::env::var", reason = "should not directly access environment variables within library crates, favor configuration injection, passing parameters, etc." },
-    { path = "std::env::vars", reason = "should not directly access environment variables within library crates, favor configuration injection, passing parameters, etc." },
-    { path = "std::env::var_os", reason = "should not directly access environment variables within library crates, favor configuration injection, passing parameters, etc." },
-    { path = "std::env::vars_os", reason = "should not directly access environment variables within library crates, favor configuration injection, passing parameters, etc." },
-    { path = "dal::workspace_snapshot::WorkspaceSnapshot::write_working_copy_to_disk", reason = "The snapshot should only be written to disk when debugging"},
-    { path = "dal::workspace_snapshot::WorkspaceSnapshot::write_readonly_graph_to_disk", reason = "The snapshot should only be written to disk when debugging"},
-    { path = "dal::workspace_snapshot::WorkspaceSnapshot::tiny_dot_to_file", reason = "The snapshot should only be written to disk when debugging"},
-    { path = "dal::workspace_snapshot::graph::RebaseBatch::write_to_disk", reason = "Rebase batches should only be written to disk when debugging"},
+  { path = "dal::workspace_snapshot::WorkspaceSnapshot::tiny_dot_to_file", reason = "The snapshot should only be written to disk when debugging" },
+  { path = "dal::workspace_snapshot::WorkspaceSnapshot::write_readonly_graph_to_disk", reason = "The snapshot should only be written to disk when debugging" },
+  { path = "dal::workspace_snapshot::WorkspaceSnapshot::write_working_copy_to_disk", reason = "The snapshot should only be written to disk when debugging" },
+  { path = "dal::workspace_snapshot::graph::RebaseBatch::write_to_disk", reason = "Rebase batches should only be written to disk when debugging" },
+  { path = "std::env::var", reason = "should not directly access environment variables within library crates, favor configuration injection, passing parameters, etc." },
+  { path = "std::env::var_os", reason = "should not directly access environment variables within library crates, favor configuration injection, passing parameters, etc." },
+  { path = "std::env::vars", reason = "should not directly access environment variables within library crates, favor configuration injection, passing parameters, etc." },
+  { path = "std::env::vars_os", reason = "should not directly access environment variables within library crates, favor configuration injection, passing parameters, etc." },
 ]

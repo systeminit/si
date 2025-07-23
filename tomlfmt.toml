@@ -1,0 +1,3 @@
+allowed_blank_lines = 1
+indent_count = 2
+key_value_newlines = false

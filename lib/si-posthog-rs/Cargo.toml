@@ -9,14 +9,13 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-telemetry = { path = "../../lib/telemetry-rs" }
-
 derive_builder = { workspace = true }
 once_cell = { workspace = true }
 remain = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }

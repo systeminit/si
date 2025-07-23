@@ -9,9 +9,8 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-config-file = { path = "../../lib/config-file", features = ["layered-toml"] }
-
 async-trait = { workspace = true }
+config-file = { path = "../../lib/config-file", features = ["layered-toml"] }
 remain = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }

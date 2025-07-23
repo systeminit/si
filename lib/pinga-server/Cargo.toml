@@ -11,11 +11,16 @@ publish.workspace = true
 [dependencies]
 buck2-resources = { path = "../../lib/buck2-resources" }
 dal = { path = "../../lib/dal" }
+derive_builder = { workspace = true }
+futures = { workspace = true }
 nats-std = { path = "../../lib/nats-std" }
 nats-subscriber = { path = "../../lib/nats-subscriber" }
 naxum = { path = "../../lib/naxum" }
 pinga-core = { path = "../../lib/pinga-core" }
 rebaser-client = { path = "../../lib/rebaser-client" }
+remain = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-crypto = { path = "../../lib/si-crypto" }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-data-pg = { path = "../../lib/si-data-pg" }
@@ -28,15 +33,9 @@ si-tls = { path = "../../lib/si-tls" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
 telemetry-utils = { path = "../../lib/telemetry-utils-rs" }
-veritech-client = { path = "../../lib/veritech-client" }
-
-derive_builder = { workspace = true }
-futures = { workspace = true }
-remain = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-util = { workspace = true }
 ulid = { workspace = true }
+veritech-client = { path = "../../lib/veritech-client" }

@@ -10,5 +10,4 @@ publish.workspace = true
 
 [dependencies]
 si-data-nats = { path = "../../lib/si-data-nats" }
-
 tokio = { workspace = true }

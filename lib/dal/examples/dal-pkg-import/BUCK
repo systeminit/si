@@ -7,6 +7,7 @@ rust_binary(
     name = "dal-pkg-import",
     srcs = ["main.rs"],
     crate_root = "main.rs",
+    toml_srcs = [],
     deps = [
         "//lib/buck2-resources:buck2-resources",
         "//lib/dal:dal",

@@ -425,6 +425,7 @@
               alejandra
               buildkite-test-collector-rust
               cargo-insta
+              cargo-sort
               docker-compose
               jq
               nats-top
@@ -435,6 +436,7 @@
               shellcheck
               shfmt
               spicedb-zed
+              taplo
               tilt
               tokio-console
               typos

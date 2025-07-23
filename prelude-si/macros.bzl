@@ -104,6 +104,14 @@ shellcheck = _shellcheck
 shfmt_check = _shfmt_check
 
 load(
+    "@prelude-si//macros:toml.bzl",
+    _toml_format = "toml_format",
+    _toml_format_check = "toml_format_check",
+)
+toml_format = _toml_format
+toml_format_check = _toml_format_check
+
+load(
     "@prelude-si//macros:tilt.bzl",
     _tilt_docker_compose_pull = "tilt_docker_compose_pull",
     _tilt_docker_compose_stop = "tilt_docker_compose_stop",

@@ -10,8 +10,8 @@ publish.workspace = true
 
 [dependencies]
 futures = { workspace = true }
-pinga-core = { path = "../../lib/pinga-core" }
 nats-std = { path = "../../lib/nats-std" }
+pinga-core = { path = "../../lib/pinga-core" }
 remain = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }

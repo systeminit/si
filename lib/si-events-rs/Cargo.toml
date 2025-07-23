@@ -9,8 +9,6 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-si-id = { path = "../../lib/si-id" }
-
 blake3 = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true }
@@ -21,6 +19,7 @@ postgres-types = { workspace = true }
 remain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-id = { path = "../../lib/si-id" }
 strum = { workspace = true }
 thiserror = { workspace = true }
 xxhash-rust = { workspace = true }

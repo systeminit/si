@@ -9,15 +9,14 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+base64 = { workspace = true }
+jwt-simple = { workspace = true }
+monostate = { workspace = true }
+remain = { workspace = true }
+serde = { workspace = true }
 si-events = { path = "../../lib/si-events-rs" }
 si-id = { path = "../../lib/si-id" }
 si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }
-
-base64 = { workspace = true }
-jwt-simple = { workspace = true }
-remain = { workspace = true }
-serde = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
-monostate = { workspace = true }

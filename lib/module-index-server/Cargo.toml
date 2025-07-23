@@ -10,8 +10,22 @@ publish.workspace = true
 
 [dependencies]
 auth-api-client = { path = "../../lib/auth-api-client" }
+axum = { workspace = true }
+base64 = { workspace = true }
 buck2-resources = { path = "../../lib/buck2-resources" }
+chrono = { workspace = true }
+derive_builder = { workspace = true }
+futures = { workspace = true }
+hyper = { workspace = true }
+jwt-simple = { workspace = true }
 module-index-types = { path = "../../lib/module-index-types" }
+refinery = { workspace = true }
+regex = { workspace = true }
+remain = { workspace = true }
+rust-s3 = { workspace = true }
+sea-orm = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-data-pg = { path = "../../lib/si-data-pg" }
 si-hash = { path = "../../lib/si-hash" }
 si-id = { path = "../../lib/si-id" }
@@ -22,21 +36,6 @@ si-settings = { path = "../../lib/si-settings" }
 si-std = { path = "../../lib/si-std" }
 si-tls = { path = "../../lib/si-tls" }
 telemetry = { path = "../../lib/telemetry-rs" }
-
-axum = { workspace = true }
-base64 = { workspace = true }
-chrono = { workspace = true }
-derive_builder = { workspace = true }
-futures = { workspace = true }
-hyper = { workspace = true }
-jwt-simple = { workspace = true }
-refinery = { workspace = true }
-regex = { workspace = true }
-remain = { workspace = true }
-rust-s3 = { workspace = true }
-sea-orm = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }

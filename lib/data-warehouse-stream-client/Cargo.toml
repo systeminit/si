@@ -9,10 +9,9 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-si-aws-config = { path = "../../lib/si-aws-config" }
-telemetry = { path = "../../lib/telemetry-rs" }
-
-aws-sdk-firehose= { workspace = true }
+aws-sdk-firehose = { workspace = true }
 base64 = { workspace = true }
 remain = { workspace = true }
+si-aws-config = { path = "../../lib/si-aws-config" }
+telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { workspace = true }

@@ -10,17 +10,15 @@ publish.workspace = true
 
 [dependencies]
 dal = { path = "../../lib/dal" }
+remain = { workspace = true }
+serde_json = { workspace = true }
 si-frontend-mv-types = { path = "../../lib/si-frontend-mv-types-rs" }
 si-id = { path = "../../lib/si-id" }
 telemetry = { path = "../../lib/telemetry-rs" }
-
-remain = { workspace = true }
-serde_json = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
 dal-test = { path = "../../lib/dal-test" }
-
 pretty_assertions_sorted = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }

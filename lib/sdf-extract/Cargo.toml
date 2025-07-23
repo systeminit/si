@@ -10,17 +10,16 @@ publish.workspace = true
 
 [dependencies]
 auth-api-client = { path = "../../lib/auth-api-client" }
+axum = { workspace = true }
 dal = { path = "../../lib/dal" }
+derive_more = { workspace = true }
 edda-client = { path = "../../lib/edda-client" }
 frigg = { path = "../../lib/frigg" }
 sdf-core = { path = "../../lib/sdf-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-db = { path = "../../lib/si-db" }
 si-events = { path = "../../lib/si-events-rs" }
 si-jwt-public-key = { path = "../../lib/si-jwt-public-key" }
-
-axum = { workspace = true }
-derive_more = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 ulid = { workspace = true }

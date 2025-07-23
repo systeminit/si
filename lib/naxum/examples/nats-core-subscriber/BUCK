@@ -7,6 +7,7 @@ rust_binary(
     name = "nats-core-subscriber",
     srcs = ["main.rs"],
     crate_root = "main.rs",
+    toml_srcs = [],
     deps = [
         "//lib/naxum:naxum",
         "//third-party/rust:async-nats",

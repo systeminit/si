@@ -9,9 +9,6 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-si-id = { path = "../si-id" }
-si-frontend-types = { path = "../si-frontend-types-rs" }
-
 dashmap = { workspace = true }
 fuser = { workspace = true }
 log = { workspace = true }
@@ -20,5 +17,7 @@ remain = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+si-frontend-types = { path = "../si-frontend-types-rs" }
+si-id = { path = "../si-id" }
 thiserror = { workspace = true }
 tokio = { workspace = true }

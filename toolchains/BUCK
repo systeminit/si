@@ -23,6 +23,7 @@ load("@prelude-si//python:toolchain.bzl", "si_python_toolchain")
 load("@prelude-si//rootfs:toolchain.bzl", "rootfs_toolchain")
 load("@prelude-si//rust:toolchain.bzl", "si_rust_toolchain")
 load("@prelude-si//shell:toolchain.bzl", "shell_toolchain")
+load("@prelude-si//toml:toolchain.bzl", "toml_toolchain")
 load(":toolchain.bzl", "toolchain_alias")
 
 remote_test_execution_toolchain(
@@ -156,5 +157,12 @@ si_rust_toolchain(
 shell_toolchain(
     name = "shell",
     editorconfig = "root//:.editorconfig",
+    visibility = ["PUBLIC"],
+)
+
+toml_toolchain(
+    name = "toml",
+    taplo_config = "root//:.taplo.toml",
+    cargo_sort_config = "root//:tomlfmt.toml",
     visibility = ["PUBLIC"],
 )

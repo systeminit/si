@@ -9,13 +9,12 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+color-eyre = { workspace = true }
+glob = { workspace = true }
 si-runtime = { path = "../../lib/si-runtime-rs" }
 si-std = { path = "../../lib/si-std" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-application = { path = "../../lib/telemetry-application-rs" }
-
-color-eyre = { workspace = true }
-glob = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }

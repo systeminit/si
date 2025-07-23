@@ -14,8 +14,13 @@ audit-logs-stream = { path = "../../lib/audit-logs-stream" }
 billing-events = { path = "../../lib/billing-events" }
 buck2-resources = { path = "../../lib/buck2-resources" }
 data-warehouse-stream-client = { path = "../../lib/data-warehouse-stream-client" }
+derive_builder = { workspace = true }
+futures = { workspace = true }
 nats-dead-letter-queue = { path = "../../lib/nats-dead-letter-queue" }
 naxum = { path = "../../lib/naxum" }
+remain = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 si-data-nats = { path = "../../lib/si-data-nats" }
 si-events = { path = "../../lib/si-events-rs" }
 si-settings = { path = "../../lib/si-settings" }
@@ -23,12 +28,6 @@ si-std = { path = "../../lib/si-std" }
 si-tls = { path = "../../lib/si-tls" }
 telemetry = { path = "../../lib/telemetry-rs" }
 telemetry-nats = { path = "../../lib/telemetry-nats-rs" }
-
-derive_builder = { workspace = true }
-futures = { workspace = true }
-remain = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
