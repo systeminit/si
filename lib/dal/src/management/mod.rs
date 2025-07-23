@@ -108,7 +108,6 @@ use crate::{
     },
 };
 
-pub mod generator;
 pub mod prototype;
 
 #[derive(Debug, Error)]

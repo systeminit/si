@@ -28,6 +28,7 @@ rust-version = "1.86"
 publish = false
 
 [dependencies]
+askama = { version = "0.14.0", features = ["default", "serde_json"] }
 async-nats = { version = "0.39.0", features = ["service"] }
 async-openai = "0.26.0"
 async-recursion = "1.1.1"

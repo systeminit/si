@@ -45,6 +45,7 @@ use dal::{
             ManagementPrototypeId,
         },
     },
+    prop::PropError,
     schema::variant::authoring::VariantAuthoringError,
 };
 use sdf_core::api_error::ApiError;
@@ -110,12 +111,18 @@ pub enum ManagementApiError {
     ManagementPrototype(#[from] ManagementPrototypeError),
     #[error("management prototype execution failure: {0}")]
     ManagementPrototypeExecutionFailure(ManagementPrototypeId),
+    #[error("prop path connot be calculated: {0}")]
+    PropError(#[from] PropError),
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("template error: {0}")]
+    Template(#[from] si_generate_template::Error),
     #[error("transactions error: {0}")]
     Transactions(#[from] TransactionsError),
+    #[error("translating string to ulid: {0} is not a valid ulid")]
+    UlidDecode(#[from] ulid::DecodeError),
     #[error("variant authoring error: {0}")]
     VariantAuthoring(#[from] VariantAuthoringError),
     #[error("ws event error: {0}")]

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::{
     Json,
     extract::{
@@ -6,19 +8,18 @@ use axum::{
         Path,
     },
 };
-use convert_case::{
-    Case,
-    Casing,
-};
 use dal::{
     ChangeSet,
     ChangeSetId,
+    Component,
     ComponentId,
     FuncId,
     SchemaVariant,
     SchemaVariantId,
+    Ulid,
     WorkspacePk,
     WsEvent,
+    attribute::attributes::Source,
     diagram::view::ViewId,
     func::authoring::FuncAuthoringClient,
     management::prototype::ManagementPrototype,
@@ -31,6 +32,14 @@ use serde::{
     Serialize,
 };
 use si_events::audit_log::AuditLogKind;
+use si_generate_template::{
+    AssetSchema,
+    AttributeSource,
+    RunTemplateAttribute,
+    RunTemplateComponent,
+    RunTemplateMgmtFunc,
+    Template,
+};
 
 use super::{
     ManagementApiError,
@@ -71,7 +80,7 @@ pub async fn generate_template(
     PosthogClient(posthog_client): PosthogClient,
     OriginalUri(original_uri): OriginalUri,
     Host(host_name): Host,
-    Path((_workspace_pk, change_set_id, view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
+    Path((_workspace_pk, change_set_id, _view_id)): Path<(WorkspacePk, ChangeSetId, ViewId)>,
     Json(request): Json<GenerateTemplateRequest>,
 ) -> ManagementApiResult<ForceChangeSetResponse<GenerateTemplateResponse>> {
     let mut ctx = builder
@@ -79,34 +88,99 @@ pub async fn generate_template(
         .await?;
 
     let force_change_set_id = ChangeSet::force_new(&mut ctx).await?;
+    let mut has_aws = false;
 
-    // The default schema code
-    let schema_variant_code = r#"function main() {
-    const asset = new AssetBuilder();
+    let mut template_components = Vec::new();
+    let mut component_id_to_variable_name: HashMap<ComponentId, String> = HashMap::new();
 
-    // Add your template variables to this object with the .addChild function.
-    const templateProps = new PropBuilder()
-        .setName("Values")
-        .setKind("object")
-        .build();
+    for component_id in &request.component_ids {
+        let schema = Component::schema_for_component_id(&ctx, *component_id).await?;
+        if schema.name.starts_with("AWS") {
+            has_aws = true;
+        }
+        let mut attributes = Vec::new();
+        let sources = Component::sources(&ctx, *component_id).await?;
+        let si_name = Component::name_by_id(&ctx, *component_id).await?;
+        let schema_variant_id = Component::schema_variant_id(&ctx, *component_id).await?;
+        let all_props = SchemaVariant::all_props(&ctx, schema_variant_id).await?;
+        for prop in all_props {
+            let prop_path = prop.path(&ctx).await?;
+            if prop_path.as_str() == "root\u{b}domain\u{b}extra\u{b}Region" {
+                attributes.push(RunTemplateAttribute::new(
+                    "/domain/extra/Region",
+                    AttributeSource::InputSource,
+                ));
+            }
+            if prop_path.as_str() == "root\u{b}secrets\u{b}AWS Credential" {
+                attributes.push(RunTemplateAttribute::new(
+                    "/secrets/AWS Credential",
+                    AttributeSource::InputSource,
+                ));
+            }
+        }
 
-    // Auto-generated below here
-    const template = new PropBuilder()
-        .setName("Template")
-        .setKind("object")
-        .addChild(templateProps)
-        .build();
-    asset.addProp(template);
+        for (path, source) in sources {
+            let dest_path = path.path();
+            // We only want domain properties, and we want to deal with Region directly
+            if dest_path.starts_with("/domain/") && !dest_path.starts_with("/domain/extra/Region") {
+                let value = match source {
+                    Source::Value(json) => AttributeSource::value(json),
+                    Source::Subscription {
+                        component,
+                        path,
+                        keep_existing_subscriptions: _keep_existing_subs,
+                        func,
+                    } => {
+                        let component_string: String = component.into();
+                        AttributeSource::subscription(
+                            component_string,
+                            path,
+                            func.map(|f| f.into()),
+                            None,
+                        )
+                    }
+                };
 
-    return asset.build();
-}
-"#
-    .to_string();
+                attributes.push(RunTemplateAttribute::new(dest_path, value));
+            }
+        }
+        let mut variable_name = si_name.clone();
+        variable_name.push_str("Component");
+        variable_name = sanitize_js_variable(&variable_name);
+        component_id_to_variable_name.insert(*component_id, variable_name.clone());
+        let template_component =
+            RunTemplateComponent::new(variable_name, schema.name, si_name, attributes);
+        template_components.push(template_component);
+    }
+
+    // Post Process the subscriptions to replace known IDs with variable name references
+    for component in template_components.iter_mut() {
+        for attribute in component.attributes.iter_mut() {
+            if let AttributeSource::Subscription(sub_value) = &mut attribute.value {
+                let c_ulid = Ulid::from_string(&sub_value.component)?;
+                let c_id: ComponentId = ComponentId::from_raw_id(c_ulid.into());
+                if let Some(variable_name) = component_id_to_variable_name.get(&c_id) {
+                    sub_value.variable = Some(variable_name.clone());
+                }
+            }
+        }
+    }
+
+    let asset_schema_template = AssetSchema::new(has_aws);
+    let schema_variant_code = asset_schema_template.render()?;
+    let mut mgmt_func_template = RunTemplateMgmtFunc::new(template_components);
+    mgmt_func_template.sort_components_by_dependencies();
+    let mgmt_func_code = mgmt_func_template.render()?;
 
     let new_variant = VariantAuthoringClient::create_schema_and_variant_from_code(
         &ctx,
         request.asset_name.to_owned(),
-        None,
+        Some(String::from(r#"## Template Components
+Configure this component to have the Attributes you need to make your templated infrastructure dynamic. The only requirement is that you have a 'domain/Name Prefix' attribute.
+
+Each invocation of the template will create new infrastructure; it's expected that you will have one instance of the template component for potentially many created infrastructures.
+
+Changes in the template are never reflected in the output - components are generated once."#)),
         None,
         request.category,
         request.color,
@@ -125,8 +199,8 @@ pub async fn generate_template(
     FuncAuthoringClient::update_func(
         &ctx,
         func.id,
-        Some("Component Sync".to_string()),
-        Some("Sync the components specified in the template with the diagram".to_string()),
+        Some("Run Template".to_string()),
+        Some("Run the template to create new components".to_string()),
     )
     .await?;
 
@@ -135,62 +209,7 @@ pub async fn generate_template(
         .pop()
         .ok_or(ManagementApiError::FuncMissingPrototype(func.id))?;
 
-    let create_operations =
-        dal::management::generator::generate_template(&ctx, view_id, &request.component_ids)
-            .await?;
-
-    let mut component_sync_code = r#"async function main({
-    currentView,
-    thisComponent,
-    components
-}: Input): Promise < Output > {
-    const templateName = _.get(
-        thisComponent,
-        ["properties", "si", "name"],
-        "unknown",
-    );
-    const vars = _.get(thisComponent, [
-      "properties",
-      "domain",
-      "Template",
-      "Values",
-    ]);
-    const specs: Output["ops"]["create"][string][] = [];
-"#
-    .to_string();
-
-    for (name, component_def) in create_operations {
-        let mut variable_name: String = name.to_case(Case::Camel);
-        variable_name.push_str("Spec");
-        variable_name = sanitize_js_variable(&variable_name);
-        let spec_body = serde_json::to_string_pretty(&component_def)?;
-        let component_code = format!(
-            r#"
-    const {variable_name}: Output["ops"]["create"][string] = {spec_body};
-    specs.push({variable_name});
-"#
-        );
-        component_sync_code.push_str(&component_code);
-    }
-    component_sync_code.push_str(
-        r#"
-
-    // Check for duplicate si names in the abscene of component idempotency keys
-    const seenNames = new Set<string>();
-    for (const spec of specs) {
-        const name = _.get(spec, ["properties", "si", "name"]);
-        if (seenNames.has(name)) {
-            throw new Error(`Duplicate properties.si.name found: "${name}", please regenerate the template after fixing the duplicate names or modify the id references in the management function`);
-        }
-        seenNames.add(name);
-    }
-
-    return template.converge(currentView, thisComponent, components, specs);
-}
-"#,
-    );
-
-    FuncAuthoringClient::save_code(&ctx, func.id, component_sync_code).await?;
+    FuncAuthoringClient::save_code(&ctx, func.id, mgmt_func_code).await?;
 
     let schema_variant_id = new_variant.id();
     WsEvent::schema_variant_created(&ctx, schema_id, new_variant.clone())
