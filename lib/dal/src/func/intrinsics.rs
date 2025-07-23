@@ -16,9 +16,12 @@ use strum::{
     IntoEnumIterator,
 };
 
-use crate::func::{
-    FuncError,
-    FuncResult,
+use crate::{
+    PropKind,
+    func::{
+        FuncError,
+        FuncResult,
+    },
 };
 
 #[remain::sorted]
@@ -58,6 +61,25 @@ impl IntrinsicFunc {
             | IntrinsicFunc::ResourcePayloadToValue
             | IntrinsicFunc::Validation => true,
         }
+    }
+
+    /// If this is a si:setXXX, returns the PropKind it is a setter for.
+    pub fn set_func(&self) -> Option<PropKind> {
+        Some(match self {
+            IntrinsicFunc::SetArray => PropKind::Array,
+            IntrinsicFunc::SetBoolean => PropKind::Boolean,
+            IntrinsicFunc::SetInteger => PropKind::Integer,
+            IntrinsicFunc::SetFloat => PropKind::Float,
+            IntrinsicFunc::SetJson => PropKind::Json,
+            IntrinsicFunc::SetMap => PropKind::Map,
+            IntrinsicFunc::SetObject => PropKind::Object,
+            IntrinsicFunc::SetString => PropKind::String,
+            IntrinsicFunc::Identity
+            | IntrinsicFunc::NormalizeToArray
+            | IntrinsicFunc::ResourcePayloadToValue
+            | IntrinsicFunc::Validation
+            | IntrinsicFunc::Unset => return None,
+        })
     }
 
     pub fn pkg_spec() -> FuncResult<PkgSpec> {

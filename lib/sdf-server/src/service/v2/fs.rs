@@ -130,7 +130,7 @@ pub enum FsError {
     #[error("attribute input bound to neither input socket nor prop")]
     AttributeInputNotBound,
     #[error("attribute prototype argument error: {0}")]
-    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
     #[error("no attribute protototype argument found for func argument {0}")]
     AttributePrototypeArgumentMissingForFuncArg(FuncArgumentId),
     #[error("cached module error: {0}")]
@@ -199,6 +199,11 @@ pub enum FsError {
 
 impl From<FuncAPIError> for FsError {
     fn from(value: FuncAPIError) -> Self {
+        Box::new(value).into()
+    }
+}
+impl From<AttributePrototypeArgumentError> for FsError {
+    fn from(value: AttributePrototypeArgumentError) -> Self {
         Box::new(value).into()
     }
 }

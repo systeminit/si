@@ -1454,13 +1454,10 @@ impl WorkspaceSnapshot {
     pub async fn connection_migrations(
         &self,
         inferred_connections: impl IntoIterator<Item = SocketConnection>,
-    ) -> WorkspaceSnapshotResult<Vec<(graph::validator::connections::ConnectionMigration, String)>>
-    {
-        Ok(
-            graph::validator::connections::connection_migrations_with_text(
-                &self.working_copy().await,
-                inferred_connections,
-            ),
-        )
+    ) -> WorkspaceSnapshotResult<Vec<graph::validator::connections::ConnectionMigration>> {
+        Ok(graph::validator::connections::connection_migrations(
+            &self.working_copy().await,
+            inferred_connections,
+        ))
     }
 }

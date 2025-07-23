@@ -31,8 +31,8 @@ pub struct FuncNodeWeight {
     pub lineage_id: LineageId,
     content_address: ContentAddress,
     merkle_tree_hash: MerkleTreeHash,
-    name: String,
-    func_kind: FuncKind,
+    pub name: String,
+    pub func_kind: FuncKind,
 }
 
 impl FuncNodeWeight {

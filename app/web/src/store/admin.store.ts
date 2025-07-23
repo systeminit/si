@@ -356,7 +356,6 @@ export interface ConnectionMigrationPropConnection {
 export type ConnectionUnmigrateableBecause =
   | { type: "connectionPrototypeHasMultipleArgs" }
   | { type: "destinationIsNotInputSocket" }
-  | { type: "destinationPropAlreadyHasValue" }
   | { type: "destinationSocketArgumentNotBoundToProp" }
   | { type: "destinationSocketBoundToPropWithNoValue"; destPropId: PropId }
   | { type: "destinationSocketHasMultipleBindings" }

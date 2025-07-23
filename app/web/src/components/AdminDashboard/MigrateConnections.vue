@@ -18,11 +18,12 @@
     <Stack class="flex flex-col gap-xs p-xs w-full font-bold text-xs">
       <Stack>
         <div class="text-lg">
-          Migrateable Connections: {{ migrateable.length }}
+          {{ migrationRun?.dryRun ? "Migrateable" : "Migrated" }} Connections:
+          {{ migrateable.length }}
         </div>
-        <div v-for="migration of migrateable" :key="migration.message">
-          {{ migration.message }}
-        </div>
+        <pre v-for="migration of migrateable" :key="migration.message">{{
+          migration.message.replaceAll(" | ", "\n")
+        }}</pre>
       </Stack>
       <Stack v-if="unmigrateableBecause.length > 0">
         <div class="text-lg">
@@ -39,19 +40,8 @@
         >
           <div class="text-lg">{{ because }}: {{ migrations.length }}</div>
           <div v-for="migration in migrations" :key="migration.message">
-            {{ migration.message }}
+            {{ migration.message.replaceAll(" | ", "\n  ") }}
           </div>
-        </div>
-      </Stack>
-      <Stack
-        v-if="alreadyMigrated.length > 0"
-        class="flex flex-row gap-xs p-xs w-full"
-      >
-        <div class="text-lg">
-          Already Migrated Connections: {{ alreadyMigrated.length }}
-        </div>
-        <div v-for="migration of alreadyMigrated" :key="migration.message">
-          {{ migration.message }}
         </div>
       </Stack>
     </Stack>
@@ -90,19 +80,12 @@ const migrationsByIssue = computed(
     >,
 );
 const migrateable = computed(() => migrationsByIssue.value.migrateable ?? []);
-const alreadyMigrated = computed(
-  () => migrationsByIssue.value.destinationPropAlreadyHasValue ?? [],
-);
 const unmigrateableBecause = computed(() =>
   _.sortBy(
     Object.entries(migrationsByIssue.value),
     ([_, migrations]) => migrations.length,
   )
     .reverse()
-    .filter(
-      ([because, _]) =>
-        because !== "migrateable" &&
-        because !== "destinationPropAlreadyHasValue",
-    ),
+    .filter(([because, _]) => because !== "migrateable"),
 );
 </script>

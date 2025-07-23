@@ -92,4 +92,18 @@ impl StaticArgumentValue {
 
         Ok(StaticArgumentValue::assemble(id, inner))
     }
+
+    /// Get the value, formatted for debugging/display.
+    pub async fn fmt_title(ctx: &DalContext, id: StaticArgumentValueId) -> String {
+        Self::fmt_title_fallible(ctx, id)
+            .await
+            .unwrap_or_else(|e| e.to_string())
+    }
+
+    async fn fmt_title_fallible(
+        ctx: &DalContext,
+        id: StaticArgumentValueId,
+    ) -> AttributePrototypeArgumentResult<String> {
+        Ok(format!("{}", Self::get_by_id(ctx, id).await?.value))
+    }
 }

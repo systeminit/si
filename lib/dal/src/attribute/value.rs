@@ -2777,4 +2777,43 @@ impl AttributeValue {
 
         Ok(values)
     }
+
+    /// Get a short, human-readable title suitable for debugging/display.
+    pub async fn fmt_title(ctx: &DalContext, av_id: AttributeValueId) -> String {
+        Self::fmt_title_fallible(ctx, av_id)
+            .await
+            .unwrap_or_else(|e| e.to_string())
+    }
+    pub async fn fmt_title_fallible(
+        ctx: &DalContext,
+        av_id: AttributeValueId,
+    ) -> AttributeValueResult<String> {
+        Ok(match AttributeValue::is_for(ctx, av_id).await? {
+            ValueIsFor::Prop(_) => {
+                let (root_id, path) = AttributeValue::path_from_root(ctx, av_id).await?;
+                let component_id = AttributeValue::component_id(ctx, root_id).await?;
+                format!(
+                    "{} on {}",
+                    path,
+                    Component::fmt_title(ctx, component_id).await
+                )
+            }
+            ValueIsFor::InputSocket(socket_id) => {
+                let component_id = AttributeValue::component_id(ctx, av_id).await?;
+                format!(
+                    "input socket {} on {}",
+                    InputSocket::fmt_title(ctx, socket_id).await,
+                    Component::fmt_title(ctx, component_id).await
+                )
+            }
+            ValueIsFor::OutputSocket(socket_id) => {
+                let component_id = AttributeValue::component_id(ctx, av_id).await?;
+                format!(
+                    "output socket {} on {}",
+                    OutputSocket::fmt_title(ctx, socket_id).await,
+                    Component::fmt_title(ctx, component_id).await
+                )
+            }
+        })
+    }
 }

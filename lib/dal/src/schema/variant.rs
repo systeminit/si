@@ -2516,6 +2516,20 @@ impl SchemaVariant {
 
         Ok(schema_variants.into_values().collect())
     }
+
+    /// Get a short, human-readable title suitable for debugging/display.
+    pub async fn fmt_title(ctx: &DalContext, id: SchemaVariantId) -> String {
+        Self::fmt_title_fallible(ctx, id)
+            .await
+            .unwrap_or_else(|e| e.to_string())
+    }
+    pub async fn fmt_title_fallible(
+        ctx: &DalContext,
+        id: SchemaVariantId,
+    ) -> SchemaVariantResult<String> {
+        let variant = Self::get_by_id(ctx, id).await?;
+        Ok(variant.display_name.to_string())
+    }
 }
 
 impl From<AttributePrototypeArgumentError> for SchemaVariantError {

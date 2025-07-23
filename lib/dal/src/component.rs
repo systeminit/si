@@ -4646,6 +4646,27 @@ impl Component {
         self.into_frontend_type(ctx, Some(&geometry), change_status, diagram_sockets)
             .await
     }
+
+    /// Get a short, human-readable title suitable for debugging/display.
+    pub async fn fmt_title(ctx: &DalContext, component_id: ComponentId) -> String {
+        Self::fmt_title_fallible(ctx, component_id)
+            .await
+            .unwrap_or_else(|e| e.to_string())
+    }
+
+    async fn fmt_title_fallible(
+        ctx: &DalContext,
+        component_id: ComponentId,
+    ) -> ComponentResult<String> {
+        let schema_variant_id = Self::schema_variant_id(ctx, component_id).await?;
+
+        Ok(format!(
+            "{} {} ({})",
+            SchemaVariant::fmt_title(ctx, schema_variant_id).await,
+            Self::name_by_id(ctx, component_id).await?,
+            component_id
+        ))
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]

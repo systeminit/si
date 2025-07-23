@@ -857,6 +857,16 @@ impl Func {
         .join("\n");
         Ok(types)
     }
+
+    /// Get a short, human-readable title suitable for debugging/display.
+    pub async fn fmt_title(ctx: &DalContext, id: FuncId) -> String {
+        Self::fmt_title_fallible(ctx, id)
+            .await
+            .unwrap_or_else(|e| e.to_string())
+    }
+    async fn fmt_title_fallible(ctx: &DalContext, id: FuncId) -> FuncResult<String> {
+        Ok(Self::node_weight(ctx, id).await?.name)
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, Eq, PartialEq)]

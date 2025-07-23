@@ -6,7 +6,6 @@ use super::static_value::StaticArgumentValueId;
 use crate::{
     AttributeValue,
     AttributeValueId,
-    ComponentError,
     ComponentId,
     DalContext,
     InputSocket,
@@ -14,10 +13,14 @@ use crate::{
     OutputSocketId,
     Prop,
     PropId,
+    Secret,
     SecretId,
-    attribute::value::{
-        AttributeValueError,
-        subscription::ValueSubscription,
+    attribute::{
+        prototype::argument::static_value::StaticArgumentValue,
+        value::{
+            AttributeValueError,
+            subscription::ValueSubscription,
+        },
     },
     prop::PropError,
     socket::{
@@ -32,10 +35,10 @@ use crate::{
 #[remain::sorted]
 #[derive(Error, Debug)]
 pub enum ValueSourceError {
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] Box<super::AttributePrototypeArgumentError>),
     #[error("attribute value error: {0}")]
-    AttributeValue(String),
-    #[error("component error: {0}")]
-    Component(#[from] Box<ComponentError>),
+    AttributeValue(#[from] AttributeValueError),
     #[error("source has more than one attribute values when only one was expected: {0}")]
     ComponentHasMultipleValues(ComponentId, ValueSource),
     #[error("source has no attribute values for component {0} at path {1:?}")]
@@ -46,6 +49,8 @@ pub enum ValueSourceError {
     OutputSocket(#[from] OutputSocketError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("secret error: {0}")]
+    Secret(#[from] crate::secret::SecretError),
     #[error("source has no attribute values: {0:?}")]
     SourceHasNoValues(ValueSource),
 }
@@ -116,7 +121,7 @@ impl ValueSource {
                 // walking backwards from the prop to the values here). That's
                 // fine, just skip it. It will be cleaned up on write.
                 Err(AttributeValueError::OrphanedAttributeValue(_)) => None,
-                Err(other_err) => Err(ValueSourceError::AttributeValue(other_err.to_string()))?,
+                Err(other_err) => Err(other_err)?,
             };
 
             if value_component_id == Some(component_id) {
@@ -150,5 +155,40 @@ impl ValueSource {
                 self.clone(),
             )),
         }
+    }
+
+    /// Get the value, formatted for debugging/display.
+    pub async fn fmt_title(&self, ctx: &DalContext) -> String {
+        self.fmt_title_fallible(ctx)
+            .await
+            .unwrap_or_else(|e| e.to_string())
+    }
+    pub async fn fmt_title_fallible(&self, ctx: &DalContext) -> ValueSourceResult<String> {
+        Ok(match self {
+            &ValueSource::InputSocket(socket_id) => format!(
+                "input socket {}",
+                InputSocket::fmt_title(ctx, socket_id).await
+            ),
+            &ValueSource::OutputSocket(socket_id) => format!(
+                "output socket {}",
+                OutputSocket::fmt_title(ctx, socket_id).await
+            ),
+            &ValueSource::Prop(prop_id) => {
+                format!("prop {}", Prop::fmt_title(ctx, prop_id).await)
+            }
+            &ValueSource::Secret(secret_id) => {
+                format!("secret {}", Secret::fmt_title(ctx, secret_id).await)
+            }
+            &ValueSource::StaticArgumentValue(static_value_id) => {
+                StaticArgumentValue::fmt_title(ctx, static_value_id).await
+            }
+            ValueSource::ValueSubscription(subscription) => subscription.fmt_title(ctx).await,
+        })
+    }
+}
+
+impl From<super::AttributePrototypeArgumentError> for ValueSourceError {
+    fn from(err: super::AttributePrototypeArgumentError) -> Self {
+        Box::new(err).into()
     }
 }

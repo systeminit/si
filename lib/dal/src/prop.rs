@@ -1233,6 +1233,17 @@ impl Prop {
     pub async fn ts_type(ctx: &DalContext, prop_id: PropId) -> PropResult<String> {
         ctx.workspace_snapshot()?.ts_type(prop_id).await
     }
+
+    /// Get the value, formatted for debugging/display.
+    pub async fn fmt_title(ctx: &DalContext, prop_id: PropId) -> String {
+        Self::fmt_title_fallible(ctx, prop_id)
+            .await
+            .unwrap_or_else(|e| e.to_string())
+    }
+
+    async fn fmt_title_fallible(ctx: &DalContext, prop_id: PropId) -> PropResult<String> {
+        Ok(Self::get_by_id(ctx, prop_id).await?.name)
+    }
 }
 
 impl From<AttributePrototypeError> for PropError {

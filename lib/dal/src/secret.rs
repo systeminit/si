@@ -845,6 +845,21 @@ impl Secret {
 
         Ok(Self::assemble(secret_node_weight, updated))
     }
+
+    /// Get the value, formatted for debugging/display.
+    pub async fn fmt_title(ctx: &DalContext, secret_id: SecretId) -> String {
+        Self::fmt_title_fallible(ctx, secret_id)
+            .await
+            .unwrap_or_else(|e| e.to_string())
+    }
+
+    async fn fmt_title_fallible(ctx: &DalContext, secret_id: SecretId) -> SecretResult<String> {
+        Ok(format!(
+            "{} ({})",
+            Self::get_by_id(ctx, secret_id).await?.name,
+            secret_id
+        ))
+    }
 }
 
 /// The [`EncryptedSecret`] corresponding to an individual [`Secret`]. It contains sensitive, but
