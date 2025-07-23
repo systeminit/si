@@ -5,6 +5,7 @@ Builds a portable, standalone deno binary.
 import argparse
 import os
 import pathlib
+import shutil
 import stat
 import subprocess
 import sys
@@ -17,6 +18,12 @@ def parse_args() -> argparse.Namespace:
                         required=True,
                         type=pathlib.Path,
                         help="The path to compile, ideally a index.ts file")
+    parser.add_argument(
+        "--extra-srcs",
+        nargs='*',
+        default=[],
+        help="Sources that will be copied into the source tree",
+    )
     parser.add_argument(
         "--output",
         required=True,
@@ -89,6 +96,8 @@ def main() -> int:
 
         permissions_list = parse_permissions(args.permissions)
         flags_list = parse_unstable_flags(args.unstable_flags)
+        for src in args.extra_srcs:
+            shutil.copy2(src, args.input.resolve().parent)
 
         run_compile(abs_input_path, abs_output_path, permissions_list,
                     flags_list)
