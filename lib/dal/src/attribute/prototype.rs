@@ -784,6 +784,69 @@ impl AttributePrototype {
             ))?;
         Ok(Some(*arg_id))
     }
+
+    /// Get a short, human-readable title suitable for debugging/display.
+    /// Pass component_id if this is a prototype on the schema and you want to print only
+    /// values for the given component.
+    pub async fn fmt_title(
+        ctx: &DalContext,
+        ap_id: AttributePrototypeId,
+        component_id: Option<ComponentId>,
+    ) -> String {
+        Self::fmt_title_fallible(ctx, ap_id, component_id)
+            .await
+            .unwrap_or_else(|e| e.to_string())
+    }
+
+    pub async fn fmt_title_fallible(
+        ctx: &DalContext,
+        ap_id: AttributePrototypeId,
+        component_id: Option<ComponentId>,
+    ) -> AttributePrototypeResult<String> {
+        let func_id = Self::func_id(ctx, ap_id).await?;
+        let args = AttributePrototype::list_arguments(ctx, ap_id).await?;
+
+        // Special case some very common intrinsics
+        if args.len() == 1 {
+            if let Some(&apa_id) = args.first() {
+                let intrinsic = Func::intrinsic_kind(ctx, func_id).await?;
+                let value_source =
+                    AttributePrototypeArgument::value_source_opt(ctx, apa_id).await?;
+                let omit_function = match (intrinsic, value_source) {
+                    // si:setObject({}), si:setString(<string>), si:setNumber(<number>), etc.
+                    // just print the value
+                    (Some(intrinsic), Some(ValueSource::StaticArgumentValue(..))) => {
+                        intrinsic.set_func().is_some()
+                    }
+                    // si:identity(<subscription>) is just printed as <subscription>
+                    (Some(IntrinsicFunc::Identity), Some(ValueSource::ValueSubscription(..))) => {
+                        true
+                    }
+                    _ => false,
+                };
+                if omit_function {
+                    return Ok(
+                        AttributePrototypeArgument::fmt_title(ctx, apa_id, component_id).await,
+                    );
+                }
+            }
+        }
+
+        // Print <function>(<args>)
+        let mut title = Func::fmt_title(ctx, func_id).await;
+        title.push('(');
+        let mut is_first = true;
+        for apa_id in args {
+            // Print commas between arguments.
+            if !is_first {
+                title.push_str(", ");
+            }
+            is_first = false;
+            title.push_str(&AttributePrototypeArgument::fmt_title(ctx, apa_id, component_id).await);
+        }
+        title.push(')');
+        Ok(title)
+    }
 }
 
 #[remain::sorted]

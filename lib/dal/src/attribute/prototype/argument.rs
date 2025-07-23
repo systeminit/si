@@ -31,6 +31,7 @@ use super::AttributePrototypeError;
 use crate::{
     AttributePrototype,
     AttributeValue,
+    Component,
     DalContext,
     HelperError,
     TransactionsError,
@@ -75,9 +76,11 @@ pub enum AttributePrototypeArgumentError {
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute value error: {0}")]
-    AttributeValue(String),
+    AttributeValue(#[from] crate::attribute::value::AttributeValueError),
     #[error("change set error: {0}")]
     ChangeSet(#[from] ChangeSetError),
+    #[error("component error: {0}")]
+    Component(#[from] crate::ComponentError),
     #[error("dependent value root error: {0}")]
     DependentValueRoot(#[from] DependentValueRootError),
     #[error("func argument error: {0}")]
@@ -112,6 +115,8 @@ pub enum AttributePrototypeArgumentError {
     UnexpectedValueSourceContent(AttributePrototypeArgumentId, ContentAddressDiscriminants),
     #[error("PrototypeArgument {0} value edge pointing to EdgeWeightKindDiscriminants kind: {1:?}")]
     UnexpectedValueSourceNode(AttributePrototypeArgumentId, EdgeWeightKindDiscriminants),
+    #[error("value source error: {0}")]
+    ValueSource(#[from] value_source::ValueSourceError),
     #[error("workspace snapshot error: {0}")]
     WorkspaceSnapshot(#[from] WorkspaceSnapshotError),
 }
@@ -711,9 +716,7 @@ impl AttributePrototypeArgument {
         if let Some(targets) = self.targets() {
             let mut av_ids_to_keep = HashSet::new();
             for av_id in &avs_to_update {
-                let component_id = AttributeValue::component_id(ctx, *av_id)
-                    .await
-                    .map_err(|e| AttributePrototypeArgumentError::AttributeValue(e.to_string()))?;
+                let component_id = AttributeValue::component_id(ctx, *av_id).await?;
                 if component_id == targets.destination_component_id {
                     av_ids_to_keep.insert(*av_id);
                 }
@@ -728,5 +731,45 @@ impl AttributePrototypeArgument {
         ctx.add_dependent_values_and_enqueue(avs_to_update).await?;
 
         Ok(())
+    }
+
+    /// Get the value, formatted for debugging/display.
+    /// Pass component_id to get a more concise title if this APA is for a socket connection
+    /// (i.e. is on the prototype in the schema, but is for a specific component).
+    pub async fn fmt_title(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+        component_id: Option<ComponentId>,
+    ) -> String {
+        Self::fmt_title_fallible(ctx, apa_id, component_id)
+            .await
+            .unwrap_or_else(|e| e.to_string())
+    }
+
+    async fn fmt_title_fallible(
+        ctx: &DalContext,
+        apa_id: AttributePrototypeArgumentId,
+        component_id: Option<ComponentId>,
+    ) -> AttributePrototypeArgumentResult<String> {
+        let mut title = match Self::value_source_opt(ctx, apa_id).await? {
+            Some(value_source) => value_source.fmt_title(ctx).await,
+            None => "<no value source>".to_string(),
+        };
+        let apa = Self::get_by_id(ctx, apa_id).await?;
+        if let Some(ArgumentTargets {
+            source_component_id,
+            destination_component_id,
+        }) = apa.targets()
+        {
+            if Some(source_component_id) != component_id {
+                title.push_str(" on ");
+                title.push_str(&Component::fmt_title(ctx, source_component_id).await);
+            }
+            if Some(destination_component_id) != component_id {
+                title.push_str(" (only for ");
+                title.push_str(&Component::fmt_title(ctx, destination_component_id).await);
+            }
+        }
+        Ok(title)
     }
 }

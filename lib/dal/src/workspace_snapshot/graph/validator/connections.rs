@@ -11,7 +11,6 @@ use serde::{
 };
 use si_id::{
     AttributePrototypeArgumentId,
-    AttributeValueId,
     ComponentId,
     FuncId,
     InputSocketId,
@@ -27,11 +26,17 @@ use super::{
     prop_path_from_root,
 };
 use crate::{
+    Component,
     DalContext,
+    Func,
+    InputSocket,
+    OutputSocket,
+    Prop,
     PropKind,
     WsEvent,
     WsEventResult,
     WsPayload,
+    func::intrinsics::IntrinsicFunc,
     workspace_snapshot::{
         content_address::ContentAddress,
         edge_weight::{
@@ -96,20 +101,6 @@ pub fn connection_migrations(
         .chain(inferred_connection_migrations)
         .collect_vec();
 
-    // Check if any proposed prop connections already have values (which we don't want to overwrite)
-    for migration in &mut migrations {
-        for prop_connection in &migration.prop_connections {
-            if let Ok(Some(av)) =
-                super::resolve_av(graph, prop_connection.to.0, &prop_connection.to.1)
-            {
-                if has_prototype(graph, av) {
-                    migration.issue =
-                        Some(ConnectionUnmigrateableBecause::DestinationPropAlreadyHasValue);
-                }
-            }
-        }
-    }
-
     // Look for multiple connections to the same destination socket
     let mut seen_destination_props = HashMap::new();
     let mut dup_destination_props = HashSet::new();
@@ -157,17 +148,6 @@ pub fn connection_migrations(
     migrations
 }
 
-fn has_prototype(
-    graph: &impl std::ops::Deref<Target = WorkspaceSnapshotGraphVCurrent>,
-    av_id: AttributeValueId,
-) -> bool {
-    graph.get_node_index_by_id_opt(av_id).is_some_and(|av| {
-        graph
-            .target(av, EdgeWeightKindDiscriminants::Prototype)
-            .is_ok()
-    })
-}
-
 /// A migration from a socket connection to a prop connection (with possible status).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
@@ -209,6 +189,42 @@ impl ConnectionMigration {
             Err(issue) => migration.issue = Some(issue),
         }
         migration
+    }
+
+    pub async fn fmt_title(&self, ctx: &DalContext) -> String {
+        let mut message = String::new();
+        if self.fmt_title_fallible(ctx, &mut message).await.is_err() {
+            message.push_str(" <UNFINISHED: WRITE ERROR>");
+        }
+        message
+    }
+
+    async fn fmt_title_fallible(
+        &self,
+        ctx: &DalContext,
+        f: &mut impl std::fmt::Write,
+    ) -> std::fmt::Result {
+        if let Some(ref issue) = self.issue {
+            write!(f, "ERROR ")?;
+            issue.fmt_title(ctx, f).await?;
+            write!(f, " | ")?;
+        }
+        if let Some(ref socket_connection) = self.socket_connection {
+            socket_connection.fmt_title(ctx, f).await?;
+            write!(f, " | ")?;
+            for prop_connection in &self.prop_connections {
+                write!(f, "to prop ")?;
+                prop_connection.fmt_title(ctx, f).await?;
+                write!(f, " | ")?;
+            }
+        }
+
+        match self.explicit_connection_id {
+            Some(apa_id) => write!(f, "(explicit connection APA {apa_id})")?,
+            None => write!(f, "(inferred connection)")?,
+        }
+
+        Ok(())
     }
 
     pub fn to_string(
@@ -316,6 +332,21 @@ impl SocketConnection {
         };
 
         Some((apa_id, output_socket_id))
+    }
+
+    pub async fn fmt_title(
+        &self,
+        ctx: &DalContext,
+        f: &mut impl std::fmt::Write,
+    ) -> std::fmt::Result {
+        write!(
+            f,
+            "socket connection {} on {} --> {} on {}",
+            OutputSocket::fmt_title(ctx, self.from.1).await,
+            Component::fmt_title(ctx, self.from.0).await,
+            InputSocket::fmt_title(ctx, self.to.1).await,
+            Component::fmt_title(ctx, self.to.0).await,
+        )
     }
 }
 
@@ -569,6 +600,21 @@ impl PropConnection {
 
         Ok(result)
     }
+
+    pub async fn fmt_title(
+        &self,
+        ctx: &DalContext,
+        f: &mut impl std::fmt::Write,
+    ) -> std::fmt::Result {
+        match Func::intrinsic_kind(ctx, self.func_id).await {
+            // Don't print si:identity, that's standard
+            Ok(Some(IntrinsicFunc::Identity)) => write!(f, "{} --> {}", &self.from.1, &self.to.1),
+            _ => {
+                let func = Func::fmt_title(ctx, self.func_id).await;
+                write!(f, "{}({} --> {})", func, &self.from.1, &self.to.1)
+            }
+        }
+    }
 }
 
 /// The reason we can't migrate a socket connection
@@ -581,8 +627,6 @@ pub enum ConnectionUnmigrateableBecause {
     ConnectionPrototypeHasMultipleArgs,
     /// The connection APA is hanging off something other than an input socket
     DestinationIsNotInputSocket,
-    /// The destination prop already has a value
-    DestinationPropAlreadyHasValue,
     /// The destination socket is bound to more than one argument, prototype, or prop
     DestinationPrototypeHasMultipleArgs {
         destination_prop_id: PropId,
@@ -611,6 +655,78 @@ pub enum ConnectionUnmigrateableBecause {
     SourceSocketPrototypeHasMultipleArguments,
     /// There are no arguments on the source socket, so we can't pick a single one to migrate to
     SourceSocketPrototypeHasNoArguments,
+}
+
+impl ConnectionUnmigrateableBecause {
+    pub async fn fmt_title(
+        &self,
+        ctx: &DalContext,
+        f: &mut impl std::fmt::Write,
+    ) -> std::fmt::Result {
+        match *self {
+            ConnectionUnmigrateableBecause::ConnectionPrototypeHasMultipleArgs => {
+                write!(f, "Connection prototype has multiple arguments")
+            }
+            ConnectionUnmigrateableBecause::DestinationIsNotInputSocket => {
+                write!(f, "Destination is not an input socket")
+            }
+            ConnectionUnmigrateableBecause::DestinationSocketArgumentNotBoundToProp => {
+                write!(f, "Destination socket argument is not bound to a prop")
+            }
+            ConnectionUnmigrateableBecause::DestinationSocketBoundToPropWithNoValue {
+                destination_prop_id,
+            } => {
+                write!(
+                    f,
+                    "Destination socket is bound to a prop with no value: {}",
+                    Prop::fmt_title(ctx, destination_prop_id).await
+                )
+            }
+            ConnectionUnmigrateableBecause::DestinationPrototypeHasMultipleArgs {
+                destination_func_id,
+                destination_prop_id,
+            } => {
+                write!(
+                    f,
+                    "Destination prop {} passes multiple args to function {}",
+                    Prop::fmt_title(ctx, destination_prop_id).await,
+                    Func::fmt_title(ctx, destination_func_id).await,
+                )
+            }
+            ConnectionUnmigrateableBecause::InvalidGraph { ref error } => {
+                write!(f, "Invalid graph: {error}")
+            }
+            ConnectionUnmigrateableBecause::MultipleConnectionsToSameProp => {
+                write!(f, "Multiple connections to the same prop")
+            }
+            ConnectionUnmigrateableBecause::NoArgumentTargets => {
+                write!(
+                    f,
+                    "Connection prototype has no source or destination component IDs"
+                )
+            }
+            ConnectionUnmigrateableBecause::SourceAndDestinationSocketBothHaveFuncs {
+                source_func_id,
+                destination_func_id: dest_func_id,
+            } => {
+                write!(
+                    f,
+                    "Source and destination sockets both have non-identity functions: {} and {}",
+                    Func::fmt_title(ctx, dest_func_id).await,
+                    Func::fmt_title(ctx, source_func_id).await,
+                )
+            }
+            ConnectionUnmigrateableBecause::SourceSocketPrototypeArgumentNotBoundToProp => {
+                write!(f, "Source socket prototype argument is not bound to a prop")
+            }
+            ConnectionUnmigrateableBecause::SourceSocketPrototypeHasMultipleArguments => {
+                write!(f, "Source socket prototype has multiple arguments")
+            }
+            ConnectionUnmigrateableBecause::SourceSocketPrototypeHasNoArguments => {
+                write!(f, "Source socket prototype has no arguments")
+            }
+        }
+    }
 }
 
 impl From<WorkspaceSnapshotGraphError> for ConnectionUnmigrateableBecause {
@@ -656,7 +772,7 @@ impl std::fmt::Display for WithGraph<'_, &'_ SocketConnection> {
         let &WithGraph(graph, socket_connection) = self;
         write!(
             f,
-            "socket connection from output {} on component {} to input {} on component {}",
+            "{} on component {} --> {} on component {}",
             WithGraph(graph, socket_connection.from.1),
             WithGraph(graph, socket_connection.from.0),
             WithGraph(graph, socket_connection.to.1),
@@ -697,9 +813,6 @@ impl std::fmt::Display for WithGraph<'_, &'_ ConnectionUnmigrateableBecause> {
             }
             ConnectionUnmigrateableBecause::DestinationIsNotInputSocket => {
                 write!(f, "Destination is not an input socket")
-            }
-            ConnectionUnmigrateableBecause::DestinationPropAlreadyHasValue => {
-                write!(f, "Destination prop already has a value")
             }
             ConnectionUnmigrateableBecause::DestinationSocketArgumentNotBoundToProp => {
                 write!(f, "Destination socket argument is not bound to a prop")
@@ -795,9 +908,8 @@ pub type ConnectionMigratedPayload = ConnectionMigrationWithMessage;
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionMigrationWithMessage {
     #[serde(flatten)]
-    pub migration: ConnectionMigration,
+    pub connection: ConnectionMigration,
     pub message: String,
-    pub migrated: bool,
 }
 
 impl WsEvent {

@@ -21,6 +21,7 @@ use dal::{
         ConnectionMigration,
         ConnectionMigrationSummary,
         ConnectionMigrationWithMessage,
+        ConnectionUnmigrateableBecause,
         PropConnection,
         SocketConnection,
     },
@@ -28,6 +29,7 @@ use dal::{
 use sdf_extract::PosthogEventTracker;
 use serde_json::json;
 use si_db::Tenancy;
+use si_id::AttributePrototypeArgumentId;
 use telemetry::prelude::*;
 
 use crate::service::v2::admin::{
@@ -123,34 +125,53 @@ async fn migrate_connections_async_fallible(
         .publish_immediately(ctx)
         .await?;
 
-    // Migrate
-    let migrations = get_connection_migrations(ctx).await?;
-    summary.connections = migrations.len();
-    for migration in &migrations {
-        migrate_connection(ctx, &migration.migration).await?;
-        if migration.migrated {
-            summary.migrated += 1;
-        } else {
+    // Get the connections we want to migrate.
+    let connections = get_connection_migrations(ctx).await?;
+    summary.connections = connections.len();
+
+    // Migrate.
+    let mut migrations = Vec::with_capacity(connections.len());
+    for mut connection in connections {
+        // Don't migrate if there's an issue.
+        if connection.issue.is_some() {
             summary.unmigrateable += 1;
+        } else {
+            match migrate_connection(ctx, &connection).await {
+                Ok(true) => summary.migrated += 1,
+                // Don't include noop migrations (already-migrated) in the report
+                Ok(false) => continue,
+                // Mark it as unmigrateable if there was an error
+                Err(err) => {
+                    connection.issue = Some(ConnectionUnmigrateableBecause::InvalidGraph {
+                        error: err.to_string(),
+                    });
+                    summary.unmigrateable += 1;
+                }
+            };
         }
+
+        // Report that it was migrated.
+        let message = connection.fmt_title(ctx).await;
+        let migration = ConnectionMigrationWithMessage {
+            connection,
+            message,
+        };
         WsEvent::connection_migrated(ctx, migration.clone())
             .await?
             .publish_immediately(ctx)
             .await?;
+        migrations.push(migration);
     }
 
     // Send WsEvents for components we migrated, and commit (unless it's a dry_run)
     if !dry_run {
         let mut components = HashSet::new();
         for migration in migrations {
-            if !migration.migrated {
-                continue;
-            }
-            let Some(ref socket_connection) = migration.migration.socket_connection else {
+            let Some(ref socket_connection) = migration.connection.socket_connection else {
                 continue;
             };
 
-            // Send WsEvent
+            // Send WsEvent that we modified properties of the component
             if components.insert(socket_connection.to.0) {
                 let component = Component::get_by_id(ctx, socket_connection.to.0).await?;
 
@@ -178,9 +199,7 @@ async fn migrate_connections_async_fallible(
 }
 
 #[instrument(level = "info", skip(ctx))]
-async fn get_connection_migrations(
-    ctx: &DalContext,
-) -> AdminAPIResult<Vec<ConnectionMigrationWithMessage>> {
+async fn get_connection_migrations(ctx: &DalContext) -> AdminAPIResult<Vec<ConnectionMigration>> {
     let snapshot = ctx.workspace_snapshot()?.as_legacy_snapshot()?;
 
     let inferred_connections = snapshot
@@ -197,72 +216,105 @@ async fn get_connection_migrations(
             ),
         });
 
-    Ok(snapshot
-        .connection_migrations(inferred_connections)
-        .await?
-        .into_iter()
-        .map(|(migration, message)| ConnectionMigrationWithMessage {
-            migration,
-            message,
-            migrated: false,
-        })
-        .collect())
+    Ok(snapshot.connection_migrations(inferred_connections).await?)
 }
 
-// Returns true if migrated, false if we didn't migrate
+/// Migrate a single connection.
+///
+/// Returns true if any migration work was done, false if it was a noop.
+/// Check `issue` to see if there was an issue (e.g. partial migration).
 async fn migrate_connection(
     ctx: &DalContext,
     migration: &ConnectionMigration,
 ) -> AdminAPIResult<bool> {
-    // Make sure it's migrateable (no issues and has all the data we need)
-    if migration.issue.is_some() {
-        return Ok(false);
-    }
-    // Add the prop connections
-    for &PropConnection {
-        from: (from_component_id, ref from_path),
-        to: (to_component_id, ref to_path),
-        func_id,
-    } in &migration.prop_connections
-    {
-        let from_root_av_id = Component::root_attribute_value_id(ctx, from_component_id).await?;
-        let to_root_av_id = Component::root_attribute_value_id(ctx, to_component_id).await?;
-        let to_av_id = AttributePath::from_json_pointer(to_path.to_string())
-            .vivify(ctx, to_root_av_id)
-            .await?;
-        AttributeValue::set_to_subscriptions(
-            ctx,
-            to_av_id,
-            vec![ValueSubscription {
-                attribute_value_id: from_root_av_id,
-                path: AttributePath::from_json_pointer(from_path.to_string()),
-            }],
-            Some(func_id),
-        )
-        .await?;
-    }
-
-    // Remove the existing socket connection (unless it was inferred, in which case there isn't one)
-    if let Some(explicit_connection_id) = migration.explicit_connection_id {
-        AttributePrototypeArgument::remove(ctx, explicit_connection_id).await?;
-        if let Some(SocketConnection {
-            from: (from_component_id, from_socket_id),
-            to: (to_component_id, to_socket_id),
-        }) = migration.socket_connection
-        {
-            // Send the WsEvent
-            WsEvent::connection_deleted(
-                ctx,
-                from_component_id,
-                to_component_id,
-                from_socket_id,
-                to_socket_id,
-            )
-            .await?
-            .publish_on_commit(ctx)
-            .await?;
+    let mut did_something = false;
+    for prop_connection in &migration.prop_connections {
+        if add_prop_connection(ctx, prop_connection).await? {
+            did_something = true;
         }
     }
 
+    if remove_socket_connection(
+        ctx,
+        migration.explicit_connection_id,
+        &migration.socket_connection,
+    )
+    .await?
+    {
+        did_something = true;
+    }
+
+    Ok(did_something)
+}
+
+/// Add the given prop connections
+async fn add_prop_connection(
+    ctx: &DalContext,
+    &PropConnection {
+        from: (from_component_id, ref from_path),
+        to: (to_component_id, ref to_path),
+        func_id,
+    }: &PropConnection,
+) -> AdminAPIResult<bool> {
+    // If the destination already has an explicit value, we keep it instead of replacing it!
+    let to_root_av_id = Component::root_attribute_value_id(ctx, to_component_id).await?;
+    let to_path = AttributePath::from_json_pointer(to_path.to_string());
+    let to_av_id = to_path.vivify(ctx, to_root_av_id).await?;
+    if AttributeValue::component_prototype_id(ctx, to_av_id)
+        .await?
+        .is_some()
+    {
+        return Ok(false);
+    }
+
+    // Create the subscription
+    let from_root_av_id = Component::root_attribute_value_id(ctx, from_component_id).await?;
+    let from_path = AttributePath::from_json_pointer(from_path.to_string());
+    AttributeValue::set_to_subscriptions(
+        ctx,
+        to_av_id,
+        vec![ValueSubscription {
+            attribute_value_id: from_root_av_id,
+            path: from_path,
+        }],
+        Some(func_id),
+    )
+    .await?;
+
+    Ok(true)
+}
+
+/// Remove the existing socket connection (unless it was inferred, in which case there isn't one)
+async fn remove_socket_connection(
+    ctx: &DalContext,
+    explicit_connection_id: Option<AttributePrototypeArgumentId>,
+    socket_connection: &Option<SocketConnection>,
+) -> AdminAPIResult<bool> {
+    // We don't remove inferred connections
+    let Some(explicit_connection_id) = explicit_connection_id else {
+        return Ok(false);
+    };
+
+    // Remove the connection
+    AttributePrototypeArgument::remove(ctx, explicit_connection_id).await?;
+
+    // Send the WsEvent
+    if let &Some(SocketConnection {
+        from: (from_component_id, from_socket_id),
+        to: (to_component_id, to_socket_id),
+    }) = socket_connection
+    {
+        // Send the WsEvent
+        WsEvent::connection_deleted(
+            ctx,
+            from_component_id,
+            to_component_id,
+            from_socket_id,
+            to_socket_id,
+        )
+        .await?
+        .publish_on_commit(ctx)
+        .await?;
+    }
     Ok(true)
 }

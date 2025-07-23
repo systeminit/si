@@ -564,6 +564,20 @@ impl OutputSocket {
                 .id,
         )
     }
+
+    /// Get a short, human-readable title suitable for debugging/display.
+    pub async fn fmt_title(ctx: &DalContext, id: OutputSocketId) -> String {
+        Self::fmt_title_fallible(ctx, id)
+            .await
+            .unwrap_or_else(|e| e.to_string())
+    }
+    async fn fmt_title_fallible(
+        ctx: &DalContext,
+        id: OutputSocketId,
+    ) -> OutputSocketResult<String> {
+        let socket = Self::get_by_id(ctx, id).await?;
+        Ok(socket.name)
+    }
 }
 
 impl From<OutputSocket> for frontend_types::OutputSocket {
