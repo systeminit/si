@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use axum::{
     BoxError,
     Json,
@@ -23,8 +21,8 @@ use dal::{
     ComponentId,
     WorkspacePk,
     attribute::attributes::{
+        AttributeSources,
         AttributeValueIdent,
-        ValueOrSourceSpec,
     },
 };
 use sdf_core::{
@@ -71,7 +69,7 @@ async fn update_attributes(
     ChangeSetDalContext(ref mut ctx): ChangeSetDalContext,
     tracker: PosthogEventTracker,
     Path(ComponentIdFromPath { component_id }): Path<ComponentIdFromPath>,
-    Json(updates): Json<HashMap<AttributeValueIdent, ValueOrSourceSpec>>,
+    Json(updates): Json<AttributeSources>,
 ) -> Result<ForceChangeSetResponse<()>> {
     let force_change_set_id = ChangeSet::force_new(ctx).await?;
 

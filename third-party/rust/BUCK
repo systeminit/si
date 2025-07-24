@@ -17223,6 +17223,34 @@ cargo.rust_library(
     ],
 )
 
+alias(
+    name = "serde-tuple-vec-map",
+    actual = ":serde-tuple-vec-map-1.0.1",
+    visibility = ["PUBLIC"],
+)
+
+http_archive(
+    name = "serde-tuple-vec-map-1.0.1.crate",
+    sha256 = "a04d0ebe0de77d7d445bb729a895dcb0a288854b267ca85f030ce51cdc578c82",
+    strip_prefix = "serde-tuple-vec-map-1.0.1",
+    urls = ["https://static.crates.io/crates/serde-tuple-vec-map/1.0.1/download"],
+    visibility = [],
+)
+
+cargo.rust_library(
+    name = "serde-tuple-vec-map-1.0.1",
+    srcs = [":serde-tuple-vec-map-1.0.1.crate"],
+    crate = "tuple_vec_map",
+    crate_root = "serde-tuple-vec-map-1.0.1.crate/src/lib.rs",
+    edition = "2015",
+    features = [
+        "default",
+        "std",
+    ],
+    visibility = [],
+    deps = [":serde-1.0.219"],
+)
+
 http_archive(
     name = "serde-value-0.7.0.crate",
     sha256 = "f3a1a3341211875ef120e117ea7fd5228530ae7e7036a779fdc9117be6b3282c",

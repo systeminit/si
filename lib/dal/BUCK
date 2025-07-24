@@ -71,6 +71,7 @@ rust_library(
         "//third-party/rust:ringmap",
         "//third-party/rust:serde",
         "//third-party/rust:serde-aux",
+        "//third-party/rust:serde-tuple-vec-map",
         "//third-party/rust:serde_json",
         "//third-party/rust:serde_with",
         "//third-party/rust:sodiumoxide",

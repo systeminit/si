@@ -14,6 +14,9 @@ rust_library(
         "askama.toml",
         "templates/**/*.ts",
     ]),
+    test_unit_deps = [
+        "//third-party/rust:pretty_assertions_sorted",
+    ],
     env = {
         "CARGO_MANIFEST_DIR": ".",
     }

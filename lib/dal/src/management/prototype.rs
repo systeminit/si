@@ -381,7 +381,7 @@ impl ManagedComponent {
         Ok(Self {
             kind: kind.to_owned(),
             properties,
-            sources,
+            sources: sources.into_iter().collect(),
             geometry,
             incoming_connections,
         })
