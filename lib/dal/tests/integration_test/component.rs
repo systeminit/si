@@ -38,6 +38,7 @@ mod autoconnect;
 mod connectable_test;
 mod debug;
 mod delete;
+mod duplicate;
 mod get_code;
 mod get_diff;
 mod paste;

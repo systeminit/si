@@ -98,6 +98,7 @@ use crate::{
     },
     attribute::{
         attributes::{
+            self,
             AttributeValueIdent,
             Source,
         },
@@ -214,6 +215,8 @@ pub enum ComponentError {
     AttributePrototype(#[from] Box<AttributePrototypeError>),
     #[error("attribute prototype argument error: {0}")]
     AttributePrototypeArgument(#[from] Box<AttributePrototypeArgumentError>),
+    #[error("attributes error: {0}")]
+    Attributes(#[from] Box<attributes::Error>),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] Box<AttributeValueError>),
     #[error(
@@ -501,6 +504,11 @@ impl From<WorkspaceError> for ComponentError {
 
 impl From<WsEventError> for ComponentError {
     fn from(value: WsEventError) -> Self {
+        Box::new(value).into()
+    }
+}
+impl From<attributes::Error> for ComponentError {
+    fn from(value: attributes::Error) -> Self {
         Box::new(value).into()
     }
 }
@@ -3557,6 +3565,11 @@ impl Component {
         Ok(pasted_comp)
     }
 
+    /// For a given set of components, duplicate them in the provided view
+    /// The duplicate function behaves differently than bulk_copy:
+    /// - Socket connections (Component::connect) are ignored - duplicated components won't have these
+    /// - Subscriptions (value::subscribe) are preserved - both external and internal subscriptions are maintained
+    /// - Management connections are preserved between duplicated components, and dropped otherwise
     pub async fn duplicate(
         ctx: &mut DalContext,
         to_view_id: ViewId,
@@ -3581,10 +3594,50 @@ impl Component {
                 .await?;
             pasted_component_ids.push(pasted_component.id());
             to_pasted_id.insert(component_id, pasted_component.id());
-
+        }
+        // Copy correct connections (prop to prop and management)
+        for (&og_component_id, &pasted_component_id) in &to_pasted_id {
             // Copy manager connections
-            for manager_id in Component::managers_by_id(ctx, component_id).await? {
-                Component::manage_component(ctx, manager_id, pasted_component.id).await?;
+            for manager_id in Component::managers_by_id(ctx, og_component_id).await? {
+                // If we were managed by a component that was also pasted, we should be managed by
+                // the pasted version--otherwise we're unmanaged!
+                if let Some(&pasted_manager_id) = to_pasted_id.get(&manager_id) {
+                    Component::manage_component(ctx, pasted_manager_id, pasted_component_id)
+                        .await?;
+                }
+            }
+            // Find duplicated components that subscribe to copied components, and
+            // resubscribe them to the pasted component
+            for (path, maybe_pasted_subscriber_apa_id) in
+                Component::subscribers(ctx, og_component_id).await?
+            {
+                let maybe_pasted_subscriber_ap_id =
+                    AttributePrototypeArgument::prototype_id(ctx, maybe_pasted_subscriber_apa_id)
+                        .await?;
+                let Some(maybe_pasted_subscriber_av_id) =
+                    AttributePrototype::attribute_value_id(ctx, maybe_pasted_subscriber_ap_id)
+                        .await?
+                else {
+                    continue;
+                };
+
+                let maybe_pasted_subscriber_id =
+                    AttributeValue::component_id(ctx, maybe_pasted_subscriber_av_id).await?;
+
+                if pasted_component_ids.contains(&maybe_pasted_subscriber_id) {
+                    // now we know that the subcriber we're dealing with is one that was pasted!
+                    let pasted_root_id =
+                        Component::root_attribute_value_id(ctx, pasted_component_id).await?;
+                    AttributePrototypeArgument::set_value_source(
+                        ctx,
+                        maybe_pasted_subscriber_apa_id,
+                        ValueSource::ValueSubscription(ValueSubscription {
+                            attribute_value_id: pasted_root_id,
+                            path,
+                        }),
+                    )
+                    .await?;
+                }
             }
         }
 
