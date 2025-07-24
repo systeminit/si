@@ -400,6 +400,76 @@ const pan = (dx: number, dy: number) => {
   }
 };
 
+const smoothPan = (totalDx: number, totalDy: number, duration = 400) => {
+  const startTime = performance.now();
+  const startTranslateX = transformMatrix[4] ?? 0;
+  const startTranslateY = transformMatrix[5] ?? 0;
+
+  const animate = (currentTime: number) => {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // Ease-out cubic for smooth deceleration
+    const easeProgress = 1 - (1 - progress) ** 3;
+
+    // Calculate current target position
+    const currentX = startTranslateX + totalDx * easeProgress;
+    const currentY = startTranslateY + totalDy * easeProgress;
+
+    // Set the transform matrix directly
+    transformMatrix.splice(4, 1, currentX);
+    transformMatrix.splice(5, 1, currentY);
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    }
+  };
+
+  requestAnimationFrame(animate);
+};
+
+const panToComponent = (componentId: string) => {
+  if (!dataAsGraph.value?.children) {
+    // Layout not ready yet, retry after a short delay
+    setTimeout(() => panToComponent(componentId), 100);
+    return;
+  }
+
+  // Find the node for this component
+  const node = dataAsGraph.value.children.find(
+    (n: layoutNode) => n.component.id === componentId,
+  );
+  if (!node) {
+    // Node not found in layout, retry after a short delay
+    setTimeout(() => panToComponent(componentId), 100);
+    return;
+  }
+
+  // Calculate the center of the component node
+  const componentCenterX = node.x + node.width / 2;
+  const componentCenterY = node.y + node.height / 2;
+
+  // Calculate the center of the viewport
+  const viewportCenterX = windowDimensions.value.width / 2;
+  const viewportCenterY = windowDimensions.value.height / 2;
+
+  // Get current scale and transform
+  const scale = transformMatrix[0] ?? 1;
+  const currentTranslateX = transformMatrix[4] ?? 0;
+  const currentTranslateY = transformMatrix[5] ?? 0;
+
+  // Calculate where the component center currently appears on screen
+  const currentScreenX = componentCenterX * scale + currentTranslateX;
+  const currentScreenY = componentCenterY * scale + currentTranslateY;
+
+  // Calculate how much we need to pan to center the component
+  const panDx = viewportCenterX - currentScreenX;
+  const panDy = viewportCenterY - currentScreenY;
+
+  // Use smooth animated pan
+  smoothPan(panDx, panDy);
+};
+
 const mouseDown = ref(false);
 
 // Reactive window dimensions for accurate viewport tracking
@@ -716,6 +786,10 @@ const connections = useQuery<IncomingConnections[]>({
 
           if (selectedComps.length > 0) {
             selectedComponents.value = new Set(selectedComps);
+            // Set up pending pan for when layout becomes available
+            if (selectedComps[0]) {
+              pendingPanComponent.value = selectedComps[0].id;
+            }
           }
           fillDefault.value = undefined;
         });
@@ -843,6 +917,9 @@ const clickedNode = (e: MouseEvent, n: layoutNode) => {
 
       // Clear multi-select and set single selection
       selectedComponents.value = new Set([n.component]);
+
+      // Pan to center the selected component
+      panToComponent(n.component.id);
     }
   }
 };
@@ -1133,9 +1210,42 @@ watch(
 
         if (selectedComps.length > 0) {
           selectedComponents.value = new Set(selectedComps);
+          // Set up pending pan for when layout becomes available
+          if (selectedComps[0]) {
+            pendingPanComponent.value = selectedComps[0].id;
+          }
           fillDefault.value = undefined;
         }
       });
+    }
+  },
+  { immediate: true },
+);
+
+// Watch for when layout data becomes available and pan to selected component from URL
+const pendingPanComponent = ref<string | null>(null);
+
+watch(
+  [dataAsGraph, selectedComponents],
+  () => {
+    // If we have a pending pan request and the layout is now available
+    if (
+      pendingPanComponent.value &&
+      dataAsGraph.value?.children &&
+      selectedComponents.value.size > 0
+    ) {
+      const componentId = pendingPanComponent.value;
+      const node = dataAsGraph.value.children.find(
+        (n: layoutNode) => n.component.id === componentId,
+      );
+
+      if (node) {
+        // Use nextTick to ensure DOM is updated
+        nextTick(() => {
+          panToComponent(componentId);
+          pendingPanComponent.value = null;
+        });
+      }
     }
   },
   { immediate: true },
