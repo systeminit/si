@@ -14,10 +14,7 @@
       v-if="selectedComponent && selectedComponents.size === 1"
       id="selection"
       :class="
-        clsx(
-          'absolute top-[110px] max-w-[350px] min-w-[300px] right-3',
-          'flex flex-col gap-xs',
-        )
+        clsx('absolute top-[110px] w-[435px] right-3', 'flex flex-col gap-xs')
       "
       style="max-height: calc(100vh - 115px)"
     >
@@ -612,17 +609,18 @@ const onEscape = () => {
   }
 };
 const onE = (_e: KeyDetails["e"]) => {
-  if (selectedComponent.value) {
-    componentContextMenuRef.value?.componentsStartErase([
-      selectedComponent.value,
-    ]);
+  if (selectedComponents.value.size > 0) {
+    componentContextMenuRef.value?.componentsStartErase(
+      Array.from(selectedComponents.value),
+    );
   }
 };
 const onD = (e: KeyDetails["d"]) => {
-  if (selectedComponent.value && (e.metaKey || e.ctrlKey)) {
-    componentContextMenuRef.value?.componentsDuplicate([
-      selectedComponent.value.id,
-    ]);
+  if (selectedComponents.value.size > 0 && (e.metaKey || e.ctrlKey)) {
+    const componentIds = Array.from(selectedComponents.value).map(
+      (component) => component.id,
+    );
+    componentContextMenuRef.value?.componentsDuplicate(componentIds);
   }
 };
 const onP = (_e: KeyDetails["p"]) => {
@@ -636,17 +634,24 @@ const onU = (_e: KeyDetails["u"]) => {
   // }
 };
 const onBackspace = (_e: KeyDetails["Backspace"]) => {
-  if (selectedComponent.value && !selectedComponent.value.toDelete) {
-    componentContextMenuRef.value?.componentsStartDelete([
-      selectedComponent.value,
-    ]);
+  if (selectedComponents.value.size > 0) {
+    const componentsToDelete = Array.from(selectedComponents.value).filter(
+      (component) => !component.toDelete,
+    );
+    if (componentsToDelete.length > 0) {
+      componentContextMenuRef.value?.componentsStartDelete(componentsToDelete);
+    }
   }
 };
 const onR = (_e: KeyDetails["r"]) => {
-  if (selectedComponent.value && selectedComponent.value.toDelete) {
-    componentContextMenuRef.value?.componentsRestore([
-      selectedComponent.value.id,
-    ]);
+  if (selectedComponents.value.size > 0) {
+    const componentsToRestore = Array.from(selectedComponents.value).filter(
+      (component) => component.toDelete,
+    );
+    if (componentsToRestore.length > 0) {
+      const componentIds = componentsToRestore.map((component) => component.id);
+      componentContextMenuRef.value?.componentsRestore(componentIds);
+    }
   }
 };
 const onM = (_e: KeyDetails["m"]) => {
@@ -803,7 +808,7 @@ export type GraphData = {
 
 const dataAsGraph = ref<GraphData | null>(null);
 
-const WIDTH = 250;
+const WIDTH = 270;
 const HEIGHT = 75;
 
 const selectedGridTileRef = ref<InstanceType<typeof ExploreGridTile>>();
