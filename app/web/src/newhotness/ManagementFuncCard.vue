@@ -15,7 +15,7 @@
     <div
       :class="
         clsx(
-          'border-b w-full p-xs',
+          'border-b w-full p-xs text-sm',
           themeClasses('border-neutral-400', 'border-neutral-600'),
         )
       "

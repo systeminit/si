@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-  <h3 class="m-xs">{{ props.label }}</h3>
+  <h3 class="m-xs text-sm">{{ props.label }}</h3>
   <ul class="flex flex-col gap-xs mx-xs">
     <li
       v-for="conn in props.connections"

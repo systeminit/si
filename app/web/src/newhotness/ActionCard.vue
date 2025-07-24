@@ -14,18 +14,7 @@
   >
     <template #icons>
       <Icon
-        v-if="actionQueued"
-        :class="
-          clsx(
-            themeClasses('text-neutral-600', 'text-neutral-300'),
-            'translate-y-[-2px]',
-          )
-        "
-        name="nested-arrow-right"
-        size="sm"
-      />
-      <Icon
-        v-else-if="actionRunning"
+        v-if="actionRunning"
         :class="clsx(themeClasses('text-action-300', 'text-action-300'))"
         name="loader"
         size="sm"
@@ -211,10 +200,6 @@ const actionFailed = computed(() => {
 
 const actionRunning = computed(() => {
   return props.action.state === ActionState.Running;
-});
-
-const actionQueued = computed(() => {
-  return props.action.state === ActionState.Queued;
 });
 
 // Action handling methods

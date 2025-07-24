@@ -57,7 +57,7 @@
           highlightWhenModelValue && modelValueLabel && 'text-neutral-200',
         )
       "
-      name="input-type-select"
+      name="chevron--down"
       size="sm"
     />
     <DropdownMenu

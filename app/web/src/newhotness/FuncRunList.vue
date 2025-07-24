@@ -2,15 +2,9 @@
   <div class="flex flex-col min-h-full">
     <div
       v-if="showSubheader"
-      :class="
-        clsx(
-          'header flex flex-col gap-2xs p-2xs',
-          themeClasses('bg-neutral-200', 'bg-neutral-900'),
-        )
-      "
+      :class="clsx('header flex flex-col px-2xs pb-2xs')"
     >
       <div class="flex flex-row justify-between items-center">
-        <div class="text-sm font-medium">Recent Function Runs</div>
         <div
           v-if="isFetching && !isFetchingNextPage"
           class="text-xs text-neutral-500 flex items-center"
@@ -19,41 +13,52 @@
           Updating...
         </div>
       </div>
-      <div class="flex flex-row items-center gap-sm flex-wrap">
-        <div class="flex flex-row items-center gap-2xs">
-          <select
-            v-model="selectedFuncKind"
-            :class="
-              clsx(
-                'text-xs border rounded px-2xs py-1 min-w-[120px]',
-                themeClasses(
-                  'bg-shade-0 border-neutral-400 text-shade-100',
-                  'bg-neutral-800 border-neutral-600 text-shade-0',
-                ),
-              )
-            "
-          >
-            <option value="" disabled>Filter by Kind</option>
-            <option
-              v-for="kind in availableFuncKinds"
-              :key="kind"
-              :value="kind"
-            >
-              {{ kind }}
-            </option>
-          </select>
-        </div>
-        <div class="flex flex-row items-center gap-2xs">
+      <div
+        :class="
+          clsx(
+            'flex flex-row items-center gap-sm flex-wrap border-l border-r border-b py-2xs -mx-2xs pl-xs pr-2xs',
+            themeClasses('border-neutral-400', 'border-neutral-600'),
+          )
+        "
+      >
+        <DropdownMenuButton
+          class="rounded min-w-[120px]"
+          :options="funcKindOptions"
+          :modelValue="selectedFuncKind"
+          placeholder="Filter by Kind"
+          minWidthToAnchor
+          checkable
+          alwaysShowPlaceholder
+          @update:modelValue="(val) => (selectedFuncKind = val)"
+        >
+          <template #beforeOptions>
+            <DropdownMenuItem
+              label="All Kinds"
+              value=""
+              checkable
+              :checked="selectedFuncKind === ''"
+              @select="() => (selectedFuncKind = '')"
+            />
+          </template>
+        </DropdownMenuButton>
+        <div
+          :class="
+            clsx(
+              'flex flex-row items-center gap-2xs border rounded',
+              themeClasses('border-neutral-400', 'border-neutral-600'),
+            )
+          "
+        >
           <input
             v-model="componentNameFilter"
             type="text"
-            placeholder="Filter by component name"
+            placeholder="Find by component name"
             :class="
               clsx(
-                'text-xs border rounded px-2xs py-1 min-w-[250px]',
+                'text-xs px-2xs py-2xs min-w-[250px] border-0',
                 themeClasses(
-                  'bg-shade-0 border-neutral-400 text-shade-100 placeholder-neutral-500',
-                  'bg-neutral-800 border-neutral-600 text-shade-0 placeholder-neutral-400',
+                  'bg-white text-neutral-600 placeholder-neutral-500',
+                  'bg-black text-neutral-400 placeholder-neutral-400',
                 ),
               )
             "
@@ -139,7 +144,12 @@
 <script lang="ts" setup>
 import { computed, ref, inject } from "vue";
 import { useInfiniteQuery } from "@tanstack/vue-query";
-import { Icon, themeClasses } from "@si/vue-lib/design-system";
+import {
+  Icon,
+  themeClasses,
+  DropdownMenuButton,
+  DropdownMenuItem,
+} from "@si/vue-lib/design-system";
 import { useRouter, useRoute } from "vue-router";
 import clsx from "clsx";
 import FuncRunCard from "./FuncRunCard.vue";
@@ -222,6 +232,14 @@ const availableFuncKinds = computed(() => {
     }
   });
   return Array.from(kinds).sort();
+});
+
+// Convert func kinds to dropdown options format
+const funcKindOptions = computed(() => {
+  return availableFuncKinds.value.map((kind) => ({
+    value: kind,
+    label: kind,
+  }));
 });
 
 // Filter function runs based on selected func kind and component name

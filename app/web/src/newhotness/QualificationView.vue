@@ -1,6 +1,6 @@
 <template>
   <li class="rounded border border-neutral-600 [&>div]:p-xs">
-    <div class="border-b border-neutral-600">
+    <div class="border-b border-neutral-600 text-sm">
       {{ qualification.name }}
     </div>
 

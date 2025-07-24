@@ -1,6 +1,6 @@
 <template>
   <CollapsingFlexItem :open="open" @toggle="emit('toggle')">
-    <template #header> Documentation </template>
+    <template #header><span class="text-sm">Documentation</span></template>
     <div class="flex flex-col items-center p-xs gap-xs [&>.prose]:w-full">
       <EmptyState
         v-if="

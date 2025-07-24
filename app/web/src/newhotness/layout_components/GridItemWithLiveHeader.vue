@@ -11,7 +11,7 @@
     "
   >
     <div class="flex flex-row items-center justify-between px-sm py-2xs">
-      <h2 class="text-md font-medium pt-xs pb-xs">{{ title }}</h2>
+      <h2 class="text-sm font-medium pt-xs pb-xs">{{ title }}</h2>
       <!-- Live updating indicator -->
       <div
         v-if="live"

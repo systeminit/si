@@ -25,7 +25,7 @@
 
       <!-- Function info -->
       <div class="flex-1 flex flex-row items-center gap-xs">
-        <span class="font-medium">
+        <span class="sm">
           {{
             funcRun?.functionDisplayName ||
             funcRun?.functionName ||

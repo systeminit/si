@@ -76,11 +76,12 @@
           iconTone="shade"
           @click="close"
         />
-        <div class="flex-none">{{ component.schemaVariantName }}</div>
+        <div class="flex-none text-sm">{{ component.schemaVariantName }}</div>
         <div class="flex-none">/</div>
-        <TruncateWithTooltip class="flex-1 min-w-0 m-[-4px] py-2xs px-xs">{{
-          component.name
-        }}</TruncateWithTooltip>
+        <TruncateWithTooltip
+          class="flex-1 min-w-0 m-[-4px] py-2xs px-xs text-sm"
+          >{{ component.name }}</TruncateWithTooltip
+        >
         <div class="ml-auto flex gap-xs">
           <template v-if="component.toDelete">
             <VButton
@@ -134,7 +135,7 @@
         <CollapsingFlexItem ref="attrRef" :expandable="false" open>
           <template #header>
             <div class="flex place-content-between w-full">
-              <span>Attributes</span>
+              <span class="text-sm">Attributes</span>
               <template v-if="specialCaseManagementFuncKind === 'import'">
                 <VButton
                   size="xs"
@@ -193,7 +194,7 @@
         >
           <template #header>
             <div class="flex place-content-between w-full">
-              <span>Resource Values</span>
+              <span class="text-sm">Resource Values</span>
             </div>
           </template>
           <ResourceValuesPanel
@@ -202,14 +203,14 @@
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem ref="actionRef" :expandable="false">
-          <template #header>Actions</template>
+          <template #header><span class="text-sm">Actions</span></template>
           <ActionsPanel
             :component="component"
             :attributeValueId="component.rootAttributeValueId"
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem ref="mgmtRef" :expandable="false">
-          <template #header>Management</template>
+          <template #header><span class="text-sm">Management</span></template>
           <ManagementPanel
             :component="component"
             :latestFuncRuns="latestFuncRuns"
@@ -230,7 +231,9 @@
 
       <div class="right flex flex-col">
         <CollapsingFlexItem>
-          <template #header> Qualifications </template>
+          <template #header
+            ><span class="text-sm">Qualifications</span></template
+          >
           <template #headerIcons>
             <MinimizedComponentQualificationStatus :component="component" />
           </template>
@@ -240,7 +243,7 @@
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem expandable>
-          <template #header> Connections </template>
+          <template #header><span class="text-sm">Connections</span></template>
           <template #headerIcons>
             <div class="ml-auto my-sm">
               <VButton
@@ -258,7 +261,7 @@
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem expandable>
-          <template #header> Code Gen </template>
+          <template #header><span class="text-sm">Code Gen</span></template>
           <CodePanel
             v-if="attributeTree"
             :component="component"
@@ -266,11 +269,11 @@
           />
         </CollapsingFlexItem>
         <CollapsingFlexItem expandable>
-          <template #header> Diff </template>
+          <template #header><span class="text-sm">Diff</span></template>
           <DiffPanel :component="component" />
         </CollapsingFlexItem>
         <CollapsingFlexItem expandable>
-          <template #header> Resource </template>
+          <template #header><span class="text-sm">Resource</span></template>
           <template #headerIcons>
             <Icon
               v-if="component.hasResource"
